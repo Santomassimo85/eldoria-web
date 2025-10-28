@@ -37,7 +37,8 @@ export default function App() {
     <>
       {/* HEADER */}
       <header>
-        <div className="logo">E L D O R I A</div>
+<div className="logo">E L D O R I A <br />
+ <span>Chronicles</span></div>
 
         {/* Burger button */}
       <div

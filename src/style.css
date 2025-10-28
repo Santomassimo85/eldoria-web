@@ -13,6 +13,51 @@
     padding: 0;
 }
 
+/* 🐉 Drago decorativo in alto a destra */
+/* body::after {
+  content: "";
+  position: fixed;
+  top: 1%;
+  left: 0;
+  width: 350px;     
+  height: 350px;
+  background: url("/assets/d20.svg") no-repeat top right;
+  background-size: contain; 
+  opacity: 0.12;   
+  z-index: 1;     
+  pointer-events: none;
+} */
+body::after {
+  /* come sopra, ma aggiungi: */
+  filter: sepia(5) saturate(13) hue-rotate(-40deg) brightness(0.9);
+}
+body::before {
+  content: "";
+  position: fixed;
+  top: 40%;
+  right: 0;
+  width: 650px;
+  height: 650px;
+  background: url("/assets/dragon.svg") no-repeat top right / contain;
+  opacity: 0.06;
+  z-index: -2;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  top: 40px;
+  left: 25px;
+  width: 300px;
+  height: 300px;
+  rotate: 50deg;
+  background: url("/assets/d20.svg") no-repeat bottom left / contain;
+  opacity: 0.1;
+  z-index: 1;
+}
+
+
+
 html,
 body {
     width: 100%;
@@ -50,6 +95,8 @@ main {
     flex: 1;
     justify-content: center;
     align-items: center;
+    position: relative;
+ margin: 50px 5% 100px;
 }
 
 /* Header */
@@ -63,18 +110,30 @@ header {
     flex-wrap: wrap;
     width: 100%;
     position: relative;
+    position: fixed;
+    z-index: 1;
 }
 
 .logo {
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: 2rem;
     margin-left: 10%;
-    background: linear-gradient(90deg, var(--gold), var(--red), var(--gold), var(--red));
+    /* color: white; */
+    background: linear-gradient(45deg, var(--red), var(--gold));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     user-select: none;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 0 6px var(--gold);
+    z-index: 2;
+    text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.1);
+}
+
+.logo span {
+    font-size: 0.8em;
+    color: var(--gold);
+    text-shadow: #614e2a 1px 1px 2px;
+    margin-left: 4px;
+    z-index: 2;
 }
 
 /* === NAVBAR === */
@@ -162,6 +221,7 @@ nav a.active {
 /* Contenuto principale */
 main {
     flex: 1;
+    top: 130px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -253,7 +313,34 @@ footer strong {
 
 
 /* Responsive */
+@media (min-width: 781px) and (max-width: 1300px) {
+    nav a {
+        font-size: 0.8rem;
+        /* oppure 0.8rem se vuoi più piccolo */
+
+    }
+
+    nav {
+        margin-right: 5%;
+
+        gap: 0;
+    }
+
+    .logo {
+        font-size: 1.4rem;
+
+        margin-left: 2%;
+    }
+}
+
 @media (max-width: 780px) {
+
+ body::after {
+    width: 180px;
+    height: 180px;
+    opacity: 0.06;   /* più tenue */
+    z-index: 1000;    /* più dietro */
+  }
 
     .burger {
         display: flex;
@@ -265,7 +352,12 @@ footer strong {
 
     .burger.open+nav {
         margin: 0 10%;
-        z-index: 1000;
+        top: 130px;
+        z-index: 1;
+    }
+
+    .logo {
+        font-size: 1.4rem;
     }
 
     nav {
@@ -289,6 +381,8 @@ footer strong {
     header {
         flex-direction: column;
         gap: 12px;
+        position: fixed;
+        z-index: 10;
     }
 
     nav {
@@ -297,6 +391,8 @@ footer strong {
 
     main {
         padding: 20px;
+        top: 120px;
+        position: relative;
     }
 
     h1 {
@@ -305,6 +401,7 @@ footer strong {
 
     .creation-image {
         width: 80%;
+        z-index: 100;
     }
 }
 
@@ -319,15 +416,23 @@ footer strong {
         justify-content: center;
     }
 }
+
 @keyframes slideDownFade {
-  from { transform: translateY(-10px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 nav.active a {
-  animation: slideDownFade 1.6s ease forwards;
+    animation: slideDownFade 1.6s ease forwards;
 }
 
 .burger img.sword {
-  transition: transform 1s ease, filter 1s ease;
+    transition: transform 1s ease, filter 1s ease;
 }
