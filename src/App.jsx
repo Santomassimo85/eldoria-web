@@ -6,6 +6,27 @@ import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
 import "./style.css";
 
+function SwordIcon({ className = "" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 64 64"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {/* lama */}
+      <rect x="29" y="5" width="6" height="40" fill="#d4af37" />
+      {/* punta */}
+      <polygon points="32 2 28 10 36 10" fill="#d4af37" />
+      {/* guardia */}
+      <rect x="24" y="40" width="16" height="4" fill="#7a0e0e" />
+      {/* impugnatura */}
+      <rect x="28" y="44" width="8" height="12" fill="#7a0e0e" />
+    </svg>
+  );
+}
+
+
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -19,15 +40,31 @@ export default function App() {
         <div className="logo">E L D O R I A</div>
 
         {/* Burger button */}
-        <div
-          className={`burger ${menuOpen ? "open" : ""}`}
-          onClick={toggleMenu}
-          aria-label="Apri menu"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
+      <div
+  className={`burger ${menuOpen ? "open" : ""}`}
+  onClick={() => {
+    toggleMenu();
+   
+  }}
+  aria-label="Apri menu"
+>
+  <img
+    src={menuOpen ? "/assets/blood.svg" : "/assets/sword2.svg"}
+    alt="spada"
+    className="sword sword-1"
+  />
+  {/* <img
+    src="/assets/swor.svg"
+    alt="spada"
+    className="sword sword-2"
+  />
+  <img
+    src="/assets/swor.svg"
+    alt="spada"
+    className="sword sword-3"
+  /> */}
+</div>
+
 
         {/* NAVBAR */}
         <nav className={menuOpen ? "active" : ""}>
@@ -79,7 +116,7 @@ export default function App() {
       {/* FOOTER */}
       <footer>
         <p>
-          Parte del portfolio di <strong>OrpheusDesign</strong>
+          © {new Date().getFullYear()} <strong><a href="https://designbyorpheus.it/">OrpheusDesign</a></strong>
         </p>
       </footer>
     </>
