@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Party from "./pages/Party";
 import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
+import { Analytics } from "@vercel/analytics/next"
 import "./style.css";
 
 function SwordIcon({ className = "" }) {
