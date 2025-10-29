@@ -5,7 +5,6 @@ import Party from "./pages/Party";
 import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/geo";
-
 // import { Analytics } from "@vercel/analytics/next"
 import "./style.css";
 
@@ -58,7 +57,7 @@ export default function App() {
             Party
           </NavLink>
           <NavLink
-            to="/Geo"
+            to="/geo"
             className={({ isActive }) => (isActive ? "active disabled" : "")}
             onClick={closeMenu}
           >
@@ -87,7 +86,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/party" element={<Party />} />
-          <Route path="/Geo" element={<Geo />} />
+          <Route path="/geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/mercato" element={<Mercato />} />
         </Routes>
