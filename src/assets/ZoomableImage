@@ -1,0 +1,45 @@
+import React, { useState } from 'react';
+import './ZoomableImage.css'; // Assicurati di creare questo file CSS
+
+const ZoomableImage = ({ src, alt, className }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const apriModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const chiudiModal = () => {
+    setIsModalOpen(false);
+  };
+
+  // Chiudi la modal cliccando sull'overlay (sfondo scuro)
+  const handleOverlayClick = (event) => {
+    if (event.target === event.currentTarget) {
+      chiudiModal();
+    }
+  };
+
+  return (
+    <>
+      {/* Immagine normale nella pagina */}
+      <img
+        src={src}
+        alt={alt}
+        className={className + ' clickable-image'} // Aggiungi una classe per il cursore
+        onClick={apriModal}
+      />
+
+      {/* Modal / Lightbox */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={handleOverlayClick}>
+          <div className="modal-content">
+            <span className="close-button" onClick={chiudiModal}>&times;</span>
+            <img src={src} alt={alt} className="zoomed-image" />
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default ZoomableImage;

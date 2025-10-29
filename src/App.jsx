@@ -4,10 +4,10 @@ import Home from "./pages/Home";
 import Party from "./pages/Party";
 import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
+import Geo from "./pages/geo";
+
 // import { Analytics } from "@vercel/analytics/next"
 import "./style.css";
-
-
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,35 +19,25 @@ export default function App() {
     <>
       {/* HEADER */}
       <header>
-<div className="logo">E L D O R I A <br />
- <span>Chronicles</span></div>
+        <div className="logo">
+          E L D O R I A <br />
+          <span>Chronicles</span>
+        </div>
 
         {/* Burger button */}
-      <div
-  className={`burger ${menuOpen ? "open" : ""}`}
-  onClick={() => {
-    toggleMenu();
-   
-  }}
-  aria-label="Apri menu"
->
-  <img
-    src={menuOpen ? "/assets/blood.svg" : "/assets/sword2.svg"}
-    alt="spada"
-    className="sword sword-1"
-  />
-  {/* <img
-    src="/assets/swor.svg"
-    alt="spada"
-    className="sword sword-2"
-  />
-  <img
-    src="/assets/swor.svg"
-    alt="spada"
-    className="sword sword-3"
-  /> */}
-</div>
-
+        <div
+          className={`burger ${menuOpen ? "open" : ""}`}
+          onClick={() => {
+            toggleMenu();
+          }}
+          aria-label="Apri menu"
+        >
+          <img
+            src={menuOpen ? "/assets/blood.svg" : "/assets/sword2.svg"}
+            alt="spada"
+            className="sword sword-1"
+          />
+        </div>
 
         {/* NAVBAR */}
         <nav className={menuOpen ? "active" : ""}>
@@ -67,7 +57,13 @@ export default function App() {
           >
             Party
           </NavLink>
-
+          <NavLink
+            to="/Geo"
+            className={({ isActive }) => (isActive ? "active disabled" : "")}
+            onClick={closeMenu}
+          >
+            Archivio Geomatico
+          </NavLink>
           <NavLink
             to="/riassunti"
             className={({ isActive }) => (isActive ? "active disabled" : "")}
@@ -91,6 +87,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/party" element={<Party />} />
+          <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/mercato" element={<Mercato />} />
         </Routes>
@@ -99,7 +96,10 @@ export default function App() {
       {/* FOOTER */}
       <footer>
         <p>
-          © {new Date().getFullYear()} <strong><a href="https://designbyorpheus.it/">OrpheusDesign</a></strong>
+          © {new Date().getFullYear()}{" "}
+          <strong>
+            <a href="https://designbyorpheus.it/">OrpheusDesign</a>
+          </strong>
         </p>
       </footer>
     </>

@@ -260,6 +260,8 @@ li {
     color: #272727;
 }
 
+
+
 /* Home */
 .creation-image {
     width: 40%;
@@ -283,7 +285,95 @@ li {
     transform: translateY(0);
 }
 
+/*  Geo */
+.city {
+    margin: 20px 0;
+    /* text-align: center; */
+}
+.city h1,h2,h3,h4 {
+    color: var(--red);
+    margin-bottom: 12px;
+}
+.city p {
+    margin-bottom: 12px;
+    font-size: 1rem;
+    color: #333333;
 
+}
+.city img.city-img {
+    width: 60%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+.city li {
+    text-align: left;
+    margin: 8px 0;
+    text-decoration: none;
+    list-style-type: none;
+}
+.city li img {
+    margin-right: 10px;
+}
+
+/* Stile base dell'immagine per mostrare che è cliccabile */
+.city-img {
+  cursor: pointer;
+}
+
+/* Lo sfondo scuro della modal */
+.modal {
+  display: none; /* Nascosto di default */
+  position: fixed; /* Rimanere in posizione anche scorrendo */
+  z-index: 1000; /* Essere sopra tutti gli altri elementi */
+  padding-top: 50px; /* Spazio dalla parte superiore */
+  left: 0;
+  top: 0;
+  width: 100%; /* Larghezza completa */
+  height: 100%; /* Altezza completa */
+  overflow: auto; /* Abilita lo scorrimento se necessario */
+  background-color: rgb(0, 0, 0); /* Nero semi-trasparente */
+  background-color: rgba(0, 0, 0, 0.9); /* Più scuro */
+}
+
+/* Contenuto dell'immagine all'interno della modal */
+.modal-contenuto {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 1200px; /* Massima larghezza dello zoom */
+  animation-name: zoom;
+  animation-duration: 0.6s;
+}
+
+/* Pulsante di chiusura */
+.chiudi {
+  position: absolute;
+  top: 15px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 40px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.chiudi:hover,
+.chiudi:focus {
+  color: #bbb;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Animazione per l'apertura */
+@keyframes zoom {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
 /* Footer */
 footer {
     background-color: var(--red);
@@ -315,7 +405,7 @@ footer strong {
 
 
 /* Responsive */
-@media (min-width: 781px) and (max-width: 1300px) {
+@media (min-width: 935px) and (max-width: 1300px) {
     nav a {
         font-size: 0.8rem;
         /* oppure 0.8rem se vuoi più piccolo */
@@ -341,7 +431,7 @@ footer strong {
     }
 }
 
-@media (max-width: 780px) {
+@media (max-width: 934px) {
 
     body::after {
         width: 180px;
