@@ -1,0 +1,63 @@
+/* Stile base del contenitore per il toggle */
+.toggle-section {
+  margin: 1.5rem 0;
+  /* border: 1px solid var(--gold); Bordo per distinguere la sezione */
+  border-radius: 5px;
+  overflow: hidden; /* Fondamentale per l'animazione di altezza */
+}
+
+/* Stile del titolo cliccabile */
+.toggle-title {
+  background-color: #f7f7f7; /* Sfondo del titolo */
+  padding: 15px 20px;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.3rem;
+  color: var(--text);
+  user-select: none;
+  font-family: var(--font-title);
+  letter-spacing: 1px;
+}
+
+.toggle-title:hover {
+  background-color: #f0f0f0; /* Effetto hover */
+}
+
+/* Icona della freccia */
+.toggle-icon {
+  font-size: 0.9em;
+  transition: transform 0.3s ease-in-out; /* Animazione di rotazione */
+}
+
+.toggle-icon.open {
+  transform: rotate(180deg); /* La freccia punta in su quando aperto */
+}
+
+/* Contenuto nascosto (importante per l'animazione) */
+.toggle-content {
+  max-height: 0; /* Altezza zero: contenuto nascosto */
+  opacity: 0; 
+  padding: 0 20px;
+  transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out, padding 0.5s ease-in-out; /* Animazione fluida */
+  overflow: hidden;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+.toggle-content.open {
+  max-height: 2000px; /* Altezza sufficientemente grande per contenere tutto il testo */
+  opacity: 1; 
+  padding: 20px; /* Aggiunge padding quando aperto */
+}
+
+/* Stile per gli elementi interni del contenuto */
+.toggle-content ul {
+    list-style-type: none;
+    padding: 0;
+}
+.toggle-content li {
+    margin-bottom: 0.5em;
+}
