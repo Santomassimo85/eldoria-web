@@ -4,28 +4,9 @@ import Home from "./pages/Home";
 import Party from "./pages/Party";
 import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
-import { Analytics } from "@vercel/analytics/next"
+// import { Analytics } from "@vercel/analytics/next"
 import "./style.css";
 
-function SwordIcon({ className = "" }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 64 64"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {/* lama */}
-      <rect x="29" y="5" width="6" height="40" fill="#d4af37" />
-      {/* punta */}
-      <polygon points="32 2 28 10 36 10" fill="#d4af37" />
-      {/* guardia */}
-      <rect x="24" y="40" width="16" height="4" fill="#7a0e0e" />
-      {/* impugnatura */}
-      <rect x="28" y="44" width="8" height="12" fill="#7a0e0e" />
-    </svg>
-  );
-}
 
 
 export default function App() {
