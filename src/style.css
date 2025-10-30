@@ -375,68 +375,105 @@ li {
   }
 }
 
-* Griglia per le card dei personaggi */
+/* Stili per la pagina Party in generale */
+.party-page {
+    padding: 20px;
+    max-width: 1200px; /* Limita la larghezza per una migliore leggibilità */
+    margin: 0 auto;
+}
+
+.party-page h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    font-family: var(--font-title);
+    color: var(--gold);
+}
+
+/* Contenitore per le card dei personaggi */
 .party-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Colonne adattive */
-  gap: 20px; /* Spazio tra le card */
-  justify-content: center; /* Centra le card se non riempiono una riga */
-  padding: 10px;
+    display: flex;
+    flex-wrap: wrap; /* Permette alle card di andare a capo su schermi piccoli */
+    gap: 20px; /* Spazio tra le card */
+    justify-content: center; /* Centra le card nel contenitore */
+    padding: 10px;
 }
 
 /* Stili per la singola card del personaggio */
 .character-card {
-  background-color: var(--bg-card); /* Sfondo della card */
-  border: 1px solid var(--gold-light);
-  border-radius: 8px;
-  overflow: hidden; /* Assicura che l'immagine si adatti */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  text-align: center;
-  display: flex; /* Utilizza flexbox per l'allineamento verticale */
-  flex-direction: column;
+    /* background-color: var(--bg-card, #fdfdfd);  */
+    /* border: 1px solid var(--gold-light, #d4af37); */
+    border-radius: 8px;
+    overflow: hidden; /* Assicura che l'immagine si adatti */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    display: flex; /* Utilizza flexbox per l'allineamento interno */
+    flex-direction: row; /* Layout orizzontale per schermi grandi */
+    flex-grow: 1; /* Permette alla card di crescere */
+    flex-basis: 400px; /* Larghezza base prima di andare a capo */
+    max-width: 550px; /* Larghezza massima per card */
+    min-height: 280px; /* Altezza minima */
 }
 
 .character-card:hover {
-  transform: translateY(-5px); /* Effetto leggero al passaggio del mouse */
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    transform: translateY(-5px); /* Effetto leggero al passaggio del mouse */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
 .character-image {
-  width: 100%;
-  height: 250px; /* Altezza fissa per le immagini */
-  object-fit: cover; /* Ritaglia l'immagine per coprire l'area */
-  border-bottom: 1px solid var(--gold-light);
+    width: 40%; /* Larghezza per l'immagine */
+    
+    object-fit: cover; 
+    border-right: 1px solid var(--gold-light, #d4af37); /* Bordo tra immagine e testo */
 }
 
 .character-info {
-  padding: 15px;
-  flex-grow: 1; /* Permette all'info di occupare lo spazio rimanente */
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* Centra il testo verticalmente se c'è spazio */
+    padding: 20px;
+    height: 90%;
+    flex-grow: 1; /* Permette all'info di occupare lo spazio rimanente */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centra il testo verticalmente */
+    text-align: left; /* Allinea il testo a sinistra */
 }
 
 .character-name {
-  font-family: var(--font-title);
-  color: var(--red);
-  margin: 0 0 5px 0;
-  font-size: 1.5em;
-  line-height: 1.2;
+    font-family: var(--font-title);
+    color: var(--gold);
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+    line-height: 1.2;
 }
 
 .character-details {
-  font-family: var(--font-text);
-  color: var(--text-light);
-  margin: 0;
-  font-size: 1em;
+    font-family: var(--font-text);
+    color: var(--text-light, #333);
+    margin: 0;
+    font-size: 1em;
 }
 
-/* Media query per schermi più piccoli, se necessario */
-@media (max-width: 768px) {
-  .party-grid {
-    grid-template-columns: 1fr; /* Una singola colonna su schermi piccoli */
-  }
+/* Media query per schermi più piccoli */
+@media (max-width: 934px) {
+    .character-card {
+        flex-direction: column; /* Layout verticale per la card */
+        text-align: center; /* Centra il testo nel layout verticale */
+        flex-basis: 100%; /* Occupa tutta la larghezza disponibile */
+    }
+
+    .character-image {
+        width: 100%; /* Immagine a larghezza piena */
+        height: 150px; 
+        border-right: none; /* Rimuove il bordo destro */
+        border-bottom: 1px solid var(--gold-light, #d4af37); /* Aggiunge bordo inferiore */
+    }
+
+    .character-info {
+        text-align: center; /* Centra il testo */
+        padding: 15px;
+    }
+
+    .character-name {
+        font-size: 1.5em;
+    }
 }
 
 /* Footer */

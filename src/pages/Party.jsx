@@ -4,15 +4,15 @@ import ToggleSection from './ToggleSection'; // Assumi che ToggleSection.jsx sia
 // Dati dei personaggi
 const partyData = {
   party1: [
-    { name: "Caius", race: "Elfo", class: "Mago", image: "/assets/party_members/caius.jpg" },
+    { name: "Caius", race: "Elfo", class: "Mago", image: "/assets/player/Caius.jpg" },
     { name: "Garroth", race: "Mezz'Elfo", class: "Ranger", image: "/assets/player/Garroth.jpg" },
     { name: "Tanagar", race: "Mezz'Orco", class: "Guerriero", image: "/assets/player/Tanagar.jpg" },
-    { name: "Sylva", race: "Umana", class: "Barbari", image: "/assets/party_members/sylva.jpg" },
+    { name: "Sylva", race: "Umana", class: "Barbaro", image: "/assets/player/Sylva.png" },
   ],
   party2: [
-    { name: "Lyra", race: "Umana", class: "Barda", image: "/assets/party_members/lyra.jpg" },
-    { name: "Thorn", race: "Nano", class: "Chierico", image: "/assets/party_members/thorn.jpg" },
-    { name: "Kaelen", race: "Elfo", class: "Ladro", image: "/assets/party_members/kaelen.jpg" },
+    { name: "Horn", race: "Umano", class: "Ranger", image: "/assets/player/Horn.jpg" },
+    { name: "Thoki", race: "Gnomo", class: "Mago", image: "/assets/player/Thoki.jpg" },
+    { name: "Cleofe", race: "Halfling", class: "Ladro", image: "/assets/player/Cleofe.jpg" },
   ],
 };
 
@@ -21,8 +21,11 @@ const CharacterCard = ({ character }) => (
   <div className="character-card">
     <img src={character.image} alt={character.name} className="character-image" />
     <div className="character-info">
-      <h4 className="character-name">{character.name}</h4>
-      <p className="character-details">{character.race} {character.class}</p>
+      {/* TRASFORMAZIONE IN LINK CLICCABILE */}
+      <a href="/link-placeholder" className="character-link" title={`Vedi scheda di ${character.name}`}>
+        <h4 className="character-name">{character.name}</h4>
+        <p className="character-details">{character.race} {character.class}</p>
+      </a>
     </div>
   </div>
 );
@@ -30,7 +33,7 @@ const CharacterCard = ({ character }) => (
 export default function Party() {
   return (
     <section className="party-page">
-      <h1>I Nostri Eroici Avventurieri</h1>
+      <h3>I Nostri Eroici Avventurieri</h3>
 
       <ToggleSection title="Party 1" defaultOpen={true}> {/* Puoi decidere quale aprire di default */}
         <div className="party-grid">
