@@ -66,7 +66,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/business.png"
+                        src="/assets/icons/business.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -81,7 +81,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/market.png"
+                        src="/assets/icons/market.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -96,7 +96,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/hypnosis.png"
+                        src="/assets/icons/hypnosis.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -111,7 +111,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/reading-book.png"
+                        src="/assets/icons/reading-book.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -126,7 +126,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/castle.png"
+                        src="/assets/icons/castle.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -141,7 +141,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/anchor.png"
+                        src="/assets/icons/anchor.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -156,7 +156,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/cemetery.png"
+                        src="/assets/icons/cemetery.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -172,7 +172,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/leather.png"
+                        src="/assets/icons/leather.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
@@ -187,7 +187,7 @@ return (
                     }}
                     >
                     <img
-                        src="/public/assets/icons/restaurant.png"
+                        src="/assets/icons/restaurant.png"
                         alt="icon"
                         style={{ width: "24px", height: "24px" }}
                     />
