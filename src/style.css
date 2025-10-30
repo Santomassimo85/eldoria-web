@@ -391,27 +391,27 @@ li {
 
 /* Contenitore per le card dei personaggi */
 .party-grid {
-    display: flex;
-    flex-wrap: wrap; /* Permette alle card di andare a capo su schermi piccoli */
-    gap: 20px; /* Spazio tra le card */
-    justify-content: center; /* Centra le card nel contenitore */
+    display: grid; 
+    /* Base: 1 colonna (Smartphone) */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+    gap: 20px; 
+    justify-content: center; 
     padding: 10px;
 }
 
 /* Stili per la singola card del personaggio */
 .character-card {
-    /* background-color: var(--bg-card, #fdfdfd);  */
-    /* border: 1px solid var(--gold-light, #d4af37); */
+    border: 1px solid var(--gold);
     border-radius: 8px;
-    overflow: hidden; /* Assicura che l'immagine si adatti */
+    overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    display: flex; /* Utilizza flexbox per l'allineamento interno */
-    flex-direction: row; /* Layout orizzontale per schermi grandi */
-    flex-grow: 1; /* Permette alla card di crescere */
-    flex-basis: 400px; /* Larghezza base prima di andare a capo */
-    max-width: 550px; /* Larghezza massima per card */
-    min-height: 280px; /* Altezza minima */
+    
+    /* Layout Verticale (Immagine sopra, Info sotto) */
+    display: flex;
+    flex-direction: column; 
+    text-align: center;
+    max-width: 100%;
 }
 
 .character-card:hover {
@@ -420,28 +420,40 @@ li {
 }
 
 .character-image {
-    width: 40%; /* Larghezza per l'immagine */
-    
+    width: 100%; 
+    height: 80%; /* Dedica l'80% dell'altezza della card all'immagine */
     object-fit: cover; 
-    border-right: 1px solid var(--gold-light, #d4af37); /* Bordo tra immagine e testo */
+    /* Usiamo flex-grow per occupare lo spazio necessario */
+    flex-grow: 4; /* Immagine più grande */
+    border-bottom: 1px solid var(--gold); 
 }
-
 .character-info {
-    padding: 20px;
-    height: 90%;
-    flex-grow: 1; /* Permette all'info di occupare lo spazio rimanente */
+    /* Dedica il 20% dell'altezza al testo */
+    flex-grow: 1; /* Testo più piccolo */
     display: flex;
     flex-direction: column;
     justify-content: center; /* Centra il testo verticalmente */
-    text-align: left; /* Allinea il testo a sinistra */
+    padding: 10px 5px; /* Padding ridotto */
+    text-align: center;
+}
+.character-link {
+    text-decoration: none; /* Rimuove la sottolineatura tipica dei link */
+    color: inherit; /* Eredita il colore dal contenitore */
+    display: block; /* Rende tutta l'area cliccabile */
+    width: 100%;
+}
+
+.character-link:hover .character-name {
+    color: var(--red); /* Effetto hover sul nome */
 }
 
 .character-name {
     font-family: var(--font-title);
     color: var(--gold);
-    margin: 0 0 10px 0;
-    font-size: 1.8em;
+    margin: 0 0 5px 0;
+    font-size: 1.5em;
     line-height: 1.2;
+    transition: color 0.2s;
 }
 
 .character-details {
@@ -452,28 +464,109 @@ li {
 }
 
 /* Media query per schermi più piccoli */
-@media (max-width: 934px) {
-    .character-card {
-        flex-direction: column; /* Layout verticale per la card */
-        text-align: center; /* Centra il testo nel layout verticale */
-        flex-basis: 100%; /* Occupa tutta la larghezza disponibile */
+@media (min-width: 768px) {
+    .party-grid {
+        /* 2 o 3 colonne per schermi più grandi */
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    }
+}
+
+/* --- STILI SPECIFICI PER LA PAGINA HOME --- */
+
+.home-grid-container {
+    display: flex;
+    flex-direction: column; /* MOBILE/TABLET: Stack verticale */
+    padding: 0 5%;
+    gap: 30px; 
+}
+
+/* La sidebar-data include il Countdown */
+.sidebar-data {
+    order: -1; /* Forza la sidebar (Countdown) ad apparire per prima in cima */
+    display: block; /* Mostra sempre il Countdown su mobile */
+    position: static; /* Rimuove lo sticky su mobile */
+}
+
+.main-content {
+    order: 0; /* Il contenuto principale viene dopo */
+    width: 100%; /* Occupa tutta la larghezza */
+}
+
+
+/* Layout a due colonne per schermi grandi (>= 900px) */
+@media (min-width: 900px) {
+    .home-grid-container {
+        display: grid;
+        /* Sidebar (20%) | Contenuto (60%) | Margine (20%) */
+        grid-template-columns: 20% 60% 20%; 
+        gap: 30px; 
+        align-items: flex-start;
+        padding: 0 2%;
     }
 
-    .character-image {
-        width: 100%; /* Immagine a larghezza piena */
-        height: 150px; 
-        border-right: none; /* Rimuove il bordo destro */
-        border-bottom: 1px solid var(--gold-light, #d4af37); /* Aggiunge bordo inferiore */
+    .sidebar-data {
+        grid-column: 1 / 2; /* Posiziona nella prima colonna */
+        display: flex; /* Mostra come colonna */
+        flex-direction: column;
+        gap: 1.5rem;
+        position: sticky; /* Ritorna a essere sticky (fisso) */
+        top: 100px; 
     }
 
-    .character-info {
-        text-align: center; /* Centra il testo */
-        padding: 15px;
+    .main-content {
+        grid-column: 2 / 3; /* Posiziona il contenuto nella colonna centrale */
     }
+}
 
-    .character-name {
-        font-size: 1.5em;
-    }
+
+/* --- MODIFICHE AL COUNTDOWN (Layout Orizzontale) --- */
+.countdown-container {
+    background-color: #f7f7f7;
+    /* border: 1px solid var(--gold); */
+    border-radius: 8px;
+    padding: 15px; /* Padding leggermente ridotto */
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.countdown-title {
+    font-family: var(--font-title);
+    color: var(--red);
+    font-size: 1.1rem; /* Dimensione ridotta */
+    margin-bottom: 15px;
+}
+
+.countdown-timer {
+    display: flex; /* Utilizza Flexbox per allineamento orizzontale */
+    justify-content: space-around; /* Spazia gli elementi equamente */
+    font-family: monospace; 
+    font-size: 1.8rem; /* Dimensione dei numeri */
+    font-weight: bold;
+    color: var(--text);
+    line-height: 1; /* Riduci l'interlinea */
+    margin-bottom: 10px;
+}
+
+.countdown-timer > div {
+    /* Contenitore per ogni unità (Giorno, Ora, Minuto, Secondo) */
+    display: flex;
+    flex-direction: column; /* Numero sopra, etichetta sotto */
+    align-items: center;
+    min-width: 50px; /* Larghezza minima per contenere il numero */
+}
+
+.countdown-timer span {
+    display: block;
+    font-size: 0.7rem; /* Dimensione delle etichette (Giorni, Ore, ecc.) */
+    font-weight: normal;
+    color: #666;
+    margin-top: 5px;
+}
+
+.countdown-date {
+    font-size: 0.9rem;
+    color: var(--gold);
+    font-weight: 600;
 }
 
 /* Footer */
