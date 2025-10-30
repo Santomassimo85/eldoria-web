@@ -74,7 +74,11 @@ const Countdown = () => {
                 <br />
                 Ore 18.00
             </p>
-            <button>Unisciti alla Sessione</button>
+            <button>
+                <a href="https://app.roll20.net/campaigns/details/19830283/eldoria-3-dot-0" target="_blank" rel="noopener noreferrer" className="button-link">
+                    Unisciti alla Sessione
+                </a>
+            </button>
         </div>
     );
 };

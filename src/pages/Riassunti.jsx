@@ -168,6 +168,9 @@ export default function Riassunti() {
                 src="assets/PhotoStory/GruppoMEAA/caius2.png"
                 alt="Silaen l´elfo scuro"
               />
+              <img
+                src="assets/PhotoStory/GruppoMEAA/Garroth4.png"
+                alt="" />
             </p>
           </ToggleSection>
         </div>
