@@ -71,7 +71,10 @@ const Countdown = () => {
             </div>
             <p className="countdown-date">
                 {formattedDate}
+                <br />
+                Ore 18.00
             </p>
+            <button>Unisciti alla Sessione</button>
         </div>
     );
 };

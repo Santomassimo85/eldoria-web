@@ -12,7 +12,10 @@
     margin: 0;
     padding: 0;
 }
-
+i {
+    font-style: italic;
+    color: var(--gold);
+}
 /* 🐉 Drago decorativo in alto a destra */
 /* body::after {
   content: "";
@@ -401,7 +404,7 @@ li {
 
 /* Stili per la singola card del personaggio */
 .character-card {
-    border: 1px solid var(--gold);
+    /* border: 1px solid var(--gold); */
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -471,6 +474,54 @@ li {
     }
 }
 
+/* Pagina Riassunti */
+/* Stili per la pagina Party in generale */
+.summary-page {
+    padding: 20px;
+    max-width: 1200px; /* Limita la larghezza per una migliore leggibilità */
+    margin: 0 auto;
+}
+
+.summary-page h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    font-family: var(--font-title);
+    color: var(--gold);
+    ;
+}
+
+/* Contenitore per le card dei personaggi */
+.summary-grid {
+    display: grid; 
+    /* Base: 1 colonna (Smartphone) */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+    gap: 20px; 
+    justify-content: center; 
+    padding: 10px;
+} 
+.summary-grid h3 {
+    color: var(--red);
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+/* .summary-page img {
+    width: 60%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
+} */
+
+@media (min-width: 768px) {
+    .summary-grid {
+        /* 2 o 3 colonne per schermi più grandi */
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    }
+}
+
+
+
+
 /* --- STILI SPECIFICI PER LA PAGINA HOME --- */
 
 .home-grid-container {
@@ -494,7 +545,7 @@ li {
 
 
 /* Layout a due colonne per schermi grandi (>= 900px) */
-@media (min-width: 900px) {
+@media (min-width: 1250px) {
     .home-grid-container {
         display: grid;
         /* Sidebar (20%) | Contenuto (60%) | Margine (20%) */
@@ -538,7 +589,7 @@ li {
 
 .countdown-timer {
     display: flex; /* Utilizza Flexbox per allineamento orizzontale */
-    justify-content: space-around; /* Spazia gli elementi equamente */
+    justify-content: center; /* Spazia gli elementi equamente */
     font-family: monospace; 
     font-size: 1.8rem; /* Dimensione dei numeri */
     font-weight: bold;
@@ -567,6 +618,20 @@ li {
     font-size: 0.9rem;
     color: var(--gold);
     font-weight: 600;
+}
+
+
+.countdown-container button {
+    margin-top: 10px;
+    padding: 10px 15px;
+    background-color: var(--red);
+    color: white;
+    border: none;
+    border-radius: 35px;
+    cursor: pointer;
+    font-family: var(--font-title);
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
 }
 
 /* Footer */
@@ -599,7 +664,25 @@ footer strong {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Responsive */
+
 @media (min-width: 935px) and (max-width: 1300px) {
     nav a {
         font-size: 0.8rem;
@@ -607,7 +690,7 @@ footer strong {
 
     }
 
-    body::before {
+    body::before { /* drago */
         width: 700px;
         top: 40%;
         height: 700px;
@@ -662,7 +745,9 @@ footer strong {
     .logo {
         font-size: 1.4rem;
     }
-
+section{
+    padding: 30px 0;
+}
     nav {
         position: absolute;
         top: 100px;

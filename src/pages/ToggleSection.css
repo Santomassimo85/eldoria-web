@@ -6,6 +6,14 @@
   overflow: hidden; /* Fondamentale per l'animazione di altezza */
 }
 
+.toggle-section img {
+  width: 60%;
+  height: auto;
+  border-radius: 15px;
+  margin: 20px 0;
+}
+
+
 /* Stile del titolo cliccabile */
 .toggle-title {
   background-color: #f7f7f7; /* Sfondo del titolo */
@@ -21,9 +29,55 @@
   font-family: var(--font-title);
   letter-spacing: 1px;
 }
+.toggle-title.summaryTitle { 
+  /* Usa padding generoso per raggiungere i 300px di altezza visiva */
+  padding-top: 100px; 
+  padding-bottom: 100px; 
+  
+  /* Centra il titolo e la freccia nella nuova altezza */
+  align-items: center; 
+  justify-content: center; 
+  flex-direction: column; 
+  
+  /* Stili aggiuntivi per il look (esempio) */
+  color: var(--red); 
+  background-color: #f0f0f0;
+}
+
+.toggle-title.summaryTitle:hover {
+  background-color: #e2e2e2;
+}
+/* 2. STILE PER LE IMMAGINI ALL'INTERNO DEL CONTENUTO DEI RIASSUNTI */
+.toggle-content.summary-content-padding img {
+  width: 100%;
+  height: auto;
+  border-radius: 15px;
+  margin: 20px auto; /* Aggiunto 'auto' per centrare le immagini */
+  display: block;
+}
+
+
+/* 3. MEDIA QUERY PER LA RESPONSIVITÀ (summaryTitle) */
+@media (max-width: 800px) {
+  /* Riduci l'altezza del titolo su mobile */
+  .toggle-title.summaryTitle {
+    padding-top: 50px;
+    padding-bottom: 50px;
+  }
+  
+  /* Rendi l'immagine grande quanto il contenitore su mobile */
+  .toggle-content.summary-content-padding img {
+    width: 100%;
+    margin: 15px 0; /* Rimuovi margini laterali per occupare tutto lo spazio */
+  }
+}
+
 
 .toggle-title:hover {
   background-color: #f0f0f0; /* Effetto hover */
+}
+h3.summaryTitle{
+  height: 150px;
 }
 
 /* Icona della freccia */
@@ -60,4 +114,20 @@
 }
 .toggle-content li {
     margin-bottom: 0.5em;
+}
+
+@media (max-width: 800px) {
+  .toggle-title {
+    font-size: 1.1rem;
+    padding: 10px 15px;
+  }
+  .toggle-content {
+    padding: 0 15px;
+  }
+  .toggle-content.open {
+    padding: 15px;
+  }
+  .toggle-section img {
+    width: 100%;
+  }
 }

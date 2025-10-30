@@ -35,7 +35,7 @@ export default function Party() {
     <section className="party-page">
       <h3>I Nostri Eroici Avventurieri</h3>
 
-      <ToggleSection title="Party AMEA" defaultOpen={false}> {/* Puoi decidere quale aprire di default */}
+      <ToggleSection title="Party AMEA 4/4" defaultOpen={false}> {/* Puoi decidere quale aprire di default */}
         <div className="party-grid">
           {partyData.party1.map((char, index) => (
             <CharacterCard key={index} character={char} />
@@ -43,7 +43,7 @@ export default function Party() {
         </div>
       </ToggleSection>
 
-      <ToggleSection title="Party LAC">
+      <ToggleSection title="Party LAC 3/4">
         <div className="party-grid">
           {partyData.party2.map((char, index) => (
             <CharacterCard key={index} character={char} />
