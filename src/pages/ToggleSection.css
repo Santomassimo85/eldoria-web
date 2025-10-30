@@ -48,7 +48,7 @@
 }
 
 .toggle-content.open {
-  max-height: 2000px; /* Altezza sufficientemente grande per contenere tutto il testo */
+  max-height: fit-content; 
   opacity: 1; 
   padding: 20px; /* Aggiunge padding quando aperto */
 }
