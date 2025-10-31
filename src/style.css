@@ -544,6 +544,203 @@ li {
 }
 
 
+
+/* SEZIONE MERCATO E ITEMDETAIL */
+/* --- STILI MERCATO NERO (Mercato.jsx) --- */
+
+.mercato-page {
+    padding: 20px;
+}
+
+.mercato-welcome {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 30px;
+}
+
+/* Controlli Filtro/Ricerca */
+.mercato-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap; /* Assicura la responsività */
+    justify-content: center;
+}
+
+.search-bar, .mercato-controls select {
+    padding: 10px;
+    border: 1px solid var(--gold);
+    border-radius: 5px;
+    font-size: 1rem;
+    flex-grow: 1; /* Permette alla barra di ricerca di espandersi */
+    min-width: 150px;
+    max-width: 350px;
+}
+.search-bar {
+    max-width: 400px;
+}
+
+/* Griglia Card Items */
+.items-grid {
+    display: grid;
+    /* Responsive: 4 card su desktop, 3 su tablet, 2 su mobile */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 30px;
+    padding: 20px 0;
+}
+
+/* Stile per la singola Card Item */
+.item-card {
+    background-color: #fcfcfc;
+    border: 2px solid var(--red);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-align: center;
+    height: 100%; /* Permette alla griglia di uniformare le altezze */
+}
+
+.item-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(130, 10, 10, 0.3);
+}
+
+.item-image {
+    width: 100%;
+    height: 180px; /* Altezza fissa per l'immagine */
+    object-fit: cover;
+    border-bottom: 1px solid var(--gold);
+}
+
+.item-details {
+    padding: 15px 10px;
+}
+
+.item-name {
+    font-family: var(--font-title);
+    color: var(--red);
+    margin-bottom: 5px;
+}
+
+.item-price {
+    color: var(--gold);
+    font-weight: bold;
+    margin-top: 10px;
+}
+.item-type, .item-class {
+    font-size: 0.9em;
+    color: #555;
+    line-height: 1.2;
+}
+
+
+/* --- STILI PAGINA DETTAGLIO ITEM (ItemDetail.jsx) --- */
+
+.item-detail-page {
+    padding-top: 20px;
+}
+
+.back-button {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: background 0.2s;
+}
+.back-button:hover {
+    background: #e0e0e0;
+}
+
+.detail-content {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    padding: 30px;
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    background-color: #fff;
+}
+
+.detail-image {
+    width: 40%;
+    max-width: 350px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.detail-info {
+    flex-grow: 1;
+}
+
+.detail-info h1 {
+    text-align: left;
+    color: var(--red);
+    border-bottom: 3px solid var(--gold);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.detail-info hr {
+    margin: 20px 0;
+    border-color: #eee;
+}
+
+.offer-button {
+    background-color: var(--red);
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin-top: 30px;
+    transition: background 0.2s;
+}
+.offer-button:hover {
+    background-color: #a32222;
+}
+
+/* Traccia visiva dell'ultima offerta */
+.last-bid-info {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #e8f5e9; /* Sfondo chiaro per evidenziare */
+    border-left: 5px solid var(--gold);
+    color: var(--text);
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+/* Responsività Pagina Dettaglio */
+@media (max-width: 800px) {
+    .detail-content {
+        flex-direction: column;
+        padding: 15px;
+        gap: 20px;
+    }
+    .detail-image {
+        width: 100%;
+        max-width: none;
+    }
+    .detail-info h1 {
+        text-align: center;
+    }
+    .mercato-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-bar, .mercato-controls select {
+        max-width: 100%;
+    }
+}
+
+
+
 /* Layout a due colonne per schermi grandi (>= 900px) */
 @media (min-width: 1250px) {
     .home-grid-container {

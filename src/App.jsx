@@ -5,8 +5,14 @@ import Party from "./pages/Party";
 import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/Geo";
+import ItemDetail from "./pages/ItemDetail";
 // import { Analytics } from "@vercel/analytics/next"
 import "./style.css";
+
+// 🔑 AGGIUNTE PER AUTENTICAZIONE
+import { AuthProvider } from './AuthContext'; 
+import LoginDropdown from "./LoginDropdown"; 
+
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,7 +21,8 @@ export default function App() {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <>
+    // 1. AVVOLGI L'APP CON L'AUTHPROVIDER
+    <AuthProvider>
       {/* HEADER */}
       <header>
         <div className="logo">
@@ -78,6 +85,10 @@ export default function App() {
           >
             Mercato nero
           </NavLink>
+          
+          {/* 2. INSERIMENTO DEL COMPONENTE LOGIN/LOGOUT */}
+          <LoginDropdown closeMenu={closeMenu} />
+
         </nav>
       </header>
 
@@ -88,7 +99,10 @@ export default function App() {
           <Route path="/party" element={<Party />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
-          <Route path="/mercato" element={<Mercato />} />
+          {/* ROTTE MERCATO */}
+          <Route path="/mercato" element={<Mercato />} /> 
+          {/* 👈 NUOVA ROTTA DINAMICA con parametro :id */}
+          <Route path="/mercato/:id" element={<ItemDetail />} />
         </Routes>
       </main>
 
@@ -101,6 +115,6 @@ export default function App() {
           </strong>
         </p>
       </footer>
-    </>
+    </AuthProvider>
   );
 }
