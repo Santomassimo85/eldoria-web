@@ -1,69 +1,95 @@
-import * as functions from 'firebase-functions';
-import admin from "firebase-admin";
+const functions = require('firebase-functions');
+const admin = require("firebase-admin");
+const sgMail = require('@sendgrid/mail');
+
+// Inizializza Firebase Admin SDK
 admin.initializeApp();
 
-import sgMail from '@sendgrid/mail';
-
 // --- VARIABILI DI CONFIGURAZIONE ---
-// Questa riga fallirà se la chiave non è settata, causando l'errore di deploy
-sgMail.setApiKey(functions.config().sendgrid.key); 
-
 const DM_EMAIL = 'santomassimo85@gmail.com';
 const SENDER_EMAIL = 'santomassimo85@gmail.com';
 
+// --- RILEVAZIONE AMBIENTE ---
+const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || process.env.FIREBASE_EMULATOR_HUB;
+console.log(`🌍 Ambiente rilevato: ${isEmulator ? "LOCALE (emulator)" : "CLOUD (deploy)"}`);
+
+// --- CONFIGURAZIONE SENDGRID ---
+let sendgridApiKey;
+
+try {
+  if (isEmulator) {
+    // 🔹 Lettura chiave da variabile ambiente locale (.env)
+    require("dotenv").config();
+    sendgridApiKey = process.env.SENDGRID_API_KEY;
+    console.log("✅ Chiave SendGrid caricata da .env locale");
+  } else {
+    // 🔹 Lettura chiave da Firebase Functions Config
+    sendgridApiKey = functions.config().sendgrid.key;
+    console.log("✅ Chiave SendGrid caricata da Firebase Config");
+  }
+
+  if (sendgridApiKey) {
+    sgMail.setApiKey(sendgridApiKey);
+  } else {
+    throw new Error("Chiave SendGrid non trovata");
+  }
+
+} catch (err) {
+  console.error("❌ ERRORE CONFIGURAZIONE SENDGRID:", err.message);
+}
+
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+
 // --- FUNZIONE PRINCIPALE ---
-export const notifyMasterOnBid = functions.firestore
-    .document('items/{itemId}')
-    .onUpdate(async (change, context) => {
-        
-        // 🚀 DEBUG START: LOG DI AVVIO FUNZIONE
-        console.log("DEBUG START: Funzione notifyMasterOnBid avviata per Item ID:", context.params.itemId);
+exports.notifyMasterOnBid = onDocumentUpdated('items/{itemId}', async (event) => {
+    const itemId = event.params.itemId;
+    console.log("🚀 notifyMasterOnBid v2 attivata per Item ID:", itemId);
 
-        const newData = change.after.data();
-        const previousData = change.before.data();
+    if (!sendgridApiKey) {
+      console.error("❌ Nessuna chiave SendGrid disponibile. Email non inviata.");
+      return null;
+    }
 
-        // Controlla se l'offerta è cambiata o se è la prima (mappa con valore zero)
-        if (newData.currentBid === previousData.currentBid) {
-            console.log("DEBUG: Nessun cambio di offerta rilevato. Uscita.");
-            return null;
-        }
+    const newData = event.data.after.data();
+    const previousData = event.data.before.data();
 
-        // Regola di controllo: la nuova offerta deve essere maggiore della precedente
-        // (o maggiore di zero, se l'offerta precedente era zero o non esisteva)
-        if (!newData.currentBid || newData.currentBid < (previousData.currentBid || previousData.startingBid || 0)) {
-            console.log("DEBUG: Nuova offerta non valida/inferiore. Uscita.");
-            return null;
-        }
+    if (newData.currentBid === previousData.currentBid) {
+      console.log("ℹ️ Nessuna variazione di offerta rilevata.");
+      return null;
+    }
 
-        const itemName = newData.name || 'Oggetto Sconosciuto';
-        const newBid = newData.currentBid || 'N/A';
-        const bidder = newData.bidderEmail || 'Anonimo';
-        const itemId = context.params.itemId;
+    const previousPrice = previousData.currentBid || previousData.startingBid || 0;
+    if (!newData.currentBid || newData.currentBid <= previousPrice) {
+      console.log(`⚠️ Offerta non valida (${newData.currentBid} <= ${previousPrice}).`);
+      return null;
+    }
 
-        const msg = {
-            to: DM_EMAIL,
-            from: SENDER_EMAIL,
-            subject: `NUOVA OFFERTA AL MERCATO NERO per ${itemName}`,
-            html: `
-                <h2>Allarme Mercato Nero!</h2>
-                <p>Nuova offerta registrata:</p>
-                <ul>
-                    <li><strong>Oggetto:</strong> ${itemName}</li>
-                    <li><strong>Offerta:</strong> ${newBid} G.P.</li>
-                    <li><strong>Offerente:</strong> ${bidder}</li>
-                    <li><strong>ID Database:</strong> ${itemId}</li>
-                </ul>
-            `,
-        };
+    const itemName = newData.name || 'Oggetto Sconosciuto';
+    const newBid = newData.currentBid || 'N/A';
+    const bidder = newData.bidderEmail || 'Anonimo';
 
-        try {
-            await sgMail.send(msg);
-            // LOG DI SUCCESSO
-            console.log(`DEBUG SUCCESS: Email inviata a ${DM_EMAIL} per ${itemName}`);
-            return true;
-        } catch (error) {
-            // LOG DI ERRORE DETTAGLIATO
-            console.error('ERRORE CRITICO INVIO EMAIL:', error.response?.body || error);
-            return false;
-        }
-    });
+    const msg = {
+      to: DM_EMAIL,
+      from: SENDER_EMAIL,
+      subject: `💰 Nuova Offerta al Mercato Nero: ${itemName}`,
+      html: `
+        <h2>Allarme Mercato Nero!</h2>
+        <p>Nuova offerta registrata:</p>
+        <ul>
+          <li><strong>Oggetto:</strong> ${itemName}</li>
+          <li><strong>Offerta:</strong> ${newBid} G.P.</li>
+          <li><strong>Offerente:</strong> ${bidder}</li>
+          <li><strong>ID Database:</strong> ${itemId}</li>
+        </ul>
+      `,
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(`✅ Email inviata correttamente a ${DM_EMAIL} per ${itemName}`);
+      return true;
+    } catch (error) {
+      console.error('❌ ERRORE INVIO EMAIL:', error.response?.body || error);
+      return false;
+    }
+  });

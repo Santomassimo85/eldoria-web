@@ -1,11 +1,11 @@
 // src/pages/ItemDetail.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext'; 
 // Importazioni Firebase per Firestore
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore'; 
+// Modificato: non usiamo più getDoc, ma onSnapshot per l'aggiornamento in tempo reale
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore'; 
 
 export default function ItemDetail() {
     const { currentUser } = useAuth();
@@ -17,38 +17,41 @@ export default function ItemDetail() {
     const [offer, setOffer] = useState('');
     const [message, setMessage] = useState('');
 
-    // Riferimento al tuo indirizzo email del DM (per il messaggio di conferma)
     const MASTER_EMAIL = "santomassimo85@gmail.com"; 
 
-    // Carica i dati dell'item da Firestore
+    // 🚀 NUOVA LOGICA: Sottoscrizione in Tempo Reale (onSnapshot)
     useEffect(() => {
-        const fetchItem = async () => {
-            // Verifica che 'db' non sia null prima di usarlo
-            if (!db) {
-                setMessage("Errore: Connessione al database non stabilita.");
-                setLoading(false);
-                return;
-            }
-            
-            const itemRef = doc(db, 'items', id);
-            const itemSnap = await getDoc(itemRef);
-            if (itemSnap.exists()) {
-                setItem(itemSnap.data()); 
+        // Verifica che 'db' e 'id' siano pronti
+        if (!db || !id) return;
+        
+        setLoading(true); // Imposta il caricamento finché non riceviamo il primo dato
+
+        const itemRef = doc(db, 'items', id);
+        
+        // onSnapshot: Ascolta i cambiamenti in tempo reale
+        const unsubscribe = onSnapshot(itemRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setItem(docSnap.data()); 
+                setMessage('');
             } else {
                 setMessage("Oggetto non trovato nel database.");
+                setItem(null);
             }
             setLoading(false);
-        };
-        fetchItem();
-    }, [id]);
+        }, (error) => {
+            console.error("Errore onSnapshot:", error);
+            setMessage("Errore di connessione al database.");
+            setLoading(false);
+        });
 
-    // Variabili calcolate (Dichiarate una sola volta)
-    // basePrice è il prezzo minimo per l'offerta successiva
+        // La funzione di cleanup (necessaria con i listener)
+        return () => unsubscribe(); 
+
+    }, [id]); // Ricarica solo se l'ID cambia
+
+    // Variabili calcolate
     const basePrice = item ? (item.currentBid || item.startingBid || item.price) : 0;
-    
-    // isAuction verifica se l'item ha una currentBid o startingBid (non 0 o undefined)
-const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false;    
-    // currentBidDisplay è il valore mostrato
+    const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false; 
     const currentBidDisplay = item ? (item.currentBid || item.startingBid || item.price) : 0;
     
     // Gestisce l'invio dell'offerta (Aggiornamento Firestore)
@@ -61,16 +64,13 @@ const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false;
             setMessage(`L'offerta deve essere un numero maggiore di ${basePrice} GP.`);
             return;
         }
-
         if (!currentUser) {
             setMessage("Devi essere loggato per fare un'offerta.");
             return;
         }
 
         try {
-            console.log("DEBUG CLIENT: Inizio aggiornamento offerta su Firestore..."); // 👈 NUOVO LOG CLIENT
-            
-            // 1. AGGIORNA FIRESTORE
+            // 1. AGGIORNA FIRESTORE (Questo triggera la Cloud Function e onSnapshot su tutti i client)
             const itemRef = doc(db, 'items', id);
             await updateDoc(itemRef, {
                 currentBid: numericOffer,
@@ -78,22 +78,13 @@ const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false;
                 lastBidTimestamp: new Date().getTime(),
             });
             
-            console.log("DEBUG CLIENT: Aggiornamento Firestore completato per Item ID:", id); // 👈 NUOVO LOG CLIENT
+            // Non serve più aggiornare lo stato locale (setItem) perché onSnapshot lo farà.
             
-            // 2. Aggiorna lo stato locale per vedere subito l'offerta
-            setItem(prev => ({
-                ...prev,
-                currentBid: numericOffer,
-                bidderEmail: currentUser.email
-            }));
-            
-            // 3. Notifica il successo
             setMessage(`Offerta di ${numericOffer} GP registrata! Il Master (${MASTER_EMAIL}) riceverà la notifica.`);
             setOffer('');
 
         } catch (error) {
             console.error("Errore nell'invio dell'offerta:", error);
-            // Uso error.message se è un errore Firebase specifico, altrimenti messaggio generico
             setMessage(`Si è verificato un errore durante l'invio. Riprova. (Codice errore: ${error.code || 'ignoto'})`);
         }
     };

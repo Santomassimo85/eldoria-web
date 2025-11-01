@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "eldoria-web"
-  }
+    "default": "eldoria-web",
+    "eldoriapp": "eldoria-web"
+  },
+  "targets": {},
+  "etags": {}
 }
