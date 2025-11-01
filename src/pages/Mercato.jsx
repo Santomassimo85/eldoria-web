@@ -1,27 +1,24 @@
-// src/pages/Mercato.jsx (Aggiornato)
+// src/pages/Mercato.jsx (Aggiornato per Blind Bid)
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import LoginDropdown from '../LoginDropdown';
 import { useNavigate } from 'react-router-dom'; 
-import { db } from '../firebase'; // Importa Firestore
-import { collection, getDocs } from 'firebase/firestore'; // Importa funzioni DB
+import { db } from '../firebase'; 
+import { collection, getDocs } from 'firebase/firestore'; 
 
 // --- COMPONENTE CARD ---
 const ItemCard = ({ item }) => {
     const navigate = useNavigate();
 
     const handleCardClick = () => {
-        // L'ID del documento Firestore è una stringa, usiamo item.id
         navigate(`/mercato/${item.id}`); 
     };
 
-    // Usa currentBid se > 0, altrimenti startingBid se > 0, altrimenti price
-    const displayPrice = item.currentBid > 0 
-        ? `Offerta attuale: ${item.currentBid} GP`
-        : item.startingBid > 0
-        ? `Base Asta: ${item.startingBid} GP`
-        : `Prezzo: ${item.price} GP`;
+    // La card mostra SOLO il prezzo iniziale (o il prezzo fisso), non l'offerta più alta (è un blind bid).
+    const displayPrice = item.startingBid > 0 
+        ? `Prezzo Base: ${item.startingBid} GP`
+        : `Prezzo Fisso: ${item.price} GP`;
 
     return (
         <div className="item-card" onClick={handleCardClick}>
@@ -31,7 +28,6 @@ const ItemCard = ({ item }) => {
                 <p className="item-type">{item.type}</p>
                 <p className="item-class">{item.class}</p>
                 <p className="item-price">{displayPrice}</p>
-                {item.bidderEmail && <p className="item-bidder">Offerente: {item.bidderEmail.split('@')[0]}</p>}
             </div>
         </div>
     );
@@ -40,21 +36,19 @@ const ItemCard = ({ item }) => {
 // --- COMPONENTE PRINCIPALE MERCATO NERO ---
 export default function Mercato() {
     const { currentUser } = useAuth();
-    const [itemsData, setItemsData] = useState([]); // Stato per i dati da Firestore
-    const [loading, setLoading] = useState(true); // Stato di caricamento
+    const [itemsData, setItemsData] = useState([]); 
+    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterClass, setFilterClass] = useState('all');
 
-    // Carica i dati da Firestore all'avvio
+    // Carica i dati da Firestore
     useEffect(() => {
         const fetchItems = async () => {
-            if (!db) return; // Uscita se DB non inizializzato
-            
+            if (!db) return;
             try {
                 const itemsCollection = collection(db, 'items');
                 const itemSnapshot = await getDocs(itemsCollection);
-                // Mappa i documenti includendo l'ID del documento stesso
                 const itemsList = itemSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
                 setItemsData(itemsList);
             } catch (error) {
@@ -63,21 +57,20 @@ export default function Mercato() {
                 setLoading(false);
             }
         };
-        // Carica i dati solo se l'utente è loggato, altrimenti aspetta la schermata di login
         if (currentUser) {
              fetchItems();
         } else {
-             setLoading(false); // Finito di caricare (niente da mostrare finché non si logga)
+             setLoading(false);
         }
     }, [currentUser]); 
 
-    // Estrai opzioni uniche per i filtri
+    // Estrai opzioni uniche per i filtri (logica invariata)
     const itemTypes = useMemo(() => [...new Set(itemsData.map(item => item.type))], [itemsData]);
     const itemClasses = useMemo(() => [...new Set(itemsData.map(item => item.class))], [itemsData]);
 
-    // Logica di Filtro e Ricerca
+    // Logica di Filtro e Ricerca (invariata)
     const filteredItems = useMemo(() => {
-        // La logica di ordinamento è basata sul prezzo/offerta (vedi ItemDetail per i campi)
+        if (loading) return [];
         return itemsData.filter(item => {
             const matchesType = filterType === 'all' || item.type === filterType;
             const matchesClass = filterClass === 'all' || item.class === filterClass;
@@ -87,10 +80,10 @@ export default function Mercato() {
                                   item.type.toLowerCase().includes(lowerCaseSearch) ||
                                   item.class.toLowerCase().includes(lowerCaseSearch);
             return matchesType && matchesClass && matchesSearch;
-        }).sort((a, b) => (a.currentBid || a.startingBid || a.price) - (b.currentBid || b.startingBid || b.price));
-    }, [searchTerm, filterType, filterClass, itemsData]);
+        }).sort((a, b) => (a.startingBid || a.price) - (b.startingBid || b.price)); // Ordina per prezzo base
+    }, [searchTerm, filterType, filterClass, itemsData, loading]);
 
-    // PROTEZIONE: Visualizzazione non loggata
+    // ... (PROTEZIONE: Visualizzazione non loggata e caricamento) ...
     if (!currentUser) {
         return (
             <section style={{ textAlign: 'center', paddingTop: '100px' }}>
@@ -102,8 +95,6 @@ export default function Mercato() {
             </section>
         );
     }
-    
-    // Mostra caricamento finché non arrivano i dati
     if (loading) {
         return <div style={{ textAlign: 'center', paddingTop: '50px' }}>Caricamento oggetti del Mercato...</div>;
     }
@@ -114,7 +105,7 @@ export default function Mercato() {
             <h1>Mercato Nero Segreto</h1>
             <p className="mercato-welcome">Benvenuto {currentUser.email.split('@')[0]}, i contratti ti aspettano!</p>
 
-            {/* BARRA DI FILTRO E RICERCA (Invariata) */}
+            {/* BARRA DI CONTROLLO (Filtri) - Invariata */}
             <div className="mercato-controls">
                 {/* ... (input e select qui) ... */}
                 <input

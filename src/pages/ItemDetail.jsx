@@ -1,11 +1,14 @@
 // src/pages/ItemDetail.jsx
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext'; 
-// Importazioni Firebase per Firestore
 import { db } from '../firebase';
-// Modificato: non usiamo più getDoc, ma onSnapshot per l'aggiornamento in tempo reale
+// Usiamo arrayUnion/arrayRemove per aggiornare un array (anche se useremo i Map qui)
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore'; 
+
+// 🎯 VARIABILE CRITICA: L'URL DEL TUO WEBHOOK DI PIPEDREAM!
+const NOTIFICATION_WEBHOOK_URL = "https://eoftih1a36e46sq.m.pipedream.net"; 
 
 export default function ItemDetail() {
     const { currentUser } = useAuth();
@@ -17,14 +20,11 @@ export default function ItemDetail() {
     const [offer, setOffer] = useState('');
     const [message, setMessage] = useState('');
 
-    const MASTER_EMAIL = "santomassimo85@gmail.com"; 
-
-    // 🚀 NUOVA LOGICA: Sottoscrizione in Tempo Reale (onSnapshot)
+    // Sincronizzazione in Tempo Reale (Firestore)
     useEffect(() => {
-        // Verifica che 'db' e 'id' siano pronti
         if (!db || !id) return;
         
-        setLoading(true); // Imposta il caricamento finché non riceviamo il primo dato
+        setLoading(true); 
 
         const itemRef = doc(db, 'items', id);
         
@@ -44,48 +44,79 @@ export default function ItemDetail() {
             setLoading(false);
         });
 
-        // La funzione di cleanup (necessaria con i listener)
         return () => unsubscribe(); 
-
-    }, [id]); // Ricarica solo se l'ID cambia
+    }, [id]);
 
     // Variabili calcolate
-    const basePrice = item ? (item.currentBid || item.startingBid || item.price) : 0;
-    const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false; 
-    const currentBidDisplay = item ? (item.currentBid || item.startingBid || item.price) : 0;
+    // ⚠️ ELIMINAZIONE DEL WARNING: Dichiariamo solo basePrice qui.
+    const basePrice = item ? (item.startingBid || item.price) : 0;
     
-    // Gestisce l'invio dell'offerta (Aggiornamento Firestore)
+    // Calcolo per il render: l'asta è attiva se c'è un prezzo base o se ci sono offerte.
+    const isAuction = item ? (item.startingBid > 0) : false; 
+    
+    // Controlla se l'utente corrente ha già fatto un'offerta
+    const userBid = currentUser && item?.bids ? item.bids[currentUser.uid] : null;
+
+    // Gestisce l'invio dell'offerta (Aggiornamento Firestore + Webhook)
     const handleSubmitOffer = async (e) => {
         e.preventDefault();
         setMessage('');
 
         const numericOffer = parseInt(offer);
-        if (isNaN(numericOffer) || numericOffer <= basePrice) {
-            setMessage(`L'offerta deve essere un numero maggiore di ${basePrice} GP.`);
+        const minBid = basePrice; // Prezzo minimo è il prezzo di partenza
+
+        if (isNaN(numericOffer) || numericOffer < minBid) {
+            setMessage(`L'offerta deve essere un numero maggiore o uguale a ${minBid} GP.`);
             return;
         }
         if (!currentUser) {
             setMessage("Devi essere loggato per fare un'offerta.");
             return;
         }
+        if (userBid) {
+             setMessage("⚠️ Hai già piazzato la tua offerta singola per questo item.");
+             return;
+        }
 
         try {
-            // 1. AGGIORNA FIRESTORE (Questo triggera la Cloud Function e onSnapshot su tutti i client)
+            // 1. AGGIORNA FIRESTORE: Inserisce l'offerta nella sottomappa 'bids'
             const itemRef = doc(db, 'items', id);
-            await updateDoc(itemRef, {
-                currentBid: numericOffer,
+            
+            // Usiamo l'ID dell'utente (currentUser.uid) come chiave per l'offerta unica
+            const newBidMap = {
+                [`bids.${currentUser.uid}`]: numericOffer,
+                [`bidderEmails.${currentUser.uid}`]: currentUser.email
+            };
+            
+            await updateDoc(itemRef, newBidMap);
+            
+            // 2. INVIA NOTIFICA VIA WEBHOOK (Pipedream)
+            const notificationPayload = {
+                itemId: id,
+                itemName: item.name,
+                // Usiamo il nome disincantato dall'email
+                bidderName: currentUser.email.split('@')[0], 
                 bidderEmail: currentUser.email,
-                lastBidTimestamp: new Date().getTime(),
+                bidAmount: numericOffer,
+            };
+
+            const webhookResponse = await fetch(NOTIFICATION_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(notificationPayload),
             });
+
+            if (!webhookResponse.ok) {
+                throw new Error('Offerta registrata, ma la notifica via email è fallita.');
+            }
             
-            // Non serve più aggiornare lo stato locale (setItem) perché onSnapshot lo farà.
-            
-            setMessage(`Offerta di ${numericOffer} GP registrata! Il Master (${MASTER_EMAIL}) riceverà la notifica.`);
+            // 3. Successo
+            setMessage(`✅ Offerta di ${numericOffer} GP registrata! NON PUOI più modificarla.`);
             setOffer('');
 
         } catch (error) {
-            console.error("Errore nell'invio dell'offerta:", error);
-            setMessage(`Si è verificato un errore durante l'invio. Riprova. (Codice errore: ${error.code || 'ignoto'})`);
+            console.error("Errore finale:", error);
+            setMessage(`Offerta registrata, ma errore: ${error.message}`);
         }
     };
 
@@ -97,7 +128,7 @@ export default function ItemDetail() {
         return (
             <section style={{ textAlign: 'center', paddingTop: '50px' }}>
                 <h1>Oggetto Non Trovato</h1>
-                <p>{message}</p>
+                <p>Nessun documento trovato con ID: {id}</p>
                 <button onClick={() => navigate('/mercato')} className="back-button">
                     ← Torna al Mercato
                 </button>
@@ -105,7 +136,8 @@ export default function ItemDetail() {
         );
     }
     
-    // L'errore isMaster è stato rimosso in quanto non utilizzato nel file
+    // Per il render:
+    const currentPriceDisplay = item.startingBid || item.price; // Mostra solo il prezzo base
 
     return (
         <section className="item-detail-page">
@@ -118,41 +150,41 @@ export default function ItemDetail() {
                 <div className="detail-info">
                     <h1>{item.name}</h1>
                     <p className="detail-price">
-                        {isAuction ? "Offerta Attuale" : "Prezzo Fisso"}: 
+                        {isAuction ? "Prezzo Base Asta" : "Prezzo Fisso"}: 
                         <strong style={{ color: isAuction ? 'var(--red)' : 'var(--gold)', fontSize: '1.2em', marginLeft: '10px' }}>
-                            {currentBidDisplay} G.P.
+                            {currentPriceDisplay} G.P.
                         </strong>
                     </p>
                     
-                    {/* SEZIONE TRACCIA VISIVA */}
-                    {item.bidderEmail && (
-                        <p className="last-bid-info">
-                            Ultima Offerta registrata da: **{item.bidderEmail.split('@')[0]}**
-                        </p>
+                    {/* TRACCIA OFFERTA UTENTE CORRENTE */}
+                    {userBid && (
+                        <p className="last-bid-info success">
+                           **Hai già piazzato la tua offerta: {userBid} GP.** </p>
                     )}
                     
                     <hr />
                     <h2>Descrizione</h2>
                     <p className="detail-description">{item.description}</p>
                     
-                    {/* SEZIONE OFFERTA (solo se loggato e se è un'asta) */}
-                    {currentUser && isAuction && (
+                    {/* SEZIONE OFFERTA (solo se loggato, è un'asta E l'utente non ha offerto) */}
+                    {currentUser && isAuction && !userBid && (
                         <div className="offer-section">
                             <form onSubmit={handleSubmitOffer}>
                                 <input
                                     type="number"
-                                    placeholder={`Offri almeno ${basePrice + 1} GP`}
+                                    placeholder={`Offri almeno ${basePrice} GP`}
                                     value={offer}
                                     onChange={(e) => setOffer(e.target.value)}
-                                    min={basePrice + 1}
+                                    min={basePrice} // Minimo è il prezzo base
                                     required
                                 />
                                 <button type="submit" className="offer-button">Fai la tua Offerta</button>
                             </form>
-                            {message && <p className={`offer-message ${message.includes('registrata') ? 'success' : 'error'}`}>{message}</p>}
+                            {/* ... (Messaggio di successo/errore) ... */}
                         </div>
                     )}
-                    {currentUser && !isAuction && <p style={{ marginTop: '20px' }}>Questo è un oggetto a prezzo fisso.</p>}
+                    
+                    {message && <p className={`offer-message ${message.includes('registrata') ? 'success' : 'error'}`}>{message}</p>}
                 </div>
             </div>
         </section>
