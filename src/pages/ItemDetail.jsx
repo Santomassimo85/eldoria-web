@@ -68,6 +68,8 @@ const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false;
         }
 
         try {
+            console.log("DEBUG CLIENT: Inizio aggiornamento offerta su Firestore..."); // 👈 NUOVO LOG CLIENT
+            
             // 1. AGGIORNA FIRESTORE
             const itemRef = doc(db, 'items', id);
             await updateDoc(itemRef, {
@@ -75,6 +77,8 @@ const isAuction = item ? (item.currentBid > 0 || item.startingBid > 0) : false;
                 bidderEmail: currentUser.email,
                 lastBidTimestamp: new Date().getTime(),
             });
+            
+            console.log("DEBUG CLIENT: Aggiornamento Firestore completato per Item ID:", id); // 👈 NUOVO LOG CLIENT
             
             // 2. Aggiorna lo stato locale per vedere subito l'offerta
             setItem(prev => ({

@@ -1,25 +1,39 @@
-const functions = require('firebase-functions');
-const admin = require("firebase-admin");
+import * as functions from 'firebase-functions';
+import admin from "firebase-admin";
 admin.initializeApp();
 
-const sgMail = require('@sendgrid/mail');
+import sgMail from '@sendgrid/mail';
 
 // --- VARIABILI DI CONFIGURAZIONE ---
+// Questa riga fallirà se la chiave non è settata, causando l'errore di deploy
 sgMail.setApiKey(functions.config().sendgrid.key); 
 
 const DM_EMAIL = 'santomassimo85@gmail.com';
 const SENDER_EMAIL = 'santomassimo85@gmail.com';
 
 // --- FUNZIONE PRINCIPALE ---
-exports.notifyMasterOnBid = functions.firestore
+export const notifyMasterOnBid = functions.firestore
     .document('items/{itemId}')
     .onUpdate(async (change, context) => {
+        
+        // 🚀 DEBUG START: LOG DI AVVIO FUNZIONE
+        console.log("DEBUG START: Funzione notifyMasterOnBid avviata per Item ID:", context.params.itemId);
 
         const newData = change.after.data();
         const previousData = change.before.data();
 
-        if (newData.currentBid === previousData.currentBid) return null;
-        if (!newData.currentBid || newData.currentBid < (previousData.currentBid || previousData.startingBid || 0)) return null;
+        // Controlla se l'offerta è cambiata o se è la prima (mappa con valore zero)
+        if (newData.currentBid === previousData.currentBid) {
+            console.log("DEBUG: Nessun cambio di offerta rilevato. Uscita.");
+            return null;
+        }
+
+        // Regola di controllo: la nuova offerta deve essere maggiore della precedente
+        // (o maggiore di zero, se l'offerta precedente era zero o non esisteva)
+        if (!newData.currentBid || newData.currentBid < (previousData.currentBid || previousData.startingBid || 0)) {
+            console.log("DEBUG: Nuova offerta non valida/inferiore. Uscita.");
+            return null;
+        }
 
         const itemName = newData.name || 'Oggetto Sconosciuto';
         const newBid = newData.currentBid || 'N/A';
@@ -44,10 +58,12 @@ exports.notifyMasterOnBid = functions.firestore
 
         try {
             await sgMail.send(msg);
-            console.log(`Notifica inviata a ${DM_EMAIL} per ${itemName}`);
+            // LOG DI SUCCESSO
+            console.log(`DEBUG SUCCESS: Email inviata a ${DM_EMAIL} per ${itemName}`);
             return true;
         } catch (error) {
-            console.error('Errore nell\'invio dell\'email:', error.response?.body || error);
+            // LOG DI ERRORE DETTAGLIATO
+            console.error('ERRORE CRITICO INVIO EMAIL:', error.response?.body || error);
             return false;
         }
     });
