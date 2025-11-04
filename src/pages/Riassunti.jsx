@@ -1,8 +1,8 @@
-// src/pages/Riassunti.jsx (Dinamico da Firestore)
+// src/pages/Riassunti.jsx 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import ToggleSection from "./ToggleSection"; 
-import { db } from '../firebase';
+import ToggleSection from "./ToggleSection"; // Presupponendo che questo componente esista
+import { db } from '../firebase'; // Assicurati che il percorso sia corretto
 import { collection, getDocs } from 'firebase/firestore';
 
 export default function Riassunti() {
@@ -83,9 +83,11 @@ export default function Riassunti() {
                                 titleClass="summaryTitle"
                                 contentClass="summary-content-padding"
                             >
+                                {/* MOSTRA LA DATA SOPRA TUTTO */}
+                                {summary.date && <h2 className="summaryDate">{summary.date}</h2>}
+                                
                                 <h4 className="Obia">{summary.subTitle}</h4>
                                 
-                                {/* ⚠️ RENDERING HTML DEL CONTENUTO - NECESSARIO per il testo lungo */}
                                 <div dangerouslySetInnerHTML={{ __html: summary.content }} />
                                 
                             </ToggleSection>
@@ -93,9 +95,6 @@ export default function Riassunti() {
                     </div>
                 </ToggleSection>
             ))}
-
-            {/* Inclusione del vecchio blocco statico se necessario, ma ora è dinamico */}
-            {/* <ToggleSection title="Gruppo LAC"> ... </ToggleSection> */}
         </section>
     );
 }

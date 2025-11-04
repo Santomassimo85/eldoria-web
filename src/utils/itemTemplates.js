@@ -12,33 +12,33 @@
  * @param {string} data.img - Percorso immagine (es. "/assets/items/martello.jpg").
  * @returns {object} Oggetto Item formattato per Firestore.
  */
-export const createMarketItem = ({
-    name,
-    type,
-    itemClass, // Usiamo 'itemClass' per evitare conflitto con 'class' di JS
-    price = 0,
-    startingBid = 0,
-    description,
-    img,
-}) => {
-    // Conversione dei prezzi in numeri per sicurezza
-    const priceNum = Number(price);
-    const startingBidNum = Number(startingBid);
+// src/utils/itemTemplates.js
+
+export const createMarketItem = (data) => {
+    // Gestisce la conversione della data in formato ISO per l'asta
+    const endDateISO = data.saleType === 'auction' && data.endDate 
+        ? new Date(data.endDate).toISOString() 
+        : null;
 
     return {
-        // Dati Base
-        name: name || "NUOVO ITEM SENZA NOME",
-        type: type || "Generico",
-        class: itemClass || "Comune",
-        price: priceNum,
-        startingBid: startingBidNum,
-        description: description || "Nessuna descrizione fornita dal Master.",
-        img: img || "/assets/placeholder.jpg",
+        name: data.name || "NUOVO ITEM SENZA NOME",
+        type: data.type || "Generico",
+        class: data.class || "Comune",
+        saleType: data.saleType,
         
-        // Dati dell'Asta (Stato Iniziale)
-        currentBid: 0, // 👈 Importante: L'offerta attuale parte da 0
-        bids: {}, // 👈 Mappa vuota per le offerte uniche degli utenti
-        bidderEmails: {}, // Mappa vuota per le email degli offerenti (per tua traccia)
-        lastUpdated: new Date().getTime(),
+        // Dati Prezzo/Asta
+        price: data.saleType === 'fixed' ? Number(data.price || 0) : 0,
+        startingBid: data.saleType === 'auction' ? Number(data.startingBid || 0) : 0,
+        endDate: endDateISO,
+
+        description: data.description || "Nessuna descrizione fornita dal Master.",
+        img: data.img || "/assets/placeholder.jpg",
+        
+        // Campi per la logica di mercato
+        isSold: false, // Inizializzazione: l'oggetto non è ancora venduto
+        currentBid: 0, // Offerta più alta corrente
+        bids: {}, // Offerte cieche (blind bid)
+        bidderEmails: {},
+        createdAt: new Date().toISOString(),
     };
 };

@@ -1,28 +1,29 @@
-// src/pages/SummaryAdmin.jsx (AGGIORNATO)
+// src/pages/SummaryAdmin.jsx
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { db } from '../firebase';
+import { db } from '../firebase'; // Assicurati che il percorso sia corretto
 import { 
     collection, 
     doc, 
     setDoc, 
     getDocs, 
     deleteDoc, 
-    getDoc, // 🎯 NUOVO: per caricare un singolo documento in modifica
-    updateDoc // 🎯 NUOVO: per aggiornare un documento
+    getDoc, 
+    updateDoc
 } from 'firebase/firestore';
 
 const MASTER_EMAIL = "santomassimo85@gmail.com"; 
 
-// 🎯 Stato iniziale del form (per Creazione e Reset)
+// Stato iniziale del form (inclusa la data)
 const initialFormData = {
     title: '', 
     subTitle: '', 
     party: 'AMEA', 
     content: '', 
-    order: '' 
+    order: '', 
+    date: '' // CAMPO DATA IN GIOCO
 };
 
 export default function SummaryAdmin() {
@@ -34,7 +35,6 @@ export default function SummaryAdmin() {
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState('');
     
-    // 🎯 NUOVI STATI PER LA MODIFICA
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
@@ -80,7 +80,7 @@ export default function SummaryAdmin() {
         setStatus('');
     }
 
-    // --- LOGICA DI ELIMINAZIONE (Invariata) ---
+    // --- LOGICA DI ELIMINAZIONE ---
     const handleDelete = async (summaryId) => {
         if (!window.confirm("Sei sicuro di voler eliminare questo riassunto?")) return;
         try {
@@ -92,7 +92,7 @@ export default function SummaryAdmin() {
         }
     };
 
-    // --- LOGICA DI CREAZIONE (Modificata per usare handleUpdate) ---
+    // --- LOGICA DI CREAZIONE ---
     const handleCreate = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -119,7 +119,7 @@ export default function SummaryAdmin() {
         }
     };
     
-    // 🎯 NUOVO: CARICA DATI NEL FORM PER LA MODIFICA
+    // --- CARICA DATI NEL FORM PER LA MODIFICA ---
     const handleEdit = async (summaryId) => {
         setLoading(true);
         setStatus('');
@@ -142,7 +142,7 @@ export default function SummaryAdmin() {
         }
     };
     
-    // 🎯 NUOVO: SALVA LE MODIFICHE
+    // --- SALVA LE MODIFICHE ---
     const handleUpdate = async (e) => {
         e.preventDefault();
         if (!editingId) return;
@@ -158,12 +158,13 @@ export default function SummaryAdmin() {
                 subTitle: formData.subTitle,
                 party: formData.party,
                 content: formData.content,
-                order: Number(formData.order), // Assicurati che l'ordine sia aggiornato
+                order: Number(formData.order), 
+                date: formData.date, // SALVATAGGIO CAMPO DATA
                 updatedAt: new Date().toISOString()
             });
             
             setStatus(`✅ Riassunto '${formData.title}' aggiornato con successo!`);
-            handleReset(); // Resetta il form e lo stato
+            handleReset(); 
             setLoading(false);
             fetchSummaries();
             
@@ -181,7 +182,6 @@ export default function SummaryAdmin() {
             
             {status && <p className={`admin-status ${status.startsWith('✅') ? 'success' : 'error'}`}>{status}</p>}
             
-            {/* 🎯 NUOVO: FORM DI CREAZIONE/MODIFICA */}
             <form onSubmit={isEditing ? handleUpdate : handleCreate} className="admin-form">
                 
                 <div className="form-group">
@@ -201,6 +201,12 @@ export default function SummaryAdmin() {
                         <option value="LAC">LAC (Altri)</option>
                         <option value="Unico">Storia del Mondo</option>
                     </select>
+                </div>
+                
+                {/* CAMPO DATA IN GIOCO */}
+                <div className="form-group half-width">
+                    <label>Data (in gioco):</label>
+                    <input type="text" name="date" value={formData.date} onChange={handleChange} required />
                 </div>
                 
                 <div className="form-group half-width">
@@ -227,7 +233,6 @@ export default function SummaryAdmin() {
 
             <hr style={{ margin: '40px 0' }} />
 
-            {/* ... Elenco per verifica rapida (Modificato per includere il pulsante Modifica) ... */}
             <h3>Riassunti Esistenti:</h3>
             <div className="admin-item-list">
                 {loading && !summaries.length ? <p>Caricamento riassunti...</p> : (

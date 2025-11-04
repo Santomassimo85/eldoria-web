@@ -76,6 +76,7 @@ body::after {
     background: url("/assets/d20.png") no-repeat bottom left / contain;
     opacity: 0.1;
     z-index: 0;
+
 }
 
 
@@ -123,7 +124,7 @@ main {
 
 /* Header */
 header {
-    /* background: rgb(255, 255, 255); */
+    background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #ffffff 23%);
     /* border-bottom: 1px solid #ddd; */
     display: flex;
     justify-content: space-between;
@@ -549,6 +550,7 @@ h4 {
     gap: 20px;
     justify-content: center;
     padding: 10px;
+    height: fit-content;
 }
 
 .summary-grid h3 {
@@ -673,7 +675,7 @@ h4 {
 
 .item-image {
     width: 100%;
-height: 65%;
+    height: 65%;
     object-fit: cover;
     border-bottom: 1px solid var(--gold);
 }
@@ -706,18 +708,20 @@ height: 65%;
 
 .item-detail-page {
     padding-top: 20px;
-    width: 80%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .back-button {
-       background-color: var(--red);
+    background-color: var(--red);
     color: white;
     padding: 8px 25px;
     border: none;
     border-radius: 20px;
     cursor: pointer;
     font-size: 1.1rem;
-    margin:20px 0;
+    margin: 20px 0;
     transition: background 0.2s;
 }
 
@@ -728,11 +732,40 @@ height: 65%;
 .detail-content {
     display: flex;
     gap: 40px;
-    align-items: flex-start;
+    width: 60%;
+    align-items: center;
     padding: 30px;
     border: 2px solid var(--gold);
     border-radius: 10px;
     background-color: #fff;
+}
+.detail-description {
+    margin-top: 20px;
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.5;
+    text-align: left;
+}
+@media (max-width: 1300px) {
+    .detail-content {
+        flex-direction: column;
+        width: 90%;
+        padding: 20px;
+    }
+
+  
+}
+
+.buy-now-button {
+    background-color: var(--red);
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 30px;
+    transition: background 0.2s;
 }
 
 .detail-image {
@@ -1218,11 +1251,15 @@ nav.active a {
     border: 1px solid var(--gold);
     border-radius: 8px;
 }
-li,ul,a {
+
+li,
+ul,
+a {
     list-style-type: none;
     padding: 0;
     text-decoration: none;
 }
+
 .admin-form input,
 .admin-form select,
 .admin-form textarea {
@@ -1246,9 +1283,11 @@ li,ul,a {
     cursor: pointer;
     transition: background-color 0.3s;
 }
+
 .admin-form button:hover {
     background-color: var(--gold);
 }
+
 .admin-form button:disabled {
     background-color: #ccc;
     cursor: not-allowed;
@@ -1319,12 +1358,13 @@ li,ul,a {
     padding: 5px;
 
 }
+
 .admin-actions button:hover {
     background-color: #eb1212;
     cursor: pointer;
 }
 
-.back-button.admin-back-button{
+.back-button.admin-back-button {
     background-color: var(--gold);
     color: rgb(0, 0, 0);
     padding: 8px 25px;
@@ -1335,18 +1375,21 @@ li,ul,a {
     margin: 20px 0;
     transition: background 0.2s;
 }
-.admin-summary-page h1{
+
+.admin-summary-page h1 {
     margin: 1rem;
 }
-.admin-summary-page textarea{
+
+.admin-summary-page textarea {
     height: 300px;
     width: 100%;
 }
 
-.admin-market-page h1{
+.admin-market-page h1 {
     margin: 1rem;
 }
-.admin-market-page button{
+
+.admin-market-page button {
     background-color: var(--gold);
     color: rgb(0, 0, 0);
     padding: 8px 25px;
@@ -1356,7 +1399,81 @@ li,ul,a {
     font-size: 1.1rem;
     transition: background 0.2s;
 }
+
 .admin-market-page button:hover {
     background: var(--red);
     color: white;
+}
+
+
+/* --- REGOLA GENERALE PER GLI OGGETTI FUORI MERCATO --- */
+.item-card.sold,
+.item-card.expired {
+    /* Rende il cursore normale, bloccando l'interazione */
+    cursor: default;
+    /* Colore di sfondo leggermente grigio per il container */
+    background-color: #333333;
+    border-color: #555;
+    opacity: 0.9;
+    position: relative;
+    /* Necessario per posizionare l'overlay */
+    overflow: hidden;
+    /* Per mantenere l'overlay all'interno */
+}
+
+/* --- EFFETTO GRASCALE SULL'IMMAGINE --- */
+.item-card.sold .item-image,
+.item-card.expired .item-image {
+    /* Applicazione del filtro B&N all'immagine */
+    filter: grayscale(100%);
+    transition: filter 0.3s ease;
+    /* Rimuove l'effetto hover sul B&N */
+    transform: scale(1);
+    opacity: 0.8;
+}
+
+/* --- OVERLAY CON SCRITTA DIAGONALE --- */
+.item-card.sold::before,
+.item-card.expired::before {
+    content: attr(title);
+    /* Usa il titolo della card per la scritta (Venduto/Asta Terminata) */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* Centra perfettamente l'elemento */
+    transform: translate(-50%, -50%) rotate(-45deg);
+
+    /* Stile della Scritta */
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 2.5em;
+    font-weight: bold;
+    padding: 10px 40px;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    pointer-events: none;
+    /* Permette di cliccare attraverso l'overlay se necessario */
+    z-index: 10;
+
+    /* Sfondo leggero per leggibilità */
+    background-color: rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    /* Evita il wrap del testo */
+}
+
+/* --- Stile specifico per "VENDUTO" (se vuoi un colore diverso) --- */
+.item-card.sold::before {
+    color: #e74c3c;
+    /* Rosso Scuro */
+    border-color: #e74c3c;
+    background-color: rgba(0, 0, 0, 0.6);
+    content: "VENDUTO";
+    /* Sovrascrive il titolo per una scritta fissa */
+}
+
+/* --- Stile specifico per "SCADUTO" --- */
+.item-card.expired::before {
+    color: #f39c12;
+    /* Arancione/Giallo */
+    border-color: #f39c12;
+    content: "ASTA SCADUTA";
+    /* Sovrascrive il titolo per una scritta fissa */
 }

@@ -1,113 +1,157 @@
-// src/pages/Mercato.jsx (Aggiornato per Blind Bid)
+// src/pages/Mercato.jsx (AGGIORNATO CON STATO VENDUTO/SCADUTO)
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import LoginDropdown from '../LoginDropdown';
 import { useNavigate } from 'react-router-dom'; 
-import { db } from '../firebase'; 
+import { db } from '../firebase'; // Assicurati che il percorso sia corretto
 import { collection, getDocs } from 'firebase/firestore'; 
+
+// ARRAY USATI PER I FILTRI (DEVONO CORRISPONDERE A MarketAdmin.jsx)
+const ITEM_TYPES = ['Arma', 'Armatura', 'Accessori', 'Artefatto Magico', 'Pozioni', 'Pergamne', 'Reagenti'];
+const RARITIES = ['Comune', 'Raro', 'Magico', 'Epico', 'Leggendario'];
+
 
 // --- COMPONENTE CARD ---
 const ItemCard = ({ item }) => {
     const navigate = useNavigate();
+    
+    // NUOVI CHECK: isSold e hasExpired
+    const isAuction = item.saleType === 'auction';
+    const isFixedPrice = item.saleType === 'fixed';
+    
+    // Lo stato isSold viene impostato dopo l'acquisto con prezzo fisso O DOPO l'assegnazione da parte del DM (logica esterna)
+    const isSold = item.isSold === true; 
+    
+    // L'asta è scaduta se la data esiste ed è nel passato
+    const hasExpired = isAuction && item.endDate && new Date(item.endDate) < new Date();
+
+    // Determina la classe CSS per lo stato (per styling B&N e hover)
+    const statusClass = isSold ? 'sold' : (hasExpired ? 'expired' : '');
 
     const handleCardClick = () => {
-        navigate(`/mercato/${item.id}`); 
+        // Blocca l'interazione se l'oggetto è venduto o l'asta è scaduta
+        if (statusClass === '') {
+            navigate(`/mercato/${item.id}`); 
+        } else {
+            alert(isSold ? "Spiacente, questo oggetto è stato venduto." : "Spiacente, quest'asta è terminata.");
+        }
     };
 
-    // La card mostra SOLO il prezzo iniziale (o il prezzo fisso), non l'offerta più alta (è un blind bid).
-    const displayPrice = item.startingBid > 0 
-        ? `Prezzo Base: ${item.startingBid} GP`
-        : `Prezzo Fisso: ${item.price} GP`;
+    let displayPrice;
+    if (isSold) {
+        displayPrice = `VENDUTO`;
+    } else if (isFixedPrice) {
+        displayPrice = `Prezzo Fisso: ${item.price} MP`;
+    } else if (hasExpired) {
+        displayPrice = `ASTA TERMINATA`;
+    } else {
+        displayPrice = `Base Asta: ${item.startingBid} MP`;
+    }
+
+    // Usa 'class' per la rarità e normalizza la classe per un eventuale stile CSS
+    const rarityClass = (item.class || 'Comune').replace(/\s/g, ''); 
 
     return (
-        <div className="item-card" onClick={handleCardClick}>
-            <img src={item.img} alt={item.name} className="item-image" />
+        <div 
+            className={`item-card ${statusClass}`} 
+            onClick={handleCardClick} 
+            title={isSold ? "Venduto" : hasExpired ? "Asta Terminata" : "Clicca per dettagli/offerta"}
+        >
+            {/* Immagine con filtro grayscale se Venduto o Scaduto */}
+            <img 
+                src={item.img || '/assets/placeholder.jpg'} 
+                alt={item.name} 
+                className={`item-image ${statusClass}`} 
+            />
             <div className="item-details">
+                <p className={`item-rarity item-rarity-${rarityClass}`}>
+                    {item.class || 'Comune'}
+                </p>
                 <p className="item-name"><strong>{item.name}</strong></p>
                 <p className="item-type">{item.type}</p>
-                <p className="item-class">{item.class}</p>
-                <p className="item-price">{displayPrice}</p>
+                <p className="item-class">{item.itemClass}</p>
+                <p className={`item-price ${statusClass}`}>{displayPrice}</p>
             </div>
         </div>
     );
 };
 
-// --- COMPONENTE PRINCIPALE MERCATO NERO ---
 export default function Mercato() {
-    const { currentUser } = useAuth();
-    const [itemsData, setItemsData] = useState([]); 
+    const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
-    const [filterClass, setFilterClass] = useState('all');
+    const [filterRarity, setFilterRarity] = useState('all');
 
-    // Carica i dati da Firestore
-    useEffect(() => {
-        const fetchItems = async () => {
-            if (!db) return;
-            try {
-                const itemsCollection = collection(db, 'items');
-                const itemSnapshot = await getDocs(itemsCollection);
-                const itemsList = itemSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
-                setItemsData(itemsList);
-            } catch (error) {
-                console.error("Errore nel caricamento del mercato:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (currentUser) {
-             fetchItems();
-        } else {
-             setLoading(false);
+    // --- LOGICA DI CARICAMENTO DATI ---
+    const fetchItems = async () => {
+        setLoading(true);
+        try {
+            const itemsCollection = collection(db, 'items');
+            const itemSnapshot = await getDocs(itemsCollection);
+            const itemsList = itemSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setItems(itemsList);
+        } catch (error) {
+            console.error("Errore nel caricamento degli item:", error);
+        } finally {
+            setLoading(false);
         }
-    }, [currentUser]); 
+    };
+    
+    useEffect(() => {
+        fetchItems();
+        // Aggiorna la lista ogni 60 secondi per riflettere le scadenze (approssimativo)
+        const interval = setInterval(fetchItems, 60000); 
+        return () => clearInterval(interval); 
+    }, []);
 
-    // Estrai opzioni uniche per i filtri (logica invariata)
-    const itemTypes = useMemo(() => [...new Set(itemsData.map(item => item.type))], [itemsData]);
-    const itemClasses = useMemo(() => [...new Set(itemsData.map(item => item.class))], [itemsData]);
-
-    // Logica di Filtro e Ricerca (invariata)
+    // --- LOGICA FILTRI E RICERCA ---
     const filteredItems = useMemo(() => {
-        if (loading) return [];
-        return itemsData.filter(item => {
-            const matchesType = filterType === 'all' || item.type === filterType;
-            const matchesClass = filterClass === 'all' || item.class === filterClass;
-            const lowerCaseSearch = searchTerm.toLowerCase();
-            const matchesSearch = searchTerm.length < 3 || 
-                                  item.name.toLowerCase().includes(lowerCaseSearch) ||
-                                  item.type.toLowerCase().includes(lowerCaseSearch) ||
-                                  item.class.toLowerCase().includes(lowerCaseSearch);
-            return matchesType && matchesClass && matchesSearch;
-        }).sort((a, b) => (a.startingBid || a.price) - (b.startingBid || b.price)); // Ordina per prezzo base
-    }, [searchTerm, filterType, filterClass, itemsData, loading]);
+        let filtered = items;
+        
+        const lowerCaseSearch = searchTerm.toLowerCase();
 
-    // ... (PROTEZIONE: Visualizzazione non loggata e caricamento) ...
-    if (!currentUser) {
-        return (
-            <section style={{ textAlign: 'center', paddingTop: '100px' }}>
-                <h1 style={{ color: 'var(--red)' }}>Accesso Negato</h1>
-                <p>Devi effettuare l'accesso per visualizzare il **Mercato Nero**.</p>
-                <div style={{ marginTop: '30px' }}>
-                    <LoginDropdown standalone={true} /> 
-                </div>
-            </section>
-        );
-    }
-    if (loading) {
-        return <div style={{ textAlign: 'center', paddingTop: '50px' }}>Caricamento oggetti del Mercato...</div>;
-    }
+        // 1. Filtra per Ricerca (nome, classe, tipo) - Attiva solo con >= 3 caratteri
+        if (searchTerm.length >= 3) {
+            filtered = filtered.filter(item => 
+                (item.name || '').toLowerCase().includes(lowerCaseSearch) ||
+                (item.class || '').toLowerCase().includes(lowerCaseSearch) || // Usa item.class
+                (item.type || '').toLowerCase().includes(lowerCaseSearch)
+            );
+        }
 
-    // CONTENUTO PRINCIPALE (Utente Loggato)
+        // 2. Filtra per Tipologia
+        if (filterType !== 'all') {
+            filtered = filtered.filter(item => item.type === filterType);
+        }
+
+        // 3. Filtra per Rarità
+        if (filterRarity !== 'all') {
+            // Usa item.class come campo di rarità primario
+            filtered = filtered.filter(item => item.class === filterRarity);
+        }
+
+        // Ordina per item non venduti/scaduti, poi per prezzo
+        return filtered.sort((a, b) => {
+            const aStatus = (a.isSold || (a.saleType === 'auction' && new Date(a.endDate) < new Date())) ? 1 : 0;
+            const bStatus = (b.isSold || (b.saleType === 'auction' && new Date(b.endDate) < new Date())) ? 1 : 0;
+            if (aStatus !== bStatus) return aStatus - bStatus;
+            
+            return (a.price || a.startingBid) - (b.price || b.startingBid);
+        });
+    }, [items, searchTerm, filterType, filterRarity]);
+
+
     return (
         <section className="mercato-page">
-            <h1>Mercato Nero Segreto</h1>
-            <p className="mercato-welcome">Benvenuto {currentUser.email.split('@')[0]}, i contratti ti aspettano!</p>
+            <h1>Mercato Nero di Eldoria</h1>
+            <p>Qui puoi trovare oggetti rari e potenti. Le offerte sono *blind bid*, quindi l'offerta più alta vince allo scadere del tempo!</p>
 
-            {/* BARRA DI CONTROLLO (Filtri) - Invariata */}
+            {loading && <p style={{textAlign: 'center'}}>Caricamento Item...</p>}
+
+            {/* CONTROLLO (Filtri) */}
             <div className="mercato-controls">
-                {/* ... (input e select qui) ... */}
+                
                 <input
                     type="text"
                     placeholder="Cerca per nome, tipo o classe (min. 3 caratteri)"
@@ -118,22 +162,21 @@ export default function Mercato() {
 
                 <select onChange={(e) => setFilterType(e.target.value)} value={filterType}>
                     <option value="all">Tutte le Tipologie</option>
-                    {itemTypes.map(type => (<option key={type} value={type}>{type}</option>))}
+                    {ITEM_TYPES.map(type => (<option key={type} value={type}>{type}</option>))}
+                </select>
+                
+                <select onChange={(e) => setFilterRarity(e.target.value)} value={filterRarity}>
+                    <option value="all">Tutte le Rarità</option>
+                    {RARITIES.map(rarity => (<option key={rarity} value={rarity}>{rarity}</option>))}
                 </select>
 
-                <select onChange={(e) => setFilterClass(e.target.value)} value={filterClass}>
-                    <option value="all">Tutte le Classi</option>
-                    {itemClasses.map(itemClass => (<option key={itemClass} value={itemClass}>{itemClass}</option>))}
-                </select>
             </div>
 
-            {/* VISUALIZZAZIONE DELLE CARD */}
             <div className="items-grid">
-                {filteredItems.length > 0 ? (
-                    filteredItems.map(item => (<ItemCard key={item.id} item={item} />))
-                ) : (
-                    <p className="no-results">Nessun oggetto trovato che corrisponda ai criteri.</p>
-                )}
+                {filteredItems.map(item => (
+                    <ItemCard key={item.id} item={item} />
+                ))}
+                {!loading && filteredItems.length === 0 && <p style={{gridColumn: '1 / -1', textAlign: 'center'}}>Nessun oggetto trovato con i criteri di ricerca.</p>}
             </div>
             
         </section>
