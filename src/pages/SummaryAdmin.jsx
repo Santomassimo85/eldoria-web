@@ -1,0 +1,249 @@
+// src/pages/SummaryAdmin.jsx (AGGIORNATO)
+
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { db } from '../firebase';
+import { 
+    collection, 
+    doc, 
+    setDoc, 
+    getDocs, 
+    deleteDoc, 
+    getDoc, // 🎯 NUOVO: per caricare un singolo documento in modifica
+    updateDoc // 🎯 NUOVO: per aggiornare un documento
+} from 'firebase/firestore';
+
+const MASTER_EMAIL = "santomassimo85@gmail.com"; 
+
+// 🎯 Stato iniziale del form (per Creazione e Reset)
+const initialFormData = {
+    title: '', 
+    subTitle: '', 
+    party: 'AMEA', 
+    content: '', 
+    order: '' 
+};
+
+export default function SummaryAdmin() {
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
+    
+    const [formData, setFormData] = useState(initialFormData);
+    const [summaries, setSummaries] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [status, setStatus] = useState('');
+    
+    // 🎯 NUOVI STATI PER LA MODIFICA
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+
+    if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+        return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
+    }
+
+    // --- CARICAMENTO RIASSUNTI ESISTENTI ---
+    const fetchSummaries = async () => {
+        setLoading(true);
+        try {
+            const summariesCollection = collection(db, 'summaries');
+            const summarySnapshot = await getDocs(summariesCollection);
+            const summariesList = summarySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                .sort((a, b) => (a.order || 0) - (b.order || 0)); 
+                
+            setSummaries(summariesList);
+        } catch (error) {
+            setStatus(`❌ Errore nel caricamento: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSummaries();
+    }, []);
+
+
+    // --- GESTIONE FORM E SUBMIT ---
+    const handleChange = (e) => {
+        const { name, value, type } = e.target;
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === 'number' ? Number(value) : value 
+        }));
+    };
+    
+    const handleReset = () => {
+        setFormData(initialFormData);
+        setIsEditing(false);
+        setEditingId(null);
+        setStatus('');
+    }
+
+    // --- LOGICA DI ELIMINAZIONE (Invariata) ---
+    const handleDelete = async (summaryId) => {
+        if (!window.confirm("Sei sicuro di voler eliminare questo riassunto?")) return;
+        try {
+            await deleteDoc(doc(db, 'summaries', summaryId));
+            setStatus(`✅ Riassunto eliminato con successo!`);
+            fetchSummaries(); 
+        } catch (error) {
+            setStatus(`❌ Errore nell'eliminazione: ${error.message}`);
+        }
+    };
+
+    // --- LOGICA DI CREAZIONE (Modificata per usare handleUpdate) ---
+    const handleCreate = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setStatus('');
+        
+        try {
+            const summariesCollection = collection(db, 'summaries');
+            const docId = `${formData.party}_${Date.now()}`;
+            
+            await setDoc(doc(summariesCollection, docId), {
+                ...formData,
+                createdAt: new Date().toISOString(),
+                order: Number(formData.order) || summaries.length + 1, 
+            });
+            
+            setStatus(`✅ Riassunto '${formData.title}' creato con successo!`);
+            handleReset(); 
+            setLoading(false);
+            fetchSummaries();
+            
+        } catch (error) {
+            setStatus(`❌ Errore nella creazione del riassunto: ${error.message}`);
+            setLoading(false);
+        }
+    };
+    
+    // 🎯 NUOVO: CARICA DATI NEL FORM PER LA MODIFICA
+    const handleEdit = async (summaryId) => {
+        setLoading(true);
+        setStatus('');
+        try {
+            const summaryRef = doc(db, 'summaries', summaryId);
+            const summarySnap = await getDoc(summaryRef);
+            
+            if (summarySnap.exists()) {
+                const data = summarySnap.data();
+                setFormData(data);
+                setIsEditing(true);
+                setEditingId(summaryId);
+            } else {
+                setStatus("❌ Documento non trovato per la modifica.");
+            }
+        } catch (error) {
+            setStatus(`❌ Errore nel caricamento per la modifica: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // 🎯 NUOVO: SALVA LE MODIFICHE
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        if (!editingId) return;
+        
+        setLoading(true);
+        setStatus('');
+        
+        try {
+            const summaryRef = doc(db, 'summaries', editingId);
+            
+            await updateDoc(summaryRef, {
+                title: formData.title,
+                subTitle: formData.subTitle,
+                party: formData.party,
+                content: formData.content,
+                order: Number(formData.order), // Assicurati che l'ordine sia aggiornato
+                updatedAt: new Date().toISOString()
+            });
+            
+            setStatus(`✅ Riassunto '${formData.title}' aggiornato con successo!`);
+            handleReset(); // Resetta il form e lo stato
+            setLoading(false);
+            fetchSummaries();
+            
+        } catch (error) {
+            setStatus(`❌ Errore nell'aggiornamento: ${error.message}`);
+            setLoading(false);
+        }
+    };
+
+
+    return (
+        <section className="admin-summary-page">
+            <Link to="/dm-admin" className="back-button">← Dashboard Admin</Link>
+            <h1>{isEditing ? "Modifica Riassunto Sessione" : "Aggiungi Riassunto Sessione"}</h1>
+            
+            {status && <p className={`admin-status ${status.startsWith('✅') ? 'success' : 'error'}`}>{status}</p>}
+            
+            {/* 🎯 NUOVO: FORM DI CREAZIONE/MODIFICA */}
+            <form onSubmit={isEditing ? handleUpdate : handleCreate} className="admin-form">
+                
+                <div className="form-group">
+                    <label>Titolo:</label>
+                    <input type="text" name="title" value={formData.title} onChange={handleChange} required />
+                </div>
+                
+                <div className="form-group">
+                    <label>Sottotitolo (Obia):</label>
+                    <input type="text" name="subTitle" value={formData.subTitle} onChange={handleChange} required />
+                </div>
+
+                <div className="form-group half-width">
+                    <label>Party:</label> <br />
+                    <select name="party" value={formData.party} onChange={handleChange}>
+                        <option value="AMEA">AMEA (Garroth, Tanagar, Caius)</option>
+                        <option value="LAC">LAC (Altri)</option>
+                        <option value="Unico">Storia del Mondo</option>
+                    </select>
+                </div>
+                
+                <div className="form-group half-width">
+                    <label>Ordine (Numero):</label>
+                    <input type="number" name="order" value={formData.order} onChange={handleChange} required />
+                </div>
+                
+                <div className="form-group">
+                    <label>Contenuto (HTML consentito):</label> <br />
+                    <textarea name="content" value={formData.content} onChange={handleChange} rows="10" required />
+                </div>
+                
+                <div className="admin-form-actions">
+                    <button type="submit" className="admin-button" disabled={loading}>
+                        {loading ? 'Caricamento...' : isEditing ? 'Salva Modifiche' : 'Crea Riassunto'}
+                    </button>
+                    {isEditing && (
+                        <button type="button" onClick={handleReset} className="admin-button reset-button">
+                            Annulla Modifica
+                        </button>
+                    )}
+                </div>
+            </form>
+
+            <hr style={{ margin: '40px 0' }} />
+
+            {/* ... Elenco per verifica rapida (Modificato per includere il pulsante Modifica) ... */}
+            <h3>Riassunti Esistenti:</h3>
+            <div className="admin-item-list">
+                {loading && !summaries.length ? <p>Caricamento riassunti...</p> : (
+                    summaries.map(s => (
+                        <div key={s.id} className="admin-item-row summary-row">
+                            <span>[{s.order}] {s.title} ({s.party})</span> 
+                            <div className="admin-actions">
+                                <button onClick={() => handleEdit(s.id)} className="admin-edit-button">
+                                    Modifica
+                                </button>
+                                <button onClick={() => handleDelete(s.id)} className="admin-delete-button">X</button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </section>
+    );
+}

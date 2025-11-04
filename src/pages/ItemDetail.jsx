@@ -152,14 +152,14 @@ export default function ItemDetail() {
                     <p className="detail-price">
                         {isAuction ? "Prezzo Base Asta" : "Prezzo Fisso"}: 
                         <strong style={{ color: isAuction ? 'var(--red)' : 'var(--gold)', fontSize: '1.2em', marginLeft: '10px' }}>
-                            {currentPriceDisplay} G.P.
+                            {currentPriceDisplay} MP.
                         </strong>
                     </p>
                     
                     {/* TRACCIA OFFERTA UTENTE CORRENTE */}
                     {userBid && (
                         <p className="last-bid-info success">
-                           **Hai già piazzato la tua offerta: {userBid} GP.** </p>
+                           Hai già piazzato la tua offerta: {userBid} MP. </p>
                     )}
                     
                     <hr />
@@ -172,10 +172,10 @@ export default function ItemDetail() {
                             <form onSubmit={handleSubmitOffer}>
                                 <input
                                     type="number"
-                                    placeholder={`Offri almeno ${basePrice} GP`}
+                                    placeholder={`Offri almeno ${basePrice} MP`}
                                     value={offer}
                                     onChange={(e) => setOffer(e.target.value)}
-                                    min={basePrice} // Minimo è il prezzo base
+                                    min={basePrice} 
                                     required
                                 />
                                 <button type="submit" className="offer-button">Fai la tua Offerta</button>
@@ -190,3 +190,34 @@ export default function ItemDetail() {
         </section>
     );
 }
+
+export const createMarketItem = ({
+    name,
+    type,
+    itemClass, 
+    price = 0,
+    startingBid = 0,
+    description,
+    img,
+}) => {
+    // Conversione dei prezzi in numeri per sicurezza
+    const priceNum = Number(price);
+    const startingBidNum = Number(startingBid);
+
+    return {
+        // Dati Base
+        name: name || "NUOVO ITEM SENZA NOME",
+        type: type || "Generico",
+        class: itemClass || "Comune",
+        price: priceNum,
+        startingBid: startingBidNum,
+        description: description || "Nessuna descrizione fornita dal Master.",
+        img: img || "/assets/placeholder.jpg",
+        
+        // Dati dell'Asta (Stato Iniziale)
+        currentBid: 0, 
+        bids: {}, // Mappa vuota per le offerte uniche degli utenti (blind bid)
+        bidderEmails: {}, 
+        lastUpdated: new Date().getTime(),
+    };
+};

@@ -6,13 +6,38 @@ import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/Geo";
 import ItemDetail from "./pages/ItemDetail";
-// import { Analytics } from "@vercel/analytics/next"
+import AdminPanel from "./pages/AdminPanel"; // Dashboard Admin
+import MarketAdmin from "./pages/MarketAdmin"; // Gestione Item (CRUD)
+import SummaryAdmin from "./pages/SummaryAdmin"; // Gestione Riassunti (CRUD)
+
 import "./style.css";
 
-// 🔑 AGGIUNTE PER AUTENTICAZIONE
-import { AuthProvider } from './AuthContext'; 
+// 🔑 AUTH IMPORTS
+import { AuthProvider, useAuth } from './AuthContext';
 import LoginDropdown from "./LoginDropdown"; 
 
+// 🎯 VARIABILE MASTER DEFINITA PER IL CONTROLLO DELLA UI
+const MASTER_EMAIL_UI = 'santomassimo85@gmail.com'; 
+
+// --- Componente per la Navigazione Master Condizionale ---
+const AuthChecker = ({ closeMenu }) => {
+    const { currentUser } = useAuth();
+    
+    // Mostra il link solo se l'utente corrente è il Master
+    if (currentUser && currentUser.email === MASTER_EMAIL_UI) {
+        return (
+            <NavLink
+                to="/dm-admin"
+                className={({ isActive }) => (isActive ? "active admin-link" : "admin-link")}
+                onClick={closeMenu}
+                style={{ backgroundColor: 'var(--gold)', color: 'var(--red)', fontWeight: 'bold' }}
+            >
+                DM ADMIN
+            </NavLink>
+        );
+    }
+    return null;
+}
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,7 +46,6 @@ export default function App() {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    // 1. AVVOLGI L'APP CON L'AUTHPROVIDER
     <AuthProvider>
       {/* HEADER */}
       <header>
@@ -86,7 +110,8 @@ export default function App() {
             Mercato nero
           </NavLink>
           
-          {/* 2. INSERIMENTO DEL COMPONENTE LOGIN/LOGOUT */}
+          {/* LINK ADMIN CONDIZIONALE E LOGIN DROPDOWN */}
+          <AuthChecker closeMenu={closeMenu} />
           <LoginDropdown closeMenu={closeMenu} />
 
         </nav>
@@ -99,10 +124,16 @@ export default function App() {
           <Route path="/party" element={<Party />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
+          
           {/* ROTTE MERCATO */}
           <Route path="/mercato" element={<Mercato />} /> 
-          {/* 👈 NUOVA ROTTA DINAMICA con parametro :id */}
           <Route path="/mercato/:id" element={<ItemDetail />} />
+          
+          {/* ROTTE ADMIN PANEL */}
+          <Route path="/dm-admin" element={<AdminPanel />} /> 
+          <Route path="/dm-admin/market" element={<MarketAdmin />} /> 
+          <Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
+          <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
         </Routes>
       </main>
 

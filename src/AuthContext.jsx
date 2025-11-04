@@ -4,15 +4,18 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from './firebase'; 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
-// Struttura del contesto per la tipizzazione
+// Struttura del contesto per il valore iniziale e per evitare errori di tipizzazione
 const initialContextValue = {
     currentUser: null,
-    login: (email, password) => Promise.resolve(),
-    logout: () => Promise.resolve(),
+    login: () => null,
+    logout: () => null,
 };
 
+// Crea il contesto
 const AuthContext = createContext(initialContextValue);
 
+// Hook personalizzato per accedere al contesto (useAuth)
+// Questo è il codice corretto che stavi cercando di dichiarare:
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
@@ -21,7 +24,6 @@ export const AuthProvider = ({ children }) => {
 
   // Funzione per il login con email e password
   const login = (email, password) => {
-    // Richiesta a Firebase
     return signInWithEmailAndPassword(auth, email, password);
   };
 

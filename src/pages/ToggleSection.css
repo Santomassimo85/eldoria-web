@@ -33,6 +33,8 @@
   /* Usa padding generoso per raggiungere i 300px di altezza visiva */
   padding-top: 100px; 
   padding-bottom: 100px; 
+
+  border-radius: 15px;
   
   /* Centra il titolo e la freccia nella nuova altezza */
   align-items: center; 
