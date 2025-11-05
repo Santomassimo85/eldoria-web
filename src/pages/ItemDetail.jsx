@@ -4,7 +4,13 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase"; // Assicurati che il percorso sia corretto
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  deleteField,
+  runTransaction,
+} from "firebase/firestore";
 
 // ⚠️ VARIABILE CRITICA: L'URL DEL TUO WEBHOOK PER LE NOTIFICHE AL DM
 const NOTIFICATION_WEBHOOK_URL = "https://eoftih1a36e46sq.m.pipedream.net";
@@ -130,7 +136,7 @@ export default function ItemDetail() {
   const userBid = currentUser && item?.bids ? item.bids[currentUser.uid] : null;
 
   // --- LOGICA ACQUISTO IMMEDIATO (PREZZO FISSO) ---
-const handleBuyNow = async () => {
+  const handleBuyNow = async () => {
     if (!currentUser || !isFixedPrice || !canInteract) return;
 
     if (
@@ -172,7 +178,7 @@ const handleBuyNow = async () => {
         itemLink: `${APP_BASE_URL}/mercato/${id}`,
         timestamp: new Date().toISOString(),
       };
-      
+
       // Invio webhook
       fetch(NOTIFICATION_WEBHOOK_URL, {
         method: "POST",
@@ -180,7 +186,6 @@ const handleBuyNow = async () => {
         body: JSON.stringify(notificationPayload),
       });
       // La gestione degli errori del webhook è gestita nel blocco di offerta per completezza
-
     } catch (error) {
       setMessage(`❌ Errore durante l'acquisto: ${error.message}`);
     }
@@ -191,90 +196,160 @@ const handleBuyNow = async () => {
     e.preventDefault();
     setMessage("");
 
+    // 'offer' è lo stato locale dell'input
     const numericOffer = parseInt(offer, 10);
+    // basePrice è una variabile che devi definire nel componente (item.startingBid o 1)
+    const basePrice = item.startingBid || 1;
+
+    // Per questa logica Blind Bid (singola offerta), minBid è semplicemente basePrice
     const minBid = basePrice;
 
+    // Controlli preliminari
     if (!currentUser) {
       setMessage("Devi essere loggato per fare un'offerta.");
       return;
     }
+
+    // userBid è una variabile che devi definire nel componente: const userBid = item.bids?.[currentUser.uid];
     if (userBid) {
-      setMessage("Hai già piazzato la tua offerta e non puoi modificarla.");
+      setMessage(
+        "Hai già piazzato la tua offerta e non puoi modificarla. Annulla prima l'offerta precedente."
+      );
       return;
     }
     if (isNaN(numericOffer) || numericOffer < minBid) {
       setMessage(
-        `L'offerta deve essere un numero valido, maggiore o uguale al prezzo base (${minBid} MP).`
+        `L'offerta deve essere un numero valido e non inferiore al prezzo base di ${minBid} MP.`
       );
       return;
     }
+
+    // canInteract è una variabile che devi definire nel componente: const canInteract = !item.isSold && !hasExpired;
     if (!canInteract) {
-      setMessage(isSold ? "L'oggetto è stato venduto." : "L'asta è terminata.");
+      setMessage("Non puoi interagire con un'asta scaduta o venduta.");
       return;
     }
+
+    // Riferimenti ai documenti Firestore
+    const itemRef = doc(db, "items", id);
+    const charRef = doc(db, "characters", currentUser.uid); // Riferimento al saldo PG (Collezione 'characters')
 
     try {
-      const itemRef = doc(db, "items", id);
+      // Avvia la Transazione per garantire l'atomicità
+      await runTransaction(db, async (transaction) => {
+        // 1. LEGGI IL SALDO DEL PG
+        const charDoc = await transaction.get(charRef);
 
-      // 1) Aggiorna Firestore con la mappatura delle offerte
-      const newBidMap = {
-        [`bids.${currentUser.uid}`]: numericOffer,
-        [`bidderEmails.${currentUser.uid}`]: currentUser.email,
-      };
-      await updateDoc(itemRef, newBidMap);
+        if (!charDoc.exists()) {
+          throw "Saldo Monete non trovato. Contatta il DM.";
+        }
 
-      // 2) Prepara e invia il payload al webhook (contiene prezzo, email offerente e dati item)
-      const itemDataForNotification = {
-        id,
-        name: item?.name,
-        description: item?.description,
-        type: item?.type,
-        rarity: item?.class,
-        img: item?.img,
-        startingBid: item?.startingBid ?? item?.price,
-        endDate: item?.endDate,
-      };
+        const currentPlatinum = charDoc.data().platinum || 0;
 
-      const notificationPayload = {
+        // 2. CONTROLLO SALDO E INTERROMPI SE INSUFFICIENTE
+        if (currentPlatinum < numericOffer) {
+          throw `Saldo insufficiente. Hai solo ${currentPlatinum} MP, ma l'offerta è di ${numericOffer} MP.`;
+        }
+
+        // 3. AGGIORNA SALDO PG (SOTTRAI MONETE)
+        const newPlatinum = currentPlatinum - numericOffer;
+        transaction.update(charRef, {
+          platinum: newPlatinum,
+        });
+
+        // 4. AGGIORNA L'ITEM CON L'OFFERTA
+        const newBidMap = {
+          [`bids.${currentUser.uid}`]: numericOffer,
+          [`bidderEmails.${currentUser.uid}`]: currentUser.email,
+        };
+        transaction.update(itemRef, newBidMap);
+      });
+
+      // --- LOGICA DI NOTIFICA (Eseguita SOLO se la Transazione ha successo) ---
+      // Se la transazione ha successo, invia la notifica al DM (Pipedream)
+      const payload = {
         type: "NUOVA_OFFERTA_ASTA",
         offerAmount: numericOffer,
-        bidderEmail: currentUser.email,
         bidderName: currentUser.email.split("@")[0],
-        item: itemDataForNotification,
+        bidderEmail: currentUser.email,
+        // Usa la struttura item: { name, id } che hai corretto per Pipedream
+        item: {
+          name: item.name,
+          id: id,
+          rarity: item.rarity || item.class,
+        },
         itemLink: `${APP_BASE_URL}/mercato/${id}`,
-        timestamp: new Date().toISOString(),
       };
 
-      let webhookOk = true;
-      try {
-        const webhookResponse = await fetch(NOTIFICATION_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(notificationPayload),
-        });
-        if (!webhookResponse.ok) webhookOk = false;
-      } catch (err) {
-        console.error("Errore invio webhook:", err);
-        webhookOk = false;
-      }
+      await fetch(NOTIFICATION_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      // --- FINE LOGICA DI NOTIFICA ---
 
-      // 3) Messaggio utente in base al risultato
-      if (webhookOk) {
-        setMessage(
-          `✅ Offerta di ${numericOffer} MP registrata! Notifica inviata al DM. Non puoi più modificarla fino alla fine dell'asta.`
-        );
-      } else {
-        setMessage(
-          `✅ Offerta di ${numericOffer} MP registrata! Tuttavia la notifica non è stata inviata correttamente. Contatta il DM manualmente.`
-        );
-      }
-
-      setOffer("");
-    } catch (error) {
-      console.error("Errore nell'offerta:", error);
       setMessage(
-        `❌ Errore durante la registrazione dell'offerta: ${error.message}`
+        `✅ Offerta di ${numericOffer} MP registrata! Monete impegnate. Non puoi più modificarla fino alla fine dell'asta.`
       );
+      setOffer(""); // Pulisce l'input
+    } catch (error) {
+      // Gestione degli errori (inclusi quelli sollevati dal blocco 'throw')
+      let errorMessage = typeof error === "string" ? error : error.message;
+      setMessage(`❌ Errore durante l'offerta: ${errorMessage}`);
+      console.error("Transazione fallita:", error);
+    }
+  };
+
+  // 🎯 FUNZIONE: ELIMINA OFFERTA E RIMBORSA
+  const handleDeleteOffer = async () => {
+    if (!currentUser || !userBid) return; // userBid è l'offerta attuale dell'utente
+
+    const offerToRefund = userBid;
+
+    if (
+      !window.confirm(
+        `Sei sicuro di voler annullare l'offerta di ${offerToRefund} MP? L'importo ti verrà rimborsato immediatamente.`
+      )
+    )
+      return;
+
+    const itemRef = doc(db, "items", id);
+    const charRef = doc(db, "characters", currentUser.uid);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const charDoc = await transaction.get(charRef);
+
+        if (!charDoc.exists()) {
+          throw "Errore: Saldo Monete non trovato per il rimborso.";
+        }
+
+        // 1. RIMBORSA SALDO PG (Incrementa)
+        const currentPlatinum = charDoc.data().platinum || 0;
+        const newPlatinum = currentPlatinum + offerToRefund;
+
+        transaction.update(charRef, {
+          platinum: newPlatinum,
+        });
+
+        // 2. ELIMINA OFFERTA DALL'ITEM (usa FieldValue.delete)
+        // Rimuove l'utente dai 'bids' e 'bidderEmails'
+        transaction.update(itemRef, {
+          [`bids.${currentUser.uid}`]: deleteField(),
+          [`bidderEmails.${currentUser.uid}`]: deleteField(),
+        });
+      });
+
+      setMessage(
+        `🗑️ Offerta di ${offerToRefund} MP annullata con successo! L'importo è stato rimborsato.`
+      );
+      setOffer("");
+
+      // Puoi anche inviare una notifica di annullamento al DM qui se necessario
+    } catch (error) {
+      let errorMessage = typeof error === "string" ? error : error.message;
+      setMessage(`❌ Errore durante l'annullamento: ${errorMessage}`);
+      console.error("Transazione di rimborso fallita:", error);
     }
   };
 
