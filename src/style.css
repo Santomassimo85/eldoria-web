@@ -655,17 +655,28 @@ h4 {
     padding: 20px 0;
 }
 
+.item-card .bid-list-content {
+    display: block; 
+}
+/* 🎯 CLASSE DI ESPANSIONE: L'item card prende l'altezza dal contenuto */
+.item-card.expanded {
+    height: auto; 
+    /* Rimuovi overflow se vuoi che tutto sia visibile */
+    overflow: visible; 
+}
 /* Stile per la singola Card Item */
 .item-card {
     background-color: #fcfcfc;
     border: 2px solid var(--red);
     border-radius: 8px;
+    position: relative;
     overflow: hidden;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s, box-shadow 0.2s;
+    transition: height 0.3s ease-out; /* Aggiunge una transizione fluida */
     text-align: center;
-    height: 50vh;
+    height: auto;
 }
 
 .item-card:hover {

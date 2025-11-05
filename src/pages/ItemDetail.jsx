@@ -130,7 +130,7 @@ export default function ItemDetail() {
   const userBid = currentUser && item?.bids ? item.bids[currentUser.uid] : null;
 
   // --- LOGICA ACQUISTO IMMEDIATO (PREZZO FISSO) ---
-  const handleBuyNow = async () => {
+const handleBuyNow = async () => {
     if (!currentUser || !isFixedPrice || !canInteract) return;
 
     if (
@@ -152,21 +152,35 @@ export default function ItemDetail() {
         `✅ Oggetto venduto a te per ${item.price} MP! Contatta il DM per la consegna.`
       );
 
-      // Invia notifica di vendita immediata al DM
+      // 🎯 AGGIORNAMENTO PAYLOAD VENDITA FISSA
+      const itemDataForNotification = {
+        id,
+        name: item?.name,
+        description: item?.description,
+        type: item?.type,
+        rarity: item?.class,
+        img: item?.img,
+        price: item.price, // Prezzo finale di vendita
+      };
+
       const notificationPayload = {
         type: "VENDITA_FISSA_IMMEDIATA",
-        itemName: item.name,
-        itemId: id, // ID corretto
-        price: item.price,
-        buyerName: currentUser.email.split("@")[0], // Nome utente
+        purchasePrice: item.price, // Importo speso
         buyerEmail: currentUser.email,
-        itemLink: `${APP_BASE_URL}/mercato/${id}`, // Link corretto all'oggetto
+        buyerName: currentUser.email.split("@")[0],
+        item: itemDataForNotification,
+        itemLink: `${APP_BASE_URL}/mercato/${id}`,
+        timestamp: new Date().toISOString(),
       };
+      
+      // Invio webhook
       fetch(NOTIFICATION_WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(notificationPayload),
       });
+      // La gestione degli errori del webhook è gestita nel blocco di offerta per completezza
+
     } catch (error) {
       setMessage(`❌ Errore durante l'acquisto: ${error.message}`);
     }
