@@ -9,35 +9,43 @@ import ItemDetail from "./pages/ItemDetail";
 import AdminPanel from "./pages/AdminPanel"; // Dashboard Admin
 import MarketAdmin from "./pages/MarketAdmin"; // Gestione Item (CRUD)
 import SummaryAdmin from "./pages/SummaryAdmin"; // Gestione Riassunti (CRUD)
+import PgSheetEditor from "./pages/PgSheetEditor"; // 🎯 NUOVO IMPORT
+import PlatinumAdmin from "./pages/PlatinumAdmin"; // 🎯 NUOVO IMPORT
 
 import "./style.css";
 
 // 🔑 AUTH IMPORTS
-import { AuthProvider, useAuth } from './AuthContext';
-import LoginDropdown from "./LoginDropdown"; 
+import { AuthProvider, useAuth } from "./AuthContext";
+import LoginDropdown from "./LoginDropdown";
 
 // 🎯 VARIABILE MASTER DEFINITA PER IL CONTROLLO DELLA UI
-const MASTER_EMAIL_UI = 'santomassimo85@gmail.com'; 
+const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
 
 // --- Componente per la Navigazione Master Condizionale ---
 const AuthChecker = ({ closeMenu }) => {
-    const { currentUser } = useAuth();
-    
-    // Mostra il link solo se l'utente corrente è il Master
-    if (currentUser && currentUser.email === MASTER_EMAIL_UI) {
-        return (
-            <NavLink
-                to="/dm-admin"
-                className={({ isActive }) => (isActive ? "active admin-link" : "admin-link")}
-                onClick={closeMenu}
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--red)', fontWeight: 'bold' }}
-            >
-                DM ADMIN
-            </NavLink>
-        );
-    }
-    return null;
-}
+  const { currentUser } = useAuth();
+
+  // Mostra il link solo se l'utente corrente è il Master
+  if (currentUser && currentUser.email === MASTER_EMAIL_UI) {
+    return (
+      <NavLink
+        to="/dm-admin"
+        className={({ isActive }) =>
+          isActive ? "active admin-link" : "admin-link"
+        }
+        onClick={closeMenu}
+        style={{
+          backgroundColor: "var(--gold)",
+          color: "var(--red)",
+          fontWeight: "bold",
+        }}
+      >
+        DM ADMIN
+      </NavLink>
+    );
+  }
+  return null;
+};
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -109,11 +117,10 @@ export default function App() {
           >
             Mercato nero
           </NavLink>
-          
+
           {/* LINK ADMIN CONDIZIONALE E LOGIN DROPDOWN */}
           <AuthChecker closeMenu={closeMenu} />
           <LoginDropdown closeMenu={closeMenu} />
-
         </nav>
       </header>
 
@@ -124,16 +131,19 @@ export default function App() {
           <Route path="/party" element={<Party />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
-          
+
+          {/* ROTTA SCHEDA PERSONAGGIO */}
+<Route path="/my-pg" element={<PgSheetEditor />} />
           {/* ROTTE MERCATO */}
-          <Route path="/mercato" element={<Mercato />} /> 
+          <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
-          
+
           {/* ROTTE ADMIN PANEL */}
-          <Route path="/dm-admin" element={<AdminPanel />} /> 
-          <Route path="/dm-admin/market" element={<MarketAdmin />} /> 
-          <Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
-          <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
+<Route path="/dm-admin" element={<AdminPanel />} /> 
+<Route path="/dm-admin/market" element={<MarketAdmin />} /> 
+<Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
+<Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
+<Route path="/dm-admin/platinum" element={<PlatinumAdmin />} /> {/* 🎯 NUOVA ROTTA */}
         </Routes>
       </main>
 

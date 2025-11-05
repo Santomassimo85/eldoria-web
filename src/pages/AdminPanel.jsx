@@ -24,7 +24,7 @@ export default function AdminPanel() {
   // --- Funzioni di navigazione (per i pulsanti) ---
   const navigateToMarket = () => navigate('/dm-admin/market');
   const navigateToSummaries = () => navigate('/dm-admin/summaries');
-
+const navigateToPlatinum = () => navigate('/dm-admin/platinum'); // 🎯 NUOVA FUNZIONE
 
   return (
     <section className="admin-page">
@@ -49,6 +49,13 @@ export default function AdminPanel() {
             <h2>Gestione Riassunti Sessioni</h2>
             <p>Aggiungi i log delle nuove sessioni alla pagina Riassunti.</p>
             <button className="admin-button">Vai a Riassunti Admin</button>
+        </div>
+        
+        {/* 🎯 Blocco 3: Gestione Monete Platino */}
+        <div className="admin-block" onClick={navigateToPlatinum}>
+            <h2>Gestione Monete (MP)</h2>
+            <p>Aggiorna il saldo delle Monete Platino (MP) dei personaggi.</p>
+            <button className="admin-button">Vai a Saldo MP</button>
         </div>
 
       </div>

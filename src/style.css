@@ -729,6 +729,66 @@ h4 {
     background: var(--gold);
 }
 
+.logged-user-button {
+    background-color: var(--red);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-left: 10px;
+    transition: background 0.2s;
+}
+
+.logged-user-button:hover {
+    background-color: #fa2e2e;
+}
+
+.login-button {
+    background-color: var(--red);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-left: 10px;
+    transition: background 0.2s;
+}
+
+a.scheda {
+    background-color: var(--red);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-top: 20px;
+    transition: background 0.2s;
+}
+
+.scheda:hover {
+    background-color: #fa2e2e;
+}
+
+.enter {
+    background-color: var(--red);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin: 10px;
+    transition: background 0.2s;
+}
+
+.enter:hover {
+    background-color: #fa2e2e;
+}
+
 .detail-content {
     display: flex;
     gap: 40px;
@@ -739,6 +799,7 @@ h4 {
     border-radius: 10px;
     background-color: #fff;
 }
+
 .detail-description {
     margin-top: 20px;
     font-size: 1rem;
@@ -746,6 +807,7 @@ h4 {
     line-height: 1.5;
     text-align: left;
 }
+
 @media (max-width: 1300px) {
     .detail-content {
         flex-direction: column;
@@ -753,7 +815,7 @@ h4 {
         padding: 20px;
     }
 
-  
+
 }
 
 .buy-now-button {
@@ -1477,3 +1539,17 @@ a {
     content: "ASTA SCADUTA";
     /* Sovrascrive il titolo per una scritta fissa */
 }
+
+/* Sezione pg sheet */
+.stat-grid {
+           display: flex;
+           flex-wrap: wrap;
+           gap: 10px;
+           justify-content: space-between;
+           margin-bottom: 30px;
+           border: 1px solid #666;
+           padding: 10px;
+           border-radius: 4px;
+
+}
+
