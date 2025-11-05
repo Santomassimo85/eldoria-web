@@ -197,8 +197,8 @@ export default function SummaryAdmin() {
                 <div className="form-group half-width">
                     <label>Party:</label> <br />
                     <select name="party" value={formData.party} onChange={handleChange}>
-                        <option value="AMEA">AMEA (Garroth, Tanagar, Caius)</option>
-                        <option value="LAC">LAC (Altri)</option>
+                        <option value="AMEA">AMEA (Garroth, Tanagar, Caius, Sylva)</option>
+                        <option value="LAC">LAC (Horn, Thoki, Cleofe)</option>
                         <option value="Unico">Storia del Mondo</option>
                     </select>
                 </div>

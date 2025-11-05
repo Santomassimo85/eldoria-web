@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase"; // Assicurati che il percorso sia corretto
-import { doc, onSnapshot, updateDoc} from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 // ⚠️ VARIABILE CRITICA: L'URL DEL TUO WEBHOOK PER LE NOTIFICHE AL DM
 const NOTIFICATION_WEBHOOK_URL = "https://eoftih1a36e46sq.m.pipedream.net";
@@ -177,7 +177,7 @@ export default function ItemDetail() {
     e.preventDefault();
     setMessage("");
 
-    const numericOffer = parseInt(offer);
+    const numericOffer = parseInt(offer, 10);
     const minBid = basePrice;
 
     if (!currentUser) {
@@ -200,48 +200,61 @@ export default function ItemDetail() {
     }
 
     try {
-            const itemRef = doc(db, 'items', id);
-            
-            // 1. AGGIORNA FIRESTORE: Salva l'offerta
-            const newBidMap = {
-                [`bids.${currentUser.uid}`]: numericOffer, // <--- numericOffer corretto
-                [`bidderEmails.${currentUser.uid}`]: currentUser.email
-            };
-            
-            await updateDoc(itemRef, newBidMap);
-            
-            // 2. INVIA NOTIFICA VIA WEBHOOK (Pipedream)
-            const notificationPayload = { 
-                type: "NUOVA_OFFERTA_ASTA",
-                itemName: item.name,
-                itemId: id, 
-                offerAmount: numericOffer, // 🎯 CORREZIONE CHIAVE: inviamo la variabile numericOffer
-                bidderName: currentUser.email.split('@')[0], 
-                bidderEmail: currentUser.email,
-                itemLink: `${window.location.origin}/mercato/${id}` // 🎯 AGGIUNTA LINK
-            };
+      const itemRef = doc(db, "items", id);
 
-      //   fetch(NOTIFICATION_WEBHOOK_URL, {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/json" },
-      //     body: JSON.stringify(notificationPayload),
-      //   });
+      // 1) Aggiorna Firestore con la mappatura delle offerte
+      const newBidMap = {
+        [`bids.${currentUser.uid}`]: numericOffer,
+        [`bidderEmails.${currentUser.uid}`]: currentUser.email,
+      };
+      await updateDoc(itemRef, newBidMap);
 
-      const webhookResponse = await fetch(NOTIFICATION_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(notificationPayload),
-      });
+      // 2) Prepara e invia il payload al webhook (contiene prezzo, email offerente e dati item)
+      const itemDataForNotification = {
+        id,
+        name: item?.name,
+        description: item?.description,
+        type: item?.type,
+        rarity: item?.class,
+        img: item?.img,
+        startingBid: item?.startingBid ?? item?.price,
+        endDate: item?.endDate,
+      };
 
-      if (!webhookResponse.ok) {
-        throw new Error(
-          "Offerta registrata, ma la notifica via email è fallita."
+      const notificationPayload = {
+        type: "NUOVA_OFFERTA_ASTA",
+        offerAmount: numericOffer,
+        bidderEmail: currentUser.email,
+        bidderName: currentUser.email.split("@")[0],
+        item: itemDataForNotification,
+        itemLink: `${APP_BASE_URL}/mercato/${id}`,
+        timestamp: new Date().toISOString(),
+      };
+
+      let webhookOk = true;
+      try {
+        const webhookResponse = await fetch(NOTIFICATION_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(notificationPayload),
+        });
+        if (!webhookResponse.ok) webhookOk = false;
+      } catch (err) {
+        console.error("Errore invio webhook:", err);
+        webhookOk = false;
+      }
+
+      // 3) Messaggio utente in base al risultato
+      if (webhookOk) {
+        setMessage(
+          `✅ Offerta di ${numericOffer} MP registrata! Notifica inviata al DM. Non puoi più modificarla fino alla fine dell'asta.`
+        );
+      } else {
+        setMessage(
+          `✅ Offerta di ${numericOffer} MP registrata! Tuttavia la notifica non è stata inviata correttamente. Contatta il DM manualmente.`
         );
       }
 
-      setMessage(
-        `✅ Offerta di ${numericOffer} MP registrata! Non puoi più modificarla fino alla fine dell'asta.`
-      );
       setOffer("");
     } catch (error) {
       console.error("Errore nell'offerta:", error);
