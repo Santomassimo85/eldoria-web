@@ -89,10 +89,10 @@ const ItemCard = ({ item, isMaster }) => {
   }
 
   return (
+        // 🎯 APPLICA LA NUOVA CLASSE SOLO SE MASTER
         <div 
-            className={`item-card ${statusClass}`} 
-            // 🎯 Master clicca sempre, Giocatori solo se attivo
-            onClick={isMaster ? () => navigate(`/mercato/${item.id}`) : handleCardClick} 
+            className={`item-card ${statusClass} ${isMaster ? 'admin-card-expanded' : ''}`} 
+            onClick={handleCardClick} 
             title={isSold ? "Venduto" : hasExpired ? "Asta Terminata" : "Clicca per dettagli/offerta"}
         >
             <img 
@@ -111,16 +111,14 @@ const ItemCard = ({ item, isMaster }) => {
                 {dmInfo} {/* MOSTRA INFORMAZIONI SOLO AL MASTER */}
             </div>
 
-            {/* 🎯 NUOVA SEZIONE: LISTA OFFERTE INLINE ESPANDIBILE PER DM */}
+            {/* 🎯 LISTA OFFERTE SEMPRE VISIBILE PER DM (Ora contenuta nell'altezza auto) */}
             {isMaster && isAuction && bidsArray.length > 0 && (
-                <div style={{ padding: '5px', borderTop: '1px solid #555', zIndex: 5 }}>
-                    
-                    
-                    {/* 🎯 3. Il contenuto è sempre presente, ma nascosto dal CSS se non expanded */}
+                <div style={{ padding: '5px', borderTop: '1px solid #555', backgroundColor: '#1c1c1c' }}>
+                    <h4 style={{ margin: '0 0 5px', fontSize: '0.9em', color: 'var(--gold)' }}>Offerte Ricevute:</h4>
                     <div className="bid-list-content"> 
-                        <ul style={{ listStyleType: 'none', padding: '0', margin: '5px 0 0' }}>
+                        <ul style={{ listStyleType: 'none', padding: '0', margin: '0' }}>
                             {bidsArray.map((bid, index) => (
-                                <li key={bid.uid} style={{ fontSize: '0.8em', color: index === 0 ? '#f39c12' : '#ccc' }}>
+                                <li key={bid.uid} style={{ fontSize: '0.8em', color: index === 0 ? '#f39c12' : '#ccc', padding: '2px 0' }}>
                                     {index === 0 && '👑'} {bid.email.split('@')[0]}: **{bid.amount} MP**
                                 </li>
                             ))}
@@ -129,7 +127,7 @@ const ItemCard = ({ item, isMaster }) => {
                 </div>
             )}
         </div>
-    );
+  );
 };
 
 export default function Mercato() {

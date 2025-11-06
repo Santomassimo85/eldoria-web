@@ -112,6 +112,7 @@ export default function PlatinumAdmin() {
                                 <input
                                     type="number"
                                     value={tempBalances[char.id]}
+                                    className='inputPlatinum'
                                     onChange={(e) => handleBalanceChange(char.id, e.target.value)}
                                     style={{ width: '80px', textAlign: 'right', marginRight: '10px' }}
                                     min="0"

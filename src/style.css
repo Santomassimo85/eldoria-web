@@ -195,44 +195,62 @@ nav a.active {
     /* disattiva il link attivo */
 }
 
-/* === BURGER MENU === */
+/* === BURGER MENU CONTAINER === */
 .burger {
     display: none;
+    /* Inizialmente nascosto */
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: space-around;
+    /* Spazio uniforme tra le linee */
     align-items: center;
-    width: 40px;
-    /* + larghezza */
-    height: 40px;
-    /* + altezza per 3 spade */
+    width: 30px;
+    height: 25px;
+    /* Altezza leggermente ridotta */
     cursor: pointer;
     position: relative;
-    /* rotate: 40deg;    rotazione per effetto spada */
     z-index: 1000;
-    transition: transform 0.3s ease;
+    /* border-radius: 5px; */
 }
 
-.sword {
-    width: 28px;
-    height: 28px;
-    transform-origin: center;
-    transition: transform 0.4s ease, opacity 0.3s;
-    filter: drop-shadow(0 0 2px var(--gold));
-    z-index: 1000;
+@media (max-width: 780px) {
+    .burger {
+        display: flex;
+    }
 }
 
-/* animazioni apertura menu */
-.burger.open .sword-1 {
-    transform: rotate(45deg) translate(6px, 8px);
+/* === LE LINEE (SIMULAZIONE SPADE) === */
+.burger .line {
+    width: 100%;
+    height: 3px;
+    background: var(--red);
+    /* Colore della linea (Rosso Eldoria) */
+    border-radius: 5px;
+    transition: all 0.3s ease-in-out;
+    transform-origin: left;
+    /* Rotazione dal lato sinistro */
 }
 
-/* .burger.open .sword-2 { opacity: 0; }
-.burger.open .sword-3 { transform: rotate(-45deg) translate(6px, -8px); } */
+/* --- ANIMAZIONE DI APERTURA (IL SIMBOLO 'X') --- */
 
-.burger:hover .sword {
-    filter: drop-shadow(0 0 8px var(--gold));
+/* 1. Rotazione e spostamento della linea superiore */
+.burger.open .line-1 {
+    transform: rotate(45deg) translate(2px, 0px);
+    width: 120%;
+    /* Rende la X più grande/visibile */
 }
 
+/* 2. Nascondi la linea centrale */
+.burger.open .line-2 {
+    opacity: 0;
+    transform: translateX(-15px);
+    /* Sposta fuori schermo mentre scompare */
+}
+
+/* 3. Rotazione e spostamento della linea inferiore */
+.burger.open .line-3 {
+    transform: rotate(-45deg) translate(2px, 0px);
+    width: 120%;
+}
 
 @media (max-width: 780px) {
     .burger {
@@ -656,14 +674,16 @@ h4 {
 }
 
 .item-card .bid-list-content {
-    display: block; 
+    display: block;
 }
+
 /* 🎯 CLASSE DI ESPANSIONE: L'item card prende l'altezza dal contenuto */
-.item-card.expanded {
-    height: auto; 
-    /* Rimuovi overflow se vuoi che tutto sia visibile */
-    overflow: visible; 
+.item-card.admin-card-expanded {
+    height: auto !important;
+    /* Forza l'altezza dinamica */
+    overflow: visible;
 }
+
 /* Stile per la singola Card Item */
 .item-card {
     background-color: #fcfcfc;
@@ -674,9 +694,10 @@ h4 {
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s, box-shadow 0.2s;
-    transition: height 0.3s ease-out; /* Aggiunge una transizione fluida */
+    transition: height 0.3s ease-out;
+    /* Aggiunge una transizione fluida */
     text-align: center;
-    height: auto;
+    height: 50vh;
 }
 
 .item-card:hover {
@@ -929,6 +950,12 @@ input {
     .mercato-controls select {
         max-width: 100%;
     }
+
+    .admin-list-container {
+        width: 80%;
+        font-size: 0.9rem;
+    }
+
 
     input {
         max-width: 100%;
@@ -1225,6 +1252,7 @@ footer strong {
         margin: 0 10%;
         top: 130px;
         z-index: 1;
+        background-color: #ffffff;
     }
 
     .logo {
@@ -1240,29 +1268,29 @@ footer strong {
         top: 100px;
         left: 0;
         right: 0;
-        background: rgba(255, 255, 255, 0.877);
         flex-direction: column;
         align-items: center;
         gap: 10px;
         padding: 15px 0;
+        justify-content: center;
         /* border-bottom: 1px solid #ddd; */
         display: none;
     }
 
     nav.active {
+        /* background: rgba(235, 8, 8, 0.877); */
         display: flex;
     }
 
     header {
         flex-direction: column;
-        gap: 12px;
+        background-color: #ffffff;
+        border-bottom: 3px solid var(--gold);
         position: fixed;
         z-index: 10;
     }
 
-    nav {
-        justify-content: center;
-    }
+
 
     main {
         padding: 20px;
@@ -1553,14 +1581,13 @@ a {
 
 /* Sezione pg sheet */
 .stat-grid {
-           display: flex;
-           flex-wrap: wrap;
-           gap: 10px;
-           justify-content: space-between;
-           margin-bottom: 30px;
-           border: 1px solid #666;
-           padding: 10px;
-           border-radius: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    border: 1px solid #666;
+    padding: 10px;
+    border-radius: 4px;
 
 }
-

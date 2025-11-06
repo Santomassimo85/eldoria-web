@@ -70,14 +70,13 @@ export default function App() {
           }}
           aria-label="Apri menu"
         >
-          <img
-            src={menuOpen ? "/assets/blood.svg" : "/assets/sword2.svg"}
-            alt="spada"
-            className="sword sword-1"
-          />
+          {/* 🎯 NUOVA STRUTTURA SEMPLICE: Tre linee <span> */}
+          <span className="line line-1"></span>
+          <span className="line line-2"></span>
+          <span className="line line-3"></span>
         </div>
 
-        {/* NAVBAR */}
+        
         <nav className={menuOpen ? "active" : ""}>
           <NavLink
             to="/"
