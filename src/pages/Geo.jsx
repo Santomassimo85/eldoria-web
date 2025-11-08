@@ -86,7 +86,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>La Fucina di Vulkan</span>
+              <span>La Fucina di Fombom</span>
             </li>
             <li
               style={{
@@ -253,26 +253,35 @@ export default function Geo() {
               porti una lingua diversa e un segreto nuovo.
             </li>
             <h4>Struttura e Quartieri Principali</h4>
-            <li><strong>La Cittadella dei Meccanismi:</strong> la parte più antica,
-            costruita dagli gnomi. Contiene torri a ingranaggi, laboratori e una
-            biblioteca sotterranea che raccoglie antichi schemi di macchine del
-            vento. </li><br />
+            <li>
+              <strong>La Cittadella dei Meccanismi:</strong> la parte più
+              antica, costruita dagli gnomi. Contiene torri a ingranaggi,
+              laboratori e una biblioteca sotterranea che raccoglie antichi
+              schemi di macchine del vento.{" "}
+            </li>
+            <br />
             <li>
               <strong>Il Ponte del Respiro: </strong>un colossale ponte
               fortificato che collega le due metà della città, decorato con rune
               elfiche che reagiscono al soffio del vento.{" "}
             </li>
             <br />
-            <li><strong>Il Porto dei Sussurri: </strong>zona commerciale e cuore
-            economico. I moli antichi, scolpiti con volti di divinità
-            dimenticate, sussurrano quando il vento cambia direzione.</li> <br />
-            <li><strong>Il Tempio
-            di Syrael: </strong>eretto su un’altura a nord, con un’enorme campana eolica
-            che non smette mai di suonare. </li> <br />
-            <li><strong>Le Case del Fiume: </strong>quartiere misto
-            abitato da elfi, umani e gnomi, dove le case sono costruite su
-            palafitte e illuminate da lanterne che si spengono solo quando il
-            vento tace.</li>
+            <li>
+              <strong>Il Porto dei Sussurri: </strong>zona commerciale e cuore
+              economico. I moli antichi, scolpiti con volti di divinità
+              dimenticate, sussurrano quando il vento cambia direzione.
+            </li>{" "}
+            <br />
+            <li>
+              <strong>Il Tempio di Syrael: </strong>eretto su un’altura a nord,
+              con un’enorme campana eolica che non smette mai di suonare.{" "}
+            </li>{" "}
+            <br />
+            <li>
+              <strong>Le Case del Fiume: </strong>quartiere misto abitato da
+              elfi, umani e gnomi, dove le case sono costruite su palafitte e
+              illuminate da lanterne che si spengono solo quando il vento tace.
+            </li>
           </ul>
           <br />
           <h4 style={{ textAlign: "left" }}>Punti di Interesse</h4>
@@ -290,7 +299,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>La Fucina di Vulkan</span>
+              <span>La forgia di Hokum</span>
             </li>
             <li
               style={{
@@ -305,7 +314,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>Il Mercato del Macellaio e del Pescatore</span>
+              <span>Il Mercato del vento</span>
             </li>
             <li
               style={{
@@ -320,7 +329,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>L'Oracolo dell'Arcanista</span>
+              <span>Ahnto l´arcanista</span>
             </li>
             <li
               style={{
@@ -335,7 +344,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>La Grande Biblioteca</span>
+              <span>La Santa Biblioteca</span>
             </li>
             <li
               style={{
@@ -350,7 +359,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>Il Maniero Ducale</span>
+              <span>La Rocca di Athilien</span>
             </li>
             <li
               style={{
@@ -365,7 +374,7 @@ export default function Geo() {
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>I Moli dell'Emissario</span>
+              <span>Approdo alto</span>
             </li>
             <li
               style={{
@@ -392,11 +401,11 @@ export default function Geo() {
               }}
             >
               <img
-                src="/public/assets/icons/leather.png"
+                src="/public/assets/icons/axe.png"
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>Conciapelli</span>
+              <span>Il Taglialegna</span>
             </li>
             <li
               style={{
@@ -419,58 +428,76 @@ export default function Geo() {
 
         <ToggleSection title="The Golden Castle - Ohzkie" defaultOpen={false}>
           <img
-            src="/assets/Yotta.jpg"
+            src="/assets/Golden_castle.png"
             alt="Mappa dettagliata di Yotta"
             className="city-img"
           />
           <br />
-          <span className="start">T</span>irrendale, gemma incastonata tra le
-          braccia del mare e l'abbraccio silente del bosco, è il cuore pulsante
-          di Vathrindor. La città si erge, vetusta e gloriosa, attorno al Fiume
-          Tirreno, le cui acque scendono dalle montagne come lacrime
-          primordiali. <br />
-          Narrano le saghe e gli antichi tomi che questo fiume fu il primo alito
-          vitale di Eldoria, nato dal dolore e dal sacrificio dei giganti caduti
-          nell'eclatante scontro tra Ny e Ouh, le divinità della luce e
-          dell'oscurità che forgiarono il mondo. Un'aura di sacralità e forza
-          ancestrale pervade le sue sponde. <br />
+          <span className="start">S</span>ituato nel continente più a nord di
+          Eldoria, tra le nebbie eterne e le gelide correnti del Mare Argenteo,
+          sorge il leggendario Golden Castle, la fortezza che mai conobbe
+          sconfitta. Le sue mura dorate riflettono la luce anche quando il sole
+          non sorge, e secondo le cronache più antiche, ciò avviene grazie alla
+          Benedizione del Drago Aurexion, il grande drago dorato che un tempo
+          dimorava sulla vicina Montagna Alata di Auramyr.
           <br />
-          <h4>Baluardi e Cuori della Città</h4>
+          <br />
+          <h4>Auramyr, la Montagna Alata</h4>
           <ul>
             <li>
-              <strong>Il Fiume Tirreno (Il Pianto dei Giganti):</strong> Il
-              fiume non è solo un confine liquido, ma l'anima stessa di
-              Tirrendale, le sue correnti un perpetuo promemoria dell'equilibrio
-              cosmico.
+              <strong>La Montagna Alata </strong>non prende il nome da un caso.
+              Le sue vette sono scolpite da antiche raffiche magiche, e si dice
+              che, durante il regno di Aurexion, le cime si muovessero come ali
+              d’oro sotto la luce del tramonto. Il drago, una creatura di luce e
+              saggezza, vegliava sul nord come un dio dimenticato. Donò parte
+              del suo potere agli uomini che vivevano nella valle, giurando
+              protezione a chi non avrebbe mai brandito le armi contro la
+              conoscenza e la verità.
             </li>
             <li>
-              <strong>La Rocca Ducale (Maniero Eothen):</strong> Sorge a
-              mezzogiorno, dimora del nobile <strong>Duca Eothen</strong>. La
-              sua architettura riflette la sua saggezza: il potere risiede nella
-              stabilità, non nell'ostentazione vana.
+              <strong>
+                {" "}
+                Ma quando gli alchimisti della Torre del Richiamo{" "}
+              </strong>
+              iniziarono a distorcere la magia del vento e del tempo, Aurexion
+              abbandonò la montagna, lasciando dietro di sé una scia di cenere
+              dorata che ancora oggi cade come neve lucente sulle sue pendici.
             </li>
             <li>
-              <strong>Il Grande Emissario (Il Porto):</strong> A levante, questo
-              vasto porto è il respiro vitale di Tirrendale, un crocevia di
-              razze e merci.
+              <strong>La Torre del Richiamo e l’Ordine di Aetherion: </strong>{" "}
+              La Torre del Richiamo, oggi silenziosa e spezzata dalle tempeste,
+              era un tempo il cuore pulsante dell’Ordine di Aetherion, un gruppo
+              di maghi e alchimisti che studiava i “Richiami” — risonanze arcane
+              in grado di piegare le leggi naturali. L’Ordine riuscì a evocare
+              presenze provenienti da altri piani, ma le loro sperimentazioni
+              divennero sempre più pericolose, finché una notte il cielo si
+              squarciò e la torre rimase segnata da un vortice perpetuo. Molti
+              credono che le loro anime siano ancora intrappolate tra i piani, e
+              che il vento attorno alla torre non sia altro che il loro sussurro
+              eterno.
             </li>
             <li>
-              <strong>Armonia delle Stirpi:</strong> Tirrendale è un crogiolo
-              dove Umani, Elfi, Orchi, Nani e molte altre genti si incontrano e
-              convivono.
+              <strong>
+                Il Conte Vaelor D’Auryn – Il Signore del Castello Dorato:
+              </strong>
+              Il Conte Vaelor D’Auryn, ultimo discendente della stirpe
+              gnomico-elfica dei D’Auryn, costruì il Golden Castle sulle rovine
+              di un antico santuario di Aurexion. Si dice che, quando pose la
+              prima pietra, il vento stesso si fermò, come per benedirlo. Vaelor
+              era un uomo temuto e rispettato: spietato con i nemici, ma giusto
+              con i suoi. Si racconta che fece impalare intere compagnie di
+              banditi che tentarono di scalare le mura, e che lanciò
+              personalmente gli invasori nelle gole di Auramyr. Nessuno ha mai
+              violato il suo castello: le frecce rimbalzavano, le catapulte si
+              spezzavano, e i maghi vedevano i loro incantesimi dissolversi
+              nell’aria. Molti credono che Vaelor avesse stretto un patto con
+              Aurexion stesso, ricevendone la Benedizione del Sole Spezzato — un
+              frammento d’anima draconica incastonato nel suo cuore. Da allora,
+              nessun assedio ha mai potuto oscurare il bagliore dorato del
+              Golden Castle.
             </li>
             <br />
-            <h4>Voci del Passato e del Presente</h4>
-            <li>
-              <strong>L'Osteria dei Tre Incroci:</strong> La locanda più
-              rinomata, edificata sul punto dove tre vie maestre si
-              congiungevano in un umile villaggio.
-            </li>
-            <li>
-              <strong>Il Sepolcreto di Illote (a Nord-Ovest):</strong> Vasto
-              campo santo, dimora eterna del defunto{" "}
-              <strong>Duca Illote</strong>.
-            </li>
+            
           </ul>
           <br />
           <h4 style={{ textAlign: "left" }}>Punti di Interesse</h4>
@@ -484,11 +511,11 @@ export default function Geo() {
               }}
             >
               <img
-                src="/public/assets/icons/business.png"
+                src="/public/assets/icons/alchemy.svg"
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>La Fucina di Vulkan</span>
+              <span>L´alchimista Baelon</span>
             </li>
             <li
               style={{
@@ -499,11 +526,11 @@ export default function Geo() {
               }}
             >
               <img
-                src="/public/assets/icons/market.png"
+                src="/public/assets/icons/prison.svg"
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>Il Mercato del Macellaio e del Pescatore</span>
+              <span>Le segrete di Vaelor</span>
             </li>
             <li
               style={{
@@ -514,108 +541,17 @@ export default function Geo() {
               }}
             >
               <img
-                src="/public/assets/icons/hypnosis.png"
+                src="/public/assets/icons/pvp.png"
                 alt="icon"
                 style={{ width: "24px", height: "24px" }}
               />
-              <span>L'Oracolo dell'Arcanista</span>
+              <span>L´arena Dorata</span>
             </li>
-            <li
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/public/assets/icons/reading-book.png"
-                alt="icon"
-                style={{ width: "24px", height: "24px" }}
-              />
-              <span>La Grande Biblioteca</span>
-            </li>
-            <li
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/public/assets/icons/castle.png"
-                alt="icon"
-                style={{ width: "24px", height: "24px" }}
-              />
-              <span>Il Maniero Ducale</span>
-            </li>
-            <li
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/public/assets/icons/anchor.png"
-                alt="icon"
-                style={{ width: "24px", height: "24px" }}
-              />
-              <span>I Moli dell'Emissario</span>
-            </li>
-            <li
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/public/assets/icons/cemetery.png"
-                alt="icon"
-                style={{ width: "24px", height: "24px" }}
-              />
-              <span>Il Sepolcreto</span>
-            </li>
-
-            <li
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/public/assets/icons/leather.png"
-                alt="icon"
-                style={{ width: "24px", height: "24px" }}
-              />
-              <span>Conciapelli</span>
-            </li>
-            <li
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "10px",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/public/assets/icons/restaurant.png"
-                alt="icon"
-                style={{ width: "24px", height: "24px" }}
-              />
-              <span>Taverne</span>
-            </li>
+            
           </ul>
         </ToggleSection>
         {/* FINE DELLA SEZIONE TOGGLE (Punti di Interesse) */}
 
-        <p>Qui aggiungerai gli oggetti e gli scambi segreti.</p>
       </section>
     </section>
   );
