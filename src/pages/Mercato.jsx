@@ -59,16 +59,25 @@ const ItemCard = ({ item, isMaster }) => {
       );
     }
   };
-
-  let displayPrice;
-  if (isSold) {
-    displayPrice = `VENDUTO`;
+  
+let displayPrice;
+  
+  // 🎯 LOGICA AGGIORNATA PER MOSTRARE IL VINCITORE DOPO LA FINALIZZAZIONE
+  if (isSold && item.auctionStatus === 'Venduto' && item.soldTo) {
+      // Caso 1: Asta Finalizzata con vincitore
+      displayPrice = `VENDUTO a ${item.soldTo.split('@')[0]}`;
+  } else if (isSold && item.auctionStatus === 'Scaduta senza offerte') {
+      // Caso 2: Asta Finalizzata senza offerte
+      displayPrice = `ASTA FALLITA`;
+  } else if (isSold && isFixedPrice) {
+      // Caso 3: Compra Subito
+      displayPrice = `VENDUTO (Prezzo Fisso)`;
   } else if (isFixedPrice) {
-    displayPrice = `Prezzo Fisso: ${item.price} MP`;
+      displayPrice = `Prezzo Fisso: ${item.price} MP`;
   } else if (hasExpired) {
-    displayPrice = `ASTA TERMINATA`;
+      displayPrice = `ASTA TERMINATA`;
   } else {
-    displayPrice = `Base Asta: ${item.startingBid} MP`;
+      displayPrice = `Base Asta: ${item.startingBid} MP`;
   }
 
   // Usa 'class' per la rarità e normalizza la classe per un eventuale stile CSS
