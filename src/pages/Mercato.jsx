@@ -13,8 +13,9 @@ const ITEM_TYPES = [
   "Accessori",
   "Artefatto Magico",
   "Pozioni",
-  "Pergamne",
+  "Pergamene",
   "Reagenti",
+  "Varie",
 ];
 const RARITIES = ["Comune", "Raro", "Magico", "Epico", "Leggendario"];
 const MASTER_EMAIL = "santomassimo85@gmail.com"; // 🎯 Definisci MASTER_EMAIL qui
