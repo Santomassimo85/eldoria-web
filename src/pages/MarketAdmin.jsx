@@ -21,8 +21,9 @@ const ITEM_TYPES = [
   "Accessori",
   "Artefatto Magico",
   "Pozioni",
-  "Pergamne",
+  "Pergamene",
   "Reagenti",
+  "Varie",
 ];
 
 const initialFormData = {
