@@ -679,7 +679,7 @@ h4 {
 
 /* 🎯 CLASSE DI ESPANSIONE: L'item card prende l'altezza dal contenuto */
 .item-card.admin-card-expanded {
-    height: auto !important;
+    height: 900px !important;
     /* Forza l'altezza dinamica */
     overflow: visible;
 }
