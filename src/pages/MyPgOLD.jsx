@@ -5,9 +5,8 @@ import { useAuth } from '../AuthContext';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore'; 
 
-// ⚠️ Mappa di Base: NON useremo Roll20, ma la usiamo come fallback per i PG
+// Mappa di Base: NON useremo Roll20, ma la usiamo come fallback per i PG
 const CHARACTER_MAP = {
-    // ESEMPIO DI MAPPATURA (SOLO PER NOME/UID)
     "UID_DI_GARROTH": { name: "Garroth R. - Il Cacciatore", race: "Mezz'elfo", class: "Ranger"}, 
     "UID_DI_TANAGAR": { name: "Tanagar - Il Muro Psionico", race: "Mezz'orco", class: "Guerriero"},
     "UID_DI_CAIUS": { name: "Caius N. - Il Negromante", race: "Umano", class: "Negromante"},
@@ -61,7 +60,7 @@ export default function MyPg() {
 
             <div className="character-sheet-container" style={{maxWidth: '800px', margin: '30px auto', padding: '20px', border: '2px solid var(--gold)', borderRadius: '10px', backgroundColor: '#1e1e1e'}}>
                 
-                {/* 🎯 SEZIONE 1: Statistiche base (DOVRAI INSERIRE QUESTI DATI MANUALMENTE) */}
+                {/* SEZIONE 1: Statistiche base (DOVRAI INSERIRE QUESTI DATI MANUALMENTE) */}
                 <h2>Statistiche Base</h2>
                 <div style={{display: 'flex', justifyContent: 'space-around', margin: '20px 0'}}>
                     {['FOR', 'DES', 'COS', 'INT', 'SAG', 'CAR'].map(stat => (
@@ -75,7 +74,7 @@ export default function MyPg() {
 
                 <hr style={{borderColor: '#444'}}/>
 
-                {/* 🎯 SEZIONE 2: Background e Inventario (Dati ricchi, ideali per HTML) */}
+                {/* SEZIONE 2: Background e Inventario (Dati ricchi, ideali per HTML) */}
                 <h2>Background & Inventario</h2>
                 <div dangerouslySetInnerHTML={{ __html: finalData.bio || 'Nessuna biografia/inventario caricato.' }} style={{color: '#ccc', lineHeight: '1.4'}}/>
                 

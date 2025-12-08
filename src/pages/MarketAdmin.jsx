@@ -3,12 +3,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
-// src/pages/MarketAdmin.jsx (IMPORT CORRETTO)
+// src/pages/MarketAdmin.jsx (IMPORT FIREBASE)
 
 import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, getDoc, runTransaction, deleteField } from 'firebase/firestore';
 
 
-// Assicurati che questo percorso corrisponda a dove hai salvato il tuo file
+
 import { createMarketItem } from "../utils/itemTemplates";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -60,7 +60,6 @@ export default function MarketAdmin() {
     );
   }
 
-  // --- LOGICA DI CARICAMENTO DATI (omessa per brevità, è corretta) ---
   const fetchItems = async () => {
     try {
       const itemsCollection = collection(db, "items");
@@ -115,7 +114,7 @@ export default function MarketAdmin() {
     loadData();
   }, [id]);
 
-  // --- GESTIONE FORM E CRUD (omessa per brevità, è corretta) ---
+  // --- GESTIONE FORM E CRUD ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -190,7 +189,7 @@ export default function MarketAdmin() {
     }
   };
 
-  // 🎯 FUNZIONE CHIAVE: FINALIZZA ASTA (assegna vincitore e rimborsa perdenti)
+  // FUNZIONE CHIAVE: FINALIZZA ASTA (assegna vincitore e rimborsa perdenti)
 const handleFinalizeAuctionAndRefund = async (itemId) => {
     if (!window.confirm("Sei sicuro di voler FINALIZZARE l'asta? Questo rimborserà tutti i partecipanti tranne l'offerente più alto, che si aggiudicherà l'oggetto.")) return;
 
@@ -217,7 +216,6 @@ const handleFinalizeAuctionAndRefund = async (itemId) => {
                 transaction.update(itemRef, { 
                     isRefunded: true, 
                     isSold: true, // Segna come risolto per toglierlo dalla lista principale
-                    // Opzionale: puoi aggiungere un campo per chiarezza
                     auctionStatus: 'Scaduta senza offerte'
                 }); 
                 setStatus(`✅ Asta finalizzata! Nessuna offerta. Oggetto segnato come risolto.`);
@@ -268,7 +266,7 @@ const handleFinalizeAuctionAndRefund = async (itemId) => {
     winningBid: winningBid,
     soldTo: bidderEmails[winnerUid],
     auctionStatus: 'Venduto',
-    // 🎯 CORREZIONE CHIAVE QUI: FieldValue.delete() -> deleteField()
+    // CORREZIONE CHIAVE QUI: FieldValue.delete() -> deleteField()
     bids: deleteField(),
     bidderEmails: deleteField(),
 };
@@ -359,7 +357,7 @@ transaction.update(itemRef, updates);
 
         <hr />
 
-        {/* 🎯 SELETTORE TIPO VENDITA */}
+        {/* SELETTORE TIPO VENDITA */}
         <div className="form-group full-width" style={{ marginBottom: "15px" }}>
           <label>Modalità di Vendita:</label>
           <select
@@ -372,7 +370,7 @@ transaction.update(itemRef, updates);
           </select>
         </div>
 
-        {/* 🎯 CAMPI CONDIZIONALI */}
+        {/* CAMPI CONDIZIONALI */}
         {formData.saleType === "fixed" ? (
           <input
             name="price"
@@ -481,7 +479,7 @@ transaction.update(itemRef, updates);
                       X
                     </button>
 
-                    {/* 🎯 PULSANTE DI FINALIZZAZIONE ASTA */}
+                    {/* PULSANTE DI FINALIZZAZIONE ASTA */}
                     {item.saleType === "auction" && !item.isRefunded && (
                       <button
                         onClick={() => handleFinalizeAuctionAndRefund(item.id)}

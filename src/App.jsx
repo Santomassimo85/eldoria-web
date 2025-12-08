@@ -9,16 +9,16 @@ import ItemDetail from "./pages/ItemDetail";
 import AdminPanel from "./pages/AdminPanel"; // Dashboard Admin
 import MarketAdmin from "./pages/MarketAdmin"; // Gestione Item (CRUD)
 import SummaryAdmin from "./pages/SummaryAdmin"; // Gestione Riassunti (CRUD)
-import PgSheetEditor from "./pages/PgSheetEditor"; // 🎯 NUOVO IMPORT
-import PlatinumAdmin from "./pages/PlatinumAdmin"; // 🎯 NUOVO IMPORT
+import PgSheetEditor from "./pages/PgSheetEditor"; 
+import PlatinumAdmin from "./pages/PlatinumAdmin"; 
 
 import "./style.css";
 
-// 🔑 AUTH IMPORTS
+// UTH IMPORTS
 import { AuthProvider, useAuth } from "./AuthContext";
 import LoginDropdown from "./LoginDropdown";
 
-// 🎯 VARIABILE MASTER DEFINITA PER IL CONTROLLO DELLA UI
+// VARIABILE MASTER DEFINITA PER IL CONTROLLO DELLA UI
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
 
 // --- Componente per la Navigazione Master Condizionale ---
@@ -70,7 +70,7 @@ export default function App() {
           }}
           aria-label="Apri menu"
         >
-          {/* 🎯 NUOVA STRUTTURA SEMPLICE: Tre linee <span> */}
+          {/* NUOVA STRUTTURA SEMPLICE: Tre linee <span> */}
           <span className="line line-1"></span>
           <span className="line line-2"></span>
           <span className="line line-3"></span>

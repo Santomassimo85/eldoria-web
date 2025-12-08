@@ -1,8 +1,8 @@
 // src/pages/Riassunti.jsx 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import ToggleSection from "./ToggleSection"; // Presupponendo che questo componente esista
-import { db } from '../firebase'; // Assicurati che il percorso sia corretto
+import ToggleSection from "./ToggleSection"; 
+import { db } from '../firebase'; 
 import { collection, getDocs } from 'firebase/firestore';
 
 export default function Riassunti() {
@@ -34,7 +34,7 @@ export default function Riassunti() {
     // --- Raggruppamento per Party ---
     const groupedSummaries = useMemo(() => {
         return allSummaries.reduce((acc, summary) => {
-            const partyKey = summary.party || 'AMEA'; // Usa AMEA come fallback
+            const partyKey = summary.party || 'AMEA'; // AMEA come fallback
             if (!acc[partyKey]) {
                 acc[partyKey] = [];
             }

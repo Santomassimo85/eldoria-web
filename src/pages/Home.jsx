@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import Countdown from './Countdown'; // Importa il nuovo componente
+import Countdown from './Countdown'; 
 
 export default function Home() {
   const [visible, setVisible] = useState(true);
@@ -18,13 +18,13 @@ export default function Home() {
     // Usa un container per applicare il layout a griglia su schermi grandi
     <div className="home-grid-container">
       
-      {/* 🧭 COLONNA 1: SIDEBAR (Visibile solo su schermi grandi) */}
+      {/* COLONNA 1: SIDEBAR (Visibile solo su schermi grandi) */}
       <div className="sidebar-data">
         <Countdown />
         {/* Potresti aggiungere qui altre informazioni importanti */}
       </div>
 
-      {/* 📚 COLONNA 2: CONTENUTO PRINCIPALE */}
+      {/* COLONNA 2: CONTENUTO PRINCIPALE */}
       <section className="main-content">
         <img
           src="/assets/creation.png"

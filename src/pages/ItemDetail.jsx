@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-import { db } from "../firebase"; // Assicurati che il percorso sia corretto
+import { db } from "../firebase"; 
 import {
   doc,
   onSnapshot,
@@ -12,7 +12,7 @@ import {
   runTransaction,
 } from "firebase/firestore";
 
-// ⚠️ VARIABILE CRITICA: L'URL DEL TUO WEBHOOK PER LE NOTIFICHE AL DM
+// VARIABILE CRITICA: L'URL DEL TUO WEBHOOK PER LE NOTIFICHE AL DM
 const NOTIFICATION_WEBHOOK_URL = "https://eoftih1a36e46sq.m.pipedream.net";
 // Definizione del percorso base della tua applicazione per costruire il link
 const APP_BASE_URL = window.location.origin;
@@ -158,7 +158,7 @@ export default function ItemDetail() {
         `✅ Oggetto venduto a te per ${item.price} MP! Contatta il DM per la consegna.`
       );
 
-      // 🎯 AGGIORNAMENTO PAYLOAD VENDITA FISSA
+      // AGGIORNAMENTO PAYLOAD VENDITA FISSA
       const itemDataForNotification = {
         id,
         name: item?.name,
@@ -300,7 +300,7 @@ export default function ItemDetail() {
     }
   };
 
-  // 🎯 FUNZIONE: ELIMINA OFFERTA E RIMBORSA
+  // FUNZIONE: ELIMINA OFFERTA E RIMBORSA
   const handleDeleteOffer = async () => {
     if (!currentUser || !userBid) return; // userBid è l'offerta attuale dell'utente
 
@@ -341,11 +341,11 @@ export default function ItemDetail() {
       });
 
       setMessage(
-        `🗑️ Offerta di ${offerToRefund} MP annullata con successo! L'importo è stato rimborsato.`
+        `Offerta di ${offerToRefund} MP annullata con successo! L'importo è stato rimborsato.`
       );
       setOffer("");
 
-      // Puoi anche inviare una notifica di annullamento al DM qui se necessario
+      
     } catch (error) {
       let errorMessage = typeof error === "string" ? error : error.message;
       setMessage(`❌ Errore durante l'annullamento: ${errorMessage}`);
@@ -415,7 +415,7 @@ export default function ItemDetail() {
             </strong>
           </p>
 
-          {/* 🎯 COUNTDOWN (h3) Condizionale per Aste */}
+          {/* COUNTDOWN (h3) Condizionale per Aste */}
           {isAuction && item.endDate && (
             <h3 className="countdown-title">
               <Countdown endDate={item.endDate} />
@@ -439,7 +439,7 @@ export default function ItemDetail() {
           <hr />
 
           <h2>Descrizione</h2>
-          {/* ⚠️ Descrizione renderizzata come HTML */}
+          {/* Descrizione renderizzata come HTML */}
           <div
             className="detail-description"
             dangerouslySetInnerHTML={{ __html: item.description }}

@@ -72,7 +72,7 @@ const LoginDropdown = ({ closeMenu = () => {} }) => {
         navigate('/'); // Opzionale: reindirizza alla homepage
     };
 
-    // 🎯 FUNZIONE CORRETTA: NAVIGA INTERNAMENTE
+    // FUNZIONE CORRETTA: NAVIGA INTERNAMENTE
     const handleOpenSheet = () => {
         // Non aprire un link esterno, ma naviga alla nuova pagina editor
         navigate('/my-pg'); 
@@ -104,7 +104,7 @@ const LoginDropdown = ({ closeMenu = () => {} }) => {
                         </div>
                         <hr className="menu-divider" />
 
-                        {/* 🎯 VOCE AGGIORNATA: Chiama la navigazione interna */}
+                        {/* VOCE AGGIORNATA: Chiama la navigazione interna */}
                         <a 
                             onClick={handleOpenSheet} 
                             className="menu-item"

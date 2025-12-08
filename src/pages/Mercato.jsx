@@ -18,7 +18,7 @@ const ITEM_TYPES = [
   "Varie",
 ];
 const RARITIES = ["Comune", "Raro", "Magico", "Epico", "Leggendario"];
-const MASTER_EMAIL = "santomassimo85@gmail.com"; // 🎯 Definisci MASTER_EMAIL qui
+const MASTER_EMAIL = "santomassimo85@gmail.com"; // Definisci MASTER_EMAIL qui
 
 // --- COMPONENTE CARD ---
 const ItemCard = ({ item, isMaster }) => {
@@ -63,7 +63,7 @@ const ItemCard = ({ item, isMaster }) => {
   
 let displayPrice;
   
-  // 🎯 LOGICA AGGIORNATA PER MOSTRARE IL VINCITORE DOPO LA FINALIZZAZIONE
+  // LOGICA AGGIORNATA PER MOSTRARE IL VINCITORE DOPO LA FINALIZZAZIONE
   if (isSold && item.auctionStatus === 'Venduto' && item.soldTo) {
       // Caso 1: Asta Finalizzata con vincitore
       displayPrice = `VENDUTO a ${item.soldTo.split('@')[0]}`;
@@ -84,7 +84,7 @@ let displayPrice;
   // Usa 'class' per la rarità e normalizza la classe per un eventuale stile CSS
   const rarityClass = (item.class || "Comune").replace(/\s/g, "");
 
-  /// 🎯 LOGICA VISTA DM
+  /// LOGICA VISTA DM
     let dmInfo = null;
     if (isMaster) {
         if (isFixedPrice && isSold) {
@@ -99,7 +99,7 @@ let displayPrice;
   }
 
   return (
-        // 🎯 APPLICA LA NUOVA CLASSE SOLO SE MASTER
+        // APPLICA LA NUOVA CLASSE SOLO SE MASTER
         <div 
             className={`item-card ${statusClass} ${isMaster ? 'admin-card-expanded' : ''}`} 
             onClick={handleCardClick} 
@@ -121,7 +121,7 @@ let displayPrice;
                 {dmInfo} {/* MOSTRA INFORMAZIONI SOLO AL MASTER */}
             </div>
 
-            {/* 🎯 LISTA OFFERTE SEMPRE VISIBILE PER DM (Ora contenuta nell'altezza auto) */}
+            {/* LISTA OFFERTE SEMPRE VISIBILE PER DM (Ora contenuta nell'altezza auto) */}
             {isMaster && isAuction && bidsArray.length > 0 && (
                 <div style={{ padding: '5px', borderTop: '1px solid #555', backgroundColor: '#1c1c1c' }}>
                     <h4 style={{ margin: '0 0 5px', fontSize: '0.9em', color: 'var(--gold)' }}>Offerte Ricevute:</h4>
@@ -142,7 +142,7 @@ let displayPrice;
 
 export default function Mercato() {
   const { currentUser } = useAuth();
-  const isMaster = currentUser && currentUser.email === MASTER_EMAIL; // 🎯 Check Master
+  const isMaster = currentUser && currentUser.email === MASTER_EMAIL; // Check Master
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +170,7 @@ export default function Mercato() {
 
   useEffect(() => {
     fetchItems();
-    // Aggiorna la lista ogni 60 secondi per riflettere le scadenze (approssimativo)
+    // Aggiorna la lista ogni 60 secondi per riflettere le scadenze 
     const interval = setInterval(fetchItems, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -268,7 +268,7 @@ export default function Mercato() {
 
       <div className="items-grid">
         {filteredItems.map((item) => (
-          // 🎯 Passa la prop isMaster al componente ItemCard
+          // Passa la prop isMaster al componente ItemCard
 <ItemCard key={item.id} item={item} isMaster={isMaster} />
         ))}
         {!loading && filteredItems.length === 0 && (

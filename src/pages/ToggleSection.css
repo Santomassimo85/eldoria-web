@@ -30,7 +30,6 @@
   letter-spacing: 1px;
 }
 .toggle-title.summaryTitle { 
-  /* Usa padding generoso per raggiungere i 300px di altezza visiva */
   padding-top: 100px; 
   padding-bottom: 100px; 
 
@@ -61,7 +60,6 @@
 
 /* 3. MEDIA QUERY PER LA RESPONSIVITÀ (summaryTitle) */
 @media (max-width: 800px) {
-  /* Riduci l'altezza del titolo su mobile */
   .toggle-title.summaryTitle {
     padding-top: 50px;
     padding-bottom: 50px;

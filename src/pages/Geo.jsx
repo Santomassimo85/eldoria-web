@@ -5,12 +5,7 @@ export default function Geo() {
     <section>
       <h1>Archivio Geomantico</h1>
       <section className="city">
-        {/* L'immagine, lasciata intatta */}
-        {/* <img
-                src="/assets/Tirrendale.jpg"
-                alt="Tirrendale"
-                className="city-img"
-            />{" "} */}
+        
         {/* INIZIO DELLA SEZIONE TOGGLE (Descrizione della Città) */}
         <ToggleSection
           title="Tirrendale - Capitale di Vathrindor"

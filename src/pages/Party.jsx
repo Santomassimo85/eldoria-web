@@ -1,6 +1,7 @@
 import React from 'react';
-import ToggleSection from './ToggleSection'; // Assumi che ToggleSection.jsx sia nella stessa cartella
+import ToggleSection from './ToggleSection'; 
 // import './Party.css'; 
+
 // Dati dei personaggi
 const partyData = {
   party1: [
@@ -51,7 +52,6 @@ export default function Party() {
         </div>
       </ToggleSection>
 
-      {/* Puoi aggiungere altre sezioni per futuri party o PNG */}
     </section>
   );
 }
