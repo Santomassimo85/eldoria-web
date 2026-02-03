@@ -1367,3 +1367,103 @@ a {
     padding: 10px;
     border-radius: 4px;
 }
+
+
+/* MARKET VOTE */
+
+.item-card { position: relative; }
+.vote-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.vote-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.9);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.vote-btn:active { transform: scale(0.95); }
+
+.vote-btn.up.active { background: rgba(0, 160, 80, 0.18); border-color: rgba(0, 160, 80, 0.35); }
+.vote-btn.down.active { background: rgba(200, 40, 40, 0.18); border-color: rgba(200, 40, 40, 0.35); }
+
+
+
+/* Container voti */
+.item-feedback-container {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 10px;
+}
+
+.vote-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.vote-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  filter: grayscale(0.5) opacity(0.7); /* Spento di default */
+}
+
+.vote-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  transition: transform 0.2s;
+}
+
+/* Effetto Hover */
+.vote-group:hover {
+  filter: grayscale(0) opacity(1);
+}
+
+.vote-group:hover .vote-icon {
+  transform: scale(1.2);
+}
+
+/* Quando l'utente ha cliccato */
+.active-up {
+  filter: grayscale(0) drop-shadow(0 0 5px #2ecc71) opacity(1);
+}
+
+.active-down {
+  filter: grayscale(0) drop-shadow(0 0 5px #e74c3c) opacity(1);
+}
+
+.vote-count {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: rgb(5, 0, 0);
+  margin-top: 2px;
+}
+
+/* Stile per il Master */
+.admin-voters-list {
+  font-size: 0.65rem;
+  margin-top: 8px;
+  background: rgba(232, 239, 205, 0.4);
+  padding: 5px;
+  border-radius: 5px;
+}
+
+.text-green { color: #2ecc71; margin: 0; }
+.text-red { color: #e74c3c; margin: 0; }
