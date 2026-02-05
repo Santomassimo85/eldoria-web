@@ -191,7 +191,7 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
               onClick={(e) => handleVote(e, "up")}
             >
               <img
-                src="/src/assets/like.png"
+                src="/assets/like.png"
                 alt="Like"
                 className="vote-icon"
               />
@@ -204,7 +204,7 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
               onClick={(e) => handleVote(e, "down")}
             >
               <img
-                src="/src/assets/dislike.png"
+                src="/assets/dislike.png"
                 alt="Dislike"
                 className="vote-icon"
               />
