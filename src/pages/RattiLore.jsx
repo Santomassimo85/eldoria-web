@@ -34,6 +34,18 @@ export default function RattiLore() {
           ma la chiave per accedere alle risorse più rare di Eldoria. Interagire con il Mercato Nero significa dimostrare 
           la propria astuzia: ogni offerta piazzata e ogni affare concluso aumenta la tua influenza nel sottosuolo.
         </p>
+        <br /><br /><br />
+
+    <h4>
+            🐀 <strong>COME FUNZIONA LA REPUTAZIONE?</strong><br />
+    </h4>
+        <p>
+          Ogni acquisto effettuato nel Mercato Nero ti fa guadagnare Punti Ratto (PR). Più alto è il tuo livello di Ratto, 
+          più vantaggi sblocchi, come sconti esclusivi, accesso a oggetti nascosti e persino poteri temporanei. 
+          Ma attenzione: i Ratti sono sempre alla ricerca di nuovi membri, e la tua reputazione è la tua moneta più preziosa. Riuscirai a scalare le gerarchie del sottosuolo e diventare una leggenda tra i Ratti? <br
+    /> <br />
+    Ovviamente i criminali piú pericolosi di eldoria sono continuamente alla ricerca di tesori...e questo fa di voi delle possibili prede.
+          </p>
 
         <h2 style={{ color: "var(--red)", marginTop: "40px" }}>Gradi di Reputazione</h2>
         <table className="ratto-table" style={{ width: "100%", marginTop: "20px", borderCollapse: "collapse" }}>
