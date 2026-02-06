@@ -9,8 +9,7 @@ import {
   getDocs,
   doc,
   updateDoc,
-  arrayUnion,
-  arrayRemove,
+  onSnapshot
 } from "firebase/firestore";
 
 // ARRAY USATI PER I FILTRI (DEVONO CORRISPONDERE A MarketAdmin.jsx)
@@ -24,6 +23,28 @@ const ITEM_TYPES = [
   "Reagenti",
   "Varie",
 ];
+
+const RATTO_LEVELS = [
+    { lv: 0, min: 0, name: "Estraneo" },
+    { lv: 1, min: 5, name: "Simpatizzante" },
+    { lv: 2, min: 15, name: "Informatore" },
+    { lv: 3, min: 30, name: "Ricettatore" },
+    { lv: 4, min: 50, name: "Veterano" },
+    { lv: 5, min: 80, name: "Ombra di Obia" },
+  ];
+
+  const getRattoLevel = (points) => {
+    return (
+      [...RATTO_LEVELS].reverse().find((l) => points >= l.min) ||
+      RATTO_LEVELS[0]
+    );
+  };
+
+  const getNextRattoLevel = (points) => {
+  return RATTO_LEVELS.find(l => points < l.min) || null; // Ritorna il prossimo livello o null se è al max
+};
+
+
 const RARITIES = ["Comune", "Raro", "Magico", "Epico", "Leggendario"];
 const MASTER_EMAIL = "santomassimo85@gmail.com"; // Definisci MASTER_EMAIL qui
 
@@ -43,45 +64,45 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
 
   // Logica offerte (solo per DM)
   const handleVote = async (e, type) => {
-  e.stopPropagation();
-  if (!currentUser) return alert("Devi essere loggato per votare!");
+    e.stopPropagation();
+    if (!currentUser) return alert("Devi essere loggato per votare!");
 
-  const itemRef = doc(db, 'items', item.id);
-  const userEmail = currentUser.email;
+    const itemRef = doc(db, "items", item.id);
+    const userEmail = currentUser.email;
 
-  // 1. Prepariamo i nuovi array localmente per un aggiornamento istantaneo
-  let newUp = [...(item.votes?.up || [])];
-  let newDown = [...(item.votes?.down || [])];
+    // 1. Prepariamo i nuovi array localmente per un aggiornamento istantaneo
+    let newUp = [...(item.votes?.up || [])];
+    let newDown = [...(item.votes?.down || [])];
 
-  if (type === 'up') {
-    if (newUp.includes(userEmail)) {
-      newUp = newUp.filter(email => email !== userEmail); // Togli Like
+    if (type === "up") {
+      if (newUp.includes(userEmail)) {
+        newUp = newUp.filter((email) => email !== userEmail); // Togli Like
+      } else {
+        newUp.push(userEmail); // Metti Like
+        newDown = newDown.filter((email) => email !== userEmail); // Togli eventuale Dislike
+      }
     } else {
-      newUp.push(userEmail); // Metti Like
-      newDown = newDown.filter(email => email !== userEmail); // Togli eventuale Dislike
+      if (newDown.includes(userEmail)) {
+        newDown = newDown.filter((email) => email !== userEmail); // Togli Dislike
+      } else {
+        newDown.push(userEmail); // Metti Dislike
+        newUp = newUp.filter((email) => email !== userEmail); // Togli eventuale Like
+      }
     }
-  } else {
-    if (newDown.includes(userEmail)) {
-      newDown = newDown.filter(email => email !== userEmail); // Togli Dislike
-    } else {
-      newDown.push(userEmail); // Metti Dislike
-      newUp = newUp.filter(email => email !== userEmail); // Togli eventuale Like
+
+    const newVotes = { up: newUp, down: newDown };
+
+    // 2. Aggiorna l'interfaccia SUBITO (senza aspettare il database)
+    onVoteLocal(item.id, newVotes);
+
+    // 3. Invia al database "silenziosamente"
+    try {
+      await updateDoc(itemRef, { votes: newVotes });
+    } catch (error) {
+      console.error("Errore nel salvataggio voto:", error);
+      alert("Errore nel salvataggio del voto!");
     }
-  }
-
-  const newVotes = { up: newUp, down: newDown };
-
-  // 2. Aggiorna l'interfaccia SUBITO (senza aspettare il database)
-  onVoteLocal(item.id, newVotes);
-
-  // 3. Invia al database "silenziosamente"
-  try {
-    await updateDoc(itemRef, { votes: newVotes });
-  } catch (error) {
-    console.error("Errore nel salvataggio voto:", error);
-    alert("Errore nel salvataggio del voto!");
-  }
-};
+  };
 
   const bidsArray =
     isAuction && item.bids
@@ -152,6 +173,8 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
     }
   }
 
+  
+
   return (
     // APPLICA LA NUOVA CLASSE SOLO SE MASTER
     <div
@@ -190,11 +213,7 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
               className={`vote-group ${item.votes?.up?.includes(currentUser?.email) ? "active-up" : ""}`}
               onClick={(e) => handleVote(e, "up")}
             >
-              <img
-                src="/assets/like.png"
-                alt="Like"
-                className="vote-icon"
-              />
+              <img src="/assets/like.png" alt="Like" className="vote-icon" />
               <span className="vote-count">{item.votes?.up?.length || 0}</span>
             </div>
 
@@ -286,11 +305,28 @@ export default function Mercato() {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterRarity, setFilterRarity] = useState("all");
 
-  // --- LOGICA DI CARICAMENTO DATI ---
+  const [currentUserData, setCurrentUserData] = useState(null);
+
+ // --- NUOVA LOGICA: ASCOLTO PUNTI UTENTE IN TEMPO REALE ---
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Crea un collegamento "live" col documento del personaggio
+    const userRef = doc(db, "characters", currentUser.uid);
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setCurrentUserData(docSnap.data());
+      }
+    }, (error) => {
+      console.error("Errore onSnapshot utente:", error);
+    });
+
+    // Pulisce il collegamento quando l'utente cambia pagina
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // --- LOGICA DI CARICAMENTO ITEM (Resta simile ma pulita) ---
   const fetchItems = async () => {
     setLoading(true);
     try {
@@ -308,6 +344,18 @@ export default function Mercato() {
     }
   };
 
+  useEffect(() => {
+    fetchItems();
+    // Aggiorna la lista ogni 60 secondi per le scadenze aste
+    const interval = setInterval(fetchItems, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterRarity, setFilterRarity] = useState("all");
+  
   useEffect(() => {
     fetchItems();
     // Aggiorna la lista ogni 60 secondi per riflettere le scadenze
@@ -342,6 +390,14 @@ export default function Mercato() {
       filtered = filtered.filter((item) => item.class === filterRarity);
     }
 
+    filtered = filtered.filter((item) => {
+      if (isMaster) return true; // Il Master vede tutto
+      const itemReq = item.minLevel || 0;
+      const userPoints = currentUserData?.rattoPoints || 0;
+      const userLevel = getRattoLevel(userPoints).lv;
+      return userLevel >= itemReq;
+    });
+
     // Ordina per item non venduti/scaduti, poi per prezzo
     return filtered.sort((a, b) => {
       const aStatus =
@@ -375,6 +431,53 @@ export default function Mercato() {
           ⚠️ VISTA MASTER ATTIVA: Dettagli Offerte visibili.
         </p>
       )}
+
+      {/* Cerca questo blocco in Mercato.jsx sotto il titolo H1 */}
+{currentUserData && (
+  <div className="ratto-progress-container" style={{
+    backgroundColor: "rgba(187, 153, 73, 0.5)",
+    padding: "15px",
+    borderRadius: "8px",
+    border: isMaster ? "1px solid var(--red)" : "1px solid var(--gold)", // Rosso se sei Master per distinguere
+    marginBottom: "20px",
+    textAlign: "center"
+  }}>
+    {isMaster && <span style={{ color: "var(--red)", fontSize: "0.7rem", fontWeight: "bold" }}>MODALITÀ TEST MASTER</span>}
+    
+    <p style={{ margin: "5px 0 10px 0", fontSize: "1.1rem" }}>
+      Ciao <strong>{currentUser.email.split('@')[0]}</strong>, hai <strong>{currentUserData.platinum || 0} MP</strong>
+    </p>
+    
+    <div className="ratto-status">
+      <p style={{ margin: "5px 0" }}>
+        Rango attuale: <span style={{ color: "var(--gold)" }}>{getRattoLevel(currentUserData.rattoPoints || 0).name} (Lv. {getRattoLevel(currentUserData.rattoPoints || 0).lv})</span>
+      </p>
+      
+      {getNextRattoLevel(currentUserData.rattoPoints || 0) ? (
+        <p style={{ fontSize: "0.9rem", color: "#ee5050" }}>
+          Progresso: <strong>{currentUserData.rattoPoints || 0}</strong> / <strong>{getNextRattoLevel(currentUserData.rattoPoints || 0).min}</strong> PR 
+          per il prossimo livello
+        </p>
+      ) : (
+        <p style={{ color: "var(--gold)" }}>✨ Massimo rango raggiunto!</p>
+      )}
+      
+      {/* Barra di progresso */}
+      {getNextRattoLevel(currentUserData.rattoPoints || 0) && (
+        <div style={{
+          width: "100%", height: "8px", backgroundColor: "#222",
+          borderRadius: "4px", marginTop: "10px", overflow: "hidden", border: "1px solid #444"
+        }}>
+          <div style={{
+            width: `${Math.min((currentUserData.rattoPoints || 0) / getNextRattoLevel(currentUserData.rattoPoints || 0).min * 100, 100)}%`,
+            height: "100%", backgroundColor: "var(--gold)", transition: "width 0.5s ease-in-out"
+          }}></div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
       <p>
         Qui puoi trovare oggetti rari e potenti. Le offerte sono *blind bid*,
         quindi l'offerta più alta vince allo scadere del tempo!
@@ -419,10 +522,18 @@ export default function Mercato() {
       <div className="items-grid">
         {filteredItems.map((item) => (
           // Passa la prop isMaster al componente ItemCard
-          <ItemCard key={item.id} item={item} isMaster={isMaster} 
-          onVoteLocal={(itemId, newVotes) => {
-      setItems(prev => prev.map(i => i.id === itemId ? {...i, votes: newVotes} : i));
-    }}/>
+          <ItemCard
+            key={item.id}
+            item={item}
+            isMaster={isMaster}
+            onVoteLocal={(itemId, newVotes) => {
+              setItems((prev) =>
+                prev.map((i) =>
+                  i.id === itemId ? { ...i, votes: newVotes } : i,
+                ),
+              );
+            }}
+          />
         ))}
         {!loading && filteredItems.length === 0 && (
           <p style={{ gridColumn: "1 / -1", textAlign: "center" }}>

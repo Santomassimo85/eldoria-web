@@ -1467,3 +1467,22 @@ a {
 
 .text-green { color: #2ecc71; margin: 0; }
 .text-red { color: #e74c3c; margin: 0; }
+
+
+
+/* SESSION RATTI */
+
+.ratto-table td {
+  background: rgba(228, 48, 48, 0.446);
+}
+.ratto-table tr:hover td {
+  background: rgba(223, 179, 37, 0.516); /* Un leggero tocco oro al passaggio */
+}
+.lore-page blockquote {
+  border-left: 4px solid var(--red);
+  padding-left: 15px;
+  font-style: italic;
+  margin: 20px 0;
+  color: #ccc;
+}
+

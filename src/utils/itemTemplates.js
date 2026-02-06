@@ -1,5 +1,3 @@
-// src/utils/itemTemplates.js
-
 /**
  * Funzione costruttrice per creare un oggetto Item Market standard per Firestore.
  * @param {object} data - Dati specifici dell'item.
@@ -22,29 +20,35 @@ export const createMarketItem = (data) => {
       : null;
 
   return {
+    // Dati base dell'oggetto
     name: data.name || "NUOVO ITEM SENZA NOME",
     type: data.type || "Generico",
     class: data.class || "Comune",
     saleType: data.saleType,
 
-    // Dati Prezzo/Asta
+    // Dati Economici / Asta
     price: data.saleType === "fixed" ? Number(data.price || 0) : 0,
-    startingBid:
-      data.saleType === "auction" ? Number(data.startingBid || 0) : 0,
+    startingBid: data.saleType === "auction" ? Number(data.startingBid || 0) : 0,
     endDate: endDateISO,
 
+    // Estetica e Info
     description: data.description || "Nessuna descrizione fornita dal Master.",
     img: data.img || "/assets/placeholder.jpg",
 
-    // --- AGGIUNGI DA QUI ---
+    // --- SISTEMA FEEDBACK ---
     votes: {
-      up: [], // Array per le email di chi mette like
-      down: [], // Array per le email di chi mette dislike
+      up: [],   // Array delle email dei player che mettono Like
+      down: [], // Array delle email dei player che mettono Dislike
     },
+
+    // --- REQUISITI SISTEMA RATTI ---
+    minLevel: Number(data.minLevel || 0), // Livello minimo richiesto per vedere l'oggetto
+
+    // Logica di Mercato e Stato
     isSold: false,
     isRefunded: false,
-    currentBid: 0, // Offerta più alta corrente
-    bids: {}, // Offerte cieche (blind bid)
+    currentBid: 0, 
+    bids: {}, 
     bidderEmails: {},
     createdAt: new Date().toISOString(),
   };

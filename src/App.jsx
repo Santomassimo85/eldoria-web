@@ -11,6 +11,7 @@ import MarketAdmin from "./pages/MarketAdmin"; // Gestione Item (CRUD)
 import SummaryAdmin from "./pages/SummaryAdmin"; // Gestione Riassunti (CRUD)
 import PgSheetEditor from "./pages/PgSheetEditor"; 
 import PlatinumAdmin from "./pages/PlatinumAdmin"; 
+import RattiLore from "./pages/RattiLore";
 
 import "./style.css";
 
@@ -117,6 +118,14 @@ export default function App() {
             Mercato nero
           </NavLink>
 
+          <NavLink 
+  to="/ratti-lore" 
+  className={({ isActive }) => (isActive ? "active" : "")}
+  onClick={closeMenu}
+>
+  Gilda dei Ratti
+</NavLink>
+
           {/* LINK ADMIN CONDIZIONALE E LOGIN DROPDOWN */}
           <AuthChecker closeMenu={closeMenu} />
           <LoginDropdown closeMenu={closeMenu} />
@@ -142,7 +151,8 @@ export default function App() {
 <Route path="/dm-admin/market" element={<MarketAdmin />} /> 
 <Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
 <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
-<Route path="/dm-admin/platinum" element={<PlatinumAdmin />} /> {/* 🎯 NUOVA ROTTA */}
+<Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
+<Route path="/ratti-lore" element={<RattiLore />} />
         </Routes>
       </main>
 

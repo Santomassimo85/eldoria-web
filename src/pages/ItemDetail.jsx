@@ -10,7 +10,9 @@ import {
   updateDoc,
   deleteField,
   runTransaction,
+  increment
 } from "firebase/firestore";
+
 
 // VARIABILE CRITICA: L'URL DEL TUO WEBHOOK PER LE NOTIFICHE AL DM
 const NOTIFICATION_WEBHOOK_URL = "https://eoftih1a36e46sq.m.pipedream.net";
@@ -154,9 +156,16 @@ export default function ItemDetail() {
         soldAt: new Date().toISOString(),
       });
 
-      setMessage(
-        `✅ Oggetto venduto a te per ${item.price} MP! Contatta il DM per la consegna.`
-      );
+      // setMessage(
+      //   `✅ Oggetto venduto a te per ${item.price} MP! Contatta il DM per la consegna.`
+      // );
+
+const userRef = doc(db, 'characters', currentUser.uid);
+        await updateDoc(userRef, {
+            rattoPoints: increment(1)
+        });
+
+        alert("Acquisto completato! Hai guadagnato 1 Punto Ratto.");
 
       // AGGIORNAMENTO PAYLOAD VENDITA FISSA
       const itemDataForNotification = {

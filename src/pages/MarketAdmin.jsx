@@ -5,9 +5,17 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
 // src/pages/MarketAdmin.jsx (IMPORT FIREBASE)
 
-import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, getDoc, runTransaction, deleteField } from 'firebase/firestore';
-
-
+import {
+  collection,
+  getDocs,
+  doc,
+  setDoc,
+  deleteDoc,
+  updateDoc,
+  getDoc,
+  runTransaction,
+  deleteField,
+} from "firebase/firestore";
 
 import { createMarketItem } from "../utils/itemTemplates";
 
@@ -36,6 +44,7 @@ const initialFormData = {
   endDate: "", // Data e ora di scadenza (datetime-local)
   description: "",
   img: "",
+  minLevel: 0,
   itemClass: "",
 };
 
@@ -126,7 +135,7 @@ export default function MarketAdmin() {
   const handleDelete = async (itemId) => {
     if (
       !window.confirm(
-        "Sei sicuro di voler eliminare questo item? ATTENZIONE: Questa azione è irreversibile."
+        "Sei sicuro di voler eliminare questo item? ATTENZIONE: Questa azione è irreversibile.",
       )
     )
       return;
@@ -190,101 +199,109 @@ export default function MarketAdmin() {
   };
 
   // FUNZIONE CHIAVE: FINALIZZA ASTA (assegna vincitore e rimborsa perdenti)
-const handleFinalizeAuctionAndRefund = async (itemId) => {
-    if (!window.confirm("Sei sicuro di voler FINALIZZARE l'asta? Questo rimborserà tutti i partecipanti tranne l'offerente più alto, che si aggiudicherà l'oggetto.")) return;
+  const handleFinalizeAuctionAndRefund = async (itemId) => {
+    if (
+      !window.confirm(
+        "Sei sicuro di voler FINALIZZARE l'asta? Questo rimborserà tutti i partecipanti tranne l'offerente più alto, che si aggiudicherà l'oggetto.",
+      )
+    )
+      return;
 
-    const itemRef = doc(db, 'items', itemId);
+    const itemRef = doc(db, "items", itemId);
     setStatus(`Finalizzazione asta ${itemId} in corso...`);
     setLoading(true);
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const itemDoc = await transaction.get(itemRef);
-            if (!itemDoc.exists()) {
-                throw new Error("Item non trovato.");
+      await runTransaction(db, async (transaction) => {
+        const itemDoc = await transaction.get(itemRef);
+        if (!itemDoc.exists()) {
+          throw new Error("Item non trovato.");
+        }
+        const itemData = itemDoc.data();
+        const allBids = itemData.bids || {};
+        const bidderEmails = itemData.bidderEmails || {};
+        const bidderUids = Object.keys(allBids);
+
+        // ---------------------------------------------
+        // SCENARIO A: NESSUNA OFFERTA RICEVUTA
+        // ---------------------------------------------
+        if (bidderUids.length === 0) {
+          // Marca l'item come risolto/scaduto e rimborsato (non ci sono monete da rimborsare, ma il flag evita che compaia)
+          transaction.update(itemRef, {
+            isRefunded: true,
+            isSold: true, // Segna come risolto per toglierlo dalla lista principale
+            auctionStatus: "Scaduta senza offerte",
+          });
+          setStatus(
+            `✅ Asta finalizzata! Nessuna offerta. Oggetto segnato come risolto.`,
+          );
+          return;
+        }
+
+        // ---------------------------------------------
+        // SCENARIO B: ASTA CON VINCITORE
+        // ---------------------------------------------
+
+        // 1. TROVA L'OFFERTA PIÙ ALTA
+        let winningBid = 0;
+        let winnerUid = null;
+
+        for (const uid in allBids) {
+          if (allBids[uid] > winningBid) {
+            winningBid = allBids[uid];
+            winnerUid = uid;
+          }
+        }
+
+        // 2. CICLA TUTTE LE OFFERTE E RIMBORSA I PERDENTI
+        let refundsCount = 0;
+
+        for (const uid of bidderUids) {
+          const bidAmount = allBids[uid];
+
+          if (uid !== winnerUid) {
+            // Solo i perdenti ottengono il rimborso
+            const charRef = doc(db, "characters", uid);
+            const charDoc = await transaction.get(charRef);
+
+            if (charDoc.exists()) {
+              const currentPlatinum = charDoc.data().platinum || 0;
+              const newPlatinum = currentPlatinum + bidAmount;
+
+              transaction.update(charRef, { platinum: newPlatinum });
+              refundsCount++;
             }
-            const itemData = itemDoc.data();
-            const allBids = itemData.bids || {};
-            const bidderEmails = itemData.bidderEmails || {};
-            const bidderUids = Object.keys(allBids);
+          }
+        }
 
-            // ---------------------------------------------
-            // SCENARIO A: NESSUNA OFFERTA RICEVUTA
-            // ---------------------------------------------
-            if (bidderUids.length === 0) {
-                // Marca l'item come risolto/scaduto e rimborsato (non ci sono monete da rimborsare, ma il flag evita che compaia)
-                transaction.update(itemRef, { 
-                    isRefunded: true, 
-                    isSold: true, // Segna come risolto per toglierlo dalla lista principale
-                    auctionStatus: 'Scaduta senza offerte'
-                }); 
-                setStatus(`✅ Asta finalizzata! Nessuna offerta. Oggetto segnato come risolto.`);
-                return; 
-            }
+        // 3. AGGIORNA LO STATO DELL'ITEM: Venduto al vincitore e Rimborsi completati
+        const updates = {
+          isSold: true,
+          isRefunded: true,
+          winner: winnerUid,
+          winningBid: winningBid,
+          soldTo: bidderEmails[winnerUid],
+          auctionStatus: "Venduto",
+          // CORREZIONE CHIAVE QUI: FieldValue.delete() -> deleteField()
+          bids: deleteField(),
+          bidderEmails: deleteField(),
+        };
+        transaction.update(itemRef, updates);
 
-            // ---------------------------------------------
-            // SCENARIO B: ASTA CON VINCITORE
-            // ---------------------------------------------
-
-            // 1. TROVA L'OFFERTA PIÙ ALTA
-            let winningBid = 0;
-            let winnerUid = null;
-            
-            for (const uid in allBids) {
-                if (allBids[uid] > winningBid) {
-                    winningBid = allBids[uid];
-                    winnerUid = uid;
-                }
-            }
-
-            // 2. CICLA TUTTE LE OFFERTE E RIMBORSA I PERDENTI
-            let refundsCount = 0;
-
-            for (const uid of bidderUids) {
-                const bidAmount = allBids[uid];
-                
-                if (uid !== winnerUid) {
-                    // Solo i perdenti ottengono il rimborso
-                    const charRef = doc(db, 'characters', uid);
-                    const charDoc = await transaction.get(charRef);
-                    
-                    if (charDoc.exists()) {
-                        const currentPlatinum = charDoc.data().platinum || 0;
-                        const newPlatinum = currentPlatinum + bidAmount;
-                        
-                        transaction.update(charRef, { platinum: newPlatinum });
-                        refundsCount++;
-                    }
-                }
-            }
-            
-            // 3. AGGIORNA LO STATO DELL'ITEM: Venduto al vincitore e Rimborsi completati
-            const updates = {
-    isSold: true, 
-    isRefunded: true, 
-    winner: winnerUid,
-    winningBid: winningBid,
-    soldTo: bidderEmails[winnerUid],
-    auctionStatus: 'Venduto',
-    // CORREZIONE CHIAVE QUI: FieldValue.delete() -> deleteField()
-    bids: deleteField(),
-    bidderEmails: deleteField(),
-};
-transaction.update(itemRef, updates);
-            
-            setStatus(`✅ Asta finalizzata! Oggetto aggiudicato a ${bidderEmails[winnerUid] || 'N.D.'} per ${winningBid} MP. Rimborsi effettuati: ${refundsCount}.`);
-        });
-
+        setStatus(
+          `✅ Asta finalizzata! Oggetto aggiudicato a ${bidderEmails[winnerUid] || "N.D."} per ${winningBid} MP. Rimborsi effettuati: ${refundsCount}.`,
+        );
+      });
     } catch (error) {
-        setStatus(`❌ ERRORE CRITICO durante la finalizzazione dell'asta: ${error.message}`);
-        console.error("Errore Transazione Finalizzazione:", error);
+      setStatus(
+        `❌ ERRORE CRITICO durante la finalizzazione dell'asta: ${error.message}`,
+      );
+      console.error("Errore Transazione Finalizzazione:", error);
     } finally {
-        setLoading(false);
-        fetchItems(); // Ricarica la lista per mostrare lo stato aggiornato
+      setLoading(false);
+      fetchItems(); // Ricarica la lista per mostrare lo stato aggiornato
     }
-};
-  
-
+  };
 
   // --- JSX RENDER ---
   return (
@@ -332,6 +349,8 @@ transaction.update(itemRef, updates);
           required
           value={formData.type || ""}
         >
+
+
           <option value="">-- Seleziona Tipologia --</option>
           {ITEM_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -339,6 +358,26 @@ transaction.update(itemRef, updates);
             </option>
           ))}
         </select>
+
+
+
+<div className="form-group" style={{ marginTop: "15px" }}>
+  <label style={{ display: "block", marginBottom: "5px" }}>Livello Ratto Minimo (0-5):</label>
+  <input
+    name="minLevel"
+    type="number"
+    min="0"
+    max="5"
+    onChange={handleChange}
+    value={formData.minLevel || 0}
+    required
+    className="admin-input"
+  />
+</div>
+
+
+
+
         <textarea
           name="description"
           onChange={handleChange}
@@ -407,8 +446,8 @@ transaction.update(itemRef, updates);
           {loading
             ? "Salvataggio..."
             : isEditMode
-            ? "Salva Modifiche"
-            : "Crea Item su Firestore"}
+              ? "Salva Modifiche"
+              : "Crea Item su Firestore"}
         </button>
         {isEditMode && (
           <button
