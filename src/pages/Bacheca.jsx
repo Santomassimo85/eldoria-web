@@ -271,9 +271,7 @@ ${selectedQuest.desc}
               <p>
                 <strong>Descrizione:</strong> {selectedQuest.desc}
               </p>
-              <p>
-                <strong>Descrizione:</strong> {selectedQuest.desc}
-              </p>
+              
               <p>
                 <strong>Zona:</strong> {selectedQuest.zona} |{" "}
                 <strong>Difficoltà:</strong> {selectedQuest.diff}

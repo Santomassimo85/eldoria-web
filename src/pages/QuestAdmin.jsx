@@ -207,14 +207,14 @@ export default function QuestAdmin() {
               <div className="item-info">
                 <strong>{q.title}</strong>
 
-
+{/* 
                 <input
   type="text"
   placeholder="Mittente (es: Hemile, Il Gran Saggio...)"
   value={sender} // questo stato lo crei con useState
   onChange={(e) => setSender(e.target.value)}
   className="admin-input"
-/>
+/> */}
 
 
                 <span className={`tag ${q.targetCharacter === 'All' ? 'tag-public' : 'tag-private'}`}>
