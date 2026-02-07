@@ -179,8 +179,8 @@ ${selectedQuest.desc}
   // 3. Il mouse ci sta passando sopra (hoveredQuestId === quest.id)
   src={
     isAccepted || selectedQuest?.id === quest.id || hoveredQuestId === quest.id
-      ? "src/openScroll.png"
-      : "src/closedScroll.png"
+      ? "../src/openScroll.png"
+      : "../src/closedScroll.png"
   }
   alt="Pergamena"
   style={{
