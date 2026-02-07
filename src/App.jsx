@@ -9,9 +9,11 @@ import ItemDetail from "./pages/ItemDetail";
 import AdminPanel from "./pages/AdminPanel"; // Dashboard Admin
 import MarketAdmin from "./pages/MarketAdmin"; // Gestione Item (CRUD)
 import SummaryAdmin from "./pages/SummaryAdmin"; // Gestione Riassunti (CRUD)
-import PgSheetEditor from "./pages/PgSheetEditor"; 
-import PlatinumAdmin from "./pages/PlatinumAdmin"; 
+import PgSheetEditor from "./pages/PgSheetEditor";
+import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
+import Bacheca from "./pages/Bacheca";
+import QuestAdmin from "./pages/QuestAdmin";
 
 import "./style.css";
 
@@ -77,7 +79,6 @@ export default function App() {
           <span className="line line-3"></span>
         </div>
 
-        
         <nav className={menuOpen ? "active" : ""}>
           <NavLink
             to="/"
@@ -117,14 +118,17 @@ export default function App() {
           >
             Mercato nero
           </NavLink>
+          <NavLink to="/bacheca" onClick={closeMenu}>
+            Bacheca di Hemile
+          </NavLink>
 
-          <NavLink 
-  to="/ratti-lore" 
-  className={({ isActive }) => (isActive ? "active" : "")}
-  onClick={closeMenu}
->
-  Gilda dei Ratti
-</NavLink>
+          <NavLink
+            to="/ratti-lore"
+            className={({ isActive }) => (isActive ? "active" : "")}
+            onClick={closeMenu}
+          >
+            Gilda dei Ratti
+          </NavLink>
 
           {/* LINK ADMIN CONDIZIONALE E LOGIN DROPDOWN */}
           <AuthChecker closeMenu={closeMenu} />
@@ -139,20 +143,22 @@ export default function App() {
           <Route path="/party" element={<Party />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
+          <Route path="/ratti-lore" element={<RattiLore />} />
+          <Route path="/bacheca" element={<Bacheca />} />
 
           {/* ROTTA SCHEDA PERSONAGGIO */}
-<Route path="/my-pg" element={<PgSheetEditor />} />
+          <Route path="/my-pg" element={<PgSheetEditor />} />
           {/* ROTTE MERCATO */}
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
 
           {/* ROTTE ADMIN PANEL */}
-<Route path="/dm-admin" element={<AdminPanel />} /> 
-<Route path="/dm-admin/market" element={<MarketAdmin />} /> 
-<Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
-<Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
-<Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
-<Route path="/ratti-lore" element={<RattiLore />} />
+          <Route path="/dm-admin" element={<AdminPanel />} />
+          <Route path="/dm-admin/quests" element={<QuestAdmin />} />
+          <Route path="/dm-admin/market" element={<MarketAdmin />} />
+          <Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
+          <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
+          <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
         </Routes>
       </main>
 

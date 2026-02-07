@@ -1371,118 +1371,253 @@ a {
 
 /* MARKET VOTE */
 
-.item-card { position: relative; }
+.item-card {
+    position: relative;
+}
+
 .vote-overlay {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  gap: 8px;
-  z-index: 5;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 5;
 }
 
 .vote-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.9);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.9);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.vote-btn:active { transform: scale(0.95); }
+.vote-btn:active {
+    transform: scale(0.95);
+}
 
-.vote-btn.up.active { background: rgba(0, 160, 80, 0.18); border-color: rgba(0, 160, 80, 0.35); }
-.vote-btn.down.active { background: rgba(200, 40, 40, 0.18); border-color: rgba(200, 40, 40, 0.35); }
+.vote-btn.up.active {
+    background: rgba(0, 160, 80, 0.18);
+    border-color: rgba(0, 160, 80, 0.35);
+}
+
+.vote-btn.down.active {
+    background: rgba(200, 40, 40, 0.18);
+    border-color: rgba(200, 40, 40, 0.35);
+}
 
 
 
 /* Container voti */
 .item-feedback-container {
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 10px;
 }
 
 .vote-buttons {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
 }
 
 .vote-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  filter: grayscale(0.5) opacity(0.7); /* Spento di default */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    filter: grayscale(0.5) opacity(0.7);
+    /* Spento di default */
 }
 
 .vote-icon {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-  transition: transform 0.2s;
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    transition: transform 0.2s;
 }
 
 /* Effetto Hover */
 .vote-group:hover {
-  filter: grayscale(0) opacity(1);
+    filter: grayscale(0) opacity(1);
 }
 
 .vote-group:hover .vote-icon {
-  transform: scale(1.2);
+    transform: scale(1.2);
 }
 
 /* Quando l'utente ha cliccato */
 .active-up {
-  filter: grayscale(0) drop-shadow(0 0 5px #2ecc71) opacity(1);
+    filter: grayscale(0) drop-shadow(0 0 5px #2ecc71) opacity(1);
 }
 
 .active-down {
-  filter: grayscale(0) drop-shadow(0 0 5px #e74c3c) opacity(1);
+    filter: grayscale(0) drop-shadow(0 0 5px #e74c3c) opacity(1);
 }
 
 .vote-count {
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: rgb(5, 0, 0);
-  margin-top: 2px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: rgb(5, 0, 0);
+    margin-top: 2px;
 }
 
 /* Stile per il Master */
 .admin-voters-list {
-  font-size: 0.65rem;
-  margin-top: 8px;
-  background: rgba(232, 239, 205, 0.4);
-  padding: 5px;
-  border-radius: 5px;
+    font-size: 0.65rem;
+    margin-top: 8px;
+    background: rgba(232, 239, 205, 0.4);
+    padding: 5px;
+    border-radius: 5px;
 }
 
-.text-green { color: #2ecc71; margin: 0; }
-.text-red { color: #e74c3c; margin: 0; }
+.text-green {
+    color: #2ecc71;
+    margin: 0;
+}
+
+.text-red {
+    color: #e74c3c;
+    margin: 0;
+}
 
 
 
 /* SESSION RATTI */
 
 .ratto-table td {
-  background: rgba(228, 48, 48, 0.446);
-}
-.ratto-table tr:hover td {
-  background: rgba(223, 179, 37, 0.516); /* Un leggero tocco oro al passaggio */
-}
-.lore-page blockquote {
-  border-left: 4px solid var(--red);
-  padding-left: 15px;
-  font-style: italic;
-  margin: 20px 0;
-  color: #ccc;
+    background: rgba(228, 48, 48, 0.446);
 }
 
+.ratto-table tr:hover td {
+    background: rgba(223, 179, 37, 0.516);
+    /* Un leggero tocco oro al passaggio */
+}
+
+.lore-page blockquote {
+    /* border-left: 4px solid var(--red); */
+    padding-left: 15px;
+    font-style: italic;
+    margin: 20px 0;
+    color: #ccc;
+}
+
+/* Container principale della pagina */
+
+
+.bacheca-page {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    /* Centra tutto orizzontalmente */
+    padding: 140px 20px 60px;
+    /* Margine alto generoso per la navbar */
+    min-height: 100vh;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Header centrato */
+.bacheca-page h1,h6 {
+    top: 18%;
+    text-align: center;
+    margin-bottom: 50px;
+    width: 100%;
+    z-index: 1;
+}
+.bacheca-page h6 {
+    font-size: 1.2rem;
+    color: rgba(203, 137, 56, 0.579);
+    margin-top: -20px;
+    margin-bottom: 40px;
+}
+
+/* Griglia delle pergamene centrata */
+.scrolls-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* Centra le pergamene */
+    gap: 50px;
+    /* Più spazio tra una pergamena e l'altra */
+    width: 100%;
+    max-width: 1000px;
+    /* Evita che si allarghino troppo su schermi giganti */
+    margin: 0 auto 60px;
+}
+
+/* Stile per la singola pergamena */
+.scroll-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 140px;
+    transition: transform 0.3s ease;
+}
+
+/* Titolo della missione sotto la pergamena */
+.scroll-title {
+    margin-top: 15px;
+    font-size: 1rem;
+    color: black;
+    text-align: center;
+    font-weight: bold;
+    /* text-shadow: 1px 1px 2px black; */
+}
+
+/* Sezione del form Master */
+.master-contact-section {
+    width: 100%;
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background: rgba(238, 167, 3, 0.133);
+    /* border: 1px solid rgba(212, 175, 55, 0.3); */
+    border-radius: 8px;
+    text-align: center;
+}
+
+.no-border{
+    border: none;
+}
+
+.check{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 2px;
+}
+.check input {
+    margin-top: 0;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.hemile-form {
+    display: grid;
+    gap: 15px;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    /* border: 1px solid var(--gold); */
+    border-radius: 8px;
+}
+
+.hemile-button {
+    margin-top: 15px;
+    border-radius: 10px;
+    height: 25px;
+    background-color: #820a0a;
+    box-shadow: #272727 2px 2px 5px;
+    color: rgb(255, 255, 255);
+}

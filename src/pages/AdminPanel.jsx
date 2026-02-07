@@ -58,6 +58,12 @@ const navigateToPlatinum = () => navigate('/dm-admin/platinum');
             <button className="admin-button">Vai a Saldo MP</button>
         </div>
 
+        <div className="admin-block" onClick={() => navigate('/dm-admin/quests')}>
+    <h2>Gestione Bacheca</h2>
+    <p>Aggiungi o rimuovi pergamene e missioni dalla Bacheca di Hemile.</p>
+    <button className="admin-button">Gestisci Quest</button>
+</div>
+
       </div>
     </section>
   );
