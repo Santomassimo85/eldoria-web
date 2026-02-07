@@ -13,9 +13,11 @@ export default function QuestAdmin() {
   const [quests, setQuests] = useState([]);
   const [characters, setCharacters] = useState([]); 
   const [loading, setLoading] = useState(false);
-  
+  const [sender, setSender] = useState(""); // Nuovo stato per il mittente
+
   // Stato del Form con ricompense divise e destinatario
   const [formData, setFormData] = useState({ 
+    sender: sender,
     title: "", 
     desc: "", 
     diff: "Media", 
@@ -51,30 +53,39 @@ export default function QuestAdmin() {
 
   // 2. Gestione Invio Nuova Missiva
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await addDoc(collection(db, "quests"), {
-        ...formData,
-        rewardGold: Number(formData.rewardGold), // Forza il formato numerico per le monete
-        createdAt: new Date().toISOString()
-      });
-      
-      // Reset dei campi dopo l'invio
-      setFormData({ 
-        title: "", desc: "", diff: "Media", zona: "", 
-        rewardGold: 0, rewardItem: "", rewardOther: "", targetCharacter: "All" 
-      });
-      
-      fetchData(); // Rinfresca la lista visualizzata
-      alert("La pergamena è stata appesa in bacheca!");
-    } catch (error) {
-      console.error("Errore salvataggio:", error);
-      alert("Errore nel sigillare la missiva.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  e.preventDefault();
+  setLoading(true);
+  try {
+    await addDoc(collection(db, "quests"), {
+      ...formData,
+      // Se il campo sender non è dentro formData, puoi aggiungerlo qui esplicitamente:
+      // sender: sender, 
+      rewardGold: Number(formData.rewardGold), // Forza il formato numerico per le monete
+      createdAt: new Date().toISOString()
+    });
+    
+    // Reset dei campi dopo l'invio (Aggiunto sender qui)
+    setFormData({ 
+      title: "", 
+      sender: "", // <--- IMPORTANTE: Reset del mittente
+      desc: "", 
+      diff: "Media", 
+      zona: "", 
+      rewardGold: 0, 
+      rewardItem: "", 
+      rewardOther: "", 
+      targetCharacter: "All" 
+    });
+    
+    fetchData(); // Rinfresca la lista visualizzata
+    alert("La pergamena è stata appesa in bacheca!");
+  } catch (error) {
+    console.error("Errore salvataggio:", error);
+    alert("Errore nel sigillare la missiva.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // 3. Rimoziome Quest
   const handleDelete = async (id) => {
@@ -94,6 +105,23 @@ export default function QuestAdmin() {
         <form onSubmit={handleSubmit} className="admin-form">
           <div className="form-section">
             <h3>📜 Dettagli della Missiva</h3>
+
+{/* In QuestAdmin.jsx, dentro il form */}
+<input
+  type="text"
+  placeholder="Mittente della Missiva (es. Hemile, Un Corvo Ignoto...)"
+  value={sender}
+  onChange={(e) => setSender(e.target.value)}
+  style={{
+    width: "100%",
+    padding: "10px",
+    background: "white",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    marginBottom: "10px"
+  }}
+/>
+
             <input 
               placeholder="Titolo della Quest" 
               value={formData.title} 
@@ -178,6 +206,17 @@ export default function QuestAdmin() {
             <div key={q.id} className="admin-item-row">
               <div className="item-info">
                 <strong>{q.title}</strong>
+
+
+                <input
+  type="text"
+  placeholder="Mittente (es: Hemile, Il Gran Saggio...)"
+  value={sender} // questo stato lo crei con useState
+  onChange={(e) => setSender(e.target.value)}
+  className="admin-input"
+/>
+
+
                 <span className={`tag ${q.targetCharacter === 'All' ? 'tag-public' : 'tag-private'}`}>
                   {q.targetCharacter === 'All' ? "Pubblica" : `Privata per ${q.targetCharacter}`}
                 </span>
