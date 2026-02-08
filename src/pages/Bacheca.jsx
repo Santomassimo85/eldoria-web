@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot, doc, getDoc, updateDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom"; // <--- AGGIUNGI QUESTO
+import {
+  collection,
+  onSnapshot,
+  doc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
 // Definiamo MASTER_EMAIL per la vista speciale
 export default function Bacheca() {
+  const navigate = useNavigate();
   const MASTER_EMAIL = "santomassimo85@gmail.com";
   const [sentStatus, setSentStatus] = useState(null); // può essere null, 'sending', 'success', 'error'
+
 
   const handleSubmitMissiva = async (e) => {
     e.preventDefault();
@@ -34,22 +43,22 @@ export default function Bacheca() {
   };
 
   // Funzione per Accettare o Rifiutare la Quest
- const toggleQuestStatus = async (questId, status) => {
-  try {
-    const questRef = doc(db, "quests", questId);
-    
-    await updateDoc(questRef, {
-      acceptedBy: status ? userCharName : null 
-    });
+  const toggleQuestStatus = async (questId, status) => {
+    try {
+      const questRef = doc(db, "quests", questId);
 
-    if (status) {
-      const params = new URLSearchParams();
-      params.append("Mittente", userCharName);
-      
-      // AGGIUNGIAMO IL DETTAGLIO DELLA CONDIVISIONE
-      const condivisione = shareWithParty ? "SI ✅" : "NO ❌";
+      await updateDoc(questRef, {
+        acceptedBy: status ? userCharName : null,
+      });
 
-      const dettaglioMissione = `
+      if (status) {
+        const params = new URLSearchParams();
+        params.append("Mittente", userCharName);
+
+        // AGGIUNGIAMO IL DETTAGLIO DELLA CONDIVISIONE
+        const condivisione = shareWithParty ? "SI ✅" : "NO ❌";
+
+        const dettaglioMissione = `
 📢 MISSIONE ACCETTATA!
 ----------------------------------
 📜 TITOLO: ${selectedQuest.title}
@@ -68,20 +77,20 @@ ${selectedQuest.desc}
 ----------------------------------
       `;
 
-      params.append("Messaggio_Giocatore", dettaglioMissione);
+        params.append("Messaggio_Giocatore", dettaglioMissione);
 
-      fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
-        method: "POST",
-        body: params,
-      });
+        fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
+          method: "POST",
+          body: params,
+        });
+      }
+
+      setSelectedQuest(null);
+    } catch (error) {
+      console.error("Errore database:", error);
+      alert("Errore nel sigillare la missiva.");
     }
-
-    setSelectedQuest(null);
-  } catch (error) {
-    console.error("Errore database:", error);
-    alert("Errore nel sigillare la missiva.");
-  }
-};
+  };
 
   const { currentUser } = useAuth();
   const isMaster = currentUser && currentUser.email === MASTER_EMAIL;
@@ -131,7 +140,8 @@ ${selectedQuest.desc}
   );
 
   const handleOpenQuest = (quest) => {
-    setSelectedQuest(quest);
+    // setSelectedQuest(quest);
+    navigate(`/quest/${quest.id}`);
     setShareWithParty(false);
   };
 
@@ -173,28 +183,32 @@ ${selectedQuest.desc}
                     }}
                   >
                     <img
-  // L'immagine resta APERTA se:
-  // 1. È stata accettata (isAccepted)
-  // 2. È quella cliccata/selezionata (selectedQuest?.id === quest.id)
-  // 3. Il mouse ci sta passando sopra (hoveredQuestId === quest.id)
-  src={
-    isAccepted || selectedQuest?.id === quest.id || hoveredQuestId === quest.id
-      ? "/openScroll.png"
-      : "/closedScroll.png"
-  }
-  alt="Pergamena"
-  style={{
-    width: "160px",
-    height: "160px",
-    objectFit: "contain",
-    transition: "transform 0.5s ease",
-    // Ruota e ingrandisce se aperta in uno dei tre casi sopra
-    transform:
-      isAccepted || selectedQuest?.id === quest.id || hoveredQuestId === quest.id
-        ? "rotate(-10deg) scale(1.1)"
-        : "rotate(0deg)",
-  }}
-/>
+                      // L'immagine resta APERTA se:
+                      // 1. È stata accettata (isAccepted)
+                      // 2. È quella cliccata/selezionata (selectedQuest?.id === quest.id)
+                      // 3. Il mouse ci sta passando sopra (hoveredQuestId === quest.id)
+                      src={
+                        isAccepted ||
+                        selectedQuest?.id === quest.id ||
+                        hoveredQuestId === quest.id
+                          ? "/openScroll.png"
+                          : "/closedScroll.png"
+                      }
+                      alt="Pergamena"
+                      style={{
+                        width: "130px",
+                        height: "130px",
+                        objectFit: "contain",
+                        transition: "transform 0.5s ease",
+                        // Ruota e ingrandisce se aperta in uno dei tre casi sopra
+                        transform:
+                          isAccepted ||
+                          selectedQuest?.id === quest.id ||
+                          hoveredQuestId === quest.id
+                            ? "rotate(-10deg) scale(1.1)"
+                            : "rotate(0deg)",
+                      }}
+                    />
                     <p
                       className="scroll-title"
                       style={{
@@ -271,7 +285,7 @@ ${selectedQuest.desc}
               <p>
                 <strong>Descrizione:</strong> {selectedQuest.desc}
               </p>
-              
+
               <p>
                 <strong>Zona:</strong> {selectedQuest.zona} |{" "}
                 <strong>Difficoltà:</strong> {selectedQuest.diff}

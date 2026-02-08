@@ -14,6 +14,7 @@ import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
 import Bacheca from "./pages/Bacheca";
 import QuestAdmin from "./pages/QuestAdmin";
+import QuestDetail from "./pages/QuestDetail";
 
 import "./style.css";
 
@@ -145,6 +146,7 @@ export default function App() {
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/ratti-lore" element={<RattiLore />} />
           <Route path="/bacheca" element={<Bacheca />} />
+          <Route path="/quest/:id" element={<QuestDetail />} />
 
           {/* ROTTA SCHEDA PERSONAGGIO */}
           <Route path="/my-pg" element={<PgSheetEditor />} />

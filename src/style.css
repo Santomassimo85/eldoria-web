@@ -1614,10 +1614,52 @@ a {
 }
 
 .hemile-button {
-    margin-top: 15px;
-    border-radius: 10px;
-    height: 25px;
-    background-color: #820a0a;
-    box-shadow: #272727 2px 2px 5px;
-    color: rgb(255, 255, 255);
+   background-color: var(--red);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    transition: background 0.2s;
+}
+.hemile-button:hover {
+    background-color: #f3c41a;
+}
+
+.questDetailButton {
+    background-color: var(--red);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    transition: background 0.2s;
+}
+.questDetailButton:hover {
+    background-color: #f3c41a;
+}
+
+@media (max-width: 900px) {
+    main{
+        margin: 15px 0 ;
+        padding: 15px 0 ;
+    }
+    .quest-detail-page{
+    width: 100%;
+    padding: 15px 0;
+    margin: 15px 0;
+}
+
+    .scroll-detail-content {
+        width: 100%;
+        padding: 15px 0;
+        margin: 15px 0;
+    }
+    footer{
+        margin-top: 100px;
+    }
 }
