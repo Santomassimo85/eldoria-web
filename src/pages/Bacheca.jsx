@@ -159,104 +159,92 @@ ${selectedQuest.desc}
       ) : (
         <div className="scrolls-container">
           <div className="scrolls-container">
-            {visibleQuests.length > 0 ? (
-              visibleQuests.map((quest) => {
-                // CONTROLLO: Questa missione è stata accettata dall'utente attuale?
-                const isAccepted = quest.acceptedBy === userCharName;
+            {visibleQuests.map((quest) => {
+  // 1. Una missione è "accettata" se il campo acceptedBy esiste
+  const isAccepted = quest.acceptedBy != null;
+  // 2. Capire se è stata accettata proprio dall'utente loggato (per il tasto annulla)
+  const isAcceptedByMe = quest.acceptedBy === userCharName;
 
-                return (
-                  <div
-                    key={quest.id}
-                    className={`scroll-item ${quest.targetCharacter !== "All" ? "private-scroll" : ""}`}
-                    onClick={() => handleOpenQuest(quest)}
-                    onMouseEnter={() => setHoveredQuestId(quest.id)}
-                    onMouseLeave={() => setHoveredQuestId(null)}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      cursor: "pointer",
-                      transition: "all 0.3s ease",
-                      // SE ACCETTATA: diventa grigia e semi-trasparente
-                      opacity: isAccepted ? 0.5 : 1,
-                      filter: isAccepted ? "grayscale(100%)" : "none",
-                    }}
-                  >
-                    <img
-                      // L'immagine resta APERTA se:
-                      // 1. È stata accettata (isAccepted)
-                      // 2. È quella cliccata/selezionata (selectedQuest?.id === quest.id)
-                      // 3. Il mouse ci sta passando sopra (hoveredQuestId === quest.id)
-                      src={
-                        isAccepted ||
-                        selectedQuest?.id === quest.id ||
-                        hoveredQuestId === quest.id
-                          ? "/openScroll.png"
-                          : "/closedScroll.png"
-                      }
-                      alt="Pergamena"
-                      style={{
-                        width: "130px",
-                        height: "130px",
-                        objectFit: "contain",
-                        transition: "transform 0.5s ease",
-                        // Ruota e ingrandisce se aperta in uno dei tre casi sopra
-                        transform:
-                          isAccepted ||
-                          selectedQuest?.id === quest.id ||
-                          hoveredQuestId === quest.id
-                            ? "rotate(-10deg) scale(1.1)"
-                            : "rotate(0deg)",
-                      }}
-                    />
-                    <p
-                      className="scroll-title"
-                      style={{
-                        marginTop: "10px",
-                        textAlign: "center",
-                        // Se accettata il testo diventa grigio, altrimenti rosso/bianco
-                        color: isAccepted
-                          ? "#888"
-                          : hoveredQuestId === quest.id
-                            ? "var(--red)"
-                            : "white",
-                      }}
-                    >
-                      {isAccepted && "✅ "}{" "}
-                      {/* Aggiunge una spunta se completata */}
-                      {quest.targetCharacter !== "All" && "🔒 "}
-                      {quest.title}
-                    </p>
+  return (
+    <div
+      key={quest.id}
+      className={`scroll-item ${quest.targetCharacter !== "All" ? "private-scroll" : ""}`}
+      onClick={() => handleOpenQuest(quest)}
+      onMouseEnter={() => setHoveredQuestId(quest.id)}
+      onMouseLeave={() => setHoveredQuestId(null)}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        cursor: "pointer",
+        transition: "all 0.3s ease",
+        // Il Master e chi l'ha accettata la vedono grigia
+        opacity: isAccepted ? 0.5 : 1,
+        filter: isAccepted ? "grayscale(100%)" : "none",
+      }}
+    >
+      <img
+        src={
+          isAccepted || hoveredQuestId === quest.id
+            ? "/openScroll.png"
+            : "/closedScroll.png"
+        }
+        alt="Pergamena"
+        style={{
+          width: "130px",
+          height: "130px",
+          objectFit: "contain",
+          transition: "transform 0.5s ease",
+          transform:
+            isAccepted || hoveredQuestId === quest.id
+              ? "rotate(-10deg) scale(1.1)"
+              : "rotate(0deg)",
+        }}
+      />
+      <p
+        className="scroll-title"
+        style={{
+          marginTop: "10px",
+          textAlign: "center",
+          color: isAccepted ? "#888" : (hoveredQuestId === quest.id ? "var(--red)" : "white"),
+        }}
+      >
+        {/* Mostra il destinatario se la missione è privata */}
+        {quest.targetCharacter !== "All" && `🔒 [${quest.targetCharacter}] `}
+        {quest.title}
+      </p>
 
-                    {/* TASTO PER RIFIUTARE (esce solo se la missione è già stata accettata) */}
-                    {isAccepted && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Evita di aprire il popup quando clicchi "Annulla"
-                          toggleQuestStatus(quest.id, false);
-                        }}
-                        style={{
-                          marginTop: "10px",
-                          background: "#ff4444",
-                          color: "white",
-                          border: "none",
-                          padding: "5px 10px",
-                          borderRadius: "5px",
-                          fontSize: "0.7rem",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Annulla Missione
-                      </button>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <p style={{ textAlign: "center", gridColumn: "1/-1" }}>
-                Nessuna missiva disponibile per te.
-              </p>
-            )}
+      {/* INFO PER IL MASTER O IL GIOCATORE */}
+      {isAccepted && (
+        <div style={{ textAlign: "center", fontSize: "0.8rem" }}>
+          <p style={{ color: "var(--gold)", margin: "5px 0" }}>
+            Presa da: <strong>{quest.acceptedBy}</strong>
+          </p>
+          
+          {/* Solo chi l'ha accettata o il Master può annullarla/liberarla */}
+          {(isAcceptedByMe || isMaster) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleQuestStatus(quest.id, false);
+              }}
+              style={{
+                background: "#ff4444",
+                color: "white",
+                border: "none",
+                padding: "3px 8px",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              {isMaster ? "Libera Missione" : "Annulla"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+})}
           </div>
         </div>
       )}
