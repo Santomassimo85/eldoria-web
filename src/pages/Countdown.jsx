@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const NEXT_SESSION_DATE = new Date("2026-02-08T18:00:00").getTime(); 
+const NEXT_SESSION_DATE = new Date("2026-02-15T18:30:00").getTime(); 
 
 const Countdown = () => {
     // ... (Logica dello stato e useEffect invariati) ...
