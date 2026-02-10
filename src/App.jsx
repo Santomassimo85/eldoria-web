@@ -15,6 +15,7 @@ import RattiLore from "./pages/RattiLore";
 import Bacheca from "./pages/Bacheca";
 import QuestAdmin from "./pages/QuestAdmin";
 import QuestDetail from "./pages/QuestDetail";
+import ChatBot from "./components/ChatBot";
 
 import "./style.css";
 
@@ -161,9 +162,11 @@ export default function App() {
           <Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
           <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
           <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
+
         </Routes>
       </main>
 
+        <ChatBot />
       {/* FOOTER */}
       <footer>
         <p>

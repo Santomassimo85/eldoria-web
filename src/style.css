@@ -1663,3 +1663,27 @@ a {
         margin-top: 100px;
     }
 }
+
+.chatBot {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    height: auto;
+    background-color: rgb(240, 229, 218);
+    color: rgb(64, 61, 61);
+    padding: 12px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 1rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+.chatBotTitle {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    justify-content: center;
+}

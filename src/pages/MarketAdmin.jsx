@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
+import { increment } from "firebase/firestore";
 // src/pages/MarketAdmin.jsx (IMPORT FIREBASE)
 
 import {
@@ -226,10 +227,9 @@ export default function MarketAdmin() {
         // SCENARIO A: NESSUNA OFFERTA RICEVUTA
         // ---------------------------------------------
         if (bidderUids.length === 0) {
-          // Marca l'item come risolto/scaduto e rimborsato (non ci sono monete da rimborsare, ma il flag evita che compaia)
           transaction.update(itemRef, {
             isRefunded: true,
-            isSold: true, // Segna come risolto per toglierlo dalla lista principale
+            isSold: true,
             auctionStatus: "Scaduta senza offerte",
           });
           setStatus(
@@ -253,28 +253,31 @@ export default function MarketAdmin() {
           }
         }
 
-        // 2. CICLA TUTTE LE OFFERTE E RIMBORSA I PERDENTI
+        // 2. CICLA TUTTE LE OFFERTE, RIMBORSA I PERDENTI E PREMIA IL VINCITORE
         let refundsCount = 0;
 
         for (const uid of bidderUids) {
           const bidAmount = allBids[uid];
+          const charRef = doc(db, "characters", uid);
 
           if (uid !== winnerUid) {
-            // Solo i perdenti ottengono il rimborso
-            const charRef = doc(db, "characters", uid);
+            // --- LOGICA RIMBORSO PERDENTI ---
             const charDoc = await transaction.get(charRef);
-
             if (charDoc.exists()) {
               const currentPlatinum = charDoc.data().platinum || 0;
-              const newPlatinum = currentPlatinum + bidAmount;
-
-              transaction.update(charRef, { platinum: newPlatinum });
+              transaction.update(charRef, { platinum: currentPlatinum + bidAmount });
               refundsCount++;
             }
+          } else {
+            // --- LOGICA REPUTAZIONE VINCITORE (+1 Punto Ratto) ---
+            // Usiamo increment(1) per aggiungere il punto reputazione
+            transaction.update(charRef, { 
+              rattoPoints: increment(1) 
+            });
           }
         }
 
-        // 3. AGGIORNA LO STATO DELL'ITEM: Venduto al vincitore e Rimborsi completati
+        // 3. AGGIORNA LO STATO DELL'ITEM
         const updates = {
           isSold: true,
           isRefunded: true,
@@ -282,14 +285,13 @@ export default function MarketAdmin() {
           winningBid: winningBid,
           soldTo: bidderEmails[winnerUid],
           auctionStatus: "Venduto",
-          // CORREZIONE CHIAVE QUI: FieldValue.delete() -> deleteField()
           bids: deleteField(),
           bidderEmails: deleteField(),
         };
         transaction.update(itemRef, updates);
 
         setStatus(
-          `✅ Asta finalizzata! Oggetto aggiudicato a ${bidderEmails[winnerUid] || "N.D."} per ${winningBid} MP. Rimborsi effettuati: ${refundsCount}.`,
+          `✅ Asta finalizzata! Oggetto aggiudicato a ${bidderEmails[winnerUid] || "N.D."} per ${winningBid} MP (+1 Reputazione Ratti). Rimborsi effettuati: ${refundsCount}.`,
         );
       });
     } catch (error) {
@@ -299,7 +301,7 @@ export default function MarketAdmin() {
       console.error("Errore Transazione Finalizzazione:", error);
     } finally {
       setLoading(false);
-      fetchItems(); // Ricarica la lista per mostrare lo stato aggiornato
+      fetchItems();
     }
   };
 
