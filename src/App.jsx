@@ -16,6 +16,9 @@ import Bacheca from "./pages/Bacheca";
 import QuestAdmin from "./pages/QuestAdmin";
 import QuestDetail from "./pages/QuestDetail";
 import ChatBot from "./components/ChatBot";
+import ReputationAdmin from "./pages/ReputazioneAdmin";
+import VideoAdmin from "./pages/VideoAdmin";
+import Cinema from "./pages/Cinema";
 
 import "./style.css";
 
@@ -131,7 +134,8 @@ export default function App() {
           >
             Gilda dei Ratti
           </NavLink>
-
+{/* Esempio di link nella Navbar */}
+<NavLink to="/cinema" className="nav-link">Cinema</NavLink>
           {/* LINK ADMIN CONDIZIONALE E LOGIN DROPDOWN */}
           <AuthChecker closeMenu={closeMenu} />
           <LoginDropdown closeMenu={closeMenu} />
@@ -148,12 +152,17 @@ export default function App() {
           <Route path="/ratti-lore" element={<RattiLore />} />
           <Route path="/bacheca" element={<Bacheca />} />
           <Route path="/quest/:id" element={<QuestDetail />} />
+{/* Pagina pubblica (ma protetta internamente) per i player */}
+<Route path="/cinema" element={<Cinema />} />
 
+{/* Pagina Admin */}
+<Route path="/dm-admin/videos" element={<VideoAdmin />} />
           {/* ROTTA SCHEDA PERSONAGGIO */}
           <Route path="/my-pg" element={<PgSheetEditor />} />
           {/* ROTTE MERCATO */}
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
+          
 
           {/* ROTTE ADMIN PANEL */}
           <Route path="/dm-admin" element={<AdminPanel />} />
@@ -162,6 +171,7 @@ export default function App() {
           <Route path="/dm-admin/market/edit/:id" element={<MarketAdmin />} />
           <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
           <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
+          <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
 
         </Routes>
       </main>

@@ -43,7 +43,18 @@ const navigateToPlatinum = () => navigate('/dm-admin/platinum');
             <p>Aggiungi, modifica o elimina oggetti d'asta.</p>
             <button className="admin-button">Vai al Mercato Admin</button>
         </div>
-        
+        {/* Blocco 4: Reputazione Ratti */}
+<div className="admin-block" onClick={() => navigate('/dm-admin/reputation')}>
+    <h2>Reputazione Ratti 🐀</h2>
+    <p>Controlla la fedeltà dei giocatori alla Gilda e i livelli raggiunti.</p>
+    <button className="admin-button">Gestisci Gradi</button>
+</div>
+        {/* Blocco 5: Gestione video sessioni */}
+
+<div className="admin-block" onClick={() => navigate('/dm-admin/videos')}>
+    <h2>Cinema 🎬</h2>
+    <p>Carica i link delle registrazioni delle sessioni.</p>
+</div>
         {/* Blocco 2: Gestione Riassunti */}
         <div className="admin-block" onClick={navigateToSummaries}>
             <h2>Gestione Riassunti Sessioni</h2>

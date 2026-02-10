@@ -10,7 +10,7 @@ export default function ChatBot() {
   const scrollRef = useRef(null);
 
   // --- IMPORTANTE: INSERISCI QUI LA TUA CHIAVE ---
-  const API_KEY = "AIzaSyDfzU0B4FqQ34BEgAMRuklIAYBUxZl7R4c"; 
+  const API_KEY = import.meta.env.VITE_GEMINI_KEY; 
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -38,7 +38,7 @@ export default function ChatBot() {
           },
           body: JSON.stringify({
             contents: [{
-              parts: [{ text: `Sei il Sapiente di Eldoria, un esperto di D&D 5e. Rispondi in modo epico e conciso.
+              parts: [{ text: `Sei il Sapiente di Eldoria, un esperto di D&D 5e. Rispondi in modo epico e conciso ma soprattutto organizzato (utilizza liste dove serve e rendi il testo leggibile, utilizza anche formattazione per rendere tutto piú carino).
               
               Domanda dell'avventuriero: ${userText}` }]
             }]
@@ -72,7 +72,7 @@ export default function ChatBot() {
       )}
 
       {isOpen && (
-        <div style={{ width: "320px", height: "450px", background: "#ffffff", border: "2px solid var(--gold)", borderRadius: "10px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ width: "320px", height: "450px", background: "#ffffff", fontSize: "0.9rem", border: "2px solid var(--gold)", borderRadius: "10px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "10px", background: "var(--gold)", color: "black", fontWeight: "bold", display: "flex", justifyContent: "space-between" }}>
             <span>📜 Sapiente di Eldoria</span>
             <button onClick={() => setIsOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>✕</button>
@@ -90,7 +90,7 @@ export default function ChatBot() {
                 {msg.text}
               </div>
             ))}
-            {loading && <p style={{color: "var(--gold)", fontSize: "0.8rem", padding: "10px"}}>Il saggio sta consultando le stelle...</p>}
+            {loading && <p style={{color: "var(--gold)", fontSize: "0.6rem", padding: "10px"}}>Il saggio sta consultando le stelle...</p>}
           </div>
 
           <form onSubmit={handleSendMessage} style={{ display: "flex", borderTop: "1px solid #282424", padding: "5px", background: "#040404db" }}>
