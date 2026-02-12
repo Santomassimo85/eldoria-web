@@ -5,6 +5,8 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
 import { increment } from "firebase/firestore";
 // src/pages/MarketAdmin.jsx (IMPORT FIREBASE)
+import { useRef } from "react";
+import HtmlToolbar from "../components/HtmlToolbar";
 
 import {
   collection,
@@ -58,6 +60,8 @@ export default function MarketAdmin() {
   const [formData, setFormData] = useState(initialFormData);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+
+const descRef = useRef(null);
 
   const isEditMode = !!id;
 
@@ -379,7 +383,12 @@ export default function MarketAdmin() {
 
 
 
-
+<HtmlToolbar 
+                textAreaRef={descRef} 
+                formData={formData} 
+                setFormData={setFormData} 
+                fieldName="description" 
+            />
         <textarea
           name="description"
           onChange={handleChange}

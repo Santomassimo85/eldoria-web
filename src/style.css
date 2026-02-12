@@ -1704,3 +1704,19 @@ h6 {
         font-size: 1.5rem;
     }
 }
+
+.html-toolbar button {
+  background: #333;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 2px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: 0.2s;
+}
+
+.html-toolbar button:hover {
+  background: var(--gold);
+  color: black;
+}
