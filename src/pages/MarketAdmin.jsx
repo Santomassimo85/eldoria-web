@@ -1,11 +1,10 @@
 // src/pages/MarketAdmin.jsx (CRUD Item - CODICE COMPLETO)
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
 import { increment } from "firebase/firestore";
 // src/pages/MarketAdmin.jsx (IMPORT FIREBASE)
-import { useRef } from "react";
 import HtmlToolbar from "../components/HtmlToolbar";
 
 import {
@@ -61,7 +60,7 @@ export default function MarketAdmin() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
 
-const descRef = useRef(null);
+  const descRef = useRef(null);
 
   const isEditMode = !!id;
 
@@ -269,14 +268,16 @@ const descRef = useRef(null);
             const charDoc = await transaction.get(charRef);
             if (charDoc.exists()) {
               const currentPlatinum = charDoc.data().platinum || 0;
-              transaction.update(charRef, { platinum: currentPlatinum + bidAmount });
+              transaction.update(charRef, {
+                platinum: currentPlatinum + bidAmount,
+              });
               refundsCount++;
             }
           } else {
             // --- LOGICA REPUTAZIONE VINCITORE (+1 Punto Ratto) ---
             // Usiamo increment(1) per aggiungere il punto reputazione
-            transaction.update(charRef, { 
-              rattoPoints: increment(1) 
+            transaction.update(charRef, {
+              rattoPoints: increment(1),
             });
           }
         }
@@ -355,8 +356,6 @@ const descRef = useRef(null);
           required
           value={formData.type || ""}
         >
-
-
           <option value="">-- Seleziona Tipologia --</option>
           {ITEM_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -365,38 +364,37 @@ const descRef = useRef(null);
           ))}
         </select>
 
+        <div className="form-group" style={{ marginTop: "15px" }}>
+          <label style={{ display: "block", marginBottom: "5px" }}>
+            Livello Ratto Minimo (0-5):
+          </label>
+          <input
+            name="minLevel"
+            type="number"
+            min="0"
+            max="5"
+            onChange={handleChange}
+            value={formData.minLevel || 0}
+            required
+            className="admin-input"
+          />
+        </div>
 
-
-<div className="form-group" style={{ marginTop: "15px" }}>
-  <label style={{ display: "block", marginBottom: "5px" }}>Livello Ratto Minimo (0-5):</label>
-  <input
-    name="minLevel"
-    type="number"
-    min="0"
-    max="5"
-    onChange={handleChange}
-    value={formData.minLevel || 0}
-    required
-    className="admin-input"
+       <HtmlToolbar 
+    textAreaRef={descRef} 
+    formData={formData} 
+    setFormData={setFormData} 
+    fieldName="description" 
   />
-</div>
-
-
-
-<HtmlToolbar 
-                textAreaRef={descRef} 
-                formData={formData} 
-                setFormData={setFormData} 
-                fieldName="description" 
-            />
         <textarea
-          name="description"
-          onChange={handleChange}
-          placeholder="Descrizione completa dell'item..."
-          required
-          value={formData.description || ""}
-          rows="4"
-        ></textarea>
+    ref={descRef} // Collega il riferimento per la toolbar
+    name="description" // Deve essere uguale a fieldName della toolbar
+    value={formData.description || ""} // Prende il valore dallo stato
+    onChange={handleChange} // Gestisce la scrittura normale da tastiera
+    placeholder="Descrizione completa dell'oggetto..."
+    required
+    rows="6"
+  ></textarea>
         <input
           name="img"
           onChange={handleChange}
