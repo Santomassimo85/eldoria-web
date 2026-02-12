@@ -310,6 +310,42 @@ export default function MarketAdmin() {
     }
   };
 
+
+
+  const handleRelist = async (itemId, newDate) => {
+  if (!newDate) return alert("Per favore, seleziona una nuova data di scadenza.");
+
+  try {
+    setLoading(true);
+    // 1. Riferimento al documento (Assicurati che sia "items")
+    const itemRef = doc(db, "items", itemId);
+
+    // 2. Prepariamo i dati esatti
+    const updatedData = {
+      endDate: newDate,           // La nuova data dal selettore
+      isSold: false,              // Deve tornare disponibile
+      bids: {},                   // Resetta le offerte
+      isRefunded: false,          // Resetta eventuali rimborsi
+      createdAt: new Date().toISOString() // Lo riporta in cima alla lista
+    };
+
+    console.log("Tentativo di rilancio per ID:", itemId, updatedData);
+
+    // 3. Esegui l'aggiornamento
+    await updateDoc(itemRef, updatedData);
+
+    alert("✅ Tomo aggiornato! L'oggetto è di nuovo all'asta.");
+    
+    // 4. Forza il ricaricamento della lista locale
+    fetchItems(); 
+
+  } catch (error) {
+    console.error("Errore durante il rilancio:", error);
+    alert("❌ Errore magico: " + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
   // --- JSX RENDER ---
   return (
     <section className="admin-market-page">
@@ -479,73 +515,109 @@ export default function MarketAdmin() {
             prezzo di base.
           </p>
           <div className="admin-item-list">
-            {loading ? (
-              <p>Caricamento item...</p>
-            ) : (
-              items.map((item) => (
-                <div
-                  key={item.id}
-                  className="admin-item-row"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span
-                    style={{
-                      flexGrow: 1,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {item.name} ({item.class || item.itemClass})
-                  </span>
+  {loading ? (
+    <p>Caricamento item...</p>
+  ) : (
+    items.map((item) => (
+      <div
+        key={item.id}
+        className="admin-item-row"
+      >
+        {/* RIGA SUPERIORE: Informazioni e Azioni Standard */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%"
+        }}>
+          <span
+            style={{
+              flexGrow: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {item.name} ({item.class || item.itemClass})
+          </span>
 
-                  <span style={{ width: "120px", textAlign: "right" }}>
-                    Base: {item.startingBid || item.price} MP
-                  </span>
+          <span style={{ width: "120px", textAlign: "right" }}>
+            Base: {item.startingBid || item.price} MP
+          </span>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      marginLeft: "15px",
-                    }}
-                  >
-                    <Link
-                      to={`/dm-admin/market/edit/${item.id}`}
-                      className="admin-link-small"
-                    >
-                      Modifica
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="admin-delete-button"
-                      style={{ marginLeft: "5px" }}
-                    >
-                      X
-                    </button>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginLeft: "15px",
+            }}
+          >
+            <Link
+              to={`/dm-admin/market/edit/${item.id}`}
+              className="admin-link-small"
+            >
+              Modifica
+            </Link>
+            <button
+              onClick={() => handleDelete(item.id)}
+              className="admin-delete-button"
+              
+            >
+              X
+            </button>
 
-                    {/* PULSANTE DI FINALIZZAZIONE ASTA */}
-                    {item.saleType === "auction" && !item.isRefunded && (
-                      <button
-                        onClick={() => handleFinalizeAuctionAndRefund(item.id)}
-                        className="admin-button"
-                        disabled={item.isSold}
-                        style={{
-                          backgroundColor: "#2ecc71",
-                          marginLeft: "10px",
-                        }}
-                      >
-                        Finalizza Asta & Rimborsa
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
+            {/* PULSANTE DI FINALIZZAZIONE ASTA */}
+            {item.saleType === "auction" && !item.isRefunded && (
+              <button
+                onClick={() => handleFinalizeAuctionAndRefund(item.id)}
+                className="admin-button-exist"
+                disabled={item.isSold}
+                
+              >
+                Ok & Rimborsa
+              </button>
             )}
           </div>
+        </div>
+
+        {/* RIGA INFERIORE: Modulo Rilancio (appare solo se l'asta è scaduta e non ci sono offerte) */}
+        {item.saleType === "auction" && 
+         new Date(item.endDate) < new Date() && 
+         (!item.bids || Object.keys(item.bids).length === 0) && (
+          <div >
+            <div >
+              <span style={{ fontSize: "0.85rem", color: "#f1c40f", fontWeight: "bold" }}>
+                ⚠️ Asta conclusa senza offerte
+              </span>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <label style={{ fontSize: "0.75rem", color: "#ccc" }}>Nuova Scadenza:</label>
+                <input 
+                  type="datetime-local" 
+                  id={`relist-date-${item.id}`}
+                  style={{ 
+                    padding: "4px", 
+                    borderRadius: "4px", 
+                    border: "none",
+                    fontSize: "0.8rem" 
+                  }}
+                />
+                <button 
+                  onClick={() => {
+                    const val = document.getElementById(`relist-date-${item.id}`).value;
+                    handleRelist(item.id, val);
+                  }}
+                  className="admin-button-relaunch"
+                 
+                >
+                  Rilancia
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    ))
+  )}
+</div>
         </>
       )}
     </section>

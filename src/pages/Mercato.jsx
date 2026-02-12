@@ -150,6 +150,8 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
     displayPrice = `Base Asta: ${item.startingBid} MP`;
   }
 
+  
+
   // Usa 'class' per la rarità e normalizza la classe per un eventuale stile CSS
   const rarityClass = (item.class || "Comune").replace(/\s/g, "");
 
@@ -351,17 +353,71 @@ export default function Mercato() {
     return () => clearInterval(interval);
   }, []);
 
+
+  // --- AGGIUNGI QUESTO DOPO IL CARICAMENTO DEGLI ITEMS ---
+useEffect(() => {
+  const autoFinalize = async () => {
+    const ora = new Date();
+    
+    // Filtriamo solo le aste scadute non ancora processate
+    const expiredAuctions = items.filter(item => 
+      item.saleType === "auction" && 
+      item.endDate && 
+      new Date(item.endDate) < ora && 
+      !item.isSold && 
+      !item.isRefunded
+    );
+
+    for (const item of expiredAuctions) {
+      const bids = item.bids || {};
+      const bidEntries = Object.entries(bids);
+
+      if (bidEntries.length > 0) {
+        // Troviamo il vincitore
+        const [winnerName, amount] = bidEntries.reduce((prev, curr) => curr[1] > prev[1] ? curr : prev);
+
+        try {
+          // 1. Aggiorna il database
+          const itemRef = doc(db, "market", item.id);
+          await updateDoc(itemRef, { 
+            isSold: true, 
+            winner: winnerName, 
+            finalPrice: amount 
+          });
+
+          // 2. Invia Mail tramite Pipedream
+          await fetch("https://eoftih1a36e46sq.m.pipedream.net", { // Ho usato l'URL trovato nel tuo ItemDetail
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "AUCTION_CLOSED",
+              itemName: item.name,
+              winner: winnerName,
+              price: amount,
+              masterEmail: "santomassimo85@gmail.com"
+            })
+          });
+          console.log(`Asta conclusa per ${item.name}`);
+        } catch (e) {
+          console.error("Errore auto-finalizzazione:", e);
+        }
+      }
+    }
+  };
+
+  if (items.length > 0) autoFinalize();
+}, [items]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterRarity, setFilterRarity] = useState("all");
   
-  useEffect(() => {
-    fetchItems();
-    // Aggiorna la lista ogni 60 secondi per riflettere le scadenze
-    const interval = setInterval(fetchItems, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  // useEffect(() => {
+  //   fetchItems();
+  //   // Aggiorna la lista ogni 60 secondi per riflettere le scadenze
+  //   const interval = setInterval(fetchItems, 60000);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // --- LOGICA FILTRI E RICERCA ---
   const filteredItems = useMemo(() => {
