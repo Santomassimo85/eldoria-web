@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { useNavigate } from "react-router-dom"; // <--- AGGIUNGI QUESTO
+import { useNavigate } from "react-router-dom";
 import {
   collection,
   onSnapshot,
@@ -10,13 +10,36 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
-// Definiamo MASTER_EMAIL per la vista speciale
+/**
+ * Bacheca Component
+ * Main quest board page where players can view, accept, and manage quests.
+ * The Master has special privileges to view and manage all quests.
+ */
 export default function Bacheca() {
   const navigate = useNavigate();
   const MASTER_EMAIL = "santomassimo85@gmail.com";
-  const [sentStatus, setSentStatus] = useState(null); // può essere null, 'sending', 'success', 'error'
+  
+  // State management
+  const [sentStatus, setSentStatus] = useState(null); // 'sending', 'success', 'error', or null
+  const [quests, setQuests] = useState([]);
+  const [userCharName, setUserCharName] = useState("");
+  const [selectedQuest, setSelectedQuest] = useState(null);
+  const [shareWithParty, setShareWithParty] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [hoveredQuestId, setHoveredQuestId] = useState(null);
 
+  // Authentication
+  const { currentUser } = useAuth();
+  const isMaster = currentUser && currentUser.email === MASTER_EMAIL;
 
+  /**
+   * Sends a message to the webhook endpoint via the Raven Messenger form.
+   * Manages form submission, loading state, and user feedback.
+   *
+   * @async
+   * @param {Event} e - The form submission event
+   * @returns {Promise<void>}
+   */
   const handleSubmitMissiva = async (e) => {
     e.preventDefault();
     setSentStatus("sending");
@@ -24,25 +47,33 @@ export default function Bacheca() {
     const formData = new FormData(e.target);
 
     try {
-      // Invia i dati a Pipedream "dietro le quinte"
       await fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
         method: "POST",
         body: formData,
-        mode: "no-cors", // Importante per evitare problemi di sicurezza browser
+        mode: "no-cors",
       });
 
       setSentStatus("success");
-      e.target.reset(); // Svuota il form
+      e.target.reset();
 
-      // Rimuove il messaggio di successo dopo 5 secondi
+      // Auto-clear success message after 5 seconds
       setTimeout(() => setSentStatus(null), 5000);
     } catch (error) {
-      console.error("Errore invio:", error);
+      console.error("Error sending message:", error);
       setSentStatus("error");
     }
   };
 
-  // Funzione per Accettare o Rifiutare la Quest
+  /**
+   * Toggles quest acceptance status.
+   * When accepting: sends quest details to webhook.
+   * When declining: removes the quest assignment.
+   *
+   * @async
+   * @param {string} questId - The ID of the quest
+   * @param {boolean} status - True to accept, false to decline
+   * @returns {Promise<void>}
+   */
   const toggleQuestStatus = async (questId, status) => {
     try {
       const questRef = doc(db, "quests", questId);
@@ -55,29 +86,28 @@ export default function Bacheca() {
         const params = new URLSearchParams();
         params.append("Mittente", userCharName);
 
-        // AGGIUNGIAMO IL DETTAGLIO DELLA CONDIVISIONE
-        const condivisione = shareWithParty ? "SI ✅" : "NO ❌";
+        const sharedWithParty = shareWithParty ? "YES ✅" : "NO ❌";
 
-        const dettaglioMissione = `
-📢 MISSIONE ACCETTATA!
+        const missionDetails = `
+📢 MISSION ACCEPTED!
 ----------------------------------
-📜 TITOLO: ${selectedQuest.title}
-👥 CONDIVISA CON IL PARTY: ${condivisione}
-👤 DA: ${selectedQuest.sender || "Ignoto"}
-🌍 ZONA: ${selectedQuest.zona}
-⚔️ DIFFICOLTÀ: ${selectedQuest.diff}
+📜 TITLE: ${selectedQuest.title}
+👥 SHARED WITH PARTY: ${sharedWithParty}
+👤 FROM: ${selectedQuest.sender || "Unknown"}
+🌍 ZONE: ${selectedQuest.zona}
+⚔️ DIFFICULTY: ${selectedQuest.diff}
 
-💰 RICOMPENSE:
-- Platino: ${selectedQuest.rewardGold || 0}
-- Oggetto: ${selectedQuest.rewardItem || "Nessuno"}
-- Extra: ${selectedQuest.rewardOther || "Nessuno"}
+💰 REWARDS:
+- Platinum: ${selectedQuest.rewardGold || 0}
+- Item: ${selectedQuest.rewardItem || "None"}
+- Extra: ${selectedQuest.rewardOther || "None"}
 
-📝 DESCRIZIONE:
+📝 DESCRIPTION:
 ${selectedQuest.desc}
 ----------------------------------
       `;
 
-        params.append("Messaggio_Giocatore", dettaglioMissione);
+        params.append("Messaggio_Giocatore", missionDetails);
 
         fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
           method: "POST",
@@ -87,22 +117,14 @@ ${selectedQuest.desc}
 
       setSelectedQuest(null);
     } catch (error) {
-      console.error("Errore database:", error);
-      alert("Errore nel sigillare la missiva.");
+      console.error("Database error:", error);
+      alert("Error sealing the message.");
     }
   };
 
-  const { currentUser } = useAuth();
-  const isMaster = currentUser && currentUser.email === MASTER_EMAIL;
-
-  const [quests, setQuests] = useState([]);
-  const [userCharName, setUserCharName] = useState(""); // Nome del PG loggato
-  const [selectedQuest, setSelectedQuest] = useState(null);
-  const [shareWithParty, setShareWithParty] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [hoveredQuestId, setHoveredQuestId] = useState(null);
-
-  // 1. RECUPERA IL NOME DEL PERSONAGGIO LOGGATO
+  /**
+   * Fetch the logged-in user's character name from Firestore
+   */
   useEffect(() => {
     if (currentUser) {
       const fetchUserChar = async () => {
@@ -116,7 +138,10 @@ ${selectedQuest.desc}
     }
   }, [currentUser]);
 
-  // 2. ASCOLTO IN TEMPO REALE DELLE QUEST
+  /**
+   * Real-time listener for quests collection.
+   * Updates quest list whenever data changes in Firestore.
+   */
   useEffect(() => {
     const questsCollection = collection(db, "quests");
     const unsubscribe = onSnapshot(questsCollection, (snapshot) => {
@@ -131,7 +156,9 @@ ${selectedQuest.desc}
     return () => unsubscribe();
   }, []);
 
-  // 3. FILTRO PRIVACY: Mostra solo quest pubbliche, quelle del proprio PG, o tutto se Master
+  /**
+   * Privacy filter: Show only public quests, quests for this character, or all quests if Master
+   */
   const visibleQuests = quests.filter(
     (q) =>
       isMaster ||
@@ -139,8 +166,12 @@ ${selectedQuest.desc}
       q.targetCharacter === userCharName,
   );
 
+  /**
+   * Navigate to the detailed quest page
+   *
+   * @param {Object} quest - The quest object
+   */
   const handleOpenQuest = (quest) => {
-    // setSelectedQuest(quest);
     navigate(`/quest/${quest.id}`);
     setShareWithParty(false);
   };
@@ -148,108 +179,106 @@ ${selectedQuest.desc}
   return (
     <section className="bacheca-page">
       <div>
-        <h1 className="main-title">Bacheca di Hemile</h1>
+        <h1 className="main-title">Hemile's Board</h1>
         <h6 className="subtitle">
-          Benvenuto, {userCharName}. Esamina le missive.
+          Welcome, {userCharName}. Review the messages.
         </h6>
       </div>
 
       {loading ? (
-        <p style={{ textAlign: "center" }}>Caricamento pergamene...</p>
+        <p style={{ textAlign: "center" }}>Loading scrolls...</p>
       ) : (
         <div className="scrolls-container">
           <div className="scrolls-container">
             {visibleQuests.map((quest) => {
-  // 1. Una missione è "accettata" se il campo acceptedBy esiste
-  const isAccepted = quest.acceptedBy != null;
-  // 2. Capire se è stata accettata proprio dall'utente loggato (per il tasto annulla)
-  const isAcceptedByMe = quest.acceptedBy === userCharName;
+              // Quest is accepted if acceptedBy field exists
+              const isAccepted = quest.acceptedBy != null;
+              // Check if current user accepted this quest
+              const isAcceptedByMe = quest.acceptedBy === userCharName;
 
-  return (
-    <div
-      key={quest.id}
-      className={`scroll-item ${quest.targetCharacter !== "All" ? "private-scroll" : ""}`}
-      onClick={() => handleOpenQuest(quest)}
-      onMouseEnter={() => setHoveredQuestId(quest.id)}
-      onMouseLeave={() => setHoveredQuestId(null)}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        cursor: "pointer",
-        transition: "all 0.3s ease",
-        // Il Master e chi l'ha accettata la vedono grigia
-        opacity: isAccepted ? 0.5 : 1,
-        filter: isAccepted ? "grayscale(100%)" : "none",
-      }}
-    >
-      <img
-        src={
-          isAccepted || hoveredQuestId === quest.id
-            ? "/openScroll.png"
-            : "/closedScroll.png"
-        }
-        alt="Pergamena"
-        style={{
-          width: "130px",
-          height: "130px",
-          objectFit: "contain",
-          transition: "transform 0.5s ease",
-          transform:
-            isAccepted || hoveredQuestId === quest.id
-              ? "rotate(-10deg) scale(1.1)"
-              : "rotate(0deg)",
-        }}
-      />
-      <p
-        className="scroll-title"
-        style={{
-          marginTop: "10px",
-          textAlign: "center",
-          color: isAccepted ? "#888" : (hoveredQuestId === quest.id ? "var(--red)" : "white"),
-        }}
-      >
-        {/* Mostra il destinatario se la missione è privata */}
-        {quest.targetCharacter !== "All" && `🔒 [${quest.targetCharacter}] `}
-        {quest.title}
-      </p>
+              return (
+                <div
+                  key={quest.id}
+                  className={`scroll-item ${quest.targetCharacter !== "All" ? "private-scroll" : ""}`}
+                  onClick={() => handleOpenQuest(quest)}
+                  onMouseEnter={() => setHoveredQuestId(quest.id)}
+                  onMouseLeave={() => setHoveredQuestId(null)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    opacity: isAccepted ? 0.5 : 1,
+                    filter: isAccepted ? "grayscale(100%)" : "none",
+                  }}
+                >
+                  <img
+                    src={
+                      isAccepted || hoveredQuestId === quest.id
+                        ? "/openScroll.png"
+                        : "/closedScroll.png"
+                    }
+                    alt="Scroll"
+                    style={{
+                      width: "130px",
+                      height: "130px",
+                      objectFit: "contain",
+                      transition: "transform 0.5s ease",
+                      transform:
+                        isAccepted || hoveredQuestId === quest.id
+                          ? "rotate(-10deg) scale(1.1)"
+                          : "rotate(0deg)",
+                    }}
+                  />
+                  <p
+                    className="scroll-title"
+                    style={{
+                      marginTop: "10px",
+                      textAlign: "center",
+                      color: isAccepted ? "#888" : (hoveredQuestId === quest.id ? "var(--red)" : "white"),
+                    }}
+                  >
+                    {quest.targetCharacter !== "All" && `🔒 [${quest.targetCharacter}] `}
+                    {quest.title}
+                  </p>
 
-      {/* INFO PER IL MASTER O IL GIOCATORE */}
-      {isAccepted && (
-        <div style={{ textAlign: "center", fontSize: "0.8rem" }}>
-          <p style={{ color: "var(--gold)", margin: "5px 0" }}>
-            Presa da: <strong>{quest.acceptedBy}</strong>
-          </p>
-          
-          {/* Solo chi l'ha accettata o il Master può annullarla/liberarla */}
-          {(isAcceptedByMe || isMaster) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleQuestStatus(quest.id, false);
-              }}
-              style={{
-                background: "#ff4444",
-                color: "white",
-                border: "none",
-                padding: "3px 8px",
-                borderRadius: "5px",
-                cursor: "pointer",
-              }}
-            >
-              {isMaster ? "Libera Missione" : "Annulla"}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-})}
+                  {/* Quest acceptance info */}
+                  {isAccepted && (
+                    <div style={{ textAlign: "center", fontSize: "0.8rem" }}>
+                      <p style={{ color: "var(--gold)", margin: "5px 0" }}>
+                        Accepted by: <strong>{quest.acceptedBy}</strong>
+                      </p>
+
+                      {/* Only the acceptor or Master can cancel the quest */}
+                      {(isAcceptedByMe || isMaster) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleQuestStatus(quest.id, false);
+                          }}
+                          style={{
+                            background: "#ff4444",
+                            color: "white",
+                            border: "none",
+                            padding: "3px 8px",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {isMaster ? "Release Quest" : "Cancel"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* POPUP PERGAMENA APERTA */}
+      {/* Quest detail modal */}
       {selectedQuest && (
         <div className="quest-overlay" onClick={() => setSelectedQuest(null)}>
           <div className="scroll-popup" onClick={(e) => e.stopPropagation()}>
@@ -267,30 +296,30 @@ ${selectedQuest.desc}
                   color: "var(--gold)",
                 }}
               >
-                <strong>Da:</strong>{" "}
-                {selectedQuest.sender || "Un mittente misterioso"}
+                <strong>From:</strong>{" "}
+                {selectedQuest.sender || "A mysterious sender"}
               </p>
               <p>
-                <strong>Descrizione:</strong> {selectedQuest.desc}
+                <strong>Description:</strong> {selectedQuest.desc}
               </p>
 
               <p>
-                <strong>Zona:</strong> {selectedQuest.zona} |{" "}
-                <strong>Difficoltà:</strong> {selectedQuest.diff}
+                <strong>Zone:</strong> {selectedQuest.zona} |{" "}
+                <strong>Difficulty:</strong> {selectedQuest.diff}
               </p>
 
-              {/* SEZIONE RICOMPENSE DIVISE */}
+              {/* Rewards section */}
               <div className="rewards-box">
                 <p>
-                  <strong>Ricompense Previste:</strong>
+                  <strong>Expected Rewards:</strong>
                 </p>
                 <ul>
                   {selectedQuest.rewardGold > 0 && (
-                    <li>{selectedQuest.rewardGold} Monete Platino</li>
+                    <li>{selectedQuest.rewardGold} Platinum Coins</li>
                   )}
                   {selectedQuest.rewardItem && (
                     <li>
-                      <strong> Oggetto:</strong> {selectedQuest.rewardItem}
+                      <strong>Item:</strong> {selectedQuest.rewardItem}
                     </li>
                   )}
                   {selectedQuest.rewardOther && (
@@ -301,11 +330,11 @@ ${selectedQuest.desc}
                 </ul>
               </div>
 
-              {/* Nel Popup della missione */}
+              {/* Quest action buttons */}
               <div className="quest-actions" style={{ marginTop: "20px" }}>
                 {selectedQuest.acceptedBy === userCharName ? (
                   <p style={{ color: "green", fontWeight: "bold" }}>
-                    Hai già preso in carico questa missiva.
+                    You have already accepted this message.
                   </p>
                 ) : (
                   <button
@@ -322,23 +351,23 @@ ${selectedQuest.desc}
                       borderRadius: "5px",
                     }}
                   >
-                    Accetta Incarico
+                    Accept Quest
                   </button>
                 )}
               </div>
 
               {selectedQuest.targetCharacter !== "All" && (
                 <p className="private-notice">
-                  <i> ***Questa missione è riservata esclusivamente a te.***</i>
+                  <i>***This mission is reserved exclusively for you.***</i>
                 </p>
               )}
             </div>
 
+            {/* Share quest with party checkbox */}
             <div className="party-consent">
               <label>
                 <p className="check">
-                  {" "}
-                  Condividi con il party
+                  Share with party
                   <input
                     type="checkbox"
                     checked={shareWithParty}
@@ -352,7 +381,7 @@ ${selectedQuest.desc}
               className="close-btn"
               onClick={() => setSelectedQuest(null)}
             >
-              Chiudi
+              Close
             </button>
           </div>
         </div>
@@ -361,79 +390,72 @@ ${selectedQuest.desc}
       <hr className="bacheca-divider" />
       <hr className="gold-divider" />
 
-      {/* FORM DI CONTATTO MASTER */}
-      {/* SEZIONE INVIO MISSIVA AL MASTER */}
+      {/* Master contact form */}
       <div className="master-contact-section">
-        <h3>Invia una Missiva al Master</h3>
+        <h3>Send a Message to the Master</h3>
         <p style={{ fontSize: "0.8rem", color: "#888", marginBottom: "20px" }}>
-          Usa questo form per accettare una missione o inviare un messaggio
-          segreto ad Hemile.
+          Use this form to accept a mission or send a secret message to Hemile.
         </p>
 
-        {/* SOSTITUISCI L'URL QUI SOTTO CON QUELLO DI PIPEDREAM */}
-        <div className="master-contact-section">
-          {/* <h3>Invia una Missiva al Master</h3> */}
+        <form onSubmit={handleSubmitMissiva} className="hemile-form">
+          <input type="hidden" name="Mittente" value={userCharName} />
+          <input
+            type="hidden"
+            name="Missione"
+            value={selectedQuest?.title || "General"}
+          />
 
-          <form onSubmit={handleSubmitMissiva} className="hemile-form">
-            <input type="hidden" name="Mittente" value={userCharName} />
-            <input
-              type="hidden"
-              name="Missione"
-              value={selectedQuest?.title || "Generale"}
-            />
+          <textarea
+            name="Messaggio_Giocatore"
+            placeholder="Write your message here..."
+            required
+            style={{
+              width: "100%",
+              height: "220px",
+              borderRadius: "15px",
+              padding: "10px",
+              fontSize: "1rem",
+              border: "1px solid #ccc",
+            }}
+          ></textarea>
 
-            <textarea
-              name="Messaggio_Giocatore"
-              placeholder="Scrivi qui la tua missiva..."
-              required
+          <button
+            type="submit"
+            className="hemile-button"
+            disabled={sentStatus === "sending"}
+          >
+            {sentStatus === "sending"
+              ? "Sending..."
+              : "Entrust to the Messenger Raven"}
+          </button>
+
+          {/* Feedback messages */}
+          {sentStatus === "success" && (
+            <p
               style={{
-                width: "100%",
-                height: "220px",
-                borderRadius: "15px",
-                padding: "10px",
-                fontSize: "1rem",
-                border: "1px solid #ccc",
+                color: "#4CAF50",
+                marginTop: "15px",
+                fontWeight: "bold",
+                textAlign: "center",
               }}
-            ></textarea>
-
-            <button
-              type="submit"
-              className="hemile-button"
-              disabled={sentStatus === "sending"}
             >
-              {sentStatus === "sending"
-                ? "Invio in corso..."
-                : "Affida al Corvo Messaggero"}
-            </button>
-
-            {/* MESSAGGI DI FEEDBACK SOTTO IL FORM */}
-            {sentStatus === "success" && (
-              <p
-                style={{
-                  color: "#4CAF50",
-                  marginTop: "15px",
-                  fontWeight: "bold",
-                  textAlign: "center",
-                }}
-              >
-                ✅ Missiva consegnata con successo! Il Master la riceverà a
-                breve.
-              </p>
-            )}
-            {sentStatus === "error" && (
-              <p
-                style={{
-                  color: "#ff4444",
-                  marginTop: "15px",
-                  fontWeight: "bold",
-                  textAlign: "center",
-                }}
-              >
-                ❌ Il corvo si è smarrito. Riprova tra poco.
-              </p>
-            )}
-          </form>
-        </div>
+              ✅ Message delivered successfully! The Master will receive it
+              shortly.
+            </p>
+          )}
+          {sentStatus === "error" && (
+            <p
+              style={{
+                color: "#ff4444",
+                marginTop: "15px",
+                fontWeight: "bold",
+                textAlign: "center",
+              }}
+            >
+              ❌ The raven got lost. Try again shortly.
+            </p>
+          )}
+        </form>
       </div>
     </section>
   );

@@ -245,7 +245,7 @@ section.active {
 h1 {
     color: var(--red);
     font-size: 2rem;
-    margin-bottom: 12px;
+    margin: 12px;
 }
 
 p,
@@ -1115,7 +1115,7 @@ footer strong {
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 620px) {
     header {
         flex-direction: column;
         align-items: center;
@@ -1124,6 +1124,9 @@ footer strong {
 
     nav {
         justify-content: center;
+    }
+    .admin-block{
+        height: 300px;
     }
 }
 
@@ -1221,29 +1224,20 @@ a {
     justify-content: center;
     flex-wrap: wrap;
 }
-
 .admin-block {
     cursor: pointer;
     border: 1px solid var(--gold);
     padding: 20px;
     border-radius: 8px;
-    max-width: 300px;
+    flex: 1 1 calc(20% - 24px);
+    max-width: calc(20% - 24px);
+    min-width: 200px;
+    height: 150px;
     transition: transform 0.2s, box-shadow 0.2s;
     text-align: center;
-}
-
-.admin-block:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-}
-
-.admin-block button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.3s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .admin-button {
@@ -1252,6 +1246,29 @@ a {
     box-shadow: #272727 2px 2px 5px;
     color: rgb(255, 255, 255);
 }
+
+.admin-block:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.admin-block button {
+    height: 50px;
+    width: 40%;
+    position: absolute;
+bottom:10px ;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    z-index: 999;
+}
+
+
 
 .admin-actions button {
     background-color: var(--red);
@@ -1703,7 +1720,13 @@ h6 {
     .chatBotClick {
         font-size: 1.5rem;
     }
+    .admin-block {
+        flex: 1 1 calc(100% - 24px);
+        max-width: calc(100% - 24px);
+    }
 }
+
+
 
 .html-toolbar button {
   background: #333;
@@ -1756,4 +1779,65 @@ h6 {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
+}
+
+.poi-builder button {
+    margin: 20px;
+}
+
+/* Il drop cap si attiva SOLO se usi <span class="start">Lettera</span> */
+.start {
+  float: left;
+  font-family: 'Cinzel', serif; 
+  font-size: 4rem;
+  line-height: 0.8;
+  padding-top: 4px;
+  padding-right: 8px;
+  padding-left: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+/* Grassetto semplice senza interferenze */
+b, strong {
+  font-weight: bold;
+  color: inherit; /* Mantiene il colore del testo circostante */
+}
+
+.admin-item-row{
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    color: #111111;
+}
+
+.admin-item-row button {
+    background-color: var(--red);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin: 0 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.admin-item-row button:hover {
+    background-color: #d76e6e;
+}
+
+@media (max-width: 2050px) {
+    .admin-block {
+        flex: 1 1 calc(45% - 24px);
+        max-width: calc(45% - 24px);
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-block {
+        flex: 1 1 calc(100% - 24px);
+        max-width: calc(100% - 24px);
+    }
 }

@@ -19,6 +19,8 @@ import ChatBot from "./components/ChatBot";
 import ReputationAdmin from "./pages/ReputazioneAdmin";
 import VideoAdmin from "./pages/VideoAdmin";
 import Cinema from "./pages/Cinema";
+import GeoAdmin from "./pages/GeoAdmin";
+
 
 import "./style.css";
 
@@ -172,6 +174,7 @@ export default function App() {
           <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
           <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
           <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
+          <Route path="/dm-admin/geo" element={<GeoAdmin />} />.
 
         </Routes>
       </main>

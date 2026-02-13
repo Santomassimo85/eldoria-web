@@ -5,54 +5,66 @@ export default function HtmlToolbar({ textAreaRef, formData, setFormData, fieldN
     const textarea = textAreaRef.current;
     if (!textarea) return;
 
-    // Prendiamo le coordinate del cursore
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    
-    // Il testo attuale nello stato di React
     const text = formData[fieldName] || "";
     
     const before = text.substring(0, start);
     const selected = text.substring(start, end);
     const after = text.substring(end);
 
-    // Costruiamo il nuovo testo
     const newText = `${before}${tagOpen}${selected}${tagClose}${after}`;
 
-    // AGGIORNAMENTO FONDAMENTALE: aggiorna lo stato del componente padre
     setFormData({
       ...formData,
       [fieldName]: newText
     });
 
-    // Riportiamo il focus sulla textarea dopo un micro-secondo
     setTimeout(() => {
       textarea.focus();
-      // Riposizioniamo il cursore dopo il tag aperto (se non c'era selezione) 
-      // o dopo il tag chiuso (se c'era selezione)
-      const newCursorPos = start + tagOpen.length + selected.length + tagClose.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      const cursorOffset = tagOpen.length + selected.length + tagClose.length;
+      textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
     }, 10);
   };
 
+  // Funzione per inserire un colore a scelta
+  const insertColor = () => {
+    const color = prompt("Inserisci codice colore (es: #ff0000 o gold):", "var(--gold)");
+    if (color) {
+      insertTag(`<span style="color:${color}">`, "</span>");
+    }
+  };
+
   return (
-    <div className="html-toolbar" style={{ marginBottom: "8px", display: "flex", gap: "5px", flexWrap: "wrap" }}>
-      <button type="button" onClick={() => insertTag("<b>", "</b>")} style={btnStyle}><b>B</b></button>
-      <button type="button" onClick={() => insertTag("<i>", "</i>")} style={btnStyle}><i>I</i></button>
+    <div className="html-toolbar" style={{ marginBottom: "10px", display: "flex", gap: "5px", flexWrap: "wrap", background: "#222", padding: "5px", borderRadius: "5px" }}>
+      {/* Formattazione Base */}
+      <button type="button" onClick={() => insertTag("<b>", "</b>")} style={btnStyle} title="Grassetto">B</button>
+      <button type="button" onClick={() => insertTag("<i>", "</i>")} style={btnStyle} title="Corsivo">I</button>
+      <button type="button" onClick={() => insertTag("<u>", "</u>")} style={btnStyle} title="Sottolineato">U</button>
+      
+      {/* Colori e Stili Speciali */}
+      <button type="button" onClick={() => insertTag('<span style="color:var(--gold)">', "</span>")} style={{...btnStyle, color: "var(--gold)"}} title="Testo Oro">Oro</button>
+      <button type="button" onClick={insertColor} style={btnStyle} title="Colore Personalizzato">🎨 Colore</button>
+      
+      {/* Struttura */}
+      <button type="button" onClick={() => insertTag('<span class="start">', "</span>")} style={{...btnStyle, border: "1px solid var(--gold)"}} title="Capolettera Grande">A (DropCap)</button>
       <button type="button" onClick={() => insertTag("<br>", "")} style={btnStyle}>A Capo</button>
-      <button type="button" onClick={() => insertTag("<ul>\n  <li>", "</li>\n</ul>")} style={btnStyle}>Lista</button>
-      <button type="button" onClick={() => insertTag('<span style="color:var(--gold)">', "</span>")} style={btnStyle}>Oro</button>
-      <button type="button" onClick={() => insertTag('<h3 style="color:var(--gold)">', "</h3>")} style={btnStyle}>Titolo H3</button>
+      <button type="button" onClick={() => insertTag('<hr style="border: 0; border-top: 1px solid #444; margin: 20px 0;">', "")} style={btnStyle}>Linea —</button>
+      
+      {/* Liste */}
+      <button type="button" onClick={() => insertTag("<ul>\n  <li>", "</li>\n</ul>")} style={btnStyle}>Lista •</button>
+      <button type="button" onClick={() => insertTag('<h3 style="color:var(--gold); border-bottom: 1px solid #444; padding-bottom: 5px;">', "</h3>")} style={btnStyle}>Titolo H3</button>
     </div>
   );
 }
 
-const btnStyle = {
-  background: "#333",
-  color: "#f3d997",
-  border: "1px solid #f3d997",
-  padding: "4px 8px",
-  cursor: "pointer",
-  borderRadius: "4px",
-  fontSize: "0.8rem"
+const btnStyle = { 
+  background: "#333", 
+  color: "#fff", 
+  border: "1px solid #555", 
+  padding: "4px 10px", 
+  cursor: "pointer", 
+  borderRadius: "3px",
+  fontSize: "0.85rem",
+  fontWeight: "bold"
 };

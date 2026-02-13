@@ -1,80 +1,100 @@
-// src/pages/AdminPanel.jsx (Dashboard e Protezione)
+// src/pages/AdminPanel.jsx
+// Admin Panel component for Dungeon Master to manage campaign data
+// Includes protection to allow only the master user access
 
-import React from "react";
 import { useAuth } from "../AuthContext";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 
-
+/**
+ * AdminPanel Component
+ * 
+ * Provides a dashboard for the Dungeon Master to manage:
+ * - Black Market items
+ * - Session summaries
+ * - Platinum coins balance
+ * - Player rat faction reputation
+ * - Session recordings
+ * - Quest board management
+ * 
+ * @returns {JSX.Element} Admin dashboard or access denied message
+ */
 export default function AdminPanel() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  
+
+  // Master user email for access control
   const MASTER_EMAIL = "santomassimo85@gmail.com";
 
-  // Reindirizzamento e protezione
+  // Redirect and protect: only allow master user
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return (
       <section style={{ textAlign: "center", paddingTop: "100px" }}>
-        <h1 style={{ color: "var(--red)" }}>Accesso Negato</h1>
-        <p>Solo il Dungeon Master può accedere a questo pannello.</p>
+        <h1 style={{ color: "var(--red)" }}>Access Denied</h1>
+        <p>Only the Dungeon Master can access this panel.</p>
       </section>
     );
   }
 
-  // --- Funzioni di navigazione (per i pulsanti) ---
-  const navigateToMarket = () => navigate('/dm-admin/market');
-  const navigateToSummaries = () => navigate('/dm-admin/summaries');
-const navigateToPlatinum = () => navigate('/dm-admin/platinum'); 
+  // Navigation helper functions for dashboard blocks
+  const navigateToMarket = () => navigate("/dm-admin/market");
+  const navigateToSummaries = () => navigate("/dm-admin/summaries");
+  const navigateToPlatinum = () => navigate("/dm-admin/platinum");
 
   return (
     <section className="admin-page">
       <h1 style={{ color: "var(--gold)", textAlign: "center" }}>
-        Pannello Amministrazione Eldoria
+        Eldoria Administration Panel
       </h1>
       <p style={{ textAlign: "center", marginBottom: 40 }}>
-        Benvenuto, {currentUser.email.split('@')[0]}. Gestisci i dati della tua campagna.
+        Welcome, {currentUser.email.split("@")[0]}. Manage your campaign data.
       </p>
 
       <div className="admin-dashboard-grid">
-        
-        {/* Blocco 1: Gestione Mercato */}
+        {/* Market Management Block */}
         <div className="admin-block" onClick={navigateToMarket}>
-            <h2>Gestione Mercato Nero</h2>
-            <p>Aggiungi, modifica o elimina oggetti d'asta.</p>
-            <button className="admin-button">Vai al Mercato Admin</button>
+          <h2>Black Market</h2>
+          <p>Add, edit, or remove auction items.</p>
+          {/* <button className="admin-button">Market Admin</button> */}
         </div>
-        {/* Blocco 4: Reputazione Ratti */}
-<div className="admin-block" onClick={() => navigate('/dm-admin/reputation')}>
-    <h2>Reputazione Ratti 🐀</h2>
-    <p>Controlla la fedeltà dei giocatori alla Gilda e i livelli raggiunti.</p>
-    <button className="admin-button">Gestisci Gradi</button>
-</div>
-        {/* Blocco 5: Gestione video sessioni */}
 
-<div className="admin-block" onClick={() => navigate('/dm-admin/videos')}>
-    <h2>Cinema 🎬</h2>
-    <p>Carica i link delle registrazioni delle sessioni.</p>
+        {/* Rat Faction Reputation Block */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/reputation")}>
+          <h2>Rat Reputation</h2>
+          <p>Track player loyalty to the Guild and rank levels.</p>
+          {/* <button className="admin-button">Manage Ranks</button> */}
+        </div>
+
+        <div className="admin-block" onClick={() => navigate("/dm-admin/geo")}>
+  <h2>Geomantia</h2>
+  <p>Gestisci le mappe e le lore delle città.</p>
 </div>
-        {/* Blocco 2: Gestione Riassunti */}
+
+        {/* Session Recordings Block */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/videos")}>
+          <h2>Cinema</h2>
+          <p>Upload links to session recordings.</p>
+        </div>
+
+        {/* Session Summaries Block */}
         <div className="admin-block" onClick={navigateToSummaries}>
-            <h2>Gestione Riassunti Sessioni</h2>
-            <p>Aggiungi i log delle nuove sessioni alla pagina Riassunti.</p>
-            <button className="admin-button">Vai a Riassunti Admin</button>
+          <h2>Session Summaries</h2>
+          <p>Add logs of new sessions to the Summaries page.</p>
+          {/* <button className="admin-button">Summaries Admin</button> */}
         </div>
-        
-        {/* Blocco 3: Gestione Monete Platino */}
+
+        {/* Platinum Coins Balance Block */}
         <div className="admin-block" onClick={navigateToPlatinum}>
-            <h2>Gestione Monete (MP)</h2>
-            <p>Aggiorna il saldo delle Monete Platino (MP) dei personaggi.</p>
-            <button className="admin-button">Vai a Saldo MP</button>
+          <h2>Platinum Coins (MP)</h2>
+          <p>Update character Platinum Coins (MP) balance.</p>
+          {/* <button className="admin-button">MP Balance</button> */}
         </div>
 
-        <div className="admin-block" onClick={() => navigate('/dm-admin/quests')}>
-    <h2>Gestione Bacheca</h2>
-    <p>Aggiungi o rimuovi pergamene e missioni dalla Bacheca di Hemile.</p>
-    <button className="admin-button">Gestisci Quest</button>
-</div>
-
+        {/* Quest Board Management Block */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/quests")}>
+          <h2>Quest Board</h2>
+          <p>Add or remove scrolls and missions from Hemile's Board.</p>
+          {/* <button className="admin-button">Manage Quests</button> */}
+        </div>
       </div>
     </section>
   );

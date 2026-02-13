@@ -378,7 +378,7 @@ useEffect(() => {
 
         try {
           // 1. Aggiorna il database
-          const itemRef = doc(db, "market", item.id);
+          const itemRef = doc(db, "items", item.id);
           await updateDoc(itemRef, { 
             isSold: true, 
             winner: winnerName, 
