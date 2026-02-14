@@ -560,12 +560,12 @@ h4 {
 
 .item-card {
     background-color: #fcfcfc;
-    border: 2px solid var(--red);
-    border-radius: 8px;
+    /* border: 2px solid var(--red); */
+    border-radius: 18px;
     position: relative;
     overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    /* box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); */
     transition: transform 0.2s, box-shadow 0.2s;
     transition: height 0.3s ease-out;
     text-align: center;
@@ -582,6 +582,7 @@ h4 {
     height: 65%;
     object-fit: cover;
     border-bottom: 1px solid var(--gold);
+    border-radius: 16px 16px 0 0 ;
 }
 
 .item-details {
@@ -1669,7 +1670,7 @@ h6 {
     position: fixed;
     bottom: 40px;
     right: 20px;
-    background-color: rgba(234, 177, 33, 0.842);
+    background-color: rgb(234, 177, 33);
     /* color: white; */
     font-size: 3rem;
     padding: 12px 20px;
@@ -1678,6 +1679,7 @@ h6 {
     cursor: pointer;
     z-index: 1000;
     transition: background-color 0.3s ease, transform 0.3s ease;
+    box-shadow: #111111 2px 2px 5px;
 }
 
 .chatBotClick:hover {
