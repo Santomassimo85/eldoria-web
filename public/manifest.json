@@ -1,0 +1,47 @@
+{
+  "id": "/",
+  "short_name": "Eldoria",
+  "name": "Eldoria: Archivio Geomantico",
+  "description": "L'archivio ufficiale delle cronache e della geomantia di Eldoria.",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+ "screenshots": [
+  {
+    "src": "/screenshot-mobile.png",
+    "sizes": "402x883",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "Eldoria Mobile"
+  },
+  {
+    "src": "/screenshot-desktop.png",
+    "sizes": "1614x1165",
+    "type": "image/png",
+    "form_factor": "wide",
+    "label": "Eldoria Desktop"
+  }
+],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a1a1a",
+  "background_color": "#1a1a1a"
+}
