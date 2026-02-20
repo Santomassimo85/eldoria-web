@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 /**
  * AdminPanel Component
- * 
+ *
  * Provides a dashboard for the Dungeon Master to manage:
  * - Black Market items
  * - Session summaries
@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
  * - Player rat faction reputation
  * - Session recordings
  * - Quest board management
- * 
+ *
  * @returns {JSX.Element} Admin dashboard or access denied message
  */
 export default function AdminPanel() {
@@ -58,19 +58,31 @@ export default function AdminPanel() {
         </div>
 
         {/* Rat Faction Reputation Block */}
-        <div className="admin-block" onClick={() => navigate("/dm-admin/reputation")}>
+        <div
+          className="admin-block"
+          onClick={() => navigate("/dm-admin/reputation")}
+        >
           <h2>Rat Reputation</h2>
           <p>Track player loyalty to the Guild and rank levels.</p>
           {/* <button className="admin-button">Manage Ranks</button> */}
         </div>
 
         <div className="admin-block" onClick={() => navigate("/dm-admin/geo")}>
-  <h2>Geomantia</h2>
-  <p>Gestisci le mappe e le lore delle città.</p>
-</div>
-
+          <h2>Geomantia</h2>
+          <p>Gestisci le mappe e le lore delle città.</p>
+        </div>
+        <div
+          className="admin-block"
+          onClick={() => navigate("/dm-admin/sessions")}
+        >
+          <h2>Gestione Sessioni</h2>
+          <p>Imposta date, orari e link Roll20 per Party 1, Party 2 ed Enox.</p>
+        </div>
         {/* Session Recordings Block */}
-        <div className="admin-block" onClick={() => navigate("/dm-admin/videos")}>
+        <div
+          className="admin-block"
+          onClick={() => navigate("/dm-admin/videos")}
+        >
           <h2>Cinema</h2>
           <p>Upload links to session recordings.</p>
         </div>
@@ -90,7 +102,10 @@ export default function AdminPanel() {
         </div>
 
         {/* Quest Board Management Block */}
-        <div className="admin-block" onClick={() => navigate("/dm-admin/quests")}>
+        <div
+          className="admin-block"
+          onClick={() => navigate("/dm-admin/quests")}
+        >
           <h2>Quest Board</h2>
           <p>Add or remove scrolls and missions from Hemile's Board.</p>
           {/* <button className="admin-button">Manage Quests</button> */}

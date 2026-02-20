@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import Countdown from './Countdown'; 
+import Countdown from '../components/Countdown'; 
 
 export default function Home() {
   const [visible, setVisible] = useState(true);
@@ -22,11 +22,16 @@ export default function Home() {
       <div className="sidebar-data">
         <Countdown />
         {/* You could add other important information here */}
+        <div className="welcome-box">
+          <h3>Benvenuti ad Eldoria</h3>
+          <p>Seleziona "Next Game" dal menu per vedere le prossime sessioni dei party.</p>
+        </div>
       </div>
 
-      {/* COLUMN 2: MAIN CONTENT */}
+
+
       <section className="main-content">
-        <img
+<img
           src="/assets/creation.png"
           className={`creation-image ${visible ? "show" : "hide"}`}
           alt="Eldoria"
@@ -123,8 +128,9 @@ export default function Home() {
           spezzerà, come tutte le cose create dall'uomo, nuovi eroi dovranno
           sorgere dalle ceneri… o perire tra le tenebre che essi stessi avranno
           evocato.
-        </p>
-      </section>
+        </p>     
+         </section>
     </div>
   );
+
 }
