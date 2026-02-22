@@ -497,6 +497,15 @@ h4 {
     gap: 30px;
 }
 
+
+/* Questa regola forza la nuova sezione ad occupare entrambe le colonne */
+.full-width-content {
+  grid-column: 1 / -1; /* Parte dalla colonna 1 e arriva alla fine */
+  width: 100%;
+  padding-top: 50px;
+  text-align: center;
+}
+
 .sidebar-data {
     order: -1;
     display: block;
@@ -505,6 +514,11 @@ h4 {
 
 .main-content {
     order: 0;
+    width: 100%;
+}
+
+.pantheon-content {
+    /* order: 1; */
     width: 100%;
 }
 
@@ -851,6 +865,8 @@ input {
     .main-content {
         grid-column: 2 / 3;
     }
+    .pantheon-content {
+        grid-column: 3 / 4;}
 }
 
 .countdown-container {
