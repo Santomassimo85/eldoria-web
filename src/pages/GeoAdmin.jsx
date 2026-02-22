@@ -179,9 +179,13 @@ export default function GeoAdmin() {
             >
               <option value="/assets/icons/market.png">Mercato</option>
               <option value="/assets/icons/alchemy.svg">Alchimia</option>
+              <option value="/assets/icons/deja-vu.png">Arcanista</option>
+              <option value="/assets/icons/blacksmith.png">Fucina</option>
+              <option value="/assets/icons/open-book.png">Libreria</option>
               <option value="/assets/icons/prison.svg">Prigione</option>
               <option value="/assets/icons/pvp.png">Arena</option>
-              <option value="/assets/icons/tavern.png">Locanda</option>
+              <option value="/assets/icons/table.png">Locanda</option>
+              
             </select>
             <input 
               style={{ flexGrow: 1, padding: "5px" }}
