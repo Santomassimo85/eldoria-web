@@ -15,6 +15,14 @@ const partyData = {
     { name: "Thoki", race: "Gnomo", class: "Mago", image: "/assets/player/Thoki.jpg" },
     { name: "Cleofe", race: "Halfling", class: "Ladro", image: "/assets/player/Cleofe.jpg" },
   ],
+  party3: [
+   { name: "Roynot", race: "EUmanoo", class: "Druido", image: "/assets/player/Roynot.jpg" },
+    { name: "Dante", race: "Umano V.", class: "Ladro", image: "/assets/player/Dante.jpg" },
+    { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.jpg" },
+    { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temi.png" },
+    { name: "Khorvash", race: "Tiefling ", class: "Barbaro", image: "/assets/player/Khorvash.jpg" },
+
+  ],
 };
 
 // Componente per una singola Card del personaggio
@@ -47,6 +55,14 @@ export default function Party() {
       <ToggleSection title="Party LAC 3/4">
         <div className="party-grid">
           {partyData.party2.map((char, index) => (
+            <CharacterCard key={index} character={char} />
+          ))}
+        </div>
+      </ToggleSection>
+
+      <ToggleSection title="Party Enox 4/4">
+        <div className="party-grid">
+          {partyData.party3.map((char, index) => (
             <CharacterCard key={index} character={char} />
           ))}
         </div>
