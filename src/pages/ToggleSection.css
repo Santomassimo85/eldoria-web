@@ -20,7 +20,7 @@
   border-radius: 15px;
   padding: 15px 20px;
   margin: 0 auto;
-  width: 50%;
+  /* width: 50%; */
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -34,7 +34,6 @@
 .toggle-title.summaryTitle { 
   padding-top: 100px; 
   padding-bottom: 100px; 
-
   border-radius: 15px;
   
   /* Centra il titolo e la freccia nella nuova altezza */
@@ -44,7 +43,7 @@
   
   /* Stili aggiuntivi per il look (esempio) */
   color: var(--red); 
-  background-color: #f0f0f0;
+  background-color: #f3e3b95e;
 }
 
 .toggle-title.summaryTitle:hover {
