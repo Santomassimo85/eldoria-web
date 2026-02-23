@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import Countdown from "../components/Countdown";
-
+import ToggleSection from "../pages/ToggleSection";
 
 
 
 export default function Home() {
   const [visible, setVisible] = useState(true);
-
+const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il pannello fluttuante
 
   const divinita = [
     {
@@ -113,22 +113,29 @@ export default function Home() {
   }, []);
 
   return (
-    // Use a container to apply grid layout on large screens
-    <div className="home-grid-container">
-      {/* COLUMN 1: SIDEBAR (Visible only on large screens) */}
-      <div className="sidebar-data">
-        <Countdown />
-        {/* You could add other important information here */}
-        <div className="welcome-box">
-          <h3>Benvenuti ad Eldoria</h3>
-          <p>
-            Seleziona "Next Game" dal menu per vedere le prossime sessioni dei
-            party.
-          </p>
+   <div className="home-container">
+      {/* --- TASTO FLUTTUANTE (FAB) --- */}
+      <button 
+        className={`floating-sidebar-btn ${isSidebarOpen ? 'active' : ''}`} 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        title="Info Sessioni"
+      >
+        {isSidebarOpen ? "✕" : "📅"}
+      </button>
+
+      {/* --- PANNELLO LATERALE TIPO CHATBOT --- */}
+      <div className={`side-drawer ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="drawer-content">
+          <Countdown />
+          <div className="welcome-box">
+            <h3>Benvenuti ad Eldoria</h3>
+            <p>Seleziona "Next Game" dal menu per vedere le prossime sessioni dei party.</p>
+          </div>
         </div>
       </div>
 
-      <section className="main-content">
+      {/* --- CONTENUTO PRINCIPALE (Ora a tutta larghezza) --- */}
+      <section className="main-content full-width-home">
         <img
           src="/assets/creation.png"
           className={`creation-image ${visible ? "show" : "hide"}`}
@@ -137,7 +144,7 @@ export default function Home() {
         />
         <h1>L´inizio del mondo di Eldoria</h1>
         <p>
-          <span className="start">E</span>oni or sono, quando il tempo non aveva
+          <span className="start">E</span> oni or sono, quando il tempo non aveva
           ancora nome e la luce non conosceva il buio, esisteva soltanto il
           vuoto. Un abisso silenzioso, privo di forma e di vita, ove dimoravano
           due essenze primordiali: una di pura oscurità, l'altra splendente come
@@ -231,8 +238,9 @@ export default function Home() {
 
 
       <section className="full-width-content">
-        <h1 className="pantheon-main-title">Antico Pantheon</h1>
-        <p className="subtitle-pantheon">Arazzo raffigurante "I nati dalle lacrime"</p> <br></br>
+        <ToggleSection title="Antico Pantheon " defaultOpen={false}>
+        <h1 className="pantheon-main-title">I Nati dalle lacrime</h1>
+        <p className="subtitle-pantheon">Arazzo raffigurante "I nati dalle lacrime", antiche divinitá di Eldoria, nate grazie alle carni dei giganti NY e Ouh</p> <br></br>
         <img
           src="/assets/pantheon/Antico_pantheon.png"
           className="creation-image show"
@@ -260,6 +268,7 @@ export default function Home() {
             </div>
           ))}
         </div>
+        </ToggleSection>
       </section>
     </div>
   );

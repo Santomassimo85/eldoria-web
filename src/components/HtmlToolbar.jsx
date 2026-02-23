@@ -54,6 +54,12 @@ export default function HtmlToolbar({ textAreaRef, formData, setFormData, fieldN
       {/* Liste */}
       <button type="button" onClick={() => insertTag("<ul>\n  <li>", "</li>\n</ul>")} style={btnStyle}>Lista •</button>
       <button type="button" onClick={() => insertTag('<h3 style="color:var(--gold); border-bottom: 1px solid #444; padding-bottom: 5px;">', "</h3>")} style={btnStyle}>Titolo H3</button>
+      
+      {/* Allineamento */}
+      <button type="button" onClick={() => insertTag('<div style="text-align:left;">', "</div>")} style={btnStyle} title="Allinea a Sinistra">⬅ Sinistra</button>
+      <button type="button" onClick={() => insertTag('<div style="text-align:center;">', "</div>")} style={btnStyle} title="Centra">↔ Centro</button>
+      <button type="button" onClick={() => insertTag('<div style="text-align:right;">', "</div>")} style={btnStyle} title="Allinea a Destra">➡ Destra</button>
+      <button type="button" onClick={() => insertTag('<div style="text-align:justify;">', "</div>")} style={btnStyle} title="Giustifica">≡ Giustifica</button>
     </div>
   );
 }

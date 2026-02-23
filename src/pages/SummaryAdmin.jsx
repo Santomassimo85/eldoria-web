@@ -230,6 +230,8 @@ export default function SummaryAdmin() {
           <select name="party" value={formData.party} onChange={handleChange}>
             <option value="AMEA">AMEA (Garroth, Tanagar, Caius, Sylva)</option>
             <option value="LAC">LAC (Horn, Thoki, Cleofe)</option>
+                        <option value="ENOX">ENOX (Roynox, Vyger, Temistocle, Dante, Khorvash)</option>
+
             <option value="Unico">Storia del Mondo</option>
           </select>
         </div>
