@@ -11,7 +11,7 @@ export default function Home() {
   const divinita = [
     {
       nome: "VULKAROS – Il Fabbro delle Fiamme",
-      immagine: "/assets/pantheon/vulkaros.jpg",
+      immagine: "/assets/pantheon/Vulkaros.jpg",
       dominio: "Fuoco, Forgiatura, Guerra",
       titoli: "Il Cuore Incandescente, Il Martello Eterno",
       simbolo: "Un martello fiammeggiante sopra una montagna in eruzione",
@@ -20,7 +20,7 @@ export default function Home() {
     },
     {
       nome: "NYSIA – La Madre delle Maree",
-      immagine: "/assets/pantheon/nysia.jpg",
+      immagine: "/assets/pantheon/Nysia.jpg",
       dominio: "Acqua, Vita, Morte",
       titoli: "L’Abisso Gentile, La Portatrice delle Correnti",
       simbolo: "Una conchiglia aperta che contiene una goccia d’acqua splendente",
@@ -29,7 +29,7 @@ export default function Home() {
     },
     {
       nome: "SYRAEL – La Danzatrice dei Venti",
-      immagine: "/assets/pantheon/syrael.jpg",
+      immagine: "/assets/pantheon/Syrael.jpg",
       dominio: "Aria, Cambiamento, Profezia",
       titoli: "L’Invisibile, La Sussurratrice",
       simbolo: "Tre piume intrecciate in una spirale",
@@ -38,7 +38,7 @@ export default function Home() {
     },
     {
       nome: "DROKHAN – Il Dormiente di Pietra",
-      immagine: "/assets/pantheon/drokhan.jpg",
+      immagine: "/assets/pantheon/Drokhan.jpg",
       dominio: "Terra, Stabilità, Giustizia",
       titoli: "Il Silenzioso, Il Giudice Immobile",
       simbolo: "Una bilancia incisa su una roccia fratturata",
@@ -47,7 +47,7 @@ export default function Home() {
     },
     {
       nome: "ENOIA – La custode dell’Anima",
-      immagine: "/assets/pantheon/enoia.jpg",
+      immagine: "/assets/pantheon/Enoia.jpg",
       dominio: "Spirito, Memoria, Destino",
       titoli: "La Luce Interiore, L’Occhio dell’Inizio",
       simbolo: "Un cerchio di luce con cinque punti cardinali",
@@ -56,7 +56,7 @@ export default function Home() {
     },
     {
       nome: "LIRAEL – Il Sorriso delle Maschere",
-      immagine: "/assets/pantheon/lirael.jpg",
+      immagine: "/assets/pantheon/Lirael.jpg",
       dominio: "Musica, parole, rappresentazione, memoria, emozione",
       titoli: "Il Bardo Eterno, L’Occhio che Racconta, La Voce Senza Fine",
       simbolo: "Due maschere intrecciate, una che sorride, l’altra che piange",
@@ -65,7 +65,7 @@ export default function Home() {
     },
     {
       nome: "MYRHAL – Il Tessitore dell’Arcano",
-      immagine: "/assets/pantheon/myrhal.jpg",
+      immagine: "/assets/pantheon/Myrhal.jpg",
       dominio: "Magia, conoscenza proibita, tessitura della realtà",
       titoli: "Il Signore del Filo Invisibile, Colui che Tesse il Cosmo",
       simbolo: "Una ragnatela a forma di spirale, con un occhio al centro",
@@ -74,7 +74,7 @@ export default function Home() {
     },
     {
       nome: "ZENARA – Il Cuore Selvatico",
-      immagine: "/assets/pantheon/zenara.jpg",
+      immagine: "/assets/pantheon/Zenara.jpg",
       dominio: "Bestie, empatia, equilibrio selvaggio",
       titoli: "La Madre delle Zanne, L’Abbraccio dei Boschi, Il Soffio della Cucciolata",
       simbolo: "Una zampa e una foglia intrecciate",
@@ -92,7 +92,7 @@ export default function Home() {
     },
     {
       nome: "NAAVIR – Il Sorriso Invertito",
-      immagine: "/assets/pantheon/naavir.jpg",
+      immagine: "/assets/pantheon/Naavir.jpg",
       dominio: "Inganno, verità nascoste, scelta",
       titoli: "La Lama del Contratto, Il Primo Bugiardo",
       simbolo: "Un volto bifronte, uno angelico e uno demoniaco, con un coltello in mezzo",
