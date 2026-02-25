@@ -24,36 +24,29 @@ export default function Geo() {
       <section className="city">
         {locations.map((loc) => (
           <ToggleSection key={loc.id} title={loc.name} defaultOpen={false}>
-            {/* Struttura fedele alla foto: Immagine in alto */}
             <img src={loc.image} alt={loc.name} className="city-img" />
             <br />
             
-            {/* Descrizione con Drop Cap simulato se necessario via CSS */}
             <div 
               className="geo-description" 
               dangerouslySetInnerHTML={{ __html: loc.description }} 
             />
             <br />
             
-            {/* Baluardi e Cuori */}
-            {loc.landmarks && (
+            {/* Conditional POI Section */}
+            {loc.pointsOfInterest && loc.pointsOfInterest.length > 0 && (
               <>
-                <h4>Baluardi e Cuori della Città</h4>
-                <div dangerouslySetInnerHTML={{ __html: loc.landmarks }} />
-                <br />
+                <h4 style={{ textAlign: "left" }}>Punti di Interesse</h4>
+                <ul style={{ padding: 0 }}>
+                  {loc.pointsOfInterest.map((poi, index) => (
+                    <li key={index} style={{ display: "flex", alignItems: "center", marginBottom: "10px", gap: "10px" }}>
+                      <img src={poi.icon} alt="icon" style={{ width: "24px", height: "24px" }} />
+                      <span>{poi.label}</span>
+                    </li>
+                  ))}
+                </ul>
               </>
             )}
-
-            {/* Punti di Interesse dinamici */}
-            <h4 style={{ textAlign: "left" }}>Punti di Interesse</h4>
-            <ul style={{ padding: 0 }}>
-              {loc.pointsOfInterest?.map((poi, index) => (
-                <li key={index} style={{ display: "flex", alignItems: "center", marginBottom: "10px", gap: "10px" }}>
-                  <img src={poi.icon} alt="icon" style={{ width: "24px", height: "24px" }} />
-                  <span>{poi.label}</span>
-                </li>
-              ))}
-            </ul>
           </ToggleSection>
         ))}
       </section>

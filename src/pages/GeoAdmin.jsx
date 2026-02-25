@@ -11,7 +11,6 @@ const initialGeoData = {
   name: "",
   image: "",
   description: "",
-  landmarks: "", 
   pointsOfInterest: [] 
 };
 
@@ -25,14 +24,10 @@ export default function GeoAdmin() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   
-  // State for the new POI being created
   const [newPoi, setNewPoi] = useState({ icon: "/assets/icons/market.png", label: "" });
 
-  // Refs for the two textareas to work with HtmlToolbar
   const descRef = useRef(null);
-  const landRef = useRef(null);
 
-  // Security Check
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <div style={{color: "white", textAlign: "center", padding: "50px"}}>Accesso Negato</div>;
   }
@@ -70,11 +65,8 @@ export default function GeoAdmin() {
     e.preventDefault();
     setLoading(true);
     try {
-      // Use name as ID if not editing, otherwise use existing ID
       const docId = isEditing ? editingId : formData.name.replace(/\s+/g, '_').toLowerCase();
-      
       await setDoc(doc(db, "geo_archive", docId), formData);
-      
       alert("Archivio aggiornato con successo!");
       handleReset();
       fetchLocations();
@@ -88,11 +80,11 @@ export default function GeoAdmin() {
     setFormData(loc);
     setEditingId(loc.id);
     setIsEditing(true);
-    window.scrollTo(0, 0); // Scroll to top to see the form
+    window.scrollTo(0, 0);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Sei sicuro di voler eliminare questo luogo per sempre?")) {
+    if (window.confirm("Sei sicuro di voler eliminare questo luogo?")) {
       await deleteDoc(doc(db, "geo_archive", id));
       fetchLocations();
     }
@@ -132,7 +124,6 @@ export default function GeoAdmin() {
           />
         </div>
 
-        {/* TOOLBAR PER DESCRIZIONE */}
         <div className="form-group" style={{ marginBottom: "15px" }}>
           <label>Descrizione Narrativa:</label>
           <HtmlToolbar 
@@ -150,25 +141,6 @@ export default function GeoAdmin() {
           />
         </div>
 
-        {/* TOOLBAR PER BALUARDI */}
-        <div className="form-group" style={{ marginBottom: "15px" }}>
-          <label>Baluardi e Cuori (HTML):</label>
-          <HtmlToolbar 
-            textAreaRef={landRef} 
-            formData={formData} 
-            setFormData={setFormData} 
-            fieldName="landmarks" 
-          />
-          <textarea 
-            ref={landRef}
-            style={{ width: "100%", padding: "8px", minHeight: "100px" }}
-            placeholder="Usa elenchi puntati per i quartieri..." 
-            value={formData.landmarks} 
-            onChange={e => setFormData({...formData, landmarks: e.target.value})} 
-          />
-        </div>
-
-        {/* POI BUILDER */}
         <div className="poi-builder" >
           <h4 style={{ color: "var(--gold)", marginTop: 0 }}>Aggiungi Punto di Interesse</h4>
           <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
@@ -185,11 +157,10 @@ export default function GeoAdmin() {
               <option value="/assets/icons/prison.svg">Prigione</option>
               <option value="/assets/icons/pvp.png">Arena</option>
               <option value="/assets/icons/table.png">Locanda</option>
-              
             </select>
             <input 
               style={{ flexGrow: 1, padding: "5px" }}
-              placeholder="Nome del POI (es: Locanda del Drago)" 
+              placeholder="Nome del POI" 
               value={newPoi.label} 
               onChange={e => setNewPoi({...newPoi, label: e.target.value})} 
             />
@@ -199,7 +170,7 @@ export default function GeoAdmin() {
           <ul style={{ listStyle: "none", padding: 0 }}>
             {formData.pointsOfInterest.map((p, i) => (
               <li key={i} >
-                <span>{p.label} <small>({p.icon.split('/').pop()})</small></span>
+                <span>{p.label}</span>
                 <button type="button" onClick={() => removePoi(i)} >X</button>
               </li>
             ))}
@@ -210,9 +181,7 @@ export default function GeoAdmin() {
           <button type="submit" disabled={loading}>
             {loading ? "Salvataggio..." : isEditing ? "SALVA MODIFICHE" : "CREA NUOVO LUOGO"}
           </button>
-          {isEditing && (
-            <button type="button" onClick={handleReset} >ANNULLA</button>
-          )}
+          {isEditing && <button type="button" onClick={handleReset}>ANNULLA</button>}
         </div>
       </form>
 
@@ -220,10 +189,10 @@ export default function GeoAdmin() {
       <div className="admin-list">
         {locations.map(loc => (
           <div key={loc.id} className="admin-item-row">
-            <span style={{ fontSize: "1.2rem" }}>{loc.name}</span>
+            <span>{loc.name}</span>
             <div>
-              <button onClick={() => startEdit(loc)} >Modifica</button>
-              <button onClick={() => handleDelete(loc.id)} >Elimina</button>
+              <button onClick={() => startEdit(loc)}>Modifica</button>
+              <button onClick={() => handleDelete(loc.id)}>Elimina</button>
             </div>
           </div>
         ))}
