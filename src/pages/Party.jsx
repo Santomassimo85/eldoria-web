@@ -18,8 +18,8 @@ const partyData = {
   party3: [
    { name: "Roynot", race: "EUmanoo", class: "Druido", image: "/assets/player/Roynot.jpg" },
     { name: "Dante", race: "Umano V.", class: "Ladro", image: "/assets/player/Dante.png" },
-    { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.jpg" },
-    { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temi.png" },
+    { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.png" },
+    { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temistocle.jgp" },
     { name: "Khorvash", race: "Tiefling ", class: "Barbaro", image: "/assets/player/Khorvash.jpg" },
 
   ],
