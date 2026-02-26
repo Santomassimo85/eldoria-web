@@ -331,6 +331,24 @@ h4 {
         max-width: none;
     }
 }
+
+.continent-wrapper {
+    margin-top: 60px;
+    clear: both;
+}
+
+.continent-title {
+    font-family: var(--font-title);
+    color: var(--gold);
+    font-size: 2rem;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    padding-bottom: 15px;
+}
+
 .modal {
     display: none;
     position: fixed;
