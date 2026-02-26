@@ -274,8 +274,15 @@ li {
 
 .city {
     margin: 20px 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Due colonne uguali */
+    gap: 30px; /* Spazio tra le colonne */
+    padding: 20px;
+    align-items: start;
 }
-
+.city > div {
+    width: 100%;
+}
 .city h1,
 h2,
 h3,
@@ -291,10 +298,10 @@ h4 {
 }
 
 .city img.city-img {
-    width: 60%;
-    max-width: 500px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 80%;
+    max-width: 800px;
+    border-radius: 18px;
+    /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); */
     margin-bottom: 30px;
 }
 
@@ -312,7 +319,18 @@ h4 {
 .city-img {
     cursor: pointer;
 }
+/* Layout responsive per schermi fino a 1300px */
+@media (max-width: 1300px) {
+    .city {
+        grid-template-columns: 1fr; /* Torna a una colonna singola */
+        gap: 20px;
+    }
 
+    .city img.city-img {
+        width: 70%;
+        max-width: none;
+    }
+}
 .modal {
     display: none;
     position: fixed;
