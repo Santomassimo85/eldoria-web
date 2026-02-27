@@ -95,13 +95,7 @@ export default function App() {
             Home
           </NavLink>
 
-          <NavLink
-            to="/mappa"
-            className={({ isActive }) => (isActive ? "active disabled" : "")}
-            onClick={closeMenu}
-          >
-            Mappa Interattiva
-          </NavLink>
+         
 
           {/* NUOVO LINK: Next Game aggiunta qui per visibilità immediata */}
           <NavLink
@@ -169,7 +163,6 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/mappa" element={<InteractiveMap />} />
           <Route path="/party" element={<Party />} />
           <Route path="/next-game" element={<NextGame />} />
           <Route path="/Geo" element={<Geo />} />
