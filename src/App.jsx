@@ -22,7 +22,6 @@ import Cinema from "./pages/Cinema";
 import GeoAdmin from "./pages/GeoAdmin";
 import NextGame from "./pages/NextGame";
 import AdminSessions from "./pages/AdminSessions";
-import InteractiveMap from "./pages/InteractiveMap";
 
 
 import "./style.css";
