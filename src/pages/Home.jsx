@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import Countdown from "../components/Countdown";
 import ToggleSection from "../pages/ToggleSection";
-
-
+import { db } from "../firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 
 export default function Home() {
   const [visible, setVisible] = useState(true);
-const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il pannello fluttuante
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il pannello fluttuante
+
+  const [sessions, setSessions] = useState([]);
 
   const divinita = [
     {
@@ -15,17 +17,21 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       dominio: "Fuoco, Forgiatura, Guerra",
       titoli: "Il Cuore Incandescente, Il Martello Eterno",
       simbolo: "Un martello fiammeggiante sopra una montagna in eruzione",
-      descrizione: "Vulkàros è colui che ha acceso il primo sole. Le sue fucine sotterranee plasmano metalli divini e armi sacre. È venerato dai fabbri, guerrieri e distruttori.",
-      dogma: "“Attraverso il fuoco nasce la forma, attraverso il conflitto nasce la verità.”"
+      descrizione:
+        "Vulkàros è colui che ha acceso il primo sole. Le sue fucine sotterranee plasmano metalli divini e armi sacre. È venerato dai fabbri, guerrieri e distruttori.",
+      dogma:
+        "“Attraverso il fuoco nasce la forma, attraverso il conflitto nasce la verità.”",
     },
     {
       nome: "NYSIA – La Madre delle Maree",
       immagine: "/assets/pantheon/Nysia.jpg",
       dominio: "Acqua, Vita, Morte",
       titoli: "L’Abisso Gentile, La Portatrice delle Correnti",
-      simbolo: "Una conchiglia aperta che contiene una goccia d’acqua splendente",
-      descrizione: "Nysia governa mari e lacrime. Genera e consuma con la stessa grazia. I marinai, i guaritori e i necromanti la onorano.",
-      dogma: "“Come l’acqua, accogli. Come l’acqua, travolgi.”"
+      simbolo:
+        "Una conchiglia aperta che contiene una goccia d’acqua splendente",
+      descrizione:
+        "Nysia governa mari e lacrime. Genera e consuma con la stessa grazia. I marinai, i guaritori e i necromanti la onorano.",
+      dogma: "“Come l’acqua, accogli. Come l’acqua, travolgi.”",
     },
     {
       nome: "SYRAEL – La Danzatrice dei Venti",
@@ -33,8 +39,9 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       dominio: "Aria, Cambiamento, Profezia",
       titoli: "L’Invisibile, La Sussurratrice",
       simbolo: "Tre piume intrecciate in una spirale",
-      descrizione: "Syrael è la voce dei sussurri, la brezza che accarezza o il ciclone che spazza via. I viaggiatori e gli oracoli la pregano.",
-      dogma: "“Nulla è fermo. Sii il vento, non la pietra.”"
+      descrizione:
+        "Syrael è la voce dei sussurri, la brezza che accarezza o il ciclone che spazza via. I viaggiatori e gli oracoli la pregano.",
+      dogma: "“Nulla è fermo. Sii il vento, non la pietra.”",
     },
     {
       nome: "DROKHAN – Il Dormiente di Pietra",
@@ -42,8 +49,9 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       dominio: "Terra, Stabilità, Giustizia",
       titoli: "Il Silenzioso, Il Giudice Immobile",
       simbolo: "Una bilancia incisa su una roccia fratturata",
-      descrizione: "Drokan dorme sotto le montagne, ma ascolta ogni giuramento. Le sue leggi sono scritte nei fossili. Venerato da giudici, costruttori, e minatori.",
-      dogma: "“Ciò che è saldo non cede. Costruisci con verità.”"
+      descrizione:
+        "Drokan dorme sotto le montagne, ma ascolta ogni giuramento. Le sue leggi sono scritte nei fossili. Venerato da giudici, costruttori, e minatori.",
+      dogma: "“Ciò che è saldo non cede. Costruisci con verità.”",
     },
     {
       nome: "ENOIA – La custode dell’Anima",
@@ -51,8 +59,10 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       dominio: "Spirito, Memoria, Destino",
       titoli: "La Luce Interiore, L’Occhio dell’Inizio",
       simbolo: "Un cerchio di luce con cinque punti cardinali",
-      descrizione: "Enoia è l’origine e la fine. Rappresenta l’anima che lega tutti gli elementi e ogni essere vivente. Venerata da monaci, artisti, veggenti e pazzi.",
-      dogma: "“Tutto ciò che è stato e sarà è riflesso nel tuo fuoco interiore.”"
+      descrizione:
+        "Enoia è l’origine e la fine. Rappresenta l’anima che lega tutti gli elementi e ogni essere vivente. Venerata da monaci, artisti, veggenti e pazzi.",
+      dogma:
+        "“Tutto ciò che è stato e sarà è riflesso nel tuo fuoco interiore.”",
     },
     {
       nome: "LIRAEL – Il Sorriso delle Maschere",
@@ -60,8 +70,9 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       dominio: "Musica, parole, rappresentazione, memoria, emozione",
       titoli: "Il Bardo Eterno, L’Occhio che Racconta, La Voce Senza Fine",
       simbolo: "Due maschere intrecciate, una che sorride, l’altra che piange",
-      descrizione: "Lirael guida i bardi, gli attori, i menestrelli e persino gli spie. Si dice che tutto ciò che viene raccontato in modo sincero venga custodito nei suoi archivi celesti.",
-      dogma: "“Ogni storia merita una fine. Ma anche una canzone.”"
+      descrizione:
+        "Lirael guida i bardi, gli attori, i menestrelli e persino gli spie. Si dice che tutto ciò che viene raccontato in modo sincero venga custodito nei suoi archivi celesti.",
+      dogma: "“Ogni storia merita una fine. Ma anche una canzone.”",
     },
     {
       nome: "MYRHAL – Il Tessitore dell’Arcano",
@@ -69,38 +80,56 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       dominio: "Magia, conoscenza proibita, tessitura della realtà",
       titoli: "Il Signore del Filo Invisibile, Colui che Tesse il Cosmo",
       simbolo: "Una ragnatela a forma di spirale, con un occhio al centro",
-      descrizione: "Myrhal non ha forma, ma appare a chi studia la magia nei sogni e nei momenti di rivelazione. Le sue magie non sono lanci incantati, ma trame da comprendere e intrecciare.",
-      dogma: "“Chi conosce il filo, può ricamare la realtà.”"
+      descrizione:
+        "Myrhal non ha forma, ma appare a chi studia la magia nei sogni e nei momenti di rivelazione. Le sue magie non sono lanci incantati, ma trame da comprendere e intrecciare.",
+      dogma: "“Chi conosce il filo, può ricamare la realtà.”",
     },
     {
       nome: "ZENARA – Il Cuore Selvatico",
       immagine: "/assets/pantheon/Zenara.jpg",
       dominio: "Bestie, empatia, equilibrio selvaggio",
-      titoli: "La Madre delle Zanne, L’Abbraccio dei Boschi, Il Soffio della Cucciolata",
+      titoli:
+        "La Madre delle Zanne, L’Abbraccio dei Boschi, Il Soffio della Cucciolata",
       simbolo: "Una zampa e una foglia intrecciate",
-      descrizione: "Zenara non parla, ma il suo spirito vive in ogni creatura libera. I ranger, i druidi e persino alcuni barbari la venerano.",
-      dogma: "“Non serve voce per avere un’anima.”"
+      descrizione:
+        "Zenara non parla, ma il suo spirito vive in ogni creatura libera. I ranger, i druidi e persino alcuni barbari la venerano.",
+      dogma: "“Non serve voce per avere un’anima.”",
     },
     {
       nome: "KAL-DURR – Il Giogo del Destino",
       immagine: "/assets/pantheon/Kal_durr.jpg",
       dominio: "Cicli, morte e rinascita, destino ineluttabile",
       titoli: "Il Ciclo Infranto, Il Custode dell’Orologio Muto",
-      simbolo: "Un serpente che si morde la coda, con tre clessidre all’interno",
-      descrizione: "Kal-Durr non decide il destino: lo conserva, lo ripete, lo osserva. Alcuni veggenti lo adorano, ma lo temono. Altri lo maledicono.",
-      dogma: "“Tutto accade perché è già accaduto. Nulla è nuovo, solo riscritto.”"
+      simbolo:
+        "Un serpente che si morde la coda, con tre clessidre all’interno",
+      descrizione:
+        "Kal-Durr non decide il destino: lo conserva, lo ripete, lo osserva. Alcuni veggenti lo adorano, ma lo temono. Altri lo maledicono.",
+      dogma:
+        "“Tutto accade perché è già accaduto. Nulla è nuovo, solo riscritto.”",
     },
     {
       nome: "NAAVIR – Il Sorriso Invertito",
       immagine: "/assets/pantheon/Naavir.jpg",
       dominio: "Inganno, verità nascoste, scelta",
       titoli: "La Lama del Contratto, Il Primo Bugiardo",
-      simbolo: "Un volto bifronte, uno angelico e uno demoniaco, con un coltello in mezzo",
-      descrizione: "Naavir non è il male, ma il dubbio. È adorato da ladri, spie, illusionisti e chiunque scelga la via tortuosa. Dice sempre la verità, ma in modo che nessuno la riconosca.",
-      dogma: "“Ciò che è giusto cambia. Sii tu il cambiamento.”"
-    }
+      simbolo:
+        "Un volto bifronte, uno angelico e uno demoniaco, con un coltello in mezzo",
+      descrizione:
+        "Naavir non è il male, ma il dubbio. È adorato da ladri, spie, illusionisti e chiunque scelga la via tortuosa. Dice sempre la verità, ma in modo che nessuno la riconosca.",
+      dogma: "“Ciò che è giusto cambia. Sii tu il cambiamento.”",
+    },
   ];
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "sessions"), (snapshot) => {
+      const sessionData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setSessions(sessionData);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -113,10 +142,10 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
   }, []);
 
   return (
-   <div className="home-container">
+    <div className="home-container">
       {/* --- TASTO FLUTTUANTE (FAB) --- */}
-      <button 
-        className={`floating-sidebar-btn ${isSidebarOpen ? 'active' : ''}`} 
+      <button
+        className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         title="Info Sessioni"
       >
@@ -124,15 +153,29 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
       </button>
 
       {/* --- PANNELLO LATERALE TIPO CHATBOT --- */}
-      <div className={`side-drawer ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="drawer-content">
-          <Countdown />
-          <div className="welcome-box">
-            <h3>Benvenuti ad Eldoria</h3>
-            <p>Seleziona "Next Game" dal menu per vedere le prossime sessioni dei party.</p>
-          </div>
-        </div>
-      </div>
+      {/* --- PANNELLO LATERALE TIPO CHATBOT --- */}
+<div className={`side-drawer ${isSidebarOpen ? 'open' : ''}`}>
+  <div className="drawer-content">
+    <h2 className="chatBotTitle">Prossime Sessioni</h2>
+    
+    {sessions.length > 0 ? (
+      sessions.map((s) => (
+        <Countdown 
+          key={s.id} 
+          partyName={s.id} 
+          targetDate={s.date} 
+        />
+      ))
+    ) : (
+      <p style={{ textAlign: 'center', color: '#666' }}>Nessuna sessione programmata.</p>
+    )}
+
+    <div className="welcome-box">
+      <h3>Benvenuti ad Eldoria</h3>
+      <p>Seleziona "Next Game" dal menu per i dettagli completi.</p>
+    </div>
+  </div>
+</div>
 
       {/* --- CONTENUTO PRINCIPALE (Ora a tutta larghezza) --- */}
       <section className="main-content full-width-home">
@@ -144,12 +187,12 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
         />
         <h1>L´inizio del mondo di Eldoria</h1>
         <p>
-          <span className="start">E</span> oni or sono, quando il tempo non aveva
-          ancora nome e la luce non conosceva il buio, esisteva soltanto il
-          vuoto. Un abisso silenzioso, privo di forma e di vita, ove dimoravano
-          due essenze primordiali: una di pura oscurità, l'altra splendente come
-          una stella. Le antiche scritture li chiamano Ny e Ouh, la Luce e
-          l'Oscurità.
+          <span className="start">E</span> oni or sono, quando il tempo non
+          aveva ancora nome e la luce non conosceva il buio, esisteva soltanto
+          il vuoto. Un abisso silenzioso, privo di forma e di vita, ove
+          dimoravano due essenze primordiali: una di pura oscurità, l'altra
+          splendente come una stella. Le antiche scritture li chiamano Ny e Ouh,
+          la Luce e l'Oscurità.
           <br />
           <br />
           Si narra che, durante una battaglia tanto furiosa da squarciare
@@ -236,38 +279,52 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Stato per il panne
         </p>
       </section>
 
-
       <section className="full-width-content">
         <ToggleSection title="Antico Pantheon " defaultOpen={false}>
-        <h1 className="pantheon-main-title">I Nati dalle lacrime</h1>
-        <p className="subtitle-pantheon">Arazzo raffigurante "I nati dalle lacrime", antiche divinitá di Eldoria, nate grazie alle carni dei giganti NY e Ouh</p> <br></br>
-        <img
-          src="/assets/pantheon/Antico_pantheon.png"
-          className="creation-image show"
-          alt="Antico Pantheon"
-        />
-
-        <div className="pantheon-list">
-          {divinita.map((dio, index) => (
-            <div key={index} className="divinita-entry">
-              <br />
-              <h2 className="divinita-name-red">{dio.nome}</h2>
-              <p className="divinita-titolo-gold">{dio.titolo}</p>
-              
-              <img src={dio.immagine} alt={dio.nome} className="divinita-main-img" />
-              
-              <div className="divinita-details-box">
-                <p><strong>Dominio:</strong> {dio.dominio}</p>
-                <p><strong>Titoli:</strong> {dio.titoli}</p>
-                <p><strong>Simbolo:</strong> {dio.simbolo}</p>
-                <p className="divinita-text-desc">{dio.descrizione}</p>
-                <p className="dogma-text"><em>{dio.dogma}</em></p>
+          <h1 className="pantheon-main-title">I Nati dalle lacrime</h1>
+          <p className="subtitle-pantheon">
+            Arazzo raffigurante "I nati dalle lacrime", antiche divinitá di
+            Eldoria, nate grazie alle carni dei giganti NY e Ouh
+          </p>{" "}
+          <br></br>
+          <img
+            src="/assets/pantheon/Antico_pantheon.png"
+            className="creation-image show"
+            alt="Antico Pantheon"
+          />
+          <div className="pantheon-list">
+            {divinita.map((dio, index) => (
+              <div key={index} className="divinita-entry">
                 <br />
+                <h2 className="divinita-name-red">{dio.nome}</h2>
+                <p className="divinita-titolo-gold">{dio.titolo}</p>
+
+                <img
+                  src={dio.immagine}
+                  alt={dio.nome}
+                  className="divinita-main-img"
+                />
+
+                <div className="divinita-details-box">
+                  <p>
+                    <strong>Dominio:</strong> {dio.dominio}
+                  </p>
+                  <p>
+                    <strong>Titoli:</strong> {dio.titoli}
+                  </p>
+                  <p>
+                    <strong>Simbolo:</strong> {dio.simbolo}
+                  </p>
+                  <p className="divinita-text-desc">{dio.descrizione}</p>
+                  <p className="dogma-text">
+                    <em>{dio.dogma}</em>
+                  </p>
+                  <br />
+                </div>
+                {index < divinita.length - 1 && <hr className="gold-divider" />}
               </div>
-              {index < divinita.length - 1 && <hr className="gold-divider" />}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         </ToggleSection>
       </section>
     </div>
