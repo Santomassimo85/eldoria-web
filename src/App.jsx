@@ -22,6 +22,8 @@ import Cinema from "./pages/Cinema";
 import GeoAdmin from "./pages/GeoAdmin";
 import NextGame from "./pages/NextGame";
 import AdminSessions from "./pages/AdminSessions";
+import InteractiveMap from "./pages/InteractiveMap";
+
 
 import "./style.css";
 
@@ -93,6 +95,14 @@ export default function App() {
             Home
           </NavLink>
 
+          <NavLink
+            to="/mappa"
+            className={({ isActive }) => (isActive ? "active disabled" : "")}
+            onClick={closeMenu}
+          >
+            Mappa Interattiva
+          </NavLink>
+
           {/* NUOVO LINK: Next Game aggiunta qui per visibilità immediata */}
           <NavLink
             to="/next-game"
@@ -159,6 +169,7 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/mappa" element={<InteractiveMap />} />
           <Route path="/party" element={<Party />} />
           <Route path="/next-game" element={<NextGame />} />
           <Route path="/Geo" element={<Geo />} />
