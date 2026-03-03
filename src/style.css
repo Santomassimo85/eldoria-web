@@ -143,6 +143,8 @@ nav {
     flex-wrap: wrap;
     gap: 12px;
     align-items: center;
+    display: flex
+    ;
 }
 
 nav a {
@@ -2045,3 +2047,8 @@ b, strong {
   margin: 0 auto !important;
   text-align: center;
 }
+
+
+
+
+

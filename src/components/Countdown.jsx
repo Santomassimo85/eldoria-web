@@ -9,7 +9,7 @@ const Countdown = ({ targetDate, partyName }) => {
     const [timeLeft, setTimeLeft] = useState(0);
 
     // LINK ROLL20 FISSO PER TUTTI I PARTY
-    const FIXED_ROLL20_LINK = "https://app.roll20.net/campaigns/details/19830283/eldoria-3-dot-0";
+    const FIXED_ROLL20_LINK = "https://santomassimo85.eu.forge-vtt.com";
 
     useEffect(() => {
         const calculateTimeLeft = () => {
@@ -82,7 +82,7 @@ const Countdown = ({ targetDate, partyName }) => {
                     rel="noopener noreferrer" 
                     className="button-link"
                 >
-                    Entra su Roll20
+                    Entra su Foundry VTT
                 </a>
             </button>
         </div>
