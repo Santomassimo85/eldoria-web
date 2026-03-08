@@ -28,6 +28,8 @@ export default function Bacheca() {
   const [loading, setLoading] = useState(true);
   const [hoveredQuestId, setHoveredQuestId] = useState(null);
 
+  
+
   // Authentication
   const { currentUser } = useAuth();
   const isMaster = currentUser && currentUser.email === MASTER_EMAIL;
@@ -122,21 +124,24 @@ ${selectedQuest.desc}
     }
   };
 
+
+  const [userParty, setUserParty] = useState("");
   /**
    * Fetch the logged-in user's character name from Firestore
    */
   useEffect(() => {
-    if (currentUser) {
-      const fetchUserChar = async () => {
-        const userRef = doc(db, "characters", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          setUserCharName(userSnap.data().name);
-        }
-      };
-      fetchUserChar();
-    }
-  }, [currentUser]);
+  if (currentUser) {
+    const fetchUserChar = async () => {
+      const userRef = doc(db, "characters", currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        setUserCharName(userSnap.data().name);
+        setUserParty(userSnap.data().party); 
+      }
+    };
+    fetchUserChar();
+  }
+}, [currentUser]);
 
   /**
    * Real-time listener for quests collection.
@@ -159,12 +164,27 @@ ${selectedQuest.desc}
   /**
    * Privacy filter: Show only public quests, quests for this character, or all quests if Master
    */
-  const visibleQuests = quests.filter(
-    (q) =>
-      isMaster ||
-      q.targetCharacter === "All" ||
-      q.targetCharacter === userCharName,
-  );
+const visibleQuests = quests.filter((q) => {
+  if (isMaster) return true;
+
+  // 1. MISSIONI PRIVATE: solo per il destinatario specifico
+  if (q.targetCharacter && q.targetCharacter !== "All") {
+    return q.targetCharacter === userCharName;
+  }
+
+  // 2. MISSIONI ACCETTATE (IL FIX):
+  if (q.acceptedBy) {
+    // Se la missione è stata presa dal MIO party, devo continuare a vederla!
+    if (q.acceptedParty && q.acceptedParty === userParty) {
+      return true;
+    }
+    // Se è stata presa da un altro party (o da un singolo di un altro party), sparisce
+    return false; 
+  }
+
+  // 3. MISSIONI LIBERE: le vedono tutti
+  return true;
+});
 
   /**
    * Navigate to the detailed quest page
@@ -236,7 +256,7 @@ ${selectedQuest.desc}
                     style={{
                       marginTop: "10px",
                       textAlign: "center",
-                      color: isAccepted ? "#888" : (hoveredQuestId === quest.id ? "var(--red)" : "white"),
+                      color: isAccepted ? "#888" : (hoveredQuestId === quest.id ? "var(--red)" : "black"),
                     }}
                   >
                     {quest.targetCharacter !== "All" && `🔒 [${quest.targetCharacter}] `}
@@ -245,10 +265,13 @@ ${selectedQuest.desc}
 
                   {/* Quest acceptance info */}
                   {isAccepted && (
-                    <div style={{ textAlign: "center", fontSize: "0.8rem" }}>
-                      <p style={{ color: "var(--gold)", margin: "5px 0" }}>
-                        Accepted by: <strong>{quest.acceptedBy}</strong>
-                      </p>
+  <div style={{ textAlign: "center", fontSize: "0.8rem" }}>
+    <p style={{ color: "var(--gold)", margin: "5px 0" }}>
+      In carico al gruppo: <strong>{quest.acceptedParty || "Ignoto"}</strong>
+    </p>
+    <p style={{ color: "black", opacity: 0.7 }}>
+      (Referente: {quest.acceptedBy})
+    </p>
 
                       {/* Only the acceptor or Master can cancel the quest */}
                       {(isAcceptedByMe || isMaster) && (
@@ -259,7 +282,7 @@ ${selectedQuest.desc}
                           }}
                           style={{
                             background: "#ff4444",
-                            color: "white",
+                            color: "black",
                             border: "none",
                             padding: "3px 8px",
                             borderRadius: "5px",

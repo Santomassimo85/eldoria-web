@@ -11,6 +11,7 @@ export default function QuestDetail() {
   const [quest, setQuest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userCharName, setUserCharName] = useState("");
+  const [userParty, setUserParty] = useState("");
 
   // 1. Recupera nome PG per accettazione/notifica
   useEffect(() => {
@@ -18,7 +19,11 @@ export default function QuestDetail() {
       const fetchUserChar = async () => {
         const userRef = doc(db, "characters", currentUser.uid);
         const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) setUserCharName(userSnap.data().name);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          setUserCharName(data.name);
+          setUserParty(data.party); // <--- RECUPERA IL CAMPO 'party' DAL DB
+        }
       };
       fetchUserChar();
     }
@@ -38,23 +43,46 @@ export default function QuestDetail() {
   }, [id]);
 
   const handleAccept = async () => {
+    if (!userCharName || !userParty) {
+      alert("Errore: dati personaggio non trovati.");
+      return;
+    }
+
     const questRef = doc(db, "quests", id);
-    await updateDoc(questRef, { acceptedBy: userCharName });
 
-    // Notifica Pipedream (opzionale se vuoi tenerla)
-    const params = new URLSearchParams();
-    params.append("Mittente", userCharName);
-    params.append(
-      "Messaggio_Giocatore",
-      `HA ACCETTATO LA MISSIONE: ${quest.title}`,
-    );
-    fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
-      method: "POST",
-      body: params,
-    });
+    try {
+      // Salviamo sia chi l'ha cliccata, sia il party di appartenenza
+      await updateDoc(questRef, {
+        acceptedBy: userCharName,
+        acceptedParty: userParty, // <--- FONDAMENTALE PER IL FILTRO
+        status: "in_progress",
+      });
 
-    alert("Incarico Accettato!");
-    navigate("/bacheca"); // Torna alla bacheca
+      // Aggiorna lo stato locale per mostrare subito il cambiamento
+      setQuest((prev) => ({
+        ...prev,
+        acceptedBy: userCharName,
+        acceptedParty: userParty,
+      }));
+
+
+      // Notifica Pipedream (opzionale se vuoi tenerla)
+      const params = new URLSearchParams();
+      params.append("Mittente", userCharName);
+      params.append(
+        "Messaggio_Giocatore",
+        `HA ACCETTATO LA MISSIONE: ${quest.title}`,
+      );
+      fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
+        method: "POST",
+        body: params,
+      });
+
+      alert("Incarico Accettato!");
+      navigate("/bacheca"); // Torna alla bacheca
+    } catch (error) {
+      console.error("Errore accettazione missione:", error);
+    }
   };
 
   if (loading)
@@ -77,7 +105,7 @@ export default function QuestDetail() {
         padding: "40px",
         maxWidth: "800px",
         margin: "0 auto",
-        color: "white",
+        color: "black",
       }}
     >
       <button
@@ -149,18 +177,19 @@ export default function QuestDetail() {
         </div>
 
         {!quest.acceptedBy ? (
-          <button onClick={handleAccept} className="questDetailButton"> Accetta la Missione</button>
-        ) : (
-          <p
-            style={{
-              marginTop: "30px",
-              color: "var(--gold)",
-              textAlign: "center",
-            }}
-          >
-            ✅ Questa missione è già stata presa in carico.
-          </p>
-        )}
+  <button onClick={handleAccept} className="questDetailButton">
+    Accetta la Missione
+  </button>
+) : (
+  <div style={{ textAlign: "center", marginTop: "30px" }}>
+    <p style={{ color: "var(--gold)", fontSize: "1.1rem", fontWeight: "bold" }}>
+      📜 Missione presa dal gruppo: {quest.acceptedParty || "Ignoto"}
+    </p>
+    <p style={{ color: "red", fontSize: "0.9rem", opacity: 0.8 }}>
+      (Referente: {quest.acceptedBy})
+    </p>
+  </div>
+)}
       </div>
     </section>
   );

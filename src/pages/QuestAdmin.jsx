@@ -21,6 +21,8 @@ export default function QuestAdmin() {
     sender: "",
     desc: "",
     diff: "Media",
+    type: "Generale", 
+  cr: "1", 
     zona: "",
     rewardGold: 0,
     rewardItem: "",
@@ -177,6 +179,24 @@ setSender("");
                 required
               />
             </div>
+            <div className="form-row">
+  <label>Tipo Missione:</label>
+  <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
+    <option value="Generale">Generale (Party)</option>
+    <option value="Mondiale">Mondiale (World Boss)</option>
+  </select>
+
+  <label>Grado Sfida (CR):</label>
+  <select value={formData.cr} onChange={(e) => setFormData({...formData, cr: e.target.value})}>
+    <option value="1">Livello 1 (CR 1/4)</option>
+    <option value="3">Livello 3 (CR 2)</option>
+    <option value="5">Livello 5 (CR 5)</option>
+    <option value="10">Livello 10 (CR 10)</option>
+        <option value="12">Livello 12 (CR 12)</option>
+    <option value="15">Livello 15 (CR 15)</option>
+
+  </select>
+</div>
 
           <div className="form-section">
             <h3>💰 Ricompense Promesse</h3>
