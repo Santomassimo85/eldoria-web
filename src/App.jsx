@@ -198,7 +198,7 @@ export default function App() {
         </Routes>
       </main>
 
-      <ChatBot />
+      {/* <ChatBot /> */}
 
       {/* FOOTER */}
       <footer>
