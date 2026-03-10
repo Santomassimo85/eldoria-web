@@ -6,9 +6,9 @@ import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/Geo";
 import ItemDetail from "./pages/ItemDetail";
-import AdminPanel from "./pages/AdminPanel"; 
-import MarketAdmin from "./pages/MarketAdmin"; 
-import SummaryAdmin from "./pages/SummaryAdmin"; 
+import AdminPanel from "./pages/AdminPanel";
+import MarketAdmin from "./pages/MarketAdmin";
+import SummaryAdmin from "./pages/SummaryAdmin";
 import PgSheetEditor from "./pages/PgSheetEditor";
 import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
@@ -22,7 +22,8 @@ import Cinema from "./pages/Cinema";
 import GeoAdmin from "./pages/GeoAdmin";
 import NextGame from "./pages/NextGame";
 import AdminSessions from "./pages/AdminSessions";
-
+import WorldBoss from "./pages/WorldBoss";
+import WorldBossAdmin from "./pages/WorldBossAdmin";
 
 import "./style.css";
 
@@ -94,8 +95,6 @@ export default function App() {
             Home
           </NavLink>
 
-         
-
           {/* NUOVO LINK: Next Game aggiunta qui per visibilità immediata */}
           <NavLink
             to="/next-game"
@@ -136,6 +135,14 @@ export default function App() {
           >
             Mercato nero
           </NavLink>
+<NavLink
+            to="/world-boss-fight"
+            className={({ isActive }) => (isActive ? "active disabled" : "")}
+            onClick={closeMenu}
+          >
+            World fight
+          </NavLink>
+
 
           <NavLink to="/bacheca" onClick={closeMenu}>
             Bacheca di Hemile
@@ -174,8 +181,11 @@ export default function App() {
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
 
+          <Route path="/world-boss-fight" element={<WorldBoss />} />
+
           {/* ROTTE ADMIN PANEL */}
           <Route path="/dm-admin" element={<AdminPanel />} />
+          <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />
           <Route path="/dm-admin/market" element={<MarketAdmin />} />
           <Route path="/dm-admin/sessions" element={<AdminSessions />} />
@@ -195,7 +205,11 @@ export default function App() {
         <p>
           © {new Date().getFullYear()}{" "}
           <strong>
-            <a href="https://designbyorpheus.it/" target="_blank" rel="noreferrer">
+            <a
+              href="https://designbyorpheus.it/"
+              target="_blank"
+              rel="noreferrer"
+            >
               OrpheusDesign
             </a>
           </strong>

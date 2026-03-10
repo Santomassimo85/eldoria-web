@@ -67,6 +67,15 @@ export default function AdminPanel() {
           {/* <button className="admin-button">Manage Ranks</button> */}
         </div>
 
+        {/* World Boss Management Block */}
+<div
+  className="admin-block"
+  onClick={() => navigate("/dm-admin/world-boss")}
+>
+  <h2>World Boss Fight</h2>
+  <p>Crea nuovi boss, attivali e gestisci i loro HP durante il combattimento.</p>
+</div>
+
         <div className="admin-block" onClick={() => navigate("/dm-admin/geo")}>
           <h2>Geomantia</h2>
           <p>Gestisci le mappe e le lore delle città.</p>

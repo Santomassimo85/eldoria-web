@@ -1,0 +1,219 @@
+/* Container Principale */
+.admin-page {
+    padding: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: 'Almendra', serif;
+}
+
+.admin-header {
+    text-align: center;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--gold);
+    padding-bottom: 20px;
+    display: contents;
+}
+
+.gold-text {
+    color: var(--gold);
+    font-size: 2.5rem;
+    text-transform: uppercase;
+}
+
+/* Form di Creazione */
+.creation-form {
+    background: rgba(238, 168, 168, 0.05);
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    margin-bottom: 50px;
+}
+
+.boss-form {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.admin-input {
+    background: #dbd7d7;
+    border: 1px solid #444;
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.admin-input:focus {
+    border-color: var(--gold);
+    outline: none;
+}
+
+/* Griglia dei Boss */
+.admin-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+/* Card del Boss */
+.boss-card {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid #333;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    min-height: 320px;
+}
+
+.active-boss {
+    border: 2px solid #ff4444 !important;
+    background: rgba(255, 68, 68, 0.05) !important;
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.2);
+}
+
+.boss-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.boss-title {
+    color: var(--gold);
+    margin: 0;
+    font-size: 1.6rem;
+}
+
+.active-tag {
+    background: #ff4444;
+    color: white;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.boss-hp-text {
+    font-size: 1.2rem;
+    text-align: center;
+    margin: 10px 0;
+}
+
+/* Container Azioni (Risolve la sovrapposizione) */
+.admin-actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.admin-action-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Toggle Switch */
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    background: rgba(0,0,0,0.3);
+    padding: 10px;
+    border-radius: 8px;
+    user-select: none;
+}
+
+/* Controllo Danno */
+.damage-control {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.damage-input {
+    width: 90px;
+    background: #111;
+    border: 1px solid var(--gold);
+    color: white;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+/* Bottoni */
+.admin-button {
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: inherit;
+    transition: filter 0.2s;
+}
+
+.admin-block button{
+    background: var(--gold);
+    /* color: black; */
+    position: relative !important;
+}
+.admin-button:hover {
+    filter: brightness(1.2);
+}
+
+.btn-evoke {
+    background: var(--gold);
+    color: black;
+    padding: 12px 25px;
+}
+
+.admin-button .btn-damage {
+    background: #8b0000;
+    color: white;
+    width: auto !important;
+    flex: 1;
+}
+
+.btn-delete {
+    background: transparent;
+    border: 1px solid #ff4444;
+    color: #ff4444;
+    margin-top: 10px;
+    font-size: 0.85rem;
+}
+
+.btn-delete:hover {
+    background: #ff4444;
+    color: white;
+}
+
+/* Modalità Accesso Negato */
+.denied-container {
+    text-align: center;
+    padding-top: 100px;
+}
+
+.denied-text {
+    color: #ff4444;
+    font-size: 3rem;
+}
+
+.btn-clear-chat {
+  background: #333;
+  color: #ff4444;
+  border: 1px solid #ff4444;
+  margin-left: 20px;
+  font-size: 0.8rem;
+}
+
+.btn-clear-chat:hover {
+  background: #ff4444;
+  color: white;
+}

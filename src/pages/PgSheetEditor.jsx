@@ -1,163 +1,189 @@
-// src/pages/PgSheetEditor.jsx (Editor Scheda PG per i Giocatori)
-
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../AuthContext';
-import { db } from '../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore'; 
-
-const STAT_ABBREVIATIONS = ['FOR', 'DES', 'COS', 'INT', 'SAG', 'CAR'];
-
-// Calcola il modificatore (Modificatore = floor((Punteggio - 10) / 2))
-const calculateMod = (score) => {
-    const numScore = parseInt(score);
-    if (isNaN(numScore) || numScore < 1) return '+0';
-    const mod = Math.floor((numScore - 10) / 2);
-    return mod >= 0 ? `+${mod}` : `${mod}`;
-};
+import React, { useState, useEffect } from "react";
+import { db } from "../firebase";
+import { 
+  doc, 
+  onSnapshot, 
+  collection, 
+  addDoc, 
+  serverTimestamp 
+} from "firebase/firestore";
+import { useAuth } from "../AuthContext";
 
 export default function PgSheetEditor() {
-    const { currentUser } = useAuth();
-    const [formData, setFormData] = useState({});
-    const [loading, setLoading] = useState(true);
-    const [status, setStatus] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
+  const { currentUser } = useAuth();
+  const [charData, setCharData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openSections, setOpenSections] = useState({ "Armi": true });
 
-    if (!currentUser) {
-        return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Devi essere loggato per modificare la tua scheda.</p>;
-    }
-    
-    const pgSheetRef = doc(db, 'pg_sheets', currentUser.uid);
+  useEffect(() => {
+    if (!currentUser) return;
 
-    // --- CARICAMENTO DATI IN TEMPO REALE ---
-    useEffect(() => {
-        setLoading(true);
-        const unsubscribe = onSnapshot(pgSheetRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setFormData(docSnap.data());
-            } else {
-                // Inizializza con valori predefiniti se non esiste un documento
-                setFormData({
-                    name: currentUser.email.split('@')[0],
-                    level: 1,
-                    race: 'Umano',
-                    class: 'Avventuriero',
-                    bio: 'Inizia la tua storia qui...',
-                    FOR: 10, DES: 10, COS: 10, INT: 10, SAG: 10, CAR: 10
-                });
-            }
-            setLoading(false);
-        }, (error) => {
-            setStatus(`❌ Errore nel caricamento: ${error.message}`);
-            setLoading(false);
-        });
+    const unsub = onSnapshot(doc(db, "characters", currentUser.uid), (doc) => {
+      if (doc.exists()) {
+        setCharData(doc.data());
+      }
+      setLoading(false);
+    });
 
-        return () => unsubscribe();
-    }, [currentUser.uid]);
+    return () => unsub();
+  }, [currentUser]);
 
-    // --- GESTIONE INPUT ---
-    const handleChange = (e) => {
-        const { name, value, type } = e.target;
-        
-        let finalValue = value;
-        if (type === 'number') {
-            finalValue = parseInt(value) || 0;
-            if (finalValue > 20) finalValue = 20; // Cap stat a 20 per D&D
+  const handleRoll = async (itemName, formula, bonus) => {
+  // --- 1. TIRO PER COLPIRE ---
+  const d20 = Math.floor(Math.random() * 20) + 1;
+  const bonusNum = parseInt(bonus?.replace(/[^0-9+-]/g, "")) || 0;
+  const toHitTotal = d20 + bonusNum;
+
+  // --- 2. TIRO PER IL DANNO ---
+  // Funzione interna per calcolare i dadi (es. "2d6 + 5")
+  const rollDamage = (dmgFormula) => {
+    try {
+      // Puliamo la formula da spazi
+      const cleanFormula = dmgFormula.replace(/\s+/g, '');
+      // Separiamo la parte dei dadi dai bonus fissi (es. ["1d6", "5"])
+      const parts = cleanFormula.split('+');
+      let totalDmg = 0;
+      let detailedDmg = "";
+
+      parts.forEach(part => {
+        if (part.includes('d')) {
+          // È un dado: es. "1d6"
+          const [num, sides] = part.split('d').map(Number);
+          for (let i = 0; i < (num || 1); i++) {
+            const roll = Math.floor(Math.random() * sides) + 1;
+            totalDmg += roll;
+            detailedDmg += (detailedDmg ? " + " : "") + roll;
+          }
+        } else {
+          // È un numero fisso: es. "5"
+          const val = parseInt(part) || 0;
+          totalDmg += val;
+          detailedDmg += (detailedDmg ? " + " : "") + val;
         }
-
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: finalValue 
-        }));
-    };
-    
-    // --- SALVATAGGIO DATI (Modifica/Crea) ---
-    const handleSave = async (e) => {
-        e.preventDefault();
-        setIsSaving(true);
-        setStatus('Salvataggio in corso...');
-
-        try {
-            // Aggiungi dati non modificabili e timestamp
-            const dataToSave = {
-                ...formData,
-                lastUpdated: new Date().toISOString(),
-                // Inserisci qui l'UID se non è già nel form
-            };
-            
-            // Usiamo setDoc (con merge implicito) sul documento con UID del PG
-            await setDoc(pgSheetRef, dataToSave, { merge: true });
-
-            setStatus('✅ Scheda personaggio salvata con successo!');
-        } catch (error) {
-            setStatus(`❌ Errore durante il salvataggio: ${error.message}`);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-
-    if (loading) {
-        return <p style={{ textAlign: 'center', paddingTop: '50px' }}>Caricamento scheda...</p>;
+      });
+      return { total: totalDmg, detail: detailedDmg };
+    } catch (e) {
+      return { total: 0, detail: "errore" };
     }
+  };
 
-    const userName = currentUser.email.split('@')[0];
+  const damageResult = rollDamage(formula);
 
-    return (
-        <section className="pg-editor-page">
-            <h1 style={{ textAlign: 'center' }}>Modifica Scheda di {formData.name || userName}</h1>
-            <p style={{ textAlign: 'center', marginBottom: '20px' }}>Aggiorna i tuoi punteggi e la tua biografia/inventario.</p>
+  // --- 3. INVIO A FIREBASE ---
+  try {
+    await addDoc(collection(db, "rolls"), {
+      characterName: charData?.name || "Eroe",
+      itemName: itemName,
+      toHit: toHitTotal,
+      toHitDetails: `${d20} + ${bonusNum}`,
+      damage: damageResult.total,
+      damageDetails: damageResult.detail,
+      timestamp: serverTimestamp(),
+      uid: currentUser.uid
+    });
 
-            {status && <p className={`admin-status ${status.includes('✅') ? 'success' : 'error'}`}>{status}</p>}
-
-            <form onSubmit={handleSave} className="pg-editor-form" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', border: '1px solid #444', borderRadius: '8px' }}>
-                
-                {/* INFORMAZIONI BASE */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                    <input name="name" onChange={handleChange} value={formData.name || ''} placeholder="Nome Personaggio" required style={{ flex: 1, marginRight: '10px' }} />
-                    <input name="race" onChange={handleChange} value={formData.race || ''} placeholder="Razza" required style={{ flex: 1, marginRight: '10px' }} />
-                    <input name="class" onChange={handleChange} value={formData.class || ''} placeholder="Classe" required style={{ flex: 1, marginRight: '10px' }} />
-                    <input name="level" type="number" onChange={handleChange} value={formData.level || 1} placeholder="Livello" required min="1" max="20" style={{ width: '80px', textAlign: 'center' }} />
-                </div>
-                
-                {/* 🎯 STATISTICHE FOR/DES/COS/INT/SAG/CAR */}
-                <h2>Punteggi Caratteristica (Punteggio/Modificatore)</h2>
-                <div className="stat-grid" >
-                    {STAT_ABBREVIATIONS.map(stat => (
-                        <div key={stat} style={{ width: '30%', minWidth: '100px', textAlign: 'center', backgroundColor: '#f38f8fff', padding: '10px', borderRadius: '4px' }}>
-                            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>{stat}</label>
-                            <input
-                                name={stat}
-                                type="number"
-                                onChange={handleChange}
-                                value={formData[stat] || 10}
-                                min="1"
-                                max="20"
-                                required
-                                style={{ width: '60px', textAlign: 'center', fontSize: '1.2em' }}
-                            />
-                            <div style={{ marginTop: '5px', color: 'var(--root)' }}>
-                                Mod: {calculateMod(formData[stat])}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                
-                {/* BIO / INVENTARIO (HTML consentito per formattazione ricca) */}
-                <h2>Biografia e Inventario</h2>
-                <textarea 
-                    name="bio" 
-                    onChange={handleChange} 
-                    value={formData.bio || ''} 
-                    rows="10" 
-                    placeholder="Scrivi qui la tua storia, il tuo inventario (usa HTML per formattazione come <ul>, <b>)." 
-                    required 
-                    style={{ width: '100%', minHeight: '150px' }}
-                />
-                
-                <button type="submit" disabled={isSaving} style={{ width: '100%', padding: '15px', marginTop: '20px', backgroundColor: 'var(--red)', color: 'white', border: 'none', cursor: 'pointer' }}>
-                    {isSaving ? 'Salvataggio...' : 'Salva Scheda Personaggio'}
-                </button>
-            </form>
-        </section>
+    // --- 4. FEEDBACK VISIVO ---
+    alert(
+      `🎲 LANCIO: ${itemName.toUpperCase()}\n` +
+      `🎯 COLPIRE: ${toHitTotal} (d20: ${d20} + Mod: ${bonusNum})\n` +
+      `💥 DANNO: ${damageResult.total} [${damageResult.detail}]`
     );
+  } catch (err) {
+    console.error("Errore permessi Firebase:", err);
+    alert("Errore nell'invio del lancio. Controlla la console.");
+  }
+};
+
+  if (loading) return <div className="loading-screen">Caricamento Scheda Eroica...</div>;
+
+  const toggleSection = (section) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const groupedActions = charData?.actions?.reduce((acc, action) => {
+    const cat = action.category || "Altro";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(action);
+    return acc;
+  }, {});
+
+  const sortedCategories = groupedActions ? Object.keys(groupedActions).sort((a, b) => {
+    if (a === "Armi") return -1;
+    if (b === "Armi") return 1;
+    return a.localeCompare(b);
+  }) : [];
+
+  return (
+    <div className="pg-editor-container">
+      <header className="pg-header">
+        <div className="header-top">
+          <h1 className="pg-name">{charData?.name || "Eroe Senza Nome"}</h1>
+          <div className="level-badge">LIV. {charData?.level || "1"}</div>
+        </div>
+        <p className="sync-status">⚔️ Status Sincronizzato da Foundry VTT</p>
+        
+        {charData?.spellSlots && Object.keys(charData.spellSlots).length > 0 && (
+          <div className="spell-slots-container">
+            {Object.entries(charData.spellSlots).map(([lvl, data]) => (
+              <div key={lvl} className="slot-badge">
+                <span className="slot-label">{lvl.toUpperCase()}</span>
+                <strong className="slot-value">{data.value} / {data.max}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+      </header>
+
+      <div className="stats-grid">
+        <div className="stat-box">
+          <span className="stat-label">SALUTE</span>
+          <div className="stat-value">
+            {charData?.stats?.hp ?? 0} <span className="stat-max">/ {charData?.stats?.maxHp ?? 0}</span>
+          </div>
+        </div>
+        <div className="stat-box">
+          <span className="stat-label">DIFESA (CA)</span>
+          <div className="stat-value">{charData?.stats?.ac ?? 0}</div>
+        </div>
+        <div className="stat-box">
+          <span className="stat-label">GRUPPO</span>
+          <div className="group-name">{charData?.party || "Eroe Solitario"}</div>
+        </div>
+      </div>
+
+      {sortedCategories.map(cat => (
+        <div key={cat} className="section-wrapper">
+          <button onClick={() => toggleSection(cat)} className="toggle-button">
+            <span>{cat.startsWith("Livello") || cat === "Trucchetto" ? `✨ ${cat}` : cat === "Armi" ? `⚔️ ${cat}` : `📜 ${cat}`}</span>
+            <span>{openSections[cat] ? "▲" : "▼"}</span>
+          </button>
+          
+          {openSections[cat] && (
+            <div className="actions-grid">
+              {groupedActions[cat].map((item, idx) => (
+                <ActionCard key={idx} item={item} onRoll={handleRoll} />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ActionCard({ item, onRoll }) {
+  const categoryClass = item.category?.includes("Livello") || item.category?.includes("Trucchetto") 
+    ? "card-spell" 
+    : "card-weapon";
+
+  return (
+    <div className={`action-card ${categoryClass}`} onClick={() => onRoll(item.name, item.damage, item.bonus)}>
+      <div className="card-name">{item.name}</div>
+      {item.description && <div className="card-description">{item.description}</div>}
+      <div className="card-footer">
+        <span>🎯 {item.bonus}</span>
+        <span>💥 <strong>{item.damage}</strong></span>
+      </div>
+    </div>
+  );
 }
