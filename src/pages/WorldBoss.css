@@ -282,3 +282,44 @@ transition: background-color  0.5s ease-in-out;
   padding: 10px;
   border-radius: 8px;
 }
+
+
+@media (max-width: 768px) {
+  .battle-interface {
+    display: flex;
+    flex-direction: column; /* Impila Skill e Chat verticalmente */
+    height: auto; /* Permette alla pagina di allungarsi */
+    max-height: none;
+    gap: 15px;
+  }
+
+  /* Spostiamo le Skill SOPRA la Chat per comodità di gioco */
+  .player-actions-sidebar {
+    order: 1; 
+    width: 100%;
+    max-height: 300px; /* Limita l'altezza delle skill per non scrollare troppo */
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.05); /* Più scuro su mobile per leggibilità */
+  }
+
+  .chat-section {
+    order: 2;
+    width: 100%;
+    height: 500px; /* Altezza fissa per la chat su mobile */
+    border: 2px solid var(--gold);
+  }
+
+  /* Riduciamo un po' il font del Boss per schermi piccoli */
+  .boss-name {
+    font-size: 1.5rem;
+  }
+
+  .boss-image {
+    max-width: 90%;
+    height: auto;
+  }
+
+  .hp-bar-outer {
+    width: 95%;
+  }
+}
