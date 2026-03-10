@@ -20,7 +20,7 @@ import ReputationAdmin from "./pages/ReputazioneAdmin";
 import VideoAdmin from "./pages/VideoAdmin";
 import Cinema from "./pages/Cinema";
 import GeoAdmin from "./pages/GeoAdmin";
-import NextGame from "./pages/NextGame";
+import WorldMap from "./pages/WorldMap";
 import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
@@ -97,11 +97,11 @@ export default function App() {
 
           {/* NUOVO LINK: Next Game aggiunta qui per visibilità immediata */}
           <NavLink
-            to="/next-game"
+            to="/world-map"
             className={({ isActive }) => (isActive ? "active disabled" : "")}
             onClick={closeMenu}
           >
-            Next Game
+            Mappa
           </NavLink>
 
           <NavLink
@@ -170,7 +170,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/party" element={<Party />} />
-          <Route path="/next-game" element={<NextGame />} />
+          <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/ratti-lore" element={<RattiLore />} />

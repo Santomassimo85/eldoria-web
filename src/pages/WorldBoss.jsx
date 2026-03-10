@@ -183,7 +183,7 @@ export default function WorldBoss() {
        {activeBosses.map(boss => (
   <div key={boss.id} className="boss-unit">
     <h2 className="boss-name">{boss.name}</h2>
-    
+    <div className="boss-badge">Grado Sfida: {boss.gradoSfida}</div>
     {/* Visualizzazione descrizione narrativa */}
     {boss.description && (
       <p className="boss-flavor-text">{boss.description}</p>
