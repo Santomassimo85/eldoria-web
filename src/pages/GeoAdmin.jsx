@@ -16,6 +16,9 @@ const initialGeoData = {
   pointsOfInterest: [] 
 };
 
+
+
+
 export default function GeoAdmin() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -27,6 +30,67 @@ export default function GeoAdmin() {
   const [loading, setLoading] = useState(false);
   const [newPoi, setNewPoi] = useState({ icon: "/assets/icons/market.png", label: "" });
   const descRef = useRef(null);
+
+const [isNpcEditing, setIsNpcEditing] = useState(false);
+const [npcEditingId, setNpcEditingId] = useState(null);
+const [npcs, setNpcs] = useState([]); // Aggiungi questo se non lo avevi per la lista
+
+const [npcData, setNpcData] = useState({ 
+  name: "", 
+  image: "", 
+  faction: "", 
+  location: "", 
+  description: "" 
+});
+
+
+
+const handleNpcSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // Se stiamo modificando usiamo l'ID esistente, altrimenti ne creiamo uno dal nome
+    const npcId = isNpcEditing ? npcEditingId : npcData.name.replace(/\s+/g, '_').toLowerCase();
+    
+    await setDoc(doc(db, "npcs", npcId), npcData);
+    
+    alert(isNpcEditing ? "Dati aggiornati!" : "NPC registrato!");
+    
+    // Reset
+    setNpcData({ name: "", image: "", faction: "", location: "", description: "" });
+    setIsNpcEditing(false);
+    setNpcEditingId(null);
+  } catch (error) {
+    alert("Errore: " + error.message);
+  }
+  setLoading(false);
+};
+
+useEffect(() => {
+  const fetchNpcs = async () => {
+    const querySnapshot = await getDocs(collection(db, "npcs"));
+    setNpcs(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
+  fetchNpcs();
+}, [loading]);
+
+// 2. Prepara il form per la modifica
+const startNpcEdit = (npc) => {
+  setNpcData(npc);
+  setIsNpcEditing(true);
+  setNpcEditingId(npc.id);
+  window.scrollTo(0, 0); // Torna su al form
+};
+
+// 3. Elimina NPC
+const deleteNpc = async (id) => {
+  if (window.confirm("Sei sicuro di voler eliminare questo NPC dall'anagrafe?")) {
+    await deleteDoc(doc(db, "npcs", id));
+    setNpcs(npcs.filter(n => n.id !== id));
+    alert("Personaggio rimosso.");
+  }
+};
+
 
   // Spostiamo useEffect all'inizio per rispettare le regole di React
   useEffect(() => {
@@ -216,6 +280,84 @@ export default function GeoAdmin() {
           </div>
         ))}
       </div>
+
+
+      <hr style={{ margin: "50px 0", borderColor: "var(--gold)" }} />
+<section className="admin-section" style={{ marginTop: "50px", borderTop: "2px solid var(--gold)", paddingTop: "20px" }}>
+  <h2 className="gold-text">{isNpcEditing ? "Modifica NPC" : "Gestione Anagrafe NPC"}</h2>
+  
+  <form onSubmit={handleNpcSubmit} className="creation-form">
+    <div className="boss-form">
+      <input 
+        className="admin-input" 
+        placeholder="Nome Personaggio"
+        value={npcData.name} 
+        onChange={e => setNpcData({...npcData, name: e.target.value})} 
+        required 
+      />
+      <input 
+        className="admin-input" 
+        placeholder="Fazione / Titolo"
+        value={npcData.faction} 
+        onChange={e => setNpcData({...npcData, faction: e.target.value})} 
+      />
+      <input 
+        className="admin-input" 
+        placeholder="Luogo (Città/Regione)"
+        value={npcData.location} 
+        onChange={e => setNpcData({...npcData, location: e.target.value})} 
+      />
+      <input 
+        className="admin-input" 
+        placeholder="URL Immagine"
+        value={npcData.image} 
+        onChange={e => setNpcData({...npcData, image: e.target.value})} 
+      />
+      <textarea 
+        className="admin-input" 
+        placeholder="Descrizione e Note DM..."
+        style={{ width: "100%", minHeight: "80px" }}
+        value={npcData.description} 
+        onChange={e => setNpcData({...npcData, description: e.target.value})} 
+      />
+      
+      <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+        <button type="submit" className="admin-button-boss btn-evoke" style={{ flex: 2 }}>
+          {loading ? "Salvataggio..." : isNpcEditing ? "SALVA MODIFICHE" : "REGISTRA NPC"}
+        </button>
+        {isNpcEditing && (
+          <button 
+            type="button" 
+            onClick={() => {
+              setIsNpcEditing(false);
+              setNpcData({ name: "", image: "", faction: "", location: "", description: "" });
+            }} 
+            className="admin-button-boss" 
+            style={{ flex: 1, background: 'gray' }}
+          >
+            ANNULLA
+          </button>
+        )}
+      </div>
+    </div>
+  </form>
+
+  {/* LISTA NPC PER MODIFICA/ELIMINAZIONE */}
+  <h3 className="gold-text" style={{ marginTop: "30px", fontSize: "1.5rem" }}>NPC Registrati</h3>
+  <div className="admin-list">
+    {npcs.map(npc => (
+      <div key={npc.id} className="admin-item-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #333' }}>
+        <span>
+          <strong>{npc.name}</strong> <small style={{color: 'var(--gold)'}}>({npc.location})</small>
+        </span>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => startNpcEdit(npc)} className="admin-edit-button">Modifica</button>
+          <button onClick={() => deleteNpc(npc.id)} className="admin-delete-button" style={{ background: '#8b0000' }}>Elimina</button>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
     </section>
   );
 }

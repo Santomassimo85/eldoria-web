@@ -180,12 +180,7 @@
     /* Spazio tra gli elementi */
 }
 
-.tooltip-content h3 {
-    margin: 0 0 8px 0;
-    color: #fff;
-    font-family: 'Almendra', serif;
-    font-size: 1.4rem;
-}
+
 
 .gs-text {
     color: #d4af37;
@@ -201,13 +196,22 @@
 
 .gs-badge {
     display: inline-block;
-    background: rgba(212, 175, 55, 0.2);
+    /* background: rgba(0, 0, 0, 0.7); Sfondo scuro per farlo risaltare */
     color: #d4af37;
-    padding: 2px 10px;
+    padding: 3px 10px;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    /* border: 1px solid #d4af37; */
+    font-weight: bold;
+    z-index: 5;
+    position: relative;
+    font-family: 'Almendra', serif;
+    /* font-weight: bold;
     margin-bottom: 10px;
-    border: 1px solid #d4af37;
+    text-shadow: 1px 1px 2px rgb(74, 70, 70);
+    background: rgba(0, 0, 0, 0.524);
+    border-radius: 10px; */
 }
 
 .hp-info {
@@ -233,4 +237,41 @@
     box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
     transform: translateY(-2px);
     /* Piccolo salto all'hover */
+}
+
+
+.hp-container-mini {
+    width: 100%;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.5); /* Sfondo scuro per la parte vuota */
+    border: 1px solid #d4af37;
+    border-radius: 5px;
+    margin: 10px 0 5px 0;
+    overflow: hidden;
+}
+
+/* Riempimento Rosso Solido */
+.hp-bar-fill-mini {
+    height: 100%;
+    background: #ff0000; /* Rosso puro, senza gradiente */
+    transition: width 0.3s ease;
+}
+
+/* Testo HP sotto la barra */
+.hp-text-mini {
+    color: #ff4444;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.tooltip-content h3 {
+    color: #ffffff;
+    font-family: 'Almendra', serif;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 2px rgb(74, 70, 70);
+    background: rgba(0, 0, 0, 0.524);
+    border-radius: 10px;
 }

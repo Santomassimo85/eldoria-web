@@ -41,11 +41,22 @@ export default function WorldMap() {
       </div>
       <div className="tooltip-content">
         <h3>{boss.name}</h3>
-        <span className="gs-badge">{boss.gradoSfida}</span>
-        <div className="hp-info">❤️ {boss.hp} / {boss.maxHp}</div>
-        <button className="btn-go-fight" onClick={() => navigate("/world-boss-fight")}>
-          ⚔️ COMBATTI
-        </button>
+{/* Mostra il Grado Sfida qui */}
+  <span className="gs-badge">Grado Sfida {boss.gradoSfida || "Grado ??"}</span>
+  
+  {/* Nuova struttura barra HP visibile */}
+  <div className="hp-container-mini">
+    <div 
+      className="hp-bar-fill-mini" 
+      style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }}
+    ></div>
+  </div>
+  
+  <div className="hp-info">❤️ {boss.hp} / {boss.maxHp}</div>
+  
+  <button className="btn-go-fight" onClick={() => navigate("/world-boss-fight")}>
+    ⚔️ COMBATTI
+  </button>
       </div>
     </div>
   </div>
