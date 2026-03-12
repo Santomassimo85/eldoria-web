@@ -976,9 +976,9 @@ input {
     transition: all 0.9s ease;
 }
 
-button:hover {
+/* button:hover {
     background-color: #575353;
-}
+} */
 
 .button-link:hover {
     display: inline-block;

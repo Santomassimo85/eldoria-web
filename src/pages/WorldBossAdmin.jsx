@@ -22,6 +22,8 @@ export default function WorldBossAdmin() {
     imageUrl: "",
     description: "",
     gradoSfida: "",
+    action1: { name: "", damage: "", bonus: "" }, // Attacco Base
+  action2: { name: "", damage: "", bonus: "" }  // Attacco Speciale
   });
 
   const [editingId, setEditingId] = useState(null);
@@ -248,12 +250,32 @@ export default function WorldBossAdmin() {
               placeholder="URL Immagine"
             />
           </div>
+
+          <div className="boss-actions-setup">
+  <h4>Setup Attacchi Boss</h4>
+  <input 
+    placeholder="Nome Attacco 1 (es. Morso)" 
+    onChange={e => setNewBoss({...newBoss, action1: {...newBoss.action1, name: e.target.value}})} 
+  />
+  <input 
+    placeholder="Danno (es. 2d8+4)" 
+    onChange={e => setNewBoss({...newBoss, action1: {...newBoss.action1, damage: e.target.value}})} 
+  />
+  <input 
+    placeholder="Bonus Colpire (es. +7)" 
+    onChange={e => setNewBoss({...newBoss, action1: {...newBoss.action1, bonus: e.target.value}})} 
+  />
+</div>
           <div style={{ display: 'flex', gap: '5px' }}>
             <button className="admin-button-boss" onClick={() => handleUpdateBoss(boss.id)} style={{ background: '#27ae60', color: 'white', flex: 1 }}>💾 Salva</button>
             <button className="admin-button-boss" onClick={() => setEditingId(null)} style={{ background: '#7f8c8d', color: 'white', flex: 1 }}>❌ Annulla</button>
           </div>
         </div>
       ) : (
+
+
+
+
         /* --- MODALITÀ LETTURA (VIEW MODE - ORIGINALE) --- */
         <>
           <div className="boss-card-header">

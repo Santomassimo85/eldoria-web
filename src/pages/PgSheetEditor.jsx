@@ -118,9 +118,16 @@ export default function PgSheetEditor() {
       <header className="pg-header">
         <div className="header-top">
           <h1 className="pg-name">{charData?.name || "Eroe Senza Nome"}</h1>
+          {charData?.image && (
+  <img 
+    src={charData.image} 
+    alt="Token Avatar" 
+    style={{ width: '80px', height: '80px', borderRadius: '50%',  objectFit: 'cover' }} 
+  />
+)}
           <div className="level-badge">LIV. {charData?.level || "1"}</div>
         </div>
-        <p className="sync-status">⚔️ Status Sincronizzato da Foundry VTT</p>
+        <p className="sync-status">Status Sincronizzato</p>
         
         {charData?.spellSlots && Object.keys(charData.spellSlots).length > 0 && (
           <div className="spell-slots-container">
