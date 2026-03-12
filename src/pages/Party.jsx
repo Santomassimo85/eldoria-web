@@ -17,7 +17,7 @@ const partyData = {
     { name: "Cleofe", race: "Halfling", class: "Ladro", image: "/assets/player/Cleofe.jpg" },
   ],
   party3: [
-   { name: "Roynot", race: "EUmanoo", class: "Druido", image: "/assets/player/Roynot.jpg" },
+   { name: "Roynot", race: "Umanoo", class: "Druido", image: "/assets/player/Roynot.jpg" },
     { name: "Dante", race: "Umano V.", class: "Ladro", image: "/assets/player/Dante.png" },
     { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.png" },
     { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
@@ -92,7 +92,7 @@ export default function Party() {
                   <p className="character-details" style={{ color: "var(--gold)" }}>
                     {npc.faction} • {npc.location}
                   </p>
-                  <p style={{ fontSize: "0.8rem", fontStyle: "italic", marginTop: "5px", color: "#ccc" }}>
+                  <p style={{ fontSize: "0.8rem", fontStyle: "italic", marginTop: "5px", color: "#4d4242" }}>
                     {npc.description}
                   </p>
                 </div>
