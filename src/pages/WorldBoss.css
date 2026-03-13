@@ -569,3 +569,79 @@ transition: background-color  0.5s ease-in-out;
   color: #fff !important;
   border: 1px solid #ff0000 !important;
 }
+
+/* WorldBoss.css */
+.boss-timer-container {
+  text-align: center;
+  margin-bottom: 10px;
+  font-family: 'Almendra', serif;
+}
+
+.timer-countdown {
+  color: #ff4444;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+  animation: pulse-timer 1s infinite;
+}
+
+
+/* WorldMap.css - Mini Timer */
+.countdown-mini {
+  font-size: 0.75rem;
+  color: #d4af37;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+/* WorldBoss.css */
+.boss-timer-main {
+    text-align: center;
+    color: #ff4444;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-top: -15px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+    animation: pulse-timer 1.5s infinite;
+}
+
+@keyframes pulse-timer {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* WorldMap.css */
+.mini-timer {
+    font-size: 0.9rem;
+    color: #d4af37;
+    font-weight: bold;
+    margin: 5px 0;
+    background: rgba(255, 250, 250, 0.5);
+    border-radius: 4px;
+    padding: 2px;
+}
+.boss-image img{
+  border-radius: 150px;
+}
+.main-boss-timer {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 10px;
+  border-radius: 8px;
+  /* border: 1px solid var(--gold); */
+  margin: 10px auto;
+  width: fit-content;
+  color: #ff4444;
+  font-weight: bold;
+  font-size: 1.4rem;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+}
+
+
+.timer-countdown-text {
+  font-family: 'monospace'; /* Mantiene i numeri fermi mentre scalano */
+}

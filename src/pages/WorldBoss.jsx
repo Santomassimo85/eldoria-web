@@ -18,12 +18,27 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
+import TimerDisplay from "../components/TimerDisplay";
 
 export default function WorldBoss() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
   const [activeBosses, setActiveBosses] = useState([]);
   const [messages, setMessages] = useState([]);
+
+  const calculateTimeLeft = (expiryDate) => {
+    const difference = +new Date(expiryDate) - +new Date();
+    let timeLeft = {};
+
+    if (difference > 0) {
+      timeLeft = {
+        h: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        m: Math.floor((difference / 1000 / 60) % 60),
+        s: Math.floor((difference / 1000) % 60),
+      };
+    }
+    return timeLeft;
+  };
 
   // 1. DICHIARA LO STATO PLAYERS
   const [players, setPlayers] = useState([]);
@@ -306,8 +321,19 @@ export default function WorldBoss() {
                     {boss.hp} / {boss.maxHp}
                   </span>
                 )}
+                <div className="boss-timer-main"></div>
               </div>
+              <span className="timer-icon">⏳</span>
+              <TimerDisplay expiryDate={activeBosses[0]?.expiryDate} />
             </div>
+
+            <div className="main-boss-timer">
+              <p style={{ margin: 0, fontSize: "0.8rem", color: "#404040" }}>
+                SCADENZA MINACCIA:
+              </p>
+              <TimerDisplay expiryDate={activeBosses[0]?.expiryDate} />
+            </div>
+            
             <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
           </div>
         ))}
@@ -328,16 +354,17 @@ export default function WorldBoss() {
               }
               const isAlternate = authorChangeCount % 2 === 0;
 
-
-              const isMasterMessage = m.uid === "WNXsX7fSY5a3g2VZruYEXgFILOJ3" || m.uid === "BOSS_MSG";
+              const isMasterMessage =
+                m.uid === "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
+                m.uid === "BOSS_MSG";
               return (
-                <div 
-      key={m.id} 
-      className={`msg-bubble ${m.type} 
+                <div
+                  key={m.id}
+                  className={`msg-bubble ${m.type} 
         ${isAlternate ? "msg-right bg-variant" : "msg-left bg-standard"} 
-        ${isDifferentAuthor ? 'new-author-block' : ''}
-        ${isMasterMessage ? 'is-master-msg' : ''}`} // <--- CLASSE AGGIUNTA
-    >
+        ${isDifferentAuthor ? "new-author-block" : ""}
+        ${isMasterMessage ? "is-master-msg" : ""}`} // <--- CLASSE AGGIUNTA
+                >
                   <div className="msg-header">
                     <ChatAvatar uid={m.uid} />
                     <span className="msg-author">{m.senderName}</span>
@@ -427,16 +454,36 @@ export default function WorldBoss() {
                           </span>
                         </div>
                         <div className="hp-btns">
-  <div className="hp-btn-group">
-    <button onClick={() => damagePlayer(p.id, -5)} className="btn-hp minus">-5</button>
-    <button onClick={() => damagePlayer(p.id, -1)} className="btn-hp minus">-1</button>
-  </div>
-  
-  <div className="hp-btn-group">
-    <button onClick={() => damagePlayer(p.id, 1)} className="btn-hp plus">+1</button>
-    <button onClick={() => damagePlayer(p.id, 5)} className="btn-hp plus">+5</button>
-  </div>
-</div>
+                          <div className="hp-btn-group">
+                            <button
+                              onClick={() => damagePlayer(p.id, -5)}
+                              className="btn-hp minus"
+                            >
+                              -5
+                            </button>
+                            <button
+                              onClick={() => damagePlayer(p.id, -1)}
+                              className="btn-hp minus"
+                            >
+                              -1
+                            </button>
+                          </div>
+
+                          <div className="hp-btn-group">
+                            <button
+                              onClick={() => damagePlayer(p.id, 1)}
+                              className="btn-hp plus"
+                            >
+                              +1
+                            </button>
+                            <button
+                              onClick={() => damagePlayer(p.id, 5)}
+                              className="btn-hp plus"
+                            >
+                              +5
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
