@@ -26,6 +26,8 @@ export default function WorldBoss() {
   const [activeBosses, setActiveBosses] = useState([]);
   const [messages, setMessages] = useState([]);
 
+  const [selectedMod, setSelectedMod] = useState(null); // 'int' o 'wis'
+
   const calculateTimeLeft = (expiryDate) => {
     const difference = +new Date(expiryDate) - +new Date();
     let timeLeft = {};
@@ -65,6 +67,39 @@ export default function WorldBoss() {
     }
   };
 
+// Stati per il turno
+const [turnState, setTurnState] = useState({ phase: 'players', turnNumber: 1, actedPlayers: [] });
+
+// Listen al turno in tempo reale
+useEffect(() => {
+  const unsub = onSnapshot(doc(db, "battle_meta", "turn_tracker"), (doc) => {
+    if (doc.exists()) setTurnState(doc.data());
+  });
+  return () => unsub();
+}, []);
+
+// Funzione per il player per segnare che ha agito
+const endMyTurn = async () => {
+  if (turnState.actedPlayers.includes(currentUser.uid)) return;
+  await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+    actedPlayers: arrayUnion(currentUser.uid)
+  });
+};
+
+// Funzione Master per cambiare fase
+const togglePhase = async (newPhase) => {
+  const update = { 
+    phase: newPhase,
+    actedPlayers: [] // Resetta chi ha agito al cambio fase
+  };
+  if (newPhase === 'players') {
+    update.turnNumber = increment(1);
+  }
+  await updateDoc(doc(db, "battle_meta", "turn_tracker"), update);
+};
+
+
+
   useEffect(() => {
     if (!isMaster) return; // Solo il Master scarica i dati di tutti i player
 
@@ -74,6 +109,38 @@ export default function WorldBoss() {
 
     return () => unsubPlayers();
   }, [isMaster]);
+
+
+const handleManualHit = async () => {
+  const d20 = Math.floor(Math.random() * 20) + 1;
+  const modValue = charData?.stats?.[selectedMod] || 0;
+  
+  await addDoc(collection(db, "world_boss_chat"), {
+    type: "action",
+    senderName: charData?.name || "Eroe",
+    actionName: `Tiro Manuale (${selectedMod.toUpperCase()})`,
+    hitRoll: `${d20 + modValue} (${d20} + ${modValue})`,
+    timestamp: serverTimestamp(),
+    uid: currentUser.uid,
+    category: "Manuale"
+  });
+};
+
+const handleManualDamage = async (die) => {
+  const sides = parseInt(die.replace('d', ''));
+  const roll = Math.floor(Math.random() * sides) + 1;
+
+  await addDoc(collection(db, "world_boss_chat"), {
+    type: "action",
+    senderName: charData?.name || "Eroe",
+    actionName: `Danno Manuale ${die}`,
+    damageRoll: `${roll} [${roll}]`,
+    timestamp: serverTimestamp(),
+    uid: currentUser.uid,
+    category: "Manuale"
+  });
+};
+
 
   // Per far attaccare il Boss (genera il messaggio in chat)
   const handleBossRoll = async (boss, action) => {
@@ -321,10 +388,9 @@ export default function WorldBoss() {
                     {boss.hp} / {boss.maxHp}
                   </span>
                 )}
-                <div className="boss-timer-main"></div>
+                
               </div>
-              <span className="timer-icon">⏳</span>
-              <TimerDisplay expiryDate={activeBosses[0]?.expiryDate} />
+             
             </div>
 
             <div className="main-boss-timer">
@@ -333,7 +399,31 @@ export default function WorldBoss() {
               </p>
               <TimerDisplay expiryDate={activeBosses[0]?.expiryDate} />
             </div>
-            
+<div className={`turn-banner ${turnState.phase}-phase`}>
+  <div className="turn-count">TURNO {turnState.turnNumber}</div>
+  <div className="phase-text">
+    {turnState.phase === 'players' ? "🛡️ TURNO EROI" : "🔥 TURNO BOSS"}
+  </div>
+  
+  {turnState.phase === 'players' && !isMaster && (
+    <button 
+    className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? 'acted' : ''}`}
+    onClick={endMyTurn}
+    disabled={turnState.actedPlayers.includes(currentUser.uid)}
+    >
+      {turnState.actedPlayers.includes(currentUser.uid) ? "Azione Eseguita" : "Concludi Azione"}
+    </button>
+  )}
+</div>
+  {isMaster && (
+  <div className="master-turn-controls">
+    <button onClick={() => togglePhase('players')}>Passa a Eroi (Nuovo Turno)</button>
+    <button onClick={() => togglePhase('boss')}>Passa a Boss</button>
+    <div className="acted-summary">
+      Agiti: {turnState.actedPlayers.length} / {players.length}
+    </div>
+  </div>
+)}
             <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
           </div>
         ))}
@@ -555,6 +645,43 @@ export default function WorldBoss() {
                     )}
                   </div>
                 ))}
+
+                <div className="quick-roll-panel">
+  <h4 className="sidebar-subtitle">Tiri Rapidi</h4>
+  
+  {/* SELEZIONE STATISTICA */}
+  <div className="stat-selector">
+    <button 
+  className={`stat-btn ${selectedMod === 'int' ? 'active' : ''}`}
+  onClick={() => setSelectedMod('int')}
+>
+  INT ({charData?.stats?.int >= 0 ? '+' : ''}{charData?.stats?.int ?? 0})
+</button>
+    <button 
+      className={`stat-btn ${selectedMod === 'wis' ? 'active' : ''}`}
+      onClick={() => setSelectedMod('wis')}
+    >
+      SAG {charData?.stats?.wis >= 0 ? `+${charData.stats.wis}` : charData?.stats?.wis}
+    </button>
+  </div>
+
+  <button 
+    className="wb-btn-action roll-d20" 
+    disabled={!selectedMod}
+    onClick={() => handleManualHit()}
+  >
+    🎲 Tira d20 {selectedMod ? `(${selectedMod.toUpperCase()})` : "(Scegli Stat)"}
+  </button>
+
+  {/* SELEZIONE DADI DANNO */}
+  <div className="damage-dice-grid">
+    {['d4', 'd6', 'd8', 'd10', 'd12'].map(die => (
+      <button key={die} className="die-btn" onClick={() => handleManualDamage(die)}>
+        {die}
+      </button>
+    ))}
+  </div>
+</div>
               </div>
             </>
           )}

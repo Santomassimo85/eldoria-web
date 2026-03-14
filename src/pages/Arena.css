@@ -1,0 +1,40 @@
+.arena-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+  font-family: 'Almendra', serif;
+}
+
+.master-panel {
+  background: rgba(212, 175, 55, 0.1);
+  padding: 15px;
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.join-section {
+  padding: 40px;
+  background: rgba(139, 0, 0, 0.1);
+  border-radius: 20px;
+  border: 2px dashed #ff4444;
+}
+
+.btn-join-arena {
+  background: linear-gradient(135deg, #8b0000 0%, #ff0000 100%);
+  color: white;
+  font-size: 1.5rem;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+  animation: pulse-arena 2s infinite;
+}
+
+@keyframes pulse-arena {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 0, 0, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 0, 0, 0.7); }
+  100% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 0, 0, 0.4); }
+}

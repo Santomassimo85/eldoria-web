@@ -645,3 +645,120 @@ transition: background-color  0.5s ease-in-out;
 .timer-countdown-text {
   font-family: 'monospace'; /* Mantiene i numeri fermi mentre scalano */
 }
+
+
+.quick-roll-panel {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border: 1px solid rgba(139, 0, 0, 0.2);
+}
+
+.stat-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.stat-btn {
+  flex: 1;
+  padding: 5px;
+  background: #eee;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.stat-btn.active {
+  background: #8b0000;
+  color: white;
+  border-color: #ff0000;
+}
+
+.damage-dice-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.die-btn {
+  background: #1a1616;
+  color: gold;
+  border: 1px solid gold;
+  border-radius: 4px;
+  padding: 5px 0;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.die-btn:hover { background: gold; color: black; }
+
+.turn-banner {
+  text-align: center;
+  padding: 15px;
+
+  border-radius: 10px;
+  margin-bottom: 20px;
+  transition: all 0.5s ease;
+  border: 2px solid transparent;
+}
+
+/* Effetto Glow per il Turno Player */
+.players-phase {
+  background: rgba(0, 100, 200, 0.2);
+  border-color: #0088ff;
+  box-shadow: 0 0 20px rgba(0, 136, 255, 0.4);
+  animation: glow-blue 2s infinite alternate;
+}
+
+/* Stile Turno Boss */
+.boss-phase {
+  background: rgba(139, 0, 0, 0.3);
+  border-color: #ff4444;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+}
+
+.phase-text {
+  font-size: 1.8rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.turn-count {
+  font-size: 0.9rem;
+  color: white;
+}
+
+/* Bottone Fine Turno Player */
+.btn-end-turn {
+  margin-top: 10px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  
+}
+
+.btn-end-turn.acted {
+  background: #444;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+@keyframes glow-blue {
+  from { box-shadow: 0 0 10px rgba(0, 136, 255, 0.4); }
+  to { box-shadow: 0 0 25px rgba(0, 136, 255, 0.8); }
+}
+
+/* Controls Master */
+.master-turn-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
