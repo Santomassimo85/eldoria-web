@@ -1,195 +1,116 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { 
-  doc, 
-  onSnapshot, 
-  collection, 
-  addDoc, 
-  serverTimestamp 
+import {
+  doc,
+  onSnapshot,
+  collection,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
-export default function PgSheetEditor() {
+const ARENA_CHAMPION = {
+  name: "Dante Ivio - Campione Arena",
+  level: 10,
+  image: "https://via.placeholder.com/150", 
+  stats: { hp: 85, maxHp: 85, ac: 18, str: 4, dex: 2, con: 3, int: -1, wis: 1, cha: 0 },
+  actions: [
+    { name: "Spada Lunga Vorpal", category: "Armi", bonus: "+9", damage: "1d8+6", description: "Un'arma leggendaria per l'arena." },
+    { name: "Sguardo del Campione", category: "Abilità", bonus: "+5", damage: "2d6", description: "Intimidisce l'avversario infliggendo danni psichici." },
+    { name: "Palla di Fuoco (Lv 3)", category: "Livello 3", bonus: "+7", damage: "8d6", description: "Un classico esplosivo." }
+  ],
+};
+
+export default function PgSheetEditor({ isArenaView = false }) {
   const { currentUser } = useAuth();
-  const [charData, setCharData] = useState(null);
+  const [normalChar, setNormalChar] = useState(null); 
   const [loading, setLoading] = useState(true);
-  const [openSections, setOpenSections] = useState({ "Armi": true });
 
   useEffect(() => {
     if (!currentUser) return;
+    if (isArenaView) { setLoading(false); return; }
 
-    const unsub = onSnapshot(doc(db, "characters", currentUser.uid), (doc) => {
-      if (doc.exists()) {
-        setCharData(doc.data());
-      }
+    const unsubNormal = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
+      if (snap.exists()) { setNormalChar(snap.data()); }
       setLoading(false);
     });
+    return () => unsubNormal();
+  }, [currentUser, isArenaView]);
 
-    return () => unsub();
-  }, [currentUser]);
-
-  const handleRoll = async (itemName, formula, bonus) => {
-  // --- 1. TIRO PER COLPIRE ---
-  const d20 = Math.floor(Math.random() * 20) + 1;
-  const bonusNum = parseInt(bonus?.replace(/[^0-9+-]/g, "")) || 0;
-  const toHitTotal = d20 + bonusNum;
-
-  // --- 2. TIRO PER IL DANNO ---
-  // Funzione interna per calcolare i dadi (es. "2d6 + 5")
-  const rollDamage = (dmgFormula) => {
+  const handleRoll = async (charName, itemName, formula, bonus, isArena) => {
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const bonusNum = parseInt(bonus?.replace(/[^0-9+-]/g, "")) || 0;
+    
     try {
-      // Puliamo la formula da spazi
-      const cleanFormula = dmgFormula.replace(/\s+/g, '');
-      // Separiamo la parte dei dadi dai bonus fissi (es. ["1d6", "5"])
-      const parts = cleanFormula.split('+');
-      let totalDmg = 0;
-      let detailedDmg = "";
-
-      parts.forEach(part => {
-        if (part.includes('d')) {
-          // È un dado: es. "1d6"
-          const [num, sides] = part.split('d').map(Number);
-          for (let i = 0; i < (num || 1); i++) {
-            const roll = Math.floor(Math.random() * sides) + 1;
-            totalDmg += roll;
-            detailedDmg += (detailedDmg ? " + " : "") + roll;
-          }
-        } else {
-          // È un numero fisso: es. "5"
-          const val = parseInt(part) || 0;
-          totalDmg += val;
-          detailedDmg += (detailedDmg ? " + " : "") + val;
-        }
+      await addDoc(collection(db, "rolls"), {
+        characterName: charName,
+        itemName,
+        toHit: d20 + bonusNum,
+        isArenaRoll: isArena,
+        timestamp: serverTimestamp(),
+        uid: currentUser.uid,
       });
-      return { total: totalDmg, detail: detailedDmg };
-    } catch (e) {
-      return { total: 0, detail: "errore" };
-    }
+      alert(`🎲 ${isArena ? 'ARENA' : 'PG'}: ${itemName} -> ${d20 + bonusNum}`);
+    } catch (err) { console.error(err); }
   };
 
-  const damageResult = rollDamage(formula);
+  if (loading) return <div className="loading-screen">Caricamento Eroi...</div>;
 
-  // --- 3. INVIO A FIREBASE ---
-  try {
-    await addDoc(collection(db, "rolls"), {
-      characterName: charData?.name || "Eroe",
-      itemName: itemName,
-      toHit: toHitTotal,
-      toHitDetails: `${d20} + ${bonusNum}`,
-      damage: damageResult.total,
-      damageDetails: damageResult.detail,
-      timestamp: serverTimestamp(),
-      uid: currentUser.uid
-    });
-
-    // --- 4. FEEDBACK VISIVO ---
-    alert(
-      `🎲 LANCIO: ${itemName.toUpperCase()}\n` +
-      `🎯 COLPIRE: ${toHitTotal} (d20: ${d20} + Mod: ${bonusNum})\n` +
-      `💥 DANNO: ${damageResult.total} [${damageResult.detail}]`
+  if (isArenaView) {
+    return (
+      <div className="arena-only-wrapper">
+        <RenderSheet data={ARENA_CHAMPION} isArena={true} onRoll={handleRoll} />
+      </div>
     );
-  } catch (err) {
-    console.error("Errore permessi Firebase:", err);
-    alert("Errore nell'invio del lancio. Controlla la console.");
   }
-};
-
-  if (loading) return <div className="loading-screen">Caricamento Scheda Eroica...</div>;
-
-  const toggleSection = (section) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const groupedActions = charData?.actions?.reduce((acc, action) => {
-    const cat = action.category || "Altro";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(action);
-    return acc;
-  }, {});
-
-  const sortedCategories = groupedActions ? Object.keys(groupedActions).sort((a, b) => {
-    if (a === "Armi") return -1;
-    if (b === "Armi") return 1;
-    return a.localeCompare(b);
-  }) : [];
 
   return (
-    <div className="pg-editor-container">
-      <header className="pg-header">
-        <div className="header-top">
-          <h1 className="pg-name">{charData?.name || "Eroe Senza Nome"}</h1>
-          {charData?.image && (
-  <img 
-    src={charData.image} 
-    alt="Token Avatar" 
-    style={{ width: '80px', height: '80px', borderRadius: '50%',  objectFit: 'cover' }} 
-  />
-)}
-          <div className="level-badge">LIV. {charData?.level || "1"}</div>
-        </div>
-        <p className="sync-status">Status Sincronizzato</p>
-        
-        {charData?.spellSlots && Object.keys(charData.spellSlots).length > 0 && (
-          <div className="spell-slots-container">
-            {Object.entries(charData.spellSlots).map(([lvl, data]) => (
-              <div key={lvl} className="slot-badge">
-                <span className="slot-label">{lvl.toUpperCase()}</span>
-                <strong className="slot-value">{data.value} / {data.max}</strong>
-              </div>
-            ))}
-          </div>
+    <div className="pg-multi-display">
+      <div className="pg-display-box">
+        <h2 className="section-title-gold">📜 PERSONAGGIO ATTUALE</h2>
+        {normalChar ? (
+          <RenderSheet data={normalChar} isArena={false} onRoll={handleRoll} />
+        ) : (
+          <p className="no-data">Nessun dato. Fai il fetch da Foundry!</p>
         )}
-      </header>
-
-      <div className="stats-grid">
-        <div className="stat-box">
-          <span className="stat-label">SALUTE</span>
-          <div className="stat-value">
-            {charData?.stats?.hp ?? 0} <span className="stat-max">/ {charData?.stats?.maxHp ?? 0}</span>
-          </div>
-        </div>
-        <div className="stat-box">
-          <span className="stat-label">DIFESA (CA)</span>
-          <div className="stat-value">{charData?.stats?.ac ?? 0}</div>
-        </div>
-        <div className="stat-box">
-          <span className="stat-label">GRUPPO</span>
-          <div className="group-name">{charData?.party || "Eroe Solitario"}</div>
-        </div>
       </div>
 
-      {sortedCategories.map(cat => (
-        <div key={cat} className="section-wrapper">
-          <button onClick={() => toggleSection(cat)} className="toggle-button">
-            <span>{cat.startsWith("Livello") || cat === "Trucchetto" ? `✨ ${cat}` : cat === "Armi" ? `⚔️ ${cat}` : `📜 ${cat}`}</span>
-            <span>{openSections[cat] ? "▲" : "▼"}</span>
-          </button>
-          
-          {openSections[cat] && (
-            <div className="actions-grid">
-              {groupedActions[cat].map((item, idx) => (
-                <ActionCard key={idx} item={item} onRoll={handleRoll} />
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      <div className="pg-display-box">
+        <h2 className="section-title-gold">⚔️ CAMPIONE ARENA (LV. 10)</h2>
+        <RenderSheet data={ARENA_CHAMPION} isArena={true} onRoll={handleRoll} />
+      </div>
     </div>
   );
 }
 
-function ActionCard({ item, onRoll }) {
-  const categoryClass = item.category?.includes("Livello") || item.category?.includes("Trucchetto") 
-    ? "card-spell" 
-    : "card-weapon";
-
+function RenderSheet({ data, isArena, onRoll }) {
+  if (!data) return null;
   return (
-    <div className={`action-card ${categoryClass}`} onClick={() => onRoll(item.name, item.damage, item.bonus)}>
-      <div className="card-name">{item.name}</div>
-      {item.description && <div className="card-description">{item.description}</div>}
-      <div className="card-footer">
-        <span>🎯 {item.bonus}</span>
-        <span>💥 <strong>{item.damage}</strong></span>
+    <div className={`mini-card-pg ${isArena ? "arena-style" : "normal-style"}`}>
+      <div className="mini-card-header">
+        <div className="mini-card-titles">
+          <h4 className="mini-char-name">{data.name}</h4>
+          <span className="mini-level">LIV. {data.level}</span>
+        </div>
+        {data.image && <img src={data.image} alt="Avatar" className="mini-avatar" />}
+      </div>
+      
+      <div className="mini-stats-row">
+        <span>❤️ HP: {data.stats?.hp}/{data.stats?.maxHp}</span>
+        <span>🛡️ CA: {data.stats?.ac}</span>
+      </div>
+
+      <div className="mini-actions-grid">
+        {data.actions?.map((act, i) => (
+          <button 
+            key={i} 
+            className="mini-action-btn"
+            onClick={() => onRoll(data.name, act.name, act.damage, act.bonus, isArena)}
+          >
+            <span className="mini-btn-name">{act.name}</span>
+            <span className="mini-btn-dmg">{act.damage}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

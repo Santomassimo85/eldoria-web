@@ -1,0 +1,107 @@
+/* --- NUOVO LAYOUT SCHEDE DOPPIE --- */
+.pg-multi-display {
+  display: flex;
+  flex-direction: column;
+  gap: 50px; /* Spazio netto tra le due sezioni */
+  width: 100%;
+  max-width: 800px;
+  margin: 120px auto 50px; /* Sposta sotto la navbar fissa */
+}
+
+.pg-display-box {
+  width: 100%;
+  padding: 20px;
+  border-top: 2px solid var(--gold);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.section-title-gold {
+  color: var(--gold) !important;
+  margin-bottom: 25px !important;
+  font-size: 1.4rem !important;
+  text-align: center;
+}
+
+/* --- CARD SINGOLA --- */
+.mini-card-pg {
+  background: #fcfcfc;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.arena-style {
+  background: #fffafa; /* Sfondo leggermente rossastro */
+  border: 2px solid var(--red);
+}
+
+.mini-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.mini-char-name {
+  font-size: 1.3rem !important;
+  margin: 0 !important;
+  color: var(--red) !important;
+}
+
+.mini-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  object-fit: cover;
+}
+
+.mini-stats-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  padding: 10px;
+  background: #eee;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+.mini-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.mini-action-btn {
+  background: var(--red);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.mini-action-btn:hover {
+  background: var(--gold);
+  color: black;
+  transform: scale(1.05);
+}
+
+.mini-btn-dmg {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* Fix per evitare sovrapposizione con i burger menu e header */
+@media (max-width: 780px) {
+  .pg-multi-display {
+    margin-top: 150px;
+    padding: 0 10px;
+  }
+}

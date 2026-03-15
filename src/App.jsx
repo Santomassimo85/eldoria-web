@@ -24,6 +24,7 @@ import WorldMap from "./pages/WorldMap";
 import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
+// import Arena from "./pages/Arena";
 
 import "./style.css";
 
@@ -135,6 +136,16 @@ export default function App() {
           >
             Mercato nero
           </NavLink>
+
+        
+ {/* <NavLink
+            to="/arena"
+            className={({ isActive }) => (isActive ? "active disabled" : "")}
+            onClick={closeMenu}
+          >
+            arena
+          </NavLink> */}
+
 <NavLink
             to="/world-boss-fight"
             className={({ isActive }) => (isActive ? "active disabled" : "")}
@@ -180,6 +191,7 @@ export default function App() {
           <Route path="/my-pg" element={<PgSheetEditor />} />
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
+          {/* <Route path="/arena" element={<Arena />} /> */}
 
           <Route path="/world-boss-fight" element={<WorldBoss />} />
 

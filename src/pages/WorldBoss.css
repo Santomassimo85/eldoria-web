@@ -427,15 +427,17 @@ transition: background-color  0.5s ease-in-out;
 
 /* L'area dei messaggi DEVE avere overflow-y auto */
 .chat-messages {
-  flex: 1; /* Prende tutto lo spazio tranne l'input */
-  overflow-y: auto;
+display: flex;
+flex-direction: column-reverse;
+  gap: 12px;
   padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  /* Scrollbar stile fantasy opzionale */
+  overflow-y: auto;
+  /* Forza la chat a comportarsi come una lista che cresce dal basso */
+  scroll-behavior: smooth;
 }
-
+.chat-messages > div {
+  flex-shrink: 0;
+}
 .chat-messages::-webkit-scrollbar {
   width: 8px;
 }
@@ -470,7 +472,12 @@ transition: background-color  0.5s ease-in-out;
   padding: 10px;
   border-radius: 8px;
 }
-
+input:disabled {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #999 !important;
+  cursor: not-allowed;
+  font-style: italic;
+}
 
 @media (max-width: 768px) {
   .battle-interface {
@@ -490,6 +497,14 @@ transition: background-color  0.5s ease-in-out;
     background: rgba(255, 255, 255, 0.05); /* Più scuro su mobile per leggibilità */
   }
 
+
+  .no-msg-guide {
+  text-align: center;
+  color: var(--gold);
+  opacity: 0.6;
+  font-style: italic;
+  margin-top: 20px;
+}
   .chat-section {
     order: 2;
     width: 100%;
@@ -656,18 +671,22 @@ transition: background-color  0.5s ease-in-out;
 }
 
 .stat-selector {
-  display: flex;
-  gap: 10px;
+ display: flex;
+  gap: 8px; /* Ridotto leggermente per far stare 3 tasti */
   margin-bottom: 10px;
+  flex-wrap: wrap; /* Permette di andare a capo su schermi molto stretti */
 }
 
 .stat-btn {
-  flex: 1;
-  padding: 5px;
+ flex: 1;
+  min-width: 60px; /* Garantisce leggibilità */
+  padding: 6px 2px;
+  font-size: 0.8rem;
   background: #eee;
   border: 1px solid #ccc;
   cursor: pointer;
   border-radius: 4px;
+  transition: all 0.2s;
 }
 
 .stat-btn.active {
