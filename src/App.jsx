@@ -24,7 +24,7 @@ import WorldMap from "./pages/WorldMap";
 import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
-// import Arena from "./pages/Arena";
+import Arena from "./pages/Arena";
 
 import "./style.css";
 

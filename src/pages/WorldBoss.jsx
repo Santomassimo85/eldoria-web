@@ -733,6 +733,18 @@ export default function WorldBoss() {
     >
       CAR ({charData?.stats?.cha >= 0 ? "+" : ""}{charData?.stats?.cha ?? 0})
     </button>
+    <button
+      className={`stat-btn ${selectedMod === "dex" ? "active" : ""}`}
+      onClick={() => setSelectedMod("dex")}
+    >
+      DEX ({charData?.stats?.dex >= 0 ? "+" : ""}{charData?.stats?.dex ?? 0})
+    </button>
+    <button
+      className={`stat-btn ${selectedMod === "cos" ? "active" : ""}`}
+      onClick={() => setSelectedMod("cos")}
+    >
+      COS ({charData?.stats?.cos >= 0 ? "+" : ""}{charData?.stats?.cos ?? 0})
+    </button>
                       </div>
 
                       <button

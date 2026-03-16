@@ -1,40 +1,246 @@
-.arena-container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 20px;
-  text-align: center;
-  font-family: 'Almendra', serif;
-}
-
-.master-panel {
-  background: rgba(212, 175, 55, 0.1);
-  padding: 15px;
-  border: 1px solid var(--gold);
-  border-radius: 12px;
-  margin-bottom: 30px;
-}
-
-.join-section {
-  padding: 40px;
-  background: rgba(139, 0, 0, 0.1);
-  border-radius: 20px;
-  border: 2px dashed #ff4444;
-}
-
-.btn-join-arena {
-  background: linear-gradient(135deg, #8b0000 0%, #ff0000 100%);
+/* Container Principale */
+.arena-theme-page {
+  padding: 120px 20px 60px; /* Spazio per navbar */
+  min-height: 100vh;
+  /* background: radial-gradient(circle, #1a0505 0%, #000000 100%); */
+  font-family: 'Cinzel', serif;
   color: white;
-  font-size: 1.5rem;
-  padding: 15px 30px;
-  border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
-  animation: pulse-arena 2s infinite;
 }
 
-@keyframes pulse-arena {
-  0% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 0, 0, 0.4); }
-  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 0, 0, 0.7); }
-  100% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 0, 0, 0.4); }
+.arena-main-title {
+  text-align: center;
+  color: var(--gold);
+  font-size: 3rem;
+  text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+  margin-bottom: 40px;
 }
+
+/* --- TABELLONE (BRACKET) --- */
+.bracket-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--gold);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.bracket-title { color: var(--gold); margin-bottom: 15px; text-transform: uppercase; }
+
+.bracket-flow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.bracket-round { display: flex; flex-direction: column; gap: 10px; }
+.round-label { font-size: 0.8rem; color: #aaa; }
+
+.match-summaries { display: flex; flex-direction: column; gap: 8px; }
+
+.mini-match {
+  background: #222;
+  border: 1px solid #444;
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  min-width: 150px;
+}
+
+.mini-match.ongoing { border-color: #3498db; box-shadow: 0 0 5px #3498db; }
+.mini-match.done { border-color: #27ae60; }
+.mini-winner { color: var(--gold); font-weight: bold; margin-top: 4px; }
+
+/* --- MATCH CARD --- */
+.arena-match-card {
+  background: rgba(30, 30, 30, 0.8);
+  border-radius: 20px;
+  border: 2px solid #333;
+  margin-bottom: 30px;
+  padding: 25px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.fighters-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.fighter-stat-box {
+  flex: 1;
+  min-width: 250px;
+  padding: 20px;
+  border-radius: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid transparent;
+  transition: 0.3s;
+}
+
+.active-turn {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+.defeated { opacity: 0.4; filter: grayscale(1); }
+
+.f-hp-bar {
+  height: 12px;
+  background: #333;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 10px 0;
+  position: relative;
+}
+
+.f-hp-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #27ae60); transition: width 0.5s; }
+.f-hp-text { position: absolute; top: -1px; width: 100%; text-align: center; font-size: 0.7rem; font-weight: bold; }
+
+/* Pulsanti Azione */
+.target-selector { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
+
+.btn-atk {
+  background: var(--red);
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: bold;
+}
+
+.btn-atk:hover { background: #de2b2b; transform: scale(1.05); }
+
+/* Chat Log */
+.arena-chat-log {
+  margin-top: 25px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 4px solid var(--gold);
+}
+
+.log-line { font-size: 0.9rem; color: #ddd; margin-bottom: 5px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .arena-main-title { font-size: 2rem; }
+  .bracket-flow { flex-direction: column; }
+}
+
+.action-grid-arena {
+  margin-top: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+}
+
+.target-attack-block {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(212, 175, 55, 0.3);
+}
+
+.target-label {
+  display: block;
+  color: var(--gold);
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+}
+
+.atk-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.atk-group i {
+  display: block;
+  width: 100%;
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-bottom: 2px;
+}
+
+.btn-atk {
+  flex: 1;
+  min-width: 80px;
+  padding: 5px;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  font-family: inherit;
+}
+
+.btn-atk.weapon { background: #5c2020; }
+.btn-atk.spell { background: #203c5c; }
+
+.btn-atk:hover {
+  filter: brightness(1.3);
+  border-color: var(--gold);
+}
+
+/* Griglia Arsenale */
+.arsenal-grid {
+  margin-top: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+}
+
+.target-title { font-size: 0.8rem; color: var(--gold); margin-bottom: 5px; font-weight: bold; }
+
+.target-block {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.target-name { font-size: 0.85rem; color: #fff; display: block; margin-bottom: 5px; }
+
+.atk-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Due bottoni per riga */
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.btn-atk {
+  padding: 6px 4px;
+  font-size: 0.7rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  transition: 0.2s;
+}
+
+.btn-atk.weapon { background: #820a0a; } /* Rosso per armi */
+.btn-atk.spell { background: #1a4d80; } /* Blu per incantesimi */
+
+.btn-atk:hover { filter: brightness(1.2); border-color: var(--gold); }
+
+.init-btn-roll {
+  width: 100%;
+  padding: 10px;
+  background: var(--gold);
+  color: black;
+  border: none;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Tabellone mini match */
+.bracket-connector { color: var(--gold); font-size: 1.5rem; }
+.mini-match.future { opacity: 0.5; font-style: italic; }
