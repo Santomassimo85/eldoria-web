@@ -8,7 +8,7 @@
     --success: #27ae60;
 }
 input::placeholder {
-    color: #ffffff63;
+    color: #573e3ea4;
     opacity: 1;
 }
 .admin-page {
@@ -68,9 +68,9 @@ input::placeholder {
 }
 
 .admin-input {
-    background: #363535;
+    background: #9e999965;
     /* border: 1px solid #444; */
-    color: #fff;
+    color: #000000;
     padding: 10px;
     border-radius: 6px;
     font-family: inherit;
@@ -195,7 +195,7 @@ input::placeholder {
     width: 90px;
     background: #000;
     border: 1px solid #666;
-    color: #fff;
+    color: #353030;
     text-align: center;
     border-radius: 4px;
 }

@@ -36,6 +36,8 @@
 
 }
 
+
+
 .wb-btn-action {
   border: none !important;
 }
@@ -53,7 +55,81 @@
   pointer-events: none;
 }
 
+/* Box Penalità nel WorldBoss */
+.boss-penalties-glow-box {
+  background: rgba(255, 0, 0, 0.15);
+  border: 2px solid #ff4444;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px auto;
+  max-width: 80%;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+  animation: penalties-pulse 2s infinite alternate;
+  text-align: center;
+}
 
+.penalties-label {
+  display: block;
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: bold;
+  color: #ff4444;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.penalties-text {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-top: 5px;
+  text-shadow: 1px 1px 2px #000;
+  font-style: italic;
+}
+
+.boss-rewards-glow-box {
+  background: rgba(212, 175, 55, 0.15); /* Oro trasparente */
+  border: 2px solid #d4af37;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px auto;
+  max-width: 85%;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+  animation: rewards-pulse 2s infinite alternate;
+  text-align: center;
+}
+
+.rewards-label {
+  display: block;
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: bold;
+  color: #d4af37;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.rewards-text {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-top: 5px;
+  text-shadow: 1px 1px 3px #000;
+  font-style: italic;
+}
+
+@keyframes rewards-pulse {
+  from {
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+    border-color: #d4af37;
+  }
+  to {
+    box-shadow: 0 0 25px rgba(212, 175, 55, 0.7);
+    border-color: #ffffff;
+  }
+}
+
+@keyframes penalties-pulse {
+  from { box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); border-color: #8b0000; }
+  to { box-shadow: 0 0 25px rgba(255, 0, 0, 0.7); border-color: #ff4444; }
+}
 .msg-header {
   display: flex;
   align-items: center;
@@ -950,5 +1026,5 @@ transform: translateY(-2px);
   gap: 10px;
   justify-content: center;
   margin-bottom: 20px;
-  
+
 }

@@ -346,26 +346,21 @@ export default function WorldBoss() {
         {activeBosses.map((boss) => (
           <div key={boss.id} className="boss-unit">
             <h2 className="boss-name">{boss.name}</h2>
+            {boss.description && <p className="boss-flavor-text">{boss.description}</p>}
             {boss.rewards && (
               <div className="boss-rewards-glow-box">
-                <span className="rewards-label">🎁 BOTTINO:</span>
+                <span className="rewards-label">BOTTINO:</span>
                 <p className="rewards-text">{boss.rewards}</p>
               </div>
             )}
-            <div className="hp-bar-outer">
-              <div
-                className="hp-bar-inner"
-                style={{
-                  width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`,
-                }}
-              >
-                {isMaster && (
-                  <span className="hp-text-admin">
-                    {boss.hp} / {boss.maxHp}
-                  </span>
-                )}
-              </div>
-            </div>
+
+            {boss.penalties && (
+    <div className="boss-penalties-glow-box">
+      <span className="penalties-label">💀 PENALITÀ SCONFITTA:</span>
+      <p className="penalties-text">{boss.penalties}</p>
+    </div>
+  )}
+
             <div className="main-boss-timer">
               <TimerDisplay expiryDate={boss.expiryDate} />
             </div>
@@ -390,6 +385,22 @@ export default function WorldBoss() {
               )}
             </div>
 
+            <div className="hp-bar-outer">
+              <div
+                className="hp-bar-inner"
+                style={{
+                  width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`,
+                }}
+              >
+                {isMaster && (
+                  <span className="hp-text-admin">
+                    {boss.hp} / {boss.maxHp}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            
             {isMaster && (
               <div className="master-turn-controls">
                 <button onClick={() => togglePhase("players")}>
