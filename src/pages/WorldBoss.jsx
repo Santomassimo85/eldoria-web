@@ -33,9 +33,8 @@ export default function WorldBoss() {
   const [selectedMod, setSelectedMod] = useState(null);
   const [openSections, setOpenSections] = useState({ Armi: true });
   const [selectedTargets, setSelectedTargets] = useState([]); // Stato per selezione bersagli Master
-const [dmgDiceCount, setDmgDiceCount] = useState(1); // Numero di dadi (default 1)
+  const [dmgDiceCount, setDmgDiceCount] = useState(1); // Numero di dadi (default 1)
   const [dmgSelectedStat, setDmgSelectedStat] = useState(null); // Caratteristica per il danno
-
 
   const chatEndRef = useRef(null);
   const isMaster = useMemo(
@@ -43,60 +42,72 @@ const [dmgDiceCount, setDmgDiceCount] = useState(1); // Numero di dadi (default 
     [currentUser],
   );
 
-const handleManualDamageToBoss = async (die) => {
-  const boss = activeBosses[0];
-  if (!boss || isUserLocked) return;
+  const handleManualDamageToBoss = async (die) => {
+    const boss = activeBosses[0];
+    if (!boss || isUserLocked) return;
 
-  const sides = parseInt(die.replace("d", ""));
-  let totalRoll = 0;
-  let rollsDetail = [];
+    const sides = parseInt(die.replace("d", ""));
+    let totalRoll = 0;
+    let rollsDetail = [];
 
-  // Lancio multiplo basato su dmgDiceCount
-  for (let i = 0; i < dmgDiceCount; i++) {
-    const roll = Math.floor(Math.random() * sides) + 1;
-    totalRoll += roll;
-    rollsDetail.push(roll);
-  }
+    // 1. Lancio dadi base (quelli selezionati dall'utente)
+    for (let i = 0; i < dmgDiceCount; i++) {
+      const roll = Math.floor(Math.random() * sides) + 1;
+      totalRoll += roll;
+      rollsDetail.push(roll);
+    }
 
-  // Aggiunta del modificatore caratteristica se selezionato
-  const statMod = dmgSelectedStat ? (charData?.stats?.[dmgSelectedStat] ?? 0) : 0;
-  const finalDamage = totalRoll + statMod;
+    // 2. Bonus Caratteristica selezionata
+    const statMod = dmgSelectedStat
+      ? (charData?.stats?.[dmgSelectedStat] ?? 0)
+      : 0;
 
-  // 1. Sottrai vita al boss direttamente (non scendere sotto 0)
-  await updateDoc(doc(db, "bosses", boss.id), {
-    hp: increment(-finalDamage)
-  });
+    // 3. --- LOGICA LADRO (Sneak Attack automatico) ---
+    let sneakDamage = 0;
+    const characterClass = charData?.class?.toLowerCase() || "";
+    const isRogue = characterClass === "ladro" || characterClass === "rogue";
 
-  // 2. Logga in chat il danno con dettaglio
-  const detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")}) ${statMod !== 0 ? (statMod > 0 ? "+ " + statMod : statMod) : ""}`;
-  
-  await addDoc(collection(db, "world_boss_chat"), {
-    type: "action",
-    senderName: charData?.name || "Eroe",
-    actionName: `Danno Arma`,
-    damageRoll: `💥 INFLITTI ${finalDamage} DANNI!`,
-    description: `Tiro: ${detailString}`,
-    uid: currentUser.uid,
-    category: "Danno",
-    timestamp: serverTimestamp(),
-  });
+    if (isRogue) {
+      sneakDamage = Math.floor(Math.random() * 6) + 1; // 1d6 automatico
+    }
 
-  // Reset degli stati dopo il lancio
-  setDmgDiceCount(1);
-  setDmgSelectedStat(null);
+    const finalDamage = totalRoll + statMod + sneakDamage;
 
-  // 3. Chiudi il turno del player
-  await endMyTurn();
-};
+    // 4. Aggiorna DB
+    await updateDoc(doc(db, "bosses", boss.id), {
+      hp: increment(-finalDamage),
+    });
 
+    // 5. Costruzione stringa dettaglio per la chat
+    let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
+    if (statMod !== 0)
+      detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
+    if (isRogue) detailString += ` + 1d6 Ladro (${sneakDamage})`;
 
-const handleSavingThrow = async (statKey) => {
+    await addDoc(collection(db, "world_boss_chat"), {
+      type: "action",
+      senderName: charData?.name || "Eroe",
+      actionName: `Danno Arma ${isRogue ? " (Furtivo)" : ""}`,
+      damageRoll: `💥 INFLITTI ${finalDamage} DANNI!`,
+      description: `Tiro: ${detailString}`,
+      uid: currentUser.uid,
+      category: "Danno",
+      timestamp: serverTimestamp(),
+    });
+
+    // Reset e fine turno
+    setDmgDiceCount(1);
+    setDmgSelectedStat(null);
+    await endMyTurn();
+  };
+
+  const handleSavingThrow = async (statKey) => {
     // Aggiungi questo controllo all'inizio della funzione
     if (isUserLocked || !charData || !charData.stats) return;
 
     const d20 = Math.floor(Math.random() * 20) + 1;
     const mod = charData.stats[statKey] || 0;
-    
+
     await addDoc(collection(db, "world_boss_chat"), {
       type: "action",
       senderName: charData.name || "Eroe",
@@ -104,9 +115,9 @@ const handleSavingThrow = async (statKey) => {
       hitRoll: `🎲 d20(${d20}) + mod(${mod}) = ${d20 + mod}`,
       uid: currentUser.uid,
       category: "Tiro Salvezza",
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
     });
-};
+  };
 
   const toggleSelectAll = () => {
     if (selectedTargets.length === players.length) {
@@ -244,41 +255,41 @@ const handleSavingThrow = async (statKey) => {
   };
 
   const handleActionRoll = async (action) => {
-  const boss = activeBosses[0];
-  if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
+    const boss = activeBosses[0];
+    if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
 
-  const isAttack = action.category === "Armi";
-  
-  // d20 reale: numero da 1 a 20
-  const d20 = Math.floor(Math.random() * 20) + 1;
-  const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
-  const hitTotal = d20 + bonus;
+    const isAttack = action.category === "Armi";
 
-  let actionData = {
-    type: "action",
-    senderName: charData?.name || "Eroe",
-    actionName: action.name,
-    timestamp: serverTimestamp(),
-    uid: currentUser.uid,
-    category: action.category,
-    hitRoll: `🎲 d20(${d20}) + bonus(${bonus}) = ${hitTotal} vs CA ${boss.ac || 10}`,
-  };
+    // d20 reale: numero da 1 a 20
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+    const hitTotal = d20 + bonus;
 
-  if (isAttack) {
-    if (hitTotal >= (boss.ac || 10)) {
-      // COLPITO: Segnaliamo il successo ma NON blocchiamo l'UI per permettere il tiro danni
-      actionData.damageRoll = "🎯 COLPITO! Tira il dado di danno sotto.";
+    let actionData = {
+      type: "action",
+      senderName: charData?.name || "Eroe",
+      actionName: action.name,
+      timestamp: serverTimestamp(),
+      uid: currentUser.uid,
+      category: action.category,
+      hitRoll: `🎲 d20(${d20}) + bonus(${bonus}) = ${hitTotal} vs CA ${boss.ac || 10}`,
+    };
+
+    if (isAttack) {
+      if (hitTotal >= (boss.ac || 10)) {
+        // COLPITO: Segnaliamo il successo ma NON blocchiamo l'UI per permettere il tiro danni
+        actionData.damageRoll = "🎯 COLPITO! Tira il dado di danno sotto.";
+      } else {
+        // MANCATO: Il turno finisce subito
+        actionData.damageRoll = "🛡️ MANCATO! Il colpo rimbalza.";
+        await endMyTurn();
+      }
+      await addDoc(collection(db, "world_boss_chat"), actionData);
     } else {
-      // MANCATO: Il turno finisce subito
-      actionData.damageRoll = "🛡️ MANCATO! Il colpo rimbalza.";
-      await endMyTurn(); 
+      // Altre abilità
+      await addDoc(collection(db, "world_boss_chat"), actionData);
     }
-    await addDoc(collection(db, "world_boss_chat"), actionData);
-  } else {
-    // Altre abilità
-    await addDoc(collection(db, "world_boss_chat"), actionData);
-  }
-};
+  };
 
   // --- AZIONI MASTER (AUTOMAZIONE BOSS) ---
   const toggleTarget = (uid) => {
@@ -415,7 +426,9 @@ const handleSavingThrow = async (statKey) => {
         {activeBosses.map((boss) => (
           <div key={boss.id} className="boss-unit">
             <h2 className="boss-name">{boss.name}</h2>
-            {boss.description && <p className="boss-flavor-text">{boss.description}</p>}
+            {boss.description && (
+              <p className="boss-flavor-text">{boss.description}</p>
+            )}
             {boss.rewards && (
               <div className="boss-rewards-glow-box">
                 <span className="rewards-label">BOTTINO:</span>
@@ -424,11 +437,11 @@ const handleSavingThrow = async (statKey) => {
             )}
 
             {boss.penalties && (
-    <div className="boss-penalties-glow-box">
-      <span className="penalties-label">💀 PENALITÀ SCONFITTA:</span>
-      <p className="penalties-text">{boss.penalties}</p>
-    </div>
-  )}
+              <div className="boss-penalties-glow-box">
+                <span className="penalties-label">💀 PENALITÀ SCONFITTA:</span>
+                <p className="penalties-text">{boss.penalties}</p>
+              </div>
+            )}
 
             <div className="main-boss-timer">
               <TimerDisplay expiryDate={boss.expiryDate} />
@@ -469,7 +482,6 @@ const handleSavingThrow = async (statKey) => {
               </div>
             </div>
 
-            
             {isMaster && (
               <div className="master-turn-controls">
                 <button onClick={() => togglePhase("players")}>
@@ -574,210 +586,117 @@ const handleSavingThrow = async (statKey) => {
         </section>
 
         {/* SIDEBAR AZIONI */}
-<section className={`player-actions-sidebar ${isUserLocked ? "locked-sidebar" : ""}`}>          {isMaster ? (
-            <div className="admin-battle-controls">
-              <h3 className="sidebar-title">Master Dashboard</h3>
+        <section className={`player-actions-sidebar ${isUserLocked ? "locked-sidebar" : ""}`}>
+  {isMaster ? (
+    <div className="admin-battle-controls">
+      <h3 className="sidebar-title">Master Dashboard</h3>
+      {/* Controlli Master: Seleziona Tutti, Cura, Monitor HP */}
+      <div className="master-player-controls">
+        <div className="selection-buttons-row" style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+          <button className="btn-select-all" onClick={toggleSelectAll}>
+            {selectedTargets.length === players.length ? "🚫 Deseleziona" : "🎯 Seleziona Tutti"}
+          </button>
+          <button className="btn-heal-all" onClick={healAllPlayers}>💖 Full HP</button>
+        </div>
+      </div>
 
-              <div className="master-player-controls">
-                <div
-                  className="selection-buttons-row"
-                  style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
-                >
-                  <button className="btn-select-all" onClick={toggleSelectAll}>
-                    {selectedTargets.length === players.length
-                      ? "🚫 deselect"
-                      : "🎯 Select"}
-                  </button>
-                  <div
-                    className="admin-global-controls"
-                    style={{ marginBottom: "15px", textAlign: "right" }}
-                  >
-                    <button
-                      className="btn-heal-all"
-                      onClick={healAllPlayers}
-                      title="Cura tutti i player al massimo"
-                    >
-                      💖Full HP
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="party-status-monitor">
-                <h4>Bersagli Boss (Clicca per selezionare)</h4>
-                {players.map((p) => (
-                  <div
-                    key={p.id}
-                    className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
-                    onClick={() => toggleTarget(p.id)}
-                  >
-                    <span className="p-name">{p.name?.split(" ")[0]}</span>
-                    <div className="hp-bar-mini-container">
-                      <div
-                        className="hp-bar-mini-fill"
-                        style={{
-                          width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%`,
-                        }}
-                      />
-                      <span className="hp-text-overlay">
-                        {p.stats?.hp}/{p.stats?.maxHp}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="boss-actions-monitor">
-                <h4>Azioni Boss</h4>
-                {activeBosses[0] && (
-                  <div className="wb-action-list">
-                    <button
-                      className="wb-btn-action boss-atk"
-                      onClick={() =>
-                        handleBossRoll(activeBosses[0], activeBosses[0].action1)
-                      }
-                    >
-                      ⚔️ {activeBosses[0].action1.name} (
-                      {activeBosses[0].action1.damage})
-                    </button>
-                    <button
-                      className="wb-btn-action boss-atk"
-                      onClick={() =>
-                        handleBossRoll(activeBosses[0], activeBosses[0].action2)
-                      }
-                    >
-                      🔥 {activeBosses[0].action2.name} (
-                      {activeBosses[0].action2.damage})
-                    </button>
-                  </div>
-                )}
-              </div>
+      <div className="party-status-monitor">
+        <h4>Bersagli Boss (Clicca per selezionare)</h4>
+        {players.map((p) => (
+          <div
+            key={p.id}
+            className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
+            onClick={() => toggleTarget(p.id)}
+          >
+            <span className="p-name">{p.name?.split(" ")[0]}</span>
+            <div className="hp-bar-mini-container">
+              <div className="hp-bar-mini-fill" style={{ width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%` }} />
+              <span className="hp-text-overlay">{p.stats?.hp}/{p.stats?.maxHp}</span>
             </div>
-          ) : (
-            <>
-              <div className="personal-health-monitor">
-                <p>
-                  Tua Salute: {charData?.stats?.hp}/{charData?.stats?.maxHp}
-                </p>
-                <div className="hp-bar-mini-container">
-                  <div
-                    className="hp-bar-mini-fill"
-                    style={{
-                      width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%`,
-                    }}
-                  />
+          </div>
+        ))}
+      </div>
 
+      <div className="boss-actions-monitor">
+        <h4>Azioni Boss</h4>
+        {activeBosses[0] && (
+          <div className="wb-action-list">
+            <button className="wb-btn-action boss-atk" onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action1)}>
+              ⚔️ {activeBosses[0].action1.name} ({activeBosses[0].action1.damage})
+            </button>
+            <button className="wb-btn-action boss-atk" onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action2)}>
+              🔥 {activeBosses[0].action2.name} ({activeBosses[0].action2.damage})
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : (
+    <>
+      <div className="personal-health-monitor">
+        <p>Tua Salute: {charData?.stats?.hp}/{charData?.stats?.maxHp}</p>
+        <div className="hp-bar-mini-container">
+          <div className="hp-bar-mini-fill" style={{ width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%` }} />
+        </div>
+      </div>
 
-                  {/* Inserisci qui sotto personal-health-monitor */}
-</div>
-      <div className="saving-throws-panel" style={{margin: '10px 0', padding: '10px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', border: '1px solid gold'}}>
-  <h4 style={{fontSize: '0.8rem', color: '#8b0000', marginBottom: '8px', textAlign: 'center', borderBottom: '1px solid #8b0000'}}>Tiri Salvezza</h4>
-  <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px'}}>
-    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => {
-      // Recuperiamo il valore in modo sicuro, se non esiste mettiamo 0
-      const statValue = charData?.stats?.[s] ?? 0;
-      return (
-        <button 
-          key={s} 
-          disabled={isUserLocked || !charData}
-          onClick={() => handleSavingThrow(s)}
-          style={{fontSize: '0.7rem', padding: '5px', cursor: 'pointer', background: 'white', border: '1px solid #ccc', borderRadius: '4px'}}
-        >
-          {s.toUpperCase()} ({statValue >= 0 ? "+" : ""}{statValue})
-        </button>
-      );
-    })}
+      <div className="saving-throws-panel" style={{ margin: '10px 0', padding: '10px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', border: '1px solid gold' }}>
+        <h4 style={{ fontSize: '0.8rem', color: '#8b0000', marginBottom: '8px', textAlign: 'center', borderBottom: '1px solid #8b0000' }}>Tiri Salvezza</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
+          {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
+            <button
+              key={s}
+              disabled={isUserLocked || !charData}
+              onClick={() => handleSavingThrow(s)}
+              style={{ fontSize: '0.7rem', padding: '5px', cursor: 'pointer', background: 'white', border: '1px solid #ccc', borderRadius: '4px' }}
+            >
+              {s.toUpperCase()} ({charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s] ?? 0})
+            </button>
+          ))}
+        </div>
+      </div>
 
-    
-  </div>
+      <div className="damage-dice-panel" style={{ marginTop: '10px', padding: '10px', background: 'rgba(139,0,0,0.1)', borderRadius: '8px', border: '1px solid #ff4444' }}>
+        <h4 style={{ fontSize: '0.8rem', color: '#ff4444', marginBottom: '8px', textAlign: 'center' }}>Danni & Caratteristica</h4>
+        <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+          <select value={dmgDiceCount} onChange={(e) => setDmgDiceCount(parseInt(e.target.value))} style={{ flex: 1, fontSize: '0.7rem' }}>
+            {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}d</option>)}
+          </select>
+          <select value={dmgSelectedStat || ""} onChange={(e) => setDmgSelectedStat(e.target.value || null)} style={{ flex: 2, fontSize: '0.7rem' }}>
+            <option value="">No Bonus</option>
+            {["str", "dex", "cos", "int", "wis", "cha"].map(s => (
+              <option key={s} value={s}>{s.toUpperCase()} (+{charData?.stats?.[s] ?? 0})</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px' }}>
+          {["d4", "d6", "d8", "d10", "d12"].map((die) => (
+            <button key={die} disabled={isUserLocked} onClick={() => handleManualDamageToBoss(die)} className="die-btn">{die}</button>
+          ))}
+        </div>
+      </div>
 
-  {/* GRIGLIA DADI DANNO (Sotto Tiri Salvezza) */}
-<div className="damage-dice-panel" style={{marginTop: '10px', padding: '10px', background: 'rgba(139,0,0,0.1)', borderRadius: '8px', border: '1px solid #ff4444'}}>
-  <h4 style={{fontSize: '0.8rem', color: '#ff4444', marginBottom: '8px', textAlign: 'center'}}>Configura Danno</h4>
-  
-  {/* Selettore Numero Dadi e Caratteristica */}
-  <div style={{display: 'flex', gap: '5px', marginBottom: '10px'}}>
-    <select 
-      value={dmgDiceCount} 
-      onChange={(e) => setDmgDiceCount(parseInt(e.target.value))}
-      style={{flex: 1, fontSize: '0.7rem', padding: '3px'}}
-    >
-      {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} dadi</option>)}
-    </select>
-
-    <select 
-      value={dmgSelectedStat || ""} 
-      onChange={(e) => setDmgSelectedStat(e.target.value || null)}
-      style={{flex: 2, fontSize: '0.7rem', padding: '3px'}}
-    >
-      <option value="">Nessun Bonus</option>
-      {["str", "dex", "cos", "int", "wis", "cha"].map(s => (
-        <option key={s} value={s}>{s.toUpperCase()} ({charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s]})</option>
-      ))}
-    </select>
-  </div>
-
-  <div style={{display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px'}}>
-    {["d4", "d6", "d8", "d10", "d12"].map((die) => (
-      <button 
-        key={die} 
-        disabled={isUserLocked}
-        onClick={() => handleManualDamageToBoss(die)}
-        style={{
-          fontSize: '0.7rem', 
-          padding: '8px 0', 
-          cursor: 'pointer', 
-          background: '#222', 
-          color: 'white', 
-          border: '1px solid #ff4444', 
-          borderRadius: '4px',
-          fontWeight: 'bold'
-        }}
-      >
-        {die}
-      </button>
-    ))}
-  </div>
-  <p style={{fontSize: '0.6rem', color: '#ff4444', marginTop: '5px', textAlign: 'center'}}>
-    Totale attuale: {dmgDiceCount}d? {dmgSelectedStat ? `+ ${charData?.stats?.[dmgSelectedStat]}` : ""}
-  </p>
-</div>
-                </div>
-              </div>
-              <div className="accordion-container">
-                {sortedCategories.map((cat) => (
-                  <div key={cat} className="wb-section">
-                    <button
-                      className="wb-section-toggle"
-                      onClick={() =>
-                        setOpenSections((prev) => ({
-                          ...prev,
-                          [cat]: !prev[cat],
-                        }))
-                      }
-                    >
-                      {cat} {openSections[cat] ? "▲" : "▼"}
-                    </button>
-                    {openSections[cat] && (
-                      <div className="wb-action-list">
-                        {groupedActions[cat].map((action, idx) => (
-                          <button
-                            key={idx}
-                            className="wb-btn-action"
-                            onClick={() => handleActionRoll(action)}
-                            disabled={isUserLocked}
-                          >
-                            {action.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+      <div className="accordion-container" style={{marginTop: '15px'}}>
+        {sortedCategories.map((cat) => (
+          <div key={cat} className="wb-section">
+            <button className="wb-section-toggle" onClick={() => setOpenSections(prev => ({ ...prev, [cat]: !prev[cat] }))}>
+              {cat} {openSections[cat] ? "▲" : "▼"}
+            </button>
+            {openSections[cat] && (
+              <div className="wb-action-list">
+                {groupedActions[cat].map((action, idx) => (
+                  <button key={idx} className="wb-btn-action" onClick={() => handleActionRoll(action)} disabled={isUserLocked}>
+                    {action.name}
+                  </button>
                 ))}
               </div>
-            </>
-          )}
-        </section>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  )}
+</section>
       </div>
     </div>
   );

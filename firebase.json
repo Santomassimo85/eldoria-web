@@ -10,7 +10,14 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
-      ]
+      ],
+      "headers": [ {
+  "source": "**/*.@(js|html)",
+  "headers": [ {
+    "key": "Cache-Control",
+    "value": "no-cache, no-store, must-revalidate"
+  } ]
+}]
     }
   ]
 }

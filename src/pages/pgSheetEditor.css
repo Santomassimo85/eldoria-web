@@ -1,107 +1,329 @@
-/* --- NUOVO LAYOUT SCHEDE DOPPIE --- */
-.pg-multi-display {
-  display: flex;
-  flex-direction: column;
-  gap: 50px; /* Spazio netto tra le due sezioni */
-  width: 100%;
-  max-width: 800px;
-  margin: 120px auto 50px; /* Sposta sotto la navbar fissa */
+/* Container Principale */
+.pg-editor-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    padding: 20px;
+    background: transparent;
+    font-family: 'Almendra', serif;
 }
 
-.pg-display-box {
-  width: 100%;
-  padding: 20px;
-  border-top: 2px solid var(--gold);
-  background: rgba(255, 255, 255, 0.05);
+.gold-title {
+    color: #d4af37;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    margin-bottom: 20px;
 }
 
-.section-title-gold {
-  color: var(--gold) !important;
-  margin-bottom: 25px !important;
-  font-size: 1.4rem !important;
-  text-align: center;
+/* Card Personaggio */
+.pg-sheet-card {
+    background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+    border: 2px solid #333;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-/* --- CARD SINGOLA --- */
-.mini-card-pg {
-  background: #fcfcfc;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+.pg-sheet-card:hover {
+    transform: translateY(-5px);
 }
 
-.arena-style {
-  background: #fffafa; /* Sfondo leggermente rossastro */
-  border: 2px solid var(--red);
+.pg-sheet-card.hero-theme { border-color: #d4af37; }
+.pg-sheet-card.arena-theme { border-color: #8b0000; }
+
+/* Header e Avatar */
+.pg-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
-.mini-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+.pg-avatar-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
 }
 
-.mini-char-name {
-  font-size: 1.3rem !important;
-  margin: 0 !important;
-  color: var(--red) !important;
+.pg-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #d4af37;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
 }
 
-.mini-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid var(--gold);
-  object-fit: cover;
+.pg-level-badge {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: #d4af37;
+    color: #000;
+    font-weight: bold;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 5px;
 }
 
-.mini-stats-row {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  padding: 10px;
-  background: #eee;
-  border-radius: 6px;
-  margin-bottom: 15px;
-  font-weight: bold;
+.pg-name {
+    color: #fff;
+    font-size: 1.4rem;
+    margin: 0;
 }
 
-.mini-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+.pg-class-text {
+    color: #aaa;
+    font-style: italic;
+    font-size: 0.9rem;
 }
 
-.mini-action-btn {
-  background: var(--red);
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  font-size: 0.8rem;
-  transition: transform 0.2s;
+/* Statistiche */
+.pg-stats-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
-.mini-action-btn:hover {
-  background: var(--gold);
-  color: black;
-  transform: scale(1.05);
+.stat-box {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
 }
 
-.mini-btn-dmg {
-  font-weight: bold;
-  font-size: 0.9rem;
+.stat-label {
+    display: block;
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
 }
 
-/* Fix per evitare sovrapposizione con i burger menu e header */
-@media (max-width: 780px) {
-  .pg-multi-display {
-    margin-top: 150px;
-    padding: 0 10px;
-  }
+.stat-value {
+    color: #fff;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.stat-bar {
+    width: 100%;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.stat-fill.red { background: #ff4444; }
+
+/* Lista Azioni */
+.pg-actions-section {
+    border-top: 1px solid #444;
+    padding-top: 15px;
+}
+
+.section-label {
+    font-size: 0.8rem;
+    color: #d4af37;
+    margin-bottom: 10px;
+    display: block;
+    text-align: center;
+}
+
+.actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-roll-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #444;
+    padding: 10px 15px;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.action-roll-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: #d4af37;
+}
+
+.btn-main-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.action-name {
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.action-category {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.action-dmg-tag {
+    background: #8b0000;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: monospace;
+    box-shadow: 0 0 5px rgba(139, 0, 0, 0.5);
+}
+
+.no-data-msg {
+    color: #666;
+    text-align: center;
+    padding: 40px;
+    border: 2px dashed #333;
+    border-radius: 15px;
+}
+
+/* Stile per la riga superiore del bottone azione */
+.btn-main-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.btn-left-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+/* Stile Descrizione Azione */
+.action-description-text {
+    font-size: 0.75rem;
+    color: #bbb;
+    text-align: left;
+    margin: 5px 0 0 0;
+    line-height: 1.2;
+    font-style: italic;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 5px;
+    width: 100%;
+}
+
+/* Evidenziazione della Classe */
+.pg-class-text {
+    color: #d4af37; /* Colore oro per farla risaltare */
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+/* Miglioramento bottone azione per ospitare la descrizione */
+.action-roll-btn {
+    display: flex;
+    flex-direction: column; /* Stack verticale per Nome/Danno e poi Descrizione */
+    align-items: flex-start;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #444;
+    padding: 12px 15px;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.action-roll-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: #d4af37;
+}
+
+/* --- CATEGORIE E TITOLI --- */
+.category-block {
+    margin-bottom: 20px;
+}
+
+.cat-title {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    letter-spacing: 1px;
+}
+
+/* Colori Categorie */
+.weapon-color { color: #ff4d4d; }
+.spell-color { color: #4d94ff; }
+.feat-color { color: #4dff88; }
+
+/* --- STILI SPECIFICI ITEM --- */
+
+/* Armi (Rosso) */
+.weapon-item {
+    border-left: 4px solid #8b0000 !important;
+}
+.weapon-item:hover {
+    background: rgba(255, 77, 77, 0.1) !important;
+    border-color: #ff4d4d !important;
+}
+.weapon-item .action-dmg-tag {
+    background: #8b0000;
+}
+
+/* Incantesimi (Blu) */
+.spell-item {
+    border-left: 4px solid #00448b !important;
+}
+.spell-item:hover {
+    background: rgba(77, 148, 255, 0.1) !important;
+    border-color: #4d94ff !important;
+}
+.spell-item .action-dmg-tag {
+    background: #00448b;
+}
+
+/* Abilità (Verde) */
+.feat-item {
+    border-left: 4px solid #008b44 !important;
+}
+.feat-item:hover {
+    background: rgba(77, 255, 136, 0.1) !important;
+    border-color: #4dff88 !important;
+}
+.feat-item .action-dmg-tag {
+    background: #008b44;
+}
+
+/* --- MIGLIORAMENTI GENERALI --- */
+.action-roll-btn {
+    margin-bottom: 8px;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid #333 !important;
+}
+
+.action-category {
+    font-weight: bold;
+    font-size: 0.65rem;
+    margin-top: 2px;
+}
+
+.action-description-text {
+    color: #999;
+    font-size: 0.7rem;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
 }
