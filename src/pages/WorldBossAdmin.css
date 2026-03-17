@@ -356,6 +356,7 @@ input::placeholder {
     padding: 4px 8px;
     font-size: 0.7rem;
     cursor: pointer;
+    
     border-radius: 4px;
 }
 

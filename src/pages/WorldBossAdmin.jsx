@@ -62,6 +62,7 @@ export default function WorldBossAdmin() {
       mapX: parseFloat(xPercent.toFixed(2)),
       mapY: parseFloat(yPercent.toFixed(2)),
     });
+    
   };
 
   const handleCreateBoss = async (e) => {

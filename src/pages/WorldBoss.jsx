@@ -642,3 +642,4 @@ function ChatAvatar({ uid, isBoss }) {
   if (!avatarUrl) return <div className="avatar-placeholder" />;
   return <img src={avatarUrl} alt="Avatar" className="chat-avatar-img" />;
 }
+// new
