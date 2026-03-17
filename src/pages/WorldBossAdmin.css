@@ -298,3 +298,69 @@ input::placeholder {
     color: white;
     flex: 1;
 }
+
+/* WorldBossAdmin.css */
+
+.edit-mode.expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--gold);
+}
+
+.edit-mode.expanded label {
+    font-size: 0.75rem;
+    color: var(--gold);
+    margin-top: 5px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.edit-grid-mini {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.edit-actions-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    border: 1px dashed #666;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+/* Evita che le card diventino troppo piccole con tutto questo contenuto */
+.boss-card {
+    min-height: fit-content;
+}
+
+
+.player-selector-admin {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.mini-p-btn {
+    background: #333;
+    color: white;
+    border: 1px solid #555;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.mini-p-btn.selected {
+    background: var(--gold);
+    color: black;
+    border-color: #fff;
+}

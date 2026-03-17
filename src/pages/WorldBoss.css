@@ -1,8 +1,8 @@
 .wb-container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px;
-    font-family: 'Almendra', serif;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Almendra', serif;
 }
 
 /* Boss HP Bar */
@@ -11,7 +11,8 @@
 .hp-bar-outer {
   width: 80%;
   max-width: 600px;
-  height: 18px; /* Più sottile */
+  height: 18px;
+  /* Più sottile */
   background: #222;
   border: 2px solid var(--gold);
   border-radius: 10px;
@@ -28,14 +29,17 @@
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   /* box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.3); */
 }
-.wb-section-toggle:hover{
+
+.wb-section-toggle:hover {
   background: #d4af37;
   color: #fff;
 
 }
-.wb-btn-action{
+
+.wb-btn-action {
   border: none !important;
 }
+
 /* Testo HP per il Master più discreto */
 .hp-text-admin {
   position: relative;
@@ -57,9 +61,12 @@
   margin-bottom: 5px;
   transition: all 0.3s ease;
 }
+
 .msg-header.alternate-layout {
-  flex-direction: row-reverse; /* Sposta l'avatar a destra */
-  justify-content: flex-end;   /* Allinea tutto a destra della bolla */
+  flex-direction: row-reverse;
+  /* Sposta l'avatar a destra */
+  justify-content: flex-end;
+  /* Allinea tutto a destra della bolla */
   text-align: right;
 }
 
@@ -70,38 +77,51 @@
   border: none;
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
   color: #fff !important;
-    position: sticky;
+  position: sticky;
 
 }
+
 .is-master-msg {
   display: flex !important;
   flex-direction: column !important;
-  align-items: center !important; /* Centra la bolla sotto l'header */
+  align-items: center !important;
+  /* Centra la bolla sotto l'header */
   width: 100% !important;
   margin: 10px 0 !important;
 }
+
 .is-master-msg .msg-header {
   display: flex !important;
-  flex-direction: row !important; /* Forza orizzontale */
-  justify-content: center !important; /* Centra il gruppo */
-  align-items: center !important;     /* Allinea verticalmente icona e testo */
-  gap: 10px !important;              /* SPAZIO TRA IMMAGINE E NOME */
+  flex-direction: row !important;
+  /* Forza orizzontale */
+  justify-content: center !important;
+  /* Centra il gruppo */
+  align-items: center !important;
+  /* Allinea verticalmente icona e testo */
+  gap: 10px !important;
+  /* SPAZIO TRA IMMAGINE E NOME */
   width: 100% !important;
   margin-bottom: 5px !important;
-  float: none !important;            /* Rimuove eventuali float dai player */
+  float: none !important;
+  /* Rimuove eventuali float dai player */
 }
+
 /* Colore del nome del Master nel messaggio */
 .is-master-msg .msg-author {
   color: #ff4444 !important;
   font-weight: bold;
   text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
-  flex-direction: row !important; /* Forza l'ordine normale */
-  justify-content: center !important; /* Centra orizzontalmente */
+  flex-direction: row !important;
+  /* Forza l'ordine normale */
+  justify-content: center !important;
+  /* Centra orizzontalmente */
   width: 100%;
 }
+
 .is-master-msg .chat-avatar-img {
-display: none;
+  display: none;
 }
+
 /* Se è un'azione del boss (tipo attacco), rendiamo il bordo più "fiammeggiante" */
 .is-master-msg.action .action-result {
   border-left: 4px solid #ff0000 !important;
@@ -111,20 +131,26 @@ display: none;
 
 /* Layout speciale per il Master centrato con immagine accanto al testo */
 .is-master-msg .master-centered-layout {
-    display: flex;
-    flex-direction: row !important; /* Mette immagine e testo sulla stessa riga */
-    align-items: center; /* Centra verticalmente l'immagine rispetto al testo */
-    justify-content: center; /* Centra tutto il blocco orizzontalmente */
-    gap: 15px; /* Spazio tra immagine e testo */
-    background: linear-gradient(135deg, rgba(80, 0, 0, 0.85) 0%, rgba(30, 0, 0, 0.9) 100%) !important;
-    padding: 15px 25px;
-    border-radius: 12px;
-    border: 1px solid #ff4444;
-    box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
-    margin: 0 auto;
-    max-width: fit-content; /* La bolla si stringe intorno al contenuto */
+  display: flex;
+  flex-direction: row !important;
+  /* Mette immagine e testo sulla stessa riga */
+  align-items: center;
+  /* Centra verticalmente l'immagine rispetto al testo */
+  justify-content: center;
+  /* Centra tutto il blocco orizzontalmente */
+  gap: 15px;
+  /* Spazio tra immagine e testo */
+  background: linear-gradient(135deg, rgba(80, 0, 0, 0.85) 0%, rgba(30, 0, 0, 0.9) 100%) !important;
+  padding: 15px 25px;
+  border-radius: 12px;
+  border: 1px solid #ff4444;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+  margin: 0 auto;
+  max-width: fit-content;
+  /* La bolla si stringe intorno al contenuto */
 }
-.is-master-msg .msg-text, 
+
+.is-master-msg .msg-text,
 .is-master-msg .action-result {
   max-width: 80% !important;
   text-align: center !important;
@@ -134,9 +160,17 @@ display: none;
 }
 
 @keyframes pulse-red {
-  0% { border-color: #8b0000; }
-  50% { border-color: #ff0000; }
-  100% { border-color: #8b0000; }
+  0% {
+    border-color: #8b0000;
+  }
+
+  50% {
+    border-color: #ff0000;
+  }
+
+  100% {
+    border-color: #8b0000;
+  }
 }
 
 .author-change {
@@ -144,6 +178,7 @@ display: none;
   border-top: 1px dashed rgba(212, 175, 55, 0.2);
   padding-top: 10px;
 }
+
 .chat-avatar-img {
   width: 35px;
   height: 35px;
@@ -161,54 +196,65 @@ display: none;
 
 /* RESPONSIVE: Rimuovi l'icona sotto gli 800px */
 @media (max-width: 800px) {
-  .chat-avatar-img, .avatar-placeholder {
+
+  .chat-avatar-img,
+  .avatar-placeholder {
     display: none;
   }
-  
+
   .msg-header {
     gap: 0;
   }
 }
+
 .msg-right .msg-header {
-  flex-direction: row-reverse; /* Inverte Avatar e Nome */
+  flex-direction: row-reverse;
+  /* Inverte Avatar e Nome */
   text-align: right;
 }
 
-.msg-right .msg-text, 
+.msg-right .msg-text,
 .msg-right .action-result {
-  align-self: flex-end; /* Allinea il testo a destra */
-  border-right: 3px solid var(--gold); /* Un tocco estetico sul lato destro */
+  align-self: flex-end;
+  /* Allinea il testo a destra */
+  border-right: 3px solid var(--gold);
+  /* Un tocco estetico sul lato destro */
   border-left: none;
 }
 
 /* Sfondo Standard (Giocatore 1, 3, 5...) */
-.bg-standard .msg-text, 
+.bg-standard .msg-text,
 .bg-standard .action-result {
-  background: rgba(218, 200, 243, 0.7); /* Grigio fumo scuro */
+  background: rgba(218, 200, 243, 0.7);
+  /* Grigio fumo scuro */
   border-left: 3px solid rgb(112, 19, 19);
   color: black;
 }
 
 /* Sfondo Variante (Giocatore 2, 4, 6...) */
-.bg-variant .msg-text, 
+.bg-variant .msg-text,
 .bg-variant .action-result {
-  background: rgba(242, 227, 170, 0.382); /* Bluastro notte profondo */
-  border-right: 3px solid #feb74c; /* Magari un bordo azzurro o tieni var(--gold) */
+  background: rgba(242, 227, 170, 0.382);
+  /* Bluastro notte profondo */
+  border-right: 3px solid #feb74c;
+  /* Magari un bordo azzurro o tieni var(--gold) */
 }
 
 /* Regola per i messaggi del Master (opzionale) */
 /* Se vuoi che il DM abbia sempre uno sfondo rosso scuro */
 .msg-bubble.master .msg-text {
-    background: rgba(139, 0, 0, 0.4) !important;
-    border-color: #ff0000 !important;
+  background: rgba(139, 0, 0, 0.4) !important;
+  border-color: #ff0000 !important;
 }
 
 /* Assicurati che il testo rimanga leggibile */
-.msg-text, .action-result {
-    padding: 10px;
-    border-radius: 8px;
-    color: #250505;
+.msg-text,
+.action-result {
+  padding: 10px;
+  border-radius: 8px;
+  color: #250505;
 }
+
 .btn-delete-msg {
   background: none;
   border: none;
@@ -216,13 +262,15 @@ display: none;
   cursor: pointer;
   font-size: 0.8rem;
   margin-left: 10px;
-  opacity: 0.3; /* Quasi trasparente di base */
+  opacity: 0.3;
+  /* Quasi trasparente di base */
   transition: opacity 0.2s;
   padding: 0 5px;
 }
 
 .btn-delete-msg:hover {
-  opacity: 1; /* Diventa rosso vivo quando ci passi sopra */
+  opacity: 1;
+  /* Diventa rosso vivo quando ci passi sopra */
   transform: scale(1.2);
 }
 
@@ -231,81 +279,82 @@ display: none;
   margin-left: 0;
   margin-right: 10px;
 }
+
 .boss-image {
-    width: 100%;
-    max-height: 400px;
-    object-fit: contain;
-    filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
 }
 
 /* Interface Layout */
 .battle-interface {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 20px;
-    height: 600px;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  height: 600px;
 }
 
 
 .msg-bubble {
-    margin-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding-bottom: 10px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
 }
 
 .msg-author {
-    color: var(--gold);
-    font-weight: bold;
-    font-size: 0.9rem;
-    margin-bottom: 4px;
-    display: block;
+  color: var(--gold);
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  display: block;
 }
 
 /* Action Card in Chat */
 .action-result {
-    background: rgba(212, 175, 55, 0.1);
-    padding: 10px;
-    border-radius: 5px;
-    border-left: 4px solid var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+  border-left: 4px solid var(--gold);
 }
 
 .rolls-box {
-    display: flex;
-    gap: 15px;
-    margin-top: 8px;
-    color: #ab2b2b;
-    font-weight: bold;
+  display: flex;
+  gap: 15px;
+  margin-top: 8px;
+  color: #ab2b2b;
+  font-weight: bold;
 }
 
 /* Sidebar */
 .player-actions {
-    background: rgba(136, 9, 9, 0.05);
-    padding: 15px;
-    border-radius: 10px;
-    overflow-y: auto;
+  background: rgba(136, 9, 9, 0.05);
+  padding: 15px;
+  border-radius: 10px;
+  overflow-y: auto;
 }
 
 .btn-action {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 12px;
-    background: #ffffff;
-    color: var(--gold);
-    border: 1px solid var(--gold);
-    border-radius: 5px;
-    cursor: pointer;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 12px;
+  background: #ffffff;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .btn-action:hover {
-    background: red;
-    color: #000;
+  background: red;
+  color: #000;
 }
 
 .denied-msg {
-    text-align: center;
-    margin-top: 100px;
-    font-size: 1.8rem;
-    color: var(--gold);
+  text-align: center;
+  margin-top: 100px;
+  font-size: 1.8rem;
+  color: var(--gold);
 }
 
 
@@ -364,7 +413,7 @@ display: none;
   flex-direction: column;
   gap: 4px;
   padding: 5px;
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .wb-btn-action {
@@ -384,22 +433,22 @@ display: none;
 }
 
 .invia {
-    font-family: 'Almendra', serif;
-    font-weight: bold;
-    width: 100px;
-    height: 38px;
-    background: rgb(119, 14, 14);
-    border: none;
-    border-radius: 5px;
-    color: rgb(255, 255, 255);
-    cursor: pointer;
-    margin-top: 10px;
-transition: background-color  0.5s ease-in-out;
+  font-family: 'Almendra', serif;
+  font-weight: bold;
+  width: 100px;
+  height: 38px;
+  background: rgb(119, 14, 14);
+  border: none;
+  border-radius: 5px;
+  color: rgb(255, 255, 255);
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.5s ease-in-out;
 }
 
 .invia:hover {
-    background: #b1870b;
-    color: white;
+  background: #b1870b;
+  color: white;
 }
 
 
@@ -410,7 +459,8 @@ transition: background-color  0.5s ease-in-out;
   display: grid;
   grid-template-columns: 1fr 300px;
   gap: 20px;
-  height: 650px; /* Altezza fissa per bloccare l'espansione */
+  height: 650px;
+  /* Altezza fissa per bloccare l'espansione */
   max-height: 80vh;
   margin-top: 20px;
 }
@@ -422,22 +472,25 @@ transition: background-color  0.5s ease-in-out;
   background: rgba(255, 250, 240, 0.95);
   border-radius: 8px;
   border: 1px solid #d4af37;
-  overflow: hidden; /* Importante per contenere i figli */
+  overflow: hidden;
+  /* Importante per contenere i figli */
 }
 
 /* L'area dei messaggi DEVE avere overflow-y auto */
 .chat-messages {
-display: flex;
-flex-direction: column-reverse;
+  display: flex;
+  flex-direction: column-reverse;
   gap: 12px;
   padding: 15px;
   overflow-y: auto;
   /* Forza la chat a comportarsi come una lista che cresce dal basso */
   scroll-behavior: smooth;
 }
-.chat-messages > div {
+
+.chat-messages>div {
   flex-shrink: 0;
 }
+
 .chat-messages::-webkit-scrollbar {
   width: 8px;
 }
@@ -466,12 +519,14 @@ flex-direction: column-reverse;
 .player-actions-sidebar {
   display: flex;
   flex-direction: column;
-  height: 100%; /* Segue l'altezza del genitore battle-interface */
+  height: 100%;
+  /* Segue l'altezza del genitore battle-interface */
   overflow-y: auto;
   background: rgba(255, 255, 255, 0.1);
   padding: 10px;
   border-radius: 8px;
 }
+
 input:disabled {
   background: rgba(0, 0, 0, 0.05) !important;
   color: #999 !important;
@@ -482,33 +537,39 @@ input:disabled {
 @media (max-width: 768px) {
   .battle-interface {
     display: flex;
-    flex-direction: column; /* Impila Skill e Chat verticalmente */
-    height: auto; /* Permette alla pagina di allungarsi */
+    flex-direction: column;
+    /* Impila Skill e Chat verticalmente */
+    height: auto;
+    /* Permette alla pagina di allungarsi */
     max-height: none;
     gap: 15px;
   }
 
   /* Spostiamo le Skill SOPRA la Chat per comodità di gioco */
   .player-actions-sidebar {
-    order: 1; 
+    order: 1;
     width: 100%;
-    max-height: 300px; /* Limita l'altezza delle skill per non scrollare troppo */
+    max-height: 300px;
+    /* Limita l'altezza delle skill per non scrollare troppo */
     overflow-y: auto;
-    background: rgba(255, 255, 255, 0.05); /* Più scuro su mobile per leggibilità */
+    background: rgba(255, 255, 255, 0.05);
+    /* Più scuro su mobile per leggibilità */
   }
 
 
   .no-msg-guide {
-  text-align: center;
-  color: var(--gold);
-  opacity: 0.6;
-  font-style: italic;
-  margin-top: 20px;
-}
+    text-align: center;
+    color: var(--gold);
+    opacity: 0.6;
+    font-style: italic;
+    margin-top: 20px;
+  }
+
   .chat-section {
     order: 2;
     width: 100%;
-    height: 500px; /* Altezza fissa per la chat su mobile */
+    height: 500px;
+    /* Altezza fissa per la chat su mobile */
     border: 2px solid var(--gold);
   }
 
@@ -527,19 +588,95 @@ input:disabled {
   }
 }
 
+.btn-heal-all {
+  background: linear-gradient(135deg, #edbfbf 0%, #cc2e2e 100%);
+  color: white;
+  width: 100%;
+  height: 50px;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-family: 'Almendra', serif;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+  text-transform: uppercase;
+  font-size: 0.6rem;
+}
+
+
+
+.btn-heal-all:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(204, 46, 46, 0.702);
+  filter: brightness(1.1);
+}
+
+.btn-heal-all:active {
+  transform: translateY(0);
+}
+
+.btn-select-all {
+  background: linear-gradient(135deg, #67ffa1 0%, #2ecc71 100%);
+  color: white;
+  height: 50px;
+  width: 100%;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-family: 'Almendra', serif;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+  text-transform: uppercase;
+  font-size: 0.6rem;
+}
+
+.btn-select-all:hover {
+transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
+  filter: brightness(1.1);
+}
+
+/* Se vuoi distinguere il tasto quando "Deseleziona" */
+.btn-select-all:active {
+  transform: translateY(0);
+}
+
 
 .player-hp-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.4);
+  background-color: #ddf9e8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
   padding: 8px;
   border-radius: 6px;
   margin-bottom: 5px;
   border-left: 3px solid var(--gold);
 }
 
-.p-name { font-size: 0.8rem; width: 60px; overflow: hidden; }
+.player-hp-row.selector:hover {
+  background-color: rgba(212, 55, 55, 0.2);
+}
+
+.player-hp-row.selector.selected {
+  background-color: #ee745e !important;
+  /* Giallo chiaro per evidenziare */
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 10px rgba(237, 105, 68, 0.3);
+}
+
+.p-name {
+  font-size: 0.8rem;
+  width: 60px;
+  font-weight: bold;
+  overflow: hidden;
+}
 
 .hp-bar-mini-container {
   flex: 1;
@@ -553,7 +690,7 @@ input:disabled {
 
 .hp-bar-mini-fill {
   height: 100%;
-  background: #c0392b;
+  background: #a7ff02;
   transition: width 0.3s ease;
 }
 
@@ -563,7 +700,7 @@ input:disabled {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 0.65rem;
-  color: white;
+  color: rgb(91, 0, 0);
   font-weight: bold;
 }
 
@@ -576,8 +713,15 @@ input:disabled {
   font-weight: bold;
 }
 
-.btn-hp.minus { background: #8b0000; color: white; }
-.btn-hp.plus { background: #27ae60; color: white; }
+.btn-hp.minus {
+  background: #8b0000;
+  color: white;
+}
+
+.btn-hp.plus {
+  background: #27ae60;
+  color: white;
+}
 
 .boss-atk {
   background: linear-gradient(to bottom, #8b0000, #4a0000) !important;
@@ -600,12 +744,13 @@ input:disabled {
   animation: pulse-timer 1s infinite;
 }
 
+.p
 
 /* WorldMap.css - Mini Timer */
 .countdown-mini {
   font-size: 0.75rem;
   color: #d4af37;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   padding: 2px 6px;
   border-radius: 4px;
   margin-top: 5px;
@@ -613,35 +758,48 @@ input:disabled {
 
 /* WorldBoss.css */
 .boss-timer-main {
-    text-align: center;
-    color: #ff4444;
-    font-size: 1.8rem;
-    font-weight: bold;
-    margin-top: -15px;
-    margin-bottom: 20px;
-    text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-    animation: pulse-timer 1.5s infinite;
+  text-align: center;
+  color: #ff4444;
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-top: -15px;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  animation: pulse-timer 1.5s infinite;
 }
 
 @keyframes pulse-timer {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.05); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* WorldMap.css */
 .mini-timer {
-    font-size: 0.9rem;
-    color: #d4af37;
-    font-weight: bold;
-    margin: 5px 0;
-    background: rgba(255, 250, 250, 0.5);
-    border-radius: 4px;
-    padding: 2px;
+  font-size: 0.9rem;
+  color: #d4af37;
+  font-weight: bold;
+  margin: 5px 0;
+  background: rgba(255, 250, 250, 0.5);
+  border-radius: 4px;
+  padding: 2px;
 }
-.boss-image img{
+
+.boss-image img {
   border-radius: 150px;
 }
+
 .main-boss-timer {
   text-align: center;
   background: rgba(255, 255, 255, 0.6);
@@ -658,7 +816,8 @@ input:disabled {
 
 
 .timer-countdown-text {
-  font-family: 'monospace'; /* Mantiene i numeri fermi mentre scalano */
+  font-family: 'monospace';
+  /* Mantiene i numeri fermi mentre scalano */
 }
 
 
@@ -671,15 +830,18 @@ input:disabled {
 }
 
 .stat-selector {
- display: flex;
-  gap: 8px; /* Ridotto leggermente per far stare 3 tasti */
+  display: flex;
+  gap: 8px;
+  /* Ridotto leggermente per far stare 3 tasti */
   margin-bottom: 10px;
-  flex-wrap: wrap; /* Permette di andare a capo su schermi molto stretti */
+  flex-wrap: wrap;
+  /* Permette di andare a capo su schermi molto stretti */
 }
 
 .stat-btn {
- flex: 1;
-  min-width: 60px; /* Garantisce leggibilità */
+  flex: 1;
+  min-width: 60px;
+  /* Garantisce leggibilità */
   padding: 6px 2px;
   font-size: 0.8rem;
   background: #eee;
@@ -712,7 +874,10 @@ input:disabled {
   font-size: 0.7rem;
 }
 
-.die-btn:hover { background: gold; color: black; }
+.die-btn:hover {
+  background: gold;
+  color: black;
+}
 
 .turn-banner {
   text-align: center;
@@ -760,7 +925,7 @@ input:disabled {
   padding: 8px 20px;
   border-radius: 20px;
   cursor: pointer;
-  
+
 }
 
 .btn-end-turn.acted {
@@ -770,8 +935,13 @@ input:disabled {
 }
 
 @keyframes glow-blue {
-  from { box-shadow: 0 0 10px rgba(0, 136, 255, 0.4); }
-  to { box-shadow: 0 0 25px rgba(0, 136, 255, 0.8); }
+  from {
+    box-shadow: 0 0 10px rgba(0, 136, 255, 0.4);
+  }
+
+  to {
+    box-shadow: 0 0 25px rgba(0, 136, 255, 0.8);
+  }
 }
 
 /* Controls Master */

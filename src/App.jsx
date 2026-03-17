@@ -138,13 +138,13 @@ export default function App() {
           </NavLink>
 
         
- {/* <NavLink
+ <NavLink
             to="/arena"
             className={({ isActive }) => (isActive ? "active disabled" : "")}
             onClick={closeMenu}
           >
             arena
-          </NavLink> */}
+          </NavLink>
 
 <NavLink
             to="/world-boss-fight"
@@ -191,7 +191,7 @@ export default function App() {
           <Route path="/my-pg" element={<PgSheetEditor />} />
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
-          {/* <Route path="/arena" element={<Arena />} /> */}
+          <Route path="/arena" element={<Arena />} />
 
           <Route path="/world-boss-fight" element={<WorldBoss />} />
 
