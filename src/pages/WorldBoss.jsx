@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { db } from "../firebase";
-
 import {
   doc,
   updateDoc,
@@ -21,244 +20,100 @@ import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
 
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+const BOSS_SYSTEM_UID = "BOSS_MSG";
+
 export default function WorldBoss() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
   const [activeBosses, setActiveBosses] = useState([]);
   const [messages, setMessages] = useState([]);
-
-  const [selectedMod, setSelectedMod] = useState(null); // 'int' o 'wis'
-
-  const calculateTimeLeft = (expiryDate) => {
-    const difference = +new Date(expiryDate) - +new Date();
-    let timeLeft = {};
-
-    if (difference > 0) {
-      timeLeft = {
-        h: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        m: Math.floor((difference / 1000 / 60) % 60),
-        s: Math.floor((difference / 1000) % 60),
-      };
-    }
-    return timeLeft;
-  };
-
-  // 1. DICHIARA LO STATO PLAYERS
   const [players, setPlayers] = useState([]);
-
   const [text, setText] = useState("");
+  const [selectedMod, setSelectedMod] = useState(null);
   const [openSections, setOpenSections] = useState({ Armi: true });
+  const [selectedTargets, setSelectedTargets] = useState([]); // Stato per selezione bersagli Master
+
   const chatEndRef = useRef(null);
+  const isMaster = useMemo(
+    () => currentUser?.email === MASTER_EMAIL,
+    [currentUser],
+  );
 
-  const MASTER_EMAIL = "santomassimo85@gmail.com";
-
-  // 2. DICHIARA ISMASTER PRIMA DI USARLO NEGLI EFFECT
-  const isMaster = currentUser?.email === MASTER_EMAIL;
-
-  // Per togliere/aggiungere vita ai player
-  const damagePlayer = async (playerId, amount) => {
-    try {
-      const playerRef = doc(db, "characters", playerId);
-      // Importa 'increment' da firebase/firestore se non l'hai fatto
-      await updateDoc(playerRef, {
-        "stats.hp": increment(amount),
-      });
-    } catch (err) {
-      console.error("Errore HP Player:", err);
+  const toggleSelectAll = () => {
+    if (selectedTargets.length === players.length) {
+      // Se sono già tutti selezionati, svuota la selezione
+      setSelectedTargets([]);
+    } else {
+      // Altrimenti, seleziona tutti gli ID dei player
+      const allIds = players.map((p) => p.id);
+      setSelectedTargets(allIds);
     }
   };
 
-  // Stati per il turno
+  const healAllPlayers = async () => {
+    const confirmHeal = window.confirm(
+      "DM, vuoi curare TUTTI i player al massimo della vita?",
+    );
+    if (!confirmHeal) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      players.forEach((player) => {
+        const playerRef = doc(db, "characters", player.id);
+        // Impostiamo gli HP attuali uguali ai Max HP
+        batch.update(playerRef, {
+          "stats.hp": player.stats.maxHp || 100,
+        });
+      });
+
+      await batch.commit();
+
+      // Notifica in chat l'azione divina
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID,
+        senderName: "Sistema",
+        type: "notification",
+        content:
+          "✨ Un'aura divina avvolge gli eroi: TUTTI i player sono stati curati al massimo!",
+        timestamp: serverTimestamp(),
+      });
+
+      alert("Tutti i player sono stati curati!");
+    } catch (error) {
+      console.error("Errore nella cura globale:", error);
+      alert("Errore durante la cura.");
+    }
+  };
+
   const [turnState, setTurnState] = useState({
     phase: "players",
     turnNumber: 1,
     actedPlayers: [],
   });
 
-  // Listen al turno in tempo reale
+  // Monitoraggio Turni
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "battle_meta", "turn_tracker"), (doc) => {
-      if (doc.exists()) setTurnState(doc.data());
+    const unsub = onSnapshot(doc(db, "battle_meta", "turn_tracker"), (snap) => {
+      if (snap.exists()) setTurnState(snap.data());
     });
     return () => unsub();
   }, []);
 
-  // Funzione per il player per segnare che ha agito
-  const endMyTurn = async () => {
-    // Verifica se l'utente ha già agito per evitare doppi click
-    if (turnState.actedPlayers.includes(currentUser.uid)) return;
-
-    try {
-      const turnRef = doc(db, "battle_meta", "turn_tracker");
-      await updateDoc(turnRef, {
-        // arrayUnion aggiunge l'UID solo se non è già presente e notifica Firestore
-        actedPlayers: arrayUnion(currentUser.uid),
-      });
-    } catch (err) {
-      console.error("Errore conclusione azione:", err);
-    }
-  };
-
-  const isUserLocked =
-    !isMaster &&
-    (turnState.phase === "boss" ||
-      turnState.actedPlayers.includes(currentUser.uid));
-
-  // Funzione Master per cambiare fase
-  const togglePhase = async (newPhase) => {
-    const update = {
-      phase: newPhase,
-      actedPlayers: [], // Resetta chi ha agito al cambio fase
-    };
-    if (newPhase === "players") {
-      update.turnNumber = increment(1);
-    }
-    await updateDoc(doc(db, "battle_meta", "turn_tracker"), update);
-  };
-
+  // Monitoraggio Player (Solo Master)
   useEffect(() => {
-    if (!isMaster) return; // Solo il Master scarica i dati di tutti i player
-
-    const unsubPlayers = onSnapshot(collection(db, "characters"), (snap) => {
+    if (!isMaster) return;
+    const unsub = onSnapshot(collection(db, "characters"), (snap) => {
       setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+    return () => unsub();
+  }, [isMaster]);
 
-    return () => unsubPlayers();
-  }, []);
-
-  const handleManualHit = async () => {
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    const modValue = charData?.stats?.[selectedMod] || 0;
-
-    await addDoc(collection(db, "world_boss_chat"), {
-      type: "action",
-      senderName: charData?.name || "Eroe",
-      actionName: `Tiro Manuale (${selectedMod.toUpperCase()})`,
-      hitRoll: `${d20 + modValue} (${d20} + ${modValue})`,
-      timestamp: serverTimestamp(),
-      uid: currentUser.uid,
-      category: "Manuale",
-    });
-  };
-
-  const handleManualDamage = async (die) => {
-    const sides = parseInt(die.replace("d", ""));
-    const roll = Math.floor(Math.random() * sides) + 1;
-
-    await addDoc(collection(db, "world_boss_chat"), {
-      type: "action",
-      senderName: charData?.name || "Eroe",
-      actionName: `Danno Manuale ${die}`,
-      damageRoll: `${roll} [${roll}]`,
-      timestamp: serverTimestamp(),
-      uid: currentUser.uid,
-      category: "Manuale",
-    });
-  };
-
-  // Per far attaccare il Boss (genera il messaggio in chat)
-  const handleBossRoll = async (boss, action) => {
-    await addDoc(collection(db, "world_boss_chat"), {
-      uid: "BOSS_MSG",
-      senderName: boss.name,
-      type: "action",
-      category: "Attacco Boss",
-      actionName: action.name,
-      description: `Il boss scatena ${action.name}!`,
-      hitRoll: `🎯 Colpire: d20 + ${action.bonus}`,
-      damageRoll: `💥 Danni: ${action.damage}`,
-      timestamp: serverTimestamp(),
-    });
-  };
-
-  const handleDeleteMessage = async (id) => {
-    if (window.confirm("DM, vuoi eliminare questo messaggio dalla storia?")) {
-      try {
-        await deleteDoc(doc(db, "world_boss_chat", id));
-      } catch (err) {
-        console.error("Errore eliminazione messaggio:", err);
-      }
-    }
-  };
-
-  // --- LOGICA CALCOLO DANNO ---
-  const rollDamage = (dmgFormula) => {
-    try {
-      const cleanFormula = dmgFormula.replace(/\s+/g, "");
-      const parts = cleanFormula.split("+");
-      let totalDmg = 0;
-      let detailedDmg = "";
-
-      parts.forEach((part) => {
-        if (part.includes("d")) {
-          const [num, sides] = part.split("d").map(Number);
-          for (let i = 0; i < (num || 1); i++) {
-            const roll = Math.floor(Math.random() * sides) + 1;
-            totalDmg += roll;
-            detailedDmg += (detailedDmg ? " + " : "") + roll;
-          }
-        } else {
-          const val = parseInt(part) || 0;
-          totalDmg += val;
-          detailedDmg += (detailedDmg ? " + " : "") + val;
-        }
-      });
-      return { total: totalDmg, detail: detailedDmg };
-    } catch (e) {
-      return { total: 0, detail: "???" };
-    }
-  };
-
-  function ChatAvatar({ uid }) {
-    const [avatarUrl, setAvatarUrl] = useState(null);
-
-    useEffect(() => {
-      const unsub = onSnapshot(doc(db, "characters", uid), (snap) => {
-        if (snap.exists()) setAvatarUrl(snap.data().image);
-      });
-      return () => unsub();
-    }, [uid]);
-
-    if (!avatarUrl) return <div className="avatar-placeholder" />;
-
-    return <img src={avatarUrl} alt="Avatar" className="chat-avatar-img" />;
-  }
-
-  // --- LOGICA PULIZIA CHAT (BATCH) ---
-  const clearChat = async () => {
-    if (
-      !window.confirm(
-        "Sei sicuro di voler purgare l'intera chat? Questa azione è irreversibile.",
-      )
-    )
-      return;
-
-    try {
-      const chatRef = collection(db, "world_boss_chat");
-      const snapshot = await getDocs(query(chatRef));
-
-      if (snapshot.empty) {
-        alert("La chat è già vuota.");
-        return;
-      }
-
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((d) => {
-        batch.delete(d.ref);
-      });
-
-      await batch.commit();
-      console.log("Chat purgata con successo.");
-    } catch (err) {
-      console.error("Errore durante la purga della chat:", err);
-      alert("Errore: controlla le regole di Firebase o la tua connessione.");
-    }
-  };
-
+  // Caricamento Dati Principali
   useEffect(() => {
     if (!currentUser) return;
 
-    // Snapshot Personaggio
     const unsubChar = onSnapshot(
       doc(db, "characters", currentUser.uid),
       (snap) => {
@@ -266,23 +121,20 @@ export default function WorldBoss() {
       },
     );
 
-    // Snapshot Boss Attivi
     const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) => {
       const bosses = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((b) => b.isActive === true);
+        .filter((b) => b.isActive);
       setActiveBosses(bosses);
     });
 
-    // Snapshot Chat
     const q = query(
       collection(db, "world_boss_chat"),
-      orderBy("timestamp", "desc"), // <--- Importante: "desc"
+      orderBy("timestamp", "desc"),
       limit(100),
     );
     const unsubChat = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse());
     });
 
     return () => {
@@ -292,104 +144,214 @@ export default function WorldBoss() {
     };
   }, [currentUser]);
 
-  // Raggruppamento azioni
-  const groupedActions = charData?.actions?.reduce((acc, action) => {
-    const cat = action.category || "Altro";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(action);
-    return acc;
-  }, {});
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  const sortedCategories = groupedActions
-    ? Object.keys(groupedActions).sort((a, b) => {
-        if (a === "Armi") return -1;
-        if (b === "Armi") return 1;
-        return a.localeCompare(b);
-      })
-    : [];
+  // Logica Dadi
+  const rollDice = (formula) => {
+    try {
+      const clean = formula.replace(/\s+/g, "");
+      return clean.split("+").reduce((acc, part) => {
+        if (part.includes("d")) {
+          const [num, sides] = part.split("d").map((n) => parseInt(n) || 1);
+          for (let i = 0; i < num; i++)
+            acc += Math.floor(Math.random() * sides) + 1;
+        } else {
+          acc += parseInt(part) || 0;
+        }
+        return acc;
+      }, 0);
+    } catch {
+      return 0;
+    }
+  };
+
+  // --- AZIONI PLAYER ---
+  const endMyTurn = async () => {
+    if (turnState.actedPlayers.includes(currentUser.uid)) return;
+    await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+      actedPlayers: arrayUnion(currentUser.uid),
+    });
+  };
 
   const handleActionRoll = async (action) => {
     const isAttack = action.category === "Armi";
+    const boss = activeBosses[0];
+    if (!boss) return;
+
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+    const hitTotal = d20 + bonus;
 
     let actionData = {
       type: "action",
       senderName: charData?.name || "Eroe",
       actionName: action.name,
-      description: action.description,
       timestamp: serverTimestamp(),
       uid: currentUser.uid,
       category: action.category,
+      hitRoll: `🎲 Tiro: ${hitTotal} (${d20} + ${bonus}) vs CA ${boss.ac || 10}`,
     };
 
     if (isAttack) {
-      const d20 = Math.floor(Math.random() * 20) + 1;
-      const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
-      const damageResult = rollDamage(action.damage || "1d4");
-
-      actionData.hitRoll = `${d20 + bonus} (${d20} + ${bonus})`;
-      actionData.damageRoll = `${damageResult.total} [${damageResult.detail}]`;
+      if (hitTotal >= (boss.ac || 10)) {
+        const damage = rollDice(action.damage || "1d4");
+        actionData.damageRoll = `🎯 COLPITO! ${damage} danni`;
+        await updateDoc(doc(db, "bosses", boss.id), { hp: increment(-damage) });
+      } else {
+        actionData.damageRoll = "🛡️ MANCATO!";
+      }
     } else {
-      actionData.hitRoll = null;
-      actionData.damageRoll = null;
+      const damage = rollDice(action.damage || "0");
+      if (damage > 0) actionData.damageRoll = `✨ Effetto: ${damage}`;
     }
 
     await addDoc(collection(db, "world_boss_chat"), actionData);
+    await endMyTurn();
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!text.trim()) return;
+  // --- AZIONI MASTER (AUTOMAZIONE BOSS) ---
+  const toggleTarget = (uid) => {
+    setSelectedTargets((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid],
+    );
+  };
+
+  // WorldBoss.jsx
+
+  const handleBossRoll = async (boss, action) => {
+    if (selectedTargets.length === 0)
+      return alert("DM, seleziona almeno un bersaglio!");
+
+    // 1. UNICO TIRO PER COLPIRE (Regola D&D)
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const bossBonus = parseInt(action.bonus) || 0;
+    const hitTotal = d20 + bossBonus;
+
+    // 2. UNICO TIRO PER IL DANNO (Regola D&D)
+    const damageDealt = rollDice(action.damage || "1d6");
+
+    const results = [];
+
+    // 3. CONFRONTO DEL TIRO UNICO CON OGNI BERSAGLIO
+    for (const targetId of selectedTargets) {
+      const p = players.find((player) => player.id === targetId);
+      const playerCA = p?.stats?.ac || 10;
+
+      // Il colpo va a segno solo se il tiro unico >= CA del player
+      const isHit = hitTotal >= playerCA;
+
+      if (isHit) {
+        await updateDoc(doc(db, "characters", targetId), {
+          "stats.hp": increment(-damageDealt),
+        });
+      }
+
+      results.push({
+        name: p.name.split(" ")[0],
+        hit: isHit,
+        roll: `${hitTotal} (${d20}+${bossBonus}) vs CA ${playerCA}`,
+        dmg: isHit ? damageDealt : 0,
+      });
+    }
+
+    // Prepariamo i log differenziati per Master e Player
+    const hitTargets = results
+      .filter((r) => r.hit)
+      .map((r) => r.name)
+      .join(", ");
+    const missedTargets = results
+      .filter((r) => !r.hit)
+      .map((r) => r.name)
+      .join(", ");
+
     await addDoc(collection(db, "world_boss_chat"), {
-      type: "narrative",
-      senderName: charData?.name || "Eroe",
-      content: text,
+      uid: BOSS_SYSTEM_UID,
+      senderName: boss.name,
+      type: "action",
+      category: "Attacco Boss",
+      actionName: action.name,
+      // I player vedono solo la narrazione con il danno unico applicato
+      description: `Il Boss scatena ${action.name} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
+      masterDetails: results,
       timestamp: serverTimestamp(),
-      uid: currentUser.uid,
     });
-    setText("");
+
+    setSelectedTargets([]);
   };
 
-  const isBossActive = activeBosses.length > 0;
-  const hasMission = charData?.activeMissionId?.includes("WORLD_BOSS");
+  const togglePhase = async (newPhase) => {
+    const update = { phase: newPhase, actedPlayers: [] };
+    if (newPhase === "players") update.turnNumber = increment(1);
+    await updateDoc(doc(db, "battle_meta", "turn_tracker"), update);
+  };
 
-  // --- CONTROLLO ACCESSO AGGIORNATO ---
+  const damagePlayerManual = async (playerId, amount) => {
+    await updateDoc(doc(db, "characters", playerId), {
+      "stats.hp": increment(amount),
+    });
+  };
+
+  const clearChat = async () => {
+    if (!window.confirm("Purgare la chat?")) return;
+    const snapshot = await getDocs(collection(db, "world_boss_chat"));
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  };
+
+  const handleDeleteMessage = async (id) => {
+    if (isMaster) await deleteDoc(doc(db, "world_boss_chat", id));
+  };
+
+  // Derived Data
+  const groupedActions = useMemo(() => {
+    if (!charData?.actions) return {};
+    return charData.actions.reduce((acc, action) => {
+      const cat = action.category || "Altro";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(action);
+      return acc;
+    }, {});
+  }, [charData]);
+
+  const sortedCategories = useMemo(() => {
+    return Object.keys(groupedActions).sort((a, b) =>
+      a === "Armi" ? -1 : b === "Armi" ? 1 : a.localeCompare(b),
+    );
+  }, [groupedActions]);
+
+  const isUserLocked =
+    !isMaster &&
+    (turnState.phase === "boss" ||
+      turnState.actedPlayers.includes(currentUser?.uid));
+
   if (!currentUser)
     return <div className="denied-msg">Loggati per entrare.</div>;
-
-  // Entrano: Master, chi ha la missione, o CHIUNQUE se c'è un boss attivo nel mondo
-  if (!isMaster && !isBossActive && !hasMission) {
-    return (
-      <div className="denied-msg">
-        Non ci sono Boss attivi al momento... la quiete prima della tempesta.
-      </div>
-    );
-  }
 
   return (
     <div className="wb-container">
       {isMaster && (
         <div className="dm-controls-top">
-          <div className="dm-overlay-label">MODALITÀ DUNGEON MASTER</div>
+          <div className="dm-overlay-label">DUNGEON MASTER CONTROL</div>
           <button onClick={clearChat} className="dm-clear-button">
-            Svuota Chat
+            Pulisci Chat
           </button>
         </div>
       )}
 
       {/* AREA BOSS */}
       <section className="boss-area">
-        {activeBosses.length === 0 && (
-          <div className="no-boss">Nessun Boss attivo nel mondo.</div>
-        )}
         {activeBosses.map((boss) => (
           <div key={boss.id} className="boss-unit">
             <h2 className="boss-name">{boss.name}</h2>
-            <div className="boss-badge">Grado Sfida: {boss.gradoSfida}</div>
-            {/* Visualizzazione descrizione narrativa */}
-            {boss.description && (
-              <p className="boss-flavor-text">{boss.description}</p>
+            {boss.rewards && (
+              <div className="boss-rewards-glow-box">
+                <span className="rewards-label">🎁 BOTTINO:</span>
+                <p className="rewards-text">{boss.rewards}</p>
+              </div>
             )}
-
             <div className="hp-bar-outer">
               <div
                 className="hp-bar-inner"
@@ -404,21 +366,17 @@ export default function WorldBoss() {
                 )}
               </div>
             </div>
-
             <div className="main-boss-timer">
-              <p style={{ margin: 0, fontSize: "0.8rem", color: "#404040" }}>
-                SCADENZA MINACCIA:
-              </p>
-              <TimerDisplay expiryDate={activeBosses[0]?.expiryDate} />
+              <TimerDisplay expiryDate={boss.expiryDate} />
             </div>
+
             <div className={`turn-banner ${turnState.phase}-phase`}>
               <div className="turn-count">TURNO {turnState.turnNumber}</div>
               <div className="phase-text">
                 {turnState.phase === "players"
-                  ? "🛡️ TURNO EROI"
-                  : "🔥 TURNO BOSS"}
+                  ? "🛡️ TURN OF HEROES"
+                  : "🔥 BOSS ACTIVATION"}
               </div>
-
               {turnState.phase === "players" && !isMaster && (
                 <button
                   className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
@@ -426,22 +384,18 @@ export default function WorldBoss() {
                   disabled={turnState.actedPlayers.includes(currentUser.uid)}
                 >
                   {turnState.actedPlayers.includes(currentUser.uid)
-                    ? "Azione Eseguita"
-                    : "Concludi Azione"}
+                    ? "Azione Conclusa"
+                    : "Fine Turno"}
                 </button>
               )}
             </div>
+
             {isMaster && (
               <div className="master-turn-controls">
                 <button onClick={() => togglePhase("players")}>
-                  Passa a Eroi (Nuovo Turno)
+                  Fase Eroi
                 </button>
-                <button onClick={() => togglePhase("boss")}>
-                  Passa a Boss
-                </button>
-                <div className="acted-summary">
-                  Agiti: {turnState.actedPlayers.length} / {players.length}
-                </div>
+                <button onClick={() => togglePhase("boss")}>Fase Boss</button>
               </div>
             )}
             <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
@@ -450,340 +404,241 @@ export default function WorldBoss() {
       </section>
 
       <div className="battle-interface">
-        {/* CHAT PBP */}
+        {/* CHAT */}
         <section className="chat-section">
           <div className="chat-messages">
-            {messages.length === 0 && (
-              <p className="no-msg-guide">
-                La battaglia ha inizio. Narra la tua mossa...
-              </p>
-            )}
-            {messages.map((m, index) => {
-              const isDifferentAuthor =
-                index === 0 || messages[index - 1].uid !== m.uid;
-
-              let authorChangeCount = 0;
-              for (let i = 0; i <= index; i++) {
-                if (i === 0 || messages[i - 1].uid !== messages[i].uid)
-                  authorChangeCount++;
-              }
-              const isAlternate = authorChangeCount % 2 === 0;
-
-              const isMasterMessage =
-                m.uid === "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
-                m.uid === "BOSS_MSG";
-              return (
-                <div
-                  key={m.id}
-                  className={`msg-bubble ${m.type} 
-        ${isAlternate ? "msg-right bg-variant" : "msg-left bg-standard"} 
-        ${isDifferentAuthor ? "new-author-block" : ""}
-        ${isMasterMessage ? "is-master-msg" : ""}`} // <--- CLASSE AGGIUNTA
-                >
-                  <div className="msg-header">
-                    <ChatAvatar uid={m.uid} />
-                    <span className="msg-author">{m.senderName}</span>
-
-                    {/* LA PICCOLA X ROSSA SOLO PER IL MASTER */}
-                    {currentUser?.email === MASTER_EMAIL && (
-                      <button
-                        className="btn-delete-msg"
-                        onClick={() => handleDeleteMessage(m.id)}
-                        title="Elimina messaggio"
-                      >
-                        ✖
-                      </button>
-                    )}
-                  </div>
-
-                  {m.type === "action" ? (
-                    <div
-                      className={`action-result cat-${m.category?.toLowerCase().replace(/\s/g, "-")}`}
+            {messages.map((m, index) => (
+              <div
+                key={m.id}
+                className={`msg-bubble ${m.type} ${m.uid === currentUser.uid ? "msg-right" : "msg-left"} ${m.uid === BOSS_SYSTEM_UID ? "is-boss-msg" : ""}`}
+              >
+                <div className="msg-header">
+                  <ChatAvatar uid={m.uid} isBoss={m.uid === BOSS_SYSTEM_UID} />
+                  <span className="msg-author">{m.senderName}</span>
+                  {isMaster && (
+                    <button
+                      className="btn-delete-msg"
+                      onClick={() => handleDeleteMessage(m.id)}
                     >
-                      <strong className="action-title">{m.actionName}</strong>
-                      <p className="action-desc">{m.description}</p>
-                      {(m.hitRoll || m.damageRoll) && (
-                        <div className="rolls-box">
-                          {m.hitRoll && <span>🎯 Colpire: {m.hitRoll}</span>}
-                          {m.damageRoll && (
-                            <span>💥 Danno: {m.damageRoll}</span>
-                          )}
-                        </div>
-                      )}
-                      {!m.hitRoll && (
-                        <div className="info-tag">{m.category}</div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="msg-text">{m.content}</p>
+                      ✖
+                    </button>
                   )}
                 </div>
-              );
-            })}
+                {m.type === "action" ? (
+                  <div
+                    className={`action-result cat-${m.category?.toLowerCase().replace(/\s/g, "-")}`}
+                  >
+                    <strong className="action-title">{m.actionName}</strong>
+                    <p className="action-desc">{m.description}</p>
+
+                    {/* PRIVACY: Solo il Master vede i dettagli dei tiri del Boss */}
+                    {((m.uid === BOSS_SYSTEM_UID && isMaster) ||
+                      m.uid !== BOSS_SYSTEM_UID) && (
+                      <div className="rolls-box">
+                        {m.hitRoll && <span>{m.hitRoll}</span>}
+                        {m.damageRoll && <span>{m.damageRoll}</span>}
+
+                        {/* Visualizzazione dettagli individuali per il Master */}
+                        {m.masterDetails &&
+                          m.masterDetails.map((res, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                fontSize: "0.75rem",
+                                display: "block",
+                                width: "100%",
+                              }}
+                            >
+                              • {res.name}:{" "}
+                              {res.hit
+                                ? `✅ COLPITO (${res.roll}) -> ${res.dmg} HP`
+                                : `🛡️ MANCATO (${res.roll})`}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="msg-text">{m.content}</p>
+                )}
+              </div>
+            ))}
             <div ref={chatEndRef} />
           </div>
-          <form className="chat-form" onSubmit={handleSendMessage}>
+          <form
+            className="chat-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (text.trim()) {
+                addDoc(collection(db, "world_boss_chat"), {
+                  type: "narrative",
+                  senderName: charData.name,
+                  content: text,
+                  uid: currentUser.uid,
+                  timestamp: serverTimestamp(),
+                });
+                setText("");
+              }
+            }}
+          >
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={
-                isUserLocked
-                  ? "Attendi il prossimo turno..."
-                  : "Narra l'azione..."
-              }
-              disabled={isUserLocked} // <--- BLOCCO INPUT
+              placeholder="Narra la mossa..."
+              disabled={isUserLocked}
             />
-            <button
-              className="invia"
-              type="submit"
-              disabled={isUserLocked} // <--- BLOCCO BOTTONE
-              style={{
-                opacity: isUserLocked ? 0.5 : 1,
-                cursor: isUserLocked ? "not-allowed" : "pointer",
-              }}
-            >
-              {isUserLocked ? "Bloccato" : "Invia"}
+            <button type="submit" disabled={isUserLocked}>
+              Invia
             </button>
           </form>
         </section>
 
-        {/* SIDEBAR AZIONI DINAMICA (MASTER VS PLAYER) */}
+        {/* SIDEBAR AZIONI */}
         <section className="player-actions-sidebar">
-          {currentUser?.email === MASTER_EMAIL ? (
-            /* --- VISTA DUNGEON MASTER (Sempre visibile) --- */
+          {isMaster ? (
             <div className="admin-battle-controls">
-              <h3 className="sidebar-title">⚡ Dashboard Master</h3>
+              <h3 className="sidebar-title">Master Dashboard</h3>
 
-              {/* MONITORAGGIO PARTY */}
-              <div className="party-status-monitor">
-                <h4 className="sub-title-admin">Salute Party</h4>
-                {players &&
-                  players.map((p) => {
-                    const currentHp = p.stats?.hp ?? 0;
-                    const maxHp = p.stats?.maxHp ?? 1;
-                    const hpPercentage = Math.min(
-                      100,
-                      Math.max(0, (currentHp / maxHp) * 100),
-                    );
-
-                    return (
-                      <div key={p.id} className="player-hp-row">
-                        <span className="p-name">
-                          {p.name?.split(" ")[0] || "Eroe"}
-                        </span>
-                        <div className="hp-bar-mini-container">
-                          <div
-                            className="hp-bar-mini-fill"
-                            style={{ width: `${hpPercentage}%` }}
-                          ></div>
-                          <span className="hp-text-overlay">
-                            {currentHp}/{maxHp}
-                          </span>
-                        </div>
-                        <div className="hp-btns">
-                          <div className="hp-btn-group">
-                            <button
-                              onClick={() => damagePlayer(p.id, -5)}
-                              className="btn-hp minus"
-                            >
-                              -5
-                            </button>
-                            <button
-                              onClick={() => damagePlayer(p.id, -1)}
-                              className="btn-hp minus"
-                            >
-                              -1
-                            </button>
-                          </div>
-                          <div className="hp-btn-group">
-                            <button
-                              onClick={() => damagePlayer(p.id, 1)}
-                              className="btn-hp plus"
-                            >
-                              +1
-                            </button>
-                            <button
-                              onClick={() => damagePlayer(p.id, 5)}
-                              className="btn-hp plus"
-                            >
-                              +5
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="master-player-controls">
+                <div
+                  className="selection-buttons-row"
+                  style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
+                >
+                  <button className="btn-select-all" onClick={toggleSelectAll}>
+                    {selectedTargets.length === players.length
+                      ? "🚫 deselect"
+                      : "🎯 Select"}
+                  </button>
+                  <div
+                    className="admin-global-controls"
+                    style={{ marginBottom: "15px", textAlign: "right" }}
+                  >
+                    <button
+                      className="btn-heal-all"
+                      onClick={healAllPlayers}
+                      title="Cura tutti i player al massimo"
+                    >
+                      💖Full HP
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* AZIONI BOSS ATTIVI */}
-              <div
-                className="boss-actions-monitor"
-                style={{ marginTop: "20px" }}
-              >
-                <h4 className="sub-title-admin">Attacchi dei Boss</h4>
-                {activeBosses.map((boss) => (
-                  <div key={boss.id} className="boss-control-card">
-                    <p className="boss-mini-name">{boss.name}</p>
-                    <div className="wb-action-list">
-                      {boss.action1?.name && (
-                        <button
-                          className="wb-btn-action boss-atk"
-                          onClick={() => handleBossRoll(boss, boss.action1)}
-                        >
-                          ⚔️ {boss.action1.name} ({boss.action1.damage})
-                        </button>
-                      )}
-                      {boss.action2?.name && (
-                        <button
-                          className="wb-btn-action boss-atk"
-                          onClick={() => handleBossRoll(boss, boss.action2)}
-                        >
-                          🔥 {boss.action2.name} ({boss.action2.damage})
-                        </button>
-                      )}
+              <div className="party-status-monitor">
+                <h4>Bersagli Boss (Clicca per selezionare)</h4>
+                {players.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
+                    onClick={() => toggleTarget(p.id)}
+                  >
+                    <span className="p-name">{p.name?.split(" ")[0]}</span>
+                    <div className="hp-bar-mini-container">
+                      <div
+                        className="hp-bar-mini-fill"
+                        style={{
+                          width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%`,
+                        }}
+                      />
+                      <span className="hp-text-overlay">
+                        {p.stats?.hp}/{p.stats?.maxHp}
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
+
+              <div className="boss-actions-monitor">
+                <h4>Azioni Boss</h4>
+                {activeBosses[0] && (
+                  <div className="wb-action-list">
+                    <button
+                      className="wb-btn-action boss-atk"
+                      onClick={() =>
+                        handleBossRoll(activeBosses[0], activeBosses[0].action1)
+                      }
+                    >
+                      ⚔️ {activeBosses[0].action1.name} (
+                      {activeBosses[0].action1.damage})
+                    </button>
+                    <button
+                      className="wb-btn-action boss-atk"
+                      onClick={() =>
+                        handleBossRoll(activeBosses[0], activeBosses[0].action2)
+                      }
+                    >
+                      🔥 {activeBosses[0].action2.name} (
+                      {activeBosses[0].action2.damage})
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            /* --- VISTA PLAYER --- */
             <>
-              {/* CONTROLLO BLOCCO: Se è fase boss O se il player ha già agito */}
-              {turnState.phase === "boss" ||
-              turnState.actedPlayers?.includes(currentUser.uid) ? (
-                <div className="waiting-mode-sidebar">
-                  <h3 className="sidebar-title">Modalità Attesa</h3>
-                  <div className="waiting-content">
-                    <p className="waiting-status-text">
-                      {turnState.phase === "boss"
-                        ? "👹 Il Boss sta agendo... trema!"
-                        : "✅ Hai concluso la tua azione."}
-                    </p>
-                    <div className="turn-progress-box">
-                      <p>Eroi pronti in questo turno:</p>
-                      <div className="progress-counter">
-                        {turnState.actedPlayers?.length || 0} / {players.length}
-                      </div>
-                    </div>
-                    <p className="flavor-text-mini">
-                      Non puoi compiere altre azioni finché il Master non
-                      dichiara il nuovo turno.
-                    </p>
-                  </div>
+              <div className="personal-health-monitor">
+                <p>
+                  Tua Salute: {charData?.stats?.hp}/{charData?.stats?.maxHp}
+                </p>
+                <div className="hp-bar-mini-container">
+                  <div
+                    className="hp-bar-mini-fill"
+                    style={{
+                      width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%`,
+                    }}
+                  />
                 </div>
-              ) : (
-                /* VISTA AZIONI DISPONIBILI (Solo se è il suo turno) */
-                <>
-                  <h3 className="sidebar-title">
-                    Capacità di {charData?.name?.split(" ")[0] || "Eroe"}
-                  </h3>
-                  <div className="accordion-container">
-                    {sortedCategories.map((cat) => (
-                      <div key={cat} className="wb-section">
-                        <button
-                          className="wb-section-toggle"
-                          onClick={() =>
-                            setOpenSections((prev) => ({
-                              ...prev,
-                              [cat]: !prev[cat],
-                            }))
-                          }
-                        >
-                          {cat} {openSections[cat] ? "▲" : "▼"}
-                        </button>
-                        {openSections[cat] && (
-                          <div className="wb-action-list">
-                            {groupedActions[cat].map((action, idx) => (
-                              <button
-                                key={idx}
-                                className="wb-btn-action"
-                                onClick={() => handleActionRoll(action)}
-                              >
-                                {action.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    <div className="quick-roll-panel">
-                      <h4 className="sidebar-subtitle">Tiri Rapidi</h4>
-                      <div className="stat-selector">
-                        <button
-                          className={`stat-btn ${selectedMod === "int" ? "active" : ""}`}
-                          onClick={() => setSelectedMod("int")}
-                        >
-                          INT ({charData?.stats?.int >= 0 ? "+" : ""}
-                          {charData?.stats?.int ?? 0})
-                        </button>
-                        <button
-                          className={`stat-btn ${selectedMod === "wis" ? "active" : ""}`}
-                          onClick={() => setSelectedMod("wis")}
-                        >
-                          SAG{" "}
-                          {charData?.stats?.wis >= 0
-                            ? `+${charData.stats.wis}`
-                            : charData?.stats?.wis}
-                        </button>
-                        <button
-      className={`stat-btn ${selectedMod === "cha" ? "active" : ""}`}
-      onClick={() => setSelectedMod("cha")}
-    >
-      CAR ({charData?.stats?.cha >= 0 ? "+" : ""}{charData?.stats?.cha ?? 0})
-    </button>
-    <button
-      className={`stat-btn ${selectedMod === "dex" ? "active" : ""}`}
-      onClick={() => setSelectedMod("dex")}
-    >
-      DEX ({charData?.stats?.dex >= 0 ? "+" : ""}{charData?.stats?.dex ?? 0})
-    </button>
-    <button
-      className={`stat-btn ${selectedMod === "cos" ? "active" : ""}`}
-      onClick={() => setSelectedMod("cos")}
-    >
-      COS ({charData?.stats?.cos >= 0 ? "+" : ""}{charData?.stats?.cos ?? 0})
-    </button>
-                      </div>
-
-                      <button
-                        className="wb-btn-action roll-d20"
-                        disabled={!selectedMod}
-                        onClick={() => handleManualHit()}
-                      >
-                        🎲 Tira d20{" "}
-                        {selectedMod
-                          ? `(${selectedMod.toUpperCase()})`
-                          : "(Scegli Stat)"}
-                      </button>
-
-                      <div className="damage-dice-grid">
-                        {["d4", "d6", "d8", "d10", "d12"].map((die) => (
+              </div>
+              <div className="accordion-container">
+                {sortedCategories.map((cat) => (
+                  <div key={cat} className="wb-section">
+                    <button
+                      className="wb-section-toggle"
+                      onClick={() =>
+                        setOpenSections((prev) => ({
+                          ...prev,
+                          [cat]: !prev[cat],
+                        }))
+                      }
+                    >
+                      {cat} {openSections[cat] ? "▲" : "▼"}
+                    </button>
+                    {openSections[cat] && (
+                      <div className="wb-action-list">
+                        {groupedActions[cat].map((action, idx) => (
                           <button
-                            key={die}
-                            className="die-btn"
-                            onClick={() => handleManualDamage(die)}
+                            key={idx}
+                            className="wb-btn-action"
+                            onClick={() => handleActionRoll(action)}
+                            disabled={isUserLocked}
                           >
-                            {die}
+                            {action.name}
                           </button>
                         ))}
                       </div>
-                    </div>
+                    )}
                   </div>
-
-                  {/* BOTTONE CONCLUSIONE AZIONE */}
-                  {/* <div className="end-turn-container">
-                    <button className="btn-end-action" onClick={endMyTurn}>
-                      🏁 Concludi Azione
-                    </button>
-                  </div> */}
-                </>
-              )}
+                ))}
+              </div>
             </>
           )}
         </section>
       </div>
     </div>
   );
+}
+
+function ChatAvatar({ uid, isBoss }) {
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  useEffect(() => {
+    if (isBoss) return;
+    const unsub = onSnapshot(doc(db, "characters", uid), (snap) => {
+      if (snap.exists()) setAvatarUrl(snap.data().image);
+    });
+    return () => unsub();
+  }, [uid, isBoss]);
+
+  if (isBoss) return <div className="boss-chat-icon">👹</div>;
+  if (!avatarUrl) return <div className="avatar-placeholder" />;
+  return <img src={avatarUrl} alt="Avatar" className="chat-avatar-img" />;
 }
