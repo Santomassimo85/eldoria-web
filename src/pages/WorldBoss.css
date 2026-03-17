@@ -115,6 +115,48 @@
   font-style: italic;
 }
 
+/* Sidebar bloccata */
+.locked-sidebar {
+    filter: grayscale(1);
+    opacity: 0.6;
+    pointer-events: none;
+    border: 2px solid #666 !important;
+}
+
+/* Griglia Tiri Salvezza */
+.saving-throws-panel {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border: 1px solid #d4af37;
+}
+
+.stat-grid-mini {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.stat-grid-mini button {
+    font-size: 0.7rem;
+    padding: 4px;
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    cursor: pointer;
+}
+
+.stat-grid-mini button:hover:not(:disabled) {
+    background: #d4af37;
+    color: black;
+}
+.locked-sidebar {
+    filter: grayscale(1);
+    opacity: 0.7;
+    pointer-events: none; /* Impedisce fisicamente il click sui bottoni */
+}
+
 @keyframes rewards-pulse {
   from {
     box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);

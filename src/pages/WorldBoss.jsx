@@ -33,12 +33,80 @@ export default function WorldBoss() {
   const [selectedMod, setSelectedMod] = useState(null);
   const [openSections, setOpenSections] = useState({ Armi: true });
   const [selectedTargets, setSelectedTargets] = useState([]); // Stato per selezione bersagli Master
+const [dmgDiceCount, setDmgDiceCount] = useState(1); // Numero di dadi (default 1)
+  const [dmgSelectedStat, setDmgSelectedStat] = useState(null); // Caratteristica per il danno
+
 
   const chatEndRef = useRef(null);
   const isMaster = useMemo(
     () => currentUser?.email === MASTER_EMAIL,
     [currentUser],
   );
+
+const handleManualDamageToBoss = async (die) => {
+  const boss = activeBosses[0];
+  if (!boss || isUserLocked) return;
+
+  const sides = parseInt(die.replace("d", ""));
+  let totalRoll = 0;
+  let rollsDetail = [];
+
+  // Lancio multiplo basato su dmgDiceCount
+  for (let i = 0; i < dmgDiceCount; i++) {
+    const roll = Math.floor(Math.random() * sides) + 1;
+    totalRoll += roll;
+    rollsDetail.push(roll);
+  }
+
+  // Aggiunta del modificatore caratteristica se selezionato
+  const statMod = dmgSelectedStat ? (charData?.stats?.[dmgSelectedStat] ?? 0) : 0;
+  const finalDamage = totalRoll + statMod;
+
+  // 1. Sottrai vita al boss direttamente (non scendere sotto 0)
+  await updateDoc(doc(db, "bosses", boss.id), {
+    hp: increment(-finalDamage)
+  });
+
+  // 2. Logga in chat il danno con dettaglio
+  const detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")}) ${statMod !== 0 ? (statMod > 0 ? "+ " + statMod : statMod) : ""}`;
+  
+  await addDoc(collection(db, "world_boss_chat"), {
+    type: "action",
+    senderName: charData?.name || "Eroe",
+    actionName: `Danno Arma`,
+    damageRoll: `💥 INFLITTI ${finalDamage} DANNI!`,
+    description: `Tiro: ${detailString}`,
+    uid: currentUser.uid,
+    category: "Danno",
+    timestamp: serverTimestamp(),
+  });
+
+  // Reset degli stati dopo il lancio
+  setDmgDiceCount(1);
+  setDmgSelectedStat(null);
+
+  // 3. Chiudi il turno del player
+  await endMyTurn();
+};
+
+
+const handleSavingThrow = async (statKey) => {
+    // Aggiungi questo controllo all'inizio della funzione
+    if (isUserLocked || !charData || !charData.stats) return;
+
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const mod = charData.stats[statKey] || 0;
+    
+    await addDoc(collection(db, "world_boss_chat"), {
+      type: "action",
+      senderName: charData.name || "Eroe",
+      actionName: `Tiro Salvezza ${statKey.toUpperCase()}`,
+      hitRoll: `🎲 d20(${d20}) + mod(${mod}) = ${d20 + mod}`,
+      uid: currentUser.uid,
+      category: "Tiro Salvezza",
+      timestamp: serverTimestamp()
+    });
+};
 
   const toggleSelectAll = () => {
     if (selectedTargets.length === players.length) {
@@ -176,40 +244,41 @@ export default function WorldBoss() {
   };
 
   const handleActionRoll = async (action) => {
-    const isAttack = action.category === "Armi";
-    const boss = activeBosses[0];
-    if (!boss) return;
+  const boss = activeBosses[0];
+  if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
 
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
-    const hitTotal = d20 + bonus;
+  const isAttack = action.category === "Armi";
+  
+  // d20 reale: numero da 1 a 20
+  const d20 = Math.floor(Math.random() * 20) + 1;
+  const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+  const hitTotal = d20 + bonus;
 
-    let actionData = {
-      type: "action",
-      senderName: charData?.name || "Eroe",
-      actionName: action.name,
-      timestamp: serverTimestamp(),
-      uid: currentUser.uid,
-      category: action.category,
-      hitRoll: `🎲 Tiro: ${hitTotal} (${d20} + ${bonus}) vs CA ${boss.ac || 10}`,
-    };
-
-    if (isAttack) {
-      if (hitTotal >= (boss.ac || 10)) {
-        const damage = rollDice(action.damage || "1d4");
-        actionData.damageRoll = `🎯 COLPITO! ${damage} danni`;
-        await updateDoc(doc(db, "bosses", boss.id), { hp: increment(-damage) });
-      } else {
-        actionData.damageRoll = "🛡️ MANCATO!";
-      }
-    } else {
-      const damage = rollDice(action.damage || "0");
-      if (damage > 0) actionData.damageRoll = `✨ Effetto: ${damage}`;
-    }
-
-    await addDoc(collection(db, "world_boss_chat"), actionData);
-    await endMyTurn();
+  let actionData = {
+    type: "action",
+    senderName: charData?.name || "Eroe",
+    actionName: action.name,
+    timestamp: serverTimestamp(),
+    uid: currentUser.uid,
+    category: action.category,
+    hitRoll: `🎲 d20(${d20}) + bonus(${bonus}) = ${hitTotal} vs CA ${boss.ac || 10}`,
   };
+
+  if (isAttack) {
+    if (hitTotal >= (boss.ac || 10)) {
+      // COLPITO: Segnaliamo il successo ma NON blocchiamo l'UI per permettere il tiro danni
+      actionData.damageRoll = "🎯 COLPITO! Tira il dado di danno sotto.";
+    } else {
+      // MANCATO: Il turno finisce subito
+      actionData.damageRoll = "🛡️ MANCATO! Il colpo rimbalza.";
+      await endMyTurn(); 
+    }
+    await addDoc(collection(db, "world_boss_chat"), actionData);
+  } else {
+    // Altre abilità
+    await addDoc(collection(db, "world_boss_chat"), actionData);
+  }
+};
 
   // --- AZIONI MASTER (AUTOMAZIONE BOSS) ---
   const toggleTarget = (uid) => {
@@ -505,8 +574,7 @@ export default function WorldBoss() {
         </section>
 
         {/* SIDEBAR AZIONI */}
-        <section className="player-actions-sidebar">
-          {isMaster ? (
+<section className={`player-actions-sidebar ${isUserLocked ? "locked-sidebar" : ""}`}>          {isMaster ? (
             <div className="admin-battle-controls">
               <h3 className="sidebar-title">Master Dashboard</h3>
 
@@ -598,6 +666,82 @@ export default function WorldBoss() {
                       width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%`,
                     }}
                   />
+
+
+                  {/* Inserisci qui sotto personal-health-monitor */}
+</div>
+      <div className="saving-throws-panel" style={{margin: '10px 0', padding: '10px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', border: '1px solid gold'}}>
+  <h4 style={{fontSize: '0.8rem', color: '#8b0000', marginBottom: '8px', textAlign: 'center', borderBottom: '1px solid #8b0000'}}>Tiri Salvezza</h4>
+  <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px'}}>
+    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => {
+      // Recuperiamo il valore in modo sicuro, se non esiste mettiamo 0
+      const statValue = charData?.stats?.[s] ?? 0;
+      return (
+        <button 
+          key={s} 
+          disabled={isUserLocked || !charData}
+          onClick={() => handleSavingThrow(s)}
+          style={{fontSize: '0.7rem', padding: '5px', cursor: 'pointer', background: 'white', border: '1px solid #ccc', borderRadius: '4px'}}
+        >
+          {s.toUpperCase()} ({statValue >= 0 ? "+" : ""}{statValue})
+        </button>
+      );
+    })}
+
+    
+  </div>
+
+  {/* GRIGLIA DADI DANNO (Sotto Tiri Salvezza) */}
+<div className="damage-dice-panel" style={{marginTop: '10px', padding: '10px', background: 'rgba(139,0,0,0.1)', borderRadius: '8px', border: '1px solid #ff4444'}}>
+  <h4 style={{fontSize: '0.8rem', color: '#ff4444', marginBottom: '8px', textAlign: 'center'}}>Configura Danno</h4>
+  
+  {/* Selettore Numero Dadi e Caratteristica */}
+  <div style={{display: 'flex', gap: '5px', marginBottom: '10px'}}>
+    <select 
+      value={dmgDiceCount} 
+      onChange={(e) => setDmgDiceCount(parseInt(e.target.value))}
+      style={{flex: 1, fontSize: '0.7rem', padding: '3px'}}
+    >
+      {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} dadi</option>)}
+    </select>
+
+    <select 
+      value={dmgSelectedStat || ""} 
+      onChange={(e) => setDmgSelectedStat(e.target.value || null)}
+      style={{flex: 2, fontSize: '0.7rem', padding: '3px'}}
+    >
+      <option value="">Nessun Bonus</option>
+      {["str", "dex", "cos", "int", "wis", "cha"].map(s => (
+        <option key={s} value={s}>{s.toUpperCase()} ({charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s]})</option>
+      ))}
+    </select>
+  </div>
+
+  <div style={{display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px'}}>
+    {["d4", "d6", "d8", "d10", "d12"].map((die) => (
+      <button 
+        key={die} 
+        disabled={isUserLocked}
+        onClick={() => handleManualDamageToBoss(die)}
+        style={{
+          fontSize: '0.7rem', 
+          padding: '8px 0', 
+          cursor: 'pointer', 
+          background: '#222', 
+          color: 'white', 
+          border: '1px solid #ff4444', 
+          borderRadius: '4px',
+          fontWeight: 'bold'
+        }}
+      >
+        {die}
+      </button>
+    ))}
+  </div>
+  <p style={{fontSize: '0.6rem', color: '#ff4444', marginTop: '5px', textAlign: 'center'}}>
+    Totale attuale: {dmgDiceCount}d? {dmgSelectedStat ? `+ ${charData?.stats?.[dmgSelectedStat]}` : ""}
+  </p>
+</div>
                 </div>
               </div>
               <div className="accordion-container">
