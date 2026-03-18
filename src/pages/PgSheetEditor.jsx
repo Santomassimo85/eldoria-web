@@ -8,7 +8,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
-import "./PgSheetEditor.css";
+import "./pgSheetEditor.css";
 
 const ARENA_CHAMPION = {
   name: "Dante Ivio",
