@@ -278,7 +278,7 @@ export default function WorldBoss() {
     if (isAttack) {
       if (hitTotal >= (boss.ac || 10)) {
         // COLPITO: Segnaliamo il successo ma NON blocchiamo l'UI per permettere il tiro danni
-        actionData.damageRoll = "🎯 COLPITO! Tira il dado di danno sotto.";
+        actionData.damageRoll = "🎯 COLPITO! Tira il dado per i danni";
       } else {
         // MANCATO: Il turno finisce subito
         actionData.damageRoll = "🛡️ MANCATO! Il colpo rimbalza.";
@@ -451,8 +451,8 @@ export default function WorldBoss() {
               <div className="turn-count">TURNO {turnState.turnNumber}</div>
               <div className="phase-text">
                 {turnState.phase === "players"
-                  ? "🛡️ TURN OF HEROES"
-                  : "🔥 BOSS ACTIVATION"}
+                  ? "🛡️ Turno eroi"
+                  : "🔥 Turno Boss"}
               </div>
               {turnState.phase === "players" && !isMaster && (
                 <button
@@ -505,17 +505,25 @@ export default function WorldBoss() {
                 className={`msg-bubble ${m.type} ${m.uid === currentUser.uid ? "msg-right" : "msg-left"} ${m.uid === BOSS_SYSTEM_UID ? "is-boss-msg" : ""}`}
               >
                 <div className="msg-header">
-                  <ChatAvatar uid={m.uid} isBoss={m.uid === BOSS_SYSTEM_UID} />
-                  <span className="msg-author">{m.senderName}</span>
-                  {isMaster && (
-                    <button
-                      className="btn-delete-msg"
-                      onClick={() => handleDeleteMessage(m.id)}
-                    >
-                      ✖
-                    </button>
-                  )}
-                </div>
+  <ChatAvatar uid={m.uid} isBoss={m.uid === BOSS_SYSTEM_UID} />
+  <span className="msg-author">{m.senderName}</span>
+  
+  {/* TIMESTAMP AGGIORNATO CON GIORNO E MESE */}
+  {m.timestamp && (
+    <span className="msg-timestamp">
+      {new Date(m.timestamp.seconds * 1000).toLocaleString('it-IT', { 
+        day: '2-digit', 
+        month: 'short', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })}
+    </span>
+  )}
+
+  {isMaster && (
+    <button className="btn-delete-msg" onClick={() => handleDeleteMessage(m.id)}>✖</button>
+  )}
+</div>
                 {m.type === "action" ? (
                   <div
                     className={`action-result cat-${m.category?.toLowerCase().replace(/\s/g, "-")}`}
@@ -579,7 +587,7 @@ export default function WorldBoss() {
               placeholder="Narra la mossa..."
               disabled={isUserLocked}
             />
-            <button type="submit" disabled={isUserLocked}>
+            <button type="submit" disabled={isUserLocked} className="send">
               Invia
             </button>
           </form>
@@ -590,6 +598,19 @@ export default function WorldBoss() {
   {isMaster ? (
     <div className="admin-battle-controls">
       <h3 className="sidebar-title">Master Dashboard</h3>
+      {/* NUOVO CONTATORE AZIONI */}
+  <div className="acted-players-counter" style={{ 
+    textAlign: 'center', 
+    padding: '5px', 
+    background: '#333', 
+    color: '#fff', 
+    borderRadius: '4px', 
+    marginBottom: '10px',
+    fontSize: '0.8rem',
+    border: '1px solid var(--gold)'
+  }}>
+    ⚔️ Eroi che hanno agito: <strong>{turnState.actedPlayers.length} / {players.length}</strong>
+  </div>
       {/* Controlli Master: Seleziona Tutti, Cura, Monitor HP */}
       <div className="master-player-controls">
         <div className="selection-buttons-row" style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>

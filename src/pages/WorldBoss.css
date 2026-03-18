@@ -36,7 +36,23 @@
 
 }
 
+/* WorldBoss.css */
+.msg-timestamp {
+  color: #66666675;
+  vertical-align: middle;
+  font-size: 0.7em;
+}
 
+.msg-right .msg-timestamp {
+  margin-left: 0;
+  margin-right: 8px;
+}
+
+/* Evidenzia il contatore del Master */
+.acted-players-counter strong {
+  color: #2ecc71; /* Verde se hanno agito */
+  font-size: 1rem;
+}
 
 .wb-btn-action {
   border: none !important;
@@ -441,10 +457,25 @@
   display: flex;
   gap: 15px;
   margin-top: 8px;
+  font-size: 0.8em;
   color: #ab2b2b;
   font-weight: bold;
 }
-
+.send{
+  font-family: 'Almendra', serif;
+  font-weight: bold;
+  background: rgb(119, 14, 14);
+  border: none;
+  border-radius: 5px;
+  color: rgb(255, 255, 255);
+  cursor: pointer;
+  width: 50px;
+  transition: background-color 0.5s ease-in-out;
+}
+.send:hover {
+  background: #d9bd68;
+  color: white;
+}
 /* Sidebar */
 .player-actions {
   background: rgba(136, 9, 9, 0.05);
