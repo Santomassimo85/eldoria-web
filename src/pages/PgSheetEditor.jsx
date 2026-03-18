@@ -8,7 +8,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
-import "./PgSheetEditor.css"; // Assicurati di importare il file CSS
+import "./PgSheetEditor.css";
 
 const ARENA_CHAMPION = {
   name: "Dante Ivio",
@@ -139,7 +139,7 @@ function RenderSheet({ data, isArena, onRoll }) {
           </div>
         )}
  
- 
+
         {/* SEZIONE INCANTESIMI */}
         {spells.length > 0 && (
           <div className="category-block">
