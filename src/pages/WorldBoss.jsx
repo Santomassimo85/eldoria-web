@@ -505,25 +505,33 @@ export default function WorldBoss() {
                 className={`msg-bubble ${m.type} ${m.uid === currentUser.uid ? "msg-right" : "msg-left"} ${m.uid === BOSS_SYSTEM_UID ? "is-boss-msg" : ""}`}
               >
                 <div className="msg-header">
-  <ChatAvatar uid={m.uid} isBoss={m.uid === BOSS_SYSTEM_UID} />
-  <span className="msg-author">{m.senderName}</span>
-  
-  {/* TIMESTAMP AGGIORNATO CON GIORNO E MESE */}
-  {m.timestamp && (
-    <span className="msg-timestamp">
-      {new Date(m.timestamp.seconds * 1000).toLocaleString('it-IT', { 
-        day: '2-digit', 
-        month: 'short', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })}
-    </span>
-  )}
+                  <ChatAvatar uid={m.uid} isBoss={m.uid === BOSS_SYSTEM_UID} />
+                  <span className="msg-author">{m.senderName}</span>
 
-  {isMaster && (
-    <button className="btn-delete-msg" onClick={() => handleDeleteMessage(m.id)}>✖</button>
-  )}
-</div>
+                  {/* TIMESTAMP AGGIORNATO CON GIORNO E MESE */}
+                  {m.timestamp && (
+                    <span className="msg-timestamp">
+                      {new Date(m.timestamp.seconds * 1000).toLocaleString(
+                        "it-IT",
+                        {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
+                    </span>
+                  )}
+
+                  {isMaster && (
+                    <button
+                      className="btn-delete-msg"
+                      onClick={() => handleDeleteMessage(m.id)}
+                    >
+                      ✖
+                    </button>
+                  )}
+                </div>
                 {m.type === "action" ? (
                   <div
                     className={`action-result cat-${m.category?.toLowerCase().replace(/\s/g, "-")}`}
@@ -594,130 +602,270 @@ export default function WorldBoss() {
         </section>
 
         {/* SIDEBAR AZIONI */}
-        <section className={`player-actions-sidebar ${isUserLocked ? "locked-sidebar" : ""}`}>
-  {isMaster ? (
-    <div className="admin-battle-controls">
-      <h3 className="sidebar-title">Master Dashboard</h3>
-      {/* NUOVO CONTATORE AZIONI */}
-  <div className="acted-players-counter" style={{ 
-    textAlign: 'center', 
-    padding: '5px', 
-    background: '#333', 
-    color: '#fff', 
-    borderRadius: '4px', 
-    marginBottom: '10px',
-    fontSize: '0.8rem',
-    border: '1px solid var(--gold)'
-  }}>
-    ⚔️ Eroi che hanno agito: <strong>{turnState.actedPlayers.length} / {players.length}</strong>
-  </div>
-      {/* Controlli Master: Seleziona Tutti, Cura, Monitor HP */}
-      <div className="master-player-controls">
-        <div className="selection-buttons-row" style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-          <button className="btn-select-all" onClick={toggleSelectAll}>
-            {selectedTargets.length === players.length ? "🚫 Deseleziona" : "🎯 Seleziona Tutti"}
-          </button>
-          <button className="btn-heal-all" onClick={healAllPlayers}>💖 Full HP</button>
-        </div>
-      </div>
-
-      <div className="party-status-monitor">
-        <h4>Bersagli Boss (Clicca per selezionare)</h4>
-        {players.map((p) => (
-          <div
-            key={p.id}
-            className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
-            onClick={() => toggleTarget(p.id)}
-          >
-            <span className="p-name">{p.name?.split(" ")[0]}</span>
-            <div className="hp-bar-mini-container">
-              <div className="hp-bar-mini-fill" style={{ width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%` }} />
-              <span className="hp-text-overlay">{p.stats?.hp}/{p.stats?.maxHp}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="boss-actions-monitor">
-        <h4>Azioni Boss</h4>
-        {activeBosses[0] && (
-          <div className="wb-action-list">
-            <button className="wb-btn-action boss-atk" onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action1)}>
-              ⚔️ {activeBosses[0].action1.name} ({activeBosses[0].action1.damage})
-            </button>
-            <button className="wb-btn-action boss-atk" onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action2)}>
-              🔥 {activeBosses[0].action2.name} ({activeBosses[0].action2.damage})
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  ) : (
-    <>
-      <div className="personal-health-monitor">
-        <p>Tua Salute: {charData?.stats?.hp}/{charData?.stats?.maxHp}</p>
-        <div className="hp-bar-mini-container">
-          <div className="hp-bar-mini-fill" style={{ width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%` }} />
-        </div>
-      </div>
-
-      <div className="saving-throws-panel" style={{ margin: '10px 0', padding: '10px', background: 'rgba(0,0,0,0.05)', borderRadius: '8px', border: '1px solid gold' }}>
-        <h4 style={{ fontSize: '0.8rem', color: '#8b0000', marginBottom: '8px', textAlign: 'center', borderBottom: '1px solid #8b0000' }}>Tiri Salvezza</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
-          {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
-            <button
-              key={s}
-              disabled={isUserLocked || !charData}
-              onClick={() => handleSavingThrow(s)}
-              style={{ fontSize: '0.7rem', padding: '5px', cursor: 'pointer', background: 'white', border: '1px solid #ccc', borderRadius: '4px' }}
-            >
-              {s.toUpperCase()} ({charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s] ?? 0})
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="damage-dice-panel" style={{ marginTop: '10px', padding: '10px', background: 'rgba(139,0,0,0.1)', borderRadius: '8px', border: '1px solid #ff4444' }}>
-        <h4 style={{ fontSize: '0.8rem', color: '#ff4444', marginBottom: '8px', textAlign: 'center' }}>Danni & Caratteristica</h4>
-        <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-          <select value={dmgDiceCount} onChange={(e) => setDmgDiceCount(parseInt(e.target.value))} style={{ flex: 1, fontSize: '0.7rem' }}>
-            {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}d</option>)}
-          </select>
-          <select value={dmgSelectedStat || ""} onChange={(e) => setDmgSelectedStat(e.target.value || null)} style={{ flex: 2, fontSize: '0.7rem' }}>
-            <option value="">No Bonus</option>
-            {["str", "dex", "cos", "int", "wis", "cha"].map(s => (
-              <option key={s} value={s}>{s.toUpperCase()} (+{charData?.stats?.[s] ?? 0})</option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px' }}>
-          {["d4", "d6", "d8", "d10", "d12"].map((die) => (
-            <button key={die} disabled={isUserLocked} onClick={() => handleManualDamageToBoss(die)} className="die-btn">{die}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="accordion-container" style={{marginTop: '15px'}}>
-        {sortedCategories.map((cat) => (
-          <div key={cat} className="wb-section">
-            <button className="wb-section-toggle" onClick={() => setOpenSections(prev => ({ ...prev, [cat]: !prev[cat] }))}>
-              {cat} {openSections[cat] ? "▲" : "▼"}
-            </button>
-            {openSections[cat] && (
-              <div className="wb-action-list">
-                {groupedActions[cat].map((action, idx) => (
-                  <button key={idx} className="wb-btn-action" onClick={() => handleActionRoll(action)} disabled={isUserLocked}>
-                    {action.name}
+        <section
+          className={`player-actions-sidebar ${isUserLocked ? "locked-sidebar" : ""}`}
+        >
+          {isMaster ? (
+            <div className="admin-battle-controls">
+              <h3 className="sidebar-title">Master Dashboard</h3>
+              {/* NUOVO CONTATORE AZIONI */}
+              <div
+                className="acted-players-counter"
+                style={{
+                  textAlign: "center",
+                  padding: "5px",
+                  background: "#333",
+                  color: "#fff",
+                  borderRadius: "4px",
+                  marginBottom: "10px",
+                  fontSize: "0.8rem",
+                  border: "1px solid var(--gold)",
+                }}
+              >
+                ⚔️ Eroi che hanno agito:{" "}
+                <strong>
+                  {turnState.actedPlayers.length} / {players.length}
+                </strong>
+              </div>
+              {/* Controlli Master: Seleziona Tutti, Cura, Monitor HP */}
+              <div className="master-player-controls">
+                <div
+                  className="selection-buttons-row"
+                  style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
+                >
+                  <button className="btn-select-all" onClick={toggleSelectAll}>
+                    {selectedTargets.length === players.length
+                      ? "🚫 Deseleziona"
+                      : "🎯 Seleziona Tutti"}
                   </button>
+                  <button className="btn-heal-all" onClick={healAllPlayers}>
+                    💖 Full HP
+                  </button>
+                </div>
+              </div>
+
+              <div className="party-status-monitor">
+                <h4>Bersagli Boss (Clicca per selezionare)</h4>
+                {players.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
+                    onClick={() => toggleTarget(p.id)}
+                  >
+                    <span className="p-name">
+                      {turnState.actedPlayers.includes(p.id) ? "✅ " : " "}
+                      {p.name?.split(" ")[0]}
+                    </span>
+                    <div className="hp-bar-mini-container">
+                      <div
+                        className="hp-bar-mini-fill"
+                        style={{
+                          width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%`,
+                        }}
+                      />
+                      <span className="hp-text-overlay">
+                        {p.stats?.hp}/{p.stats?.maxHp}
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </>
-  )}
-</section>
+
+              <div className="boss-actions-monitor">
+                <h4>Azioni Boss</h4>
+                {activeBosses[0] && (
+                  <div className="wb-action-list">
+                    <button
+                      className="wb-btn-action boss-atk"
+                      onClick={() =>
+                        handleBossRoll(activeBosses[0], activeBosses[0].action1)
+                      }
+                    >
+                      ⚔️ {activeBosses[0].action1.name} (
+                      {activeBosses[0].action1.damage})
+                    </button>
+                    <button
+                      className="wb-btn-action boss-atk"
+                      onClick={() =>
+                        handleBossRoll(activeBosses[0], activeBosses[0].action2)
+                      }
+                    >
+                      🔥 {activeBosses[0].action2.name} (
+                      {activeBosses[0].action2.damage})
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="personal-health-monitor">
+                <p>
+                  Tua Salute: {charData?.stats?.hp}/{charData?.stats?.maxHp}
+                </p>
+                <div className="hp-bar-mini-container">
+                  <div
+                    className="hp-bar-mini-fill"
+                    style={{
+                      width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                className="saving-throws-panel"
+                style={{
+                  margin: "10px 0",
+                  padding: "10px",
+                  background: "rgba(0,0,0,0.05)",
+                  borderRadius: "8px",
+                  border: "1px solid gold",
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#8b0000",
+                    marginBottom: "8px",
+                    textAlign: "center",
+                    borderBottom: "1px solid #8b0000",
+                  }}
+                >
+                  Tiri Salvezza
+                </h4>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "5px",
+                  }}
+                >
+                  {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
+                    <button
+                      key={s}
+                      disabled={isUserLocked || !charData}
+                      onClick={() => handleSavingThrow(s)}
+                      style={{
+                        fontSize: "0.7rem",
+                        padding: "5px",
+                        cursor: "pointer",
+                        background: "white",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      {s.toUpperCase()} ({charData?.stats?.[s] >= 0 ? "+" : ""}
+                      {charData?.stats?.[s] ?? 0})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className="damage-dice-panel"
+                style={{
+                  marginTop: "10px",
+                  padding: "10px",
+                  background: "rgba(139,0,0,0.1)",
+                  borderRadius: "8px",
+                  border: "1px solid #ff4444",
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#ff4444",
+                    marginBottom: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  Danni & Caratteristica
+                </h4>
+                <div
+                  style={{ display: "flex", gap: "5px", marginBottom: "10px" }}
+                >
+                  <select
+                    value={dmgDiceCount}
+                    onChange={(e) => setDmgDiceCount(parseInt(e.target.value))}
+                    style={{ flex: 1, fontSize: "0.7rem" }}
+                  >
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                      <option key={n} value={n}>
+                        {n}d
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={dmgSelectedStat || ""}
+                    onChange={(e) => setDmgSelectedStat(e.target.value || null)}
+                    style={{ flex: 2, fontSize: "0.7rem" }}
+                  >
+                    <option value="">No Bonus</option>
+                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
+                      <option key={s} value={s}>
+                        {s.toUpperCase()} (+{charData?.stats?.[s] ?? 0})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, 1fr)",
+                    gap: "5px",
+                  }}
+                >
+                  {["d4", "d6", "d8", "d10", "d12"].map((die) => (
+                    <button
+                      key={die}
+                      disabled={isUserLocked}
+                      onClick={() => handleManualDamageToBoss(die)}
+                      className="die-btn"
+                    >
+                      {die}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className="accordion-container"
+                style={{ marginTop: "15px" }}
+              >
+                {sortedCategories.map((cat) => (
+                  <div key={cat} className="wb-section">
+                    <button
+                      className="wb-section-toggle"
+                      onClick={() =>
+                        setOpenSections((prev) => ({
+                          ...prev,
+                          [cat]: !prev[cat],
+                        }))
+                      }
+                    >
+                      {cat} {openSections[cat] ? "▲" : "▼"}
+                    </button>
+                    {openSections[cat] && (
+                      <div className="wb-action-list">
+                        {groupedActions[cat].map((action, idx) => (
+                          <button
+                            key={idx}
+                            className="wb-btn-action"
+                            onClick={() => handleActionRoll(action)}
+                            disabled={isUserLocked}
+                          >
+                            {action.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
       </div>
     </div>
   );
@@ -738,4 +886,3 @@ function ChatAvatar({ uid, isBoss }) {
   return <img src={avatarUrl} alt="Avatar" className="chat-avatar-img" />;
 }
 // new
-

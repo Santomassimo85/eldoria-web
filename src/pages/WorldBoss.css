@@ -840,7 +840,7 @@ transform: translateY(-2px);
 
 .hp-bar-mini-fill {
   height: 100%;
-  background: #a7ff02;
+  background: #9acb3e;
   transition: width 0.3s ease;
 }
 
@@ -850,7 +850,7 @@ transform: translateY(-2px);
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 0.65rem;
-  color: rgb(91, 0, 0);
+  color: rgb(255, 255, 255);
   font-weight: bold;
 }
 

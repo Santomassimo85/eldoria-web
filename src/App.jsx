@@ -25,7 +25,7 @@ import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
-
+import React, { useEffect } from "react";
 import "./style.css";
 
 // AUTH IMPORTS
@@ -38,6 +38,25 @@ const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
 // --- Componente per la Navigazione Master Condizionale ---
 const AuthChecker = ({ closeMenu }) => {
   const { currentUser } = useAuth();
+
+
+useEffect(() => {
+  // Controlla se il Service Worker ha trovato un aggiornamento
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(registration => {
+      registration.onupdatefound = () => {
+        const installingWorker = registration.installing;
+        installingWorker.onstatechange = () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // C'è un nuovo contenuto, forza il reload
+            window.location.reload(true);
+          }
+        };
+      };
+    });
+  }
+}, []);
+
 
   if (currentUser && currentUser.email === MASTER_EMAIL_UI) {
     return (
