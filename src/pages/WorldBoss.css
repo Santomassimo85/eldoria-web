@@ -147,6 +147,7 @@
     cursor: pointer;
 }
 
+
 .stat-grid-mini button:hover:not(:disabled) {
     background: #d4af37;
     color: black;

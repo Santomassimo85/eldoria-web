@@ -138,7 +138,8 @@ function RenderSheet({ data, isArena, onRoll }) {
             </div>
           </div>
         )}
-
+ 
+ 
         {/* SEZIONE INCANTESIMI */}
         {spells.length > 0 && (
           <div className="category-block">

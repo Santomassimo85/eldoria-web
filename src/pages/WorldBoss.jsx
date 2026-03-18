@@ -717,3 +717,4 @@ function ChatAvatar({ uid, isBoss }) {
   return <img src={avatarUrl} alt="Avatar" className="chat-avatar-img" />;
 }
 // new
+
