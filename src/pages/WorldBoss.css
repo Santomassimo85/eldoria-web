@@ -422,13 +422,7 @@
   filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
 }
 
-/* Interface Layout */
-.battle-interface {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 20px;
-  height: 600px;
-}
+
 
 
 .msg-bubble {
@@ -607,6 +601,7 @@
 /* Container principale della battaglia */
 .battle-interface {
   display: grid;
+  align-content: start;
   grid-template-columns: 1fr 300px;
   gap: 20px;
   height: 650px;
@@ -684,59 +679,6 @@ input:disabled {
   font-style: italic;
 }
 
-@media (max-width: 768px) {
-  .battle-interface {
-    display: flex;
-    flex-direction: column;
-    /* Impila Skill e Chat verticalmente */
-    height: auto;
-    /* Permette alla pagina di allungarsi */
-    max-height: none;
-    gap: 15px;
-  }
-
-  /* Spostiamo le Skill SOPRA la Chat per comodità di gioco */
-  .player-actions-sidebar {
-    order: 1;
-    width: 100%;
-    max-height: 300px;
-    /* Limita l'altezza delle skill per non scrollare troppo */
-    overflow-y: auto;
-    background: rgba(255, 255, 255, 0.05);
-    /* Più scuro su mobile per leggibilità */
-  }
-
-
-  .no-msg-guide {
-    text-align: center;
-    color: var(--gold);
-    opacity: 0.6;
-    font-style: italic;
-    margin-top: 20px;
-  }
-
-  .chat-section {
-    order: 2;
-    width: 100%;
-    height: 500px;
-    /* Altezza fissa per la chat su mobile */
-    border: 2px solid var(--gold);
-  }
-
-  /* Riduciamo un po' il font del Boss per schermi piccoli */
-  .boss-name {
-    font-size: 1.5rem;
-  }
-
-  .boss-image {
-    max-width: 90%;
-    height: auto;
-  }
-
-  .hp-bar-outer {
-    width: 95%;
-  }
-}
 
 .btn-heal-all {
   background: linear-gradient(135deg, #edbfbf 0%, #cc2e2e 100%);
@@ -786,7 +728,7 @@ input:disabled {
 
 .btn-select-all:hover {
 transform: translateY(-2px);
-  box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
+box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   filter: brightness(1.1);
 }
 
@@ -1075,7 +1017,7 @@ transform: translateY(-2px);
   padding: 8px 20px;
   border-radius: 20px;
   cursor: pointer;
-
+  
 }
 
 .btn-end-turn.acted {
@@ -1100,5 +1042,191 @@ transform: translateY(-2px);
   gap: 10px;
   justify-content: center;
   margin-bottom: 20px;
+  
+}
 
+
+/* WorldBoss.css */
+
+.victory-screen-container {
+  grid-column: span 2; /* Occupa tutto lo spazio della chat e della sidebar */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 400px;
+  animation: fadeInVictory 1s ease-out;
+}
+
+.victory-glow-box {
+  background: rgba(0, 40, 0, 0.8);
+  border: 3px solid #00ff7f;
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(0, 255, 127, 0.6), inset 0 0 20px rgba(0, 255, 127, 0.4);
+  animation: victory-pulse 2s infinite alternate;
+  max-width: 80%;
+}
+
+.victory-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 3.5rem;
+  color: #00ff7f;
+  text-shadow: 0 0 15px rgba(0, 255, 127, 0.8), 2px 2px 4px #000;
+  margin-bottom: 20px;
+}
+
+.victory-text {
+  font-size: 1.5rem;
+  color: #fff;
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.victory-sub-text {
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #a0ffcc;
+  opacity: 0.8;
+}
+
+@keyframes victory-pulse {
+  from { box-shadow: 0 0 20px rgba(0, 255, 127, 0.4); transform: scale(1); }
+  to { box-shadow: 0 0 50px rgba(0, 255, 127, 0.9); transform: scale(1.02); }
+}
+
+@keyframes fadeInVictory {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* WorldBoss.css - Effetti Vittoria e Boss Sconfitto */
+
+/* --- Stato Testata Post-Vittoria --- */
+
+
+/* Badge Turno color Oro/Vittoria */
+.victory-badge {
+  background: linear-gradient(145deg, #bf9b30, #d4af37) !important;
+  color: #000 !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.7) !important;
+  font-weight: bold;
+  text-transform: uppercase;
+  animation: victory-turn-pulse 1.5s infinite alternate;
+}
+
+/* --- Effetti Immagine Boss Sconfitto (Grigio e Strappato) --- */
+
+.wb-boss-image-container {
+  position: relative; /* Necessario per l'overlay */
+  transition: all 1s ease-in-out;
+}
+
+/* Classe applicata quando il boss è sconfitto */
+
+/* --- Animazioni --- */
+
+@keyframes victory-turn-pulse {
+  from { box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
+  to { box-shadow: 0 0 20px rgba(212, 175, 55, 0.9); transform: scale(1.05); }
+}
+
+/* Effetto Vittoria Glow Verde */
+.victory-glow-text {
+  color: #00ff7f;
+  text-shadow: 0 0 20px rgba(0, 255, 127, 0.8), 0 0 40px rgba(0, 255, 127, 0.4);
+  font-size: 2.5rem;
+  text-align: center;
+  margin: 20px 0;
+  animation: victory-pulse 2s infinite;
+}
+
+/* Effetto Grigio e Strappato per l'immagine */
+.boss-defeated-visual .boss-image {
+  filter: grayscale(100%) brightness(0.6);
+  /* Maschera per effetto strappato */
+  opacity: 0.7;
+}
+
+
+
+/* Barra HP sconfitta */
+.defeated-bar { border-color: #6b616100 !important; }
+.defeated-fill { background: #7c7b7b !important; }
+.hp-bar-outer.defeated-bar {
+  background: rgb(46, 45, 45) !important;
+}
+@keyframes victory-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+@media (max-width: 768px) {
+  .battle-interface {
+    display: flex;
+    flex-direction: column;
+    /* Impila Skill e Chat verticalmente */
+    height: auto;
+    /* Permette alla pagina di allungarsi */
+    max-height: none;
+    gap: 15px;
+  }
+
+  /* Spostiamo le Skill SOPRA la Chat per comodità di gioco */
+  .player-actions-sidebar {
+    order: 1;
+    width: 100%;
+    max-height: 300px;
+    /* Limita l'altezza delle skill per non scrollare troppo */
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.05);
+    /* Più scuro su mobile per leggibilità */
+  }
+
+
+  .no-msg-guide {
+    text-align: center;
+    color: var(--gold);
+    opacity: 0.6;
+    font-style: italic;
+    margin-top: 20px;
+  }
+
+  .chat-section {
+    order: 2;
+    width: 100%;
+    height: 500px;
+    /* Altezza fissa per la chat su mobile */
+    border: 2px solid var(--gold);
+  }
+
+  /* Riduciamo un po' il font del Boss per schermi piccoli */
+  .boss-name {
+    font-size: 1.5rem;
+  }
+
+  .boss-image {
+    max-width: 90%;
+    height: auto;
+  }
+
+  .hp-bar-outer {
+    width: 75%;
+  }
+  .victory-glow-text {
+    font-size: 1.0rem;
+  }
+
+  .boss-name {
+    font-size: 1.0rem;
+  }
+  .victory-title {
+    font-size: 1.0rem;
+  }
+
+  .victory-text {
+    font-size: 1.1rem;
+  }
 }

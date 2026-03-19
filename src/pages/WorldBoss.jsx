@@ -245,6 +245,11 @@ export default function WorldBoss() {
       return 0;
     }
   };
+// WorldBoss.jsx - Intorno alla riga 250
+const isBossDefeated = useMemo(() => {
+  return activeBosses.length > 0 && activeBosses[0].hp <= 0;
+}, [activeBosses]);
+
 
   // --- AZIONI PLAYER ---
   const endMyTurn = async () => {
@@ -422,37 +427,55 @@ export default function WorldBoss() {
       )}
 
       {/* AREA BOSS */}
-      <section className="boss-area">
-        {activeBosses.map((boss) => (
-          <div key={boss.id} className="boss-unit">
-            <h2 className="boss-name">{boss.name}</h2>
+<section className="boss-area">
+  {activeBosses.map((boss) => {
+    const isDefeated = boss.hp <= 0;
+
+    return (
+      <div key={boss.id} className={`boss-unit ${isDefeated ? "defeated-unit" : ""}`}>
+        <h2 className="boss-name">{boss.name}</h2>
+        
+        {/* Se il boss è vivo, mostra la descrizione e le penalità */}
+        {!isDefeated ? (
+          <>
             {boss.description && (
               <p className="boss-flavor-text">{boss.description}</p>
             )}
-            {boss.rewards && (
-              <div className="boss-rewards-glow-box">
-                <span className="rewards-label">BOTTINO:</span>
-                <p className="rewards-text">{boss.rewards}</p>
-              </div>
-            )}
-
             {boss.penalties && (
               <div className="boss-penalties-glow-box">
                 <span className="penalties-label">💀 PENALITÀ SCONFITTA:</span>
                 <p className="penalties-text">{boss.penalties}</p>
               </div>
             )}
-
             <div className="main-boss-timer">
               <TimerDisplay expiryDate={boss.expiryDate} />
             </div>
+          </>
+        ) : (
+          /* Se il boss è sconfitto, mostra l'annuncio di vittoria */
+          <div className="victory-announcement">
+            <h1 className="victory-glow-text">🏆 VITTORIA DEGLI EROI 🏆</h1>
+            {/* <p className="victory-sub" style={{color: 'black', fontWeight: 'bold'}}>
+              Il male è stato sconfitto, il boss è caduto!
+            </p> */}
+          </div>
+        )}
 
+        {/* IL BOTTINO RIMANE SEMPRE SCRITTO (Sia da vivo che da morto) */}
+        {boss.rewards && (
+          <div className="boss-rewards-glow-box">
+            <span className="rewards-label">BOTTINO:</span>
+            <p className="rewards-text">{boss.rewards}</p>
+          </div>
+        )}
+
+        {/* MOSTRA I TURNI E LA BARRA SOLO SE VIVO, ALTRIMENTI BARRA DEFUNTA */}
+        {!isDefeated ? (
+          <>
             <div className={`turn-banner ${turnState.phase}-phase`}>
               <div className="turn-count">TURNO {turnState.turnNumber}</div>
               <div className="phase-text">
-                {turnState.phase === "players"
-                  ? "🛡️ Turno eroi"
-                  : "🔥 Turno Boss"}
+                {turnState.phase === "players" ? "🛡️ Turno eroi" : "🔥 Turno Boss"}
               </div>
               {turnState.phase === "players" && !isMaster && (
                 <button
@@ -460,9 +483,7 @@ export default function WorldBoss() {
                   onClick={endMyTurn}
                   disabled={turnState.actedPlayers.includes(currentUser.uid)}
                 >
-                  {turnState.actedPlayers.includes(currentUser.uid)
-                    ? "Azione Conclusa"
-                    : "Fine Turno"}
+                  {turnState.actedPlayers.includes(currentUser.uid) ? "Azione Conclusa" : "Fine Turno"}
                 </button>
               )}
             </div>
@@ -470,32 +491,55 @@ export default function WorldBoss() {
             <div className="hp-bar-outer">
               <div
                 className="hp-bar-inner"
-                style={{
-                  width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`,
-                }}
+                style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }}
               >
                 {isMaster && (
-                  <span className="hp-text-admin">
-                    {boss.hp} / {boss.maxHp}
-                  </span>
+                  <span className="hp-text-admin">{boss.hp} / {boss.maxHp}</span>
                 )}
               </div>
             </div>
-
-            {isMaster && (
-              <div className="master-turn-controls">
-                <button onClick={() => togglePhase("players")}>
-                  Fase Eroi
-                </button>
-                <button onClick={() => togglePhase("boss")}>Fase Boss</button>
-              </div>
-            )}
-            <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
+          </>
+        ) : (
+          /* BARRA HP DEFUNTA */
+          <div className="hp-bar-outer defeated-bar">
+            <div className="hp-bar-inner defeated-fill" style={{ width: "0%" }}>
+              <span className="hp-text-admin" style={{color: 'white'}}>💀</span>
+            </div>
           </div>
-        ))}
-      </section>
+        )}
+
+        {/* CONTROLLI MASTER SEMPRE DISPONIBILI */}
+        {isMaster && (
+          <div className="master-turn-controls">
+            <button onClick={() => togglePhase("players")}>Fase Eroi</button>
+            <button onClick={() => togglePhase("boss")}>Fase Boss</button>
+          </div>
+        )}
+
+        {/* IMMAGINE CON EFFETTO DEFEATED (Grigia e Strappata via CSS) */}
+        <div className={`boss-image-container ${isDefeated ? "boss-defeated-visual" : ""}`}>
+          <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
+          {isDefeated && <div className="torn-overlay"></div>}
+        </div>
+      </div>
+    );
+  })}
+</section>
 
       <div className="battle-interface">
+
+        {isBossDefeated ? (
+    <div className="victory-screen-container">
+      <div className="victory-glow-box">
+        <h1 className="victory-title">⚔️ VITTORIA! ⚔️</h1>
+        <p className="victory-text">
+          Il male è stato scacciato. {activeBosses[0]?.name} è caduto sotto i colpi degli eroi di Eldoria!
+        </p>
+        <div className="victory-sub-text">La chat e le azioni sono state disattivate per celebrare il trionfo.</div>
+      </div>
+    </div>
+  ) : (
+    <>
         {/* CHAT */}
         <section className="chat-section">
           <div className="chat-messages">
@@ -866,6 +910,8 @@ export default function WorldBoss() {
             </>
           )}
         </section>
+        </>
+  )}
       </div>
     </div>
   );
@@ -885,4 +931,3 @@ function ChatAvatar({ uid, isBoss }) {
   if (!avatarUrl) return <div className="avatar-placeholder" />;
   return <img src={avatarUrl} alt="Avatar" className="chat-avatar-img" />;
 }
-// new
