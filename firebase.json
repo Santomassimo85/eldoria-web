@@ -13,7 +13,7 @@
       ]
     }
   ],
-  "hosting": {
+"hosting": {
     "public": "dist",
     "ignore": [
       "firebase.json",
@@ -22,11 +22,20 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|html)",
+        "source": "/**",
         "headers": [
           {
             "key": "Cache-Control",
             "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(js|css|png|jpg|svg)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=0"
           }
         ]
       }
