@@ -153,29 +153,26 @@ export default function Home() {
       </button>
 
       {/* --- PANNELLO LATERALE TIPO CHATBOT --- */}
-      {/* --- PANNELLO LATERALE TIPO CHATBOT --- */}
-<div className={`side-drawer ${isSidebarOpen ? 'open' : ''}`}>
-  <div className="drawer-content">
-    <h2 className="chatBotTitle">Prossime Sessioni</h2>
-    
-    {sessions.length > 0 ? (
-      sessions.map((s) => (
-        <Countdown 
-          key={s.id} 
-          partyName={s.id} 
-          targetDate={s.date} 
-        />
-      ))
-    ) : (
-      <p style={{ textAlign: 'center', color: '#666' }}>Nessuna sessione programmata.</p>
-    )}
+      <div className={`side-drawer ${isSidebarOpen ? "open" : ""}`}>
+        <div className="drawer-content">
+          <h2 className="chatBotTitle">Prossime Sessioni</h2>
 
-    <div className="welcome-box">
-      <h3>Benvenuti ad Eldoria</h3>
-      <p>Seleziona "Next Game" dal menu per i dettagli completi.</p>
-    </div>
-  </div>
-</div>
+          {sessions.length > 0 ? (
+            sessions.map((s) => (
+              <Countdown key={s.id} partyName={s.id} targetDate={s.date} />
+            ))
+          ) : (
+            <p style={{ textAlign: "center", color: "#666" }}>
+              Nessuna sessione programmata.
+            </p>
+          )}
+
+          <div className="welcome-box">
+            <h3>Benvenuti ad Eldoria</h3>
+            <p>Seleziona "Next Game" dal menu per i dettagli completi.</p>
+          </div>
+        </div>
+      </div>
 
       {/* --- CONTENUTO PRINCIPALE (Ora a tutta larghezza) --- */}
       <section className="main-content full-width-home">
