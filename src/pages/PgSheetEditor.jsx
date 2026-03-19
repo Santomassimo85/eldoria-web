@@ -88,20 +88,25 @@ function RenderSheet({ data, isArena, onRoll }) {
   const abilities = data.actions?.filter(a => a.category === "Abilità" || a.category === "Azione" || a.category === "Feat") || [];
 
   const ActionBox = ({ act, typeClass }) => (
-    <button 
-      className={`action-roll-btn ${typeClass}`}
-      onClick={() => onRoll(data.name, act.name, act.damage, act.bonus, isArena)}
-    >
-      <div className="btn-main-row">
-        <div className="btn-left-info">
-          <span className="action-name">{act.name}</span>
-          <span className="action-category">{act.category}</span>
-        </div>
-        <span className="action-dmg-tag">{act.damage !== "0" ? act.damage : "Utilizzo"}</span>
+  <button 
+    className={`action-roll-btn ${typeClass}`}
+    onClick={() => onRoll(data.name, act.name, act.damage, act.bonus, isArena)}
+  >
+    <div className="btn-main-row">
+      <div className="btn-left-info">
+        <span className="action-name">{act.name}</span>
+        <span className="action-category">{act.category}</span>
       </div>
-      {act.description && <p className="action-description-text">{act.description}</p>}
-    </button>
-  );
+      <span className="action-dmg-tag">{act.damage !== "0" ? act.damage : "Utilizzo"}</span>
+    </div>
+    {/* Visualizzazione completa della descrizione */}
+    {act.description && (
+      <div className="action-description-container">
+        <p className="action-description-text">{act.description}</p>
+      </div>
+    )}
+  </button>
+);
 
   return (
     <div className={`pg-sheet-card ${isArena ? "arena-theme" : "hero-theme"}`}>

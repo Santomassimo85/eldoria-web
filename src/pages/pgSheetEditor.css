@@ -19,7 +19,7 @@
 
 /* Card Personaggio */
 .pg-sheet-card {
-    background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+    /* background: linear-gradient(145deg, #1a1a1a, #2a2a2a); */
     border: 2px solid #333;
     border-radius: 15px;
     padding: 20px;
@@ -106,22 +106,29 @@
 }
 
 .stat-value {
-    color: #fff;
+    color: #047934 !important;
     font-weight: bold;
     font-size: 1.1rem;
 }
 
 .stat-bar {
     width: 100%;
-    height: 6px;
-    background: #444;
-    border-radius: 3px;
-    margin-top: 5px;
+    height: 12px; /* Leggermente più alta per visibilità */
+    background: #333; /* Colore di sfondo quando la vita scende */
+    border-radius: 6px;
+    margin-top: 8px;
     overflow: hidden;
+    border: 1px solid #444;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
 }
 
-.stat-fill.red { background: #ff4444; }
-
+/* Riempimento della barra (Rosso) */
+.stat-fill.red {
+    height: 100%;
+    background: linear-gradient(90deg, #8b0000 0%, #ff4444 100%);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+    transition: width 0.5s ease-in-out; /* Animazione fluida quando cambia la vita */
+}
 /* Lista Azioni */
 .pg-actions-section {
     border-top: 1px solid #444;
@@ -146,11 +153,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(26, 24, 22, 0.603);
     border: 1px solid #444;
     padding: 10px 15px;
     border-radius: 8px;
-    color: #fff;
+    color: #ffffff;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -168,7 +175,9 @@
 
 .action-name {
     font-weight: bold;
-    font-size: 0.95rem;
+    font-size: 1rem;
+    white-space: normal;
+    text-align: left;
 }
 
 .action-category {
@@ -211,11 +220,11 @@
 /* Stile Descrizione Azione */
 .action-description-text {
     font-size: 0.75rem;
-    color: #bbb;
+    color: #ffffffb4;
     text-align: left;
     margin: 5px 0 0 0;
     line-height: 1.2;
-    font-style: italic;
+    /* font-style: italic; */
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 5px;
     width: 100%;
@@ -230,25 +239,7 @@
     letter-spacing: 1px;
 }
 
-/* Miglioramento bottone azione per ospitare la descrizione */
-.action-roll-btn {
-    display: flex;
-    flex-direction: column; /* Stack verticale per Nome/Danno e poi Descrizione */
-    align-items: flex-start;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid #444;
-    padding: 12px 15px;
-    border-radius: 8px;
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    width: 100%;
-}
 
-.action-roll-btn:hover {
-    background: rgba(212, 175, 55, 0.1);
-    border-color: #d4af37;
-}
 
 /* --- CATEGORIE E TITOLI --- */
 .category-block {
@@ -278,6 +269,8 @@
 .weapon-item:hover {
     background: rgba(255, 77, 77, 0.1) !important;
     border-color: #ff4d4d !important;
+        color: #000;
+
 }
 .weapon-item .action-dmg-tag {
     background: #8b0000;
@@ -290,6 +283,7 @@
 .spell-item:hover {
     background: rgba(77, 148, 255, 0.1) !important;
     border-color: #4d94ff !important;
+    color: #000;
 }
 .spell-item .action-dmg-tag {
     background: #00448b;
@@ -302,29 +296,9 @@
 .feat-item:hover {
     background: rgba(77, 255, 136, 0.1) !important;
     border-color: #4dff88 !important;
+        color: #000;
+
 }
 .feat-item .action-dmg-tag {
     background: #008b44;
-}
-
-
-/* --- MIGLIORAMENTI GENERALI --- */
-.action-roll-btn {
-    margin-bottom: 8px;
-    background: rgba(0, 0, 0, 0.4) !important;
-    border: 1px solid #333 !important;
-}
-
-.action-category {
-    font-weight: bold;
-    font-size: 0.65rem;
-    margin-top: 2px;
-}
-
-.action-description-text {
-    color: #999;
-    font-size: 0.7rem;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed rgba(255, 255, 255, 0.1);
 }
