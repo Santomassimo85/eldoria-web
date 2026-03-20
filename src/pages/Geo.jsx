@@ -41,12 +41,14 @@ export default function Geo() {
             <h1 className="continent-title">{contName}</h1>
             
             <section className="city" style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(45%, 1fr))",
-              gap: "30px"
-            }}>
-              {locationsInContinent.map((loc) => (
-                <ToggleSection key={loc.id} title={loc.name} defaultOpen={false}>
+  display: "grid",
+  // Cambiato da 45% a 300px per permettere al responsive di scendere a 1 colonna
+  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", 
+  gap: "20px", // Ridotto leggermente il gap per schermi piccoli
+  width: "100%"
+}}>
+  {locationsInContinent.map((loc) => (
+    <ToggleSection key={loc.id} title={loc.name} defaultOpen={false}>
                   <img src={loc.image} alt={loc.name} className="city-img" style={{width: "100%", borderRadius:"8px"}} />
                   <br /><br />
                   <div 
