@@ -31,6 +31,8 @@ import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
+import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
+
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
@@ -155,6 +157,8 @@ export default function App() {
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
         </Routes>
       </main>
+
+<GlobalChat />
 
       <footer>
         <p>
