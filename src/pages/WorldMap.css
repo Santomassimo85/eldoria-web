@@ -19,12 +19,22 @@
     border-radius: 6px;
 }
 
+/* WorldMap.css */
+
 .boss-anchor {
     position: absolute;
     width: 20px;
     height: 20px;
     transform: translate(-50%, -50%);
     z-index: 10;
+    /* Opzionale: aggiungi una transizione fluida per la scomparsa */
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+/* Se per qualche motivo il boss resta nell'array ma ha HP 0, 
+   forziamo la scomparsa totale tramite CSS */
+.boss-anchor:empty {
+    display: none;
 }
 
 .boss-anchor:hover .ping-tooltip {

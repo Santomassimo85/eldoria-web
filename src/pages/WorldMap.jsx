@@ -15,14 +15,17 @@ export default function WorldMap() {
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "bosses"), (snap) => {
-      const bosses = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((b) => b.isActive === true); 
-      setActiveBosses(bosses);
-    });
-    return () => unsub();
-  }, []);
+  const unsub = onSnapshot(collection(db, "bosses"), (snap) => {
+    const bosses = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((b) => 
+        b.isActive === true && 
+        b.hp > 0 // <--- AGGIUNGI QUESTO: Nasconde il boss dalla mappa se HP <= 0
+      ); 
+    setActiveBosses(bosses);
+  });
+  return () => unsub();
+}, []);
 
   return (
     <div className="map-page">
