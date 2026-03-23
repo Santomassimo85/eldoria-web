@@ -319,65 +319,86 @@ export default function WorldBoss() {
   // WorldBoss.jsx
 
   const handleBossRoll = async (boss, action) => {
-    if (selectedTargets.length === 0)
-      return alert("DM, seleziona almeno un bersaglio!");
+  if (selectedTargets.length === 0)
+    return alert("DM, seleziona almeno un bersaglio!");
 
-    // 1. UNICO TIRO PER COLPIRE (Regola D&D)
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    const bossBonus = parseInt(action.bonus) || 0;
-    const hitTotal = d20 + bossBonus;
+  // 1. UNICO TIRO PER COLPIRE (Regola D&D)
+  const d20 = Math.floor(Math.random() * 20) + 1;
+  const bossBonus = parseInt(action.bonus) || 0;
+  const hitTotal = d20 + bossBonus;
 
-    // 2. UNICO TIRO PER IL DANNO (Regola D&D)
-    const damageDealt = rollDice(action.damage || "1d6");
+  // 2. UNICO TIRO PER IL DANNO (Regola D&D)
+  const damageDealt = rollDice(action.damage || "1d6");
 
-    const results = [];
+  const results = [];
 
-    // 3. CONFRONTO DEL TIRO UNICO CON OGNI BERSAGLIO
-    for (const targetId of selectedTargets) {
-      const p = players.find((player) => player.id === targetId);
-      const playerCA = p?.stats?.ac || 10;
+  // 3. CONFRONTO DEL TIRO UNICO CON OGNI BERSAGLIO
+  for (const targetId of selectedTargets) {
+    const p = players.find((player) => player.id === targetId);
+    if (!p) continue;
 
-      // Il colpo va a segno solo se il tiro unico >= CA del player
-      const isHit = hitTotal >= playerCA;
+    const playerCA = p.stats?.ac || 10;
+    const isHit = hitTotal >= playerCA;
 
-      if (isHit) {
-        await updateDoc(doc(db, "characters", targetId), {
-          "stats.hp": increment(-damageDealt),
-        });
+    if (isHit) {
+      let remainingDmg = damageDealt;
+      let currentShield = p.stats?.shield || 0;
+      let currentHp = p.stats?.hp || 0;
+
+      // --- LOGICA SCUDO ---
+      if (currentShield > 0) {
+        if (currentShield >= remainingDmg) {
+          // Lo scudo assorbe tutto il danno
+          currentShield -= remainingDmg;
+          remainingDmg = 0;
+        } else {
+          // Lo scudo si rompe, il danno rimanente passa agli HP
+          remainingDmg -= currentShield;
+          currentShield = 0;
+        }
       }
 
-      results.push({
-        name: p.name.split(" ")[0],
-        hit: isHit,
-        roll: `${hitTotal} (${d20}+${bossBonus}) vs CA ${playerCA}`,
-        dmg: isHit ? damageDealt : 0,
+      // Aggiornamento database: HP e Scudo
+      await updateDoc(doc(db, "characters", targetId), {
+        "stats.hp": Math.max(0, currentHp - remainingDmg),
+        "stats.shield": currentShield
       });
     }
 
-    // Prepariamo i log differenziati per Master e Player
-    const hitTargets = results
-      .filter((r) => r.hit)
-      .map((r) => r.name)
-      .join(", ");
-    const missedTargets = results
-      .filter((r) => !r.hit)
-      .map((r) => r.name)
-      .join(", ");
-
-    await addDoc(collection(db, "world_boss_chat"), {
-      uid: BOSS_SYSTEM_UID,
-      senderName: boss.name,
-      type: "action",
-      category: "Attacco Boss",
-      actionName: action.name,
-      // I player vedono solo la narrazione con il danno unico applicato
-      description: `Il Boss scatena ${action.name} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
-      masterDetails: results,
-      timestamp: serverTimestamp(),
+    results.push({
+      name: p.name.split(" ")[0],
+      hit: isHit,
+      roll: `${hitTotal} (${d20}+${bossBonus}) vs CA ${playerCA}`,
+      dmg: isHit ? damageDealt : 0,
     });
+  }
 
-    setSelectedTargets([]);
-  };
+  // Preparazione narrazione per la chat
+  const hitTargets = results
+    .filter((r) => r.hit)
+    .map((r) => r.name)
+    .join(", ");
+  const missedTargets = results
+    .filter((r) => !r.hit)
+    .map((r) => r.name)
+    .join(", ");
+
+  await addDoc(collection(db, "world_boss_chat"), {
+    uid: BOSS_SYSTEM_UID,
+    senderName: boss.name,
+    type: "action",
+    category: "Attacco Boss",
+    actionName: action.name,
+    description: `Il Boss scatena ${action.name} (Danni: ${damageDealt})! ${
+      hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""
+    }${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
+    masterDetails: results,
+    timestamp: serverTimestamp(),
+  });
+
+  // Reset dei bersagli selezionati dopo l'attacco
+  setSelectedTargets([]);
+};
 
   const togglePhase = async (newPhase) => {
     const update = { phase: newPhase, actedPlayers: [] };
@@ -457,6 +478,9 @@ export default function WorldBoss() {
                   {boss.description && (
                     <p className="boss-flavor-text">{boss.description}</p>
                   )}
+                  <div className="main-boss-timer">
+                    <TimerDisplay expiryDate={boss.expiryDate} />
+                  </div>
                   {boss.penalties && (
                     <div className="boss-penalties-glow-box">
                       <span className="penalties-label">
@@ -465,9 +489,6 @@ export default function WorldBoss() {
                       <p className="penalties-text">{boss.penalties}</p>
                     </div>
                   )}
-                  <div className="main-boss-timer">
-                    <TimerDisplay expiryDate={boss.expiryDate} />
-                  </div>
                 </>
               ) : (
                 /* Se il boss è sconfitto, mostra l'annuncio di vittoria */
@@ -747,31 +768,44 @@ export default function WorldBoss() {
                   </div>
 
                   <div className="party-status-monitor">
-                    <h4>Bersagli Boss (Clicca per selezionare)</h4>
-                    {players.map((p) => (
-                      <div
-                        key={p.id}
-                        className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
-                        onClick={() => toggleTarget(p.id)}
-                      >
-                        <span className="p-name">
-                          {turnState.actedPlayers.includes(p.id) ? "✅ " : " "}
-                          {p.name?.split(" ")[0]}
-                        </span>
-                        <div className="hp-bar-mini-container">
-                          <div
-                            className="hp-bar-mini-fill"
-                            style={{
-                              width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%`,
-                            }}
-                          />
-                          <span className="hp-text-overlay">
-                            {p.stats?.hp}/{p.stats?.maxHp}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+  <h4>Bersagli Boss (Clicca per selezionare)</h4>
+  {players.map((p) => (
+    <div key={p.id} className="player-hp-control-group" style={{ marginBottom: "15px" }}>
+      <div 
+        className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
+        onClick={() => toggleTarget(p.id)}
+      >
+        <span className="p-name">{p.name?.split(" ")[0]}</span>
+        <div className="hp-bar-mini-container">
+          {/* Barra HP Reale */}
+          <div className="hp-bar-mini-fill" style={{ width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%` }} />
+          {/* BARRA SCUDO (Overlay Azzurro) */}
+          {p.stats?.shield > 0 && (
+            <div className="shield-bar-mini-fill" style={{ 
+              width: `${Math.min(100, (p.stats.shield / p.stats.maxHp) * 100)}%`,
+              position: 'absolute', top: 0, left: 0, height: '100%', 
+              background: 'rgba(0, 191, 255, 0.6)', borderRight: '2px solid white' 
+            }} />
+          )}
+          <span className="hp-text-overlay">
+            {p.stats?.hp}{p.stats?.shield > 0 ? ` (+${p.stats.shield})` : ""} / {p.stats?.maxHp}
+          </span>
+        </div>
+      </div>
+
+      {/* Tasti Rapidi per il Master */}
+      <div className="master-quick-actions" style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+        <button className="btn-hp plus" onClick={(e) => { e.stopPropagation(); damagePlayerManual(p.id, 1); }}>+1</button>
+        <button className="btn-hp plus" onClick={(e) => { e.stopPropagation(); damagePlayerManual(p.id, 3); }}>+3</button>
+        <button className="btn-hp shield" onClick={(e) => { 
+          e.stopPropagation(); 
+          const val = prompt("Quanti HP di scudo?"); 
+          if(val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) });
+        }} style={{ background: '#00bfff', color: 'white' }}>🛡️ Scudo</button>
+      </div>
+    </div>
+  ))}
+</div>
 
                   <div className="boss-actions-monitor">
                     <h4>Azioni Boss</h4>

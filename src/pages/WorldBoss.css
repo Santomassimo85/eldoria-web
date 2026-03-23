@@ -50,7 +50,8 @@
 
 /* Evidenzia il contatore del Master */
 .acted-players-counter strong {
-  color: #2ecc71; /* Verde se hanno agito */
+  color: #2ecc71;
+  /* Verde se hanno agito */
   font-size: 1rem;
 }
 
@@ -78,7 +79,8 @@
   border-radius: 8px;
   padding: 10px;
   margin: 10px auto;
-  max-width: 80%;
+  width: 60%;
+  max-width: 85%;
   box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
   animation: penalties-pulse 2s infinite alternate;
   text-align: center;
@@ -101,16 +103,20 @@
   font-style: italic;
 }
 
+
+/* BOSS REWARD */
 .boss-rewards-glow-box {
-  background: rgba(212, 175, 55, 0.15); /* Oro trasparente */
+  background: rgba(212, 175, 55, 0.15);
+  /* Oro trasparente */
   border: 2px solid #d4af37;
   border-radius: 8px;
   padding: 10px;
   margin: 10px auto;
+  width: 60%;
   max-width: 85%;
+  text-align: center;
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
   animation: rewards-pulse 2s infinite alternate;
-  text-align: center;
 }
 
 .rewards-label {
@@ -133,45 +139,47 @@
 
 /* Sidebar bloccata */
 .locked-sidebar {
-    filter: grayscale(1);
-    opacity: 0.6;
-    pointer-events: none;
-    border: 2px solid #666 !important;
+  filter: grayscale(1);
+  opacity: 0.6;
+  pointer-events: none;
+  border: 2px solid #666 !important;
 }
 
 /* Griglia Tiri Salvezza */
 .saving-throws-panel {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 8px;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    border: 1px solid #d4af37;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #d4af37;
 }
 
 .stat-grid-mini {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
 }
 
 .stat-grid-mini button {
-    font-size: 0.7rem;
-    padding: 4px;
-    background: #333;
-    color: #eee;
-    border: 1px solid #555;
-    cursor: pointer;
+  font-size: 0.7rem;
+  padding: 4px;
+  background: #333;
+  color: #eee;
+  border: 1px solid #555;
+  cursor: pointer;
 }
 
 
 .stat-grid-mini button:hover:not(:disabled) {
-    background: #d4af37;
-    color: black;
+  background: #d4af37;
+  color: black;
 }
+
 .locked-sidebar {
-    filter: grayscale(1);
-    opacity: 0.7;
-    pointer-events: none; /* Impedisce fisicamente il click sui bottoni */
+  filter: grayscale(1);
+  opacity: 0.7;
+  pointer-events: none;
+  /* Impedisce fisicamente il click sui bottoni */
 }
 
 @keyframes rewards-pulse {
@@ -179,6 +187,7 @@
     box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
     border-color: #d4af37;
   }
+
   to {
     box-shadow: 0 0 25px rgba(212, 175, 55, 0.7);
     border-color: #ffffff;
@@ -186,9 +195,17 @@
 }
 
 @keyframes penalties-pulse {
-  from { box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); border-color: #8b0000; }
-  to { box-shadow: 0 0 25px rgba(255, 0, 0, 0.7); border-color: #ff4444; }
+  from {
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+    border-color: #8b0000;
+  }
+
+  to {
+    box-shadow: 0 0 25px rgba(255, 0, 0, 0.7);
+    border-color: #ff4444;
+  }
 }
+
 .msg-header {
   display: flex;
   align-items: center;
@@ -455,7 +472,8 @@
   color: #ab2b2b;
   font-weight: bold;
 }
-.send{
+
+.send {
   font-family: 'Almendra', serif;
   font-weight: bold;
   background: rgb(119, 14, 14);
@@ -466,10 +484,12 @@
   width: 50px;
   transition: background-color 0.5s ease-in-out;
 }
+
 .send:hover {
   background: #d9bd68;
   color: white;
 }
+
 /* Sidebar */
 .player-actions {
   background: rgba(136, 9, 9, 0.05);
@@ -727,14 +747,40 @@ input:disabled {
 }
 
 .btn-select-all:hover {
-transform: translateY(-2px);
-box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   filter: brightness(1.1);
 }
 
 /* Se vuoi distinguere il tasto quando "Deseleziona" */
 .btn-select-all:active {
   transform: translateY(0);
+}
+
+/* WorldBoss.css */
+
+.shield-bar-mini-fill {
+  z-index: 1;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 5px #00bfff;
+}
+
+.btn-hp.shield {
+  border: 1px solid #008ebf;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-hp.shield:hover {
+  background: #0099cc !important;
+}
+
+/* Personal Health Monitor per il Player */
+.personal-health-monitor .hp-bar-mini-container {
+  position: relative;
 }
 
 
@@ -971,12 +1017,15 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   color: black;
 }
 
+/* Banner Turno */
 .turn-banner {
   text-align: center;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px auto;
+  width: 60%;
+  max-width: 85%;
   padding: 15px;
-
-  border-radius: 10px;
-  margin-bottom: 20px;
   transition: all 0.5s ease;
   border: 2px solid transparent;
 }
@@ -1017,7 +1066,7 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   padding: 8px 20px;
   border-radius: 20px;
   cursor: pointer;
-  
+
 }
 
 .btn-end-turn.acted {
@@ -1042,14 +1091,15 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   gap: 10px;
   justify-content: center;
   margin-bottom: 20px;
-  
+
 }
 
 
 /* WorldBoss.css */
 
 .victory-screen-container {
-  grid-column: span 2; /* Occupa tutto lo spazio della chat e della sidebar */
+  grid-column: span 2;
+  /* Occupa tutto lo spazio della chat e della sidebar */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1092,13 +1142,27 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
 }
 
 @keyframes victory-pulse {
-  from { box-shadow: 0 0 20px rgba(0, 255, 127, 0.4); transform: scale(1); }
-  to { box-shadow: 0 0 50px rgba(0, 255, 127, 0.9); transform: scale(1.02); }
+  from {
+    box-shadow: 0 0 20px rgba(0, 255, 127, 0.4);
+    transform: scale(1);
+  }
+
+  to {
+    box-shadow: 0 0 50px rgba(0, 255, 127, 0.9);
+    transform: scale(1.02);
+  }
 }
 
 @keyframes fadeInVictory {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* WorldBoss.css - Effetti Vittoria e Boss Sconfitto */
@@ -1120,7 +1184,8 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
 /* --- Effetti Immagine Boss Sconfitto (Grigio e Strappato) --- */
 
 .wb-boss-image-container {
-  position: relative; /* Necessario per l'overlay */
+  position: relative;
+  /* Necessario per l'overlay */
   transition: all 1s ease-in-out;
 }
 
@@ -1129,8 +1194,14 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
 /* --- Animazioni --- */
 
 @keyframes victory-turn-pulse {
-  from { box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
-  to { box-shadow: 0 0 20px rgba(212, 175, 55, 0.9); transform: scale(1.05); }
+  from {
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+
+  to {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.9);
+    transform: scale(1.05);
+  }
 }
 
 /* Effetto Vittoria Glow Verde */
@@ -1153,16 +1224,35 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
 
 
 /* Barra HP sconfitta */
-.defeated-bar { border-color: #6b616100 !important; }
-.defeated-fill { background: #7c7b7b !important; }
+.defeated-bar {
+  border-color: #6b616100 !important;
+}
+
+.defeated-fill {
+  background: #7c7b7b !important;
+}
+
 .hp-bar-outer.defeated-bar {
   background: rgb(46, 45, 45) !important;
 }
+
 @keyframes victory-pulse {
-  0% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.8; }
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
 }
+
 @media (max-width: 768px) {
   .battle-interface {
     display: flex;
@@ -1172,6 +1262,21 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
     /* Permette alla pagina di allungarsi */
     max-height: none;
     gap: 15px;
+  }
+
+  .turn-banner {
+    width: 90%;
+    font-size: 1.5rem;
+  }
+
+  .boss-rewards-glow-box {
+    width: 90%;
+    font-size: 1.5rem;
+  }
+
+  .boss-penalties-glow-box {
+    width: 90%;
+    font-size: 1.5rem;
   }
 
   /* Spostiamo le Skill SOPRA la Chat per comodità di gioco */
@@ -1215,6 +1320,7 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   .hp-bar-outer {
     width: 75%;
   }
+
   .victory-glow-text {
     font-size: 1.0rem;
   }
@@ -1222,6 +1328,7 @@ box-shadow: 0 0 15px rgba(25, 140, 29, 0.702);
   .boss-name {
     font-size: 1.0rem;
   }
+
   .victory-title {
     font-size: 1.0rem;
   }

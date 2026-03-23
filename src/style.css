@@ -2594,19 +2594,3 @@ button.submit:hover {
     70% { transform: scale(1.2) translateY(-5px); }
     100% { transform: scale(1) translateY(0); opacity: 1; }
 }
-
-/* --- TIMESTAMP MESSAGGI --- */
-.chat-msg {
-    position: relative; /* Per posizionare il timestamp internamente */
-    padding-bottom: 22px; /* Lascia spazio per il timestamp in basso */
-}
-.msg-timestamp {
-    position: absolute;
-    bottom: 5px;
-    right: 10px;
-    font-size: 0.65rem;
-    color: rgba(255, 255, 255, 0.4);
-    font-style: italic;
-    pointer-events: none;
-}
-.chat-msg.own .msg-timestamp { color: rgba(212, 175, 55, 0.6); }
