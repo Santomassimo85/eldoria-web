@@ -19,7 +19,7 @@ export default function GlobalChat() {
   
   const chatEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
-  const chatWindowRef = useRef(null); // Ref per il click esterno
+  const chatWindowRef = useRef(null);
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
   const scrollToBottom = (behavior = "smooth") => {
@@ -52,7 +52,7 @@ export default function GlobalChat() {
     fetchCharName();
   }, [currentUser, isMaster]);
 
-  // 3. LISTENER MESSAGGI E LOGICA NOTIFICA
+  // 3. LISTENER MESSAGGI
   useEffect(() => {
     if (!currentUser) return;
     
@@ -61,11 +61,9 @@ export default function GlobalChat() {
       const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMessages(msgs);
       
-      // Se la chat è chiusa, incrementa notifiche
       if (!isOpen) {
         setUnreadCount(prev => prev + 1);
       } else {
-        // Se aperta, auto-scroll se l'utente è già vicino al fondo
         const container = messagesContainerRef.current;
         if (container) {
           const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
@@ -76,12 +74,11 @@ export default function GlobalChat() {
     return () => unsub();
   }, [currentUser, isOpen]);
 
-  // --- FIX NOTIFICA: Reset quando si apre ---
   useEffect(() => {
     if (isOpen) setUnreadCount(0);
   }, [isOpen]);
 
-  // 4. GESTIONE SCROLL (Mostra/Nascondi Freccia)
+  // 4. GESTIONE SCROLL
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
@@ -89,7 +86,7 @@ export default function GlobalChat() {
     setShowScrollArrow(!isNearBottom);
   };
 
-  // 5. PULIZIA MANUALE (Solo Master)
+  // 5. PULIZIA MANUALE (Massiva)
   const handleManualCleanup = async () => {
     if (!window.confirm("Master, vuoi ripulire la locanda? (Resteranno i 10 più recenti)")) return;
     try {
@@ -101,6 +98,18 @@ export default function GlobalChat() {
         alert("Locanda ripulita!");
       }
     } catch (err) { console.error("Cleanup error:", err); }
+  };
+
+  // --- NUOVA FUNZIONE: ELIMINA SINGOLO MESSAGGIO ---
+  const deleteSingleMessage = async (messageId) => {
+    if (!isMaster) return;
+    if (!window.confirm("Vuoi eliminare questo messaggio?")) return;
+    
+    try {
+      await deleteDoc(doc(db, "global_chat", messageId));
+    } catch (err) {
+      console.error("Errore eliminazione messaggio:", err);
+    }
   };
 
   // 6. INVIO MESSAGGIO
@@ -129,7 +138,6 @@ export default function GlobalChat() {
 
   return (
     <div ref={chatWindowRef}>
-      {/* PULSANTE CHAT */}
       <button className={`chat-toggle-btn ${isOpen ? "open" : ""}`} onClick={() => setIsOpen(!isOpen)}>
         {isOpen ? "✖" : "💬"}
         {unreadCount > 0 && !isOpen && (
@@ -139,7 +147,6 @@ export default function GlobalChat() {
         )}
       </button>
 
-      {/* FINESTRA CHAT */}
       <div className={`global-chat-window ${isOpen ? "visible" : ""}`}>
         <div className="chat-header">
           <span>📜 Locanda di Eldoria</span>
@@ -151,14 +158,25 @@ export default function GlobalChat() {
         <div className="chat-messages" ref={messagesContainerRef} onScroll={handleScroll}>
           {messages.map((m) => (
             <div key={m.id} className={`chat-msg ${m.uid === currentUser.uid ? "own" : ""}`}>
-              <span className="msg-user">{m.displayName}</span>
+              <span className="msg-user">
+                {m.displayName}
+                {/* TASTO ELIMINA SINGOLO (Solo per Master) */}
+                {isMaster && (
+                  <span 
+                    onClick={() => deleteSingleMessage(m.id)} 
+                    style={{ marginLeft: '10px', cursor: 'pointer', color: '#ff4444', fontSize: '0.8rem' }}
+                    title="Elimina messaggio"
+                  >
+                    ❌
+                  </span>
+                )}
+              </span>
               <p className="msg-text">{m.text}</p>
               {m.timestamp && <span className="msg-timestamp">{formatTimestamp(m.timestamp)}</span>}
             </div>
           ))}
           <div ref={chatEndRef} />
           
-          {/* FRECCIA VAI IN FONDO */}
           {/* {showScrollArrow && (
             <button className="chat-scroll-to-bottom-btn" onClick={() => scrollToBottom("smooth")}>
               ⬇️

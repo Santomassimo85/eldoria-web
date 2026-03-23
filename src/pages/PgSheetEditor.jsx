@@ -81,7 +81,7 @@ export default function PgSheetEditor({ isArenaView = false }) {
 
 function RenderSheet({ data, isArena, onRoll }) {
   if (!data) return null;
-
+console.log("Dati ricevuti per", data.name, ":", data); // <--- AGGIUNGI QUESTO
   // Raggruppamento azioni per categoria
   const weapons = data.actions?.filter(a => a.category === "Armi") || [];
   const spells = data.actions?.filter(a => a.category.toLowerCase().includes("livello") || a.category === "Trucchetto") || [];
@@ -117,8 +117,9 @@ function RenderSheet({ data, isArena, onRoll }) {
         </div>
         <div className="pg-info-text">
           <h4 className="pg-name">{data.name}</h4>
-          <span className="pg-class-text">{data.class || "Viandante"}</span>
-        </div>
+<span className="pg-class-text">
+  {(data.class && data.class.trim() !== "") ? data.class : "Viandante"}
+</span>      </div>
       </div>
       
       <div className="pg-stats-grid">
