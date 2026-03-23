@@ -795,14 +795,30 @@ export default function WorldBoss() {
 
       {/* Tasti Rapidi per il Master */}
       <div className="master-quick-actions" style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
-        <button className="btn-hp plus" onClick={(e) => { e.stopPropagation(); damagePlayerManual(p.id, 1); }}>+1</button>
-        <button className="btn-hp plus" onClick={(e) => { e.stopPropagation(); damagePlayerManual(p.id, 3); }}>+3</button>
-        <button className="btn-hp shield" onClick={(e) => { 
-          e.stopPropagation(); 
-          const val = prompt("Quanti HP di scudo?"); 
-          if(val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) });
-        }} style={{ background: '#00bfff', color: 'white' }}>🛡️ Scudo</button>
-      </div>
+  <button className="btn-hp plus" onClick={(e) => { e.stopPropagation(); damagePlayerManual(p.id, 1); }}>+1</button>
+  <button className="btn-hp plus" onClick={(e) => { e.stopPropagation(); damagePlayerManual(p.id, 3); }}>+3</button>
+  
+  <button className="btn-hp shield" onClick={(e) => { 
+    e.stopPropagation(); 
+    const val = prompt("Quanti HP di scudo?"); 
+    if(val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) });
+  }} style={{ background: '#00bfff', color: 'white' }}>🛡️ Scudo</button>
+
+  {/* NUOVO TASTO SVUOTA SCUDO */}
+  {p.stats?.shield > 0 && (
+    <button 
+      className="btn-hp clear-shield" 
+      onClick={(e) => { 
+        e.stopPropagation(); 
+        updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 });
+      }} 
+      title="Rimuovi Scudo"
+      style={{ background: '#ff4444', color: 'white', padding: '2px 5px' }}
+    >
+      ✕
+    </button>
+  )}
+</div>
     </div>
   ))}
 </div>

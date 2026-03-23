@@ -2594,3 +2594,17 @@ button.submit:hover {
     70% { transform: scale(1.2) translateY(-5px); }
     100% { transform: scale(1) translateY(0); opacity: 1; }
 }
+
+
+.market-countdown-container {
+  background: url('tua-immagine-carovana.jpg') center/cover;
+  border: 2px solid var(--gold);
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.8);
+  margin-top: 20px;
+}
+
+.market-countdown-container h2 {
+  font-size: 2.5rem;
+  text-shadow: 2px 2px 4px #000;
+}
