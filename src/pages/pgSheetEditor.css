@@ -20,7 +20,7 @@
 /* Card Personaggio */
 .pg-sheet-card {
     /* background: linear-gradient(145deg, #1a1a1a, #2a2a2a); */
-    border: 2px solid #333;
+    /* border: 2px solid #333; */
     border-radius: 15px;
     padding: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -92,7 +92,7 @@
 }
 
 .stat-box {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(58, 57, 56, 0);
     padding: 10px;
     border-radius: 8px;
     text-align: center;
@@ -101,12 +101,12 @@
 .stat-label {
     display: block;
     font-size: 0.7rem;
-    color: #888;
+    color: #221d1d;
     text-transform: uppercase;
 }
 
 .stat-value {
-    color: #047934 !important;
+    color: #50e68e !important;
     font-weight: bold;
     font-size: 1.1rem;
 }
@@ -153,11 +153,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(26, 24, 22, 0.603);
+    background: rgba(58, 57, 56, 0);
     border: 1px solid #444;
     padding: 10px 15px;
     border-radius: 8px;
-    color: #ffffff;
+    color: #2e1212;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -182,7 +182,7 @@
 
 .action-category {
     font-size: 0.7rem;
-    color: #888;
+    color: #a33e3e;
 }
 
 .action-dmg-tag {
@@ -195,7 +195,7 @@
 }
 
 .no-data-msg {
-    color: #666;
+    color: #da1313;
     text-align: center;
     padding: 40px;
     border: 2px dashed #333;
@@ -207,20 +207,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%;
+    /* width: 100%; */
     margin-bottom: 5px;
+    flex-direction: row;
+    /* align-items: center; */
 }
 
 .btn-left-info {
     display: flex;
     flex-direction: column;
     text-align: left;
+    margin-right: 10px;
 }
 
 /* Stile Descrizione Azione */
 .action-description-text {
     font-size: 0.75rem;
-    color: #ffffffb4;
+    color: #310202b4;
     text-align: left;
     margin: 5px 0 0 0;
     line-height: 1.2;
@@ -256,9 +259,9 @@
 }
 
 /* Colori Categorie */
-.weapon-color { color: #ff4d4d; }
-.spell-color { color: #4d94ff; }
-.feat-color { color: #4dff88; }
+.weapon-color { color: #b12c2c; }
+.spell-color { color: #245aac; }
+.feat-color { color: #219b4a; }
 
 /* --- STILI SPECIFICI ITEM --- */
 
@@ -274,8 +277,14 @@
 }
 .weapon-item .action-dmg-tag {
     background: #8b0000;
+    color: white;
 }
-
+.action-description-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-left: 10px;
+}
 /* Incantesimi (Blu) */
 .spell-item {
     border-left: 4px solid #00448b !important;
@@ -287,6 +296,8 @@
 }
 .spell-item .action-dmg-tag {
     background: #00448b;
+        color: white;
+
 }
 
 /* Abilità (Verde) */
@@ -301,4 +312,6 @@
 }
 .feat-item .action-dmg-tag {
     background: #008b44;
+        color: white;
+
 }

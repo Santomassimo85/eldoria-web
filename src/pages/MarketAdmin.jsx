@@ -4,7 +4,6 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { db } from "../firebase";
 import {
   collection,
-  getDocs,
   doc,
   setDoc,
   deleteDoc,
@@ -54,11 +53,11 @@ export default function MarketAdmin() {
   const [marketConfig, setMarketConfig] = useState(null);
   const descRef = useRef(null);
 
-  // --- 1. HOOKS E LISTENER (ORDINE FISSO) ---
+  // --- 1. HOOKS E LISTENER (Sempre chiamati all'inizio) ---
   useEffect(() => {
     if (!currentUser) return;
 
-    // Listener Timer Globale
+    // Listener Timer Globale (Market Config)
     const unsubConfig = onSnapshot(doc(db, "settings", "market_config"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -67,12 +66,13 @@ export default function MarketAdmin() {
       }
     });
 
-    // Listener Lista Item (Real-time così vedi subito le modifiche)
+    // Listener Lista Item in tempo reale
     const unsubItems = onSnapshot(collection(db, "items"), (snap) => {
       setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
 
+    // Caricamento item specifico per la modifica
     const loadEditItem = async () => {
       if (isEditMode) {
         const itemSnap = await getDoc(doc(db, "items", id));
@@ -90,7 +90,10 @@ export default function MarketAdmin() {
     };
 
     loadEditItem();
-    return () => { unsubConfig(); unsubItems(); };
+    return () => { 
+      unsubConfig(); 
+      unsubItems(); 
+    };
   }, [id, isEditMode, currentUser]);
 
   // --- 2. LOGICHE DI GESTIONE ---
@@ -122,7 +125,6 @@ export default function MarketAdmin() {
         ...formData,
         price: Number(formData.price || 0),
         startingBid: Number(formData.startingBid || 0),
-        // Se è un nuovo item, forziamo i campi mancanti per il template
         votes: formData.votes || { up: [], down: [] },
         createdAt: formData.createdAt || new Date().toISOString()
       };
@@ -212,6 +214,7 @@ export default function MarketAdmin() {
     }
   };
 
+  // --- 3. PROTEZIONE ACCESSO (Sempre dopo gli Hooks) ---
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <p style={{ textAlign: "center", paddingTop: "100px" }}>Accesso negato: solo DM.</p>;
   }
@@ -292,7 +295,6 @@ export default function MarketAdmin() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: "20px", background: "rgba(212,175,55,0.1)", padding: "10px", borderRadius: "5px" }}>
           <input type="checkbox" name="isVisible" checked={formData.isVisible} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
           <label style={{ color: 'var(--gold)', cursor: 'pointer' }}><strong>Attivo Subito?</strong></label>
-          <small style={{ color: '#888' }}>(Se spento, apparirà solo dopo il countdown)</small>
         </div>
 
         <button type="submit" disabled={loading} className="submit-btn" style={{ width: "100%", padding: "15px", fontWeight: "bold", textTransform: "uppercase" }}>
@@ -313,10 +315,9 @@ export default function MarketAdmin() {
                 <div>
                   <span style={{ color: item.isVisible ? "white" : "#888" }}>{item.name}</span>
                   <small style={{ marginLeft: "10px", color: "var(--gold)" }}>{item.price || item.startingBid} MP</small>
-                  {!item.isVisible && <span style={{ fontSize: "0.6rem", color: "#e74c3c", marginLeft: "10px" }}>[PROGRAMMATO]</span>}
                 </div>
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                  {item.saleType === "auction" && !item.isRefunded && (
+                  {item.saleType === "auction" && !item.isSold && (
                     <button onClick={() => handleFinalizeAuctionAndRefund(item.id)} style={{ background: "#27ae60", fontSize: "0.7rem", padding: "5px 10px", border: "none", color: "white", borderRadius: "4px", cursor: "pointer" }}>Finalizza</button>
                   )}
                   <Link to={`/dm-admin/market/edit/${item.id}`} className="admin-link-small" style={{ color: "var(--gold)", fontSize: "0.8rem" }}>Modifica</Link>

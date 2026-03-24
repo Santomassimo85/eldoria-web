@@ -55,10 +55,10 @@ const LoginDropdown = ({ closeMenu = () => {} }) => {
     e.preventDefault();
     setError("");
     try {
-      await login(email, password);
+      login(email, password);
       setIsOpen(false);
       closeMenu();
-    } catch (err) {
+    } catch {
       setError("Credenziali non valide.");
     }
   };

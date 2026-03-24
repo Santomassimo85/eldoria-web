@@ -13,18 +13,15 @@ export default function PlatinumAdmin() {
     const [status, setStatus] = useState('');
     const [tempBalances, setTempBalances] = useState({}); 
 
-    // Protezione DM
-    if (!currentUser || currentUser.email !== MASTER_EMAIL) {
-        return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
-    }
-
-    // Listener in tempo reale (Sostituisce fetchCharacters per essere più reattivo)
+    // --- 1. HOOKS (Sempre chiamati in alto, prima di ogni return) ---
     useEffect(() => {
+        // Se non c'è un utente loggato, non attivare il listener
+        if (!currentUser) return;
+
         const unsub = onSnapshot(collection(db, 'characters'), (snap) => {
             const charList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setCharacters(charList);
             
-            // Aggiorna i saldi temporanei solo per i nuovi PG o se non stiamo scrivendo
             setTempBalances(prev => {
                 const next = { ...prev };
                 charList.forEach(char => {
@@ -38,8 +35,14 @@ export default function PlatinumAdmin() {
         });
 
         return () => unsub();
-    }, []);
-    
+    }, [currentUser]);
+
+    // --- 2. PROTEZIONE DM (Spostata dopo gli hooks per evitare errori di React) ---
+    if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+        return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
+    }
+
+    // --- 3. LOGICHE DI GESTIONE ---
     const handleBalanceChange = (uid, value) => {
         const numericValue = value === '' ? '' : parseInt(value);
         setTempBalances(prev => ({ ...prev, [uid]: numericValue }));
