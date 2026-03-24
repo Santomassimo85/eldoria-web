@@ -47,16 +47,26 @@ const RATTO_LEVELS = [
 
 
 // --- 1. COMPONENTE COUNTDOWN (Spostato fuori per essere definito correttamente) ---
+// --- 1. COMPONENTE COUNTDOWN CORRETTO ---
 const MarketTimer = ({ targetDate }) => {
   const [timeLeft, setTimeLeft] = useState("Calcolo...");
-  
+
   useEffect(() => {
+    // Se la data non esiste, non far partire il timer
+    if (!targetDate) {
+      setTimeLeft("Data non disponibile");
+      return;
+    }
+
     const timer = setInterval(() => {
       const diff = new Date(targetDate) - new Date();
+
       if (diff <= 0) {
         setTimeLeft("APERTURA!");
         clearInterval(timer);
-        window.location.reload(); 
+        // Ricarica solo una volta se effettivamente siamo appena arrivati a zero
+        // Invece di reload() continuo, potresti semplicemente aggiornare lo stato locale
+        // window.location.reload(); 
       } else {
         const d = Math.floor(diff / 86400000);
         const h = Math.floor((diff % 86400000) / 3600000);
@@ -65,6 +75,7 @@ const MarketTimer = ({ targetDate }) => {
         setTimeLeft(`${d}g ${h}h ${m}m ${s}s`);
       }
     }, 1000);
+
     return () => clearInterval(timer);
   }, [targetDate]);
 
@@ -605,20 +616,19 @@ const filteredItems = useMemo(() => {
       />
     ))
   ) : (
-    // SE LA LISTA È VUOTA: Mostriamo il Countdown
     <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "80px 20px" }}>
-      <h2 style={{ color: "var(--gold)", fontSize: "2rem" }}>🏛️ Il Mercato è Chiuso</h2>
-      {marketConfig?.nextOpening ? (
-        <>
-          <p style={{ color: "#ccc", marginBottom: "20px" }}>I mercanti di Obia arriveranno tra:</p>
-          {/* Qui richiami il componente MarketTimer che abbiamo creato prima */}
-          <MarketTimer targetDate={marketConfig.nextOpening} />
-        </>
-      ) : (
-        <p style={{ color: "#ccc" }}>Non ci sono merci disponibili al momento.</p>
-      )}
-    </div>
-  )}
+    <h2 style={{ color: "var(--gold)", fontSize: "2rem" }}>🏛️ Il Mercato è Chiuso</h2>
+    {/* Controllo aggiuntivo per evitare loop se la data è assente o già passata */}
+    {marketConfig?.nextOpening && new Date(marketConfig.nextOpening) > new Date() ? (
+      <>
+        <p style={{ color: "#ccc", marginBottom: "20px" }}>I mercanti di Obia arriveranno tra:</p>
+        <MarketTimer targetDate={marketConfig.nextOpening} />
+      </>
+    ) : (
+      <p style={{ color: "#ccc" }}>Non ci sono merci disponibili al momento. Torna presto!</p>
+    )}
+  </div>
+)}
 </div>
     </section>
   );
