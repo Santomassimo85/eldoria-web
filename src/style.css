@@ -1299,7 +1299,7 @@ a {
     padding: 20px;
     border-radius: 8px;
     flex: 1 1 calc(20% - 24px);
-    max-width: calc(20% - 24px);
+    /* max-width: calc(20% - 24px); */
     min-width: 200px;
     height: 150px;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -1846,7 +1846,7 @@ h6 {
     color: white;
     border: none;
     padding: 2px 9px;
-    height: 20px;
+    height: auto;
     margin: 10px;
     border-radius: 5px;
     cursor: pointer;
@@ -1902,7 +1902,7 @@ strong {
     background-color: #d76e6e;
 }
 
-@media (max-width: 2050px) {
+@media (max-width: 3440px) {
     .admin-block {
         flex: 1 1 calc(45% - 24px);
         max-width: calc(45% - 24px);
@@ -2597,7 +2597,6 @@ button.submit:hover {
 
 
 .market-countdown-container {
-  background: url('tua-immagine-carovana.jpg') center/cover;
   border: 2px solid var(--gold);
   border-radius: 15px;
   box-shadow: 0 0 20px rgba(0,0,0,0.8);

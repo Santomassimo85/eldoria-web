@@ -45,6 +45,32 @@ const RATTO_LEVELS = [
 };
 
 
+
+// --- 1. COMPONENTE COUNTDOWN (Spostato fuori per essere definito correttamente) ---
+const MarketTimer = ({ targetDate }) => {
+  const [timeLeft, setTimeLeft] = useState("Calcolo...");
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const diff = new Date(targetDate) - new Date();
+      if (diff <= 0) {
+        setTimeLeft("APERTURA!");
+        clearInterval(timer);
+        window.location.reload(); 
+      } else {
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${d}g ${h}h ${m}m ${s}s`);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  return <div style={{ fontSize: "2.5rem", color: "var(--gold)", fontWeight: "bold" }}>{timeLeft}</div>;
+};
+
 const RARITIES = ["Comune", "Raro", "Magico", "Epico", "Leggendario"];
 const MASTER_EMAIL = "santomassimo85@gmail.com"; // Definisci MASTER_EMAIL qui
 
@@ -176,6 +202,10 @@ const ItemCard = ({ item, isMaster, onVoteLocal }) => {
   }
 
   
+
+
+
+
 
   return (
     // APPLICA LA NUOVA CLASSE SOLO SE MASTER
@@ -310,6 +340,17 @@ export default function Mercato() {
 
   const [currentUserData, setCurrentUserData] = useState(null);
 
+
+// All'inizio del componente Mercato
+const [marketConfig, setMarketConfig] = useState(null);
+
+useEffect(() => {
+  const unsub = onSnapshot(doc(db, "settings", "market_config"), (snap) => {
+    if (snap.exists()) setMarketConfig(snap.data());
+  });
+  return () => unsub();
+}, []);
+
  // --- NUOVA LOGICA: ASCOLTO PUNTI UTENTE IN TEMPO REALE ---
   useEffect(() => {
     if (!currentUser) return;
@@ -420,58 +461,31 @@ useEffect(() => {
   // }, []);
 
   // --- LOGICA FILTRI E RICERCA ---
-  const filteredItems = useMemo(() => {
-    let filtered = items;
+  // 1. Determiniamo quali oggetti possono essere mostrati (Logica del Timer)
+const visibleItems = useMemo(() => {
+  const now = new Date();
+  // Il mercato è considerato "Aperto" se non c'è una data o se la data è passata
+  const isMarketOpen = marketConfig?.nextOpening 
+    ? now >= new Date(marketConfig.nextOpening) 
+    : true;
 
-    const lowerCaseSearch = searchTerm.toLowerCase();
+  return items.filter(item => {
+    // Se l'oggetto ha la spunta "isVisible", lo mostriamo sempre
+    if (item.isVisible) return true;
+    // Altrimenti, lo mostriamo solo se il countdown è terminato
+    return isMarketOpen;
+  });
+}, [items, marketConfig]);
 
-    // 1. Filtra per Ricerca (nome, classe, tipo) - Attiva solo con >= 3 caratteri
-    if (searchTerm.length >= 3) {
-      filtered = filtered.filter(
-        (item) =>
-          (item.name || "").toLowerCase().includes(lowerCaseSearch) ||
-          (item.class || "").toLowerCase().includes(lowerCaseSearch) || // Usa item.class
-          (item.type || "").toLowerCase().includes(lowerCaseSearch),
-      );
-    }
-
-    // 2. Filtra per Tipologia
-    if (filterType !== "all") {
-      filtered = filtered.filter((item) => item.type === filterType);
-    }
-
-    // 3. Filtra per Rarità
-    if (filterRarity !== "all") {
-      // Usa item.class come campo di rarità primario
-      filtered = filtered.filter((item) => item.class === filterRarity);
-    }
-
-    filtered = filtered.filter((item) => {
-      if (isMaster) return true; // Il Master vede tutto
-      const itemReq = item.minLevel || 0;
-      const userPoints = currentUserData?.rattoPoints || 0;
-      const userLevel = getRattoLevel(userPoints).lv;
-      return userLevel >= itemReq;
-    });
-
-    // Ordina per item non venduti/scaduti, poi per prezzo
-    return filtered.sort((a, b) => {
-      const aStatus =
-        a.isSold ||
-        (a.saleType === "auction" && new Date(a.endDate) < new Date())
-          ? 1
-          : 0;
-      const bStatus =
-        b.isSold ||
-        (b.saleType === "auction" && new Date(b.endDate) < new Date())
-          ? 1
-          : 0;
-      if (aStatus !== bStatus) return aStatus - bStatus;
-
-      return (a.price || a.startingBid) - (b.price || b.startingBid);
-    });
-  }, [items, searchTerm, filterType, filterRarity]);
-
+// 2. Applichiamo i tuoi filtri esistenti (Ricerca, Tipo, Rarità) sugli oggetti visibili
+const filteredItems = useMemo(() => {
+  return visibleItems.filter((item) => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === "all" || item.type === filterType;
+    const matchesRarity = filterRarity === "all" || item.class === filterRarity;
+    return matchesSearch && matchesType && matchesRarity;
+  });
+}, [visibleItems, searchTerm, filterType, filterRarity]);
   return (
     <section className="mercato-page">
       <h1>Mercato Nero di Eldoria</h1>
@@ -576,27 +590,36 @@ useEffect(() => {
       </div>
 
       <div className="items-grid">
-        {filteredItems.map((item) => (
-          // Passa la prop isMaster al componente ItemCard
-          <ItemCard
-            key={item.id}
-            item={item}
-            isMaster={isMaster}
-            onVoteLocal={(itemId, newVotes) => {
-              setItems((prev) =>
-                prev.map((i) =>
-                  i.id === itemId ? { ...i, votes: newVotes } : i,
-                ),
-              );
-            }}
-          />
-        ))}
-        {!loading && filteredItems.length === 0 && (
-          <p style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-            Nessun oggetto trovato con i criteri di ricerca.
-          </p>
-        )}
-      </div>
+  {filteredItems.length > 0 ? (
+    // Se ci sono oggetti visibili, mostrali
+    filteredItems.map((item) => (
+      <ItemCard
+        key={item.id}
+        item={item}
+        isMaster={isMaster}
+        onVoteLocal={(itemId, newVotes) => {
+          setItems((prev) =>
+            prev.map((i) => (i.id === itemId ? { ...i, votes: newVotes } : i))
+          );
+        }}
+      />
+    ))
+  ) : (
+    // SE LA LISTA È VUOTA: Mostriamo il Countdown
+    <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "80px 20px" }}>
+      <h2 style={{ color: "var(--gold)", fontSize: "2rem" }}>🏛️ Il Mercato è Chiuso</h2>
+      {marketConfig?.nextOpening ? (
+        <>
+          <p style={{ color: "#ccc", marginBottom: "20px" }}>I mercanti di Obia arriveranno tra:</p>
+          {/* Qui richiami il componente MarketTimer che abbiamo creato prima */}
+          <MarketTimer targetDate={marketConfig.nextOpening} />
+        </>
+      ) : (
+        <p style={{ color: "#ccc" }}>Non ci sono merci disponibili al momento.</p>
+      )}
+    </div>
+  )}
+</div>
     </section>
   );
 }

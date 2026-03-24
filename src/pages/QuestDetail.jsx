@@ -4,6 +4,20 @@ import { db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
+// --- TABELLA GRUPPI STATICA ---
+const getPartyByCharName = (name) => {
+  const mapping = {
+    "Tanagar": "AMEA",
+    "Garroth": "AMEA",
+    "Luxxion": "AMEA",
+    "Temistocle": "ENOX",
+    "Kaelthas": "ENOX",
+    "Roynot": "ENOC", 
+    "Igor": "AMEA"
+  };
+  return mapping[name] || "Senza Gruppo";
+};
+
 export default function QuestDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -13,183 +27,82 @@ export default function QuestDetail() {
   const [userCharName, setUserCharName] = useState("");
   const [userParty, setUserParty] = useState("");
 
-  // 1. Recupera nome PG per accettazione/notifica
   useEffect(() => {
     if (currentUser) {
       const fetchUserChar = async () => {
         const userRef = doc(db, "characters", currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
-          const data = userSnap.data();
-          setUserCharName(data.name);
-          setUserParty(data.party); // <--- RECUPERA IL CAMPO 'party' DAL DB
+          const charName = userSnap.data().name || "Eroe";
+          setUserCharName(charName);
+          setUserParty(getPartyByCharName(charName)); 
         }
       };
       fetchUserChar();
     }
   }, [currentUser]);
 
-  // 2. Recupera i dati della Quest
   useEffect(() => {
     const fetchQuest = async () => {
-      const docRef = doc(db, "quests", id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setQuest({ id: docSnap.id, ...docSnap.data() });
-      }
+      const docSnap = await getDoc(doc(db, "quests", id));
+      if (docSnap.exists()) setQuest({ id: docSnap.id, ...docSnap.data() });
       setLoading(false);
     };
     fetchQuest();
   }, [id]);
 
   const handleAccept = async () => {
-    if (!userCharName || !userParty) {
-      alert("Errore: dati personaggio non trovati.");
+    if (!userCharName || userCharName === "Eroe") {
+      alert("Errore: il tuo personaggio non ha un nome valido!");
       return;
     }
-
-    const questRef = doc(db, "quests", id);
+    
+    const staticParty = getPartyByCharName(userCharName);
 
     try {
-      // Salviamo sia chi l'ha cliccata, sia il party di appartenenza
-      await updateDoc(questRef, {
+      await updateDoc(doc(db, "quests", id), {
         acceptedBy: userCharName,
-        acceptedParty: userParty, // <--- FONDAMENTALE PER IL FILTRO
+        acceptedParty: staticParty,
         status: "in_progress",
       });
-
-      // Aggiorna lo stato locale per mostrare subito il cambiamento
-      setQuest((prev) => ({
-        ...prev,
-        acceptedBy: userCharName,
-        acceptedParty: userParty,
-      }));
-
-
-      // Notifica Pipedream (opzionale se vuoi tenerla)
-      const params = new URLSearchParams();
-      params.append("Mittente", userCharName);
-      params.append(
-        "Messaggio_Giocatore",
-        `HA ACCETTATO LA MISSIONE: ${quest.title}`,
-      );
-      fetch("https://eo8kpflu157ld7n.m.pipedream.net", {
-        method: "POST",
-        body: params,
-      });
-
-      alert("Incarico Accettato!");
-      navigate("/bacheca"); // Torna alla bacheca
+      alert(`Incarico accettato per il party: ${staticParty}`);
+      navigate("/bacheca");
     } catch (error) {
-      console.error("Errore accettazione missione:", error);
+      console.error("Errore salvataggio missione:", error);
     }
   };
 
-  if (loading)
-    return (
-      <p style={{ textAlign: "center", paddingTop: "50px" }}>
-        Leggendo i sigilli...
-      </p>
-    );
-  if (!quest)
-    return (
-      <p style={{ textAlign: "center", paddingTop: "50px" }}>
-        Missione scomparsa nel nulla.
-      </p>
-    );
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Leggendo i sigilli...</p>;
+  if (!quest) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Incarico non trovato.</p>;
 
   return (
-    <section
-      className="quest-detail-page"
-      style={{
-        padding: "40px",
-        maxWidth: "800px",
-        margin: "0 auto",
-        color: "black",
-      }}
-    >
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          background: "none",
-          border: "1px solid var(--gold)",
-          color: "var(--gold)",
-          padding: "10px 20px",
-          cursor: "pointer",
-          marginBottom: "30px",
-        }}
-      >
-        ← Torna alla Bacheca
-      </button>
-
-      <div
-        className="scroll-detail-content"
-        style={{
-          background: "rgba(240, 233, 220, 0.7)",
-          padding: "40px",
-          borderRadius: "15px",
-          border: "2px solid var(--gold)",
-        }}
-      >
-        <h1
-          style={{
-            color: "var(--gold)",
-            borderBottom: "1px solid #333",
-            paddingBottom: "20px",
-          }}
-        >
-          {quest.title}
-        </h1>
-
-        <div
-          style={{ marginTop: "20px", fontSize: "1.2rem", lineHeight: "1.8" }}
-        >
-          <p>
-            <strong>Da:</strong> {quest.sender || "Ignoto"}
-          </p>
-          <p>
-            <strong>Zona:</strong> {quest.zona}
-          </p>
-          <p>
-            <strong>Difficoltà:</strong> {quest.diff}
-          </p>
-          <hr style={{ borderColor: "#333", margin: "20px 0" }} />
-          <p>
-            <strong>Messaggio:</strong>
-          </p>
-          <p style={{ fontStyle: "italic", whiteSpace: "pre-wrap" }}>
-            {quest.desc}
-          </p>
-
-          <div
-            style={{
-              background: "rgba(255,215,0,0.1)",
-              padding: "20px",
-              marginTop: "20px",
-              borderRadius: "10px",
-            }}
-          >
-            <p>
-              <strong>Ricompense:</strong> {quest.rewardGold} Platino,{" "}
-              {quest.rewardItem}, {quest.rewardOther}
-            </p>
-          </div>
+    <section className="quest-detail-page" style={{ maxWidth: '800px', margin: '0 auto', padding: '40px' }}>
+      <button onClick={() => navigate(-1)} className="back-button">← Torna alla Bacheca</button>
+      <div className="scroll-detail-content" style={{ background: 'rgba(255,255,255,0.8)', padding: '30px', borderRadius: '15px', border: '2px solid var(--gold)', marginTop: '20px' }}>
+        <h1 style={{ color: 'var(--gold)', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>{quest.title}</h1>
+        <p><strong>Emesso da:</strong> {quest.sender || "Mittente Misterioso"}</p>
+        <p><strong>Zona:</strong> {quest.zona}</p>
+        <p style={{ marginTop: '20px', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{quest.desc}</p>
+        
+        <div style={{ background: 'rgba(212,175,55,0.1)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
+            <strong>Ricompense:</strong> {quest.rewardGold || 0} Platino, {quest.rewardItem || "Nessun Oggetto"}
         </div>
 
+        {/* Mostra il pulsante "Accetta" solo se la missione è libera */}
         {!quest.acceptedBy ? (
-  <button onClick={handleAccept} className="questDetailButton">
-    Accetta la Missione
-  </button>
-) : (
-  <div style={{ textAlign: "center", marginTop: "30px" }}>
-    <p style={{ color: "var(--gold)", fontSize: "1.1rem", fontWeight: "bold" }}>
-      📜 Missione presa dal gruppo: {quest.acceptedParty || "Ignoto"}
-    </p>
-    <p style={{ color: "red", fontSize: "0.9rem", opacity: 0.8 }}>
-      (Referente: {quest.acceptedBy})
-    </p>
-  </div>
-)}
+          <button 
+            onClick={handleAccept} 
+            className="invia" 
+            style={{ width: '100%', marginTop: '30px', height: '50px', fontSize: '1.2rem' }}
+          >
+            Accetta Missione
+          </button>
+        ) : (
+          <div style={{ textAlign: 'center', marginTop: '30px', color: 'var(--gold)' }}>
+            <p>📜 Incarico attualmente gestito da: <strong style={{color: quest.acceptedParty === userParty ? '#27ae60' : '#e74c3c'}}>{quest.acceptedParty}</strong></p>
+            {quest.acceptedBy === userCharName && <p>(Tu hai accettato questa missione)</p>}
+          </div>
+        )}
       </div>
     </section>
   );
