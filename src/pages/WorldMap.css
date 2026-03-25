@@ -116,6 +116,7 @@
     opacity: 0;
     position: absolute;
     bottom: 45px;
+    color: #fff;
     left: 50%;
     transform: translateX(-50%);
     width: 260px;
@@ -137,17 +138,7 @@
     opacity: 1;
 }
 
-.tooltip-image-container {
-    position: absolute;
-    /* Si sgancia dal flusso */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* Copre tutta l'altezza del tooltip */
-    z-index: 1;
-    /* Sta sotto i testi */
-}
+
 
 .tooltip-image-container img {
     width: 100%;
@@ -178,6 +169,7 @@
     left: 0;
     width: 100%;
     padding: 20px;
+    color: #ccc;
     /* Spazio interno per i testi */
     box-sizing: border-box;
     /* Include il padding nella larghezza */
@@ -308,12 +300,13 @@
   letter-spacing: 1px;
 }
 
-.rewards-text {
-  color: #fff;
+.reward-text {
+  color: #fff !important;
   font-size: 1.1rem;
   margin-top: 5px;
   text-shadow: 1px 1px 2px #000;
   font-style: italic;
+  background-color: #f3ca157e;
 }
 
 @keyframes rewards-pulse {

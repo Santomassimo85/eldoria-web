@@ -70,7 +70,7 @@ export default function WorldMap() {
                   </div>
                 )}
 
-                <div className="mini-timer" style={{color: '#d4af37', fontSize: '0.9rem', margin: '5px 0'}}>
+                <div className="mini-timer" >
                   ⏳ <TimerDisplay expiryDate={boss.expiryDate} />
                 </div>
 
