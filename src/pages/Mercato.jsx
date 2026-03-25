@@ -71,33 +71,50 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids }) => {
   const isSold = item.isSold === true;
   const isAuction = item.saleType === "auction";
 
+  // Recupero offerta del player corrente per feedback visivo
   const userBidObj = (isAuction && item.bids && currentUser) ? item.bids[currentUser.uid] : null;
 
   return (
     <div className={`item-card ${isSold ? "sold" : ""} ${isMaster ? "admin-card-expanded" : ""}`} onClick={() => !isSold && navigate(`/mercato/${item.id}`)}>
       <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="item-image" />
+      
       <div className="item-details">
-        <p className={`item-rarity item-rarity-${(item.class || "Comune").replace(/\s/g, "")}`}>{item.class || "Comune"}</p>
+        <p className={`item-rarity item-rarity-${(item.class || "Comune").replace(/\s/g, "")}`}>
+          {item.class || "Comune"}
+        </p>
         <p className="item-name"><strong>{item.name}</strong></p>
-        <p className="item-price">{isSold ? "VENDUTO" : item.saleType === "fixed" ? `${item.price} MP` : `Base: ${item.startingBid} MP`}</p>
+        <p className="item-price">
+          {isSold ? "VENDUTO" : item.saleType === "fixed" ? `${item.price} MP` : `Base: ${item.startingBid} MP`}
+        </p>
+
+        {/* --- NUOVA SEZIONE: DESCRIZIONE --- */}
+        <div 
+          className="item-card-description"
+          dangerouslySetInnerHTML={{ __html: item.description }}
+        />
 
         <div className="item-bids-summary">
           {isMaster && item.bids && Object.keys(item.bids).length > 0 && (
             <div className="master-bids-view">
               <p className="bid-title">📢 Offerte ({Object.keys(item.bids).length}):</p>
               {Object.entries(item.bids).map(([uid, bid]) => (
-                <div key={uid} className="bid-row-admin">
+                <div key={uid} className="bid-row-admin" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <small>{bid.charName || "Eroe"}: <strong>{bid.amount || bid} MP</strong></small>
                   <button 
                     className="btn-remove-bid" 
-                    title="Rimborsa e Rimuovi" 
-                    onClick={(e) => { e.stopPropagation(); onRemoveBid(item.id, uid, bid.amount || bid); }}
+                    title="Rimborsa e Rimuovi"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onRemoveBid(item.id, uid, bid.amount || bid); 
+                    }}
+                    style={{color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold'}}
                   >✕</button>
                 </div>
               ))}
               <button 
                 className="btn-clear-all-bids" 
                 onClick={(e) => { e.stopPropagation(); onClearAllBids(item.id, item.bids); }}
+                style={{width: '100%', marginTop: '10px', background: '#c0392b', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer'}}
               >Svuota e Rimborsa Tutti</button>
             </div>
           )}
@@ -110,7 +127,7 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids }) => {
           
           {isSold && item.buyerName && (
             <div className="sold-to-info">
-              <small>Acquistato da: {item.buyerName}</small>
+              <small>Preso da: {item.buyerName}</small>
             </div>
           )}
         </div>

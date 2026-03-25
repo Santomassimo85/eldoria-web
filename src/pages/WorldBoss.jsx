@@ -415,6 +415,27 @@ export default function WorldBoss() {
     });
   };
 
+  const healBossManual = async (amount) => {
+  const boss = activeBosses[0];
+  if (!boss) return;
+  
+  await updateDoc(doc(db, "bosses", boss.id), {
+    hp: Math.min(boss.maxHp, boss.hp + amount) // Cura senza superare il max
+  });
+};
+
+const shieldBossManual = async () => {
+  const boss = activeBosses[0];
+  if (!boss) return;
+  
+  const val = prompt("Quanti HP di scudo vuoi dare al Boss?");
+  if (val && !isNaN(val)) {
+    await updateDoc(doc(db, "bosses", boss.id), {
+      shield: increment(parseInt(val))
+    });
+  }
+};
+
   const clearChat = async () => {
     if (!window.confirm("Purgare la chat?")) return;
     const snapshot = await getDocs(collection(db, "world_boss_chat"));
@@ -898,36 +919,57 @@ export default function WorldBoss() {
                   </div>
 
                   <div className="boss-actions-monitor">
-                    <h4>Azioni Boss</h4>
-                    {activeBosses[0] && (
-                      <div className="wb-action-list">
-                        <button
-                          className="wb-btn-action boss-atk"
-                          onClick={() =>
-                            handleBossRoll(
-                              activeBosses[0],
-                              activeBosses[0].action1,
-                            )
-                          }
-                        >
-                          ⚔️ {activeBosses[0].action1.name} (
-                          {activeBosses[0].action1.damage})
-                        </button>
-                        <button
-                          className="wb-btn-action boss-atk"
-                          onClick={() =>
-                            handleBossRoll(
-                              activeBosses[0],
-                              activeBosses[0].action2,
-                            )
-                          }
-                        >
-                          🔥 {activeBosses[0].action2.name} (
-                          {activeBosses[0].action2.damage})
-                        </button>
-                      </div>
-                    )}
-                  </div>
+  <h4>Azioni Boss</h4>
+  {activeBosses[0] && (
+    <>
+      <div className="wb-action-list">
+        <button
+          className="wb-btn-action boss-atk"
+          onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action1)}
+        >
+          ⚔️ {activeBosses[0].action1.name} ({activeBosses[0].action1.damage})
+        </button>
+        <button
+          className="wb-btn-action boss-atk"
+          onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action2)}
+        >
+          🔥 {activeBosses[0].action2.name} ({activeBosses[0].action2.damage})
+        </button>
+      </div>
+
+      {/* NUOVI CONTROLLI RIGENERAZIONE BOSS */}
+      <h4 style={{marginTop: '15px', borderTop: '1px dashed #666', paddingTop: '10px'}}>Gestione Boss</h4>
+      <div className="boss-management-btns" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+        <button 
+          onClick={() => healBossManual(5)}
+          style={{ background: '#27ae60', color: 'white', flex: 1, padding: '5px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Cura +5
+        </button>
+        <button 
+          onClick={() => healBossManual(10)}
+          style={{ background: '#2ecc71', color: 'white', flex: 1, padding: '5px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Cura +10
+        </button>
+        <button 
+          onClick={shieldBossManual}
+          style={{ background: '#00bfff', color: 'white', flex: 1, padding: '5px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          🛡️ Scudo
+        </button>
+        {activeBosses[0].shield > 0 && (
+          <button 
+            onClick={() => updateDoc(doc(db, "bosses", activeBosses[0].id), { shield: 0 })}
+            style={{ background: '#ff4444', color: 'white', padding: '5px 10px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </>
+  )}
+</div>
                 </div>
               ) : (
                 <>

@@ -360,6 +360,7 @@ a.scheda {
      padding: 12px 25px;
      border: none;
      border-radius: 20px;
+     margin: 10px auto;
      cursor: pointer;
      font-size: 0.9rem;
      transition: background 0.2s;
@@ -835,7 +836,8 @@ input {
      background-color: #fcfcfc;
      border-radius: 18px;
      position: relative;
-     overflow: hidden;
+     overflow: scroll;
+          overflow-x: hidden;
      cursor: pointer;
      transition: transform 0.2s, box-shadow 0.2s, height 0.3s ease-out;
      text-align: center;
@@ -871,7 +873,7 @@ input {
 }
 .item-card:hover {
      transform: translateY(-5px);
-     box-shadow: 0 8px 15px rgba(130, 10, 10, 0.3);
+     box-shadow: 10px 10px 0 rgba(130, 10, 10, 1);
 }
 
 .item-card .bid-list-content {
@@ -880,7 +882,25 @@ input {
 
 .item-card.admin-card-expanded {
      height: 900px !important;
-     overflow: visible;
+     overflow:auto;
+     overflow-x: hidden;
+}
+.item-card-description {
+    font-size: 0.85rem;
+    color: #4e4141;
+    margin: 10px 0;
+    line-height: 1.3;
+    /* Taglia il testo dopo 3 righe */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;  
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Rimuove eventuali margini eccessivi dai paragrafi dentro la descrizione */
+.item-card-description p {
+    margin: 0;
 }
 
 .item-image {
