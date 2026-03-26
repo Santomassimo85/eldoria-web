@@ -245,7 +245,8 @@
 .hp-container-mini {
     width: 100%;
     height: 10px;
-    background: rgba(0, 0, 0, 0.5); /* Sfondo scuro per la parte vuota */
+    background: rgba(0, 0, 0, 0.5);
+    /* Sfondo scuro per la parte vuota */
     border: 1px solid #d4af37;
     border-radius: 5px;
     margin: 10px 0 5px 0;
@@ -255,7 +256,8 @@
 /* Riempimento Rosso Solido */
 .hp-bar-fill-mini {
     height: 100%;
-    background: #ff0000; /* Rosso puro, senza gradiente */
+    background: #ff0000;
+    /* Rosso puro, senza gradiente */
     transition: width 0.3s ease;
 }
 
@@ -279,43 +281,304 @@
 }
 
 .boss-rewards-glow-box {
-  background: rgba(212, 175, 55, 0.15);
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  padding: 10px;
-  margin: 10px auto;
-  max-width: 80%;
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
-  animation: rewards-pulse 2s infinite alternate;
-  text-align: center;
+    background: rgba(212, 175, 55, 0.15);
+    border: 2px solid #d4af37;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px auto;
+    max-width: 80%;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+    animation: rewards-pulse 2s infinite alternate;
+    text-align: center;
 }
 
 .rewards-label {
-  display: block;
-  font-family: 'Cinzel Decorative', serif;
-  font-weight: bold;
-  color: #d4af37;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+    display: block;
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: bold;
+    color: #d4af37;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .reward-text {
-  color: #fff !important;
-  font-size: 1.1rem;
-  margin-top: 5px;
-  text-shadow: 1px 1px 2px #000;
-  font-style: italic;
-  background-color: #f3ca157e;
+    color: #fff !important;
+    font-size: 1.1rem;
+    margin-top: 5px;
+    text-shadow: 1px 1px 2px #000;
+    font-style: italic;
+    background-color: #f3ca157e;
 }
 
 @keyframes rewards-pulse {
-  from {
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
-    border-color: #d4af37;
-  }
-  to {
-    box-shadow: 0 0 25px rgba(212, 175, 55, 0.7);
+    from {
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        border-color: #d4af37;
+    }
+
+    to {
+        box-shadow: 0 0 25px rgba(212, 175, 55, 0.7);
+        border-color: #fff;
+    }
+}
+
+/* WorldMap.css */
+
+.npc-anchor {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    transform: translate(-50%, -50%);
+    z-index: 9;
+    cursor: pointer;
+}
+
+.npc-ping-visual {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, #1cfae7 30%, transparent 70%);
+    /* Oro per NPC */
+    border: 1px solid white;
+    border-radius: 50%;
+    animation: npc-pulse 2.5s infinite;
+}
+
+@keyframes npc-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(6, 255, 243, 0.7);
+        transform: scale(1);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(55, 212, 178, 0);
+        transform: scale(1.1);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(55, 212, 160, 0.521);
+        transform: scale(1);
+    }
+}
+
+.npc-anchor:hover .npc-tooltip {
+    visibility: visible;
+    opacity: 1;
+    bottom: 40px;
+}
+
+.npc-desc-mini {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #1d1515;
+    margin-top: 5px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.faction-badge {
+    color: var(--gold);
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.city-anchor {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 8;
+}
+
+.city-ping {
+    width: 25px;
+    height: 25px;
+    background: url('/assets/icons/city-icon.png') no-repeat center;
+    /* Se hai un'icona città */
+    background-size: contain;
+    background-color: rgba(55, 212, 152, 0.8);
+    border: 2px solid white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgb(0, 255, 221);
+}
+
+.city-count {
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: black;
+}
+
+/* Tooltip Hub */
+.city-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(243, 237, 237, 0.95);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    width: 220px;
+    padding: 10px;
+    z-index: 100;
+    transition: 0.3s;
+}
+
+.city-anchor:hover .city-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.city-title {
+    color: var(--gold);
+    text-align: center;
+    border-bottom: 1px solid #444;
+    margin-bottom: 8px;
+    font-family: 'Almendra', serif;
+}
+
+/* Lista NPC interna */
+.npc-scroll-list {
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.npc-mini-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 248, 248, 0.05);
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.npc-mini-card img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--gold);
+}
+
+.npc-mini-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+}
+
+.npc-mini-info strong {
+    color: #0e0c0c;
+}
+
+.npc-mini-info span {
+    color: rgb(219, 168, 1);
+    font-size: 0.65rem;
+}
+
+/* Overlay di sfondo per focus */
+.npc-expanded-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(247, 247, 247, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+/* Modal del Dettaglio */
+.npc-detail-modal {
+    background: linear-gradient(145deg, #ffffff9c, #ffffff);
+    border: 2px solid var(--gold);
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    padding: 25px;
+    position: relative;
+    box-shadow: 0 0 50px rgba(212, 175, 55, 0.3);
+    animation: modalAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--gold);
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+.modal-header {
+    display: flex;
+    gap: 20px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.modal-header img {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+    border: 2px solid var(--gold);
+    object-fit: cover;
+}
+
+.header-text h2 {
+    margin: 0;
+    color: #3b0e0e;
+    font-family: 'Almendra', serif;
+}
+
+.faction-tag {
+    color: var(--gold);
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.modal-body h4 {
+    color: var(--gold);
+    margin-bottom: 10px;
+}
+
+.modal-body p {
+    color: #4b3939;
+    line-height: 1.6;
+    font-style: italic;
+    white-space: pre-wrap;
+    /* Mantiene gli a capo del Master */
+}
+
+/* Evidenzia l'NPC selezionato nella lista */
+.npc-mini-card.active-npc {
     border-color: #fff;
-  }
+    background: rgba(212, 175, 55, 0.2);
 }
