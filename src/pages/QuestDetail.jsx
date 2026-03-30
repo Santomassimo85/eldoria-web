@@ -9,11 +9,11 @@ const getPartyByCharName = (name) => {
   const mapping = {
     "Tanagar": "AMEA",
     "Garroth": "AMEA",
-    "Luxxion": "AMEA",
-    "Temistocle": "ENOX",
-    "Kaelthas": "ENOX",
-    "Roynot": "ENOC", 
-    "Igor": "AMEA"
+    "Caius Maxis-Richtofen": "AMEA",
+    "Temistocle Sottocolle Milo": "ENOX",
+    "Vyger": "",
+    "Roynot": "ENOX", 
+    "Dante": "ENOX"
   };
   return mapping[name] || "Senza Gruppo";
 };
@@ -90,19 +90,23 @@ export default function QuestDetail() {
 
         {/* Mostra il pulsante "Accetta" solo se la missione è libera */}
         {!quest.acceptedBy ? (
-          <button 
-            onClick={handleAccept} 
-            className="invia" 
-            style={{ width: '100%', marginTop: '30px', height: '50px', fontSize: '1.2rem' }}
-          >
-            Accetta Missione
-          </button>
-        ) : (
-          <div style={{ textAlign: 'center', marginTop: '30px', color: 'var(--gold)' }}>
-            <p>📜 Incarico attualmente gestito da: <strong style={{color: quest.acceptedParty === userParty ? '#27ae60' : '#e74c3c'}}>{quest.acceptedParty}</strong></p>
-            {quest.acceptedBy === userCharName && <p>(Tu hai accettato questa missione)</p>}
-          </div>
-        )}
+  <button onClick={handleAccept} className="invia">Accetta Missione</button>
+) : (
+  <div style={{ textAlign: 'center', marginTop: '30px' }}>
+    <p>📜 Incarico in gestione al Party: 
+      <strong style={{
+        color: quest.acceptedParty === userParty ? '#27ae60' : '#e74c3c',
+        marginLeft: '10px'
+      }}>
+        {quest.acceptedParty}
+      </strong>
+    </p>
+    {/* Se l'ha presa qualcuno del mio party, mostro il nome del compagno */}
+    {quest.acceptedParty === userParty && quest.acceptedBy !== userCharName && (
+      <p style={{fontSize: '0.9rem'}}>(Accettata da {quest.acceptedBy})</p>
+    )}
+  </div>
+)}
       </div>
     </section>
   );

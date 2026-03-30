@@ -66,7 +66,7 @@ export default function WorldMap() {
   return (
     <div className="map-page">
       <h1 className="gold-text" style={{ textAlign: "center" }}>
-        Mappa delle Minacce di Eldoria
+        Mappa delle Minacce di Exanthia
       </h1>
 
       <div className="map-container">

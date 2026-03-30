@@ -13,37 +13,31 @@ export default function QuestAdmin() {
   const [quests, setQuests] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [sender, setSender] = useState(""); // Nuovo stato per il mittente
+  const [sender, setSender] = useState("");
 
-  // Stato del Form con ricompense divise e destinatario
   const [formData, setFormData] = useState({
     title: "",
-    sender: "",
     desc: "",
     diff: "Media",
     type: "Generale", 
-  cr: "1", 
+    cr: "1", 
     zona: "",
     rewardGold: 0,
     rewardItem: "",
     rewardOther: "",
-    targetCharacter: "All",
+    targetCharacter: "All", // Gestirà sia "All", che i nomi dei PG, che i nomi dei Party
   });
 
-  // 1. Carica Quest e Personaggi dal Database
   const fetchData = async () => {
     try {
-      // Carica le Quest attive
       const questSnap = await getDocs(collection(db, "quests"));
       setQuests(questSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
-      // Carica i Personaggi (usando il campo 'name' che hai appena aggiunto)
       const charSnap = await getDocs(collection(db, "characters"));
-      const charList = charSnap.docs.map((d) => ({
+      setCharacters(charSnap.docs.map((d) => ({
         id: d.id,
         charName: d.data().name || "Eroe Senza Nome",
-      }));
-      setCharacters(charList);
+      })));
     } catch (error) {
       console.error("Errore nel caricamento dati:", error);
     }
@@ -53,51 +47,46 @@ export default function QuestAdmin() {
     fetchData();
   }, []);
 
-  // 2. Gestione Invio Nuova Missiva
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Logica per distinguere se il destinatario è un Party o un PG
+      const isParty = ["AMEA", "ENOX", "LAC"].includes(formData.targetCharacter);
+      
       await addDoc(collection(db, "quests"), {
         ...formData,
-        // Se il campo sender non è dentro formData, puoi aggiungerlo qui esplicitamente:
         sender: sender,
-        rewardGold: Number(formData.rewardGold), // Forza il formato numerico per le monete
+        targetParty: isParty ? formData.targetCharacter : "All",
+        targetCharacter: isParty ? "All" : formData.targetCharacter,
+        rewardGold: Number(formData.rewardGold),
         createdAt: new Date().toISOString(),
       });
 
-      // Reset dei campi dopo l'invio (Aggiunto sender qui)
       setFormData({
         title: "",
-        sender: "",
         desc: "",
         diff: "Media",
+        type: "Generale",
+        cr: "1",
         zona: "",
         rewardGold: 0,
         rewardItem: "",
         rewardOther: "",
         targetCharacter: "All",
       });
-
-setSender("");
-
-      fetchData(); // Rinfresca la lista visualizzata
-      alert("La pergamena è stata appesa in bacheca!");
+      setSender("");
+      fetchData();
+      alert("La pergamena è stata sigillata e appesa!");
     } catch (error) {
       console.error("Errore salvataggio:", error);
-      alert("Errore nel sigillare la missiva.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Rimoziome Quest
   const handleDelete = async (id) => {
-    if (
-      window.confirm(
-        "Sei sicuro di voler strappare questa missione dalla bacheca?",
-      )
-    ) {
+    if (window.confirm("Vuoi davvero strappare questa missione dalla bacheca?")) {
       await deleteDoc(doc(db, "quests", id));
       fetchData();
     }
@@ -105,144 +94,99 @@ setSender("");
 
   return (
     <section className="admin-page quest-admin">
-      <Link to="/dm-admin" className="back-button">
-        ← Dashboard Master
-      </Link>
+      <Link to="/dm-admin" className="back-button">← Dashboard Master</Link>
       <h1>Gestione Bacheca di Hemile</h1>
 
       <div className="admin-container">
-        {/* FORM DI CREAZIONE MISSIONE */}
         <h3>Nuova Missiva</h3>
-  <form onSubmit={handleSubmit}>
-    <input
-      type="text"
-      placeholder="Titolo della Quest"
-      value={formData.title}
-      onChange={(e) => setFormData({...formData, title: e.target.value})}
-      required
-    />
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Titolo della Quest"
+            value={formData.title}
+            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            required
+          />
 
-    {/* INPUT MITTENTE: Usiamo il tuo stato 'sender' */}
-    <input
-      type="text"
-      placeholder="Mittente della Missiva (es. Hemile, Un Corvo Ignoto...)"
-      value={sender} 
-      onChange={(e) => setSender(e.target.value)}
-      style={{
-        width: "100%",
-        padding: "10px",
-        background: "white",
-        color: "black",
-        border: "1px solid #ccc",
-        borderRadius: "5px",
-        marginBottom: "10px",
-        marginTop: "10px"
-      }}
-      required
-    />
+          <input
+            type="text"
+            placeholder="Mittente (es. Hemile, Un Corvo Ignoto...)"
+            value={sender} 
+            onChange={(e) => setSender(e.target.value)}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px", marginTop: "10px", borderRadius: "5px", border: "1px solid #ccc" }}
+            required
+          />
 
-            <textarea
-              placeholder="Descrizione per i giocatori (Lore e obiettivi)..."
-              value={formData.desc}
-              onChange={(e) =>
-                setFormData({ ...formData, desc: e.target.value })
-              }
+          <textarea
+            placeholder="Descrizione (Lore e obiettivi)..."
+            value={formData.desc}
+            onChange={(e) => setFormData({ ...formData, desc: e.target.value })}
+            required
+            style={{ width: "100%", height: "120px", padding: "10px", borderRadius: "10px", border: "1px solid #ccc" }}
+          />
+
+          <div className="form-row">
+            <select value={formData.diff} onChange={(e) => setFormData({ ...formData, diff: e.target.value })}>
+              <option value="Facile">Facile</option>
+              <option value="Media">Media</option>
+              <option value="Difficile">Difficile</option>
+              <option value="Eroica">Eroica</option>
+            </select>
+            <input
+              placeholder="Zona di Eldoria"
+              value={formData.zona}
+              onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
               required
-              style={{
-                width: "100%",
-                height: "150px",
-                borderRadius: "15px",
-                padding: "10px",
-                fontSize: "1rem",
-                border: "1px solid #ccc",
-              }}
-              rows="4"
             />
-            <div className="form-row">
-              <select
-                value={formData.diff}
-                onChange={(e) =>
-                  setFormData({ ...formData, diff: e.target.value })
-                }
-              >
-                <option value="Facile">Facile</option>
-                <option value="Media">Media</option>
-                <option value="Difficile">Difficile</option>
-                <option value="Eroica">Eroica</option>
-              </select>
-              <input
-                placeholder="Zona di Eldoria"
-                value={formData.zona}
-                onChange={(e) =>
-                  setFormData({ ...formData, zona: e.target.value })
-                }
-                required
-              />
-            </div>
-            <div className="form-row">
-  <label>Tipo Missione:</label>
-  <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
-    <option value="Generale">Generale (Party)</option>
-    <option value="Mondiale">Mondiale (World Boss)</option>
-  </select>
+          </div>
 
-  <label>Grado Sfida (CR):</label>
-  <select value={formData.cr} onChange={(e) => setFormData({...formData, cr: e.target.value})}>
-    <option value="1">Livello 1 (CR 1/4)</option>
-    <option value="3">Livello 3 (CR 2)</option>
-    <option value="5">Livello 5 (CR 5)</option>
-    <option value="10">Livello 10 (CR 10)</option>
-        <option value="12">Livello 12 (CR 12)</option>
-    <option value="15">Livello 15 (CR 15)</option>
+          {/* <div className="form-row">
+            <label>Tipo:</label>
+            <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
+              <option value="Generale">Generale</option>
+              <option value="Mondiale">Mondiale</option>
+            </select>
 
-  </select>
-</div>
+            <label>CR:</label>
+            <select value={formData.cr} onChange={(e) => setFormData({...formData, cr: e.target.value})}>
+              <option value="1">Livello 1</option>
+              <option value="3">Livello 3</option>
+              <option value="5">Livello 5</option>
+              <option value="10">Livello 10</option>
+            </select>
+          </div> */}
 
           <div className="form-section">
-            <h3>💰 Ricompense Promesse</h3>
+            <h3>💰 Ricompense</h3>
             <div className="reward-inputs">
-              <input
-                type="number"
-                placeholder="Monete Platino"
-                value={formData.rewardGold}
-                onChange={(e) =>
-                  setFormData({ ...formData, rewardGold: e.target.value })
-                }
-              />
-              <input
-                type="text"
-                placeholder="Oggetto Magico / Loot"
-                value={formData.rewardItem}
-                onChange={(e) =>
-                  setFormData({ ...formData, rewardItem: e.target.value })
-                }
-              />
-              <input
-                type="text"
-                placeholder="Altro (Informazioni, Legami...)"
-                value={formData.rewardOther}
-                onChange={(e) =>
-                  setFormData({ ...formData, rewardOther: e.target.value })
-                }
-              />
+              <input type="number" placeholder="Platino" value={formData.rewardGold} onChange={(e) => setFormData({ ...formData, rewardGold: e.target.value })} />
+              <input type="text" placeholder="Oggetto/Loot" value={formData.rewardItem} onChange={(e) => setFormData({ ...formData, rewardItem: e.target.value })} />
             </div>
           </div>
 
           <div className="form-section">
-            <h3>👤 Destinatario (Segretezza)</h3>
+            <h3>👤 DESTINATARIO (SEGRETEZZA)</h3>
             <select
               value={formData.targetCharacter}
-              onChange={(e) =>
-                setFormData({ ...formData, targetCharacter: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, targetCharacter: e.target.value })}
               className="target-select"
+              style={{ width: "100%", padding: "10px", borderRadius: "5px" }}
             >
               <option value="All">🌐 Pubblica (Visibile a tutti)</option>
-              {characters.map((char) => (
-                <option key={char.id} value={char.charName}>
-                  🔒 Solo per {char.charName}
-                </option>
-              ))}
+              
+              <optgroup label="🛡️ Party">
+                <option value="AMEA">Solo Party AMEA</option>
+                <option value="ENOX">Solo Party ENOX</option>
+                <option value="LAC">Solo Party LAC</option>
+              </optgroup>
+
+              <optgroup label="👤 Personaggi">
+                {characters.map((char) => (
+                  <option key={char.id} value={char.charName}>
+                    🔒 Solo per {char.charName}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
@@ -251,31 +195,18 @@ setSender("");
           </button>
         </form>
 
-        {/* ELENCO MISSIONI ATTIVE */}
         <div className="admin-list">
           <h2>Missive Attive ({quests.length})</h2>
           {quests.map((q) => (
             <div key={q.id} className="admin-item-row">
               <div className="item-info">
-                <div>
-                  <strong>{q.title}</strong>
-                  {/* Mostriamo il mittente che è già salvato nel database per quella quest */}
-                  <small style={{ display: "block", color: "#666" }}>
-                    Inviata da: {q.sender || "Mittente Misterioso"}
-                  </small>
-                </div>
-
-                <span
-                  className={`tag ${q.targetCharacter === "All" ? "tag-public" : "tag-private"}`}
-                >
-                  {q.targetCharacter === "All"
-                    ? "Pubblica"
-                    : `Privata per ${q.targetCharacter}`}
+                <strong>{q.title}</strong>
+                <small style={{ display: "block" }}>Inviata da: {q.sender}</small>
+                <span className={`tag ${q.targetCharacter === "All" && q.targetParty === "All" ? "tag-public" : "tag-private"}`}>
+                  {q.targetParty !== "All" ? `Party: ${q.targetParty}` : (q.targetCharacter === "All" ? "Pubblica" : `Privata: ${q.targetCharacter}`)}
                 </span>
               </div>
-              <button onClick={() => handleDelete(q.id)} className="delete-btn">
-                Rimuovi
-              </button>
+              <button onClick={() => handleDelete(q.id)} className="delete-btn">Rimuovi</button>
             </div>
           ))}
         </div>

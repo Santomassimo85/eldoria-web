@@ -1,0 +1,123 @@
+/* Container della pagina Admin */
+.admin-notif-container {
+    background: #f4e4bc; /* Colore base carta invecchiata */
+    background-image: 
+        radial-gradient(circle at 2px 2px, rgba(0,0,0,0.05) 1px, transparent 0);
+    background-size: 4px 4px;
+    padding: 40px;
+    border-radius: 5px;
+    box-shadow: 
+        0 0 5px rgba(0,0,0,0.2),
+        inset 0 0 50px rgba(139, 69, 19, 0.2); /* Effetto bruciacchiato ai bordi */
+    border: 2px solid #8b4513;
+    max-width: 600px;
+    margin: 20px auto;
+    position: relative;
+    font-family: 'Crimson Text', serif; /* Font stile editoriale/antico */
+}
+
+/* Effetto bordi frastagliati (Pseudo-elementi) */
+.admin-notif-container::before, .admin-notif-container::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background-size: 20px 20px;
+}
+
+.admin-notif-container::before {
+    top: -5px;
+    background-image: radial-gradient(circle at 10px -5px, transparent 12px, #f4e4bc 13px);
+}
+
+.admin-notif-container::after {
+    bottom: -5px;
+    background-image: radial-gradient(circle at 10px 15px, transparent 12px, #f4e4bc 13px);
+}
+
+/* Titolo della pergamena */
+.admin-notif-container h2 {
+    color: #5d2e0a;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 2px solid #8b4513;
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+}
+
+/* Selettore dei Player (Checkbox) */
+.player-selector {
+    background: rgba(139, 69, 19, 0.05);
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px dashed #8b4513;
+    margin-bottom: 20px;
+}
+
+.checkbox-label {
+    display: block;
+    margin: 8px 0;
+    color: #3e1f07;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.checkbox-label input {
+    margin-right: 10px;
+    accent-color: #8b4513; /* Colore check marrone scuro */
+}
+
+/* Campi Input e Textarea */
+.admin-notif-container input[type="text"], 
+.admin-notif-container textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(139, 69, 19, 0.3);
+    padding: 10px;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    color: #2b1608;
+    outline: none;
+}
+
+.admin-notif-container textarea {
+    min-height: 120px;
+    border: 1px solid rgba(139, 69, 19, 0.2);
+    resize: vertical;
+}
+
+.admin-notif-container input::placeholder, 
+.admin-notif-container textarea::placeholder {
+    font-style: italic;
+    color: #a68b7c;
+}
+
+/* Pulsante d'invio (Sigillo in ceralacca) */
+.admin-notif-container button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #a52a2a; /* Rosso ceralacca */
+    color: white;
+    border: 2px solid #800000;
+    border-radius: 50px;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+
+.admin-notif-container button:hover {
+    background: #800000;
+    transform: scale(1.02);
+}
+
+.admin-notif-container button:disabled {
+    background: #cccccc;
+    border-color: #999999;
+    cursor: not-allowed;
+}

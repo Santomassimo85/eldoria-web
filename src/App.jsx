@@ -34,7 +34,7 @@ import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
-
+import SendNotification from "./components/SendNotification";
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
@@ -101,7 +101,7 @@ export default function App() {
     <AuthProvider>
       <header>
         <div className="logo">
-          E L D O R I A <br />
+          E X A N T H I A<br />
           <span>Chronicles</span>
         </div>
 
@@ -158,6 +158,7 @@ export default function App() {
           <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
           <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
+          <Route path="/dm-admin/send-notif" element={<SendNotification />} />
         </Routes>
       </main>
 
