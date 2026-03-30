@@ -475,6 +475,8 @@ const shieldBossManual = async () => {
 
   return (
     <div className="wb-container">
+      <h1>World Boss</h1>
+      <h5>IMPORTANTE: solo i player che effettueranno piú di 2 attacchi riceveranno ricompense</h5>
       {isMaster && (
         <div className="dm-controls-top">
           <div className="dm-overlay-label">DUNGEON MASTER CONTROL</div>
