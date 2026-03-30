@@ -28,7 +28,9 @@ const CITIES_HUB = [
   { name: "Monaci delle Sabbie", x: 91.69, y: 41.26 },
   { name: "Torre dell'Arcano", x: 72.29, y: 21.02 },
   { name: "Tassio", x: 60.88, y: 53.40 },
-  { name: "Hopeclif", x: 74.38, y: 64.79 }
+  { name: "Hopeclif", x: 74.38, y: 64.79 },
+  
+  { name: "Ganno", x: 64.55, y: 37.97 }
 ];
 
 const initialGeoData = {
