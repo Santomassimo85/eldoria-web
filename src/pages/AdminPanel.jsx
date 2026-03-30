@@ -1,41 +1,52 @@
-// src/pages/AdminPanel.jsx
-// Admin Panel component for Dungeon Master to manage campaign data
-// Includes protection to allow only the master user access
-
-import { useAuth } from "../AuthContext";
+import { useAuth } from "../AuthContext"; // Percorso corretto se entrambi sono in src
 import { useNavigate } from "react-router-dom";
+import { db } from "../firebase"; // Percorso corretto
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 /**
  * AdminPanel Component
- *
- * Provides a dashboard for the Dungeon Master to manage:
- * - Black Market items
- * - Session summaries
- * - Platinum coins balance
- * - Player rat faction reputation
- * - Session recordings
- * - Quest board management
- *
- * @returns {JSX.Element} Admin dashboard or access denied message
+ * Dashboard per il Dungeon Master di Eldoria.
  */
 export default function AdminPanel() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  // Master user email for access control
+  // Email del Master per il controllo accessi
   const MASTER_EMAIL = "santomassimo85@gmail.com";
 
-  // Redirect and protect: only allow master user
+  // Protezione: solo il Master può accedere
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return (
       <section style={{ textAlign: "center", paddingTop: "100px" }}>
-        <h1 style={{ color: "var(--red)" }}>Access Denied</h1>
-        <p>Only the Dungeon Master can access this panel.</p>
+        <h1 style={{ color: "var(--red)" }}>Accesso Negato</h1>
+        <p>Solo il Dungeon Master può accedere a questo pannello.</p>
       </section>
     );
   }
 
-  // Navigation helper functions for dashboard blocks
+  /**
+   * FUNZIONE PER INVIARE NOTIFICHE (Messaggi)
+   * Questa funzione può essere esportata o usata internamente.
+   * @param {string} userId - L'ID del destinatario (uid di Firebase)
+   * @param {string} title - Titolo del messaggio
+   * @param {string} message - Testo del messaggio
+   */
+  const sendNotification = async (userId, title, message) => {
+    try {
+      await addDoc(collection(db, "notifications"), {
+        userId: userId,
+        title: title,
+        message: message,
+        read: false,
+        timestamp: serverTimestamp(),
+      });
+      console.log("Notifica inviata con successo!");
+    } catch (error) {
+      console.error("Errore nell'invio della notifica:", error);
+    }
+  };
+
+  // Funzioni di navigazione
   const navigateToMarket = () => navigate("/dm-admin/market");
   const navigateToSummaries = () => navigate("/dm-admin/summaries");
   const navigateToPlatinum = () => navigate("/dm-admin/platinum");
@@ -46,78 +57,68 @@ export default function AdminPanel() {
         Eldoria Administration Panel
       </h1>
       <p style={{ textAlign: "center", marginBottom: 40 }}>
-        Welcome, {currentUser.email.split("@")[0]}. Manage your campaign data.
+        Bentornato, Master {currentUser.email.split("@")[0]}. Gestisci il destino del mondo.
       </p>
 
       <div className="admin-dashboard-grid">
-        {/* Market Management Block */}
+        {/* Mercato Nero */}
         <div className="admin-block" onClick={navigateToMarket}>
           <h2>Black Market</h2>
-          <p>Add, edit, or remove auction items.</p>
-          {/* <button className="admin-button">Market Admin</button> */}
+          <p>Aggiungi o modifica oggetti e gestisci le aste del Ratto.</p>
         </div>
 
-        {/* Rat Faction Reputation Block */}
-        <div
-          className="admin-block"
-          onClick={() => navigate("/dm-admin/reputation")}
-        >
+        {/* Reputazione Gilda dei Ratti */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/reputation")}>
           <h2>Rat Reputation</h2>
-          <p>Track player loyalty to the Guild and rank levels.</p>
-          {/* <button className="admin-button">Manage Ranks</button> */}
+          <p>Gestisci i gradi e la lealtà dei player alla Gilda di Obia.</p>
         </div>
 
-        {/* World Boss Management Block */}
-<div
-  className="admin-block"
-  onClick={() => navigate("/dm-admin/world-boss")}
->
-  <h2>World Boss Fight</h2>
-  <p>Crea nuovi boss, attivali e gestisci i loro HP durante il combattimento.</p>
-</div>
+        {/* Combattimenti Boss */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/world-boss")}>
+          <h2>World Boss Fight</h2>
+          <p>Crea nuovi boss, attivali e gestisci i loro HP in tempo reale.</p>
+        </div>
 
+        {/* Archivio Geografico */}
         <div className="admin-block" onClick={() => navigate("/dm-admin/geo")}>
           <h2>Geomantia</h2>
-          <p>Gestisci le mappe e le lore delle città.</p>
-        </div>
-        <div
-          className="admin-block"
-          onClick={() => navigate("/dm-admin/sessions")}
-        >
-          <h2>Gestione Sessioni</h2>
-          <p>Imposta date, orari e link Roll20 per Party 1, Party 2 ed Enox.</p>
-        </div>
-        {/* Session Recordings Block */}
-        <div
-          className="admin-block"
-          onClick={() => navigate("/dm-admin/videos")}
-        >
-          <h2>Cinema</h2>
-          <p>Upload links to session recordings.</p>
+          <p>Gestisci le mappe, le lore delle città e i ping NPC.</p>
         </div>
 
-        {/* Session Summaries Block */}
+        {/* Gestione Sessioni */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/sessions")}>
+          <h2>Gestione Sessioni</h2>
+          <p>Imposta date, orari e link per Party AMEA, LAC ed Enox.</p>
+        </div>
+
+        {/* Cinema (Registrazioni) */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/videos")}>
+          <h2>Cinema</h2>
+          <p>Carica i link delle registrazioni delle sessioni passate.</p>
+        </div>
+
+        {/* Riassunti Sessioni */}
         <div className="admin-block" onClick={navigateToSummaries}>
           <h2>Session Summaries</h2>
-          <p>Add logs of new sessions to the Summaries page.</p>
-          {/* <button className="admin-button">Summaries Admin</button> */}
+          <p>Aggiorna i log narrativi delle ultime avventure.</p>
         </div>
 
-        {/* Platinum Coins Balance Block */}
+        {/* Bilancio Monete Platino */}
         <div className="admin-block" onClick={navigateToPlatinum}>
           <h2>Platinum Coins (MP)</h2>
-          <p>Update character Platinum Coins (MP) balance.</p>
-          {/* <button className="admin-button">MP Balance</button> */}
+          <p>Aggiorna il saldo dei personaggi (Monete Platino).</p>
         </div>
 
-        {/* Quest Board Management Block */}
-        <div
-          className="admin-block"
-          onClick={() => navigate("/dm-admin/quests")}
-        >
+        {/* Bacheca delle Quest */}
+        <div className="admin-block" onClick={() => navigate("/dm-admin/quests")}>
           <h2>Quest Board</h2>
-          <p>Add or remove scrolls and missions from Hemile's Board.</p>
-          {/* <button className="admin-button">Manage Quests</button> */}
+          <p>Gestisci le missioni sulla bacheca di Hemile.</p>
+        </div>
+
+        {/* Gestore Notifiche Manuali */}
+        <div className="admin-block" style={{ border: '1px dashed var(--gold)' }} onClick={() => navigate("/dm-admin/send-notif")}>
+          <h2>Invia Notifica</h2>
+          <p>Invia un messaggio diretto a un giocatore nel suo menu personale.</p>
         </div>
       </div>
     </section>

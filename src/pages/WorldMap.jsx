@@ -27,7 +27,6 @@ const CITIES_HUB = [
 ];
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-
 export default function WorldMap() {
   const [activeBosses, setActiveBosses] = useState([]);
   const [npcs, setNpcs] = useState([]);

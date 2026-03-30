@@ -1,4 +1,3 @@
-// src/pages/ItemDetail.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
@@ -10,14 +9,14 @@ import {
   deleteField,
   runTransaction,
   increment,
-  writeBatch // <-- AGGIUNGI QUESTO
+  writeBatch,
+  addDoc,           // AGGIUNTO per notifiche
+  collection,       // AGGIUNTO per notifiche
+  serverTimestamp   // AGGIUNTO per notifiche
 } from "firebase/firestore";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
-/**
- * Componente Countdown per le aste
- */
 const Countdown = ({ endDate }) => {
   const [timeLeft, setTimeLeft] = useState("");
 
@@ -74,7 +73,7 @@ export default function ItemDetail() {
   const userBid = (currentUser && item?.bids) ? item.bids[currentUser.uid] : null;
 
   /**
-   * ACQUISTO IMMEDIATO (Prezzo Fisso)
+   * ACQUISTO IMMEDIATO (Prezzo Fisso) + NOTIFICA
    */
   const handleBuyNow = async () => {
     if (!currentUser || item.saleType !== "fixed" || item.isSold) return;
@@ -84,6 +83,8 @@ export default function ItemDetail() {
       await runTransaction(db, async (transaction) => {
         const userRef = doc(db, "characters", currentUser.uid);
         const itemRef = doc(db, "items", id);
+        const notifyRef = doc(collection(db, "notifications")); // Ref per la notifica
+        
         const charSnap = await transaction.get(userRef);
         const itemSnap = await transaction.get(itemRef);
 
@@ -91,14 +92,26 @@ export default function ItemDetail() {
         if (currentPlat < item.price) throw "Fondi insufficienti!";
         if (itemSnap.data().isSold) throw "Già venduto!";
 
+        // 1. Aggiorna Personaggio
         transaction.update(userRef, { 
             platinum: currentPlat - item.price,
             rattoPoints: increment(1) 
         });
+
+        // 2. Aggiorna Oggetto
         transaction.update(itemRef, { 
             isSold: true, 
             buyerName: charSnap.data().name || currentUser.email.split("@")[0],
             soldAt: new Date().toISOString()
+        });
+
+        // 3. Invia Notifica di Conferma Acquisto
+        transaction.set(notifyRef, {
+          userId: currentUser.uid,
+          title: "Acquisto Confermato! 🛒",
+          message: `Hai acquistato "${item.name}" per ${item.price} MP. L'oggetto è ora tuo!`,
+          read: false,
+          timestamp: serverTimestamp()
         });
       });
       alert("Acquisto completato!");
@@ -106,69 +119,80 @@ export default function ItemDetail() {
       setMessage(`❌ Errore: ${err}`);
     }
   };
-/**
- * Funzione Master: Rimuove una singola offerta e rimborsa il player
- */
-const handleMasterRemoveBid = async (itemId, playerUid, amount) => {
-  if (!window.confirm(`Rimborsare ${amount} MP e rimuovere l'offerta di questo player?`)) return;
 
-  try {
-    await runTransaction(db, async (transaction) => {
-      const charRef = doc(db, "characters", playerUid);
-      const itemRef = doc(db, "items", itemId);
-      
-      const charSnap = await transaction.get(charRef);
-      if (!charSnap.exists()) throw "Personaggio non trovato.";
 
-      // 1. Rimborsa i soldi
-      transaction.update(charRef, {
-        platinum: increment(amount)
+
+  
+  /**
+   * Funzione Master: Rimuove una singola offerta, rimborsa e NOTIFICA
+   */
+  const handleMasterRemoveBid = async (itemId, playerUid, amount) => {
+    if (!window.confirm(`Rimborsare ${amount} MP e inviare notifica a questo player?`)) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const charRef = doc(db, "characters", playerUid);
+        const itemRef = doc(db, "items", itemId);
+        const notifyRef = doc(collection(db, "notifications"));
+        
+        const charSnap = await transaction.get(charRef);
+        if (!charSnap.exists()) throw "Personaggio non trovato.";
+
+        transaction.update(charRef, { platinum: increment(amount) });
+        transaction.update(itemRef, {
+          [`bids.${playerUid}`]: deleteField(),
+          [`bidderEmails.${playerUid}`]: deleteField()
+        });
+
+        transaction.set(notifyRef, {
+          userId: playerUid,
+          title: "Offerta Rimborsata 💰",
+          message: `La tua offerta per "${item.name}" è stata rimossa dal Master. Ti sono stati rimborsati ${amount} MP.`,
+          read: false,
+          timestamp: serverTimestamp()
+        });
       });
-
-      // 2. Rimuove l'offerta dall'item
-      transaction.update(itemRef, {
-        [`bids.${playerUid}`]: deleteField(),
-        [`bidderEmails.${playerUid}`]: deleteField()
-      });
-    });
-    alert("✅ Offerta rimossa e player rimborsato.");
-  } catch (error) {
-    console.error("Errore rimborso:", error);
-    alert("Errore durante il rimborso.");
-  }
-};
-
-/**
- * Funzione Master: Rimborsa TUTTI i partecipanti di un'asta e la svuota
- */
-const handleMasterClearAllBids = async (itemId, allBids) => {
-  if (!window.confirm("Vuoi davvero rimborsare TUTTI i player e svuotare le offerte di questo oggetto?")) return;
-
-  try {
-    const batch = writeBatch(db); // Usiamo batch per velocità se sono molti
-    const itemRef = doc(db, "items", itemId);
-
-    for (const [uid, bid] of Object.entries(allBids)) {
-      const charRef = doc(db, "characters", uid);
-      const amount = bid.amount || bid;
-      batch.update(charRef, { platinum: increment(amount) });
+      alert("✅ Offerta rimossa, player rimborsato e notificato.");
+    } catch (error) {
+      console.error("Errore rimborso:", error);
     }
-
-    batch.update(itemRef, {
-      bids: deleteField(),
-      bidderEmails: deleteField()
-    });
-
-    await batch.commit();
-    alert("✅ Tutte le offerte sono state rimborsate e cancellate.");
-  } catch (error) {
-    console.error("Errore pulizia totale:", error);
-  }
-};
-
+  };
 
   /**
-   * OFFERTA ALLA CIECA (Asta)
+   * Funzione Master: Rimborsa TUTTI e NOTIFICA TUTTI
+   */
+  const handleMasterClearAllBids = async (itemId, allBids) => {
+    if (!window.confirm("Rimborsare TUTTI i player e svuotare le offerte? Verranno inviate notifiche automatiche.")) return;
+
+    try {
+      const batch = writeBatch(db);
+      const itemRef = doc(db, "items", itemId);
+
+      for (const [uid, bid] of Object.entries(allBids)) {
+        const charRef = doc(db, "characters", uid);
+        const notifyRef = doc(collection(db, "notifications"));
+        const amount = bid.amount || bid;
+
+        batch.update(charRef, { platinum: increment(amount) });
+        batch.set(notifyRef, {
+          userId: uid,
+          title: "Asta Annullata 📢",
+          message: `L'asta per "${item.name}" è stata resettata. Ricevi un rimborso di ${amount} MP.`,
+          read: false,
+          timestamp: serverTimestamp()
+        });
+      }
+
+      batch.update(itemRef, { bids: deleteField(), bidderEmails: deleteField() });
+      await batch.commit();
+      alert("✅ Tutte le offerte rimborsate e player notificati.");
+    } catch (error) {
+      console.error("Errore pulizia totale:", error);
+    }
+  };
+
+  /**
+   * OFFERTA ALLA CIECA (Asta) + NOTIFICA
    */
   const handleSubmitOffer = async (e) => {
     e.preventDefault();
@@ -179,6 +203,7 @@ const handleMasterClearAllBids = async (itemId, allBids) => {
       await runTransaction(db, async (transaction) => {
         const userRef = doc(db, "characters", currentUser.uid);
         const itemRef = doc(db, "items", id);
+        const notifyRef = doc(collection(db, "notifications"));
         const charSnap = await transaction.get(userRef);
 
         const currentPlat = charSnap.data().platinum || 0;
@@ -191,6 +216,14 @@ const handleMasterClearAllBids = async (itemId, allBids) => {
             charName: charSnap.data().name || currentUser.email.split("@")[0],
             timestamp: new Date().toISOString()
           }
+        });
+
+        transaction.set(notifyRef, {
+          userId: currentUser.uid,
+          title: "Offerta Piazzata! 🎲",
+          message: `Hai puntato ${amount} MP per "${item.name}". Incrocia le dita!`,
+          read: false,
+          timestamp: serverTimestamp()
         });
       });
       setMessage("✅ Offerta registrata!");
@@ -231,7 +264,6 @@ const handleMasterClearAllBids = async (itemId, allBids) => {
 
           <div className="detail-description" dangerouslySetInnerHTML={{ __html: item.description }} />
 
-          {/* LOGICA TRANSAZIONI */}
           <div className="item-interaction-area">
             {!item.isSold && currentUser && (
               item.saleType === "fixed" ? (
@@ -253,7 +285,6 @@ const handleMasterClearAllBids = async (itemId, allBids) => {
               )
             )}
 
-            {/* INFO OFFERTE / ACQUIRENTE */}
             <div className="item-bids-summary">
               {item.isSold && item.buyerName && (
                 <div className="sold-info-box">
@@ -267,13 +298,28 @@ const handleMasterClearAllBids = async (itemId, allBids) => {
                     <div className="master-bids-list">
                       <h3>Lista Offerte (DM)</h3>
                       {item.bids && Object.keys(item.bids).length > 0 ? (
-                        <ul>
-                          {Object.entries(item.bids).map(([uid, bid]) => (
-                            <li key={uid}>
-                              <strong>{bid.charName}</strong>: {bid.amount} MP
-                            </li>
-                          ))}
-                        </ul>
+                        <>
+                          <ul>
+                            {Object.entries(item.bids).map(([uid, bid]) => (
+                              <li key={uid} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <span><strong>{bid.charName}</strong>: {bid.amount} MP</span>
+                                <button 
+                                  onClick={() => handleMasterRemoveBid(id, uid, bid.amount)}
+                                  style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
+                                >
+                                  Rimborsa
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                          <button 
+                            onClick={() => handleMasterClearAllBids(id, item.bids)}
+                            className="btn-clear-all"
+                            style={{ marginTop: '10px', padding: '5px', background: '#8b0000', color: 'white', borderRadius: '4px' }}
+                          >
+                            Svuota e Rimborsa Tutti
+                          </button>
+                        </>
                       ) : <p>Nessuna offerta.</p>}
                     </div>
                   ) : (

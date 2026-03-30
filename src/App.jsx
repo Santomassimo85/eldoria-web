@@ -7,8 +7,10 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import LoginDropdown from "./LoginDropdown";
 
 // PAGES
+
 import Home from "./pages/Home";
 import Party from "./pages/Party";
+import Notifications from "./pages/Notifications";
 import Riassunti from "./pages/Riassunti";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/Geo";
@@ -143,6 +145,7 @@ export default function App() {
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
+          <Route path="/notifications" element={<Notifications />} />
 
           {/* ROTTE ADMIN */}
           <Route path="/dm-admin" element={<AdminPanel />} />

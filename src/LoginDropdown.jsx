@@ -1,162 +1,173 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "./AuthContext";
-import { useNavigate } from "react-router-dom";
-import { db } from "./firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "./AuthContext"; // Percorso corretto
+import { db } from "./firebase"; // Percorso corretto
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  doc 
+} from "firebase/firestore";
+import "./LoginDropdown.css";
 
-const RATTO_LEVELS = [
-  { lv: 0, min: 0, name: "Estraneo" },
-  { lv: 1, min: 5, name: "Simpatizzante" },
-  { lv: 2, min: 15, name: "Informatore" },
-  { lv: 3, min: 30, name: "Ricettatore" },
-  { lv: 4, min: 50, name: "Veterano" },
-  { lv: 5, min: 80, name: "Ombra di Obia" },
-];
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
-const getRattoLevel = (points) => {
-  return (
-    [...RATTO_LEVELS].reverse().find((l) => points >= l.min) || RATTO_LEVELS[0]
-  );
-};
-
-const LoginDropdown = ({ closeMenu = () => {} }) => {
-  const { currentUser, logout, login } = useAuth();
+export default function LoginDropdown() {
+  const { currentUser, login, logout } = useAuth();
   const navigate = useNavigate();
-
+  
+  // Stati per il form e il menu
+  const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [userData, setUserData] = useState(null);
+  
+  // Stati per i dati dinamici
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [charData, setCharData] = useState(null);
+  const dropdownRef = useRef(null);
 
-  // Listener unico per i dati del personaggio (Saldo + Rango)
+  const isMaster = currentUser?.email === MASTER_EMAIL;
+
+  // Chiudi il menu se si clicca fuori
   useEffect(() => {
-    if (!currentUser) {
-      setUserData(null);
-      return;
-    }
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const unsub = onSnapshot(
-      doc(db, "characters", currentUser.uid),
-      (snap) => {
-        if (snap.exists()) {
-          setUserData(snap.data());
-        }
-      },
-      (err) => {
-        console.error("Errore snapshot Login:", err);
-      },
+  // Listener per Notifiche e Dati Personaggio (solo se loggato)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubChar = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
+      if (snap.exists()) setCharData(snap.data());
+    });
+
+    const qNotify = query(
+      collection(db, "notifications"),
+      where("userId", "==", currentUser.uid),
+      where("read", "==", false)
     );
+    const unsubNotify = onSnapshot(qNotify, (snap) => {
+      setUnreadCount(snap.docs.length);
+    });
 
-    return () => unsub();
+    return () => {
+      unsubChar();
+      unsubNotify();
+    };
   }, [currentUser]);
 
+  // Gestione Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      login(email, password);
+      await login(email, password);
       setIsOpen(false);
-      closeMenu();
-    } catch {
+      setEmail("");
+      setPassword("");
+    } catch (err) {
       setError("Credenziali non valide.");
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    setIsOpen(false);
-    closeMenu();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsOpen(false);
+      navigate("/");
+    } catch (error) {
+      console.error("Errore logout:", error);
+    }
   };
 
-  if (currentUser) {
-    const points = userData?.rattoPoints || 0;
-    const currentLevel = getRattoLevel(points);
-
+  // --- VISTA PER UTENTE NON LOGGATO (FORM A COMPARSA) ---
+  if (!currentUser) {
     return (
-      <div className="login-dropdown-container">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="logged-user-button nav-button"
-        >
-          {currentUser.email.split("@")[0]}
-          <span className={`dropdown-arrow ${isOpen ? "open" : ""}`}>▼</span>
+      <div className="login-dropdown-container" ref={dropdownRef}>
+        <button onClick={() => setIsOpen(!isOpen)} className="login-button nav-button">
+          Accedi
         </button>
-
+        
         {isOpen && (
-          <div className="dropdown-menu">
-            <div className="menu-item-info">
-              💰 <strong>Saldo:</strong> {userData?.platinum ?? 0} MP
-            </div>
-            <div
-              className="menu-item-info"
-              style={{ fontSize: "0.8rem", color: "var(--gold)" }}
-            >
-              🐀 <strong>Rango:</strong> {currentLevel.name} (Lv.
-              {currentLevel.lv})
-            </div>
-            <hr className="menu-divider" />
-            <button
-              onClick={() => {
-                navigate("/my-pg");
-                setIsOpen(false);
-                closeMenu();
-              }}
-              className="menu-item"
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                width: "100%",
-                textAlign: "left",
-                font: "inherit",
-                color: "black",
-              }}
-            >
-              Scheda Personaggio
-            </button>
-            <a onClick={handleLogout} className="menu-item logout-link">
-              Logout
-            </a>
+          <div className="login-dropdown-content">
+            {error && <p className="login-error">{error}</p>}
+            <form onSubmit={handleLogin}>
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button type="submit">Entra</button>
+            </form>
           </div>
         )}
       </div>
     );
   }
 
+  // --- VISTA PER UTENTE LOGGATO (MENU PERSONAGGIO) ---
   return (
-    <div className="login-dropdown-container">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="login-button nav-button"
-      >
-        Accedi
-      </button>
+    <div className="login-dropdown-container" ref={dropdownRef}>
+      <div className="avatar-trigger" onClick={() => setIsOpen(!isOpen)}>
+        <img
+          src={charData?.image || "/assets/player/default.png"}
+          alt="Avatar"
+          className={`nav-avatar ${unreadCount > 0 ? "notify-border" : ""}`}
+        />
+        {unreadCount > 0 && <span className="global-notify-badge">{unreadCount}</span>}
+      </div>
+
       {isOpen && (
-        <div className="login-dropdown-content">
-          {error && <p className="login-error">{error}</p>}
-          <form onSubmit={handleLogin}>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <button type="submit">Entra</button>
-          </form>
+        <div className="login-dropdown-menu">
+          <div className="dropdown-header">
+            <p className="user-email">{currentUser.email}</p>
+            <div className="user-stats-mini">
+              <span>💰 {charData?.platinum ?? charData?.money ?? 0} MP</span>
+              <span className="ratto-text">🐀 {charData?.rattoName || "Estraneo"}</span>
+            </div>
+          </div>
+
+          <div className="dropdown-divider"></div>
+
+          <button className="menu-item" onClick={() => { navigate("/notifications"); setIsOpen(false); }}>
+            📩 Notifiche {unreadCount > 0 && <span className="inline-badge">{unreadCount}</span>}
+          </button>
+
+          <button className="menu-item" onClick={() => { navigate("/my-pg"); setIsOpen(false); }}>
+            📜 Scheda Personaggio
+          </button>
+
+          {isMaster && (
+            <>
+              <div className="dropdown-divider"></div>
+              <p className="admin-label">MASTER PANEL</p>
+              <button className="menu-item gold" onClick={() => { navigate("/dm-admin"); setIsOpen(false); }}>
+                ⚙️ Gestione Mondo
+              </button>
+            </>
+          )}
+
+          <div className="dropdown-divider"></div>
+          <button onClick={handleLogout} className="menu-item logout-btn">🚪 Esci</button>
         </div>
       )}
     </div>
   );
-};
-
-export default LoginDropdown;
+}

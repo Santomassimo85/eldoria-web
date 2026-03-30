@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useAuth } from "../AuthContext";
+import { useAuth } from "../AuthContext"; 
 import { useNavigate } from "react-router-dom";
-import { db } from "../firebase";
+import { db } from "../firebase"; 
 import {
   collection,
   doc,
-  updateDoc,
   onSnapshot,
   runTransaction,
   increment,
   deleteField,
-  writeBatch
+  writeBatch,
+  addDoc,
+  serverTimestamp
 } from "firebase/firestore";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -65,13 +66,12 @@ const MarketTimer = ({ targetDate }) => {
   return <div className="timer-display">{timeLeft}</div>;
 };
 
-const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids }) => {
+const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids, onDeliver }) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const isSold = item.isSold === true;
   const isAuction = item.saleType === "auction";
 
-  // Recupero offerta del player corrente per feedback visivo
   const userBidObj = (isAuction && item.bids && currentUser) ? item.bids[currentUser.uid] : null;
 
   return (
@@ -87,25 +87,21 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids }) => {
           {isSold ? "VENDUTO" : item.saleType === "fixed" ? `${item.price} MP` : `Base: ${item.startingBid} MP`}
         </p>
 
-        {/* --- NUOVA SEZIONE: DESCRIZIONE --- */}
-        <div 
-          className="item-card-description"
-          dangerouslySetInnerHTML={{ __html: item.description }}
-        />
+        <div className="item-card-description" dangerouslySetInnerHTML={{ __html: item.description }} />
 
         <div className="item-bids-summary">
           {isMaster && item.bids && Object.keys(item.bids).length > 0 && (
             <div className="master-bids-view">
-              <p className="bid-title">📢 Offerte ({Object.keys(item.bids).length}):</p>
+              <p className="bid-title">📢 OFFERTE ({Object.keys(item.bids).length}):</p>
               {Object.entries(item.bids).map(([uid, bid]) => (
                 <div key={uid} className="bid-row-admin" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <small>{bid.charName || "Eroe"}: <strong>{bid.amount || bid} MP</strong></small>
                   <button 
                     className="btn-remove-bid" 
-                    title="Rimborsa e Rimuovi"
+                    title="Rimborsa e Notifica"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      onRemoveBid(item.id, uid, bid.amount || bid); 
+                      onRemoveBid(item, uid, bid.amount || bid); 
                     }}
                     style={{color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold'}}
                   >✕</button>
@@ -113,9 +109,17 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids }) => {
               ))}
               <button 
                 className="btn-clear-all-bids" 
-                onClick={(e) => { e.stopPropagation(); onClearAllBids(item.id, item.bids); }}
+                onClick={(e) => { e.stopPropagation(); onClearAllBids(item); }}
                 style={{width: '100%', marginTop: '10px', background: '#c0392b', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer'}}
               >Svuota e Rimborsa Tutti</button>
+
+              <button 
+                className="btn-deliver-item" 
+                onClick={(e) => { e.stopPropagation(); onDeliver(item); }}
+                style={{width: '100%', marginTop: '5px', background: '#d4af37', color: 'black', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}
+              >
+                ✅ OK CONSEGNA
+              </button>
             </div>
           )}
 
@@ -163,35 +167,128 @@ export default function Mercato() {
     return () => { unsubConfig(); unsubItems(); unsubUser(); };
   }, [currentUser]);
 
-  const handleMasterRemoveBid = async (itemId, playerUid, amount) => {
-    if (!window.confirm(`Rimborsare ${amount} MP e rimuovere l'offerta di questo player?`)) return;
+  // FUNZIONE MASTER: CONSEGNA, VINCITORE RANDOM E NOTIFICHE
+  const handleMasterDeliver = async (item) => {
+    if (!item.bids || Object.keys(item.bids).length === 0) return alert("Nessuna offerta presente.");
+    if (!window.confirm(`Consegnare "${item.name}"? In caso di pareggio sceglierò un vincitore a caso.`)) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const bidsEntries = Object.entries(item.bids);
+        
+        // 1. Trova l'importo massimo
+        const maxAmount = Math.max(...bidsEntries.map(([_, b]) => b.amount || b));
+        
+        // 2. Filtra i potenziali vincitori (pareggio alla stessa cifra massima)
+        const topBidders = bidsEntries.filter(([_, b]) => (b.amount || b) === maxAmount);
+        
+        // 3. Selezione Casuale tra i migliori offerenti
+        const winnerIndex = Math.floor(Math.random() * topBidders.length);
+        const [winnerUid, winnerBidData] = topBidders[winnerIndex];
+        const winnerAmount = winnerBidData.amount || winnerBidData;
+
+        // --- NOTIFICA AL VINCITORE ---
+        const winnerNotifyRef = doc(collection(db, "notifications"));
+        transaction.set(winnerNotifyRef, {
+          userId: winnerUid,
+          title: "Asta Vinta! 🏆",
+          message: `Ottimo lavoro! Hai vinto l'asta per "${item.name}" con un'offerta di ${winnerAmount} MP.`,
+          read: false,
+          timestamp: serverTimestamp()
+        });
+
+        // Aggiorna l'oggetto
+        transaction.update(doc(db, "items", item.id), {
+          isSold: true,
+          buyerName: winnerBidData.charName || "Un eroe",
+          finalPrice: winnerAmount,
+          soldAt: new Date().toISOString()
+        });
+
+        // --- RIMBORSO E NOTIFICA AGLI SCONFITTI ---
+        for (const [uid, bid] of bidsEntries) {
+          if (uid !== winnerUid) {
+            const amount = bid.amount || bid;
+            const charRef = doc(db, "characters", uid);
+            const loserNotifyRef = doc(collection(db, "notifications"));
+
+            transaction.update(charRef, { platinum: increment(amount) });
+            transaction.set(loserNotifyRef, {
+              userId: uid,
+              title: "Asta Conclusa ⛔",
+              message: `L'asta per "${item.name}" si è conclusa. Non sei il vincitore; i tuoi ${amount} MP sono stati rimborsati nel saldo.`,
+              read: false,
+              timestamp: serverTimestamp()
+            });
+          }
+        }
+      });
+      alert("✅ Oggetto consegnato e player notificati!");
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante la consegna.");
+    }
+  };
+
+  const handleMasterRemoveBid = async (item, playerUid, amount) => {
+    if (!window.confirm(`Rimborsare ${amount} MP e inviare notifica a questo player?`)) return;
     try {
       await runTransaction(db, async (transaction) => {
         const charRef = doc(db, "characters", playerUid);
-        const itemRef = doc(db, "items", itemId);
+        const itemRef = doc(db, "items", item.id);
+        const notifyRef = doc(collection(db, "notifications"));
+
         const charSnap = await transaction.get(charRef);
         if (!charSnap.exists()) throw "Personaggio non trovato.";
+
         transaction.update(charRef, { platinum: increment(amount) });
-        transaction.update(itemRef, { [`bids.${playerUid}`]: deleteField(), [`bidderEmails.${playerUid}`]: deleteField() });
+        transaction.update(itemRef, { 
+          [`bids.${playerUid}`]: deleteField(), 
+          [`bidderEmails.${playerUid}`]: deleteField() 
+        });
+
+        transaction.set(notifyRef, {
+          userId: playerUid,
+          title: "Offerta Rimborsata 💰",
+          message: `La tua offerta di ${amount} MP per "${item.name}" è stata rimossa dal Master e le monete rimborsate.`,
+          read: false,
+          timestamp: serverTimestamp()
+        });
       });
-      alert("✅ Offerta rimossa e player rimborsato.");
+      alert("✅ Offerta rimossa e player notificato.");
     } catch (err) {
       console.error(err);
       alert("Errore durante il rimborso.");
     }
   };
 
-  const handleMasterClearAllBids = async (itemId, allBids) => {
-    if (!window.confirm("Rimborsare TUTTI i player e svuotare le offerte di questo oggetto?")) return;
+  const handleMasterClearAllBids = async (item) => {
+    const allBids = item.bids || {};
+    if (Object.keys(allBids).length === 0) return alert("Nessuna offerta da rimuovere.");
+    if (!window.confirm("Rimborsare TUTTI i player e inviare notifiche?")) return;
+
     try {
       const batch = writeBatch(db);
+      const itemRef = doc(db, "items", item.id);
+
       for (const [uid, bid] of Object.entries(allBids)) {
         const amount = bid.amount || bid;
-        batch.update(doc(db, "characters", uid), { platinum: increment(amount) });
+        const charRef = doc(db, "characters", uid);
+        const notifyRef = doc(collection(db, "notifications"));
+
+        batch.update(charRef, { platinum: increment(amount) });
+        batch.set(notifyRef, {
+          userId: uid,
+          title: "Asta Annullata 📢",
+          message: `L'asta per "${item.name}" è stata resettata dal Master. I tuoi ${amount} MP sono stati rimborsati.`,
+          read: false,
+          timestamp: serverTimestamp()
+        });
       }
-      batch.update(doc(db, "items", itemId), { bids: deleteField(), bidderEmails: deleteField() });
+
+      batch.update(itemRef, { bids: deleteField(), bidderEmails: deleteField() });
       await batch.commit();
-      alert("✅ Tutte le offerte rimborsate e cancellate.");
+      alert("✅ Asta azzerata e tutti notificati.");
     } catch (err) {
       console.error(err);
       alert("Errore durante la pulizia.");
@@ -263,6 +360,7 @@ export default function Mercato() {
               isMaster={isMaster}
               onRemoveBid={handleMasterRemoveBid}
               onClearAllBids={handleMasterClearAllBids}
+              onDeliver={handleMasterDeliver}
             />
           ))
         ) : (
