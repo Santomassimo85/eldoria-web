@@ -126,20 +126,26 @@ export default function LoginDropdown() {
   return (
     <div className="login-dropdown-container" ref={dropdownRef}>
       <div className="avatar-trigger" onClick={() => setIsOpen(!isOpen)}>
-        <img
-          src={charData?.image || "/assets/player/default.png"}
-          alt="Avatar"
-          className={`nav-avatar ${unreadCount > 0 ? "notify-border" : ""}`}
-        />
-        {unreadCount > 0 && <span className="global-notify-badge">{unreadCount}</span>}
-      </div>
+  {isOpen ? (
+    <div className="nav-close-icon">✕</div>
+  ) : (
+    <>
+      <img
+        src={charData?.image || "/assets/player/default.png"}
+        alt="Avatar"
+        className={`nav-avatar ${unreadCount > 0 ? "notify-border" : ""}`}
+      />
+      {unreadCount > 0 && <span className="global-notify-badge">{unreadCount}</span>}
+    </>
+  )}
+</div>
 
       {isOpen && (
         <div className="login-dropdown-menu">
           <div className="dropdown-header">
-            <p className="user-email">{currentUser.email}</p>
+            <p className="user-email" style={{fontWeight:"bolder"}}>{currentUser.email}</p>
             <div className="user-stats-mini">
-              <span>💰 {charData?.platinum ?? charData?.money ?? 0} MP</span>
+              <span style={{fontWeight:"bolder"}}>💰 {charData?.platinum ?? charData?.money ?? 0} MP</span>
               <span className="ratto-text">🐀 {charData?.rattoName || "Estraneo"}</span>
             </div>
           </div>
@@ -147,11 +153,11 @@ export default function LoginDropdown() {
           <div className="dropdown-divider"></div>
 
           <button className="menu-item" onClick={() => { navigate("/notifications"); setIsOpen(false); }}>
-            📩 Notifiche {unreadCount > 0 && <span className="inline-badge">{unreadCount}</span>}
+            Notifiche {unreadCount > 0 && <span className="inline-badge">{unreadCount}</span>}
           </button>
 
           <button className="menu-item" onClick={() => { navigate("/my-pg"); setIsOpen(false); }}>
-            📜 Scheda Personaggio
+            Scheda Personaggio
           </button>
 
           {isMaster && (
@@ -159,13 +165,13 @@ export default function LoginDropdown() {
               <div className="dropdown-divider"></div>
               <p className="admin-label">MASTER PANEL</p>
               <button className="menu-item gold" onClick={() => { navigate("/dm-admin"); setIsOpen(false); }}>
-                ⚙️ Gestione Mondo
+                Gestione Mondo
               </button>
             </>
           )}
 
           <div className="dropdown-divider"></div>
-          <button onClick={handleLogout} className="menu-item logout-btn">🚪 Esci</button>
+          <button onClick={handleLogout} className="menu-item logout-btn">Esci</button>
         </div>
       )}
     </div>

@@ -3,11 +3,12 @@
     display: inline-block;
 }
 
+
 .nav-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 2px solid var(--gold);
+    /* border: 2px solid var(--gold); */
     cursor: pointer;
     transition: transform 0.2s;
 }
@@ -27,18 +28,17 @@
     font-weight: bold;
     padding: 2px 6px;
     border-radius: 10px;
-    border: 2px solid #1a1a1a;
+    /* border: 2px solid #1a1a1a; */
 }
-
 .login-dropdown-menu {
     position: absolute;
-    right: 0;
     top: 50px;
-    width: 220px;
+    left: -100px;
+    width: auto;
     background: #ffffff;
-    border: 1px solid var(--gold);
+    /* border: 1px solid var(--gold); */
     border-radius: 8px;
-    padding: 10px 0;
+    padding: 10px;
     z-index: 1000;
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
@@ -48,8 +48,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
-    color: #ccc;
+    color: #220808;
     text-decoration: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 0.9rem;
     transition: background 0.2s;
     background: transparent;
@@ -81,8 +82,50 @@
 
 .admin-label {
     font-size: 0.7rem;
-    color: #555;
+    color: #110c0c;
     padding: 0 20px;
     margin-bottom: 5px;
     letter-spacing: 1px;
+}
+
+/* Container for the X icon to match avatar dimensions */
+.nav-close-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gold); /* Or any color that fits Eldoria's aesthetic */
+    color: #1a1a1a;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    /* border: 2px solid var(--gold); */
+}
+
+.nav-close-icon:hover {
+    transform: rotate(90deg);
+    background: #ff4444;
+    border-color: #ff4444;
+    color: white;
+}
+
+/* Ensure the trigger remains positioned correctly */
+.avatar-trigger {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001; /* Ensure it stays above the menu shadow */
+}
+@media (max-width: 1280px) {
+    .login-dropdown-menu {
+    position: absolute;
+    top: -350px;
+    left: -100px;
+    }
 }

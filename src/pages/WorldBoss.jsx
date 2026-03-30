@@ -289,7 +289,7 @@ export default function WorldBoss() {
       timestamp: serverTimestamp(),
       uid: currentUser.uid,
       category: action.category,
-      hitRoll: `🎲 d20(${d20}) + bonus(${bonus}) = ${hitTotal} vs CA ${boss.ac || 10}`,
+      hitRoll: `🎲 d20(${d20}) + bonus(${bonus}) = ${hitTotal} `,
     };
 
     if (isAttack) {

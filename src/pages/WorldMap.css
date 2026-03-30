@@ -61,7 +61,7 @@
     width: 100%;
     height: 100%;
     background: radial-gradient(circle, #ff0000 30%, transparent 70%);
-    border: 2px solid white;
+    border: 2px solid rgb(255, 255, 255);
     border-radius: 50%;
     animation: radar-pulse 2s infinite;
 }
@@ -247,7 +247,7 @@
     height: 10px;
     background: rgba(0, 0, 0, 0.5);
     /* Sfondo scuro per la parte vuota */
-    border: 1px solid #d4af37;
+    /* border: 1px solid #d4af37; */
     border-radius: 5px;
     margin: 10px 0 5px 0;
     overflow: hidden;
@@ -282,7 +282,7 @@
 
 .boss-rewards-glow-box {
     background: rgba(212, 175, 55, 0.15);
-    border: 2px solid #d4af37;
+    /* border: 2px solid #d4af37; */
     border-radius: 8px;
     padding: 10px;
     margin: 10px auto;
@@ -422,7 +422,6 @@
     left: 50%;
     transform: translateX(-50%);
     background: rgba(243, 237, 237, 0.95);
-    border: 1px solid var(--gold);
     border-radius: 10px;
     width: 220px;
     padding: 10px;
@@ -466,7 +465,6 @@
     height: 35px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid var(--gold);
 }
 
 .npc-mini-info {
@@ -502,7 +500,7 @@
 /* Modal del Dettaglio */
 .npc-detail-modal {
     background: linear-gradient(145deg, #ffffff9c, #ffffff);
-    border: 2px solid var(--gold);
+    /* border: 2px solid var(--gold); */
     border-radius: 15px;
     width: 90%;
     max-width: 500px;
@@ -547,7 +545,7 @@
     width: 100px;
     height: 100px;
     border-radius: 10px;
-    border: 2px solid var(--gold);
+    /* border: 2px solid var(--gold); */
     object-fit: cover;
 }
 

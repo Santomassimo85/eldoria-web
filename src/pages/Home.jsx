@@ -168,7 +168,7 @@ export default function Home() {
           )}
 
           <div className="welcome-box">
-            <h3>Benvenuti ad Eldoria</h3>
+            <h3>Benvenuti ad Exanthia</h3>
             <p>Seleziona "Next Game" dal menu per i dettagli completi.</p>
           </div>
         </div>
@@ -179,10 +179,10 @@ export default function Home() {
         <img
           src="/assets/creation.png"
           className={`creation-image ${visible ? "show" : "hide"}`}
-          alt="Eldoria"
+          alt="Exanthia"
           id="creation-img"
         />
-        <h1>L´inizio del mondo di Eldoria</h1>
+        <h1>L´inizio del mondo di Exanthia</h1>
         <p>
           <span className="start">E</span> oni or sono, quando il tempo non
           aveva ancora nome e la luce non conosceva il buio, esisteva soltanto
@@ -197,7 +197,7 @@ export default function Home() {
           origine al Piano Celestiale, mentre quello di Ouh si riversò come un
           fiume d'ombra, generando il Piano Infernale. Le loro carni lacerate
           divennero terra e roccia, e col passare dei millenni presero forma le
-          valli, i mari e le montagne del mondo che oggi chiamiamo Eldoria.
+          valli, i mari e le montagne del mondo che oggi chiamiamo Exanthia.
           Alcuni sostengono che dalle lacrime dei due gemelli nacquero le prime
           divinità, ma simili racconti vengono ormai considerati leggende da chi
           si dedica allo studio dei piani. Ciò che è certo è che, dopo quella
@@ -205,7 +205,7 @@ export default function Home() {
           <br />
           Le tribù mortali prosperarono, adorando Ny e Ouh con culti semplici e
           puri, finché col passare delle ere i loro nomi vennero dimenticati e
-          rimpiazzati da un nuovo pantheon di dèi minori. Eldoria visse secoli
+          rimpiazzati da un nuovo pantheon di dèi minori. Exanthia visse secoli
           d'equilibrio, finché un uomo, spinto da brama di potere, infranse ogni
           armonia. Egli si faceva chiamare L'Arcano, e la sua conoscenza della
           magia superava quella di ogni altro mortale. Soggiogò città intere e
@@ -219,7 +219,7 @@ export default function Home() {
           suo piano fu compiuto, un urlo riecheggiò dagli abissi: "Nzâgh'th khâl
           ûr'ezth rzhûn-ar Thol'kar." Parole che nella lingua antica
           significano: "L'ascesa degli inferi e il dominio sulla terra." Le orde
-          demoniache invasero Eldoria, travolgendo ogni regno. Persino L'Arcano,
+          demoniache invasero Exanthia, travolgendo ogni regno. Persino L'Arcano,
           tradito dalla creatura che aveva servito, venne distrutto. <br />
           <br />
           Si racconta che, nel momento della sua morte, avvenuta tra le dune
@@ -249,7 +249,7 @@ export default function Home() {
           e notti il cielo e la terra furono divorati dal fuoco e dal canto
           della guerra, finché non restò che silenzio. <br />
           Quando le fiamme si spensero, i corpi dei caduti — demoni e mortali,
-          angeli e uomini — ricoprivano il suolo di Eldoria come un mare di
+          angeli e uomini — ricoprivano il suolo di Exanthia come un mare di
           morte. Le orde infernali, sconfitte e senza guida, si ritirarono negli
           abissi. Ma anche i Serafini pagarono un prezzo terribile. Fu allora
           che Hemile, emissario del Piano Celestiale, discese negli inferi per
@@ -261,13 +261,13 @@ export default function Home() {
           <br />
           <br />
           Millottocentocinquantadue anni dopo la cosiddetta Caduta delle Stelle
-          — come venne chiamata la discesa dei Serafini — Eldoria prospera di
+          — come venne chiamata la discesa dei Serafini — Exanthia prospera di
           nuovo. Le città risplendono, le arti e la conoscenza rifioriscono, e
           gli uomini credono di vivere un'era d'oro. I soldati pattugliano
           strade tranquille e i più grandi pericoli si limitano agli ubriachi
           delle taverne o ai ladri di mercato. Eppure, i saggi sentono che
           qualcosa si muove sotto la calma apparente. I venti del destino
-          spirano di nuovo tra le montagne e le valli di Eldoria. Ombre antiche
+          spirano di nuovo tra le montagne e le valli di Exanthia. Ombre antiche
           sussurrano nei sogni degli uomini, e poteri dimenticati si ridestano
           lentamente dalle profondità del mondo. La pace che dura da quasi due
           millenni è fragile come vetro. <br />E quando si spezzerà, come tutte
@@ -281,7 +281,7 @@ export default function Home() {
           <h1 className="pantheon-main-title">I Nati dalle lacrime</h1>
           <p className="subtitle-pantheon">
             Arazzo raffigurante "I nati dalle lacrime", antiche divinitá di
-            Eldoria, nate grazie alle carni dei giganti NY e Ouh
+            Exanthia, nate grazie alle carni dei giganti NY e Ouh
           </p>{" "}
           <br></br>
           <img
