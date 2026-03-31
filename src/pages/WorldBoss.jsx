@@ -576,6 +576,23 @@ const shieldBossManual = async () => {
                         </span>
                       )}
                     </div>
+                    {/* BARRA SCUDO (Aggiunta qui) */}
+  {boss.shield > 0 && (
+    <div
+      className="shield-bar-boss-fill"
+      style={{
+        width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        height: "100%",
+        background: "rgba(0, 191, 255, 0.6)", // Blu scudo trasparente
+        borderRight: "2px solid #fff",
+        boxShadow: "0 0 10px #00bfff",
+        zIndex: 2
+      }}
+    />
+  )}
                   </div>
                 </>
               ) : (
