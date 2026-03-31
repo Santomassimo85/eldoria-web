@@ -1348,3 +1348,35 @@ input:disabled {
     font-size: 1.1rem;
   }
 }
+
+.shield-bar-boss-fill {
+  z-index: 2;
+  transition: width 0.4s ease-out;
+  pointer-events: none; /* Non deve bloccare i click se presenti */
+}
+
+.turn-timer {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--gold);
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: var(--gold);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.2rem;
+  text-align: center;
+  margin: 10px auto;
+  width: fit-content;
+  transition: all 0.3s ease;
+}
+
+.turn-timer.urgent {
+  color: #ff4444;
+  border-color: #ff4444;
+  box-shadow: 0 0 15px rgba(255, 68, 68, 0.5);
+  animation: pulse-timer 1s infinite alternate;
+}
+
+@keyframes pulse-timer {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}

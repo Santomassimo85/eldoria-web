@@ -167,7 +167,7 @@ export default function Mercato() {
     return () => { unsubConfig(); unsubItems(); unsubUser(); };
   }, [currentUser]);
 
-  // FUNZIONE MASTER: CONSEGNA, VINCITORE RANDOM E NOTIFICHE
+  // FUNZIONE MASTER: CONSEGNA, VINCITORE RANDOM, NOTIFICHE E PUNTI RATTO
   const handleMasterDeliver = async (item) => {
     if (!item.bids || Object.keys(item.bids).length === 0) return alert("Nessuna offerta presente.");
     if (!window.confirm(`Consegnare "${item.name}"? In caso di pareggio sceglierò un vincitore a caso.`)) return;
@@ -176,31 +176,42 @@ export default function Mercato() {
       await runTransaction(db, async (transaction) => {
         const bidsEntries = Object.entries(item.bids);
         
-        // 1. Trova l'importo massimo
-        const maxAmount = Math.max(...bidsEntries.map(([_, b]) => b.amount || b));
+        // 1. Trova l'importo massimo offerto
+        const maxAmount = Math.max(...bidsEntries.map(([_, b]) => (typeof b === 'object' ? b.amount : b)));
         
         // 2. Filtra i potenziali vincitori (pareggio alla stessa cifra massima)
-        const topBidders = bidsEntries.filter(([_, b]) => (b.amount || b) === maxAmount);
+        const topBidders = bidsEntries.filter(([_, b]) => {
+          const amount = (typeof b === 'object' ? b.amount : b);
+          return amount === maxAmount;
+        });
         
         // 3. Selezione Casuale tra i migliori offerenti
         const winnerIndex = Math.floor(Math.random() * topBidders.length);
         const [winnerUid, winnerBidData] = topBidders[winnerIndex];
-        const winnerAmount = winnerBidData.amount || winnerBidData;
+        const winnerAmount = typeof winnerBidData === 'object' ? winnerBidData.amount : winnerBidData;
+
+        // --- Riferimento al personaggio del vincitore ---
+        const charRef = doc(db, "characters", winnerUid);
 
         // --- NOTIFICA AL VINCITORE ---
         const winnerNotifyRef = doc(collection(db, "notifications"));
         transaction.set(winnerNotifyRef, {
           userId: winnerUid,
           title: "Asta Vinta! 🏆",
-          message: `Ottimo lavoro! Hai vinto l'asta per "${item.name}" con un'offerta di ${winnerAmount} MP.`,
+          message: `Ottimo lavoro! Hai vinto l'asta per "${item.name}" con un'offerta di ${winnerAmount} MP. Guadagni +1 Punto Ratto!`,
           read: false,
           timestamp: serverTimestamp()
         });
 
-        // Aggiorna l'oggetto
+        // --- AGGIORNA PERSONAGGIO (PUNTI RATTO +1) ---
+        transaction.update(charRef, {
+          rattoPoints: increment(1)
+        });
+
+        // Aggiorna l'oggetto nel mercato
         transaction.update(doc(db, "items", item.id), {
           isSold: true,
-          buyerName: winnerBidData.charName || "Un eroe",
+          buyerName: (winnerBidData && winnerBidData.charName) ? winnerBidData.charName : "Un eroe",
           finalPrice: winnerAmount,
           soldAt: new Date().toISOString()
         });
@@ -208,11 +219,11 @@ export default function Mercato() {
         // --- RIMBORSO E NOTIFICA AGLI SCONFITTI ---
         for (const [uid, bid] of bidsEntries) {
           if (uid !== winnerUid) {
-            const amount = bid.amount || bid;
-            const charRef = doc(db, "characters", uid);
+            const amount = typeof bid === 'object' ? bid.amount : bid;
+            const loserCharRef = doc(db, "characters", uid);
             const loserNotifyRef = doc(collection(db, "notifications"));
 
-            transaction.update(charRef, { platinum: increment(amount) });
+            transaction.update(loserCharRef, { platinum: increment(amount) });
             transaction.set(loserNotifyRef, {
               userId: uid,
               title: "Asta Conclusa ⛔",
@@ -223,10 +234,10 @@ export default function Mercato() {
           }
         }
       });
-      alert("✅ Oggetto consegnato e player notificati!");
+      alert("✅ Oggetto consegnato, player notificati e +1 Punto Ratto assegnato!");
     } catch (err) {
-      console.error(err);
-      alert("Errore durante la consegna.");
+      console.error("Errore durante la consegna:", err);
+      alert("Errore durante la consegna. Controlla la console.");
     }
   };
 

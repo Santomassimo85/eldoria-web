@@ -36,11 +36,117 @@ export default function WorldBoss() {
   const [dmgDiceCount, setDmgDiceCount] = useState(1); // Numero di dadi (default 1)
   const [dmgSelectedStat, setDmgSelectedStat] = useState(null); // Caratteristica per il danno
 
+  const [turnState, setTurnState] = useState({
+    phase: "players",
+    turnNumber: 1,
+    actedPlayers: [],
+  });
+
   const chatEndRef = useRef(null);
   const isMaster = useMemo(
     () => currentUser?.email === MASTER_EMAIL,
     [currentUser],
   );
+
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isUrgent, setIsUrgent] = useState(false);
+
+  const handleManualTurnChange = async (newPhase) => {
+    if (!isMaster) return;
+
+    const duration =
+      newPhase === "players" ? 3 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
+    const newExpiry = new Date(Date.now() + duration);
+
+    try {
+      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+        phase: newPhase,
+        expiryDate: newExpiry,
+        actedPlayers: [], // Reset dei player che hanno agito
+        turnNumber:
+          newPhase === "players" ? increment(1) : turnState.turnNumber,
+      });
+
+      // Opzionale: invia un messaggio di sistema in chat
+      await addDoc(collection(db, "global_chat"), {
+        text: `🔔 Il Master ha avviato il turno: ${newPhase.toUpperCase()}`,
+        sender: "SISTEMA",
+        uid: "SYS",
+        timestamp: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Errore nel cambio turno:", err);
+    }
+  };
+
+  const handleAutoTurnChange = async () => {
+    // Cambiato turnData in turnState
+    if (turnState.phase === "players") {
+      if (turnState.actedPlayers.length <= 1) {
+        // Estensione di 3 ore se ha agito solo 1 player
+        const newExpiry = new Date(Date.now() + 3 * 60 * 60 * 1000);
+        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+          expiryDate: newExpiry,
+        });
+        console.log("Turno esteso: pochi attaccanti.");
+      } else {
+        // Passaggio al Boss (1 ora)
+        const newExpiry = new Date(Date.now() + 1 * 60 * 60 * 1000);
+        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+          phase: "boss",
+          actedPlayers: [],
+          expiryDate: newExpiry,
+        });
+      }
+    } else {
+      // Il Boss ha finito, torna ai Player (3 ore)
+      const newExpiry = new Date(Date.now() + 3 * 60 * 60 * 1000);
+      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+        phase: "players",
+        turnNumber: increment(1),
+        actedPlayers: [],
+        expiryDate: newExpiry,
+      });
+    }
+  };
+
+  useEffect(() => {
+    // Usiamo turnState e controlliamo se expiryDate esiste[cite: 7]
+    if (!turnState?.expiryDate) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      // Gestione del timestamp di Firestore[cite: 7]
+      const expiry = turnState.expiryDate.toMillis
+        ? turnState.expiryDate.toMillis()
+        : turnState.expiryDate;
+      const diff = expiry - now;
+
+      if (diff <= 0) {
+        setTimeLeft(0);
+        clearInterval(interval);
+        if (isMaster) handleAutoTurnChange();
+      } else {
+        setTimeLeft(diff);
+        // Calcolo urgenza 10%
+        const totalDuration =
+          turnState.phase === "players"
+            ? 3 * 60 * 60 * 1000
+            : 1 * 60 * 60 * 1000;
+        setIsUrgent(diff < totalDuration * 0.1);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [turnState?.expiryDate, turnState?.phase, isMaster]);
+
+  // Funzione per formattare millisecondi in HH:MM:SS
+  const formatTime = (ms) => {
+    const seconds = Math.floor((ms / 1000) % 60);
+    const minutes = Math.floor((ms / (1000 * 60)) % 60);
+    const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -87,32 +193,64 @@ export default function WorldBoss() {
 
     const finalDamage = totalRoll + statMod + sneakDamage;
 
-    // 4. Aggiorna DB
-    await updateDoc(doc(db, "bosses", boss.id), {
-      hp: increment(-finalDamage),
-    });
+    // 4. --- LOGICA CALCOLO DANNO VS SCUDO ---
+    const currentShield = boss.shield || 0;
+    const currentHp = boss.hp || 0;
+    let remainingDamage = finalDamage;
+    let newShield = currentShield;
+    let newHp = currentHp;
 
-    // 5. Costruzione stringa dettaglio per la chat
-    let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
-    if (statMod !== 0)
-      detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
-    if (isRogue) detailString += ` + 1d6 Ladro (${sneakDamage})`;
+    if (currentShield > 0) {
+      if (currentShield >= remainingDamage) {
+        // Lo scudo assorbe tutto il danno
+        newShield = currentShield - remainingDamage;
+        remainingDamage = 0;
+      } else {
+        // Lo scudo si rompe, il danno restante passa agli HP
+        remainingDamage -= currentShield;
+        newShield = 0;
+        newHp = Math.max(0, currentHp - remainingDamage);
+      }
+    } else {
+      // Niente scudo, danno diretto agli HP
+      newHp = Math.max(0, currentHp - remainingDamage);
+    }
 
-    await addDoc(collection(db, "world_boss_chat"), {
-      type: "action",
-      senderName: charData?.name || "Eroe",
-      actionName: `Danno Arma ${isRogue ? " (Furtivo)" : ""}`,
-      damageRoll: `💥 INFLITTI ${finalDamage} DANNI!`,
-      description: `Tiro: ${detailString}`,
-      uid: currentUser.uid,
-      category: "Danno",
-      timestamp: serverTimestamp(),
-    });
+    // 5. AGGIORNAMENTO DATABASE
+    try {
+      await updateDoc(doc(db, "bosses", boss.id), {
+        hp: newHp,
+        shield: newShield
+      });
 
-    // Reset e fine turno
-    setDmgDiceCount(1);
-    setDmgSelectedStat(null);
-    await endMyTurn();
+      // 6. COSTRUZIONE DETTAGLIO CHAT
+      let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
+      if (statMod !== 0) detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
+      if (isRogue) detailString += ` + 1d6 Ladro (${sneakDamage})`;
+      
+      let shieldNote = currentShield > 0 
+        ? ` (Scudo colpito! Rimanente: ${newShield})` 
+        : "";
+
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action",
+        senderName: charData?.name || "Eroe",
+        actionName: `Danno Arma ${isRogue ? " (Furtivo)" : ""}`,
+        damageRoll: `💥 INFLITTI ${finalDamage} DANNI!${shieldNote}`,
+        description: `Tiro: ${detailString}`,
+        uid: currentUser.uid,
+        category: "Danno",
+        timestamp: serverTimestamp(),
+      });
+
+      // Reset UI e fine turno
+      setDmgDiceCount(1);
+      setDmgSelectedStat(null);
+      await endMyTurn();
+
+    } catch (err) {
+      console.error("Errore durante l'applicazione del danno:", err);
+    }
   };
 
   const handleSavingThrow = async (statKey) => {
@@ -179,12 +317,6 @@ export default function WorldBoss() {
       alert("Errore durante la cura.");
     }
   };
-
-  const [turnState, setTurnState] = useState({
-    phase: "players",
-    turnNumber: 1,
-    actedPlayers: [],
-  });
 
   // Monitoraggio Turni
   useEffect(() => {
@@ -416,25 +548,25 @@ export default function WorldBoss() {
   };
 
   const healBossManual = async (amount) => {
-  const boss = activeBosses[0];
-  if (!boss) return;
-  
-  await updateDoc(doc(db, "bosses", boss.id), {
-    hp: Math.min(boss.maxHp, boss.hp + amount) // Cura senza superare il max
-  });
-};
+    const boss = activeBosses[0];
+    if (!boss) return;
 
-const shieldBossManual = async () => {
-  const boss = activeBosses[0];
-  if (!boss) return;
-  
-  const val = prompt("Quanti HP di scudo vuoi dare al Boss?");
-  if (val && !isNaN(val)) {
     await updateDoc(doc(db, "bosses", boss.id), {
-      shield: increment(parseInt(val))
+      hp: Math.min(boss.maxHp, boss.hp + amount), // Cura senza superare il max
     });
-  }
-};
+  };
+
+  const shieldBossManual = async () => {
+    const boss = activeBosses[0];
+    if (!boss) return;
+
+    const val = prompt("Quanti HP di scudo vuoi dare al Boss?");
+    if (val && !isNaN(val)) {
+      await updateDoc(doc(db, "bosses", boss.id), {
+        shield: increment(parseInt(val)),
+      });
+    }
+  };
 
   const clearChat = async () => {
     if (!window.confirm("Purgare la chat?")) return;
@@ -476,7 +608,10 @@ const shieldBossManual = async () => {
   return (
     <div className="wb-container">
       <h1>World Boss</h1>
-      <h5>IMPORTANTE: solo i player che effettueranno piú di 2 attacchi riceveranno ricompense</h5>
+      <h5>
+        IMPORTANTE: solo i player che effettueranno piú di 2 attacchi
+        riceveranno ricompense
+      </h5>
       {isMaster && (
         <div className="dm-controls-top">
           <div className="dm-overlay-label">DUNGEON MASTER CONTROL</div>
@@ -548,6 +683,16 @@ const shieldBossManual = async () => {
                         ? "🛡️ Turno eroi"
                         : "🔥 Turno Boss"}
                     </div>
+                    <div className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
+                      <i className="fas fa-hourglass-half"></i>
+                      <span>
+                        {turnState?.turnType === "players"
+                          ? "Tempo Eroi: "
+                          : "Tempo Boss: "}
+                      </span>
+                      <strong>{formatTime(timeLeft)}</strong>
+                    </div>
+
                     {turnState.phase === "players" && !isMaster && (
                       <button
                         className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
@@ -577,22 +722,22 @@ const shieldBossManual = async () => {
                       )}
                     </div>
                     {/* BARRA SCUDO (Aggiunta qui) */}
-  {boss.shield > 0 && (
-    <div
-      className="shield-bar-boss-fill"
-      style={{
-        width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
-        position: "absolute",
-        top: 0,
-        left: 0,
-        height: "100%",
-        background: "rgba(0, 191, 255, 0.6)", // Blu scudo trasparente
-        borderRight: "2px solid #fff",
-        boxShadow: "0 0 10px #00bfff",
-        zIndex: 2
-      }}
-    />
-  )}
+                    {boss.shield > 0 && (
+                      <div
+                        className="shield-bar-boss-fill"
+                        style={{
+                          width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          height: "100%",
+                          background: "rgba(0, 191, 255, 0.6)", // Blu scudo trasparente
+                          borderRight: "2px solid #fff",
+                          boxShadow: "0 0 10px #00bfff",
+                          zIndex: 2,
+                        }}
+                      />
+                    )}
                   </div>
                 </>
               ) : (
@@ -610,15 +755,49 @@ const shieldBossManual = async () => {
               )}
 
               {/* CONTROLLI MASTER SEMPRE DISPONIBILI */}
-              {isMaster && (
+              {/* {isMaster && (
                 <div className="master-turn-controls">
                   <button onClick={() => togglePhase("players")}>
                     Fase Eroi
                   </button>
                   <button onClick={() => togglePhase("boss")}>Fase Boss</button>
                 </div>
-              )}
+              )} */}
+              {isMaster && (
+                <div
+                  className="admin-turn-controls"
+                  style={{
+                    marginTop: "20px",
+                    border: "1px solid var(--gold)",
+                    padding: "10px",
+                  }}
+                >
+                  <h3>Gestione Turni</h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <button
+                      className="wb-btn-action"
+                      style={{ background: "#2ecc71" }}
+                      onClick={() => handleManualTurnChange("players")}
+                    >
+                      Inizia Turno Eroi (3h)
+                    </button>
 
+                    <button
+                      className="wb-btn-action"
+                      style={{ background: "#e74c3c" }}
+                      onClick={() => handleManualTurnChange("boss")}
+                    >
+                      Inizia Turno Boss (1h)
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* IMMAGINE CON EFFETTO DEFEATED (Grigia e Strappata via CSS) */}
               <div
                 className={`boss-image-container ${isDefeated ? "boss-defeated-visual" : ""}`}
@@ -938,57 +1117,124 @@ const shieldBossManual = async () => {
                   </div>
 
                   <div className="boss-actions-monitor">
-  <h4>Azioni Boss</h4>
-  {activeBosses[0] && (
-    <>
-      <div className="wb-action-list">
-        <button
-          className="wb-btn-action boss-atk"
-          onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action1)}
-        >
-          ⚔️ {activeBosses[0].action1.name} ({activeBosses[0].action1.damage})
-        </button>
-        <button
-          className="wb-btn-action boss-atk"
-          onClick={() => handleBossRoll(activeBosses[0], activeBosses[0].action2)}
-        >
-          🔥 {activeBosses[0].action2.name} ({activeBosses[0].action2.damage})
-        </button>
-      </div>
+                    <h4>Azioni Boss</h4>
+                    {activeBosses[0] && (
+                      <>
+                        <div className="wb-action-list">
+                          <button
+                            className="wb-btn-action boss-atk"
+                            onClick={() =>
+                              handleBossRoll(
+                                activeBosses[0],
+                                activeBosses[0].action1,
+                              )
+                            }
+                          >
+                            ⚔️ {activeBosses[0].action1.name} (
+                            {activeBosses[0].action1.damage})
+                          </button>
+                          <button
+                            className="wb-btn-action boss-atk"
+                            onClick={() =>
+                              handleBossRoll(
+                                activeBosses[0],
+                                activeBosses[0].action2,
+                              )
+                            }
+                          >
+                            🔥 {activeBosses[0].action2.name} (
+                            {activeBosses[0].action2.damage})
+                          </button>
+                        </div>
 
-      {/* NUOVI CONTROLLI RIGENERAZIONE BOSS */}
-      <h4 style={{marginTop: '15px', borderTop: '1px dashed #666', paddingTop: '10px'}}>Gestione Boss</h4>
-      <div className="boss-management-btns" style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-        <button 
-          onClick={() => healBossManual(5)}
-          style={{ background: '#27ae60', color: 'white', flex: 1, padding: '5px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          Cura +5
-        </button>
-        <button 
-          onClick={() => healBossManual(10)}
-          style={{ background: '#2ecc71', color: 'white', flex: 1, padding: '5px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          Cura +10
-        </button>
-        <button 
-          onClick={shieldBossManual}
-          style={{ background: '#00bfff', color: 'white', flex: 1, padding: '5px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          🛡️ Scudo
-        </button>
-        {activeBosses[0].shield > 0 && (
-          <button 
-            onClick={() => updateDoc(doc(db, "bosses", activeBosses[0].id), { shield: 0 })}
-            style={{ background: '#ff4444', color: 'white', padding: '5px 10px', fontSize: '0.7rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            ✕
-          </button>
-        )}
-      </div>
-    </>
-  )}
-</div>
+                        {/* NUOVI CONTROLLI RIGENERAZIONE BOSS */}
+                        <h4
+                          style={{
+                            marginTop: "15px",
+                            borderTop: "1px dashed #666",
+                            paddingTop: "10px",
+                          }}
+                        >
+                          Gestione Boss
+                        </h4>
+                        <div
+                          className="boss-management-btns"
+                          style={{
+                            display: "flex",
+                            gap: "5px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button
+                            onClick={() => healBossManual(5)}
+                            style={{
+                              background: "#27ae60",
+                              color: "white",
+                              flex: 1,
+                              padding: "5px",
+                              fontSize: "0.7rem",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Cura +5
+                          </button>
+                          <button
+                            onClick={() => healBossManual(10)}
+                            style={{
+                              background: "#2ecc71",
+                              color: "white",
+                              flex: 1,
+                              padding: "5px",
+                              fontSize: "0.7rem",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Cura +10
+                          </button>
+                          <button
+                            onClick={shieldBossManual}
+                            style={{
+                              background: "#00bfff",
+                              color: "white",
+                              flex: 1,
+                              padding: "5px",
+                              fontSize: "0.7rem",
+                              border: "none",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            🛡️ Scudo
+                          </button>
+                          {activeBosses[0].shield > 0 && (
+                            <button
+                              onClick={() =>
+                                updateDoc(
+                                  doc(db, "bosses", activeBosses[0].id),
+                                  { shield: 0 },
+                                )
+                              }
+                              style={{
+                                background: "#ff4444",
+                                color: "white",
+                                padding: "5px 10px",
+                                fontSize: "0.7rem",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>
