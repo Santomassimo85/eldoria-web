@@ -70,7 +70,7 @@ export default function WorldMap() {
       </h1>
 
       <div className="map-container">
-        <img src="/assets/Eldoria.jpg" className="world-map-img" alt="Mappa Mondo" />
+        <img src="/assets/Exanthia.jpg" className="world-map-img" alt="Mappa Mondo" />
 
         {/* 1. RENDER BOSS (Ping Rossi) */}
         {activeBosses.map((boss) => (

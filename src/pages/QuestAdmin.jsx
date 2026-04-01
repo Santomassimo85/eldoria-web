@@ -133,7 +133,7 @@ export default function QuestAdmin() {
               <option value="Eroica">Eroica</option>
             </select>
             <input
-              placeholder="Zona di Eldoria"
+              placeholder="Zona di Exanthia"
               value={formData.zona}
               onChange={(e) => setFormData({ ...formData, zona: e.target.value })}
               required

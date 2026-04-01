@@ -28,6 +28,7 @@ const getPartyByCharName = (name) => {
     "Horn":"LAC",
     "Thinkle Muschioverde":"LAC",
     "Cleofe":"LAC",
+    "Makenna":"LEAF",
   };
   return mapping[name] || "Senza Gruppo";
 };

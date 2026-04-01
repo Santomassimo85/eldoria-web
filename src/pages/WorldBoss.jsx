@@ -882,7 +882,7 @@ export default function WorldBoss() {
               <h1 className="victory-title">⚔️ VITTORIA! ⚔️</h1>
               <p className="victory-text">
                 Il male è stato scacciato. {activeBosses[0]?.name} è caduto
-                sotto i colpi degli eroi di Eldoria!
+                sotto i colpi degli eroi di Exanthia!
               </p>
               <div className="victory-sub-text">
                 La chat e le azioni sono state disattivate per celebrare il

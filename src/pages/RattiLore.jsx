@@ -32,7 +32,7 @@ export default function RattiLore() {
 
         <p>
           Oggi, 1852 anni dopo la <em><b>Caduta delle Stelle</b></em>, la reputazione tra i Ratti non è solo un titolo, 
-          ma la chiave per accedere alle risorse più rare di Eldoria. Interagire con il Mercato Nero significa dimostrare 
+          ma la chiave per accedere alle risorse più rare di Exanthia. Interagire con il Mercato Nero significa dimostrare 
           la propria astuzia: ogni offerta piazzata e ogni affare concluso aumenta la tua influenza nel sottosuolo.
         </p>
         <br /><br /><br />
@@ -45,7 +45,7 @@ export default function RattiLore() {
           più vantaggi sblocchi, come sconti esclusivi, accesso a oggetti nascosti e persino poteri temporanei. 
           Ma attenzione: i Ratti sono sempre alla ricerca di nuovi membri, e la tua reputazione è la tua moneta più preziosa. Riuscirai a scalare le gerarchie del sottosuolo e diventare una leggenda tra i Ratti? <br
     /> <br />
-    Ovviamente i criminali piú pericolosi di eldoria sono continuamente alla ricerca di tesori...e questo fa di voi delle possibili prede.
+    Ovviamente i criminali piú pericolosi di Exanthia sono continuamente alla ricerca di tesori...e questo fa di voi delle possibili prede.
           </p>
 
         <h2 style={{ color: "var(--red)", marginTop: "40px" }}>Gradi di Reputazione</h2>

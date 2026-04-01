@@ -184,7 +184,7 @@ export default function WorldBossAdmin() {
                 
                 <div className="admin-map-preview">
                   <div className="map-click-area">
-                    <img src="/assets/Eldoria.jpg" onClick={(e) => updateBossLocation(e, boss.id)} alt="Map" />
+                    <img src="/assets/Exanthia.jpg" onClick={(e) => updateBossLocation(e, boss.id)} alt="Map" />
                     <div className="boss-ping" style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}></div>
                   </div>
                 </div>

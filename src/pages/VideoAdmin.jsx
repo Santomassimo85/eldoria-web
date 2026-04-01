@@ -92,7 +92,7 @@ export default function VideoAdmin() {
         <div style={{ marginBottom: "15px" }}>
           <label style={{ display: "block", marginBottom: "5px", color: "var(--gold)" }}>Titolo Sessione</label>
           <input 
-            placeholder="es. Sessione 42: La caduta di Eldoria" 
+            placeholder="es. Sessione 42: La caduta di Exanthia" 
             value={title} onChange={e => setTitle(e.target.value)} 
             style={{ width: "100%", padding: "10px", background: "#111", border: "1px solid #555", color: "white" }} 
             required 

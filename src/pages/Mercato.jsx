@@ -322,7 +322,7 @@ export default function Mercato() {
 
   return (
     <section className="mercato-page">
-      <h1 className="main-title">Mercato Nero di Eldoria</h1>
+      <h1 className="main-title">Mercato Nero di Exanthia</h1>
 
       {currentUser && (
         <div className="ratto-status-container">
