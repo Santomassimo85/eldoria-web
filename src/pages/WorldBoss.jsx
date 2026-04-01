@@ -408,11 +408,11 @@ export default function WorldBoss() {
     const boss = activeBosses[0];
     if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
 
-    const isAttack = action.category === "Armi";
+    const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto";
     const d20 = Math.floor(Math.random() * 20) + 1;
-    const bonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
-    const hitTotal = d20 + bonus;
-    const isCritical = d20 === 20; // <--- Rilevamento Critico naturale
+    const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+    const hitTotal = d20 + bonusToHit;
+    const isCritical = d20 === 20;
 
     let actionData = {
       type: "action",
@@ -421,24 +421,85 @@ export default function WorldBoss() {
       timestamp: serverTimestamp(),
       uid: currentUser.uid,
       category: action.category,
-      hitRoll: `🎲 d20(${d20}) + bonus(${bonus}) = ${hitTotal} `,
+      hitRoll: `🎲 d20(${d20}) + bonus(${bonusToHit}) = ${hitTotal} `,
     };
 
     if (isAttack) {
       if (isCritical || hitTotal >= (boss.ac || 10)) {
-        // Se è critico, salviamo l'informazione per il tiro danni successivo
-        if (isCritical) {
-          setDmgDiceCount(2); // Raddoppia automaticamente i dadi per il prossimo click
-          actionData.damageRoll =
-            "💥 CRITICO NATURALE! I tuoi dadi danno sono raddoppiati!";
-        } else {
-          actionData.damageRoll = "🎯 COLPITO! Tira il dado per i danni";
+        
+        // 1. GESTIONE DINAMICA DI @mod[cite: 1, 14]
+        let formulaRaw = (action.damage && action.damage !== "0") ? action.damage : "1d6";
+        
+        // Determiniamo quale modificatore usare per @mod
+        // Di base: Armi a distanza o con "Finesse" -> Destrezza (dex), altrimenti Forza (str)
+        const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || 
+                                 action.name?.toLowerCase().includes("arco") || 
+                                 action.name?.toLowerCase().includes("scimitar");
+        
+        const modValue = isFinesseOrRanged ? (charData?.stats?.dex || 0) : (charData?.stats?.str || 0);
+        
+        // Sostituiamo @mod con il valore numerico reale
+        let cleanFormula = formulaRaw.replace(/@mod/g, modValue).replace(/\s+/g, "");
+
+        // 2. ANALISI DEI COMPONENTI (es: "2d6+4+1")
+        const parts = cleanFormula.split('+');
+        const diePart = parts[0]; 
+        
+        // Sommiamo tutti i bonus numerici rimasti nella formula (es: 4 + 1)
+        let staticBonus = 0;
+        for (let i = 1; i < parts.length; i++) {
+          staticBonus += parseInt(parts[i]) || 0;
         }
+        
+        // 3. LANCIO DEI DADI
+        const [num, sides] = diePart.split('d').map(n => parseInt(n) || 1);
+        let dieRollTotal = 0;
+        let rolls = [];
+        for (let i = 0; i < num; i++) {
+          const r = Math.floor(Math.random() * sides) + 1;
+          dieRollTotal += r;
+          rolls.push(r);
+        }
+
+        // 4. CALCOLO FINALE[cite: 14]
+        let totalDamage = dieRollTotal + staticBonus;
+        if (isCritical) totalDamage *= 2;
+
+        let dieDetail = `Dado ${diePart}[${rolls.join('+')}]`;
+        let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? '+ bonus(' + staticBonus + ')' : ''}`;
+        
+        if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}) x2`;
+
+        // 5. LOGICA LADRO[cite: 14]
+        if (charData?.class?.toLowerCase() === "ladro" || charData?.class?.toLowerCase() === "rogue") {
+          const sneak = Math.floor(Math.random() * 6) + 1;
+          totalDamage += sneak;
+          damageString += ` + 1d6 Furtivo(${sneak})`;
+        }
+
+        // 6. APPLICAZIONE AL BOSS[cite: 14]
+        const currentShield = boss.shield || 0;
+        const currentHp = boss.hp || 0;
+        let dmgRem = totalDamage;
+        let newShield = currentShield;
+        let newHp = currentHp;
+
+        if (currentShield > 0) {
+          if (currentShield >= dmgRem) { newShield -= dmgRem; dmgRem = 0; }
+          else { dmgRem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - dmgRem); }
+        } else { newHp = Math.max(0, currentHp - dmgRem); }
+
+        await updateDoc(doc(db, "bosses", boss.id), { hp: newHp, shield: newShield });
+
+        actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
+        if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
+
       } else {
-        actionData.damageRoll = "🛡️ MANCATO! Il colpo rimbalza.";
-        await endMyTurn();
+        actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
       }
+      
       await addDoc(collection(db, "world_boss_chat"), actionData);
+      await endMyTurn();
     } else {
       await addDoc(collection(db, "world_boss_chat"), actionData);
     }
