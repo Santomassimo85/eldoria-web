@@ -24,6 +24,13 @@ const partyData = {
     { name: "Khorvash", race: "Tiefling ", class: "Barbaro", image: "/assets/player/Khorvash.jpg" },
 
   ],
+  party4: [
+    { name: "Makenna", race: "Changeling", class: "Ladro", image: "/assets/player/Makenna.jpg" },
+    { name: "Cornelius", race: "Goliath", class: "Paladino", image: "/assets/player/Cornelius.jpg" },
+    { name: "Soran", race: "Umano", class: "Bardo", image: "/assets/player/Soran.jpg" },
+      { name: "Soran", race: "Halfling", class: "Ladro", image: "/assets/player/Cleofe.jpg" },
+
+  ],
 };
 
 // Componente per una singola Card del personaggio
