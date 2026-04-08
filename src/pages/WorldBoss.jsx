@@ -870,7 +870,7 @@ const isBossVictorious = useMemo(() => {
                         >
                           ✖
                         </button>
-                      )} 
+                      )}  
                     </div>
                     {m.type === "action" ? (
                       <div
