@@ -30,7 +30,6 @@ export default function WorldBoss() {
   const [messages, setMessages] = useState([]);
   const [players, setPlayers] = useState([]);
   const [text, setText] = useState("");
-  const [selectedMod, setSelectedMod] = useState(null);
   const [openSections, setOpenSections] = useState({ Armi: true });
   const [selectedTargets, setSelectedTargets] = useState([]); // Stato per selezione bersagli Master
   const [dmgDiceCount, setDmgDiceCount] = useState(1); // Numero di dadi (default 1)
@@ -42,6 +41,20 @@ export default function WorldBoss() {
     actedPlayers: [],
   });
 
+  // --- 1. LOGICHE DI STATO (Da mettere dopo gli useState) ---
+  const isBossDefeated = useMemo(() => {
+    return activeBosses.length > 0 && activeBosses[0].hp <= 0;
+  }, [activeBosses]);
+
+  // Controlliamo se la data di scadenza del boss è passata
+  const isTimeExpired = useMemo(() => {
+    if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return false;
+    const now = new Date().getTime();
+    const expiry = new Date(activeBosses[0].expiryDate).getTime();
+    return now >= expiry && activeBosses[0].hp > 0;
+  }, [activeBosses, Date.now()]); // Date.now() qui è indicativo, il memo si aggiornerà al cambio boss
+
+  // isBossDefeated e isTimeExpired coprono insieme tutti i casi di fine battaglia
   const chatEndRef = useRef(null);
   const isMaster = useMemo(
     () => currentUser?.email === MASTER_EMAIL,
@@ -54,28 +67,31 @@ export default function WorldBoss() {
   const handleManualTurnChange = async (newPhase) => {
     if (!isMaster) return;
 
-    const duration =
-      newPhase === "players" ? 3 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
-    const newExpiry = new Date(Date.now() + duration);
+    // Testo del messaggio in base alla fase
+    const turnMsg =
+      newPhase === "players"
+        ? "🛡️ TURNO DEGLI EROI: È il momento di colpire!"
+        : "🔥 TURNO DEL BOSS: Preparate le difese!";
 
     try {
-      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+      const turnRef = doc(db, "battle_meta", "turn_tracker");
+      await updateDoc(turnRef, {
         phase: newPhase,
-        expiryDate: newExpiry,
-        actedPlayers: [], // Reset dei player che hanno agito
+        actedPlayers: [],
         turnNumber:
           newPhase === "players" ? increment(1) : turnState.turnNumber,
       });
 
-      // Opzionale: invia un messaggio di sistema in chat
-      await addDoc(collection(db, "global_chat"), {
-        text: `🔔 Il Master ha avviato il turno: ${newPhase.toUpperCase()}`,
-        sender: "SISTEMA",
-        uid: "SYS",
+      // INVIA IL MESSAGGIO AUTOMATICO IN CHAT
+      await addDoc(collection(db, "world_boss_chat"), {
+        text: turnMsg,
+        senderName: "SISTEMA",
+        uid: BOSS_SYSTEM_UID,
         timestamp: serverTimestamp(),
+        isSystem: true, // Utile per colorarlo via CSS
       });
-    } catch (err) {
-      console.error("Errore nel cambio turno:", err);
+    } catch (e) {
+      console.error("Errore cambio turno:", e);
     }
   };
 
@@ -220,17 +236,17 @@ export default function WorldBoss() {
     try {
       await updateDoc(doc(db, "bosses", boss.id), {
         hp: newHp,
-        shield: newShield
+        shield: newShield,
       });
 
       // 6. COSTRUZIONE DETTAGLIO CHAT
       let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
-      if (statMod !== 0) detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
+      if (statMod !== 0)
+        detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
       if (isRogue) detailString += ` + 1d6 Ladro (${sneakDamage})`;
-      
-      let shieldNote = currentShield > 0 
-        ? ` (Scudo colpito! Rimanente: ${newShield})` 
-        : "";
+
+      let shieldNote =
+        currentShield > 0 ? ` (Scudo colpito! Rimanente: ${newShield})` : "";
 
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action",
@@ -247,7 +263,6 @@ export default function WorldBoss() {
       setDmgDiceCount(1);
       setDmgSelectedStat(null);
       await endMyTurn();
-
     } catch (err) {
       console.error("Errore durante l'applicazione del danno:", err);
     }
@@ -391,16 +406,6 @@ export default function WorldBoss() {
       return 0;
     }
   };
-  // WorldBoss.jsx - Intorno alla riga 250
-  const isBossDefeated = useMemo(() => {
-    return activeBosses.length > 0 && activeBosses[0].hp <= 0;
-  }, [activeBosses]);
-
-
-const isBossVictorious = useMemo(() => {
-  return timeLeft <= 0 && activeBosses.length > 0 && activeBosses[0].hp > 0;
-}, [timeLeft, activeBosses]);
-
 
   // --- AZIONI PLAYER ---
   const endMyTurn = async () => {
@@ -414,7 +419,10 @@ const isBossVictorious = useMemo(() => {
     const boss = activeBosses[0];
     if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
 
-    const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto";
+    const isAttack =
+      action.category === "Armi" ||
+      action.category?.toLowerCase().includes("livello") ||
+      action.category === "Trucchetto";
     const d20 = Math.floor(Math.random() * 20) + 1;
     const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
     const hitTotal = d20 + bonusToHit;
@@ -432,33 +440,38 @@ const isBossVictorious = useMemo(() => {
 
     if (isAttack) {
       if (isCritical || hitTotal >= (boss.ac || 10)) {
-        
         // 1. GESTIONE DINAMICA DI @mod[cite: 1, 14]
-        let formulaRaw = (action.damage && action.damage !== "0") ? action.damage : "1d6";
-        
+        let formulaRaw =
+          action.damage && action.damage !== "0" ? action.damage : "1d6";
+
         // Determiniamo quale modificatore usare per @mod
         // Di base: Armi a distanza o con "Finesse" -> Destrezza (dex), altrimenti Forza (str)
-        const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || 
-                                 action.name?.toLowerCase().includes("arco") || 
-                                 action.name?.toLowerCase().includes("scimitar");
-        
-        const modValue = isFinesseOrRanged ? (charData?.stats?.dex || 0) : (charData?.stats?.str || 0);
-        
+        const isFinesseOrRanged =
+          action.name?.toLowerCase().includes("rapier") ||
+          action.name?.toLowerCase().includes("arco") ||
+          action.name?.toLowerCase().includes("scimitar");
+
+        const modValue = isFinesseOrRanged
+          ? charData?.stats?.dex || 0
+          : charData?.stats?.str || 0;
+
         // Sostituiamo @mod con il valore numerico reale
-        let cleanFormula = formulaRaw.replace(/@mod/g, modValue).replace(/\s+/g, "");
+        let cleanFormula = formulaRaw
+          .replace(/@mod/g, modValue)
+          .replace(/\s+/g, "");
 
         // 2. ANALISI DEI COMPONENTI (es: "2d6+4+1")
-        const parts = cleanFormula.split('+');
-        const diePart = parts[0]; 
-        
+        const parts = cleanFormula.split("+");
+        const diePart = parts[0];
+
         // Sommiamo tutti i bonus numerici rimasti nella formula (es: 4 + 1)
         let staticBonus = 0;
         for (let i = 1; i < parts.length; i++) {
           staticBonus += parseInt(parts[i]) || 0;
         }
-        
+
         // 3. LANCIO DEI DADI
-        const [num, sides] = diePart.split('d').map(n => parseInt(n) || 1);
+        const [num, sides] = diePart.split("d").map((n) => parseInt(n) || 1);
         let dieRollTotal = 0;
         let rolls = [];
         for (let i = 0; i < num; i++) {
@@ -471,13 +484,17 @@ const isBossVictorious = useMemo(() => {
         let totalDamage = dieRollTotal + staticBonus;
         if (isCritical) totalDamage *= 2;
 
-        let dieDetail = `Dado ${diePart}[${rolls.join('+')}]`;
-        let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? '+ bonus(' + staticBonus + ')' : ''}`;
-        
-        if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}) x2`;
+        let dieDetail = `Dado ${diePart}[${rolls.join("+")}]`;
+        let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}`;
+
+        if (isCritical)
+          damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}) x2`;
 
         // 5. LOGICA LADRO[cite: 14]
-        if (charData?.class?.toLowerCase() === "ladro" || charData?.class?.toLowerCase() === "rogue") {
+        if (
+          charData?.class?.toLowerCase() === "ladro" ||
+          charData?.class?.toLowerCase() === "rogue"
+        ) {
           const sneak = Math.floor(Math.random() * 6) + 1;
           totalDamage += sneak;
           damageString += ` + 1d6 Furtivo(${sneak})`;
@@ -491,19 +508,30 @@ const isBossVictorious = useMemo(() => {
         let newHp = currentHp;
 
         if (currentShield > 0) {
-          if (currentShield >= dmgRem) { newShield -= dmgRem; dmgRem = 0; }
-          else { dmgRem -= currentShield; newShield = 0; newHp = Math.max(0, currentHp - dmgRem); }
-        } else { newHp = Math.max(0, currentHp - dmgRem); }
+          if (currentShield >= dmgRem) {
+            newShield -= dmgRem;
+            dmgRem = 0;
+          } else {
+            dmgRem -= currentShield;
+            newShield = 0;
+            newHp = Math.max(0, currentHp - dmgRem);
+          }
+        } else {
+          newHp = Math.max(0, currentHp - dmgRem);
+        }
 
-        await updateDoc(doc(db, "bosses", boss.id), { hp: newHp, shield: newShield });
+        await updateDoc(doc(db, "bosses", boss.id), {
+          hp: newHp,
+          shield: newShield,
+        });
 
         actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
-        if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
-
+        if (newShield < currentShield)
+          actionData.damageRoll += " 🛡️ Scudo colpito!";
       } else {
         actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
       }
-      
+
       await addDoc(collection(db, "world_boss_chat"), actionData);
       await endMyTurn();
     } else {
@@ -602,12 +630,6 @@ const isBossVictorious = useMemo(() => {
     setSelectedTargets([]);
   };
 
-  const togglePhase = async (newPhase) => {
-    const update = { phase: newPhase, actedPlayers: [] };
-    if (newPhase === "players") update.turnNumber = increment(1);
-    await updateDoc(doc(db, "battle_meta", "turn_tracker"), update);
-  };
-
   const damagePlayerManual = async (playerId, amount) => {
     await updateDoc(doc(db, "characters", playerId), {
       "stats.hp": increment(amount),
@@ -689,157 +711,243 @@ const isBossVictorious = useMemo(() => {
       )}
 
       {/* AREA BOSS */}
-<section className="boss-area">
-  {activeBosses.map((boss) => {
-    const isDefeated = boss.hp <= 0; // Vittoria Player
-    const isTimeExpired = timeLeft <= 0 && boss.hp > 0; // Vittoria Boss
+      <section className="boss-area">
+        {activeBosses.map((boss) => {
+          // Usiamo le variabili globali isBossDefeated e isTimeExpired
+          const isGameOver = isBossDefeated || isTimeExpired;
 
-    return (
-      <div
-        key={boss.id}
-        className={`boss-unit ${isDefeated || isTimeExpired ? "defeated-unit" : ""}`}
-      >
-        <h2 className="boss-name">{boss.name}</h2>
+          return (
+            <div
+              key={boss.id}
+              className={`boss-unit ${isGameOver ? "defeated-unit" : ""}`}
+            >
+              <h2 className="boss-name">{boss.name}</h2>
 
-        {/* --- MESSAGGI DI FINE PARTITA --- */}
-        {isDefeated && (
-          <div className="victory-announcement">
-            <h1 className="victory-glow-text">🏆 VITTORIA DEGLI EROI 🏆</h1>
-          </div>
-        )}
+              {/* --- MESSAGGI DI STATO --- */}
+              {isBossDefeated && (
+                <div className="victory-announcement">
+                  <h1 className="victory-glow-text">
+                    🏆 VITTORIA DEGLI EROI 🏆
+                  </h1>
+                </div>
+              )}
 
-        {isTimeExpired && (
-          <div className="defeat-announcement">
-            <h1 className="defeat-glow-text" style={{ color: "#ff4d4d", textShadow: "0 0 15px red" }}>
-              💀 IL BOSS HA PREVALSO 💀
-            </h1>
-            <p style={{ textAlign: 'center', fontStyle: 'italic', color: '#ccc' }}>Il tempo è scaduto...</p>
-          </div>
-        )}
+              {isTimeExpired && (
+                <div className="defeat-announcement">
+                  <h1
+                    className="defeat-glow-text"
+                    style={{ color: "#ff4d4d", textShadow: "0 0 15px red" }}
+                  >
+                    💀 IL BOSS HA PREVALSO 💀
+                  </h1>
+                </div>
+              )}
 
-        {/* --- DESCRIZIONE BOSS: Sempre visibile --- */}
-        {boss.description && (
-          <p className="boss-flavor-text">{boss.description}</p>
-        )}
+              {/* --- INFORMAZIONI FISSE (Sempre visibili) --- */}
+              {boss.description && (
+                <p className="boss-flavor-text">{boss.description}</p>
+              )}
 
-        {/* --- IMMAGINE BOSS: Sempre visibile, grigia se sconfitto o tempo scaduto --- */}
-        <div className={`boss-image-container ${isDefeated || isTimeExpired ? "boss-defeated-visual" : ""}`}>
-          <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
-          {isDefeated && <div className="torn-overlay"></div>}
-        </div>
-
-        {/* --- PENALITÀ: Solo se il Boss è VIVO o se il BOSS HA VINTO (Tempo scaduto) --- */}
-        {(isTimeExpired || (!isDefeated && !isTimeExpired)) && boss.penalties && (
-          <div className="boss-penalties-glow-box">
-            <span className="penalties-label">💀 PENALITÀ SCONFITTA:</span>
-            <p className="penalties-text">{boss.penalties}</p>
-          </div>
-        )}
-
-        {/* --- REWARD: Solo se i PLAYER HANNO VINTO (0 hp) o se la battaglia è ancora in corso --- */}
-        {(isDefeated || (!isDefeated && !isTimeExpired)) && boss.rewards && (
-          <div className="boss-rewards-glow-box">
-            <span className="rewards-label">BOTTINO:</span>
-            <p className="rewards-text">{boss.rewards}</p>
-          </div>
-        )}
-
-        {/* --- INTERFACCIA DI COMBATTIMENTO (Barra HP, Timer, Turni) --- 
-             Mostrata solo se la battaglia è in corso. Se Master, mostriamo HP per debug */}
-        {(!isDefeated && !isTimeExpired) ? (
-          <>
-            <div className="main-boss-timer">
-              <TimerDisplay expiryDate={boss.expiryDate} />
-            </div>
-
-            <div className={`turn-banner ${turnState.phase}-phase`}>
-              <div className="turn-count">TURNO {turnState.turnNumber}</div>
-              <div className="phase-text">
-                {turnState.phase === "players" ? "🛡️ Turno eroi" : "🔥 Turno Boss"}
-              </div>
-              <div className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
-                <strong>{formatTime(timeLeft)}</strong>
+              {/* --- IMMAGINE BOSS (Grigia se GameOver) --- */}
+              <div
+                className={`boss-image-container ${isGameOver ? "boss-defeated-visual" : ""}`}
+              >
+                <img
+                  src={boss.imageUrl || "/assets/default-boss.png"}
+                  alt={boss.name}
+                  className={`boss-image ${isBossDefeated ? "boss-image-grayscale" : ""}`}
+                />{" "}
+                {isBossDefeated && <div className="torn-overlay"></div>}
               </div>
 
-              {turnState.phase === "players" && !isMaster && (
-                <button
-                  className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
-                  onClick={endMyTurn}
-                  disabled={turnState.actedPlayers.includes(currentUser.uid)}
+              {/* --- PENALITÀ: Mostra se la battaglia è in corso OPPURE se il Boss ha vinto --- */}
+              {!isBossDefeated && boss.penalties && (
+                <div className="boss-penalties-glow-box">
+                  <span className="penalties-label">
+                    💀 PENALITÀ SCONFITTA:
+                  </span>
+                  <p className="penalties-text">{boss.penalties}</p>
+                </div>
+              )}
+
+              {/* --- BOTTINO: Mostra se la battaglia è in corso OPPURE se gli Eroi hanno vinto --- */}
+              {!isTimeExpired && boss.rewards && (
+                <div className="boss-rewards-glow-box">
+                  <span className="rewards-label">BOTTINO:</span>
+                  <p className="rewards-text">{boss.rewards}</p>
+                </div>
+              )}
+
+              {/* --- INTERFACCIA DI COMBATTIMENTO (Visibile solo se NON è finita o se sei Master) --- */}
+              {(!isGameOver || isMaster) && (
+                <>
+                  {!isGameOver && (
+                    <div className="main-boss-timer">
+                      <TimerDisplay expiryDate={boss.expiryDate} />
+                    </div>
+                  )}
+
+                  <div className={`turn-banner ${turnState.phase}-phase`}>
+                    <div className="turn-count">
+                      TURNO {turnState.turnNumber}
+                    </div>
+                    <div className="phase-text">
+                      {turnState.phase === "players"
+                        ? "🛡️ Turno eroi"
+                        : "🔥 Turno Boss"}
+                    </div>
+                    <div className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
+                      <strong>{formatTime(timeLeft)}</strong>
+                    </div>
+
+                    {turnState.phase === "players" &&
+                      !isMaster &&
+                      !isGameOver && (
+                        <button
+                          className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
+                          onClick={endMyTurn}
+                          disabled={turnState.actedPlayers.includes(
+                            currentUser.uid,
+                          )}
+                        >
+                          {turnState.actedPlayers.includes(currentUser.uid)
+                            ? "Azione Conclusa"
+                            : "Fine Turno"}
+                        </button>
+                      )}
+                  </div>
+
+                  <div className="hp-bar-outer">
+                    <div
+                      className="hp-bar-inner"
+                      style={{
+                        width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`,
+                      }}
+                    >
+                      {isMaster && (
+                        <span className="hp-text-admin">
+                          {boss.hp} / {boss.maxHp} HP
+                        </span>
+                      )}
+                    </div>
+                    {boss.shield > 0 && (
+                      <div
+                        className="shield-bar-boss-fill"
+                        style={{
+                          width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          height: "100%",
+                          background: "rgba(0, 191, 255, 0.6)",
+                          zIndex: 2,
+                        }}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* --- CONTROLLI MASTER --- */}
+              {isMaster && (
+                <div
+                  className="admin-turn-controls"
+                  style={{
+                    marginTop: "20px",
+                    border: "1px solid var(--gold)",
+                    padding: "10px",
+                  }}
                 >
-                  {turnState.actedPlayers.includes(currentUser.uid) ? "Azione Conclusa" : "Fine Turno"}
-                </button>
+                  <h3>Gestione Turni (Master Only)</h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <button
+                      className="wb-btn-action"
+                      style={{ background: "#2ecc71" }}
+                      onClick={() => handleManualTurnChange("players")}
+                    >
+                      Inizia Turno Eroi
+                    </button>
+                    <button
+                      className="wb-btn-action"
+                      style={{ background: "#e74c3c" }}
+                      onClick={() => handleManualTurnChange("boss")}
+                    >
+                      Inizia Turno Boss
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
+          );
+        })}
+      </section>
 
-            <div className="hp-bar-outer">
-              <div
-                className="hp-bar-inner"
-                style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }}
-              >
-                {isMaster && <span className="hp-text-admin">{boss.hp} / {boss.maxHp} HP</span>}
-              </div>
-              {boss.shield > 0 && (
-                <div
-                  className="shield-bar-boss-fill"
+      <div className="battle-interface">
+        {/* FINE BATTAGLIA: mostra risultato completo con immagine, descrizione e penalità/ricompense */}
+        {(isBossDefeated || isTimeExpired) && !isMaster ? (
+          <div className="end-game-screen">
+            <div className={isBossDefeated ? "victory-box" : "defeat-box"}>
+              <h1>
+                {isBossDefeated
+                  ? "⚔️ VITTORIA DEGLI EROI!"
+                  : "💀 IL BOSS HA PREVALSO"}
+              </h1>
+
+              {/* Immagine boss: grigia se sconfitto dagli eroi */}
+              {activeBosses[0]?.imageUrl && (
+                <img
+                  src={activeBosses[0].imageUrl}
+                  alt={activeBosses[0].name}
+                  className={`boss-image ${isBossDefeated ? "boss-image-grayscale" : ""}`}
                   style={{
-                    width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
-                    position: "absolute", top: 0, left: 0, height: "100%",
-                    background: "rgba(0, 191, 255, 0.6)", zIndex: 2,
+                    maxWidth: "300px",
+                    margin: "16px auto",
+                    display: "block",
                   }}
                 />
               )}
-            </div>
-          </>
-        ) : (
-          /* Se finito, mostriamo stato HP solo al Master */
-          isMaster && (
-            <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '10px' }}>
-              HP Finali: {boss.hp} | Scudo: {boss.shield}
-            </div>
-          )
-        )}
 
-        {/* --- CONTROLLI MASTER: Sempre disponibili per resettare o forzare fasi --- */}
-        {isMaster && (
-          <div className="admin-turn-controls" style={{ marginTop: "20px", border: "1px solid var(--gold)", padding: "10px" }}>
-            <h3>Gestione Master</h3>
-            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-              <button className="wb-btn-action" style={{ background: "#2ecc71" }} onClick={() => handleManualTurnChange("players")}>
-                Inizia Turno Eroi
-              </button>
-              <button className="wb-btn-action" style={{ background: "#e74c3c" }} onClick={() => handleManualTurnChange("boss")}>
-                Inizia Turno Boss
-              </button>
+              {/* Descrizione sempre visibile */}
+              {activeBosses[0]?.description && (
+                <p className="boss-flavor-text">
+                  {activeBosses[0].description}
+                </p>
+              )}
+
+              {/* Penalità: solo se il boss ha vinto (tempo scaduto) */}
+              {isTimeExpired && activeBosses[0]?.penalties && (
+                <div className="boss-penalties-glow-box">
+                  <span className="penalties-label">
+                    💀 PENALITÀ SCONFITTA:
+                  </span>
+                  <p className="penalties-text">{activeBosses[0].penalties}</p>
+                </div>
+              )}
+
+              {/* Ricompense: solo se gli eroi hanno vinto */}
+              {isBossDefeated && activeBosses[0]?.rewards && (
+                <div className="boss-rewards-glow-box">
+                  <span className="rewards-label">🏆 BOTTINO:</span>
+                  <p className="rewards-text">{activeBosses[0].rewards}</p>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
-    );
-  })}
-</section>
-
-     <div className="battle-interface">
-  {(isBossDefeated || isBossVictorious) && !isMaster ? (
-    <div className="victory-screen-container">
-      <div className={isBossDefeated ? "victory-glow-box" : "defeat-glow-box"}>
-        <h1>{isBossDefeated ? "⚔️ VITTORIA! ⚔️" : "💀 SCONFITTA 💀"}</h1>
-        <p className="victory-text">
-          {isBossDefeated 
-            ? `Il male è stato scacciato. ${activeBosses[0]?.name} è caduto!`
-            : `${activeBosses[0]?.name} ha sopraffatto gli eroi...`}
-        </p>
-      </div>
-    </div>
-  ) : (
-    <>
-            {/* CHAT */}
+        ) : (
+          <>
+            {/* SEZIONE CHAT */}
             <section className="chat-section">
               <div className="chat-messages">
-                {messages.map((m, index) => (
+                {messages.map((m) => (
                   <div
                     key={m.id}
-                    className={`msg-bubble ${m.type} ${m.uid === currentUser.uid ? "msg-right" : "msg-left"} ${m.uid === BOSS_SYSTEM_UID ? "is-boss-msg" : ""}`}
+                    className={`msg-bubble ${m.type} ${m.uid === currentUser.uid ? "msg-right" : "msg-left"} ${m.isSystem ? "system-msg" : ""}`}
                   >
                     <div className="msg-header">
                       <ChatAvatar
@@ -847,22 +955,16 @@ const isBossVictorious = useMemo(() => {
                         isBoss={m.uid === BOSS_SYSTEM_UID}
                       />
                       <span className="msg-author">{m.senderName}</span>
-
-                      {/* TIMESTAMP AGGIORNATO CON GIORNO E MESE */}
                       {m.timestamp && (
                         <span className="msg-timestamp">
-                          {new Date(m.timestamp.seconds * 1000).toLocaleString(
-                            "it-IT",
-                            {
-                              day: "2-digit",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
+                          {new Date(
+                            m.timestamp.seconds * 1000,
+                          ).toLocaleTimeString("it-IT", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                       )}
-
                       {isMaster && (
                         <button
                           className="btn-delete-msg"
@@ -870,8 +972,9 @@ const isBossVictorious = useMemo(() => {
                         >
                           ✖
                         </button>
-                      )}  
+                      )}
                     </div>
+
                     {m.type === "action" ? (
                       <div
                         className={`action-result cat-${m.category?.toLowerCase().replace(/\s/g, "-")}`}
@@ -879,28 +982,23 @@ const isBossVictorious = useMemo(() => {
                         <strong className="action-title">{m.actionName}</strong>
                         <p className="action-desc">{m.description}</p>
 
-                        {/* PRIVACY: Solo il Master vede i dettagli dei tiri del Boss */}
+                        {/* Dettagli tiri (Visibili a tutti se player, solo master se boss) */}
                         {((m.uid === BOSS_SYSTEM_UID && isMaster) ||
                           m.uid !== BOSS_SYSTEM_UID) && (
                           <div className="rolls-box">
-                            {m.hitRoll && <span>{m.hitRoll}</span>}
-                            {m.damageRoll && <span>{m.damageRoll}</span>}
+                            {m.hitRoll && (
+                              <span className="hit-res">{m.hitRoll}</span>
+                            )}
+                            {m.damageRoll && (
+                              <span className="dmg-res">{m.damageRoll}</span>
+                            )}
 
-                            {/* Visualizzazione dettagli individuali per il Master */}
-                            {m.masterDetails &&
-                              m.masterDetails.map((res, idx) => (
-                                <div
-                                  key={idx}
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    display: "block",
-                                    width: "100%",
-                                  }}
-                                >
+                            {isMaster &&
+                              m.masterDetails?.map((res, idx) => (
+                                <div key={idx} className="master-detail-line">
                                   • {res.name}:{" "}
-                                  {res.hit
-                                    ? `✅ COLPITO (${res.roll}) -> ${res.dmg} HP`
-                                    : `🛡️ MANCATO (${res.roll})`}
+                                  {res.hit ? `✅ ${res.dmg} HP` : `🛡️ Miss`} (
+                                  {res.roll})
                                 </div>
                               ))}
                           </div>
@@ -913,6 +1011,7 @@ const isBossVictorious = useMemo(() => {
                 ))}
                 <div ref={chatEndRef} />
               </div>
+
               <form
                 className="chat-form"
                 onSubmit={(e) => {
@@ -935,7 +1034,7 @@ const isBossVictorious = useMemo(() => {
                   placeholder="Narra la mossa..."
                   disabled={isUserLocked}
                 />
-                <button type="submit" disabled={isUserLocked} className="send">
+                <button type="submit" disabled={isUserLocked}>
                   Invia
                 </button>
               </form>
@@ -943,310 +1042,128 @@ const isBossVictorious = useMemo(() => {
 
             {/* SIDEBAR AZIONI */}
             <section
-              className={`player-actions-sidebar ${isUserLocked ? "locked-sidebar" : ""}`}
+              className={`player-actions-sidebar ${isUserLocked ? "is-locked" : ""}`}
             >
-              {isMaster ? (
-                <div className="admin-battle-controls">
+              {/* DASHBOARD MASTER */}
+              {isMaster && (
+                <div className="admin-controls">
                   <h3 className="sidebar-title">Master Dashboard</h3>
-                  {/* NUOVO CONTATORE AZIONI */}
-                  <div
-                    className="acted-players-counter"
-                    style={{
-                      textAlign: "center",
-                      padding: "5px",
-                      background: "#333",
-                      color: "#fff",
-                      borderRadius: "4px",
-                      marginBottom: "10px",
-                      fontSize: "0.8rem",
-                      border: "1px solid var(--gold)",
-                    }}
-                  >
-                    ⚔️ Eroi che hanno agito:{" "}
-                    <strong>
-                      {turnState.actedPlayers.length} / {players.length}
-                    </strong>
-                  </div>
-                  {/* Controlli Master: Seleziona Tutti, Cura, Monitor HP */}
-                  <div className="master-player-controls">
-                    <div
-                      className="selection-buttons-row"
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      <button
-                        className="btn-select-all"
-                        onClick={toggleSelectAll}
-                      >
-                        {selectedTargets.length === players.length
-                          ? "🚫 Deseleziona"
-                          : "🎯 Seleziona Tutti"}
-                      </button>
-                      <button className="btn-heal-all" onClick={healAllPlayers}>
-                        💖 Full HP
-                      </button>
-                    </div>
+
+                  <div className="acted-counter">
+                    ⚔️ Azioni: {turnState.actedPlayers.length} /{" "}
+                    {players.length}
                   </div>
 
-                  <div className="party-status-monitor">
-                    <h4>Bersagli Boss (Clicca per selezionare)</h4>
-                    {players.map((p) => {
-                      // Verifica se il giocatore ha già agito nel turno corrente
-                      const hasActed = turnState?.actedPlayers?.includes(p.id);
+                  <div className="master-buttons-group">
+                    <button onClick={toggleSelectAll}>
+                      {selectedTargets.length === players.length
+                        ? "🚫 Deseleziona"
+                        : "🎯 Seleziona Tutti"}
+                    </button>
+                    <button onClick={healAllPlayers}>💖 Full HP</button>
+                  </div>
 
-                      return (
+                  <div className="target-list">
+                    {players.map((p) => (
+                      <div key={p.id} className="target-item-container">
                         <div
-                          key={p.id}
-                          className="player-hp-control-group"
-                          style={{ marginBottom: "15px" }}
+                          className={`target-selector ${selectedTargets.includes(p.id) ? "is-selected" : ""} ${turnState?.actedPlayers?.includes(p.id) ? "has-acted" : ""}`}
+                          onClick={() => toggleTarget(p.id)}
                         >
-                          <div
-                            className={`player-hp-row selector ${selectedTargets.includes(p.id) ? "selected" : ""}`}
-                            onClick={() => toggleTarget(p.id)}
-                            style={{
-                              // Se ha agito, diventa rosso scuro, altrimenti mantiene lo stile originale
-                              backgroundColor: hasActed ? "#7a5555" : "",
-                              transition: "background-color 0.3s ease",
-                            }}
-                          >
-                            <span className="p-name">
-                              {p.name?.split(" ")[0]}
-                            </span>
-                            <div className="hp-bar-mini-container">
-                              {/* Barra HP Reale */}
+                          <span className="target-name">
+                            {p.name?.split(" ")[0]}
+                          </span>
+                          <div className="target-hp-bar">
+                            <div
+                              className="hp-fill"
+                              style={{
+                                width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%`,
+                              }}
+                            />
+                            {p.stats?.shield > 0 && (
                               <div
-                                className="hp-bar-mini-fill"
+                                className="shield-fill"
                                 style={{
-                                  width: `${(p.stats?.hp / p.stats?.maxHp) * 100}%`,
+                                  width: `${Math.min(100, (p.stats.shield / p.stats.maxHp) * 100)}%`,
                                 }}
                               />
-                              {/* BARRA SCUDO (Overlay Azzurro) */}
-                              {p.stats?.shield > 0 && (
-                                <div
-                                  className="shield-bar-mini-fill"
-                                  style={{
-                                    width: `${Math.min(100, (p.stats.shield / p.stats.maxHp) * 100)}%`,
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    height: "100%",
-                                    background: "rgba(0, 191, 255, 0.6)",
-                                    borderRight: "2px solid white",
-                                  }}
-                                />
-                              )}
-                              <span className="hp-text-overlay">
-                                {p.stats?.hp}
-                                {p.stats?.shield > 0
-                                  ? ` (+${p.stats.shield})`
-                                  : ""}{" "}
-                                / {p.stats?.maxHp}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Tasti Rapidi per il Master */}
-                          <div
-                            className="master-quick-actions"
-                            style={{
-                              display: "flex",
-                              gap: "5px",
-                              marginTop: "5px",
-                            }}
-                          >
-                            <button
-                              className="btn-hp plus"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                damagePlayerManual(p.id, 1);
-                              }}
-                            >
-                              +1
-                            </button>
-                            <button
-                              className="btn-hp plus"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                damagePlayerManual(p.id, 3);
-                              }}
-                            >
-                              +3
-                            </button>
-
-                            <button
-                              className="btn-hp shield"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const val = prompt("Quanti HP di scudo?");
-                                if (val)
-                                  updateDoc(doc(db, "characters", p.id), {
-                                    "stats.shield": increment(parseInt(val)),
-                                  });
-                              }}
-                              style={{ background: "#00bfff", color: "white" }}
-                            >
-                              🛡️ Scudo
-                            </button>
-
-                            {/* TASTO SVUOTA SCUDO */}
-                            {p.stats?.shield > 0 && (
-                              <button
-                                className="btn-hp clear-shield"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateDoc(doc(db, "characters", p.id), {
-                                    "stats.shield": 0,
-                                  });
-                                }}
-                                title="Rimuovi Scudo"
-                                style={{
-                                  background: "#ff4444",
-                                  color: "white",
-                                  padding: "2px 10px",
-                                  fontWeight: "bold",
-                                }}
-                              >
-                                ✕
-                              </button>
                             )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
 
-                  <div className="boss-actions-monitor">
-                    <h4>Azioni Boss</h4>
-                    {activeBosses[0] && (
-                      <>
-                        <div className="wb-action-list">
-                          <button
-                            className="wb-btn-action boss-atk"
-                            onClick={() =>
-                              handleBossRoll(
-                                activeBosses[0],
-                                activeBosses[0].action1,
-                              )
-                            }
-                          >
-                            ⚔️ {activeBosses[0].action1.name} (
-                            {activeBosses[0].action1.damage})
+                        <div className="quick-hp-btns">
+                          <button onClick={() => damagePlayerManual(p.id, 1)}>
+                            +1
+                          </button>
+                          <button onClick={() => damagePlayerManual(p.id, 3)}>
+                            +3
                           </button>
                           <button
-                            className="wb-btn-action boss-atk"
-                            onClick={() =>
-                              handleBossRoll(
-                                activeBosses[0],
-                                activeBosses[0].action2,
-                              )
-                            }
-                          >
-                            🔥 {activeBosses[0].action2.name} (
-                            {activeBosses[0].action2.damage})
-                          </button>
-                        </div>
-
-                        {/* NUOVI CONTROLLI RIGENERAZIONE BOSS */}
-                        <h4
-                          style={{
-                            marginTop: "15px",
-                            borderTop: "1px dashed #666",
-                            paddingTop: "10px",
-                          }}
-                        >
-                          Gestione Boss
-                        </h4>
-                        <div
-                          className="boss-management-btns"
-                          style={{
-                            display: "flex",
-                            gap: "5px",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <button
-                            onClick={() => healBossManual(5)}
-                            style={{
-                              background: "#27ae60",
-                              color: "white",
-                              flex: 1,
-                              padding: "5px",
-                              fontSize: "0.7rem",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
+                            onClick={() => {
+                              const val = prompt("HP Scudo?");
+                              if (val)
+                                updateDoc(doc(db, "characters", p.id), {
+                                  "stats.shield": increment(parseInt(val)),
+                                });
                             }}
                           >
-                            Cura +5
+                            🛡️
                           </button>
-                          <button
-                            onClick={() => healBossManual(10)}
-                            style={{
-                              background: "#2ecc71",
-                              color: "white",
-                              flex: 1,
-                              padding: "5px",
-                              fontSize: "0.7rem",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Cura +10
-                          </button>
-                          <button
-                            onClick={shieldBossManual}
-                            style={{
-                              background: "#00bfff",
-                              color: "white",
-                              flex: 1,
-                              padding: "5px",
-                              fontSize: "0.7rem",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            🛡️ Scudo
-                          </button>
-                          {activeBosses[0].shield > 0 && (
+                          {p.stats?.shield > 0 && (
                             <button
                               onClick={() =>
-                                updateDoc(
-                                  doc(db, "bosses", activeBosses[0].id),
-                                  { shield: 0 },
-                                )
+                                updateDoc(doc(db, "characters", p.id), {
+                                  "stats.shield": 0,
+                                })
                               }
-                              style={{
-                                background: "#ff4444",
-                                color: "white",
-                                padding: "5px 10px",
-                                fontSize: "0.7rem",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                              }}
                             >
                               ✕
                             </button>
                           )}
                         </div>
-                      </>
-                    )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="boss-admin-actions">
+                    <h4>Attacchi Boss</h4>
+                    <button
+                      onClick={() =>
+                        handleBossRoll(activeBosses[0], activeBosses[0].action1)
+                      }
+                    >
+                      {activeBosses[0]?.action1.name}
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleBossRoll(activeBosses[0], activeBosses[0].action2)
+                      }
+                    >
+                      {activeBosses[0]?.action2.name}
+                    </button>
+
+                    <h4>Gestione Boss</h4>
+                    <div className="boss-heal-btns">
+                      <button onClick={() => healBossManual(5)}>Cura +5</button>
+                      <button onClick={() => healBossManual(10)}>
+                        Cura +10
+                      </button>
+                      <button onClick={shieldBossManual}>🛡️ Scudo</button>
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="personal-health-monitor">
-                    <p>
-                      Tua Salute: {charData?.stats?.hp}/{charData?.stats?.maxHp}
-                    </p>
-                    <div className="hp-bar-mini-container">
+              )}
+
+              {/* INTERFACCIA PLAYER (Azioni e Tiri Salvezza) */}
+              {!isMaster && (
+                <div className="player-controls">
+                  <div className="player-health-status">
+                    <span>
+                      HP: {charData?.stats?.hp}/{charData?.stats?.maxHp}
+                    </span>
+                    <div className="player-hp-bar">
                       <div
-                        className="hp-bar-mini-fill"
+                        className="fill"
                         style={{
                           width: `${(charData?.stats?.hp / charData?.stats?.maxHp) * 100}%`,
                         }}
@@ -1254,124 +1171,52 @@ const isBossVictorious = useMemo(() => {
                     </div>
                   </div>
 
-                  <div
-                    className="saving-throws-panel"
-                    style={{
-                      margin: "10px 0",
-                      padding: "10px",
-                      background: "rgba(0,0,0,0.05)",
-                      borderRadius: "8px",
-                      border: "1px solid gold",
-                    }}
-                  >
-                    <h4
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "#8b0000",
-                        marginBottom: "8px",
-                        textAlign: "center",
-                        borderBottom: "1px solid #8b0000",
-                      }}
-                    >
-                      Tiri Salvezza
-                    </h4>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: "5px",
-                      }}
-                    >
-                      {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
-                        <button
-                          key={s}
-                          disabled={isUserLocked || !charData}
-                          onClick={() => handleSavingThrow(s)}
-                          style={{
-                            fontSize: "0.7rem",
-                            padding: "5px",
-                            cursor: "pointer",
-                            background: "white",
-                            border: "1px solid #ccc",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          {s.toUpperCase()} (
-                          {charData?.stats?.[s] >= 0 ? "+" : ""}
-                          {charData?.stats?.[s] ?? 0})
-                        </button>
-                      ))}
-                    </div>
+                  <div className="saving-throws-grid">
+                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => handleSavingThrow(s)}
+                        disabled={isUserLocked}
+                      >
+                        {s.toUpperCase()} (
+                        {charData?.stats?.[s] >= 0 ? "+" : ""}
+                        {charData?.stats?.[s] ?? 0})
+                      </button>
+                    ))}
                   </div>
 
-                  <div
-                    className="damage-dice-panel"
-                    style={{
-                      marginTop: "10px",
-                      padding: "10px",
-                      background: "rgba(139,0,0,0.1)",
-                      borderRadius: "8px",
-                      border: "1px solid #ff4444",
-                    }}
-                  >
-                    <h4
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "#ff4444",
-                        marginBottom: "8px",
-                        textAlign: "center",
-                      }}
+                  <div className="manual-dmg-control">
+                    <select
+                      value={dmgDiceCount}
+                      onChange={(e) =>
+                        setDmgDiceCount(parseInt(e.target.value))
+                      }
                     >
-                      Danni & Caratteristica
-                    </h4>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "5px",
-                        marginBottom: "10px",
-                      }}
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <option key={n} value={n}>
+                          {n}d
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={dmgSelectedStat || ""}
+                      onChange={(e) =>
+                        setDmgSelectedStat(e.target.value || null)
+                      }
                     >
-                      <select
-                        value={dmgDiceCount}
-                        onChange={(e) =>
-                          setDmgDiceCount(parseInt(e.target.value))
-                        }
-                        style={{ flex: 1, fontSize: "0.7rem" }}
-                      >
-                        {[1, 2, 3, 4, 5, 6].map((n) => (
-                          <option key={n} value={n}>
-                            {n}d
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={dmgSelectedStat || ""}
-                        onChange={(e) =>
-                          setDmgSelectedStat(e.target.value || null)
-                        }
-                        style={{ flex: 2, fontSize: "0.7rem" }}
-                      >
-                        <option value="">No Bonus</option>
-                        {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
-                          <option key={s} value={s}>
-                            {s.toUpperCase()} (+{charData?.stats?.[s] ?? 0})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(5, 1fr)",
-                        gap: "5px",
-                      }}
-                    >
+                      <option value="">No Bonus</option>
+                      {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
+                        <option key={s} value={s}>
+                          {s.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="dice-btns">
                       {["d4", "d6", "d8", "d10", "d12"].map((die) => (
                         <button
                           key={die}
-                          disabled={isUserLocked}
                           onClick={() => handleManualDamageToBoss(die)}
-                          className="die-btn"
+                          disabled={isUserLocked}
                         >
                           {die}
                         </button>
@@ -1379,29 +1224,22 @@ const isBossVictorious = useMemo(() => {
                     </div>
                   </div>
 
-                  <div
-                    className="accordion-container"
-                    style={{ marginTop: "15px" }}
-                  >
+                  <div className="actions-accordion">
                     {sortedCategories.map((cat) => (
-                      <div key={cat} className="wb-section">
+                      <div key={cat} className="acc-item">
                         <button
-                          className="wb-section-toggle"
+                          className="acc-trigger"
                           onClick={() =>
-                            setOpenSections((prev) => ({
-                              ...prev,
-                              [cat]: !prev[cat],
-                            }))
+                            setOpenSections((p) => ({ ...p, [cat]: !p[cat] }))
                           }
                         >
                           {cat} {openSections[cat] ? "▲" : "▼"}
                         </button>
                         {openSections[cat] && (
-                          <div className="wb-action-list">
+                          <div className="acc-content">
                             {groupedActions[cat].map((action, idx) => (
                               <button
                                 key={idx}
-                                className="wb-btn-action"
                                 onClick={() => handleActionRoll(action)}
                                 disabled={isUserLocked}
                               >
@@ -1413,7 +1251,7 @@ const isBossVictorious = useMemo(() => {
                       </div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </section>
           </>
