@@ -396,6 +396,12 @@ export default function WorldBoss() {
     return activeBosses.length > 0 && activeBosses[0].hp <= 0;
   }, [activeBosses]);
 
+
+const isBossVictorious = useMemo(() => {
+  return timeLeft <= 0 && activeBosses.length > 0 && activeBosses[0].hp > 0;
+}, [timeLeft, activeBosses]);
+
+
   // --- AZIONI PLAYER ---
   const endMyTurn = async () => {
     if (turnState.actedPlayers.includes(currentUser.uid)) return;
@@ -683,215 +689,150 @@ export default function WorldBoss() {
       )}
 
       {/* AREA BOSS */}
-      <section className="boss-area">
-        {activeBosses.map((boss) => {
-          const isDefeated = boss.hp <= 0;
+<section className="boss-area">
+  {activeBosses.map((boss) => {
+    const isDefeated = boss.hp <= 0; // Vittoria Player
+    const isTimeExpired = timeLeft <= 0 && boss.hp > 0; // Vittoria Boss
 
-          return (
-            <div
-              key={boss.id}
-              className={`boss-unit ${isDefeated ? "defeated-unit" : ""}`}
-            >
-              <h2 className="boss-name">{boss.name}</h2>
+    return (
+      <div
+        key={boss.id}
+        className={`boss-unit ${isDefeated || isTimeExpired ? "defeated-unit" : ""}`}
+      >
+        <h2 className="boss-name">{boss.name}</h2>
 
-              {/* Se il boss è vivo, mostra la descrizione e le penalità */}
-              {!isDefeated ? (
-                <>
-                  {boss.description && (
-                    <p className="boss-flavor-text">{boss.description}</p>
-                  )}
-                  <div className="main-boss-timer">
-                    <TimerDisplay expiryDate={boss.expiryDate} />
-                  </div>
-                  {boss.penalties && (
-                    <div className="boss-penalties-glow-box">
-                      <span className="penalties-label">
-                        💀 PENALITÀ SCONFITTA:
-                      </span>
-                      <p className="penalties-text">{boss.penalties}</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Se il boss è sconfitto, mostra l'annuncio di vittoria */
-                <div className="victory-announcement">
-                  <h1 className="victory-glow-text">
-                    🏆 VITTORIA DEGLI EROI 🏆
-                  </h1>
-                  {/* <p className="victory-sub" style={{color: 'black', fontWeight: 'bold'}}>
-              Il male è stato sconfitto, il boss è caduto!
-            </p> */}
-                </div>
-              )}
+        {/* --- MESSAGGI DI FINE PARTITA --- */}
+        {isDefeated && (
+          <div className="victory-announcement">
+            <h1 className="victory-glow-text">🏆 VITTORIA DEGLI EROI 🏆</h1>
+          </div>
+        )}
 
-              {/* IL BOTTINO RIMANE SEMPRE SCRITTO (Sia da vivo che da morto) */}
-              {boss.rewards && (
-                <div className="boss-rewards-glow-box">
-                  <span className="rewards-label">BOTTINO:</span>
-                  <p className="rewards-text">{boss.rewards}</p>
-                </div>
-              )}
+        {isTimeExpired && (
+          <div className="defeat-announcement">
+            <h1 className="defeat-glow-text" style={{ color: "#ff4d4d", textShadow: "0 0 15px red" }}>
+              💀 IL BOSS HA PREVALSO 💀
+            </h1>
+            <p style={{ textAlign: 'center', fontStyle: 'italic', color: '#ccc' }}>Il tempo è scaduto...</p>
+          </div>
+        )}
 
-              {/* MOSTRA I TURNI E LA BARRA SOLO SE VIVO, ALTRIMENTI BARRA DEFUNTA */}
-              {!isDefeated ? (
-                <>
-                  <div className={`turn-banner ${turnState.phase}-phase`}>
-                    <div className="turn-count">
-                      TURNO {turnState.turnNumber}
-                    </div>
-                    <div className="phase-text">
-                      {turnState.phase === "players"
-                        ? "🛡️ Turno eroi"
-                        : "🔥 Turno Boss"}
-                    </div>
-                    <div className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
-                      <i className="fas fa-hourglass-half"></i>
-                      <span>
-                        {turnState?.turnType === "players"
-                          ? "Tempo Eroi: "
-                          : "Tempo Boss: "}
-                      </span>
-                      <strong>{formatTime(timeLeft)}</strong>
-                    </div>
+        {/* --- DESCRIZIONE BOSS: Sempre visibile --- */}
+        {boss.description && (
+          <p className="boss-flavor-text">{boss.description}</p>
+        )}
 
-                    {turnState.phase === "players" && !isMaster && (
-                      <button
-                        className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
-                        onClick={endMyTurn}
-                        disabled={turnState.actedPlayers.includes(
-                          currentUser.uid,
-                        )}
-                      >
-                        {turnState.actedPlayers.includes(currentUser.uid)
-                          ? "Azione Conclusa"
-                          : "Fine Turno"}
-                      </button>
-                    )}
-                  </div>
+        {/* --- IMMAGINE BOSS: Sempre visibile, grigia se sconfitto o tempo scaduto --- */}
+        <div className={`boss-image-container ${isDefeated || isTimeExpired ? "boss-defeated-visual" : ""}`}>
+          <img src={boss.imageUrl} alt={boss.name} className="boss-image" />
+          {isDefeated && <div className="torn-overlay"></div>}
+        </div>
 
-                  <div className="hp-bar-outer">
-                    <div
-                      className="hp-bar-inner"
-                      style={{
-                        width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`,
-                      }}
-                    >
-                      {isMaster && (
-                        <span className="hp-text-admin">
-                          {boss.hp} / {boss.maxHp}
-                        </span>
-                      )}
-                    </div>
-                    {/* BARRA SCUDO (Aggiunta qui) */}
-                    {boss.shield > 0 && (
-                      <div
-                        className="shield-bar-boss-fill"
-                        style={{
-                          width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          height: "100%",
-                          background: "rgba(0, 191, 255, 0.6)", // Blu scudo trasparente
-                          borderRight: "2px solid #fff",
-                          boxShadow: "0 0 10px #00bfff",
-                          zIndex: 2,
-                        }}
-                      />
-                    )}
-                  </div>
-                </>
-              ) : (
-                /* BARRA HP DEFUNTA */
-                <div className="hp-bar-outer defeated-bar">
-                  <div
-                    className="hp-bar-inner defeated-fill"
-                    style={{ width: "0%" }}
-                  >
-                    <span className="hp-text-admin" style={{ color: "white" }}>
-                      💀
-                    </span>
-                  </div>
-                </div>
-              )}
+        {/* --- PENALITÀ: Solo se il Boss è VIVO o se il BOSS HA VINTO (Tempo scaduto) --- */}
+        {(isTimeExpired || (!isDefeated && !isTimeExpired)) && boss.penalties && (
+          <div className="boss-penalties-glow-box">
+            <span className="penalties-label">💀 PENALITÀ SCONFITTA:</span>
+            <p className="penalties-text">{boss.penalties}</p>
+          </div>
+        )}
 
-              {/* CONTROLLI MASTER SEMPRE DISPONIBILI */}
-              {/* {isMaster && (
-                <div className="master-turn-controls">
-                  <button onClick={() => togglePhase("players")}>
-                    Fase Eroi
-                  </button>
-                  <button onClick={() => togglePhase("boss")}>Fase Boss</button>
-                </div>
-              )} */}
-              {isMaster && (
-                <div
-                  className="admin-turn-controls"
-                  style={{
-                    marginTop: "20px",
-                    border: "1px solid var(--gold)",
-                    padding: "10px",
-                  }}
-                >
-                  <h3>Gestione Turni</h3>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "10px",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <button
-                      className="wb-btn-action"
-                      style={{ background: "#2ecc71" }}
-                      onClick={() => handleManualTurnChange("players")}
-                    >
-                      Inizia Turno Eroi (3h)
-                    </button>
+        {/* --- REWARD: Solo se i PLAYER HANNO VINTO (0 hp) o se la battaglia è ancora in corso --- */}
+        {(isDefeated || (!isDefeated && !isTimeExpired)) && boss.rewards && (
+          <div className="boss-rewards-glow-box">
+            <span className="rewards-label">BOTTINO:</span>
+            <p className="rewards-text">{boss.rewards}</p>
+          </div>
+        )}
 
-                    <button
-                      className="wb-btn-action"
-                      style={{ background: "#e74c3c" }}
-                      onClick={() => handleManualTurnChange("boss")}
-                    >
-                      Inizia Turno Boss (1h)
-                    </button>
-                  </div>
-                </div>
-              )}
-              {/* IMMAGINE CON EFFETTO DEFEATED (Grigia e Strappata via CSS) */}
-              <div
-                className={`boss-image-container ${isDefeated ? "boss-defeated-visual" : ""}`}
-              >
-                <img
-                  src={boss.imageUrl}
-                  alt={boss.name}
-                  className="boss-image"
-                />
-                {isDefeated && <div className="torn-overlay"></div>}
-              </div>
+        {/* --- INTERFACCIA DI COMBATTIMENTO (Barra HP, Timer, Turni) --- 
+             Mostrata solo se la battaglia è in corso. Se Master, mostriamo HP per debug */}
+        {(!isDefeated && !isTimeExpired) ? (
+          <>
+            <div className="main-boss-timer">
+              <TimerDisplay expiryDate={boss.expiryDate} />
             </div>
-          );
-        })}
-      </section>
 
-      <div className="battle-interface">
-        {isBossDefeated ? (
-          <div className="victory-screen-container">
-            <div className="victory-glow-box">
-              <h1 className="victory-title">⚔️ VITTORIA! ⚔️</h1>
-              <p className="victory-text">
-                Il male è stato scacciato. {activeBosses[0]?.name} è caduto
-                sotto i colpi degli eroi di Exanthia!
-              </p>
-              <div className="victory-sub-text">
-                La chat e le azioni sono state disattivate per celebrare il
-                trionfo.
+            <div className={`turn-banner ${turnState.phase}-phase`}>
+              <div className="turn-count">TURNO {turnState.turnNumber}</div>
+              <div className="phase-text">
+                {turnState.phase === "players" ? "🛡️ Turno eroi" : "🔥 Turno Boss"}
               </div>
+              <div className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
+                <strong>{formatTime(timeLeft)}</strong>
+              </div>
+
+              {turnState.phase === "players" && !isMaster && (
+                <button
+                  className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
+                  onClick={endMyTurn}
+                  disabled={turnState.actedPlayers.includes(currentUser.uid)}
+                >
+                  {turnState.actedPlayers.includes(currentUser.uid) ? "Azione Conclusa" : "Fine Turno"}
+                </button>
+              )}
+            </div>
+
+            <div className="hp-bar-outer">
+              <div
+                className="hp-bar-inner"
+                style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }}
+              >
+                {isMaster && <span className="hp-text-admin">{boss.hp} / {boss.maxHp} HP</span>}
+              </div>
+              {boss.shield > 0 && (
+                <div
+                  className="shield-bar-boss-fill"
+                  style={{
+                    width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
+                    position: "absolute", top: 0, left: 0, height: "100%",
+                    background: "rgba(0, 191, 255, 0.6)", zIndex: 2,
+                  }}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          /* Se finito, mostriamo stato HP solo al Master */
+          isMaster && (
+            <div style={{ textAlign: 'center', opacity: 0.5, marginTop: '10px' }}>
+              HP Finali: {boss.hp} | Scudo: {boss.shield}
+            </div>
+          )
+        )}
+
+        {/* --- CONTROLLI MASTER: Sempre disponibili per resettare o forzare fasi --- */}
+        {isMaster && (
+          <div className="admin-turn-controls" style={{ marginTop: "20px", border: "1px solid var(--gold)", padding: "10px" }}>
+            <h3>Gestione Master</h3>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button className="wb-btn-action" style={{ background: "#2ecc71" }} onClick={() => handleManualTurnChange("players")}>
+                Inizia Turno Eroi
+              </button>
+              <button className="wb-btn-action" style={{ background: "#e74c3c" }} onClick={() => handleManualTurnChange("boss")}>
+                Inizia Turno Boss
+              </button>
             </div>
           </div>
-        ) : (
-          <>
+        )}
+      </div>
+    );
+  })}
+</section>
+
+     <div className="battle-interface">
+  {(isBossDefeated || isBossVictorious) && !isMaster ? (
+    <div className="victory-screen-container">
+      <div className={isBossDefeated ? "victory-glow-box" : "defeat-glow-box"}>
+        <h1>{isBossDefeated ? "⚔️ VITTORIA! ⚔️" : "💀 SCONFITTA 💀"}</h1>
+        <p className="victory-text">
+          {isBossDefeated 
+            ? `Il male è stato scacciato. ${activeBosses[0]?.name} è caduto!`
+            : `${activeBosses[0]?.name} ha sopraffatto gli eroi...`}
+        </p>
+      </div>
+    </div>
+  ) : (
+    <>
             {/* CHAT */}
             <section className="chat-section">
               <div className="chat-messages">
