@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { db } from "../firebase";
 import {
   doc,
@@ -67,7 +73,11 @@ export default function WorldBoss() {
   const handleManualTurnChange = async (newPhase) => {
     if (!isMaster) return;
 
-    // Testo del messaggio in base alla fase
+    // Impostiamo le nuove durate: 1 minuto per eroi, 30 secondi per boss
+    const duration = newPhase === "players" ? 60 * 1000 : 30 * 1000;
+    // CREIAMO UNA NUOVA DATA DI SCADENZA REALE
+    const newExpiry = new Date(Date.now() + duration);
+
     const turnMsg =
       newPhase === "players"
         ? "🛡️ TURNO DEGLI EROI: È il momento di colpire!"
@@ -77,85 +87,109 @@ export default function WorldBoss() {
       const turnRef = doc(db, "battle_meta", "turn_tracker");
       await updateDoc(turnRef, {
         phase: newPhase,
+        expiryDate: newExpiry, // QUESTO AGGIORNA IL TIMER SUL DB
         actedPlayers: [],
         turnNumber:
           newPhase === "players" ? increment(1) : turnState.turnNumber,
       });
 
-      // INVIA IL MESSAGGIO AUTOMATICO IN CHAT
       await addDoc(collection(db, "world_boss_chat"), {
         text: turnMsg,
-        senderName: "SISTEMA",
+        senderName: "Master System",
         uid: BOSS_SYSTEM_UID,
+        content: turnMsg,
+        category: "Turno",
         timestamp: serverTimestamp(),
-        isSystem: true, // Utile per colorarlo via CSS
+        isSystem: true,
       });
     } catch (e) {
       console.error("Errore cambio turno:", e);
     }
   };
 
-  const handleAutoTurnChange = async () => {
-    // Cambiato turnData in turnState
+  const handleAutoTurnChange = useCallback(async () => {
+    if (!isMaster) return;
+
+    let newPhase = "";
+    let duration = 0;
+    let turnMsg = "";
+
+    // Logica tempi: 1 minuto (60s) per eroi, 30 secondi per boss
     if (turnState.phase === "players") {
-      if (turnState.actedPlayers.length <= 1) {
-        // Estensione di 3 ore se ha agito solo 1 player
-        const newExpiry = new Date(Date.now() + 3 * 60 * 60 * 1000);
-        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-          expiryDate: newExpiry,
-        });
-        console.log("Turno esteso: pochi attaccanti.");
-      } else {
-        // Passaggio al Boss (1 ora)
-        const newExpiry = new Date(Date.now() + 1 * 60 * 60 * 1000);
-        await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-          phase: "boss",
-          actedPlayers: [],
-          expiryDate: newExpiry,
-        });
-      }
+      newPhase = "boss";
+      duration = 30 * 1000; 
+      turnMsg = "⚠️ TEMPO SCADUTO! Il Boss entra in azione! (30s)";
     } else {
-      // Il Boss ha finito, torna ai Player (3 ore)
-      const newExpiry = new Date(Date.now() + 3 * 60 * 60 * 1000);
-      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-        phase: "players",
-        turnNumber: increment(1),
-        actedPlayers: [],
-        expiryDate: newExpiry,
-      });
+      newPhase = "players";
+      duration = 60 * 1000; 
+      turnMsg = "🛡️ IL BOSS TREGUA! Eroi, tocca a voi! (1 min)";
     }
-  };
+
+    const newExpiry = new Date(Date.now() + duration);
+
+    try {
+      const turnRef = doc(db, "battle_meta", "turn_tracker");
+      await updateDoc(turnRef, {
+        phase: newPhase,
+        expiryDate: newExpiry,
+        actedPlayers: [],
+        turnNumber: newPhase === "players" ? increment(1) : turnState.turnNumber,
+      });
+
+      await addDoc(collection(db, "world_boss_chat"), {
+        text: turnMsg,
+        senderName: "SISTEMA",
+        uid: BOSS_SYSTEM_UID,
+        content: turnMsg,
+        category: "Turno",
+        timestamp: serverTimestamp(),
+        isSystem: true,
+      });
+      
+      console.log("Switch automatico eseguito con successo");
+    } catch (e) {
+      console.error("Errore switch automatico:", e);
+    }
+    // Inseriamo le dipendenze: la funzione si aggiorna solo se cambiano questi valori
+  }, [isMaster, turnState.phase, turnState.turnNumber]);
 
   useEffect(() => {
-    // Usiamo turnState e controlliamo se expiryDate esiste[cite: 7]
-    if (!turnState?.expiryDate) return;
+    if (!turnState?.expiryDate || isBossDefeated) {
+      setTimeLeft(0);
+      return;
+    }
 
     const interval = setInterval(() => {
       const now = Date.now();
-      // Gestione del timestamp di Firestore[cite: 7]
-      const expiry = turnState.expiryDate.toMillis
-        ? turnState.expiryDate.toMillis()
-        : turnState.expiryDate;
+      
+      let expiry;
+      if (turnState.expiryDate?.toMillis) {
+        expiry = turnState.expiryDate.toMillis();
+      } else {
+        expiry = new Date(turnState.expiryDate).getTime();
+      }
+
       const diff = expiry - now;
 
       if (diff <= 0) {
         setTimeLeft(0);
         clearInterval(interval);
-        if (isMaster) handleAutoTurnChange();
+        // Chiamata alla funzione stabilizzata
+        if (isMaster && !isBossDefeated) {
+          handleAutoTurnChange();
+        }
       } else {
         setTimeLeft(diff);
-        // Calcolo urgenza 10%
-        const totalDuration =
-          turnState.phase === "players"
-            ? 3 * 60 * 60 * 1000
-            : 1 * 60 * 60 * 1000;
+        const totalDuration = turnState.phase === "players" ? 60000 : 30000;
         setIsUrgent(diff < totalDuration * 0.1);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [turnState?.expiryDate, turnState?.phase, isMaster]);
-
+    
+    // AGGIUNGI handleAutoTurnChange qui sotto:
+  }, [turnState?.expiryDate, turnState?.phase, isMaster, isBossDefeated, handleAutoTurnChange]);
+  
   // Funzione per formattare millisecondi in HH:MM:SS
   const formatTime = (ms) => {
     const seconds = Math.floor((ms / 1000) % 60);
@@ -319,7 +353,7 @@ export default function WorldBoss() {
       // Notifica in chat l'azione divina
       await addDoc(collection(db, "world_boss_chat"), {
         uid: BOSS_SYSTEM_UID,
-        senderName: "Sistema",
+        senderName: "Master System",
         type: "notification",
         content:
           "✨ Un'aura divina avvolge gli eroi: TUTTI i player sono stati curati al massimo!",
@@ -891,54 +925,7 @@ export default function WorldBoss() {
       <div className="battle-interface">
         {/* FINE BATTAGLIA: mostra risultato completo con immagine, descrizione e penalità/ricompense */}
         {(isBossDefeated || isTimeExpired) && !isMaster ? (
-          <div className="end-game-screen">
-            <div className={isBossDefeated ? "victory-box" : "defeat-box"}>
-              <h1>
-                {isBossDefeated
-                  ? "⚔️ VITTORIA DEGLI EROI!"
-                  : "💀 IL BOSS HA PREVALSO"}
-              </h1>
-
-              {/* Immagine boss: grigia se sconfitto dagli eroi */}
-              {activeBosses[0]?.imageUrl && (
-                <img
-                  src={activeBosses[0].imageUrl}
-                  alt={activeBosses[0].name}
-                  className={`boss-image ${isBossDefeated ? "boss-image-grayscale" : ""}`}
-                  style={{
-                    maxWidth: "300px",
-                    margin: "16px auto",
-                    display: "block",
-                  }}
-                />
-              )}
-
-              {/* Descrizione sempre visibile */}
-              {activeBosses[0]?.description && (
-                <p className="boss-flavor-text">
-                  {activeBosses[0].description}
-                </p>
-              )}
-
-              {/* Penalità: solo se il boss ha vinto (tempo scaduto) */}
-              {isTimeExpired && activeBosses[0]?.penalties && (
-                <div className="boss-penalties-glow-box">
-                  <span className="penalties-label">
-                    💀 PENALITÀ SCONFITTA:
-                  </span>
-                  <p className="penalties-text">{activeBosses[0].penalties}</p>
-                </div>
-              )}
-
-              {/* Ricompense: solo se gli eroi hanno vinto */}
-              {isBossDefeated && activeBosses[0]?.rewards && (
-                <div className="boss-rewards-glow-box">
-                  <span className="rewards-label">🏆 BOTTINO:</span>
-                  <p className="rewards-text">{activeBosses[0].rewards}</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <div className="end-game-screen"></div>
         ) : (
           <>
             {/* SEZIONE CHAT */}
