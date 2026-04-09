@@ -146,8 +146,56 @@
 }
 
 /* Griglia Tiri Salvezza */
-.saving-throws-panel {
+.player-health-status {
   background: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 0, 0, 0.2);
+}
+.player-hp-bar {
+  height: 12px;
+  background: #101410c2;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #444;
+}
+.manual-dmg-control {
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.manual-dmg-control select{
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1abe05 0%, #74d419 100%);
+  transition: width 0.3s ease;
+}
+
+.saving-throws-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.saving-throws-grid button {
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 3px;
+  background: #c06b6b;
+  color: #fffdf6;
+  margin-top: 3px;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.saving-throws-panel {
+  background: rgb(168, 10, 10);
   padding: 8px;
   border-radius: 6px;
   margin-bottom: 10px;
@@ -1651,8 +1699,17 @@ input:disabled {
   transition: 0.2s;
 }
 
+.dice-btns button{
+  background: #a84444;
+  color: gold;
+  border-radius: 5px;
+  border:none;
+  margin: 2px;
+  transition: all 0.9s ease;
+  /* border: 1px solid gold; */
+}
 .dice-btns button:hover {
-  background: #8b0000;
+  background: #e70e7b;
   border-color: #ff4444;
 }
 
@@ -1664,20 +1721,44 @@ input:disabled {
 .acc-trigger {
   width: 100%;
   text-align: left;
-  background: #1a1a1a;
-  color: #d4af37;
-  border: 1px solid #444;
+  background: #2dc969;
+  color: #000000;
+  border: none;
+  border-radius: 7px;
   padding: 10px;
   cursor: pointer;
   font-weight: bold;
+  text-shadow: #ecffd9 1px 1px 5px;
+
 }
 
+.acc-trigger:hover {
+  background: #27ae60;
+  color: white;
+}
 .acc-content {
   display: flex;
   flex-direction: column;
   gap: 5px;
   padding: 10px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgb(234, 253, 211);
+
+}
+
+.acc-content button {
+  background: #aaf7b7d0;
+  color: #ffffff;
+  text-shadow: #000 0px 0px 5px;
+  border: none;
+  padding: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.9s ease-in-out;
+}
+.acc-content button:hover {
+  background: #27ae60;
+  color: white;
 }
 
 /* Risultati Azioni in Chat */

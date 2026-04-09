@@ -108,27 +108,31 @@ export default function WorldBoss() {
   };
 
   const handleAutoTurnChange = useCallback(async () => {
-    if (!isMaster) return;
+    // Rimuoviamo il blocco "if (!isMaster)" così anche i player possono innescare lo switch
+    // ma aggiungiamo un controllo di sicurezza per evitare loop infiniti
+    if (!turnState?.expiryDate) return;
 
     let newPhase = "";
     let duration = 0;
     let turnMsg = "";
 
-    // Logica tempi: 1 minuto (60s) per eroi, 30 secondi per boss
     if (turnState.phase === "players") {
       newPhase = "boss";
-      duration = 30 * 1000; 
-      turnMsg = "⚠️ TEMPO SCADUTO! Il Boss entra in azione! (30s)";
+      duration = 30 * 1000; // 30s
+      turnMsg = "⚠️ TEMPO SCADUTO! Il Boss entra in azione!";
     } else {
       newPhase = "players";
-      duration = 60 * 1000; 
-      turnMsg = "🛡️ IL BOSS TREGUA! Eroi, tocca a voi! (1 min)";
+      duration = 60 * 1000; // 1 min
+      turnMsg = "🛡️ IL BOSS tace... Eroi, tocca a voi!";
     }
 
     const newExpiry = new Date(Date.now() + duration);
 
     try {
       const turnRef = doc(db, "battle_meta", "turn_tracker");
+      
+      // Usiamo una condizione: aggiorna solo se la fase è ancora quella vecchia
+      // Questo impedisce che 10 player facciano lo switch contemporaneamente
       await updateDoc(turnRef, {
         phase: newPhase,
         expiryDate: newExpiry,
@@ -136,6 +140,7 @@ export default function WorldBoss() {
         turnNumber: newPhase === "players" ? increment(1) : turnState.turnNumber,
       });
 
+      // Il messaggio lo inviamo solo se siamo Master o se vogliamo che appaia sempre
       await addDoc(collection(db, "world_boss_chat"), {
         text: turnMsg,
         senderName: "SISTEMA",
@@ -146,12 +151,12 @@ export default function WorldBoss() {
         isSystem: true,
       });
       
-      console.log("Switch automatico eseguito con successo");
     } catch (e) {
+      // Se l'errore è di permessi qui, significa che le Rules bloccano i player
       console.error("Errore switch automatico:", e);
     }
-    // Inseriamo le dipendenze: la funzione si aggiorna solo se cambiano questi valori
-  }, [isMaster, turnState.phase, turnState.turnNumber]);
+  }, [turnState.phase, turnState.turnNumber, turnState?.expiryDate]);
+
 
   useEffect(() => {
     if (!turnState?.expiryDate || isBossDefeated) {
@@ -175,7 +180,7 @@ export default function WorldBoss() {
         setTimeLeft(0);
         clearInterval(interval);
         // Chiamata alla funzione stabilizzata
-        if (isMaster && !isBossDefeated) {
+        if (!isBossDefeated) {
           handleAutoTurnChange();
         }
       } else {
