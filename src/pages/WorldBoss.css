@@ -1571,7 +1571,7 @@ input:disabled {
   flex: 1;
   background: #fffefe;
   /* border: 1px solid #d4af37; */
-  color: white;
+  color: rgb(37, 31, 31);
   padding: 10px;
   border-radius: 5px;
 }
