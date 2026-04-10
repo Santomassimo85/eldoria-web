@@ -185,7 +185,7 @@ export default function WorldBoss() {
         }
       } else {
         setTimeLeft(diff);
-        const totalDuration = turnState.phase === "players" ? 60000 : 30000;
+        const totalDuration = turnState.phase === "players" ? 3*60*60*1000 : 1*60*60*1000;
         setIsUrgent(diff < totalDuration * 0.1);
       }
     }, 1000);
