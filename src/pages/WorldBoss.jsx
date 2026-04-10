@@ -118,11 +118,11 @@ export default function WorldBoss() {
 
     if (turnState.phase === "players") {
       newPhase = "boss";
-      duration = 30 * 1000; // 30s
+      duration = 1* 60*60 * 1000; // 30s
       turnMsg = "⚠️ TEMPO SCADUTO! Il Boss entra in azione!";
     } else {
       newPhase = "players";
-      duration = 60 * 1000; // 1 min
+      duration = 3*60*60 * 1000; // 1 min
       turnMsg = "🛡️ IL BOSS tace... Eroi, tocca a voi!";
     }
 
