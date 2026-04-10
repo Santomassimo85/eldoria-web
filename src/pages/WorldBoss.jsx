@@ -74,7 +74,7 @@ export default function WorldBoss() {
     if (!isMaster) return;
 
     // Impostiamo le nuove durate: 1 minuto per eroi, 30 secondi per boss
-    const duration = newPhase === "players" ? 60 * 1000 : 30 * 1000;
+    const duration = newPhase === "players" ? 3*60*60 * 1000 : 1*60*60 * 1000;
     // CREIAMO UNA NUOVA DATA DI SCADENZA REALE
     const newExpiry = new Date(Date.now() + duration);
 
