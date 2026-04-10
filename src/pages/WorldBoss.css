@@ -1521,9 +1521,12 @@ input:disabled {
   padding: 10px 15px;
   border-radius: 12px;
   position: relative;
-  background: #faca8c1c;
+  background: #fffffeee;
+   margin-bottom: 15px;
+  /* border-bottom: 1px solid rgba(255, 255, 255, 0.05); */
+  /* padding-bottom: 10px; */
   /* border: 1px solid #444; */
-  color: #eee;
+  /* color: #eee; */
 }
 
 .msg-right {
@@ -1776,7 +1779,7 @@ input:disabled {
   flex-direction: column;
   gap: 3px;
   font-family: monospace;
-  color: #c0e546;
+  color: #a1cc12;
 }
 
 .boss-admin-actions button {
