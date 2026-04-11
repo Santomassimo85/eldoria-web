@@ -29,6 +29,9 @@ import TimerDisplay from "../components/TimerDisplay";
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const BOSS_SYSTEM_UID = "BOSS_MSG";
 
+const PLAYER_TURN_DURATION = 3 * 60 * 60 * 1000; // 3 Ore
+const BOSS_TURN_DURATION = 1 * 60 * 60 * 1000; // 1 Ora
+
 export default function WorldBoss() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
@@ -74,7 +77,7 @@ export default function WorldBoss() {
     if (!isMaster) return;
 
     // Impostiamo le nuove durate: 1 minuto per eroi, 30 secondi per boss
-    const duration = newPhase === "players" ? 3*60*60 * 1000 : 1*60*60 * 1000;
+    const duration = newPhase === "players" ? PLAYER_TURN_DURATION : BOSS_TURN_DURATION;
     // CREIAMO UNA NUOVA DATA DI SCADENZA REALE
     const newExpiry = new Date(Date.now() + duration);
 
@@ -108,8 +111,7 @@ export default function WorldBoss() {
   };
 
   const handleAutoTurnChange = useCallback(async () => {
-    // Rimuoviamo il blocco "if (!isMaster)" così anche i player possono innescare lo switch
-    // ma aggiungiamo un controllo di sicurezza per evitare loop infiniti
+
     if (!turnState?.expiryDate) return;
 
     let newPhase = "";
@@ -118,11 +120,11 @@ export default function WorldBoss() {
 
     if (turnState.phase === "players") {
       newPhase = "boss";
-      duration = 1* 60*60 * 1000; // 30s
+      duration = BOSS_TURN_DURATION; // Usa la costante da 1 ora
       turnMsg = "⚠️ TEMPO SCADUTO! Il Boss entra in azione!";
     } else {
       newPhase = "players";
-      duration = 3*60*60 * 1000; // 1 min
+      duration = PLAYER_TURN_DURATION; // Usa la costante da 3 ore
       turnMsg = "🛡️ IL BOSS tace... Eroi, tocca a voi!";
     }
 
@@ -130,14 +132,15 @@ export default function WorldBoss() {
 
     try {
       const turnRef = doc(db, "battle_meta", "turn_tracker");
-      
+
       // Usiamo una condizione: aggiorna solo se la fase è ancora quella vecchia
       // Questo impedisce che 10 player facciano lo switch contemporaneamente
       await updateDoc(turnRef, {
         phase: newPhase,
         expiryDate: newExpiry,
         actedPlayers: [],
-        turnNumber: newPhase === "players" ? increment(1) : turnState.turnNumber,
+        turnNumber:
+          newPhase === "players" ? increment(1) : turnState.turnNumber,
       });
 
       // Il messaggio lo inviamo solo se siamo Master o se vogliamo che appaia sempre
@@ -150,13 +153,11 @@ export default function WorldBoss() {
         timestamp: serverTimestamp(),
         isSystem: true,
       });
-      
     } catch (e) {
       // Se l'errore è di permessi qui, significa che le Rules bloccano i player
       console.error("Errore switch automatico:", e);
     }
   }, [turnState.phase, turnState.turnNumber, turnState?.expiryDate]);
-
 
   useEffect(() => {
     if (!turnState?.expiryDate || isBossDefeated) {
@@ -166,7 +167,7 @@ export default function WorldBoss() {
 
     const interval = setInterval(() => {
       const now = Date.now();
-      
+
       let expiry;
       if (turnState.expiryDate?.toMillis) {
         expiry = turnState.expiryDate.toMillis();
@@ -185,16 +186,25 @@ export default function WorldBoss() {
         }
       } else {
         setTimeLeft(diff);
-        const totalDuration = turnState.phase === "players" ? 3*60*60*1000 : 1*60*60*1000;
+        const totalDuration =
+          turnState.phase === "players"
+            ? PLAYER_TURN_DURATION
+            : BOSS_TURN_DURATION;
         setIsUrgent(diff < totalDuration * 0.1);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-    
+
     // AGGIUNGI handleAutoTurnChange qui sotto:
-  }, [turnState?.expiryDate, turnState?.phase, isMaster, isBossDefeated, handleAutoTurnChange]);
-  
+  }, [
+    turnState?.expiryDate,
+    turnState?.phase,
+    isMaster,
+    isBossDefeated,
+    handleAutoTurnChange,
+  ]);
+
   // Funzione per formattare millisecondi in HH:MM:SS
   const formatTime = (ms) => {
     const seconds = Math.floor((ms / 1000) % 60);
