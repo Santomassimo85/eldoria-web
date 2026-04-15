@@ -31,6 +31,7 @@ const CITIES_HUB = [
   { name: "Hopeclif", x: 74.38, y: 64.79 },
   { name: "Ganno", x: 64.55, y: 37.97 },
     { name: "Inss", x: 58.16, y: 75.81 },
+    { name: "Nølborg", x: 19.56, y: 38.55 },
 
 
 ];
