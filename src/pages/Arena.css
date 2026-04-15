@@ -1349,6 +1349,96 @@
   padding: 2px 8px;
 }
 
+/* ── Spell level groups in loadout ── */
+.spell-level-group {
+  margin-bottom: 6px;
+}
+.spell-level-group.locked-level {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.spell-level-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c5a55a;
+  margin: 10px 0 4px;
+  padding-left: 2px;
+}
+.spell-level-badge {
+  color: #c5a55a;
+}
+.spell-level-count {
+  background: rgba(197, 165, 90, 0.15);
+  border: 1px solid rgba(197, 165, 90, 0.4);
+  border-radius: 8px;
+  padding: 1px 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #c5a55a;
+}
+.spell-level-lock {
+  font-size: 0.75rem;
+}
+.spell-level-locked-note {
+  font-size: 0.6rem;
+  font-weight: 400;
+  opacity: 0.7;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-body, sans-serif);
+  color: #8a8a8a;
+}
+.loadout-item.spell-locked {
+  filter: grayscale(1) brightness(0.55);
+  cursor: not-allowed;
+}
+.loadout-lock-icon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+/* ── Action uses badge (combat) ── */
+.action-uses-badge {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(197, 165, 90, 0.2);
+  border: 1px solid rgba(197, 165, 90, 0.45);
+  color: #c5a55a;
+  letter-spacing: 0.04em;
+}
+.action-uses-badge.empty {
+  background: rgba(180, 50, 50, 0.2);
+  border-color: rgba(180, 50, 50, 0.45);
+  color: #c0392b;
+}
+.btn-action.no-uses {
+  opacity: 0.38;
+  filter: grayscale(0.8);
+  cursor: not-allowed;
+}
+.btn-wild-shape.exhausted {
+  opacity: 0.4;
+  filter: grayscale(0.9);
+  cursor: not-allowed;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: var(--font-title);
+  font-size: 0.75rem;
+  color: #888;
+}
+
 .loadout-optional {
   font-size: 0.7rem;
   font-weight: 400;
