@@ -32,6 +32,7 @@ const CITIES_HUB = [
   { name: "Ganno", x: 64.55, y: 37.97 },
     { name: "Inss", x: 58.16, y: 75.81 },
     { name: "Nølborg", x: 19.56, y: 38.55 },
+    { name: "Plia", x: 25.42, y: 50.47 },
 
 
 ];
