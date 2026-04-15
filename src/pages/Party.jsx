@@ -21,14 +21,14 @@ const partyData = {
     { name: "Dante", race: "Umano V.", class: "Ladro", image: "/assets/player/Dante.png" },
     { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.png" },
     { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
-    { name: "Khorvash", race: "Tiefling ", class: "Barbaro", image: "/assets/player/Khorvash.jpg" },
+    { name: "Jules Bonnot", race: "Lightfoot Halfling ", class: "Ladro", image: "/assets/player/julesBonnot.jpg" },
 
   ],
   party4: [
-    { name: "Makenna", race: "Changeling", class: "Ladro", image: "/assets/player/Makenna.jpg" },
-    { name: "Cornelius", race: "Goliath", class: "Paladino", image: "/assets/player/Cornelius.jpg" },
-    { name: "Soran", race: "Umano", class: "Bardo", image: "/assets/player/Soran.jpg" },
-      { name: "Soran", race: "Halfling", class: "Ladro", image: "/assets/player/Cleofe.jpg" },
+    { name: "Makenna", race: "Changeling", class: "Ladro", image: "/assets/player/Makenna.jpeg" },
+    { name: "Taaras Stormrage", race: "Mezz'Elfo", class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
+    { name: "Soran", race: "Umano", class: "Bardo", image: "/assets/player/Soran.png" },
+      { name: "Soran", race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg" },
 
   ],
 };
@@ -78,9 +78,16 @@ export default function Party() {
         </div>
       </ToggleSection>
 
-      <ToggleSection title="Party Enox 5/5">
+      <ToggleSection title="Party Enox 4/4">
         <div className="party-grid">
           {partyData.party3.map((char, index) => (
+            <CharacterCard key={index} character={char} />
+          ))}
+        </div>
+      </ToggleSection>
+      <ToggleSection title="Party Leaf 4/4">
+        <div className="party-grid">
+          {partyData.party4.map((char, index) => (
             <CharacterCard key={index} character={char} />
           ))}
         </div>
