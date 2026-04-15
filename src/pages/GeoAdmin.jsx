@@ -218,7 +218,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
           <div style={{ flex: 1, minWidth: "300px" }}>
             <h4 className="gold-text">Mappa</h4>
             <div onClick={handleMapClick} className="map-picker-container" style={{ position: "relative", border: "1px solid #d4af37", borderRadius: "8px", overflow: "hidden", cursor: npcData.linkedCity ? "default" : "crosshair" }}>
-              <img src="/assets/Eldoria.jpg" alt="Mappa" style={{ width: "100%", display: "block" }} />
+              <img src="/assets/Exanthia.jpg" alt="Mappa" style={{ width: "100%", display: "block" }} />
               <div style={{ position: "absolute", left: `${npcData.mapX}%`, top: `${npcData.mapY}%`, width: "12px", height: "12px", background: "gold", border: "2px solid white", borderRadius: "50%", transform: "translate(-50%, -50%)", boxShadow: "0 0 10px gold" }} />
             </div>
           </div>
