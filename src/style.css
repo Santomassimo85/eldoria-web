@@ -109,14 +109,9 @@ body::after {
 
 main {
      flex: 1;
-     top: 130px;
-     display: flex;
-     justify-content: center;
-     align-items: center;
-     padding: 40px 20px;
-     text-align: center;
+     display: block;
+     width: 100%;
      position: relative;
-     margin: 50px 5% 100px;
 }
 
 section {
@@ -490,7 +485,7 @@ input {
      width: 100%;
      max-width: 1000px;
      margin: 0 auto;
-     padding: 20px;
+     padding: 110px 20px 60px;
 }
 
 .full-width-home {
@@ -660,8 +655,18 @@ input {
 /* ========================================
     PARTY & CHARACTER CARDS
     ======================================== */
+/* ---- Shared page-title utility ----------------------------- */
+.page-title {
+     font-family: var(--font-title);
+     font-size: clamp(1.5rem, 4vw, 2.4rem);
+     color: var(--gold);
+     text-align: center;
+     letter-spacing: 0.06em;
+     margin-bottom: 1.5rem;
+}
+
 .party-page {
-     padding: 20px;
+     padding: 100px 20px 60px;
      max-width: 1200px;
      margin: 0 auto;
 }
@@ -776,7 +781,7 @@ input {
     MARKETPLACE & ITEMS
     ======================================== */
 .mercato-page {
-     padding: 20px;
+     padding: 100px 20px 60px;
      width: 100%;
 }
 .master-bids-view{
@@ -1449,6 +1454,31 @@ h6 {
      cursor: pointer;
 }
 
+/* ---- Admin page wrappers ---------------------------------- */
+.admin-page {
+     padding: 100px 24px 60px;
+     max-width: 1100px;
+     margin: 0 auto;
+}
+
+.admin-summary-page,
+.admin-market-page {
+     padding: 100px 20px 60px;
+     max-width: 1100px;
+     margin: 0 auto;
+}
+
+.admin-container {
+     padding: 100px 20px 60px;
+     max-width: 1000px;
+     margin: 0 auto;
+}
+
+.boss-area {
+     padding-top: 100px;
+     width: 100%;
+}
+
 .admin-summary-page h1,
 .admin-market-page h1 {
      margin: 1rem;
@@ -1598,6 +1628,12 @@ h6 {
 
 .ratto-table tr:hover td {
      background: rgba(223, 179, 37, 0.516);
+}
+
+.lore-page {
+     padding: 100px 20px 60px;
+     max-width: 960px;
+     margin: 0 auto;
 }
 
 .lore-page blockquote {
@@ -2367,9 +2403,7 @@ a {
      }
 
      main {
-          padding: 20px;
-          top: 120px;
-          position: relative;
+          width: 100%;
      }
 
      h1 {

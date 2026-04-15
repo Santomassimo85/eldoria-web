@@ -80,7 +80,7 @@ export default function VideoAdmin() {
   };
 
   return (
-    <div style={{ padding: "40px 20px", maxWidth: "800px", margin: "0 auto", color: "white" }}>
+    <div style={{ padding: "100px 20px 60px", maxWidth: "800px", margin: "0 auto", color: "var(--text)" }}>
       <button onClick={() => navigate("/dm-admin")} style={{ marginBottom: "20px", background: "#444", color: "white", border: "none", padding: "8px 15px", cursor: "pointer", borderRadius: "5px" }}>
         ⬅ Torna al Pannello Admin
       </button>

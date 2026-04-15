@@ -66,7 +66,7 @@ export default function PlatinumAdmin() {
     };
 
     return (
-        <section className="admin-page" style={{padding: '20px', maxWidth: '800px', margin: '0 auto'}}>
+        <section className="admin-page" style={{maxWidth: '800px'}}>
             <Link to="/dm-admin" className="back-button">← Dashboard Admin</Link>
             <h1>Gestione Monete Platino (MP)</h1>
             

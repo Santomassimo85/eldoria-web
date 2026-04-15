@@ -1,0 +1,188 @@
+/* ============================================================
+   PARTY — design coerente con Riassunti
+   Mobile-first, responsive
+   ============================================================ */
+
+.party-page {
+  padding: 100px 16px 80px;
+  max-width: 1100px;
+  margin: 0 auto;
+  font-family: var(--font-text);
+  color: var(--text);
+}
+
+/* ---- HEADER ----------------------------------------------- */
+.party-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.party-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.4rem, 5vw, 2.6rem);
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+
+.party-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 10px auto 0;
+  max-width: 360px;
+}
+
+.party-divider::before,
+.party-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold));
+}
+
+.party-divider::after {
+  background: linear-gradient(to left, transparent, var(--gold));
+}
+
+.party-divider-icon {
+  font-size: 1rem;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+/* ---- PARTY GROUP SECTIONS --------------------------------- */
+.party-section {
+  margin-bottom: 22px;
+}
+
+.party-section > .toggle-section > .toggle-title {
+  background: linear-gradient(90deg, rgba(130, 10, 10, 0.1), transparent);
+  border-left: 4px solid var(--red);
+  border-radius: 0 10px 10px 0;
+  color: var(--red) !important;
+  background-color: transparent !important;
+  font-family: var(--font-title);
+  font-size: clamp(0.88rem, 2.5vw, 1.05rem) !important;
+  letter-spacing: 0.08em;
+  padding: 12px 18px !important;
+}
+
+.party-section > .toggle-section > .toggle-title:hover {
+  background: linear-gradient(90deg, rgba(130, 10, 10, 0.16), transparent) !important;
+}
+
+/* ---- CHARACTER GRID --------------------------------------- */
+.party-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  padding: 12px 0;
+}
+
+@media (min-width: 580px) {
+  .party-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+}
+
+@media (min-width: 860px) {
+  .party-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; }
+}
+
+/* ---- CHARACTER CARD --------------------------------------- */
+.character-card {
+  border: 1.5px solid rgba(212, 175, 55, 0.22);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.18s;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  background: #fff;
+}
+
+.character-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(130, 10, 10, 0.1);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.character-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: top;
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.18);
+}
+
+.character-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 8px 12px;
+  background: linear-gradient(160deg, #fdf6e3, #fff8ed);
+}
+
+.character-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  width: 100%;
+}
+
+.character-name {
+  font-family: var(--font-title);
+  color: var(--red);
+  font-size: clamp(0.72rem, 1.8vw, 0.9rem);
+  letter-spacing: 0.03em;
+  margin: 0 0 3px;
+  line-height: 1.2;
+  transition: color 0.15s;
+}
+
+.character-link:hover .character-name {
+  color: var(--gold);
+}
+
+.character-details {
+  font-family: var(--font-text);
+  color: #888;
+  font-size: 0.7rem;
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* ---- HR SEPARATOR ----------------------------------------- */
+.party-page hr {
+  border: none;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  margin: 28px 0;
+}
+
+/* NPC specific */
+.npc-location {
+  font-size: 0.68rem;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.npc-desc {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: #666;
+  margin-top: 3px;
+  padding: 0 4px;
+}
+
+/* ---- MOBILE ----------------------------------------------- */
+@media (max-width: 420px) {
+  .party-page { padding: 90px 12px 60px; }
+  .party-grid { gap: 10px; }
+}
+
+@media (min-width: 768px) {
+  .party-page { padding: 110px 28px 80px; }
+}

@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore"; // Aggiunti import mancanti
+import { collection, onSnapshot } from "firebase/firestore";
 import ToggleSection from "./ToggleSection";
 import { useAuth } from "../AuthContext";
-import GeoAdmin from "./GeoAdmin"; // Importiamo l'admin per usarlo come editor rapido
+import GeoAdmin from "./GeoAdmin";
+import './Geo.css';
 
 export default function Geo() {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingLoc, setEditingLoc] = useState(null); // Stato per il luogo in modifica
+  const [editingLoc, setEditingLoc] = useState(null);
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
 
   useEffect(() => {
-    // Listener in tempo reale
     const unsub = onSnapshot(collection(db, "geo_archive"), (snap) => {
       setLocations(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
@@ -21,54 +21,93 @@ export default function Geo() {
     return () => unsub();
   }, []);
 
-  if (loading) return <p style={{ textAlign: "center", color: "var(--gold)" }}>Consultando le mappe antiche...</p>;
+  if (loading) {
+    return (
+      <section className="geo-page">
+        <div className="geo-loading">
+          <span className="geo-loading-icon">🗺️</span>
+          Consultando le mappe antiche…
+        </div>
+      </section>
+    );
+  }
 
   const continents = ["Vathriddon", "Ehkia", "Ohzkie"];
 
   return (
-    <section style={{ position: "relative" }}>
-      <h1 style={{ textAlign: "center", marginBottom: "40px", fontSize: "2rem" }}>Archivio Geomantico</h1>
+    <section className="geo-page">
 
-      {/* MODAL DI MODIFICA RAPIDA */}
+      {/* ---- HEADER ---- */}
+      <div className="geo-header">
+        <h1 className="geo-title">Archivio Geomantico</h1>
+        <div className="geo-divider">
+          <span className="geo-divider-icon">✦</span>
+        </div>
+      </div>
+
+      {/* ---- MODAL MODIFICA RAPIDA ---- */}
       {editingLoc && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          backgroundColor: "rgba(255, 255, 255, 0.8)", zIndex: 9999, overflowY: "auto", padding: "20px"
+          backgroundColor: "rgba(255,255,255,0.85)", zIndex: 9999,
+          overflowY: "auto", padding: "20px"
         }}>
-          <div style={{ backgroundColor: "#ffffffc0", padding: "20px", borderRadius: "10px", maxWidth: "800px", margin: "auto" }}>
-            <button onClick={() => setEditingLoc(null)} style={{ float: "right", background: "red", color: "white", border: "none", padding: "5px 10px", cursor: "pointer" }}>CHIUDI X</button>
-            <h2 className="">Modifica {editingLoc.name}</h2>
-            {/* Riutilizziamo GeoAdmin passando il luogo da editare */}
+          <div style={{
+            backgroundColor: "#ffffffee", padding: "24px", borderRadius: "12px",
+            maxWidth: "800px", margin: "0 auto",
+            border: "1.5px solid rgba(212,175,55,0.3)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.1)"
+          }}>
+            <button
+              onClick={() => setEditingLoc(null)}
+              style={{
+                float: "right", background: "var(--red)", color: "white",
+                border: "none", padding: "6px 14px", cursor: "pointer",
+                borderRadius: "6px", fontWeight: "bold"
+              }}
+            >
+              ✕ Chiudi
+            </button>
+            <h2 style={{ color: "var(--red)", fontFamily: "var(--font-title)", marginBottom: "16px" }}>
+              Modifica — {editingLoc.name}
+            </h2>
             <GeoAdmin editTarget={editingLoc} onComplete={() => setEditingLoc(null)} />
           </div>
         </div>
       )}
 
+      {/* ---- CONTINENTI ---- */}
       {continents.map((contName) => {
-        const locationsInContinent = locations.filter(l => l.continent === contName || (contName === "Vathriddon" && !l.continent));
+        const locationsInContinent = locations.filter(
+          l => l.continent === contName || (contName === "Vathriddon" && !l.continent)
+        );
         if (locationsInContinent.length === 0) return null;
 
         return (
-          <div key={contName} className="continent-wrapper" style={{ marginBottom: "60px" }}>
-            <h1 className="continent-title">{contName}</h1>
-            <section className="city" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px", width: "100%" }}>
+          <div key={contName} className="continent-wrapper">
+            <h2 className="continent-title">{contName}</h2>
+
+            <div className="geo-grid">
               {locationsInContinent.map((loc) => (
-                <ToggleSection key={loc.id} title={loc.name} defaultOpen={false}>
-                  {isMaster && (
-                    <div style={{ textAlign: "right", marginBottom: "10px" }}>
-                      <button 
-                        onClick={() => setEditingLoc(loc)} // Apre l'editor nello stato locale
-                        style={{ background: "var(--gold)", color: "black", border: "none", padding: "5px 15px", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}
+                <div key={loc.id} className="geo-card-wrapper">
+                  <ToggleSection title={loc.name} defaultOpen={false}>
+                    {isMaster && (
+                      <button
+                        className="geo-edit-btn"
+                        onClick={() => setEditingLoc(loc)}
                       >
                         ⚙️ Modifica Luogo
                       </button>
-                    </div>
-                  )}
-                  <img src={loc.image} alt={loc.name} className="city-img" style={{ width: "100%", borderRadius: "8px" }} />
-                  <div className="geo-description" dangerouslySetInnerHTML={{ __html: loc.description }} style={{ textAlign: "left", lineHeight: "1.6", marginTop: "15px" }} />
-                </ToggleSection>
+                    )}
+                    <img src={loc.image} alt={loc.name} className="city-img" />
+                    <div
+                      className="geo-description"
+                      dangerouslySetInnerHTML={{ __html: loc.description }}
+                    />
+                  </ToggleSection>
+                </div>
               ))}
-            </section>
+            </div>
           </div>
         );
       })}

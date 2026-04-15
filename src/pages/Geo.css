@@ -1,0 +1,216 @@
+/* ============================================================
+   ARCHIVIO GEOMANTICO — design coerente con Riassunti
+   Mobile-first, responsive
+   ============================================================ */
+
+.geo-page {
+  min-height: 100vh;
+  padding: 100px 16px 80px;
+  max-width: 1100px;
+  margin: 0 auto;
+  font-family: var(--font-text);
+  color: var(--text);
+}
+
+/* ---- HEADER ----------------------------------------------- */
+.geo-header {
+  text-align: center;
+  margin-bottom: 44px;
+}
+
+.geo-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.4rem, 5vw, 2.6rem);
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+
+.geo-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 10px auto 0;
+  max-width: 360px;
+}
+
+.geo-divider::before,
+.geo-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold));
+}
+
+.geo-divider::after {
+  background: linear-gradient(to left, transparent, var(--gold));
+}
+
+.geo-divider-icon {
+  font-size: 1rem;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+/* ---- LOADING ---------------------------------------------- */
+.geo-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: 14px;
+  font-family: var(--font-title);
+  color: var(--gold);
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+  animation: geo-pulse 2s ease-in-out infinite;
+}
+
+@keyframes geo-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.9;  }
+}
+
+.geo-loading-icon {
+  font-size: 2rem;
+}
+
+/* ---- CONTINENT WRAPPER ------------------------------------ */
+.continent-wrapper {
+  margin-bottom: 52px;
+}
+
+.continent-title {
+  font-family: var(--font-title);
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.22);
+  text-align: center;
+}
+
+/* ---- LOCATION GRID ---------------------------------------- */
+.geo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 4px 0 8px;
+}
+
+@media (min-width: 540px) {
+  .geo-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (min-width: 860px) {
+  .geo-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+/* ---- LOCATION CARD ---------------------------------------- */
+.geo-card-wrapper .toggle-section {
+  border: 1.5px solid rgba(212, 175, 55, 0.22);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s, border-color 0.2s;
+  background: #fff;
+  height: 100%;
+}
+
+.geo-card-wrapper .toggle-section:hover {
+  box-shadow: 0 4px 20px rgba(130, 10, 10, 0.1);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.geo-card-wrapper .toggle-title {
+  background: linear-gradient(160deg, #fdf6e3, #fff8ed) !important;
+  color: var(--red) !important;
+  font-family: var(--font-title);
+  font-size: clamp(0.78rem, 2.2vw, 0.92rem) !important;
+  letter-spacing: 0.05em;
+  padding: 16px 14px !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-direction: row !important;
+  min-height: unset !important;
+  height: auto !important;
+}
+
+.geo-card-wrapper .toggle-title:hover {
+  background: linear-gradient(160deg, #f7edce, #fef4e0) !important;
+}
+
+.geo-card-wrapper .toggle-title .toggle-icon {
+  color: var(--gold);
+  opacity: 0.7;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.geo-card-wrapper .toggle-content.open {
+  padding: 16px 14px !important;
+}
+
+/* ---- CARD CONTENT ----------------------------------------- */
+.geo-description {
+  font-size: clamp(0.84rem, 2vw, 0.95rem);
+  line-height: 1.8;
+  text-align: left;
+  color: var(--text);
+}
+
+.geo-description p {
+  margin-bottom: 0.9rem;
+}
+
+.geo-description strong {
+  color: var(--red);
+}
+
+.geo-card-wrapper img.city-img {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ---- EDIT BUTTON ------------------------------------------ */
+.geo-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--gold);
+  color: var(--red);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.78rem;
+  margin-bottom: 10px;
+  transition: opacity 0.2s;
+}
+
+.geo-edit-btn:hover { opacity: 0.82; }
+
+/* ---- MOBILE ----------------------------------------------- */
+@media (max-width: 420px) {
+  .geo-page { padding: 90px 12px 60px; }
+}
+
+@media (min-width: 768px) {
+  .geo-page { padding: 110px 28px 80px; }
+}

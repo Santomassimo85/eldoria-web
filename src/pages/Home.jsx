@@ -3,6 +3,7 @@ import Countdown from "../components/Countdown";
 import ToggleSection from "../pages/ToggleSection";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import './Home.css';
 
 export default function Home() {
   const [visible, setVisible] = useState(true);
@@ -289,16 +290,15 @@ export default function Home() {
         </div>
       </div>
 
-      <section className="main-content full-width-home">
+      <section className="home-lore-section">
         <img
           src="/assets/creation.png"
-          className={`creation-image ${visible ? "show" : "hide"}`}
+          className={`home-creation-image ${visible ? "show" : "hide"}`}
           alt="Exanthia"
           id="creation-img"
         />
-        <h1>L'inizio del mondo di Exanthia</h1>
-        <p>
-          <b>E</b>oni fa esisteva soltanto il buio, l´assenza di vita, e in quella
+        <h2 className="home-lore-title">L'inizio del mondo di Exanthia</h2>
+        <p className="home-lore-text"><span className="home-lore-drop">E</span>oni fa esisteva soltanto il buio, l´assenza di vita, e in quella
           bolla di oscuritá che vivevano due esseri, uno privo di luce e l´altro
           luminoso come una stella. Questi esseri preseró il nome di Ny
           (luce) e Ouh (buio) secondo le antiche scritture, e durante una
@@ -378,42 +378,34 @@ export default function Home() {
       </section>
 
       {/* --- ANTICHI DEI --- */}
-      <section className="full-width-content">
-        <ToggleSection
-          title="Antichi Dei (I Nati dalle Lacrime)"
-          defaultOpen={false}
-        >
-          <h1 className="pantheon-main-title">I Nati dalle Lacrime</h1>
+      <div className="home-deity-section">
+        <ToggleSection title="Antichi Dei (I Nati dalle Lacrime)" defaultOpen={false}>
+          <h3 className="pantheon-main-title">I Nati dalle Lacrime</h3>
           <img
             src="/assets/pantheon/Antico_pantheon.png"
-            className="creation-image show"
+            className="home-creation-image show"
             alt="Antico Pantheon"
+            style={{ marginBottom: "20px" }}
           />
           <div className="pantheon-list">{renderPantheon(antichiDei)}</div>
         </ToggleSection>
-      </section>
+      </div>
 
       {/* --- NUOVI DEI --- */}
-      <section className="full-width-content">
-        <ToggleSection
-          title="Nuovi Dei (Dopo la Grande Guerra)"
-          defaultOpen={false}
-        >
-          <h1 className="pantheon-main-title">I Custodi dell'Era Spezzata</h1>
+      <div className="home-deity-section">
+        <ToggleSection title="Nuovi Dei (Dopo la Grande Guerra)" defaultOpen={false}>
+          <h3 className="pantheon-main-title">I Custodi dell'Era Spezzata</h3>
           <div className="pantheon-list">{renderPantheon(nuoviDei)}</div>
         </ToggleSection>
-      </section>
+      </div>
 
       {/* --- DEI MALVAGI --- */}
-      <section className="full-width-content">
-        <ToggleSection
-          title="Dei Malvagi (Le Ombre del Vuoto)"
-          defaultOpen={false}
-        >
-          <h1 className="pantheon-main-title">Le Piaghe di Exanthia</h1>
+      <div className="home-deity-section">
+        <ToggleSection title="Dei Malvagi (Le Ombre del Vuoto)" defaultOpen={false}>
+          <h3 className="pantheon-main-title">Le Piaghe di Exanthia</h3>
           <div className="pantheon-list">{renderPantheon(deiMalvagi)}</div>
         </ToggleSection>
-      </section>
+      </div>
     </div>
   );
 }

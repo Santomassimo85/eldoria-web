@@ -92,7 +92,7 @@ export default function ReputationAdmin() {
   };
 
   return (
-    <section style={{ padding: "40px 20px", color: "white", maxWidth: "800px", margin: "0 auto" }}>
+    <section style={{ padding: "100px 20px 60px", color: "var(--text)", maxWidth: "800px", margin: "0 auto" }}>
       <button onClick={() => navigate("/dm-admin")} style={{ marginBottom: "20px", background: "none", border: "1px solid var(--gold)", color: "var(--gold)", padding: "5px 10px", cursor: "pointer" }}>
         ← Torna al Pannello Admin
       </button>

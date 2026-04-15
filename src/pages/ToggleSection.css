@@ -31,24 +31,7 @@
   font-family: var(--font-title);
   letter-spacing: 1px;
 }
-.toggle-title.summaryTitle { 
-  padding-top: 100px; 
-  padding-bottom: 100px; 
-  border-radius: 15px;
-  
-  /* Centra il titolo e la freccia nella nuova altezza */
-  align-items: center; 
-  justify-content: center; 
-  flex-direction: column; 
-  
-  /* Stili aggiuntivi per il look (esempio) */
-  color: var(--red); 
-  background-color: #f3e3b95e;
-}
-
-.toggle-title.summaryTitle:hover {
-  background-color: #e2e2e2;
-}
+/* summaryTitle styles live in Riassunti.css */
 /* 2. STILE PER LE IMMAGINI ALL'INTERNO DEL CONTENUTO DEI RIASSUNTI */
 .toggle-content.summary-content-padding img {
   width: 100%;
@@ -87,9 +70,7 @@
 .toggle-title:hover {
   background-color: #f0f0f0; /* Effetto hover */
 }
-h3.summaryTitle{
-  height: 150px;
-}
+/* h3.summaryTitle height override moved to Riassunti.css */
 
 /* Icona della freccia */
 .toggle-icon {

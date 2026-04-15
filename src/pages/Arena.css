@@ -1932,3 +1932,434 @@
   transform: none;
   box-shadow: none;
 }
+
+/* ============================================================
+   RESPONSIVE — Mobile & Tablet
+   ============================================================ */
+
+/* Tablet (max 768px) */
+@media (max-width: 768px) {
+  .arena-page {
+    padding: 90px 14px 60px;
+    max-width: 100%;
+  }
+
+  .join-zone-inner {
+    padding: 28px 18px;
+    max-width: 100%;
+  }
+
+  .match-card {
+    border-radius: 10px;
+  }
+
+  .fighters-row {
+    padding: 12px 10px;
+  }
+
+  .fighter-card {
+    padding: 12px 10px;
+  }
+
+  .loadout-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .bracket-card {
+    min-width: 180px;
+  }
+}
+
+/* Small phones (max 480px) */
+@media (max-width: 480px) {
+  .arena-page {
+    padding: 80px 10px 60px;
+  }
+
+  .arena-title {
+    font-size: 1.3rem;
+  }
+
+  .loadout-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 6px;
+  }
+
+  .loadout-item {
+    padding: 8px 5px;
+    gap: 2px;
+  }
+
+  .loadout-item-icon { font-size: 1rem; }
+  .loadout-item-name { font-size: 0.6rem; }
+
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .fighters-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .vs-divider {
+    width: 100%;
+    height: 20px;
+    writing-mode: horizontal-tb;
+  }
+
+  .vs-divider::before {
+    top: 50%; bottom: auto;
+    left: 10%; right: 10%;
+    width: auto; height: 1px;
+  }
+
+  .match-header {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .bracket-section {
+    padding: 16px 12px 14px;
+  }
+
+  .bracket-round-col {
+    min-width: 170px;
+  }
+
+  .join-zone-inner {
+    padding: 20px 14px;
+  }
+
+  .phase-tag {
+    font-size: 0.6rem;
+    padding: 3px 12px;
+  }
+
+  .btn-confirm-equip {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
+/* ============================================================
+   TABELLONE DEL TORNEO — Tournament Bracket
+   ============================================================ */
+
+.bracket-section {
+  margin: 32px 0 24px;
+  padding: 24px 20px 20px;
+  background: var(--surface, #fff);
+  border: 1.5px solid rgba(130, 10, 10, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+
+.bracket-title {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--red);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bracket-round-badge {
+  font-family: var(--font-text);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--red);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 20px;
+  vertical-align: middle;
+}
+
+.bracket-scroll {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(130,10,10,0.25) transparent;
+}
+
+.bracket-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+.bracket-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.bracket-scroll::-webkit-scrollbar-thumb {
+  background: rgba(130,10,10,0.25);
+  border-radius: 4px;
+}
+
+/* ---- Round column ----------------------------------------- */
+
+.bracket-round-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 220px;
+  flex-shrink: 0;
+}
+
+.bracket-round-header {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  text-align: center;
+  padding: 4px 0 6px;
+  border-bottom: 1.5px solid rgba(130,10,10,0.15);
+}
+
+/* ---- Match card ------------------------------------------- */
+
+.bracket-card {
+  background: #fafafa;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 12px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.bracket-card.active {
+  border-color: rgba(130,10,10,0.45);
+  box-shadow: 0 2px 12px rgba(130,10,10,0.1);
+}
+
+.bracket-card.initiative {
+  border-color: rgba(200,140,20,0.55);
+  box-shadow: 0 2px 12px rgba(200,140,20,0.12);
+}
+
+.bracket-card.finished {
+  border-color: #c8c8c8;
+  opacity: 0.82;
+}
+
+.bracket-card.my-match {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 2px rgba(130,10,10,0.12), 0 2px 14px rgba(130,10,10,0.14) !important;
+}
+
+/* ---- FFA tag ---------------------------------------------- */
+
+.bracket-ffa-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b06000;
+  background: rgba(200,140,20,0.12);
+  border-radius: 4px;
+  padding: 2px 6px;
+  align-self: flex-start;
+  margin-bottom: 2px;
+}
+
+/* ---- Separator between fighters --------------------------- */
+
+.bracket-sep {
+  height: 1px;
+  background: rgba(0,0,0,0.07);
+  margin: 2px 0;
+}
+
+/* ---- Fighter row ------------------------------------------ */
+
+.bracket-fighter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 3px 0 2px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.bracket-fighter.active-turn {
+  background: rgba(130,10,10,0.06);
+  padding-left: 4px;
+  border-left: 2.5px solid var(--red);
+  margin-left: -4px;
+}
+
+.bracket-fighter.dead {
+  opacity: 0.42;
+  filter: grayscale(0.5);
+}
+
+.bracket-fighter.win {
+  /* subtle gold glow on winner */
+}
+
+.bracket-fighter-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bracket-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ddd;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.bracket-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0e6e6, #e0d0d0);
+  border: 1.5px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  color: #999;
+}
+
+.bracket-fighter-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bracket-fighter-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.bracket-fighter.win .bracket-fighter-name {
+  color: #b06000;
+}
+
+.bracket-fighter.dead .bracket-fighter-name {
+  text-decoration: line-through;
+  color: #aaa;
+}
+
+.bracket-fighter-class {
+  font-size: 0.66rem;
+  color: #999;
+  text-transform: capitalize;
+  line-height: 1;
+}
+
+/* ---- Result tag ------------------------------------------- */
+
+.bracket-result-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.bracket-result-tag.win {
+  background: rgba(180,140,0,0.15);
+  color: #8a6a00;
+}
+
+.bracket-result-tag.loss {
+  background: rgba(160,20,20,0.1);
+  color: #a00;
+}
+
+/* ---- Active turn dot -------------------------------------- */
+
+.bracket-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+/* ---- HP badge & bar --------------------------------------- */
+
+.bracket-hp-badge {
+  font-size: 0.63rem;
+  color: #888;
+  text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bracket-hp-track {
+  height: 5px;
+  border-radius: 3px;
+  background: #e8e8e8;
+  overflow: hidden;
+  margin-top: 1px;
+}
+
+.bracket-hp-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease, background 0.4s ease;
+}
+
+/* ---- Match status footer ---------------------------------- */
+
+.bracket-status {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 4px 6px 2px;
+  border-top: 1px solid rgba(0,0,0,0.07);
+  margin-top: 2px;
+}
+
+.bracket-status.active  { color: var(--red); }
+.bracket-status.initiative { color: #b06000; }
+.bracket-status.finished   { color: #888; }
+.bracket-status.waiting    { color: #aaa; }
+
+/* ---- Last combat log -------------------------------------- */
+
+.bracket-last-log {
+  font-size: 0.64rem;
+  color: #777;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+  line-height: 1.3;
+}

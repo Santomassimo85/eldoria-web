@@ -40,8 +40,8 @@ export default function Cinema() {
   }
 
   return (
-    <div style={{ padding: "40px 20px", maxWidth: "1000px", margin: "0 auto", color: "white" }}>
-      <h1 style={{ textAlign: "center", color: "var(--gold)", marginBottom: "40px", fontSize: "3rem" }}>
+    <div style={{ padding: "100px 20px 60px", maxWidth: "1000px", margin: "0 auto", color: "var(--text)" }}>
+      <h1 className="page-title">
         📽️ Archivio Sessioni
       </h1>
 
