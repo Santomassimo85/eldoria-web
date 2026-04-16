@@ -1,39 +1,52 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "./AuthContext"; // Percorso corretto
-import { db } from "./firebase"; // Percorso corretto
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  doc 
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "./AuthContext";
+import { db } from "./firebase";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
 } from "firebase/firestore";
 import "./LoginDropdown.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+const RATTO_LEVELS = [
+  { min: 0,  name: "Estraneo" },
+  { min: 5,  name: "Simpatizzante" },
+  { min: 15, name: "Informatore" },
+  { min: 30, name: "Ricettatore" },
+  { min: 50, name: "Veterano" },
+  { min: 80, name: "Ombra di Obia" },
+];
+
+function getRattoRank(points = 0) {
+  let rank = RATTO_LEVELS[0].name;
+  for (const lvl of RATTO_LEVELS) {
+    if (points >= lvl.min) rank = lvl.name;
+  }
+  return rank;
+}
+
 export default function LoginDropdown() {
   const { currentUser, login, logout } = useAuth();
   const navigate = useNavigate();
-  
-  // Stati per il form e il menu
+
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  
-  // Stati per i dati dinamici
   const [unreadCount, setUnreadCount] = useState(0);
   const [charData, setCharData] = useState(null);
   const dropdownRef = useRef(null);
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
-  // Chiudi il menu se si clicca fuori
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsOpen(false);
       }
     };
@@ -41,7 +54,6 @@ export default function LoginDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Listener per Notifiche e Dati Personaggio (solo se loggato)
   useEffect(() => {
     if (!currentUser) return;
 
@@ -58,13 +70,9 @@ export default function LoginDropdown() {
       setUnreadCount(snap.docs.length);
     });
 
-    return () => {
-      unsubChar();
-      unsubNotify();
-    };
+    return () => { unsubChar(); unsubNotify(); };
   }, [currentUser]);
 
-  // Gestione Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -73,7 +81,7 @@ export default function LoginDropdown() {
       setIsOpen(false);
       setEmail("");
       setPassword("");
-    } catch (err) {
+    } catch {
       setError("Credenziali non valide.");
     }
   };
@@ -83,29 +91,31 @@ export default function LoginDropdown() {
       await logout();
       setIsOpen(false);
       navigate("/");
-    } catch (error) {
-      console.error("Errore logout:", error);
+    } catch (err) {
+      console.error("Errore logout:", err);
     }
   };
 
-  // --- VISTA PER UTENTE NON LOGGATO (FORM A COMPARSA) ---
+  const rattoRank = getRattoRank(charData?.rattoPoints ?? 0);
+
+  // --- NON LOGGATO ---
   if (!currentUser) {
     return (
-      <div className="login-dropdown-container" ref={dropdownRef}>
-        <button onClick={() => setIsOpen(!isOpen)} className="login-button nav-button">
+      <div className="ld-container" ref={dropdownRef}>
+        <button onClick={() => setIsOpen((v) => !v)} className="ld-login-btn">
           Accedi
         </button>
-        
         {isOpen && (
-          <div className="login-dropdown-content">
-            {error && <p className="login-error">{error}</p>}
-            <form onSubmit={handleLogin}>
+          <div className="ld-panel ld-panel--login">
+            {error && <p className="ld-error">{error}</p>}
+            <form onSubmit={handleLogin} className="ld-form">
               <input
                 type="email"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="ld-input"
               />
               <input
                 type="password"
@@ -113,8 +123,9 @@ export default function LoginDropdown() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="ld-input"
               />
-              <button type="submit">Entra</button>
+              <button type="submit" className="ld-submit-btn">Entra</button>
             </form>
           </div>
         )}
@@ -122,56 +133,83 @@ export default function LoginDropdown() {
     );
   }
 
-  // --- VISTA PER UTENTE LOGGATO (MENU PERSONAGGIO) ---
+  // --- LOGGATO ---
   return (
-    <div className="login-dropdown-container" ref={dropdownRef}>
-      <div className="avatar-trigger" onClick={() => setIsOpen(!isOpen)}>
-  {isOpen ? (
-    <div className="nav-close-icon">✕</div>
-  ) : (
-    <>
-      <img
-        src={charData?.image || "/assets/player/default.png"}
-        alt="Avatar"
-        className={`nav-avatar ${unreadCount > 0 ? "notify-border" : ""}`}
-      />
-      {unreadCount > 0 && <span className="global-notify-badge">{unreadCount}</span>}
-    </>
-  )}
-</div>
+    <div className="ld-container" ref={dropdownRef}>
+      <button className="ld-avatar-btn" onClick={() => setIsOpen((v) => !v)}>
+        <img
+          src={charData?.image || "/assets/player/default.png"}
+          alt="Avatar"
+          className={`ld-avatar ${unreadCount > 0 ? "ld-avatar--notify" : ""}`}
+        />
+        {unreadCount > 0 && (
+          <span className="ld-badge">{unreadCount}</span>
+        )}
+      </button>
 
       {isOpen && (
-        <div className="login-dropdown-menu">
-          <div className="dropdown-header">
-            <p className="user-email" style={{fontWeight:"bolder"}}>{currentUser.email}</p>
-            <div className="user-stats-mini">
-              <span style={{fontWeight:"bolder"}}>💰 {charData?.platinum ?? charData?.money ?? 0} MP</span>
-              <span className="ratto-text">🐀 {charData?.rattoName || "Estraneo"}</span>
+        <div className="ld-panel ld-panel--user">
+          {/* Header personaggio */}
+          <div className="ld-char-header">
+            <img
+              src={charData?.image || "/assets/player/default.png"}
+              alt="Avatar"
+              className="ld-char-avatar"
+            />
+            <div className="ld-char-info">
+              <p className="ld-char-name">{charData?.name || currentUser.email}</p>
+              <p className="ld-char-email">{currentUser.email}</p>
             </div>
           </div>
 
-          <div className="dropdown-divider"></div>
+          {/* Stats row */}
+          <div className="ld-stats-row">
+            <div className="ld-stat">
+              <span className="ld-stat-icon">💰</span>
+              <span className="ld-stat-value">{charData?.platinum ?? charData?.money ?? 0}</span>
+              <span className="ld-stat-label">MP</span>
+            </div>
+            <div className="ld-stat-divider" />
+            <div className="ld-stat">
+              <span className="ld-stat-icon">🐀</span>
+              <span className="ld-stat-value ld-stat-value--ratto">{rattoRank}</span>
+            </div>
+          </div>
 
-          <button className="menu-item" onClick={() => { navigate("/notifications"); setIsOpen(false); }}>
-            Notifiche {unreadCount > 0 && <span className="inline-badge">{unreadCount}</span>}
+          <div className="ld-divider" />
+
+          <button
+            className="ld-menu-item"
+            onClick={() => { navigate("/notifications"); setIsOpen(false); }}
+          >
+            <span>🔔 Notifiche</span>
+            {unreadCount > 0 && <span className="ld-inline-badge">{unreadCount}</span>}
           </button>
 
-          <button className="menu-item" onClick={() => { navigate("/my-pg"); setIsOpen(false); }}>
-            Scheda Personaggio
+          <button
+            className="ld-menu-item"
+            onClick={() => { navigate("/my-pg"); setIsOpen(false); }}
+          >
+            📜 Scheda Personaggio
           </button>
 
           {isMaster && (
             <>
-              <div className="dropdown-divider"></div>
-              <p className="admin-label">MASTER PANEL</p>
-              <button className="menu-item gold" onClick={() => { navigate("/dm-admin"); setIsOpen(false); }}>
-                Gestione Mondo
+              <div className="ld-divider" />
+              <p className="ld-section-label">Master Panel</p>
+              <button
+                className="ld-menu-item ld-menu-item--gold"
+                onClick={() => { navigate("/dm-admin"); setIsOpen(false); }}
+              >
+                ⚙️ Gestione Mondo
               </button>
             </>
           )}
 
-          <div className="dropdown-divider"></div>
-          <button onClick={handleLogout} className="menu-item logout-btn">Esci</button>
+          <div className="ld-divider" />
+          <button onClick={handleLogout} className="ld-menu-item ld-menu-item--logout">
+            Esci
+          </button>
         </div>
       )}
     </div>

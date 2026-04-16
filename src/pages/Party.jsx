@@ -84,7 +84,7 @@ export default function Party() {
 
       {/* ---- PARTY ENOX ---- */}
       <div className="party-section">
-        <ToggleSection title="Party Enox  4/4">
+        <ToggleSection title="Party Enox  5/5">
           <div className="party-grid">
             {partyData.party3.map((char, i) => <CharacterCard key={i} character={char} />)}
           </div>

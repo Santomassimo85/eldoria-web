@@ -126,15 +126,20 @@ section.active {
     HEADER & NAVIGATION
     ======================================== */
 header {
-     background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, #ffffff 23%);
+     background: rgba(255, 255, 255, 0.97);
+     backdrop-filter: blur(6px);
+     -webkit-backdrop-filter: blur(6px);
      display: flex;
      justify-content: space-between;
      align-items: center;
-     padding: 16px 32px;
-     flex-wrap: wrap;
+     padding: 12px 32px;
+     flex-wrap: nowrap;
      width: 100%;
      position: fixed;
-     z-index: 1;
+     top: 0;
+     left: 0;
+     z-index: 1000;
+     box-shadow: 0 1px 8px rgba(0,0,0,0.08);
 }
 
 .logo {
@@ -189,6 +194,164 @@ nav a.active {
      background: var(--red);
      color: #fff;
      pointer-events: none;
+}
+
+/* ---- DROPDOWN MENU ---- */
+.nav-dd {
+     position: relative;
+}
+
+.nav-dd-trigger {
+     background: none;
+     border: none;
+     cursor: pointer;
+     font-family: var(--font-title);
+     font-weight: 600;
+     font-size: 0.9rem;
+     color: var(--text);
+     padding: 6px 12px;
+     border-radius: 20px;
+     transition: background 0.2s;
+     display: flex;
+     align-items: center;
+     gap: 4px;
+     white-space: nowrap;
+     letter-spacing: 0.5px;
+}
+
+.nav-dd-trigger:hover {
+     background: rgba(130,10,10,0.07);
+     color: var(--red);
+}
+
+.nav-dd--open .nav-dd-trigger {
+     background: var(--red);
+     color: #fff;
+}
+
+.nav-dd-arrow {
+     font-size: 0.65rem;
+     transition: transform 0.25s ease;
+     display: inline-block;
+}
+
+.nav-dd--open .nav-dd-arrow {
+     transform: rotate(180deg);
+}
+
+.nav-dd-menu {
+     display: none;
+     position: absolute;
+     top: calc(100% + 8px);
+     left: 50%;
+     transform: translateX(-50%);
+     background: #fff;
+     border: 1px solid rgba(212,175,55,0.3);
+     border-top: 3px solid var(--red);
+     border-radius: 0 0 10px 10px;
+     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+     min-width: 190px;
+     overflow: hidden;
+     z-index: 2000;
+     flex-direction: column;
+}
+
+.nav-dd--open .nav-dd-menu {
+     display: flex;
+}
+
+.nav-dd-menu a {
+     display: block;
+     padding: 10px 18px;
+     font-size: 0.88rem;
+     color: var(--text);
+     border-radius: 0;
+     transition: background 0.15s, color 0.15s, padding-left 0.15s;
+     white-space: nowrap;
+     border-bottom: 1px solid rgba(212,175,55,0.1);
+}
+
+.nav-dd-menu a:last-child {
+     border-bottom: none;
+}
+
+.nav-dd-menu a:hover {
+     background: rgba(130,10,10,0.06);
+     color: var(--red);
+     padding-left: 24px;
+}
+
+.nav-dd-menu a.active {
+     background: rgba(130,10,10,0.08);
+     color: var(--red);
+     font-weight: bold;
+     pointer-events: none;
+     border-left: 3px solid var(--red);
+     padding-left: 15px;
+}
+
+/* ---- MOBILE NAV ---- */
+@media (max-width: 900px) {
+     nav {
+          display: none;
+          flex-direction: column;
+          align-items: flex-start;
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 260px;
+          height: 100vh;
+          background: #fff;
+          box-shadow: -4px 0 20px rgba(0,0,0,0.12);
+          padding: 80px 20px 30px;
+          gap: 4px;
+          overflow-y: auto;
+          z-index: 500;
+     }
+
+     nav.active {
+          display: flex;
+     }
+
+     nav a {
+          width: 100%;
+          border-radius: 8px;
+          font-size: 0.95rem;
+     }
+
+     .nav-dd {
+          width: 100%;
+     }
+
+     .nav-dd-trigger {
+          width: 100%;
+          justify-content: space-between;
+          border-radius: 8px;
+          font-size: 0.95rem;
+          padding: 10px 14px;
+     }
+
+     .nav-dd-menu {
+          position: static;
+          transform: none;
+          box-shadow: none;
+          border: none;
+          border-left: 3px solid rgba(212,175,55,0.4);
+          border-radius: 0;
+          background: rgba(212,175,55,0.04);
+          margin-left: 12px;
+          min-width: 0;
+     }
+
+     .nav-dd-menu a {
+          padding: 9px 16px;
+          font-size: 0.88rem;
+     }
+
+     .burger {
+          display: flex;
+          z-index: 600;
+     }
 }
 
 /* Burger Menu */

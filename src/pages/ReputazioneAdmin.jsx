@@ -14,7 +14,6 @@ const RATTO_LEVELS = [
 ];
 
 export default function ReputationAdmin() {
-  const navigate = useNavigate();
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
 

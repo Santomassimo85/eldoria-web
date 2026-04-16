@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
 import "./style.css";
 
@@ -39,6 +39,43 @@ import SendNotification from "./components/SendNotification";
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
 const APP_VERSION = "2.2.1"; // <--- CAMBIA QUESTO NUMERO PER FORZARE IL REFRESH GLOBALE
+
+// --- Dropdown menu component ---
+function NavDropdown({ label, children, closeAll }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleChildClick = () => {
+    setOpen(false);
+    closeAll();
+  };
+
+  return (
+    <div className={`nav-dd${open ? " nav-dd--open" : ""}`} ref={ref}>
+      <button
+        className="nav-dd-trigger"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {label} <span className="nav-dd-arrow">▾</span>
+      </button>
+      <div className="nav-dd-menu">
+        {React.Children.map(children, (child) =>
+          child
+            ? React.cloneElement(child, { onClick: handleChildClick })
+            : null
+        )}
+      </div>
+    </div>
+  );
+}
 
 // --- Componente Link Admin Condizionale ---
 const AdminNavLink = ({ closeMenu }) => {
@@ -113,17 +150,29 @@ export default function App() {
 
         <nav className={menuOpen ? "active" : ""}>
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
-          <NavLink to="/world-map" onClick={closeMenu}>Mappa</NavLink>
-          <NavLink to="/party" onClick={closeMenu}>Party</NavLink>
-          <NavLink to="/Geo" onClick={closeMenu}>Archivio Geomatico</NavLink>
-          <NavLink to="/riassunti" onClick={closeMenu}>Riassunti</NavLink>
-          <NavLink to="/mercato" onClick={closeMenu}>Mercato Nero</NavLink>
-          <NavLink to="/arena" onClick={closeMenu}>Arena</NavLink>
-          <NavLink to="/world-boss-fight" onClick={closeMenu}>World Fight</NavLink>
-          <NavLink to="/bacheca" onClick={closeMenu}>Bacheca</NavLink>
-          <NavLink to="/ratti-lore" onClick={closeMenu}>Gilda dei Ratti</NavLink>
-          <NavLink to="/cinema" onClick={closeMenu}>Cinema</NavLink>
-          
+
+          <NavDropdown label="Mondo" closeAll={closeMenu}>
+            <NavLink to="/world-map">Mappa</NavLink>
+            <NavLink to="/Geo">Archivio Geomatico</NavLink>
+          </NavDropdown>
+
+          <NavDropdown label="Eroi" closeAll={closeMenu}>
+            <NavLink to="/party">Party</NavLink>
+            <NavLink to="/riassunti">Riassunti</NavLink>
+          </NavDropdown>
+
+          <NavDropdown label="Gilda" closeAll={closeMenu}>
+            <NavLink to="/mercato">Mercato Nero</NavLink>
+            <NavLink to="/bacheca">Bacheca</NavLink>
+            <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
+            <NavLink to="/cinema">Cinema</NavLink>
+          </NavDropdown>
+
+          <NavDropdown label="Battaglia" closeAll={closeMenu}>
+            <NavLink to="/arena">Arena</NavLink>
+            <NavLink to="/world-boss-fight">World Fight</NavLink>
+          </NavDropdown>
+
           <AdminNavLink closeMenu={closeMenu} />
           <LoginDropdown closeMenu={closeMenu} />
         </nav>

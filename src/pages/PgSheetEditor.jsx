@@ -10,90 +10,35 @@ import {
 import { useAuth } from "../AuthContext";
 import "./pgSheetEditor.css";
 
-const ARENA_CHAMPION = {
-  name: "Dante Ivio",
-  class: "Campione Arena", // Campo classe aggiunto
-  level: 10,
-  image: "https://via.placeholder.com/150",
-  stats: {
-    hp: 85,
-    maxHp: 85,
-    ac: 18,
-    str: 4,
-    dex: 2,
-    con: 3,
-    int: -1,
-    wis: 1,
-    cha: 0,
-  },
-  actions: [
-    {
-      name: "Spada Lunga Vorpal",
-      category: "Armi",
-      bonus: "+9",
-      damage: "1d8+6",
-      description: "Un'arma leggendaria per l'arena.",
-    },
-    {
-      name: "Sguardo del Campione",
-      category: "Abilità",
-      bonus: "+5",
-      damage: "2d6",
-      description: "Intimidisce l'avversario infliggendo danni psichici.",
-    },
-    {
-      name: "Palla di Fuoco (Lv 3)",
-      category: "Livello 3",
-      bonus: "+7",
-      damage: "8d6",
-      description: "Un classico esplosivo.",
-    },
-  ],
-};
-
-export default function PgSheetEditor({ isArenaView = false }) {
+export default function PgSheetEditor() {
   const { currentUser } = useAuth();
-  const [normalChar, setNormalChar] = useState(null);
+  const [charData, setCharData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentUser) return;
-    if (isArenaView) {
+    const unsub = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
+      if (snap.exists()) setCharData(snap.data());
       setLoading(false);
-      return;
-    }
+    });
+    return () => unsub();
+  }, [currentUser]);
 
-    const unsubNormal = onSnapshot(
-      doc(db, "characters", currentUser.uid),
-      (snap) => {
-        if (snap.exists()) {
-          setNormalChar(snap.data());
-        }
-        setLoading(false);
-      },
-    );
-    return () => unsubNormal();
-  }, [currentUser, isArenaView]);
-
-  const handleRoll = async (charData, action, isArena) => {
+  const handleRoll = async (action) => {
     if (!charData || !action) return;
 
     const d20 = Math.floor(Math.random() * 20) + 1;
     const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
     const hitTotal = d20 + bonusToHit;
-    const targetAC = 1;
     const isCritical = d20 === 20;
 
     let finalDamage = 0;
-    let allDiceDetails = []; // Per mostrare i risultati di ogni pezzo della formula
+    let allDiceDetails = [];
 
-    if (isCritical || hitTotal >= targetAC) {
-      // Es action.damage: "2d6 + 5 + 1d8"
-      const formulaParts = action.damage.split("+").map((p) => p.trim());
-
+    if (isCritical || hitTotal >= 1) {
+      const formulaParts = (action.damage || "1d6").split("+").map((p) => p.trim());
       formulaParts.forEach((part) => {
         if (part.includes("d")) {
-          // Lancio del dado (es: 2d6 o 1d8)
           const [num, sides] = part.split("d").map((n) => parseInt(n) || 1);
           let partTotal = 0;
           let rolls = [];
@@ -103,45 +48,25 @@ export default function PgSheetEditor({ isArenaView = false }) {
             rolls.push(r);
           }
           finalDamage += partTotal;
-          allDiceDetails.push(`${num}d${sides} (${rolls.join("+")})`);
+          allDiceDetails.push(`${num}d${sides}(${rolls.join("+")})`);
         } else {
-          // Bonus statico (es: 5)
           const bonus = parseInt(part) || 0;
           finalDamage += bonus;
           if (bonus !== 0) allDiceDetails.push(`+${bonus}`);
         }
       });
-
       if (isCritical) finalDamage *= 2;
 
-      // Aggiunta Furtivo se Ladro
       if (
         charData.class?.toLowerCase() === "ladro" ||
         charData.class?.toLowerCase() === "rogue"
       ) {
         const sneak = Math.floor(Math.random() * 6) + 1;
         finalDamage += sneak;
-        allDiceDetails.push(`+ Furtivo (${sneak})`);
+        allDiceDetails.push(`+Furtivo(${sneak})`);
       }
     }
 
-    // --- LOG STILIZZATO ---
-    console.log(
-      `%c--- ⚔️ ATTACCO: ${action.name} ---`,
-      "color: gold; font-weight: bold;",
-    );
-    console.log(
-      `Colpire: ${hitTotal} (${d20}+${bonusToHit}) vs CA ${targetAC}`,
-    );
-
-    if (finalDamage > 0) {
-      const msg = `${isCritical ? "🔥 CRITICO! " : "🎯 COLPITO! "}${action.name}: ${finalDamage} danni! [Dettaglio: ${allDiceDetails.join(" ")}]`;
-      console.log(`%c${msg}`, "color: #27ae60; font-weight: bold;");
-    } else {
-      console.log(`%c🛡️ MANCATO! (${hitTotal})`, "color: #e74c3c;");
-    }
-
-    // Invio al DB (come prima)
     try {
       await addDoc(collection(db, "rolls"), {
         characterName: charData.name,
@@ -157,155 +82,122 @@ export default function PgSheetEditor({ isArenaView = false }) {
     }
   };
 
-  if (loading) return <div className="loading-screen">Caricamento Eroi...</div>;
+  if (loading) return <div className="pgs-loading">Caricamento scheda...</div>;
 
   return (
-    <div className="pg-editor-container">
-      {!isArenaView && (
-        <div className="pg-display-section">
-          <h2 className="gold-title">📜 Personaggio Attuale</h2>
-          {normalChar ? (
-            <RenderSheet
-              data={normalChar}
-              isArena={false}
-              onRoll={handleRoll}
-            />
-          ) : (
-            <div className="no-data-msg">
-              Nessun dato. Fai il fetch da Foundry!
-            </div>
-          )}
+    <div className="pgs-page">
+      <h1 className="pgs-title">Scheda Personaggio</h1>
+      <div className="pgs-divider"><span className="pgs-divider-icon">📜</span></div>
+
+      {charData ? (
+        <CharSheet data={charData} onRoll={handleRoll} />
+      ) : (
+        <div className="pgs-empty">
+          Nessun dato personaggio trovato.
         </div>
       )}
+    </div>
+  );
+}
 
-      <div className="pg-display-section">
-        <h2 className="gold-title">⚔️ Campione dell'Arena</h2>
-        <RenderSheet data={ARENA_CHAMPION} isArena={true} onRoll={handleRoll} />
+function CharSheet({ data, onRoll }) {
+  const weapons   = data.actions?.filter((a) => a.category === "Armi") || [];
+  const spells    = data.actions?.filter((a) =>
+    a.category?.toLowerCase().includes("livello") || a.category === "Trucchetto"
+  ) || [];
+  const abilities = data.actions?.filter((a) =>
+    a.category === "Abilità" || a.category === "Azione" || a.category === "Feat"
+  ) || [];
+
+  const hpPct = Math.max(0, Math.min(100, (data.stats?.hp / data.stats?.maxHp) * 100));
+
+  return (
+    <div className="pgs-card">
+      {/* Header */}
+      <div className="pgs-header">
+        <div className="pgs-avatar-wrap">
+          <img
+            src={data.image || "/assets/player/default.png"}
+            alt={data.name}
+            className="pgs-avatar"
+          />
+          {data.level && (
+            <span className="pgs-level-badge">Lv. {data.level}</span>
+          )}
+        </div>
+        <div className="pgs-identity">
+          <h2 className="pgs-name">{data.name}</h2>
+          {data.class && (
+            <span className="pgs-class">{data.class}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="pgs-stats">
+        <div className="pgs-hp-block">
+          <div className="pgs-hp-labels">
+            <span className="pgs-stat-label">Punti Ferita</span>
+            <span className="pgs-hp-value">{data.stats?.hp} / {data.stats?.maxHp}</span>
+          </div>
+          <div className="pgs-hp-bar">
+            <div className="pgs-hp-fill" style={{ width: `${hpPct}%` }} />
+          </div>
+        </div>
+
+        <div className="pgs-stat-pills">
+          <div className="pgs-pill">
+            <span className="pgs-pill-label">CA</span>
+            <span className="pgs-pill-value">🛡️ {data.stats?.ac}</span>
+          </div>
+          {["str","dex","con","int","wis","cha"].map((s) =>
+            data.stats?.[s] !== undefined ? (
+              <div key={s} className="pgs-pill">
+                <span className="pgs-pill-label">{s.toUpperCase()}</span>
+                <span className="pgs-pill-value">
+                  {data.stats[s] >= 0 ? "+" : ""}{data.stats[s]}
+                </span>
+              </div>
+            ) : null
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="pgs-actions">
+        <ActionGroup title="⚔️ Armi" actions={weapons} typeClass="pgs-weapon" onRoll={onRoll} />
+        <ActionGroup title="✨ Incantesimi" actions={spells} typeClass="pgs-spell" onRoll={onRoll} />
+        <ActionGroup title="🛡️ Abilità & Talenti" actions={abilities} typeClass="pgs-feat" onRoll={onRoll} />
       </div>
     </div>
   );
 }
 
-function RenderSheet({ data, isArena, onRoll }) {
-  if (!data) return null;
-  console.log("Dati ricevuti per", data.name, ":", data); // <--- AGGIUNGI QUESTO
-  // Raggruppamento azioni per categoria
-  const weapons = data.actions?.filter((a) => a.category === "Armi") || [];
-  const spells =
-    data.actions?.filter(
-      (a) =>
-        a.category.toLowerCase().includes("livello") ||
-        a.category === "Trucchetto",
-    ) || [];
-  const abilities =
-    data.actions?.filter(
-      (a) =>
-        a.category === "Abilità" ||
-        a.category === "Azione" ||
-        a.category === "Feat",
-    ) || [];
-
-  const ActionBox = ({ act, typeClass }) => (
-    <button
-      className={`action-roll-btn ${typeClass}`}
-      // CAMBIA QUI: Passa 'data' (personaggio intero) e 'act' (azione intera)
-      onClick={() => onRoll(data, act, isArena)}
-    >
-      <div className="btn-main-row">
-        <div className="btn-left-info">
-          <span className="action-name">{act.name}</span>
-          <span className="action-category">{act.category}</span>
-        </div>
-        <span className="action-dmg-tag">
-          {act.damage !== "0" ? act.damage : "Utilizzo"}
-        </span>
-      </div>
-      {/* Visualizzazione completa della descrizione */}
-      {act.description && (
-        <div className="action-description-container">
-          <p className="action-description-text">{act.description}</p>
-        </div>
-      )}
-    </button>
-  );
-
+function ActionGroup({ title, actions, typeClass, onRoll }) {
+  if (!actions.length) return null;
   return (
-    <div className={`pg-sheet-card ${isArena ? "arena-theme" : "hero-theme"}`}>
-      <div className="pg-header">
-        <div className="pg-avatar-wrapper">
-          <img
-            src={data.image || "/assets/default-avatar.png"}
-            alt={data.name}
-            className="pg-avatar-img"
-          />
-          <div className="pg-level-badge">Lv. {data.level}</div>
-        </div>
-        <div className="pg-info-text">
-          <h4 className="pg-name">{data.name}</h4>
-          <span className="pg-class-text">
-            {data.class && data.class.trim() !== "" ? data.class : "Viandante"}
-          </span>{" "}
-        </div>
-      </div>
-
-      <div className="pg-stats-grid">
-        <div className="stat-box hp">
-          <span className="stat-label">Salute</span>
-          <span className="stat-value">
-            {data.stats?.hp} / {data.stats?.maxHp}
-          </span>
-          <div className="stat-bar">
-            <div
-              className="stat-fill red"
-              style={{
-                width: `${(data.stats?.hp / data.stats?.maxHp) * 100}%`,
-              }}
-            ></div>
-          </div>
-        </div>
-        <div className="stat-box ac">
-          <span className="stat-label">Difesa</span>
-          <span className="stat-value">🛡️ {data.stats?.ac} CA</span>
-        </div>
-      </div>
-
-      <div className="pg-actions-container">
-        {/* SEZIONE ARMI */}
-        {weapons.length > 0 && (
-          <div className="category-block">
-            <h5 className="cat-title weapon-color">⚔️ Armi</h5>
-            <div className="actions-list">
-              {weapons.map((act, i) => (
-                <ActionBox key={i} act={act} typeClass="weapon-item" />
-              ))}
+    <div className="pgs-action-group">
+      <h3 className={`pgs-group-title ${typeClass}-color`}>{title}</h3>
+      {actions.map((act, i) => (
+        <button
+          key={i}
+          className={`pgs-action-btn ${typeClass}`}
+          onClick={() => onRoll(act)}
+        >
+          <div className="pgs-action-row">
+            <div className="pgs-action-info">
+              <span className="pgs-action-name">{act.name}</span>
+              <span className="pgs-action-cat">{act.category}</span>
             </div>
+            <span className={`pgs-action-dmg ${typeClass}-dmg`}>
+              {act.damage && act.damage !== "0" ? act.damage : "Utilizzo"}
+            </span>
           </div>
-        )}
-
-        {/* SEZIONE INCANTESIMI */}
-        {spells.length > 0 && (
-          <div className="category-block">
-            <h5 className="cat-title spell-color">✨ Incantesimi</h5>
-            <div className="actions-list">
-              {spells.map((act, i) => (
-                <ActionBox key={i} act={act} typeClass="spell-item" />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SEZIONE ABILITÀ */}
-        {abilities.length > 0 && (
-          <div className="category-block">
-            <h5 className="cat-title feat-color">🛡️ Abilità & Talenti</h5>
-            <div className="actions-list">
-              {abilities.map((act, i) => (
-                <ActionBox key={i} act={act} typeClass="feat-item" />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+          {act.description && (
+            <p className="pgs-action-desc">{act.description}</p>
+          )}
+        </button>
+      ))}
     </div>
   );
 }

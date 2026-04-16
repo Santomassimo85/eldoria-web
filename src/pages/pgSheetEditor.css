@@ -1,317 +1,313 @@
-/* Container Principale */
-.pg-editor-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 30px;
-    padding: 20px;
-    background: transparent;
-    font-family: 'Almendra', serif;
+/* ============================================================
+   PG SHEET EDITOR — light theme, coerente con le pagine admin
+   ============================================================ */
+
+.pgs-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 100px 16px 80px;
+  font-family: var(--font-text);
+  color: var(--text);
 }
 
-.gold-title {
-    color: #d4af37;
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
-    margin-bottom: 20px;
+@media (min-width: 768px) {
+  .pgs-page { padding: 110px 28px 80px; }
 }
 
-/* Card Personaggio */
-.pg-sheet-card {
-    /* background: linear-gradient(145deg, #1a1a1a, #2a2a2a); */
-    /* border: 2px solid #333; */
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    transition: transform 0.3s ease;
-    position: relative;
-    overflow: hidden;
+/* ---- Title ---- */
+.pgs-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.3rem, 4.5vw, 2rem);
+  color: var(--gold);
+  text-align: center;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
 }
 
-.pg-sheet-card:hover {
-    transform: translateY(-5px);
+.pgs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 auto 32px;
+  max-width: 320px;
+}
+.pgs-divider::before,
+.pgs-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold));
+}
+.pgs-divider::after {
+  background: linear-gradient(to left, transparent, var(--gold));
+}
+.pgs-divider-icon { font-size: 0.9rem; color: var(--gold); opacity: 0.7; }
+
+/* ---- States ---- */
+.pgs-loading,
+.pgs-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #aaa;
+  font-style: italic;
 }
 
-.pg-sheet-card.hero-theme { border-color: #d4af37; }
-.pg-sheet-card.arena-theme { border-color: #8b0000; }
-
-/* Header e Avatar */
-.pg-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
+/* ---- Card ---- */
+.pgs-card {
+  background: #fff;
+  border: 1.5px solid rgba(212, 175, 55, 0.25);
+  border-radius: 14px;
+  padding: 24px 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.pg-avatar-wrapper {
-    position: relative;
-    width: 80px;
-    height: 80px;
+/* ---- Header ---- */
+.pgs-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
-.pg-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-    border: 2px solid #d4af37;
-    box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+.pgs-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
-.pg-level-badge {
-    position: absolute;
-    bottom: -5px;
-    right: -5px;
-    background: #d4af37;
-    color: #000;
-    font-weight: bold;
-    font-size: 0.75rem;
-    padding: 2px 6px;
-    border-radius: 5px;
+.pgs-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: block;
 }
 
-.pg-name {
-    color: #350e0e;
-    font-size: 1.4rem;
-    margin: 0;
+.pgs-level-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: var(--gold);
+  color: #111;
+  font-family: var(--font-title);
+  font-size: 0.65rem;
+  font-weight: bold;
+  padding: 2px 7px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
-.pg-class-text {
-    color: #4b2020;
-    font-style: italic;
-    font-size: 0.9rem;
+.pgs-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* Statistiche */
-.pg-stats-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 15px;
-    margin-bottom: 20px;
+.pgs-name {
+  font-family: var(--font-title);
+  font-size: clamp(1rem, 3.5vw, 1.5rem);
+  color: var(--red);
+  margin: 0;
+  letter-spacing: 0.04em;
 }
 
-.stat-box {
-    background: rgba(58, 57, 56, 0);
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
+.pgs-class {
+  font-family: var(--font-text);
+  font-size: 0.85rem;
+  color: var(--gold);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-.stat-label {
-    display: block;
-    font-size: 0.7rem;
-    color: #221d1d;
-    text-transform: uppercase;
+/* ---- Stats ---- */
+.pgs-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.stat-value {
-    color: #50e68e !important;
-    font-weight: bold;
-    font-size: 1.1rem;
+.pgs-hp-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.stat-bar {
-    width: 100%;
-    height: 12px; /* Leggermente più alta per visibilità */
-    background: #333; /* Colore di sfondo quando la vita scende */
-    border-radius: 6px;
-    margin-top: 8px;
-    overflow: hidden;
-    border: 1px solid #444;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+.pgs-hp-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* Riempimento della barra (Rosso) */
-.stat-fill.red {
-    height: 100%;
-    background: linear-gradient(90deg, #8b0000 0%, #ff4444 100%);
-    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
-    transition: width 0.5s ease-in-out; /* Animazione fluida quando cambia la vita */
-}
-/* Lista Azioni */
-.pg-actions-section {
-    border-top: 1px solid #444;
-    padding-top: 15px;
+.pgs-stat-label {
+  font-family: var(--font-title);
+  font-size: 0.68rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.section-label {
-    font-size: 0.8rem;
-    color: #d4af37;
-    margin-bottom: 10px;
-    display: block;
-    text-align: center;
+.pgs-hp-value {
+  font-family: var(--font-title);
+  font-size: 0.82rem;
+  font-weight: bold;
+  color: var(--red);
 }
 
-.actions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.pgs-hp-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 5px;
+  overflow: hidden;
 }
 
-.action-roll-btn {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(58, 57, 56, 0);
-    border: 1px solid #444;
-    padding: 10px 15px;
-    border-radius: 8px;
-    color: #2e1212;
-    cursor: pointer;
-    transition: all 0.2s ease;
+.pgs-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c0392b 0%, #e67e22 55%, #27ae60 100%);
+  transition: width 0.5s ease;
+  border-radius: 5px;
 }
 
-.action-roll-btn:hover {
-    background: rgba(212, 175, 55, 0.1);
-    border-color: #d4af37;
+/* Stats pills */
+.pgs-stat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.btn-main-info {
-    display: flex;
-    flex-direction: column;
-    text-align: left;
+.pgs-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(212, 175, 55, 0.07);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-width: 52px;
 }
 
-.action-name {
-    font-weight: bold;
-    font-size: 1rem;
-    white-space: normal;
-    text-align: left;
+.pgs-pill-label {
+  font-family: var(--font-title);
+  font-size: 0.58rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.action-category {
-    font-size: 0.7rem;
-    color: #a33e3e;
+.pgs-pill-value {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--red);
 }
 
-.action-dmg-tag {
-    background: #8b0000;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-family: monospace;
-    box-shadow: 0 0 5px rgba(139, 0, 0, 0.5);
+/* ---- Actions ---- */
+.pgs-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.no-data-msg {
-    color: #da1313;
-    text-align: center;
-    padding: 40px;
-    border: 2px dashed #333;
-    border-radius: 15px;
+.pgs-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-/* Stile per la riga superiore del bottone azione */
-.btn-main-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* width: 100%; */
-    margin-bottom: 5px;
-    flex-direction: row;
-    /* align-items: center; */
+.pgs-group-title {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.85;
+  margin: 0 0 4px;
 }
 
-.btn-left-info {
-    display: flex;
-    flex-direction: column;
-    text-align: left;
-    margin-right: 10px;
+/* Color variants */
+.pgs-weapon-color { color: var(--red); }
+.pgs-spell-color  { color: #1a4a90; }
+.pgs-feat-color   { color: #1a7a3c; }
+
+/* Action buttons */
+.pgs-action-btn {
+  width: 100%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-text);
+  transition: background 0.15s, border-color 0.15s, padding-left 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* Stile Descrizione Azione */
-.action-description-text {
-    font-size: 0.75rem;
-    color: #310202b4;
-    text-align: left;
-    margin: 5px 0 0 0;
-    line-height: 1.2;
-    /* font-style: italic; */
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 5px;
-    width: 100%;
+.pgs-weapon { border-left: 4px solid var(--red); }
+.pgs-spell  { border-left: 4px solid #1a4a90; }
+.pgs-feat   { border-left: 4px solid #1a7a3c; }
+
+.pgs-weapon:hover { background: rgba(130,10,10,0.04); border-color: var(--red); }
+.pgs-spell:hover  { background: rgba(26,74,144,0.04); border-color: #1a4a90; }
+.pgs-feat:hover   { background: rgba(26,122,60,0.04); border-color: #1a7a3c; }
+
+.pgs-action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Evidenziazione della Classe */
-.pg-class-text {
-    color: #d4af37; /* Colore oro per farla risaltare */
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 1px;
+.pgs-action-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-
-
-/* --- CATEGORIE E TITOLI --- */
-.category-block {
-    margin-bottom: 20px;
+.pgs-action-name {
+  font-family: var(--font-text);
+  font-size: 0.92rem;
+  font-weight: bold;
+  color: var(--text);
 }
 
-.cat-title {
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    letter-spacing: 1px;
+.pgs-action-cat {
+  font-size: 0.68rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-/* Colori Categorie */
-.weapon-color { color: #b12c2c; }
-.spell-color { color: #245aac; }
-.feat-color { color: #219b4a; }
-
-/* --- STILI SPECIFICI ITEM --- */
-
-/* Armi (Rosso) */
-.weapon-item {
-    border-left: 4px solid #8b0000 !important;
-}
-.weapon-item:hover {
-    background: rgba(255, 77, 77, 0.1) !important;
-    border-color: #ff4d4d !important;
-        color: #000;
-
-}
-.weapon-item .action-dmg-tag {
-    background: #8b0000;
-    color: white;
-}
-.action-description-container {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-left: 10px;
-}
-/* Incantesimi (Blu) */
-.spell-item {
-    border-left: 4px solid #00448b !important;
-}
-.spell-item:hover {
-    background: rgba(77, 148, 255, 0.1) !important;
-    border-color: #4d94ff !important;
-    color: #000;
-}
-.spell-item .action-dmg-tag {
-    background: #00448b;
-        color: white;
-
+.pgs-action-dmg {
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 3px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* Abilità (Verde) */
-.feat-item {
-    border-left: 4px solid #008b44 !important;
-}
-.feat-item:hover {
-    background: rgba(77, 255, 136, 0.1) !important;
-    border-color: #4dff88 !important;
-        color: #000;
+.pgs-weapon-dmg { background: rgba(130,10,10,0.1); color: var(--red); }
+.pgs-spell-dmg  { background: rgba(26,74,144,0.1); color: #1a4a90; }
+.pgs-feat-dmg   { background: rgba(26,122,60,0.1); color: #1a7a3c; }
 
-}
-.feat-item .action-dmg-tag {
-    background: #008b44;
-        color: white;
-
+.pgs-action-desc {
+  font-size: 0.78rem;
+  color: #777;
+  font-style: italic;
+  margin: 2px 0 0;
+  line-height: 1.4;
+  border-top: 1px solid rgba(212,175,55,0.12);
+  padding-top: 5px;
 }
