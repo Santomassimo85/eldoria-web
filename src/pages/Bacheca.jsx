@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import "./admin.css";
 import {
   collection,
   onSnapshot,
@@ -137,8 +138,8 @@ export default function Bacheca() {
 
   return (
     <section className="bacheca-page">
-      <h1 className="main-title">Hemile's Board</h1>
-      <h6 className="subtitle">Bentornato, {userCharName} ({userParty})</h6>
+      <h1 className="bacheca-title">Hemile's Board</h1>
+      <p className="bacheca-subtitle">Bentornato, {userCharName} ({userParty})</p>
 
       {loading ? (
         <p style={{ textAlign: "center" }}>Caricamento pergamene...</p>

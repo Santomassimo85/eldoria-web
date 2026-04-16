@@ -21,6 +21,7 @@ import {
   limit,
   serverTimestamp,
   getDocs,
+  runTransaction,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
@@ -48,7 +49,10 @@ export default function WorldBoss() {
     phase: "players",
     turnNumber: 1,
     actedPlayers: [],
+    fightStarted: false,
   });
+
+  const fightStarted = turnState.fightStarted === true;
 
   // --- 1. LOGICHE DI STATO (Da mettere dopo gli useState) ---
   const isBossDefeated = useMemo(() => {
@@ -111,56 +115,72 @@ export default function WorldBoss() {
   };
 
   const handleAutoTurnChange = useCallback(async () => {
-
     if (!turnState?.expiryDate) return;
-
-    let newPhase = "";
-    let duration = 0;
-    let turnMsg = "";
-
-    if (turnState.phase === "players") {
-      newPhase = "boss";
-      duration = BOSS_TURN_DURATION; // Usa la costante da 1 ora
-      turnMsg = "⚠️ TEMPO SCADUTO! Il Boss entra in azione!";
-    } else {
-      newPhase = "players";
-      duration = PLAYER_TURN_DURATION; // Usa la costante da 3 ore
-      turnMsg = "🛡️ IL BOSS tace... Eroi, tocca a voi!";
-    }
-
-    const newExpiry = new Date(Date.now() + duration);
 
     try {
       const turnRef = doc(db, "battle_meta", "turn_tracker");
+      let didSwitch = false;
+      let newPhaseName = "";
 
-      // Usiamo una condizione: aggiorna solo se la fase è ancora quella vecchia
-      // Questo impedisce che 10 player facciano lo switch contemporaneamente
-      await updateDoc(turnRef, {
-        phase: newPhase,
-        expiryDate: newExpiry,
-        actedPlayers: [],
-        turnNumber:
-          newPhase === "players" ? increment(1) : turnState.turnNumber,
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(turnRef);
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+
+        // Dedup: skip if another client already switched in the last 10 seconds
+        if (data.lastSwitchedAt) {
+          const lastMs = data.lastSwitchedAt.toMillis
+            ? data.lastSwitchedAt.toMillis()
+            : new Date(data.lastSwitchedAt).getTime();
+          if (Date.now() - lastMs < 10000) return;
+        }
+
+        // Skip if phase already changed by another client
+        if (data.phase !== turnState.phase) return;
+
+        newPhaseName = data.phase === "players" ? "boss" : "players";
+        const duration =
+          newPhaseName === "players" ? PLAYER_TURN_DURATION : BOSS_TURN_DURATION;
+        const newExpiry = new Date(Date.now() + duration);
+
+        transaction.update(turnRef, {
+          phase: newPhaseName,
+          expiryDate: newExpiry,
+          actedPlayers: [],
+          turnNumber:
+            newPhaseName === "players"
+              ? (data.turnNumber || 0) + 1
+              : data.turnNumber,
+          lastSwitchedAt: serverTimestamp(),
+        });
+
+        didSwitch = true;
       });
 
-      // Il messaggio lo inviamo solo se siamo Master o se vogliamo che appaia sempre
-      await addDoc(collection(db, "world_boss_chat"), {
-        text: turnMsg,
-        senderName: "SISTEMA",
-        uid: BOSS_SYSTEM_UID,
-        content: turnMsg,
-        category: "Turno",
-        timestamp: serverTimestamp(),
-        isSystem: true,
-      });
+      if (didSwitch) {
+        const turnMsg =
+          newPhaseName === "boss"
+            ? "⚠️ TEMPO SCADUTO! Il Boss entra in azione!"
+            : "🛡️ IL BOSS tace... Eroi, tocca a voi!";
+
+        await addDoc(collection(db, "world_boss_chat"), {
+          text: turnMsg,
+          senderName: "SISTEMA",
+          uid: BOSS_SYSTEM_UID,
+          content: turnMsg,
+          category: "Turno",
+          timestamp: serverTimestamp(),
+          isSystem: true,
+        });
+      }
     } catch (e) {
-      // Se l'errore è di permessi qui, significa che le Rules bloccano i player
       console.error("Errore switch automatico:", e);
     }
   }, [turnState.phase, turnState.turnNumber, turnState?.expiryDate]);
 
   useEffect(() => {
-    if (!turnState?.expiryDate || isBossDefeated) {
+    if (!turnState?.expiryDate || isBossDefeated || !fightStarted) {
       setTimeLeft(0);
       return;
     }
@@ -180,7 +200,6 @@ export default function WorldBoss() {
       if (diff <= 0) {
         setTimeLeft(0);
         clearInterval(interval);
-        // Chiamata alla funzione stabilizzata
         if (!isBossDefeated) {
           handleAutoTurnChange();
         }
@@ -195,13 +214,12 @@ export default function WorldBoss() {
     }, 1000);
 
     return () => clearInterval(interval);
-
-    // AGGIUNGI handleAutoTurnChange qui sotto:
   }, [
     turnState?.expiryDate,
     turnState?.phase,
     isMaster,
     isBossDefeated,
+    fightStarted,
     handleAutoTurnChange,
   ]);
 
@@ -217,8 +235,6 @@ export default function WorldBoss() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         console.log("Player tornato attivo, forzo sincronizzazione...");
-        // Opzionale: puoi chiamare una funzione di fetch o ricaricare
-        // window.location.reload();
       }
     };
 
@@ -226,6 +242,48 @@ export default function WorldBoss() {
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
+
+  // Notifica VITTORIA (solo Master la invia, una sola volta)
+  useEffect(() => {
+    if (!isMaster || !isBossDefeated || activeBosses.length === 0) return;
+    const boss = activeBosses[0];
+    if (boss.victoryNotified) return;
+
+    const notify = async () => {
+      await sendBattleNotification(
+        "🏆 VITTORIA DEGLI EROI!",
+        `Avete sconfitto ${boss.name}! ${
+          boss.rewards
+            ? "Ricompense: " + boss.rewards
+            : "Il Master vi assegnerà le ricompense."
+        }`
+      );
+      await updateDoc(doc(db, "bosses", boss.id), { victoryNotified: true });
+    };
+    notify();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBossDefeated]);
+
+  // Notifica SCONFITTA (solo Master la invia, una sola volta)
+  useEffect(() => {
+    if (!isMaster || !isTimeExpired || activeBosses.length === 0) return;
+    const boss = activeBosses[0];
+    if (boss.defeatNotified) return;
+
+    const notify = async () => {
+      await sendBattleNotification(
+        "💀 SCONFITTA!",
+        `${boss.name} ha prevalso! ${
+          boss.penalties
+            ? "Penalità: " + boss.penalties
+            : "Il Master applicherà le conseguenze."
+        }`
+      );
+      await updateDoc(doc(db, "bosses", boss.id), { defeatNotified: true });
+    };
+    notify();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTimeExpired]);
 
   const handleManualDamageToBoss = async (die) => {
     const boss = activeBosses[0];
@@ -714,6 +772,65 @@ export default function WorldBoss() {
     await batch.commit();
   };
 
+  // Invia notifica a TUTTI i personaggi nel DB
+  const sendBattleNotification = async (title, message) => {
+    try {
+      const charsSnap = await getDocs(collection(db, "characters"));
+      const batch = writeBatch(db);
+      charsSnap.docs.forEach((charDoc) => {
+        const notifyRef = doc(collection(db, "notifications"));
+        batch.set(notifyRef, {
+          userId: charDoc.id,
+          title,
+          message,
+          read: false,
+          timestamp: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error("Errore invio notifica battaglia:", e);
+    }
+  };
+
+  // Master: avvia ufficialmente la battaglia (players sempre per primi)
+  const handleStartFight = async () => {
+    if (!isMaster) return;
+    const boss = activeBosses[0];
+    if (!boss) return;
+
+    const newExpiry = new Date(Date.now() + PLAYER_TURN_DURATION);
+
+    try {
+      const turnRef = doc(db, "battle_meta", "turn_tracker");
+      await updateDoc(turnRef, {
+        fightStarted: true,
+        phase: "players",
+        expiryDate: newExpiry,
+        actedPlayers: [],
+        turnNumber: 1,
+        lastSwitchedAt: serverTimestamp(),
+      });
+
+      await addDoc(collection(db, "world_boss_chat"), {
+        text: `⚔️ LA BATTAGLIA HA INIZIO! ${boss.name} vi sfida! Eroi, è il vostro momento!`,
+        senderName: "Master System",
+        uid: BOSS_SYSTEM_UID,
+        content: `⚔️ LA BATTAGLIA HA INIZIO! ${boss.name} vi sfida! Eroi, è il vostro momento!`,
+        category: "Sistema",
+        timestamp: serverTimestamp(),
+        isSystem: true,
+      });
+
+      await sendBattleNotification(
+        "⚔️ LA BATTAGLIA INIZIA!",
+        `Il Master ha dato inizio allo scontro con ${boss.name}! Entrate immediatamente in BossFight!`
+      );
+    } catch (e) {
+      console.error("Errore avvio battaglia:", e);
+    }
+  };
+
   const handleDeleteMessage = async (id) => {
     if (isMaster) await deleteDoc(doc(db, "world_boss_chat", id));
   };
@@ -737,7 +854,8 @@ export default function WorldBoss() {
 
   const isUserLocked =
     !isMaster &&
-    (turnState.phase === "boss" ||
+    (!fightStarted ||
+      turnState.phase === "boss" ||
       turnState.actedPlayers.includes(currentUser?.uid));
 
   if (!currentUser)
@@ -745,198 +863,178 @@ export default function WorldBoss() {
 
   return (
     <div className="wb-container">
-      <h1>World Boss</h1>
-      <h5>
-        IMPORTANTE: solo i player che effettueranno piú di 2 attacchi
-        riceveranno ricompense
-      </h5>
-      {isMaster && (
-        <div className="dm-controls-top">
-          <div className="dm-overlay-label">DUNGEON MASTER CONTROL</div>
-          <button onClick={clearChat} className="dm-clear-button">
-            Pulisci Chat
-          </button>
-        </div>
-      )}
+
+      {/* Top bar: nota importante + DM controls */}
+      <div className="wb-topbar">
+        <p className="wb-note">⚔️ Almeno 2 attacchi per ricevere ricompense</p>
+        {isMaster && (
+          <div className="wb-dm-bar">
+            <span className="dm-overlay-label">DM</span>
+            <button onClick={clearChat} className="dm-clear-button">Pulisci Chat</button>
+          </div>
+        )}
+      </div>
 
       {/* AREA BOSS */}
       <section className="boss-area">
+        {activeBosses.length === 0 && (
+          <div className="wb-no-boss">Nessun boss attivo al momento.</div>
+        )}
+
         {activeBosses.map((boss) => {
-          // Usiamo le variabili globali isBossDefeated e isTimeExpired
           const isGameOver = isBossDefeated || isTimeExpired;
 
           return (
-            <div
-              key={boss.id}
-              className={`boss-unit ${isGameOver ? "defeated-unit" : ""}`}
-            >
-              <h2 className="boss-name">{boss.name}</h2>
+            <div key={boss.id} className={`boss-card ${isGameOver ? "boss-card--over" : ""} ${isBossDefeated ? "boss-card--victory" : ""} ${isTimeExpired ? "boss-card--defeat" : ""}`}>
 
-              {/* --- MESSAGGI DI STATO --- */}
+              {/* ---- GAMEOVER BANNERS ---- */}
               {isBossDefeated && (
-                <div className="victory-announcement">
-                  <h1 className="victory-glow-text">
-                    🏆 VITTORIA DEGLI EROI 🏆
-                  </h1>
+                <div className="wb-banner wb-banner--victory">
+                  🏆 VITTORIA DEGLI EROI 🏆
                 </div>
               )}
-
               {isTimeExpired && (
-                <div className="defeat-announcement">
-                  <h1
-                    className="defeat-glow-text"
-                    style={{ color: "#ff4d4d", textShadow: "0 0 15px red" }}
-                  >
-                    💀 IL BOSS HA PREVALSO 💀
-                  </h1>
+                <div className="wb-banner wb-banner--defeat">
+                  💀 IL BOSS HA PREVALSO 💀
                 </div>
               )}
 
-              {/* --- INFORMAZIONI FISSE (Sempre visibili) --- */}
-              {boss.description && (
-                <p className="boss-flavor-text">{boss.description}</p>
-              )}
+              {/* ---- BOSS INFO: image left, details right ---- */}
+              <div className="wb-boss-layout">
 
-              {/* --- IMMAGINE BOSS (Grigia se GameOver) --- */}
-              <div
-                className={`boss-image-container ${isGameOver ? "boss-defeated-visual" : ""}`}
-              >
-                <img
-                  src={boss.imageUrl || "/assets/default-boss.png"}
-                  alt={boss.name}
-                  className={`boss-image ${isBossDefeated ? "boss-image-grayscale" : ""}`}
-                />{" "}
-                {isBossDefeated && <div className="torn-overlay"></div>}
-              </div>
-
-              {/* --- PENALITÀ: Mostra se la battaglia è in corso OPPURE se il Boss ha vinto --- */}
-              {!isBossDefeated && boss.penalties && (
-                <div className="boss-penalties-glow-box">
-                  <span className="penalties-label">
-                    💀 PENALITÀ SCONFITTA:
-                  </span>
-                  <p className="penalties-text">{boss.penalties}</p>
+                {/* Left col: image */}
+                <div className="wb-boss-img-col">
+                  <div className={`boss-image-container ${isGameOver ? "boss-defeated-visual" : ""}`}>
+                    <img
+                      src={boss.imageUrl || "/assets/default-boss.png"}
+                      alt={boss.name}
+                      className={`boss-image ${isBossDefeated ? "boss-image-grayscale" : ""}`}
+                    />
+                    {isBossDefeated && <div className="torn-overlay" />}
+                  </div>
                 </div>
-              )}
 
-              {/* --- BOTTINO: Mostra se la battaglia è in corso OPPURE se gli Eroi hanno vinto --- */}
-              {!isTimeExpired && boss.rewards && (
-                <div className="boss-rewards-glow-box">
-                  <span className="rewards-label">BOTTINO:</span>
-                  <p className="rewards-text">{boss.rewards}</p>
-                </div>
-              )}
+                {/* Right col: name, HP, turn info, controls */}
+                <div className="wb-boss-info-col">
+                  <h2 className="boss-name">{boss.name}</h2>
 
-              {/* --- INTERFACCIA DI COMBATTIMENTO (Visibile solo se NON è finita o se sei Master) --- */}
-              {(!isGameOver || isMaster) && (
-                <>
-                  {!isGameOver && (
-                    <div className="main-boss-timer">
-                      <TimerDisplay expiryDate={boss.expiryDate} />
+                  {boss.description && (
+                    <p className="boss-flavor-text">{boss.description}</p>
+                  )}
+
+                  {/* HP Bar */}
+                  <div className="wb-hp-section">
+                    <div className="wb-hp-labels">
+                      <span>HP</span>
+                      {isMaster && <span className="wb-hp-numbers">{boss.hp} / {boss.maxHp}</span>}
+                    </div>
+                    <div className="hp-bar-outer">
+                      <div
+                        className="hp-bar-inner"
+                        style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }}
+                      />
+                      {boss.shield > 0 && (
+                        <div
+                          className="shield-bar-boss-fill"
+                          style={{
+                            width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
+                            position: "absolute", top: 0, left: 0,
+                            height: "100%", background: "rgba(0,191,255,0.5)", zIndex: 2,
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Penalties / Rewards */}
+                  <div className="wb-stakes">
+                    {!isBossDefeated && boss.penalties && (
+                      <div className="wb-stake wb-stake--penalty">
+                        <span className="wb-stake-label">💀 Penalità</span>
+                        <span className="wb-stake-text">{boss.penalties}</span>
+                      </div>
+                    )}
+                    {!isTimeExpired && boss.rewards && (
+                      <div className="wb-stake wb-stake--reward">
+                        <span className="wb-stake-label">🏆 Bottino</span>
+                        <span className="wb-stake-text">{boss.rewards}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pre-fight: start button or waiting */}
+                  {isMaster && !fightStarted && !isGameOver && (
+                    <div className="wb-prefight">
+                      <button className="btn-start-fight" onClick={handleStartFight}>
+                        ⚔️ Inizia Battaglia
+                      </button>
+                      <p className="start-fight-hint">Scrivi prima in chat, poi avvia</p>
+                    </div>
+                  )}
+                  {!isMaster && !fightStarted && !isGameOver && (
+                    <div className="waiting-for-fight">
+                      <span className="waiting-icon">⏳</span>
+                      In attesa che il Master avvii la battaglia…
                     </div>
                   )}
 
-                  <div className={`turn-banner ${turnState.phase}-phase`}>
-                    <div className="turn-count">
-                      TURNO {turnState.turnNumber}
-                    </div>
-                    <div className="phase-text">
-                      {turnState.phase === "players"
-                        ? "🛡️ Turno eroi"
-                        : "🔥 Turno Boss"}
-                    </div>
-                    <div className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
-                      <strong>{formatTime(timeLeft)}</strong>
-                    </div>
+                  {/* Fight active: event timer + turn banner */}
+                  {fightStarted && !isGameOver && (
+                    <div className="wb-fight-status">
+                      <div className="wb-event-timer">
+                        <span className="wb-event-label">Scadenza evento:</span>
+                        <TimerDisplay expiryDate={boss.expiryDate} />
+                      </div>
 
-                    {turnState.phase === "players" &&
-                      !isMaster &&
-                      !isGameOver && (
-                        <button
-                          className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
-                          onClick={endMyTurn}
-                          disabled={turnState.actedPlayers.includes(
-                            currentUser.uid,
-                          )}
-                        >
-                          {turnState.actedPlayers.includes(currentUser.uid)
-                            ? "Azione Conclusa"
-                            : "Fine Turno"}
-                        </button>
-                      )}
-                  </div>
-
-                  <div className="hp-bar-outer">
-                    <div
-                      className="hp-bar-inner"
-                      style={{
-                        width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`,
-                      }}
-                    >
-                      {isMaster && (
-                        <span className="hp-text-admin">
-                          {boss.hp} / {boss.maxHp} HP
+                      <div className={`turn-banner ${turnState.phase}-phase`}>
+                        <span className="turn-count">Turno {turnState.turnNumber}</span>
+                        <span className="phase-text">
+                          {turnState.phase === "players" ? "🛡️ Eroi" : "🔥 Boss"}
                         </span>
+                        <span className={`turn-timer ${isUrgent ? "urgent" : ""}`}>
+                          {formatTime(timeLeft)}
+                        </span>
+                        {turnState.phase === "players" && !isMaster && (
+                          <button
+                            className={`btn-end-turn ${turnState.actedPlayers.includes(currentUser.uid) ? "acted" : ""}`}
+                            onClick={endMyTurn}
+                            disabled={turnState.actedPlayers.includes(currentUser.uid)}
+                          >
+                            {turnState.actedPlayers.includes(currentUser.uid) ? "✓ Azione fatta" : "Fine Turno"}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Master: change turn buttons */}
+                      {isMaster && (
+                        <div className="wb-turn-controls">
+                          <button className="btn-turn-players" onClick={() => handleManualTurnChange("players")}>
+                            🛡️ Turno Eroi
+                          </button>
+                          <button className="btn-turn-boss" onClick={() => handleManualTurnChange("boss")}>
+                            🔥 Turno Boss
+                          </button>
+                        </div>
                       )}
                     </div>
-                    {boss.shield > 0 && (
-                      <div
-                        className="shield-bar-boss-fill"
-                        style={{
-                          width: `${Math.min(100, (boss.shield / boss.maxHp) * 100)}%`,
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          height: "100%",
-                          background: "rgba(0, 191, 255, 0.6)",
-                          zIndex: 2,
-                        }}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
+                  )}
 
-              {/* --- CONTROLLI MASTER --- */}
-              {isMaster && (
-                <div
-                  className="admin-turn-controls"
-                  style={{
-                    marginTop: "20px",
-                    border: "1px solid var(--gold)",
-                    padding: "10px",
-                  }}
-                >
-                  <h3>Gestione Turni (Master Only)</h3>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "10px",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <button
-                      className="wb-btn-action"
-                      style={{ background: "#2ecc71" }}
-                      onClick={() => handleManualTurnChange("players")}
-                    >
-                      Inizia Turno Eroi
-                    </button>
-                    <button
-                      className="wb-btn-action"
-                      style={{ background: "#e74c3c" }}
-                      onClick={() => handleManualTurnChange("boss")}
-                    >
-                      Inizia Turno Boss
-                    </button>
-                  </div>
+                  {/* Gameover master: turn controls still accessible */}
+                  {isMaster && isGameOver && fightStarted && (
+                    <div className="wb-turn-controls">
+                      <button className="btn-turn-players" onClick={() => handleManualTurnChange("players")}>🛡️ Turno Eroi</button>
+                      <button className="btn-turn-boss" onClick={() => handleManualTurnChange("boss")}>🔥 Turno Boss</button>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
       </section>
 
+      {/* Interfaccia battaglia: master la vede sempre (chat pre-fight), player solo dopo l'inizio */}
+      {(isMaster || fightStarted) && (
       <div className="battle-interface">
         {/* FINE BATTAGLIA: mostra risultato completo con immagine, descrizione e penalità/ricompense */}
         {(isBossDefeated || isTimeExpired) && !isMaster ? (
@@ -1259,6 +1357,7 @@ export default function WorldBoss() {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

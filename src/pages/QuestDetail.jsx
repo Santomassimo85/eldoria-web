@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
+import "./admin.css";
 
-// --- TABELLA GRUPPI STATICA ---
 const getPartyByCharName = (name) => {
   const mapping = {
     "Tanagar": "AMEA",
@@ -12,7 +12,7 @@ const getPartyByCharName = (name) => {
     "Caius Maxis-Richtofen": "AMEA",
     "Temistocle Sottocolle Milo": "ENOX",
     "Vyger": "",
-    "Roynot": "ENOX", 
+    "Roynot": "ENOX",
     "Dante": "ENOX"
   };
   return mapping[name] || "Senza Gruppo";
@@ -35,7 +35,7 @@ export default function QuestDetail() {
         if (userSnap.exists()) {
           const charName = userSnap.data().name || "Eroe";
           setUserCharName(charName);
-          setUserParty(getPartyByCharName(charName)); 
+          setUserParty(getPartyByCharName(charName));
         }
       };
       fetchUserChar();
@@ -56,9 +56,7 @@ export default function QuestDetail() {
       alert("Errore: il tuo personaggio non ha un nome valido!");
       return;
     }
-    
     const staticParty = getPartyByCharName(userCharName);
-
     try {
       await updateDoc(doc(db, "quests", id), {
         acceptedBy: userCharName,
@@ -72,41 +70,59 @@ export default function QuestDetail() {
     }
   };
 
-  if (loading) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Leggendo i sigilli...</p>;
-  if (!quest) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Incarico non trovato.</p>;
+  if (loading) return (
+    <section className="quest-detail-page">
+      <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Leggendo i sigilli...</p>
+    </section>
+  );
+  if (!quest) return (
+    <section className="quest-detail-page">
+      <p style={{ textAlign: "center", color: "#aaa" }}>Incarico non trovato.</p>
+    </section>
+  );
 
   return (
-    <section className="quest-detail-page" style={{ maxWidth: '800px', margin: '0 auto', padding: '40px' }}>
-      <button onClick={() => navigate(-1)} className="back-button">← Torna alla Bacheca</button>
-      <div className="scroll-detail-content" style={{ background: 'rgba(255,255,255,0.8)', padding: '30px', borderRadius: '15px', border: '2px solid var(--gold)', marginTop: '20px' }}>
-        <h1 style={{ color: 'var(--gold)', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>{quest.title}</h1>
-        <p><strong>Emesso da:</strong> {quest.sender || "Mittente Misterioso"}</p>
-        <p><strong>Zona:</strong> {quest.zona}</p>
-        <p style={{ marginTop: '20px', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>{quest.desc}</p>
-        
-        <div style={{ background: 'rgba(212,175,55,0.1)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
-            <strong>Ricompense:</strong> {quest.rewardGold || 0} Platino, {quest.rewardItem || "Nessun Oggetto"}
+    <section className="quest-detail-page">
+      <button onClick={() => navigate(-1)} className="admin-back-link">← Torna alla Bacheca</button>
+
+      <div className="quest-detail-card">
+        <h1 className="quest-detail-title">{quest.title}</h1>
+
+        <p className="quest-detail-field">
+          <strong>Emesso da:</strong> {quest.sender || "Mittente Misterioso"}
+        </p>
+        <p className="quest-detail-field">
+          <strong>Zona:</strong> {quest.zona}
+        </p>
+
+        <p className="quest-detail-lore">{quest.desc}</p>
+
+        <div className="quest-detail-rewards">
+          <strong>Ricompense:</strong> {quest.rewardGold || 0} Platino
+          {quest.rewardItem ? `, ${quest.rewardItem}` : ""}
         </div>
 
-        {/* Mostra il pulsante "Accetta" solo se la missione è libera */}
         {!quest.acceptedBy ? (
-  <button onClick={handleAccept} className="invia">Accetta Missione</button>
-) : (
-  <div style={{ textAlign: 'center', marginTop: '30px' }}>
-    <p>📜 Incarico in gestione al Party: 
-      <strong style={{
-        color: quest.acceptedParty === userParty ? '#27ae60' : '#e74c3c',
-        marginLeft: '10px'
-      }}>
-        {quest.acceptedParty}
-      </strong>
-    </p>
-    {/* Se l'ha presa qualcuno del mio party, mostro il nome del compagno */}
-    {quest.acceptedParty === userParty && quest.acceptedBy !== userCharName && (
-      <p style={{fontSize: '0.9rem'}}>(Accettata da {quest.acceptedBy})</p>
-    )}
-  </div>
-)}
+          <div style={{ marginTop: 24 }}>
+            <button onClick={handleAccept} className="btn-admin-primary questDetailButton">
+              Accetta Missione
+            </button>
+          </div>
+        ) : (
+          <div className="quest-detail-accepted">
+            <p>
+              Incarico in gestione al Party:{" "}
+              <strong style={{ color: quest.acceptedParty === userParty ? "#27ae60" : "var(--red)" }}>
+                {quest.acceptedParty}
+              </strong>
+            </p>
+            {quest.acceptedParty === userParty && quest.acceptedBy !== userCharName && (
+              <p style={{ fontSize: "0.85rem", color: "#888", marginTop: 4 }}>
+                (Accettata da {quest.acceptedBy})
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -2,105 +2,104 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore'; 
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import "./admin.css";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com"; 
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 export default function PlatinumAdmin() {
-    const { currentUser } = useAuth();
-    const [characters, setCharacters] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [status, setStatus] = useState('');
-    const [tempBalances, setTempBalances] = useState({}); 
+  const { currentUser } = useAuth();
+  const [characters, setCharacters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [tempBalances, setTempBalances] = useState({});
 
-    // --- 1. HOOKS (Sempre chiamati in alto, prima di ogni return) ---
-    useEffect(() => {
-        // Se non c'è un utente loggato, non attivare il listener
-        if (!currentUser) return;
-
-        const unsub = onSnapshot(collection(db, 'characters'), (snap) => {
-            const charList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setCharacters(charList);
-            
-            setTempBalances(prev => {
-                const next = { ...prev };
-                charList.forEach(char => {
-                    if (!(char.id in next)) next[char.id] = char.platinum || 0;
-                });
-                return next;
-            });
-            setLoading(false);
-        }, (err) => {
-            setStatus(`❌ Errore Firestore: ${err.message}`);
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = onSnapshot(collection(db, 'characters'), (snap) => {
+      const charList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCharacters(charList);
+      setTempBalances(prev => {
+        const next = { ...prev };
+        charList.forEach(char => {
+          if (!(char.id in next)) next[char.id] = char.platinum || 0;
         });
+        return next;
+      });
+      setLoading(false);
+    }, (err) => {
+      setStatus(`❌ Errore Firestore: ${err.message}`);
+    });
+    return () => unsub();
+  }, [currentUser]);
 
-        return () => unsub();
-    }, [currentUser]);
+  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+    return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
+  }
 
-    // --- 2. PROTEZIONE DM (Spostata dopo gli hooks per evitare errori di React) ---
-    if (!currentUser || currentUser.email !== MASTER_EMAIL) {
-        return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
+  const handleBalanceChange = (uid, value) => {
+    const numericValue = value === '' ? '' : parseInt(value);
+    setTempBalances(prev => ({ ...prev, [uid]: numericValue }));
+  };
+
+  const handleSaveBalance = async (charId) => {
+    const newBalance = tempBalances[charId];
+    if (newBalance === '' || isNaN(newBalance)) return;
+    setStatus('Salvataggio...');
+    try {
+      await updateDoc(doc(db, 'characters', charId), {
+        platinum: Number(newBalance),
+        lastUpdated: new Date().toISOString()
+      });
+      setStatus('✅ Saldo aggiornato!');
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      setStatus(`❌ Errore: ${error.message}`);
     }
+  };
 
-    // --- 3. LOGICHE DI GESTIONE ---
-    const handleBalanceChange = (uid, value) => {
-        const numericValue = value === '' ? '' : parseInt(value);
-        setTempBalances(prev => ({ ...prev, [uid]: numericValue }));
-    };
-    
-    const handleSaveBalance = async (charId) => {
-        const newBalance = tempBalances[charId];
-        if (newBalance === '' || isNaN(newBalance)) return;
+  return (
+    <section className="admin-platinum-page">
+      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
 
-        setStatus(`Salvataggio...`);
-        try {
-            await updateDoc(doc(db, 'characters', charId), {
-                platinum: Number(newBalance),
-                lastUpdated: new Date().toISOString()
-            });
-            setStatus(`✅ Saldo aggiornato per ${charId}`);
-            setTimeout(() => setStatus(''), 3000);
-        } catch (error) {
-            setStatus(`❌ Errore: ${error.message}`);
-        }
-    };
+      <h1 className="admin-page-title">Monete Platino (MP)</h1>
+      <div className="admin-divider"><span className="admin-divider-icon">🪙</span></div>
 
-    return (
-        <section className="admin-page" style={{maxWidth: '800px'}}>
-            <Link to="/dm-admin" className="back-button">← Dashboard Admin</Link>
-            <h1>Gestione Monete Platino (MP)</h1>
-            
-            {status && <p className={`admin-status ${status.includes('✅') ? 'success' : 'error'}`}>{status}</p>}
+      {status && (
+        <div className={status.includes('✅') ? 'admin-status-ok' : 'admin-status-err'}>
+          {status}
+        </div>
+      )}
 
-            {loading ? <p>Caricamento...</p> : (
-                <div className="admin-list-container">
-                    {characters.map(char => (
-                        <div key={char.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #333', alignItems: 'center' }}>
-                            <div style={{flex: 1}}>
-                                <strong>{char.name || char.email?.split('@')[0]}</strong>
-                                <br/><small style={{color: '#666'}}>{char.id}</small>
-                            </div>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <input
-                                    type="number"
-                                    value={tempBalances[char.id] ?? ''}
-                                    onChange={(e) => handleBalanceChange(char.id, e.target.value)}
-                                    style={{ width: '100px', padding: '5px', background: '#111', color: 'white', border: '1px solid #444' }}
-                                />
-                                <span>MP</span>
-                                <button 
-                                    onClick={() => handleSaveBalance(char.id)}
-                                    className="admin-button-relaunch"
-                                    style={{padding: '5px 15px'}}
-                                >
-                                    Salva
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </section>
-    );
+      <div className="admin-item-list-card">
+        {loading ? (
+          <p style={{ padding: "20px 18px", color: "#aaa", fontStyle: "italic" }}>Caricamento...</p>
+        ) : (
+          characters.map(char => (
+            <div key={char.id} className="platinum-char-row">
+              <div className="platinum-char-info">
+                <strong>{char.name || char.email?.split('@')[0]}</strong>
+                <small>{char.id}</small>
+              </div>
+              <div className="platinum-input-group">
+                <input
+                  type="number"
+                  className="platinum-input"
+                  value={tempBalances[char.id] ?? ''}
+                  onChange={(e) => handleBalanceChange(char.id, e.target.value)}
+                />
+                <span className="platinum-unit">MP</span>
+                <button
+                  onClick={() => handleSaveBalance(char.id)}
+                  className="btn-admin-save"
+                >
+                  Salva
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
 }

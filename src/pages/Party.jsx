@@ -21,7 +21,7 @@ const partyData = {
     { name: "Dante", race: "Umano V.", class: "Ladro", image: "/assets/player/Dante.png" },
     { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.png" },
     { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
-    { name: "Jules Bonnot", race: "Lightfoot Halfling", class: "Ladro", image: "/assets/player/julesBonnot.jpg" },
+    { name: "Timoty Bevibotte", race: "Lightfoot Halfling", class: "Ladro", image: "/assets/player/timotyBevibotte.jpeg" },
   ],
   party4: [
     { name: "Makenna", race: "Changeling", class: "Ladro", image: "/assets/player/Makenna.jpeg" },

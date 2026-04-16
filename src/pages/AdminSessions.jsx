@@ -1,113 +1,118 @@
 import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { doc, setDoc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import "./admin.css";
 
 export default function AdminSessions() {
-    const [party, setParty] = useState("Amea"); 
-    const [date, setDate] = useState("");
-    const [activeSessions, setActiveSessions] = useState([]);
-    const navigate = useNavigate();
+  const [party, setParty] = useState("Amea");
+  const [date, setDate] = useState("");
+  const [activeSessions, setActiveSessions] = useState([]);
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "sessions"), (snapshot) => {
-            const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setActiveSessions(sessions);
-        });
-        return () => unsubscribe();
-    }, []);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "sessions"), (snapshot) => {
+      setActiveSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, []);
 
-    const saveSession = async () => {
-        if (!date) return alert("Per favore, seleziona una data e un orario.");
-        
-        try {
-            await setDoc(doc(db, "sessions", party), {
-                date: date,
-                updatedAt: new Date().toISOString()
-            });
-            alert(`Sessione per il party ${party} salvata con successo!`);
-        } catch (e) {
-            alert("Errore nel salvataggio: " + e.message);
-        }
-    };
+  const saveSession = async () => {
+    if (!date) return alert("Per favore, seleziona una data e un orario.");
+    try {
+      await setDoc(doc(db, "sessions", party), { date, updatedAt: new Date().toISOString() });
+      alert(`Sessione per il party ${party} salvata con successo!`);
+    } catch (e) {
+      alert("Errore nel salvataggio: " + e.message);
+    }
+  };
 
-    const deleteSession = async (id) => {
-        if (window.confirm(`Vuoi davvero eliminare la sessione di ${id}? Il countdown sparirà per i player.`)) {
-            try {
-                await deleteDoc(doc(db, "sessions", id));
-                alert("Sessione eliminata.");
-            } catch (e) {
-                alert("Errore nell'eliminazione: " + e.message);
-            }
-        }
-    };
+  const deleteSession = async (id) => {
+    if (window.confirm(`Vuoi davvero eliminare la sessione di ${id}?`)) {
+      try {
+        await deleteDoc(doc(db, "sessions", id));
+        alert("Sessione eliminata.");
+      } catch (e) {
+        alert("Errore nell'eliminazione: " + e.message);
+      }
+    }
+  };
 
-    return (
-        <div className="admin-container">
-            <button onClick={() => navigate("/dm-admin")} className="admin-button">
-                ← Torna al Pannello Admin
+  return (
+    <section className="admin-sessions-page">
+      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+
+      <h1 className="admin-page-title">Gestione Sessioni</h1>
+      <div className="admin-divider"><span className="admin-divider-icon">📅</span></div>
+
+      {/* Form nuova sessione */}
+      <div className="admin-card">
+        <h2 className="admin-section-title">Imposta Nuova Sessione</h2>
+        <div className="admin-form-grid">
+          <div>
+            <label>Seleziona Party</label>
+            <select
+              className="admin-field-select"
+              value={party}
+              onChange={(e) => setParty(e.target.value)}
+            >
+              <option value="Amea">Amea</option>
+              <option value="Lac">Lac</option>
+              <option value="Enox">Enox</option>
+            </select>
+          </div>
+          <div>
+            <label>Data e Ora</label>
+            <input
+              type="datetime-local"
+              className="admin-field-input"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="btn-admin-actions">
+            <button onClick={saveSession} className="btn-admin-primary">
+              Salva / Aggiorna Sessione
             </button>
-
-            <h1>Gestione Sessioni</h1>
-
-            <div className="admin-form">
-                <h3>Imposta Nuova Sessione</h3>
-                
-                <label>Seleziona Party:</label>
-                <select 
-                    value={party} 
-                    onChange={(e) => setParty(e.target.value)}
-                    className="admin-input"
-                >
-                    <option value="Amea">Amea</option>
-                    <option value="Lac">Lac</option>
-                    <option value="Enox">Enox</option>
-                </select>
-
-                <label>Data e Ora:</label>
-                <input 
-                    type="datetime-local" 
-                    value={date} 
-                    onChange={(e) => setDate(e.target.value)}
-                    className="admin-input"
-                />
-
-                <button onClick={saveSession} className="admin-button">
-                    Salva / Aggiorna Sessione
-                </button>
-            </div>
-
-            <div className="active-sessions-list">
-                <h3>Sessioni Attive nel Database</h3>
-                {activeSessions.length === 0 ? (
-                    <p>Nessuna sessione programmata al momento.</p>
-                ) : (
-                    <div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Party</th>
-                                    <th>Data e Ora</th>
-                                    <th>Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {activeSessions.map(s => (
-                                    <tr key={s.id}>
-                                        <td>{s.id}</td>
-                                        <td>{new Date(s.date).toLocaleString('it-IT')}</td>
-                                        <td>
-                                            <button onClick={() => deleteSession(s.id)} className="delete-button">
-                                                Elimina
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+          </div>
         </div>
-    );
+      </div>
+
+      {/* Sessioni attive */}
+      <div className="admin-item-list-card">
+        <div style={{ padding: "0 18px" }}>
+          <h2 className="admin-section-title" style={{ marginTop: 18, marginBottom: 0 }}>
+            Sessioni Attive nel Database
+          </h2>
+        </div>
+        {activeSessions.length === 0 ? (
+          <p style={{ padding: "16px 18px", color: "#aaa", fontStyle: "italic" }}>
+            Nessuna sessione programmata al momento.
+          </p>
+        ) : (
+          <table className="sessions-table">
+            <thead>
+              <tr>
+                <th>Party</th>
+                <th>Data e Ora</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeSessions.map(s => (
+                <tr key={s.id}>
+                  <td><strong>{s.id}</strong></td>
+                  <td>{new Date(s.date).toLocaleString("it-IT")}</td>
+                  <td>
+                    <button onClick={() => deleteSession(s.id)} className="btn-admin-danger">
+                      Elimina
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  );
 }

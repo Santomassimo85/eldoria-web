@@ -654,8 +654,8 @@ input {
 
 /* ========================================
     PARTY & CHARACTER CARDS
+    (Stili definitivi in Party.css e Riassunti.css)
     ======================================== */
-/* ---- Shared page-title utility ----------------------------- */
 .page-title {
      font-family: var(--font-title);
      font-size: clamp(1.5rem, 4vw, 2.4rem);
@@ -663,118 +663,6 @@ input {
      text-align: center;
      letter-spacing: 0.06em;
      margin-bottom: 1.5rem;
-}
-
-.party-page {
-     padding: 100px 20px 60px;
-     max-width: 1200px;
-     margin: 0 auto;
-}
-
-.party-page h1 {
-     text-align: center;
-     margin-bottom: 2rem;
-     font-family: var(--font-title);
-     color: var(--gold);
-}
-
-.party-grid {
-     display: grid;
-     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-     gap: 20px;
-     justify-content: center;
-     padding: 10px;
-}
-
-.character-card {
-     border-radius: 8px;
-     overflow: hidden;
-     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-     display: flex;
-     flex-direction: column;
-     text-align: center;
-     max-width: 100%;
-}
-
-.character-card:hover {
-     transform: translateY(-5px);
-     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
-.character-image {
-     width: 100%;
-     height: 80%;
-     object-fit: cover;
-     flex-grow: 4;
-     border-bottom: 1px solid var(--gold);
-}
-
-.character-info {
-     flex-grow: 1;
-     display: flex;
-     flex-direction: column;
-     justify-content: center;
-     padding: 10px 5px;
-     text-align: center;
-}
-
-.character-link {
-     text-decoration: none;
-     color: inherit;
-     display: block;
-     width: 100%;
-}
-
-.character-link:hover .character-name {
-     color: var(--red);
-}
-
-.character-name {
-     font-family: var(--font-title);
-     color: var(--gold);
-     margin: 0 0 5px 0;
-     font-size: 1.5em;
-     line-height: 1.2;
-     transition: color 0.2s;
-}
-
-.character-details {
-     font-family: var(--font-text);
-     color: var(--text-light, #333);
-     margin: 0;
-     font-size: 1em;
-}
-
-/* ========================================
-    SUMMARY PAGE
-    ======================================== */
-.summary-page {
-     padding: 20px;
-     max-width: 1200px;
-     margin: 0 auto;
-}
-
-.summary-page h1 {
-     text-align: center;
-     margin-bottom: 2rem;
-     font-family: var(--font-title);
-     color: var(--gold);
-}
-
-.summary-grid {
-     display: grid;
-     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-     gap: 20px;
-     justify-content: center;
-     padding: 10px;
-     height: fit-content;
-}
-
-.summary-grid h3 {
-     color: var(--red);
-     margin-bottom: 12px;
-     font-size: 0.9rem;
 }
 
 /* ========================================
@@ -1286,32 +1174,7 @@ input {
 /* ========================================
     QUESTS & MISSIONS (BACHECA)
     ======================================== */
-.bacheca-page {
-     display: flex;
-     flex-direction: column;
-     text-align: center;
-     align-items: center;
-     padding: 140px 20px 60px;
-     min-height: 100vh;
-     width: 100%;
-     box-sizing: border-box;
-}
-
-.bacheca-page h1,
-h6 {
-     top: 18%;
-     text-align: center;
-     margin-bottom: 50px;
-     width: 100%;
-     z-index: 1;
-}
-
-.bacheca-page h6 {
-     font-size: 1.2rem;
-     color: rgba(203, 137, 56, 0.579);
-     margin-top: -20px;
-     margin-bottom: 40px;
-}
+/* bacheca-page layout now managed in admin.css */
 
 .scrolls-container {
      display: flex;
@@ -2247,17 +2110,7 @@ a {
     RESPONSIVE DESIGN
     ======================================== */
 
-/* Tablet & Large Screens */
-@media (min-width: 768px) {
-    
-     .party-grid {
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-     }
-
-     .summary-grid {
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-     }
-}
+/* Tablet & Large Screens — party-grid/summary-grid responsive in Party.css / Riassunti.css */
 
 @media (min-width: 935px) and (max-width: 1690px) {
      nav a {

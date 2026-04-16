@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import { db } from "../firebase";
+import "./admin.css";
 import { collection, doc, setDoc, deleteDoc, updateDoc, getDoc, onSnapshot } from "firebase/firestore";
 import HtmlToolbar from "../components/HtmlToolbar";
 import { createMarketItem } from "../utils/itemTemplates";
@@ -65,57 +66,119 @@ export default function MarketAdmin() {
     setLoading(false);
   };
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) return <p className="denied-msg">Accesso negato.</p>;
+  if (!currentUser || currentUser.email !== MASTER_EMAIL) return <p style={{ textAlign: "center", paddingTop: "100px" }}>Accesso negato.</p>;
 
   return (
     <section className="admin-market-page">
-      <Link to="/dm-admin" className="back-button">← Dashboard</Link>
-      <h1 className="main-title">{editId ? "🖋️ Modifica Oggetto" : "🛡️ Nuovo Oggetto"}</h1>
+      <Link to="/dm-admin" className="admin-back-link">← Dashboard</Link>
 
-      <div className="admin-config-panel">
-        <h3 className="panel-title">⏳ Prossimo Mercato</h3>
-        <input type="datetime-local" value={globalCountdown} onChange={(e) => setGlobalCountdown(e.target.value)} className="admin-input-date" />
-        <button onClick={handleUpdateCountdown} className="admin-button-relaunch">Salva Data</button>
+      <h1 className="admin-page-title">{editId ? "Modifica Oggetto" : "Nuovo Oggetto"}</h1>
+      <div className="admin-divider"><span className="admin-divider-icon">🛡</span></div>
+
+      {/* Config prossimo mercato */}
+      <div className="admin-card">
+        <h2 className="admin-section-title">Prossima Apertura Mercato</h2>
+        <div className="admin-form-row" style={{ alignItems: "flex-end" }}>
+          <input
+            type="datetime-local"
+            className="admin-field-input"
+            value={globalCountdown}
+            onChange={(e) => setGlobalCountdown(e.target.value)}
+          />
+          <button onClick={handleUpdateCountdown} className="btn-admin-save" style={{ padding: "10px 20px", borderRadius: 8, fontSize: "0.85rem" }}>
+            Salva Data
+          </button>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="admin-form">
-        <input name="name" onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Nome" required value={formData.name} className="admin-input" />
-        <div className="form-row">
-          <select name="class" onChange={(e) => setFormData({...formData, class: e.target.value})} required value={formData.class} className="admin-select">
-            {RARITIES.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <select name="type" onChange={(e) => setFormData({...formData, type: e.target.value})} required value={formData.type} className="admin-select">
-            {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <input name="minLevel" type="number" placeholder="Lv Ratto Minimo" onChange={(e) => setFormData({...formData, minLevel: e.target.value})} value={formData.minLevel} required className="admin-input" />
-        <HtmlToolbar textAreaRef={descRef} formData={formData} setFormData={setFormData} fieldName="description" />
-        <textarea ref={descRef} name="description" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} required className="admin-textarea" rows="6" />
-        <input name="img" onChange={(e) => setFormData({...formData, img: e.target.value})} placeholder="URL Immagine" required value={formData.img} className="admin-input" />
-        <select name="saleType" onChange={(e) => setFormData({...formData, saleType: e.target.value})} value={formData.saleType} className="admin-select">
-          <option value="fixed">Prezzo Fisso</option>
-          <option value="auction">Asta</option>
-        </select>
-        {formData.saleType === "fixed" ? (
-          <input name="price" type="number" onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="Prezzo MP" value={formData.price} required className="admin-input" />
-        ) : (
-          <div className="form-row">
-            <input name="startingBid" type="number" onChange={(e) => setFormData({...formData, startingBid: e.target.value})} placeholder="Base Asta" value={formData.startingBid} required className="admin-input" />
-            <input name="endDate" type="datetime-local" onChange={(e) => setFormData({...formData, endDate: e.target.value})} value={formData.endDate} required className="admin-input" />
+      {/* Form oggetto */}
+      <div className="admin-card">
+        <h2 className="admin-section-title">{editId ? "Modifica Oggetto" : "Crea Nuovo Oggetto"}</h2>
+        <form onSubmit={handleSubmit} className="admin-form-grid">
+          <div>
+            <label>Nome Oggetto</label>
+            <input className="admin-field-input" name="name" placeholder="Nome" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
           </div>
-        )}
-        <button type="submit" disabled={loading} className="submit-btn">{editId ? "💾 Salva Modifiche" : "➕ Crea Item"}</button>
-        {editId && <button type="button" onClick={() => {setEditId(null); setFormData(initialFormData);}} className="cancel-btn">Annulla</button>}
-      </form>
+          <div className="admin-form-row">
+            <div>
+              <label>Rarità</label>
+              <select className="admin-field-select" name="class" required value={formData.class} onChange={(e) => setFormData({...formData, class: e.target.value})}>
+                {RARITIES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Tipo</label>
+              <select className="admin-field-select" name="type" required value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
+                {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label>Livello Ratto Minimo</label>
+            <input className="admin-field-input" name="minLevel" type="number" placeholder="0" value={formData.minLevel} required onChange={(e) => setFormData({...formData, minLevel: e.target.value})} />
+          </div>
+          <div>
+            <label>Descrizione (HTML consentito)</label>
+            <HtmlToolbar textAreaRef={descRef} formData={formData} setFormData={setFormData} fieldName="description" />
+            <textarea ref={descRef} className="admin-field-textarea" name="description" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} required rows="6" />
+          </div>
+          <div>
+            <label>URL Immagine</label>
+            <input className="admin-field-input" name="img" placeholder="https://..." value={formData.img} required onChange={(e) => setFormData({...formData, img: e.target.value})} />
+          </div>
+          <div>
+            <label>Tipo Vendita</label>
+            <select className="admin-field-select" name="saleType" value={formData.saleType} onChange={(e) => setFormData({...formData, saleType: e.target.value})}>
+              <option value="fixed">Prezzo Fisso</option>
+              <option value="auction">Asta</option>
+            </select>
+          </div>
+          {formData.saleType === "fixed" ? (
+            <div>
+              <label>Prezzo (MP)</label>
+              <input className="admin-field-input" name="price" type="number" placeholder="0" value={formData.price} required onChange={(e) => setFormData({...formData, price: e.target.value})} />
+            </div>
+          ) : (
+            <div className="admin-form-row">
+              <div>
+                <label>Base Asta (MP)</label>
+                <input className="admin-field-input" name="startingBid" type="number" placeholder="0" value={formData.startingBid} required onChange={(e) => setFormData({...formData, startingBid: e.target.value})} />
+              </div>
+              <div>
+                <label>Scadenza Asta</label>
+                <input className="admin-field-input" name="endDate" type="datetime-local" value={formData.endDate} required onChange={(e) => setFormData({...formData, endDate: e.target.value})} />
+              </div>
+            </div>
+          )}
+          <div className="btn-admin-actions">
+            <button type="submit" disabled={loading} className="btn-admin-primary">
+              {editId ? "Salva Modifiche" : "Crea Item"}
+            </button>
+            {editId && (
+              <button type="button" onClick={() => { setEditId(null); setFormData(initialFormData); }} className="btn-admin-secondary">
+                Annulla
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
 
-      <div className="admin-item-list">
-        <h2 className="section-title">📦 Magazzino ({items.length})</h2>
+      {/* Lista oggetti */}
+      <div className="admin-item-list-card">
+        <div style={{ padding: "0 18px" }}>
+          <h2 className="admin-section-title" style={{ marginTop: 18, marginBottom: 0 }}>
+            Magazzino ({items.length})
+          </h2>
+        </div>
         {items.map(item => (
-          <div key={item.id} className="admin-item-row">
-            <span className="item-label">{item.name} ({item.price || item.startingBid} MP)</span>
-            <div className="row-actions">
-              <button onClick={() => handleEditInit(item)} className="edit-link">Modifica</button>
-              <button onClick={async () => {if(window.confirm("Eliminare?")) await deleteDoc(doc(db, "items", item.id))}} className="delete-btn">X</button>
+          <div key={item.id} className="admin-item-entry">
+            <div className="admin-item-entry-label">
+              <strong>{item.name}</strong>
+              <div className="admin-item-entry-meta">{item.class} — {item.price || item.startingBid} MP</div>
+            </div>
+            <div className="admin-item-entry-actions">
+              <button onClick={() => handleEditInit(item)} className="btn-admin-edit">Modifica</button>
+              <button onClick={async () => { if (window.confirm("Eliminare?")) await deleteDoc(doc(db, "items", item.id)); }} className="btn-admin-danger">X</button>
             </div>
           </div>
         ))}

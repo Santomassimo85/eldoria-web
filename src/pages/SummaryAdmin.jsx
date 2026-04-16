@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import { db } from "../firebase"; // Assicurati che il percorso sia corretto
+import { db } from "../firebase";
+import "./admin.css";
 import {
   collection,
   doc,
@@ -182,146 +183,95 @@ export default function SummaryAdmin() {
 
   return (
     <section className="admin-summary-page">
-      <Link to="/dm-admin" className="back-button">
-        ← Dashboard Admin
-      </Link>
-      <h1>
-        {isEditing
-          ? "Modifica Riassunto Sessione"
-          : "Aggiungi Riassunto Sessione"}
+      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+
+      <h1 className="admin-page-title">
+        {isEditing ? "Modifica Riassunto" : "Aggiungi Riassunto"}
       </h1>
+      <div className="admin-divider"><span className="admin-divider-icon">📜</span></div>
 
       {status && (
-        <p
-          className={`admin-status ${status.startsWith("✅") ? "success" : "error"}`}
-        >
+        <div className={status.startsWith("✅") ? "admin-status-ok" : "admin-status-err"}>
           {status}
-        </p>
+        </div>
       )}
 
-      <form
-        onSubmit={isEditing ? handleUpdate : handleCreate}
-        className="admin-form"
-      >
-        <div className="form-group">
-          <label>Titolo:</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Sottotitolo (Obia):</label>
-          <input
-            type="text"
-            name="subTitle"
-            value={formData.subTitle}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group half-width">
-          <label>Party:</label> <br />
-          <select name="party" value={formData.party} onChange={handleChange}>
-            <option value="AMEA">AMEA (Garroth, Tanagar, Caius, Sylva)</option>
-            <option value="LAC">LAC (Horn, Thoki, Cleofe)</option>
-                        <option value="ENOX">ENOX (Roynox, Vyger, Temistocle, Dante, Khorvash)</option>
-
-            <option value="Unico">Storia del Mondo</option>
-          </select>
-        </div>
-
-        {/* CAMPO DATA IN GIOCO */}
-        <div className="form-group half-width">
-          <label>Data (in gioco):</label>
-          <input
-            type="text"
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group half-width">
-          <label>Ordine (Numero):</label>
-          <input
-            type="number"
-            name="order"
-            value={formData.order}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Contenuto (HTML consentito):</label> <br />
-          <HtmlToolbar
-            textAreaRef={textAreaRef}
-            formData={formData}
-            setFormData={setFormData}
-            fieldName="content"
-          />
-          <textarea
-          ref={textAreaRef} // <--- QUESTO È FONDAMENTALE
-            name="content"
-            value={formData.content}
-            onChange={handleChange}
-            rows="10"
-            required
-          />
-        </div>
-
-        <div className="admin-form-actions">
-          <button type="submit" className="admin-button" disabled={loading}>
-            {loading
-              ? "Caricamento..."
-              : isEditing
-                ? "Salva Modifiche"
-                : "Crea Riassunto"}
-          </button>
-          {isEditing && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="admin-button reset-button"
-            >
-              Annulla Modifica
+      <div className="admin-card">
+        <h2 className="admin-section-title">
+          {isEditing ? "Modifica Sessione" : "Nuova Sessione"}
+        </h2>
+        <form onSubmit={isEditing ? handleUpdate : handleCreate} className="admin-form-grid">
+          <div>
+            <label>Titolo</label>
+            <input className="admin-field-input" type="text" name="title" value={formData.title} onChange={handleChange} required />
+          </div>
+          <div>
+            <label>Sottotitolo (Obia)</label>
+            <input className="admin-field-input" type="text" name="subTitle" value={formData.subTitle} onChange={handleChange} required />
+          </div>
+          <div className="admin-form-row">
+            <div>
+              <label>Party</label>
+              <select className="admin-field-select" name="party" value={formData.party} onChange={handleChange}>
+                <option value="AMEA">AMEA (Garroth, Tanagar, Caius, Sylva)</option>
+                <option value="LAC">LAC (Horn, Thoki, Cleofe)</option>
+                <option value="ENOX">ENOX (Roynox, Vyger, Temistocle, Dante, Khorvash)</option>
+                <option value="Unico">Storia del Mondo</option>
+              </select>
+            </div>
+            <div>
+              <label>Data (in gioco)</label>
+              <input className="admin-field-input" type="text" name="date" value={formData.date} onChange={handleChange} required />
+            </div>
+          </div>
+          <div>
+            <label>Ordine (Numero)</label>
+            <input className="admin-field-input" type="number" name="order" value={formData.order} onChange={handleChange} required />
+          </div>
+          <div>
+            <label>Contenuto (HTML consentito)</label>
+            <HtmlToolbar textAreaRef={textAreaRef} formData={formData} setFormData={setFormData} fieldName="content" />
+            <textarea
+              ref={textAreaRef}
+              className="admin-field-textarea"
+              name="content"
+              value={formData.content}
+              onChange={handleChange}
+              rows="10"
+              required
+            />
+          </div>
+          <div className="btn-admin-actions">
+            <button type="submit" className="btn-admin-primary" disabled={loading}>
+              {loading ? "Caricamento..." : isEditing ? "Salva Modifiche" : "Crea Riassunto"}
             </button>
-          )}
+            {isEditing && (
+              <button type="button" onClick={handleReset} className="btn-admin-secondary">
+                Annulla
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      <div className="admin-item-list-card">
+        <div style={{ padding: "0 18px" }}>
+          <h3 className="admin-section-title" style={{ marginTop: 18, marginBottom: 0 }}>
+            Riassunti Esistenti
+          </h3>
         </div>
-      </form>
-
-      <hr style={{ margin: "40px 0" }} />
-
-      <h3>Riassunti Esistenti:</h3>
-      <div className="admin-item-list">
         {loading && !summaries.length ? (
-          <p>Caricamento riassunti...</p>
+          <p style={{ padding: "16px 18px", color: "#aaa" }}>Caricamento riassunti...</p>
         ) : (
           summaries.map((s) => (
-            <div key={s.id} className="admin-item-row summary-row">
-              <span>
-                [{s.order}] {s.title} ({s.party})
-              </span>
-              <div className="admin-actions">
-                <button
-                  onClick={() => handleEdit(s.id)}
-                  className="admin-edit-button"
-                >
-                  Modifica
-                </button>
-                <button
-                  onClick={() => handleDelete(s.id)}
-                  className="admin-delete-button"
-                >
-                  X
-                </button>
+            <div key={s.id} className="admin-item-entry">
+              <div className="admin-item-entry-label">
+                <strong>[{s.order}] {s.title}</strong>
+                <div className="admin-item-entry-meta">{s.party} — {s.date}</div>
+              </div>
+              <div className="admin-item-entry-actions">
+                <button onClick={() => handleEdit(s.id)} className="btn-admin-edit">Modifica</button>
+                <button onClick={() => handleDelete(s.id)} className="btn-admin-danger">X</button>
               </div>
             </div>
           ))
