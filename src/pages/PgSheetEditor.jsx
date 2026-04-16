@@ -25,62 +25,66 @@ export default function PgSheetEditor() {
   }, [currentUser]);
 
   const handleRoll = async (action) => {
-    if (!charData || !action) return;
+  if (!charData || !action) return;
 
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
-    const hitTotal = d20 + bonusToHit;
-    const isCritical = d20 === 20;
+  const d20 = Math.floor(Math.random() * 20) + 1;
+  const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+  const hitTotal = d20 + bonusToHit;
+  const isCritical = d20 === 20;
 
-    let finalDamage = 0;
-    let allDiceDetails = [];
+  let finalDamage = 0;
+  let allDiceDetails = [];
 
-    if (isCritical || hitTotal >= 1) {
-      const formulaParts = (action.damage || "1d6").split("+").map((p) => p.trim());
-      formulaParts.forEach((part) => {
-        if (part.includes("d")) {
-          const [num, sides] = part.split("d").map((n) => parseInt(n) || 1);
-          let partTotal = 0;
-          let rolls = [];
-          for (let i = 0; i < num; i++) {
-            const r = Math.floor(Math.random() * sides) + 1;
-            partTotal += r;
-            rolls.push(r);
-          }
-          finalDamage += partTotal;
-          allDiceDetails.push(`${num}d${sides}(${rolls.join("+")})`);
-        } else {
-          const bonus = parseInt(part) || 0;
-          finalDamage += bonus;
-          if (bonus !== 0) allDiceDetails.push(`+${bonus}`);
-        }
-      });
-      if (isCritical) finalDamage *= 2;
+  const formulaParts = (action.damage && action.damage !== "0" 
+    ? action.damage 
+    : "1d4"
+  ).split("+").map((p) => p.trim());
 
-      if (
-        charData.class?.toLowerCase() === "ladro" ||
-        charData.class?.toLowerCase() === "rogue"
-      ) {
-        const sneak = Math.floor(Math.random() * 6) + 1;
-        finalDamage += sneak;
-        allDiceDetails.push(`+Furtivo(${sneak})`);
+  formulaParts.forEach((part) => {
+    if (part.includes("d")) {
+      const [num, sides] = part.split("d").map((n) => parseInt(n) || 1);
+      let partTotal = 0;
+      let rolls = [];
+      for (let i = 0; i < num; i++) {
+        const r = Math.floor(Math.random() * sides) + 1;
+        partTotal += r;
+        rolls.push(r);
       }
+      finalDamage += partTotal;
+      allDiceDetails.push(`${num}d${sides}(${rolls.join("+")})`);
+    } else {
+      const bonus = parseInt(part) || 0;
+      finalDamage += bonus;
+      if (bonus !== 0) allDiceDetails.push(`+${bonus}`);
     }
+  });
 
-    try {
-      await addDoc(collection(db, "rolls"), {
-        characterName: charData.name,
-        itemName: action.name,
-        toHit: hitTotal,
-        damageDealt: finalDamage,
-        diceResults: allDiceDetails.join(" "),
-        timestamp: serverTimestamp(),
-        uid: currentUser.uid,
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  if (isCritical) finalDamage *= 2;
+
+  // 🔍 DEBUG LOG — vedi in console se i danni sono corretti
+  console.log("=== TIRO AZIONE ===");
+  console.log(`Azione: ${action.name}`);
+  console.log(`Categoria: ${action.category}`);
+  console.log(`Formula danno (da Firestore): ${action.damage}`);
+  console.log(`d20: ${d20} + bonus colpo: ${bonusToHit} = ${hitTotal}`);
+  console.log(`Dadi tirati: ${allDiceDetails.join(" ")}`);
+  console.log(`Danno finale: ${finalDamage}${isCritical ? " (CRITICO x2!)" : ""}`);
+  console.log("===================");
+
+  try {
+    await addDoc(collection(db, "rolls"), {
+      characterName: charData.name,
+      itemName: action.name,
+      toHit: hitTotal,
+      damageDealt: finalDamage,
+      diceResults: allDiceDetails.join(" "),
+      timestamp: serverTimestamp(),
+      uid: currentUser.uid,
+    });
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   if (loading) return <div className="pgs-loading">Caricamento scheda...</div>;
 

@@ -1,0 +1,263 @@
+// ================================================================
+// MACRO FOUNDRY: Sincronizza Personaggio → Eldoria Web
+// ================================================================
+// ISTRUZIONI:
+//   1. Seleziona un token sulla mappa
+//   2. Lancia questa macro
+//
+// COMPORTAMENTO:
+//   - Aggiorna: nome, livello, classe, immagine, stats, azioni
+//   - NON tocca: platinum, rattoPoints (preservati sul DB)
+//   - HP sincronizzati = HP Massimi (ignora HP attuali da combattimento)
+//   - Danni e bonus calcolati correttamente (scaling trucchetti, @mod, ecc.)
+//
+// SETUP OBBLIGATORIO (una volta sola per attore):
+//   Nella console Foundry (F12) esegui:
+//     actor.setFlag("world", "firebaseUID", "UID_DEL_PLAYER_SU_FIREBASE")
+//   L'UID si trova su Firebase Console → Authentication → Users
+// ================================================================
+
+// --- CONFIGURAZIONE FIREBASE ---
+const FIREBASE_CONFIG = {
+  projectId: "TUO_PROJECT_ID",
+  apiKey:    "TUA_API_KEY"
+};
+
+// ----------------------------------------------------------------
+// HELPER: Estrae la formula di danno in modo robusto
+// Gestisce:
+//   - dnd5e v2: parts = [["1d10", "fire"], ...]
+//   - dnd5e v3: parts = [{formula:"1d10", types: Set{...}}, ...]
+//   - Variabili @scale.* (scaling trucchetti per livello)
+//   - Variabili @mod, @spellmod, @abilities.*.mod
+//   - Più parti di danno (es. 2d6 + 1d4 radiant)
+// ----------------------------------------------------------------
+function getDamageFormula(item, actor) {
+  const parts = item.system.damage?.parts ?? [];
+  if (!parts.length) return "—";
+
+  // getRollData() contiene @mod, @prof, @spellmod, @scale.*, ecc.
+  const rollData = actor.getRollData();
+
+  const formulas = parts
+    .map(part => {
+      // v2: ["1d10", "fire"]  →  part[0]
+      // v3: {formula:"1d10", types:Set}  →  part.formula
+      let f = Array.isArray(part) ? (part[0] ?? "") : (part.formula ?? "");
+      if (!f || f === "0") return null;
+
+      // Risolvi variabili Foundry (@scale, @mod, @spellmod, ecc.)
+      if (f.includes("@")) {
+        try {
+          f = Roll.replaceFormulaData(f, rollData, { warn: false });
+        } catch (_) { /* lascia invariata se fallisce */ }
+      }
+
+      // Rimuovi eventuali @variabili rimaste non risolte
+      f = f.replace(/@[\w.]+/g, "?").trim();
+      return f;
+    })
+    .filter(Boolean);
+
+  return formulas.join(" + ") || "—";
+}
+
+// ----------------------------------------------------------------
+// HELPER: Calcola il bonus al tiro per colpire
+// Gestisce: armi mischia/distanza, attacchi con incantesimo
+// Formula: modificatore_abilità + bonus_competenza + bonus_oggetto
+// ----------------------------------------------------------------
+function getAttackBonus(item, actor) {
+  const iSys = item.system;
+  const sys  = actor.system;
+  const prof = sys.attributes?.prof ?? 0;
+
+  // actionType indica il tipo di attacco:
+  //   mwak = melee weapon, rwak = ranged weapon
+  //   msak = melee spell,  rsak = ranged spell
+  const aType = iSys.actionType ?? "";
+
+  // Items senza tiro per colpire (abilità passive, save-only, ecc.)
+  if (!["mwak","rwak","msak","rsak"].includes(aType)) {
+    return "+0";
+  }
+
+  let abilityMod = 0;
+
+  if (aType === "msak" || aType === "rsak") {
+    // Incantesimo: usa l'abilità di lancio del personaggio
+    const spellAbility = sys.attributes?.spellcasting ?? "int";
+    abilityMod = sys.abilities?.[spellAbility]?.mod ?? 0;
+
+  } else if (aType === "mwak") {
+    // Arma mischia: Forza, oppure Destrezza se ha Finesse
+    // In v2 properties è un oggetto, in v3 è un Set
+    const props = iSys.properties;
+    const isFinesse = props instanceof Set
+      ? props.has("fin")
+      : !!(props?.fin || props?.finesse);
+    const strMod = sys.abilities?.str?.mod ?? 0;
+    const dexMod = sys.abilities?.dex?.mod ?? 0;
+    abilityMod = isFinesse ? Math.max(strMod, dexMod) : strMod;
+
+  } else if (aType === "rwak") {
+    // Arma a distanza: Destrezza (o Forza per armi da lancio, ma dex è il default)
+    abilityMod = sys.abilities?.dex?.mod ?? 0;
+  }
+
+  // Competenza: v2 usa item.system.proficient, v3 usa item.system.prof.hasProficiency
+  const isProficient =
+    iSys.prof?.hasProficiency ??
+    (iSys.proficient !== false && iSys.proficient !== 0);
+  const profBonus = isProficient ? prof : 0;
+
+  // Bonus aggiuntivo sull'item (es. +1 arma magica)
+  const itemBonus = parseInt(iSys.attackBonus) || 0;
+
+  const total = abilityMod + profBonus + itemBonus;
+  return total >= 0 ? `+${total}` : String(total);
+}
+
+// ----------------------------------------------------------------
+// HELPER: Pulizia HTML dalla descrizione
+// ----------------------------------------------------------------
+function cleanDescription(html = "") {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
+// ================================================================
+// INIZIO MACRO
+// ================================================================
+
+const token = canvas.tokens.controlled[0];
+if (!token) {
+  ui.notifications.warn("Seleziona un token prima di lanciare la macro!");
+  return;
+}
+const actor = token.actor;
+
+const firebaseUID = actor.getFlag("world", "firebaseUID");
+if (!firebaseUID) {
+  ui.notifications.error(
+    `Nessun firebaseUID per "${actor.name}". ` +
+    `Imposta il flag con: actor.setFlag("world","firebaseUID","UID_FIREBASE")`
+  );
+  return;
+}
+
+// --- STATS ---
+const sys   = actor.system;
+const maxHp = sys.attributes?.hp?.max ?? 0;
+const ac    = sys.attributes?.ac?.value ?? 10;
+const ab    = sys.abilities ?? {};
+
+const statsFields = {
+  hp:     { integerValue: String(maxHp) },   // sempre HP massimi
+  maxHp:  { integerValue: String(maxHp) },
+  ac:     { integerValue: String(ac) },
+  str:    { integerValue: String(ab.str?.mod ?? 0) },
+  dex:    { integerValue: String(ab.dex?.mod ?? 0) },
+  con:    { integerValue: String(ab.con?.mod ?? 0) },
+  int:    { integerValue: String(ab.int?.mod ?? 0) },
+  wis:    { integerValue: String(ab.wis?.mod ?? 0) },
+  cha:    { integerValue: String(ab.cha?.mod ?? 0) },
+  shield: { integerValue: "0" }
+};
+
+// --- IDENTITÀ ---
+const classItem = actor.items.find(i => i.type === "class");
+const charClass = classItem?.name ?? sys.details?.class ?? "";
+const level     = sys.details?.level ?? 1;
+const image     = token.document.texture?.src ?? actor.img ?? "";
+
+// --- AZIONI ---
+const actionItems = actor.items.filter(i =>
+  ["weapon", "spell", "feat", "equipment"].includes(i.type)
+);
+
+const actionsFirestore = actionItems.map(item => {
+  const iSys = item.system;
+
+  // Categoria webapp
+  let category = "Abilità";
+  if (item.type === "weapon") {
+    category = "Armi";
+  } else if (item.type === "spell") {
+    const lvl = iSys.level ?? 0;
+    category  = lvl === 0 ? "Trucchetto" : `Livello ${lvl}`;
+  }
+
+  const damage   = getDamageFormula(item, actor);
+  const atkBonus = getAttackBonus(item, actor);
+  const desc     = cleanDescription(iSys.description?.value);
+
+  // Debug (visibile in F12 → Console di Foundry)
+  console.log(`[Sync] ${item.name} | tipo:${item.type} | aType:${iSys.actionType} | danno:${damage} | bonus:${atkBonus}`);
+
+  return {
+    mapValue: {
+      fields: {
+        name:        { stringValue: item.name },
+        category:    { stringValue: category },
+        bonus:       { stringValue: atkBonus },
+        damage:      { stringValue: damage },
+        description: { stringValue: desc }
+      }
+    }
+  };
+});
+
+// --- DOCUMENTO FIRESTORE ---
+const firestoreDoc = {
+  fields: {
+    name:    { stringValue: actor.name },
+    level:   { integerValue: String(level) },
+    class:   { stringValue: charClass },
+    image:   { stringValue: image },
+    stats:   { mapValue: { fields: statsFields } },
+    actions: { arrayValue: { values: actionsFirestore } }
+  }
+};
+
+// --- UPDATE MASK (platinum e rattoPoints non elencati → non vengono toccati) ---
+const maskFields  = ["name", "level", "class", "image", "stats", "actions"];
+const maskParams  = maskFields
+  .map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`)
+  .join("&");
+
+const url =
+  `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}` +
+  `/databases/(default)/documents/characters/${firebaseUID}` +
+  `?${maskParams}&key=${FIREBASE_CONFIG.apiKey}`;
+
+// --- INVIO ---
+ui.notifications.info(`Sincronizzazione in corso: ${actor.name}...`);
+
+fetch(url, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(firestoreDoc)
+})
+.then(res => {
+  if (res.ok) {
+    ui.notifications.info(`✅ Sincronizzato: ${actor.name}`);
+    console.log(`[Sync] ✅ ${actor.name} salvato su Firebase UID: ${firebaseUID}`);
+  } else {
+    res.json().then(err => {
+      console.error("[Sync] Firestore Error:", err);
+      ui.notifications.error(`Errore Firestore: ${err.error?.message ?? "risposta non valida"}`);
+    });
+  }
+})
+.catch(err => {
+  console.error("[Sync] Fetch Error:", err);
+  ui.notifications.error("Errore di rete durante la sincronizzazione.");
+});
