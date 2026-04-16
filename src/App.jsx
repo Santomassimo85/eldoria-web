@@ -142,10 +142,15 @@ export default function App() {
           <span>Chronicles</span>
         </div>
 
-        <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">
-          <span className="line line-1"></span>
-          <span className="line line-2"></span>
-          <span className="line line-3"></span>
+        {/* Destra header: avatar sempre visibile + burger su mobile */}
+        <div className="header-right">
+          <LoginDropdown closeMenu={closeMenu} />
+
+          <div className={`burger ${menuOpen ? "open" : ""}`} onClick={toggleMenu} aria-label="Apri menu">
+            <span className="line line-1"></span>
+            <span className="line line-2"></span>
+            <span className="line line-3"></span>
+          </div>
         </div>
 
         <nav className={menuOpen ? "active" : ""}>
@@ -174,7 +179,6 @@ export default function App() {
           </NavDropdown>
 
           <AdminNavLink closeMenu={closeMenu} />
-          <LoginDropdown closeMenu={closeMenu} />
         </nav>
       </header>
 
