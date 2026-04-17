@@ -6,6 +6,13 @@ import "./style.css";
 import { AuthProvider, useAuth } from "./AuthContext";
 import LoginDropdown from "./LoginDropdown";
 
+// FIREBASE
+import { db } from "./firebase";
+import {
+  doc, updateDoc, onSnapshot, collection,
+  serverTimestamp,
+} from "firebase/firestore";
+
 // PAGES
 
 import Home from "./pages/Home";
@@ -94,6 +101,124 @@ const AdminNavLink = ({ closeMenu }) => {
   }
   return null;
 };
+
+// ── PRESENZA ONLINE ───────────────────────────────────────────────────────────
+function relTime(ms) {
+  const sec = Math.floor((Date.now() - ms) / 1000);
+  if (sec < 60)   return `${sec}s fa`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}min fa`;
+  return `${Math.floor(sec / 3600)}h fa`;
+}
+
+function OnlinePresence() {
+  const { currentUser } = useAuth();
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [open, setOpen]               = useState(false);
+  const [, setTick]                   = useState(0);
+  const lastWriteRef                  = useRef(0);
+  const isMaster = currentUser?.email === MASTER_EMAIL_UI;
+
+  // Scrivi lastSeen in characters/{uid} — usa la collection che ha già le regole
+  const writePresence = useRef(null);
+  writePresence.current = async () => {
+    if (!currentUser) return;
+    const now = Date.now();
+    if (now - lastWriteRef.current < 8000) return; // debounce 8s
+    lastWriteRef.current = now;
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), {
+        lastSeen: serverTimestamp(),
+      });
+    } catch (_) {
+      // Se il doc non esiste ignora silenziosamente
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const init = setTimeout(() => writePresence.current?.(), 1500);
+    const hb   = setInterval(() => writePresence.current?.(), 30000);
+    const act  = () => writePresence.current?.();
+    window.addEventListener("click",      act);
+    window.addEventListener("keydown",    act);
+    window.addEventListener("touchstart", act);
+    window.addEventListener("scroll",     act, { passive: true });
+    const onVis = () => { if (document.visibilityState === "visible") writePresence.current?.(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearTimeout(init); clearInterval(hb);
+      window.removeEventListener("click",      act);
+      window.removeEventListener("keydown",    act);
+      window.removeEventListener("touchstart", act);
+      window.removeEventListener("scroll",     act);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [currentUser]);
+
+  // Solo master: ascolta characters collection
+  useEffect(() => {
+    if (!isMaster) return;
+    const unsub = onSnapshot(collection(db, "characters"), (snap) => {
+      const now = Date.now();
+      const active = snap.docs
+        .map(d => ({ uid: d.id, ...d.data() }))
+        .filter(p => {
+          if (!p.lastSeen) return false;
+          const ms = p.lastSeen.toMillis ? p.lastSeen.toMillis() : new Date(p.lastSeen).getTime();
+          return now - ms < 15 * 60 * 1000; // ultimi 15 minuti
+        });
+      setOnlineUsers(active);
+    });
+    return () => unsub();
+  }, [isMaster]);
+
+  // Tick per aggiornare i tempi relativi ogni 5s
+  useEffect(() => {
+    if (!isMaster) return;
+    const t = setInterval(() => setTick(v => v + 1), 5000);
+    return () => clearInterval(t);
+  }, [isMaster]);
+
+  if (!isMaster) return null;
+
+  return (
+    <>
+      {/* Pallino fluttuante */}
+      <button
+        className={`online-fab${open ? " open" : ""}`}
+        onClick={() => setOpen(v => !v)}
+        title="Giocatori online"
+      >
+        <span className="online-fab-dot" />
+        {onlineUsers.length > 0 && (
+          <span className="online-fab-count">{onlineUsers.length}</span>
+        )}
+      </button>
+
+      {/* Popup */}
+      {open && (
+        <div className="online-popup">
+          <div className="online-popup-title">
+            <span className="online-dot-sm" /> Giocatori online
+          </div>
+          {onlineUsers.length === 0 ? (
+            <div className="online-popup-empty">Nessuno attivo di recente</div>
+          ) : (
+            onlineUsers.map(u => {
+              const ms = u.lastSeen?.toMillis ? u.lastSeen.toMillis() : new Date(u.lastSeen || 0).getTime();
+              return (
+                <div key={u.uid} className="online-popup-row">
+                  <span className="online-popup-name">{u.name || "Eroe"}</span>
+                  <span className="online-popup-time">{relTime(ms)}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -216,6 +341,7 @@ export default function App() {
       </main>
 
 <GlobalChat />
+      <OnlinePresence />
 
       <footer>
         <p>

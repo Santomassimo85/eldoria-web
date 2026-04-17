@@ -3,12 +3,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ToggleSection from "./ToggleSection";
 import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
+import { useAuth } from '../AuthContext';
 import './Riassunti.css';
 
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
 export default function Riassunti() {
+    const { currentUser } = useAuth();
+    const isMaster = currentUser?.email === MASTER_EMAIL;
     const [allSummaries, setAllSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const recordVisit = async (summaryId) => {
+        if (isMaster) return;
+        try {
+            await updateDoc(doc(db, 'summaries', summaryId), {
+                viewCount: increment(1),
+            });
+        } catch (_) {}
+        setAllSummaries(prev =>
+            prev.map(s => s.id === summaryId ? { ...s, viewCount: (s.viewCount || 0) + 1 } : s)
+        );
+    };
 
     // --- Caricamento Riassunti da Firestore ---
     useEffect(() => {
@@ -97,10 +114,16 @@ export default function Riassunti() {
                                                             {summary.date}
                                                         </span>
                                                     )}
+                                                    {isMaster && (
+                                                        <span className="summary-visit-badge" title="Visite totali">
+                                                            👁 {summary.viewCount || 0}
+                                                        </span>
+                                                    )}
                                                 </>
                                             }
                                             titleClass="summaryTitle"
                                             contentClass="summary-content-padding"
+                                            onOpen={() => recordVisit(summary.id)}
                                         >
                                             {summary.date && (
                                                 <h2 className="summaryDate">{summary.date}</h2>

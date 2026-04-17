@@ -1062,12 +1062,12 @@ export default function WorldBoss() {
                       <span className="msg-author">{m.senderName}</span>
                       {m.timestamp && (
                         <span className="msg-timestamp">
-                          {new Date(
-                            m.timestamp.seconds * 1000,
-                          ).toLocaleTimeString("it-IT", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {(() => {
+                            const d = new Date(m.timestamp.seconds * 1000);
+                            const day = d.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
+                            const time = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+                            return `${day} · ${time}`;
+                          })()}
                         </span>
                       )}
                       {isMaster && (

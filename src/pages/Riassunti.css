@@ -119,14 +119,15 @@
 @media (min-width: 540px) {
   .summary-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
+    gap: 20px;
   }
 }
 
-@media (min-width: 860px) {
+/* Desktop: rimane a 2 colonne per card più larghe */
+@media (min-width: 1024px) {
   .summary-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
   }
 }
 
@@ -299,4 +300,23 @@
   .riassunti-intro {
     padding: 24px 30px;
   }
+}
+
+/* ── VISIT BADGE (master only) ────────────────────────────────── */
+.summary-visit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 10px;
+  font-family: var(--font-text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #9a7a20;
+  background: rgba(212,175,55,0.12);
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 12px;
+  padding: 1px 8px;
+  vertical-align: middle;
+  letter-spacing: 0;
+  text-transform: none;
 }

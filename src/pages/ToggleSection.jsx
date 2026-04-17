@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import './ToggleSection.css';
 
-const ToggleSection = ({ title, children, defaultOpen = false, titleClass = '', contentClass = '' }) => { // Aggiunto contentClass
+const ToggleSection = ({ title, children, defaultOpen = false, titleClass = '', contentClass = '', onOpen }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   const toggleContent = () => {
-    setIsOpen(!isOpen);
+    const next = !isOpen;
+    setIsOpen(next);
+    if (next && onOpen) onOpen();
   };
 
   return (
