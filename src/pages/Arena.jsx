@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "../firebase";
 import {
   doc, getDoc, onSnapshot, updateDoc, setDoc,
   arrayUnion, arrayRemove, addDoc, collection, serverTimestamp,
+  runTransaction,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./Arena.css";
@@ -156,6 +157,15 @@ const CHARGE_ACTION = {
 // Slot skills caster — vuoto per ora (Scudo è diventato una spell lv1)
 const CASTER_SKILLS = [];
 
+const ARENA_TURN_DURATION = 3 * 60 * 60 * 1000; // 3 ore per azione
+
+// ── ITEMS ─────────────────────────────────────────────────────────────────────
+const ARENA_ITEMS = [
+  { key: "pozione_cura",   name: "Pozione di Cura",  icon: "🧪", info: "Cura 2d12 · Passa il turno",                  damage: "2d12" },
+  { key: "bomba",          name: "Bomba",             icon: "💣", info: "3d10 danni al bersaglio · Passa il turno",    damage: "3d10" },
+  { key: "pozione_veleno", name: "Pozione di Veleno", icon: "☠",  info: "+1d12 danno prossimo attacco · Passa turno",  damage: "1d12" },
+];
+
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
 const DEATHBLOW_ACTION = {
   name: "Colpo Mortale", hitBonus: 5, damage: "4d6+5", statKey: "dex",
@@ -288,29 +298,45 @@ function getLoadoutConfig(charClass) {
 
 // ── DAMAGE ROLLER ─────────────────────────────────────────────────────────────
 function rollDamageFormula(formula) {
-  if (!formula) return 0;
+  return rollDmg(formula).total;
+}
+
+// Returns { total, rolls } where rolls is a display string like "(3+5)=8"
+function rollDmg(formula) {
+  if (!formula) return { total: 0, rolls: "0" };
   const str = String(formula).trim();
-  if (!str || str === "0") return 0;
-  if (!isNaN(Number(str))) return Number(str);
+  if (!str || str === "0" || str === "—") return { total: 0, rolls: "0" };
+  if (!isNaN(Number(str))) return { total: Number(str), rolls: String(str) };
   let total = 0;
+  const parts = [];
   const normalized = str.replace(/-/g, "+-");
-  const parts = normalized.split("+").map(p => p.trim()).filter(p => p !== "");
-  for (const part of parts) {
-    const negative = part.startsWith("-");
-    const abs = negative ? part.slice(1) : part;
+  const tokens = normalized.split("+").map(p => p.trim()).filter(p => p !== "");
+  for (const token of tokens) {
+    const negative = token.startsWith("-");
+    const abs = negative ? token.slice(1) : token;
     if (abs.includes("d")) {
       const [numStr, sidesStr] = abs.split("d");
       const num   = parseInt(numStr)  || 1;
       const sides = parseInt(sidesStr) || 1;
+      const diceRolls = [];
       let rolled = 0;
-      for (let i = 0; i < num; i++) rolled += Math.floor(Math.random() * sides) + 1;
+      for (let i = 0; i < num; i++) {
+        const r = Math.floor(Math.random() * sides) + 1;
+        diceRolls.push(r);
+        rolled += r;
+      }
       total += negative ? -rolled : rolled;
+      const diceStr = diceRolls.length === 1
+        ? `${diceRolls[0]}`
+        : `(${diceRolls.join("+")}=${rolled})`;
+      parts.push(negative ? `-${diceStr}` : diceStr);
     } else {
       const val = parseInt(abs) || 0;
       total += negative ? -val : val;
+      if (val !== 0) parts.push(negative ? `-${val}` : `+${val}`);
     }
   }
-  return Math.max(0, total);
+  return { total: Math.max(0, total), rolls: parts.join(" ") };
 }
 
 // ── LOG DISPLAY ───────────────────────────────────────────────────────────────
@@ -344,6 +370,14 @@ export default function Arena() {
   const [pendingArmor, setPendingArmor]     = useState(null);
   const [pendingShield, setPendingShield]   = useState(false);
   const [showWildPicker, setShowWildPicker] = useState(false);
+  const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
+
+  // Tick ogni secondo per aggiornare i timer in-render
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick(v => v + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Master join setup
   const [masterJoinSetup, setMasterJoinSetup] = useState(false);
@@ -422,6 +456,7 @@ export default function Arena() {
     const finalAc   = pendingArmor.baseAc + dexBonus + shieldBonus;
 
     const finalActions = [...pendingWeapons, ...pendingSpells, ...pendingSkills, ...config.autoActions];
+    const selectedItemKeys = Object.entries(pendingItemCounts).flatMap(([k, n]) => Array(n).fill(k));
     const snapshot = {
       name:            charPreview.name,
       image:           charPreview.image,
@@ -431,6 +466,7 @@ export default function Arena() {
       hasWildShape:    config.hasWildShape,
       hasShield:       pendingShield,
       selectedArmor:   pendingArmor,
+      selectedItemKeys,
     };
     await updateDoc(doc(db, "arena_meta", "global"), {
       waitingList: arrayUnion(currentUser.uid),
@@ -447,6 +483,7 @@ export default function Arena() {
     setPendingSkills([]);
     setPendingArmor(null);
     setPendingShield(false);
+    setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
   };
 
   const toggleWeapon = (item, maxWeapons) => {
@@ -559,9 +596,11 @@ export default function Arena() {
         players: matchPlayerIds.map(id => {
           const snap = snapshots[id] || {};
           const startHp = snap.stats?.maxHp ?? 70;
-          return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0 };
+          const itemUses = {};
+          (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
+          return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses };
         }),
-        status: "initiative", turn: null,
+        status: "initiative", turn: null, turnExpiry: null,
         logs:   ["⚔️ Il match ha inizio!"], winner: null,
         isFFA:  matchPlayerIds.length === 3,
       });
@@ -601,8 +640,9 @@ export default function Arena() {
       const sorted    = [...updatedPlayers].sort((a, b) => b.init - a.init);
       return {
         ...m, players: updatedPlayers,
-        status: allRolled ? "active" : "initiative",
-        turn:   allRolled ? sorted[0].id : null,
+        status:     allRolled ? "active" : "initiative",
+        turn:       allRolled ? sorted[0].id : null,
+        turnExpiry: allRolled ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString() : null,
         logs:   [...m.logs, `🎲 ${mySnap?.name ?? "?"} tira iniziativa: ${roll}`],
       };
     });
@@ -628,14 +668,15 @@ export default function Arena() {
         def: `🕸 ${attName} ti lancia una Ragnatela! Devi superare un TS DES (CD 15)`,
         attId: currentUser.uid, defId: targetId,
       };
+      const webExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, pendingDexSave: true };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1) };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
           return p;
         });
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), logs: [...m.logs, log] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: webExpiry, logs: [...m.logs, log] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -643,18 +684,20 @@ export default function Arena() {
 
     // ── Veleno (damage + CON save) ────────────────────────────────────
     if (action.special === "poison") {
-      const damage = rollDamageFormula(action.damage);
+      const { total: damage, rolls: poisonDiceRolls } = rollDmg(action.damage);
+      const dmgNote = ` [🎲${poisonDiceRolls}=${damage}]`;
       const log = {
-        pub: `☠ ${attName} usa Veleno su ${defName} — ${damage} danni + TS COS (CD 15)`,
-        att: `☠ Usi Veleno su ${defName} — ${damage} danni + TS COS (CD 15)`,
-        def: `☠ ${attName} ti ha colpito con Veleno — ${damage} danni! Devi superare un TS COS (CD 15)`,
+        pub: `☠ ${attName} usa Veleno su ${defName}${dmgNote} — ${damage} danni + TS COS (CD 15)`,
+        att: `☠ Usi Veleno su ${defName}${dmgNote} — ${damage} danni + TS COS (CD 15)`,
+        def: `☠ ${attName} ti ha colpito con Veleno${dmgNote} — ${damage} danni! Devi superare un TS COS (CD 15)`,
         attId: currentUser.uid, defId: targetId,
       };
+      const poisonExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       let updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), pendingConSave: true };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1) };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
           return p;
         });
         const alive = updatedPlayers.filter(p => p.hp > 0);
@@ -662,7 +705,7 @@ export default function Arena() {
           return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
             logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), logs: [...m.logs, log] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, logs: [...m.logs, log] };
       });
       const allDone = updatedMatches.every(m => m.status === "finished");
       const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
@@ -685,34 +728,54 @@ export default function Arena() {
     const defMatchPlayer   = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-    const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus;
+    const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
+    const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus + defensiveAcBonus;
+    const isCrit   = d20 === 20 && action.type === "spell";
     const isHit    = hitTotal >= defAC;
-    const baseDmg  = isHit ? rollDamageFormula(action.damage) : 0;
-    const damage   = isHit ? baseDmg + statMod : 0;
+    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
+    // Critico spells: doppio danno
+    const critMult = isCrit ? 2 : 1;
+    // Rogue sneak attack — sempre +2d6 se colpisce
+    const attackerClass = (arenaMeta.characterSnapshots?.[currentUser.uid]?.class || "").toLowerCase();
+    const isRogue   = attackerClass.includes("rogue") || attackerClass.includes("ladro");
+    const { total: sneakDmg, rolls: sneakRolls } = isHit && isRogue ? rollDmg("2d6") : { total: 0, rolls: "" };
+    // Weapon poison bonus
+    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
+    const weaponPoisoned = !!attackerMatchPlayer?.weaponPoisoned;
+    const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
+    const damage   = isHit ? (baseDmg + statMod) * critMult + sneakDmg + poisonBonusDmg : 0;
 
-    // Log breakdown visibile solo all'attaccante
-    const statPart    = action.statKey ? ` +${statMod} ${action.statKey.toUpperCase()}` : '';
+    // Log breakdown
+    const statPart    = action.statKey && statMod !== 0 ? ` +${statMod} ${action.statKey.toUpperCase()}` : '';
     const penPart     = armorPenalty < 0 ? ` ${armorPenalty} arm.` : '';
-    const breakdown   = `🎲${d20} +${action.hitBonus} hit${statPart}${penPart} = ${hitTotal} vs CA ${defAC}`;
+    const critTag     = isCrit ? " ★CRITICO★" : "";
+    const sneakTag    = sneakDmg > 0 ? ` | furtivo 🎲${sneakRolls}=${sneakDmg}` : "";
+    const poisonTag   = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
+    const critDmgNote = isCrit ? ` ×2` : "";
+    const dmgBreakdown = isHit
+      ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}=${baseDmg * critMult + statMod * critMult}${sneakTag}${poisonTag} = ${damage}]`
+      : "";
+    const hitBreakdown = `🎲d20=${d20}${critTag} +${action.hitBonus} hit${statPart}${penPart} = ${hitTotal} vs CA ${defAC}`;
     const log = {
       pub: isHit
-        ? `💥 ${attName} colpisce ${defName} con ${action.name} (${hitTotal} vs CA ${defAC}) — ${damage} danni`
+        ? `💥 ${attName} colpisce ${defName} con ${action.name}${critTag} (${hitTotal} vs CA ${defAC})${dmgBreakdown} — ${damage} danni`
         : `🛡️ ${attName} manca ${defName} con ${action.name} (${hitTotal} vs CA ${defAC})`,
       att: isHit
-        ? `💥 Colpisci ${defName} con ${action.name} [${breakdown}] — ${damage} danni`
-        : `🛡️ Manchi ${defName} con ${action.name} [${breakdown}]`,
+        ? `💥 Colpisci ${defName} con ${action.name} [${hitBreakdown}]${dmgBreakdown} — ${damage} danni`
+        : `🛡️ Manchi ${defName} con ${action.name} [${hitBreakdown}]`,
       def: isHit
-        ? `⚔️ ${attName} ti ha colpito con ${action.name} — ${damage} danni`
+        ? `⚔️ ${attName} ti ha colpito con ${action.name}${critTag}${dmgBreakdown} — ${damage} danni`
         : `🛡️ ${attName} ti ha mancato con ${action.name}`,
       attId: currentUser.uid, defId: targetId,
     };
 
+    const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage) };
         if (p.id === currentUser.uid) {
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1) };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -726,7 +789,7 @@ export default function Arena() {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
           logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: newTurnExpiry, logs: [...m.logs, log] };
     });
 
     const allDone = updatedMatches.every(m => m.status === "finished");
@@ -746,12 +809,13 @@ export default function Arena() {
   const handleShieldSkill = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
     const log = `🛡 ${myName} lancia Scudo! (+3 CA per 3 turni)`;
+    const shieldExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3 } : p
+        p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3, defensiveBonus: 0 } : p
       );
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: shieldExpiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -819,9 +883,9 @@ export default function Arena() {
         if (context === "con_poison") {
           delete up.pendingConSave;
           if (!pass) {
-            const poisonDmg = rollDamageFormula("2d6");
+            const { total: poisonDmg, rolls: pRolls } = rollDmg("2d6");
             up.hp = Math.max(0, (up.hp ?? 0) - poisonDmg);
-            logMsg += ` — Avvelenato! Subisce ${poisonDmg} danni da veleno.`;
+            logMsg += ` — Avvelenato! Subisce ${poisonDmg} danni da veleno [🎲${pRolls}].`;
           }
         }
         if (context === "dex_web") {
@@ -836,7 +900,7 @@ export default function Arena() {
           const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
           let nextIndex = (currentIndex + 1) % m.players.length;
           while (m.players[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
-          extraTurn = { turn: m.players[nextIndex].id };
+          extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString() };
         }
         return up;
       });
@@ -880,10 +944,140 @@ export default function Arena() {
       const currentIndex = m.players.findIndex(p => p.id === currentUser.uid);
       let nextIndex = (currentIndex + 1) % m.players.length;
       while (updatedPlayers[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
-      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIndex].id, logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
+
+  // ── ITEMS ──────────────────────────────────────────────────────────────────
+  const useItem = async (matchId, itemKey, targetId) => {
+    const myName  = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
+    const item    = ARENA_ITEMS.find(i => i.key === itemKey);
+    if (!item) return;
+    const expiry  = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+
+      // Decrement item use
+      const myP = m.players.find(p => p.id === currentUser.uid);
+      const curUses = myP?.itemUsesLeft?.[itemKey] ?? 0;
+      if (curUses <= 0) return m;
+
+      let log = "";
+      const updatedPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const newUses = { ...(p.itemUsesLeft || {}), [itemKey]: Math.max(0, curUses - 1) };
+          if (itemKey === "pozione_cura") {
+            const { total: heal, rolls: healRolls } = rollDmg("2d12");
+            const maxHp = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? 70;
+            const newHp = Math.min(maxHp, (p.hp || 0) + heal);
+            log = `🧪 ${myName} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP)`;
+            return { ...p, hp: newHp, itemUsesLeft: newUses };
+          }
+          if (itemKey === "pozione_veleno") {
+            log = `☠ ${myName} avvelena la propria arma — prossimo attacco +1d12`;
+            return { ...p, weaponPoisoned: true, itemUsesLeft: newUses };
+          }
+          return { ...p, itemUsesLeft: newUses };
+        }
+        if (itemKey === "bomba" && p.id === targetId) {
+          const { total: dmg, rolls: bombRolls } = rollDmg("3d10");
+          log = `💣 ${myName} lancia una Bomba su ${p.name} [🎲${bombRolls}=${dmg}] — ${dmg} danni!`;
+          return { ...p, hp: Math.max(0, p.hp - dmg) };
+        }
+        return p;
+      });
+
+      const alive = updatedPlayers.filter(p => p.hp > 0);
+      if (alive.length === 1) {
+        return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
+          logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      }
+      // Advance turn
+      const currentIdx = m.players.findIndex(p => p.id === currentUser.uid);
+      let nextIdx = (currentIdx + 1) % m.players.length;
+      while (updatedPlayers[nextIdx]?.hp <= 0) nextIdx = (nextIdx + 1) % m.players.length;
+      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIdx].id, turnExpiry: expiry, logs: [...m.logs, log] };
+    });
+
+    // Check tournament end
+    const allDone = updatedMatches.every(m => m.status === "finished");
+    const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
+    if (allDone && winners.length === 1) {
+      const champSnap = (arenaMeta.characterSnapshots || {})[winners[0]] || {};
+      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "");
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: winners[0], phase: "finished" });
+      return;
+    }
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── AUTO-PASS (turno scaduto → posizione difensiva) ──────────────────────
+  const lastAutoPassFireRef = useRef(0);
+
+  const handleArenaAutoPass = useCallback(async () => {
+    if (!arenaMeta?.matches) return;
+    const now = Date.now();
+    const expiredMatch = arenaMeta.matches.find(m => {
+      if (m.status !== "active" || !m.turn || !m.turnExpiry) return false;
+      return now >= new Date(m.turnExpiry).getTime();
+    });
+    if (!expiredMatch) return;
+
+    try {
+      const metaRef = doc(db, "arena_meta", "global");
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(metaRef);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const match = data.matches?.find(m => m.matchId === expiredMatch.matchId);
+        if (!match || match.status !== "active" || !match.turn || !match.turnExpiry) return;
+        if (Date.now() < new Date(match.turnExpiry).getTime()) return;
+        // Dedup: check lastAutoPassAt on this match
+        if (match.lastAutoPassAt && Date.now() - new Date(match.lastAutoPassAt).getTime() < 10000) return;
+
+        const currentTurnId = match.turn;
+        const currentPlayerObj = match.players.find(p => p.id === currentTurnId);
+        if (!currentPlayerObj) return;
+        const alivePlayers = match.players.filter(p => p.hp > 0);
+        const currentIdx = alivePlayers.findIndex(p => p.id === currentTurnId);
+        const nextIdx = (currentIdx + 1) % alivePlayers.length;
+        const nextTurnId = alivePlayers[nextIdx]?.id || null;
+
+        const updatedPlayers = match.players.map(p =>
+          p.id === currentTurnId ? { ...p, defensiveBonus: (p.defensiveBonus || 0) + 1 } : p
+        );
+        const autoLog = `🛡 ${currentPlayerObj.name} non ha agito — Posizione Difensiva (+1 CA)`;
+        const newExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+        const updatedMatch = {
+          ...match, players: updatedPlayers, turn: nextTurnId,
+          turnExpiry: newExpiry, lastAutoPassAt: new Date().toISOString(),
+          logs: [...match.logs, autoLog],
+        };
+        const updatedMatches = data.matches.map(m => m.matchId === expiredMatch.matchId ? updatedMatch : m);
+        transaction.update(metaRef, { matches: updatedMatches });
+      });
+    } catch (e) {
+      console.error("Errore auto-pass arena:", e);
+    }
+  }, [arenaMeta]);
+
+  useEffect(() => {
+    if (!arenaMeta || arenaMeta.phase !== "combat") return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const hasExpired = arenaMeta.matches?.some(m => {
+        if (m.status !== "active" || !m.turn || !m.turnExpiry) return false;
+        return now >= new Date(m.turnExpiry).getTime();
+      });
+      if (hasExpired && now - lastAutoPassFireRef.current > 10000) {
+        lastAutoPassFireRef.current = now;
+        handleArenaAutoPass();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [arenaMeta, handleArenaAutoPass]);
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
   if (!arenaMeta) return <div className="arena-loading">Ingresso nell'Arena...</div>;
@@ -1279,6 +1473,38 @@ export default function Arena() {
                   </div>
                 )}
 
+                {/* ── Sezione Oggetti ── */}
+                {(() => {
+                  const totalItems = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
+                  return (
+                    <>
+                      <div className="loadout-section-title">
+                        🎒 Oggetti — {totalItems}/2 <span className="loadout-optional">(scegli fino a 2, anche uguali)</span>
+                      </div>
+                      <div className="loadout-grid">
+                        {ARENA_ITEMS.map(item => {
+                          const count = pendingItemCounts[item.key] || 0;
+                          const canAdd = totalItems < 2;
+                          return (
+                            <div key={item.key} className={`loadout-item item-slot ${count > 0 ? "selected" : ""} ${!canAdd && count === 0 ? "disabled" : ""}`}>
+                              <span className="loadout-item-icon">{item.icon}</span>
+                              <span className="loadout-item-name">{item.name}</span>
+                              <span className="loadout-item-damage">{item.info}</span>
+                              <div className="item-counter-row">
+                                <button className="item-counter-btn" disabled={count === 0}
+                                  onClick={() => setPendingItemCounts(prev => ({ ...prev, [item.key]: Math.max(0, (prev[item.key] || 0) - 1) }))}>−</button>
+                                <span className="item-counter-val">{count}</span>
+                                <button className="item-counter-btn" disabled={!canAdd}
+                                  onClick={() => setPendingItemCounts(prev => ({ ...prev, [item.key]: Math.min(2, (prev[item.key] || 0) + 1) }))}>+</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
+
                 {/* Preview selezione */}
                 {(pendingWeapons.length > 0 || pendingSpells.length > 0) && (
                   <div className="loadout-selected-preview">
@@ -1472,6 +1698,15 @@ export default function Arena() {
                 {m.status === "active" && m.turn && (
                   <div className="turn-tracker">
                     Turno di: <strong>{m.players.find(p => p.id === m.turn)?.name || "?"}</strong>
+                    {m.turnExpiry && (() => {
+                      const msLeft = Math.max(0, new Date(m.turnExpiry).getTime() - Date.now());
+                      const h = Math.floor(msLeft / 3600000);
+                      const min = Math.floor((msLeft % 3600000) / 60000);
+                      const sec = Math.floor((msLeft % 60000) / 1000);
+                      const fmt = `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+                      const urgent = msLeft < 600000; // <10 min
+                      return <span className={`arena-turn-timer${urgent ? " urgent" : ""}`}>{fmt}</span>;
+                    })()}
                   </div>
                 )}
 
@@ -1515,6 +1750,12 @@ export default function Arena() {
                           )}
                           {(p.shieldSkillTurns ?? 0) > 0 && (
                             <div className="fighter-shield-skill-badge">🛡 Scudo ({p.shieldSkillTurns} turni)</div>
+                          )}
+                          {(p.defensiveBonus ?? 0) > 0 && (
+                            <div className="fighter-defensive-badge">🛡 Difensivo (+{p.defensiveBonus} CA)</div>
+                          )}
+                          {p.weaponPoisoned && (
+                            <div className="fighter-poison-badge">☠ Arma Avvelenata (+1d12)</div>
                           )}
 
                           {isMyMatch && m.status === "initiative" && p.id === currentUser?.uid && p.init === 0 && (
@@ -1765,6 +2006,38 @@ export default function Arena() {
                         <div className="no-target-msg">Nessun bersaglio disponibile.</div>
                       )
                     )}
+
+                    {/* ── Oggetti ── */}
+                    {(() => {
+                      const myItemKeys = arenaMeta.characterSnapshots?.[currentUser?.uid]?.selectedItemKeys || [];
+                      if (myItemKeys.length === 0) return null;
+                      const myItemUsesLeft = myPlayer?.itemUsesLeft || {};
+                      const itemCountsInSnap = {};
+                      myItemKeys.forEach(k => { itemCountsInSnap[k] = (itemCountsInSnap[k] || 0) + 1; });
+                      return (
+                        <div className="items-row">
+                          {Object.entries(itemCountsInSnap).map(([key]) => {
+                            const item   = ARENA_ITEMS.find(i => i.key === key);
+                            if (!item) return null;
+                            const uses   = myItemUsesLeft[key] ?? 0;
+                            const total  = itemCountsInSnap[key];
+                            const needsTarget = key === "bomba";
+                            const disabled    = uses <= 0 || (needsTarget && !chosenTargetId);
+                            return (
+                              <button key={key}
+                                className={`btn-item ${uses <= 0 ? "no-uses" : ""}`}
+                                disabled={disabled}
+                                title={item.info}
+                                onClick={() => useItem(m.matchId, key, needsTarget ? chosenTargetId : null)}>
+                                <span className="item-icon">{item.icon}</span>
+                                <span className="item-name">{item.name}</span>
+                                <span className="item-uses">{uses}/{total}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 

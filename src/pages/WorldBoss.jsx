@@ -76,6 +76,7 @@ export default function WorldBoss() {
 
   const [timeLeft, setTimeLeft] = useState(0);
   const [isUrgent, setIsUrgent] = useState(false);
+  const lastAutoFireRef = useRef(0);
 
   const handleManualTurnChange = async (newPhase) => {
     if (!isMaster) return;
@@ -180,6 +181,7 @@ export default function WorldBoss() {
   }, [turnState.phase, turnState.turnNumber, turnState?.expiryDate]);
 
   useEffect(() => {
+    lastAutoFireRef.current = 0;
     if (!turnState?.expiryDate || isBossDefeated || !fightStarted) {
       setTimeLeft(0);
       return;
@@ -199,9 +201,12 @@ export default function WorldBoss() {
 
       if (diff <= 0) {
         setTimeLeft(0);
-        clearInterval(interval);
         if (!isBossDefeated) {
-          handleAutoTurnChange();
+          const now2 = Date.now();
+          if (now2 - lastAutoFireRef.current > 12000) {
+            lastAutoFireRef.current = now2;
+            handleAutoTurnChange();
+          }
         }
       } else {
         setTimeLeft(diff);
