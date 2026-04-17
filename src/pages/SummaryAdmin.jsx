@@ -183,15 +183,23 @@ export default function SummaryAdmin() {
 
   return (
     <section className="admin-summary-page">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+      <Link to="/dm-admin" className="admin-back-link">
+        ← Dashboard Admin
+      </Link>
 
       <h1 className="admin-page-title">
         {isEditing ? "Modifica Riassunto" : "Aggiungi Riassunto"}
       </h1>
-      <div className="admin-divider"><span className="admin-divider-icon">📜</span></div>
+      <div className="admin-divider">
+        <span className="admin-divider-icon">📜</span>
+      </div>
 
       {status && (
-        <div className={status.startsWith("✅") ? "admin-status-ok" : "admin-status-err"}>
+        <div
+          className={
+            status.startsWith("✅") ? "admin-status-ok" : "admin-status-err"
+          }
+        >
           {status}
         </div>
       )}
@@ -200,37 +208,83 @@ export default function SummaryAdmin() {
         <h2 className="admin-section-title">
           {isEditing ? "Modifica Sessione" : "Nuova Sessione"}
         </h2>
-        <form onSubmit={isEditing ? handleUpdate : handleCreate} className="admin-form-grid">
+        <form
+          onSubmit={isEditing ? handleUpdate : handleCreate}
+          className="admin-form-grid"
+        >
           <div>
             <label>Titolo</label>
-            <input className="admin-field-input" type="text" name="title" value={formData.title} onChange={handleChange} required />
+            <input
+              className="admin-field-input"
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              required
+            />
           </div>
           <div>
             <label>Sottotitolo (Obia)</label>
-            <input className="admin-field-input" type="text" name="subTitle" value={formData.subTitle} onChange={handleChange} required />
+            <input
+              className="admin-field-input"
+              type="text"
+              name="subTitle"
+              value={formData.subTitle}
+              onChange={handleChange}
+              required
+            />
           </div>
           <div className="admin-form-row">
             <div>
               <label>Party</label>
-              <select className="admin-field-select" name="party" value={formData.party} onChange={handleChange}>
-                <option value="AMEA">AMEA (Garroth, Tanagar, Caius, Sylva)</option>
+              <select
+                className="admin-field-select"
+                name="party"
+                value={formData.party}
+                onChange={handleChange}
+              >
+                <option value="AMEA">
+                  AMEA (Garroth, Tanagar, Caius, Sylva)
+                </option>
                 <option value="LAC">LAC (Horn, Thoki, Cleofe)</option>
-                <option value="ENOX">ENOX (Roynox, Vyger, Temistocle, Dante, Khorvash)</option>
+                <option value="LEAF">LEAF (Soran, Makenna, Zenthir, Taaras)</option>
+                <option value="ENOX">
+                  ENOX (Roynot, Vyger, Temistocle, Dante, Timoty)
+                </option>
                 <option value="Unico">Storia del Mondo</option>
               </select>
             </div>
             <div>
               <label>Data (in gioco)</label>
-              <input className="admin-field-input" type="text" name="date" value={formData.date} onChange={handleChange} required />
+              <input
+                className="admin-field-input"
+                type="text"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
+              />
             </div>
           </div>
           <div>
             <label>Ordine (Numero)</label>
-            <input className="admin-field-input" type="number" name="order" value={formData.order} onChange={handleChange} required />
+            <input
+              className="admin-field-input"
+              type="number"
+              name="order"
+              value={formData.order}
+              onChange={handleChange}
+              required
+            />
           </div>
           <div>
             <label>Contenuto (HTML consentito)</label>
-            <HtmlToolbar textAreaRef={textAreaRef} formData={formData} setFormData={setFormData} fieldName="content" />
+            <HtmlToolbar
+              textAreaRef={textAreaRef}
+              formData={formData}
+              setFormData={setFormData}
+              fieldName="content"
+            />
             <textarea
               ref={textAreaRef}
               className="admin-field-textarea"
@@ -242,11 +296,23 @@ export default function SummaryAdmin() {
             />
           </div>
           <div className="btn-admin-actions">
-            <button type="submit" className="btn-admin-primary" disabled={loading}>
-              {loading ? "Caricamento..." : isEditing ? "Salva Modifiche" : "Crea Riassunto"}
+            <button
+              type="submit"
+              className="btn-admin-primary"
+              disabled={loading}
+            >
+              {loading
+                ? "Caricamento..."
+                : isEditing
+                  ? "Salva Modifiche"
+                  : "Crea Riassunto"}
             </button>
             {isEditing && (
-              <button type="button" onClick={handleReset} className="btn-admin-secondary">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="btn-admin-secondary"
+              >
                 Annulla
               </button>
             )}
@@ -256,22 +322,41 @@ export default function SummaryAdmin() {
 
       <div className="admin-item-list-card">
         <div style={{ padding: "0 18px" }}>
-          <h3 className="admin-section-title" style={{ marginTop: 18, marginBottom: 0 }}>
+          <h3
+            className="admin-section-title"
+            style={{ marginTop: 18, marginBottom: 0 }}
+          >
             Riassunti Esistenti
           </h3>
         </div>
         {loading && !summaries.length ? (
-          <p style={{ padding: "16px 18px", color: "#aaa" }}>Caricamento riassunti...</p>
+          <p style={{ padding: "16px 18px", color: "#aaa" }}>
+            Caricamento riassunti...
+          </p>
         ) : (
           summaries.map((s) => (
             <div key={s.id} className="admin-item-entry">
               <div className="admin-item-entry-label">
-                <strong>[{s.order}] {s.title}</strong>
-                <div className="admin-item-entry-meta">{s.party} — {s.date}</div>
+                <strong>
+                  [{s.order}] {s.title}
+                </strong>
+                <div className="admin-item-entry-meta">
+                  {s.party} — {s.date}
+                </div>
               </div>
               <div className="admin-item-entry-actions">
-                <button onClick={() => handleEdit(s.id)} className="btn-admin-edit">Modifica</button>
-                <button onClick={() => handleDelete(s.id)} className="btn-admin-danger">X</button>
+                <button
+                  onClick={() => handleEdit(s.id)}
+                  className="btn-admin-edit"
+                >
+                  Modifica
+                </button>
+                <button
+                  onClick={() => handleDelete(s.id)}
+                  className="btn-admin-danger"
+                >
+                  X
+                </button>
               </div>
             </div>
           ))
