@@ -567,6 +567,18 @@
   color: var(--red);
 }
 
+.turn-tracker.initiative-timer {
+  background: rgba(90, 30, 120, 0.06);
+  border-bottom-color: rgba(90, 30, 120, 0.15);
+  color: #5a1e78;
+}
+
+.turn-tracker.initiative-timer .arena-turn-timer {
+  color: #5a1e78;
+  background: rgba(90, 30, 120, 0.08);
+  border-color: rgba(90, 30, 120, 0.25);
+}
+
 .arena-turn-timer {
   margin-left: 10px;
   font-family: var(--font-title);
@@ -751,6 +763,82 @@
   border: 1px solid rgba(130, 10, 10, 0.12);
   border-radius: 8px;
   padding: 12px 14px;
+}
+
+/* ---- ACTION GROUPS (combattimento) ----------------------- */
+.action-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-group-label {
+  font-family: var(--font-title);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+}
+
+/* Armi mischia — rosso scuro */
+.action-group-label.melee {
+  background: rgba(130, 10, 10, 0.08);
+  color: #7a0808;
+  border: 1px solid rgba(130, 10, 10, 0.2);
+}
+
+/* Armi distanza — marrone/terra */
+.action-group-label.ranged {
+  background: rgba(160, 100, 10, 0.08);
+  color: #7a4a08;
+  border: 1px solid rgba(160, 100, 10, 0.22);
+}
+
+/* Trucchetti (lv0) — grigio */
+.action-group-label.spell-lv0 {
+  background: rgba(100, 100, 110, 0.1);
+  color: #555;
+  border: 1px solid rgba(100, 100, 110, 0.25);
+}
+
+/* Incantesimi lv1 — verde */
+.action-group-label.spell-lv1 {
+  background: rgba(39, 174, 96, 0.1);
+  color: #1a7a40;
+  border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+/* Incantesimi lv2 — blu */
+.action-group-label.spell-lv2 {
+  background: rgba(41, 128, 185, 0.1);
+  color: #1a5c8a;
+  border: 1px solid rgba(41, 128, 185, 0.3);
+}
+
+/* Incantesimi lv3 — viola */
+.action-group-label.spell-lv3 {
+  background: rgba(142, 68, 173, 0.1);
+  color: #6a1a8a;
+  border: 1px solid rgba(142, 68, 173, 0.3);
+}
+
+/* Abilità speciali — oro */
+.action-group-label.skill {
+  background: rgba(212, 175, 55, 0.1);
+  color: #7a5e10;
+  border: 1px solid rgba(212, 175, 55, 0.3);
 }
 
 /* ---- TARGET SELECTOR (FFA) -------------------------------- */
@@ -1875,7 +1963,15 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #6a0808;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+}
+
+.equip-panel-sub {
+  font-family: var(--font-text);
+  font-size: 0.73rem;
+  color: #555;
+  margin: 0 0 10px;
+  line-height: 1.4;
 }
 
 .equip-panel-weapons {
@@ -1886,19 +1982,26 @@
 }
 
 .equip-weapon-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
+  gap: 8px;
+  padding: 10px 14px;
   background: #fff;
-  border: 1px solid rgba(130, 10, 10, 0.22);
-  border-radius: 7px;
+  border: 2px solid rgba(130, 10, 10, 0.22);
+  border-radius: 9px;
   color: #6a0808;
   font-family: var(--font-title);
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   transition: 0.18s;
+  position: relative;
+  text-align: left;
+}
+
+.equip-weapon-btn:hover:not(.locked) {
+  border-color: var(--red);
+  background: rgba(130,10,10,0.05);
 }
 
 .equip-weapon-btn.sel {
@@ -1908,18 +2011,71 @@
 }
 
 .equip-weapon-btn.locked {
-  opacity: 0.4;
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
+.equip-w-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.equip-w-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.equip-w-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.equip-w-dmg {
+  font-size: 0.63rem;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.equip-check {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-left: auto;
+}
+
+.equip-locked-note {
+  font-size: 0.55rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .equip-2h-tag {
-  font-size: 0.56rem;
+  font-size: 0.58rem;
   font-weight: 600;
-  background: rgba(255,255,255,0.25);
+  background: rgba(130,10,10,0.12);
   border-radius: 4px;
-  padding: 1px 5px;
+  padding: 2px 6px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.equip-weapon-btn.sel .equip-2h-tag,
+.equip-weapon-btn.sel .equip-1h-tag {
+  background: rgba(255,255,255,0.25);
+}
+
+.equip-1h-tag {
+  font-size: 0.58rem;
+  font-weight: 600;
+  background: rgba(130,10,10,0.08);
+  border-radius: 4px;
+  padding: 2px 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .equip-shield-note {
@@ -2640,3 +2796,63 @@
   border-radius: 10px;
   padding: 1px 5px;
 }
+
+/* ── Smite glow effect ───────────────────────────────── */
+@keyframes smite-glow {
+  0%   { box-shadow: 0 0 4px 2px rgba(250,204,21,0.3), 0 0 8px 4px rgba(250,204,21,0.15); }
+  50%  { box-shadow: 0 0 12px 6px rgba(250,204,21,0.7), 0 0 24px 10px rgba(255,165,0,0.4); }
+  100% { box-shadow: 0 0 4px 2px rgba(250,204,21,0.3), 0 0 8px 4px rgba(250,204,21,0.15); }
+}
+@keyframes smite-weapon-shine {
+  0%   { filter: brightness(1) drop-shadow(0 0 0px gold); }
+  40%  { filter: brightness(1.6) drop-shadow(0 0 6px gold) drop-shadow(0 0 12px orange); }
+  100% { filter: brightness(1) drop-shadow(0 0 0px gold); }
+}
+.btn-action.skill[class*="smite"],
+.btn-action.skill:has(.action-name) {
+  position: relative;
+}
+.btn-action.smite-active {
+  animation: smite-glow 1.2s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(250,204,21,0.25), rgba(255,120,0,0.2)) !important;
+  border-color: rgba(250,204,21,0.6) !important;
+}
+.smite-active .action-icon {
+  animation: smite-weapon-shine 1.2s ease-in-out infinite;
+}
+
+/* ── Heal spell button ───────────────────────────────── */
+.btn-action.spell.heal {
+  background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(16,185,129,0.1));
+  border: 1px solid rgba(74,222,128,0.4);
+  color: #4ade80;
+}
+.btn-action.spell.heal:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(74,222,128,0.3), rgba(16,185,129,0.2));
+  border-color: #4ade80;
+}
+
+/* ── Control spell button ────────────────────────────── */
+.btn-action.spell.control {
+  background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(139,92,246,0.1));
+  border: 1px solid rgba(167,139,250,0.4);
+  color: #c4b5fd;
+}
+.btn-action.spell.control:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(167,139,250,0.3), rgba(139,92,246,0.2));
+  border-color: #a78bfa;
+}
+
+/* ── CA bonus display ────────────────────────────────── */
+.fighter-meta { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Save block control ──────────────────────────────── */
+.save-block.control {
+  background: rgba(139,92,246,0.15);
+  border: 1px solid rgba(139,92,246,0.4);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  text-align: center;
+}
+.save-block.control p { color: #c4b5fd; margin: 0 0 8px; font-size: 0.88rem; }
