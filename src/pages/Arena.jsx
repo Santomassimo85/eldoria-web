@@ -242,7 +242,8 @@ const ARENA_ITEMS = [
   { key: "pozione_veleno", name: "Pozione di Veleno", icon: "☠",  info: "+1d12 danno prossimo attacco · Passa turno", damage: "1d12" },
 ];
 
-const ARENA_TURN_DURATION = 1 * 60 * 1000; // 1 minuto per azione
+const ARENA_INITIATIVE_DURATION = 30 * 60 * 1000; // 30 minuti per tirare iniziativa
+const ARENA_TURN_DURATION       = 3 * 60 * 60 * 1000; // 3 ore per fare la propria azione
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -631,7 +632,7 @@ export default function Arena() {
           (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
           return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses };
         }),
-        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(),
+        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs:   ["⚔️ Il match ha inizio!"], winner: null,
         isFFA:  matchPlayerIds.length === 3,
       });
@@ -673,7 +674,7 @@ export default function Arena() {
         ...m, players: updatedPlayers,
         status:     allRolled ? "active" : "initiative",
         turn:       allRolled ? sorted[0].id : null,
-        turnExpiry: allRolled ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString() : (m.turnExpiry || new Date(Date.now() + ARENA_TURN_DURATION).toISOString()),
+        turnExpiry: allRolled ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString() : (m.turnExpiry || new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString()),
         logs:   [...m.logs, `🎲 ${mySnap?.name ?? "?"} tira iniziativa: ${roll}`],
       };
     });

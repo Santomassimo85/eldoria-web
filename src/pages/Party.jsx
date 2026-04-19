@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { db } from "../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import React from 'react';
 import ToggleSection from './ToggleSection';
 import './Party.css';
 
@@ -44,15 +42,6 @@ const CharacterCard = ({ character }) => (
 );
 
 export default function Party() {
-  const [npcs, setNpcs] = useState([]);
-
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "npcs"), (snap) => {
-      setNpcs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsub();
-  }, []);
-
   return (
     <section className="party-page">
 
@@ -96,38 +85,6 @@ export default function Party() {
         <ToggleSection title="Party Leaf  4/4">
           <div className="party-grid">
             {partyData.party4.map((char, i) => <CharacterCard key={i} character={char} />)}
-          </div>
-        </ToggleSection>
-      </div>
-
-      <hr />
-
-      {/* ---- NPC ---- */}
-      <div className="party-section">
-        <ToggleSection title="NPC ed Incontri Notevoli">
-          <div className="party-grid">
-            {npcs.length > 0 ? (
-              npcs.map((npc) => (
-                <div key={npc.id} className="character-card">
-                  <img
-                    src={npc.image || "/assets/player/default.png"}
-                    alt={npc.name}
-                    className="character-image"
-                  />
-                  <div className="character-info">
-                    <h4 className="character-name">{npc.name}</h4>
-                    <p className="npc-location">{npc.faction} · {npc.location}</p>
-                    {npc.description && (
-                      <p className="npc-desc">{npc.description}</p>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p style={{ textAlign: "center", width: "100%", color: "#999", fontStyle: "italic" }}>
-                Nessun NPC censito.
-              </p>
-            )}
           </div>
         </ToggleSection>
       </div>

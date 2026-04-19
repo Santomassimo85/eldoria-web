@@ -40,6 +40,7 @@ import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
+import NPC from "./pages/NPC";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
 
@@ -288,6 +289,7 @@ export default function App() {
 
           <NavDropdown label="Eroi" closeAll={closeMenu}>
             <NavLink to="/party">Party</NavLink>
+            <NavLink to="/npc">NPC</NavLink>
             <NavLink to="/riassunti">Riassunti</NavLink>
           </NavDropdown>
 
@@ -311,6 +313,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/party" element={<Party />} />
+          <Route path="/npc" element={<NPC />} />
           <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
