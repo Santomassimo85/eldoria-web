@@ -9,9 +9,14 @@ const getPartyByCharName = (name) => {
   const mapping = {
     "Tanagar": "AMEA",
     "Garroth": "AMEA",
+    "Timoty Bevibotte":"ENOX",
     "Caius Maxis-Richtofen": "AMEA",
     "Temistocle Sottocolle Milo": "ENOX",
-    "Vyger": "",
+    "Vyger": "ENOX",
+    "Makenna":"LEAF",
+    "Soran":"LEAF",
+    "Zenthir":"LEAF",
+    "Taaras Stormrage":"LEAF",
     "Roynot": "ENOX",
     "Dante": "ENOX"
   };

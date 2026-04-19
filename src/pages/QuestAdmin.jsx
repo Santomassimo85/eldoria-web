@@ -53,7 +53,7 @@ export default function QuestAdmin() {
     setLoading(true);
     try {
       // Logica per distinguere se il destinatario è un Party o un PG
-      const isParty = ["AMEA", "ENOX", "LAC"].includes(formData.targetCharacter);
+      const isParty = ["AMEA", "ENOX", "LAC", "LEAF"].includes(formData.targetCharacter);
       
       await addDoc(collection(db, "quests"), {
         ...formData,
@@ -149,6 +149,7 @@ export default function QuestAdmin() {
                 <option value="AMEA">Solo Party AMEA</option>
                 <option value="ENOX">Solo Party ENOX</option>
                 <option value="LAC">Solo Party LAC</option>
+                <option value="LEAF">Solo Party LEAF</option>
               </optgroup>
               <optgroup label="Personaggi">
                 {characters.map((char) => (
