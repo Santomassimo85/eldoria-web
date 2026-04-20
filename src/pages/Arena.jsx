@@ -689,7 +689,6 @@ export default function Arena() {
       waitingList:  arrayRemove(uid),
       participants: arrayUnion(uid),
     });
-    await awardArenaCoins(uid, 1); // 1 moneta per partecipazione
   };
 
   const startTournament = async () => {
@@ -728,7 +727,7 @@ export default function Arena() {
           return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses };
         }),
         status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
-        logs:   ["⚔️ Il match ha inizio!"], winner: null,
+        logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
         isFFA:  matchPlayerIds.length === 3,
       });
       i += matchPlayerIds.length;
@@ -785,6 +784,11 @@ export default function Arena() {
     const attName = attackerSnap?.name || "?";
     const defName = defenderSnap?.name || "?";
 
+    // 1 moneta al primo attacco del giocatore in questo match
+    const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
+    if (!_alreadyAwarded) await awardArenaCoins(currentUser.uid, 1);
+
     // Penalità ai tiri per colpire basata sull'armatura dell'attaccante
     const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
 
@@ -832,7 +836,8 @@ export default function Arena() {
           }
           return p;
         });
-        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, logs: [...m.logs, log] };
+        const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
+        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -855,7 +860,8 @@ export default function Arena() {
           if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
           return p;
         });
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: webExpiry, logs: [...m.logs, log] };
+        const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: webExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -879,12 +885,13 @@ export default function Arena() {
           if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
           return p;
         });
+        const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
         const alive = updatedPlayers.filter(p => p.hp > 0);
         if (alive.length === 1) {
           return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
-            logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+            participantsAwarded: pa, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, logs: [...m.logs, log] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
       const allDone = updatedMatches.every(m => m.status === "finished");
       const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
@@ -973,12 +980,16 @@ export default function Arena() {
         }
         return p;
       });
+      const newParticipantsAwarded = _alreadyAwarded
+        ? (m.participantsAwarded || [])
+        : [...(m.participantsAwarded || []), currentUser.uid];
       const alive = updatedPlayers.filter(p => p.hp > 0);
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
+          participantsAwarded: newParticipantsAwarded,
           logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: newTurnExpiry, logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: [...m.logs, log] };
     });
 
     await awardRoundCoins(updatedMatches);

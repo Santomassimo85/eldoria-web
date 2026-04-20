@@ -13,10 +13,10 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 // ── Unica fonte di verità per i party ─────────────────────────
 const PARTY_ROSTER = {
-  "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
+  "AMEA": ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
   "ENOX": ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger", "Timoty Bevibotte"],
   "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  "LEAF": ["Makenna", "Taaras Stormrage", "Soran", "Zethir"],
+  "LEAF": ["Makenna", "Taaras Stormrage", "Soran", "Zethir Nightwhisper"],
 };
 
 const getPartyByCharName = (name) => {
