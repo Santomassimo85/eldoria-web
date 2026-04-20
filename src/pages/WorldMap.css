@@ -1,582 +1,518 @@
+/* ============================================================
+   WORLD MAP — zoom/pan, light style
+   ============================================================ */
+
 .map-page {
-    padding: 20px;
-    background: #0a0a0a00;
-    min-height: 100vh;
+  padding: 100px 12px 60px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.map-container {
-    position: relative;
-    max-width: 1100px;
-    margin: 0 auto;
-    /* border: 4px solid #d4af37; */
-    border-radius: 10px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+.map-page-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.3rem, 4vw, 2.2rem);
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin: 0 0 4px;
+}
+
+/* ---- VIEWPORT --------------------------------------------- */
+.map-viewport {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 2px solid rgba(212,175,55,0.35);
+  box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.map-viewport:active { cursor: grabbing; }
+
+.map-inner {
+  position: relative;
+  width: 100%;
+  will-change: transform;
 }
 
 .world-map-img {
-    width: 100%;
-    display: block;
-    border-radius: 6px;
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+  pointer-events: none;
 }
 
-/* WorldMap.css */
-
-.boss-anchor {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    /* Opzionale: aggiungi una transizione fluida per la scomparsa */
-    transition: opacity 0.5s ease, visibility 0.5s ease;
+/* ---- RESET ZOOM ------------------------------------------- */
+.btn-reset-zoom {
+  background: #fff;
+  border: 1px solid #ccc;
+  color: #555;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-/* Se per qualche motivo il boss resta nell'array ma ha HP 0, 
-   forziamo la scomparsa totale tramite CSS */
-.boss-anchor:empty {
-    display: none;
+.btn-reset-zoom:hover { background: #f5f5f5; border-color: #aaa; }
+
+/* ---- ZOOM HINT -------------------------------------------- */
+.map-zoom-hint {
+  font-size: 0.7rem;
+  color: rgba(120,100,60,0.6);
+  text-align: center;
+  margin: 0;
 }
 
-.boss-anchor:hover .ping-tooltip {
-    visibility: visible;
-    opacity: 1;
-    bottom: 55px;
-
-    /* TRANSIZIONE PER L'APPARIZIONE (Quando entri col mouse) */
-    /* Qui il delay deve essere 0 altrimenti non appare subito */
-    transition: opacity 0.4s ease, visibility 0s linear 0s, bottom 0.4s ease;
+/* ============================================================
+   ANCHOR & PING BASE
+   ============================================================ */
+.map-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 10;
 }
 
-/* Stile del Ping */
+.ping {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.ping:hover { transform: scale(1.3); }
+
+/* Animated ring */
+.ping-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  animation: ring-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ring-pulse {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  60%  { transform: scale(2.2); opacity: 0;   }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+
+/* ---- BOSS ping  (rosso fluo) ------------------------------ */
 .boss-ping {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    cursor: pointer;
+  width: 14px;
+  height: 14px;
+  background: #ff2020;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 8px 2px rgba(255,30,30,0.9), 0 0 16px rgba(255,30,30,0.5);
 }
 
-.ping-visual {
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, #ff0000 30%, transparent 70%);
-    border: 2px solid rgb(255, 255, 255);
-    border-radius: 50%;
-    animation: radar-pulse 2s infinite;
+.boss-ring { border-color: rgba(255,30,30,0.7); }
+
+/* ---- CITY ping (verde fluo) ------------------------------- */
+.city-ping {
+  width: 14px;
+  height: 14px;
+  background: #39ff14;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 8px 2px rgba(57,255,20,0.9), 0 0 18px rgba(57,255,20,0.5);
 }
 
-@keyframes radar-pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.8);
-        transform: scale(1);
-    }
+.city-ring { border-color: rgba(57,255,20,0.7); }
 
-    70% {
-        box-shadow: 0 0 0 15px rgba(255, 0, 0, 0);
-        transform: scale(1.2);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-        transform: scale(1);
-    }
+.city-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  background: #fff;
+  color: #1a7000;
+  font-size: 0.55rem;
+  font-weight: 900;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  border: 1px solid #39ff14;
+  line-height: 1;
 }
 
-.ping-circle {
-    width: 100%;
-    height: 100%;
-    background: red;
-    border-radius: 50%;
-    border: 2px solid white;
-    /* L'animazione la mettiamo SOLO qui */
-    animation: pulse-red 1.5s infinite;
+/* ---- NPC free ping (ciano fluo) --------------------------- */
+.npc-ping {
+  width: 12px;
+  height: 12px;
+  background: #00f5ff;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 8px 2px rgba(0,245,255,0.9), 0 0 16px rgba(0,245,255,0.5);
 }
 
-@keyframes pulse-red {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
-    }
+.npc-ring { border-color: rgba(0,245,255,0.7); }
 
-    70% {
-        transform: scale(1.5);
-        box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
-    }
-
-    100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
-    }
+/* ============================================================
+   TOOLTIP BASE (light)
+   ============================================================ */
+.map-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
 }
 
-/* Tooltip (Nascosto di default) */
-.ping-tooltip {
-    visibility: hidden;
-    opacity: 0;
-    position: absolute;
-    bottom: 45px;
-    color: #fff;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 260px;
-    height: 280px;
-    /* border: 2px solid #d4af37; */
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-    overflow: hidden;
-    z-index: 50;
-    padding: 0;
-
-    /* TRANSIZIONE PER LA SCOMPARSA (Quando togli il mouse) */
-    /* Aspetta 2 secondi prima di mettere visibility a hidden */
-    transition: opacity 0.4s ease, visibility 0s linear 2s, bottom 0.4s ease;
+.map-anchor:hover .map-tooltip {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.18s ease, visibility 0s linear 0s;
 }
 
-.boss-ping:hover .ping-tooltip {
-    visibility: visible;
-    opacity: 1;
+/* ---- BOSS & NPC-free tooltip ----------------------------- */
+.boss-tooltip,
+.npc-tooltip {
+  width: 210px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  background: #fff;
 }
 
-
-
-.tooltip-image-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    /* Riempie senza distorcere */
-    display: block;
+.tooltip-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
 }
 
-.tooltip-image-container::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 80%;
-    /* Parte dal basso e sfuma verso l'alto */
-    background: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.8) 50%, rgba(0, 0, 0, 0) 100%);
-    z-index: 2;
-    /* Sta sopra l'immagine ma sotto i testi */
+.tooltip-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
 }
 
-.tooltip-content {
-    position: absolute;
-    /* Si sgancia dal flusso */
-    bottom: 0;
-    /* Si ancora in basso */
-    left: 0;
-    width: 100%;
-    padding: 20px;
-    color: #ccc;
-    /* Spazio interno per i testi */
-    box-sizing: border-box;
-    /* Include il padding nella larghezza */
-    z-index: 3;
-    /* Sta SOPRA il gradiente e l'immagine */
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    /* Spazio tra gli elementi */
+.tooltip-img-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
 }
 
-
-
-.gs-text {
-    color: #d4af37;
-    font-weight: bold;
-    margin: 5px 0;
+.tooltip-body {
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
 }
 
-.hp-mini-bar {
-    font-size: 0.8rem;
-    margin-bottom: 10px;
-    color: #ccc;
+.tooltip-name {
+  font-family: var(--font-title);
+  color: #2a1a0a;
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .gs-badge {
-    display: inline-block;
-    /* background: rgba(0, 0, 0, 0.7); Sfondo scuro per farlo risaltare */
-    color: #d4af37;
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    margin-bottom: 8px;
-    /* border: 1px solid #d4af37; */
-    font-weight: bold;
-    z-index: 5;
-    position: relative;
-    font-family: 'Almendra', serif;
-    /* font-weight: bold;
-    margin-bottom: 10px;
-    text-shadow: 1px 1px 2px rgb(74, 70, 70);
-    background: rgba(0, 0, 0, 0.524);
-    border-radius: 10px; */
+  color: #8a6500;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-.hp-info {
-    color: #ff4444;
-    font-weight: bold;
-    margin-bottom: 15px;
+.reward-box {
+  background: #fffbe8;
+  border: 1px solid rgba(200,150,10,0.35);
+  border-radius: 6px;
+  padding: 5px 8px;
 }
 
-.btn-go-fight {
-    background: #8b0000;
-    color: white;
-    border: none;
-    padding: 10px;
-    width: 100%;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: 0.2s;
-}
-
-.btn-go-fight:hover {
-    background: #ff0000;
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-    transform: translateY(-2px);
-    /* Piccolo salto all'hover */
-}
-
-
-.hp-container-mini {
-    width: 100%;
-    height: 10px;
-    background: rgba(0, 0, 0, 0.5);
-    /* Sfondo scuro per la parte vuota */
-    /* border: 1px solid #d4af37; */
-    border-radius: 5px;
-    margin: 10px 0 5px 0;
-    overflow: hidden;
-}
-
-/* Riempimento Rosso Solido */
-.hp-bar-fill-mini {
-    height: 100%;
-    background: #ff0000;
-    /* Rosso puro, senza gradiente */
-    transition: width 0.3s ease;
-}
-
-/* Testo HP sotto la barra */
-.hp-text-mini {
-    color: #ff4444;
-    font-weight: bold;
-    font-size: 0.9rem;
-    margin-bottom: 15px;
-    text-shadow: 1px 1px 2px #000;
-}
-
-.tooltip-content h3 {
-    color: #ffffff;
-    font-family: 'Almendra', serif;
-    font-weight: bold;
-    margin-bottom: 10px;
-    text-shadow: 1px 1px 2px rgb(74, 70, 70);
-    background: rgba(0, 0, 0, 0.524);
-    border-radius: 10px;
-}
-
-.boss-rewards-glow-box {
-    background: rgba(212, 175, 55, 0.15);
-    /* border: 2px solid #d4af37; */
-    border-radius: 8px;
-    padding: 10px;
-    margin: 10px auto;
-    max-width: 80%;
-    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
-    animation: rewards-pulse 2s infinite alternate;
-    text-align: center;
-}
-
-.rewards-label {
-    display: block;
-    font-family: 'Cinzel Decorative', serif;
-    font-weight: bold;
-    color: #d4af37;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+.reward-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #8a6500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
 }
 
 .reward-text {
-    color: #fff !important;
-    font-size: 1.1rem;
-    margin-top: 5px;
-    text-shadow: 1px 1px 2px #000;
-    font-style: italic;
-    background-color: #f3ca157e;
+  color: #4a3500;
+  font-size: 0.76rem;
+  margin: 0;
+  font-style: italic;
 }
 
-@keyframes rewards-pulse {
-    from {
-        box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
-        border-color: #d4af37;
-    }
-
-    to {
-        box-shadow: 0 0 25px rgba(212, 175, 55, 0.7);
-        border-color: #fff;
-    }
+.mini-timer {
+  font-size: 0.7rem;
+  color: #888;
 }
 
-/* WorldMap.css */
-
-.npc-anchor {
-    position: absolute;
-    width: 15px;
-    height: 15px;
-    transform: translate(-50%, -50%);
-    z-index: 9;
-    cursor: pointer;
+.hp-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
-.npc-ping-visual {
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, #1cfae7 30%, transparent 70%);
-    /* Oro per NPC */
-    border: 1px solid white;
-    border-radius: 50%;
-    animation: npc-pulse 2.5s infinite;
+.hp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c00, #ff4444);
+  border-radius: 3px;
+  transition: width 0.4s ease;
 }
 
-@keyframes npc-pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(6, 255, 243, 0.7);
-        transform: scale(1);
-    }
-
-    70% {
-        box-shadow: 0 0 0 10px rgba(55, 212, 178, 0);
-        transform: scale(1.1);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(55, 212, 160, 0.521);
-        transform: scale(1);
-    }
+.hp-label {
+  font-size: 0.7rem;
+  color: #c00;
+  font-weight: 600;
 }
 
-.npc-anchor:hover .npc-tooltip {
-    visibility: visible;
-    opacity: 1;
-    bottom: 40px;
+.btn-fight {
+  background: #b00000;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  width: 100%;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  transition: background 0.15s;
+  margin-top: 2px;
+  pointer-events: auto;
 }
 
-.npc-desc-mini {
-    font-size: 0.75rem;
-    font-style: italic;
-    color: #1d1515;
-    margin-top: 5px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
+.btn-fight:hover { background: #e00000; }
 
 .faction-badge {
-    color: var(--gold);
-    font-size: 0.8rem;
-    font-weight: bold;
-    text-transform: uppercase;
+  color: #1a8a8b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.city-anchor {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    z-index: 8;
+.loc-text {
+  color: #888;
+  font-size: 0.7rem;
+  margin: 0;
 }
 
-.city-ping {
-    width: 25px;
-    height: 25px;
-    background: url('/assets/icons/city-icon.png') no-repeat center;
-    /* Se hai un'icona città */
-    background-size: contain;
-    background-color: rgba(55, 212, 152, 0.8);
-    border: 2px solid white;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    box-shadow: 0 0 10px rgb(0, 255, 221);
-}
-
-.city-count {
-    font-size: 0.7rem;
-    font-weight: bold;
-    color: black;
-}
-
-/* Tooltip Hub */
+/* ---- CITY tooltip ---------------------------------------- */
 .city-tooltip {
-    visibility: hidden;
-    opacity: 0;
-    position: absolute;
-    bottom: 35px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(243, 237, 237, 0.95);
-    border-radius: 10px;
-    width: 220px;
-    padding: 10px;
-    z-index: 100;
-    transition: 0.3s;
+  width: 200px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.16);
 }
 
-.city-anchor:hover .city-tooltip {
-    visibility: visible;
-    opacity: 1;
+.city-tooltip-title {
+  font-family: var(--font-title);
+  color: #7a5c00;
+  text-align: center;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(200,150,10,0.25);
 }
 
-.city-title {
-    color: var(--gold);
-    text-align: center;
-    border-bottom: 1px solid #444;
-    margin-bottom: 8px;
-    font-family: 'Almendra', serif;
-}
-
-/* Lista NPC interna */
 .npc-scroll-list {
-    max-height: 200px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd transparent;
 }
 
 .npc-mini-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 248, 248, 0.05);
-    padding: 5px;
-    border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  padding: 5px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  pointer-events: auto;
+}
+
+.npc-mini-card:hover {
+  background: #fff8e8;
+  border-color: rgba(200,150,10,0.4);
 }
 
 .npc-mini-card img {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    object-fit: cover;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ddd;
+  flex-shrink: 0;
 }
 
 .npc-mini-info {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .npc-mini-info strong {
-    color: #0e0c0c;
+  color: #2a1a0a;
+  font-size: 0.72rem;
+  line-height: 1.2;
 }
 
 .npc-mini-info span {
-    color: rgb(219, 168, 1);
-    font-size: 0.65rem;
+  color: #9a7500;
+  font-size: 0.6rem;
 }
 
-/* Overlay di sfondo per focus */
-.npc-expanded-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(247, 247, 247, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    backdrop-filter: blur(4px);
+/* ============================================================
+   NPC DETAIL MODAL (light)
+   ============================================================ */
+.npc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 16px;
 }
 
-/* Modal del Dettaglio */
-.npc-detail-modal {
-    background: linear-gradient(145deg, #ffffff9c, #ffffff);
-    /* border: 2px solid var(--gold); */
-    border-radius: 15px;
-    width: 90%;
-    max-width: 500px;
-    padding: 25px;
-    position: relative;
-    box-shadow: 0 0 50px rgba(212, 175, 55, 0.3);
-    animation: modalAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+.npc-modal {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  padding: 22px;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  animation: modalPop 0.28s cubic-bezier(0.34,1.56,0.64,1);
 }
 
-@keyframes modalAppear {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-.close-modal {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    color: var(--gold);
-    font-size: 2rem;
-    cursor: pointer;
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #666;
+  font-size: 0.78rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
 }
 
-.modal-header {
-    display: flex;
-    gap: 20px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 15px;
-    margin-bottom: 15px;
+.modal-close:hover { background: #eee; }
+
+.modal-head {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eee;
 }
 
-.modal-header img {
-    width: 100px;
-    height: 100px;
-    border-radius: 10px;
-    /* border: 2px solid var(--gold); */
-    object-fit: cover;
+.modal-head img {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  flex-shrink: 0;
 }
 
-.header-text h2 {
-    margin: 0;
-    color: #3b0e0e;
-    font-family: 'Almendra', serif;
+.modal-head h2 {
+  font-family: var(--font-title);
+  color: #2a1a0a;
+  margin: 0 0 6px;
+  font-size: clamp(0.95rem, 3vw, 1.2rem);
+  line-height: 1.2;
 }
 
 .faction-tag {
-    color: var(--gold);
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.8rem;
+  display: inline-block;
+  color: #7a5c00;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #fffbe8;
+  border: 1px solid rgba(200,150,10,0.35);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-bottom: 4px;
+}
+
+.loc-tag {
+  color: #888;
+  font-size: 0.73rem;
+  margin: 3px 0 0;
 }
 
 .modal-body h4 {
-    color: var(--gold);
-    margin-bottom: 10px;
+  font-family: var(--font-title);
+  color: #7a5c00;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0 0 7px;
 }
 
 .modal-body p {
-    color: #4b3939;
-    line-height: 1.6;
-    font-style: italic;
-    white-space: pre-wrap;
-    /* Mantiene gli a capo del Master */
+  color: #444;
+  line-height: 1.65;
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+  margin: 0;
 }
 
-/* Evidenzia l'NPC selezionato nella lista */
-.npc-mini-card.active-npc {
-    border-color: #fff;
-    background: rgba(212, 175, 55, 0.2);
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 600px) {
+  .map-page { padding: 90px 8px 50px; }
+  .boss-tooltip, .npc-tooltip { width: 180px; }
+  .city-tooltip { width: 170px; }
 }

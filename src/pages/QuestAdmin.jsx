@@ -5,10 +5,26 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
 } from "firebase/firestore";
 import { Link } from "react-router-dom";
 import "./admin.css";
+
+// ── Unica fonte di verità per i party ─────────────────────────
+const PARTY_ROSTER = {
+  "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
+  "ENOX": ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger", "Timoty Bevibotte"],
+  "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
+  "LEAF": ["Makenna", "Taaras Stormrage", "Soran", "Zethir"],
+};
+
+const getPartyByCharName = (name) => {
+  for (const [party, members] of Object.entries(PARTY_ROSTER)) {
+    if (members.includes(name)) return party;
+  }
+  return "Senza Gruppo";
+};
 
 export default function QuestAdmin() {
   const [quests, setQuests] = useState([]);
@@ -91,6 +107,14 @@ export default function QuestAdmin() {
       await deleteDoc(doc(db, "quests", id));
       fetchData();
     }
+  };
+
+  const fixAcceptedParty = async (q) => {
+    if (!q.acceptedBy) return;
+    const correctedParty = getPartyByCharName(q.acceptedBy);
+    await updateDoc(doc(db, "quests", q.id), { acceptedParty: correctedParty });
+    fetchData();
+    alert(`Corretto: ${q.acceptedBy} → ${correctedParty}`);
   };
 
   return (
@@ -187,6 +211,11 @@ export default function QuestAdmin() {
               </div>
             </div>
             <div className="admin-item-entry-actions">
+              {q.acceptedBy && (!q.acceptedParty || q.acceptedParty === "Senza Gruppo") && (
+                <button onClick={() => fixAcceptedParty(q)} className="btn-admin-edit" title="Correggi party accettante">
+                  🔧 Correggi
+                </button>
+              )}
               <button onClick={() => handleDelete(q.id)} className="btn-admin-danger">Rimuovi</button>
             </div>
           </div>

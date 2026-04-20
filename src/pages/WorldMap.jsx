@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -6,174 +6,302 @@ import "./WorldMap.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { useAuth } from "../AuthContext";
 
-// --- CONFIGURAZIONE COORDINATE CITTA' ---
 const CITIES_HUB = [
-  { name: "Tirrendale", x: 50.55, y: 62.23 },
-  { name: "Helmvil", x: 53.87, y: 37.42 },
-  { name: "Yotta", x: 26.44, y: 31.82 },
+  { name: "Tirrendale",              x: 50.55, y: 62.23 },
+  { name: "Helmvil",                 x: 53.87, y: 37.42 },
+  { name: "Yotta",                   x: 26.44, y: 31.82 },
   { name: "Foresta del Tiglio Bianco", x: 23.40, y: 43.20 },
-  { name: "Castello Dorato", x: 67.53, y: 20.68 },
-  { name: "Gossvill", x: 86.37, y: 31.81 },
-  { name: "Clan dei Senza Onore", x: 26.82, y: 75.41 },
-  { name: "Clan dei Demoni Grigi", x: 44.32, y: 44.38 },
-  { name: "Nerocastello", x: 11.41, y: 35.18 },
-  { name: "Thenduin Village", x: 92.45, y: 30.12 },
-  { name: "Monaci delle Sabbie", x: 91.69, y: 41.26 },
-  { name: "Torre dell'Arcano", x: 72.29, y: 21.02 },
-  { name: "Tassio", x: 60.88, y: 53.40 },
-  { name: "Hopeclif", x: 74.38, y: 64.79 },
-    { name: "Ganno", x: 64.55, y: 37.97 }
-
+  { name: "Castello Dorato",         x: 67.53, y: 20.68 },
+  { name: "Gossvill",                x: 86.37, y: 31.81 },
+  { name: "Clan dei Senza Onore",    x: 26.82, y: 75.41 },
+  { name: "Clan dei Demoni Grigi",   x: 44.32, y: 44.38 },
+  { name: "Nerocastello",            x: 11.41, y: 35.18 },
+  { name: "Thenduin Village",        x: 92.45, y: 30.12 },
+  { name: "Monaci delle Sabbie",     x: 91.69, y: 41.26 },
+  { name: "Torre dell'Arcano",       x: 72.29, y: 21.02 },
+  { name: "Tassio",                  x: 60.88, y: 53.40 },
+  { name: "Hopeclif",                x: 74.38, y: 64.79 },
+  { name: "Ganno",                   x: 64.55, y: 37.97 },
+  { name: "Inss",                    x: 58.16, y: 75.81 },
+  { name: "Nølborg",                 x: 19.56, y: 38.55 },
+  { name: "Plia",                    x: 25.42, y: 50.47 },
 ];
 
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 5;
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+
 export default function WorldMap() {
   const [activeBosses, setActiveBosses] = useState([]);
-  const [npcs, setNpcs] = useState([]);
-  const [selectedNpc, setSelectedNpc] = useState(null); // Stato per l'NPC espanso
-  
-  const navigate = useNavigate();
+  const [npcs, setNpcs]                 = useState([]);
+  const [selectedNpc, setSelectedNpc]   = useState(null);
+  const [zoom, setZoom]                 = useState(1);
+  const [pan, setPan]                   = useState({ x: 0, y: 0 });
+
+  const viewportRef   = useRef(null);
+  const isDragging    = useRef(false);
+  const lastPointer   = useRef({ x: 0, y: 0 });
+  const lastTouchDist = useRef(null);
+  const zoomRef       = useRef(1);
+
+  const navigate    = useNavigate();
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
+  // Firebase
   useEffect(() => {
-    // Listener Boss attivi
-    const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) => {
-      setActiveBosses(
-        snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((b) => b.isActive && b.hp > 0)
-      );
-    });
+    const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) =>
+      setActiveBosses(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(b => b.isActive && b.hp > 0))
+    );
+    const unsubNpc = onSnapshot(collection(db, "npcs"), (snap) =>
+      setNpcs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    );
+    return () => { unsubBoss(); unsubNpc(); };
+  }, []);
 
-    // Listener NPC
-    const unsubNpc = onSnapshot(collection(db, "npcs"), (snap) => {
-      setNpcs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+  // Wheel zoom (passive: false required)
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.12 : 0.9;
+      setZoom(prev => {
+        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev * factor));
+        if (next <= MIN_ZOOM + 0.01) { setPan({ x: 0, y: 0 }); return MIN_ZOOM; }
+        return next;
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
-    return () => {
-      unsubBoss();
-      unsubNpc();
+  // Touch — prevent page scroll while interacting with map
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const prevent = (e) => { if (e.touches.length > 1) e.preventDefault(); };
+    el.addEventListener("touchmove", prevent, { passive: false });
+    return () => el.removeEventListener("touchmove", prevent);
+  }, []);
+
+  const clampPan = useCallback((x, y) => {
+    const el = viewportRef.current;
+    if (!el) return { x, y };
+    const z = zoomRef.current;
+    const maxX = (el.offsetWidth  * (z - 1)) / 2;
+    const maxY = (el.offsetHeight * (z - 1)) / 2;
+    return {
+      x: Math.min(maxX, Math.max(-maxX, x)),
+      y: Math.min(maxY, Math.max(-maxY, y)),
     };
   }, []);
 
-  // Funzione per gestire l'apertura del dettaglio NPC
-  const handleNpcClick = (e, npc) => {
-    e.stopPropagation();
-    setSelectedNpc(npc);
+  // Mouse events
+  const onMouseDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    isDragging.current = true;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const onMouseMove = useCallback((e) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastPointer.current.x;
+    const dy = e.clientY - lastPointer.current.y;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+    setPan(prev => clampPan(prev.x + dx, prev.y + dy));
+  }, [clampPan]);
+
+  const onMouseUp = useCallback(() => { isDragging.current = false; }, []);
+
+  // Touch events
+  const onTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      lastTouchDist.current = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    } else {
+      isDragging.current = true;
+      lastPointer.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, []);
+
+  const onTouchMove = useCallback((e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (lastTouchDist.current) {
+        const factor = dist / lastTouchDist.current;
+        setZoom(prev => {
+          const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev * factor));
+          if (next <= MIN_ZOOM + 0.01) { setPan({ x: 0, y: 0 }); return MIN_ZOOM; }
+          return next;
+        });
+      }
+      lastTouchDist.current = dist;
+    } else if (isDragging.current && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - lastPointer.current.x;
+      const dy = e.touches[0].clientY - lastPointer.current.y;
+      lastPointer.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      setPan(prev => clampPan(prev.x + dx, prev.y + dy));
+    }
+  }, [clampPan]);
+
+  const onTouchEnd = useCallback(() => {
+    isDragging.current = false;
+    lastTouchDist.current = null;
+  }, []);
+
+  const resetZoom = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+
+  const handleNpcClick = (e, npc) => { e.stopPropagation(); setSelectedNpc(npc); };
+
+  const innerStyle = {
+    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+    transformOrigin: "center center",
+    transition: isDragging.current ? "none" : "transform 0.08s ease-out",
   };
 
   return (
     <div className="map-page">
-      <h1 className="gold-text" style={{ textAlign: "center" }}>
-        Mappa delle Minacce di Exanthia
-      </h1>
+      <h1 className="map-page-title">Mappa di Exanthia</h1>
 
-      <div className="map-container">
-        <img src="/assets/Exanthia.jpg" className="world-map-img" alt="Mappa Mondo" />
+      <div
+        ref={viewportRef}
+        className={`map-viewport${zoom > 1 ? " is-zoomed" : ""}`}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div className="map-inner" style={innerStyle}>
+          <img src="/assets/Exanthia.jpg" className="world-map-img" alt="Mappa Mondo" draggable={false} />
 
-        {/* 1. RENDER BOSS (Ping Rossi) */}
-        {activeBosses.map((boss) => (
-          <div key={boss.id} className="boss-anchor" style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}>
-            <div className="ping-visual"></div>
-            <div className="ping-tooltip">
-              <div className="tooltip-image-container">
-                <img src={boss.imageUrl} alt={boss.name} />
+          {/* BOSS (Ping Rossi) */}
+          {activeBosses.map((boss) => (
+            <div key={boss.id} className="map-anchor boss-anchor"
+              style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}>
+              <div className="ping boss-ping">
+                <div className="ping-ring boss-ring" />
               </div>
-              <div className="tooltip-content">
-                <h3>{boss.name}</h3>
-                <span className="gs-badge">GS {boss.gradoSfida || "??"}</span>
-                {boss.rewards && (
-                  <div className="map-reward-box">
-                    <span className="reward-label">🎁 RICOMPENSA</span>
-                    <p className="reward-text">{boss.rewards}</p>
-                  </div>
-                )}
-                <div className="mini-timer">⏳ <TimerDisplay expiryDate={boss.expiryDate} /></div>
-                <div className="hp-container-mini">
-                  <div className="hp-bar-fill-mini" style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }}></div>
+              <div className="map-tooltip boss-tooltip">
+                <div className="tooltip-img-wrap">
+                  <img src={boss.imageUrl} alt={boss.name} />
+                  <div className="tooltip-img-fade" />
                 </div>
-                <div className="hp-info">{isMaster ? `❤️ ${boss.hp}/${boss.maxHp}` : "❤️ Stato Salute"}</div>
-                <button className="btn-go-fight" onClick={() => navigate("/world-boss-fight")}>⚔️ COMBATTI</button>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* 2. RENDER CITTA' HUB (Ping raggruppati) */}
-        {CITIES_HUB.map((city) => {
-          const localNpcs = npcs.filter((n) => n.linkedCity === city.name);
-          if (localNpcs.length === 0) return null;
-
-          return (
-            <div key={city.name} className="city-anchor" style={{ left: `${city.x}%`, top: `${city.y}%` }}>
-              <div className="city-ping">
-                <span className="city-count">{localNpcs.length}</span>
-              </div>
-              <div className="city-tooltip">
-                <h4 className="city-title">{city.name}</h4>
-                <div className="npc-scroll-list">
-                  {localNpcs.map((npc) => (
-                    <div 
-                      key={npc.id} 
-                      className="npc-mini-card" 
-                      onClick={(e) => handleNpcClick(e, npc)}
-                    >
-                      <img src={npc.image || "/assets/player/default.png"} alt={npc.name} />
-                      <div className="npc-mini-info">
-                        <strong>{npc.name}</strong>
-                        <span>{npc.faction}</span>
-                      </div>
+                <div className="tooltip-body">
+                  <h3 className="tooltip-name">{boss.name}</h3>
+                  <span className="gs-badge">GS {boss.gradoSfida || "??"}</span>
+                  {boss.rewards && (
+                    <div className="reward-box">
+                      <span className="reward-label">🎁 Ricompensa</span>
+                      <p className="reward-text">{boss.rewards}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* 3. RENDER NPC LIBERI (Ping Gialli individuali) */}
-        {npcs
-          .filter((n) => !n.linkedCity && n.mapX && n.mapY)
-          .map((npc) => (
-            <div 
-              key={npc.id} 
-              className="npc-anchor" 
-              style={{ left: `${npc.mapX}%`, top: `${npc.mapY}%` }}
-              onClick={(e) => handleNpcClick(e, npc)}
-            >
-              <div className="npc-ping-visual"></div>
-              <div className="ping-tooltip npc-tooltip">
-                <div className="tooltip-image-container">
-                  <img src={npc.image || "/assets/player/default.png"} alt={npc.name} />
-                </div>
-                <div className="tooltip-content">
-                  <h3>{npc.name}</h3>
-                  <span className="faction-badge">{npc.faction}</span>
-                  <p className="npc-loc-text">📍 {npc.location}</p>
+                  )}
+                  <div className="mini-timer">⏳ <TimerDisplay expiryDate={boss.expiryDate} /></div>
+                  <div className="hp-bar-wrap">
+                    <div className="hp-bar-fill" style={{ width: `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` }} />
+                  </div>
+                  <div className="hp-label">{isMaster ? `❤️ ${boss.hp}/${boss.maxHp}` : "❤️ Stato Salute"}</div>
+                  <button className="btn-fight" onClick={() => navigate("/world-boss-fight")}>⚔️ COMBATTI</button>
                 </div>
               </div>
             </div>
           ))}
-      </div>
 
-      {/* MODAL DETTAGLIO NPC (ESPANSIONE) */}
-      {selectedNpc && (
-        <div className="npc-expanded-overlay" onClick={() => setSelectedNpc(null)}>
-          <div className="npc-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-modal" onClick={() => setSelectedNpc(null)}>×</button>
-            <div className="modal-header">
-              <img src={selectedNpc.image || "/assets/player/default.png"} alt={selectedNpc.name} />
-              <div className="header-text">
-                <h2>{selectedNpc.name}</h2>
-                <span className="faction-tag">{selectedNpc.faction}</span>
-                <p className="loc-tag">📍 {selectedNpc.location}</p>
+          {/* CITTÀ HUB (Ping raggruppati) */}
+          {CITIES_HUB.map((city) => {
+            const localNpcs = npcs.filter(n => n.linkedCity === city.name);
+            if (localNpcs.length === 0) return null;
+            return (
+              <div key={city.name} className="map-anchor city-anchor"
+                style={{ left: `${city.x}%`, top: `${city.y}%` }}>
+                <div className="ping city-ping">
+                  <div className="ping-ring city-ring" />
+                  <span className="city-count">{localNpcs.length}</span>
+                </div>
+                <div className="map-tooltip city-tooltip">
+                  <h4 className="city-tooltip-title">{city.name}</h4>
+                  <div className="npc-scroll-list">
+                    {localNpcs.map(npc => (
+                      <div key={npc.id} className="npc-mini-card" onClick={(e) => handleNpcClick(e, npc)}>
+                        <img src={npc.image || "/assets/player/default.png"} alt={npc.name} />
+                        <div className="npc-mini-info">
+                          <strong>{npc.name}</strong>
+                          <span>{npc.faction}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* NPC LIBERI */}
+          {npcs.filter(n => !n.linkedCity && n.mapX && n.mapY).map(npc => (
+            <div key={npc.id} className="map-anchor npc-anchor"
+              style={{ left: `${npc.mapX}%`, top: `${npc.mapY}%` }}
+              onClick={(e) => handleNpcClick(e, npc)}>
+              <div className="ping npc-ping">
+                <div className="ping-ring npc-ring" />
+              </div>
+              <div className="map-tooltip npc-tooltip">
+                <div className="tooltip-img-wrap">
+                  <img src={npc.image || "/assets/player/default.png"} alt={npc.name} />
+                  <div className="tooltip-img-fade" />
+                </div>
+                <div className="tooltip-body">
+                  <h3 className="tooltip-name">{npc.name}</h3>
+                  {npc.faction && <span className="faction-badge">{npc.faction}</span>}
+                  {npc.location && <p className="loc-text">📍 {npc.location}</p>}
+                </div>
               </div>
             </div>
-            <div className="modal-body">
-              <h4>Biografia e Note</h4>
-              <p>{selectedNpc.description || "Nessuna informazione aggiuntiva disponibile."}</p>
+          ))}
+        </div>
+      </div>
+
+      {/* Reset zoom button */}
+      {zoom > 1 && (
+        <button className="btn-reset-zoom" onClick={resetZoom} title="Reimposta zoom">
+          ✕ Reset zoom
+        </button>
+      )}
+
+      {/* Hint zoom */}
+      <p className="map-zoom-hint">
+        🖱 Scorri per zoomare · Trascina per spostarti · 📱 Pizzica per zoomare
+      </p>
+
+      {/* MODAL DETTAGLIO NPC */}
+      {selectedNpc && (
+        <div className="npc-overlay" onClick={() => setSelectedNpc(null)}>
+          <div className="npc-modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedNpc(null)}>✕</button>
+            <div className="modal-head">
+              <img src={selectedNpc.image || "/assets/player/default.png"} alt={selectedNpc.name} />
+              <div>
+                <h2>{selectedNpc.name}</h2>
+                {selectedNpc.faction  && <span className="faction-tag">{selectedNpc.faction}</span>}
+                {selectedNpc.location && <p className="loc-tag">📍 {selectedNpc.location}</p>}
+                {selectedNpc.linkedCity && <p className="loc-tag">🏰 {selectedNpc.linkedCity}</p>}
+              </div>
             </div>
+            {selectedNpc.description && (
+              <div className="modal-body">
+                <h4>Note</h4>
+                <p>{selectedNpc.description}</p>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -3,70 +3,51 @@ import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import "./admin.css";
 import {
-  collection,
-  onSnapshot,
-  doc,
-  getDoc,
-  updateDoc,
-  query,
-  where,
-  getDocs,
-  writeBatch,
-  serverTimestamp
+  collection, onSnapshot, doc, getDoc,
+  updateDoc, query, where, getDocs,
+  writeBatch, serverTimestamp
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
-// --- TABELLA GRUPPI STATICA (Deve essere identica ovunque) ---
-const getPartyByCharName = (name) => {
-  const mapping = {
-    "Tanagar": "AMEA",
-    "Garroth": "AMEA",
-    "Caius Maxis-Richtofen": "AMEA",
-    "Temistocle Sottocolle Milo": "ENOX",
-    "Dante": "ENOX",
-    "Roynot": "ENOX", 
-    "Vyger": "ENOX",
-    "Horn":"LAC",
-    "Thinkle Muschioverde":"LAC",
-    "Cleofe":"LAC",
-    "Makenna":"LEAF",
-  };
-  return mapping[name] || "Senza Gruppo";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+// ── Unica fonte di verità per i party ─────────────────────────
+const PARTY_ROSTER = {
+  "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
+  "ENOX": ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger", "Timoty Bevibotte"],
+  "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
+  "LEAF": ["Makenna", "Taaras Stormrage", "Soran", "Zethir"],
 };
 
-// Mappatura per sapere a chi inviare le notifiche di gruppo
-const PARTY_MEMBERS = {
-  "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
-  "ENOX": ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger"],
-  "LAC": ["Horn", "Thinkle Muschioverde", "Cleofe"]
+const getPartyByCharName = (name) => {
+  for (const [party, members] of Object.entries(PARTY_ROSTER)) {
+    if (members.includes(name)) return party;
+  }
+  return "Senza Gruppo";
 };
 
 export default function Bacheca() {
   const navigate = useNavigate();
-  const MASTER_EMAIL = "santomassimo85@gmail.com";
-  
-  const [quests, setQuests] = useState([]);
+  const [quests, setQuests]           = useState([]);
   const [userCharName, setUserCharName] = useState("");
-  const [userParty, setUserParty] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [hoveredQuestId, setHoveredQuestId] = useState(null);
+  const [userParty, setUserParty]     = useState("");
+  const [loading, setLoading]         = useState(true);
+  const [hoveredId, setHoveredId]     = useState(null);
 
   const { currentUser } = useAuth();
-  const isMaster = currentUser && currentUser.email === MASTER_EMAIL;
+  const isMaster = currentUser?.email === MASTER_EMAIL;
 
   useEffect(() => {
-    if (currentUser) {
-      const fetchUserChar = async () => {
-        const userRef = doc(db, "characters", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const charName = userSnap.data().name || "Eroe";
-          setUserCharName(charName);
-          setUserParty(getPartyByCharName(charName)); 
-        }
-      };
-      fetchUserChar();
-    }
+    if (!currentUser) return;
+    const fetchUserChar = async () => {
+      const snap = await getDoc(doc(db, "characters", currentUser.uid));
+      if (snap.exists()) {
+        const name = snap.data().name || "";
+        setUserCharName(name);
+        setUserParty(getPartyByCharName(name));
+      }
+    };
+    fetchUserChar();
   }, [currentUser]);
 
   useEffect(() => {
@@ -77,125 +58,175 @@ export default function Bacheca() {
     return () => unsub();
   }, []);
 
-  // --- LOGICA NOTIFICHE E STATO ---
-  const toggleQuestStatus = async (quest, status) => {
+  // ── Accetta / Rilascia ─────────────────────────────────────
+  const toggleQuestStatus = async (quest, accept) => {
     try {
-      const batch = writeBatch(db);
+      const batch    = writeBatch(db);
       const questRef = doc(db, "quests", quest.id);
 
-      // 1. Aggiorna la Quest
       batch.update(questRef, {
-        acceptedBy: status ? userCharName : null,
-        acceptedParty: status ? userParty : null,
-        status: status ? "in_progress" : "available"
+        acceptedBy:    accept ? userCharName : null,
+        acceptedParty: accept ? userParty    : null,
+        status:        accept ? "in_progress" : "available",
       });
 
-      // 2. Crea Notifiche se la missione viene ACCETTATA
-      if (status === true) {
-        // Se è una quest indirizzata a un Party specifico (es. AMEA)
-        if (quest.targetParty && quest.targetParty !== "All") {
-          const membersNames = PARTY_MEMBERS[quest.targetParty] || [];
-          
-          // Cerchiamo gli UID di tutti i membri del party nel DB
+      if (accept) {
+        const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
+        const membersNames = isPartyQuest ? (PARTY_ROSTER[quest.targetParty] || []) : [];
+
+        if (membersNames.length > 0) {
           const charQuery = query(collection(db, "characters"), where("name", "in", membersNames));
           const charSnaps = await getDocs(charQuery);
-
           charSnaps.forEach((memberDoc) => {
             const notifyRef = doc(collection(db, "notifications"));
             batch.set(notifyRef, {
-              userId: memberDoc.id,
-              title: "⚔️ Missione di Gruppo!",
-              message: `${userCharName} ha accettato "${quest.title}" per il party ${userParty}. Preparatevi!`,
-              read: false,
-              timestamp: serverTimestamp()
+              userId:    memberDoc.id,
+              title:     "⚔️ Missione di Gruppo!",
+              message:   `${userCharName} ha accettato "${quest.title}" per il party ${userParty}. Preparatevi!`,
+              read:      false,
+              timestamp: serverTimestamp(),
             });
           });
         } else {
-          // Notifica singola (Quest pubblica o privata)
           const notifyRef = doc(collection(db, "notifications"));
           batch.set(notifyRef, {
-            userId: currentUser.uid,
-            title: "📜 Incarico Accettato",
-            message: `Hai preso in carico la missione: "${quest.title}".`,
-            read: false,
-            timestamp: serverTimestamp()
+            userId:    currentUser.uid,
+            title:     "📜 Incarico Accettato",
+            message:   `Hai preso in carico la missione: "${quest.title}".`,
+            read:      false,
+            timestamp: serverTimestamp(),
           });
         }
       }
 
       await batch.commit();
-    } catch (error) {
-      console.error("Errore gestione incarico:", error);
+    } catch (err) {
+      console.error("Errore gestione incarico:", err);
     }
   };
 
-  const visibleQuests = quests.filter((q) => {
-    if (isMaster) return true;
-    if (q.targetCharacter && q.targetCharacter !== "All") return q.targetCharacter === userCharName;
-    if (q.targetParty && q.targetParty !== "All") return q.targetParty === userParty;
-    return true;
-  });
+  // ── Visibilità e permessi ──────────────────────────────────
+  // visible:  la missiva compare in bacheca
+  // canOpen:  puoi cliccare e aprire i dettagli
+  // sealed:   vedi solo l'icona (quest party accettata da altri)
+  const questEntries = quests.map((quest) => {
+    const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
+    const isCharQuest  = quest.targetCharacter && quest.targetCharacter !== "All";
 
+    let visible = false, canOpen = false, sealed = false;
+
+    if (isMaster) {
+      visible = true; canOpen = true;
+    } else if (isCharQuest) {
+      visible = quest.targetCharacter === userCharName;
+      canOpen = visible;
+    } else if (isPartyQuest) {
+      const isMyParty = quest.targetParty === userParty;
+      if (isMyParty) {
+        visible = true; canOpen = true;
+      } else if (quest.acceptedBy) {
+        // Accettata da un altro party → scroll sigillato visibile a tutti
+        visible = true; canOpen = false; sealed = true;
+      }
+      // Non mio party + non ancora accettata → completamente nascosta
+    } else {
+      // Generale
+      visible = true; canOpen = true;
+    }
+
+    return { ...quest, _canOpen: canOpen, _sealed: sealed, _visible: visible };
+  }).filter(q => q._visible);
+
+  // ── Render ─────────────────────────────────────────────────
   return (
     <section className="bacheca-page">
       <h1 className="bacheca-title">Hemile's Board</h1>
-      <p className="bacheca-subtitle">Bentornato, {userCharName} ({userParty})</p>
+      <p className="bacheca-subtitle">
+        Bentornato, {userCharName || "Avventuriero"}
+        {userParty && userParty !== "Senza Gruppo" ? ` — Party ${userParty}` : ""}
+      </p>
 
       {loading ? (
         <p style={{ textAlign: "center" }}>Caricamento pergamene...</p>
       ) : (
-        <div className="scrolls-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
-          {visibleQuests.map((quest) => {
-            const isAccepted = quest.acceptedBy != null;
-            const isAcceptedByMe = quest.acceptedBy === userCharName;
+        <div className="scrolls-container" style={{ display: "flex", flexWrap: "wrap", gap: "20px", justifyContent: "center" }}>
+          {questEntries.map((quest) => {
+            const isAccepted        = !!quest.acceptedBy;
+            const isAcceptedByMe    = quest.acceptedBy === userCharName;
             const isAcceptedByMyParty = quest.acceptedParty === userParty;
-            const isPrivate = quest.targetCharacter && quest.targetCharacter !== "All";
-            const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
+            const isPartyQuest      = quest.targetParty && quest.targetParty !== "All";
+            const isPrivate         = quest.targetCharacter && quest.targetCharacter !== "All";
+            const isHovered         = hoveredId === quest.id;
+
+            // Scroll sigillato: mostra solo l'icona senza interazione
+            if (quest._sealed) {
+              return (
+                <div key={quest.id} style={{ textAlign: "center", width: "200px", opacity: 0.5 }}>
+                  <img src="/closedScroll.png" alt="Missiva sigillata" style={{ width: "150px", filter: "grayscale(1)" }} />
+                  <p style={{ fontSize: "0.75rem", color: "#888", marginTop: 4, fontStyle: "italic" }}>
+                    🔒 In carico al gruppo {quest.acceptedParty}
+                  </p>
+                </div>
+              );
+            }
 
             return (
               <div
                 key={quest.id}
                 className={`scroll-item ${isAccepted ? "accepted" : ""}`}
-                onClick={() => navigate(`/quest/${quest.id}`)}
-                onMouseEnter={() => setHoveredQuestId(quest.id)}
-                onMouseLeave={() => setHoveredQuestId(null)}
-                style={{ textAlign: 'center', cursor: 'pointer', width: '200px' }}
+                onClick={() => quest._canOpen && navigate(`/quest/${quest.id}`)}
+                onMouseEnter={() => quest._canOpen && setHoveredId(quest.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                style={{
+                  textAlign: "center",
+                  cursor: quest._canOpen ? "pointer" : "default",
+                  width: "200px",
+                }}
               >
                 <img
-                  src={isAccepted || hoveredQuestId === quest.id ? "/openScroll.png" : "/closedScroll.png"}
+                  src={isAccepted || isHovered ? "/openScroll.png" : "/closedScroll.png"}
                   alt="Scroll"
-                  style={{ width: '150px', filter: isAccepted ? 'grayscale(1)' : 'none' }}
+                  style={{ width: "150px", filter: isAccepted ? "grayscale(0.5)" : "none" }}
                 />
-                
-                <p className="scroll-title" style={{ fontWeight: 'bold', margin: '5px 0' }}>
-                  {isPrivate ? "🔒 " : isPartyQuest ? "🛡️ " : "🌐 "} {quest.title}
+
+                <p className="scroll-title" style={{ fontWeight: "bold", margin: "5px 0" }}>
+                  {isPrivate ? "🔒 " : isPartyQuest ? "🛡️ " : "🌐 "}{quest.title}
                 </p>
-                
-                {isPrivate && <small style={{ color: 'var(--gold)' }}>Solo per {quest.targetCharacter}</small>}
-                {isPartyQuest && !isAccepted && <small style={{ color: '#27ae60' }}>Riservata a {quest.targetParty}</small>}
+
+                {isPrivate && (
+                  <small style={{ color: "var(--gold)" }}>Solo per {quest.targetCharacter}</small>
+                )}
+                {isPartyQuest && !isAccepted && (
+                  <small style={{ color: "#27ae60" }}>Riservata a {quest.targetParty}</small>
+                )}
 
                 {isAccepted && (
-                  <div className="acceptance-info" style={{ fontSize: '0.8rem', marginTop: '5px' }}>
-                    <p>In carico a: <strong style={{color: isAcceptedByMyParty ? '#27ae60' : '#e74c3c'}}>{quest.acceptedParty}</strong></p>
-                    {(isAcceptedByMe || isMaster) && (
-                      <button 
+                  <div className="acceptance-info" style={{ fontSize: "0.8rem", marginTop: "5px" }}>
+                    <p>
+                      Presa in carico dal gruppo{" "}
+                      <strong style={{ color: isAcceptedByMyParty ? "#27ae60" : "var(--red)" }}>
+                        {quest.acceptedParty || quest.acceptedBy}
+                      </strong>
+                    </p>
+                    {(isAcceptedByMe || isMaster || isAcceptedByMyParty) && (
+                      <button
                         onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, false); }}
-                        style={{ background: '#ff4444', border: 'none', color: 'white', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer', marginTop: '5px' }}
+                        style={{ background: "#ff4444", border: "none", color: "white", borderRadius: "4px", padding: "2px 8px", cursor: "pointer", marginTop: "5px" }}
                       >
                         Rilascia Incarico
                       </button>
                     )}
                   </div>
                 )}
-                
-                {!isAccepted && hoveredQuestId === quest.id && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
-                      className="btn-quick-accept"
-                      style={{ background: 'var(--gold)', border: 'none', color: 'black', borderRadius: '4px', padding: '5px 10px', cursor: 'pointer', marginTop: '5px', fontWeight: 'bold' }}
-                    >
-                      Accetta Ora
-                    </button>
+
+                {!isAccepted && isHovered && quest._canOpen && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
+                    className="btn-quick-accept"
+                    style={{ background: "var(--gold)", border: "none", color: "black", borderRadius: "4px", padding: "5px 10px", cursor: "pointer", marginTop: "5px", fontWeight: "bold" }}
+                  >
+                    Accetta Ora
+                  </button>
                 )}
               </div>
             );

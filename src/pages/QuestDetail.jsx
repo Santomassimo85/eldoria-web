@@ -5,86 +5,121 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./admin.css";
 
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+// ── Unica fonte di verità per i party ─────────────────────────
+const PARTY_ROSTER = {
+  "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
+  "ENOX": ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger", "Timoty Bevibotte"],
+  "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
+  "LEAF": ["Makenna", "Taaras Stormrage", "Soran", "Zethir"],
+};
+
 const getPartyByCharName = (name) => {
-  const mapping = {
-    "Tanagar": "AMEA",
-    "Garroth": "AMEA",
-    "Timoty Bevibotte":"ENOX",
-    "Caius Maxis-Richtofen": "AMEA",
-    "Temistocle Sottocolle Milo": "ENOX",
-    "Vyger": "ENOX",
-    "Makenna":"LEAF",
-    "Soran":"LEAF",
-    "Zenthir":"LEAF",
-    "Taaras Stormrage":"LEAF",
-    "Roynot": "ENOX",
-    "Dante": "ENOX"
-  };
-  return mapping[name] || "Senza Gruppo";
+  for (const [party, members] of Object.entries(PARTY_ROSTER)) {
+    if (members.includes(name)) return party;
+  }
+  return "Senza Gruppo";
 };
 
 export default function QuestDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id }      = useParams();
+  const navigate    = useNavigate();
   const { currentUser } = useAuth();
-  const [quest, setQuest] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [userCharName, setUserCharName] = useState("");
-  const [userParty, setUserParty] = useState("");
+
+  const [quest, setQuest]             = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [userCharName, setUserCharName] = useState(null); // null = ancora in caricamento
+  const [userParty, setUserParty]     = useState("");
+
+  const isMaster = currentUser?.email === MASTER_EMAIL;
 
   useEffect(() => {
-    if (currentUser) {
-      const fetchUserChar = async () => {
-        const userRef = doc(db, "characters", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const charName = userSnap.data().name || "Eroe";
-          setUserCharName(charName);
-          setUserParty(getPartyByCharName(charName));
-        }
-      };
-      fetchUserChar();
-    }
+    if (!currentUser) { setUserCharName(""); return; }
+    const fetch = async () => {
+      const snap = await getDoc(doc(db, "characters", currentUser.uid));
+      if (snap.exists()) {
+        const name = snap.data().name || "";
+        setUserCharName(name);
+        setUserParty(getPartyByCharName(name));
+      } else {
+        setUserCharName("");
+      }
+    };
+    fetch();
   }, [currentUser]);
 
   useEffect(() => {
-    const fetchQuest = async () => {
-      const docSnap = await getDoc(doc(db, "quests", id));
-      if (docSnap.exists()) setQuest({ id: docSnap.id, ...docSnap.data() });
+    const fetch = async () => {
+      const snap = await getDoc(doc(db, "quests", id));
+      if (snap.exists()) setQuest({ id: snap.id, ...snap.data() });
       setLoading(false);
     };
-    fetchQuest();
+    fetch();
   }, [id]);
 
   const handleAccept = async () => {
-    if (!userCharName || userCharName === "Eroe") {
-      alert("Errore: il tuo personaggio non ha un nome valido!");
-      return;
-    }
-    const staticParty = getPartyByCharName(userCharName);
+    if (!userCharName) { alert("Il tuo personaggio non ha un nome valido!"); return; }
+    const party = getPartyByCharName(userCharName);
     try {
       await updateDoc(doc(db, "quests", id), {
-        acceptedBy: userCharName,
-        acceptedParty: staticParty,
-        status: "in_progress",
+        acceptedBy:    userCharName,
+        acceptedParty: party,
+        status:        "in_progress",
       });
-      alert(`Incarico accettato per il party: ${staticParty}`);
       navigate("/bacheca");
-    } catch (error) {
-      console.error("Errore salvataggio missione:", error);
+    } catch (err) {
+      console.error("Errore salvataggio missione:", err);
     }
   };
 
-  if (loading) return (
-    <section className="quest-detail-page">
-      <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Leggendo i sigilli...</p>
-    </section>
-  );
-  if (!quest) return (
-    <section className="quest-detail-page">
-      <p style={{ textAlign: "center", color: "#aaa" }}>Incarico non trovato.</p>
-    </section>
-  );
+  // ── Controllo accesso ──────────────────────────────────────
+  const canAccess = () => {
+    if (isMaster) return true;
+    if (!quest || userCharName === null) return null; // ancora in caricamento
+
+    const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
+    const isCharQuest  = quest.targetCharacter && quest.targetCharacter !== "All";
+
+    if (isCharQuest)  return quest.targetCharacter === userCharName;
+    if (isPartyQuest) return quest.targetParty === userParty;
+    return true; // Generale
+  };
+
+  // ── Render ─────────────────────────────────────────────────
+  if (loading || userCharName === null) {
+    return (
+      <section className="quest-detail-page">
+        <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Leggendo i sigilli...</p>
+      </section>
+    );
+  }
+
+  if (!quest) {
+    return (
+      <section className="quest-detail-page">
+        <p style={{ textAlign: "center", color: "#aaa" }}>Incarico non trovato.</p>
+      </section>
+    );
+  }
+
+  const access = canAccess();
+
+  if (access === false) {
+    return (
+      <section className="quest-detail-page">
+        <button onClick={() => navigate("/bacheca")} className="admin-back-link">← Torna alla Bacheca</button>
+        <div className="quest-detail-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+          <p style={{ fontSize: "2rem", marginBottom: "12px" }}>🔒</p>
+          <h2 style={{ color: "var(--red)", fontFamily: "var(--font-title)", marginBottom: "8px" }}>Missiva Sigillata</h2>
+          <p style={{ color: "#888" }}>Questa pergamena non è destinata a te.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const isAccepted        = !!quest.acceptedBy;
+  const isAcceptedByMyParty = quest.acceptedParty === userParty;
 
   return (
     <section className="quest-detail-page">
@@ -107,7 +142,7 @@ export default function QuestDetail() {
           {quest.rewardItem ? `, ${quest.rewardItem}` : ""}
         </div>
 
-        {!quest.acceptedBy ? (
+        {!isAccepted ? (
           <div style={{ marginTop: 24 }}>
             <button onClick={handleAccept} className="btn-admin-primary questDetailButton">
               Accetta Missione
@@ -116,12 +151,12 @@ export default function QuestDetail() {
         ) : (
           <div className="quest-detail-accepted">
             <p>
-              Incarico in gestione al Party:{" "}
-              <strong style={{ color: quest.acceptedParty === userParty ? "#27ae60" : "var(--red)" }}>
-                {quest.acceptedParty}
+              Presa in carico dal gruppo:{" "}
+              <strong style={{ color: isAcceptedByMyParty ? "#27ae60" : "var(--red)" }}>
+                {quest.acceptedParty || quest.acceptedBy}
               </strong>
             </p>
-            {quest.acceptedParty === userParty && quest.acceptedBy !== userCharName && (
+            {isAcceptedByMyParty && quest.acceptedBy !== userCharName && (
               <p style={{ fontSize: "0.85rem", color: "#888", marginTop: 4 }}>
                 (Accettata da {quest.acceptedBy})
               </p>

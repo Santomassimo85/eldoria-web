@@ -168,28 +168,35 @@ const WIZARD_WEAPON_OPTIONS  = [_sw("Bastone Ferrato"), _sw("Daga")].filter(Bool
 
 
 // ── ARMATURE — hitPenalty: malus ai tiri per colpire (più è pesante, più rallenta) ──
+const _ARMOR_LIGHT = [
+  { name: "Vesti Imbottite",            baseAc: 16, maxDex: 99, hitPenalty:  0, icon: "🧥", info: "Leggera · +DES pieno · ±0 attacco" },
+  { name: "Armatura di cuoio",          baseAc: 11, maxDex: 99, hitPenalty:  0, icon: "👘", info: "Leggera · +DES pieno · ±0 attacco" },
+  { name: "Armatura di cuoio borchiato",baseAc: 12, maxDex: 99, hitPenalty:  0, icon: "👘", info: "Leggera · +DES pieno · ±0 attacco" },
+];
+const _ARMOR_MEDIUM = [
+  { name: "Pelliccia Rinforzata", baseAc: 17, maxDex: 2, hitPenalty:  0, icon: "🦺", info: "Media · +DES max 2 · ±0 attacco" },
+  { name: "Cuoio Indurito",       baseAc: 18, maxDex: 2, hitPenalty: -1, icon: "🦺", info: "Media · +DES max 2 · −1 attacco" },
+];
+const _ARMOR_MEDIUM_STUDDED = [
+  { name: "Cuoio Borchiato", baseAc: 17, maxDex: 2, hitPenalty:  0, icon: "⚙", info: "Borchiata · +DES max 2 · ±0 attacco" },
+  { name: "Maglia di Cuoio", baseAc: 19, maxDex: 2, hitPenalty: -1, icon: "⚙", info: "Borchiata · +DES max 2 · −1 attacco" },
+  { name: "Mezza Piastre",   baseAc: 20, maxDex: 2, hitPenalty: -2, icon: "⚙", info: "Borchiata · +DES max 2 · −2 attacco" },
+];
 const ARENA_ARMORS = {
-  caster: [
-    { name: "Tunica", baseAc: 12, maxDex: 99, hitPenalty: 0, icon: "👘", info: "Caster · +DES pieno · ±0 attacco" },
-  ],
-  light: [
-    { name: "Vesti Imbottite", baseAc: 16, maxDex: 99, hitPenalty:  0, icon: "🧥", info: "Leggera · +DES pieno · ±0 attacco" },
-  ],
-  medium: [
-    { name: "Pelliccia Rinforzata", baseAc: 17, maxDex: 2, hitPenalty:  0, icon: "🦺", info: "Media · +DES max 2 · ±0 attacco" },
-    { name: "Cuoio Indurito",       baseAc: 18, maxDex: 2, hitPenalty: -1, icon: "🦺", info: "Media · +DES max 2 · −1 attacco" },
-  ],
-  mediumStudded: [
-    { name: "Cuoio Borchiato", baseAc: 17, maxDex: 2, hitPenalty:  0, icon: "⚙", info: "Borchiata · +DES max 2 · ±0 attacco" },
-    { name: "Maglia di Cuoio", baseAc: 19, maxDex: 2, hitPenalty: -1, icon: "⚙", info: "Borchiata · +DES max 2 · −1 attacco" },
-    { name: "Mezza Piastre",   baseAc: 20, maxDex: 2, hitPenalty: -2, icon: "⚙", info: "Borchiata · +DES max 2 · −2 attacco" },
-  ],
+  caster:        [{ name: "Tunica", baseAc: 12, maxDex: 99, hitPenalty: 0, icon: "👘", info: "Caster · +DES pieno · ±0 attacco" }],
+  light:         _ARMOR_LIGHT,
+  medium:        _ARMOR_MEDIUM,
+  mediumStudded: _ARMOR_MEDIUM_STUDDED,
   heavy: [
     { name: "Cotta ad Anelli",    baseAc: 19, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco" },
     { name: "Cotta di Maglia",    baseAc: 20, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
     { name: "Armatura a Placche", baseAc: 21, maxDex: 0, hitPenalty: -3, icon: "🛡", info: "Pesante · senza DES · −3 attacco" },
     { name: "Piastre Intere",     baseAc: 22, maxDex: 0, hitPenalty: -4, icon: "🛡", info: "Pesante · senza DES · −4 attacco" },
   ],
+  // Druido: leggere + medie, niente metalli
+  druid:      [..._ARMOR_LIGHT, ..._ARMOR_MEDIUM],
+  // Ranger: leggere + medie + borchiate
+  lightMedium:[..._ARMOR_LIGHT, ..._ARMOR_MEDIUM, ..._ARMOR_MEDIUM_STUDDED],
 };
 
 // ── WILD SHAPE FORMS ──────────────────────────────────────────────────────────
@@ -244,6 +251,7 @@ const ARENA_ITEMS = [
 
 const ARENA_INITIATIVE_DURATION = 30 * 60 * 1000; // 30 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 3 * 60 * 60 * 1000; // 3 ore per fare la propria azione
+const ARENA_FIGHT_DURATION      = 24 * 60 * 60 * 1000; // 24 ore limite globale per fight
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -269,12 +277,13 @@ function isRogueClass(cls)    { return ["rogue","ladro"].some(c => cls.includes(
 function isRangerClass(cls)   { return ["ranger","cacciatore"].some(c => cls.includes(c)); }
 
 function getArmorConfig(cls) {
-  if (isFullCaster(cls))    return { armorCategory: "caster",        canHaveShield: false };
-  if (isDruidClass(cls))    return { armorCategory: "medium",        canHaveShield: true  };
-  if (isPaladinClass(cls))  return { armorCategory: "heavy",         canHaveShield: true  };
-  if (isClericClass(cls))   return { armorCategory: "heavy",         canHaveShield: true  };
-  if (isFighterClass(cls))  return { armorCategory: "heavy",         canHaveShield: true  };
-  if (isRogueBardClass(cls))return { armorCategory: "mediumStudded", canHaveShield: false };
+  if (isFullCaster(cls))    return { armorCategory: "caster",      canHaveShield: false   };
+  if (isDruidClass(cls))    return { armorCategory: "druid",       canHaveShield: "wood"  }; // leggere+medie, solo scudo legno
+  if (isPaladinClass(cls))  return { armorCategory: "heavy",       canHaveShield: true    };
+  if (isClericClass(cls))   return { armorCategory: "heavy",       canHaveShield: true    };
+  if (isFighterClass(cls))  return { armorCategory: "heavy",       canHaveShield: true    };
+  if (isRogueBardClass(cls))return { armorCategory: "light",       canHaveShield: false   }; // solo leggere
+  if (isRangerClass(cls))   return { armorCategory: "lightMedium", canHaveShield: true    }; // leggere+medie+scudo
   if (PHYSICAL_CLASSES.some(c => cls.includes(c))) return { armorCategory: "medium", canHaveShield: false };
   if (CASTER_CLASSES.some(c => cls.includes(c)))   return { armorCategory: "caster", canHaveShield: false };
   return { armorCategory: "medium", canHaveShield: false };
@@ -396,7 +405,7 @@ export default function Arena() {
   const [pendingSpells, setPendingSpells]   = useState([]);
   const [pendingSkills, setPendingSkills]   = useState([]);
   const [pendingArmor, setPendingArmor]     = useState(null);
-  const [pendingShield, setPendingShield]   = useState(false);
+  const [pendingShield, setPendingShield]   = useState(null); // null | "legno" | "metallo"
   const [showWildPicker, setShowWildPicker] = useState(false);
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
 
@@ -513,7 +522,7 @@ export default function Arena() {
     setPendingSpells([]);
     setPendingSkills([]);
     setPendingArmor(null);
-    setPendingShield(false);
+    setPendingShield(null);
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
   };
 
@@ -582,7 +591,7 @@ export default function Arena() {
     setPendingSpells([]);
     setPendingSkills([]);
     setPendingArmor(null);
-    setPendingShield(false);
+    setPendingShield(null);
     setMasterJoinSetup(false);
     setLoadoutPhase("rolling");
   };
@@ -675,6 +684,7 @@ export default function Arena() {
         status:     allRolled ? "active" : "initiative",
         turn:       allRolled ? sorted[0].id : null,
         turnExpiry: allRolled ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString() : (m.turnExpiry || new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString()),
+        fightStartAt: allRolled ? new Date().toISOString() : (m.fightStartAt || null),
         logs:   [...m.logs, `🎲 ${mySnap?.name ?? "?"} tira iniziativa: ${roll}`],
       };
     });
@@ -721,6 +731,7 @@ export default function Arena() {
         pub: `⚡ ${myName} → Smite Divino su ${defName}: ${hitStr}${isHit ? ` per ${totalDmg} danni${isCrit ? " CRITICO!" : ""}` : ""}`,
         att: `⚡ Smite Divino su ${defName}: ${hitStr} [${hitInfo}]${isHit ? ` → arma🎲${wRolls}+smite🎲${sRolls}=${totalDmg}${isCrit ? " CRITICO!" : ""}` : ""}`,
         def: `⚡ ${myName} ti colpisce con Smite Divino: ${hitStr}${isHit ? ` per ${totalDmg} danni${isCrit ? " CRITICO!" : ""}` : ""}`,
+        ts: new Date().toISOString(),
         attId: currentUser.uid, defId: targetId,
       };
       const updatedMatches = arenaMeta.matches.map(m => {
@@ -747,7 +758,7 @@ export default function Arena() {
         pub: `🕸 ${attName} lancia Ragnatela su ${defName} — TS DES richiesto (CD 15)`,
         att: `🕸 Lanci Ragnatela su ${defName}${penStr ? ` [penalità armatura: ${armorPenalty}]` : ''} — TS DES richiesto (CD 15)`,
         def: `🕸 ${attName} ti lancia una Ragnatela! Devi superare un TS DES (CD 15)`,
-        attId: currentUser.uid, defId: targetId,
+        attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const webExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
@@ -771,7 +782,7 @@ export default function Arena() {
         pub: `☠ ${attName} usa Veleno su ${defName}${dmgNote} — ${damage} danni + TS COS (CD 15)`,
         att: `☠ Usi Veleno su ${defName}${dmgNote} — ${damage} danni + TS COS (CD 15)`,
         def: `☠ ${attName} ti ha colpito con Veleno${dmgNote} — ${damage} danni! Devi superare un TS COS (CD 15)`,
-        attId: currentUser.uid, defId: targetId,
+        attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const poisonExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       let updatedMatches = arenaMeta.matches.map(m => {
@@ -847,7 +858,7 @@ export default function Arena() {
       def: isHit
         ? `⚔️ ${attName} ti ha colpito con ${action.name}${critTag}${dmgBreakdown} — ${damage} danni`
         : `🛡️ ${attName} ti ha mancato con ${action.name}`,
-      attId: currentUser.uid, defId: targetId,
+      attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
     };
 
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
@@ -1117,7 +1128,8 @@ export default function Arena() {
       const curUses = myP?.itemUsesLeft?.[itemKey] ?? 0;
       if (curUses <= 0) return m;
 
-      let log = "";
+      const _itemTs = new Date().toISOString();
+      let log = null;
       const updatedPlayers = m.players.map(p => {
         if (p.id === currentUser.uid) {
           const newUses = { ...(p.itemUsesLeft || {}), [itemKey]: Math.max(0, curUses - 1) };
@@ -1125,18 +1137,18 @@ export default function Arena() {
             const { total: heal, rolls: healRolls } = rollDmg("2d12");
             const maxHp = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? 70;
             const newHp = Math.min(maxHp, (p.hp || 0) + heal);
-            log = `🧪 ${myName} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP)`;
+            log = { pub: `🧪 ${myName} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP)`, ts: _itemTs };
             return { ...p, hp: newHp, itemUsesLeft: newUses };
           }
           if (itemKey === "pozione_veleno") {
-            log = `☠ ${myName} avvelena la propria arma — prossimo attacco +1d12`;
+            log = { pub: `☠ ${myName} avvelena la propria arma — prossimo attacco +1d12`, ts: _itemTs };
             return { ...p, weaponPoisoned: true, itemUsesLeft: newUses };
           }
           return { ...p, itemUsesLeft: newUses };
         }
         if (itemKey === "bomba" && p.id === targetId) {
           const { total: dmg, rolls: bombRolls } = rollDmg("3d10");
-          log = `💣 ${myName} lancia una Bomba su ${p.name} [🎲${bombRolls}=${dmg}] — ${dmg} danni!`;
+          log = { pub: `💣 ${myName} lancia una Bomba su ${p.name} [🎲${bombRolls}=${dmg}] — ${dmg} danni!`, ts: _itemTs };
           return { ...p, hp: Math.max(0, p.hp - dmg) };
         }
         return p;
@@ -1145,13 +1157,13 @@ export default function Arena() {
       const alive = updatedPlayers.filter(p => p.hp > 0);
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
-          logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+          logs: [...m.logs, ...(log ? [log] : []), `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
       // Advance turn
       const currentIdx = m.players.findIndex(p => p.id === currentUser.uid);
       let nextIdx = (currentIdx + 1) % m.players.length;
       while (updatedPlayers[nextIdx]?.hp <= 0) nextIdx = (nextIdx + 1) % m.players.length;
-      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIdx].id, turnExpiry: expiry, logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIdx].id, turnExpiry: expiry, logs: [...m.logs, ...(log ? [log] : [])] };
     });
 
     // Check tournament end
@@ -1181,7 +1193,11 @@ export default function Arena() {
       if (m.status !== "active" || !m.turn || !m.turnExpiry) return false;
       return now >= new Date(m.turnExpiry).getTime();
     });
-    if (!expiredInitMatch && !expiredActiveMatch) return;
+    const expiredFightMatch = arenaMeta.matches.find(m => {
+      if (m.status !== "active" || !m.fightStartAt) return false;
+      return now >= new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION;
+    });
+    if (!expiredInitMatch && !expiredActiveMatch && !expiredFightMatch) return;
 
     try {
       const metaRef = doc(db, "arena_meta", "global");
@@ -1211,11 +1227,46 @@ export default function Arena() {
             status: allRolled ? "active" : "initiative",
             turn: allRolled ? sorted[0].id : null,
             turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(),
+            fightStartAt: allRolled ? new Date().toISOString() : (match.fightStartAt || null),
             logs: newLogs,
           };
           const updatedMatches = data.matches.map(m => m.matchId === match.matchId ? updatedMatch : m);
           transaction.update(metaRef, { matches: updatedMatches });
           return;
+        }
+
+        // ── Fight scaduto (24h) → vince chi ha più HP ────────────────────────
+        if (expiredFightMatch) {
+          const match = data.matches?.find(m => m.matchId === expiredFightMatch.matchId);
+          if (match && match.status === "active" && match.fightStartAt &&
+              Date.now() >= new Date(match.fightStartAt).getTime() + ARENA_FIGHT_DURATION) {
+            const alivePlayers = match.players.filter(p => p.hp > 0);
+            const winner = alivePlayers.reduce((best, p) => (!best || p.hp > best.hp ? p : best), null);
+            if (winner) {
+              const updatedMatch = {
+                ...match,
+                status: "finished",
+                winner: winner.id,
+                logs: [...match.logs, `⏰ Tempo scaduto! Vince ${winner.name.toUpperCase()} con ${winner.hp} HP rimanenti!`],
+              };
+              const updatedMatches = data.matches.map(m => m.matchId === match.matchId ? updatedMatch : m);
+              const allDone2 = updatedMatches.every(m => m.status === "finished");
+              const winners2 = updatedMatches.filter(m => m.winner).map(m => m.winner);
+              if (allDone2 && winners2.length === 1) {
+                const champSnap2 = (data.characterSnapshots || {})[winners2[0]] || {};
+                transaction.update(metaRef, { matches: updatedMatches, tournamentWinner: winners2[0], phase: "finished" });
+                await addDoc(collection(db, "notifications"), {
+                  userId: winners2[0],
+                  title: "🏆 Campione dell'Arena!",
+                  message: `${champSnap2.name || "Campione"}, hai trionfato nell'Arena dei Campioni per supremazia di HP!`,
+                  read: false, timestamp: serverTimestamp(),
+                });
+              } else {
+                transaction.update(metaRef, { matches: updatedMatches });
+              }
+              return;
+            }
+          }
         }
 
         // ── Turno attivo scaduto → posizione difensiva ───────────────────────
@@ -1299,7 +1350,11 @@ export default function Arena() {
         if (m.status !== "active" || !m.turn || !m.turnExpiry) return false;
         return now >= new Date(m.turnExpiry).getTime();
       });
-      if ((hasExpiredInit || hasExpiredActive) && now - lastAutoPassFireRef.current > 10000) {
+      const hasExpiredFight = arenaMeta.matches?.some(m => {
+        if (m.status !== "active" || !m.fightStartAt) return false;
+        return now >= new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION;
+      });
+      if ((hasExpiredInit || hasExpiredActive || hasExpiredFight) && now - lastAutoPassFireRef.current > 10000) {
         lastAutoPassFireRef.current = now;
         handleArenaAutoPass();
       }
@@ -1671,7 +1726,7 @@ export default function Arena() {
                       <button
                         key={armor.name}
                         className={`loadout-item armor ${isSelected ? "selected" : ""}`}
-                        onClick={() => { setPendingArmor(armor); if (shieldLocked) setPendingShield(false); }}
+                        onClick={() => { setPendingArmor(armor); if (shieldLocked) setPendingShield(null); }}
                       >
                         <span className="loadout-item-icon">{armor.icon}</span>
                         <span className="loadout-item-name">{armor.name}</span>
@@ -1686,13 +1741,25 @@ export default function Arena() {
                 {/* ── Scudo (classi idonee) ── */}
                 {config.canHaveShield && (
                   <div className="loadout-shield-row">
+                    {/* Scudo di Legno — disponibile a tutte le classi con scudo */}
                     <button
-                      className={`loadout-shield-btn ${pendingShield ? "selected" : ""} ${shieldLocked ? "disabled" : ""}`}
-                      onClick={() => { if (!shieldLocked) setPendingShield(v => !v); }}
+                      className={`loadout-shield-btn ${pendingShield === "legno" ? "selected" : ""} ${shieldLocked ? "disabled" : ""}`}
+                      onClick={() => { if (!shieldLocked) setPendingShield(v => v === "legno" ? null : "legno"); }}
                       disabled={shieldLocked}
                     >
-                      🛡 Scudo {shieldLocked ? "(incompatibile — arma a 2 mani)" : pendingShield ? "✓ Equipaggiato (+2 CA)" : "— +2 CA"}
+                      🪵 Scudo di Legno {pendingShield === "legno" ? "✓ (+2 CA)" : "— +2 CA"}
                     </button>
+                    {/* Scudo di Metallo — non disponibile per il Druido */}
+                    {config.canHaveShield !== "wood" && (
+                      <button
+                        className={`loadout-shield-btn ${pendingShield === "metallo" ? "selected" : ""} ${shieldLocked ? "disabled" : ""}`}
+                        onClick={() => { if (!shieldLocked) setPendingShield(v => v === "metallo" ? null : "metallo"); }}
+                        disabled={shieldLocked}
+                      >
+                        🛡 Scudo di Metallo {pendingShield === "metallo" ? "✓ (+2 CA)" : "— +2 CA"}
+                      </button>
+                    )}
+                    {shieldLocked && <small className="shield-locked-note">incompatibile — arma a 2 mani</small>}
                   </div>
                 )}
 
@@ -1952,6 +2019,22 @@ export default function Arena() {
                     })()}
                   </div>
                 )}
+
+                {m.status === "active" && m.fightStartAt && (() => {
+                  const msLeft = Math.max(0, new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION - Date.now());
+                  const h   = Math.floor(msLeft / 3600000);
+                  const min = Math.floor((msLeft % 3600000) / 60000);
+                  const sec = Math.floor((msLeft % 60000) / 1000);
+                  const fmt = `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+                  const urgent = msLeft < 3600000; // <1 ora
+                  return (
+                    <div className={`fight-global-timer${urgent ? " urgent" : ""}`}>
+                      ⏰ Tempo rimasto al fight: <span className="arena-turn-timer">{fmt}</span>
+                      <span className="fight-timer-note"> — allo scadere vince chi ha più HP</span>
+                    </div>
+                  );
+                })()}
+
                 {/* Fighters */}
                 <div className="fighters-row">
                   {m.players.map((p, idx) => {
@@ -2173,10 +2256,14 @@ export default function Arena() {
                           })}
                         </div>
                         {mySnap?.hasShield && !equipHas2H && (
-                          <p className="equip-shield-note">🛡 Scudo attivo (+2 CA){equipHas2H ? " — disabilitato con arma a 2 mani" : ""}</p>
+                          <p className="equip-shield-note">
+                            {mySnap.hasShield === "legno" ? "🪵 Scudo di Legno" : "🛡 Scudo di Metallo"} attivo (+2 CA)
+                          </p>
                         )}
                         {equipHas2H && mySnap?.hasShield && (
-                          <p className="equip-shield-note locked">🛡 Scudo non disponibile con arma a 2 mani</p>
+                          <p className="equip-shield-note locked">
+                            {mySnap.hasShield === "legno" ? "🪵 Scudo di Legno" : "🛡 Scudo di Metallo"} non disponibile con arma a 2 mani
+                          </p>
                         )}
                         <button
                           className="btn-confirm-equip"
@@ -2362,8 +2449,12 @@ export default function Arena() {
                     const isLatest = i === m.logs.slice(-5).length - 1;
                     const isAttLog = typeof l === 'object' && l.attId === currentUser?.uid;
                     const isDefLog = typeof l === 'object' && l.defId === currentUser?.uid;
+                    const ts = typeof l === 'object' && l.ts
+                      ? new Date(l.ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                      : null;
                     return (
                       <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""}`}>
+                        {isMaster && ts && <span className="log-ts">{ts}</span>}
                         {text}
                       </p>
                     );
