@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- FUNZIONI DI SUPPORTO ---
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    function isMaster() {
+      return isLoggedIn() && (
+        request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
+        request.auth.token.email == "santomassimo85@gmail.com"
+      );
+    }
+
+    // --- WORLD BOSS & TURNI ---
+    match /battle_meta/turn_tracker {
+      allow read: if isLoggedIn();
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn() && (
+        isMaster() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber'])
+      );
+    }
+
+    match /world_boss_system/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
+    match /bosses/{bossId} {
+      allow read: if true;
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn() && (
+        isMaster() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield'])
+      );
+    }
+
+    // --- PRESENZA ONLINE ---
+    match /presence/{uid} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // --- CHAT ---
+    match /world_boss_chat/{msgId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn();
+      allow update, delete: if isMaster();
+    }
+
+    // Global chat: owner può cancellare i propri messaggi
+    match /global_chat/{messageId} {
+      allow read, create: if isLoggedIn();
+      allow delete: if isLoggedIn() && (resource.data.uid == request.auth.uid || isMaster());
+      allow update: if isMaster();
+    }
+
+    // --- PERSONAGGI & SCHEDE ---
+    match /characters/{charId} {
+      allow read: if true;
+      // Scrittura aperta: necessaria per risoluzione scommesse lato client
+      allow write: if true;
+    }
+
+    match /pg_sheets/{userId} {
+      allow read, write: if isMaster() || (isLoggedIn() && request.auth.uid == userId);
+    }
+
+    // --- ARENA ---
+    match /arena_meta/global {
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn(); // partecipanti scrivono attacchi, iniziativa, ecc.
+    }
+
+    match /characters_arena/{charId} {
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn() && (request.auth.uid + "_arena" == charId || isMaster());
+    }
+
+    // Scommesse arena: owner legge le sue, tutti possono creare/aggiornare
+    // (la risoluzione avviene dal client dell'attaccante)
+    match /arena_bets/{betId} {
+      allow read: if isLoggedIn() && (resource.data.uid == request.auth.uid || isMaster());
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn();
+      allow delete: if isMaster();
+    }
+
+    // --- NOTIFICHE ---
+    match /notifications/{msgId} {
+      allow read: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+      allow delete: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+    }
+
+    // --- MERCATO & OGGETTI ---
+    match /items/{itemId} {
+      allow read: if true;
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn();
+    }
+
+    match /settings/market_config {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
+    // --- ALTRE COLLEZIONI ---
+    match /geo_archive/{docId} { allow read: if true; allow write: if isMaster(); }
+    match /map_pins/{pinId} { allow read: if true; allow write: if isMaster(); }
+    match /npcs/{npcId} { allow read: if true; allow write: if isMaster(); }
+    match /sessions/{partyId} { allow read: if true; allow write: if isMaster(); }
+    match /quests/{questId} { allow read: if true; allow create, delete: if isMaster(); allow update: if isLoggedIn(); }
+    match /session_videos/{video} { allow read: if isLoggedIn(); allow write: if isMaster(); }
+    match /summaries/{summaryId} { allow read: if true; allow write: if isMaster(); allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']); }
+    match /messages/{msgId} { allow create: if isLoggedIn(); allow read, write: if isMaster(); }
+    match /party_tracks/{partyId} { allow read, write: if isLoggedIn(); }
+    match /rolls/{rollId} { allow read, create: if isLoggedIn(); }
+  }
+}

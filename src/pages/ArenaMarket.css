@@ -232,3 +232,27 @@
 }
 
 .am-coin-save:hover { background: rgba(212,175,55,0.28); }
+
+.am-owned-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.am-remove-item-btn {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(239,68,68,0.4);
+  background: rgba(239,68,68,0.07);
+  color: #991b1b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.am-remove-item-btn:hover {
+  background: rgba(239,68,68,0.18);
+}

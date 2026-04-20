@@ -145,6 +145,12 @@ export default function ArenaMarket() {
   );
 }
 
+const ITEM_FIELDS = [
+  { field: "weaponBonus",    label: "Arma +1",              icon: "⚔️" },
+  { field: "armorBonus",     label: "Armatura +1",          icon: "🛡️" },
+  { field: "healingPotions", label: "Pozione Cura Media",   icon: "💚" },
+];
+
 function MasterCoinPanel() {
   const [allChars, setAllChars] = useState([]);
   const [editCoins, setEditCoins] = useState({});
@@ -165,12 +171,19 @@ function MasterCoinPanel() {
     setEditCoins(prev => { const n = { ...prev }; delete n[uid]; return n; });
   };
 
+  const removeItem = async (uid, field) => {
+    await updateDoc(doc(db, "characters", uid), { [`arenaBuffs.${field}`]: 0 });
+  };
+
   return (
     <div className="am-master-panel">
       <h3 className="am-master-panel-title">🪙 Gestione Monete Arena</h3>
       <p className="am-master-note">Modifica le Monete Arena di qualsiasi giocatore.</p>
       <div className="am-coin-list">
-        {allChars.map(ch => (
+        {allChars.map(ch => {
+          const buffs = ch.arenaBuffs || {};
+          const ownedItems = ITEM_FIELDS.filter(it => (buffs[it.field] ?? 0) > 0);
+          return (
           <div key={ch.uid} className="am-coin-row">
             <span className="am-coin-name">{ch.name || ch.uid}</span>
             <span className="am-coin-val">{ch.arenaCoins ?? 0} MA</span>
@@ -183,8 +196,23 @@ function MasterCoinPanel() {
               onChange={e => setEditCoins(prev => ({ ...prev, [ch.uid]: e.target.value }))}
             />
             <button className="am-coin-save" onClick={() => saveCoins(ch.uid)}>Salva</button>
+            {ownedItems.length > 0 && (
+              <div className="am-owned-items">
+                {ownedItems.map(it => (
+                  <button
+                    key={it.field}
+                    className="am-remove-item-btn"
+                    title={`Rimuovi ${it.label}`}
+                    onClick={() => removeItem(ch.uid, it.field)}
+                  >
+                    {it.icon} {it.label} ✕
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

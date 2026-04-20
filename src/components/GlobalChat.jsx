@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "../firebase";
-import { 
-  collection, addDoc, query, orderBy, limit, onSnapshot, 
-  serverTimestamp, doc, getDoc, getDocs, deleteDoc 
+import {
+  collection, addDoc, query, orderBy, limit, onSnapshot,
+  serverTimestamp, doc, getDoc, getDocs, deleteDoc
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 
@@ -14,54 +14,62 @@ export default function GlobalChat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showScrollArrow, setShowScrollArrow] = useState(false);
   const [charName, setCharName] = useState("Eroe");
-  
+
   const chatEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const chatWindowRef = useRef(null);
+  const isOpenRef = useRef(false);
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
   const scrollToBottom = (behavior = "smooth") => {
     chatEndRef.current?.scrollIntoView({ behavior });
   };
 
-  // 1. CHIUSURA AL CLICK ESTERNO
+  // keep isOpenRef in sync with state (so the snapshot callback can read it without re-subscribing)
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (isOpen) {
+      setUnreadCount(0);
+      setTimeout(() => scrollToBottom("instant"), 50);
+    }
+  }, [isOpen]);
+
+  // chiusura al click esterno
   useEffect(() => {
     function handleClickOutside(event) {
       if (chatWindowRef.current && !chatWindowRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     }
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // 2. RECUPERO NOME PERSONAGGIO
+  // nome personaggio
   useEffect(() => {
     if (!currentUser || isMaster) return;
-    const fetchCharName = async () => {
-      try {
-        const charRef = doc(db, "characters", currentUser.uid);
-        const charSnap = await getDoc(charRef);
-        if (charSnap.exists()) setCharName(charSnap.data().name);
-      } catch (err) { console.error("Errore PG:", err); }
-    };
-    fetchCharName();
+    getDoc(doc(db, "characters", currentUser.uid))
+      .then(snap => { if (snap.exists()) setCharName(snap.data().name); })
+      .catch(() => {});
   }, [currentUser, isMaster]);
 
-  // 3. LISTENER MESSAGGI
+  // listener messaggi — dipende solo da currentUser, non da isOpen
   useEffect(() => {
     if (!currentUser) return;
-    
+    let initialLoad = true;
+
     const q = query(collection(db, "global_chat"), orderBy("timestamp", "asc"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMessages(msgs);
-      
-      if (!isOpen) {
+
+      if (initialLoad) {
+        initialLoad = false;
+        return; // messaggi già esistenti: non contare come non letti
+      }
+
+      if (!isOpenRef.current) {
         setUnreadCount(prev => prev + 1);
       } else {
         const container = messagesContainerRef.current;
@@ -72,54 +80,31 @@ export default function GlobalChat() {
       }
     });
     return () => unsub();
-  }, [currentUser, isOpen]);
+  }, [currentUser]);
 
-  useEffect(() => {
-    if (isOpen) setUnreadCount(0);
-  }, [isOpen]);
-
-  // 4. GESTIONE SCROLL
-  const handleScroll = () => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    const isNearBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 80;
-    setShowScrollArrow(!isNearBottom);
-  };
-
-  // 5. PULIZIA MANUALE (Massiva)
+  // pulizia massiva
   const handleManualCleanup = async () => {
-    if (!window.confirm("Master, vuoi ripulire la locanda? (Resteranno i 10 più recenti)")) return;
+    if (!window.confirm("Vuoi ripulire la locanda? (Resteranno i 10 più recenti)")) return;
     try {
-      const q = query(collection(db, "global_chat"), orderBy("timestamp", "desc"));
-      const snapshot = await getDocs(q);
-      if (snapshot.size > 10) {
-        const toDelete = snapshot.docs.slice(10);
-        await Promise.all(toDelete.map(d => deleteDoc(doc(db, "global_chat", d.id))));
-        alert("Locanda ripulita!");
+      const snap = await getDocs(query(collection(db, "global_chat"), orderBy("timestamp", "desc")));
+      if (snap.size > 10) {
+        await Promise.all(snap.docs.slice(10).map(d => deleteDoc(doc(db, "global_chat", d.id))));
       }
     } catch (err) { console.error("Cleanup error:", err); }
   };
 
-  // --- NUOVA FUNZIONE: ELIMINA SINGOLO MESSAGGIO ---
   const deleteSingleMessage = async (messageId) => {
-    if (!isMaster) return;
     if (!window.confirm("Vuoi eliminare questo messaggio?")) return;
-    
-    try {
-      await deleteDoc(doc(db, "global_chat", messageId));
-    } catch (err) {
-      console.error("Errore eliminazione messaggio:", err);
-    }
+    await deleteDoc(doc(db, "global_chat", messageId)).catch(console.error);
   };
 
-  // 6. INVIO MESSAGGIO
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
     try {
       await addDoc(collection(db, "global_chat"), {
         uid: currentUser.uid,
-        displayName: isMaster ? "🔥 IL MASTER" : charName,
+        displayName: isMaster ? "Il Master" : charName,
         text: text.trim(),
         timestamp: serverTimestamp()
       });
@@ -131,66 +116,58 @@ export default function GlobalChat() {
   const formatTimestamp = (ts) => {
     if (!ts) return "";
     const d = ts.toDate();
-    return `${d.toLocaleDateString([], {day:'2-digit', month:'short'})}, ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}`;
+    return `${d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}, ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
   };
 
   if (!currentUser) return null;
 
   return (
     <div ref={chatWindowRef}>
-      <button className={`chat-toggle-btn ${isOpen ? "open" : ""}`} onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? "✖" : "💬"}
+      {/* Toggle button */}
+      <button className={`chat-toggle-btn ${isOpen ? "open" : ""}`} onClick={() => setIsOpen(v => !v)}>
+        {isOpen ? "✕" : "💬"}
         {unreadCount > 0 && !isOpen && (
-          <span className="chat-notification-badge">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+          <span className="chat-notification-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
         )}
       </button>
 
+      {/* Chat window */}
       <div className={`global-chat-window ${isOpen ? "visible" : ""}`}>
         <div className="chat-header">
-          <span>📜 Locanda di Eldoria</span>
+          <span className="chat-header-title">Locanda di Eldoria</span>
           {isMaster && (
-            <button className="master-cleanup-btn" onClick={handleManualCleanup}>🗑️</button>
+            <button className="master-cleanup-btn" onClick={handleManualCleanup} title="Ripulisci chat">🗑</button>
           )}
         </div>
 
-        <div className="chat-messages" ref={messagesContainerRef} onScroll={handleScroll}>
-          {messages.map((m) => (
-            <div key={m.id} className={`chat-msg ${m.uid === currentUser.uid ? "own" : ""}`}>
-              <span className="msg-user">
-                {m.displayName}
-                {/* TASTO ELIMINA SINGOLO (Solo per Master) */}
-                {isMaster && (
-                  <span 
-                    onClick={() => deleteSingleMessage(m.id)} 
-                    style={{ marginLeft: '10px', cursor: 'pointer', color: '#ff4444', fontSize: '0.8rem' }}
-                    title="Elimina messaggio"
-                  >
-                    ❌
-                  </span>
-                )}
-              </span>
-              <p className="msg-text">{m.text}</p>
-              {m.timestamp && <span className="msg-timestamp">{formatTimestamp(m.timestamp)}</span>}
-            </div>
-          ))}
+        <div className="chat-messages" ref={messagesContainerRef}>
+          {messages.map((m) => {
+            const isOwn = m.uid === currentUser.uid;
+            const isMasterMsg = m.displayName === "Il Master";
+            return (
+              <div key={m.id} className={`chat-msg ${isOwn ? "own" : ""} ${isMasterMsg ? "master-msg" : ""}`}>
+                <div className="msg-meta">
+                  <span className="msg-user">{m.displayName}</span>
+                  {m.timestamp && <span className="msg-timestamp">{formatTimestamp(m.timestamp)}</span>}
+                  {(isMaster || m.uid === currentUser.uid) && (
+                    <span className="msg-delete" onClick={() => deleteSingleMessage(m.id)} title="Elimina">✕</span>
+                  )}
+                </div>
+                <p className="msg-text">{m.text}</p>
+              </div>
+            );
+          })}
           <div ref={chatEndRef} />
-          
-          {/* {showScrollArrow && (
-            <button className="chat-scroll-to-bottom-btn" onClick={() => scrollToBottom("smooth")}>
-              ⬇️
-            </button>
-          )} */}
         </div>
 
         <form onSubmit={sendMessage} className="chat-input-area">
-          <input 
-            value={text} 
-            onChange={(e) => setText(e.target.value)} 
-            placeholder={isMaster ? "Parla come Master..." : `Parla come ${charName}...`} 
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={isMaster ? "Parla come Master…" : `Parla come ${charName}…`}
+            className="chat-input"
           />
-          <button type="submit" className="submit">&gt;</button>
+          <button type="submit" className="chat-send-btn">Invia</button>
         </form>
       </div>
     </div>

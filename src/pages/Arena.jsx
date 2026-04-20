@@ -3,7 +3,7 @@ import { db } from "../firebase";
 import {
   doc, getDoc, getDocs, onSnapshot, updateDoc, setDoc,
   arrayUnion, arrayRemove, addDoc, collection, serverTimestamp,
-  runTransaction, increment,
+  runTransaction, increment, query, where,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./Arena.css";
@@ -94,18 +94,14 @@ const BARD_SPELLS = [
   { name: "Invisibilita",          level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "👻", info: "Lv2 · Controllo · TS o perdi turno", special: "control", maxUses: 2 },
 ];
 
-// ── PALADIN SPELLS (Paladino) — pool: 4 lv1 · 3 lv2 · 3 lv3 (sceglie 0+2+1+1)
+// ── PALADIN SPELLS (Paladino) — pool: 3 lv1 · 3 lv2 (sceglie 2+1)
 const PALADIN_SPELLS = [
   { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
-  { name: "Scudo della Fede",      level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
   { name: "Punizione Travolgente", level: 1, hitBonus: 3, damage: "1d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv1 · Radiante bonus", maxUses: 3 },
   { name: "Comando",               level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📞", info: "Lv1 · Controllo · TS o perdi turno", special: "control", maxUses: 3 },
   { name: "Punizione Marchiante",  level: 2, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Radiante", maxUses: 2 },
   { name: "Ristorare Inferiore",   level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove condizioni + cura 1d4+2 HP", special: "heal", maxUses: 2 },
-  { name: "Zona di Verita",        level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "⚖",  info: "Lv2 · Controllo · TS o perdi turno", special: "control", maxUses: 2 },
-  { name: "Aura di Vitalita",      level: 3, hitBonus: 0, damage: "2d6",   statKey: null, type: "spell", icon: "💛", info: "Lv3 · Cura potente · ripristina HP", special: "heal", maxUses: 1 },
-  { name: "Dissolvi Magie",        level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "✨", info: "Lv3 · Controllo · TS o perdi turno", special: "control", maxUses: 1 },
-  { name: "Punizione Accecante",   level: 3, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Radiante", maxUses: 1 },
+  { name: "Aiuto",                 level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +4 al prossimo tiro per colpire", special: "aid_buff", maxUses: 2 },
 ];
 
 // ── RANGER SPELLS (Ranger) — pool: 3 lv1 · 2 lv2 (sceglie 0+2+1+0)
@@ -205,24 +201,24 @@ const WILD_SHAPES = {
     name: "Lupo", icon: "🐺",
     hpDice: { count: 8, sides: 12 },
     actions: [
-      { name: "Artiglio", damage: "2d6+5", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "3d6+5", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "2d63", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
+      { name: "Morso",    damage: "3d6+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
     ],
   },
   bear: {
     name: "Orso", icon: "🐻",
     hpDice: { count: 12, sides: 12 },
     actions: [
-      { name: "Artiglio", damage: "2d6+5", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "3d6+5", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "2d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
+      { name: "Morso",    damage: "3d6+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
     ],
   },
   spider: {
     name: "Ragno", icon: "🕷",
     hpDice: { count: 6, sides: 12 },
     actions: [
-      { name: "Morso",     damage: "2d4+5", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
-      { name: "Veleno",    damage: "2d6+5", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
+      { name: "Morso",     damage: "2d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Veleno",    damage: "2d6+3", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
       { name: "Ragnatela", damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web"    },
     ],
   },
@@ -230,13 +226,13 @@ const WILD_SHAPES = {
 
 // Carica del Guerriero — aggiunto automaticamente (max 2 usi)
 const CHARGE_ACTION = {
-  name: "Carica", hitBonus: 3, damage: "3d8+5", statKey: "str",
+  name: "Carica", hitBonus: 3, damage: "3d8+3", statKey: "str",
   type: "skill", icon: "⚔", info: "Carica · +FOR", maxUses: 2,
 };
 
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
 const DEATHBLOW_ACTION = {
-  name: "Colpo Mortale", hitBonus: 3, damage: "4d6+5", statKey: "dex",
+  name: "Colpo Mortale", hitBonus: 3, damage: "4d6+3", statKey: "dex",
   type: "skill", icon: "💀", info: "Solo ≤20% HP · +DES", special: "deathblow", maxUses: 2,
 };
 
@@ -245,7 +241,7 @@ const CASTER_SKILLS = [];
 // ── ITEMS ─────────────────────────────────────────────────────────────────────
 const ARENA_ITEMS = [
   { key: "pozione_cura",        name: "Pozione di Cura",        icon: "🧪", info: "Cura 2d12 · Passa il turno",                 damage: "2d12" },
-  { key: "pozione_cura_media",  name: "Pozione di Cura Media",  icon: "💚", info: "Cura 2d8 · Passa il turno (Bottega Arena)",   damage: "2d8"  },
+  { key: "pozione_cura_media",  name: "Pozione di Cura Media",  icon: "💚", info: "Cura 2d8 · Passa il turno (Bottega Arena)",   damage: "2d8",  shopOnly: true },
   { key: "bomba",               name: "Bomba",                  icon: "💣", info: "3d10 danni al bersaglio · Passa il turno",   damage: "3d10" },
   { key: "pozione_veleno",      name: "Pozione di Veleno",      icon: "☠",  info: "+1d12 danno prossimo attacco · Passa turno", damage: "1d12" },
 ];
@@ -258,6 +254,12 @@ const ARENA_FIGHT_DURATION      = 24 * 60 * 60 * 1000; // 24 ore limite globale 
 const SMITE_ACTION = {
   name: "Smite Divino", hitBonus: 0, damage: "2d8", statKey: null,
   type: "skill", icon: "⚡", info: "Attacca con arma +2d8 · 2 cariche", special: "smite", maxUses: 2,
+};
+
+// Lay of Hands — aggiunto automaticamente al Paladino (pool = 1/3 HP)
+const LAY_OF_HANDS_ACTION = {
+  name: "Lay of Hands", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "🙏", info: "Cura dalla pozza (1/3 HP max) · scegli l'importo", special: "lay_of_hands",
 };
 
 // ── CLASSI ───────────────────────────────────────────────────────────────────
@@ -275,9 +277,11 @@ function isBardClass(cls)     { return ["bard","bardo"].some(c => cls.includes(c
 function isFighterClass(cls)  { return ["fighter","guerriero","warrior"].some(c => cls.includes(c)); }
 function isRogueBardClass(cls){ return ["rogue","ladro","bard","bardo"].some(c => cls.includes(c)); }
 function getSpellcastingAbility(cls) {
-  if (["wizard","mago","artificer"].some(c => cls.includes(c))) return "int";
-  if (["cleric","chierico","druid","druido","ranger","cacciatore","monk","monaco"].some(c => cls.includes(c))) return "wis";
+  // CHA: Bardo, Paladino, Stregone, Warlock
   if (["bard","bardo","warlock","sorcerer","stregone","paladin","paladino"].some(c => cls.includes(c))) return "cha";
+  // WIS: Chierico, Druido, Ranger, Monaco
+  if (["cleric","chierico","druid","druido","ranger","cacciatore","monk","monaco"].some(c => cls.includes(c))) return "wis";
+  // INT: Mago, Artefice, Guerriero (Cavaliere Arcano), Ladro (Mistificatore Arcano) + default
   return "int";
 }
 function isRogueClass(cls)    { return ["rogue","ladro"].some(c => cls.includes(c)); }
@@ -299,9 +303,9 @@ function getArmorConfig(cls) {
 
 function getHpDice(charClass) {
   const cls = (charClass || "").toLowerCase();
-  if (["fighter","guerriero","warrior","paladin","paladino"].some(c => cls.includes(c))) return { count: 11, sides: 12 };
-  if (["rogue","ladro","druid","druido"].some(c => cls.includes(c)))                      return { count: 9,  sides: 12 };
-  return { count: 8, sides: 12 };
+  if (["fighter","guerriero","warrior","paladin","paladino"].some(c => cls.includes(c))) return { count: 9, sides: 12 };
+  if (["rogue","ladro","druid","druido"].some(c => cls.includes(c)))                      return { count: 7, sides: 12 };
+  return { count: 6, sides: 12 };
 }
 
 // spellLimits: { level: maxSelectable } — lv3+ bloccati nell'arena
@@ -327,7 +331,7 @@ function getLoadoutConfig(charClass) {
   if (isWizardClass(cls))   return { weaponOptions: WIZARD_WEAPON_OPTIONS,  spellOptions: WIZARD_SPELLS,   spellLimits: SPELL_LIMITS.wizard,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.wizard),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
-  if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
+  if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [CHARGE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isBarbarianClass(cls))return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [],              hasWildShape: false, armorCategory, canHaveShield };
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -399,6 +403,156 @@ function logPubText(log) {
   return log.pub;
 }
 
+// ── BETTING PANEL ─────────────────────────────────────────────────────────────
+function BettingPanel({ arenaMeta, snapshots, currentUser }) {
+  const [userBets, setUserBets] = useState([]);
+  const [charCoins, setCharCoins] = useState(0);
+  // localBets: matchId -> bet obj — updated synchronously on click, before Firestore confirms
+  const [localBets, setLocalBets] = useState({});
+  const placedRef = useRef(new Set()); // synchronous guard against double-clicks
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, "arena_bets"),
+      where("uid", "==", currentUser.uid),
+      where("status", "==", "pending"));
+    return onSnapshot(q, snap => setUserBets(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    return onSnapshot(doc(db, "characters", currentUser.uid), snap => {
+      if (snap.exists()) setCharCoins(snap.data().platinum ?? snap.data().money ?? 0);
+    });
+  }, [currentUser]);
+
+  // merge Firestore bets with optimistic local bets
+  const existingBet = (matchId) =>
+    userBets.find(b => b.matchId === matchId) || localBets[matchId] || null;
+
+  const placeBet = async (type, matchId, targetUid, targetName, amount) => {
+    if (placedRef.current.has(matchId)) return; // synchronous block
+    if (existingBet(matchId)) return;
+    if (charCoins < amount) return alert("Monete di platino insufficienti.");
+
+    // Block immediately — before any await
+    placedRef.current.add(matchId);
+    const multiplier = type === "tournament" ? 3 : 2;
+    // Optimistic local display
+    setLocalBets(prev => ({ ...prev, [matchId]: { targetUid, targetName, amount, multiplier } }));
+
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), { platinum: increment(-amount) });
+      await addDoc(collection(db, "arena_bets"), {
+        uid: currentUser.uid,
+        type, matchId, targetUid, targetName, amount, multiplier,
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+    } catch {
+      // rollback on error
+      placedRef.current.delete(matchId);
+      setLocalBets(prev => { const n = { ...prev }; delete n[matchId]; return n; });
+    }
+  };
+
+  const activeMatches = (arenaMeta.matches || []).filter(m => m.status !== "finished");
+  const allFighters = arenaMeta.participants || [];
+
+  return (
+    <div className="betting-panel">
+      <div className="betting-header">
+        <span className="betting-title">🎲 Scommesse Arena</span>
+        <span className="betting-balance">💰 {charCoins} MP disponibili</span>
+      </div>
+
+      {/* Match bets */}
+      {activeMatches.length > 0 && (
+        <div className="betting-section">
+          <p className="betting-section-label">Fight in corso — vittoria x2</p>
+          {activeMatches.map(m => {
+            const bet = existingBet(m.matchId);
+            return (
+              <div key={m.matchId} className="bet-match-card">
+                <div className="bet-fighters">
+                  {m.players.map(p => {
+                    const snap = snapshots[p.id] || {};
+                    const isBetTarget = bet?.targetUid === p.id;
+                    return (
+                      <div key={p.id} className={`bet-fighter ${isBetTarget ? "bet-fighter--chosen" : ""}`}>
+                        {snap.image && <img src={snap.image} alt="" className="bet-fighter-avatar" />}
+                        <span className="bet-fighter-name">{p.name}</span>
+                        {!bet && (
+                          <div className="bet-amounts">
+                            {[1, 2, 3].map(amt => (
+                              <button
+                                key={amt}
+                                className="bet-amount-btn"
+                                disabled={charCoins < amt || placedRef.current.has(m.matchId)}
+                                onClick={() => placeBet("match", m.matchId, p.id, p.name, amt)}
+                              >
+                                {amt}MP
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {bet && (
+                  <div className="bet-placed">
+                    ✓ Hai scommesso <strong>{bet.amount} MP</strong> su <strong>{bet.targetName}</strong> — possibile vincita: <strong>{bet.amount * bet.multiplier} MP</strong>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Tournament bet */}
+      {allFighters.length > 1 && (() => {
+        const tBet = existingBet("tournament");
+        return (
+          <div className="betting-section">
+            <p className="betting-section-label">🏆 Vincitore del torneo — vittoria x3</p>
+            {tBet ? (
+              <div className="bet-placed">
+                ✓ Hai scommesso <strong>{tBet.amount} MP</strong> su <strong>{tBet.targetName}</strong> — possibile vincita: <strong>{tBet.amount * 3} MP</strong>
+              </div>
+            ) : (
+              <div className="bet-tournament-grid">
+                {allFighters.map(uid => {
+                  const snap = snapshots[uid] || {};
+                  return (
+                    <div key={uid} className="bet-tournament-fighter">
+                      {snap.image && <img src={snap.image} alt="" className="bet-fighter-avatar" />}
+                      <span className="bet-fighter-name">{snap.name || uid}</span>
+                      <div className="bet-amounts">
+                        {[1, 2, 3].map(amt => (
+                          <button
+                            key={amt}
+                            className="bet-amount-btn"
+                            disabled={charCoins < amt || placedRef.current.has("tournament")}
+                            onClick={() => placeBet("tournament", "tournament", uid, snap.name || uid, amt)}
+                          >
+                            {amt}MP
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 // ── MASTER COIN EDITOR ────────────────────────────────────────────────────────
 function MasterCoinEditor() {
   const [allChars, setAllChars] = useState([]);
@@ -458,15 +612,18 @@ export default function Arena() {
   const [prizeText, setPrizeText]             = useState("");
   const [selectedTargets, setSelectedTargets] = useState({});
 
-  // Loadout — "idle" | "rolling" | "selecting"
+  // Loadout — "idle" | "class-select" | "stat-assign" | "rolling" | "selecting"
   const [loadoutPhase, setLoadoutPhase]     = useState("idle");
   const [charPreview, setCharPreview]       = useState(null);
+  const [pendingStats, setPendingStats]     = useState({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
   const [pendingWeapons, setPendingWeapons] = useState([]);
   const [pendingSpells, setPendingSpells]   = useState([]);
   const [pendingSkills, setPendingSkills]   = useState([]);
   const [pendingArmor, setPendingArmor]     = useState(null);
   const [pendingShield, setPendingShield]   = useState(null); // null | "legno" | "metallo"
   const [showWildPicker, setShowWildPicker] = useState(false);
+  const [showLayOfHandsPicker, setShowLayOfHandsPicker] = useState(false);
+  const [layOfHandsAmt, setLayOfHandsAmt] = useState(1);
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
 
   const [arenaInfoOpen, setArenaInfoOpen] = useState(false);
@@ -502,6 +659,70 @@ export default function Arena() {
     }
   };
 
+  // ── Bet resolution ─────────────────────────────────────────────────────────
+  const resolveMatchBets = async (matchId, winnerId) => {
+    const q = query(collection(db, "arena_bets"), where("matchId", "==", matchId), where("status", "==", "pending"));
+    const snap = await getDocs(q);
+    for (const betDoc of snap.docs) {
+      const bet = betDoc.data();
+      if (bet.targetUid === winnerId) {
+        const payout = bet.amount * bet.multiplier;
+        await updateDoc(doc(db, "characters", bet.uid), { platinum: increment(payout) });
+        await addDoc(collection(db, "notifications"), {
+          userId: bet.uid, read: false, timestamp: serverTimestamp(),
+          title: "🎰 Scommessa vinta!",
+          message: `Hai scommesso su ${bet.targetName} e hai vinto il fight! Guadagni ${payout} Monete di Platino.`,
+        });
+        await updateDoc(betDoc.ref, { status: "won", payout });
+      } else {
+        await updateDoc(betDoc.ref, { status: "lost" });
+      }
+    }
+  };
+
+  const resolveTournamentBets = async (winnerId, winnerName) => {
+    const q = query(collection(db, "arena_bets"), where("matchId", "==", "tournament"), where("status", "==", "pending"));
+    const snap = await getDocs(q);
+    for (const betDoc of snap.docs) {
+      const bet = betDoc.data();
+      if (bet.targetUid === winnerId) {
+        const payout = bet.amount * bet.multiplier;
+        await updateDoc(doc(db, "characters", bet.uid), { platinum: increment(payout) });
+        await addDoc(collection(db, "notifications"), {
+          userId: bet.uid, read: false, timestamp: serverTimestamp(),
+          title: "🏆 Scommessa sul torneo vinta!",
+          message: `${winnerName} ha vinto il torneo! La tua scommessa ti frutta ${payout} Monete di Platino.`,
+        });
+        await updateDoc(betDoc.ref, { status: "won", payout });
+      } else {
+        await updateDoc(betDoc.ref, { status: "lost" });
+      }
+    }
+  };
+
+  const refundAllBets = async () => {
+    const q = query(collection(db, "arena_bets"), where("status", "==", "pending"));
+    const snap = await getDocs(q);
+    for (const betDoc of snap.docs) {
+      const bet = betDoc.data();
+      await updateDoc(doc(db, "characters", bet.uid), { platinum: increment(bet.amount) });
+      await addDoc(collection(db, "notifications"), {
+        userId: bet.uid, read: false, timestamp: serverTimestamp(),
+        title: "↩ Scommessa rimborsata",
+        message: `L'arena è stata chiusa prima della fine. Ti vengono restituite ${bet.amount} Monete di Platino.`,
+      });
+      await updateDoc(betDoc.ref, { status: "refunded" });
+    }
+  };
+
+  const resolveBetsForFinishedMatches = async (updatedMatches) => {
+    for (const m of updatedMatches) {
+      const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
+      if (m.status === "finished" && prev?.status !== "finished" && m.winner)
+        await resolveMatchBets(m.matchId, m.winner);
+    }
+  };
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "arena_meta", "global"), (snap) => {
       if (snap.exists()) {
@@ -520,7 +741,7 @@ export default function Arena() {
     return () => unsub();
   }, [isMaster]);
 
-  // ── STEP 1: carica personaggio → rolling ─────────────────────────────────
+  // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
     const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
     if (!charSnap.exists()) {
@@ -531,33 +752,27 @@ export default function Arena() {
     setCharPreview({
       name:  d.name  || "Avventuriero",
       image: d.image || null,
-      class: d.class || "",
-      stats: {
-        maxHp: d.stats?.maxHp ?? d.stats?.hp ?? 70,
-        ac:    d.stats?.ac   ?? 15,
-        str:   d.stats?.str  ?? 0,
-        dex:   d.stats?.dex  ?? 0,
-        con:   d.stats?.con  ?? 0,
-        int:   d.stats?.int  ?? 0,
-        wis:   d.stats?.wis  ?? 0,
-        cha:   d.stats?.cha  ?? 0,
-      },
+      class: "",
+      stats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
       arenaBuffs: d.arenaBuffs || {},
       rolledHp: null,
       hpRerollCount: 0,
     });
+    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
     setPendingWeapons([]);
     setPendingSpells([]);
     setPendingSkills([]);
-    setLoadoutPhase("rolling");
+    setLoadoutPhase("class-select");
   };
 
-  // ── STEP 2: tira HP ───────────────────────────────────────────────────────
+  // ── STEP 3: tira HP (+CON per dado) ──────────────────────────────────────
   const rollHp = () => {
     const { count, sides } = getHpDice(charPreview.class);
+    const conMod = charPreview.stats.con ?? 0;
     let total = 0;
     for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1;
-    setCharPreview(prev => ({ ...prev, rolledHp: total, hpRerollCount: (prev.hpRerollCount || 0) + 1 }));
+    total += conMod * count;
+    setCharPreview(prev => ({ ...prev, rolledHp: Math.max(1, total), hpRerollCount: (prev.hpRerollCount || 0) + 1 }));
   };
 
   // ── STEP 3: conferma iscrizione ───────────────────────────────────────────
@@ -578,7 +793,9 @@ export default function Arena() {
     const finalAc   = pendingArmor.baseAc + dexBonus + shieldBonus + armorBuffBonus;
 
     const finalActions = [...pendingWeapons, ...pendingSpells, ...pendingSkills, ...config.autoActions];
-    const selectedItemKeys = Object.entries(pendingItemCounts).flatMap(([k, n]) => Array(n).fill(k));
+    const selectedItemKeys = Object.entries(pendingItemCounts)
+      .flatMap(([k, n]) => Array(n).fill(k))
+      .filter(k => !ARENA_ITEMS.find(i => i.key === k)?.shopOnly);
     const snapshot = {
       name:            charPreview.name,
       image:           charPreview.image,
@@ -601,6 +818,7 @@ export default function Arena() {
   const cancelLoadout = () => {
     setLoadoutPhase("idle");
     setCharPreview(null);
+    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
     setPendingWeapons([]);
     setPendingSpells([]);
     setPendingSkills([]);
@@ -645,18 +863,18 @@ export default function Arena() {
 
   const getMasterDefaultStats = (cls) => {
     if (["Fighter","Barbarian","Paladin"].includes(cls))
-      return { maxHp: 85, ac: 16, str: 4, dex: 2, con: 3, int: 0, wis: 1, cha: 1 };
+      return { maxHp: 85, ac: 16, str: 3, dex: 1, con: 2, int: 0, wis: 1, cha: 1 };
     if (["Ranger","Monk"].includes(cls))
-      return { maxHp: 75, ac: 15, str: 2, dex: 4, con: 2, int: 0, wis: 2, cha: 0 };
+      return { maxHp: 75, ac: 15, str: 1, dex: 3, con: 2, int: 0, wis: 2, cha: 0 };
     if (["Rogue"].includes(cls))
-      return { maxHp: 70, ac: 15, str: 1, dex: 5, con: 2, int: 1, wis: 1, cha: 2 };
+      return { maxHp: 70, ac: 15, str: 1, dex: 3, con: 2, int: 1, wis: 1, cha: 2 };
     if (["Wizard"].includes(cls))
-      return { maxHp: 60, ac: 13, str: 0, dex: 2, con: 1, int: 5, wis: 1, cha: 0 };
+      return { maxHp: 60, ac: 13, str: 0, dex: 2, con: 1, int: 3, wis: 1, cha: 0 };
     if (["Sorcerer","Bard","Warlock"].includes(cls))
-      return { maxHp: 62, ac: 13, str: 0, dex: 2, con: 1, int: 1, wis: 1, cha: 5 };
+      return { maxHp: 62, ac: 13, str: 0, dex: 2, con: 1, int: 1, wis: 1, cha: 3 };
     if (["Druid","Cleric"].includes(cls))
-      return { maxHp: 70, ac: 14, str: 1, dex: 2, con: 2, int: 0, wis: 5, cha: 1 };
-    return { maxHp: 70, ac: 14, str: 2, dex: 2, con: 2, int: 2, wis: 2, cha: 2 };
+      return { maxHp: 70, ac: 14, str: 1, dex: 2, con: 2, int: 0, wis: 3, cha: 1 };
+    return { maxHp: 70, ac: 14, str: 2, dex: 2, con: 2, int: 1, wis: 1, cha: 1 };
   };
 
   const startMasterLoadout = () => {
@@ -724,7 +942,8 @@ export default function Arena() {
           (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
           const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
           if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
-          return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses };
+          const layOfHandsPool = isPaladinClass((snap.class || "").toLowerCase()) ? Math.floor(startHp / 3) : 0;
+          return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
         }),
         status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
@@ -743,7 +962,8 @@ export default function Arena() {
       message: `${winnerName}, hai trionfato nell'Arena dei Campioni! ${prizeMsg}`,
       read: false, timestamp: serverTimestamp(),
     });
-    await awardArenaCoins(winnerId, 5); // 5 monete per vittoria torneo
+    await awardArenaCoins(winnerId, 5);
+    await resolveTournamentBets(winnerId, winnerName);
   };
 
   // ── COMBAT ─────────────────────────────────────────────────────────────────
@@ -805,19 +1025,23 @@ export default function Arena() {
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
       const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
       const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const smiteStrMod = attackerSnap?.stats?.str ?? 0;
+      const smiteAidBonus = myMatchPlayer?.aidBuff ? 4 : 0;
       const d20 = Math.floor(Math.random() * 20) + 1;
-      const totalHit = d20 + (weaponAction.hitBonus || 0) + armorPenalty;
+      const totalHit = d20 + (weaponAction.hitBonus || 0) + smiteStrMod + armorPenalty + smiteAidBonus;
       const isHit = totalHit >= targetAc;
       const isCrit = d20 === 20;
       const critMult = isCrit ? 2 : 1;
 
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sDmg, rolls: sRolls } = isHit ? rollDmg("2d8") : { total: 0, rolls: "" };
-      const totalDmg = (wDmg + sDmg) * critMult;
+      const totalDmg = (wDmg + sDmg + smiteStrMod) * critMult;
 
       const smiteExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const hitStr = isHit ? `COLPISCE` : `MANCA`;
-      const hitInfo = `d20(${d20})+${weaponAction.hitBonus}+arm(${armorPenalty})=${totalHit} vs CA ${targetAc}`;
+      const strPart = smiteStrMod !== 0 ? `+${smiteStrMod} FOR` : "";
+      const aidPart = smiteAidBonus ? ` +4 Aiuto` : "";
+      const hitInfo = `d20(${d20})+${weaponAction.hitBonus}${strPart}+arm(${armorPenalty})${aidPart}=${totalHit} vs CA ${targetAc}`;
       const log = {
         pub: `⚡ ${myName} → Smite Divino su ${defName}: ${hitStr}${isHit ? ` per ${totalDmg} danni${isCrit ? " CRITICO!" : ""}` : ""}`,
         att: `⚡ Smite Divino su ${defName}: ${hitStr} [${hitInfo}]${isHit ? ` → arma🎲${wRolls}+smite🎲${sRolls}=${totalDmg}${isCrit ? " CRITICO!" : ""}` : ""}`,
@@ -832,7 +1056,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0, actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: newUses };
           }
           return p;
         });
@@ -917,8 +1141,10 @@ export default function Arena() {
       ? (attackerSnap?.stats?.[spellcastKey] ?? 0)
       : 0;
     const weaponBuff = !isSpellAction && (attackerSnap?.arenaBuffs?.weaponBonus ? 1 : 0);
+    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
+    const aidBonus = attackerMatchPlayer?.aidBuff ? 4 : 0;
     const d20      = Math.floor(Math.random() * 20) + 1;
-    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff;
+    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus;
     const defMatchPlayer   = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
@@ -933,7 +1159,6 @@ export default function Arena() {
     const isRogue   = attackerClassLower.includes("rogue") || attackerClassLower.includes("ladro");
     const { total: sneakDmg, rolls: sneakRolls } = isHit && isRogue ? rollDmg("1d6") : { total: 0, rolls: "" };
     // Weapon poison bonus
-    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     const weaponPoisoned = !!attackerMatchPlayer?.weaponPoisoned;
     const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
     // Le armi aggiungono statMod al danno; le spell no (statMod è già usato per colpire)
@@ -943,6 +1168,7 @@ export default function Arena() {
     // Log breakdown
     const statPart    = !isSpellAction && action.statKey && statMod !== 0 ? ` +${statMod} ${action.statKey.toUpperCase()}` : '';
     const spellModPart = isSpellAction && statMod !== 0 ? ` +${statMod} ${spellcastKey?.toUpperCase()}` : '';
+    const aidPart     = aidBonus > 0 ? ` +4 Aiuto` : '';
     const penPart     = armorPenalty < 0 ? ` ${armorPenalty} arm.` : '';
     const critTag     = isCrit ? " ★CRITICO★" : "";
     const sneakTag    = sneakDmg > 0 ? ` | furtivo 🎲${sneakRolls}=${sneakDmg}` : "";
@@ -951,7 +1177,7 @@ export default function Arena() {
     const dmgBreakdown = isHit
       ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}=${baseDmg * critMult + dmgStatMod * critMult}${sneakTag}${poisonTag} = ${damage}]`
       : "";
-    const hitBreakdown = `🎲d20=${d20}${critTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart} = ${hitTotal} vs CA ${defAC}`;
+    const hitBreakdown = `🎲d20=${d20}${critTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart} = ${hitTotal} vs CA ${defAC}`;
     const log = {
       pub: isHit
         ? `💥 ${attName} colpisce ${defName} con ${action.name}${critTag} (${hitTotal} vs CA ${defAC})${dmgBreakdown} — ${damage} danni`
@@ -971,7 +1197,7 @@ export default function Arena() {
       const updatedPlayers = m.players.map(p => {
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage) };
         if (p.id === currentUser.uid) {
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -993,6 +1219,7 @@ export default function Arena() {
     });
 
     await awardRoundCoins(updatedMatches);
+    await resolveBetsForFinishedMatches(updatedMatches);
     const allDone = updatedMatches.every(m => m.status === "finished");
     const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -1017,6 +1244,44 @@ export default function Arena() {
         p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3, defensiveBonus: 0 } : p
       );
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: shieldExpiry, logs: [...m.logs, log] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── LAY OF HANDS ───────────────────────────────────────────────────────────
+  const handleLayOfHands = async (matchId, healAmt) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Paladino";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const maxHp = p.maxHp || p.hp;
+        const newHp = Math.min(maxHp, (p.hp || 0) + healAmt);
+        const newPool = Math.max(0, (p.layOfHandsPool ?? 0) - healAmt);
+        return { ...p, hp: newHp, layOfHandsPool: newPool };
+      });
+      const log = `🙏 ${myName} usa Lay of Hands → cura sé stesso di ${healAmt} HP`;
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
+    });
+    setShowLayOfHandsPicker(false);
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── AID BUFF (Aiuto) ────────────────────────────────────────────────────────
+  const handleAidBuff = async (matchId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Paladino";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const uses = p.actionUsesLeft || {};
+        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
+        return { ...p, aidBuff: true, actionUsesLeft: newUses };
+      });
+      const log = `🤝 ${myName} si concentra — +4 al prossimo tiro per colpire!`;
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -1277,6 +1542,7 @@ export default function Arena() {
 
     // Check tournament end
     await awardRoundCoins(updatedMatches);
+    await resolveBetsForFinishedMatches(updatedMatches);
     const allDone = updatedMatches.every(m => m.status === "finished");
     const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -1608,11 +1874,14 @@ export default function Arena() {
                 ⚔ Round {(arenaMeta.currentRound || 1) + 1}
               </button>
             )}
-            <button className="btn-reset" onClick={() => updateDoc(doc(db, "arena_meta", "global"), {
-              phase: "registration", prizes: arenaMeta.prizes || "",
-              participants: [], waitingList: [], matches: [],
-              characterSnapshots: {}, tournamentWinner: null,
-            })}>↺ Reset</button>
+            <button className="btn-reset" onClick={async () => {
+              await refundAllBets();
+              await updateDoc(doc(db, "arena_meta", "global"), {
+                phase: "registration", prizes: arenaMeta.prizes || "",
+                participants: [], waitingList: [], matches: [],
+                characterSnapshots: {}, tournamentWinner: null,
+              });
+            }}>↺ Reset</button>
           </div>
 
           {masterJoinSetup && arenaMeta.phase === "registration" && (
@@ -1650,6 +1919,93 @@ export default function Arena() {
       {arenaMeta.phase === "registration" && (!isMaster || loadoutPhase !== "idle") && (
         <div className="join-zone">
 
+          {/* ── Fase CLASS-SELECT: scelta classe ── */}
+          {loadoutPhase === "class-select" && charPreview && (
+            <div className="hp-roll-panel">
+              <div className="loadout-char-preview" style={{ justifyContent: "center", marginBottom: 20 }}>
+                {charPreview.image && (
+                  <img src={charPreview.image} alt={charPreview.name} className="loadout-avatar" />
+                )}
+                <div>
+                  <div className="loadout-char-name">{charPreview.name}</div>
+                  <div className="loadout-char-class">Scegli la tua classe</div>
+                </div>
+              </div>
+              <div className="hp-roll-title">Classe</div>
+              <div className="class-select-grid">
+                {MASTER_JOIN_CLASSES.map(cls => (
+                  <button key={cls} className="class-select-btn" onClick={() => {
+                    setCharPreview(prev => ({ ...prev, class: cls }));
+                    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+                    setLoadoutPhase("stat-assign");
+                  }}>
+                    {cls}
+                  </button>
+                ))}
+              </div>
+              <button className="btn-cancel-loadout" style={{ marginTop: 18 }} onClick={cancelLoadout}>
+                Annulla
+              </button>
+            </div>
+          )}
+
+          {/* ── Fase STAT-ASSIGN: distribuzione punti ── */}
+          {loadoutPhase === "stat-assign" && charPreview && (() => {
+            const STAT_BUDGET = 10;
+            const spent = Object.values(pendingStats).reduce((a, b) => a + b, 0);
+            const remaining = STAT_BUDGET - spent;
+            const STAT_LABELS = [["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]];
+            return (
+              <div className="hp-roll-panel">
+                <div className="loadout-char-preview" style={{ justifyContent: "center", marginBottom: 20 }}>
+                  {charPreview.image && (
+                    <img src={charPreview.image} alt={charPreview.name} className="loadout-avatar" />
+                  )}
+                  <div>
+                    <div className="loadout-char-name">{charPreview.name}</div>
+                    <div className="loadout-char-class">{charPreview.class}</div>
+                  </div>
+                </div>
+                <div className="hp-roll-title">Caratteristiche</div>
+                <div className="stat-budget-badge">{remaining > 0 ? `${remaining} punti da assegnare` : "✓ Punti assegnati"}</div>
+                <div className="stat-assign-grid">
+                  {STAT_LABELS.map(([key, label]) => (
+                    <div key={key} className="stat-assign-row">
+                      <span className="stat-assign-label">{label}</span>
+                      <button
+                        className="stat-adj-btn"
+                        onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.max(0, prev[key] - 1) }))}
+                        disabled={pendingStats[key] <= 0}
+                      >−</button>
+                      <span className="stat-assign-val">{pendingStats[key] >= 0 ? "+" : ""}{pendingStats[key]}</span>
+                      <button
+                        className="stat-adj-btn"
+                        onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(3, prev[key] + 1) }))}
+                        disabled={pendingStats[key] >= 3 || remaining <= 0}
+                      >+</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="hp-roll-buttons">
+                  <button className="btn-cancel-loadout" onClick={() => setLoadoutPhase("class-select")}>← Classe</button>
+                  <button
+                    className="btn-join"
+                    disabled={remaining !== 0}
+                    onClick={() => {
+                      setCharPreview(prev => ({ ...prev, stats: { ...pendingStats } }));
+                      setLoadoutPhase("rolling");
+                    }}
+                  >
+                    {remaining > 0 ? `Mancano ${remaining} punti` : remaining < 0 ? "Troppi punti" : "Continua →"}
+                  </button>
+                </div>
+                <button className="btn-cancel-loadout" style={{ marginTop: 12 }} onClick={cancelLoadout}>
+                  Annulla
+                </button>
+              </div>
+            );
+          })()}
+
           {/* ── Fase ROLLING: tiro HP ── */}
           {loadoutPhase === "rolling" && charPreview && (() => {
             const { count, sides } = getHpDice(charPreview.class);
@@ -1665,8 +2021,8 @@ export default function Arena() {
                   </div>
                 </div>
 
-                <div className="hp-roll-title">Tira i tuoi Punti Vita</div>
-                <div className="hp-dice-formula">{count}d{sides}</div>
+                <div className="hp-roll-title">Punti Vita</div>
+                <div className="hp-dice-formula">{count}d{sides}{charPreview.stats.con > 0 ? ` + ${charPreview.stats.con * count} (COS)` : ""}</div>
 
                 {!charPreview.rolledHp ? (
                   <button className="btn-roll-hp" onClick={rollHp}>
@@ -1934,7 +2290,7 @@ export default function Arena() {
                         🎒 Oggetti — {totalItems}/2 <span className="loadout-optional">(scegli fino a 2, anche uguali)</span>
                       </div>
                       <div className="loadout-grid">
-                        {ARENA_ITEMS.map(item => {
+                        {ARENA_ITEMS.filter(item => !item.shopOnly).map(item => {
                           const count = pendingItemCounts[item.key] || 0;
                           const canAdd = totalItems < 2;
                           return (
@@ -2001,7 +2357,7 @@ export default function Arena() {
 
               {!isRegistered && !isPending && (
                 <button className="btn-join" onClick={openLoadoutPicker}>
-                  Scegli Equipaggiamento
+                  ⚔ Crea il tuo Personaggio
                 </button>
               )}
               {isPending && (
@@ -2098,6 +2454,15 @@ export default function Arena() {
           </div>
         );
       })()}
+
+      {/* ── SCOMMESSE (non partecipanti) ── */}
+      {arenaMeta.phase === "combat" && !isRegistered && currentUser && (
+        <BettingPanel
+          arenaMeta={arenaMeta}
+          snapshots={snapshots}
+          currentUser={currentUser}
+        />
+      )}
 
       {/* ── PANNELLO AZIONI (solo per partecipanti) ── */}
       {arenaMeta.phase === "combat" && (
@@ -2259,6 +2624,9 @@ export default function Arena() {
                           {p.weaponPoisoned && (
                             <div className="fighter-poison-badge">☠ Arma Avvelenata (+1d12)</div>
                           )}
+                          {p.aidBuff && (
+                            <div className="fighter-aid-badge">🤝 Aiuto (+4 hit)</div>
+                          )}
 
                           {isMyMatch && m.status === "initiative" && p.id === currentUser?.uid && p.init === 0 && (
                             <button className="btn-init" onClick={() => rollInit(m.matchId)}>
@@ -2307,6 +2675,46 @@ export default function Arena() {
                             <div className="btn-wild-shape exhausted">🐾 Forma Selvatica — Esaurita</div>
                           )}
                         </div>
+                      );
+                    })()}
+
+                    {/* ── Lay of Hands ── */}
+                    {(() => {
+                      const mySnap = snapshots[currentUser?.uid];
+                      const isPaladino = isPaladinClass((mySnap?.class || "").toLowerCase());
+                      if (!isPaladino) return null;
+                      const pool = myPlayer?.layOfHandsPool ?? 0;
+                      const myHp = myPlayer?.hp ?? 0;
+                      const maxHp = myPlayer?.maxHp ?? 0;
+                      const maxHeal = Math.min(pool, maxHp - myHp);
+                      if (showLayOfHandsPicker) {
+                        return (
+                          <div className="lay-of-hands-picker">
+                            <div className="loh-title">🙏 Lay of Hands — Pozza: {pool} HP</div>
+                            <div className="loh-controls">
+                              <button className="stat-adj-btn" onClick={() => setLayOfHandsAmt(a => Math.max(1, a - 1))} disabled={layOfHandsAmt <= 1}>−</button>
+                              <span className="loh-amount">{layOfHandsAmt} HP</span>
+                              <button className="stat-adj-btn" onClick={() => setLayOfHandsAmt(a => Math.min(maxHeal, a + 1))} disabled={layOfHandsAmt >= maxHeal}>+</button>
+                            </div>
+                            <div className="loh-buttons">
+                              <button className="btn-cancel-wild" onClick={() => setShowLayOfHandsPicker(false)}>Annulla</button>
+                              <button className="btn-join" style={{ padding: "6px 18px", fontSize: "0.88rem" }}
+                                onClick={() => handleLayOfHands(m.matchId, layOfHandsAmt)}
+                                disabled={layOfHandsAmt < 1 || maxHeal <= 0}>
+                                Cura {layOfHandsAmt} HP
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (pool <= 0) {
+                        return <div className="btn-wild-shape exhausted">🙏 Lay of Hands — Pozza esaurita</div>;
+                      }
+                      return (
+                        <button className="btn-wild-shape" onClick={() => { setLayOfHandsAmt(Math.min(1, maxHeal)); setShowLayOfHandsPicker(true); }}
+                          disabled={maxHeal <= 0}>
+                          🙏 Lay of Hands <span className="ws-uses-tag">Pozza: {pool} HP</span>
+                        </button>
                       );
                     })()}
 
@@ -2499,6 +2907,26 @@ export default function Arena() {
                                 <span className="action-dice">+3 CA · 3 turni</span>
                               </button>
                             );
+                          }
+                          if (action.special === "aid_buff") {
+                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const noUses = usesLeft !== null && usesLeft <= 0;
+                            const alreadyActive = !!myPlayer?.aidBuff;
+                            return (
+                              <button key={action.name} className={`btn-action skill ${noUses || alreadyActive ? "no-uses" : ""}`}
+                                disabled={noUses || alreadyActive}
+                                title={alreadyActive ? "Già attivo" : noUses ? "Usi esauriti" : "+4 al prossimo tiro per colpire"}
+                                onClick={() => !noUses && !alreadyActive && handleAidBuff(m.matchId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{alreadyActive ? "✓ Attivo" : noUses ? "Esaurito" : "+4 hit"}</span>
+                                {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
+                              </button>
+                            );
+                          }
+                          if (action.special === "lay_of_hands") {
+                            const pool = myPlayer?.layOfHandsPool ?? 0;
+                            return null; // rendered separately outside renderActionBtn
                           }
                           const usesLeft = action.maxUses !== undefined
                             ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses)
