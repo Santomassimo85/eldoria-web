@@ -40,6 +40,7 @@ import AdminSessions from "./pages/AdminSessions";
 import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
+import ArenaMarket from "./pages/ArenaMarket";
 import NPC from "./pages/NPC";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
@@ -302,6 +303,7 @@ export default function App() {
 
           <NavDropdown label="Battaglia" closeAll={closeMenu}>
             <NavLink to="/arena">Arena</NavLink>
+            <NavLink to="/arena-bottega">Bottega Arena</NavLink>
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
 
@@ -325,6 +327,7 @@ export default function App() {
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
+          <Route path="/arena-bottega" element={<ArenaMarket />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
 
