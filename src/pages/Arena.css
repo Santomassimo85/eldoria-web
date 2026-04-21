@@ -385,7 +385,9 @@
 .join-zone {
   display: flex;
   justify-content: center;
-  padding: 12px 0 40px;
+  padding: 12px 8px 40px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .join-zone-inner {
@@ -1058,6 +1060,7 @@
   max-width: 420px;
   text-align: center;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
 }
 
 .hp-roll-title {
@@ -1833,6 +1836,7 @@
   width: 100%;
   max-width: 680px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
 }
 
 /* Character preview */
@@ -2470,6 +2474,252 @@
   .btn-confirm-equip {
     width: 100%;
     padding: 12px;
+  }
+}
+
+/* ============================================================
+   CREAZIONE PG — MOBILE RESPONSIVE
+   ============================================================ */
+
+/* ── Tablet (≤ 640px) ── */
+@media (max-width: 640px) {
+  .join-zone {
+    padding: 8px 0 32px;
+  }
+
+  .hp-roll-panel {
+    padding: 22px 16px 20px;
+    border-radius: 12px;
+    max-width: 100%;
+  }
+
+  .hp-dice-formula {
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+  }
+
+  .btn-roll-hp {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 0.9rem;
+  }
+
+  .hp-roll-buttons {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .hp-roll-buttons .btn-reroll,
+  .hp-roll-buttons .btn-join {
+    width: 100%;
+    padding: 13px 16px;
+    font-size: 0.82rem;
+  }
+
+  .class-select-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .class-select-btn {
+    padding: 12px 6px;
+    font-size: 0.78rem;
+    min-height: 48px;
+  }
+
+  /* Stat assign — bigger touch targets */
+  .stat-assign-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .stat-assign-row {
+    padding: 10px 8px;
+    gap: 6px;
+  }
+
+  .stat-adj-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .stat-assign-val {
+    font-size: 1rem;
+    min-width: 26px;
+  }
+
+  .stat-assign-label {
+    font-size: 0.75rem;
+    min-width: 28px;
+  }
+
+  .stat-budget-badge {
+    font-size: 0.8rem;
+    padding: 5px 14px;
+    margin-bottom: 14px;
+  }
+
+  .loadout-panel {
+    padding: 18px 12px 18px;
+    border-radius: 12px;
+    max-width: 100%;
+  }
+
+  .loadout-char-preview {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .loadout-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .loadout-char-name {
+    font-size: 0.88rem;
+  }
+
+  .loadout-char-stats {
+    font-size: 0.7rem;
+    line-height: 1.6;
+  }
+
+  .loadout-section-title {
+    font-size: 0.6rem;
+    margin: 14px 0 8px;
+  }
+
+  .loadout-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .loadout-actions .btn-join {
+    width: 100%;
+    padding: 13px;
+    font-size: 0.82rem;
+  }
+
+  .loadout-actions .btn-cancel-loadout {
+    width: 100%;
+    padding: 11px;
+  }
+
+  .btn-cancel-loadout {
+    padding: 11px 16px;
+    font-size: 0.7rem;
+  }
+
+  .loadout-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 6px;
+  }
+
+  .loadout-item {
+    padding: 9px 6px;
+  }
+
+  .loadout-item-icon {
+    font-size: 1.1rem;
+  }
+
+  .loadout-item-name {
+    font-size: 0.62rem;
+  }
+
+  .loadout-item-damage {
+    font-size: 0.58rem;
+  }
+
+  .loadout-item-info {
+    font-size: 0.55rem;
+  }
+
+  .spell-level-count {
+    font-size: 0.65rem;
+  }
+
+  .loadout-selected-preview {
+    gap: 4px;
+  }
+}
+
+/* ── Small phones (≤ 400px) ── */
+@media (max-width: 400px) {
+  .hp-roll-panel {
+    padding: 18px 12px 16px;
+  }
+
+  .hp-result-number {
+    font-size: 2.4rem;
+  }
+
+  .class-select-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .class-select-btn {
+    font-size: 0.72rem;
+    padding: 11px 4px;
+    min-height: 44px;
+  }
+
+  .stat-assign-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .stat-assign-row {
+    justify-content: space-between;
+  }
+
+  .stat-adj-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .stat-assign-val {
+    font-size: 1.1rem;
+    min-width: 32px;
+  }
+
+  .loadout-panel {
+    padding: 14px 10px 14px;
+  }
+
+  .loadout-char-stats {
+    font-size: 0.65rem;
+  }
+
+  .loadout-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 5px;
+  }
+
+  .loadout-item {
+    padding: 8px 4px;
+  }
+
+  .loadout-item-name {
+    font-size: 0.55rem;
+  }
+
+  .loadout-item-damage {
+    font-size: 0.52rem;
+  }
+
+  .loadout-item-info {
+    font-size: 0.48rem;
+  }
+
+  .loadout-auto-block {
+    flex-wrap: wrap;
+    gap: 6px;
   }
 }
 
