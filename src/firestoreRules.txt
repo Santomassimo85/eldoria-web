@@ -80,10 +80,9 @@ service cloud.firestore {
       allow write: if isLoggedIn() && (request.auth.uid + "_arena" == charId || isMaster());
     }
 
-    // Scommesse arena: owner legge le sue, tutti possono creare/aggiornare
-    // (la risoluzione avviene dal client dell'attaccante)
+    // Scommesse arena: lettura aperta a tutti i loggati (risoluzione lato client richiede leggere le scommesse altrui)
     match /arena_bets/{betId} {
-      allow read: if isLoggedIn() && (resource.data.uid == request.auth.uid || isMaster());
+      allow read: if isLoggedIn();
       allow create: if isLoggedIn();
       allow update: if isLoggedIn();
       allow delete: if isMaster();
