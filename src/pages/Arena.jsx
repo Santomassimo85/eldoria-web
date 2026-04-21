@@ -547,7 +547,7 @@ function logPubText(log) {
 }
 
 // ── BETTING PANEL ─────────────────────────────────────────────────────────────
-function BettingPanel({ arenaMeta, snapshots, currentUser }) {
+function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
   const [userBets, setUserBets] = useState([]);
   const [charCoins, setCharCoins] = useState(0);
   // localBets: matchId -> bet obj — updated synchronously on click, before Firestore confirms
@@ -615,8 +615,12 @@ function BettingPanel({ arenaMeta, snapshots, currentUser }) {
           <p className="betting-section-label">Fight in corso — vittoria x2</p>
           {activeMatches.map(m => {
             const bet = existingBet(m.matchId);
+            const bettingOpen = isMaster || m.players.every(p => p.maxHp > 0 && p.hp >= p.maxHp * 0.5);
             return (
               <div key={m.matchId} className="bet-match-card">
+                {!bettingOpen && !bet && (
+                  <div className="bet-closed-notice">⚠ Scommesse chiuse — un combattente è sotto il 50% HP</div>
+                )}
                 <div className="bet-fighters">
                   {m.players.map(p => {
                     const snap = snapshots[p.id] || {};
@@ -625,7 +629,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser }) {
                       <div key={p.id} className={`bet-fighter ${isBetTarget ? "bet-fighter--chosen" : ""}`}>
                         {snap.image && <img src={snap.image} alt="" className="bet-fighter-avatar" />}
                         <span className="bet-fighter-name">{p.name}</span>
-                        {!bet && (
+                        {!bet && bettingOpen && (
                           <div className="bet-amounts">
                             {[1, 2, 3].map(amt => (
                               <button
@@ -2999,12 +3003,13 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── SCOMMESSE (non partecipanti) ── */}
-      {arenaMeta.phase === "combat" && !isRegistered && currentUser && (
+      {/* ── SCOMMESSE (non partecipanti + master) ── */}
+      {arenaMeta.phase === "combat" && (!isRegistered || isMaster) && currentUser && (
         <BettingPanel
           arenaMeta={arenaMeta}
           snapshots={snapshots}
           currentUser={currentUser}
+          isMaster={isMaster}
         />
       )}
 
