@@ -9,7 +9,7 @@ import LoginDropdown from "./LoginDropdown";
 // FIREBASE
 import { db } from "./firebase";
 import {
-  doc, updateDoc, onSnapshot, collection,
+  doc, updateDoc, setDoc, onSnapshot, collection,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -128,11 +128,11 @@ function OnlinePresence() {
     if (now - lastWriteRef.current < 8000) return; // debounce 8s
     lastWriteRef.current = now;
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), {
+      await setDoc(doc(db, "characters", currentUser.uid), {
         lastSeen: serverTimestamp(),
-      });
+      }, { merge: true });
     } catch (_) {
-      // Se il doc non esiste ignora silenziosamente
+      // ignora silenziosamente
     }
   };
 

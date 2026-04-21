@@ -70,6 +70,11 @@ service cloud.firestore {
     }
 
     // --- ARENA ---
+    match /arena_config/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
     match /arena_meta/global {
       allow read: if isLoggedIn();
       allow write: if isLoggedIn(); // partecipanti scrivono attacchi, iniziativa, ecc.

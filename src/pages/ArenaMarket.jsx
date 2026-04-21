@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
-import { doc, collection, onSnapshot, updateDoc, increment } from "firebase/firestore";
+import { doc, collection, onSnapshot, updateDoc, setDoc, increment } from "firebase/firestore";
 import "./ArenaMarket.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -19,7 +19,7 @@ const SHOP_ITEMS = [
   {
     key: "arma_plus1",
     name: "Arma +1",
-    description: "+1 ai tiri per colpire con arma e +1 ai danni per tutta la durata del torneo.",
+    description: "+1 ai tiri per colpire con arma e +1 alla Classe Armatura. Permanente.",
     icon: "⚔️",
     price: 6,
     field: "weaponBonus",
@@ -40,6 +40,7 @@ export default function ArenaMarket() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
   const [message, setMessage] = useState(null);
+  const [customPrices, setCustomPrices] = useState({});
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
@@ -50,6 +51,18 @@ export default function ArenaMarket() {
     });
     return () => unsub();
   }, [currentUser]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "arena_config", "shop"), snap => {
+      if (snap.exists()) setCustomPrices(snap.data().prices ?? {});
+    });
+    return () => unsub();
+  }, []);
+
+  const effectiveItems = SHOP_ITEMS.map(item => ({
+    ...item,
+    price: customPrices[item.key] ?? item.price,
+  }));
 
   const coins = charData?.arenaCoins ?? 0;
   const buffs = charData?.arenaBuffs ?? {};
@@ -70,6 +83,9 @@ export default function ArenaMarket() {
       arenaCoins: increment(-item.price),
       [`arenaBuffs.${item.field}`]: increment(1),
     };
+    if (item.key === "arma_plus1" && !(buffs.armorBonus >= 1)) {
+      updates["arenaBuffs.armorBonus"] = increment(1);
+    }
     await updateDoc(doc(db, "characters", currentUser.uid), updates);
     showMsg(`Acquistato: ${item.name}!`);
   };
@@ -110,7 +126,7 @@ export default function ArenaMarket() {
       </div>
 
       <div className="am-grid">
-        {SHOP_ITEMS.map(item => {
+        {effectiveItems.map(item => {
           const owned = buffs[item.field] ?? 0;
           const maxed = owned >= item.max;
           const canAfford = coins >= item.price;
@@ -140,7 +156,7 @@ export default function ArenaMarket() {
         })}
       </div>
 
-      {isMaster && <MasterCoinPanel />}
+      {isMaster && <MasterCoinPanel effectiveItems={effectiveItems} />}
     </div>
   );
 }
@@ -151,9 +167,10 @@ const ITEM_FIELDS = [
   { field: "healingPotions", label: "Pozione Cura Media",   icon: "💚" },
 ];
 
-function MasterCoinPanel() {
+function MasterCoinPanel({ effectiveItems }) {
   const [allChars, setAllChars] = useState([]);
   const [editCoins, setEditCoins] = useState({});
+  const [editPrices, setEditPrices] = useState({});
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
@@ -172,13 +189,43 @@ function MasterCoinPanel() {
   };
 
   const removeItem = async (uid, field) => {
-    await updateDoc(doc(db, "characters", uid), { [`arenaBuffs.${field}`]: 0 });
+    const updates = { [`arenaBuffs.${field}`]: 0 };
+    if (field === "weaponBonus") updates["arenaBuffs.armorBonus"] = 0;
+    await updateDoc(doc(db, "characters", uid), updates);
+  };
+
+  const savePrice = async (key) => {
+    const val = parseInt(editPrices[key], 10);
+    if (isNaN(val) || val < 0) return;
+    await setDoc(doc(db, "arena_config", "shop"), { prices: { [key]: val } }, { merge: true });
+    setEditPrices(prev => { const n = { ...prev }; delete n[key]; return n; });
   };
 
   return (
     <div className="am-master-panel">
       <h3 className="am-master-panel-title">🪙 Gestione Monete Arena</h3>
-      <p className="am-master-note">Modifica le Monete Arena di qualsiasi giocatore.</p>
+
+      <div className="am-price-editor">
+        <p className="am-master-note">Modifica i prezzi degli oggetti.</p>
+        {effectiveItems.map(item => (
+          <div key={item.key} className="am-price-row">
+            <span className="am-price-icon">{item.icon}</span>
+            <span className="am-price-name">{item.name}</span>
+            <span className="am-price-current">{item.price} MA</span>
+            <input
+              className="am-coin-input"
+              type="number"
+              min={0}
+              placeholder="nuovo prezzo"
+              value={editPrices[item.key] ?? ""}
+              onChange={e => setEditPrices(prev => ({ ...prev, [item.key]: e.target.value }))}
+            />
+            <button className="am-coin-save" onClick={() => savePrice(item.key)}>Salva</button>
+          </div>
+        ))}
+      </div>
+
+      <p className="am-master-note" style={{ marginTop: "18px" }}>Modifica le Monete Arena dei giocatori.</p>
       <div className="am-coin-list">
         {allChars.map(ch => {
           const buffs = ch.arenaBuffs || {};

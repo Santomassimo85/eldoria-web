@@ -265,26 +265,26 @@ const ARENA_ARMORS = {
 const WILD_SHAPES = {
   wolf: {
     name: "Lupo", icon: "🐺",
-    hpDice: { count: 8, sides: 12 },
+    hpDice: { count: 4, sides: 12 },
     actions: [
-      { name: "Artiglio", damage: "2d63", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "3d6+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "1d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
+      { name: "Morso",    damage: "1d6+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
     ],
   },
   bear: {
     name: "Orso", icon: "🐻",
-    hpDice: { count: 12, sides: 12 },
+    hpDice: { count: 6, sides: 12 },
     actions: [
-      { name: "Artiglio", damage: "2d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "3d6+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "1d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
+      { name: "Morso",    damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
     ],
   },
   spider: {
     name: "Ragno", icon: "🕷",
-    hpDice: { count: 6, sides: 12 },
+    hpDice: { count: 4, sides: 12 },
     actions: [
-      { name: "Morso",     damage: "2d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
-      { name: "Veleno",    damage: "2d6+3", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
+      { name: "Morso",     damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Veleno",    damage: "1d6+3", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
       { name: "Ragnatela", damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web"    },
     ],
   },
@@ -318,6 +318,12 @@ const DEATHBLOW_ACTION = {
 const SNEAK_ATTACK_ACTION = {
   name: "Attacco Furtivo", hitBonus: 0, damage: "1d6", statKey: null,
   type: "skill", icon: "🗡", info: "Attacco con arma equipaggiata +1d6 · 2 cariche", special: "sneak_attack", maxUses: 2,
+};
+
+// Furtività (Rogue) — vantaggio al tiro, nemico in svantaggio al prossimo attacco, 2 cariche
+const STEALTH_ACTION = {
+  name: "Furtività", hitBonus: 2, damage: "1d8", statKey: "dex",
+  type: "skill", icon: "🌑", info: "Vantaggio al tiro · +DES · nemico in svantaggio al prossimo attacco · 2 cariche", special: "stealth", maxUses: 2,
 };
 
 // Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
@@ -475,13 +481,13 @@ function getLoadoutConfig(charClass) {
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: 4,  autoActions: [MAGICAL_CUNNING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
-  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [CHARGE_ACTION, SECOND_WIND_ACTION, ACTION_SURGE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [PUGNO_ACTION, CARICA_PUGNI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, DEATHBLOW_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (CASTER_CLASSES.some(k => cls.includes(k)))   return { weaponOptions: SIMPLE_WEAPONS, spellOptions: WIZARD_SPELLS, spellLimits: SPELL_LIMITS.generic, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.generic), autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -1251,7 +1257,10 @@ export default function Arena() {
       const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const dexMod = attackerSnap?.stats?.dex ?? 0;
       const aidBonus = myMatchPlayer?.aidBuff ? 4 : 0;
-      const d20 = Math.floor(Math.random() * 20) + 1;
+      const sneakDefStealthed = !!(defMatchPlayer?.stealthed);
+      const sneakD20a = Math.floor(Math.random() * 20) + 1;
+      const sneakD20b = sneakDefStealthed ? Math.floor(Math.random() * 20) + 1 : 0;
+      const d20 = sneakDefStealthed ? Math.min(sneakD20a, sneakD20b) : sneakD20a;
       const totalHit = d20 + (weaponAction.hitBonus || 0) + dexMod + armorPenalty + aidBonus;
       const isHit = totalHit >= targetAc;
       const isCrit = d20 === 20;
@@ -1282,11 +1291,11 @@ export default function Arena() {
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const players = m.players.map(p => {
-          if (p.id === targetId && isHit) return { ...p, hp: Math.max(0, (p.hp ?? 0) - totalDmg) };
+          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, (p.hp ?? 0) - totalDmg) : p.hp, stealthed: false };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 2)) - 1) };
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, stealthed: false, actionUsesLeft: newUses };
           }
           return p;
         });
@@ -1384,12 +1393,17 @@ export default function Arena() {
     const hunterMarkBonus    = (attackerMatchPlayer?.hunterMarkTurns ?? 0) > 0 ? 3 : 0;
     const blindDebuffPenalty = attackerMatchPlayer?.blindDebuff ? -3 : 0;
     const isBlindDebuff      = action.special === "blind_debuff";
+    const isStealthAction    = action.special === "stealth";
+    const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const hasSorceryAdvantage = isSorcererClass(attackerClassLower) && isSpellAction;
+    const hasAdvantage       = hasSorceryAdvantage || isStealthAction;
+    const hasDisadvantage    = !!(defMatchPlayer?.stealthed);
     const d20a     = Math.floor(Math.random() * 20) + 1;
-    const d20b     = hasSorceryAdvantage ? Math.floor(Math.random() * 20) + 1 : 0;
-    const d20      = hasSorceryAdvantage ? Math.max(d20a, d20b) : d20a;
+    const d20b     = (hasAdvantage || hasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
+    const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
+                   : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
+                   : d20a;
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty;
-    const defMatchPlayer   = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
@@ -1416,7 +1430,9 @@ export default function Arena() {
     const rageTag        = rageDmgBonus > 0 ? ` | furia +${rageDmgBonus}` : "";
     const inspirationTag = inspirationBonus > 0 ? ` +ispirazione 🎵🎲${inspirationRolls}=${inspirationBonus}` : "";
     const magicDetTag    = magicDetectBonus > 0 ? ` +3 🔮det.` : "";
-    const advantageTag   = hasSorceryAdvantage ? ` 🌟vant.[${d20a},${d20b}]` : "";
+    const advantageTag   = hasAdvantage && !hasDisadvantage ? ` 🌟vant.[${d20a},${d20b}]`
+                         : hasDisadvantage && !hasAdvantage ? ` 🌑svant.[${d20a},${d20b}]`
+                         : "";
     const hunterMarkTag  = hunterMarkBonus > 0 ? ` +3 🎯marchio` : "";
     const blindPenTag    = blindDebuffPenalty < 0 ? ` ${blindDebuffPenalty} 🙈acc.` : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
@@ -1448,9 +1464,9 @@ export default function Arena() {
     let updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), invisible: false };
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), invisible: false, stealthed: false };
         if (p.id === currentUser.uid) {
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: false, invisible: false };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: false, invisible: false, stealthed: isStealthAction };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -3805,6 +3821,7 @@ export default function Arena() {
                                 : action.special === "web" ? "Ragnatela — TS DES bersaglio"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
+                                : action.special === "stealth" ? `Furtività — vantaggio al tiro · ${action.damage} +DES · nemico in svantaggio al prossimo attacco`
                                 : !isEquipped ? "Clicca per impugnare (spende il turno)"
                                 : `+${action.hitBonus}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""} | ${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               onClick={() => {

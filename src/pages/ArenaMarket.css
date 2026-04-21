@@ -117,7 +117,17 @@
   box-shadow: 0 4px 16px rgba(212,175,55,0.18);
 }
 
-.am-card--maxed { opacity: 0.65; }
+.am-card--maxed {
+  opacity: 0.55;
+  background: #e8e8e8;
+  border-color: #ccc;
+  filter: grayscale(60%);
+  cursor: not-allowed;
+}
+.am-card--maxed:hover {
+  box-shadow: none;
+  border-color: #ccc;
+}
 
 .am-card-icon { font-size: 2.2rem; }
 .am-card-name { font-family: var(--font-title, serif); font-size: 0.9rem; color: var(--red, #820a0a); letter-spacing: 0.03em; }
@@ -193,6 +203,21 @@
   color: #666;
   margin: 0 0 12px;
 }
+
+.am-price-editor { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+
+.am-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #eee;
+}
+.am-price-row:last-child { border-bottom: none; }
+
+.am-price-icon { font-size: 1.1rem; }
+.am-price-name { flex: 1; font-size: 0.88rem; color: #333; }
+.am-price-current { font-size: 0.84rem; color: #666; white-space: nowrap; }
 
 .am-coin-list { display: flex; flex-direction: column; gap: 8px; }
 
