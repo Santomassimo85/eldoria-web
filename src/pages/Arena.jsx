@@ -2397,7 +2397,7 @@ export default function Arena() {
               <p><strong>1. Classe:</strong> scegli tra tutte le classi disponibili (Fighter, Rogue, Wizard, Druid…). Ogni classe ha un dado HP, abilità caratteristiche e un set di equipaggiamenti dedicato.</p>
               <p><strong>2. Caratteristiche:</strong> distribuisci i punti stat (FOR, DES, COS, INT, SAG, CAR) liberamente nel limite consentito. Le stat determinano modificatori usati in ogni tiro.</p>
               <p><strong>3. Equipaggiamento:</strong> scegli armi, armatura e oggetti consumabili dal catalogo Arena. Ogni classe ha restrizioni su cosa può equipaggiare.</p>
-              <p><strong>4. HP:</strong> tira i dadi vita della tua classe (+ modificatore COS per dado). Hai un numero limitato di reroll.</p>
+              <p><strong>4. HP:</strong> tira i tuoi dadi vita — <strong>tutte le classi usano 7d10</strong> (+ modificatore COS per dado). Ogni livello di classe acquistato alla Bottega aggiunge +1d10 al tiro. Hai un numero limitato di reroll.</p>
               <p><strong>Nota:</strong> il personaggio Arena è separato dalla tua scheda principale e non influenza la campagna.</p>
             </div>
 
@@ -2423,7 +2423,7 @@ export default function Arena() {
               <p><strong>Scommessa su un match:</strong> scegli il vincitore di un singolo fight e la cifra (1, 2 o 3 MA). Se il tuo combattente vince → ricevi <strong>x2</strong> la puntata.</p>
               <p><strong>Scommessa sul torneo:</strong> scegli chi vincerà l'intero torneo. Puntata da 1, 2 o 3 MA → se azzecchi, ricevi <strong>x3</strong> la puntata.</p>
               <p>Puoi piazzare <strong>una sola scommessa per match</strong> e una sola sul vincitore finale. Le MA vengono scalate subito; la vincita viene accreditata automaticamente a torneo concluso.</p>
-              <p><strong>Attenzione:</strong> le scommesse sono aperte solo finché entrambi i combattenti sono sopra il 50% HP.</p>
+              <p><strong>Attenzione:</strong> le scommesse sui singoli match sono aperte solo finché entrambi i combattenti sono sopra il 50% HP. La scommessa sul vincitore del torneo è disponibile <strong>solo durante il Round 1</strong>.</p>
             </div>
 
           </div>

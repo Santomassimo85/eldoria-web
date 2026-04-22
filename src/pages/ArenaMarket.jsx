@@ -176,7 +176,7 @@ export default function ArenaMarket() {
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
-          Ogni classe parte da Lv.1 — salire di livello costa <strong>{levelUpCost} MA</strong>.
+          Ogni classe parte da Lv.1 — salire di livello costa <strong>{levelUpCost} MA</strong> e aggiunge <strong>+1d10</strong> al tiro HP della prossima Arena (base: 7d10 per tutte le classi).
           {(charData?.arenaHpBonus ?? 0) > 0 && (
             <span className="am-hp-bonus-tag"> • +{charData.arenaHpBonus} PF bonus da livelli</span>
           )}
