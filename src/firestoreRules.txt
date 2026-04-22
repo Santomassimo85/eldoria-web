@@ -61,7 +61,6 @@ service cloud.firestore {
     // --- PERSONAGGI & SCHEDE ---
     match /characters/{charId} {
       allow read: if true;
-      // Scrittura aperta: necessaria per risoluzione scommesse lato client
       allow write: if true;
     }
 
@@ -77,7 +76,7 @@ service cloud.firestore {
 
     match /arena_meta/global {
       allow read: if isLoggedIn();
-      allow write: if isLoggedIn(); // partecipanti scrivono attacchi, iniziativa, ecc.
+      allow write: if isLoggedIn();
     }
 
     match /characters_arena/{charId} {
@@ -85,7 +84,6 @@ service cloud.firestore {
       allow write: if isLoggedIn() && (request.auth.uid + "_arena" == charId || isMaster());
     }
 
-    // Scommesse arena: lettura aperta a tutti i loggati (risoluzione lato client richiede leggere le scommesse altrui)
     match /arena_bets/{betId} {
       allow read: if isLoggedIn();
       allow create: if isLoggedIn();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { db } from "../firebase";
 import {
   collection,
@@ -35,6 +35,15 @@ export default function WorldBossAdmin() {
   const [newBoss, setNewBoss] = useState(initialBossState);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
+  const newFileRef = useRef(null);
+  const editFileRef = useRef(null);
+
+  const loadSprite = (file, onBase64) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => onBase64(e.target.result);
+    reader.readAsDataURL(file);
+  };
 
   const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -257,13 +266,26 @@ export default function WorldBossAdmin() {
 
           <div className="boss-form-row">
             <div>
-              <label>URL Immagine</label>
-              <input
-                className="admin-field-input"
-                placeholder="https://..."
-                value={newBoss.imageUrl}
-                onChange={(e) => setNewBoss({ ...newBoss, imageUrl: e.target.value })}
-              />
+              <label>Sprite Boss</label>
+              <div className="boss-sprite-upload">
+                {newBoss.imageUrl && (
+                  <img src={newBoss.imageUrl} alt="preview" className="boss-sprite-preview" />
+                )}
+                <input
+                  ref={newFileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={e => loadSprite(e.target.files[0], b64 => setNewBoss(b => ({ ...b, imageUrl: b64 })))}
+                />
+                <button
+                  type="button"
+                  className="btn-admin-secondary"
+                  onClick={() => newFileRef.current?.click()}
+                >
+                  📁 Carica Sprite
+                </button>
+              </div>
             </div>
             <div>
               <label>Scadenza Evento</label>
@@ -310,8 +332,26 @@ export default function WorldBossAdmin() {
                   </div>
                 </div>
 
-                <label>URL Immagine</label>
-                <input className="admin-field-input" value={editData.imageUrl || ""} onChange={(e) => setEditData({ ...editData, imageUrl: e.target.value })} />
+                <label>Sprite Boss</label>
+                <div className="boss-sprite-upload">
+                  {editData.imageUrl && (
+                    <img src={editData.imageUrl} alt="preview" className="boss-sprite-preview" />
+                  )}
+                  <input
+                    ref={editFileRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={e => loadSprite(e.target.files[0], b64 => setEditData(d => ({ ...d, imageUrl: b64 })))}
+                  />
+                  <button
+                    type="button"
+                    className="btn-admin-secondary"
+                    onClick={() => editFileRef.current?.click()}
+                  >
+                    📁 Carica Sprite
+                  </button>
+                </div>
 
                 <label>Scadenza Evento</label>
                 <input className="admin-field-input" type="datetime-local" value={editData.expiryDate || ""} onChange={(e) => setEditData({ ...editData, expiryDate: e.target.value })} />

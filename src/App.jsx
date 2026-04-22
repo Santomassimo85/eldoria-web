@@ -44,6 +44,7 @@ import ArenaMarket from "./pages/ArenaMarket";
 import NPC from "./pages/NPC";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
+import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
@@ -343,6 +344,7 @@ export default function App() {
           <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
           <Route path="/dm-admin/send-notif" element={<SendNotification />} />
+          <Route path="/dm-admin/player-sprites" element={<PlayerSpritesAdmin />} />
         </Routes>
       </main>
 

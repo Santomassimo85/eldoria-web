@@ -410,3 +410,26 @@ input::placeholder {
     color: black;
     border-color: #fff;
 }
+/* ── Boss sprite upload ── */
+.boss-sprite-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.boss-sprite-preview {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border: 2px solid var(--gold);
+  background: #0a0a14;
+  image-rendering: pixelated;
+}
+
+.boss-upload-progress {
+  font-size: 13px;
+  color: var(--gold);
+  font-family: monospace;
+}
