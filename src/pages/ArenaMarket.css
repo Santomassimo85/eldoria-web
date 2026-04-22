@@ -1,11 +1,12 @@
 .am-page {
   min-height: 100vh;
-  padding: 110px 24px 80px;
+  padding: calc(var(--navbar-h) + 30px) 24px 80px;
   background: var(--bg, #fff);
   font-family: var(--font-text);
   color: var(--text, #111);
   max-width: 860px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 /* ── Header ─────────────────────────────────────────── */
@@ -91,6 +92,58 @@
   line-height: 1.6;
   color: #333;
 }
+
+/* ── Classes section ─────────────────────────────────── */
+.am-classes-section { margin-bottom: 28px; }
+.am-classes-sub { font-size: 0.84rem; color: #666; margin: 4px 0 10px; }
+.am-hp-bonus-tag { color: #166534; font-weight: 600; }
+
+.am-classes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.am-class-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 10px 10px;
+  background: #fff;
+  border: 1px solid rgba(212,175,55,0.4);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(212,175,55,0.08);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.am-class-card:hover { border-color: rgba(212,175,55,0.7); box-shadow: 0 4px 14px rgba(212,175,55,0.18); }
+
+.am-class-icon { font-size: 1.7rem; }
+.am-class-name { font-family: var(--font-title, serif); font-size: 0.82rem; color: var(--red, #820a0a); letter-spacing: 0.03em; text-align: center; }
+.am-class-level {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--red, #820a0a);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.am-class-lvup-btn {
+  margin-top: 2px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--gold, #d4af37);
+  border-radius: 6px;
+  background: rgba(212,175,55,0.1);
+  color: #92400e;
+  cursor: pointer;
+  transition: background 0.15s;
+  width: 100%;
+}
+.am-class-lvup-btn:hover:not(:disabled) { background: rgba(212,175,55,0.25); }
+.am-class-lvup-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Shop grid ──────────────────────────────────────── */
 .am-grid {
@@ -231,6 +284,40 @@
 }
 
 .am-coin-row:last-child { border-bottom: none; }
+.am-coin-row--stacked { flex-direction: column; align-items: stretch; gap: 6px; }
+.am-coin-row-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.am-master-classes {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 0 2px 6px;
+  border-left: 2px solid rgba(212,175,55,0.3);
+}
+
+.am-master-class-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  color: #444;
+}
+
+.am-master-class-label { flex: 1; min-width: 100px; }
+
+.am-btn-toggle { font-size: 0.78rem; white-space: nowrap; }
+
+.am-class-lv-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--red, #820a0a);
+  padding: 1px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.am-coin-input--sm { width: 58px; }
 
 .am-coin-name { flex: 1; min-width: 120px; font-size: 0.9rem; color: #222; }
 .am-coin-val { font-size: 0.88rem; font-weight: 700; color: #92400e; min-width: 52px; }
@@ -258,6 +345,17 @@
 
 .am-coin-save:hover { background: rgba(212,175,55,0.28); }
 
+.am-lvdown-btn {
+  background: rgba(180, 30, 30, 0.08);
+  border-color: rgba(180, 30, 30, 0.4);
+  color: #9b1c1c;
+  padding: 5px 10px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.am-lvdown-btn:hover { background: rgba(180, 30, 30, 0.18); }
+.am-lvdown-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
 .am-owned-items {
   display: flex;
   flex-wrap: wrap;
@@ -281,3 +379,117 @@
 .am-remove-item-btn:hover {
   background: rgba(239,68,68,0.18);
 }
+
+/* ── Bet tables ─────────────────────────────────────── */
+.am-bets-section {
+  margin-top: 0;
+}
+
+.am-bet-tables {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.am-bet-table {
+  flex: 1 1 200px;
+  background: #fff;
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.am-bet-table-title {
+  font-family: var(--font-title, serif);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--red, #820a0a);
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+
+.am-bet-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.am-bet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.am-bet-stake {
+  font-weight: 700;
+  color: #92400e;
+  min-width: 36px;
+}
+
+.am-bet-arrow {
+  color: #aaa;
+  font-size: 0.8rem;
+}
+
+.am-bet-win {
+  font-weight: 700;
+  color: #166534;
+  min-width: 36px;
+}
+
+.am-bet-profit {
+  font-size: 0.78rem;
+  color: #555;
+  margin-left: auto;
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 20px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width: 620px) {
+  .am-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .am-title {
+    font-size: clamp(1.2rem, 5vw, 1.6rem);
+    letter-spacing: 0.02em;
+  }
+
+  .am-classes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+  }
+
+  .am-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .am-price-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .am-price-name {
+    flex: 1 1 100%;
+  }
+
+  .am-coin-input {
+    width: 70px;
+  }
+
+  .am-coin-row-top {
+    flex-wrap: wrap;
+  }
+
+  .am-master-class-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+

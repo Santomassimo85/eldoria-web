@@ -36,9 +36,33 @@ const SHOP_ITEMS = [
   },
 ];
 
+export const ARENA_CLASSES = [
+  { key: "fighter",   name: "Guerriero",  icon: "⚔️" },
+  { key: "barbarian", name: "Barbaro",    icon: "🪓" },
+  { key: "paladin",   name: "Paladino",   icon: "🛡️" },
+  { key: "rogue",     name: "Ladro",      icon: "🗡️" },
+  { key: "ranger",    name: "Ranger",     icon: "🏹" },
+  { key: "monk",      name: "Monaco",     icon: "👊" },
+  { key: "wizard",    name: "Mago",       icon: "🔮" },
+  { key: "sorcerer",  name: "Stregone",   icon: "✨" },
+  { key: "warlock",   name: "Warlock",    icon: "🌑" },
+  { key: "bard",      name: "Bardo",      icon: "🎵" },
+  { key: "cleric",    name: "Chierico",   icon: "⛪" },
+  { key: "druid",     name: "Druido",     icon: "🌿" },
+];
+
+const HIT_DICE = {
+  fighter: 10, barbarian: 10, paladin: 10, rogue: 10, ranger: 10,
+  monk: 10, wizard: 10, sorcerer: 10, warlock: 10, bard: 10, cleric: 10, druid: 10,
+};
+
+const LEVEL_UP_KEY = "level_up_cost";
+const LEVEL_UP_DEFAULT = 10;
+
 export default function ArenaMarket() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
+  const [arenaMeta, setArenaMeta] = useState(null);
   const [message, setMessage] = useState(null);
   const [customPrices, setCustomPrices] = useState({});
 
@@ -53,6 +77,13 @@ export default function ArenaMarket() {
   }, [currentUser]);
 
   useEffect(() => {
+    const unsub = onSnapshot(doc(db, "arena_meta", "global"), snap => {
+      if (snap.exists()) setArenaMeta(snap.data());
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
     const unsub = onSnapshot(doc(db, "arena_config", "shop"), snap => {
       if (snap.exists()) setCustomPrices(snap.data().prices ?? {});
     });
@@ -64,8 +95,10 @@ export default function ArenaMarket() {
     price: customPrices[item.key] ?? item.price,
   }));
 
-  const coins = charData?.arenaCoins ?? 0;
-  const buffs = charData?.arenaBuffs ?? {};
+  const levelUpCost = customPrices[LEVEL_UP_KEY] ?? LEVEL_UP_DEFAULT;
+  const coins    = charData?.arenaCoins ?? 0;
+  const buffs    = charData?.arenaBuffs ?? {};
+  const classLvls = charData?.classLevels ?? {};
 
   const showMsg = (text, type = "ok") => {
     setMessage({ text, type });
@@ -75,10 +108,8 @@ export default function ArenaMarket() {
   const buyItem = async (item) => {
     if (!currentUser || !charData) return;
     if (coins < item.price) { showMsg("Monete insufficienti.", "err"); return; }
-
     const currentVal = buffs[item.field] ?? 0;
     if (currentVal >= item.max) { showMsg("Hai già questo potenziamento al massimo.", "err"); return; }
-
     const updates = {
       arenaCoins: increment(-item.price),
       [`arenaBuffs.${item.field}`]: increment(1),
@@ -88,6 +119,31 @@ export default function ArenaMarket() {
     }
     await updateDoc(doc(db, "characters", currentUser.uid), updates);
     showMsg(`Acquistato: ${item.name}!`);
+  };
+
+  const levelUpClass = async (cls) => {
+    if (!currentUser || !charData) return;
+    if (coins < levelUpCost) { showMsg("Monete Arena insufficienti.", "err"); return; }
+    const currentLv = classLvls[cls.key] ?? 1;
+    const die = HIT_DICE[cls.key] ?? 8;
+    // CON modifier from the arena character snapshot (stored as modifier, e.g. +2)
+    const mySnap = arenaMeta?.characterSnapshots?.[currentUser.uid];
+    const conMod = mySnap?.stats?.con ?? 0;
+    const dieRoll = Math.floor(Math.random() * die) + 1;
+    const hpGain = Math.max(1, dieRoll + conMod);
+    await updateDoc(doc(db, "characters", currentUser.uid), {
+      arenaCoins: increment(-levelUpCost),
+      [`classLevels.${cls.key}`]: currentLv + 1,
+      arenaHpBonus: increment(hpGain),
+    });
+    // Keep the arena snapshot in sync so generateMatches picks up the bonus
+    if (mySnap) {
+      await updateDoc(doc(db, "arena_meta", "global"), {
+        [`characterSnapshots.${currentUser.uid}.arenaHpBonus`]: increment(hpGain),
+      });
+    }
+    const conStr = conMod !== 0 ? ` + CON ${conMod > 0 ? "+" : ""}${conMod}` : "";
+    showMsg(`${cls.name} → Lv.${currentLv + 1}! +${hpGain} PF (1d${die}=${dieRoll}${conStr})`);
   };
 
   if (!currentUser) {
@@ -116,6 +172,38 @@ export default function ArenaMarket() {
         </div>
       )}
 
+      {/* ── CLASSI ARENA ── */}
+      <div className="am-classes-section">
+        <h3 className="am-how-title">Classi Arena</h3>
+        <p className="am-classes-sub">
+          Ogni classe parte da Lv.1 — salire di livello costa <strong>{levelUpCost} MA</strong>.
+          {(charData?.arenaHpBonus ?? 0) > 0 && (
+            <span className="am-hp-bonus-tag"> • +{charData.arenaHpBonus} PF bonus da livelli</span>
+          )}
+        </p>
+        <div className="am-classes-grid">
+          {ARENA_CLASSES.map(cls => {
+            const lv = classLvls[cls.key] ?? 1;
+            const canAfford = coins >= levelUpCost;
+            return (
+              <div key={cls.key} className="am-class-card">
+                <div className="am-class-icon">{cls.icon}</div>
+                <div className="am-class-name">{cls.name}</div>
+                <div className="am-class-level">Lv. {lv}</div>
+                <button
+                  className="am-class-lvup-btn"
+                  disabled={!canAfford}
+                  onClick={() => levelUpClass(cls)}
+                  title={canAfford ? `Sali a Lv.${lv + 1} (${levelUpCost} MA)` : "Monete insufficienti"}
+                >
+                  ▲ Lv. Up
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="am-how">
         <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
         <ul className="am-how-list">
@@ -123,6 +211,32 @@ export default function ArenaMarket() {
           <li>🪙 <strong>+1 MA</strong> per ogni round vinto</li>
           <li>🪙 <strong>+5 MA</strong> se vinci il torneo</li>
         </ul>
+      </div>
+
+      <div className="am-how am-bets-section">
+        <h3 className="am-how-title">🎲 Scommesse Arena — Vincite in MP</h3>
+        <p className="am-classes-sub" style={{ marginBottom: "10px" }}>
+          Le scommesse usano <strong>Monete di Platino (MP)</strong>. Puoi scommettere su singoli fight o sul vincitore del torneo.
+          Le scommesse chiudono quando un combattente scende sotto il <strong>50% HP</strong>.
+        </p>
+        <div className="am-bet-tables">
+          <div className="am-bet-table">
+            <div className="am-bet-table-title">⚔️ Fight singolo — x2</div>
+            <div className="am-bet-rows">
+              <div className="am-bet-row"><span className="am-bet-stake">1 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MP</span><span className="am-bet-profit">+1 MP</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">2 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">4 MP</span><span className="am-bet-profit">+2 MP</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">3 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MP</span><span className="am-bet-profit">+3 MP</span></div>
+            </div>
+          </div>
+          <div className="am-bet-table">
+            <div className="am-bet-table-title">🏆 Vincitore torneo — x3</div>
+            <div className="am-bet-rows">
+              <div className="am-bet-row"><span className="am-bet-stake">1 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">3 MP</span><span className="am-bet-profit">+2 MP</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">2 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MP</span><span className="am-bet-profit">+4 MP</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">3 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">9 MP</span><span className="am-bet-profit">+6 MP</span></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="am-grid">
@@ -156,7 +270,7 @@ export default function ArenaMarket() {
         })}
       </div>
 
-      {isMaster && <MasterCoinPanel effectiveItems={effectiveItems} />}
+      {isMaster && <MasterCoinPanel effectiveItems={effectiveItems} levelUpCost={levelUpCost} arenaMeta={arenaMeta} />}
     </div>
   );
 }
@@ -167,10 +281,12 @@ const ITEM_FIELDS = [
   { field: "healingPotions", label: "Pozione Cura Media",   icon: "💚" },
 ];
 
-function MasterCoinPanel({ effectiveItems }) {
+function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
   const [allChars, setAllChars] = useState([]);
   const [editCoins, setEditCoins] = useState({});
   const [editPrices, setEditPrices] = useState({});
+  const [editLevels, setEditLevels] = useState({});
+  const [expanded, setExpanded] = useState({});
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
@@ -201,12 +317,60 @@ function MasterCoinPanel({ effectiveItems }) {
     setEditPrices(prev => { const n = { ...prev }; delete n[key]; return n; });
   };
 
+  const saveClassLevel = async (uid, classKey) => {
+    const inputKey = `${uid}_${classKey}`;
+    const val = parseInt(editLevels[inputKey], 10);
+    if (isNaN(val) || val < 1) return;
+    await updateDoc(doc(db, "characters", uid), { [`classLevels.${classKey}`]: val });
+    setEditLevels(prev => { const n = { ...prev }; delete n[inputKey]; return n; });
+  };
+
+  const levelDownClass = async (uid, cls) => {
+    const char = allChars.find(c => c.uid === uid);
+    if (!char) return;
+    const currentLv = (char.classLevels ?? {})[cls.key] ?? 1;
+    if (currentLv <= 1) return;
+    const die = HIT_DICE[cls.key] ?? 8;
+    const mySnap = arenaMeta?.characterSnapshots?.[uid];
+    const conMod = mySnap?.stats?.con ?? 0;
+    // Reverse an average-roll HP gain (ceil of average + CON, minimum 1)
+    const hpToRemove = Math.max(1, Math.ceil(die / 2) + conMod);
+    const newHpBonus = Math.max(0, (char.arenaHpBonus ?? 0) - hpToRemove);
+    await updateDoc(doc(db, "characters", uid), {
+      [`classLevels.${cls.key}`]: currentLv - 1,
+      arenaHpBonus: newHpBonus,
+    });
+    if (mySnap) {
+      const newSnapBonus = Math.max(0, (mySnap.arenaHpBonus ?? 0) - hpToRemove);
+      await updateDoc(doc(db, "arena_meta", "global"), {
+        [`characterSnapshots.${uid}.arenaHpBonus`]: newSnapBonus,
+      });
+    }
+  };
+
   return (
     <div className="am-master-panel">
-      <h3 className="am-master-panel-title">🪙 Gestione Monete Arena</h3>
+      <h3 className="am-master-panel-title">🪙 Pannello Master</h3>
 
+      {/* Prezzi oggetti + costo level-up */}
       <div className="am-price-editor">
-        <p className="am-master-note">Modifica i prezzi degli oggetti.</p>
+        <p className="am-master-note">Prezzi oggetti e costo salita di livello.</p>
+
+        <div className="am-price-row">
+          <span className="am-price-icon">📈</span>
+          <span className="am-price-name">Costo Lv. Up (tutte le classi)</span>
+          <span className="am-price-current">{levelUpCost} MA</span>
+          <input
+            className="am-coin-input"
+            type="number"
+            min={0}
+            placeholder="nuovo costo"
+            value={editPrices[LEVEL_UP_KEY] ?? ""}
+            onChange={e => setEditPrices(prev => ({ ...prev, [LEVEL_UP_KEY]: e.target.value }))}
+          />
+          <button className="am-coin-save" onClick={() => savePrice(LEVEL_UP_KEY)}>Salva</button>
+        </div>
+
         {effectiveItems.map(item => (
           <div key={item.key} className="am-price-row">
             <span className="am-price-icon">{item.icon}</span>
@@ -225,39 +389,82 @@ function MasterCoinPanel({ effectiveItems }) {
         ))}
       </div>
 
-      <p className="am-master-note" style={{ marginTop: "18px" }}>Modifica le Monete Arena dei giocatori.</p>
+      {/* Giocatori */}
+      <p className="am-master-note" style={{ marginTop: "18px" }}>Giocatori — monete e livelli classe.</p>
       <div className="am-coin-list">
         {allChars.map(ch => {
-          const buffs = ch.arenaBuffs || {};
-          const ownedItems = ITEM_FIELDS.filter(it => (buffs[it.field] ?? 0) > 0);
+          const buffsData  = ch.arenaBuffs || {};
+          const ownedItems = ITEM_FIELDS.filter(it => (buffsData[it.field] ?? 0) > 0);
+          const classLvls  = ch.classLevels ?? {};
+          const isOpen     = !!expanded[ch.uid];
+
           return (
-          <div key={ch.uid} className="am-coin-row">
-            <span className="am-coin-name">{ch.name || ch.uid}</span>
-            <span className="am-coin-val">{ch.arenaCoins ?? 0} MA</span>
-            <input
-              className="am-coin-input"
-              type="number"
-              min={0}
-              placeholder="nuovo valore"
-              value={editCoins[ch.uid] ?? ""}
-              onChange={e => setEditCoins(prev => ({ ...prev, [ch.uid]: e.target.value }))}
-            />
-            <button className="am-coin-save" onClick={() => saveCoins(ch.uid)}>Salva</button>
-            {ownedItems.length > 0 && (
-              <div className="am-owned-items">
-                {ownedItems.map(it => (
-                  <button
-                    key={it.field}
-                    className="am-remove-item-btn"
-                    title={`Rimuovi ${it.label}`}
-                    onClick={() => removeItem(ch.uid, it.field)}
-                  >
-                    {it.icon} {it.label} ✕
-                  </button>
-                ))}
+            <div key={ch.uid} className="am-coin-row am-coin-row--stacked">
+              <div className="am-coin-row-top">
+                <span className="am-coin-name">{ch.name || ch.uid}</span>
+                <span className="am-coin-val">{ch.arenaCoins ?? 0} MA</span>
+                <input
+                  className="am-coin-input"
+                  type="number"
+                  min={0}
+                  placeholder="monete"
+                  value={editCoins[ch.uid] ?? ""}
+                  onChange={e => setEditCoins(prev => ({ ...prev, [ch.uid]: e.target.value }))}
+                />
+                <button className="am-coin-save" onClick={() => saveCoins(ch.uid)}>Salva</button>
+                <button
+                  className="am-coin-save am-btn-toggle"
+                  onClick={() => setExpanded(prev => ({ ...prev, [ch.uid]: !isOpen }))}
+                >
+                  {isOpen ? "▲ Classi" : "▼ Classi"}
+                </button>
               </div>
-            )}
-          </div>
+
+              {isOpen && (
+                <div className="am-master-classes">
+                  {ARENA_CLASSES.map(cls => {
+                    const lv = classLvls[cls.key] ?? 1;
+                    const inputKey = `${ch.uid}_${cls.key}`;
+                    return (
+                      <div key={cls.key} className="am-master-class-row">
+                        <span className="am-master-class-label">{cls.icon} {cls.name}</span>
+                        <span className="am-class-lv-badge">Lv. {lv}</span>
+                        <button
+                          className="am-coin-save am-lvdown-btn"
+                          title={`Scendi a Lv.${lv - 1}`}
+                          disabled={lv <= 1}
+                          onClick={() => levelDownClass(ch.uid, cls)}
+                        >−</button>
+                        <input
+                          className="am-coin-input am-coin-input--sm"
+                          type="number"
+                          min={1}
+                          placeholder="lv"
+                          value={editLevels[inputKey] ?? ""}
+                          onChange={e => setEditLevels(prev => ({ ...prev, [inputKey]: e.target.value }))}
+                        />
+                        <button className="am-coin-save" onClick={() => saveClassLevel(ch.uid, cls.key)}>Salva</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {ownedItems.length > 0 && (
+                <div className="am-owned-items">
+                  {ownedItems.map(it => (
+                    <button
+                      key={it.field}
+                      className="am-remove-item-btn"
+                      title={`Rimuovi ${it.label}`}
+                      onClick={() => removeItem(ch.uid, it.field)}
+                    >
+                      {it.icon} {it.label} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

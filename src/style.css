@@ -8,7 +8,13 @@
      --text: #111111;
      --font-title: "Cinzel Decorative", serif;
      --font-text: "Cardo", serif;
+     --navbar-h: 80px;
 }
+
+/* header stacks to column at ≤1300px, so padding must account for the taller height */
+@media (max-width: 1300px) { :root { --navbar-h: 130px; } }
+@media (max-width: 620px)  { :root { --navbar-h: 150px; } }
+@media (max-width: 400px)  { :root { --navbar-h: 165px; } }
 
 * {
      box-sizing: border-box;

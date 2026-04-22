@@ -5,7 +5,7 @@
 /* ---- PAGE -------------------------------------------------- */
 .arena-page {
   min-height: 100vh;
-  padding: 110px 24px 80px;
+  padding: calc(var(--navbar-h) + 30px) 24px 80px;
   background: var(--bg);
   font-family: var(--font-text);
   color: var(--text);
@@ -89,6 +89,60 @@
   background: rgba(212, 175, 55, 0.1);
   border: 1px solid rgba(212, 175, 55, 0.5);
   color: #7a5e10;
+}
+
+.phase-tag.paused {
+  background: rgba(60, 60, 180, 0.1);
+  border: 1px solid rgba(60, 60, 180, 0.4);
+  color: #3a3ab0;
+  animation: pausePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pausePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+.btn-timer-pause {
+  padding: 11px 18px;
+  background: rgba(60, 60, 180, 0.08);
+  color: #3a3ab0;
+  border: 1px solid rgba(60, 60, 180, 0.4);
+  border-radius: 8px;
+  font-family: var(--font-title);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-timer-pause:hover {
+  background: rgba(60, 60, 180, 0.15);
+  border-color: rgba(60, 60, 180, 0.65);
+  transform: translateY(-1px);
+}
+
+.btn-timer-play {
+  padding: 11px 18px;
+  background: rgba(39, 174, 96, 0.1);
+  color: #1a7a40;
+  border: 1px solid rgba(39, 174, 96, 0.45);
+  border-radius: 8px;
+  font-family: var(--font-title);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-timer-play:hover {
+  background: rgba(39, 174, 96, 0.18);
+  border-color: rgba(39, 174, 96, 0.7);
+  transform: translateY(-1px);
 }
 
 /* ---- CHAMPION BANNER --------------------------------------- */
@@ -3294,6 +3348,22 @@
 }
 .smite-active .action-icon {
   animation: smite-weapon-shine 1.2s ease-in-out infinite;
+}
+
+@keyframes stealth-pulse {
+  0%   { box-shadow: 0 0 4px 2px rgba(99,102,241,0.3), 0 0 8px 4px rgba(99,102,241,0.15); }
+  50%  { box-shadow: 0 0 12px 6px rgba(99,102,241,0.7), 0 0 24px 10px rgba(139,92,246,0.4); }
+  100% { box-shadow: 0 0 4px 2px rgba(99,102,241,0.3), 0 0 8px 4px rgba(99,102,241,0.15); }
+}
+.btn-action.stealth-active {
+  animation: stealth-pulse 1.4s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.2)) !important;
+  border-color: rgba(139,92,246,0.7) !important;
+  color: #a5b4fc !important;
+  cursor: not-allowed;
+}
+.stealth-active .action-icon {
+  filter: drop-shadow(0 0 4px rgba(139,92,246,0.8));
 }
 
 /* ── Heal spell button ───────────────────────────────── */

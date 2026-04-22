@@ -314,16 +314,16 @@ const DEATHBLOW_ACTION = {
   type: "skill", icon: "💀", info: "Solo ≤20% HP · +DES", special: "deathblow", maxUses: 2,
 };
 
-// Attacco Furtivo (Rogue) — arma equipaggiata + 1d6, 2 cariche
+// Attacco Furtivo (Rogue) — arma equipaggiata + 1d6, 3 cariche
 const SNEAK_ATTACK_ACTION = {
   name: "Attacco Furtivo", hitBonus: 0, damage: "1d6", statKey: null,
-  type: "skill", icon: "🗡", info: "Attacco con arma equipaggiata +1d6 · 2 cariche", special: "sneak_attack", maxUses: 2,
+  type: "skill", icon: "🗡", info: "Arma+1d6+DES+3 · 3 cariche", special: "sneak_attack", maxUses: 3,
 };
 
-// Furtività (Rogue) — vantaggio al tiro, nemico in svantaggio al prossimo attacco, 2 cariche
+// Furtività (Rogue) — vantaggio al tiro per 2 turni, nemico in svantaggio per 2 turni, 3 cariche
 const STEALTH_ACTION = {
   name: "Furtività", hitBonus: 2, damage: "1d8", statKey: "dex",
-  type: "skill", icon: "🌑", info: "Vantaggio al tiro · +DES · nemico in svantaggio al prossimo attacco · 2 cariche", special: "stealth", maxUses: 2,
+  type: "skill", icon: "🌑", info: "Vantaggio 2 turni · +DES · nemico svantaggio 2 turni · 3 cariche", special: "stealth", maxUses: 3,
 };
 
 // Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
@@ -451,13 +451,27 @@ function getArmorConfig(cls) {
   return { armorCategory: "medium", canHaveShield: false };
 }
 
-function getHpDice(charClass) {
+function getClassKey(charClass) {
   const cls = (charClass || "").toLowerCase();
-  if (["barbarian","barbaro"].some(c => cls.includes(c)))                                                        return { count: 7, sides: 12 };
-  if (["fighter","guerriero","warrior","paladin","paladino","ranger","cacciatore"].some(c => cls.includes(c)))   return { count: 7, sides: 10 };
-  if (["bard","bardo","cleric","chierico","druid","druido","monk","monaco","rogue","ladro","warlock","artificer","artefice"].some(c => cls.includes(c))) return { count: 7, sides: 8 };
-  if (["wizard","mago","sorcerer","stregone"].some(c => cls.includes(c)))                                        return { count: 7, sides: 6 };
-  return { count: 7, sides: 8 };
+  if (["barbarian","barbaro"].some(c => cls.includes(c)))                           return "barbarian";
+  if (["fighter","guerriero","warrior"].some(c => cls.includes(c)))                 return "fighter";
+  if (["paladin","paladino"].some(c => cls.includes(c)))                            return "paladin";
+  if (["ranger","cacciatore"].some(c => cls.includes(c)))                           return "ranger";
+  if (["bard","bardo"].some(c => cls.includes(c)))                                  return "bard";
+  if (["cleric","chierico"].some(c => cls.includes(c)))                             return "cleric";
+  if (["druid","druido"].some(c => cls.includes(c)))                                return "druid";
+  if (["monk","monaco"].some(c => cls.includes(c)))                                 return "monk";
+  if (["rogue","ladro"].some(c => cls.includes(c)))                                 return "rogue";
+  if (["warlock"].some(c => cls.includes(c)))                                       return "warlock";
+  if (["wizard","mago"].some(c => cls.includes(c)))                                 return "wizard";
+  if (["sorcerer","stregone"].some(c => cls.includes(c)))                           return "sorcerer";
+  return "fighter";
+}
+
+function getHpDice(charClass, classLevels) {
+  const classKey = getClassKey(charClass);
+  const extraLevels = Math.max(0, (classLevels?.[classKey] ?? 1) - 1);
+  return { count: 7 + extraLevels, sides: 10 };
 }
 
 // spellLimits: { level: maxSelectable } — lv3+ bloccati nell'arena
@@ -571,7 +585,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
   useEffect(() => {
     if (!currentUser) return;
     return onSnapshot(doc(db, "characters", currentUser.uid), snap => {
-      if (snap.exists()) setCharCoins(snap.data().platinum ?? snap.data().money ?? 0);
+      if (snap.exists()) setCharCoins(snap.data().arenaCoins ?? 0);
     });
   }, [currentUser]);
 
@@ -582,7 +596,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
   const placeBet = async (type, matchId, targetUid, targetName, amount) => {
     if (placedRef.current.has(matchId)) return; // synchronous block
     if (existingBet(matchId)) return;
-    if (charCoins < amount) return alert("Monete di platino insufficienti.");
+    if (charCoins < amount) return alert("Monete Arena insufficienti.");
 
     // Block immediately — before any await
     placedRef.current.add(matchId);
@@ -591,7 +605,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
     setLocalBets(prev => ({ ...prev, [matchId]: { targetUid, targetName, amount, multiplier } }));
 
     try {
-      await updateDoc(doc(db, "characters", currentUser.uid), { platinum: increment(-amount) });
+      await updateDoc(doc(db, "characters", currentUser.uid), { arenaCoins: increment(-amount) });
       await addDoc(collection(db, "arena_bets"), {
         uid: currentUser.uid,
         type, matchId, targetUid, targetName, amount, multiplier,
@@ -605,14 +619,20 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
     }
   };
 
-  const activeMatches = (arenaMeta.matches || []).filter(m => m.status !== "finished");
+  const activeMatches = (arenaMeta.matches || []).filter(m => m.status !== "finished" && !m.winner);
   const allFighters = arenaMeta.participants || [];
+  const eliminatedUids = new Set(
+    (arenaMeta.matches || [])
+      .filter(m => m.status === "finished" && m.winner)
+      .flatMap(m => m.players.filter(p => p.id !== m.winner).map(p => p.id))
+  );
+  const bettableFighters = allFighters.filter(uid => !eliminatedUids.has(uid));
 
   return (
     <div className="betting-panel">
       <div className="betting-header">
         <span className="betting-title">🎲 Scommesse Arena</span>
-        <span className="betting-balance">💰 {charCoins} MP disponibili</span>
+        <span className="betting-balance">🪙 {charCoins} MA disponibili</span>
       </div>
 
       {/* Match bets */}
@@ -621,7 +641,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
           <p className="betting-section-label">Fight in corso — vittoria x2</p>
           {activeMatches.map(m => {
             const bet = existingBet(m.matchId);
-            const bettingOpen = isMaster || m.players.every(p => p.maxHp > 0 && p.hp >= p.maxHp * 0.5);
+            const bettingOpen = m.players.every(p => p.maxHp > 0 && p.hp >= p.maxHp * 0.5);
             return (
               <div key={m.matchId} className="bet-match-card">
                 {!bettingOpen && !bet && (
@@ -665,7 +685,7 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
       )}
 
       {/* Tournament bet */}
-      {allFighters.length > 1 && (() => {
+      {bettableFighters.length > 1 && (() => {
         const tBet = existingBet("tournament");
         return (
           <div className="betting-section">
@@ -674,9 +694,11 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
               <div className="bet-placed">
                 ✓ Hai scommesso <strong>{tBet.amount} MP</strong> su <strong>{tBet.targetName}</strong> — possibile vincita: <strong>{tBet.amount * 3} MP</strong>
               </div>
+            ) : (arenaMeta.currentRound || 1) > 1 ? (
+              <div className="bet-closed-notice">⚠ Scommesse sul vincitore chiuse — disponibili solo al Round 1</div>
             ) : (
               <div className="bet-tournament-grid">
-                {allFighters.map(uid => {
+                {bettableFighters.map(uid => {
                   const snap = snapshots[uid] || {};
                   return (
                     <div key={uid} className="bet-tournament-fighter">
@@ -826,11 +848,11 @@ export default function Arena() {
       const bet = betDoc.data();
       if (bet.targetUid === winnerId) {
         const payout = bet.amount * bet.multiplier;
-        await updateDoc(doc(db, "characters", bet.uid), { platinum: increment(payout) });
+        await updateDoc(doc(db, "characters", bet.uid), { arenaCoins: increment(payout) });
         await addDoc(collection(db, "notifications"), {
           userId: bet.uid, read: false, timestamp: serverTimestamp(),
           title: "🎰 Scommessa vinta!",
-          message: `Hai scommesso su ${bet.targetName} e hai vinto il fight! Guadagni ${payout} Monete di Platino.`,
+          message: `Hai scommesso su ${bet.targetName} e hai vinto il fight! Guadagni ${payout} Monete Arena.`,
         });
         await updateDoc(betDoc.ref, { status: "won", payout });
       } else {
@@ -846,11 +868,11 @@ export default function Arena() {
       const bet = betDoc.data();
       if (bet.targetUid === winnerId) {
         const payout = bet.amount * bet.multiplier;
-        await updateDoc(doc(db, "characters", bet.uid), { platinum: increment(payout) });
+        await updateDoc(doc(db, "characters", bet.uid), { arenaCoins: increment(payout) });
         await addDoc(collection(db, "notifications"), {
           userId: bet.uid, read: false, timestamp: serverTimestamp(),
           title: "🏆 Scommessa sul torneo vinta!",
-          message: `${winnerName} ha vinto il torneo! La tua scommessa ti frutta ${payout} Monete di Platino.`,
+          message: `${winnerName} ha vinto il torneo! La tua scommessa ti frutta ${payout} Monete Arena.`,
         });
         await updateDoc(betDoc.ref, { status: "won", payout });
       } else {
@@ -864,11 +886,11 @@ export default function Arena() {
     const snap = await getDocs(q);
     for (const betDoc of snap.docs) {
       const bet = betDoc.data();
-      await updateDoc(doc(db, "characters", bet.uid), { platinum: increment(bet.amount) });
+      await updateDoc(doc(db, "characters", bet.uid), { arenaCoins: increment(bet.amount) });
       await addDoc(collection(db, "notifications"), {
         userId: bet.uid, read: false, timestamp: serverTimestamp(),
         title: "↩ Scommessa rimborsata",
-        message: `L'arena è stata chiusa prima della fine. Ti vengono restituite ${bet.amount} Monete di Platino.`,
+        message: `L'arena è stata chiusa prima della fine. Ti vengono restituite ${bet.amount} Monete Arena.`,
       });
       await updateDoc(betDoc.ref, { status: "refunded" });
     }
@@ -909,12 +931,13 @@ export default function Arena() {
     }
     const d = charSnap.data();
     setCharPreview({
-      name:  d.name  || "Avventuriero",
-      image: d.image || null,
-      class: "",
-      stats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
-      arenaBuffs: d.arenaBuffs || {},
-      rolledHp: null,
+      name:        d.name  || "Avventuriero",
+      image:       d.image || null,
+      class:       "",
+      stats:       { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      arenaBuffs:  d.arenaBuffs  || {},
+      classLevels: d.classLevels || {},
+      rolledHp:    null,
       hpRerollCount: 0,
     });
     setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
@@ -926,7 +949,7 @@ export default function Arena() {
 
   // ── STEP 3: tira HP (+CON per dado) ──────────────────────────────────────
   const rollHp = () => {
-    const { count, sides } = getHpDice(charPreview.class);
+    const { count, sides } = getHpDice(charPreview.class, charPreview.classLevels);
     const conMod = charPreview.stats.con ?? 0;
     let total = 0;
     for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1;
@@ -1054,15 +1077,21 @@ export default function Arena() {
     return { maxHp: 70, ac: 14, str: 2, dex: 2, con: 2, int: 1, wis: 1, cha: 1 };
   };
 
-  const startMasterLoadout = () => {
+  const startMasterLoadout = async () => {
     if (!masterJoinName.trim() || !masterJoinClass) return;
     const stats = getMasterDefaultStats(masterJoinClass);
+    let classLevels = {};
+    try {
+      const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
+      if (charSnap.exists()) classLevels = charSnap.data().classLevels || {};
+    } catch { /* ignore */ }
     setCharPreview({
-      name:     masterJoinName.trim(),
-      image:    null,
-      class:    masterJoinClass,
+      name:        masterJoinName.trim(),
+      image:       null,
+      class:       masterJoinClass,
       stats,
-      rolledHp: null,
+      classLevels,
+      rolledHp:    null,
       hpRerollCount: 0,
     });
     setPendingWeapons([]);
@@ -1090,8 +1119,9 @@ export default function Arena() {
     if (arenaMeta.participants.length < 2) return alert("Minimo 2 partecipanti!");
     const shuffled = [...arenaMeta.participants].sort(() => Math.random() - 0.5);
     const matches  = generateMatches(shuffled, 1, arenaMeta.characterSnapshots || {});
+    const arenaEndsAt = new Date(Date.now() + 10 * 3600 * 1000).toISOString();
     await updateDoc(doc(db, "arena_meta", "global"), {
-      matches, phase: "combat", currentRound: 1, tournamentWinner: null,
+      matches, phase: "combat", currentRound: 1, tournamentWinner: null, arenaEndsAt,
     });
   };
 
@@ -1114,7 +1144,8 @@ export default function Arena() {
         matchId: `R${round}_M${matches.length}`,
         players: matchPlayerIds.map(id => {
           const snap = snapshots[id] || {};
-          const startHp = snap.stats?.maxHp ?? 70;
+          const baseHp   = snap.stats?.maxHp ?? 70;
+          const startHp  = baseHp + (snap.arenaHpBonus ?? 0);
           const itemUses = {};
           (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
           const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
@@ -1257,10 +1288,15 @@ export default function Arena() {
       const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const dexMod = attackerSnap?.stats?.dex ?? 0;
       const aidBonus = myMatchPlayer?.aidBuff ? 4 : 0;
-      const sneakDefStealthed = !!(defMatchPlayer?.stealthed);
+      const sneakDefStealthed   = (defMatchPlayer?.stealthTurns ?? 0) > 0;
+      const sneakSelfStealthed  = (myMatchPlayer?.stealthTurns ?? 0) > 0;
+      const sneakHasAdvantage   = sneakSelfStealthed && !sneakDefStealthed;
+      const sneakHasDisadvantage = sneakDefStealthed && !sneakSelfStealthed;
       const sneakD20a = Math.floor(Math.random() * 20) + 1;
-      const sneakD20b = sneakDefStealthed ? Math.floor(Math.random() * 20) + 1 : 0;
-      const d20 = sneakDefStealthed ? Math.min(sneakD20a, sneakD20b) : sneakD20a;
+      const sneakD20b = (sneakHasAdvantage || sneakHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
+      const d20 = sneakHasAdvantage ? Math.max(sneakD20a, sneakD20b)
+                : sneakHasDisadvantage ? Math.min(sneakD20a, sneakD20b)
+                : sneakD20a;
       const totalHit = d20 + (weaponAction.hitBonus || 0) + dexMod + armorPenalty + aidBonus;
       const isHit = totalHit >= targetAc;
       const isCrit = d20 === 20;
@@ -1268,7 +1304,7 @@ export default function Arena() {
 
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sneakDmg, rolls: sneakRolls } = isHit ? rollDmg("1d6") : { total: 0, rolls: "" };
-      const totalDmg = (wDmg + sneakDmg + dexMod) * critMult;
+      const totalDmg = (wDmg + sneakDmg + dexMod + 3) * critMult;
 
       const sneakExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const critTag = isCrit ? " ★CRITICO★" : "";
@@ -1277,10 +1313,10 @@ export default function Arena() {
       const hitStr = `🎲d20=${d20}${critTag} +${weaponAction.hitBonus} hit ${dexPart}${aidPart}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""} = ${totalHit} vs CA ${targetAc}`;
       const log = {
         pub: isHit
-          ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [🎲${wRolls}+furtivo 🎲${sneakRolls}+${dexMod} DES = ${totalDmg}] — ${totalDmg} danni`
+          ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [🎲${wRolls}+furtivo 🎲${sneakRolls}+${dexMod} DES+3 = ${totalDmg}] — ${totalDmg} danni`
           : `🛡️ ${attName} manca ${defName} con Attacco Furtivo (${totalHit} vs CA ${targetAc})`,
         att: isHit
-          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${sneakRolls} +${dexMod} DES = ${totalDmg}] — ${totalDmg} danni`
+          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${sneakRolls} +${dexMod} DES +3 = ${totalDmg}] — ${totalDmg} danni`
           : `🛡️ Manchi ${defName} con Attacco Furtivo [${hitStr}]`,
         def: isHit
           ? `🗡 ${attName} ti ha colpito con Attacco Furtivo${critTag} — ${totalDmg} danni`
@@ -1291,11 +1327,11 @@ export default function Arena() {
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const players = m.players.map(p => {
-          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, (p.hp ?? 0) - totalDmg) : p.hp, stealthed: false };
+          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, (p.hp ?? 0) - totalDmg) : p.hp, stealthTurns: Math.max(0, (p.stealthTurns ?? 0) - 1) };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
-            const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 2)) - 1) };
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, stealthed: false, actionUsesLeft: newUses };
+            const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 3)) - 1) };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, stealthTurns: Math.max(0, (p.stealthTurns ?? 0) - 1), actionUsesLeft: newUses };
           }
           return p;
         });
@@ -1396,8 +1432,8 @@ export default function Arena() {
     const isStealthAction    = action.special === "stealth";
     const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const hasSorceryAdvantage = isSorcererClass(attackerClassLower) && isSpellAction;
-    const hasAdvantage       = hasSorceryAdvantage || isStealthAction;
-    const hasDisadvantage    = !!(defMatchPlayer?.stealthed);
+    const hasAdvantage       = hasSorceryAdvantage || isStealthAction || (attackerMatchPlayer?.stealthTurns ?? 0) > 0;
+    const hasDisadvantage    = (defMatchPlayer?.stealthTurns ?? 0) > 0;
     const d20a     = Math.floor(Math.random() * 20) + 1;
     const d20b     = (hasAdvantage || hasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
     const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
@@ -1464,9 +1500,9 @@ export default function Arena() {
     let updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), invisible: false, stealthed: false };
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), invisible: false, stealthTurns: Math.max(0, (p.stealthTurns ?? 0) - 1) };
         if (p.id === currentUser.uid) {
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: false, invisible: false, stealthed: isStealthAction };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: false, invisible: false, stealthTurns: isStealthAction ? 2 : Math.max(0, (p.stealthTurns ?? 0) - 1) };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -2248,6 +2284,7 @@ export default function Arena() {
   useEffect(() => {
     if (!arenaMeta || arenaMeta.phase !== "combat") return;
     const interval = setInterval(() => {
+      if (arenaMeta?.timerPaused) return;
       const now = Date.now();
       const hasExpiredInit = arenaMeta.matches?.some(m => {
         if (m.status !== "initiative" || !m.turnExpiry) return false;
@@ -2269,10 +2306,46 @@ export default function Arena() {
     return () => clearInterval(interval);
   }, [arenaMeta, handleArenaAutoPass]);
 
+  // ── Pause/Resume timers (Master only) ──────────────────────────────────────
+  const pauseArenaTimers = async () => {
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      timerPaused: true,
+      pausedAt: new Date().toISOString(),
+    });
+  };
+
+  const resumeArenaTimers = async () => {
+    if (!arenaMeta?.pausedAt) return;
+    const elapsed = Date.now() - new Date(arenaMeta.pausedAt).getTime();
+    const updatedMatches = (arenaMeta.matches || []).map(m => {
+      if (m.status === "finished") return m;
+      return {
+        ...m,
+        turnExpiry: m.turnExpiry
+          ? new Date(new Date(m.turnExpiry).getTime() + elapsed).toISOString()
+          : m.turnExpiry ?? null,
+        fightStartAt: m.fightStartAt
+          ? new Date(new Date(m.fightStartAt).getTime() + elapsed).toISOString()
+          : m.fightStartAt ?? null,
+      };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      timerPaused: false,
+      pausedAt: null,
+      arenaEndsAt: arenaMeta.arenaEndsAt
+        ? new Date(new Date(arenaMeta.arenaEndsAt).getTime() + elapsed).toISOString()
+        : arenaMeta.arenaEndsAt ?? null,
+      matches: updatedMatches,
+    });
+  };
+
   // ── RENDER ─────────────────────────────────────────────────────────────────
   if (!arenaMeta) return <div className="arena-loading">Ingresso nell'Arena...</div>;
 
   const snapshots        = arenaMeta.characterSnapshots || {};
+  const timerRef         = arenaMeta.timerPaused && arenaMeta.pausedAt
+    ? new Date(arenaMeta.pausedAt).getTime()
+    : Date.now();
   const isRegistered     = arenaMeta.participants?.includes(currentUser?.uid);
   const isPending        = arenaMeta.waitingList?.includes(currentUser?.uid);
   const allMatchesDone   = arenaMeta.matches?.length > 0 && arenaMeta.matches?.every(m => m.status === "finished");
@@ -2297,6 +2370,9 @@ export default function Arena() {
           <span className="phase-tag finished">Torneo Concluso</span>
         ) : (
           <span className="phase-tag combat">Torneo in Corso — Round {arenaMeta.currentRound}</span>
+        )}
+        {arenaMeta.timerPaused && (
+          <span className="phase-tag paused">⏸ Timer in Pausa</span>
         )}
       </div>
 
@@ -2343,11 +2419,11 @@ export default function Arena() {
 
             <h3 className="arena-info-title">💰 Sistema Scommesse</h3>
             <div className="arena-info-example">
-              <p>Durante il torneo puoi scommettere le tue <strong>Monete di Platino (MP)</strong> sui combattenti usando il pannello Scommesse.</p>
-              <p><strong>Scommessa su un match:</strong> scegli il vincitore di un singolo fight e la cifra (1, 2 o 3 MP). Se il tuo combattente vince → ricevi <strong>x2</strong> la puntata.</p>
-              <p><strong>Scommessa sul torneo:</strong> scegli chi vincerà l'intero torneo. Puntata da 1, 2 o 3 MP → se azzecchi, ricevi <strong>x3</strong> la puntata.</p>
-              <p>Puoi piazzare <strong>una sola scommessa per match</strong> e una sola sul vincitore finale. Le MP vengono scalate subito; la vincita viene accreditata automaticamente a torneo concluso.</p>
-              <p><strong>Attenzione:</strong> se il tuo personaggio partecipa al torneo, non puoi scommettere sullo stesso torneo.</p>
+              <p>Durante il torneo puoi scommettere le tue <strong>Monete Arena (MA)</strong> sui combattenti usando il pannello Scommesse — anche se non hai partecipato all'arena.</p>
+              <p><strong>Scommessa su un match:</strong> scegli il vincitore di un singolo fight e la cifra (1, 2 o 3 MA). Se il tuo combattente vince → ricevi <strong>x2</strong> la puntata.</p>
+              <p><strong>Scommessa sul torneo:</strong> scegli chi vincerà l'intero torneo. Puntata da 1, 2 o 3 MA → se azzecchi, ricevi <strong>x3</strong> la puntata.</p>
+              <p>Puoi piazzare <strong>una sola scommessa per match</strong> e una sola sul vincitore finale. Le MA vengono scalate subito; la vincita viene accreditata automaticamente a torneo concluso.</p>
+              <p><strong>Attenzione:</strong> le scommesse sono aperte solo finché entrambi i combattenti sono sopra il 50% HP.</p>
             </div>
 
           </div>
@@ -2376,6 +2452,24 @@ export default function Arena() {
                 value={prizeText} onChange={e => setPrizeText(e.target.value)} />
               <button className="btn-save-prize" onClick={savePrizes}>Salva</button>
             </div>
+          )}
+
+
+          {arenaMeta.phase === "combat" && arenaMeta.arenaEndsAt && (
+            (() => {
+              const msLeft = Math.max(0, new Date(arenaMeta.arenaEndsAt).getTime() - timerRef);
+              const h   = Math.floor(msLeft / 3600000);
+              const min = Math.floor((msLeft % 3600000) / 60000);
+              const sec = Math.floor((msLeft % 60000) / 1000);
+              const fmt = `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+              const urgent = msLeft < 3600000;
+              return (
+                <div className={`fight-global-timer${urgent ? " urgent" : ""}`} style={{ marginBottom: 12 }}>
+                  ⏰ Fine Arena: <span className="arena-turn-timer">{fmt}</span>
+                  {msLeft === 0 && <span className="fight-timer-note"> — Tempo scaduto!</span>}
+                </div>
+              );
+            })()
           )}
 
           <div className="master-sections">
@@ -2425,6 +2519,17 @@ export default function Arena() {
               <button className="btn-advance-round" onClick={advanceRound}>
                 ⚔ Round {(arenaMeta.currentRound || 1) + 1}
               </button>
+            )}
+            {arenaMeta.phase === "combat" && (
+              arenaMeta.timerPaused ? (
+                <button className="btn-timer-play" onClick={resumeArenaTimers}>
+                  ▶ Riprendi Timer
+                </button>
+              ) : (
+                <button className="btn-timer-pause" onClick={pauseArenaTimers}>
+                  ⏸ Pausa Timer
+                </button>
+              )
             )}
             <button className="btn-reset" onClick={async () => {
               await refundAllBets();
@@ -2560,7 +2665,7 @@ export default function Arena() {
 
           {/* ── Fase ROLLING: tiro HP ── */}
           {loadoutPhase === "rolling" && charPreview && (() => {
-            const { count, sides } = getHpDice(charPreview.class);
+            const { count, sides } = getHpDice(charPreview.class, charPreview.classLevels);
             return (
               <div className="hp-roll-panel">
                 <div className="loadout-char-preview" style={{ justifyContent: "center", marginBottom: 20 }}>
@@ -3081,7 +3186,7 @@ export default function Arena() {
                   <div className="turn-tracker">
                     Turno di: <strong>{m.players.find(p => p.id === m.turn)?.name || "?"}</strong>
                     {m.turnExpiry && (() => {
-                      const msLeft = Math.max(0, new Date(m.turnExpiry).getTime() - Date.now());
+                      const msLeft = Math.max(0, new Date(m.turnExpiry).getTime() - timerRef);
                       const h = Math.floor(msLeft / 3600000);
                       const min = Math.floor((msLeft % 3600000) / 60000);
                       const sec = Math.floor((msLeft % 60000) / 1000);
@@ -3096,7 +3201,7 @@ export default function Arena() {
                   <div className="turn-tracker initiative-timer">
                     ⚡ Tira iniziativa entro:
                     {(() => {
-                      const msLeft = Math.max(0, new Date(m.turnExpiry).getTime() - Date.now());
+                      const msLeft = Math.max(0, new Date(m.turnExpiry).getTime() - timerRef);
                       const min = Math.floor(msLeft / 60000);
                       const sec = Math.floor((msLeft % 60000) / 1000);
                       const fmt = `${String(min).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
@@ -3107,7 +3212,7 @@ export default function Arena() {
                 )}
 
                 {m.status === "active" && m.fightStartAt && (() => {
-                  const msLeft = Math.max(0, new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION - Date.now());
+                  const msLeft = Math.max(0, new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION - timerRef);
                   const h   = Math.floor(msLeft / 3600000);
                   const min = Math.floor((msLeft % 3600000) / 60000);
                   const sec = Math.floor((msLeft % 60000) / 1000);
@@ -3810,22 +3915,26 @@ export default function Arena() {
                           const targetIsInvisible = m.players.find(p => p.id === chosenTargetId)?.invisible ?? false;
                           const isOffensive = action.special !== "heal" && action.special !== "shield_buff" && action.special !== "aid_buff";
                           const disabledByInvis = targetIsInvisible && isOffensive && isEquipped;
+                          const stealthTurnsLeft = action.special === "stealth" ? (myPlayer?.stealthTurns ?? 0) : 0;
+                          const isStealthActive = stealthTurnsLeft > 0;
                           return (
                             <button
                               key={action.name}
-                              className={`btn-action ${action.type} ${isWeapon && !wildShapeForm ? (isEquipped ? "equipped" : "unequipped") : ""} ${noUsesLeft || disabledByInvis ? "no-uses" : ""} ${isDeathblow ? "deathblow-ready" : ""} ${action.special === "smite" && !noUsesLeft ? "smite-active" : ""}`}
-                              disabled={noUsesLeft || disabledByInvis}
-                              title={noUsesLeft
+                              className={`btn-action ${action.type} ${isWeapon && !wildShapeForm ? (isEquipped ? "equipped" : "unequipped") : ""} ${noUsesLeft || disabledByInvis || isStealthActive ? "no-uses" : ""} ${isDeathblow ? "deathblow-ready" : ""} ${action.special === "smite" && !noUsesLeft ? "smite-active" : ""} ${isStealthActive ? "stealth-active" : ""}`}
+                              disabled={noUsesLeft || disabledByInvis || isStealthActive}
+                              title={isStealthActive
+                                ? `🌑 Furtività attiva — ${stealthTurnsLeft} turno/i rimasti`
+                                : noUsesLeft
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
                                 : action.special === "web" ? "Ragnatela — TS DES bersaglio"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
-                                : action.special === "stealth" ? `Furtività — vantaggio al tiro · ${action.damage} +DES · nemico in svantaggio al prossimo attacco`
+                                : action.special === "stealth" ? `Furtività — vantaggio 2 turni · ${action.damage} +DES · nemico svantaggio 2 turni`
                                 : !isEquipped ? "Clicca per impugnare (spende il turno)"
                                 : `+${action.hitBonus}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""} | ${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               onClick={() => {
-                                if (noUsesLeft || disabledByInvis) return;
+                                if (noUsesLeft || disabledByInvis || isStealthActive) return;
                                 isEquipped
                                   ? handleAttack(m.matchId, chosenTargetId, action)
                                   : handleSwitchWeapon(m.matchId, action.name);
@@ -3834,7 +3943,8 @@ export default function Arena() {
                               <span className="action-icon">{action.icon}</span>
                               <span className="action-name">{action.name}</span>
                               <span className="action-dice">
-                                {noUsesLeft ? "Esaurito"
+                                {isStealthActive ? `🌑 ${stealthTurnsLeft}t attiva`
+                                  : noUsesLeft ? "Esaurito"
                                   : disabledByInvis ? "👻 Invisibile"
                                   : !isEquipped ? "🔄 Cambia"
                                   : action.special === "web" ? "TS DES"
