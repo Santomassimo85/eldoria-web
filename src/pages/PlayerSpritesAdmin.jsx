@@ -13,7 +13,8 @@ export default function PlayerSpritesAdmin() {
   const [characters, setCharacters] = useState([]);
   const [battleBg, setBattleBg] = useState(null);
   const bgInputRef = useRef(null);
-  const fileRefs = useRef({});
+  const fileRefs     = useRef({});
+  const deadFileRefs = useRef({});
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), (snap) => {
@@ -58,6 +59,31 @@ export default function PlayerSpritesAdmin() {
 
   const removeSprite = async (charId) => {
     await updateDoc(doc(db, "characters", charId), { spriteUrl: "" });
+  };
+
+  const loadDeadSprite = (file, charId) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = async () => {
+        const MAX_PX = 256;
+        const scale = img.width > MAX_PX ? MAX_PX / img.width : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        await updateDoc(doc(db, "characters", charId), { deadSpriteUrl: canvas.toDataURL("image/png") });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeDeadSprite = async (charId) => {
+    await updateDoc(doc(db, "characters", charId), { deadSpriteUrl: "" });
   };
 
   const loadBattleBg = (file) => {
@@ -140,42 +166,40 @@ export default function PlayerSpritesAdmin() {
                 </span>
               </div>
 
-              <div className="boss-sprite-upload" style={{ minHeight: 120, justifyContent: "center", alignItems: "center", display: "flex", flexDirection: "column", gap: 8 }}>
-                {char.spriteUrl ? (
-                  <img
-                    src={char.spriteUrl}
-                    alt={char.name}
-                    className="boss-sprite-preview"
-                    style={{ imageRendering: "pixelated", mixBlendMode: "multiply", maxHeight: 100 }}
-                  />
-                ) : (
-                  <div style={{ fontSize: 32, opacity: 0.3 }}>🧍</div>
-                )}
-              </div>
+              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", padding: "8px 0" }}>
+                {/* Sprite Vivo */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, opacity: 0.6, fontFamily: "monospace" }}>VIVO</span>
+                  {char.spriteUrl
+                    ? <img src={char.spriteUrl} alt={char.name} className="boss-sprite-preview" style={{ imageRendering: "pixelated", mixBlendMode: "multiply", maxHeight: 90 }} />
+                    : <div style={{ fontSize: 28, opacity: 0.25 }}>🧍</div>
+                  }
+                  <input ref={(el) => { fileRefs.current[char.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => loadSprite(e.target.files[0], char.id)} />
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button className="btn-edit" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => fileRefs.current[char.id]?.click()}>
+                      📁 {char.spriteUrl ? "Cambia" : "Carica"}
+                    </button>
+                    {char.spriteUrl && <button className="btn-delete btn-admin-danger" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => removeSprite(char.id)}>✖</button>}
+                  </div>
+                </div>
 
-              <input
-                ref={(el) => { fileRefs.current[char.id] = el; }}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => loadSprite(e.target.files[0], char.id)}
-              />
-
-              <div className="boss-actions-admin">
-                <button
-                  className="btn-edit"
-                  onClick={() => fileRefs.current[char.id]?.click()}
-                >
-                  📁 {char.spriteUrl ? "Cambia" : "Carica"} Sprite
-                </button>
-                {char.spriteUrl && (
-                  <button
-                    className="btn-delete btn-admin-danger"
-                    onClick={() => removeSprite(char.id)}
-                  >
-                    ✖ Rimuovi
-                  </button>
-                )}
+                {/* Sprite Morto */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 9, opacity: 0.6, fontFamily: "monospace" }}>MORTO</span>
+                  {char.deadSpriteUrl
+                    ? <img src={char.deadSpriteUrl} alt={`${char.name} dead`} className="boss-sprite-preview" style={{ imageRendering: "pixelated", mixBlendMode: "multiply", maxHeight: 90, filter: "grayscale(0.5)" }} />
+                    : <div style={{ fontSize: 28, opacity: 0.25 }}>💀</div>
+                  }
+                  <input ref={(el) => { deadFileRefs.current[char.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => loadDeadSprite(e.target.files[0], char.id)} />
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button className="btn-edit" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => deadFileRefs.current[char.id]?.click()}>
+                      💀 {char.deadSpriteUrl ? "Cambia" : "Carica"}
+                    </button>
+                    {char.deadSpriteUrl && <button className="btn-delete btn-admin-danger" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => removeDeadSprite(char.id)}>✖</button>}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

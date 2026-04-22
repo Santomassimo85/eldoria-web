@@ -25,6 +25,7 @@ export default function WorldBossAdmin() {
     rewards: "",
     penalties: "",
     imageUrl: "",
+    deadImageUrl: "",
     description: "",
     gradoSfida: "",
     expiryDate: "",
@@ -35,13 +36,29 @@ export default function WorldBossAdmin() {
   const [newBoss, setNewBoss] = useState(initialBossState);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
-  const newFileRef = useRef(null);
-  const editFileRef = useRef(null);
+  const newFileRef    = useRef(null);
+  const newDeadRef    = useRef(null);
+  const editFileRef   = useRef(null);
+  const editDeadRef   = useRef(null);
 
   const loadSprite = (file, onBase64) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => onBase64(e.target.result);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 512;
+        const scale = img.width > MAX ? MAX / img.width : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        onBase64(canvas.toDataURL("image/png"));
+      };
+      img.src = e.target.result;
+    };
     reader.readAsDataURL(file);
   };
 
@@ -267,24 +284,25 @@ export default function WorldBossAdmin() {
           <div className="boss-form-row">
             <div>
               <label>Sprite Boss</label>
-              <div className="boss-sprite-upload">
-                {newBoss.imageUrl && (
-                  <img src={newBoss.imageUrl} alt="preview" className="boss-sprite-preview" />
-                )}
-                <input
-                  ref={newFileRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={e => loadSprite(e.target.files[0], b64 => setNewBoss(b => ({ ...b, imageUrl: b64 })))}
-                />
-                <button
-                  type="button"
-                  className="btn-admin-secondary"
-                  onClick={() => newFileRef.current?.click()}
-                >
-                  📁 Carica Sprite
-                </button>
+              <div className="boss-sprite-upload" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, opacity: 0.6 }}>Sprite Vivo</span>
+                  {newBoss.imageUrl && <img src={newBoss.imageUrl} alt="preview" className="boss-sprite-preview" />}
+                  <input ref={newFileRef} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => loadSprite(e.target.files[0], b64 => setNewBoss(b => ({ ...b, imageUrl: b64 })))} />
+                  <button type="button" className="btn-admin-secondary" onClick={() => newFileRef.current?.click()}>
+                    📁 Sprite Vivo
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 10, opacity: 0.6 }}>Sprite Morto</span>
+                  {newBoss.deadImageUrl && <img src={newBoss.deadImageUrl} alt="dead preview" className="boss-sprite-preview" style={{ filter: "grayscale(0.6)" }} />}
+                  <input ref={newDeadRef} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => loadSprite(e.target.files[0], b64 => setNewBoss(b => ({ ...b, deadImageUrl: b64 })))} />
+                  <button type="button" className="btn-admin-secondary" onClick={() => newDeadRef.current?.click()}>
+                    💀 Sprite Morto
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -333,24 +351,25 @@ export default function WorldBossAdmin() {
                 </div>
 
                 <label>Sprite Boss</label>
-                <div className="boss-sprite-upload">
-                  {editData.imageUrl && (
-                    <img src={editData.imageUrl} alt="preview" className="boss-sprite-preview" />
-                  )}
-                  <input
-                    ref={editFileRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    onChange={e => loadSprite(e.target.files[0], b64 => setEditData(d => ({ ...d, imageUrl: b64 })))}
-                  />
-                  <button
-                    type="button"
-                    className="btn-admin-secondary"
-                    onClick={() => editFileRef.current?.click()}
-                  >
-                    📁 Carica Sprite
-                  </button>
+                <div className="boss-sprite-upload" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>Sprite Vivo</span>
+                    {editData.imageUrl && <img src={editData.imageUrl} alt="preview" className="boss-sprite-preview" />}
+                    <input ref={editFileRef} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={e => loadSprite(e.target.files[0], b64 => setEditData(d => ({ ...d, imageUrl: b64 })))} />
+                    <button type="button" className="btn-admin-secondary" onClick={() => editFileRef.current?.click()}>
+                      📁 Sprite Vivo
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>Sprite Morto</span>
+                    {editData.deadImageUrl && <img src={editData.deadImageUrl} alt="dead preview" className="boss-sprite-preview" style={{ filter: "grayscale(0.6)" }} />}
+                    <input ref={editDeadRef} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={e => loadSprite(e.target.files[0], b64 => setEditData(d => ({ ...d, deadImageUrl: b64 })))} />
+                    <button type="button" className="btn-admin-secondary" onClick={() => editDeadRef.current?.click()}>
+                      💀 Sprite Morto
+                    </button>
+                  </div>
                 </div>
 
                 <label>Scadenza Evento</label>

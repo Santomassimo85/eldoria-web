@@ -626,7 +626,7 @@ export default function WorldBoss() {
             <div className={`rpg-boss-sprite-wrap ${isBossDefeated ? "dead" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver ? "boss-turn" : ""}`}>
               <img
                 className="rpg-boss-sprite"
-                src={boss.imageUrl || "/assets/default-boss.png"}
+                src={(isBossDefeated && boss.deadImageUrl) ? boss.deadImageUrl : (boss.imageUrl || "/assets/default-boss.png")}
                 alt={boss.name}
               />
               {isBossDefeated && <div className="rpg-torn-overlay" />}
@@ -643,19 +643,25 @@ export default function WorldBoss() {
               const ROW_STEP   = partyZoneHeight > 0 ? Math.min(140, (partyZoneHeight - 80) / Math.max(1, Math.ceil(partyForDisplay.filter(x => turnState.actedPlayers?.includes(x.id)).length / COLS) - 0.5)) : 120;
               const col        = i % COLS;
               const row        = Math.floor(i / COLS);
-              // Small deterministic jitter so rows don't look robotic
-              const jX = ((i * 47 + 13) % 28) - 14;   // ±14 px
-              const jY = ((i * 31 +  7) % 20) - 10;   // ±10 px
-              const leftPct  = col * 24 + 1 + jX / 10;
-              const bottomPx = row * ROW_STEP + 8 + jY;
+              const jX         = ((i * 47 + 13) % 28) - 14;
+              const jY         = ((i * 31 +  7) % 20) - 10;
+              const leftPct    = col * 24 + 1 + jX / 10;
+              const bottomPx   = row * ROW_STEP + 8 + jY;
+              const isDead     = (p.stats?.hp ?? 1) <= 0;
+              const sprite     = isDead
+                ? (p.deadSpriteUrl || p.spriteUrl || p.image)
+                : (p.spriteUrl || p.image);
+              const breathDelay = `${(i * 0.37).toFixed(2)}s`;
               return (
                 <div
                   key={p.id || i}
-                  className="rpg-char-wrap"
+                  className={`rpg-char-wrap ${isDead ? "char-dead" : "char-alive"}`}
+                  data-has-dead-sprite={isDead && p.deadSpriteUrl ? "1" : undefined}
                   style={{ position: "absolute", left: `${leftPct}%`, bottom: `${bottomPx}px` }}
                 >
-                  {(p.spriteUrl || p.image)
-                    ? <img className="rpg-char-sprite" src={p.spriteUrl || p.image} alt={p.name} />
+                  {sprite
+                    ? <img className="rpg-char-sprite" src={sprite} alt={p.name}
+                        style={!isDead ? { animationDelay: breathDelay } : undefined} />
                     : <div className="rpg-char-placeholder">{(p.name || "?")[0].toUpperCase()}</div>
                   }
                   <span className="rpg-char-name-tag">{(p.name || "Eroe").split(" ")[0]}</span>
@@ -731,12 +737,6 @@ export default function WorldBoss() {
                 <TimerDisplay expiryDate={boss.expiryDate} />
               </div>
             )}
-            {!isBossDefeated && boss.penalties && (
-              <div className="rpg-hud-stake rpg-hud-stake--penalty">💀 {boss.penalties}</div>
-            )}
-            {!isTimeExpired && boss.rewards && (
-              <div className="rpg-hud-stake rpg-hud-stake--reward">🏆 {boss.rewards}</div>
-            )}
           </div>
 
           <div className="rpg-hud-party">
@@ -789,6 +789,30 @@ export default function WorldBoss() {
               })()
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── STAKES BANNER ── */}
+      {boss && (boss.rewards || boss.penalties) && (
+        <div className="rpg-stakes-bar">
+          {boss.penalties && !isBossDefeated && (
+            <div className="rpg-stake-block rpg-stake-block--penalty">
+              <span className="rpg-stake-icon">💀</span>
+              <div>
+                <div className="rpg-stake-label">PENALITÀ</div>
+                <div className="rpg-stake-text">{boss.penalties}</div>
+              </div>
+            </div>
+          )}
+          {boss.rewards && !isTimeExpired && (
+            <div className="rpg-stake-block rpg-stake-block--reward">
+              <span className="rpg-stake-icon">🏆</span>
+              <div>
+                <div className="rpg-stake-label">RICOMPENSA</div>
+                <div className="rpg-stake-text">{boss.rewards}</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -871,6 +895,8 @@ export default function WorldBoss() {
                     </div>
                   </>
                 )}
+                <div className="rpg-section-label">Log</div>
+                <button className="rpg-btn rpg-btn--danger" style={{ width: "100%", marginBottom: 4 }} onClick={clearChat}>🗑 Pulisci Log</button>
                 <div className="rpg-section-label">Giocatori</div>
                 <div className="rpg-player-adj-list">
                   {players.map((p) => (
