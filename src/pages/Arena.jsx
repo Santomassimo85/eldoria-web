@@ -3027,6 +3027,7 @@ export default function Arena() {
         >
           🏆 Torneo
         </button>
+        <span className="arena-mode-sep">⚔</span>
         <button
           className={`arena-tab${arenaMode === "training" ? " active" : ""}`}
           onClick={() => switchMode("training")}

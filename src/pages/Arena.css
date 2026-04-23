@@ -59,32 +59,41 @@
 /* ---- MODE TOGGLE ------------------------------------------- */
 .arena-mode-toggle {
   display: flex;
+  align-items: flex-end;
+  justify-content: center;
   gap: 0;
-  margin: 0 auto 28px;
-  max-width: 360px;
-  border: 2px solid var(--gold, #c9a227);
-  border-radius: 10px;
-  overflow: hidden;
+  margin: 4px auto 36px;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.3);
 }
 
 .arena-tab {
-  flex: 1;
-  padding: 11px 0;
   background: transparent;
   border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 32px 13px;
   font-family: var(--font-title, serif);
-  font-size: 0.88rem;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--gold, #c9a227);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(120, 95, 50, 0.45);
   cursor: pointer;
-  transition: background 0.18s, color 0.18s;
+  transition: color 0.2s, border-color 0.2s;
 }
-.arena-tab:first-child { border-right: 1px solid var(--gold, #c9a227); }
-.arena-tab:hover { background: rgba(201,162,39,0.1); }
+.arena-tab:hover { color: var(--gold, #c9a227); }
 .arena-tab.active {
-  background: var(--gold, #c9a227);
-  color: #fff;
+  color: var(--red, #b22222);
+  border-bottom-color: var(--red, #b22222);
+}
+
+.arena-mode-sep {
+  font-size: 1rem;
+  color: var(--gold, #c9a227);
+  opacity: 0.5;
+  padding-bottom: 15px;
+  user-select: none;
+  align-self: flex-end;
 }
 
 /* ---- PHASE BANNER ------------------------------------------ */
