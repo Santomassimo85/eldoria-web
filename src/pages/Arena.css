@@ -3608,6 +3608,26 @@
   text-align: center;
 }
 
+.bet-form-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin: 3px 0 1px;
+}
+.bet-form-badge {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+}
+.bet-form-badge.form-win  { background: #27ae60; color: #fff; }
+.bet-form-badge.form-loss { background: #c0392b; color: #fff; }
+.bet-form-badge.form-draw { background: #888; color: #fff; }
+
 .bet-amounts {
   display: flex;
   gap: 4px;
@@ -3803,6 +3823,23 @@
 }
 .training-result.win { background: #e8f8e8; color: #1a7a1a; }
 .training-result.lose { background: #fce8e8; color: #c0392b; }
+.result-class-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(0,0,0,0.12);
+  opacity: 0.85;
+  vertical-align: middle;
+}
+.result-class-tag.my-class {
+  margin-left: 0;
+  margin-right: 8px;
+  background: rgba(80,120,200,0.18);
+  color: #2c5faa;
+}
 
 .training-empty {
   text-align: center;

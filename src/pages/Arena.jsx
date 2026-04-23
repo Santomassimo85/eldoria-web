@@ -362,6 +362,18 @@ const INNATE_SORCERY_PASSIVE = {
 };
 
 // Fonte di Magia (Sorcerer) — ripristina 2 slot magia, 2 cariche
+const processWsKnockouts = (players) => {
+  const extraLogs = [];
+  const updated = players.map(p => {
+    if (!p.wildShape || p.hp > 0) return p;
+    const restored = Math.max(1, Math.floor((p.preWildShapeHp ?? p.maxHp ?? 1) * 0.3));
+    const formName = WILD_SHAPES[p.wildShape]?.name || p.wildShape;
+    extraLogs.push(`🐾 ${p.name} viene abbattuto in forma ${formName} e ritorna alla forma originale (${restored} HP)!`);
+    return { ...p, hp: restored, wildShape: null, preWildShapeHp: null };
+  });
+  return { players: updated, extraLogs };
+};
+
 const FONTE_DI_MAGIA_ACTION = {
   name: "Fonte di Magia", hitBonus: 0, damage: "—", statKey: null,
   type: "skill", icon: "🔮", info: "Ripristina 2 slot magia a scelta · 2 cariche", special: "fonte_di_magia", maxUses: 2,
@@ -619,6 +631,11 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
     }
   };
 
+  const getRecentForm = (uid) => {
+    const history = (arenaMeta.matchHistory || []).filter(e => e.uid === uid);
+    return history.slice(-3).map(e => e.result);
+  };
+
   const activeMatches = (arenaMeta.matches || []).filter(m => m.status !== "finished" && !m.winner);
   const allFighters = arenaMeta.participants || [];
   const eliminatedUids = new Set(
@@ -651,10 +668,18 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
                   {m.players.map(p => {
                     const snap = snapshots[p.id] || {};
                     const isBetTarget = bet?.targetUid === p.id;
+                    const form = getRecentForm(p.id);
                     return (
                       <div key={p.id} className={`bet-fighter ${isBetTarget ? "bet-fighter--chosen" : ""}`}>
                         {snap.image && <img src={snap.image} alt="" className="bet-fighter-avatar" />}
                         <span className="bet-fighter-name">{p.name}</span>
+                        {form.length > 0 && (
+                          <div className="bet-form-row">
+                            {form.map((r, i) => (
+                              <span key={i} className={`bet-form-badge ${r === "W" ? "form-win" : r === "L" ? "form-loss" : "form-draw"}`}>{r}</span>
+                            ))}
+                          </div>
+                        )}
                         {!bet && bettingOpen && (
                           <div className="bet-amounts">
                             {[1].map(amt => (
@@ -700,10 +725,18 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
               <div className="bet-tournament-grid">
                 {bettableFighters.map(uid => {
                   const snap = snapshots[uid] || {};
+                  const form = getRecentForm(uid);
                   return (
                     <div key={uid} className="bet-tournament-fighter">
                       {snap.image && <img src={snap.image} alt="" className="bet-fighter-avatar" />}
                       <span className="bet-fighter-name">{snap.name || uid}</span>
+                      {form.length > 0 && (
+                        <div className="bet-form-row">
+                          {form.map((r, i) => (
+                            <span key={i} className={`bet-form-badge ${r === "W" ? "form-win" : r === "L" ? "form-loss" : "form-draw"}`}>{r}</span>
+                          ))}
+                        </div>
+                      )}
                       <div className="bet-amounts">
                         {[1, 2, 3].map(amt => (
                           <button
@@ -828,6 +861,7 @@ export default function Arena() {
   const [trainingPairSel, setTrainingPairSel] = useState([]);
   const [showActionModal, setShowActionModal] = useState(null); // matchId or null
   const [arenaMode, setArenaMode]             = useState("tournament"); // "tournament" | "training"
+  const [showTrainingWildPicker, setShowTrainingWildPicker] = useState(false);
 
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
 
@@ -921,6 +955,21 @@ export default function Arena() {
       if (m.status === "finished" && prev?.status !== "finished" && m.winner)
         await resolveMatchBets(m.matchId, m.winner);
     }
+  };
+
+  const recordMatchHistory = async (updatedMatches) => {
+    const newEntries = [];
+    for (const m of updatedMatches) {
+      const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
+      if (m.status === "finished" && prev?.status !== "finished" && m.winner) {
+        for (const p of m.players) {
+          newEntries.push({ uid: p.id, result: p.id === m.winner ? "W" : "L", matchId: m.matchId, ts: new Date().toISOString() });
+        }
+      }
+    }
+    if (newEntries.length === 0) return;
+    const existing = arenaMeta?.matchHistory || [];
+    await updateDoc(doc(db, "arena_meta", "global"), { matchHistory: [...existing, ...newEntries] });
   };
 
   useEffect(() => {
@@ -1183,14 +1232,14 @@ export default function Arena() {
   const handleTrainingSecondWind = async (matchId, action) => {
     const match = trainingMatches.find(m => m.id === matchId);
     const me = match?.players.find(p => p.id === currentUser.uid);
-    const { total: heal } = rollDmg("1d10");
+    const { total: heal, rolls: healRolls } = rollDmg("1d10");
     const totalHeal = heal + 5;
-    const log = `💨 ${me?.name} usa Secondo Respiro! Cura ${totalHeal} HP`;
+    const log = `💨 ${me?.name} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`;
     await applyTrainingUpdate(matchId, m => {
       const players = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
-        return { ...p, hp: Math.min(p.maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
+        return { ...p, hp: Math.min(p.maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
       });
       return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
     });
@@ -1220,7 +1269,7 @@ export default function Arena() {
         const uses = p.actionUsesLeft || {};
         return { ...p, rageTurns: 3, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
       });
-      return { ...m, players, turn: currentUser.uid, logs: [...m.logs, log] };
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
     });
   };
 
@@ -1354,6 +1403,43 @@ export default function Arena() {
     setShowLayOfHandsPicker(false);
   };
 
+  const handleTrainingWildShape = async (matchId, formKey) => {
+    const match = trainingMatches.find(m => m.id === matchId);
+    const me = match?.players.find(p => p.id === currentUser.uid);
+    if (!me) return;
+    const wsUsesLeft = me.wildShapeUsesLeft ?? 2;
+    if (wsUsesLeft <= 0) return;
+    const form = WILD_SHAPES[formKey];
+    const { count, sides } = form.hpDice;
+    let newHp = 0;
+    for (let i = 0; i < count; i++) newHp += Math.floor(Math.random() * sides) + 1;
+    const newUsesLeft = wsUsesLeft - 1;
+    const log = `🐾 ${me.name} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/2]`;
+    await applyTrainingUpdate(matchId, m => {
+      const players = m.players.map(p =>
+        p.id !== currentUser.uid ? p
+          : { ...p, hp: newHp, wildShape: formKey, preWildShapeHp: p.hp, wildShapeUsesLeft: newUsesLeft }
+      );
+      return { ...m, players, logs: [...m.logs, log] };
+    });
+    setShowTrainingWildPicker(false);
+  };
+
+  const handleTrainingRevertWildShape = async (matchId) => {
+    const match = trainingMatches.find(m => m.id === matchId);
+    const me = match?.players.find(p => p.id === currentUser.uid);
+    if (!me) return;
+    const restoredHp = me.preWildShapeHp ?? me.hp;
+    const log = `🧙 ${me.name} ritorna alla forma originale (${restoredHp} HP)`;
+    await applyTrainingUpdate(matchId, m => {
+      const players = m.players.map(p =>
+        p.id !== currentUser.uid ? p
+          : { ...p, hp: restoredHp, wildShape: null, preWildShapeHp: null }
+      );
+      return { ...m, players, logs: [...m.logs, log] };
+    });
+  };
+
   const useTrainingItem = async (matchId, itemKey, targetId) => {
     const match = trainingMatches.find(m => m.id === matchId);
     const me = match?.players.find(p => p.id === currentUser.uid);
@@ -1364,7 +1450,7 @@ export default function Arena() {
     await applyTrainingUpdate(matchId, m => {
       let log = null;
       const ts = new Date().toISOString();
-      const players = m.players.map(p => {
+      const rawPlayers = m.players.map(p => {
         if (p.id === currentUser.uid) {
           const newUses = { ...(p.itemUsesLeft || {}), [itemKey]: Math.max(0, curUses - 1) };
           if (itemKey === "pozione_cura" || itemKey === "pozione_cura_media") {
@@ -1386,9 +1472,10 @@ export default function Arena() {
         }
         return p;
       });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
       const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, ...(log ? [log] : []), `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, ...(log ? [log] : [])] };
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, ...(log ? [log] : []), ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, ...(log ? [log] : []), ...extraLogs] };
     });
   };
 
@@ -1396,14 +1483,14 @@ export default function Arena() {
     const match = trainingMatches.find(m => m.id === matchId);
     const me = match?.players.find(p => p.id === currentUser.uid);
     if (!me) return;
-    const { total: heal } = rollDmg(action.damage);
-    const log = `💚 ${me.name} usa ${action.name} — cura ${heal} HP`;
+    const { total: heal, rolls: healRolls } = rollDmg(action.damage);
+    const log = `${me.name} lancia ${action.icon} ${action.name} → cura sé stesso di ${heal} HP 🎲(${healRolls})`;
     await applyTrainingUpdate(matchId, m => {
       const players = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-        return { ...p, hp: Math.min(p.maxHp, p.hp + heal), shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: newUses };
+        return { ...p, hp: Math.min(p.maxHp, p.hp + heal), shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: newUses };
       });
       return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
     });
@@ -1412,7 +1499,7 @@ export default function Arena() {
   const handleTrainingAidBuff = async (matchId, action) => {
     const match = trainingMatches.find(m => m.id === matchId);
     const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🤝 ${me?.name} usa ${action.name}! +4 al prossimo tiro per colpire.`;
+    const log = `🤝 ${me?.name} si concentra — +4 al prossimo tiro per colpire!`;
     await applyTrainingUpdate(matchId, m => {
       const players = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
@@ -1420,7 +1507,7 @@ export default function Arena() {
         const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
         return { ...p, aidBuff: true, actionUsesLeft: newUses };
       });
-      return { ...m, players, turn: currentUser.uid, logs: [...m.logs, log] };
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
     });
   };
 
@@ -1495,14 +1582,15 @@ export default function Arena() {
       const log = { pub: `⚡ ${attName} → Smite su ${defName}: ${isHit ? `COLPISCE per ${dmg}${isCrit?" CRITICO!":""}` : "MANCA"}`, attId: currentUser.uid, ts: new Date().toISOString() };
       await applyTrainingUpdate(matchId, m => {
         const uses = attP.actionUsesLeft || {};
-        const players = m.players.map(p => {
+        const rawPlayers = m.players.map(p => {
           if (p.id === targetId && isHit) return { ...p, hp: Math.max(0, p.hp - dmg) };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns||0)-1), rageTurns: Math.max(0, (p.rageTurns||0)-1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0, (uses[action.name]??action.maxUses??1)-1) } };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns||0)-1), rageTurns: Math.max(0, (p.rageTurns||0)-1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0, (uses[action.name]??action.maxUses??1)-1) } };
           return p;
         });
+        const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
+        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
       });
       return;
     }
@@ -1528,14 +1616,15 @@ export default function Arena() {
       const log = { pub: isHit ? `🗡 ${attName} → Furtivo su ${defName}: ${dmg} danni${isCrit?" CRITICO!":""}` : `🛡️ ${attName} manca ${defName} con Attacco Furtivo`, attId: currentUser.uid, ts: new Date().toISOString() };
       await applyTrainingUpdate(matchId, m => {
         const uses = attP.actionUsesLeft || {};
-        const players = m.players.map(p => {
+        const rawPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, p.hp - dmg) : p.hp, stealthTurns: Math.max(0, (p.stealthTurns||0)-1) };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), defensiveBonus: 0, aidBuff: false, stealthTurns: Math.max(0,(p.stealthTurns||0)-1), actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses??3)-1) } };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, stealthTurns: Math.max(0,(p.stealthTurns||0)-1), actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses??3)-1) } };
           return p;
         });
+        const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
+        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
       });
       return;
     }
@@ -1559,13 +1648,35 @@ export default function Arena() {
       const { total: dmg } = rollDmg(action.damage);
       const log = { pub: `☠ ${attName} usa Veleno su ${defName} — ${dmg} danni + TS COS (CD 15)`, attId: currentUser.uid, ts: new Date().toISOString() };
       await applyTrainingUpdate(matchId, m => {
-        const players = m.players.map(p => {
+        const rawPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), pendingConSave: true };
           if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), defensiveBonus: 0 };
           return p;
         });
+        const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
+      });
+      return;
+    }
+
+    // ── Ragnatela (DEX save, no damage) ──────────────────────────────────────
+    if (action.special === "web") {
+      const defDex = defSnap.stats?.dex ?? 0;
+      const d20w = Math.floor(Math.random() * 20) + 1;
+      const tsTotal = d20w + defDex;
+      const passes = tsTotal >= 15;
+      const log = { pub: passes
+        ? `🕸 ${attName} lancia Ragnatela su ${defName} — TS DES ${tsTotal} ≥ 15: schiva!`
+        : `🕸 ${attName} lancia Ragnatela su ${defName} — TS DES ${tsTotal} < 15: INTRAPPOLATO!`,
+        attId: currentUser.uid, ts: new Date().toISOString() };
+      await applyTrainingUpdate(matchId, m => {
+        const players = m.players.map(p => {
+          if (p.id === targetId) return { ...p, entangled: !passes };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false };
+          return p;
+        });
         return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
       });
       return;
@@ -1579,7 +1690,7 @@ export default function Arena() {
                         : isSpell ? (attSnap.stats?.[spellKey] ?? 0) : 0;
     const weaponBuff    = !isSpell && (attSnap.arenaBuffs?.weaponBonus ? 1 : 0);
     const rageDmg       = !isSpell && (attP.rageTurns ?? 0) > 0 ? 2 : 0;
-    const { total: inspBonus } = attP.bardicInspirationActive ? rollDmg("1d6") : { total: 0 };
+    const { total: inspBonus, rolls: inspRolls } = attP.bardicInspirationActive ? rollDmg("1d6") : { total: 0, rolls: "" };
     const magicDetB     = attP.magicDetectActive ? 3 : 0;
     const hunterMarkB   = (attP.hunterMarkTurns ?? 0) > 0 ? 3 : 0;
     const blindPen      = attP.blindDebuff ? -3 : 0;
@@ -1590,31 +1701,46 @@ export default function Arena() {
     const d20b = hasAdv || hasDis ? Math.floor(Math.random() * 20) + 1 : 0;
     const d20  = hasAdv && !hasDis ? Math.max(d20a, d20b) : hasDis && !hasAdv ? Math.min(d20a, d20b) : d20a;
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + (attP.aidBuff ? 4 : 0) + inspBonus + magicDetB + hunterMarkB + blindPen;
+    const shieldLost    = defSnap.hasShield && defP.shieldSuppressed;
     const shieldAcBonus = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-    const defAC  = (defSnap.stats?.ac ?? 10) + shieldAcBonus + (defP.defensiveBonus ?? 0);
+    const defAC  = (defSnap.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldAcBonus + (defP.defensiveBonus ?? 0);
     const isCrit = d20 === 20 && isSpell;
     const isHit  = hitTotal >= defAC;
     const isBlind = action.special === "blind_debuff";
-    const { total: baseDmg } = isHit ? rollDmg(action.damage) : { total: 0 };
-    const { total: poisonBonusDmg } = isHit && attP.weaponPoisoned ? rollDmg("1d12") : { total: 0 };
+    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
+    const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && attP.weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
     const dmgStatMod = isSpell ? 0 : statMod;
     const damage = (isHit && !isBlind) ? (baseDmg + dmgStatMod + weaponBuff + rageDmg) * (isCrit ? 2 : 1) + poisonBonusDmg : 0;
-    const hitInfo = `d20=${d20}+${action.hitBonus || 0}${!isSpell && statMod ? `+${statMod}` : ""}+arm${armorPenalty}=${hitTotal} vs CA ${defAC}`;
+    const critTag        = isCrit ? " ★CRITICO★" : "";
+    const statPart       = !isSpell && statMod !== 0 ? `+${statMod} ${(action.statKey || "str").toUpperCase()}` : "";
+    const spellModPart   = isSpell && statMod !== 0 ? `+${statMod} ${(spellKey || "").toUpperCase()}` : "";
+    const aidPart        = attP.aidBuff ? " +4 Aiuto" : "";
+    const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : "";
+    const rageTag        = rageDmg > 0 ? ` | furia +${rageDmg}` : "";
+    const poisonTag      = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
+    const inspTag        = inspBonus > 0 ? ` +ispirazione 🎵🎲${inspRolls}=${inspBonus}` : "";
+    const magicDetTag    = magicDetB > 0 ? " +3 🔮det." : "";
+    const hunterTag      = hunterMarkB > 0 ? " +3 🎯marchio" : "";
+    const blindPenTag    = blindPen < 0 ? ` ${blindPen} 🙈acc.` : "";
+    const advantageTag   = hasAdv && !hasDis ? ` 🌟vant.[${d20a},${d20b}]` : hasDis && !hasAdv ? ` 🌑svant.[${d20a},${d20b}]` : "";
+    const critDmgNote    = isCrit ? " ×2" : "";
+    const dmgBreakdown   = (isHit && !isBlind) ? ` [danni: 🎲${diceRolls}${statPart ? " " + statPart : ""}${critDmgNote}=${baseDmg*(isCrit?2:1)+dmgStatMod*(isCrit?2:1)}${poisonTag}${rageTag} = ${damage}]` : "";
+    const hitBreakdown   = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus||0} hit${statPart?" "+statPart:""}${spellModPart?" "+spellModPart:""}${penPart}${aidPart}${inspTag}${magicDetTag}${hunterTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
       pub: isHit
-        ? (isBlind ? `🙈 ${attName} accieca ${defName}! (−3 ai tiri)` : `💥 ${attName} colpisce ${defName} con ${action.name} (${hitInfo}) per ${damage} danni${isCrit?" CRITICO!":""}`)
-        : `🛡️ ${attName} manca ${defName} con ${action.name} (${hitInfo})`,
+        ? (isBlind ? `🙈 ${attName} accieca ${defName}! (−3 ai tiri per colpire per 1 turno)` : `💥 ${attName} colpisce ${defName} con ${action.name}${critTag} (${hitTotal} vs CA ${defAC})${dmgBreakdown} — ${damage} danni`)
+        : `🛡️ ${attName} manca ${defName} con ${action.name} (${hitTotal} vs CA ${defAC})`,
       att: isHit
-        ? (isBlind ? `🙈 Acceci ${defName}! [${hitInfo}]` : `💥 Colpisci ${defName} con ${action.name} [${hitInfo}] — ${damage} danni`)
-        : `🛡️ Manchi ${defName} con ${action.name} [${hitInfo}]`,
+        ? (isBlind ? `🙈 Acceci ${defName}! [${hitBreakdown}] — −3 ai tiri per colpire` : `💥 Colpisci ${defName} con ${action.name} [${hitBreakdown}]${dmgBreakdown} — ${damage} danni`)
+        : `🛡️ Manchi ${defName} con ${action.name} [${hitBreakdown}]`,
       def: isHit
-        ? (isBlind ? `🙈 ${attName} ti ha accecato!` : `⚔️ ${attName} ti colpisce con ${action.name} — ${damage} danni`)
+        ? (isBlind ? `🙈 ${attName} ti ha accecato! −3 ai tuoi tiri per colpire per 1 turno` : `⚔️ ${attName} ti ha colpito con ${action.name}${critTag}${dmgBreakdown} — ${damage} danni`)
         : `🛡️ ${attName} ti ha mancato con ${action.name}`,
       attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
     };
     const surgeWas = !!attP.actionSurgeActive;
     await applyTrainingUpdate(matchId, m => {
-      const updPlayers = m.players.map(p => {
+      const rawPlayers = m.players.map(p => {
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlind && isHit ? true : (p.blindDebuff ?? false), invisible: false, stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
         if (p.id === currentUser.uid) {
           const up = { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: false, invisible: false, stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
@@ -1623,10 +1749,11 @@ export default function Arena() {
         }
         return { ...p, invisible: false };
       });
+      const { players: updPlayers, extraLogs } = processWsKnockouts(rawPlayers);
       const alive = updPlayers.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players: updPlayers, status: "finished", winner: alive[0].id, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+      if (alive.length === 1) return { ...m, players: updPlayers, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
       const next = surgeWas ? currentUser.uid : advanceTurnT(updPlayers, m.turn);
-      return { ...m, players: updPlayers, turn: next, round: m.round + 1, logs: [...m.logs, log] };
+      return { ...m, players: updPlayers, turn: next, round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
     });
   };
 
@@ -1753,11 +1880,14 @@ export default function Arena() {
   };
 
   const advanceRound = async () => {
-    const winners = arenaMeta.matches.filter(m => m.status === "finished" && m.winner).map(m => m.winner);
+    const currentRound = arenaMeta.currentRound || 1;
+    const winners = arenaMeta.matches
+      .filter(m => m.status === "finished" && m.winner && m.matchId?.startsWith(`R${currentRound}_`))
+      .map(m => m.winner);
     if (winners.length < 2) return;
-    const nextRound  = (arenaMeta.currentRound || 1) + 1;
+    const nextRound  = currentRound + 1;
     const newMatches = generateMatches(winners, nextRound, arenaMeta.characterSnapshots || {});
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: newMatches, currentRound: nextRound });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: [...arenaMeta.matches, ...newMatches], currentRound: nextRound });
   };
 
   const generateMatches = (competitors, round, snapshots) => {
@@ -1886,7 +2016,7 @@ export default function Arena() {
       };
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
-        const players = m.players.map(p => {
+        const rawPlayers = m.players.map(p => {
           if (p.id === targetId && isHit) return { ...p, hp: Math.max(0, (p.hp ?? 0) - totalDmg) };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
@@ -1895,8 +2025,11 @@ export default function Arena() {
           }
           return p;
         });
+        const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
-        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
+        const alive = players.filter(p => p.hp > 0);
+        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -1953,7 +2086,7 @@ export default function Arena() {
 
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
-        const players = m.players.map(p => {
+        const rawPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, (p.hp ?? 0) - totalDmg) : p.hp, stealthTurns: Math.max(0, (p.stealthTurns ?? 0) - 1) };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
@@ -1962,12 +2095,13 @@ export default function Arena() {
           }
           return p;
         });
+        const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
         const alive = players.filter(p => p.hp > 0);
         if (alive.length === 1) {
-          return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+          return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
-        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: sneakExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
+        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: sneakExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -2036,18 +2170,19 @@ export default function Arena() {
       const poisonExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       let updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
-        const updatedPlayers = m.players.map(p => {
+        const rawPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), pendingConSave: true };
           if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
           return p;
         });
+        const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
         const alive = updatedPlayers.filter(p => p.hp > 0);
         if (alive.length === 1) {
           return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
-            participantsAwarded: pa, logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+            participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
       const allDone = updatedMatches.every(m => m.status === "finished");
       const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
@@ -2151,7 +2286,7 @@ export default function Arena() {
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
-      const updatedPlayers = m.players.map(p => {
+      const rawPlayers = m.players.map(p => {
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), invisible: false, stealthTurns: Math.max(0, (p.stealthTurns ?? 0) - 1) };
         if (p.id === currentUser.uid) {
           const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: false, invisible: false, stealthTurns: Math.max(0, (p.stealthTurns ?? 0) - 1) };
@@ -2163,6 +2298,7 @@ export default function Arena() {
         }
         return { ...p, invisible: false };
       });
+      const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
       const newParticipantsAwarded = _alreadyAwarded
         ? (m.participantsAwarded || [])
         : [...(m.participantsAwarded || []), currentUser.uid];
@@ -2170,15 +2306,16 @@ export default function Arena() {
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
           participantsAwarded: newParticipantsAwarded,
-          logs: [...m.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+          logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
       // If surge was active, this was the extra action — keep turn on same player for one more action; otherwise advance
       const nextTurn = surgeWasActive ? currentUser.uid : advanceTurn(updatedPlayers, m);
-      return { ...m, players: updatedPlayers, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: [...m.logs, log, ...extraLogs] };
     });
 
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
+    await recordMatchHistory(updatedMatches);
     const allDone = updatedMatches.every(m => m.status === "finished");
     const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -2424,12 +2561,13 @@ export default function Arena() {
     const { total: poisonDmg, rolls: poisonRolls } = rollDmg("1d6");
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
-      const updatedPlayers = m.players.map(p => {
+      const rawPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
         return { ...p, hp: Math.max(0, (p.hp ?? 0) - poisonDmg), poisonDoT: false };
       });
+      const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
       const log = `☠ ${myName} subisce il veleno: ${poisonDmg} danni [🎲${poisonRolls}]!`;
-      return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -2744,6 +2882,7 @@ export default function Arena() {
     // Check tournament end
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
+    await recordMatchHistory(updatedMatches);
     const allDone = updatedMatches.every(m => m.status === "finished");
     const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -4827,6 +4966,8 @@ export default function Arena() {
             const mySnap    = myPlayer?.snapshot || {};
             const oppSnap   = oppPlayer?.snapshot || {};
             const myActions = mySnap.selectedActions || [];
+            const wildShapeForm = myPlayer?.wildShape || null;
+            const effectiveActions = wildShapeForm ? (WILD_SHAPES[wildShapeForm]?.actions || []) : myActions;
             const oppId     = oppPlayer?.id || null;
             const myHpPct   = myPlayer ? Math.max(0, Math.min(100, (myPlayer.hp / (myPlayer.maxHp || 1)) * 100)) : 100;
             const oppHpPct  = oppPlayer ? Math.max(0, Math.min(100, (oppPlayer.hp / (oppPlayer.maxHp || 1)) * 100)) : 100;
@@ -4980,9 +5121,9 @@ export default function Arena() {
 
                     {/* Log */}
                     <div className="match-log">
-                      {(m.logs || []).slice(-30).map((l, i) => {
+                      {(m.logs || []).slice(-5).map((l, i) => {
                         const text = typeof l === "object" ? (l.pub || "") : String(l);
-                        const isLatest = i === Math.min((m.logs || []).length, 30) - 1;
+                        const isLatest = i === Math.min((m.logs || []).length, 5) - 1;
                         return <p key={i} className={`log-entry ${isLatest ? "latest" : ""}`}>{text}</p>;
                       })}
                     </div>
@@ -5101,6 +5242,57 @@ export default function Arena() {
                           return <button className="btn-wild-shape" onClick={() => { setShowRecuperoPicker(true); setRecuperoLv1Selected([]); setRecuperoLv2Selected([]); }}>📖 Recupero Arcano <span className="ws-uses-tag">{ul}/{rAction.maxUses}</span></button>;
                         })()}
 
+                        {/* Wild Shape */}
+                        {mySnap.hasWildShape && !wildShapeForm && !showTrainingWildPicker && (() => {
+                          const wsLeft = myPlayer?.wildShapeUsesLeft ?? 2;
+                          return (
+                            <div className="wild-shape-bar">
+                              {wsLeft > 0 ? (
+                                <button className="btn-wild-shape" onClick={() => setShowTrainingWildPicker(true)}>
+                                  🐾 Forma Selvatica <span className="action-uses-badge">{wsLeft}/2</span>
+                                </button>
+                              ) : (
+                                <div className="btn-wild-shape exhausted">🐾 Forma Selvatica — Esaurita</div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        {showTrainingWildPicker && !wildShapeForm && (
+                          <div className="wild-picker">
+                            <div className="wild-picker-title">Scegli la Forma Selvatica</div>
+                            <div className="wild-picker-forms">
+                              {Object.entries(WILD_SHAPES).map(([key, form]) => (
+                                <button key={key} className="btn-wild-form" onClick={() => handleTrainingWildShape(m.id, key)}>
+                                  <span className="wild-form-icon">{form.icon}</span>
+                                  <span className="wild-form-name">{form.name}</span>
+                                  <span className="wild-form-hp">{form.hpDice.count}d{form.hpDice.sides} HP</span>
+                                  <div className="wild-form-actions">
+                                    {form.actions.map(a => (
+                                      <span key={a.name} className="wild-form-action-tag">
+                                        {a.icon} {a.name} {a.damage !== "—" ? a.damage : ""}
+                                        {a.statKey ? ` +${a.statKey.toUpperCase()}` : ""}
+                                        {a.special === "web" ? " (TS DES)" : ""}
+                                        {a.special === "poison" ? " (TS COS)" : ""}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                            <button className="btn-cancel-wild" onClick={() => setShowTrainingWildPicker(false)}>✕ Annulla</button>
+                          </div>
+                        )}
+                        {wildShapeForm && (
+                          <div className="wild-shape-active-bar">
+                            <span className="wild-active-label">
+                              {WILD_SHAPES[wildShapeForm]?.icon} {WILD_SHAPES[wildShapeForm]?.name}
+                            </span>
+                            <button className="btn-revert-wild" onClick={() => handleTrainingRevertWildShape(m.id)}>
+                              ↩ Forma Originale
+                            </button>
+                          </div>
+                        )}
+
                         {/* Veleno DoT */}
                         {hasPendingPoison && (
                           <div className="save-block con">
@@ -5108,11 +5300,12 @@ export default function Arena() {
                             <button className="btn-saving-throw" onClick={async () => {
                               const { total: dotDmg } = rollDmg("1d6");
                               await applyTrainingUpdate(m.id, match => {
-                                const pls = match.players.map(p => p.id === currentUser?.uid ? { ...p, hp: Math.max(0, p.hp - dotDmg), poisonDoT: false } : p);
+                                const rawPls = match.players.map(p => p.id === currentUser?.uid ? { ...p, hp: Math.max(0, p.hp - dotDmg), poisonDoT: false } : p);
+                                const { players: pls, extraLogs } = processWsKnockouts(rawPls);
                                 const alive = pls.filter(p => p.hp > 0);
                                 const lg = `☠ ${myPlayer?.name} subisce ${dotDmg} da veleno!`;
-                                if (alive.length === 1) return { ...match, players: pls, status: "finished", winner: alive[0].id, logs: [...match.logs, lg, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-                                return { ...match, players: pls, logs: [...match.logs, lg] };
+                                if (alive.length === 1) return { ...match, players: pls, status: "finished", winner: alive[0].id, logs: [...match.logs, lg, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+                                return { ...match, players: pls, logs: [...match.logs, lg, ...extraLogs] };
                               });
                             }}>🎲 Subisci danno</button>
                           </div>
@@ -5123,10 +5316,10 @@ export default function Arena() {
                           const equippedNames = myPlayer?.equippedWeaponNames ?? [];
                           const targetInvis   = oppPlayer?.invisible ?? false;
                           const isRanged = (a) => a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
-                          const meleeActs  = myActions.filter(a => a.type === "weapon" && !isRanged(a));
-                          const rangedActs = myActions.filter(a => a.type === "weapon" && isRanged(a));
-                          const skillActs  = myActions.filter(a => a.type === "skill" || a.type === "passive");
-                          const spellGrps  = [0,1,2,3].map(lvl => ({ lvl, spells: myActions.filter(a => a.type === "spell" && a.level === lvl) })).filter(g => g.spells.length > 0);
+                          const meleeActs  = effectiveActions.filter(a => a.type === "weapon" && !isRanged(a));
+                          const rangedActs = effectiveActions.filter(a => a.type === "weapon" && isRanged(a));
+                          const skillActs  = effectiveActions.filter(a => a.type === "skill" || a.type === "passive");
+                          const spellGrps  = [0,1,2,3].map(lvl => ({ lvl, spells: effectiveActions.filter(a => a.type === "spell" && a.level === lvl) })).filter(g => g.spells.length > 0);
                           const LVLLABELS  = { 0: "Trucchetti", 1: "Livello 1", 2: "Livello 2", 3: "Livello 3" };
 
                           const renderTBtn = (action) => {
@@ -5145,7 +5338,7 @@ export default function Arena() {
                             if (action.special === "aid_buff") { const act = !!myPlayer?.aidBuff; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingAidBuff(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attivo":noU?"Esaurito":"+4 hit"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
                             if (action.special === "heal") return <button key={action.name} className={`btn-action spell heal ${noU?"no-uses":""}`} disabled={noU} onClick={() => !noU && handleTrainingHealSpell(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`+${action.damage} HP`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>;
                             const isWeap  = action.type === "weapon";
-                            const isEquip = !isWeap || equippedNames.includes(action.name);
+                            const isEquip = !isWeap || wildShapeForm || equippedNames.includes(action.name);
                             const isOff   = action.special !== "shield_buff" && action.special !== "aid_buff";
                             const byInvis = targetInvis && isOff;
                             const stl = action.special === "stealth" ? (myPlayer?.stealthTurns ?? 0) : 0;
@@ -5220,15 +5413,18 @@ export default function Arena() {
             );
           })}
 
-          {/* Finished training matches involving me */}
-          {trainingMatches.filter(m => m.status === "finished" && (m.challengerId === currentUser?.uid || m.opponentId === currentUser?.uid)).map(m => {
+          {/* Finished training matches involving me — last 4 only */}
+          {trainingMatches.filter(m => m.status === "finished" && (m.challengerId === currentUser?.uid || m.opponentId === currentUser?.uid) && m.players?.some(p => p.id !== currentUser?.uid)).slice(-4).map(m => {
             const myP  = m.players?.find(p => p.id === currentUser?.uid);
             const oppP = m.players?.find(p => p.id !== currentUser?.uid);
             const iWon = m.winner === currentUser?.uid;
             return (
               <div key={m.id} className="training-match finished">
                 <div className={`training-result ${iWon ? "win" : "lose"}`}>
-                  {iWon ? `🏆 Hai vinto contro ${oppP?.name || "?"}!` : m.winner ? `💀 Hai perso contro ${oppP?.name || "?"}.` : `🤝 Sfida annullata.`}
+                  {myP?.snapshot?.class && <span className="result-class-tag my-class">{myP.snapshot.class}</span>}
+                  {iWon ? `🏆 Hai vinto contro ${oppP?.name || "?"}` : m.winner ? `💀 Hai perso contro ${oppP?.name || "?"}` : `🤝 Sfida annullata`}
+                  {oppP?.snapshot?.class && <span className="result-class-tag">{oppP.snapshot.class}</span>}
+                  {!oppP && m.winner === null ? null : ""}
                 </div>
                 <div className="match-log" style={{maxHeight:160,overflowY:"auto"}}>
                   {(m.logs || []).slice(-8).map((l, i) => {
