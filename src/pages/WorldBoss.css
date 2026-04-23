@@ -737,6 +737,22 @@
   border-top: 2px solid var(--rpg-border);
 }
 
+/* Tab-based layout — always column, panel fills full width */
+.rpg-battle-interface--mobile {
+  flex-direction: column;
+}
+.rpg-battle-interface--mobile .rpg-log-panel {
+  flex: 1;
+  border-right: none;
+  border-bottom: none;
+  min-height: 360px;
+}
+.rpg-battle-interface--mobile .rpg-action-panel {
+  flex: 1;
+  max-width: 100%;
+  min-height: 320px;
+}
+
 /* ── Battle Log ── */
 .rpg-log-panel {
   flex: 1 1 55%;
@@ -862,7 +878,7 @@
 /* Chat form */
 .rpg-chat-form {
   display: flex;
-  border-top: 2px solid var(--rpg-border);
+  border-bottom: 2px solid var(--rpg-border);
   flex-shrink: 0;
 }
 
@@ -1038,6 +1054,30 @@
 .rpg-sm-btn--heal:hover { background: rgba(42,144,64,0.1); }
 .rpg-sm-btn--danger { color: var(--rpg-red); border-color: var(--rpg-red); }
 .rpg-sm-btn--danger:hover { background: rgba(192,48,32,0.1); }
+.rpg-sm-btn--adv { color: #1a6090; border-color: #1a6090; }
+.rpg-sm-btn--adv:hover, .rpg-sm-btn--adv.active { background: rgba(26,96,144,0.15); border-color: #1a6090; font-weight: bold; }
+.rpg-sm-btn--dis { color: #c03020; border-color: #c03020; }
+.rpg-sm-btn--dis:hover, .rpg-sm-btn--dis.active { background: rgba(192,48,32,0.15); border-color: #c03020; font-weight: bold; }
+
+/* Advantage / disadvantage badge in player panel */
+.rpg-condition-badge {
+  font-family: var(--rpg-font-px);
+  font-size: 7px;
+  padding: 5px 10px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  animation: rpgPulse 1.8s ease-in-out infinite;
+}
+.rpg-condition-badge--advantage {
+  color: #1a6090;
+  border: 2px solid #1a6090;
+  background: rgba(26,96,144,0.1);
+}
+.rpg-condition-badge--disadvantage {
+  color: #c03020;
+  border: 2px solid #c03020;
+  background: rgba(192,48,32,0.1);
+}
 
 /* Per-player adjustment list */
 .rpg-player-adj-list {

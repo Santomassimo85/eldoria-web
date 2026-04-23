@@ -12,7 +12,9 @@ export default function PlayerSpritesAdmin() {
   const { currentUser } = useAuth();
   const [characters, setCharacters] = useState([]);
   const [battleBg, setBattleBg] = useState(null);
+  const [arenaBg, setArenaBg] = useState(null);
   const bgInputRef = useRef(null);
+  const arenaBgInputRef = useRef(null);
   const fileRefs     = useRef({});
   const deadFileRefs = useRef({});
 
@@ -31,6 +33,9 @@ export default function PlayerSpritesAdmin() {
   useEffect(() => {
     getDoc(doc(db, "battle_meta", "turn_tracker")).then((snap) => {
       if (snap.exists()) setBattleBg(snap.data().battleBg || null);
+    });
+    getDoc(doc(db, "arena_meta", "global")).then((snap) => {
+      if (snap.exists()) setArenaBg(snap.data().battleBg || null);
     });
   }, []);
 
@@ -112,6 +117,32 @@ export default function PlayerSpritesAdmin() {
     setBattleBg(null);
   };
 
+  const loadArenaBg = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = async () => {
+        const MAX_W = 1280;
+        const scale = img.width > MAX_W ? MAX_W / img.width : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.72);
+        await setDoc(doc(db, "arena_meta", "global"), { battleBg: compressed }, { merge: true });
+        setArenaBg(compressed);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeArenaBg = async () => {
+    await setDoc(doc(db, "arena_meta", "global"), { battleBg: "" }, { merge: true });
+    setArenaBg(null);
+  };
+
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <div className="denied">Accesso Negato.</div>;
   }
@@ -122,7 +153,7 @@ export default function PlayerSpritesAdmin() {
       <h1 className="admin-page-title">Sprite Personaggi</h1>
       <div className="admin-divider"><span className="admin-divider-icon">🧝</span></div>
 
-      {/* ── Battle Background ── */}
+      {/* ── Battle Background (World Boss) ── */}
       <div className="boss-card" style={{ maxWidth: 520, margin: "0 auto 32px", padding: "16px 20px" }}>
         <h3 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, marginBottom: 10 }}>
           Sfondo Battaglia (World Boss)
@@ -149,6 +180,39 @@ export default function PlayerSpritesAdmin() {
           </button>
           {battleBg && (
             <button className="btn-delete btn-admin-danger" onClick={removeBattleBg}>
+              ✖ Rimuovi
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Arena Background ── */}
+      <div className="boss-card" style={{ maxWidth: 520, margin: "0 auto 32px", padding: "16px 20px" }}>
+        <h3 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, marginBottom: 10 }}>
+          Sfondo Arena (PvP)
+        </h3>
+        {arenaBg ? (
+          <img
+            src={arenaBg}
+            alt="Arena background"
+            style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block", marginBottom: 10, border: "2px solid var(--gold)" }}
+          />
+        ) : (
+          <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 28, marginBottom: 10 }}>⚔️</div>
+        )}
+        <input
+          ref={arenaBgInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => loadArenaBg(e.target.files[0])}
+        />
+        <div className="boss-actions-admin">
+          <button className="btn-edit" onClick={() => arenaBgInputRef.current?.click()}>
+            📁 {arenaBg ? "Cambia" : "Carica"} Sfondo
+          </button>
+          {arenaBg && (
+            <button className="btn-delete btn-admin-danger" onClick={removeArenaBg}>
               ✖ Rimuovi
             </button>
           )}

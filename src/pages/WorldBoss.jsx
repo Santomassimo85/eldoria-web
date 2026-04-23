@@ -277,13 +277,36 @@ export default function WorldBoss() {
 
   const handleSavingThrow = async (statKey) => {
     if (isUserLocked || !charData || !charData.stats) return;
-    const d20 = Math.floor(Math.random() * 20) + 1;
+    const condition = charData.nextTurnCondition;
+    let d20, rollLabel;
+    if (condition === "advantage" || condition === "disadvantage") {
+      const r1 = Math.floor(Math.random() * 20) + 1;
+      const r2 = Math.floor(Math.random() * 20) + 1;
+      d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
+      rollLabel = `${condition === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"} [${r1},${r2}]→${d20}`;
+      await updateDoc(doc(db, "characters", currentUser.uid), { nextTurnCondition: null });
+    } else {
+      d20 = Math.floor(Math.random() * 20) + 1;
+      rollLabel = `d20(${d20})`;
+    }
     const mod = charData.stats[statKey] || 0;
     await addDoc(collection(db, "world_boss_chat"), {
       type: "action", senderName: charData.name || "Eroe",
       actionName: `Tiro Salvezza ${statKey.toUpperCase()}`,
-      hitRoll: `🎲 d20(${d20}) + mod(${mod}) = ${d20 + mod}`,
+      hitRoll: `🎲 ${rollLabel} + mod(${mod}) = ${d20 + mod}`,
       uid: currentUser.uid, category: "Tiro Salvezza", timestamp: serverTimestamp(),
+    });
+  };
+
+  const handleSetCondition = async (playerId, condition) => {
+    await updateDoc(doc(db, "characters", playerId), { nextTurnCondition: condition });
+    const player = players.find((p) => p.id === playerId);
+    const pName = player?.name?.split(" ")[0] || "Eroe";
+    const label = condition === "advantage" ? "⬆ Vantaggio" : condition === "disadvantage" ? "⬇ Svantaggio" : "nessun bonus";
+    await addDoc(collection(db, "world_boss_chat"), {
+      uid: BOSS_SYSTEM_UID, senderName: "Master System", type: "notification",
+      content: `🎲 ${pName}: ${label} al prossimo tiro!`,
+      timestamp: serverTimestamp(), isSystem: true,
     });
   };
 
@@ -360,14 +383,11 @@ export default function WorldBoss() {
     });
     const q = query(collection(db, "world_boss_chat"), orderBy("timestamp", "desc"), limit(100));
     const unsubChat = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse());
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => { unsubChar(); unsubBoss(); unsubChat(); };
   }, [currentUser]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const rollDice = (formula) => {
     try {
@@ -391,7 +411,18 @@ export default function WorldBoss() {
     const boss = activeBosses[0];
     if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
     const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto";
-    const d20 = Math.floor(Math.random() * 20) + 1;
+    const condition = charData.nextTurnCondition;
+    let d20, rollLabel;
+    if (condition === "advantage" || condition === "disadvantage") {
+      const r1 = Math.floor(Math.random() * 20) + 1;
+      const r2 = Math.floor(Math.random() * 20) + 1;
+      d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
+      rollLabel = `${condition === "advantage" ? "⬆ Vant" : "⬇ Svan"} [${r1},${r2}]→${d20}`;
+      await updateDoc(doc(db, "characters", currentUser.uid), { nextTurnCondition: null });
+    } else {
+      d20 = Math.floor(Math.random() * 20) + 1;
+      rollLabel = `d20(${d20})`;
+    }
     const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
     const hitTotal = d20 + bonusToHit;
     const isCritical = d20 === 20;
@@ -399,7 +430,7 @@ export default function WorldBoss() {
       type: "action", senderName: charData?.name || "Eroe",
       actionName: action.name + (isCritical ? " (CRITICO!)" : ""),
       timestamp: serverTimestamp(), uid: currentUser.uid, category: action.category,
-      hitRoll: `🎲 d20(${d20}) + bonus(${bonusToHit}) = ${hitTotal} `,
+      hitRoll: `🎲 ${rollLabel} + bonus(${bonusToHit}) = ${hitTotal} `,
     };
     if (isAttack) {
       if (isCritical || hitTotal >= (boss.ac || 10)) {
@@ -694,8 +725,8 @@ export default function WorldBoss() {
         )}
       </div>
 
-      {/* ── MOBILE TAB BAR ── */}
-      {isMobile && (isMaster || fightStarted) && (
+      {/* ── TAB BAR ── */}
+      {(isMaster || fightStarted) && (
         <div className="rpg-mob-tabs">
           {[["status","🛡 Status"],["actions","⚔ Azioni"],["log","📜 Log"]].map(([key,label]) => (
             <button key={key} className={`rpg-mob-tab${mobileTab===key?" active":""}`} onClick={() => setMobileTab(key)}>
@@ -706,7 +737,7 @@ export default function WorldBoss() {
       )}
 
       {/* ── STATUS PANEL ── */}
-      {boss && (!isMobile || mobileTab === "status") && (
+      {boss && mobileTab === "status" && (
         <div className="rpg-status-panel">
           <div className="rpg-hud-boss">
             <div className="rpg-hud-boss-name">{boss.name}</div>
@@ -817,10 +848,20 @@ export default function WorldBoss() {
       )}
 
       {/* ── BATTLE INTERFACE ── */}
-      {(isMaster || fightStarted) && (!isMobile || mobileTab === "actions" || mobileTab === "log") && (
-        <div className={`rpg-battle-interface${isMobile ? " rpg-battle-interface--mobile" : ""}`}>
-          <div className={`rpg-log-panel${isMobile && mobileTab === "actions" ? " rpg-hidden" : ""}`}>
+      {(isMaster || fightStarted) && (mobileTab === "actions" || mobileTab === "log") && (
+        <div className="rpg-battle-interface rpg-battle-interface--mobile">
+          <div className={`rpg-log-panel${mobileTab === "actions" ? " rpg-hidden" : ""}`}>
             <div className="rpg-log-title">Registro di Battaglia</div>
+            <form className="rpg-chat-form" onSubmit={(e) => {
+              e.preventDefault();
+              if (text.trim()) {
+                addDoc(collection(db, "world_boss_chat"), { type: "narrative", senderName: charData.name, content: text, uid: currentUser.uid, timestamp: serverTimestamp() });
+                setText("");
+              }
+            }}>
+              <input className="rpg-chat-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Narra la tua mossa…" disabled={isUserLocked} />
+              <button className="rpg-chat-send" type="submit" disabled={isUserLocked}>▶</button>
+            </form>
             <div className="rpg-log-scroll">
               {messages.map((m) => (
                 <div key={m.id} className={`rpg-log-msg ${m.type || "narrative"} ${m.uid === currentUser.uid ? "mine" : ""} ${m.isSystem ? "sys" : ""}`}>
@@ -853,21 +894,10 @@ export default function WorldBoss() {
                   )}
                 </div>
               ))}
-              <div ref={chatEndRef} />
             </div>
-            <form className="rpg-chat-form" onSubmit={(e) => {
-              e.preventDefault();
-              if (text.trim()) {
-                addDoc(collection(db, "world_boss_chat"), { type: "narrative", senderName: charData.name, content: text, uid: currentUser.uid, timestamp: serverTimestamp() });
-                setText("");
-              }
-            }}>
-              <input className="rpg-chat-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Narra la tua mossa…" disabled={isUserLocked} />
-              <button className="rpg-chat-send" type="submit" disabled={isUserLocked}>▶</button>
-            </form>
           </div>
 
-          <div className={`rpg-action-panel ${isUserLocked ? "locked" : ""}${isMobile && mobileTab === "log" ? " rpg-hidden" : ""}`}>
+          <div className={`rpg-action-panel ${isUserLocked ? "locked" : ""}${mobileTab === "log" ? " rpg-hidden" : ""}`}>
             {isMaster && (
               <div className="rpg-master-panel">
                 <div className="rpg-panel-title">♛ Master</div>
@@ -908,6 +938,16 @@ export default function WorldBoss() {
                       {(p.stats?.shield ?? 0) > 0 && (
                         <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 })}>✕</button>
                       )}
+                      <button
+                        className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
+                        onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "advantage" ? null : "advantage")}
+                        title="Vantaggio prossimo tiro"
+                      >⬆</button>
+                      <button
+                        className={`rpg-sm-btn rpg-sm-btn--dis${p.nextTurnCondition === "disadvantage" ? " active" : ""}`}
+                        onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "disadvantage" ? null : "disadvantage")}
+                        title="Svantaggio prossimo tiro"
+                      >⬇</button>
                     </div>
                   ))}
                 </div>
@@ -916,6 +956,11 @@ export default function WorldBoss() {
             {!isMaster && (
               <div className="rpg-player-panel">
                 <div className="rpg-panel-title">{charData?.name || "Eroe"}{isUserLocked && <span className="rpg-locked-tag"> — Attendi</span>}</div>
+                {charData?.nextTurnCondition && (
+                  <div className={`rpg-condition-badge rpg-condition-badge--${charData.nextTurnCondition}`}>
+                    {charData.nextTurnCondition === "advantage" ? "⬆ Prossimo tiro: VANTAGGIO" : "⬇ Prossimo tiro: SVANTAGGIO"}
+                  </div>
+                )}
                 {fightStarted && turnState.phase === "players" && (
                   <button className={`rpg-btn rpg-btn--endturn ${turnState.actedPlayers?.includes(currentUser.uid) ? "done" : ""}`}
                     onClick={endMyTurn} disabled={turnState.actedPlayers?.includes(currentUser.uid)}>

@@ -208,32 +208,30 @@ export default function ArenaMarket() {
         <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
         <ul className="am-how-list">
           <li>🪙 <strong>+1 MA</strong> per aver partecipato a un torneo</li>
-          <li>🪙 <strong>+1 MA</strong> per ogni round vinto</li>
+          <li>🪙 <strong>+2 MA</strong> per ogni round vinto</li>
           <li>🪙 <strong>+5 MA</strong> se vinci il torneo</li>
         </ul>
       </div>
 
       <div className="am-how am-bets-section">
-        <h3 className="am-how-title">🎲 Scommesse Arena — Vincite in MP</h3>
+        <h3 className="am-how-title">🎲 Scommesse Arena</h3>
         <p className="am-classes-sub" style={{ marginBottom: "10px" }}>
-          Le scommesse usano <strong>Monete di Platino (MP)</strong>. Puoi scommettere su singoli fight o sul vincitore del torneo.
+          Le scommesse usano <strong>Monete Arena (MA)</strong>. Puoi scommettere su singoli fight o sul vincitore del torneo.
           Le scommesse chiudono quando un combattente scende sotto il <strong>50% HP</strong>.
         </p>
         <div className="am-bet-tables">
           <div className="am-bet-table">
-            <div className="am-bet-table-title">⚔️ Fight singolo — x2</div>
+            <div className="am-bet-table-title">⚔️ Fight singolo — x2 (max 1 MA)</div>
             <div className="am-bet-rows">
-              <div className="am-bet-row"><span className="am-bet-stake">1 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MP</span><span className="am-bet-profit">+1 MP</span></div>
-              <div className="am-bet-row"><span className="am-bet-stake">2 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">4 MP</span><span className="am-bet-profit">+2 MP</span></div>
-              <div className="am-bet-row"><span className="am-bet-stake">3 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MP</span><span className="am-bet-profit">+3 MP</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">1 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MA</span><span className="am-bet-profit">+1 MA</span></div>
             </div>
           </div>
           <div className="am-bet-table">
-            <div className="am-bet-table-title">🏆 Vincitore torneo — x3</div>
+            <div className="am-bet-table-title">🏆 Vincitore torneo — x2 (max 3 MA)</div>
             <div className="am-bet-rows">
-              <div className="am-bet-row"><span className="am-bet-stake">1 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">3 MP</span><span className="am-bet-profit">+2 MP</span></div>
-              <div className="am-bet-row"><span className="am-bet-stake">2 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MP</span><span className="am-bet-profit">+4 MP</span></div>
-              <div className="am-bet-row"><span className="am-bet-stake">3 MP</span><span className="am-bet-arrow">→</span><span className="am-bet-win">9 MP</span><span className="am-bet-profit">+6 MP</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">1 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">2 MA</span><span className="am-bet-profit">+1 MA</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">2 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">4 MA</span><span className="am-bet-profit">+2 MA</span></div>
+              <div className="am-bet-row"><span className="am-bet-stake">3 MA</span><span className="am-bet-arrow">→</span><span className="am-bet-win">6 MA</span><span className="am-bet-profit">+3 MA</span></div>
             </div>
           </div>
         </div>
