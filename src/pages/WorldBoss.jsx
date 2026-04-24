@@ -409,7 +409,7 @@ export default function WorldBoss() {
 
   const handleActionRoll = async (action) => {
     const boss = activeBosses[0];
-    if (!boss || turnState.actedPlayers.includes(currentUser.uid)) return;
+    if (!boss || isUserLocked) return;
     const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto";
     const condition = charData.nextTurnCondition;
     let d20, rollLabel;
@@ -611,8 +611,10 @@ export default function WorldBoss() {
     return `${last.senderName} · ${last.actionName}`;
   }, [messages]);
 
+  const isPlayerDead = !isMaster && (charData?.stats?.hp ?? 0) <= 0;
+
   const isUserLocked =
-    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(currentUser?.uid));
+    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(currentUser?.uid) || isPlayerDead);
 
   if (!currentUser) return <div className="rpg-denied">Loggati per entrare.</div>;
 
