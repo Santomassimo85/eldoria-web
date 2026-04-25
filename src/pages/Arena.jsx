@@ -6,6 +6,7 @@ import {
   runTransaction, increment, query, where,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
+import { showD20Roll } from "../components/DiceRoll";
 import "./Arena.css";
 
 // ── WIZARD SPELLS (Mago) — pool: 6 trucchetti · 8 lv1 · 5 lv2 · 3 lv3 (sceglie 3+4+2)
@@ -1289,7 +1290,9 @@ export default function Arena() {
     const me = match.players.find(p => p.id === currentUser.uid);
     if (!me || me.init > 0) return;
     const dex  = me.snapshot?.stats?.dex ?? 0;
-    const roll = Math.floor(Math.random() * 20) + 1 + dex;
+    const d20  = Math.floor(Math.random() * 20) + 1;
+    const roll = d20 + dex;
+    await showD20Roll(d20, { label: "Iniziativa" });
     await applyTrainingUpdate(matchId, m => {
       const players = m.players.map(p => p.id === currentUser.uid ? { ...p, init: roll } : p);
       const allRolled = players.every(p => p.init > 0);
@@ -1598,6 +1601,7 @@ export default function Arena() {
     if (!attP || !defP) return;
     const defWis = defP.snapshot?.stats?.wis ?? 0;
     const d20    = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS · ${action.name}` });
     const tsTotal = d20 + defWis;
     const saves  = tsTotal >= 13;
     const log = saves
@@ -1653,6 +1657,7 @@ export default function Arena() {
       const shieldAc = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
       const defAc   = (defSnap.stats?.ac ?? 10) + shieldAc + (defP.defensiveBonus ?? 0);
       const d20 = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: "Smite" });
       const total = d20 + (weapon.hitBonus || 0) + strMod + armorPenalty + (attP.aidBuff ? 4 : 0);
       const isHit = total >= defAc; const isCrit = d20 === 20;
       const { total: wDmg } = isHit ? rollDmg(weapon.damage) : { total: 0 };
@@ -1687,6 +1692,7 @@ export default function Arena() {
       const d20a = Math.floor(Math.random() * 20) + 1;
       const d20b = selfStealth || defStealth ? Math.floor(Math.random() * 20) + 1 : 0;
       const d20  = selfStealth && !defStealth ? Math.max(d20a, d20b) : defStealth && !selfStealth ? Math.min(d20a, d20b) : d20a;
+      await showD20Roll(d20, { label: "Attacco Furtivo" });
       const total = d20 + (weapon.hitBonus || 0) + dexMod + armorPenalty + (attP.aidBuff ? 4 : 0);
       const isHit = total >= defAc; const isCrit = d20 === 20;
       const { total: wDmg } = isHit ? rollDmg(weapon.damage) : { total: 0 };
@@ -1744,6 +1750,7 @@ export default function Arena() {
     if (action.special === "web") {
       const defDex = defSnap.stats?.dex ?? 0;
       const d20w = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20w, { label: "TS · Ragnatela" });
       const tsTotal = d20w + defDex;
       const passes = tsTotal >= 15;
       const log = { pub: passes
@@ -1779,6 +1786,7 @@ export default function Arena() {
     const d20a = Math.floor(Math.random() * 20) + 1;
     const d20b = hasAdv || hasDis ? Math.floor(Math.random() * 20) + 1 : 0;
     const d20  = hasAdv && !hasDis ? Math.max(d20a, d20b) : hasDis && !hasAdv ? Math.min(d20a, d20b) : d20a;
+    await showD20Roll(d20, { label: isSpell ? action.name : `Attacco · ${action.name}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + (attP.aidBuff ? 4 : 0) + inspBonus + magicDetB + hunterMarkB + blindPen;
     const shieldLost    = defSnap.hasShield && defP.shieldSuppressed;
     const shieldAcBonus = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
@@ -2021,7 +2029,9 @@ export default function Arena() {
   const rollInit = async (matchId) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const dex    = mySnap?.stats?.dex ?? 0;
-    const roll   = Math.floor(Math.random() * 20) + 1 + dex;
+    const d20    = Math.floor(Math.random() * 20) + 1;
+    const roll   = d20 + dex;
+    await showD20Roll(d20, { label: "Iniziativa" });
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p =>
@@ -2072,6 +2082,7 @@ export default function Arena() {
       const smiteStrMod = attackerSnap?.stats?.str ?? 0;
       const smiteAidBonus = myMatchPlayer?.aidBuff ? 4 : 0;
       const d20 = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: "Smite Divino" });
       const totalHit = d20 + (weaponAction.hitBonus || 0) + smiteStrMod + armorPenalty + smiteAidBonus;
       const isHit = totalHit >= targetAc;
       const isCrit = d20 === 20;
@@ -2136,6 +2147,7 @@ export default function Arena() {
       const d20 = sneakHasAdvantage ? Math.max(sneakD20a, sneakD20b)
                 : sneakHasDisadvantage ? Math.min(sneakD20a, sneakD20b)
                 : sneakD20a;
+      await showD20Roll(d20, { label: "Attacco Furtivo" });
       const totalHit = d20 + (weaponAction.hitBonus || 0) + dexMod + armorPenalty + aidBonus;
       const isHit = totalHit >= targetAc;
       const isCrit = d20 === 20;
@@ -2305,6 +2317,7 @@ export default function Arena() {
     const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
+    await showD20Roll(d20, { label: isSpellAction ? action.name : `Attacco · ${action.name}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
@@ -2792,6 +2805,7 @@ export default function Arena() {
   const rollSavingThrow = async (matchId, saveType, context) => {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const d20 = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS · ${(saveType || "").toUpperCase()}` });
     const isControl = context === "control_spell";
     const mod = isControl ? 3 : (mySnap?.stats?.[saveType] ?? 0);
     const dc = isControl ? 13 : 15;

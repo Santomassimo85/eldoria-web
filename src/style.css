@@ -2065,34 +2065,8 @@ input {
 
 /* ========================================
     QUESTS & MISSIONS (BACHECA)
+    Moved to src/pages/Bacheca.css
     ======================================== */
-/* bacheca-page layout now managed in admin.css */
-
-.scrolls-container {
-     display: flex;
-     flex-wrap: wrap;
-     justify-content: center;
-     gap: 50px;
-     width: 100%;
-     max-width: 1000px;
-     margin: 0 auto 60px;
-}
-
-.scroll-item {
-     display: flex;
-     flex-direction: column;
-     align-items: center;
-     width: 140px;
-     transition: transform 0.3s ease;
-}
-
-.scroll-title {
-     margin-top: 15px;
-     font-size: 1rem;
-     color: black;
-     text-align: center;
-     font-weight: bold;
-}
 
 /* ========================================
     ADMIN PANEL

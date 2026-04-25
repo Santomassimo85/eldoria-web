@@ -1,0 +1,59 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Boss sprites — only master can upload, everyone can read
+    match /boss-sprites/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // Character images — owner can upload their own
+    match /characters/{uid}/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Market items — only master can upload/delete, everyone can read
+    match /market-items/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // Geo archive (location images) — only master can upload/delete, everyone can read
+    match /geo-archive/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // NPC portraits — only master can upload/delete, everyone can read
+    match /npcs/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // Session summary covers — only master can upload/delete, everyone can read
+    match /summaries/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // Quest covers — only master can upload/delete, everyone can read
+    match /quests/{file=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // All other paths: deny by default
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

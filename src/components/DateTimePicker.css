@@ -1,0 +1,435 @@
+/* ============================================================
+   DateTimePicker — drop-in replacement for datetime-local
+   ============================================================ */
+.dtp-wrap {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-text);
+}
+
+/* ── Trigger (looks like the .admin-field-input) ────────────── */
+.dtp-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  border-radius: 8px;
+  background: #fffdf7;
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  text-align: left;
+}
+
+.dtp-trigger:hover {
+  border-color: rgba(212, 175, 55, 0.6);
+}
+
+.dtp-wrap.is-open .dtp-trigger,
+.dtp-trigger:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+}
+
+.dtp-trigger-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  filter: grayscale(0.2);
+}
+
+.dtp-trigger-value {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dtp-trigger-placeholder {
+  color: #b9a064;
+  font-style: italic;
+}
+
+.dtp-trigger.has-value .dtp-trigger-value {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.dtp-trigger-clear,
+.dtp-trigger-caret {
+  flex-shrink: 0;
+  color: #999;
+  font-size: 0.85rem;
+  transition: color 0.15s;
+}
+
+.dtp-trigger-clear:hover {
+  color: var(--red);
+}
+
+.dtp-wrap.is-open .dtp-trigger-caret {
+  color: var(--gold);
+  transform: rotate(180deg);
+}
+
+.dtp-trigger-caret {
+  transition: transform 0.2s, color 0.2s;
+}
+
+.dtp-required-shim {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  inset: auto 0 0 0;
+}
+
+/* ── Popover panel ──────────────────────────────────────────── */
+.dtp-pop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(440px, calc(100vw - 32px));
+  background: linear-gradient(160deg, #fffdf7, #fbf3dc);
+  border: 1.5px solid rgba(212, 175, 55, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+  animation: dtp-pop-in 0.18s ease-out both;
+}
+
+@keyframes dtp-pop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Presets row ────────────────────────────────────────────── */
+.dtp-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 4px 10px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  margin-bottom: 10px;
+}
+
+.dtp-preset {
+  flex: 1 1 auto;
+  min-width: 90px;
+  padding: 6px 10px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 16px;
+  color: #6f5520;
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.dtp-preset:hover {
+  background: var(--gold);
+  color: #1a1208;
+  border-color: var(--gold);
+}
+
+.dtp-preset:active {
+  transform: scale(0.97);
+}
+
+/* ── Body grid: calendar + time column ──────────────────────── */
+.dtp-body {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 520px) {
+  .dtp-body { grid-template-columns: 1fr; }
+}
+
+/* ── Calendar ───────────────────────────────────────────────── */
+.dtp-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 8px;
+}
+
+.dtp-cal-title {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: var(--red);
+  text-transform: uppercase;
+}
+
+.dtp-nav {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 50%;
+  background: #fffdf7;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dtp-nav:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1a1208;
+}
+
+.dtp-cal-dows,
+.dtp-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dtp-cal-dows {
+  padding: 2px 0 4px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+  margin-bottom: 4px;
+}
+
+.dtp-cal-dows span {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: #9a7a20;
+  padding: 4px 0;
+}
+
+.dtp-day {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-family: var(--font-text);
+  font-size: 0.82rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  font-variant-numeric: tabular-nums;
+}
+
+.dtp-day:hover:not(.muted) {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.dtp-day:active {
+  transform: scale(0.93);
+}
+
+.dtp-day.muted {
+  color: #c8b27a;
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.dtp-day.today {
+  border-color: rgba(130, 10, 10, 0.45);
+  color: var(--red);
+  font-weight: 700;
+}
+
+.dtp-day.sel {
+  background: linear-gradient(135deg, var(--gold), #b88a25);
+  border-color: var(--gold);
+  color: #1a1208;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(184, 138, 37, 0.35);
+}
+
+.dtp-day.sel.today {
+  outline: 1px solid var(--red);
+  outline-offset: -3px;
+}
+
+/* ── Time column ────────────────────────────────────────────── */
+.dtp-time {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 2px;
+  border-left: 1px solid rgba(212, 175, 55, 0.2);
+  padding-left: 12px;
+}
+
+@media (max-width: 520px) {
+  .dtp-time {
+    border-left: none;
+    border-top: 1px solid rgba(212, 175, 55, 0.2);
+    padding-left: 0;
+    padding-top: 10px;
+  }
+}
+
+.dtp-time-label {
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.dtp-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dtp-stepper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.dtp-stepper input {
+  width: 48px;
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--red);
+  background: #fffdf7;
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  border-radius: 8px;
+  padding: 6px 0;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -moz-appearance: textfield;
+}
+
+.dtp-stepper input::-webkit-outer-spin-button,
+.dtp-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dtp-stepper input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.18);
+}
+
+.dtp-stepper button {
+  width: 24px;
+  height: 18px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 0.55rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dtp-stepper button:hover {
+  background: var(--gold);
+  color: #1a1208;
+  border-color: var(--gold);
+}
+
+.dtp-colon {
+  font-family: var(--font-title);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--red);
+  margin: 0 1px;
+}
+
+.dtp-quick-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.dtp-quick-time {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 48px;
+  padding: 4px 6px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  background: #fffdf7;
+  font-family: var(--font-text);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dtp-quick-time:hover {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.dtp-quick-time.on {
+  background: var(--gold);
+  color: #1a1208;
+  border-color: var(--gold);
+  font-weight: 600;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.dtp-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.dtp-foot-btn {
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: #fffdf7;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: #6f5520;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dtp-foot-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--red);
+}
+
+.dtp-foot-btn.primary {
+  background: linear-gradient(135deg, var(--gold), #b88a25);
+  border-color: var(--gold);
+  color: #1a1208;
+}
+
+.dtp-foot-btn.primary:hover {
+  filter: brightness(1.05);
+}

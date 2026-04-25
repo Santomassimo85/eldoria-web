@@ -45,6 +45,7 @@ import NPC from "./pages/NPC";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
+import DiceRollHost from "./components/DiceRoll";
 
 // CONFIG
 const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
@@ -349,6 +350,7 @@ export default function App() {
       </main>
 
 <GlobalChat />
+      <DiceRollHost />
       <OnlinePresence />
 
       <footer>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
-import "./admin.css";
+import "./Bacheca.css";
 import {
   collection, onSnapshot, doc, getDoc,
   updateDoc, query, where, getDocs,
@@ -28,11 +28,11 @@ const getPartyByCharName = (name) => {
 
 export default function Bacheca() {
   const navigate = useNavigate();
-  const [quests, setQuests]           = useState([]);
+  const [quests, setQuests]             = useState([]);
   const [userCharName, setUserCharName] = useState("");
-  const [userParty, setUserParty]     = useState("");
-  const [loading, setLoading]         = useState(true);
-  const [hoveredId, setHoveredId]     = useState(null);
+  const [userParty, setUserParty]       = useState("");
+  const [loading, setLoading]           = useState(true);
+  const [hoveredId, setHoveredId]       = useState(null);
 
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -106,9 +106,6 @@ export default function Bacheca() {
   };
 
   // ── Visibilità e permessi ──────────────────────────────────
-  // visible:  la missiva compare in bacheca
-  // canOpen:  puoi cliccare e aprire i dettagli
-  // sealed:   vedi solo l'icona (quest party accettata da altri)
   const questEntries = quests.map((quest) => {
     const isPartyQuest = quest.targetParty && quest.targetParty !== "All";
     const isCharQuest  = quest.targetCharacter && quest.targetCharacter !== "All";
@@ -125,12 +122,9 @@ export default function Bacheca() {
       if (isMyParty) {
         visible = true; canOpen = true;
       } else if (quest.acceptedBy) {
-        // Accettata da un altro party → scroll sigillato visibile a tutti
         visible = true; canOpen = false; sealed = true;
       }
-      // Non mio party + non ancora accettata → completamente nascosta
     } else {
-      // Generale
       visible = true; canOpen = true;
     }
 
@@ -140,95 +134,127 @@ export default function Bacheca() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <section className="bacheca-page">
-      <h1 className="bacheca-title">Hemile's Board</h1>
-      <p className="bacheca-subtitle">
-        Bentornato, {userCharName || "Avventuriero"}
-        {userParty && userParty !== "Senza Gruppo" ? ` — Party ${userParty}` : ""}
-      </p>
+      <div className="bacheca-header">
+        <h1 className="bacheca-title">Hemile's Board</h1>
+        <div className="bacheca-divider">
+          <span className="bacheca-divider-icon">✦</span>
+        </div>
+        <p className="bacheca-subtitle">
+          Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
+          {userParty && userParty !== "Senza Gruppo" ? ` — Party ${userParty}` : ""}
+        </p>
+      </div>
+
+      <div className="bacheca-intro">
+        Il vento porta nuove richieste sulla bacheca di Hemile. Pergamene, sigilli
+        e missive attendono mani coraggiose: scegli con cura, e lascia che il tuo
+        nome resti scolpito nella memoria dei mondani.
+      </div>
 
       {loading ? (
-        <p style={{ textAlign: "center" }}>Caricamento pergamene...</p>
+        <div className="bacheca-loading">📜 Caricamento pergamene…</div>
+      ) : questEntries.length === 0 ? (
+        <div className="bacheca-empty">Nessuna missiva al momento. Torna più tardi.</div>
       ) : (
-        <div className="scrolls-container" style={{ display: "flex", flexWrap: "wrap", gap: "20px", justifyContent: "center" }}>
+        <div className="scrolls-grid">
           {questEntries.map((quest) => {
-            const isAccepted        = !!quest.acceptedBy;
-            const isAcceptedByMe    = quest.acceptedBy === userCharName;
+            const isAccepted          = !!quest.acceptedBy;
+            const isAcceptedByMe      = quest.acceptedBy === userCharName;
             const isAcceptedByMyParty = quest.acceptedParty === userParty;
-            const isPartyQuest      = quest.targetParty && quest.targetParty !== "All";
-            const isPrivate         = quest.targetCharacter && quest.targetCharacter !== "All";
-            const isHovered         = hoveredId === quest.id;
+            const isPartyQuest        = quest.targetParty && quest.targetParty !== "All";
+            const isPrivate           = quest.targetCharacter && quest.targetCharacter !== "All";
+            const isHovered           = hoveredId === quest.id;
+            const isOpenVisual        = !quest._sealed && (isAccepted || (quest._canOpen && isHovered));
+            const badgeIcon           = quest._sealed ? "🔒" : isPrivate ? "🔒" : isPartyQuest ? "🛡️" : "🌐";
 
-            // Scroll sigillato: mostra solo l'icona senza interazione
-            if (quest._sealed) {
-              return (
-                <div key={quest.id} style={{ textAlign: "center", width: "200px", opacity: 0.5 }}>
-                  <img src="/closedScroll.png" alt="Missiva sigillata" style={{ width: "150px", filter: "grayscale(1)" }} />
-                  <p style={{ fontSize: "0.75rem", color: "#888", marginTop: 4, fontStyle: "italic" }}>
-                    🔒 In carico al gruppo {quest.acceptedParty}
-                  </p>
-                </div>
-              );
-            }
+            const cardClass = [
+              "quest-card",
+              quest._canOpen ? "is-clickable" : "",
+              isOpenVisual ? "is-open" : "",
+              isAccepted ? "accepted" : "",
+              quest._sealed ? "sealed" : "",
+            ].filter(Boolean).join(" ");
 
             return (
-              <div
+              <article
                 key={quest.id}
-                className={`scroll-item ${isAccepted ? "accepted" : ""}`}
+                className={cardClass}
                 onClick={() => quest._canOpen && navigate(`/quest/${quest.id}`)}
                 onMouseEnter={() => quest._canOpen && setHoveredId(quest.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                style={{
-                  textAlign: "center",
-                  cursor: quest._canOpen ? "pointer" : "default",
-                  width: "200px",
-                }}
+                onFocus={() => quest._canOpen && setHoveredId(quest.id)}
+                onBlur={() => setHoveredId(null)}
+                tabIndex={quest._canOpen ? 0 : -1}
               >
-                <img
-                  src={isAccepted || isHovered ? "/openScroll.png" : "/closedScroll.png"}
-                  alt="Scroll"
-                  style={{ width: "150px", filter: isAccepted ? "grayscale(0.5)" : "none" }}
-                />
+                <span className="quest-badge" aria-hidden="true">{badgeIcon}</span>
 
-                <p className="scroll-title" style={{ fontWeight: "bold", margin: "5px 0" }}>
-                  {isPrivate ? "🔒 " : isPartyQuest ? "🛡️ " : "🌐 "}{quest.title}
-                </p>
+                <div className="scroll-frame">
+                  <img className="scroll-img closed" src="/closedScroll.png" alt="" />
+                  {quest.coverImage ? (
+                    <img
+                      className="scroll-img open cover"
+                      src={quest.coverImage}
+                      alt=""
+                      onError={(e) => { e.currentTarget.src = "/openScroll.png"; }}
+                    />
+                  ) : (
+                    <img className="scroll-img open" src="/openScroll.png" alt="" />
+                  )}
+                </div>
 
-                {isPrivate && (
-                  <small style={{ color: "var(--gold)" }}>Solo per {quest.targetCharacter}</small>
-                )}
-                {isPartyQuest && !isAccepted && (
-                  <small style={{ color: "#27ae60" }}>Riservata a {quest.targetParty}</small>
-                )}
+                <h3 className="quest-card-title">
+                  {quest._sealed ? "Missiva sigillata" : quest.title}
+                </h3>
 
-                {isAccepted && (
-                  <div className="acceptance-info" style={{ fontSize: "0.8rem", marginTop: "5px" }}>
-                    <p>
-                      Presa in carico dal gruppo{" "}
-                      <strong style={{ color: isAcceptedByMyParty ? "#27ae60" : "var(--red)" }}>
-                        {quest.acceptedParty || quest.acceptedBy}
-                      </strong>
-                    </p>
-                    {(isAcceptedByMe || isMaster || isAcceptedByMyParty) && (
+                {quest._sealed ? (
+                  <p className="quest-card-meta sealed">
+                    In carico al gruppo {quest.acceptedParty}
+                  </p>
+                ) : (
+                  <>
+                    {isPrivate && (
+                      <p className="quest-card-meta private">
+                        Solo per {quest.targetCharacter}
+                      </p>
+                    )}
+                    {isPartyQuest && !isAccepted && (
+                      <p className="quest-card-meta party">
+                        Riservata a {quest.targetParty}
+                      </p>
+                    )}
+
+                    {isAccepted && (
+                      <div className="quest-card-accepted">
+                        <p>
+                          In carico al gruppo{" "}
+                          <strong className={isAcceptedByMyParty ? "mine" : "others"}>
+                            {quest.acceptedParty || quest.acceptedBy}
+                          </strong>
+                        </p>
+                        {(isAcceptedByMe || isMaster || isAcceptedByMyParty) && (
+                          <button
+                            type="button"
+                            className="btn-quest btn-quest-release"
+                            onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, false); }}
+                          >
+                            Rilascia
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {!isAccepted && isHovered && quest._canOpen && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, false); }}
-                        style={{ background: "#ff4444", border: "none", color: "white", borderRadius: "4px", padding: "2px 8px", cursor: "pointer", marginTop: "5px" }}
+                        type="button"
+                        className="btn-quest btn-quest-accept"
+                        onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
                       >
-                        Rilascia Incarico
+                        Accetta Ora
                       </button>
                     )}
-                  </div>
+                  </>
                 )}
-
-                {!isAccepted && isHovered && quest._canOpen && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleQuestStatus(quest, true); }}
-                    className="btn-quick-accept"
-                    style={{ background: "var(--gold)", border: "none", color: "black", borderRadius: "4px", padding: "5px 10px", cursor: "pointer", marginTop: "5px", fontWeight: "bold" }}
-                  >
-                    Accetta Ora
-                  </button>
-                )}
-              </div>
+              </article>
             );
           })}
         </div>

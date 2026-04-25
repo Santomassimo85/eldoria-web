@@ -1,0 +1,193 @@
+/* ============================================================
+   DiceRoll — fullscreen overlay with a tumbling d20
+   ============================================================ */
+.dice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(ellipse at center,
+    rgba(20, 12, 4, 0.55) 0%,
+    rgba(0, 0, 0, 0.75) 90%);
+  pointer-events: none;
+  animation: dice-overlay-fade var(--fade-ms, 280ms) ease-in-out forwards;
+  animation-delay: calc(var(--tumble-ms, 750ms) + var(--settle-ms, 450ms) + var(--hold-ms, 550ms));
+}
+
+@keyframes dice-overlay-fade {
+  to { opacity: 0; }
+}
+
+/* ── Die ────────────────────────────────────────────────────── */
+.dice-d20 {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  perspective: 900px;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.55));
+}
+
+.dice-d20-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 25%, #fff5d2, transparent 55%),
+    linear-gradient(135deg, #f0c250 0%, #d4af37 45%, #8c6a17 100%);
+  border: 3px solid #6b4f0e;
+  /* d20-ish silhouette via clip-path: hexagon-pointed */
+  clip-path: polygon(
+    50% 0%,
+    93% 25%,
+    93% 75%,
+    50% 100%,
+    7% 75%,
+    7% 25%
+  );
+  transform-style: preserve-3d;
+  animation:
+    dice-tumble var(--tumble-ms, 750ms) cubic-bezier(0.45, 0.05, 0.55, 0.95) 0s 1 forwards,
+    dice-settle var(--settle-ms, 450ms) cubic-bezier(0.34, 1.56, 0.64, 1) var(--tumble-ms, 750ms) 1 forwards;
+}
+
+/* Tumbling phase: chaotic random-feel spin */
+@keyframes dice-tumble {
+  0%   { transform: rotate3d(1, 1, 0,   0deg) scale(0.6); }
+  20%  { transform: rotate3d(1, 0.3, 0.6, 320deg) scale(1.05); }
+  40%  { transform: rotate3d(0.7, 1, 0.2, 620deg) scale(0.95); }
+  60%  { transform: rotate3d(1, 0.6, 0.4, 920deg) scale(1.02); }
+  80%  { transform: rotate3d(0.4, 1, 0.3, 1180deg) scale(0.98); }
+  100% { transform: rotate3d(1, 1, 0, 1440deg) scale(1); }
+}
+
+/* Settle phase: tiny bounce + reveal */
+@keyframes dice-settle {
+  0%   { transform: rotate3d(0, 0, 0, 0deg) scale(1); }
+  50%  { transform: rotate3d(0, 0, 0, 0deg) scale(1.18); }
+  100% { transform: rotate3d(0, 0, 0, 0deg) scale(1); }
+}
+
+/* ── Number ─────────────────────────────────────────────────── */
+.dice-d20-num {
+  font-family: "Cinzel Decorative", serif;
+  font-size: 3.6rem;
+  font-weight: 700;
+  color: #1a1208;
+  line-height: 1;
+  text-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.6),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  animation: dice-num-in var(--settle-ms, 450ms) ease-out var(--tumble-ms, 750ms) forwards;
+}
+
+@keyframes dice-num-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Glow halo when settling ────────────────────────────────── */
+.dice-d20-glow {
+  position: absolute;
+  inset: -28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.55), transparent 65%);
+  opacity: 0;
+  filter: blur(6px);
+  animation: dice-glow-in var(--settle-ms, 450ms) ease-out var(--tumble-ms, 750ms) forwards;
+  z-index: -1;
+}
+
+@keyframes dice-glow-in {
+  0%   { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 0.9; transform: scale(1); }
+}
+
+/* ── Variants — crit (20) and fumble (1) ────────────────────── */
+.dice-overlay.crit .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 25%, #fff5d2, transparent 55%),
+    linear-gradient(135deg, #ffd96b 0%, #f0c250 45%, #ad7e0c 100%);
+  border-color: #5a3d00;
+}
+.dice-overlay.crit .dice-d20-glow {
+  background: radial-gradient(circle, rgba(255, 215, 90, 0.85), transparent 65%);
+  filter: blur(8px);
+}
+
+.dice-overlay.fumble .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 25%, #fbd3d3, transparent 55%),
+    linear-gradient(135deg, #c0392b 0%, #7a1818 60%, #4a0a0a 100%);
+  border-color: #2a0606;
+}
+.dice-overlay.fumble .dice-d20-num { color: #fff5e8; text-shadow: 0 2px 4px rgba(0,0,0,0.55); }
+.dice-overlay.fumble .dice-d20-glow {
+  background: radial-gradient(circle, rgba(192, 57, 43, 0.7), transparent 65%);
+}
+
+/* ── Caption + tag ─────────────────────────────────────────── */
+.dice-label {
+  font-family: "Cinzel Decorative", serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  color: #f3e2b5;
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  animation: dice-caption-in var(--settle-ms, 450ms) ease-out var(--tumble-ms, 750ms) forwards;
+}
+
+@keyframes dice-caption-in {
+  to { opacity: 0.92; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.dice-tag {
+  font-family: "Cinzel Decorative", serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 6px 18px;
+  border-radius: 22px;
+  opacity: 0;
+  transform: scale(0.85);
+  animation: dice-tag-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)
+             calc(var(--tumble-ms, 750ms) + var(--settle-ms, 450ms) * 0.5) forwards;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.dice-tag.crit {
+  background: linear-gradient(135deg, #ffd96b, #d4af37);
+  color: #1a1208;
+  border: 1.5px solid #5a3d00;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+}
+
+.dice-tag.fumble {
+  background: linear-gradient(135deg, #c0392b, #7a1818);
+  color: #fff5e8;
+  border: 1.5px solid #2a0606;
+}
+
+@keyframes dice-tag-in {
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dice-d20-face,
+  .dice-d20-num,
+  .dice-d20-glow,
+  .dice-label,
+  .dice-tag {
+    animation-duration: 0.01ms !important;
+  }
+}

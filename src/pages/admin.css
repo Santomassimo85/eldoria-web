@@ -747,51 +747,7 @@
   margin-top: 20px;
 }
 
-/* ---- BACHECA (quest board) -------------------------------- */
-.bacheca-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 110px 16px 80px;
-  min-height: 100vh;
-  width: 100%;
-}
-
-.bacheca-title {
-  font-family: var(--font-title);
-  font-size: clamp(1.4rem, 5vw, 2.4rem);
-  color: var(--gold);
-  text-align: center;
-  letter-spacing: 0.06em;
-  margin-bottom: 8px;
-}
-
-.bacheca-subtitle {
-  font-family: var(--font-text);
-  font-size: 0.92rem;
-  color: rgba(203, 137, 56, 0.7);
-  text-align: center;
-  margin-bottom: 40px;
-  font-style: italic;
-}
-
-.scrolls-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 30px;
-  width: 100%;
-  max-width: 1000px;
-  margin: 0 auto 60px;
-}
-
-.scroll-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 150px;
-  transition: transform 0.3s ease;
-}
+/* ---- BACHECA — moved to Bacheca.css ----------------------- */
 
 /* ---- SESSIONS TABLE --------------------------------------- */
 .sessions-table {
@@ -937,8 +893,7 @@
   .admin-geo-page,
   .cinema-page,
   .notifications-page,
-  .quest-detail-page,
-  .bacheca-page {
+  .quest-detail-page {
     padding: 90px 12px 60px;
   }
 
@@ -960,8 +915,7 @@
   .admin-geo-page,
   .cinema-page,
   .notifications-page,
-  .quest-detail-page,
-  .bacheca-page {
+  .quest-detail-page {
     padding: 110px 28px 80px;
   }
 }
@@ -1063,7 +1017,8 @@
   flex-wrap: wrap;
   align-items: center;
 }
-.mkadm-config-row .admin-field-input { flex: 1; min-width: 200px; }
+.mkadm-config-row .admin-field-input,
+.mkadm-config-row .dtp-wrap { flex: 1; min-width: 200px; }
 
 .mkadm-btn-save {
   background: var(--gold);

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { doc, setDoc, collection, onSnapshot, deleteDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import DateTimePicker from "../components/DateTimePicker";
 import "./admin.css";
 
 export default function AdminSessions() {
@@ -57,19 +58,18 @@ export default function AdminSessions() {
             >
               <option value="Amea">Amea</option>
               <option value="Lac">Lac</option>
-              <option value="Enox">Eco</option>
-              
-              <option value="Enox">Leaf</option>
               <option value="Enox">Enox</option>
+              <option value="Leaf">Leaf</option>
+              <option value="Eco">Eco</option>
             </select>
           </div>
           <div>
             <label>Data e Ora</label>
-            <input
-              type="datetime-local"
-              className="admin-field-input"
+            <DateTimePicker
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
+              presets="session"
+              placeholder="Quando si gioca?"
             />
           </div>
           <div className="btn-admin-actions">

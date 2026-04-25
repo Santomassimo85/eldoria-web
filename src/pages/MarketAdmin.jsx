@@ -6,6 +6,7 @@ import "./admin.css";
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
+import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -214,11 +215,11 @@ export default function MarketAdmin() {
         <div className="mkadm-config-body">
           <label className="mkadm-config-label">Prossima apertura mercato</label>
           <div className="mkadm-config-row">
-            <input
-              type="datetime-local"
-              className="admin-field-input"
+            <DateTimePicker
               value={globalCountdown}
-              onChange={(e) => setGlobalCountdown(e.target.value)}
+              onChange={setGlobalCountdown}
+              presets="opening"
+              placeholder="Seleziona apertura"
             />
             <button onClick={handleUpdateCountdown} className="mkadm-btn-save">Salva</button>
           </div>
@@ -297,12 +298,12 @@ export default function MarketAdmin() {
 
             <div className="mkadm-field">
               <label>Scadenza asta</label>
-              <input
-                className="admin-field-input"
-                type="datetime-local"
-                required
+              <DateTimePicker
                 value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, endDate: v })}
+                required
+                presets="auction"
+                placeholder="Quando scade l'asta?"
               />
             </div>
 

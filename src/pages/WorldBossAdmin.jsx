@@ -17,6 +17,7 @@ import {
 } from "firebase/storage";
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
+import DateTimePicker from "../components/DateTimePicker";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
@@ -436,11 +437,11 @@ export default function WorldBossAdmin() {
 
             <div className="wb-field">
               <label>⏳ Scadenza Evento</label>
-              <input
-                className="admin-field-input"
-                type="datetime-local"
+              <DateTimePicker
                 value={newBoss.expiryDate}
-                onChange={(e) => setNewBoss({ ...newBoss, expiryDate: e.target.value })}
+                onChange={(v) => setNewBoss({ ...newBoss, expiryDate: v })}
+                presets="auction"
+                placeholder="Quando finisce l'evento?"
               />
             </div>
 
@@ -630,7 +631,12 @@ export default function WorldBossAdmin() {
 
                       <div className="wb-field">
                         <label>Scadenza</label>
-                        <input className="admin-field-input" type="datetime-local" value={editData.expiryDate || ""} onChange={(e) => setEditData({ ...editData, expiryDate: e.target.value })} />
+                        <DateTimePicker
+                          value={editData.expiryDate || ""}
+                          onChange={(v) => setEditData({ ...editData, expiryDate: v })}
+                          presets="auction"
+                          placeholder="Nuova scadenza"
+                        />
                       </div>
                       <div className="wb-field">
                         <label>Descrizione</label>

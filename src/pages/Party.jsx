@@ -1,94 +1,201 @@
-import React from 'react';
-import ToggleSection from './ToggleSection';
-import './Party.css';
+import React, { useMemo, useState } from "react";
+import "./Party.css";
 
-const partyData = {
-  party1: [
-    { name: "Caius", race: "Elfo", class: "Mago", image: "/assets/player/Caius.jpg" },
-    { name: "Garroth", race: "Mezz'Elfo", class: "Ranger", image: "/assets/player/Garroth.jpg" },
-    { name: "Tanagar", race: "Mezz'Orco", class: "Guerriero", image: "/assets/player/Tanagar.jpg" },
-    { name: "Sylva", race: "Umana", class: "Barbaro", image: "/assets/player/Sylva.png" },
-  ],
-  party2: [
-    { name: "Horn", race: "Umano", class: "Ranger", image: "/assets/player/Horn.jpg" },
-    { name: "Thoki", race: "Gnomo", class: "Mago", image: "/assets/player/Thoki.jpg" },
-    { name: "Cleofe", race: "Halfling", class: "Ladro", image: "/assets/player/Cleofe.jpg" },
-  ],
-  party3: [
-    { name: "Roynot", race: "Umano", class: "Druido", image: "/assets/player/Roynot.jpg" },
-    { name: "Dante", race: "Umano V.", class: "Ladro", image: "/assets/player/Dante.png" },
-    { name: "Vyger", race: "Umano", class: "Mago", image: "/assets/player/Vyger.png" },
-    { name: "Temistocle Sottocolle", race: "Halfling piede lesto", class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
-    { name: "Timoty Bevibotte", race: "Lightfoot Halfling", class: "Ladro", image: "/assets/player/timotyBevibotte.jpeg" },
-  ],
-  party4: [
-    { name: "Makenna", race: "Changeling", class: "Ladro", image: "/assets/player/Makenna.jpeg" },
-    { name: "Taaras Stormrage", race: "Mezz'Elfo", class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
-    { name: "Soran", race: "Umano", class: "Bardo", image: "/assets/player/Soran.png" },
-    { name: "Zethir", race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg" },
-  ],
-};
+/* ── Party data — kept in one structure so we can render statistics ── */
+const PARTIES = [
+  {
+    id: "AMEA",
+    name: "Compagnia di Amea",
+    code: "A",
+    color: "#c0392b",
+    motto: "Il fuoco non chiede permesso",
+    members: [
+      { name: "Caius",   race: "Elfo",       class: "Mago",      image: "/assets/player/Caius.jpg" },
+      { name: "Garroth", race: "Mezz'Elfo",  class: "Ranger",    image: "/assets/player/Garroth.jpg" },
+      { name: "Tanagar", race: "Mezz'Orco",  class: "Guerriero", image: "/assets/player/Tanagar.jpg" },
+      { name: "Sylva",   race: "Umana",      class: "Barbaro",   image: "/assets/player/Sylva.png" },
+    ],
+  },
+  {
+    id: "LAC",
+    name: "Compagnia di Lac",
+    code: "L",
+    color: "#2980b9",
+    motto: "Le acque profonde non temono il vento",
+    members: [
+      { name: "Horn",    race: "Umano",    class: "Ranger", image: "/assets/player/Horn.jpg" },
+      { name: "Thoki",   race: "Gnomo",    class: "Mago",   image: "/assets/player/Thoki.jpg" },
+      { name: "Cleofe",  race: "Halfling", class: "Ladro",  image: "/assets/player/Cleofe.jpg" },
+    ],
+  },
+  {
+    id: "ENOX",
+    name: "Compagnia di Enox",
+    code: "E",
+    color: "#8e44ad",
+    motto: "Nel buio si forgiano i nomi più luminosi",
+    members: [
+      { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg" },
+      { name: "Dante",                  race: "Umano V.",              class: "Ladro",    image: "/assets/player/Dante.png" },
+      { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png" },
+      { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
+      { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
+    ],
+  },
+  {
+    id: "LEAF",
+    name: "Compagnia di Leaf",
+    code: "F",
+    color: "#27ae60",
+    motto: "Dove cade la foglia, nasce la rotta",
+    members: [
+      { name: "Makenna",          race: "Changeling", class: "Ladro",    image: "/assets/player/Makenna.jpeg" },
+      { name: "Taaras Stormrage", race: "Mezz'Elfo",  class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
+      { name: "Soran",            race: "Umano",      class: "Bardo",    image: "/assets/player/Soran.png" },
+      { name: "Zethir",           race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg" },
+    ],
+  },
+];
 
-const CharacterCard = ({ character }) => (
-  <div className="character-card">
-    <img src={character.image} alt={character.name} className="character-image" />
-    <div className="character-info">
-      <a href="/link-placeholder" className="character-link" title={`Vedi scheda di ${character.name}`}>
-        <h4 className="character-name">{character.name}</h4>
-        <p className="character-details">{character.race} · {character.class}</p>
-      </a>
+/* ── Hero card ─────────────────────────────────────────────── */
+function HeroCard({ hero, accent }) {
+  return (
+    <div
+      className="hero-card"
+      style={{ "--accent": accent }}
+    >
+      <div className="hero-card-photo">
+        <img
+          src={hero.image}
+          alt={hero.name}
+          loading="lazy"
+          onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
+        />
+        <span className="hero-card-shade" aria-hidden="true" />
+      </div>
+
+      <div className="hero-card-plate">
+        <h3 className="hero-card-name">{hero.name}</h3>
+        <p className="hero-card-meta">
+          <span>{hero.race}</span>
+          <span className="dot">·</span>
+          <span>{hero.class}</span>
+        </p>
+      </div>
     </div>
-  </div>
-);
+  );
+}
 
+/* ── Party banner + grid ───────────────────────────────────── */
+function PartySection({ party }) {
+  return (
+    <section
+      className="party-faction"
+      style={{ "--party-color": party.color }}
+      data-id={party.id}
+    >
+      <header className="party-banner">
+        <div className="party-banner-edge" aria-hidden="true" />
+
+        <div className="party-crest">
+          <span className="party-crest-letter">{party.code}</span>
+          <span className="party-crest-ring" />
+        </div>
+
+        <div className="party-banner-text">
+          <p className="party-banner-tag">Casata di Eldoria · {party.id}</p>
+          <h2 className="party-banner-name">{party.name}</h2>
+          <p className="party-banner-motto">«{party.motto}»</p>
+        </div>
+
+        <div className="party-banner-count" title={`${party.members.length} eroi`}>
+          <strong>{party.members.length}</strong>
+          <span>Eroi</span>
+        </div>
+      </header>
+
+      <div className="hero-grid">
+        {party.members.map((m) => (
+          <HeroCard key={m.name} hero={m} accent={party.color} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ── Page ──────────────────────────────────────────────────── */
 export default function Party() {
+  const [activeParty, setActiveParty] = useState("all");
+
+  const allMembers = useMemo(
+    () => PARTIES.flatMap((p) => p.members.map((m) => ({ ...m, party: p.id }))),
+    []
+  );
+
+  const stats = useMemo(() => ({
+    parties: PARTIES.length,
+    heroes:  allMembers.length,
+    races:   new Set(allMembers.map((m) => m.race)).size,
+    classes: new Set(allMembers.map((m) => m.class)).size,
+  }), [allMembers]);
+
+  const visibleParties = useMemo(
+    () => activeParty === "all" ? PARTIES : PARTIES.filter((p) => p.id === activeParty),
+    [activeParty]
+  );
+
   return (
     <section className="party-page">
-
-      {/* ---- HEADER ---- */}
+      {/* ── HERO HEADER ── */}
       <div className="party-header">
-        <h1 className="party-title">I Nostri Eroici Avventurieri</h1>
+        <p className="party-eyebrow">Sangue · Inchiostro · Avventura</p>
+        <h1 className="party-title">Le Compagnie di Eldoria</h1>
         <div className="party-divider">
           <span className="party-divider-icon">✦</span>
         </div>
+        <p className="party-lore">
+          Quattro compagnie. Sedici anime. Una sola leggenda che si scrive,
+          notte dopo notte, sulle pietre di Exanthia.
+        </p>
       </div>
 
-      {/* ---- PARTY AMEA ---- */}
-      <div className="party-section">
-        <ToggleSection title="Party AMEA  4/4" defaultOpen={false}>
-          <div className="party-grid">
-            {partyData.party1.map((char, i) => <CharacterCard key={i} character={char} />)}
-          </div>
-        </ToggleSection>
+      {/* ── STATS RIBBON ── */}
+      <div className="party-stats">
+        <div className="party-stat"><strong>{stats.parties}</strong><span>Compagnie</span></div>
+        <div className="party-stat"><strong>{stats.heroes}</strong><span>Eroi</span></div>
+        <div className="party-stat"><strong>{stats.races}</strong><span>Razze</span></div>
+        <div className="party-stat"><strong>{stats.classes}</strong><span>Classi</span></div>
       </div>
 
-      {/* ---- PARTY LAC ---- */}
-      <div className="party-section">
-        <ToggleSection title="Party LAC  3/4">
-          <div className="party-grid">
-            {partyData.party2.map((char, i) => <CharacterCard key={i} character={char} />)}
-          </div>
-        </ToggleSection>
+      {/* ── FACTION TABS ── */}
+      <div className="party-tabs" role="tablist">
+        <button
+          type="button"
+          className={`party-tab ${activeParty === "all" ? "on" : ""}`}
+          onClick={() => setActiveParty("all")}
+        >
+          ✦ Tutte le Compagnie
+        </button>
+        {PARTIES.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className={`party-tab ${activeParty === p.id ? "on" : ""}`}
+            onClick={() => setActiveParty(p.id)}
+            style={{ "--tab-color": p.color }}
+          >
+            <span className="party-tab-dot" />
+            {p.id}
+          </button>
+        ))}
       </div>
 
-      {/* ---- PARTY ENOX ---- */}
-      <div className="party-section">
-        <ToggleSection title="Party Enox  5/5">
-          <div className="party-grid">
-            {partyData.party3.map((char, i) => <CharacterCard key={i} character={char} />)}
-          </div>
-        </ToggleSection>
+      {/* ── PARTY SECTIONS ── */}
+      <div className="party-list">
+        {visibleParties.map((p) => (
+          <PartySection key={p.id} party={p} />
+        ))}
       </div>
-
-      {/* ---- PARTY LEAF ---- */}
-      <div className="party-section">
-        <ToggleSection title="Party Leaf  4/4">
-          <div className="party-grid">
-            {partyData.party4.map((char, i) => <CharacterCard key={i} character={char} />)}
-          </div>
-        </ToggleSection>
-      </div>
-
     </section>
   );
 }
