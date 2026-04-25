@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { db } from "../firebase";
 import {
   doc, getDoc, getDocs, onSnapshot, updateDoc, setDoc,
@@ -391,7 +391,6 @@ const ARENA_ITEMS = [
 
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
-const ARENA_FIGHT_DURATION      = 10 * 60 * 60 * 1000; // 10 ore limite globale per fight
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -934,6 +933,38 @@ export default function Arena() {
     }
   };
 
+  const archiveTournament = async (winnerId, snapshotsOverride, participantsOverride, matchHistoryOverride) => {
+    const snaps = snapshotsOverride || arenaMeta?.characterSnapshots || {};
+    const ids   = participantsOverride || arenaMeta?.participants || [];
+    const mh    = matchHistoryOverride || arenaMeta?.matchHistory || [];
+    const wins = {}, losses = {};
+    mh.forEach(e => {
+      if (e.result === "W") wins[e.uid] = (wins[e.uid] || 0) + 1;
+      else if (e.result === "L") losses[e.uid] = (losses[e.uid] || 0) + 1;
+    });
+    const participants = ids
+      .map(uid => ({
+        uid,
+        name:  snaps[uid]?.name  || "",
+        class: (snaps[uid]?.class || "").toLowerCase().trim(),
+        matchWins:   wins[uid]   || 0,
+        matchLosses: losses[uid] || 0,
+      }))
+      .filter(p => p.class);
+    if (participants.length === 0) return;
+    const winnerClass = (snaps[winnerId]?.class || "").toLowerCase().trim();
+    try {
+      await addDoc(collection(db, "arena_tournament_history"), {
+        ts: serverTimestamp(),
+        winnerId: winnerId || null,
+        winnerClass: winnerClass || null,
+        participants,
+      });
+    } catch (e) {
+      console.error("archiveTournament error:", e);
+    }
+  };
+
   const refundAllBets = async () => {
     const q = query(collection(db, "arena_bets"), where("status", "==", "pending"));
     const snap = await getDocs(q);
@@ -1001,6 +1032,54 @@ export default function Arena() {
     });
     return () => unsub();
   }, [currentUser]);
+
+  // ── Auto-registra i match finiti in matchHistory (transazione idempotente) ──
+  const syncMatchHistory = useCallback(async () => {
+    if (!arenaMeta?.matches) return 0;
+    const matches = arenaMeta.matches;
+    try {
+      const metaRef = doc(db, "arena_meta", "global");
+      let addedCount = 0;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(metaRef);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const existing = data.matchHistory || [];
+        const existingIds = new Set(existing.map(e => e.matchId));
+        const toAdd = [];
+        for (const m of matches) {
+          if (m.status !== "finished" || !m.winner) continue;
+          if (existingIds.has(m.matchId)) continue;
+          for (const p of m.players) {
+            toAdd.push({
+              uid: p.id,
+              result: p.id === m.winner ? "W" : "L",
+              matchId: m.matchId,
+              ts: new Date().toISOString(),
+            });
+          }
+          existingIds.add(m.matchId);
+        }
+        if (toAdd.length === 0) return;
+        addedCount = toAdd.length;
+        tx.update(metaRef, { matchHistory: [...existing, ...toAdd] });
+      });
+      return addedCount;
+    } catch (e) {
+      console.error("syncMatchHistory error:", e);
+      return -1;
+    }
+  }, [arenaMeta?.matches]);
+
+  useEffect(() => {
+    if (!isMaster || !arenaMeta?.matches) return;
+    const processed = new Set((arenaMeta.matchHistory || []).map(e => e.matchId));
+    const hasUnrecorded = arenaMeta.matches.some(
+      m => m.status === "finished" && m.winner && !processed.has(m.matchId)
+    );
+    if (!hasUnrecorded) return;
+    syncMatchHistory();
+  }, [isMaster, arenaMeta?.matches, arenaMeta?.matchHistory, syncMatchHistory]);
 
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
@@ -1873,9 +1952,8 @@ export default function Arena() {
     if (arenaMeta.participants.length < 2) return alert("Minimo 2 partecipanti!");
     const shuffled = [...arenaMeta.participants].sort(() => Math.random() - 0.5);
     const matches  = generateMatches(shuffled, 1, arenaMeta.characterSnapshots || {});
-    const arenaEndsAt = new Date(Date.now() + 10 * 3600 * 1000).toISOString();
     await updateDoc(doc(db, "arena_meta", "global"), {
-      matches, phase: "combat", currentRound: 1, tournamentWinner: null, arenaEndsAt,
+      matches, phase: "combat", currentRound: 1, tournamentWinner: null,
     });
   };
 
@@ -1929,6 +2007,7 @@ export default function Arena() {
     });
     await awardArenaCoins(winnerId, 5);
     await resolveTournamentBets(winnerId, winnerName);
+    await archiveTournament(winnerId);
   };
 
   // ── COMBAT ─────────────────────────────────────────────────────────────────
@@ -2909,11 +2988,7 @@ export default function Arena() {
       if (m.status !== "active" || !m.turn || !m.turnExpiry) return false;
       return now >= new Date(m.turnExpiry).getTime();
     });
-    const expiredFightMatch = arenaMeta.matches.find(m => {
-      if (m.status !== "active" || !m.fightStartAt) return false;
-      return now >= new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION;
-    });
-    if (!expiredInitMatch && !expiredActiveMatch && !expiredFightMatch) return;
+    if (!expiredInitMatch && !expiredActiveMatch) return;
 
     try {
       const metaRef = doc(db, "arena_meta", "global");
@@ -2949,40 +3024,6 @@ export default function Arena() {
           const updatedMatches = data.matches.map(m => m.matchId === match.matchId ? updatedMatch : m);
           transaction.update(metaRef, { matches: updatedMatches });
           return;
-        }
-
-        // ── Fight scaduto (24h) → vince chi ha più HP ────────────────────────
-        if (expiredFightMatch) {
-          const match = data.matches?.find(m => m.matchId === expiredFightMatch.matchId);
-          if (match && match.status === "active" && match.fightStartAt &&
-              Date.now() >= new Date(match.fightStartAt).getTime() + ARENA_FIGHT_DURATION) {
-            const alivePlayers = match.players.filter(p => p.hp > 0);
-            const winner = alivePlayers.reduce((best, p) => (!best || p.hp > best.hp ? p : best), null);
-            if (winner) {
-              const updatedMatch = {
-                ...match,
-                status: "finished",
-                winner: winner.id,
-                logs: [...match.logs, `⏰ Tempo scaduto! Vince ${winner.name.toUpperCase()} con ${winner.hp} HP rimanenti!`],
-              };
-              const updatedMatches = data.matches.map(m => m.matchId === match.matchId ? updatedMatch : m);
-              const allDone2 = updatedMatches.every(m => m.status === "finished");
-              const winners2 = updatedMatches.filter(m => m.winner).map(m => m.winner);
-              if (allDone2 && winners2.length === 1) {
-                const champSnap2 = (data.characterSnapshots || {})[winners2[0]] || {};
-                transaction.update(metaRef, { matches: updatedMatches, tournamentWinner: winners2[0], phase: "finished" });
-                await addDoc(collection(db, "notifications"), {
-                  userId: winners2[0],
-                  title: "🏆 Campione dell'Arena!",
-                  message: `${champSnap2.name || "Campione"}, hai trionfato nell'Arena dei Campioni per supremazia di HP!`,
-                  read: false, timestamp: serverTimestamp(),
-                });
-              } else {
-                transaction.update(metaRef, { matches: updatedMatches });
-              }
-              return;
-            }
-          }
         }
 
         // ── Turno attivo scaduto → posizione difensiva ───────────────────────
@@ -3085,11 +3126,7 @@ export default function Arena() {
         if (m.status !== "active" || !m.turn || !m.turnExpiry) return false;
         return now >= new Date(m.turnExpiry).getTime();
       });
-      const hasExpiredFight = arenaMeta.matches?.some(m => {
-        if (m.status !== "active" || !m.fightStartAt) return false;
-        return now >= new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION;
-      });
-      if ((hasExpiredInit || hasExpiredActive || hasExpiredFight) && now - lastAutoPassFireRef.current > 10000) {
+      if ((hasExpiredInit || hasExpiredActive) && now - lastAutoPassFireRef.current > 10000) {
         lastAutoPassFireRef.current = now;
         handleArenaAutoPass();
       }
@@ -3123,9 +3160,6 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), {
       timerPaused: false,
       pausedAt: null,
-      arenaEndsAt: arenaMeta.arenaEndsAt
-        ? new Date(new Date(arenaMeta.arenaEndsAt).getTime() + elapsed).toISOString()
-        : arenaMeta.arenaEndsAt ?? null,
       matches: updatedMatches,
     });
   };
@@ -3142,6 +3176,66 @@ export default function Arena() {
   const allMatchesDone   = arenaMeta.matches?.length > 0 && arenaMeta.matches?.every(m => m.status === "finished");
   const roundWinnerCount = arenaMeta.matches?.filter(m => m.winner).length || 0;
   const canAdvanceRound  = isMaster && arenaMeta.phase === "combat" && allMatchesDone && roundWinnerCount >= 2;
+
+  const masterForceWinner = async (matchId, winnerId) => {
+    if (!isMaster) return;
+    const match = arenaMeta.matches?.find(m => m.matchId === matchId);
+    if (!match || match.status === "finished") return;
+    const winnerP = match.players.find(p => p.id === winnerId);
+    if (!winnerP) return;
+    const winnerName = winnerP.name || snapshots[winnerId]?.name || "?";
+    if (!window.confirm(`Dichiarare ${winnerName} vincitore di questo match?`)) return;
+
+    const updatedMatch = {
+      ...match,
+      status: "finished",
+      winner: winnerId,
+      logs: [...(match.logs || []), `♛ Master: ${winnerName.toUpperCase()} dichiarato vincitore!`],
+    };
+    const updatedMatches = (arenaMeta.matches || []).map(m => m.matchId === matchId ? updatedMatch : m);
+
+    try {
+      await awardRoundCoins(updatedMatches);
+      await resolveBetsForFinishedMatches(updatedMatches);
+      await recordMatchHistory(updatedMatches);
+
+      const allDone = updatedMatches.every(m => m.status === "finished");
+      const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
+      if (allDone && winners.length === 1) {
+        const champSnap = snapshots[winners[0]] || {};
+        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "");
+        await updateDoc(doc(db, "arena_meta", "global"), {
+          matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
+        });
+        return;
+      }
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    } catch (e) {
+      console.error("masterForceWinner error:", e);
+    }
+  };
+
+  const liveTournament = (() => {
+    if (!arenaMeta || arenaMeta.phase === "finished") return null;
+    const ids = arenaMeta.participants || [];
+    const mh  = arenaMeta.matchHistory || [];
+    const wins = {}, losses = {};
+    mh.forEach(e => {
+      if (e.result === "W") wins[e.uid] = (wins[e.uid] || 0) + 1;
+      else if (e.result === "L") losses[e.uid] = (losses[e.uid] || 0) + 1;
+    });
+    const participants = ids
+      .map(uid => ({
+        uid,
+        name:  snapshots[uid]?.name  || "",
+        class: (snapshots[uid]?.class || "").toLowerCase().trim(),
+        matchWins:   wins[uid]   || 0,
+        matchLosses: losses[uid] || 0,
+      }))
+      .filter(p => p.class);
+    if (participants.length === 0) return null;
+    return { winnerId: null, participants, phase: arenaMeta.phase };
+  })();
 
   const switchMode = (mode) => {
     if (loadoutPhase !== "idle") cancelLoadout();
@@ -3271,23 +3365,6 @@ export default function Arena() {
           )}
 
 
-          {arenaMeta.phase === "combat" && arenaMeta.arenaEndsAt && (
-            (() => {
-              const msLeft = Math.max(0, new Date(arenaMeta.arenaEndsAt).getTime() - timerRef);
-              const h   = Math.floor(msLeft / 3600000);
-              const min = Math.floor((msLeft % 3600000) / 60000);
-              const sec = Math.floor((msLeft % 60000) / 1000);
-              const fmt = `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-              const urgent = msLeft < 3600000;
-              return (
-                <div className={`fight-global-timer${urgent ? " urgent" : ""}`} style={{ marginBottom: 12 }}>
-                  ⏰ Fine Arena: <span className="arena-turn-timer">{fmt}</span>
-                  {msLeft === 0 && <span className="fight-timer-note"> — Tempo scaduto!</span>}
-                </div>
-              );
-            })()
-          )}
-
           <div className="master-sections">
             <div className="master-col">
               <p className="col-label">Approvati ({arenaMeta.participants?.length || 0})</p>
@@ -3387,6 +3464,8 @@ export default function Arena() {
           )}
         </div>
       )}
+
+      {isMaster && <TournamentClassStats liveTournament={liveTournament} onSync={syncMatchHistory} />}
 
       </> /* end arenaMode === "tournament" block 1 */}
 
@@ -3935,6 +4014,23 @@ export default function Arena() {
                         {m.logs?.length > 0 && m.status === "active" && (
                           <div className="bracket-last-log">{logPubText(m.logs[m.logs.length - 1])}</div>
                         )}
+                        {isMaster && (m.status === "active" || m.status === "initiative") && (
+                          <div className="bracket-force-winner">
+                            <span className="bracket-force-label">♛ Forza vincitore:</span>
+                            <div className="bracket-force-btns">
+                              {m.players.map(p => (
+                                <button
+                                  key={p.id}
+                                  className="btn-force-winner"
+                                  onClick={() => masterForceWinner(m.matchId, p.id)}
+                                  title={`Dichiara ${p.name} vincitore di questo match`}
+                                >
+                                  👑 {(p.name || "?").split(" ")[0]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -4031,21 +4127,6 @@ export default function Arena() {
                     })()}
                   </div>
                 )}
-
-                {m.status === "active" && m.fightStartAt && (() => {
-                  const msLeft = Math.max(0, new Date(m.fightStartAt).getTime() + ARENA_FIGHT_DURATION - timerRef);
-                  const h   = Math.floor(msLeft / 3600000);
-                  const min = Math.floor((msLeft % 3600000) / 60000);
-                  const sec = Math.floor((msLeft % 60000) / 1000);
-                  const fmt = `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-                  const urgent = msLeft < 3600000; // <1 ora
-                  return (
-                    <div className={`fight-global-timer${urgent ? " urgent" : ""}`}>
-                      ⏰ Tempo rimasto al fight: <span className="arena-turn-timer">{fmt}</span>
-                      <span className="fight-timer-note"> — allo scadere vince chi ha più HP</span>
-                    </div>
-                  );
-                })()}
 
                 {/* Fighters */}
                 <div className="fighters-row">
@@ -5442,6 +5523,149 @@ export default function Arena() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ── Master tournament class stats ───────────────────────────────────────────
+const CLASS_ICONS = {
+  fighter: "⚔", guerriero: "⚔",
+  barbarian: "🪓", barbaro: "🪓",
+  paladin: "🛡", paladino: "🛡",
+  ranger: "🏹", pattugliatore: "🏹",
+  monk: "👊", monaco: "👊",
+  rogue: "🗡", ladro: "🗡",
+  wizard: "🧙", mago: "🧙",
+  sorcerer: "🔥", stregone: "🔥",
+  warlock: "👁",
+  druid: "🌿", druido: "🌿",
+  cleric: "✨", chierico: "✨",
+  bard: "🎵", bardo: "🎵",
+};
+
+function TournamentClassStats({ liveTournament, onSync }) {
+  const [open, setOpen]       = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loaded, setLoaded]   = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const unsub = onSnapshot(collection(db, "arena_tournament_history"), (snap) => {
+      setHistory(snap.docs.map(d => d.data()));
+      setLoaded(true);
+    });
+    return () => unsub();
+  }, [open]);
+
+  const { top, totalTournaments, totalPart, totalMatches, includesLive } = useMemo(() => {
+    const perClass = {};
+    let totalPartLocal = 0;
+    let totalMatchesLocal = 0;
+    const dataset = [...history];
+    if (liveTournament) dataset.push(liveTournament);
+    dataset.forEach(t => {
+      (t.participants || []).forEach(p => {
+        const cls = (p.class || "").toLowerCase().trim();
+        if (!cls) return;
+        const played = (p.matchWins ?? 0) + (p.matchLosses ?? 0);
+        perClass[cls] = perClass[cls] || { uses: 0, matches: 0, wins: 0 };
+        perClass[cls].uses++;
+        perClass[cls].matches += played;
+        perClass[cls].wins    += (p.matchWins ?? 0);
+        totalPartLocal++;
+        totalMatchesLocal += played;
+      });
+    });
+    const arr = Object.entries(perClass).map(([cls, v]) => ({
+      cls,
+      uses:    v.uses,
+      matches: v.matches,
+      wins:    v.wins,
+      usage:   totalPartLocal > 0 ? (v.uses / totalPartLocal) * 100 : 0,
+      winrate: v.matches > 0 ? (v.wins / v.matches) * 100 : 0,
+    }));
+    arr.sort((a, b) => b.uses - a.uses || b.wins - a.wins);
+    return {
+      top: arr.slice(0, 5),
+      totalTournaments: history.length + (liveTournament ? 1 : 0),
+      totalPart: totalPartLocal,
+      totalMatches: totalMatchesLocal,
+      includesLive: !!liveTournament,
+    };
+  }, [history, liveTournament]);
+
+  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+  return (
+    <div className="class-stats-section">
+      <button className="class-stats-toggle" onClick={() => setOpen(v => !v)}>
+        {open ? "▲" : "▼"} 📊 Statistiche Classi — Torneo
+      </button>
+      {open && (
+        <div className="class-stats-body">
+          {!loaded ? (
+            <p className="class-stats-empty">Caricamento…</p>
+          ) : totalPart === 0 ? (
+            <p className="class-stats-empty">Nessun torneo archiviato ancora. Le statistiche compariranno dopo il primo torneo concluso.</p>
+          ) : (
+            <>
+              <div className="class-stats-meta">
+                <span>🏆 Tornei {includesLive ? "(incluso quello in corso)" : "archiviati"}: <strong>{totalTournaments}</strong></span>
+                <span>👥 Partecipazioni: <strong>{totalPart}</strong></span>
+                <span>⚔ Match giocati: <strong>{totalMatches}</strong></span>
+                {includesLive && <span className="class-stats-live-badge">🔴 LIVE</span>}
+                {onSync && (
+                  <button
+                    className="class-stats-sync-btn"
+                    disabled={syncing}
+                    onClick={async () => {
+                      setSyncing(true);
+                      setSyncMsg(null);
+                      const added = await onSync();
+                      setSyncing(false);
+                      if (added < 0)       setSyncMsg("❌ Errore sync");
+                      else if (added === 0) setSyncMsg("✓ Già aggiornate");
+                      else                 setSyncMsg(`✓ +${added / 2} match recuperati`);
+                      setTimeout(() => setSyncMsg(null), 4000);
+                    }}
+                    title="Forza sincronizzazione storico match"
+                  >
+                    {syncing ? "…" : "🔄 Ricalcola"}
+                  </button>
+                )}
+                {syncMsg && <span className="class-stats-sync-msg">{syncMsg}</span>}
+              </div>
+              <div className="class-stats-list">
+                {top.map((row, i) => (
+                  <div key={row.cls} className="class-stats-row">
+                    <div className="class-stats-rank">#{i + 1}</div>
+                    <div className="class-stats-icon">{CLASS_ICONS[row.cls] || "❔"}</div>
+                    <div className="class-stats-name">{capitalize(row.cls)}</div>
+                    <div className="class-stats-bars">
+                      <div className="class-stats-bar-row">
+                        <span className="class-stats-bar-label">Uso</span>
+                        <div className="class-stats-bar-track">
+                          <div className="class-stats-bar-fill usage" style={{ width: `${row.usage}%` }} />
+                        </div>
+                        <span className="class-stats-bar-val">{row.usage.toFixed(0)}% <em>({row.uses})</em></span>
+                      </div>
+                      <div className="class-stats-bar-row">
+                        <span className="class-stats-bar-label">Win</span>
+                        <div className="class-stats-bar-track">
+                          <div className="class-stats-bar-fill winrate" style={{ width: `${row.winrate}%` }} />
+                        </div>
+                        <span className="class-stats-bar-val">{row.winrate.toFixed(0)}% <em>({row.wins}/{row.matches})</em></span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

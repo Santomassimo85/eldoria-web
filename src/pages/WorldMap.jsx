@@ -39,6 +39,7 @@ export default function WorldMap() {
   const [pan, setPan]                   = useState({ x: 0, y: 0 });
 
   const viewportRef   = useRef(null);
+  const innerRef      = useRef(null);
   const isDragging    = useRef(false);
   const lastPointer   = useRef({ x: 0, y: 0 });
   const lastTouchDist = useRef(null);
@@ -89,10 +90,13 @@ export default function WorldMap() {
 
   const clampPan = useCallback((x, y) => {
     const el = viewportRef.current;
+    const inner = innerRef.current;
     if (!el) return { x, y };
     const z = zoomRef.current;
-    const maxX = (el.offsetWidth  * (z - 1)) / 2;
-    const maxY = (el.offsetHeight * (z - 1)) / 2;
+    const innerW = inner?.offsetWidth  ?? el.offsetWidth;
+    const innerH = inner?.offsetHeight ?? el.offsetHeight;
+    const maxX = Math.max(0, (innerW * z - el.offsetWidth)  / 2);
+    const maxY = Math.max(0, (innerH * z - el.offsetHeight) / 2);
     return {
       x: Math.min(maxX, Math.max(-maxX, x)),
       y: Math.min(maxY, Math.max(-maxY, y)),
@@ -182,7 +186,7 @@ export default function WorldMap() {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        <div className="map-inner" style={innerStyle}>
+        <div ref={innerRef} className="map-inner" style={innerStyle}>
           <img src="/assets/Exanthia.jpg" className="world-map-img" alt="Mappa Mondo" draggable={false} />
 
           {/* BOSS (Ping Rossi) */}

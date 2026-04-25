@@ -1,46 +1,139 @@
-// src/pages/SummaryAdmin.jsx
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../AuthContext";
-import { useNavigate, Link } from "react-router-dom";
-import { db } from "../firebase";
+import { Link } from "react-router-dom";
+import { db, storage } from "../firebase";
 import "./admin.css";
 import {
   collection,
   doc,
   setDoc,
-  getDocs,
   deleteDoc,
-  getDoc,
   updateDoc,
+  onSnapshot,
 } from "firebase/firestore";
-import { useRef } from "react";
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
-// Stato iniziale del form (inclusa la data)
+const PARTIES = [
+  { key: "AMEA",  label: "AMEA",  color: "#c0392b", roster: "Garroth, Tanagar, Caius, Sylva" },
+  { key: "LAC",   label: "LAC",   color: "#2980b9", roster: "Horn, Thoki, Cleofe" },
+  { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Makenna, Zenthir, Taaras" },
+  { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Roynot, Vyger, Temistocle, Dante, Timoty" },
+  { key: "Unico", label: "Storia del Mondo", color: "#d4af37", roster: "Cronache globali" },
+];
+
 const initialFormData = {
   title: "",
   subTitle: "",
   party: "AMEA",
   content: "",
   order: "",
-  date: "", // CAMPO DATA IN GIOCO
+  date: "",
+  coverImage: "",
 };
 
+/* ──────────────────────────────────────────────────────────────
+   DropZone — same pattern as the other admin pages
+   ────────────────────────────────────────────────────────────── */
+const DropZone = ({ value, uploading, onFile, onClear, label, icon = "📜" }) => {
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) onFile(f);
+  };
+
+  return (
+    <div
+      className={`sumadm-drop ${dragOver ? "drag" : ""} ${uploading ? "loading" : ""} ${value ? "filled" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      onClick={() => !uploading && inputRef.current?.click()}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+          e.target.value = "";
+        }}
+      />
+      {uploading ? (
+        <div className="sumadm-drop-state">
+          <span className="sumadm-drop-spinner" />
+          <strong>Caricamento…</strong>
+        </div>
+      ) : value ? (
+        <>
+          <img src={value} alt="" className="sumadm-drop-img" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+          <div className="sumadm-drop-overlay">
+            <span>📤 Cambia copertina</span>
+            {onClear && (
+              <button
+                type="button"
+                className="sumadm-drop-clear"
+                onClick={(e) => { e.stopPropagation(); onClear(); }}
+              >
+                ✕ Rimuovi
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="sumadm-drop-state">
+          <span className="sumadm-drop-icon">{icon}</span>
+          <strong>{label}</strong>
+          <small>Trascina o clicca · max 5MB</small>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const partyColor = (key) => PARTIES.find((p) => p.key === key)?.color || "#888";
+const stripHtml = (html) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
 export default function SummaryAdmin() {
-  const textAreaRef = useRef(null); // Aggiungi questo
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
+  const textAreaRef = useRef(null);
 
   const [formData, setFormData] = useState(initialFormData);
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
+    const unsub = onSnapshot(collection(db, "summaries"), (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      setSummaries(list);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [currentUser]);
 
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return (
@@ -50,29 +143,47 @@ export default function SummaryAdmin() {
     );
   }
 
-  // --- CARICAMENTO RIASSUNTI ESISTENTI ---
-  const fetchSummaries = async () => {
-    setLoading(true);
+  /* ── Storage helpers ── */
+  const uploadCover = async (file) => {
+    if (!file?.type?.startsWith("image/")) {
+      alert("Seleziona un file immagine valido.");
+      return null;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Immagine troppo grande (max 5MB).");
+      return null;
+    }
+    setUploading(true);
     try {
-      const summariesCollection = collection(db, "summaries");
-      const summarySnapshot = await getDocs(summariesCollection);
-      const summariesList = summarySnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-      setSummaries(summariesList);
-    } catch (error) {
-      setStatus(`❌ Errore nel caricamento: ${error.message}`);
+      const safe = (file.name || "cover").replace(/[^a-z0-9._-]/gi, "_").slice(0, 40);
+      const path = `summaries/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+      const ref = storageRef(storage, path);
+      await uploadBytes(ref, file, { contentType: file.type });
+      return await getDownloadURL(ref);
+    } catch (err) {
+      console.error("Upload fallito:", err);
+      alert("Errore upload: " + (err.message || err.code));
+      return null;
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSummaries();
-  }, []);
+  const cleanupStorageUrl = async (url) => {
+    if (!url || !url.includes("firebasestorage.googleapis.com")) return;
+    try { await deleteObject(storageRef(storage, url)); }
+    catch (err) { console.warn("Storage cleanup skipped:", err.code); }
+  };
 
-  // --- GESTIONE FORM E SUBMIT ---
+  const onCoverFile = async (file) => {
+    const url = await uploadCover(file);
+    if (url) {
+      if (formData.coverImage) cleanupStorageUrl(formData.coverImage);
+      setFormData((d) => ({ ...d, coverImage: url }));
+    }
+  };
+
+  /* ── Form handlers ── */
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -88,280 +199,354 @@ export default function SummaryAdmin() {
     setStatus("");
   };
 
-  // --- LOGICA DI ELIMINAZIONE ---
-  const handleDelete = async (summaryId) => {
-    if (!window.confirm("Sei sicuro di voler eliminare questo riassunto?"))
-      return;
+  const handleDelete = async (summary) => {
+    if (!window.confirm(`Eliminare "${summary.title}"?`)) return;
     try {
-      await deleteDoc(doc(db, "summaries", summaryId));
-      setStatus(`✅ Riassunto eliminato con successo!`);
-      fetchSummaries();
+      await cleanupStorageUrl(summary.coverImage);
+      await deleteDoc(doc(db, "summaries", summary.id));
+      setStatus(`✅ Riassunto eliminato.`);
     } catch (error) {
-      setStatus(`❌ Errore nell'eliminazione: ${error.message}`);
+      setStatus(`❌ Errore: ${error.message}`);
     }
   };
 
-  // --- LOGICA DI CREAZIONE ---
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (uploading) return;
     setStatus("");
 
     try {
-      const summariesCollection = collection(db, "summaries");
-      const docId = `${formData.party}_${Date.now()}`;
-
-      await setDoc(doc(summariesCollection, docId), {
-        ...formData,
-        createdAt: new Date().toISOString(),
-        order: Number(formData.order) || summaries.length + 1,
-      });
-
-      setStatus(`✅ Riassunto '${formData.title}' creato con successo!`);
-      handleReset();
-      setLoading(false);
-      fetchSummaries();
-    } catch (error) {
-      setStatus(`❌ Errore nella creazione del riassunto: ${error.message}`);
-      setLoading(false);
-    }
-  };
-
-  // --- CARICA DATI NEL FORM PER LA MODIFICA ---
-  const handleEdit = async (summaryId) => {
-    setLoading(true);
-    setStatus("");
-    try {
-      const summaryRef = doc(db, "summaries", summaryId);
-      const summarySnap = await getDoc(summaryRef);
-
-      if (summarySnap.exists()) {
-        const data = summarySnap.data();
-        setFormData(data);
-        setIsEditing(true);
-        setEditingId(summaryId);
+      if (isEditing && editingId) {
+        await updateDoc(doc(db, "summaries", editingId), {
+          title: formData.title,
+          subTitle: formData.subTitle,
+          party: formData.party,
+          content: formData.content,
+          order: Number(formData.order),
+          date: formData.date,
+          coverImage: formData.coverImage || "",
+          updatedAt: new Date().toISOString(),
+        });
+        setStatus(`✅ "${formData.title}" aggiornato.`);
       } else {
-        setStatus("❌ Documento non trovato per la modifica.");
+        const docId = `${formData.party}_${Date.now()}`;
+        await setDoc(doc(db, "summaries", docId), {
+          ...formData,
+          createdAt: new Date().toISOString(),
+          order: Number(formData.order) || summaries.length + 1,
+        });
+        setStatus(`✅ "${formData.title}" creato.`);
       }
-    } catch (error) {
-      setStatus(`❌ Errore nel caricamento per la modifica: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- SALVA LE MODIFICHE ---
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!editingId) return;
-
-    setLoading(true);
-    setStatus("");
-
-    try {
-      const summaryRef = doc(db, "summaries", editingId);
-
-      await updateDoc(summaryRef, {
-        title: formData.title,
-        subTitle: formData.subTitle,
-        party: formData.party,
-        content: formData.content,
-        order: Number(formData.order),
-        date: formData.date, // SALVATAGGIO CAMPO DATA
-        updatedAt: new Date().toISOString(),
-      });
-
-      setStatus(`✅ Riassunto '${formData.title}' aggiornato con successo!`);
       handleReset();
-      setLoading(false);
-      fetchSummaries();
     } catch (error) {
-      setStatus(`❌ Errore nell'aggiornamento: ${error.message}`);
-      setLoading(false);
+      setStatus(`❌ Errore: ${error.message}`);
     }
   };
+
+  const handleEdit = (summary) => {
+    setFormData({
+      title: summary.title || "",
+      subTitle: summary.subTitle || "",
+      party: summary.party || "AMEA",
+      content: summary.content || "",
+      order: summary.order || "",
+      date: summary.date || "",
+      coverImage: summary.coverImage || "",
+    });
+    setIsEditing(true);
+    setEditingId(summary.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /* ── Derived data ── */
+  const stats = useMemo(() => {
+    const total = summaries.length;
+    const views = summaries.reduce((s, x) => s + (x.viewCount || 0), 0);
+    const byParty = {};
+    summaries.forEach((s) => { byParty[s.party] = (byParty[s.party] || 0) + 1; });
+    const topParty = Object.entries(byParty).sort(([, a], [, b]) => b - a)[0]?.[0] || "—";
+    return { total, views, parties: Object.keys(byParty).length, topParty };
+  }, [summaries]);
+
+  const filteredSummaries = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return summaries.filter((s) => {
+      if (filter !== "all" && s.party !== filter) return false;
+      if (!q) return true;
+      return (
+        (s.title || "").toLowerCase().includes(q) ||
+        (s.subTitle || "").toLowerCase().includes(q) ||
+        (s.date || "").toLowerCase().includes(q)
+      );
+    });
+  }, [summaries, filter, search]);
+
+  const previewParty = PARTIES.find((p) => p.key === formData.party) || PARTIES[0];
 
   return (
-    <section className="admin-summary-page">
-      <Link to="/dm-admin" className="admin-back-link">
-        ← Dashboard Admin
-      </Link>
+    <section className="admin-summary-page sumadm">
+      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
 
-      <h1 className="admin-page-title">
-        {isEditing ? "Modifica Riassunto" : "Aggiungi Riassunto"}
-      </h1>
-      <div className="admin-divider">
-        <span className="admin-divider-icon">📜</span>
-      </div>
+      {/* ── HERO ── */}
+      <header className="sumadm-hero">
+        <div className="sumadm-hero-titles">
+          <h1 className="sumadm-title">📜 Scriptorium del Monaco</h1>
+          <p className="sumadm-sub">Annota le memorie delle sessioni e i frammenti del mondo</p>
+        </div>
+        <div className="sumadm-stats">
+          <div className="sumadm-stat"><span>Riassunti</span><strong>{stats.total}</strong></div>
+          <div className="sumadm-stat"><span>Gruppi</span><strong>{stats.parties}</strong></div>
+          <div className="sumadm-stat"><span>Più attivo</span><strong>{stats.topParty}</strong></div>
+          <div className="sumadm-stat alt"><span>Visite tot.</span><strong>{stats.views}</strong></div>
+        </div>
+      </header>
 
       {status && (
-        <div
-          className={
-            status.startsWith("✅") ? "admin-status-ok" : "admin-status-err"
-          }
-        >
+        <div className={status.startsWith("✅") ? "admin-status-ok" : "admin-status-err"}>
           {status}
         </div>
       )}
 
-      <div className="admin-card">
-        <h2 className="admin-section-title">
-          {isEditing ? "Modifica Sessione" : "Nuova Sessione"}
-        </h2>
-        <form
-          onSubmit={isEditing ? handleUpdate : handleCreate}
-          className="admin-form-grid"
-        >
-          <div>
-            <label>Titolo</label>
-            <input
-              className="admin-field-input"
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              required
-            />
+      {/* ── WORKSHOP: editor + live preview ── */}
+      <div className="sumadm-workshop">
+        <section className="sumadm-card">
+          <div className="sumadm-card-head">
+            <h2>{isEditing ? "✎ Modifica Riassunto" : "✨ Nuova Sessione"}</h2>
+            {isEditing && <span className="sumadm-edit-tag">{editingId.slice(0, 18)}…</span>}
           </div>
-          <div>
-            <label>Sottotitolo (Obia)</label>
-            <input
-              className="admin-field-input"
-              type="text"
-              name="subTitle"
-              value={formData.subTitle}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="admin-form-row">
-            <div>
-              <label>Party</label>
-              <select
-                className="admin-field-select"
-                name="party"
-                value={formData.party}
-                onChange={handleChange}
-              >
-                <option value="AMEA">
-                  AMEA (Garroth, Tanagar, Caius, Sylva)
-                </option>
-                <option value="LAC">LAC (Horn, Thoki, Cleofe)</option>
-                <option value="LEAF">LEAF (Soran, Makenna, Zenthir, Taaras)</option>
-                <option value="ENOX">
-                  ENOX (Roynot, Vyger, Temistocle, Dante, Timoty)
-                </option>
-                <option value="Unico">Storia del Mondo</option>
-              </select>
-            </div>
-            <div>
-              <label>Data (in gioco)</label>
+
+          <form onSubmit={handleSubmit} className="sumadm-form">
+            <div className="sumadm-field">
+              <label>Titolo</label>
               <input
                 className="admin-field-input"
-                type="text"
-                name="date"
-                value={formData.date}
+                name="title"
+                placeholder="Il giorno della Fenice di sangue"
+                value={formData.title}
                 onChange={handleChange}
                 required
               />
             </div>
-          </div>
-          <div>
-            <label>Ordine (Numero)</label>
-            <input
-              className="admin-field-input"
-              type="number"
-              name="order"
-              value={formData.order}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div>
-            <label>Contenuto (HTML consentito)</label>
-            <HtmlToolbar
-              textAreaRef={textAreaRef}
-              formData={formData}
-              setFormData={setFormData}
-              fieldName="content"
-            />
-            <textarea
-              ref={textAreaRef}
-              className="admin-field-textarea"
-              name="content"
-              value={formData.content}
-              onChange={handleChange}
-              rows="10"
-              required
-            />
-          </div>
-          <div className="btn-admin-actions">
-            <button
-              type="submit"
-              className="btn-admin-primary"
-              disabled={loading}
-            >
-              {loading
-                ? "Caricamento..."
-                : isEditing
-                  ? "Salva Modifiche"
-                  : "Crea Riassunto"}
-            </button>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={handleReset}
-                className="btn-admin-secondary"
-              >
-                Annulla
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
+            <div className="sumadm-field">
+              <label>Sottotitolo (Obia)</label>
+              <input
+                className="admin-field-input"
+                name="subTitle"
+                placeholder="…dalla penna del Monaco Errante"
+                value={formData.subTitle}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-      <div className="admin-item-list-card">
-        <div style={{ padding: "0 18px" }}>
-          <h3
-            className="admin-section-title"
-            style={{ marginTop: 18, marginBottom: 0 }}
-          >
-            Riassunti Esistenti
-          </h3>
-        </div>
-        {loading && !summaries.length ? (
-          <p style={{ padding: "16px 18px", color: "#aaa" }}>
-            Caricamento riassunti...
-          </p>
-        ) : (
-          summaries.map((s) => (
-            <div key={s.id} className="admin-item-entry">
-              <div className="admin-item-entry-label">
-                <strong>
-                  [{s.order}] {s.title}
-                </strong>
-                <div className="admin-item-entry-meta">
-                  {s.party} — {s.date}
-                </div>
+            <div className="sumadm-row3">
+              <div className="sumadm-field">
+                <label>Gruppo</label>
+                <select
+                  className="admin-field-select"
+                  name="party"
+                  value={formData.party}
+                  onChange={handleChange}
+                >
+                  {PARTIES.map((p) => (
+                    <option key={p.key} value={p.key}>{p.key === "Unico" ? p.label : `${p.key} (${p.roster})`}</option>
+                  ))}
+                </select>
               </div>
-              <div className="admin-item-entry-actions">
-                <button
-                  onClick={() => handleEdit(s.id)}
-                  className="btn-admin-edit"
-                >
-                  Modifica
-                </button>
-                <button
-                  onClick={() => handleDelete(s.id)}
-                  className="btn-admin-danger"
-                >
-                  X
-                </button>
+              <div className="sumadm-field">
+                <label>Data (in gioco)</label>
+                <input
+                  className="admin-field-input"
+                  type="text"
+                  name="date"
+                  placeholder="14 di Eldarin 1852"
+                  value={formData.date}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="sumadm-field">
+                <label>Ordine</label>
+                <input
+                  className="admin-field-input"
+                  type="number"
+                  name="order"
+                  placeholder="1"
+                  value={formData.order}
+                  onChange={handleChange}
+                  required
+                />
               </div>
             </div>
-          ))
-        )}
+
+            <div className="sumadm-field">
+              <label>Copertina</label>
+              <DropZone
+                value={formData.coverImage}
+                uploading={uploading}
+                onFile={onCoverFile}
+                onClear={() => {
+                  cleanupStorageUrl(formData.coverImage);
+                  setFormData((d) => ({ ...d, coverImage: "" }));
+                }}
+                label="Trascina la copertina"
+                icon="📜"
+              />
+              <input
+                type="url"
+                className="admin-field-input sumadm-url"
+                placeholder="…oppure incolla un URL diretto"
+                value={formData.coverImage}
+                onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
+              />
+            </div>
+
+            <div className="sumadm-field">
+              <label>Contenuto (HTML consentito)</label>
+              <HtmlToolbar
+                textAreaRef={textAreaRef}
+                formData={formData}
+                setFormData={setFormData}
+                fieldName="content"
+              />
+              <textarea
+                ref={textAreaRef}
+                className="admin-field-textarea"
+                name="content"
+                placeholder="Cronaca della sessione…"
+                value={formData.content}
+                onChange={handleChange}
+                rows="10"
+                required
+              />
+            </div>
+
+            <div className="sumadm-actions">
+              <button type="submit" disabled={uploading} className="sumadm-btn primary">
+                {uploading ? "⏳ Upload…" : isEditing ? "💾 Salva modifiche" : "🪄 Crea riassunto"}
+              </button>
+              {isEditing && (
+                <button type="button" onClick={handleReset} className="sumadm-btn ghost">Annulla</button>
+              )}
+            </div>
+          </form>
+        </section>
+
+        {/* LIVE PREVIEW */}
+        <aside className="sumadm-preview">
+          <div className="sumadm-card-head">
+            <h2>👁 Anteprima</h2>
+            <small>Come apparirà nelle Memorie</small>
+          </div>
+          <div className="sumadm-preview-card">
+            {formData.coverImage ? (
+              <div className="sumadm-preview-cover">
+                <img src={formData.coverImage} alt="" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+              </div>
+            ) : (
+              <div className="sumadm-preview-cover empty">
+                <span>📜</span>
+                <small>Nessuna copertina</small>
+              </div>
+            )}
+            <div className="sumadm-preview-body">
+              <div className="sumadm-preview-meta">
+                <span
+                  className="sumadm-preview-party"
+                  style={{ background: previewParty.color }}
+                >
+                  {previewParty.label}
+                </span>
+                {formData.date && <span className="sumadm-preview-date">{formData.date}</span>}
+              </div>
+              <h3 className="sumadm-preview-title">{formData.title || "Titolo della sessione"}</h3>
+              {formData.subTitle && <p className="sumadm-preview-sub">{formData.subTitle}</p>}
+              {formData.content ? (
+                <div
+                  className="sumadm-preview-content"
+                  dangerouslySetInnerHTML={{ __html: formData.content }}
+                />
+              ) : (
+                <p className="sumadm-preview-content placeholder">La cronaca apparirà qui…</p>
+              )}
+            </div>
+          </div>
+        </aside>
       </div>
+
+      {/* ── ARCHIVE ── */}
+      <section className="sumadm-archive">
+        <div className="sumadm-archive-head">
+          <h2>📚 Archivio Riassunti <small>({filteredSummaries.length}/{summaries.length})</small></h2>
+          <input
+            type="search"
+            className="admin-field-input sumadm-search"
+            placeholder="🔍 Cerca per titolo, sottotitolo o data…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="sumadm-filter-tabs">
+          <button
+            className={`sumadm-filter ${filter === "all" ? "on" : ""}`}
+            onClick={() => setFilter("all")}
+          >
+            Tutti
+          </button>
+          {PARTIES.map((p) => (
+            <button
+              key={p.key}
+              className={`sumadm-filter ${filter === p.key ? "on" : ""}`}
+              onClick={() => setFilter(p.key)}
+              style={filter === p.key ? { background: p.color, borderColor: p.color, color: "#fff" } : { borderColor: p.color, color: p.color }}
+            >
+              {p.key}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <p className="sumadm-empty">Caricamento memorie…</p>
+        ) : filteredSummaries.length === 0 ? (
+          <p className="sumadm-empty">Nessun riassunto trovato.</p>
+        ) : (
+          <div className="sumadm-grid">
+            {filteredSummaries.map((s) => (
+              <article key={s.id} className="sumadm-item" style={{ "--party-color": partyColor(s.party) }}>
+                <div className="sumadm-item-cover">
+                  {s.coverImage ? (
+                    <img src={s.coverImage} alt={s.title} onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                  ) : (
+                    <div className="sumadm-item-noimg">📜</div>
+                  )}
+                  <span className="sumadm-item-order">#{s.order || "—"}</span>
+                  <span className="sumadm-item-party" style={{ background: partyColor(s.party) }}>
+                    {s.party}
+                  </span>
+                </div>
+                <div className="sumadm-item-body">
+                  <h4 className="sumadm-item-title">{s.title}</h4>
+                  {s.subTitle && <p className="sumadm-item-sub">{s.subTitle}</p>}
+                  <div className="sumadm-item-foot">
+                    {s.date && <span>📅 {s.date}</span>}
+                    <span title="Visite totali">👁 {s.viewCount || 0}</span>
+                  </div>
+                  {s.content && (
+                    <p className="sumadm-item-snippet">
+                      {stripHtml(s.content).slice(0, 110)}{stripHtml(s.content).length > 110 ? "…" : ""}
+                    </p>
+                  )}
+                </div>
+                <div className="sumadm-item-actions">
+                  <button onClick={() => handleEdit(s)} className="sumadm-icon edit" title="Modifica">✎</button>
+                  <button onClick={() => handleDelete(s)} className="sumadm-icon danger" title="Elimina">🗑</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 }

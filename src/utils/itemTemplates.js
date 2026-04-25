@@ -13,22 +13,19 @@
 // src/utils/itemTemplates.js
 
 export const createMarketItem = (data) => {
-  // Gestisce la conversione della data in formato ISO per l'asta
-  const endDateISO =
-    data.saleType === "auction" && data.endDate
-      ? new Date(data.endDate).toISOString()
-      : null;
+  // Tutti gli oggetti ora sono aste alla cieca
+  const endDateISO = data.endDate ? new Date(data.endDate).toISOString() : null;
 
   return {
     // Dati base dell'oggetto
     name: data.name || "NUOVO ITEM SENZA NOME",
     type: data.type || "Generico",
     class: data.class || "Comune",
-    saleType: data.saleType,
+    saleType: "auction",
 
     // Dati Economici / Asta
-    price: data.saleType === "fixed" ? Number(data.price || 0) : 0,
-    startingBid: data.saleType === "auction" ? Number(data.startingBid || 0) : 0,
+    price: 0,
+    startingBid: Number(data.startingBid || 0),
     endDate: endDateISO,
 
     // Estetica e Info

@@ -269,6 +269,9 @@ export default function WorldBoss() {
       });
       setDmgDiceCount(1);
       setDmgSelectedStat(null);
+      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+        [`attackCounts.${currentUser.uid}`]: increment(1),
+      });
       await endMyTurn();
     } catch (err) {
       console.error("Errore durante l'applicazione del danno:", err);
@@ -472,6 +475,9 @@ export default function WorldBoss() {
         actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
       }
       await addDoc(collection(db, "world_boss_chat"), actionData);
+      await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
+        [`attackCounts.${currentUser.uid}`]: increment(1),
+      });
       await endMyTurn();
     } else {
       await addDoc(collection(db, "world_boss_chat"), actionData);
@@ -570,6 +576,7 @@ export default function WorldBoss() {
       await updateDoc(turnRef, {
         fightStarted: true, phase: "players", expiryDate: newExpiry,
         actedPlayers: [], turnNumber: 1, lastSwitchedAt: serverTimestamp(),
+        attackCounts: {},
       });
       await addDoc(collection(db, "world_boss_chat"), {
         text: `⚔️ LA BATTAGLIA HA INIZIO! ${boss.name} vi sfida! Eroi, è il vostro momento!`,
@@ -773,32 +780,7 @@ export default function WorldBoss() {
           </div>
 
           <div className="rpg-hud-party">
-            {isMaster ? (
-              partyForDisplay.map((p) => {
-                const hp = p.stats?.hp ?? 0;
-                const maxHp = p.stats?.maxHp ?? 1;
-                const pct = Math.max(0, (hp / maxHp) * 100);
-                const hpClass = pct < 25 ? "crit" : pct < 50 ? "low" : "";
-                const hasActed = turnState.actedPlayers?.includes(p.id);
-                const isTarget = selectedTargets.includes(p.id);
-                return (
-                  <div key={p.id}
-                    className={`rpg-party-row ${hasActed ? "acted" : ""} ${isTarget ? "targeted" : ""}`}
-                    onClick={() => toggleTarget(p.id)} style={{ cursor: "pointer" }}>
-                    <span className="rpg-prow-name">{(p.name || "Eroe").split(" ")[0]}</span>
-                    <span className="rpg-prow-hp">{hp}<span className="rpg-sep"> / </span>{maxHp}</span>
-                    <div className="rpg-bar-track rpg-bar-track--sm">
-                      <div className={`rpg-bar-hp ${hpClass}`} style={{ width: `${pct}%` }} />
-                      {(p.stats?.shield ?? 0) > 0 && (
-                        <div className="rpg-bar-shield" style={{ width: `${Math.min(100, (p.stats.shield / maxHp) * 100)}%` }} />
-                      )}
-                    </div>
-                    {hasActed && <span className="rpg-check-mark">✓</span>}
-                    {isTarget && <span className="rpg-target-mark">◀</span>}
-                  </div>
-                );
-              })
-            ) : (
+            {isMaster ? null : (
               charData && (() => {
                 const hp = charData.stats?.hp ?? 0;
                 const maxHp = charData.stats?.maxHp ?? 1;
@@ -825,8 +807,8 @@ export default function WorldBoss() {
         </div>
       )}
 
-      {/* ── STAKES BANNER ── */}
-      {boss && (boss.rewards || boss.penalties) && (
+      {/* ── STAKES BANNER (solo status tab) ── */}
+      {mobileTab === "status" && boss && (boss.rewards || boss.penalties) && (
         <div className="rpg-stakes-bar">
           {boss.penalties && !isBossDefeated && (
             <div className="rpg-stake-block rpg-stake-block--penalty">
@@ -903,23 +885,20 @@ export default function WorldBoss() {
             {isMaster && (
               <div className="rpg-master-panel">
                 <div className="rpg-panel-title">♛ Master</div>
-                <div className="rpg-section-label">Turno</div>
+
+                {/* ── Turno ── */}
+                <div className="rpg-section-label">Turno · Azioni {turnState.actedPlayers?.length ?? 0}/{players.length}</div>
                 <div className="rpg-btn-row">
                   <button className="rpg-btn rpg-btn--hero" onClick={() => handleManualTurnChange("players")}>⚔ Eroi</button>
                   <button className="rpg-btn rpg-btn--boss" onClick={() => handleManualTurnChange("boss")}>🔥 Boss</button>
                 </div>
-                <div className="rpg-acted-counter">Azioni: {turnState.actedPlayers?.length ?? 0} / {players.length}</div>
-                <div className="rpg-section-label">Bersagli</div>
-                <div className="rpg-btn-row">
-                  <button className="rpg-sm-btn" onClick={toggleSelectAll}>{selectedTargets.length === players.length ? "⊘ Desel." : "⊕ Tutti"}</button>
-                  <button className="rpg-sm-btn" onClick={healAllPlayers}>💖 Full HP</button>
-                </div>
+
+                {/* ── Boss ── */}
                 {boss && (
                   <>
-                    <div className="rpg-section-label">Attacchi Boss</div>
+                    <div className="rpg-section-label">Boss</div>
                     {boss.action1 && <button className="rpg-btn rpg-btn--atk" onClick={() => handleBossRoll(boss, boss.action1)}>{boss.action1.name}</button>}
                     {boss.action2 && <button className="rpg-btn rpg-btn--atk" onClick={() => handleBossRoll(boss, boss.action2)}>{boss.action2.name}</button>}
-                    <div className="rpg-section-label">Gestione Boss</div>
                     <div className="rpg-btn-row">
                       <button className="rpg-sm-btn" onClick={() => healBossManual(5)}>+5 HP</button>
                       <button className="rpg-sm-btn" onClick={() => healBossManual(10)}>+10 HP</button>
@@ -927,32 +906,72 @@ export default function WorldBoss() {
                     </div>
                   </>
                 )}
-                <div className="rpg-section-label">Log</div>
-                <button className="rpg-btn rpg-btn--danger" style={{ width: "100%", marginBottom: 4 }} onClick={clearChat}>🗑 Pulisci Log</button>
-                <div className="rpg-section-label">Giocatori</div>
-                <div className="rpg-player-adj-list">
-                  {players.map((p) => (
-                    <div key={p.id} className="rpg-player-adj-row">
-                      <span className="rpg-adj-name">{(p.name || "").split(" ")[0]}</span>
-                      <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => damagePlayerManual(p.id, 1)}>+1</button>
-                      <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => damagePlayerManual(p.id, 3)}>+3</button>
-                      <button className="rpg-sm-btn" onClick={() => { const val = prompt("HP Scudo?"); if (val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) }); }}>🛡</button>
-                      {(p.stats?.shield ?? 0) > 0 && (
-                        <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 })}>✕</button>
-                      )}
-                      <button
-                        className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
-                        onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "advantage" ? null : "advantage")}
-                        title="Vantaggio prossimo tiro"
-                      >⬆</button>
-                      <button
-                        className={`rpg-sm-btn rpg-sm-btn--dis${p.nextTurnCondition === "disadvantage" ? " active" : ""}`}
-                        onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "disadvantage" ? null : "disadvantage")}
-                        title="Svantaggio prossimo tiro"
-                      >⬇</button>
-                    </div>
-                  ))}
+
+                {/* ── Giocatori (unificato: target + HP + controlli) ── */}
+                <div className="rpg-section-label">
+                  Giocatori
+                  <span className="rpg-section-tools">
+                    <button className="rpg-sm-btn" onClick={toggleSelectAll}>
+                      {selectedTargets.length === players.length ? "⊘ Desel." : "⊕ Tutti"}
+                    </button>
+                    <button className="rpg-sm-btn" onClick={healAllPlayers}>💖 Full</button>
+                  </span>
                 </div>
+                <div className="rpg-player-adj-list">
+                  {players.map((p) => {
+                    const hp     = p.stats?.hp ?? 0;
+                    const maxHp  = p.stats?.maxHp ?? 1;
+                    const pct    = Math.max(0, (hp / maxHp) * 100);
+                    const hpCls  = pct < 25 ? "crit" : pct < 50 ? "low" : "";
+                    const acted  = turnState.actedPlayers?.includes(p.id);
+                    const isTgt  = selectedTargets.includes(p.id);
+                    const isDead = hp <= 0;
+                    return (
+                      <div key={p.id} className={`rpg-master-row ${acted ? "acted" : ""} ${isTgt ? "targeted" : ""} ${isDead ? "dead" : ""}`}>
+                        <button className="rpg-master-row-head" onClick={() => toggleTarget(p.id)} title="Seleziona come bersaglio">
+                          <span className="rpg-master-row-name">
+                            {isTgt && <span className="rpg-target-mark">◀</span>}
+                            {(p.name || "?").split(" ")[0]}
+                            <span className="rpg-attack-counter" title="Attacchi totali al boss">
+                              ⚔ {turnState.attackCounts?.[p.id] ?? 0}
+                            </span>
+                            {acted && <span className="rpg-check-mark">✓</span>}
+                            {isDead && <span className="rpg-dead-mark">💀</span>}
+                          </span>
+                          <span className="rpg-master-row-hp">{hp}/{maxHp}{(p.stats?.shield ?? 0) > 0 ? ` 🛡${p.stats.shield}` : ""}</span>
+                          <div className="rpg-bar-track rpg-bar-track--sm">
+                            <div className={`rpg-bar-hp ${hpCls}`} style={{ width: `${pct}%` }} />
+                            {(p.stats?.shield ?? 0) > 0 && (
+                              <div className="rpg-bar-shield" style={{ width: `${Math.min(100, (p.stats.shield / maxHp) * 100)}%` }} />
+                            )}
+                          </div>
+                        </button>
+                        <div className="rpg-master-row-btns">
+                          <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => damagePlayerManual(p.id, 1)}>+1</button>
+                          <button className="rpg-sm-btn rpg-sm-btn--heal" onClick={() => damagePlayerManual(p.id, 3)}>+3</button>
+                          <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => damagePlayerManual(p.id, -1)}>−1</button>
+                          <button className="rpg-sm-btn" onClick={() => { const val = prompt("HP Scudo?"); if (val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) }); }}>🛡</button>
+                          {(p.stats?.shield ?? 0) > 0 && (
+                            <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 })}>✕</button>
+                          )}
+                          <button
+                            className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
+                            onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "advantage" ? null : "advantage")}
+                            title="Vantaggio prossimo tiro"
+                          >⬆</button>
+                          <button
+                            className={`rpg-sm-btn rpg-sm-btn--dis${p.nextTurnCondition === "disadvantage" ? " active" : ""}`}
+                            onClick={() => handleSetCondition(p.id, p.nextTurnCondition === "disadvantage" ? null : "disadvantage")}
+                            title="Svantaggio prossimo tiro"
+                          >⬇</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ── Log ── */}
+                <button className="rpg-btn rpg-btn--danger" style={{ width: "100%", marginTop: 10 }} onClick={clearChat}>🗑 Pulisci Log</button>
               </div>
             )}
             {!isMaster && (

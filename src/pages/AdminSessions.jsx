@@ -57,6 +57,9 @@ export default function AdminSessions() {
             >
               <option value="Amea">Amea</option>
               <option value="Lac">Lac</option>
+              <option value="Enox">Eco</option>
+              
+              <option value="Enox">Leaf</option>
               <option value="Enox">Enox</option>
             </select>
           </div>

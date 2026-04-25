@@ -236,108 +236,208 @@ export default function ItemDetail() {
   if (loading) return <section className="item-detail-page"><p className="loading-text">Caricamento...</p></section>;
   if (!item) return <section className="item-detail-page"><p className="error-text">Oggetto non trovato.</p></section>;
 
+  const rarityKey = (item.class || "Comune").replace(/\s/g, "");
+  const bidEntries = item.bids ? Object.entries(item.bids) : [];
+  const bidVolume = bidEntries.reduce((s, [, b]) => s + (b?.amount ?? b ?? 0), 0);
+  const bidHighest = bidEntries.reduce((m, [, b]) => Math.max(m, b?.amount ?? b ?? 0), 0);
+
   return (
-    <section className={`item-detail-page ${statusClass}`}>
-      <button onClick={() => navigate("/mercato")} className="back-button">← Torna al Mercato</button>
+    <section className={`item-detail-page ${statusClass} ${isMaster ? "view-master" : "view-player"}`}>
+      <button
+        onClick={() => navigate("/mercato")}
+        className={`back-button ${isMaster ? "admin-back-button" : ""}`}
+      >
+        ← Torna al Mercato
+      </button>
 
-      <div className="detail-content">
-        <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="detail-image" />
-
-        <div className="detail-info">
-          <h1 className="detail-title">{item.name} {item.isSold && "(VENDUTO)"}</h1>
-
-          <div className="item-specs">
-            <p><strong>Tipo:</strong> {item.type}</p>
-            <p><strong>Rarità:</strong> {item.class}</p>
+      {isMaster ? (
+        // ─────────────────────────────  MASTER CONSOLE  ─────────────────────────────
+        <div className="master-console">
+          <div className="mc-header">
+            <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="mc-thumb" />
+            <div className="mc-meta">
+              <h1 className="mc-title">{item.name}</h1>
+              <div className="mc-tags">
+                <span className={`mc-tag rarity-${rarityKey}`}>{item.class || "Comune"}</span>
+                <span className="mc-tag">{item.type}</span>
+                <span className={`mc-tag tag-${item.saleType}`}>
+                  {item.saleType === "auction" ? "ASTA CIECA" : "PREZZO FISSO"}
+                </span>
+                {item.isSold && <span className="mc-tag tag-sold">VENDUTO</span>}
+              </div>
+              <p className="mc-price">
+                <span>{item.saleType === "auction" ? "Base d'asta" : "Prezzo"}</span>
+                <strong>{item.startingBid || item.price} MP</strong>
+              </p>
+              {item.saleType === "auction" && item.endDate && !item.isSold && (
+                <div className="mc-timer">
+                  <span className="mc-timer-label">Scadenza:</span>
+                  <Countdown endDate={item.endDate} />
+                </div>
+              )}
+            </div>
           </div>
 
-          <p className="detail-price">
-            {item.saleType === "auction" ? "Base d'Asta:" : "Prezzo:"} 
-            <span className="price-value"> {item.startingBid || item.price} MP</span>
-          </p>
+          {item.description && (
+            <details className="mc-description">
+              <summary>Descrizione oggetto</summary>
+              <div dangerouslySetInnerHTML={{ __html: item.description }} />
+            </details>
+          )}
 
-          {item.saleType === "auction" && item.endDate && !item.isSold && (
-            <div className="auction-timer-box">
-              <Countdown endDate={item.endDate} />
+          {item.saleType === "auction" && (
+            <>
+              <div className="mc-stats">
+                <div className="mc-stat">
+                  <span>Offerte ricevute</span>
+                  <strong>{bidEntries.length}</strong>
+                </div>
+                <div className="mc-stat">
+                  <span>Volume totale</span>
+                  <strong>{bidVolume} <small>MP</small></strong>
+                </div>
+                <div className="mc-stat highlight">
+                  <span>Offerta più alta</span>
+                  <strong>{bidHighest} <small>MP</small></strong>
+                </div>
+              </div>
+
+              <div className="mc-bids">
+                <div className="mc-bids-head">
+                  <h3>📋 Lista Offerte</h3>
+                  {bidEntries.length > 0 && (
+                    <button
+                      onClick={() => handleMasterClearAllBids(id, item.bids)}
+                      className="mc-btn danger"
+                    >
+                      Svuota & Rimborsa Tutti
+                    </button>
+                  )}
+                </div>
+                {bidEntries.length > 0 ? (
+                  <div className="mc-bids-table-wrap">
+                    <table className="mc-bids-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Personaggio</th>
+                          <th>Offerta</th>
+                          <th>Quando</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bidEntries
+                          .sort(([, a], [, b]) => (b?.amount ?? b ?? 0) - (a?.amount ?? a ?? 0))
+                          .map(([uid, bid], idx) => {
+                            const amount = bid?.amount ?? bid;
+                            const charName = bid?.charName || "Eroe Anonimo";
+                            const ts = bid?.timestamp ? new Date(bid.timestamp).toLocaleString("it-IT") : "—";
+                            const isTop = (bid?.amount ?? bid) === bidHighest;
+                            return (
+                              <tr key={uid} className={isTop ? "top-bid" : ""}>
+                                <td className="mc-rank">{idx + 1}</td>
+                                <td><strong>{charName}</strong></td>
+                                <td className="mc-bid-amount">{amount} MP</td>
+                                <td className="mc-bid-time">{ts}</td>
+                                <td>
+                                  <button
+                                    onClick={() => handleMasterRemoveBid(id, uid, amount)}
+                                    className="mc-btn ghost"
+                                  >
+                                    ↩ Rimborsa
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="mc-empty">Nessuna offerta ancora ricevuta.</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {item.isSold && item.buyerName && (
+            <div className="mc-sold-banner">
+              💰 Venduto a <strong>{item.buyerName}</strong>
+              {item.finalPrice && <> per <strong>{item.finalPrice} MP</strong></>}
             </div>
           )}
 
-          <div className="detail-description" dangerouslySetInnerHTML={{ __html: item.description }} />
+          {message && <p className="status-message">{message}</p>}
+        </div>
+      ) : (
+        // ─────────────────────────────  PLAYER SHOWCASE  ─────────────────────────────
+        <div className={`player-showcase rarity-bg-${rarityKey}`}>
+          <div className="ps-image-wrap">
+            <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="ps-image" />
+            <span className={`ps-rarity-badge rarity-${rarityKey}`}>{item.class || "Comune"}</span>
+            {item.isSold && <div className="ps-sold-overlay">VENDUTO</div>}
+            {statusClass === "expired-item" && !item.isSold && <div className="ps-sold-overlay expired">SCADUTA</div>}
+          </div>
 
-          <div className="item-interaction-area">
+          <div className="ps-info">
+            <p className="ps-type">{item.type}</p>
+            <h1 className="ps-title">{item.name}</h1>
+
+            <div className="ps-price-row">
+              <span className="ps-price-label">
+                {item.saleType === "auction" ? "Base d'asta" : "Prezzo"}
+              </span>
+              <span className="ps-price-value">
+                {item.startingBid || item.price}<small> MP</small>
+              </span>
+            </div>
+
+            {item.saleType === "auction" && item.endDate && !item.isSold && (
+              <div className="ps-timer">
+                <span className="ps-timer-label">⏳ Tempo rimasto</span>
+                <Countdown endDate={item.endDate} />
+              </div>
+            )}
+
+            <div className="ps-description" dangerouslySetInnerHTML={{ __html: item.description }} />
+
             {!item.isSold && currentUser && (
               item.saleType === "fixed" ? (
-                <button onClick={handleBuyNow} className="buy-now-button">Acquista Ora</button>
+                <button onClick={handleBuyNow} className="ps-buy-btn">⚡ Acquista Ora · {item.price} MP</button>
               ) : (
                 !userBid && statusClass !== "expired-item" && (
-                  <form onSubmit={handleSubmitOffer} className="offer-form">
-                    <input 
-                      type="number" 
-                      value={offer} 
-                      onChange={(e) => setOffer(e.target.value)} 
-                      placeholder="Inserisci offerta..." 
-                      min={item.startingBid} 
-                      required 
+                  <form onSubmit={handleSubmitOffer} className="ps-offer-form">
+                    <input
+                      type="number"
+                      value={offer}
+                      onChange={(e) => setOffer(e.target.value)}
+                      placeholder={`Min ${item.startingBid} MP`}
+                      min={item.startingBid}
+                      required
                     />
-                    <button type="submit" className="offer-button">Piazza Offerta alla Cieca</button>
+                    <button type="submit" className="ps-bid-btn">🎲 Offerta alla Cieca</button>
                   </form>
                 )
               )
             )}
 
-            <div className="item-bids-summary">
-              {item.isSold && item.buyerName && (
-                <div className="sold-info-box">
-                  <p>💰 Acquistato da: <strong>{item.buyerName}</strong></p>
-                </div>
-              )}
+            {userBid && (
+              <div className="ps-your-bid">
+                <span className="ps-bid-tag">La tua offerta segreta</span>
+                <strong>{userBid.amount} MP</strong>
+                <small>L'esito ti arriverà nelle notifiche alla chiusura.</small>
+              </div>
+            )}
 
-              {item.saleType === "auction" && (
-                <div className="auction-info-display">
-                  {isMaster ? (
-                    <div className="master-bids-list">
-                      <h3>Lista Offerte (DM)</h3>
-                      {item.bids && Object.keys(item.bids).length > 0 ? (
-                        <>
-                          <ul>
-                            {Object.entries(item.bids).map(([uid, bid]) => (
-                              <li key={uid} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                <span><strong>{bid.charName}</strong>: {bid.amount} MP</span>
-                                <button 
-                                  onClick={() => handleMasterRemoveBid(id, uid, bid.amount)}
-                                  style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
-                                >
-                                  Rimborsa
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                          <button 
-                            onClick={() => handleMasterClearAllBids(id, item.bids)}
-                            className="btn-clear-all"
-                            style={{ marginTop: '10px', padding: '5px', background: '#8b0000', color: 'white', borderRadius: '4px' }}
-                          >
-                            Svuota e Rimborsa Tutti
-                          </button>
-                        </>
-                      ) : <p>Nessuna offerta.</p>}
-                    </div>
-                  ) : (
-                    userBid && (
-                      <div className="player-bid-confirmation">
-                        <p>✅ Hai offerto <strong>{userBid.amount} MP</strong></p>
-                        <small>L'esito verrà comunicato alla chiusura.</small>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
+            {item.isSold && item.buyerName && (
+              <div className="ps-sold-info">💰 Acquistato da <strong>{item.buyerName}</strong></div>
+            )}
 
             {message && <p className="status-message">{message}</p>}
           </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

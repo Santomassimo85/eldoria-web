@@ -74,8 +74,10 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids, onDeliver }) =>
 
   const userBidObj = (isAuction && item.bids && currentUser) ? item.bids[currentUser.uid] : null;
 
+  const rarityKey = (item.class || "Comune").replace(/\s/g, "");
+
   return (
-    <div className={`item-card ${isSold ? "sold" : ""} ${isMaster ? "admin-card-expanded" : ""}`} onClick={() => !isSold && navigate(`/mercato/${item.id}`)}>
+    <div className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""} ${isMaster ? "admin-card-expanded" : ""}`} onClick={() => !isSold && navigate(`/mercato/${item.id}`)}>
       <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="item-image" />
       
       <div className="item-details">
@@ -135,6 +137,120 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids, onDeliver }) =>
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+const MarketAdminTable = ({ items, onRemoveBid, onClearAllBids, onDeliver }) => {
+  const navigate = useNavigate();
+
+  const stats = useMemo(() => {
+    const total = items.length;
+    const sold = items.filter((i) => i.isSold).length;
+    const auctions = items.filter((i) => i.saleType === "auction" && !i.isSold).length;
+    const totalBids = items.reduce((s, i) => s + (i.bids ? Object.keys(i.bids).length : 0), 0);
+    const volume = items.reduce((s, i) => {
+      if (!i.bids) return s;
+      return s + Object.values(i.bids).reduce((a, b) => a + (b?.amount ?? b ?? 0), 0);
+    }, 0);
+    return { total, sold, auctions, totalBids, volume };
+  }, [items]);
+
+  return (
+    <div className="market-admin-wrap">
+      <div className="mat-stats">
+        <div className="mat-stat"><span>Oggetti</span><strong>{stats.total}</strong></div>
+        <div className="mat-stat"><span>Aste attive</span><strong>{stats.auctions}</strong></div>
+        <div className="mat-stat"><span>Venduti</span><strong>{stats.sold}</strong></div>
+        <div className="mat-stat"><span>Offerte tot.</span><strong>{stats.totalBids}</strong></div>
+        <div className="mat-stat highlight"><span>Volume MP</span><strong>{stats.volume}</strong></div>
+      </div>
+
+      <div className="market-admin-table-wrap">
+        <table className="market-admin-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Rarità</th>
+              <th>Vendita</th>
+              <th>Prezzo</th>
+              <th>Offerte</th>
+              <th>Stato</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => {
+              const rarityKey = (item.class || "Comune").replace(/\s/g, "");
+              const bidCount = item.bids ? Object.keys(item.bids).length : 0;
+              const topBid = item.bids
+                ? Math.max(0, ...Object.values(item.bids).map((b) => b?.amount ?? b ?? 0))
+                : 0;
+              return (
+                <tr
+                  key={item.id}
+                  className={`mat-row ${item.isSold ? "sold" : ""}`}
+                  onClick={() => navigate(`/mercato/${item.id}`)}
+                >
+                  <td className="mat-thumb-cell">
+                    <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="mat-thumb" />
+                  </td>
+                  <td className="mat-name">{item.name}</td>
+                  <td className="mat-type">{item.type || "—"}</td>
+                  <td>
+                    <span className={`mat-rarity rarity-${rarityKey}`}>{item.class || "Comune"}</span>
+                  </td>
+                  <td>{item.saleType === "auction" ? "Asta cieca" : "Fisso"}</td>
+                  <td className="mat-price">
+                    {item.saleType === "auction"
+                      ? <>Base <strong>{item.startingBid} MP</strong>{topBid > 0 && <><br /><small>Top: {topBid} MP</small></>}</>
+                      : <strong>{item.price} MP</strong>}
+                  </td>
+                  <td className="mat-bids">
+                    {bidCount > 0 ? <span className="mat-badge">{bidCount}</span> : "—"}
+                  </td>
+                  <td>
+                    {item.isSold ? (
+                      <span className="mat-status sold">✅ Venduto</span>
+                    ) : (
+                      <span className="mat-status active">🟢 Attivo</span>
+                    )}
+                  </td>
+                  <td className="mat-actions" onClick={(e) => e.stopPropagation()}>
+                    {!item.isSold && bidCount > 0 && (
+                      <>
+                        <button
+                          className="mat-btn deliver"
+                          title="Consegna al miglior offerente"
+                          onClick={() => onDeliver(item)}
+                        >
+                          ✅
+                        </button>
+                        <button
+                          className="mat-btn danger"
+                          title="Svuota tutte le offerte"
+                          onClick={() => onClearAllBids(item)}
+                        >
+                          🗑
+                        </button>
+                      </>
+                    )}
+                    <button
+                      className="mat-btn ghost"
+                      title="Apri dettaglio"
+                      onClick={() => navigate(`/mercato/${item.id}`)}
+                    >
+                      ↗
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -362,27 +478,34 @@ export default function Mercato() {
         </select>
       </div>
 
-      <div className="items-grid">
-        {filteredItems.length > 0 ? (
-          filteredItems.map((item) => (
+      {filteredItems.length === 0 ? (
+        <div className="market-closed-container">
+          <h2 className="closed-title">Il Mercato è Chiuso</h2>
+          {marketConfig?.nextOpening && new Date(marketConfig.nextOpening) > new Date() && (
+            <MarketTimer targetDate={marketConfig.nextOpening} />
+          )}
+        </div>
+      ) : isMaster ? (
+        <MarketAdminTable
+          items={filteredItems}
+          onRemoveBid={handleMasterRemoveBid}
+          onClearAllBids={handleMasterClearAllBids}
+          onDeliver={handleMasterDeliver}
+        />
+      ) : (
+        <div className="items-grid">
+          {filteredItems.map((item) => (
             <ItemCard
               key={item.id}
               item={item}
-              isMaster={isMaster}
+              isMaster={false}
               onRemoveBid={handleMasterRemoveBid}
               onClearAllBids={handleMasterClearAllBids}
               onDeliver={handleMasterDeliver}
             />
-          ))
-        ) : (
-          <div className="market-closed-container">
-            <h2 className="closed-title">Il Mercato è Chiuso</h2>
-            {marketConfig?.nextOpening && new Date(marketConfig.nextOpening) > new Date() && (
-              <MarketTimer targetDate={marketConfig.nextOpening} />
-            )}
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

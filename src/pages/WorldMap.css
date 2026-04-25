@@ -512,7 +512,90 @@
    RESPONSIVE
    ============================================================ */
 @media (max-width: 600px) {
-  .map-page { padding: 90px 8px 50px; }
-  .boss-tooltip, .npc-tooltip { width: 180px; }
-  .city-tooltip { width: 170px; }
+  .map-page {
+    padding: 70px 0 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    gap: 0;
+    align-items: stretch;
+  }
+  .map-page-title {
+    font-size: 0.95rem;
+    margin: 0;
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .map-viewport {
+    width: 100%;
+    height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
+    max-width: none;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a0f04;
+  }
+  /* Mappa riempie l'altezza del viewport; l'eccesso in larghezza è pannable */
+  .map-inner {
+    width: auto;
+    height: 100%;
+    max-width: none;
+  }
+  .world-map-img {
+    width: auto;
+    height: 100%;
+    max-width: none;
+    max-height: 100%;
+    display: block;
+  }
+
+  /* UI fluttuante */
+  .btn-reset-zoom {
+    position: fixed;
+    bottom: 14px;
+    right: 12px;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .map-zoom-hint {
+    position: fixed;
+    bottom: 14px;
+    left: 12px;
+    max-width: 58%;
+    z-index: 50;
+    font-size: 0.62rem;
+    background: rgba(255,255,255,0.85);
+    padding: 4px 8px;
+    border-radius: 8px;
+    line-height: 1.2;
+  }
+
+  /* Tooltip responsive — mai più larghi del viewport */
+  .map-tooltip { max-width: calc(100vw - 24px); }
+  .boss-tooltip, .npc-tooltip { width: min(180px, calc(100vw - 24px)); }
+  .city-tooltip { width: min(180px, calc(100vw - 24px)); }
+  .tooltip-img-wrap { height: 90px; }
+  .tooltip-name { word-wrap: break-word; overflow-wrap: anywhere; }
+
+  /* Modal NPC: fit schermo, testo che va a capo */
+  .npc-overlay { padding: 12px; }
+  .npc-modal {
+    max-width: calc(100vw - 24px);
+    width: 100%;
+    padding: 18px 14px;
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+  }
+  .modal-head { gap: 10px; }
+  .modal-head img { width: 64px; height: 64px; }
+  .modal-head > div { min-width: 0; flex: 1; }
+  .modal-head h2 {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  .faction-tag { white-space: normal; }
 }

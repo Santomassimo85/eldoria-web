@@ -20,7 +20,7 @@ service cloud.firestore {
       allow create, delete: if isMaster();
       allow update: if isLoggedIn() && (
         isMaster() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber', 'attackCounts'])
       );
     }
 
@@ -100,6 +100,12 @@ service cloud.firestore {
       allow create: if isLoggedIn();
       allow update: if isLoggedIn();
       allow delete: if isMaster();
+    }
+
+    match /arena_tournament_history/{docId} {
+      allow read: if isMaster();
+      allow create: if isLoggedIn();
+      allow update, delete: if isMaster();
     }
 
     // --- NOTIFICHE ---
