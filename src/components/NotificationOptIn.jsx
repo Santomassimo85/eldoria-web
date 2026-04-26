@@ -21,7 +21,7 @@ export default function NotificationOptIn() {
     (async () => {
       if (!("Notification" in window)) return;
       if (!VAPID_KEY) {
-        console.warn("[fcm] VITE_FIREBASE_VAPID_KEY missing in .env.local");
+        console.warn("[fcm] VITE_FIREBASE_VAPID_KEY missing in env");
         return;
       }
 
