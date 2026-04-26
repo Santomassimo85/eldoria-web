@@ -1,57 +1,55 @@
 /* ============================================================
-   ARCHIVIO GEOMANTICO — design coerente con Riassunti
-   Mobile-first, responsive
+   ARCHIVIO GEOMANTICO — Flat epic design
+   Mobile-first · Per-continent accent colors
    ============================================================ */
 
 .geo-page {
   min-height: 100vh;
   padding: 100px 16px 80px;
-  max-width: 1100px;
+  max-width: 1240px;
   margin: 0 auto;
   font-family: var(--font-text);
   color: var(--text);
+  background: #fffaf0;
 }
 
 /* ---- HEADER ----------------------------------------------- */
 .geo-header {
   text-align: center;
-  margin-bottom: 44px;
+  margin-bottom: 56px;
+  padding: 12px 16px 0;
 }
 
 .geo-title {
   font-family: var(--font-title);
-  font-size: clamp(1.4rem, 5vw, 2.6rem);
-  color: var(--gold);
-  letter-spacing: 0.06em;
-  margin-bottom: 10px;
-  line-height: 1.25;
+  font-size: clamp(1.7rem, 6vw, 3rem);
+  color: var(--red);
+  letter-spacing: 0.18em;
+  margin: 0 0 16px;
+  line-height: 1.15;
+  text-transform: uppercase;
 }
 
 .geo-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin: 10px auto 0;
-  max-width: 360px;
+  gap: 14px;
+  margin: 0 auto;
+  max-width: 380px;
 }
 
 .geo-divider::before,
 .geo-divider::after {
   content: "";
   flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--gold));
-}
-
-.geo-divider::after {
-  background: linear-gradient(to left, transparent, var(--gold));
+  height: 2px;
+  background: var(--gold);
 }
 
 .geo-divider-icon {
   font-size: 1rem;
   color: var(--gold);
-  opacity: 0.7;
 }
 
 /* ---- LOADING ---------------------------------------------- */
@@ -60,155 +58,164 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 50vh;
-  gap: 14px;
+  min-height: 60vh;
+  gap: 16px;
   font-family: var(--font-title);
   color: var(--gold);
-  font-size: 0.9rem;
-  letter-spacing: 0.12em;
-  opacity: 0.7;
+  font-size: 0.95rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   animation: geo-pulse 2s ease-in-out infinite;
 }
 
 @keyframes geo-pulse {
-  0%, 100% { opacity: 0.35; }
-  50%       { opacity: 0.9;  }
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 1; }
 }
 
-.geo-loading-icon {
-  font-size: 2rem;
-}
+.geo-loading-icon { font-size: 2.4rem; }
 
-/* ---- CONTINENT WRAPPER ------------------------------------ */
+/* ---- CONTINENT SECTION ------------------------------------ */
 .continent-wrapper {
-  margin-bottom: 52px;
+  margin-bottom: 56px;
 }
 
 .continent-title {
+  position: relative;
   font-family: var(--font-title);
-  font-size: clamp(1rem, 3vw, 1.5rem);
-  color: var(--gold);
+  font-size: clamp(1.05rem, 3.2vw, 1.5rem);
+  color: #fff;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin-bottom: 18px;
-  padding-bottom: 10px;
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.22);
+  letter-spacing: 0.24em;
+  margin: 0 0 24px;
+  padding: 18px 30px;
   text-align: center;
+  background: var(--red);
+  border-radius: 4px;
+  border-bottom: 3px solid var(--gold);
 }
+
+/* Per-continent accent colors via nth-of-type */
+.continent-wrapper:nth-of-type(5n+1) .continent-title { background: #820a0a; }
+.continent-wrapper:nth-of-type(5n+2) .continent-title { background: #2c5a4a; }
+.continent-wrapper:nth-of-type(5n+3) .continent-title { background: #4a3866; }
+.continent-wrapper:nth-of-type(5n+4) .continent-title { background: #1e4a6e; }
+.continent-wrapper:nth-of-type(5n+5) .continent-title { background: #a04018; }
 
 /* ---- LOCATION GRID ---------------------------------------- */
 .geo-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-  padding: 4px 0 8px;
+  gap: 18px;
+  padding: 4px 0;
 }
 
-@media (min-width: 540px) {
-  .geo-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
-  }
-}
-
-@media (min-width: 860px) {
-  .geo-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-  }
-}
+@media (min-width: 540px) { .geo-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; } }
+@media (min-width: 900px) { .geo-grid { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
 
 /* ---- LOCATION CARD ---------------------------------------- */
+.geo-card-wrapper { position: relative; }
+
 .geo-card-wrapper .toggle-section {
-  border: 1.5px solid rgba(212, 175, 55, 0.22);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s, border-color 0.2s;
   background: #fff;
+  border: 1px solid #e6d8a0;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
   height: 100%;
 }
 
 .geo-card-wrapper .toggle-section:hover {
-  box-shadow: 0 4px 20px rgba(130, 10, 10, 0.1);
-  border-color: rgba(212, 175, 55, 0.5);
+  border-color: var(--gold);
+  transform: translateY(-2px);
 }
 
+/* Title bar */
 .geo-card-wrapper .toggle-title {
-  background: linear-gradient(160deg, #fdf6e3, #fff8ed) !important;
-  color: var(--red) !important;
+  background: var(--gold) !important;
+  color: #2a1d05 !important;
   font-family: var(--font-title);
-  font-size: clamp(0.78rem, 2.2vw, 0.92rem) !important;
-  letter-spacing: 0.05em;
-  padding: 16px 14px !important;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  font-size: clamp(0.88rem, 2.3vw, 1.05rem) !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 16px 18px !important;
+  border-bottom: none;
   justify-content: space-between !important;
   align-items: center !important;
   flex-direction: row !important;
   min-height: unset !important;
   height: auto !important;
+  margin: 0;
+  border-radius: 0;
 }
 
-.geo-card-wrapper .toggle-title:hover {
-  background: linear-gradient(160deg, #f7edce, #fef4e0) !important;
-}
+.geo-card-wrapper .toggle-title:hover { background: #e6c248 !important; }
 
 .geo-card-wrapper .toggle-title .toggle-icon {
-  color: var(--gold);
-  opacity: 0.7;
-  font-size: 0.7rem;
+  color: #2a1d05;
+  font-size: 0.78rem;
   flex-shrink: 0;
+  transition: transform 0.2s;
 }
 
-.geo-card-wrapper .toggle-content.open {
-  padding: 16px 14px !important;
-}
+.geo-card-wrapper .toggle-title .toggle-icon.open { transform: rotate(180deg); }
+
+.geo-card-wrapper .toggle-content.open { padding: 18px !important; }
 
 /* ---- CARD CONTENT ----------------------------------------- */
 .geo-description {
-  font-size: clamp(0.84rem, 2vw, 0.95rem);
-  line-height: 1.8;
+  font-size: clamp(0.88rem, 2vw, 0.98rem);
+  line-height: 1.85;
   text-align: left;
-  color: var(--text);
+  color: #2a2010;
 }
 
-.geo-description p {
-  margin-bottom: 0.9rem;
-}
+.geo-description p { margin-bottom: 0.95rem; }
+.geo-description strong { color: var(--red); }
+.geo-description em { color: #6b4f10; font-style: italic; }
 
-.geo-description strong {
+.geo-description > p:first-of-type::first-letter {
+  font-family: var(--font-title);
+  font-size: 2.6em;
+  line-height: 0.85;
+  float: left;
+  padding: 4px 8px 0 0;
   color: var(--red);
 }
 
+/* Image — flat framed */
 .geo-card-wrapper img.city-img {
-  width: 100%;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  width: 100% !important;
+  margin: 0 0 14px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--gold);
+  display: block;
 }
 
 /* ---- EDIT BUTTON ------------------------------------------ */
 .geo-edit-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   background: var(--gold);
-  color: var(--red);
+  color: #2a1d05;
   border: none;
-  padding: 5px 12px;
-  border-radius: 6px;
+  padding: 7px 14px;
+  border-radius: 4px;
   cursor: pointer;
   font-weight: 700;
   font-size: 0.78rem;
-  margin-bottom: 10px;
-  transition: opacity 0.2s;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+  transition: background 0.15s;
 }
 
-.geo-edit-btn:hover { opacity: 0.82; }
+.geo-edit-btn:hover { background: #e6c248; }
 
 /* ---- MOBILE ----------------------------------------------- */
-@media (max-width: 420px) {
+@media (max-width: 540px) {
   .geo-page { padding: 90px 12px 60px; }
+  .continent-title { padding: 14px 18px; letter-spacing: 0.18em; }
 }
 
 @media (min-width: 768px) {

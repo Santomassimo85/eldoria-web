@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { db } from "../firebase";
 import {
-  doc, getDoc, getDocs, onSnapshot, updateDoc, setDoc,
+  doc, getDoc, getDocs, onSnapshot, updateDoc, setDoc, deleteDoc,
   arrayUnion, arrayRemove, addDoc, collection, serverTimestamp,
   runTransaction, increment, query, where,
 } from "firebase/firestore";
@@ -819,6 +819,8 @@ export default function Arena() {
   const [arenaMeta, setArenaMeta]             = useState(null);
   const [prizeText, setPrizeText]             = useState("");
   const [selectedTargets, setSelectedTargets] = useState({});
+  const [tournamentHistory, setTournamentHistory] = useState([]);
+  const [profileLookup, setProfileLookup]     = useState({});
 
   // Loadout — "idle" | "class-select" | "stat-assign" | "rolling" | "selecting"
   const [loadoutPhase, setLoadoutPhase]     = useState("idle");
@@ -934,14 +936,17 @@ export default function Arena() {
     }
   };
 
-  const archiveTournament = async (winnerId, snapshotsOverride, participantsOverride, matchHistoryOverride) => {
+  const archiveTournament = async (winnerId, snapshotsOverride, participantsOverride, matchesOverride) => {
     const snaps = snapshotsOverride || arenaMeta?.characterSnapshots || {};
     const ids   = participantsOverride || arenaMeta?.participants || [];
-    const mh    = matchHistoryOverride || arenaMeta?.matchHistory || [];
+    const matches = matchesOverride || arenaMeta?.matches || [];
     const wins = {}, losses = {};
-    mh.forEach(e => {
-      if (e.result === "W") wins[e.uid] = (wins[e.uid] || 0) + 1;
-      else if (e.result === "L") losses[e.uid] = (losses[e.uid] || 0) + 1;
+    matches.forEach(m => {
+      if (m.status !== "finished" || !m.winner) return;
+      (m.players || []).forEach(p => {
+        if (p.id === m.winner) wins[p.id] = (wins[p.id] || 0) + 1;
+        else losses[p.id] = (losses[p.id] || 0) + 1;
+      });
     });
     const participants = ids
       .map(uid => ({
@@ -953,11 +958,14 @@ export default function Arena() {
       }))
       .filter(p => p.class);
     if (participants.length === 0) return;
-    const winnerClass = (snaps[winnerId]?.class || "").toLowerCase().trim();
+    const winnerSnap = snaps[winnerId] || {};
+    const winnerClass = (winnerSnap.class || "").toLowerCase().trim();
     try {
       await addDoc(collection(db, "arena_tournament_history"), {
         ts: serverTimestamp(),
         winnerId: winnerId || null,
+        winnerName: winnerSnap.name || null,
+        winnerImage: winnerSnap.image || null,
         winnerClass: winnerClass || null,
         participants,
       });
@@ -1033,6 +1041,100 @@ export default function Arena() {
     });
     return () => unsub();
   }, [currentUser]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "arena_tournament_history"), (snap) => {
+      setTournamentHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  const championsRaw = useMemo(() => {
+    const map = {};
+    for (const t of tournamentHistory) {
+      const uid = t.winnerId;
+      if (!uid) continue;
+      const prev = map[uid];
+      const tsMs = t.ts?.toMillis ? t.ts.toMillis() : 0;
+      if (!prev) {
+        map[uid] = {
+          uid,
+          name:  t.winnerName  || null,
+          class: t.winnerClass || null,
+          image: t.winnerImage || null,
+          wins:  1,
+          lastWonAt: tsMs,
+          entryIds: [t.id],
+        };
+      } else {
+        prev.wins++;
+        prev.entryIds.push(t.id);
+        if (tsMs > prev.lastWonAt) {
+          prev.lastWonAt = tsMs;
+          prev.name  = t.winnerName  || prev.name;
+          prev.class = t.winnerClass || prev.class;
+          prev.image = t.winnerImage || prev.image;
+        }
+      }
+    }
+    return Object.values(map).sort((a, b) => b.wins - a.wins || b.lastWonAt - a.lastWonAt);
+  }, [tournamentHistory]);
+
+  // Lazy-fetch character profile for champions whose archived entry lacks name/image
+  useEffect(() => {
+    const missing = championsRaw
+      .filter(c => (!c.name || !c.image) && !(c.uid in profileLookup))
+      .map(c => c.uid);
+    const lastChampUid = arenaMeta?.lastChampion?.uid;
+    if (lastChampUid && !(lastChampUid in profileLookup)) missing.push(lastChampUid);
+    const unique = [...new Set(missing)];
+    if (unique.length === 0) return;
+    (async () => {
+      const updates = {};
+      for (const uid of unique) {
+        try {
+          const snap = await getDoc(doc(db, "characters", uid));
+          updates[uid] = snap.exists() ? { name: snap.data().name || null, image: snap.data().image || null } : { name: null, image: null };
+        } catch {
+          updates[uid] = { name: null, image: null };
+        }
+      }
+      setProfileLookup(prev => ({ ...prev, ...updates }));
+    })();
+  }, [championsRaw, arenaMeta?.lastChampion?.uid, profileLookup]);
+
+  const champions = useMemo(() =>
+    championsRaw.map(c => ({
+      ...c,
+      name:  c.name  || profileLookup[c.uid]?.name  || null,
+      image: c.image || profileLookup[c.uid]?.image || null,
+    }))
+  , [championsRaw, profileLookup]);
+
+  const mostRecentChampion = useMemo(() => {
+    const enrich = (champ) => champ ? {
+      ...champ,
+      name:  champ.name  || profileLookup[champ.uid]?.name  || null,
+      image: champ.image || profileLookup[champ.uid]?.image || null,
+    } : null;
+    if (arenaMeta?.lastChampion?.uid) return enrich(arenaMeta.lastChampion);
+    if (!tournamentHistory.length) return null;
+    const sorted = [...tournamentHistory].sort((a, b) => {
+      const at = a.ts?.toMillis ? a.ts.toMillis() : 0;
+      const bt = b.ts?.toMillis ? b.ts.toMillis() : 0;
+      return bt - at;
+    });
+    const latest = sorted.find(t => t.winnerId);
+    if (!latest) return null;
+    return enrich({
+      uid:    latest.winnerId,
+      name:   latest.winnerName  || null,
+      class:  latest.winnerClass || null,
+      image:  latest.winnerImage || null,
+      prizes: "",
+      wonAt:  latest.ts?.toDate?.()?.toISOString?.() || null,
+    });
+  }, [arenaMeta?.lastChampion, tournamentHistory, profileLookup]);
 
   // ── Auto-registra i match finiti in matchHistory (transazione idempotente) ──
   const syncMatchHistory = useCallback(async () => {
@@ -1187,6 +1289,14 @@ export default function Arena() {
       }
       cancelLoadout();
       return;
+    }
+
+    if (arenaMeta?.championsOnly) {
+      const isChampion = tournamentHistory.some(t => t.winnerId === currentUser.uid);
+      if (!isChampion) {
+        alert("⚠ Questo è un torneo Solo Campioni: solo chi ha già vinto un torneo può iscriversi.");
+        return;
+      }
     }
 
     await updateDoc(doc(db, "arena_meta", "global"), {
@@ -1686,23 +1796,44 @@ export default function Arena() {
       if (!weapon) return;
       const dexMod = attSnap.stats?.dex ?? 0;
       const shieldAc = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-      const defAc  = (defSnap.stats?.ac ?? 10) + shieldAc + (defP.defensiveBonus ?? 0);
+      const targetAc  = (defSnap.stats?.ac ?? 10) + shieldAc + (defP.defensiveBonus ?? 0);
+      const aidBonus = attP.aidBuff ? 4 : 0;
       const selfStealth = (attP.stealthTurns ?? 0) > 0;
       const defStealth  = (defP.stealthTurns ?? 0) > 0;
+      const sneakHasAdv = selfStealth && !defStealth;
+      const sneakHasDis = defStealth && !selfStealth;
       const d20a = Math.floor(Math.random() * 20) + 1;
-      const d20b = selfStealth || defStealth ? Math.floor(Math.random() * 20) + 1 : 0;
-      const d20  = selfStealth && !defStealth ? Math.max(d20a, d20b) : defStealth && !selfStealth ? Math.min(d20a, d20b) : d20a;
+      const d20b = (sneakHasAdv || sneakHasDis) ? Math.floor(Math.random() * 20) + 1 : 0;
+      const d20  = sneakHasAdv ? Math.max(d20a, d20b) : sneakHasDis ? Math.min(d20a, d20b) : d20a;
       await showD20Roll(d20, { label: "Attacco Furtivo" });
-      const total = d20 + (weapon.hitBonus || 0) + dexMod + armorPenalty + (attP.aidBuff ? 4 : 0);
-      const isHit = total >= defAc; const isCrit = d20 === 20;
-      const { total: wDmg } = isHit ? rollDmg(weapon.damage) : { total: 0 };
-      const { total: snDmg } = isHit ? rollDmg("1d6") : { total: 0 };
-      const dmg = (wDmg + snDmg + dexMod + 3) * (isCrit ? 2 : 1);
-      const log = { pub: isHit ? `🗡 ${attName} → Furtivo su ${defName}: ${dmg} danni${isCrit?" CRITICO!":""}` : `🛡️ ${attName} manca ${defName} con Attacco Furtivo`, attId: currentUser.uid, ts: new Date().toISOString() };
+      const totalHit = d20 + (weapon.hitBonus || 0) + dexMod + armorPenalty + aidBonus;
+      const isHit = totalHit >= targetAc;
+      const isCrit = d20 === 20;
+      const critMult = isCrit ? 2 : 1;
+      const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weapon.damage) : { total: 0, rolls: "" };
+      const { total: snDmg, rolls: snRolls } = isHit ? rollDmg("1d6") : { total: 0, rolls: "" };
+      const totalDmg = (wDmg + snDmg + dexMod + 3) * critMult;
+      const critTag = isCrit ? " ★CRITICO★" : "";
+      const dexPart = ` ${dexMod >= 0 ? "+" : ""}${dexMod} DES`;
+      const aidPart = aidBonus ? ` +4 Aiuto` : "";
+      const advTag  = sneakHasAdv ? ` 🌟vant.[${d20a},${d20b}]` : sneakHasDis ? ` 🌑svant.[${d20a},${d20b}]` : "";
+      const hitStr  = `🎲d20=${d20}${critTag}${advTag} +${weapon.hitBonus || 0} hit${dexPart}${aidPart}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""} = ${totalHit} vs CA ${targetAc}`;
+      const log = {
+        pub: isHit
+          ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [arma 🎲${wRolls} + furtivo 🎲${snRolls}${dexPart} +3 = ${totalDmg}] — ${totalDmg} danni`
+          : `🛡️ ${attName} manca ${defName} con Attacco Furtivo (${totalHit} vs CA ${targetAc})`,
+        att: isHit
+          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${snRolls}${dexPart} +3 = ${totalDmg}] — ${totalDmg} danni`
+          : `🛡️ Manchi ${defName} con Attacco Furtivo [${hitStr}]`,
+        def: isHit
+          ? `🗡 ${attName} ti ha colpito con Attacco Furtivo${critTag} — ${totalDmg} danni`
+          : `🛡️ ${attName} ti ha mancato con Attacco Furtivo`,
+        attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
+      };
       await applyTrainingUpdate(matchId, m => {
         const uses = attP.actionUsesLeft || {};
         const rawPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, p.hp - dmg) : p.hp, stealthTurns: Math.max(0, (p.stealthTurns||0)-1) };
+          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, p.hp - totalDmg) : p.hp, stealthTurns: Math.max(0, (p.stealthTurns||0)-1) };
           if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, stealthTurns: Math.max(0,(p.stealthTurns||0)-1), actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses??3)-1) } };
           return p;
         });
@@ -1799,8 +1930,8 @@ export default function Arena() {
     const dmgStatMod = isSpell ? 0 : statMod;
     const damage = (isHit && !isBlind) ? (baseDmg + dmgStatMod + weaponBuff + rageDmg) * (isCrit ? 2 : 1) + poisonBonusDmg : 0;
     const critTag        = isCrit ? " ★CRITICO★" : "";
-    const statPart       = !isSpell && statMod !== 0 ? `+${statMod} ${(action.statKey || "str").toUpperCase()}` : "";
-    const spellModPart   = isSpell && statMod !== 0 ? `+${statMod} ${(spellKey || "").toUpperCase()}` : "";
+    const statPart       = !isSpell && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : "";
+    const spellModPart   = isSpell && spellKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${spellKey.toUpperCase()}` : "";
     const aidPart        = attP.aidBuff ? " +4 Aiuto" : "";
     const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : "";
     const rageTag        = rageDmg > 0 ? ` | furia +${rageDmg}` : "";
@@ -1811,8 +1942,8 @@ export default function Arena() {
     const blindPenTag    = blindPen < 0 ? ` ${blindPen} 🙈acc.` : "";
     const advantageTag   = hasAdv && !hasDis ? ` 🌟vant.[${d20a},${d20b}]` : hasDis && !hasAdv ? ` 🌑svant.[${d20a},${d20b}]` : "";
     const critDmgNote    = isCrit ? " ×2" : "";
-    const dmgBreakdown   = (isHit && !isBlind) ? ` [danni: 🎲${diceRolls}${statPart ? " " + statPart : ""}${critDmgNote}=${baseDmg*(isCrit?2:1)+dmgStatMod*(isCrit?2:1)}${poisonTag}${rageTag} = ${damage}]` : "";
-    const hitBreakdown   = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus||0} hit${statPart?" "+statPart:""}${spellModPart?" "+spellModPart:""}${penPart}${aidPart}${inspTag}${magicDetTag}${hunterTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
+    const dmgBreakdown   = (isHit && !isBlind) ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}${poisonTag}${rageTag} = ${damage}]` : "";
+    const hitBreakdown   = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus||0} hit${statPart}${spellModPart}${penPart}${aidPart}${inspTag}${magicDetTag}${hunterTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
       pub: isHit
         ? (isBlind ? `🙈 ${attName} accieca ${defName}! (−3 ai tiri per colpire per 1 turno)` : `💥 ${attName} colpisce ${defName} con ${action.name}${critTag} (${hitTotal} vs CA ${defAC})${dmgBreakdown} — ${damage} danni`)
@@ -2005,7 +2136,7 @@ export default function Arena() {
     return matches;
   };
 
-  const sendChampionNotification = async (winnerId, winnerName, prizes) => {
+  const sendChampionNotification = async (winnerId, winnerName, prizes, matchesOverride) => {
     const prizeMsg = prizes ? `Il tuo premio: ${prizes}` : "Che il tuo valore sia ricordato nelle cronache di Eldoria!";
     await addDoc(collection(db, "notifications"), {
       userId: winnerId,
@@ -2015,7 +2146,18 @@ export default function Arena() {
     });
     await awardArenaCoins(winnerId, 5);
     await resolveTournamentBets(winnerId, winnerName);
-    await archiveTournament(winnerId);
+    await archiveTournament(winnerId, undefined, undefined, matchesOverride);
+    const winnerSnap = (arenaMeta?.characterSnapshots || {})[winnerId] || {};
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      lastChampion: {
+        uid:     winnerId,
+        name:    winnerSnap.name  || winnerName || "Campione",
+        class:   winnerSnap.class || null,
+        image:   winnerSnap.image || null,
+        prizes:  prizes || "",
+        wonAt:   new Date().toISOString(),
+      },
+    });
   };
 
   // ── COMBAT ─────────────────────────────────────────────────────────────────
@@ -2276,10 +2418,11 @@ export default function Arena() {
         return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
       const allDone = updatedMatches.every(m => m.status === "finished");
-      const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
+      const cr = arenaMeta.currentRound || 1;
+      const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
       if (allDone && winners.length === 1) {
         const champSnap = snapshots[winners[0]] || {};
-        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "");
+        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
         });
@@ -2336,8 +2479,8 @@ export default function Arena() {
     const damage   = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus) * critMult + poisonBonusDmg : 0;
 
     // Log breakdown
-    const statPart       = !isSpellAction && action.statKey && statMod !== 0 ? ` +${statMod} ${action.statKey.toUpperCase()}` : '';
-    const spellModPart   = isSpellAction && statMod !== 0 ? ` +${statMod} ${spellcastKey?.toUpperCase()}` : '';
+    const statPart       = !isSpellAction && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : '';
+    const spellModPart   = isSpellAction && spellcastKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${spellcastKey.toUpperCase()}` : '';
     const aidPart        = aidBonus > 0 ? ` +4 Aiuto` : '';
     const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : '';
     const critTag        = isCrit ? " ★CRITICO★" : "";
@@ -2352,7 +2495,7 @@ export default function Arena() {
     const blindPenTag    = blindDebuffPenalty < 0 ? ` ${blindDebuffPenalty} 🙈acc.` : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}=${baseDmg * critMult + dmgStatMod * critMult}${poisonTag}${rageTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}${poisonTag}${rageTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
@@ -2409,10 +2552,11 @@ export default function Arena() {
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
     const allDone = updatedMatches.every(m => m.status === "finished");
-    const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
+    const cr = arenaMeta.currentRound || 1;
+    const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
       const champSnap = snapshots[winners[0]] || {};
-      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "");
+      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
       await updateDoc(doc(db, "arena_meta", "global"), {
         matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
       });
@@ -2977,10 +3121,11 @@ export default function Arena() {
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
     const allDone = updatedMatches.every(m => m.status === "finished");
-    const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
+    const cr = arenaMeta.currentRound || 1;
+    const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
       const champSnap = (arenaMeta.characterSnapshots || {})[winners[0]] || {};
-      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "");
+      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: winners[0], phase: "finished" });
       return;
     }
@@ -3188,8 +3333,27 @@ export default function Arena() {
   const isRegistered     = arenaMeta.participants?.includes(currentUser?.uid);
   const isPending        = arenaMeta.waitingList?.includes(currentUser?.uid);
   const allMatchesDone   = arenaMeta.matches?.length > 0 && arenaMeta.matches?.every(m => m.status === "finished");
-  const roundWinnerCount = arenaMeta.matches?.filter(m => m.winner).length || 0;
+  const matchRoundOf = (m) => parseInt(m.matchId?.match(/^R(\d+)_/)?.[1] || "0", 10);
+  const lastPlayedRound = (arenaMeta.matches || []).reduce((max, m) => Math.max(max, matchRoundOf(m)), 0);
+  const currentRoundMatches = (arenaMeta.matches || []).filter(m => matchRoundOf(m) === lastPlayedRound);
+  const currentRoundWinners = currentRoundMatches.filter(m => m.winner).map(m => m.winner);
+  const roundWinnerCount = currentRoundWinners.length;
   const canAdvanceRound  = isMaster && arenaMeta.phase === "combat" && allMatchesDone && roundWinnerCount >= 2;
+  const canDeclareChampion = isMaster && arenaMeta.phase === "combat" && allMatchesDone && roundWinnerCount === 1 && !arenaMeta.tournamentWinner;
+
+  const declareTournamentChampion = async () => {
+    if (!canDeclareChampion) return;
+    const championId = currentRoundWinners[0];
+    const champSnap = snapshots[championId] || {};
+    try {
+      await sendChampionNotification(championId, champSnap.name || "Campione", arenaMeta?.prizes || "");
+      await updateDoc(doc(db, "arena_meta", "global"), {
+        tournamentWinner: championId, phase: "finished",
+      });
+    } catch (e) {
+      console.error("declareTournamentChampion error:", e);
+    }
+  };
 
   const masterForceWinner = async (matchId, winnerId) => {
     if (!isMaster) return;
@@ -3214,10 +3378,11 @@ export default function Arena() {
       await recordMatchHistory(updatedMatches);
 
       const allDone = updatedMatches.every(m => m.status === "finished");
-      const winners = updatedMatches.filter(m => m.winner).map(m => m.winner);
+      const cr = arenaMeta.currentRound || 1;
+      const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
       if (allDone && winners.length === 1) {
         const champSnap = snapshots[winners[0]] || {};
-        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "");
+        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
         });
@@ -3232,11 +3397,14 @@ export default function Arena() {
   const liveTournament = (() => {
     if (!arenaMeta || arenaMeta.phase === "finished") return null;
     const ids = arenaMeta.participants || [];
-    const mh  = arenaMeta.matchHistory || [];
+    const matches = arenaMeta.matches || [];
     const wins = {}, losses = {};
-    mh.forEach(e => {
-      if (e.result === "W") wins[e.uid] = (wins[e.uid] || 0) + 1;
-      else if (e.result === "L") losses[e.uid] = (losses[e.uid] || 0) + 1;
+    matches.forEach(m => {
+      if (m.status !== "finished" || !m.winner) return;
+      (m.players || []).forEach(p => {
+        if (p.id === m.winner) wins[p.id] = (wins[p.id] || 0) + 1;
+        else losses[p.id] = (losses[p.id] || 0) + 1;
+      });
     });
     const participants = ids
       .map(uid => ({
@@ -3285,6 +3453,34 @@ export default function Arena() {
 
       {/* ── TOURNAMENT SECTION ── */}
       {arenaMode === "tournament" && <>
+
+      {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
+        <div className="champions-arena-banner">
+          <div className="champions-arena-deco-left">⚜</div>
+          <div className="champions-arena-content">
+            <div className="champions-arena-crown">♛</div>
+            <div className="champions-arena-title">Arena dei Campioni</div>
+            <div className="champions-arena-subtitle">
+              Solo chi ha già conquistato la corona può scendere in campo
+            </div>
+            {champions.length > 0 && (
+              <div className="champions-arena-roll">
+                {champions.slice(0, 8).map(c => (
+                  <span key={c.uid} className="champions-arena-chip" title={`${c.name || "Campione"} — ${c.wins} ${c.wins === 1 ? "vittoria" : "vittorie"}`}>
+                    {c.image
+                      ? <img src={c.image} alt="" />
+                      : <span className="champions-arena-chip-icon">{CLASS_ICONS[c.class] || "♛"}</span>}
+                    <span className="champions-arena-chip-name">{(c.name || "Campione").split(" ")[0]}</span>
+                    <span className="champions-arena-chip-wins">×{c.wins}</span>
+                  </span>
+                ))}
+                {champions.length > 8 && <span className="champions-arena-more">+{champions.length - 8}</span>}
+              </div>
+            )}
+          </div>
+          <div className="champions-arena-deco-right">⚜</div>
+        </div>
+      )}
 
       {/* FASE */}
       <div className="arena-phase-banner">
@@ -3363,6 +3559,36 @@ export default function Arena() {
           {arenaMeta.prizes && <div className="champion-prize">Premio: {arenaMeta.prizes}</div>}
         </div>
       )}
+      {arenaMeta.phase !== "finished" && !arenaMeta.tournamentWinner && mostRecentChampion?.uid && (
+        <div className="champion-banner last-champion">
+          <div className="champion-crown">♛</div>
+          <div className="champion-label">Ultimo Campione</div>
+          <div className="champion-name">
+            {mostRecentChampion.image && (
+              <img src={mostRecentChampion.image} alt="" className="last-champion-avatar" />
+            )}
+            {mostRecentChampion.name || "Campione"}
+            {mostRecentChampion.class && <span className="last-champion-class"> · {mostRecentChampion.class}</span>}
+          </div>
+          {mostRecentChampion.prizes && <div className="champion-prize">Premio: {mostRecentChampion.prizes}</div>}
+        </div>
+      )}
+
+      {arenaMode === "tournament" && champions.length > 0 && (
+        <HallOfChampions
+          champions={champions}
+          isMaster={isMaster}
+          onRemove={async (uid) => {
+            const champ = champions.find(c => c.uid === uid);
+            if (!champ) return;
+            if (!window.confirm(`Rimuovere ${champ.name || "questo campione"} dalla Sala dei Campioni? Verranno eliminate ${champ.wins} vittorie.`)) return;
+            for (const id of champ.entryIds) {
+              try { await deleteDoc(doc(db, "arena_tournament_history", id)); }
+              catch (e) { console.error("delete champion entry:", e); }
+            }
+          }}
+        />
+      )}
 
       {/* ── PANNELLO MASTER ── */}
       {isMaster && (
@@ -3375,6 +3601,36 @@ export default function Arena() {
               <textarea className="prize-textarea" rows={2} placeholder="Descrivi i premi dell'arena…"
                 value={prizeText} onChange={e => setPrizeText(e.target.value)} />
               <button className="btn-save-prize" onClick={savePrizes}>Salva</button>
+              <label className="champions-only-toggle">
+                <input
+                  type="checkbox"
+                  checked={!!arenaMeta.championsOnly}
+                  onChange={async (e) => {
+                    const enabling = e.target.checked;
+                    await updateDoc(doc(db, "arena_meta", "global"), { championsOnly: enabling });
+                    if (enabling && champions.length > 0) {
+                      const sendInvites = window.confirm(
+                        `Inviare un invito ai ${champions.length} campioni della Sala?`
+                      );
+                      if (sendInvites) {
+                        for (const c of champions) {
+                          try {
+                            await addDoc(collection(db, "notifications"), {
+                              userId: c.uid,
+                              read: false,
+                              timestamp: serverTimestamp(),
+                              title: "♛ Arena dei Campioni — Iscrizioni Aperte",
+                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!`,
+                            });
+                          } catch (err) { console.error("champion invite:", err); }
+                        }
+                        alert(`✔ Inviati ${champions.length} inviti.`);
+                      }
+                    }
+                  }}
+                />
+                <span>♛ Solo Campioni — solo chi ha già vinto un torneo può iscriversi</span>
+              </label>
             </div>
           )}
 
@@ -3427,6 +3683,11 @@ export default function Arena() {
                 ⚔ Round {(arenaMeta.currentRound || 1) + 1}
               </button>
             )}
+            {canDeclareChampion && (
+              <button className="btn-advance-round" onClick={declareTournamentChampion}>
+                🏆 Dichiara Campione
+              </button>
+            )}
             {arenaMeta.phase === "combat" && (
               arenaMeta.timerPaused ? (
                 <button className="btn-timer-play" onClick={resumeArenaTimers}>
@@ -3444,6 +3705,8 @@ export default function Arena() {
                 phase: "registration", prizes: arenaMeta.prizes || "",
                 participants: [], waitingList: [], matches: [],
                 characterSnapshots: {}, tournamentWinner: null,
+                currentRound: 1, matchHistory: [],
+                championsOnly: arenaMeta.championsOnly || false,
               });
             }}>↺ Reset</button>
           </div>
@@ -3936,11 +4199,24 @@ export default function Arena() {
                   : "Scegli il tuo equipaggiamento e sfida i tuoi avversari."}
               </p>
 
-              {!isRegistered && !isPending && (
-                <button className="btn-join" onClick={openLoadoutPicker}>
-                  ⚔ Crea il tuo Personaggio
-                </button>
-              )}
+              {!isRegistered && !isPending && (() => {
+                const userIsChampion = tournamentHistory.some(t => t.winnerId === currentUser?.uid);
+                const lockedOut = arenaMeta.championsOnly && !userIsChampion;
+                return (
+                  <>
+                    {arenaMeta.championsOnly && (
+                      <div className={`champions-only-badge${lockedOut ? " locked" : ""}`}>
+                        ♛ Solo Campioni — {lockedOut
+                          ? "non puoi iscriverti, devi prima vincere un torneo"
+                          : "sei un Campione: puoi iscriverti"}
+                      </div>
+                    )}
+                    <button className="btn-join" onClick={openLoadoutPicker} disabled={lockedOut}>
+                      ⚔ Crea il tuo Personaggio
+                    </button>
+                  </>
+                );
+              })()}
               {isPending && (
                 <button className="btn-join pending" disabled>⏳ In attesa di approvazione…</button>
               )}
@@ -3997,7 +4273,7 @@ export default function Arena() {
                           return (
                             <React.Fragment key={p.id}>
                               {idx > 0 && <div className="bracket-sep">{m.isFFA ? "·" : "VS"}</div>}
-                              <div className={`bracket-fighter${isWin ? " win" : ""}${p.hp <= 0 && m.status === "finished" ? " dead" : ""}${isActive ? " active-turn" : ""}`}>
+                              <div className={`bracket-fighter${isWin ? " win" : ""}${m.status === "finished" && m.winner && m.winner !== p.id ? " dead" : ""}${isActive ? " active-turn" : ""}`}>
                                 <div className="bracket-fighter-row">
                                   {char.image && <img src={char.image} className="bracket-avatar" alt="" />}
                                   <div className="bracket-fighter-info">
@@ -5556,6 +5832,46 @@ const CLASS_ICONS = {
   cleric: "✨", chierico: "✨",
   bard: "🎵", bardo: "🎵",
 };
+
+function HallOfChampions({ champions, isMaster, onRemove }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="hall-of-champions">
+      <button className="hall-toggle" onClick={() => setOpen(v => !v)}>
+        {open ? "▲" : "▼"} 🏆 Sala dei Campioni <span className="hall-count">({champions.length})</span>
+      </button>
+      {open && (
+        <div className="hall-body">
+          {champions.length === 0 ? (
+            <p className="hall-empty">Nessun campione ancora. Vinci un torneo per entrare nella Sala.</p>
+          ) : (
+            <div className="hall-list">
+              {champions.map((c, i) => (
+                <div key={c.uid} className="hall-row">
+                  <div className="hall-rank">#{i + 1}</div>
+                  {c.image ? <img src={c.image} alt="" className="hall-avatar" /> : <div className="hall-avatar placeholder">{CLASS_ICONS[c.class] || "♛"}</div>}
+                  <div className="hall-info">
+                    <div className="hall-name">{c.name || "Campione"}</div>
+                    {c.class && <div className="hall-class">{CLASS_ICONS[c.class] || "❔"} {c.class}</div>}
+                  </div>
+                  <div className="hall-wins" title={`${c.wins} vittorie`}>
+                    <span className="hall-wins-num">{c.wins}</span>
+                    <span className="hall-wins-label">{c.wins === 1 ? "vittoria" : "vittorie"}</span>
+                  </div>
+                  {isMaster && (
+                    <button className="hall-remove" title="Rimuovi dalla Sala (solo master)" onClick={() => onRemove(c.uid)}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TournamentClassStats({ liveTournament, onSync }) {
   const [open, setOpen]       = useState(false);
