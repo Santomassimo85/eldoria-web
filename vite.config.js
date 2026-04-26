@@ -3,15 +3,17 @@ import react from '@vitejs/plugin-react-swc'
 import fs from 'node:fs'
 import path from 'node:path'
 
-// Injects Firebase config from .env.local into firebase-messaging-sw.js
-// at dev/build time so the service worker (a static file) can use it.
+// Reads public/firebase-messaging-sw.template.js (committed, with placeholders)
+// and writes public/firebase-messaging-sw.js (gitignored) with values from .env.local
+// substituted in. The service worker is a static file so it can't import env vars.
 function injectMessagingSwConfig(env) {
-  const swSrc = path.resolve('public/firebase-messaging-sw.js')
+  const swTemplate = path.resolve('public/firebase-messaging-sw.template.js')
+  const swDest     = path.resolve('public/firebase-messaging-sw.js')
   return {
     name: 'inject-messaging-sw-config',
     buildStart() {
-      if (!fs.existsSync(swSrc)) return
-      let content = fs.readFileSync(swSrc, 'utf8')
+      if (!fs.existsSync(swTemplate)) return
+      let content = fs.readFileSync(swTemplate, 'utf8')
       const map = {
         __FIREBASE_API_KEY__:            env.VITE_FIREBASE_API_KEY,
         __FIREBASE_AUTH_DOMAIN__:        env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -23,7 +25,7 @@ function injectMessagingSwConfig(env) {
       for (const [k, v] of Object.entries(map)) {
         if (v) content = content.split(k).join(v)
       }
-      fs.writeFileSync(swSrc, content)
+      fs.writeFileSync(swDest, content)
     },
   }
 }

@@ -1,17 +1,18 @@
-/* Firebase Cloud Messaging — service worker
-   Loaded by FCM at /firebase-messaging-sw.js. Runs even when the page is closed.
+/* Firebase Cloud Messaging — service worker TEMPLATE
+   Vite plugin (vite.config.js) substitutes the __FIREBASE_*__ placeholders
+   from .env.local at dev/build time and writes the result to
+   public/firebase-messaging-sw.js (gitignored).
 */
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js");
 
-// NOTE: these values are public (same as the client config).
 firebase.initializeApp({
-  apiKey: "AIzaSyBGv3dT_2-ztsAwx0B4s42YtPL-Q1UBMcM",
-  authDomain: "eldoria-web.firebaseapp.com",
-  projectId: "eldoria-web",
-  storageBucket: "eldoria-web.firebasestorage.app",
-  messagingSenderId: "500537293803",
-  appId: "1:500537293803:web:048a7bbfbeb7adf4d037ae",
+  apiKey: "__FIREBASE_API_KEY__",
+  authDomain: "__FIREBASE_AUTH_DOMAIN__",
+  projectId: "__FIREBASE_PROJECT_ID__",
+  storageBucket: "__FIREBASE_STORAGE_BUCKET__",
+  messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
+  appId: "__FIREBASE_APP_ID__",
 });
 
 const messaging = firebase.messaging();
