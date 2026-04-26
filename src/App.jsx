@@ -44,6 +44,7 @@ import ArenaMarket from "./pages/ArenaMarket";
 import NPC from "./pages/NPC";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
+import NotificationOptIn from "./components/NotificationOptIn";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 
@@ -265,6 +266,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <NotificationOptIn />
       <header>
         <div className="logo">
           E X A N T H I A<br />

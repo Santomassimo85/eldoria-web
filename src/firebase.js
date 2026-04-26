@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getMessaging, isSupported } from "firebase/messaging";
 
 // Legge i valori dal file .env.local
 const firebaseConfig = {
@@ -19,5 +20,15 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Lazy messaging — only initialized when supported (HTTPS + browser support)
+export const getMessagingIfSupported = async () => {
+  try {
+    if (await isSupported()) return getMessaging(app);
+  } catch { /* not supported */ }
+  return null;
+};
+
+export const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 export default app;

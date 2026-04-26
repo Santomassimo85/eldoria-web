@@ -67,40 +67,46 @@
 
 .npc-city-section > .toggle-section > .toggle-title {
   position: relative;
-  background: var(--gold) !important;
+  background: #fdf6e3 !important;
   border: none !important;
-  border-radius: 4px;
-  color: #2a1d05 !important;
+  border-top: 4px solid var(--red) !important;
+  border-bottom: 1px solid var(--gold) !important;
+  border-radius: 0;
+  color: var(--red) !important;
   font-family: var(--font-title);
-  font-size: clamp(0.95rem, 2.7vw, 1.18rem) !important;
+  font-size: clamp(0.98rem, 2.7vw, 1.2rem) !important;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  padding: 18px 56px !important;
+  padding: 22px 56px !important;
   text-align: center;
   box-shadow: none;
   justify-content: center !important;
   flex-direction: row !important;
-  border-left: 6px solid var(--red) !important;
+  font-weight: 700;
 }
 
-.npc-city-section > .toggle-section > .toggle-title::before {
-  content: "✦";
+.npc-city-section > .toggle-section > .toggle-title::before,
+.npc-city-section > .toggle-section > .toggle-title::after {
+  content: "◆";
   position: absolute;
-  left: 22px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.95rem;
-  color: var(--red);
+  font-size: 0.65rem;
+  color: var(--gold);
+  letter-spacing: 0;
 }
 
+.npc-city-section > .toggle-section > .toggle-title::before { left: 24px; }
+.npc-city-section > .toggle-section > .toggle-title::after  { right: 52px; }
+
 .npc-city-section > .toggle-section > .toggle-title:hover {
-  background: #e6c248 !important;
+  background: #fbf0d0 !important;
 }
 
 .npc-city-section > .toggle-section > .toggle-title .toggle-icon {
   position: absolute;
   right: 22px;
-  color: #2a1d05;
+  color: var(--gold);
   font-size: 0.85rem;
   transition: transform 0.2s;
 }
@@ -109,21 +115,12 @@
   transform: rotate(180deg);
 }
 
-/* Color rotation per city — cycle 5 jewel tones via nth-of-type */
-.npc-city-section:nth-of-type(5n+1) > .toggle-section > .toggle-title { border-left-color: #820a0a !important; }
-.npc-city-section:nth-of-type(5n+1) > .toggle-section > .toggle-title::before { color: #820a0a; }
-
-.npc-city-section:nth-of-type(5n+2) > .toggle-section > .toggle-title { border-left-color: #2c5a4a !important; }
-.npc-city-section:nth-of-type(5n+2) > .toggle-section > .toggle-title::before { color: #2c5a4a; }
-
-.npc-city-section:nth-of-type(5n+3) > .toggle-section > .toggle-title { border-left-color: #4a3866 !important; }
-.npc-city-section:nth-of-type(5n+3) > .toggle-section > .toggle-title::before { color: #4a3866; }
-
-.npc-city-section:nth-of-type(5n+4) > .toggle-section > .toggle-title { border-left-color: #1e4a6e !important; }
-.npc-city-section:nth-of-type(5n+4) > .toggle-section > .toggle-title::before { color: #1e4a6e; }
-
-.npc-city-section:nth-of-type(5n+5) > .toggle-section > .toggle-title { border-left-color: #a04018 !important; }
-.npc-city-section:nth-of-type(5n+5) > .toggle-section > .toggle-title::before { color: #a04018; }
+/* Color rotation per city — top accent bar cycles 5 jewel tones */
+.npc-city-section:nth-of-type(5n+1) > .toggle-section > .toggle-title { border-top-color: #820a0a !important; }
+.npc-city-section:nth-of-type(5n+2) > .toggle-section > .toggle-title { border-top-color: #2c5a4a !important; }
+.npc-city-section:nth-of-type(5n+3) > .toggle-section > .toggle-title { border-top-color: #4a3866 !important; }
+.npc-city-section:nth-of-type(5n+4) > .toggle-section > .toggle-title { border-top-color: #1e4a6e !important; }
+.npc-city-section:nth-of-type(5n+5) > .toggle-section > .toggle-title { border-top-color: #a04018 !important; }
 
 /* ---- GRID: 1 col → 2 col → 3 col → 4 col ------------------ */
 .npc-grid {
@@ -232,10 +229,11 @@
   .npc-card-body { padding: 14px 14px 12px; }
   .npc-card-desc { max-height: 96px; }
   .npc-city-section > .toggle-section > .toggle-title {
-    padding: 14px 44px !important;
+    padding: 16px 42px !important;
     letter-spacing: 0.16em;
   }
   .npc-city-section > .toggle-section > .toggle-title::before { left: 16px; }
+  .npc-city-section > .toggle-section > .toggle-title::after  { right: 40px; }
 }
 
 @media (min-width: 768px) {

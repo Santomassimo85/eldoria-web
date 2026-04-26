@@ -130,35 +130,61 @@
   transform: translateY(-2px);
 }
 
-/* Title bar */
+/* Title bar — atlas entry style */
 .geo-card-wrapper .toggle-title {
-  background: var(--gold) !important;
-  color: #2a1d05 !important;
+  position: relative;
+  background: #fdf6e3 !important;
+  color: var(--red) !important;
   font-family: var(--font-title);
-  font-size: clamp(0.88rem, 2.3vw, 1.05rem) !important;
-  letter-spacing: 0.1em;
+  font-size: clamp(0.95rem, 2.4vw, 1.1rem) !important;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  padding: 16px 18px !important;
-  border-bottom: none;
-  justify-content: space-between !important;
+  padding: 20px 52px !important;
+  border-top: 4px solid var(--red);
+  border-bottom: 1px solid var(--gold);
+  border-radius: 0;
+  margin: 0;
+  justify-content: center !important;
   align-items: center !important;
   flex-direction: row !important;
   min-height: unset !important;
   height: auto !important;
-  margin: 0;
-  border-radius: 0;
+  text-align: center;
+  font-weight: 700;
 }
 
-.geo-card-wrapper .toggle-title:hover { background: #e6c248 !important; }
+.geo-card-wrapper .toggle-title::before,
+.geo-card-wrapper .toggle-title::after {
+  content: "◆";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  color: var(--gold);
+  letter-spacing: 0;
+}
+
+.geo-card-wrapper .toggle-title::before { left: 22px; }
+.geo-card-wrapper .toggle-title::after  { right: 50px; }
+
+.geo-card-wrapper .toggle-title:hover { background: #fbf0d0 !important; }
 
 .geo-card-wrapper .toggle-title .toggle-icon {
-  color: #2a1d05;
-  font-size: 0.78rem;
-  flex-shrink: 0;
+  position: absolute;
+  right: 20px;
+  color: var(--gold);
+  font-size: 0.85rem;
   transition: transform 0.2s;
 }
 
 .geo-card-wrapper .toggle-title .toggle-icon.open { transform: rotate(180deg); }
+
+/* Top accent bar follows the continent color */
+.continent-wrapper:nth-of-type(5n+1) .geo-card-wrapper .toggle-title { border-top-color: #820a0a; }
+.continent-wrapper:nth-of-type(5n+2) .geo-card-wrapper .toggle-title { border-top-color: #2c5a4a; }
+.continent-wrapper:nth-of-type(5n+3) .geo-card-wrapper .toggle-title { border-top-color: #4a3866; }
+.continent-wrapper:nth-of-type(5n+4) .geo-card-wrapper .toggle-title { border-top-color: #1e4a6e; }
+.continent-wrapper:nth-of-type(5n+5) .geo-card-wrapper .toggle-title { border-top-color: #a04018; }
 
 .geo-card-wrapper .toggle-content.open { padding: 18px !important; }
 

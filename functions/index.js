@@ -163,3 +163,274 @@ exports.notifyMasterOnBid = onDocumentUpdated('items/{itemId}', async (event) =>
             return false;
         }
     });
+
+// ========================================================================
+//  PUSH NOTIFICATIONS (Firebase Cloud Messaging)
+// ========================================================================
+
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+
+/** Send a push to a list of user uids. Cleans up invalid tokens. */
+async function sendPush({ uids, title, body, url, tag }) {
+  if (!uids || uids.length === 0) return;
+  const dbAdmin = admin.firestore();
+
+  // Read fcmTokens from each character doc
+  const tokenToUid = new Map();
+  const reads = await Promise.all(uids.map(uid => dbAdmin.doc(`characters/${uid}`).get()));
+  reads.forEach((snap, i) => {
+    const tokens = snap.data()?.fcmTokens || [];
+    tokens.forEach(t => tokenToUid.set(t, uids[i]));
+  });
+  const tokens = [...tokenToUid.keys()];
+  if (tokens.length === 0) return;
+
+  const messaging = admin.messaging();
+  const data = { url: url || "/" };
+  if (tag) data.tag = tag;
+
+  let res;
+  try {
+    res = await messaging.sendEachForMulticast({
+      tokens,
+      notification: { title, body },
+      data,
+      webpush: {
+        fcmOptions: { link: url || "/" },
+        notification: { icon: "/logo192.png", badge: "/logo192.png", tag: tag || undefined },
+      },
+    });
+  } catch (err) {
+    console.error("[push] sendEachForMulticast error:", err);
+    return;
+  }
+
+  // Remove invalid tokens
+  const invalidByUid = new Map();
+  res.responses.forEach((r, idx) => {
+    if (r.success) return;
+    const code = r.error?.code || "";
+    if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+      const t = tokens[idx];
+      const uid = tokenToUid.get(t);
+      if (!invalidByUid.has(uid)) invalidByUid.set(uid, []);
+      invalidByUid.get(uid).push(t);
+    }
+  });
+  for (const [uid, badTokens] of invalidByUid.entries()) {
+    try {
+      await dbAdmin.doc(`characters/${uid}`).update({
+        fcmTokens: FieldValue.arrayRemove(...badTokens),
+      });
+    } catch { /* ignore */ }
+  }
+  console.log(`[push] sent "${title}" to ${tokens.length} tokens (${res.successCount} ok, ${res.failureCount} fail)`);
+}
+
+async function getAllUids() {
+  const snap = await admin.firestore().collection("characters").get();
+  return snap.docs.map(d => d.id);
+}
+
+// 1) Auto-push on any in-app notification doc create
+//    Covers: champion invite, bet wins, item won/lost, master "Send notification", etc.
+exports.pushOnNotification = onDocumentCreated('notifications/{id}', async (event) => {
+  const data = event.data?.data();
+  if (!data?.userId) return;
+  await sendPush({
+    uids: [data.userId],
+    title: data.title || "Eldoria",
+    body: data.message || "",
+    url: "/notifications",
+    tag: `notif-${event.params.id}`,
+  });
+});
+
+// 2) Boss appeared (new boss doc created with isActive:true, OR isActive flips on)
+exports.pushOnBossSpawn = onDocumentCreated('bosses/{id}', async (event) => {
+  const data = event.data?.data();
+  if (!data?.isActive) return;
+  const uids = await getAllUids();
+  await sendPush({
+    uids,
+    title: "⚔️ Un Boss è apparso!",
+    body: `${data.name || "Una nuova minaccia"} ti aspetta. Entra in battaglia!`,
+    url: "/world-boss",
+    tag: `boss-spawn-${event.params.id}`,
+  });
+});
+
+exports.pushOnBossUpdate = onDocumentUpdated('bosses/{id}', async (event) => {
+  const before = event.data?.before?.data();
+  const after  = event.data?.after?.data();
+  if (!before || !after) return;
+
+  // Boss reactivated
+  if (!before.isActive && after.isActive) {
+    const uids = await getAllUids();
+    await sendPush({
+      uids,
+      title: "⚔️ Un Boss è apparso!",
+      body: `${after.name || "Una nuova minaccia"} ti aspetta!`,
+      url: "/world-boss",
+      tag: `boss-spawn-${event.params.id}`,
+    });
+  }
+
+  // Boss death — hp dropped to 0
+  const wasAlive = (before.hp ?? 0) > 0;
+  const nowDead  = (after.hp ?? 0) <= 0;
+  if (wasAlive && nowDead) {
+    const uids = await getAllUids();
+    await sendPush({
+      uids,
+      title: "🏆 Boss Sconfitto!",
+      body: `${after.name || "Il boss"} è caduto. Vittoria per gli eroi di Eldoria!`,
+      url: "/world-boss",
+      tag: `boss-death-${event.params.id}`,
+    });
+  }
+});
+
+// 3) Player turn begins in boss fight
+exports.pushOnTurnPhase = onDocumentUpdated('battle_meta/turn_tracker', async (event) => {
+  const before = event.data?.before?.data();
+  const after  = event.data?.after?.data();
+  if (!before || !after) return;
+  if (before.phase === "players" || after.phase !== "players") return;
+
+  const dbAdmin = admin.firestore();
+  const charsSnap = await dbAdmin.collection("characters").get();
+  const aliveUids = charsSnap.docs.filter(d => (d.data().hp ?? 0) > 0).map(d => d.id);
+  await sendPush({
+    uids: aliveUids,
+    title: "⚡ Tocca a voi, Eroi!",
+    body: "Il Boss attende il tuo colpo. Entra in battaglia!",
+    url: "/world-boss",
+    tag: `boss-turn-${after.turnNumber || ""}`,
+  });
+});
+
+// 4) Player death (hp drops to 0 in any context)
+exports.pushOnCharacterDeath = onDocumentUpdated('characters/{uid}', async (event) => {
+  const before = event.data?.before?.data();
+  const after  = event.data?.after?.data();
+  if (!before || !after) return;
+  if ((before.hp ?? 1) <= 0) return; // already dead before
+  if ((after.hp  ?? 1) > 0)  return; // still alive
+  await sendPush({
+    uids: [event.params.uid],
+    title: "💀 Sei caduto!",
+    body: "Il tuo personaggio è stato sconfitto.",
+    url: "/world-boss",
+    tag: `death-${event.params.uid}`,
+  });
+});
+
+// 5) Arena tournament events (registration open, fight start, your turn, fight winners, tournament winner)
+exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event) => {
+  const before = event.data?.before?.data();
+  const after  = event.data?.after?.data();
+  if (!before || !after) return;
+
+  const championsOnly = !!after.championsOnly;
+  const arenaName = championsOnly ? "Arena dei Campioni" : "Arena dei Campioni";
+
+  // Registration opened (broadcast — for champions-only the client already invites champions)
+  if (before.phase !== "registration" && after.phase === "registration") {
+    if (!championsOnly) {
+      const uids = await getAllUids();
+      await sendPush({
+        uids,
+        title: `🏛 ${arenaName} aperta!`,
+        body: "Le iscrizioni sono aperte. Entra nell'arena!",
+        url: "/arena",
+        tag: "arena-open",
+      });
+    }
+  }
+
+  // Tournament concluded — broadcast
+  if (before.phase !== "finished" && after.phase === "finished" && after.tournamentWinner) {
+    const uids = await getAllUids();
+    const winnerName = after.lastChampion?.name
+      || after.characterSnapshots?.[after.tournamentWinner]?.name
+      || "Un campione";
+    await sendPush({
+      uids,
+      title: `🏆 ${arenaName} — Campione!`,
+      body: `${winnerName} ha vinto il torneo!`,
+      url: "/arena",
+      tag: `tournament-end-${after.tournamentWinner}`,
+    });
+  }
+
+  // Per-match transitions
+  const beforeMatches = before.matches || [];
+  const afterMatches  = after.matches || [];
+  for (const a of afterMatches) {
+    const b = beforeMatches.find(m => m.matchId === a.matchId);
+    if (!b) continue;
+
+    // Fight started
+    if (b.status !== "active" && a.status === "active") {
+      const fighters = (a.players || []).map(p => p.id);
+      const matchup  = (a.players || []).map(p => p.name).join(" vs ");
+      await sendPush({
+        uids: fighters,
+        title: "⚔️ Il match è iniziato!",
+        body: matchup || "Combattimento in corso",
+        url: "/arena",
+        tag: `arena-fight-start-${a.matchId}`,
+      });
+    }
+
+    // Whose turn changed
+    if (a.status === "active" && a.turn && a.turn !== b.turn) {
+      await sendPush({
+        uids: [a.turn],
+        title: "⚡ Tocca a te nell'arena!",
+        body: "Compi la tua azione.",
+        url: "/arena",
+        tag: `arena-turn-${a.matchId}`,
+      });
+    }
+
+    // Match concluded
+    if (b.status !== "finished" && a.status === "finished" && a.winner) {
+      const winnerId = a.winner;
+      const losers   = (a.players || []).filter(p => p.id !== winnerId).map(p => p.id);
+      const winnerName = (a.players || []).find(p => p.id === winnerId)?.name || "Sfidante";
+      await sendPush({
+        uids: [winnerId],
+        title: "🏆 Hai vinto il match!",
+        body: "Avanzi nel torneo. Ben fatto!",
+        url: "/arena",
+        tag: `arena-match-win-${a.matchId}`,
+      });
+      if (losers.length > 0) {
+        await sendPush({
+          uids: losers,
+          title: "💀 Sei stato sconfitto",
+          body: `${winnerName} ti ha battuto.`,
+          url: "/arena",
+          tag: `arena-match-loss-${a.matchId}`,
+        });
+      }
+    }
+  }
+});
+
+// 6) Market — new item available
+exports.pushOnMarketItem = onDocumentCreated('items/{itemId}', async (event) => {
+  const data = event.data?.data();
+  if (!data) return;
+  const uids = await getAllUids();
+  await sendPush({
+    uids,
+    title: "🛒 Nuovo oggetto al Mercato!",
+    body: `${data.name || "Un oggetto"} è ora disponibile. Fai la tua offerta!`,
+    url: "/mercato",
+    tag: `market-new-${event.params.itemId}`,
+  });
+});
