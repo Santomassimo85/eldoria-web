@@ -20,6 +20,14 @@ import "./admin.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+// Inline SVG placeholder (no network request → evita loop infinito su 404).
+const PLACEHOLDER_IMG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23222'/><text x='50' y='55' text-anchor='middle' fill='%23888' font-family='sans-serif' font-size='10'>no image</text></svg>";
+const handleImgError = (e) => {
+  if (e.currentTarget.dataset.fallback === "1") return;
+  e.currentTarget.dataset.fallback = "1";
+  e.currentTarget.src = PLACEHOLDER_IMG;
+};
+
 const CITIES_HUB = [
   { name: "Tirrendale", x: 50.55, y: 62.23 },
   { name: "Helmvil", x: 53.87, y: 37.42 },
@@ -101,7 +109,7 @@ const DropZone = ({ value, uploading, onFile, onClear, label = "Trascina un'imma
         </div>
       ) : value ? (
         <>
-          <img src={value} alt="" className="geo-drop-img" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+          <img src={value} alt="" className="geo-drop-img" onError={handleImgError} />
           <div className="geo-drop-overlay">
             <span>📤 Cambia</span>
             {onClear && (
@@ -451,7 +459,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
               </div>
               <div className="geoadm-loc-preview">
                 {formData.image ? (
-                  <img src={formData.image} alt="" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                  <img src={formData.image} alt="" onError={handleImgError} />
                 ) : (
                   <div className="geoadm-loc-noimg">🗺<small>Nessuna immagine</small></div>
                 )}
@@ -491,7 +499,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
                   <article key={loc.id} className="geoadm-loc-card">
                     <div className="geoadm-loc-card-img">
                       {loc.image ? (
-                        <img src={loc.image} alt={loc.name} onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                        <img src={loc.image} alt={loc.name} onError={handleImgError} />
                       ) : (
                         <div className="geoadm-loc-noimg">🗺</div>
                       )}
@@ -663,7 +671,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
                   <article key={npc.id} className="geoadm-npc-card">
                     <div className="geoadm-npc-portrait">
                       {npc.image ? (
-                        <img src={npc.image} alt={npc.name} onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                        <img src={npc.image} alt={npc.name} onError={handleImgError} />
                       ) : (
                         <div className="geoadm-npc-noimg">🧝</div>
                       )}

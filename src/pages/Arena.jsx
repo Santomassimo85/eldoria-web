@@ -453,6 +453,25 @@ function getSpellcastingAbility(cls) {
   // INT: Mago, Artefice, Guerriero (Cavaliere Arcano), Ladro (Mistificatore Arcano) + default
   return "int";
 }
+// Spell mod del caster (INT/SAG/CAR a seconda della classe).
+function getSpellMod(snap) {
+  const cls = (snap?.class || "").toLowerCase();
+  const key = getSpellcastingAbility(cls);
+  return snap?.stats?.[key] ?? 0;
+}
+// CD TS = 8 + competenza(2) + spell mod
+function getSpellSaveDC(snap) { return 10 + getSpellMod(snap); }
+// Determina l'abilità del TS dalla descrizione (es. "TS SAG", "TS COS"). Default: SAG.
+function parseSpellSaveAbility(action) {
+  const info = (action?.info || "").toUpperCase();
+  if (info.includes("TS FOR")) return "str";
+  if (info.includes("TS DES")) return "dex";
+  if (info.includes("TS COS")) return "con";
+  if (info.includes("TS INT")) return "int";
+  if (info.includes("TS CAR")) return "cha";
+  return "wis";
+}
+const SAVE_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
 function isRogueClass(cls)      { return ["rogue","ladro"].some(c => cls.includes(c)); }
 function isRangerClass(cls)     { return ["ranger","cacciatore"].some(c => cls.includes(c)); }
 function isBarbarianClass(cls)  { return ["barbarian","barbaro"].some(c => cls.includes(c)); }
@@ -1719,8 +1738,12 @@ export default function Arena() {
     const match = trainingMatches.find(m => m.id === matchId);
     const me = match?.players.find(p => p.id === currentUser.uid);
     if (!me) return;
-    const { total: heal, rolls: healRolls } = rollDmg(action.damage);
-    const log = `${me.name} lancia ${action.icon} ${action.name} → cura sé stesso di ${heal} HP 🎲(${healRolls})`;
+    const { total: healDice, rolls: healRolls } = rollDmg(action.damage);
+    const spellMod = getSpellMod(me.snapshot);
+    const heal = Math.max(1, healDice + spellMod);
+    const modKey = getSpellcastingAbility((me.snapshot?.class || "").toLowerCase()).toUpperCase();
+    const modPart = spellMod !== 0 ? ` ${spellMod >= 0 ? "+" : ""}${spellMod} ${modKey}` : "";
+    const log = `${me.name} lancia ${action.icon} ${action.name} → cura sé stesso di ${heal} HP 🎲(${healRolls}${modPart})`;
     await applyTrainingUpdate(matchId, m => {
       const players = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
@@ -1753,14 +1776,16 @@ export default function Arena() {
     const attP = match.players.find(p => p.id === currentUser.uid);
     const defP = match.players.find(p => p.id === targetId);
     if (!attP || !defP) return;
-    const defWis = defP.snapshot?.stats?.wis ?? 0;
+    const saveAbility = parseSpellSaveAbility(action);
+    const defMod = defP.snapshot?.stats?.[saveAbility] ?? 0;
+    const dc     = getSpellSaveDC(attP.snapshot);
     const d20    = Math.floor(Math.random() * 20) + 1;
-    await showD20Roll(d20, { label: `TS · ${action.name}` });
-    const tsTotal = d20 + defWis;
-    const saves  = tsTotal >= 13;
+    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
+    const tsTotal = d20 + defMod;
+    const saves  = tsTotal >= dc;
     const log = saves
-      ? { pub: `🌀 ${defP.name} resiste a ${action.name} (TS ${tsTotal} ≥ 13)!`, attId: currentUser.uid, ts: new Date().toISOString() }
-      : { pub: `🌀 ${defP.name} cade sotto ${action.name} (TS ${tsTotal} < 13) — turno saltato!`, attId: currentUser.uid, ts: new Date().toISOString() };
+      ? { pub: `🌀 ${defP.name} resiste a ${action.name} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${dc})!`, attId: currentUser.uid, ts: new Date().toISOString() }
+      : { pub: `🌀 ${defP.name} cade sotto ${action.name} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${dc}) — turno saltato!`, attId: currentUser.uid, ts: new Date().toISOString() };
     await applyTrainingUpdate(matchId, m => {
       const players = m.players.map(p => {
         if (p.id === currentUser.uid) {
@@ -1974,11 +1999,14 @@ export default function Arena() {
     const isBlind = action.special === "blind_debuff";
     const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
     const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && attP.weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
-    const dmgStatMod = isSpell ? 0 : statMod;
+    // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
+    const spellDealsDmg  = isSpell && (action.damage && action.damage !== "—");
+    const dmgStatMod     = !isSpell ? statMod : (spellDealsDmg ? statMod : 0);
     const damage = (isHit && !isBlind) ? (baseDmg + dmgStatMod + weaponBuff + rageDmg + concentrationDmg) * (isCrit ? 2 : 1) + poisonBonusDmg : 0;
     const critTag        = isCrit ? " ★CRITICO★" : "";
     const statPart       = !isSpell && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : "";
     const spellModPart   = isSpell && spellKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${spellKey.toUpperCase()}` : "";
+    const dmgModPart     = (dmgStatMod !== 0) ? ` ${dmgStatMod >= 0 ? "+" : ""}${dmgStatMod} ${(action.statKey || spellKey || "").toUpperCase()}` : "";
     const aidPart        = attP.aidBuff ? " +4 Aiuto" : "";
     const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : "";
     const rageTag        = rageDmg > 0 ? ` | furia +${rageDmg}` : "";
@@ -1990,7 +2018,7 @@ export default function Arena() {
     const blindPenTag    = blindPen < 0 ? ` ${blindPen} 🙈acc.` : "";
     const advantageTag   = hasAdv && !hasDis ? ` 🌟vant.[${d20a},${d20b}]` : hasDis && !hasAdv ? ` 🌑svant.[${d20a},${d20b}]` : "";
     const critDmgNote    = isCrit ? " ×2" : "";
-    const dmgBreakdown   = (isHit && !isBlind) ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}${poisonTag}${rageTag}${concentrationTag} = ${damage}]` : "";
+    const dmgBreakdown   = (isHit && !isBlind) ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${rageTag}${concentrationTag} = ${damage}]` : "";
     const hitBreakdown   = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus||0} hit${statPart}${spellModPart}${penPart}${aidPart}${inspTag}${magicDetTag}${hunterTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
       pub: isHit
@@ -2534,13 +2562,15 @@ export default function Arena() {
     // Weapon poison bonus
     const weaponPoisoned = !!attackerMatchPlayer?.weaponPoisoned;
     const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
-    // Le armi aggiungono statMod al danno; le spell no (statMod è già usato per colpire)
-    const dmgStatMod = isSpellAction ? 0 : statMod;
+    // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
+    const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
+    const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
     const damage   = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
 
     // Log breakdown
     const statPart       = !isSpellAction && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : '';
     const spellModPart   = isSpellAction && spellcastKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${spellcastKey.toUpperCase()}` : '';
+    const dmgModPart     = (dmgStatMod !== 0) ? ` ${dmgStatMod >= 0 ? "+" : ""}${dmgStatMod} ${(action.statKey || spellcastKey || "").toUpperCase()}` : '';
     const aidPart        = aidBonus > 0 ? ` +4 Aiuto` : '';
     const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : '';
     const critTag        = isCrit ? " ★CRITICO★" : "";
@@ -2556,7 +2586,7 @@ export default function Arena() {
     const blindPenTag    = blindDebuffPenalty < 0 ? ` ${blindDebuffPenalty} 🙈acc.` : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${statPart}${critDmgNote}${poisonTag}${rageTag}${concentrationTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${rageTag}${concentrationTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
@@ -2995,7 +3025,11 @@ export default function Arena() {
   const handleHealSpell = async (matchId, action) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const myName = mySnap?.name || "?";
-    const { total: healAmt, rolls: healRolls } = rollDmg(action.damage);
+    const { total: healDice, rolls: healRolls } = rollDmg(action.damage);
+    const spellMod = getSpellMod(mySnap);
+    const healAmt  = Math.max(1, healDice + spellMod);
+    const modKey   = getSpellcastingAbility((mySnap?.class || "").toLowerCase()).toUpperCase();
+    const modPart  = spellMod !== 0 ? ` ${spellMod >= 0 ? "+" : ""}${spellMod} ${modKey}` : "";
     const healExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     await runTransaction(db, async (tx) => {
       const ref  = doc(db, "arena_meta", "global");
@@ -3012,7 +3046,7 @@ export default function Arena() {
           return { ...p, hp: newHp, actionUsesLeft: newUses };
         });
         const nextIndex = (m.players.findIndex(p => p.id === m.turn) + 1) % m.players.length;
-        const log = `${myName} lancia ${action.icon} ${action.name} → cura sé stesso di ${healAmt} HP 🎲(${healRolls})`;
+        const log = `${myName} lancia ${action.icon} ${action.name} → cura sé stesso di ${healAmt} HP 🎲(${healRolls}${modPart})`;
         return { ...m, players, turn: m.players[nextIndex].id, turnExpiry: healExpiry, logs: [...m.logs, log] };
       });
       tx.update(ref, { matches });
@@ -3024,6 +3058,8 @@ export default function Arena() {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const myName = mySnap?.name || "?";
     const ctrlExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const ctrlDC      = getSpellSaveDC(mySnap);
+    const saveAbility = parseSpellSaveAbility(action);
     await runTransaction(db, async (tx) => {
       const ref  = doc(db, "arena_meta", "global");
       const snap = await tx.get(ref);
@@ -3038,11 +3074,11 @@ export default function Arena() {
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
             return { ...p, actionUsesLeft: newUses };
           }
-          if (p.id === targetId) return { ...p, pendingControlSave: action.special === "corona_pazzia" ? "corona_pazzia" : true };
+          if (p.id === targetId) return { ...p, pendingControlSave: action.special === "corona_pazzia" ? "corona_pazzia" : true, pendingControlDC: ctrlDC, pendingControlSaveAbility: saveAbility };
           return p;
         });
         const nextIndex = (m.players.findIndex(p => p.id === m.turn) + 1) % m.players.length;
-        const log = `${myName} lancia ${action.icon} ${action.name} su ${targetName} → tiro salvezza richiesto!`;
+        const log = `${myName} lancia ${action.icon} ${action.name} su ${targetName} → TS ${SAVE_LABEL[saveAbility]} (CD ${ctrlDC}) richiesto!`;
         return { ...m, players, turn: m.players[nextIndex].id, turnExpiry: ctrlExpiry, logs: [...m.logs, log] };
       });
       tx.update(ref, { matches });
@@ -3052,18 +3088,23 @@ export default function Arena() {
   // ── TIRI SALVEZZA ──────────────────────────────────────────────────────────
   const rollSavingThrow = async (matchId, saveType, context) => {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    const isControl = context === "control_spell" || context === "corona_pazzia";
+    // Per il TS controllo, usa l'abilità memorizzata sul player (es. SAG/COS/FOR) e la CD del caster.
+    const myMatch  = arenaMeta.matches?.find(m => m.matchId === matchId);
+    const myPlayer = myMatch?.players?.find(p => p.id === currentUser.uid);
+    const ctrlAbility = isControl ? (myPlayer?.pendingControlSaveAbility || saveType || "wis") : saveType;
+    const ctrlDC      = isControl ? (myPlayer?.pendingControlDC || 13) : null;
     const d20 = Math.floor(Math.random() * 20) + 1;
-    await showD20Roll(d20, { label: `TS · ${(saveType || "").toUpperCase()}` });
-    const isControl = context === "control_spell";
-    const mod = isControl ? 3 : (mySnap?.stats?.[saveType] ?? 0);
-    const dc = isControl ? 13 : 15;
+    await showD20Roll(d20, { label: `TS · ${SAVE_LABEL[isControl ? ctrlAbility : saveType] || (saveType || "").toUpperCase()}` });
+    const mod = isControl ? (mySnap?.stats?.[ctrlAbility] ?? 0) : (mySnap?.stats?.[saveType] ?? 0);
+    const dc  = isControl ? ctrlDC : 15;
     const total = d20 + mod;
     const pass = total >= dc;
-    const labels = { str: "FOR", dex: "DES", con: "COS" };
     const myName = mySnap?.name || "?";
+    const modSign = mod >= 0 ? "+" : "";
     let logMsg = isControl
-      ? `🌀 ${myName} — TS Controllo: ${d20}+3=${total} (CD ${dc}) → ${pass ? "✅ PASSA" : "❌ FALLISCE"}`
-      : `🎲 ${myName} — TS ${labels[saveType] || saveType.toUpperCase()}: ${d20}+${mod}=${total} (CD ${dc}) → ${pass ? "✅ PASSA" : "❌ FALLISCE"}`;
+      ? `🌀 ${myName} — TS ${SAVE_LABEL[ctrlAbility] || ctrlAbility.toUpperCase()} (Controllo): ${d20}${modSign}${mod}=${total} (CD ${dc}) → ${pass ? "✅ PASSA" : "❌ FALLISCE"}`
+      : `🎲 ${myName} — TS ${SAVE_LABEL[saveType] || saveType.toUpperCase()}: ${d20}${modSign}${mod}=${total} (CD ${dc}) → ${pass ? "✅ PASSA" : "❌ FALLISCE"}`;
 
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -3096,6 +3137,8 @@ export default function Arena() {
         if (context === "control_spell" || context === "corona_pazzia") {
           const isCorona = p.pendingControlSave === "corona_pazzia" || context === "corona_pazzia";
           delete up.pendingControlSave;
+          delete up.pendingControlDC;
+          delete up.pendingControlSaveAbility;
           if (!pass) {
             if (isCorona) {
               // Enemy attacks themselves with their equipped weapon
@@ -3343,8 +3386,13 @@ export default function Arena() {
           }
           if (hasPendingCtrl) {
             const d20 = Math.floor(Math.random() * 20) + 1;
-            const total = d20 + 3;
-            const pass = total >= 13;
+            const ctrlAbility = p.pendingControlSaveAbility || "wis";
+            const ctrlMod = data.characterSnapshots?.[p.id]?.stats?.[ctrlAbility] ?? 0;
+            const ctrlDC  = p.pendingControlDC || 13;
+            const total   = d20 + ctrlMod;
+            const pass    = total >= ctrlDC;
+            const sign    = ctrlMod >= 0 ? "+" : "";
+            const lbl     = SAVE_LABEL[ctrlAbility] || ctrlAbility.toUpperCase();
             const isCorona = p.pendingControlSave === "corona_pazzia";
             if (!pass && isCorona) {
               const snapForAuto = data?.characterSnapshots?.[p.id];
@@ -3352,11 +3400,13 @@ export default function Arena() {
               const weaponAuto = (snapForAuto?.selectedActions || []).find(a => a.name === equippedNameAuto && a.type === "weapon");
               const { total: selfDmgAuto } = rollDmg(weaponAuto?.damage || "1d6");
               up.hp = Math.max(0, (up.hp ?? 0) - selfDmgAuto);
-              newLogs2.push(`🌀 ${p.name} TS Corona della Pazzia automatico: ${d20}+3=${total} vs CD 13 → ❌ FALLISCE — Attacca sé stesso: ${selfDmgAuto} danni!`);
+              newLogs2.push(`🌀 ${p.name} TS ${lbl} Corona della Pazzia automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — Attacca sé stesso: ${selfDmgAuto} danni!`);
             } else {
-              newLogs2.push(`🌀 ${p.name} TS Controllo automatico: ${d20}+3=${total} vs CD 13 → ${pass ? "✅ PASSA" : "❌ FALLISCE — Turno perso!"}`);
+              newLogs2.push(`🌀 ${p.name} TS ${lbl} Controllo automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ${pass ? "✅ PASSA" : "❌ FALLISCE — Turno perso!"}`);
             }
             delete up.pendingControlSave;
+            delete up.pendingControlDC;
+            delete up.pendingControlSaveAbility;
             autoRolledSave = true;
           }
           return up;
@@ -4911,18 +4961,23 @@ export default function Arena() {
                     )}
 
                     {/* ── Tiro Salvezza Controllo (spell di controllo) ── */}
-                    {!pendingDexSave && !pendingConSave && pendingControlSave && (
-                      <div className="save-block control">
-                        <p className="save-block-label">
-                          {pendingControlSave === "corona_pazzia"
-                            ? "🌀 Corona della Pazzia! TS SAG (CD 13) — se fallisci attacchi te stesso!"
-                            : "🌀 Tiro Salvezza contro Spell di Controllo! (CD 13)"}
-                        </p>
-                        <button className="btn-saving-throw" onClick={() => rollSavingThrow(m.matchId, null, pendingControlSave === "corona_pazzia" ? "corona_pazzia" : "control_spell")}>
-                          🎲 TS Controllo
-                        </button>
-                      </div>
-                    )}
+                    {!pendingDexSave && !pendingConSave && pendingControlSave && (() => {
+                      const ctrlAbilityUI = myPlayer?.pendingControlSaveAbility || "wis";
+                      const ctrlDcUI      = myPlayer?.pendingControlDC || 13;
+                      const ctrlLblUI     = SAVE_LABEL[ctrlAbilityUI] || ctrlAbilityUI.toUpperCase();
+                      return (
+                        <div className="save-block control">
+                          <p className="save-block-label">
+                            {pendingControlSave === "corona_pazzia"
+                              ? `🌀 Corona della Pazzia! TS ${ctrlLblUI} (CD ${ctrlDcUI}) — se fallisci attacchi te stesso!`
+                              : `🌀 Tiro Salvezza contro Spell di Controllo! TS ${ctrlLblUI} (CD ${ctrlDcUI})`}
+                          </p>
+                          <button className="btn-saving-throw" onClick={() => rollSavingThrow(m.matchId, ctrlAbilityUI, pendingControlSave === "corona_pazzia" ? "corona_pazzia" : "control_spell")}>
+                            🎲 TS {ctrlLblUI}
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {/* ── Veleno DoT — risolvi prima di agire ── */}
                     {!pendingDexSave && !pendingConSave && !pendingControlSave && pendingPoisonDoT && (
@@ -5043,13 +5098,16 @@ export default function Arena() {
                           if (action.special === "control" || action.special === "corona_pazzia") {
                             const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
                             const noUses = usesLeft !== null && usesLeft <= 0;
+                            const _casterSnap = arenaMeta.characterSnapshots?.[currentUser.uid];
+                            const _dc      = getSpellSaveDC(_casterSnap);
+                            const _ability = SAVE_LABEL[parseSpellSaveAbility(action)] || "SAG";
                             return (
                               <button key={action.name} className={`btn-action spell control ${noUses ? "no-uses" : ""}`}
-                                disabled={noUses || !chosenTargetId} title={noUses ? "Usi esauriti" : `${action.name} — TS CD 13 o perdi turno`}
+                                disabled={noUses || !chosenTargetId} title={noUses ? "Usi esauriti" : `${action.name} — TS ${_ability} (CD ${_dc}) o perdi turno`}
                                 onClick={() => !noUses && chosenTargetId && handleControlSpell(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{noUses ? "Esaurito" : "TS CD 13"}</span>
+                                <span className="action-dice">{noUses ? "Esaurito" : `TS ${_ability} CD ${_dc}`}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );
@@ -5865,7 +5923,7 @@ export default function Arena() {
                                 onClick={() => { if (noU || byInvis || stlAct) return; handleTrainingAction(m.id, oppId, action); }}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{stlAct?`🌑 ${stl}t`:noU?"Esaurito":byInvis?"👻 Invis.":action.special==="control"?"TS CD 13":action.damage!=="—"?action.damage:"—"}</span>
+                                <span className="action-dice">{stlAct?`🌑 ${stl}t`:noU?"Esaurito":byInvis?"👻 Invis.":(action.special==="control"||action.special==="corona_pazzia")?`TS ${SAVE_LABEL[parseSpellSaveAbility(action)]||"SAG"} CD ${getSpellSaveDC(myPlayer?.snapshot)}`:action.damage!=="—"?action.damage:"—"}</span>
                                 {ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}
                               </button>
                             );
