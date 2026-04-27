@@ -1994,8 +1994,8 @@ export default function Arena() {
     const shieldLost    = defSnap.hasShield && defP.shieldSuppressed;
     const shieldAcBonus = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
     const defAC  = (defSnap.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldAcBonus + (defP.defensiveBonus ?? 0);
-    const isCrit = d20 === 20 && isSpell;
-    const isHit  = hitTotal >= defAC;
+    const isCrit = d20 === 20; // nat 20 = critico per qualsiasi attacco (arma o spell)
+    const isHit  = hitTotal >= defAC || isCrit;
     const isBlind = action.special === "blind_debuff";
     const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
     const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && attP.weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
@@ -2554,8 +2554,8 @@ export default function Arena() {
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
     const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus + defensiveAcBonus;
-    const isCrit   = d20 === 20 && action.type === "spell";
-    const isHit    = hitTotal >= defAC;
+    const isCrit   = d20 === 20; // nat 20 = critico per qualsiasi attacco (arma o spell)
+    const isHit    = hitTotal >= defAC || isCrit;
     const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
     // Critico spells: doppio danno
     const critMult = isCrit ? 2 : 1;
