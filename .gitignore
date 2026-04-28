@@ -27,3 +27,7 @@ dist-ssr
 
 # Generated at dev/build time by vite.config.js from firebase-messaging-sw.template.js
 public/firebase-messaging-sw.js
+
+# Service account keys — NEVER commit
+scripts/sa.json
+*-firebase-adminsdk-*.json

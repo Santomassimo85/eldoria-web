@@ -7,9 +7,8 @@ import "./admin.css";
 export default function VideoAdmin() {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [twitchLink, setTwitchLink] = useState("");
+  const [youtubeLink, setYoutubeLink] = useState("");
   const [videos, setVideos] = useState([]);
-  const navigate = useNavigate();
 
   const fetchVideos = async () => {
     try {
@@ -23,32 +22,43 @@ export default function VideoAdmin() {
 
   useEffect(() => { fetchVideos(); }, []);
 
-  const extractTwitchID = (url) => {
+  const extractYouTubeID = (url) => {
     if (!url) return null;
-    if (url.includes("twitch.tv/videos/")) {
-      const parts = url.split("videos/");
-      return parts[1].split(/[?#]/)[0];
-    }
-    if (/^\d+$/.test(url.trim())) return url.trim();
+    const trimmed = url.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+    try {
+      const u = new URL(trimmed);
+      const host = u.hostname.replace(/^www\./, "");
+      if (host === "youtu.be") {
+        const id = u.pathname.slice(1).split("/")[0];
+        return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+      }
+      if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
+        const v = u.searchParams.get("v");
+        if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+        const m = u.pathname.match(/^\/(embed|shorts|live|v)\/([a-zA-Z0-9_-]{11})/);
+        if (m) return m[2];
+      }
+    } catch { /* not a URL */ }
     return null;
   };
 
   const handleAddVideo = async (e) => {
     e.preventDefault();
-    const videoId = extractTwitchID(twitchLink);
+    const videoId = extractYouTubeID(youtubeLink);
     if (!videoId) {
-      alert("❌ Link Twitch non valido! Incolla un link tipo: https://www.twitch.tv/videos/123456");
+      alert("❌ Link YouTube non valido! Incolla un link tipo: https://www.youtube.com/watch?v=XXXXXXXXXXX o https://youtu.be/XXXXXXXXXXX");
       return;
     }
     try {
       await addDoc(collection(db, "session_videos"), {
         title, desc, videoId,
-        platform: "twitch",
+        platform: "youtube",
         createdAt: new Date()
       });
-      setTitle(""); setDesc(""); setTwitchLink("");
+      setTitle(""); setDesc(""); setYoutubeLink("");
       fetchVideos();
-      alert("✅ Video di Twitch pubblicato correttamente!");
+      alert("✅ Video di YouTube pubblicato correttamente!");
     } catch (error) {
       alert("Errore nel salvataggio del video.");
     }
@@ -83,12 +93,12 @@ export default function VideoAdmin() {
             />
           </div>
           <div>
-            <label>Link Video Twitch</label>
+            <label>Link Video YouTube</label>
             <input
               className="admin-field-input"
-              placeholder="https://www.twitch.tv/videos/..."
-              value={twitchLink}
-              onChange={e => setTwitchLink(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              value={youtubeLink}
+              onChange={e => setYoutubeLink(e.target.value)}
               required
             />
           </div>
@@ -122,7 +132,9 @@ export default function VideoAdmin() {
           <div key={video.id} className="video-admin-card">
             <div className="video-admin-card-info">
               <strong>{video.title}</strong>
-              <small>ID Twitch: {video.videoId}</small>
+              <small>
+                {video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}
+              </small>
             </div>
             <button onClick={() => handleDelete(video.id)} className="btn-admin-danger">
               Elimina

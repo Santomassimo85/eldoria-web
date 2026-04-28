@@ -46,21 +46,27 @@ export default function Cinema() {
         <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Nessuna registrazione trovata.</p>
       ) : (
         <div className="cinema-video-grid">
-          {videos.map((video) => (
-            <div key={video.id} className="cinema-video-card">
-              <div className="cinema-video-embed">
-                <iframe
-                  src={`https://player.twitch.tv/?video=${video.videoId}&parent=${currentDomain}&autoplay=false`}
-                  title={video.title}
-                  allowFullScreen
-                />
+          {videos.map((video) => {
+            const embedSrc = video.platform === "twitch"
+              ? `https://player.twitch.tv/?video=${video.videoId}&parent=${currentDomain}&autoplay=false`
+              : `https://www.youtube.com/embed/${video.videoId}`;
+            return (
+              <div key={video.id} className="cinema-video-card">
+                <div className="cinema-video-embed">
+                  <iframe
+                    src={embedSrc}
+                    title={video.title}
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                </div>
+                <div className="cinema-video-info">
+                  <h3 className="cinema-video-title">{video.title}</h3>
+                  {video.desc && <p className="cinema-video-desc">{video.desc}</p>}
+                </div>
               </div>
-              <div className="cinema-video-info">
-                <h3 className="cinema-video-title">{video.title}</h3>
-                {video.desc && <p className="cinema-video-desc">{video.desc}</p>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
