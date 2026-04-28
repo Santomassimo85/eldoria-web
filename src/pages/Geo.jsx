@@ -90,7 +90,13 @@ export default function Geo() {
             <div className="geo-grid">
               {locationsInContinent.map((loc) => (
                 <div key={loc.id} className="geo-card-wrapper">
-                  <ToggleSection title={loc.name} defaultOpen={false}>
+                  <ToggleSection
+                    title={loc.name}
+                    defaultOpen={false}
+                    staticContent={loc.image && (
+                      <img src={loc.image} alt={loc.name} className="geo-card-preview" />
+                    )}
+                  >
                     {isMaster && (
                       <button
                         className="geo-edit-btn"
@@ -99,7 +105,6 @@ export default function Geo() {
                         ⚙️ Modifica Luogo
                       </button>
                     )}
-                    <img src={loc.image} alt={loc.name} className="city-img" />
                     <div
                       className="geo-description"
                       dangerouslySetInnerHTML={{ __html: loc.description }}

@@ -188,6 +188,25 @@
 
 .geo-card-wrapper .toggle-content.open { padding: 18px !important; }
 
+/* Always-visible preview thumbnail (between title and collapsible body) */
+.geo-card-wrapper .toggle-static {
+  position: relative;
+  overflow: hidden;
+  background: #fdf6e3;
+  border-bottom: 1px solid var(--gold);
+}
+.geo-card-wrapper .geo-card-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease, filter 0.3s ease;
+}
+.geo-card-wrapper .toggle-section:hover .geo-card-preview {
+  transform: scale(1.04);
+  filter: saturate(1.1) brightness(1.04);
+}
+
 /* ---- CARD CONTENT ----------------------------------------- */
 .geo-description {
   font-size: clamp(0.88rem, 2vw, 0.98rem);

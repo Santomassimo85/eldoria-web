@@ -610,6 +610,29 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
+.p-title-badge-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(42, 29, 0, 0.18);
+  color: #2a1d00;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.p-title-badge-x:hover {
+  background: rgba(42, 29, 0, 0.45);
+  color: #fff;
+}
+
 .title-select {
   margin-left: auto;
   font-size: 0.72rem;

@@ -5,27 +5,7 @@ import { useNavigate } from "react-router-dom";
 import "./WorldMap.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { useAuth } from "../AuthContext";
-
-const CITIES_HUB = [
-  { name: "Tirrendale",              x: 50.55, y: 62.23 },
-  { name: "Helmvil",                 x: 53.87, y: 37.42 },
-  { name: "Yotta",                   x: 26.44, y: 31.82 },
-  { name: "Foresta del Tiglio Bianco", x: 23.40, y: 43.20 },
-  { name: "Castello Dorato",         x: 67.53, y: 20.68 },
-  { name: "Gossvill",                x: 86.37, y: 31.81 },
-  { name: "Clan dei Senza Onore",    x: 26.82, y: 75.41 },
-  { name: "Clan dei Demoni Grigi",   x: 44.32, y: 44.38 },
-  { name: "Nerocastello",            x: 11.41, y: 35.18 },
-  { name: "Thenduin Village",        x: 92.45, y: 30.12 },
-  { name: "Monaci delle Sabbie",     x: 91.69, y: 41.26 },
-  { name: "Torre dell'Arcano",       x: 72.29, y: 21.02 },
-  { name: "Tassio",                  x: 60.88, y: 53.40 },
-  { name: "Hopeclif",                x: 74.38, y: 64.79 },
-  { name: "Ganno",                   x: 64.55, y: 37.97 },
-  { name: "Inss",                    x: 58.16, y: 75.81 },
-  { name: "Nølborg",                 x: 19.56, y: 38.55 },
-  { name: "Plia",                    x: 25.42, y: 50.47 },
-];
+import { CITIES_HUB } from "../data/citiesHub";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
@@ -250,8 +230,12 @@ export default function WorldMap() {
             );
           })}
 
-          {/* NPC LIBERI */}
-          {npcs.filter(n => !n.linkedCity && n.mapX && n.mapY).map(npc => (
+          {/* NPC LIBERI — anche quelli con linkedCity orfana (città non più presente in CITIES_HUB) */}
+          {npcs.filter(n => {
+            const cityKnown = n.linkedCity && CITIES_HUB.some(c => c.name === n.linkedCity);
+            const hasCoords = Number.isFinite(n.mapX) && Number.isFinite(n.mapY);
+            return !cityKnown && hasCoords;
+          }).map(npc => (
             <div key={npc.id} className="map-anchor npc-anchor"
               style={{ left: `${npc.mapX}%`, top: `${npc.mapY}%` }}
               onClick={(e) => handleNpcClick(e, npc)}>
