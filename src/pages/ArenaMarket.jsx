@@ -34,6 +34,33 @@ const SHOP_ITEMS = [
     field: "armorBonus",
     max: 1,
   },
+  {
+    key: "ranger_unique_pet",
+    name: "Drago di Smeraldo (Ranger)",
+    description: "Compagno unico: 3d6+3 danni auto-hit + cura 1d6 PF al ranger · 2 cariche. Disponibile come 4° pet nel loadout Ranger.",
+    icon: "🐉",
+    price: 150,
+    field: "rangerUniquePet",
+    max: 1,
+  },
+  {
+    key: "monk_punch_d8",
+    name: "Pugno Potenziato (Monaco)",
+    description: "Il Pugno del Monaco infligge 1d8+DES invece di 1d6+DES. Permanente.",
+    icon: "👊",
+    price: 100,
+    field: "monkPunchD8",
+    max: 1,
+  },
+  {
+    key: "class_artificer",
+    name: "Classe: Artefice",
+    description: "Sblocca la classe Artefice (rifle, pistola, costrutti, Forgia Armatura). Visibile solo a chi l'ha acquistata.",
+    icon: "⚙️",
+    price: 200,
+    field: "classArtificer",
+    max: 1,
+  },
 ];
 
 export const ARENA_CLASSES = [
@@ -49,11 +76,12 @@ export const ARENA_CLASSES = [
   { key: "bard",      name: "Bardo",      icon: "🎵" },
   { key: "cleric",    name: "Chierico",   icon: "⛪" },
   { key: "druid",     name: "Druido",     icon: "🌿" },
+  { key: "artificer", name: "Artefice",   icon: "⚙️", hiddenUnlessOwned: "classArtificer" },
 ];
 
 const HIT_DICE = {
   fighter: 10, barbarian: 10, paladin: 10, rogue: 10, ranger: 10,
-  monk: 10, wizard: 10, sorcerer: 10, warlock: 10, bard: 10, cleric: 10, druid: 10,
+  monk: 10, wizard: 10, sorcerer: 10, warlock: 10, bard: 10, cleric: 10, druid: 10, artificer: 10,
 };
 
 const LEVEL_UP_KEY = "level_up_cost";
@@ -182,7 +210,7 @@ export default function ArenaMarket() {
           )}
         </p>
         <div className="am-classes-grid">
-          {ARENA_CLASSES.map(cls => {
+          {ARENA_CLASSES.filter(cls => !cls.hiddenUnlessOwned || (buffs[cls.hiddenUnlessOwned] ?? 0) > 0).map(cls => {
             const lv = classLvls[cls.key] ?? 1;
             const canAfford = coins >= levelUpCost;
             return (
@@ -274,9 +302,12 @@ export default function ArenaMarket() {
 }
 
 const ITEM_FIELDS = [
-  { field: "weaponBonus",    label: "Arma +1",              icon: "⚔️" },
-  { field: "armorBonus",     label: "Armatura +1",          icon: "🛡️" },
-  { field: "healingPotions", label: "Pozione Cura Media",   icon: "💚" },
+  { field: "weaponBonus",     label: "Arma +1",              icon: "⚔️" },
+  { field: "armorBonus",      label: "Armatura +1",          icon: "🛡️" },
+  { field: "healingPotions",  label: "Pozione Cura Media",   icon: "💚" },
+  { field: "rangerUniquePet", label: "Drago di Smeraldo",    icon: "🐉" },
+  { field: "monkPunchD8",     label: "Pugno Potenziato",     icon: "👊" },
+  { field: "classArtificer",  label: "Classe Artefice",      icon: "⚙️" },
 ];
 
 function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {

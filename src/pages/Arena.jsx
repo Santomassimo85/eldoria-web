@@ -409,6 +409,67 @@ const RANGER_PETS = {
       special: "pet_eagle", maxUses: 2,
     },
   },
+  drago: {
+    key: "drago", name: "Drago di Smeraldo", icon: "🐉",
+    info: "Unico (Bottega) · 3d6+3 danni auto-hit + cura 1d6 · 2 cariche",
+    requiresBuff: "rangerUniquePet",
+    action: {
+      name: "Soffio del Drago", hitBonus: 0, damage: "3d6+3", statKey: null,
+      type: "skill", icon: "🐉", info: "3d6+3 danni auto-hit + cura 1d6 PF · 2 cariche",
+      special: "pet_drago", maxUses: 2,
+    },
+  },
+};
+
+// ── ARTIFICER (Artefice) — sbloccato dalla Bottega ──────────────────────────
+// Armi extra: Rifle e Pistola
+const ARTIFICER_RANGED = [
+  { name: "Rifle",   hitBonus: 3, damage: "1d8+3", statKey: "dex", type: "weapon", icon: "🔫", twoHanded: true,  info: "Arma da fuoco · 1d8+DES" },
+  { name: "Pistola", hitBonus: 3, damage: "1d6+3", statKey: "dex", type: "weapon", icon: "🔫", twoHanded: false, info: "Arma da fuoco · 1d6+DES" },
+];
+const ARTIFICER_WEAPON_OPTIONS = [...SIMPLE_WEAPONS, ...ARTIFICER_RANGED];
+
+// Spells: 4 cantrips, 4 lv1 — il giocatore sceglie 2 + 3
+const ARTIFICER_SPELLS = [
+  // ── Cantrips ──
+  { name: "Acid Splash", level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Acido", maxUses: 4 },
+  { name: "Fire Bolt",   level: 0, hitBonus: 3, damage: "1d10", statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
+  { name: "Frost Bite",  level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "❄️", info: "Trucchetto · Freddo · 1d6 danni", maxUses: 4 },
+  { name: "Resistance",  level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛡", info: "Trucchetto · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 4 },
+  // ── Livello 1 ──
+  { name: "Grease",       level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛢", info: "Lv1 · Controllo · TS DES o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Cure Wounds",  level: 1, hitBonus: 0, damage: "1d8",  statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · 1d8 + INT PF", special: "heal", healModStat: "int", maxUses: 3 },
+  { name: "Faerie Fire",  level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌟", info: "Lv1 · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
+  { name: "False Life",   level: 1, hitBonus: 0, damage: "1d4+4",statKey: null, type: "spell", icon: "🩸", info: "Lv1 · Cura · 1d4+4 PF temporanei", special: "heal", maxUses: 3 },
+];
+
+// Costrutti — scelti come pet del ranger ma con effetti meccanici diversi
+const ARTIFICER_CONSTRUCTS = {
+  golem: {
+    key: "golem", name: "Golem di Ferro", icon: "🤖",
+    info: "Attacco 1d8+3 · il prossimo attacco subìto dall'Artefice è dimezzato · 2 cariche",
+    action: {
+      name: "Golem di Ferro", hitBonus: 0, damage: "1d8+3", statKey: null,
+      type: "skill", icon: "🤖", info: "1d8+3 danni · prossimo colpo subìto dimezzato",
+      special: "construct_golem", maxUses: 2,
+    },
+  },
+  snake: {
+    key: "snake", name: "Serpente di Ferro", icon: "🐍",
+    info: "Attacco 1d6+3 · veleno 1d6 per 2 turni · 2 cariche",
+    action: {
+      name: "Serpente di Ferro", hitBonus: 0, damage: "1d6+3", statKey: null,
+      type: "skill", icon: "🐍", info: "1d6+3 danni + 1d6 veleno per 2 turni",
+      special: "construct_snake", maxUses: 2,
+    },
+  },
+};
+
+// Forgia Armatura — skill unica dell'Artefice: +2 CA per 2 turni, 2 cariche
+const FORGIA_ARMATURA_ACTION = {
+  name: "Forgia Armatura", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "🛠", info: "+2 CA per 2 turni · 2 cariche",
+  special: "armor_forge", maxUses: 2,
 };
 
 // Stregoneria Innata (Sorcerer) — passiva: vantaggio sui tiri per colpire con incantesimi
@@ -552,6 +613,7 @@ function parseSpellSaveAbility(action) {
 const SAVE_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
 function isRogueClass(cls)      { return ["rogue","ladro"].some(c => cls.includes(c)); }
 function isRangerClass(cls)     { return ["ranger","cacciatore"].some(c => cls.includes(c)); }
+function isArtificerClass(cls)  { return ["artificer","artefice"].some(c => cls.includes(c)); }
 function isBarbarianClass(cls)  { return ["barbarian","barbaro"].some(c => cls.includes(c)); }
 function isMonkClass(cls)       { return ["monk","monaco"].some(c => cls.includes(c)); }
 
@@ -612,6 +674,7 @@ function getArmorConfig(cls) {
   if (isRogueClass(cls))      return { armorCategory: "light",       canHaveShield: false  };
   if (isRogueBardClass(cls))  return { armorCategory: "light",       canHaveShield: false  };
   if (isRangerClass(cls))     return { armorCategory: "lightMedium", canHaveShield: true   };
+  if (isArtificerClass(cls))  return { armorCategory: "lightMedium", canHaveShield: true   };
   if (PHYSICAL_CLASSES.some(c => cls.includes(c))) return { armorCategory: "medium", canHaveShield: false };
   if (CASTER_CLASSES.some(c => cls.includes(c)))   return { armorCategory: "caster", canHaveShield: false };
   return { armorCategory: "medium", canHaveShield: false };
@@ -631,6 +694,7 @@ function getClassKey(charClass) {
   if (["warlock"].some(c => cls.includes(c)))                                       return "warlock";
   if (["wizard","mago"].some(c => cls.includes(c)))                                 return "wizard";
   if (["sorcerer","stregone"].some(c => cls.includes(c)))                           return "sorcerer";
+  if (["artificer","artefice"].some(c => cls.includes(c)))                          return "artificer";
   return "fighter";
 }
 
@@ -650,6 +714,7 @@ const SPELL_LIMITS = {
   bard:     { 0: 0, 1: 4, 2: 2, 3: 0 },
   paladin:  { 0: 0, 1: 2, 2: 1, 3: 0 },
   ranger:   { 0: 0, 1: 3, 2: 0, 3: 0 },
+  artificer:{ 0: 2, 1: 3, 2: 0, 3: 0 },
   generic:  { 0: 1, 1: 1, 2: 1, 3: 0 },
 };
 
@@ -669,6 +734,7 @@ function getLoadoutConfig(charClass) {
   if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [PUGNO_ACTION, CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (CASTER_CLASSES.some(k => cls.includes(k)))   return { weaponOptions: SIMPLE_WEAPONS, spellOptions: WIZARD_SPELLS, spellLimits: SPELL_LIMITS.generic, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.generic), autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -1084,7 +1150,8 @@ export default function Arena() {
   const [pendingSkills, setPendingSkills]   = useState([]);
   const [pendingArmor, setPendingArmor]     = useState(null);
   const [pendingShield, setPendingShield]   = useState(null); // null | "legno" | "metallo"
-  const [pendingPet, setPendingPet]         = useState(null); // ranger only — "wolf" | "spider" | "eagle"
+  const [pendingPet, setPendingPet]         = useState(null); // ranger only — "wolf" | "spider" | "eagle" | "drago"
+  const [pendingConstruct, setPendingConstruct] = useState(null); // artificer only — "golem" | "snake"
   const [showWildPicker, setShowWildPicker] = useState(false);
   const [showLayOfHandsPicker, setShowLayOfHandsPicker] = useState(false);
   const [layOfHandsAmt, setLayOfHandsAmt] = useState(1);
@@ -1499,15 +1566,19 @@ export default function Arena() {
 
     const chaScore = charPreview.stats.cha ?? 0;
     const cls = (charPreview.class || "").toLowerCase();
+    const buffs = charPreview.arenaBuffs || {};
+    const monkPunchUpgraded = (buffs.monkPunchD8 ?? 0) > 0;
     const petAction = (isRangerClass(cls) && pendingPet && RANGER_PETS[pendingPet]) ? RANGER_PETS[pendingPet].action : null;
+    const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
     const finalActions = [
       ...pendingWeapons, ...pendingSpells, ...pendingSkills,
-      ...config.autoActions.map(a =>
-        a.special === "bardic_inspiration"
-          ? { ...a, maxUses: Math.max(1, chaScore) }
-          : a
-      ),
+      ...config.autoActions.map(a => {
+        if (a.special === "bardic_inspiration") return { ...a, maxUses: Math.max(1, chaScore) };
+        if (a.name === "Pugno" && monkPunchUpgraded) return { ...a, damage: "1d8", info: "Colpo a mani nude · 1d8+DES (potenziato)" };
+        return a;
+      }),
       ...(petAction ? [petAction] : []),
+      ...(constructAction ? [constructAction] : []),
     ];
     const selectedItemKeys = Object.entries(pendingItemCounts)
       .flatMap(([k, n]) => Array(n).fill(k))
@@ -1525,6 +1596,7 @@ export default function Arena() {
       arenaBuffs:      charPreview.arenaBuffs || {},
       titles:          charPreview.arenaTitles || [],
       selectedPet:     petAction ? pendingPet : null,
+      selectedConstruct: constructAction ? pendingConstruct : null,
     };
 
     if (loadoutContext === "training") {
@@ -1577,6 +1649,7 @@ export default function Arena() {
     setPendingArmor(null);
     setPendingShield(null);
     setPendingPet(null);
+    setPendingConstruct(null);
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
     setLoadoutContext("tournament");
     setTrainingMatchId(null);
@@ -2460,7 +2533,14 @@ export default function Arena() {
   };
 
   // ── MASTER join helpers ────────────────────────────────────────────────────
-  const MASTER_JOIN_CLASSES = ["Fighter","Barbarian","Paladin","Ranger","Monk","Rogue","Wizard","Sorcerer","Warlock","Druid","Cleric","Bard"];
+  const MASTER_JOIN_CLASSES_BASE = ["Fighter","Barbarian","Paladin","Ranger","Monk","Rogue","Wizard","Sorcerer","Warlock","Druid","Cleric","Bard"];
+  const MASTER_JOIN_CLASSES = (() => {
+    const base = MASTER_JOIN_CLASSES_BASE.slice();
+    // Sblocca Artefice solo se il giocatore corrente lo ha acquistato in Bottega.
+    const buffs = charPreview?.arenaBuffs || {};
+    if ((buffs.classArtificer ?? 0) > 0 || isMaster) base.push("Artificer");
+    return base;
+  })();
 
   const getMasterDefaultStats = (cls) => {
     if (["Fighter","Barbarian","Paladin"].includes(cls))
@@ -2925,8 +3005,9 @@ export default function Arena() {
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
+    const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
-    const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus + defensiveAcBonus;
+    const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
     const isCrit   = d20 === 20; // nat 20 = critico per qualsiasi attacco (arma o spell)
     const isHit    = hitTotal >= defAC || isCrit;
     const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
@@ -2938,7 +3019,10 @@ export default function Arena() {
     // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
     const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
     const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
-    const damage   = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
+    // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
+    const golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rawDamage > 0;
+    const damage = golemHalved ? Math.floor(rawDamage / 2) : rawDamage;
 
     // Log breakdown
     const statPart       = !isSpellAction && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : '';
@@ -2991,17 +3075,20 @@ export default function Arena() {
       if (m.matchId !== matchId) return m;
       const rawPlayers = m.players.map(p => {
         if (p.id === targetId) {
+          // nextHitHalved: una volta consumato dal colpo che ha ricevuto il dimezzamento, lo togliamo.
+          const golemConsumed = golemHalved ? { nextHitHalved: false } : {};
           if (p.absorbDamageNext && damage > 0) {
             const tgtSnap = (arenaMeta.characterSnapshots || {})[targetId] || {};
             const maxHp = tgtSnap.stats?.maxHp ?? p.maxHp ?? p.hp;
             const heal  = Math.floor(damage / 2);
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
-            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           }
-          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
         }
         if (p.id === currentUser.uid) {
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), eagleDebuffTurns: Math.max(0, (p.eagleDebuffTurns ?? 0) - 1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: ((p.eagleDebuffTurns ?? 0) - 1) > 0 ? p.blindDebuff : false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
+          const newArmorForge = Math.max(0, (p.armorForgeTurns ?? 0) - 1);
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), eagleDebuffTurns: Math.max(0, (p.eagleDebuffTurns ?? 0) - 1), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: ((p.eagleDebuffTurns ?? 0) - 1) > 0 ? p.blindDebuff : false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -3334,6 +3421,103 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
+  // ── DRAGO DI SMERALDO (Ranger unique) — auto-hit + cura caster ──────────
+  const handlePetDrago = async (matchId, targetId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
+    const { total: dmg, rolls } = rollDmg(action.damage);
+    const { total: heal, rolls: healRolls } = rollDmg("1d6");
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+      const targetName = targetSnap?.name || "?";
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          const maxHp = p.maxHp || p.hp;
+          return { ...p, hp: Math.min(maxHp, p.hp + heal), actionUsesLeft: newUses };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🐉 Il Drago di Smeraldo di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni e cura il padrone 🎲(${healRolls})=${heal} PF!`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── COSTRUTTI (Artefice) ─────────────────────────────────────────────────
+  const handleConstructGolem = async (matchId, targetId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
+    const { total: dmg, rolls } = rollDmg(action.damage);
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+      const targetName = targetSnap?.name || "?";
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          // Imposta la difesa: il prossimo colpo subìto è dimezzato.
+          return { ...p, actionUsesLeft: newUses, nextHitHalved: true };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🤖 Il Golem di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni · prossimo colpo subìto sarà dimezzato.`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  const handleConstructSnake = async (matchId, targetId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
+    const { total: dmg, rolls } = rollDmg(action.damage);
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+      const targetName = targetSnap?.name || "?";
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, actionUsesLeft: newUses };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), poisonDoT: true, poisonDoTTurns: 2 };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🐍 Il Serpente di ${myName} morde ${targetName} 🎲(${rolls})=${dmg} danni · veleno 1d6 per 2 turni.`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── FORGIA ARMATURA (Artefice) — +2 CA per 2 turni ─────────────────────────
+  const handleArmorForge = async (matchId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const uses = p.actionUsesLeft || {};
+        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+        return { ...p, armorForgeTurns: 2, actionUsesLeft: newUses };
+      });
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `🛠 ${myName} forgia un'armatura sul campo! +2 CA per 2 turni.`] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
   // ── FONTE DI MAGIA (Sorcerer) — ripristina 2 slot magia ──────────────────
   const handleFonteConfirm = async (matchId, fonteAction, selectedSpellNames) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Stregone";
@@ -3424,7 +3608,9 @@ export default function Arena() {
       if (m.matchId !== matchId) return m;
       const rawPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
-        return { ...p, hp: Math.max(0, (p.hp ?? 0) - poisonDmg), poisonDoT: false };
+        const remainingDoT = Math.max(0, (p.poisonDoTTurns ?? 1) - 1);
+        const stillPoisoned = remainingDoT > 0;
+        return { ...p, hp: Math.max(0, (p.hp ?? 0) - poisonDmg), poisonDoT: stillPoisoned, poisonDoTTurns: remainingDoT };
       });
       const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
       const log = `☠ ${myName} subisce il veleno: ${poisonDmg} danni [🎲${poisonRolls}]!`;
@@ -4604,18 +4790,21 @@ export default function Arena() {
           {loadoutPhase === "selecting" && charPreview && (() => {
             const config       = getLoadoutConfig(charPreview.class);
             const isRanger     = isRangerClass((charPreview.class || "").toLowerCase());
+            const isArtificer  = isArtificerClass((charPreview.class || "").toLowerCase());
             const petReady     = !isRanger || !!pendingPet;
+            const constructReady = !isArtificer || !!pendingConstruct;
             const weaponsLeft  = config.maxWeapons - pendingWeapons.length;
             const spellsLeft   = config.maxSpells  - pendingSpells.length;
             const armorReady   = !!pendingArmor;
             const totalItems   = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
-            const isReady      = weaponsLeft === 0 && spellsLeft === 0 && armorReady && totalItems >= 1 && petReady;
+            const isReady      = weaponsLeft === 0 && spellsLeft === 0 && armorReady && totalItems >= 1 && petReady && constructReady;
             const btnParts     = [];
             if (weaponsLeft > 0) btnParts.push(`${weaponsLeft} arm${weaponsLeft === 1 ? "a" : "i"}`);
             if (spellsLeft  > 0) btnParts.push(`${spellsLeft} incantesim${spellsLeft === 1 ? "o" : "i"}`);
             if (!armorReady)     btnParts.push("1 armatura");
             if (totalItems < 1)  btnParts.push("1 oggetto");
             if (!petReady)       btnParts.push("1 compagno animale");
+            if (!constructReady) btnParts.push("1 costrutto");
             const btnText = isReady ? "Invia Iscrizione" : `Mancano: ${btnParts.join(" + ")}`;
 
             // Calcolo CA anteprima
@@ -4848,23 +5037,53 @@ export default function Arena() {
                 )}
 
                 {/* Compagno Animale (Ranger) */}
-                {isRanger && (
+                {isRanger && (() => {
+                  const ownedBuffs = charPreview.arenaBuffs || {};
+                  const availablePets = Object.values(RANGER_PETS).filter(pet => !pet.requiresBuff || (ownedBuffs[pet.requiresBuff] ?? 0) > 0);
+                  return (
+                    <>
+                      <div className="loadout-section-title">
+                        🐾 Compagno Animale — {pendingPet ? "1/1" : "0/1"}
+                      </div>
+                      <div className="loadout-grid">
+                        {availablePets.map(pet => {
+                          const isSelected = pendingPet === pet.key;
+                          return (
+                            <button
+                              key={pet.key}
+                              className={`loadout-item ${isSelected ? "selected" : ""}`}
+                              onClick={() => setPendingPet(isSelected ? null : pet.key)}
+                            >
+                              <span className="loadout-item-icon">{pet.icon}</span>
+                              <span className="loadout-item-name">{pet.name}</span>
+                              <span className="loadout-item-info">{pet.info}</span>
+                              {isSelected && <span className="loadout-check">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* Costrutto (Artefice) */}
+                {isArtificerClass((charPreview.class || "").toLowerCase()) && (
                   <>
                     <div className="loadout-section-title">
-                      🐾 Compagno Animale — {pendingPet ? "1/1" : "0/1"}
+                      🤖 Costrutto — {pendingConstruct ? "1/1" : "0/1"}
                     </div>
                     <div className="loadout-grid">
-                      {Object.values(RANGER_PETS).map(pet => {
-                        const isSelected = pendingPet === pet.key;
+                      {Object.values(ARTIFICER_CONSTRUCTS).map(c => {
+                        const isSelected = pendingConstruct === c.key;
                         return (
                           <button
-                            key={pet.key}
+                            key={c.key}
                             className={`loadout-item ${isSelected ? "selected" : ""}`}
-                            onClick={() => setPendingPet(isSelected ? null : pet.key)}
+                            onClick={() => setPendingConstruct(isSelected ? null : c.key)}
                           >
-                            <span className="loadout-item-icon">{pet.icon}</span>
-                            <span className="loadout-item-name">{pet.name}</span>
-                            <span className="loadout-item-info">{pet.info}</span>
+                            <span className="loadout-item-icon">{c.icon}</span>
+                            <span className="loadout-item-name">{c.name}</span>
+                            <span className="loadout-item-info">{c.info}</span>
                             {isSelected && <span className="loadout-check">✓</span>}
                           </button>
                         );
@@ -5856,6 +6075,74 @@ export default function Arena() {
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
                                 <span className="action-dice">{noUses ? "Esaurita" : `${action.damage} + 🙈`}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "pet_drago") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const blocked = noUses || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={noUses ? "Cariche esaurite" : "3d6+3 auto-hit + cura 1d6"}
+                                onClick={() => !blocked && handlePetDrago(m.matchId, chosenTargetId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{noUses ? "Esaurita" : `${action.damage} +💚`}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "construct_golem") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const blocked = noUses || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={noUses ? "Cariche esaurite" : "1d8+3 · prossimo colpo subìto dimezzato"}
+                                onClick={() => !blocked && handleConstructGolem(m.matchId, chosenTargetId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{noUses ? "Esaurito" : `${action.damage} 🛡½`}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "construct_snake") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const blocked = noUses || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={noUses ? "Cariche esaurite" : "1d6+3 + 1d6 veleno per 2 turni"}
+                                onClick={() => !blocked && handleConstructSnake(m.matchId, chosenTargetId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{noUses ? "Esaurito" : `${action.damage} ☠`}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "armor_forge") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const alreadyActive = (myPlayer?.armorForgeTurns ?? 0) > 0;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${noUses || alreadyActive ? "no-uses" : ""}`}
+                                disabled={noUses || alreadyActive}
+                                title={alreadyActive ? `Forgia attiva (${myPlayer.armorForgeTurns} turni)` : noUses ? "Cariche esaurite" : "+2 CA per 2 turni"}
+                                onClick={() => !noUses && !alreadyActive && handleArmorForge(m.matchId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.armorForgeTurns}t` : noUses ? "Esaurito" : "+2 CA · 2t"}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
