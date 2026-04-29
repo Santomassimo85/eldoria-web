@@ -26,6 +26,7 @@ import {
 import { useAuth } from "../AuthContext";
 import "./WorldBoss.css";
 import TimerDisplay from "../components/TimerDisplay";
+import { VfxLayer, pickEffectForAction } from "./WorldBossVfx";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const BOSS_SYSTEM_UID = "BOSS_MSG";
@@ -266,6 +267,7 @@ export default function WorldBoss() {
         damageRoll: `💥 INFLITTI ${finalDamage} DANNI!${shieldNote}`,
         description: `Tiro: ${detailString}`, uid: currentUser.uid,
         category: "Danno", timestamp: serverTimestamp(),
+        effect: "slash", effectTargets: ["boss"],
       });
       setDmgDiceCount(1);
       setDmgSelectedStat(null);
@@ -436,6 +438,7 @@ export default function WorldBoss() {
       hitRoll: `🎲 ${rollLabel} + bonus(${bonusToHit}) = ${hitTotal} `,
     };
     if (isAttack) {
+      const effectKey = pickEffectForAction(action);
       if (isCritical || hitTotal >= (boss.ac || 10)) {
         let formulaRaw = action.damage && action.damage !== "0" ? action.damage : "1d6";
         const isFinesseOrRanged = action.name?.toLowerCase().includes("rapier") || action.name?.toLowerCase().includes("arco") || action.name?.toLowerCase().includes("scimitar");
@@ -471,6 +474,8 @@ export default function WorldBoss() {
         await updateDoc(doc(db, "bosses", boss.id), { hp: newHp, shield: newShield });
         actionData.damageRoll = `${damageString} = 💥 ${totalDamage} DANNI!`;
         if (newShield < currentShield) actionData.damageRoll += " 🛡️ Scudo colpito!";
+        actionData.effect = effectKey;
+        actionData.effectTargets = ["boss"];
       } else {
         actionData.damageRoll = "🛡️ MANCATO! Il colpo non incide.";
       }
@@ -480,6 +485,8 @@ export default function WorldBoss() {
       });
       await endMyTurn();
     } else {
+      actionData.effect = pickEffectForAction(action);
+      actionData.effectTargets = [`player-${currentUser.uid}`];
       await addDoc(collection(db, "world_boss_chat"), actionData);
     }
   };
@@ -512,15 +519,17 @@ export default function WorldBoss() {
           "stats.hp": Math.max(0, currentHp - remainingDmg), "stats.shield": currentShield,
         });
       }
-      results.push({ name: p.name.split(" ")[0], hit: isHit, roll: `${hitTotal} (${d20}+${bossBonus}) vs CA ${playerCA}`, dmg: isHit ? damageDealt : 0 });
+      results.push({ id: targetId, name: p.name.split(" ")[0], hit: isHit, roll: `${hitTotal} (${d20}+${bossBonus}) vs CA ${playerCA}`, dmg: isHit ? damageDealt : 0 });
     }
     const hitTargets = results.filter((r) => r.hit).map((r) => r.name).join(", ");
     const missedTargets = results.filter((r) => !r.hit).map((r) => r.name).join(", ");
+    const hitTargetIds = results.filter((r) => r.hit).map((r) => `player-${r.id}`);
     await addDoc(collection(db, "world_boss_chat"), {
       uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
       actionName: action.name,
       description: `Il Boss scatena ${action.name} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
       masterDetails: results, timestamp: serverTimestamp(),
+      ...(hitTargetIds.length > 0 ? { effect: pickEffectForAction(action), effectTargets: hitTargetIds } : {}),
     });
     setSelectedTargets([]);
   };
@@ -633,6 +642,7 @@ export default function WorldBoss() {
 
   return (
     <div className="rpg-screen">
+      <VfxLayer messages={messages} />
 
       {/* ── ACTION BANNER ── */}
       <div className="rpg-action-banner">
@@ -663,7 +673,7 @@ export default function WorldBoss() {
           {!boss ? (
             <p className="rpg-no-boss-msg">Nessun boss attivo</p>
           ) : (
-            <div className={`rpg-boss-sprite-wrap ${isBossDefeated ? "dead" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver ? "boss-turn" : ""}`}>
+            <div data-vfx-target="boss" className={`rpg-boss-sprite-wrap ${isBossDefeated ? "dead" : ""} ${fightStarted && turnState.phase === "boss" && !isGameOver ? "boss-turn" : ""}`}>
               <img
                 className="rpg-boss-sprite"
                 src={(isBossDefeated && boss.deadImageUrl) ? boss.deadImageUrl : (boss.imageUrl || "/assets/default-boss.png")}
@@ -695,6 +705,7 @@ export default function WorldBoss() {
               return (
                 <div
                   key={p.id || i}
+                  data-vfx-target={`player-${p.id}`}
                   className={`rpg-char-wrap ${isDead ? "char-dead" : "char-alive"}`}
                   data-has-dead-sprite={isDead && p.deadSpriteUrl ? "1" : undefined}
                   style={{ position: "absolute", left: `${leftPct}%`, bottom: `${bottomPx}px` }}

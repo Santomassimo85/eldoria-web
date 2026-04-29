@@ -556,6 +556,13 @@ function consumeInvisibility(p) {
   return { invisible: false, invisibilityTurns: 0 };
 }
 
+// Eagle debuff: aquila del Ranger applica blindDebuff per 3 turni dell'avversario.
+// Il timer va decrementato quando il turno del giocatore colpito termina, qualunque azione abbia scelto.
+function tickEagleEnd(p) {
+  const newEagle = Math.max(0, (p.eagleDebuffTurns ?? 0) - 1);
+  return { eagleDebuffTurns: newEagle, blindDebuff: newEagle > 0 ? p.blindDebuff : false };
+}
+
 // Titoli cumulativi: legge l'array `arenaTitles` e fa fallback al legacy `arenaTitle` singolo.
 function getCharTitles(ch) {
   if (!ch) return [];
@@ -598,8 +605,17 @@ function getSpellMod(snap) {
   const key = getSpellcastingAbility(cls);
   return snap?.stats?.[key] ?? 0;
 }
-// CD TS = 8 + competenza(2) + spell mod
-function getSpellSaveDC(snap) { return 10 + getSpellMod(snap); }
+// CD TS = 10 + 3 + spell mod (caster) — formula uniforme per tutti gli incantesimi (incluso danno).
+function getSpellSaveDC(snap) { return 10 + 3 + getSpellMod(snap); }
+// Un incantesimo a danno usa il TS al posto del tiro per colpire.
+// Eccezioni: spell con `special` (control/heal/buff/etc.) e quelle marcate auto-hit (hitBonus ≥ 20, es. Dardo Incantato).
+function isSaveDamageSpell(action) {
+  if (!action || action.type !== "spell") return false;
+  if (action.special) return false;
+  if (!action.damage || action.damage === "—") return false;
+  if ((action.hitBonus ?? 0) >= 20) return false;
+  return true;
+}
 // Determina l'abilità del TS dalla descrizione (es. "TS SAG", "TS COS"). Default: SAG.
 function parseSpellSaveAbility(action) {
   const info = (action?.info || "").toUpperCase();
@@ -1188,6 +1204,15 @@ export default function Arena() {
 
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
 
+  // ── My arena buffs (sblocchi acquistati in Bottega) — usato per gating classi/buff anche prima della loadout. ──
+  const [myArenaBuffs, setMyArenaBuffs] = useState({});
+  useEffect(() => {
+    if (!currentUser) return;
+    return onSnapshot(doc(db, "characters", currentUser.uid), snap => {
+      if (snap.exists()) setMyArenaBuffs(snap.data().arenaBuffs || {});
+    });
+  }, [currentUser]);
+
   // ── Live sprite lookup ────────────────────────────────────────────────────
   const [charSprites, setCharSprites] = useState({});
   useEffect(() => {
@@ -1720,15 +1745,28 @@ export default function Arena() {
     if (!match) return;
     let updated = updater(match);
 
+    // Tick per-turn debuffs/buffs for the player whose turn just ended, regardless of action.
+    // Covers eagle disadvantage and Artefice's Forgia Armatura (+2 CA, 2 turni).
+    const tickEndForId = (players, endingPlayerId) =>
+      players.map(p => {
+        if (p.id !== endingPlayerId) return p;
+        return { ...p, ...tickEagleEnd(p), armorForgeTurns: Math.max(0, (p.armorForgeTurns ?? 0) - 1) };
+      });
+
+    if (match.turn && updated.turn && updated.turn !== match.turn) {
+      updated = { ...updated, players: tickEndForId(updated.players, match.turn) };
+    }
+
     // Auto-skip players under control (controlLostTurns > 0) — mirrors tournament behavior.
     let safety = 8;
     while (safety-- > 0 && updated.status !== "finished" && updated.turn) {
       const turnHolder = updated.players.find(p => p.id === updated.turn);
       if (!turnHolder || (turnHolder.controlLostTurns ?? 0) <= 0) break;
       const remaining = Math.max(0, (turnHolder.controlLostTurns ?? 0) - 1);
-      const newPlayers = updated.players.map(p =>
+      let newPlayers = updated.players.map(p =>
         p.id === turnHolder.id ? { ...p, controlLostTurns: remaining } : p
       );
+      newPlayers = tickEndForId(newPlayers, turnHolder.id);
       const skipLog = `🌀 ${turnHolder.name} è sotto controllo: turno saltato (${remaining} rimanenti).`;
       updated = {
         ...updated,
@@ -2176,6 +2214,121 @@ export default function Arena() {
     });
   };
 
+  const handleTrainingConstructGolem = async (matchId, targetId, action) => {
+    const match = trainingMatches.find(m => m.id === matchId);
+    if (!match) return;
+    const me = match.players.find(p => p.id === currentUser.uid);
+    const tgt = match.players.find(p => p.id === targetId);
+    const { total: dmg, rolls } = rollDmg(action.damage);
+    await applyTrainingUpdate(matchId, m => {
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, actionUsesLeft: newUses, nextHitHalved: true };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🤖 Il Golem di ${me?.name} colpisce ${tgt?.name} 🎲(${rolls})=${dmg} danni · prossimo colpo subìto sarà dimezzato.`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
+    });
+  };
+
+  const handleTrainingConstructSnake = async (matchId, targetId, action) => {
+    const match = trainingMatches.find(m => m.id === matchId);
+    if (!match) return;
+    const me = match.players.find(p => p.id === currentUser.uid);
+    const tgt = match.players.find(p => p.id === targetId);
+    const { total: dmg, rolls } = rollDmg(action.damage);
+    await applyTrainingUpdate(matchId, m => {
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, actionUsesLeft: newUses };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), poisonDoT: true, poisonDoTTurns: 2 };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🐍 Il Serpente di ${me?.name} morde ${tgt?.name} 🎲(${rolls})=${dmg} danni · veleno 1d6 per 2 turni.`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
+    });
+  };
+
+  const handleTrainingArmorForge = async (matchId, action) => {
+    const match = trainingMatches.find(m => m.id === matchId);
+    if (!match) return;
+    const me = match.players.find(p => p.id === currentUser.uid);
+    await applyTrainingUpdate(matchId, m => {
+      const players = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const uses = p.actionUsesLeft || {};
+        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+        return { ...p, armorForgeTurns: 2, actionUsesLeft: newUses };
+      });
+      const log = `🛠 ${me?.name} forgia un'armatura sul campo! +2 CA per 2 turni.`;
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
+    });
+  };
+
+  // Incantesimo a danno via TS: il bersaglio tira d20 + mod nella stessa abilità di lancio del caster.
+  // Pass = nessun danno · Fail = danno pieno (dado + spell mod del caster).
+  const handleTrainingSpellSave = async (matchId, targetId, action) => {
+    const match = trainingMatches.find(m => m.id === matchId);
+    if (!match) return;
+    const attP = match.players.find(p => p.id === currentUser.uid);
+    const defP = match.players.find(p => p.id === targetId);
+    if (!attP || !defP) return;
+    const attSnap = attP.snapshot || {};
+    const defSnap = defP.snapshot || {};
+    const ability = getSpellcastingAbility((attSnap.class || "").toLowerCase());
+    const dc      = getSpellSaveDC(attSnap);
+    const defMod  = defSnap.stats?.[ability] ?? 0;
+    const d20     = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${action.name}` });
+    const tsTotal = d20 + defMod;
+    const saves   = tsTotal >= dc;
+    const casterMod = attSnap.stats?.[ability] ?? 0;
+    const concentrationDmg = (attP.concentrationTurns ?? 0) > 0 ? 4 : 0;
+    const { total: baseDmg, rolls: diceRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(action.damage);
+    const damage  = saves ? 0 : Math.max(0, baseDmg + casterMod + concentrationDmg);
+    const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
+    const dmgPart = saves ? "" : ` 🎲(${diceRolls})${casterMod >= 0 ? "+" : ""}${casterMod} ${ability.toUpperCase()}${concentrationTag} = ${damage}`;
+    const log = saves
+      ? `✨ ${defP.name} resiste a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} ≥ ${dc}) — nessun danno.`
+      : `✨ ${attP.name} colpisce ${defP.name} con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} < ${dc})${dmgPart} — ${damage} danni.`;
+    await applyTrainingUpdate(matchId, m => {
+      const rawPlayers = m.players.map(p => {
+        if (p.id === targetId) {
+          if (saves) return { ...p, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
+          if (p.absorbDamageNext && damage > 0) {
+            const tgtMaxHp = p.snapshot?.stats?.maxHp ?? p.maxHp ?? p.hp;
+            const heal = Math.floor(damage / 2);
+            return { ...p, hp: Math.min(tgtMaxHp, p.hp + heal), absorbDamageNext: false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
+          }
+          return { ...p, hp: Math.max(0, p.hp - damage), ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
+        }
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
+          return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), concentrationTurns: Math.max(0,(p.concentrationTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, magicDetectActive: false, bardicInspirationActive: false, actionSurgeActive: false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1), actionUsesLeft: newUses };
+        }
+        return { ...p, ...consumeInvisibility(p) };
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
+      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
+    });
+  };
+
   const handleTrainingControlSpell = async (matchId, targetId, action) => {
     const match = trainingMatches.find(m => m.id === matchId);
     if (!match) return;
@@ -2240,6 +2393,12 @@ export default function Arena() {
     if (action.special === "pet_wolf")            { await handleTrainingPetWolf(matchId, targetId, action); return; }
     if (action.special === "pet_spider")          { await handleTrainingPetSpider(matchId, targetId, action); return; }
     if (action.special === "pet_eagle")           { await handleTrainingPetEagle(matchId, targetId, action); return; }
+    if (action.special === "construct_golem")     { await handleTrainingConstructGolem(matchId, targetId, action); return; }
+    if (action.special === "construct_snake")     { await handleTrainingConstructSnake(matchId, targetId, action); return; }
+    if (action.special === "armor_forge")         { await handleTrainingArmorForge(matchId, action); return; }
+
+    // Incantesimi a danno → TS al posto del tiro per colpire (uniforme per tutte le classi).
+    if (isSaveDamageSpell(action))                { await handleTrainingSpellSave(matchId, targetId, action); return; }
 
     // ── Smite Divino ─────────────────────────────────────────────────────────
     if (action.special === "smite") {
@@ -2407,7 +2566,8 @@ export default function Arena() {
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonusVal + inspBonus + magicDetB + hunterMarkB + blindPen;
     const shieldLost    = defSnap.hasShield && defP.shieldSuppressed;
     const shieldAcBonus = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-    const defAC  = (defSnap.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldAcBonus + (defP.defensiveBonus ?? 0);
+    const armorForgeBonusT = (defP.armorForgeTurns ?? 0) > 0 ? 2 : 0;
+    const defAC  = (defSnap.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldAcBonus + armorForgeBonusT + (defP.defensiveBonus ?? 0);
     const isCrit = d20 === 20; // nat 20 = critico per qualsiasi attacco (arma o spell)
     const isHit  = hitTotal >= defAC || isCrit;
     const isBlind = action.special === "blind_debuff";
@@ -2461,8 +2621,7 @@ export default function Arena() {
           return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlind && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
         }
         if (p.id === currentUser.uid) {
-          const newEagleT = Math.max(0, (p.eagleDebuffTurns ?? 0) - 1);
-          const up = { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), concentrationTurns: Math.max(0,(p.concentrationTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), eagleDebuffTurns: newEagleT, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: newEagleT > 0 ? p.blindDebuff : false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
+          const up = { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), concentrationTurns: Math.max(0,(p.concentrationTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
           if (action.maxUses !== undefined) { const prev = p.actionUsesLeft ?? {}; up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) }; }
           return up;
         }
@@ -2536,9 +2695,9 @@ export default function Arena() {
   const MASTER_JOIN_CLASSES_BASE = ["Fighter","Barbarian","Paladin","Ranger","Monk","Rogue","Wizard","Sorcerer","Warlock","Druid","Cleric","Bard"];
   const MASTER_JOIN_CLASSES = (() => {
     const base = MASTER_JOIN_CLASSES_BASE.slice();
-    // Sblocca Artefice solo se il giocatore corrente lo ha acquistato in Bottega.
-    const buffs = charPreview?.arenaBuffs || {};
-    if ((buffs.classArtificer ?? 0) > 0 || isMaster) base.push("Artificer");
+    // Sblocca Artefice solo se il giocatore corrente lo ha acquistato in Bottega (vale anche per il master).
+    const buffs = charPreview?.arenaBuffs ?? myArenaBuffs ?? {};
+    if ((buffs.classArtificer ?? 0) > 0) base.push("Artificer");
     return base;
   })();
 
@@ -2562,9 +2721,14 @@ export default function Arena() {
     if (!masterJoinName.trim() || !masterJoinClass) return;
     const stats = getMasterDefaultStats(masterJoinClass);
     let classLevels = {};
+    let arenaBuffs = {};
     try {
       const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
-      if (charSnap.exists()) classLevels = charSnap.data().classLevels || {};
+      if (charSnap.exists()) {
+        const d = charSnap.data();
+        classLevels = d.classLevels || {};
+        arenaBuffs = d.arenaBuffs || {};
+      }
     } catch { /* ignore */ }
     setCharPreview({
       name:        masterJoinName.trim(),
@@ -2572,6 +2736,7 @@ export default function Arena() {
       class:       masterJoinClass,
       stats,
       classLevels,
+      arenaBuffs,
       rolledHp:    null,
       hpRerollCount: 0,
     });
@@ -2766,7 +2931,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
           }
           return p;
         });
@@ -2840,7 +3005,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 3)) - 1) };
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
           }
           return p;
         });
@@ -2916,7 +3081,7 @@ export default function Arena() {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, pendingDexSave: true };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0 };
           return p;
         });
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
@@ -2941,7 +3106,7 @@ export default function Arena() {
         if (m.matchId !== matchId) return m;
         const rawPlayers = m.players.map(p => {
           if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - damage), pendingConSave: true };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), defensiveBonus: 0 };
+          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0 };
           return p;
         });
         const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
@@ -2967,6 +3132,9 @@ export default function Arena() {
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
     }
+
+    // ── Incantesimo a danno → TS al posto del tiro per colpire ───────
+    if (isSaveDamageSpell(action)) { await handleSpellSave(matchId, targetId, action); return; }
 
     // ── Attacco normale ───────────────────────────────────────────────
     const attackerClassLower = (arenaMeta.characterSnapshots?.[currentUser.uid]?.class || "").toLowerCase();
@@ -3088,7 +3256,7 @@ export default function Arena() {
         }
         if (p.id === currentUser.uid) {
           const newArmorForge = Math.max(0, (p.armorForgeTurns ?? 0) - 1);
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), eagleDebuffTurns: Math.max(0, (p.eagleDebuffTurns ?? 0) - 1), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, blindDebuff: ((p.eagleDebuffTurns ?? 0) - 1) > 0 ? p.blindDebuff : false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -3152,7 +3320,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3, defensiveBonus: 0 } : p
+        p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3, defensiveBonus: 0, ...tickEagleEnd(p) } : p
       );
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: shieldExpiry, logs: [...m.logs, log] };
     });
@@ -3173,7 +3341,7 @@ export default function Arena() {
         const maxHp = mySnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
+        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
       });
       const log = `💨 ${myName} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -3215,7 +3383,7 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, magicDetectActive: bonusVal, actionUsesLeft: newUses };
+        return { ...p, magicDetectActive: bonusVal, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `🔮 ${myName} invoca ${action.name}! (+${bonusVal} al tiro per colpire del prossimo turno)`] };
     });
@@ -3277,7 +3445,7 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, invisible: true, invisibilityTurns: duration, actionUsesLeft: newUses };
+        return { ...p, invisible: true, invisibilityTurns: duration, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
       const turnsLog = duration > 1 ? `${duration} turni` : "il prossimo turno";
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `👻 ${myName} svanisce nell'ombra! Il nemico non può attaccare per ${turnsLog}.`] };
@@ -3338,7 +3506,7 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, hunterMarkTurns: 3, actionUsesLeft: newUses };
+        return { ...p, hunterMarkTurns: 3, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
@@ -3385,7 +3553,7 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses };
+          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, controlLostTurns: 2 };
         return p;
@@ -3407,7 +3575,7 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses };
+          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), blindDebuff: true, eagleDebuffTurns: 3 };
         return p;
@@ -3435,7 +3603,7 @@ export default function Arena() {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           const maxHp = p.maxHp || p.hp;
-          return { ...p, hp: Math.min(maxHp, p.hp + heal), actionUsesLeft: newUses };
+          return { ...p, hp: Math.min(maxHp, p.hp + heal), ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
         return p;
@@ -3462,7 +3630,7 @@ export default function Arena() {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           // Imposta la difesa: il prossimo colpo subìto è dimezzato.
-          return { ...p, actionUsesLeft: newUses, nextHitHalved: true };
+          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses, nextHitHalved: true };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
         return p;
@@ -3487,7 +3655,7 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses };
+          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), poisonDoT: true, poisonDoTTurns: 2 };
         return p;
@@ -3511,7 +3679,7 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, armorForgeTurns: 2, actionUsesLeft: newUses };
+        return { ...p, armorForgeTurns: 2, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `🛠 ${myName} forgia un'armatura sul campo! +2 CA per 2 turni.`] };
     });
@@ -3537,7 +3705,7 @@ export default function Arena() {
             uses[spellName] = Math.min(spell.maxUses, (uses[spellName] ?? spell.maxUses) + 1);
           }
         });
-        return { ...p, actionUsesLeft: uses };
+        return { ...p, ...tickEagleEnd(p), actionUsesLeft: uses };
       });
       const log = `🔮 ${myName} attinge alla Fonte di Magia! Ripristina: ${selectedSpellNames.join(", ")}`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -3565,7 +3733,7 @@ export default function Arena() {
             uses[a.name] = a.maxUses;
           }
         });
-        return { ...p, actionUsesLeft: uses };
+        return { ...p, ...tickEagleEnd(p), actionUsesLeft: uses };
       });
       const log = `🌀 ${myName} usa Astuzia Magica! Salta il turno e ripristina tutti gli slot magia.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -3588,7 +3756,7 @@ export default function Arena() {
           const spell = (mySnap?.selectedActions || []).find(a => a.name === spellName);
           if (spell?.maxUses) uses[spellName] = Math.min(spell.maxUses, (uses[spellName] ?? spell.maxUses) + 1);
         });
-        return { ...p, actionUsesLeft: uses };
+        return { ...p, ...tickEagleEnd(p), actionUsesLeft: uses };
       });
       const restored = [...lv1Names, ...lv2Names].join(", ");
       const log = `📖 ${myName} usa Recupero Arcano! Ripristina: ${restored}`;
@@ -3630,7 +3798,7 @@ export default function Arena() {
         const maxHp = p.maxHp || p.hp;
         const newHp = Math.min(maxHp, (p.hp || 0) + healAmt);
         const newPool = Math.max(0, (p.layOfHandsPool ?? 0) - healAmt);
-        return { ...p, hp: newHp, layOfHandsPool: newPool };
+        return { ...p, hp: newHp, layOfHandsPool: newPool, ...tickEagleEnd(p) };
       });
       const log = `🙏 ${myName} usa Lay of Hands → cura sé stesso di ${healAmt} HP`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -3651,7 +3819,7 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-        return { ...p, aidBuff: bonusVal, actionUsesLeft: newUses };
+        return { ...p, aidBuff: bonusVal, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
       const log = `🤝 ${myName} si concentra — +${bonusVal} al prossimo tiro per colpire!`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -3669,7 +3837,7 @@ export default function Arena() {
       const remaining = Math.max(0, (meBefore?.controlLostTurns ?? 0) - 1);
       const players = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, bonusActionUsed: false }
+          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) }
           : p
       );
       const log = `🌀 ${myName} è sotto controllo e perde il turno (${remaining} turni rimanenti).`;
@@ -3684,7 +3852,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, bonusActionUsed: false } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) } : p
       );
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} termina il turno volontariamente.`] };
@@ -3760,7 +3928,7 @@ export default function Arena() {
           const newHp  = Math.min(maxHp, (p.hp || 0) + healAmt);
           const uses   = (p.actionUsesLeft || {});
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-          return { ...p, hp: newHp, actionUsesLeft: newUses };
+          return { ...p, hp: newHp, ...tickEagleEnd(p), actionUsesLeft: newUses };
         });
         const nextIndex = (m.players.findIndex(p => p.id === m.turn) + 1) % m.players.length;
         const log = `${myName} lancia ${action.icon} ${action.name} → cura sé stesso di ${healAmt} HP 🎲(${healRolls}${modPart})`;
@@ -3768,6 +3936,92 @@ export default function Arena() {
       });
       tx.update(ref, { matches });
     });
+  };
+
+  // ── INCANTESIMO A DANNO via TS ─────────────────────────────────────────────
+  // Sostituisce il tiro per colpire degli incantesimi: il bersaglio tira d20 + mod
+  // nella stessa abilità di lancio del caster (INT/SAG/CAR a seconda della classe).
+  // Pass = nessun danno · Fail = danno pieno (dado + spell mod del caster).
+  const handleSpellSave = async (matchId, targetId, action) => {
+    const snapshots    = arenaMeta.characterSnapshots || {};
+    const attackerSnap = snapshots[currentUser.uid];
+    const defenderSnap = snapshots[targetId];
+    const attName = attackerSnap?.name || "?";
+    const defName = defenderSnap?.name || "?";
+
+    // 1 moneta al primo attacco del giocatore in questo match
+    const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
+    if (!_alreadyAwarded) await awardArenaCoins(currentUser.uid, 1);
+
+    const ability = getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
+    const dc      = getSpellSaveDC(attackerSnap);
+    const defMod  = defenderSnap?.stats?.[ability] ?? 0;
+    const d20     = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${action.name}` });
+    const tsTotal = d20 + defMod;
+    const saves   = tsTotal >= dc;
+    const casterMod = attackerSnap?.stats?.[ability] ?? 0;
+    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
+    const concentrationDmg = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 4 : 0;
+    const { total: baseDmg, rolls: diceRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(action.damage);
+    const damage = saves ? 0 : Math.max(0, baseDmg + casterMod + concentrationDmg);
+    const modSign = casterMod >= 0 ? "+" : "";
+    const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
+    const dmgPart = saves ? "" : ` 🎲(${diceRolls})${modSign}${casterMod} ${ability.toUpperCase()}${concentrationTag} = ${damage}`;
+    const log = {
+      pub: saves
+        ? `✨ ${defName} resiste a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} ≥ ${dc}) — nessun danno.`
+        : `✨ ${attName} colpisce ${defName} con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} < ${dc})${dmgPart} — ${damage} danni.`,
+      att: saves
+        ? `✨ ${defName} resiste a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} ≥ CD ${dc}).`
+        : `✨ Colpisci ${defName} con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} < CD ${dc})${dmgPart} — ${damage} danni.`,
+      def: saves
+        ? `✨ Resisti a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} ≥ CD ${dc}).`
+        : `✨ ${attName} ti colpisce con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} < CD ${dc}) — ${damage} danni.`,
+      attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
+    };
+
+    const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const rawPlayers = m.players.map(p => {
+        if (p.id === targetId) {
+          if (saves) return { ...p, ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          if (p.absorbDamageNext && damage > 0) {
+            const tgtMaxHp = defenderSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
+            const heal = Math.floor(damage / 2);
+            return { ...p, hp: Math.min(tgtMaxHp, p.hp + heal), absorbDamageNext: false, ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          }
+          return { ...p, hp: Math.max(0, p.hp - damage), ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+        }
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
+          return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+        }
+        return { ...p, ...consumeInvisibility(p) };
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
+    });
+
+    await awardRoundCoins(updatedMatches);
+    await resolveBetsForFinishedMatches(updatedMatches);
+    await recordMatchHistory(updatedMatches);
+    const allDone = updatedMatches.every(m => m.status === "finished");
+    const cr = arenaMeta.currentRound || 1;
+    const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
+    if (allDone && winners.length === 1) {
+      const champSnap = snapshots[winners[0]] || {};
+      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: winners[0], phase: "finished" });
+      return;
+    }
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
   // ── CONTROLLO ─────────────────────────────────────────────────────────────
@@ -3789,7 +4043,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses    = (p.actionUsesLeft || {});
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-            return { ...p, actionUsesLeft: newUses };
+            return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
           }
           if (p.id === targetId) return { ...p, pendingControlSave: action.special === "corona_pazzia" ? "corona_pazzia" : true, pendingControlDC: ctrlDC, pendingControlSaveAbility: saveAbility };
           return p;
@@ -4081,10 +4335,9 @@ export default function Arena() {
           if (p.id !== currentTurnId) return p;
           // Sotto controllo: il timer scade → decrementa il contatore invece di applicare la posizione difensiva.
           const wasControlled = (p.controlLostTurns ?? 0) > 0;
-          const newEagle = Math.max(0, (p.eagleDebuffTurns ?? 0) - 1);
           let up = wasControlled
-            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, eagleDebuffTurns: newEagle, blindDebuff: newEagle > 0 ? p.blindDebuff : false, ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false }
-            : { ...p, defensiveBonus: 1, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, eagleDebuffTurns: newEagle, blindDebuff: newEagle > 0 ? p.blindDebuff : false, ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false };
+            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false }
+            : { ...p, defensiveBonus: 1, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false };
           if (wasControlled) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           if (hasPendingDex) {
             const d20 = Math.floor(Math.random() * 20) + 1;
@@ -6828,6 +7081,9 @@ export default function Arena() {
                             if (action.special === "invisibility") { const act = !!myPlayer?.invisible; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingInvisibility(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attiva":noU?"Esaurita":"1 turno"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
                             if (action.special === "aid_buff") { const act = !!myPlayer?.aidBuff; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingAidBuff(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attivo":noU?"Esaurito":"+4 hit"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
                             if (action.special === "heal") return <button key={action.name} className={`btn-action spell heal ${noU?"no-uses":""}`} disabled={noU} onClick={() => !noU && handleTrainingHealSpell(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`+${action.damage} HP`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>;
+                            if (action.special === "construct_golem") { const blocked = noU || !oppId; return <button key={action.name} className={`btn-action skill ${blocked?"no-uses":""}`} disabled={blocked} title={noU?"Cariche esaurite":"1d8+3 · prossimo colpo subìto dimezzato"} onClick={() => !blocked && handleTrainingConstructGolem(m.id, oppId, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`${action.damage} 🛡½`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
+                            if (action.special === "construct_snake") { const blocked = noU || !oppId; return <button key={action.name} className={`btn-action skill ${blocked?"no-uses":""}`} disabled={blocked} title={noU?"Cariche esaurite":"1d6+3 + 1d6 veleno per 2 turni"} onClick={() => !blocked && handleTrainingConstructSnake(m.id, oppId, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`${action.damage} ☠`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
+                            if (action.special === "armor_forge") { const act = (myPlayer?.armorForgeTurns ?? 0) > 0; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} title={act?`Forgia attiva (${myPlayer.armorForgeTurns} turni)`:noU?"Cariche esaurite":"+2 CA per 2 turni"} onClick={() => !noU && !act && handleTrainingArmorForge(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?`✓ ${myPlayer.armorForgeTurns}t`:noU?"Esaurito":"+2 CA · 2t"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
                             const isWeap  = action.type === "weapon";
                             const isEquip = !isWeap || wildShapeForm || equippedNames.includes(action.name);
                             const isOff   = action.special !== "shield_buff" && action.special !== "aid_buff";
