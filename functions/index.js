@@ -140,7 +140,7 @@ exports.notifyMasterOnBid = onDocumentUpdated('items/{itemId}', async (event) =>
 
         const mailOptions = {
             to: DM_EMAIL,
-            from: `"Mercato Nero di Eldoria" <${gmailEmail}>`,
+            from: `"Mercato Nero di Exanthia" <${gmailEmail}>`,
             subject: `💰 Nuova Offerta al Mercato Nero: ${itemName}`,
             html: `
                 <h2>Allarme Mercato Nero!</h2>
@@ -186,18 +186,20 @@ async function sendPush({ uids, title, body, url, tag }) {
   if (tokens.length === 0) return;
 
   const messaging = admin.messaging();
-  const data = { url: url || "/" };
+  const data = {
+    url: url || "/",
+    title: title || "",
+    body: body || "",
+  };
   if (tag) data.tag = tag;
 
   let res;
   try {
     res = await messaging.sendEachForMulticast({
       tokens,
-      notification: { title, body },
       data,
       webpush: {
         fcmOptions: { link: url || "/" },
-        notification: { icon: "/logo192.png", badge: "/logo192.png", tag: tag || undefined },
       },
     });
   } catch (err) {
@@ -239,7 +241,7 @@ exports.pushOnNotification = onDocumentCreated('notifications/{id}', async (even
   if (!data?.userId) return;
   await sendPush({
     uids: [data.userId],
-    title: data.title || "Eldoria",
+    title: data.title || "Exanthia",
     body: data.message || "",
     url: "/notifications",
     tag: `notif-${event.params.id}`,
@@ -285,7 +287,7 @@ exports.pushOnBossUpdate = onDocumentUpdated('bosses/{id}', async (event) => {
     await sendPush({
       uids,
       title: "🏆 Boss Sconfitto!",
-      body: `${after.name || "Il boss"} è caduto. Vittoria per gli eroi di Eldoria!`,
+      body: `${after.name || "Il boss"} è caduto. Vittoria per gli eroi di Exanthia!`,
       url: "/world-boss",
       tag: `boss-death-${event.params.id}`,
     });

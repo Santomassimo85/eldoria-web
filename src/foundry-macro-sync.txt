@@ -1,5 +1,5 @@
 // ================================================================
-// MACRO FOUNDRY: Sincronizza Personaggio → Eldoria Web
+// MACRO FOUNDRY: Sincronizza Personaggio → Exanthia Web
 // ================================================================
 // ISTRUZIONI:
 //   1. Seleziona un token sulla mappa

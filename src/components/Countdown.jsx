@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Componente Countdown dinamico per i party di Eldoria.
+ * Componente Countdown dinamico per i party di Exanthia.
  * @param {string} targetDate - Stringa data formato ISO (es. 2026-02-20T21:00:00)
  * @param {string} partyName - Nome del gruppo (Amea, Lac, Enox)
  */
@@ -74,7 +74,7 @@ const Countdown = ({ targetDate, partyName }) => {
                 </div>
             )}
 
-            {/* Il bottone usa sempre il link fisso Eldoria 3.0 */}
+            {/* Il bottone usa sempre il link fisso Exanthia 3.0 */}
             <button className="roll20-btn" style={{ marginTop: "20px" }}>
                 <a 
                     href={FIXED_ROLL20_LINK} 

@@ -1,23 +1,23 @@
 {
   "id": "/",
-  "short_name": "Eldoria",
-  "name": "Eldoria: Archivio Geomantico",
-  "description": "L'archivio ufficiale delle cronache e della geomantia di Eldoria.",
+  "short_name": "Exanthia",
+  "name": "Exanthia: Archivio Geomantico",
+  "description": "L'archivio ufficiale delle cronache e della geomantia di Exanthia.",
   "icons": [
     {
-      "src": "/logo192.png",
+      "src": "/logo192.png?v=2",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/logo192.png",
+      "src": "/logo192.png?v=2",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/logo512.png",
+      "src": "/logo512.png?v=2",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
@@ -29,14 +29,14 @@
     "sizes": "402x883",
     "type": "image/png",
     "form_factor": "narrow",
-    "label": "Eldoria Mobile"
+    "label": "Exanthia Mobile"
   },
   {
     "src": "/screenshot-desktop.png",
     "sizes": "1614x1165",
     "type": "image/png",
     "form_factor": "wide",
-    "label": "Eldoria Desktop"
+    "label": "Exanthia Desktop"
   }
 ],
   "start_url": "/",

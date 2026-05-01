@@ -103,7 +103,7 @@ function PartySection({ party }) {
         </div>
 
         <div className="party-banner-text">
-          <p className="party-banner-tag">Casata di Eldoria · {party.id}</p>
+          <p className="party-banner-tag">Casata di Exanthia · {party.id}</p>
           <h2 className="party-banner-name">{party.name}</h2>
           <p className="party-banner-motto">«{party.motto}»</p>
         </div>
@@ -149,7 +149,7 @@ export default function Party() {
       {/* ── HERO HEADER ── */}
       <div className="party-header">
         <p className="party-eyebrow">Sangue · Inchiostro · Avventura</p>
-        <h1 className="party-title">Le Compagnie di Eldoria</h1>
+        <h1 className="party-title">Le Compagnie di Exanthia</h1>
         <div className="party-divider">
           <span className="party-divider-icon">✦</span>
         </div>

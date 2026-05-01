@@ -60,7 +60,7 @@ export default function SendNotification() {
 
   return (
     <div className="admin-notif-container">
-      <h2>Invia Notifica ad Eldoria</h2>
+      <h2>Invia Notifica ad Exanthia</h2>
       <form onSubmit={handleSend}>
         <div className="player-selector">
           <p>Seleziona i destinatari:</p>

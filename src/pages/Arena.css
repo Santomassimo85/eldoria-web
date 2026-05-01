@@ -640,10 +640,48 @@
 
 .master-title-editor {
   margin-top: 18px;
-  padding: 14px 16px;
+  padding: 0;
   background: rgba(255, 248, 220, 0.55);
   border: 1px solid rgba(181, 154, 77, 0.5);
   border-radius: 10px;
+  overflow: hidden;
+}
+.master-title-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: linear-gradient(135deg, rgba(201, 162, 39, 0.18), rgba(181, 154, 77, 0.1));
+  color: #6b4f12;
+  font-family: var(--font-title, serif);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: left;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.master-title-toggle:hover {
+  background: linear-gradient(135deg, rgba(201, 162, 39, 0.28), rgba(181, 154, 77, 0.18));
+}
+.master-title-toggle[aria-expanded="true"] {
+  border-bottom-color: rgba(181, 154, 77, 0.4);
+}
+.master-title-hint {
+  margin-left: auto;
+  font-size: 0.74rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #8a6a2a;
+  opacity: 0.7;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.master-title-body {
+  padding: 14px 16px;
 }
 .title-filter-input {
   width: 100%;
@@ -4592,4 +4630,34 @@
   .btn-fun-create { width: 100%; }
   .fun-challenge-row { flex-wrap: wrap; }
   .fun-challenge-info { flex-basis: 100%; }
+}
+
+/* ── Statistiche Classi Arena Libera (variante blu) ─────────────────────── */
+.class-stats-section.fun-class-stats {
+  border-left: 4px solid #2e86ab;
+}
+.class-stats-toggle.fun {
+  color: #1f5d7a;
+}
+.class-stats-toggle.fun:hover {
+  color: #2e86ab;
+}
+.class-stats-bar-fill.usage.fun {
+  background: linear-gradient(90deg, #6fa8c8, #2e86ab);
+}
+.class-stats-bar-fill.winrate.fun {
+  background: linear-gradient(90deg, #1f5d7a, #133e54);
+}
+.class-stats-live-badge.fun {
+  background: rgba(46, 134, 171, 0.15);
+  color: #1f5d7a;
+  border-color: #2e86ab;
+}
+.class-stats-sync-btn.fun {
+  background: linear-gradient(135deg, #2e86ab, #1f5d7a);
+  color: #fff;
+  border-color: #1f5d7a;
+}
+.class-stats-sync-btn.fun:hover:not(:disabled) {
+  filter: brightness(1.1);
 }

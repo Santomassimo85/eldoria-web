@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 /**
  * ChatBot Component
  * A fantasy-themed chatbot interface that communicates with Google's Gemini API.
- * The bot is styled as "The Sage of Eldoria" and responds to D&D 5e related questions.
+ * The bot is styled as "The Sage of Exanthia" and responds to D&D 5e related questions.
  */
 export default function ChatBot() {
   // State for user input field
@@ -11,7 +11,7 @@ export default function ChatBot() {
 
   // State for chat conversation history
   const [chatHistory, setChatHistory] = useState([
-    { role: "model", text: "Salute, avventuriero. I tomi di Eldoria sono aperti per te." }
+    { role: "model", text: "Salute, avventuriero. I tomi di Exanthia sono aperti per te." }
   ]);
 
   // State for API request loading indicator
@@ -56,7 +56,7 @@ export default function ChatBot() {
           },
           body: JSON.stringify({
             contents: [{
-              parts: [{ text: `Sei il Sapiente di Eldoria, un esperto di D&D 5e. Rispondi in modo epico e conciso ma soprattutto organizzato (utilizza liste dove serve e rendi il testo leggibile, utilizza anche formattazione per rendere tutto piú carino).
+              parts: [{ text: `Sei il Sapiente di Exanthia, un esperto di D&D 5e. Rispondi in modo epico e conciso ma soprattutto organizzato (utilizza liste dove serve e rendi il testo leggibile, utilizza anche formattazione per rendere tutto piú carino).
               
               Domanda dell'avventuriero: ${userText}` }]
             }]
@@ -95,7 +95,7 @@ export default function ChatBot() {
         <div style={{ width: "320px", height: "450px", background: "#ffffff", fontSize: "0.9rem", border: "2px solid var(--gold)", borderRadius: "10px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Header with title and close button */}
           <div style={{ padding: "10px", background: "var(--gold)", color: "black", fontWeight: "bold", display: "flex", justifyContent: "space-between" }}>
-            <span>📜 Sapiente di Eldoria</span>
+            <span>📜 Sapiente di Exanthia</span>
             <button onClick={() => setIsOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>✕</button>
           </div>
 

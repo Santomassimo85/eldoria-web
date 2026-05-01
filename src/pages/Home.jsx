@@ -304,11 +304,11 @@ export default function Home() {
           (luce) e Ouh (buio) secondo le antiche scritture, e durante una
           sanguinosa battaglia dal sangue di Ny si formó il piano celestiale e
           dal sangue di Ouh nacque il piano infernale, mentre dalle loro carni
-          si formó negli anni il mondo di Eldoria. <br /> <br /> 
+          si formó negli anni il mondo di Exanthia. <br /> <br />
 
           Si vocifera che le prime divinitá si formarono dalle lacrime dei due
           gemelli cadute durante il feroce combattimento, ma queste sono solo
-          leggende per quel che ne sappiamo. Il mondo di Eldoria era un luogo di
+          leggende per quel che ne sappiamo. Il mondo di Exanthia era un luogo di
           pace dove le prime tribú regnavano in armonia ed equilibrio.<br /> 
           Iniziarono a formarsi i primi culti per Ny e Ouh che venneró presto
           rimpiazzati dai nuovi Dei Antico Pantheon. <br /> Per anni l´equilibrio
@@ -337,7 +337,7 @@ export default function Home() {
           potere incredibile anche in piccole quantitá. Il mondo era formato da
           un unico territorio, ricco e prospero di vita, ma la prima guerra fu
           cosí forte e violenta da distruggere parte del mondo e dividere la
-          terra in piú parti, dando vita a Eldoria come la conoscete.<br /> <br /> 
+          terra in piú parti, dando vita a Exanthia come la conoscete.<br /> <br />
            La
           ferocia delle forze del male fu terribile ma si crearono alleanze e
           fazioni per combattere questo male, tra quelle riportate dall´antico

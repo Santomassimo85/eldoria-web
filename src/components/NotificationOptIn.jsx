@@ -56,7 +56,7 @@ export default function NotificationOptIn() {
         // Foreground messages — show a small in-page toast via the SW so
         // the OS notification is consistent whether app is open or not.
         onMessage(messaging, (payload) => {
-          const title = payload?.notification?.title || payload?.data?.title || "Eldoria";
+          const title = payload?.notification?.title || payload?.data?.title || "Exanthia";
           const body  = payload?.notification?.body  || payload?.data?.body  || "";
           const url   = payload?.data?.url || "/";
           if (reg && reg.showNotification) {

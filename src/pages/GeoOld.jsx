@@ -4,7 +4,7 @@ import ToggleSection from "./ToggleSection";
  * Geo Component
  * 
  * Renders the Geomantic Archive page displaying detailed information
- * about major cities and locations in the world of Eldoria.
+ * about major cities and locations in the world of Exanthia.
  * 
  * Each city section is expandable using the ToggleSection component and includes:
  * - Descriptive narrative text with historical context
@@ -41,7 +41,7 @@ export default function Geo() {
           Tirreno, le cui acque scendono dalle montagne come lacrime
           primordiali. <br />
           Narrano le saghe e gli antichi tomi che questo fiume fu il primo alito
-          vitale di Eldoria, nato dal dolore e dal sacrificio dei giganti caduti
+          vitale di Exanthia, nato dal dolore e dal sacrificio dei giganti caduti
           nell'eclatante scontro tra Ny e Ouh, le divinità della luce e
           dell'oscurità che forgiarono il mondo. Un'aura di sacralità e forza
           ancestrale pervade le sue sponde. <br />
@@ -446,7 +446,7 @@ export default function Geo() {
           />
           <br />
           <span className="start">S</span>ituato nel continente più a nord di
-          Eldoria, tra le nebbie eterne e le gelide correnti del Mare Argenteo,
+          Exanthia, tra le nebbie eterne e le gelide correnti del Mare Argenteo,
           sorge il leggendario Golden Castle, la fortezza che mai conobbe
           sconfitta. Le sue mura dorate riflettono la luce anche quando il sole
           non sorge, e secondo le cronache più antiche, ciò avviene grazie alla

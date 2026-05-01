@@ -140,7 +140,7 @@ export default function GlobalChat() {
       {/* Chat window */}
       <div className={`global-chat-window ${isOpen ? "visible" : ""}`}>
         <div className="chat-header">
-          <span className="chat-header-title">Locanda di Eldoria</span>
+          <span className="chat-header-title">Locanda di Exanthia</span>
           {isMaster && (
             <button className="master-cleanup-btn" onClick={handleManualCleanup} title="Ripulisci chat">🗑</button>
           )}

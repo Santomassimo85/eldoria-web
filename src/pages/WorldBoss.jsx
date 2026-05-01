@@ -612,6 +612,8 @@ export default function WorldBoss() {
     if (!charData?.actions) return {};
     return charData.actions.reduce((acc, action) => {
       const cat = action.category || "Altro";
+      // Esclude la categoria "Abilità / Skill" dal pannello azioni del WorldBoss.
+      if (/abilit|skill/i.test(cat)) return acc;
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(action);
       return acc;
@@ -650,7 +652,7 @@ export default function WorldBoss() {
       <div className="rpg-action-banner">
         <span className="rpg-banner-text">
           {lastActionText
-            || (boss && !fightStarted ? `${boss.name} minaccia Eldoria!` : null)
+            || (boss && !fightStarted ? `${boss.name} minaccia Exanthia!` : null)
             || (fightStarted && !isGameOver
               ? (turnState.phase === "players" ? "⚔ Turno degli Eroi" : "🔥 Il Boss Attacca!")
               : null)

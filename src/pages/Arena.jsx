@@ -1002,17 +1002,19 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
 // Persistente: i titoli vivono sul documento `characters/{uid}.arenaTitle`
 // e restano per sempre, anche dopo reset/fine torneo.
 function MasterTitleEditor() {
+  const [open, setOpen]         = useState(false);
   const [allChars, setAllChars] = useState([]);
   const [filter, setFilter]     = useState("");
 
   useEffect(() => {
+    if (!open) return;
     const unsub = onSnapshot(collection(db, "characters"), snap => {
       const list = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
       list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setAllChars(list);
     });
     return () => unsub();
-  }, []);
+  }, [open]);
 
   const writeTitles = async (uid, newTitles) => {
     try {
@@ -1040,59 +1042,75 @@ function MasterTitleEditor() {
     return writeTitles(uid, current.filter(k => k !== key));
   };
 
-  if (!allChars.length) return null;
-
   const q = filter.trim().toLowerCase();
   const visible = q ? allChars.filter(c => (c.name || "").toLowerCase().includes(q) || (c.class || "").toLowerCase().includes(q)) : allChars;
 
   return (
     <div className="master-title-editor">
-      <p className="col-label">♛ Titoli d'Arena — Permanenti</p>
-      <p className="empty-note" style={{ marginBottom: 8 }}>
-        I titoli sono permanenti e attivi sia in Torneo che in Arena dei Campioni.
-      </p>
-      <input
-        className="title-filter-input"
-        placeholder="Cerca giocatore o classe…"
-        value={filter}
-        onChange={e => setFilter(e.target.value)}
-      />
-      <div className="title-edit-list">
-        {visible.map(ch => {
-          const owned = getCharTitles(ch);
-          const available = Object.values(ARENA_TITLES).filter(opt => !owned.includes(opt.key));
-          return (
-            <div key={ch.uid} className="title-edit-row">
-              <span className="title-edit-name">{ch.name || ch.uid}</span>
-              {ch.class && <span className="p-class">{ch.class}</span>}
-              {owned.map(key => (
-                <span key={key} className="p-title-badge" title={ARENA_TITLES[key]?.short}>
-                  {ARENA_TITLES[key]?.icon} {ARENA_TITLES[key]?.name}
-                  <button
-                    type="button"
-                    className="p-title-badge-x"
-                    title="Rimuovi titolo"
-                    onClick={() => removeTitle(ch.uid, key)}
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-              <select
-                className="title-select"
-                value=""
-                disabled={available.length === 0}
-                onChange={e => { const v = e.target.value; e.target.value = ""; addTitle(ch.uid, v); }}
-              >
-                <option value="">{available.length === 0 ? "— Tutti assegnati —" : "+ Aggiungi titolo…"}</option>
-                {available.map(opt => (
-                  <option key={opt.key} value={opt.key}>{opt.icon} {opt.name}</option>
-                ))}
-              </select>
-            </div>
-          );
-        })}
-      </div>
+      <button
+        type="button"
+        className="master-title-toggle"
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+      >
+        {open ? "▲" : "▼"} ♛ Titoli d'Arena — Permanenti
+        {!open && <span className="master-title-hint">clicca per gestire</span>}
+      </button>
+      {open && (
+        <div className="master-title-body">
+          <p className="empty-note" style={{ marginBottom: 8 }}>
+            I titoli sono permanenti e attivi sia in Torneo che in Arena dei Campioni.
+          </p>
+          {!allChars.length ? (
+            <p className="empty-note">Caricamento giocatori…</p>
+          ) : (
+            <>
+              <input
+                className="title-filter-input"
+                placeholder="Cerca giocatore o classe…"
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+              />
+              <div className="title-edit-list">
+                {visible.map(ch => {
+                  const owned = getCharTitles(ch);
+                  const available = Object.values(ARENA_TITLES).filter(opt => !owned.includes(opt.key));
+                  return (
+                    <div key={ch.uid} className="title-edit-row">
+                      <span className="title-edit-name">{ch.name || ch.uid}</span>
+                      {ch.class && <span className="p-class">{ch.class}</span>}
+                      {owned.map(key => (
+                        <span key={key} className="p-title-badge" title={ARENA_TITLES[key]?.short}>
+                          {ARENA_TITLES[key]?.icon} {ARENA_TITLES[key]?.name}
+                          <button
+                            type="button"
+                            className="p-title-badge-x"
+                            title="Rimuovi titolo"
+                            onClick={() => removeTitle(ch.uid, key)}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                      <select
+                        className="title-select"
+                        value=""
+                        disabled={available.length === 0}
+                        onChange={e => { const v = e.target.value; e.target.value = ""; addTitle(ch.uid, v); }}
+                      >
+                        <option value="">{available.length === 0 ? "— Tutti assegnati —" : "+ Aggiungi titolo…"}</option>
+                        {available.map(opt => (
+                          <option key={opt.key} value={opt.key}>{opt.icon} {opt.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1509,6 +1527,38 @@ export default function Arena() {
     syncMatchHistory();
   }, [isMaster, arenaMeta?.matches, arenaMeta?.matchHistory, syncMatchHistory]);
 
+  // ── Archive finished fun matches in funMatchHistory (master) ──────────────
+  // Permette di tenere statistiche delle Sfide Libere anche quando i match
+  // vengono rimossi da arena_meta.matches.
+  useEffect(() => {
+    if (!isMaster || !arenaMeta?.matches) return;
+    const archived = new Set((arenaMeta.funMatchHistory || []).map(e => e.matchId));
+    const toArchive = arenaMeta.matches.filter(m =>
+      m.kind === "fun" &&
+      m.status === "finished" &&
+      m.players?.length >= 2 &&
+      !archived.has(m.matchId)
+    );
+    if (toArchive.length === 0) return;
+    const snaps = arenaMeta.characterSnapshots || {};
+    const additions = toArchive.map(m => {
+      const winnerP = (m.players || []).find(p => p.id === m.winner);
+      const loserP  = (m.players || []).find(p => p.id !== m.winner);
+      const wClass = (winnerP?.class || snaps[winnerP?.id]?.class || "").toLowerCase().trim() || null;
+      const lClass = (loserP?.class  || snaps[loserP?.id]?.class  || "").toLowerCase().trim() || null;
+      return {
+        matchId: m.matchId,
+        winnerId: m.winner || null,
+        winnerClass: wClass,
+        loserClass:  lClass,
+        ts: new Date().toISOString(),
+      };
+    });
+    updateDoc(doc(db, "arena_meta", "global"), {
+      funMatchHistory: [...(arenaMeta.funMatchHistory || []), ...additions],
+    }).catch(e => console.error("funMatchHistory archive error:", e));
+  }, [isMaster, arenaMeta?.matches, arenaMeta?.funMatchHistory, arenaMeta?.characterSnapshots]);
+
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
     const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
@@ -1613,7 +1663,15 @@ export default function Arena() {
       const shopPotions = snapshot.arenaBuffs?.healingPotions ?? 0;
       if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
       const layOfHandsPool = isPaladinClass((snapshot.class || "").toLowerCase()) ? Math.floor(baseHp / 3) : 0;
-      const playerObj = { id: currentUser.uid, name: snapshot.name || "?", hp: baseHp, maxHp: baseHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
+      // class embedded così le statistiche fun sopravvivono all'overwrite di characterSnapshots
+      const playerObj = {
+        id: currentUser.uid,
+        name: snapshot.name || "?",
+        class: (snapshot.class || "").toLowerCase().trim(),
+        hp: baseHp, maxHp: baseHp, init: 0,
+        itemUsesLeft: itemUses,
+        layOfHandsPool,
+      };
 
       if (funAcceptMatchId) {
         // ACCETTA sfida esistente: aggiungo come secondo giocatore + parte iniziativa.
@@ -1914,7 +1972,7 @@ export default function Arena() {
   };
 
   const sendChampionNotification = async (winnerId, winnerName, prizes, matchesOverride) => {
-    const prizeMsg = prizes ? `Il tuo premio: ${prizes}` : "Che il tuo valore sia ricordato nelle cronache di Eldoria!";
+    const prizeMsg = prizes ? `Il tuo premio: ${prizes}` : "Che il tuo valore sia ricordato nelle cronache di Exanthia!";
     await addDoc(collection(db, "notifications"), {
       userId: winnerId,
       title:  "🏆 Campione dell'Arena!",
@@ -3643,7 +3701,7 @@ export default function Arena() {
   const liveTournament = (() => {
     if (!arenaMeta || arenaMeta.phase === "finished") return null;
     const ids = arenaMeta.participants || [];
-    const matches = arenaMeta.matches || [];
+    const matches = (arenaMeta.matches || []).filter(m => m.kind !== "fun");
     const wins = {}, losses = {};
     matches.forEach(m => {
       if (m.status !== "finished" || !m.winner) return;
@@ -3981,6 +4039,16 @@ export default function Arena() {
       {isMaster && <MasterTitleEditor />}
 
       {isMaster && <TournamentClassStats liveTournament={liveTournament} onSync={syncMatchHistory} />}
+      {isMaster && (
+        <FunArenaClassStats
+          funHistory={arenaMeta.funMatchHistory || []}
+          currentMatches={arenaMeta.matches || []}
+          isMaster={isMaster}
+          onReset={async () => {
+            await updateDoc(doc(db, "arena_meta", "global"), { funMatchHistory: [] });
+          }}
+        />
+      )}
 
       {/* ── ZONA LOADOUT (tournament registration) ── */}
       {(
@@ -6010,7 +6078,7 @@ function TournamentClassStats({ liveTournament, onSync }) {
   return (
     <div className="class-stats-section">
       <button className="class-stats-toggle" onClick={() => setOpen(v => !v)}>
-        {open ? "▲" : "▼"} 📊 Statistiche Classi — Torneo
+        {open ? "▲" : "▼"} 📊 Statistiche Classi — Torneo / Campioni
       </button>
       {open && (
         <div className="class-stats-body">
@@ -6066,6 +6134,129 @@ function TournamentClassStats({ liveTournament, onSync }) {
                           <div className="class-stats-bar-fill winrate" style={{ width: `${row.winrate}%` }} />
                         </div>
                         <span className="class-stats-bar-val">{row.winrate.toFixed(0)}% <em>({row.wins}/{row.matches})</em></span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Statistiche classi Arena Libera (basate su funMatchHistory) ─────────────
+function FunArenaClassStats({ funHistory, currentMatches, isMaster, onReset }) {
+  const [open, setOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const { top, totalMatches, livePending } = useMemo(() => {
+    const perClass = {};
+    let totalLocal = 0;
+    let liveLocal  = 0;
+
+    // History archiviata
+    (funHistory || []).forEach(h => {
+      const w = h.winnerClass;
+      const l = h.loserClass;
+      if (w) {
+        perClass[w] = perClass[w] || { uses: 0, wins: 0 };
+        perClass[w].uses++;
+        perClass[w].wins++;
+      }
+      if (l) {
+        perClass[l] = perClass[l] || { uses: 0, wins: 0 };
+        perClass[l].uses++;
+      }
+      if (w || l) totalLocal++;
+    });
+
+    // Match fun ancora in arena_meta non ancora archiviati
+    const archived = new Set((funHistory || []).map(h => h.matchId));
+    (currentMatches || []).forEach(m => {
+      if (m.kind !== "fun" || m.status !== "finished" || !m.players || m.players.length < 2) return;
+      if (archived.has(m.matchId)) return;
+      const winnerP = m.players.find(p => p.id === m.winner);
+      const loserP  = m.players.find(p => p.id !== m.winner);
+      const w = (winnerP?.class || "").toLowerCase().trim();
+      const l = (loserP?.class  || "").toLowerCase().trim();
+      if (w) {
+        perClass[w] = perClass[w] || { uses: 0, wins: 0 };
+        perClass[w].uses++;
+        perClass[w].wins++;
+      }
+      if (l) {
+        perClass[l] = perClass[l] || { uses: 0, wins: 0 };
+        perClass[l].uses++;
+      }
+      if (w || l) { totalLocal++; liveLocal++; }
+    });
+
+    const arr = Object.entries(perClass).map(([cls, v]) => ({
+      cls,
+      uses:    v.uses,
+      wins:    v.wins,
+      usage:   totalLocal > 0 ? (v.uses / (totalLocal * 2)) * 100 : 0,
+      winrate: v.uses > 0 ? (v.wins / v.uses) * 100 : 0,
+    }));
+    arr.sort((a, b) => b.uses - a.uses || b.wins - a.wins);
+    return { top: arr.slice(0, 8), totalMatches: totalLocal, livePending: liveLocal };
+  }, [funHistory, currentMatches]);
+
+  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+  return (
+    <div className="class-stats-section fun-class-stats">
+      <button className="class-stats-toggle fun" onClick={() => setOpen(v => !v)}>
+        {open ? "▲" : "▼"} 🛡 Statistiche Classi — Arena Libera
+      </button>
+      {open && (
+        <div className="class-stats-body">
+          {totalMatches === 0 ? (
+            <p className="class-stats-empty">Nessuna sfida libera conclusa ancora. Le statistiche compariranno dopo la prima sfida finita.</p>
+          ) : (
+            <>
+              <div className="class-stats-meta">
+                <span>⚔ Sfide concluse: <strong>{totalMatches}</strong></span>
+                {livePending > 0 && <span className="class-stats-live-badge fun">🔴 {livePending} in attesa archivio</span>}
+                {isMaster && onReset && (
+                  <button
+                    className="class-stats-sync-btn fun"
+                    disabled={resetting}
+                    onClick={async () => {
+                      if (!window.confirm("Azzerare lo storico delle Sfide Libere? L'azione non è reversibile.")) return;
+                      setResetting(true);
+                      await onReset();
+                      setResetting(false);
+                    }}
+                    title="Cancella tutto lo storico Arena Libera"
+                  >
+                    {resetting ? "…" : "♻ Azzera"}
+                  </button>
+                )}
+              </div>
+              <div className="class-stats-list">
+                {top.map((row, i) => (
+                  <div key={row.cls} className="class-stats-row">
+                    <div className="class-stats-rank">#{i + 1}</div>
+                    <div className="class-stats-icon">{CLASS_ICONS[row.cls] || "❔"}</div>
+                    <div className="class-stats-name">{capitalize(row.cls)}</div>
+                    <div className="class-stats-bars">
+                      <div className="class-stats-bar-row">
+                        <span className="class-stats-bar-label">Uso</span>
+                        <div className="class-stats-bar-track">
+                          <div className="class-stats-bar-fill usage fun" style={{ width: `${row.usage}%` }} />
+                        </div>
+                        <span className="class-stats-bar-val">{row.usage.toFixed(0)}% <em>({row.uses})</em></span>
+                      </div>
+                      <div className="class-stats-bar-row">
+                        <span className="class-stats-bar-label">Win</span>
+                        <div className="class-stats-bar-track">
+                          <div className="class-stats-bar-fill winrate fun" style={{ width: `${row.winrate}%` }} />
+                        </div>
+                        <span className="class-stats-bar-val">{row.winrate.toFixed(0)}% <em>({row.wins}/{row.uses})</em></span>
                       </div>
                     </div>
                   </div>

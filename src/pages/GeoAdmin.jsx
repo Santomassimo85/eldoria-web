@@ -324,7 +324,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
       <header className="geoadm-hero">
         <div className="geoadm-hero-titles">
           <h1 className="geoadm-title">🗺 Cartografo dei Mondi</h1>
-          <p className="geoadm-sub">Archivia luoghi, fazioni e abitanti di Eldoria</p>
+          <p className="geoadm-sub">Archivia luoghi, fazioni e abitanti di Exanthia</p>
         </div>
         <div className="geoadm-stats">
           <div className="geoadm-stat"><span>Luoghi</span><strong>{stats.locTotal}</strong></div>
