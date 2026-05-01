@@ -49,6 +49,8 @@ export default function WorldBoss() {
   const [partyZoneHeight, setPartyZoneHeight] = useState(0);
   const partyZoneRef = useRef(null);
   const [mobileTab, setMobileTab] = useState("status");
+  const [playersOpen, setPlayersOpen] = useState(true);
+  const [playerActionMode, setPlayerActionMode] = useState("saves");
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
   const [turnState, setTurnState] = useState({
@@ -919,15 +921,16 @@ export default function WorldBoss() {
                 )}
 
                 {/* ── Giocatori (unificato: target + HP + controlli) ── */}
-                <div className="rpg-section-label">
-                  Giocatori
-                  <span className="rpg-section-tools">
+                <div className="rpg-section-label rpg-section-label--toggle" onClick={() => setPlayersOpen(o => !o)}>
+                  <span>{playersOpen ? "▼" : "▶"} Giocatori <span className="rpg-section-count">({players.length})</span></span>
+                  <span className="rpg-section-tools" onClick={(e) => e.stopPropagation()}>
                     <button className="rpg-sm-btn" onClick={toggleSelectAll}>
                       {selectedTargets.length === players.length ? "⊘ Desel." : "⊕ Tutti"}
                     </button>
                     <button className="rpg-sm-btn" onClick={healAllPlayers}>💖 Full</button>
                   </span>
                 </div>
+                {playersOpen && (
                 <div className="rpg-player-adj-list">
                   {players.map((p) => {
                     const hp     = p.stats?.hp ?? 0;
@@ -980,6 +983,7 @@ export default function WorldBoss() {
                     );
                   })}
                 </div>
+                )}
 
                 {/* ── Log ── */}
                 <button className="rpg-btn rpg-btn--danger" style={{ width: "100%", marginTop: 10 }} onClick={clearChat}>🗑 Pulisci Log</button>
@@ -999,30 +1003,43 @@ export default function WorldBoss() {
                     {turnState.actedPlayers?.includes(currentUser.uid) ? "✓ Azione Eseguita" : "⏩ Fine Turno"}
                   </button>
                 )}
-                <div className="rpg-section-label">Tiri Salvezza</div>
-                <div className="rpg-saves-grid">
-                  {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
-                    <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
-                      <span className="rpg-save-key">{s.toUpperCase()}</span>
-                      <span className="rpg-save-mod">{charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s] ?? 0}</span>
-                    </button>
-                  ))}
+                <div className="rpg-mode-toggle">
+                  <button
+                    className={`rpg-mode-btn${playerActionMode === "saves" ? " active" : ""}`}
+                    onClick={() => setPlayerActionMode("saves")}
+                  >🛡 Tiri Salvezza</button>
+                  <button
+                    className={`rpg-mode-btn${playerActionMode === "damage" ? " active" : ""}`}
+                    onClick={() => setPlayerActionMode("damage")}
+                  >💥 Danno Manuale</button>
                 </div>
-                <div className="rpg-section-label">Danno Manuale</div>
-                <div className="rpg-manual-dmg-row">
-                  <select className="rpg-select" value={dmgDiceCount} onChange={(e) => setDmgDiceCount(parseInt(e.target.value))}>
-                    {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}d</option>)}
-                  </select>
-                  <select className="rpg-select" value={dmgSelectedStat || ""} onChange={(e) => setDmgSelectedStat(e.target.value || null)}>
-                    <option value="">No Bonus</option>
-                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                  </select>
-                </div>
-                <div className="rpg-dice-row">
-                  {["d4", "d6", "d8", "d10", "d12"].map((die) => (
-                    <button key={die} className="rpg-die-btn" onClick={() => handleManualDamageToBoss(die)} disabled={isUserLocked}>{die}</button>
-                  ))}
-                </div>
+                {playerActionMode === "saves" ? (
+                  <div className="rpg-saves-grid">
+                    {["str", "dex", "cos", "int", "wis", "cha"].map((s) => (
+                      <button key={s} className="rpg-save-btn" onClick={() => handleSavingThrow(s)} disabled={isUserLocked}>
+                        <span className="rpg-save-key">{s.toUpperCase()}</span>
+                        <span className="rpg-save-mod">{charData?.stats?.[s] >= 0 ? "+" : ""}{charData?.stats?.[s] ?? 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="rpg-manual-dmg-row">
+                      <select className="rpg-select" value={dmgDiceCount} onChange={(e) => setDmgDiceCount(parseInt(e.target.value))}>
+                        {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}d</option>)}
+                      </select>
+                      <select className="rpg-select" value={dmgSelectedStat || ""} onChange={(e) => setDmgSelectedStat(e.target.value || null)}>
+                        <option value="">No Bonus</option>
+                        {["str", "dex", "cos", "int", "wis", "cha"].map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                      </select>
+                    </div>
+                    <div className="rpg-dice-row">
+                      {["d4", "d6", "d8", "d10", "d12"].map((die) => (
+                        <button key={die} className="rpg-die-btn" onClick={() => handleManualDamageToBoss(die)} disabled={isUserLocked}>{die}</button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 <div className="rpg-section-label">Azioni</div>
                 <div className="rpg-accordion">
                   {sortedCategories.map((cat) => {

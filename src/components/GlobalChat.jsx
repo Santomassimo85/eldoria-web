@@ -59,26 +59,32 @@ export default function GlobalChat() {
     if (!currentUser) return;
     let initialLoad = true;
 
-    const q = query(collection(db, "global_chat"), orderBy("timestamp", "asc"), limit(50));
-    const unsub = onSnapshot(q, (snap) => {
-      const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setMessages(msgs);
+    // desc + slice→reverse: prendiamo gli ULTIMI 50 messaggi (non i primi 50 della cronologia totale).
+    // Con asc+limit(50) i nuovi messaggi cadevano oltre la finestra e non comparivano mai.
+    const q = query(collection(db, "global_chat"), orderBy("timestamp", "desc"), limit(50));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
+        setMessages(msgs);
 
-      if (initialLoad) {
-        initialLoad = false;
-        return; // messaggi già esistenti: non contare come non letti
-      }
-
-      if (!isOpenRef.current) {
-        setUnreadCount(prev => prev + 1);
-      } else {
-        const container = messagesContainerRef.current;
-        if (container) {
-          const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
-          if (isAtBottom) scrollToBottom("smooth");
+        if (initialLoad) {
+          initialLoad = false;
+          return;
         }
-      }
-    });
+
+        if (!isOpenRef.current) {
+          setUnreadCount(prev => prev + 1);
+        } else {
+          const container = messagesContainerRef.current;
+          if (container) {
+            const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+            if (isAtBottom) scrollToBottom("smooth");
+          }
+        }
+      },
+      (err) => { console.error("Global chat listener error:", err); }
+    );
     return () => unsub();
   }, [currentUser]);
 

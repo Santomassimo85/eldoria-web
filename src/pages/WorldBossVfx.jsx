@@ -16,7 +16,13 @@ const VFX_FILES = {
 
 const isVideoFile = (src) => /\.(webm|mp4)$/i.test(src || "");
 
-// File audio in public/sounds/. Heal ha il suo "holy cast"; gli altri elementali/magici condividono "spell".
+// iOS Safari (incluso PWA) non decodifica webm: fallback a magic.webp per "poison".
+const canPlayWebm = (() => {
+  if (typeof document === "undefined") return true;
+  const v = document.createElement("video");
+  return !!(v.canPlayType('video/webm; codecs="vp8,vp9"') || v.canPlayType("video/webm"));
+})();
+
 const VFX_SOUNDS = {
   slash:     "/sounds/slash.mp3",
   ranged:    "/sounds/ranged.mp3",
@@ -28,15 +34,102 @@ const VFX_SOUNDS = {
   magic:     "/sounds/spell.mp3",
 };
 const VFX_VOLUME = 0.4;
+const VFX_DURATION_MS = 1500;
+
+// Alone colorato dietro l'effetto, per dare profondità e leggibilità anche se la webp è "magra".
+const GLOW_COLOR = {
+  slash:     "rgba(255,200,180,0.85)",
+  ranged:    "rgba(230,200,140,0.75)",
+  fire:      "rgba(255,120,40,0.9)",
+  frost:     "rgba(140,200,255,0.9)",
+  lightning: "rgba(230,230,140,0.95)",
+  poison:    "rgba(120,220,120,0.85)",
+  heal:      "rgba(255,240,180,0.9)",
+  magic:     "rgba(180,120,255,0.85)",
+};
+
+// ── Audio: Web Audio API. Funziona in iOS PWA dopo un singolo "resume" su gesto utente.
+let audioCtx = null;
+const audioBuffers = {};
+let audioUnlocked = false;
+
+function getCtx() {
+  if (audioCtx || typeof window === "undefined") return audioCtx;
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (Ctor) audioCtx = new Ctor();
+  return audioCtx;
+}
+
+async function loadBuffer(key, src) {
+  if (audioBuffers[key]) return;
+  const ctx = getCtx();
+  if (!ctx) return;
+  try {
+    const res = await fetch(src);
+    const arr = await res.arrayBuffer();
+    audioBuffers[key] = await ctx.decodeAudioData(arr);
+  } catch { /* ignore */ }
+}
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  const ctx = getCtx();
+  if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+  for (const [k, src] of Object.entries(VFX_SOUNDS)) loadBuffer(k, src);
+}
+
+if (typeof window !== "undefined") {
+  const onFirstGesture = () => {
+    unlockAudio();
+    window.removeEventListener("touchstart", onFirstGesture);
+    window.removeEventListener("touchend", onFirstGesture);
+    window.removeEventListener("click", onFirstGesture);
+    window.removeEventListener("keydown", onFirstGesture);
+  };
+  window.addEventListener("touchstart", onFirstGesture, { passive: true });
+  window.addEventListener("touchend", onFirstGesture, { passive: true });
+  window.addEventListener("click", onFirstGesture);
+  window.addEventListener("keydown", onFirstGesture);
+}
 
 function playEffectSound(effect) {
-  const src = VFX_SOUNDS[effect];
-  if (!src) return;
+  const ctx = getCtx();
+  const buf = audioBuffers[effect];
+  if (!ctx || !buf) return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
   try {
-    const audio = new Audio(src);
-    audio.volume = VFX_VOLUME;
-    audio.play().catch(() => { /* autoplay bloccato fino al primo click utente */ });
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.value = VFX_VOLUME;
+    src.connect(gain).connect(ctx.destination);
+    src.start(0);
   } catch { /* ignore */ }
+}
+
+// ── Stile keyframes iniettato una volta sola.
+const STYLE_ID = "wb-vfx-style";
+function ensureStyle() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(STYLE_ID)) return;
+  const s = document.createElement("style");
+  s.id = STYLE_ID;
+  s.textContent = `
+    @keyframes wb-vfx-pop {
+      0%   { opacity: 0; transform: scale(0.45) rotate(-6deg); filter: blur(8px); }
+      22%  { opacity: 1; transform: scale(1.18) rotate(3deg); filter: blur(0); }
+      55%  { opacity: 1; transform: scale(1.0) rotate(0deg); filter: blur(0); }
+      100% { opacity: 0; transform: scale(1.08) rotate(0deg); filter: blur(3px); }
+    }
+    @keyframes wb-vfx-glow {
+      0%   { opacity: 0; transform: scale(0.5); }
+      30%  { opacity: 0.85; transform: scale(1.25); }
+      70%  { opacity: 0.4; transform: scale(1.45); }
+      100% { opacity: 0; transform: scale(1.7); }
+    }
+  `;
+  document.head.appendChild(s);
 }
 
 // Mappa azione → chiave effetto. Cerca per parola chiave; fallback: slash per "Armi", magic per il resto.
@@ -44,26 +137,23 @@ export function pickEffectForAction(action) {
   if (!action) return "slash";
   const name = (action.name || "").toLowerCase();
   const cat  = (action.category || "").toLowerCase();
-  // Cura ha precedenza su qualsiasi keyword (es. "Cura Ferite di Fuoco" → heal)
   if (/(cura|cure|guari|heal|parola guaritrice|lay of hands|ristora)/.test(name)) return "heal";
-  // Elementi
   if (/(fuoco|fire|fiamm|brucia|incendio|palla di fuoco|dardo di fuoco|mani brucianti|rovente)/.test(name)) return "fire";
   if (/(freddo|gelo|frost|ice|ghiacc|raggio di gelo|tocco gelido|gelidito|cono di freddo|morso di gelo)/.test(name)) return "frost";
   if (/(fulmine|lightning|elettr|scossa folgorante|tempesta|fulminare|tuono|tonante|schianto)/.test(name)) return "lightning";
   if (/(veleno|poison|acid|tossico|spruzzo velenoso|nube|raggio avvelenato|braccia di hadar)/.test(name)) return "poison";
-  // Armi a distanza (arco, balestra, armi da fuoco artefice…)
   if (/(arco|balestra|freccia|dardo|giavellotto|pistola|rifle|fucile|bow|crossbow|arrow)/.test(name)) return "ranged";
-  // Categoria "Armi" → fendente generico
   if (cat === "armi") return "slash";
-  // Tutto il resto (skill, buff, controllo senza elemento) → cerchio magico generico
   return "magic";
 }
 
-// Layer in portal: ascolta `messages`, su nuovi doc con effect+effectTargets piazza un video sopra il bersaglio.
+// Layer in portal: ascolta `messages`, su nuovi doc con effect+effectTargets piazza un VFX sopra il bersaglio.
 export function VfxLayer({ messages }) {
   const seenRef = useRef(new Set());
   const mountedAtRef = useRef(Date.now());
   const [active, setActive] = useState([]);
+
+  useEffect(() => { ensureStyle(); }, []);
 
   useEffect(() => {
     if (!messages?.length) return;
@@ -76,7 +166,6 @@ export function VfxLayer({ messages }) {
         seenRef.current.add(msg.id);
         continue;
       }
-      // Salta i messaggi storici al primo caricamento (evita "burst" iniziale).
       const ts = msg.timestamp?.toMillis ? msg.timestamp.toMillis() : 0;
       if (ts && ts < mountedAtRef.current - 5000) {
         seenRef.current.add(msg.id);
@@ -91,7 +180,7 @@ export function VfxLayer({ messages }) {
         if (rect.width === 0 || rect.height === 0) continue;
         const id = `${msg.id}-${t}-${Math.random().toString(36).slice(2, 7)}`;
         setActive(prev => [...prev, { id, effect: msg.effect, rect }]);
-        setTimeout(() => setActive(prev => prev.filter(a => a.id !== id)), 4000);
+        setTimeout(() => setActive(prev => prev.filter(a => a.id !== id)), VFX_DURATION_MS + 100);
         if (!played) { playEffectSound(msg.effect); played = true; }
       }
     }
@@ -101,24 +190,42 @@ export function VfxLayer({ messages }) {
   return createPortal(
     <>
       {active.map(({ id, effect, rect }) => {
-        const src = VFX_FILES[effect] || VFX_FILES.slash;
+        let src = VFX_FILES[effect] || VFX_FILES.slash;
+        if (isVideoFile(src) && !canPlayWebm) src = VFX_FILES.magic;
         const size = Math.max(rect.width, rect.height) * 1.8;
-        const style = {
+        const wrapperStyle = {
           position: "fixed",
           left: rect.left + rect.width / 2 - size / 2,
           top:  rect.top  + rect.height / 2 - size / 2,
           width: size, height: size,
           pointerEvents: "none",
           zIndex: 9999,
-          mixBlendMode: "screen",
         };
-        const remove = () => setActive(prev => prev.filter(a => a.id !== id));
-        if (isVideoFile(src)) {
-          return <video key={id} src={src} autoPlay muted playsInline
-                    onEnded={remove} onError={remove} style={style} />;
-        }
-        // Animated webp / png / gif → img (cleanup affidato al timeout di 4s).
-        return <img key={id} src={src} alt="" onError={remove} style={style} />;
+        const glowStyle = {
+          position: "absolute", inset: 0,
+          background: `radial-gradient(circle, ${GLOW_COLOR[effect] || GLOW_COLOR.magic} 0%, transparent 62%)`,
+          animation: `wb-vfx-glow ${VFX_DURATION_MS}ms ease-out forwards`,
+          mixBlendMode: "screen",
+          willChange: "transform, opacity",
+        };
+        const innerStyle = {
+          width: "100%", height: "100%",
+          mixBlendMode: "screen",
+          animation: `wb-vfx-pop ${VFX_DURATION_MS}ms cubic-bezier(.2,.7,.3,1) forwards`,
+          willChange: "transform, opacity, filter",
+        };
+        // Cache-bust: alcuni browser mobili mostrano l'ultimo frame della webp riusata; con ?t=<id> ogni mount è una decode fresca.
+        const bustedSrc = `${src}?t=${encodeURIComponent(id)}`;
+        return (
+          <div key={id} style={wrapperStyle}>
+            <div style={glowStyle} />
+            {isVideoFile(src) ? (
+              <video src={bustedSrc} autoPlay muted playsInline style={innerStyle} />
+            ) : (
+              <img src={bustedSrc} alt="" style={innerStyle} />
+            )}
+          </div>
+        );
       })}
     </>,
     document.body
