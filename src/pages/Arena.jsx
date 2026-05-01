@@ -872,11 +872,12 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
     return history.slice(-3).map(e => e.result);
   };
 
-  const activeMatches = (arenaMeta.matches || []).filter(m => m.status !== "finished" && !m.winner);
+  // Solo match torneo: scommesse non disponibili sull'Arena Libera.
+  const activeMatches = (arenaMeta.matches || []).filter(m => m.kind !== "fun" && m.status !== "finished" && !m.winner);
   const allFighters = arenaMeta.participants || [];
   const eliminatedUids = new Set(
     (arenaMeta.matches || [])
-      .filter(m => m.status === "finished" && m.winner)
+      .filter(m => m.kind !== "fun" && m.status === "finished" && m.winner)
       .flatMap(m => m.players.filter(p => p.id !== m.winner).map(p => p.id))
   );
   const bettableFighters = allFighters.filter(uid => !eliminatedUids.has(uid));
@@ -1048,7 +1049,7 @@ function MasterTitleEditor() {
     <div className="master-title-editor">
       <p className="col-label">♛ Titoli d'Arena — Permanenti</p>
       <p className="empty-note" style={{ marginBottom: 8 }}>
-        I titoli sono permanenti e attivi sia in Torneo che in Arena dei Campioni. Non si attivano in Allenamento.
+        I titoli sono permanenti e attivi sia in Torneo che in Arena dei Campioni.
       </p>
       <input
         className="title-filter-input"
@@ -1193,14 +1194,11 @@ export default function Arena() {
   const [masterJoinClass, setMasterJoinClass] = useState("");
   const [equipSelections, setEquipSelections] = useState({});
 
-  // ── Training Arena ────────────────────────────────────────────────────────
-  const [loadoutContext, setLoadoutContext]   = useState("tournament");
-  const [trainingMatches, setTrainingMatches] = useState([]);
-  const [trainingMatchId, setTrainingMatchId] = useState(null);
-  const [trainingPairSel, setTrainingPairSel] = useState([]);
-  const [showActionModal, setShowActionModal] = useState(null); // matchId or null
-  const [arenaMode, setArenaMode]             = useState("tournament"); // "tournament" | "training"
-  const [showTrainingWildPicker, setShowTrainingWildPicker] = useState(false);
+  // ── Arena Libera (Fun) ────────────────────────────────────────────────────
+  // Loadout context: "tournament" (default) o "fun" (sfida libera).
+  // funAcceptMatchId: null se sto creando una sfida, matchId se sto accettando.
+  const [loadoutContext, setLoadoutContext] = useState("tournament");
+  const [funAcceptMatchId, setFunAcceptMatchId] = useState(null);
 
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
 
@@ -1213,17 +1211,6 @@ export default function Arena() {
     });
   }, [currentUser]);
 
-  // ── Live sprite lookup ────────────────────────────────────────────────────
-  const [charSprites, setCharSprites] = useState({});
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "characters"), (snap) => {
-      const map = {};
-      snap.docs.forEach(d => { map[d.id] = { spriteUrl: d.data().spriteUrl || null, deadSpriteUrl: d.data().deadSpriteUrl || null }; });
-      setCharSprites(map);
-    });
-    return () => unsub();
-  }, []);
-
   // ── Monete Arena ──────────────────────────────────────────────────────────
   const awardArenaCoins = async (uid, amount) => {
     try {
@@ -1233,6 +1220,7 @@ export default function Arena() {
 
   const awardRoundCoins = async (updatedMatches) => {
     for (const m of updatedMatches) {
+      if (m.kind === "fun") continue; // Arena Libera: nessuna ricompensa
       const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
       if (m.status === "finished" && prev?.status !== "finished" && m.winner) {
         await awardArenaCoins(m.winner, 2);
@@ -1337,6 +1325,7 @@ export default function Arena() {
 
   const resolveBetsForFinishedMatches = async (updatedMatches) => {
     for (const m of updatedMatches) {
+      if (m.kind === "fun") continue; // Arena Libera: nessuna scommessa
       const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
       if (m.status === "finished" && prev?.status !== "finished" && m.winner)
         await resolveMatchBets(m.matchId, m.winner);
@@ -1346,6 +1335,7 @@ export default function Arena() {
   const recordMatchHistory = async (updatedMatches) => {
     const newEntries = [];
     for (const m of updatedMatches) {
+      if (m.kind === "fun") continue; // Arena Libera: niente storico/statistiche
       const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
       if (m.status === "finished" && prev?.status !== "finished" && m.winner) {
         for (const p of m.players) {
@@ -1370,24 +1360,11 @@ export default function Arena() {
           waitingList: [], participants: [],
           characterSnapshots: {}, matches: [],
           currentRound: 1, tournamentWinner: null,
-          trainingArenaOpen: false,
         });
       }
     });
     return () => unsub();
   }, [isMaster]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const q = query(
-      collection(db, "training_matches"),
-      where("status", "in", ["open", "initiative", "active", "finished"])
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setTrainingMatches(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsub();
-  }, [currentUser]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "arena_tournament_history"), (snap) => {
@@ -1498,6 +1475,7 @@ export default function Arena() {
         const existingIds = new Set(existing.map(e => e.matchId));
         const toAdd = [];
         for (const m of matches) {
+          if (m.kind === "fun") continue; // Arena Libera: niente storico
           if (m.status !== "finished" || !m.winner) continue;
           if (existingIds.has(m.matchId)) continue;
           for (const p of m.players) {
@@ -1525,7 +1503,7 @@ export default function Arena() {
     if (!isMaster || !arenaMeta?.matches) return;
     const processed = new Set((arenaMeta.matchHistory || []).map(e => e.matchId));
     const hasUnrecorded = arenaMeta.matches.some(
-      m => m.status === "finished" && m.winner && !processed.has(m.matchId)
+      m => m.kind !== "fun" && m.status === "finished" && m.winner && !processed.has(m.matchId)
     );
     if (!hasUnrecorded) return;
     syncMatchHistory();
@@ -1554,6 +1532,9 @@ export default function Arena() {
     setPendingWeapons([]);
     setPendingSpells([]);
     setPendingSkills([]);
+    // Default: torneo. Le funzioni fun (openFunCreate/openFunAccept) sovrascrivono dopo questo.
+    setLoadoutContext("tournament");
+    setFunAcceptMatchId(null);
     setLoadoutPhase("class-select");
   };
 
@@ -1624,25 +1605,60 @@ export default function Arena() {
       selectedConstruct: constructAction ? pendingConstruct : null,
     };
 
-    if (loadoutContext === "training") {
-      const player = initTrainingPlayer(currentUser.uid, charPreview.name, snapshot);
-      if (trainingMatchId) {
-        const existingMatch = trainingMatches.find(m => m.id === trainingMatchId);
-        await updateDoc(doc(db, "training_matches", trainingMatchId), {
-          opponentId: currentUser.uid,
-          players: [...(existingMatch?.players || []), player],
-          status: "initiative",
-          turn: null,
-          round: 0,
-          logs: ["⚔️ Il match ha inizio! Tirate iniziativa."],
+    // ── Branch: Arena Libera (Sfida) ──────────────────────────────────────
+    if (loadoutContext === "fun") {
+      const baseHp = snapshot.stats.maxHp;
+      const itemUses = {};
+      (snapshot.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
+      const shopPotions = snapshot.arenaBuffs?.healingPotions ?? 0;
+      if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
+      const layOfHandsPool = isPaladinClass((snapshot.class || "").toLowerCase()) ? Math.floor(baseHp / 3) : 0;
+      const playerObj = { id: currentUser.uid, name: snapshot.name || "?", hp: baseHp, maxHp: baseHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
+
+      if (funAcceptMatchId) {
+        // ACCETTA sfida esistente: aggiungo come secondo giocatore + parte iniziativa.
+        const targetMatch = (arenaMeta.matches || []).find(m => m.matchId === funAcceptMatchId);
+        if (!targetMatch || targetMatch.status !== "open") {
+          alert("⚠ La sfida non è più disponibile.");
+          cancelLoadout();
+          return;
+        }
+        const updatedMatches = (arenaMeta.matches || []).map(m => {
+          if (m.matchId !== funAcceptMatchId) return m;
+          return {
+            ...m,
+            opponentId: currentUser.uid,
+            players: [...(m.players || []), playerObj],
+            status: "initiative",
+            turn: null,
+            turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+            logs: [...(m.logs || []), `⚔ ${snapshot.name || "?"} accetta la sfida! Tirate iniziativa.`],
+          };
+        });
+        await updateDoc(doc(db, "arena_meta", "global"), {
+          matches: updatedMatches,
+          [`characterSnapshots.${currentUser.uid}`]: snapshot,
         });
       } else {
-        await addDoc(collection(db, "training_matches"), {
+        // CREA nuova sfida aperta.
+        const newMatch = {
+          matchId: `FUN_${Date.now()}_${currentUser.uid}`,
+          kind: "fun",
           challengerId: currentUser.uid,
           opponentId: null,
+          players: [playerObj],
           status: "open",
-          players: [player],
-          turn: null, round: 0, logs: [], winner: null, createdAt: serverTimestamp(),
+          turn: null,
+          turnExpiry: null,
+          logs: [`🛡 ${snapshot.name || "?"} ha aperto una Sfida Libera. In attesa di un avversario…`],
+          winner: null,
+          participantsAwarded: [],
+          isFFA: false,
+          createdAt: new Date().toISOString(),
+        };
+        await updateDoc(doc(db, "arena_meta", "global"), {
+          matches: [...(arenaMeta.matches || []), newMatch],
+          [`characterSnapshots.${currentUser.uid}`]: snapshot,
         });
       }
       cancelLoadout();
@@ -1677,982 +1693,68 @@ export default function Arena() {
     setPendingConstruct(null);
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
     setLoadoutContext("tournament");
-    setTrainingMatchId(null);
+    setFunAcceptMatchId(null);
   };
 
-  // ── TRAINING ARENA HANDLERS ───────────────────────────────────────────────
-
-  const openTrainingLoadout = async () => {
-    const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
-    if (!charSnap.exists()) { alert("Non hai ancora una scheda personaggio!"); return; }
-    const d = charSnap.data();
-    setCharPreview({ name: d.name || "Avventuriero", image: d.image || null, class: "", stats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, arenaBuffs: d.arenaBuffs || {}, classLevels: d.classLevels || {}, rolledHp: null, hpRerollCount: 0 });
-    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
-    setPendingWeapons([]); setPendingSpells([]); setPendingSkills([]);
-    setLoadoutContext("training"); setTrainingMatchId(null); setLoadoutPhase("class-select");
-  };
-
-  const openTrainingAccept = async (matchId) => {
-    const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
-    if (!charSnap.exists()) { alert("Non hai ancora una scheda personaggio!"); return; }
-    const d = charSnap.data();
-    setCharPreview({ name: d.name || "Avventuriero", image: d.image || null, class: "", stats: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }, arenaBuffs: d.arenaBuffs || {}, classLevels: d.classLevels || {}, rolledHp: null, hpRerollCount: 0 });
-    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
-    setPendingWeapons([]); setPendingSpells([]); setPendingSkills([]);
-    setLoadoutContext("training"); setTrainingMatchId(matchId); setLoadoutPhase("class-select");
-  };
-
-  const cancelOpenChallenge = async (matchId) => {
-    await updateDoc(doc(db, "training_matches", matchId), { status: "finished", winner: null });
-  };
-
-  const abandonTrainingMatch = async (matchId, match) => {
-    const me  = match.players?.find(p => p.id === currentUser.uid);
-    const opp = match.players?.find(p => p.id !== currentUser.uid);
-    const log = `🏳️ ${me?.name ?? "Giocatore"} ha abbandonato la sfida!`;
-    await updateDoc(doc(db, "training_matches", matchId), { status: "finished", winner: opp?.id ?? null, logs: arrayUnion(log) });
-  };
-
-  // ── TRAINING ARENA ENGINE ────────────────────────────────────────────────────
-
-  const initTrainingPlayer = (uid, name, snapshot) => {
-    const baseHp = snapshot.stats?.maxHp ?? 70;
-    const itemUses = {};
-    (snapshot.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
-    const shopPotions = snapshot.arenaBuffs?.healingPotions ?? 0;
-    if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
-    const layOfHandsPool = isPaladinClass((snapshot.class || "").toLowerCase()) ? Math.floor(baseHp / 3) : 0;
-    return {
-      id: uid, name, hp: baseHp, maxHp: baseHp, init: 0,
-      itemUsesLeft: itemUses, layOfHandsPool, actionUsesLeft: {},
-      shieldSkillTurns: 0, rageTurns: 0, hunterMarkTurns: 0,
-      defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, stealthTurns: 0,
-      invisible: false, blindDebuff: false, weaponPoisoned: false,
-      actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false,
-      wildShapeUsesLeft: 2, equippedWeaponNames: (snapshot.selectedActions || []).filter(a => a.type === "weapon").map(a => a.name), snapshot,
-    };
-  };
-
-  const advanceTurnT = (players, currentTurn) => {
-    const alive = players.filter(p => p.hp > 0);
-    if (!alive.length) return null;
-    const idx = alive.findIndex(p => p.id === currentTurn);
-    return alive[(idx + 1) % alive.length]?.id ?? alive[0].id;
-  };
-
-  const applyTrainingUpdate = async (matchId, updater) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    let updated = updater(match);
-
-    // Tick per-turn debuffs/buffs for the player whose turn just ended, regardless of action.
-    // Covers eagle disadvantage and Artefice's Forgia Armatura (+2 CA, 2 turni).
-    const tickEndForId = (players, endingPlayerId) =>
-      players.map(p => {
-        if (p.id !== endingPlayerId) return p;
-        return { ...p, ...tickEagleEnd(p), armorForgeTurns: Math.max(0, (p.armorForgeTurns ?? 0) - 1) };
-      });
-
-    if (match.turn && updated.turn && updated.turn !== match.turn) {
-      updated = { ...updated, players: tickEndForId(updated.players, match.turn) };
+  // ── ARENA LIBERA: open/cancel/abandon ─────────────────────────────────────
+  const openFunCreate = async () => {
+    if (isRegistered || isPending) {
+      alert("Sei iscritto al torneo. Esci dal torneo per giocare in Arena Libera.");
+      return;
     }
+    await openLoadoutPicker();
+    // Sovrascrivo il default "tournament" impostato da openLoadoutPicker.
+    setLoadoutContext("fun");
+    setFunAcceptMatchId(null);
+  };
 
-    // Auto-skip players under control (controlLostTurns > 0) — mirrors tournament behavior.
-    let safety = 8;
-    while (safety-- > 0 && updated.status !== "finished" && updated.turn) {
-      const turnHolder = updated.players.find(p => p.id === updated.turn);
-      if (!turnHolder || (turnHolder.controlLostTurns ?? 0) <= 0) break;
-      const remaining = Math.max(0, (turnHolder.controlLostTurns ?? 0) - 1);
-      let newPlayers = updated.players.map(p =>
-        p.id === turnHolder.id ? { ...p, controlLostTurns: remaining } : p
-      );
-      newPlayers = tickEndForId(newPlayers, turnHolder.id);
-      const skipLog = `🌀 ${turnHolder.name} è sotto controllo: turno saltato (${remaining} rimanenti).`;
-      updated = {
-        ...updated,
-        players: newPlayers,
-        turn: advanceTurnT(newPlayers, turnHolder.id),
-        round: (updated.round ?? match.round) + 1,
-        logs: [...updated.logs, skipLog],
+  const openFunAccept = async (matchId) => {
+    if (isRegistered || isPending) {
+      alert("Sei iscritto al torneo. Esci dal torneo per accettare la sfida.");
+      return;
+    }
+    const target = (arenaMeta?.matches || []).find(m => m.matchId === matchId);
+    if (!target || target.status !== "open") { alert("Sfida non più disponibile."); return; }
+    if (target.challengerId === currentUser?.uid) { alert("Non puoi accettare la tua stessa sfida."); return; }
+    await openLoadoutPicker();
+    setLoadoutContext("fun");
+    setFunAcceptMatchId(matchId);
+  };
+
+  const cancelFunChallenge = async (matchId) => {
+    const m = (arenaMeta?.matches || []).find(x => x.matchId === matchId);
+    if (!m || m.kind !== "fun" || m.status !== "open") return;
+    if (m.challengerId !== currentUser?.uid && !isMaster) return;
+    const updatedMatches = (arenaMeta.matches || []).filter(x => x.matchId !== matchId);
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  const abandonFunMatch = async (matchId) => {
+    const m = (arenaMeta?.matches || []).find(x => x.matchId === matchId);
+    if (!m || m.kind !== "fun" || m.status === "finished") return;
+    if (!m.players?.some(p => p.id === currentUser?.uid) && !isMaster) return;
+    if (!window.confirm("Abbandonare la sfida?")) return;
+    const opponent = (m.players || []).find(p => p.id !== currentUser?.uid);
+    const meName = (m.players || []).find(p => p.id === currentUser?.uid)?.name || "?";
+    const winnerId = opponent?.id || null;
+    const updatedMatches = (arenaMeta.matches || []).map(x => {
+      if (x.matchId !== matchId) return x;
+      return {
+        ...x,
+        status: "finished",
+        winner: winnerId,
+        logs: [...(x.logs || []), `🏳 ${meName} ha abbandonato la sfida.${opponent ? ` 🛡 ${opponent.name} vince.` : ""}`],
       };
-    }
-
-    await updateDoc(doc(db, "training_matches", matchId), {
-      players: updated.players,
-      turn: updated.turn ?? null,
-      round: updated.round ?? match.round,
-      logs: updated.logs,
-      status: updated.status ?? match.status,
-      winner: updated.winner ?? null,
     });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
-  const rollTrainingInit = async (matchId) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    if (!me || me.init > 0) return;
-    const dex  = me.snapshot?.stats?.dex ?? 0;
-    const cls  = (me.snapshot?.class || "").toLowerCase();
-    const hasAdv = isRogueClass(cls);
-    const d20a = Math.floor(Math.random() * 20) + 1;
-    const d20b = hasAdv ? Math.floor(Math.random() * 20) + 1 : 0;
-    const d20  = hasAdv ? Math.max(d20a, d20b) : d20a;
-    const roll = d20 + dex;
-    await showD20Roll(d20, { label: "Iniziativa" });
-    const advTag = hasAdv ? ` 🌟vant.[${d20a},${d20b}]` : "";
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => p.id === currentUser.uid ? { ...p, init: roll } : p);
-      const allRolled = players.every(p => p.init > 0);
-      const sorted    = [...players].sort((a, b) => b.init - a.init);
-      return { ...m, players, status: allRolled ? "active" : "initiative", turn: allRolled ? sorted[0].id : null, logs: [...m.logs, `🎲 ${me.name} tira iniziativa: ${roll}${advTag}`] };
-    });
-  };
-
-  const handleTrainingShieldSkill = async (matchId) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🛡 ${me?.name} lancia Scudo! (+3 CA per 3 turni)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3, defensiveBonus: 0 } : p);
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingSecondWind = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const { total: heal, rolls: healRolls } = rollDmg("1d10");
-    const totalHeal = heal + 5;
-    const log = `💨 ${me?.name} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, hp: Math.min(p.maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingActionSurge = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `⚡ ${me?.name} attiva Scatto d'Azione! Azione extra.`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, actionSurgeActive: true, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, turn: currentUser.uid, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingRage = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🔥 ${me?.name} entra in Furia! (+2 danno armi per 3 turni)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, rageTurns: 3, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingHunterMark = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🎯 ${me?.name} segna il bersaglio! (+3 tiri per 3 turni)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, hunterMarkTurns: 3, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingInvisibility = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const duration = action.invisibilityDuration ?? 1;
-    const turnsLog = duration > 1 ? `${duration} turni` : "il prossimo turno";
-    const log = `👻 ${me?.name} svanisce nell'ombra! Il nemico non può attaccare per ${turnsLog}.`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, invisible: true, invisibilityTurns: duration, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingBardicInspiration = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const log = `🎵 ${me?.name} si ispira! +1d6 al prossimo tiro (bonus action).`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, bardicInspirationActive: true, bonusActionUsed: true, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      // Bonus action: il turno NON avanza.
-      return { ...m, players, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingMagicDetect = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const myClass = (me?.snapshot?.class || "").toLowerCase();
-    const bonusVal = getMagicDetectBonusForClass(myClass);
-    const log = `🔮 ${me?.name} invoca ${action.name}! (+${bonusVal} al tiro per colpire del prossimo turno)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, magicDetectActive: bonusVal, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  // Concentrazione (Monk) — Bonus Action: +4 danni per 2 turni
-  const handleTrainingConcentrate = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🧘 ${me?.name} si concentra! +4 danni per 2 turni (bonus action)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, concentrationTurns: 2, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, logs: [...m.logs, log] };
-    });
-  };
-
-  // Assorbire Danni (Monk) — Bonus Action: prossimo danno subito → cura 50%
-  const handleTrainingAbsorbDamage = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🌀 ${me?.name} si prepara ad assorbire il prossimo colpo! (bonus action)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        return { ...p, absorbDamageNext: true, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses)-1) } };
-      });
-      return { ...m, players, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingFonteConfirm = async (matchId, fonteAction, selectedSpellNames) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const mySnap = me?.snapshot || {};
-    const log = `🔮 ${me?.name} attinge alla Fonte di Magia! Ripristina: ${selectedSpellNames.join(", ")}`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = { ...(p.actionUsesLeft || {}) };
-        uses[fonteAction.name] = Math.max(0, (uses[fonteAction.name] ?? fonteAction.maxUses) - 1);
-        selectedSpellNames.forEach(spellName => {
-          const spell = (mySnap.selectedActions || []).find(a => a.name === spellName);
-          if (spell?.maxUses) uses[spellName] = Math.min(spell.maxUses, (uses[spellName] ?? spell.maxUses) + 1);
-        });
-        return { ...p, actionUsesLeft: uses };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-    setShowFontePicker(false); setFonteSelected([]);
-  };
-
-  const handleTrainingMagicalCunning = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const mySnap = me?.snapshot || {};
-    const log = `🌀 ${me?.name} usa Astuzia Magica! Ripristina tutti gli slot magia.`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = { ...(p.actionUsesLeft || {}) };
-        uses[action.name] = Math.max(0, (uses[action.name] ?? action.maxUses) - 1);
-        (mySnap.selectedActions || []).forEach(a => { if (a.maxUses && a.level > 0) uses[a.name] = a.maxUses; });
-        return { ...p, actionUsesLeft: uses };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingRecuperoArcano = async (matchId, recuperoAction, lv1Names, lv2Names) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const mySnap = me?.snapshot || {};
-    const restored = [...lv1Names, ...lv2Names].join(", ");
-    const log = `📖 ${me?.name} usa Recupero Arcano! Ripristina: ${restored}`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = { ...(p.actionUsesLeft || {}) };
-        uses[recuperoAction.name] = Math.max(0, (uses[recuperoAction.name] ?? recuperoAction.maxUses) - 1);
-        [...lv1Names, ...lv2Names].forEach(n => {
-          const spell = (mySnap.selectedActions || []).find(a => a.name === n);
-          if (spell?.maxUses) uses[n] = Math.min(spell.maxUses, (uses[n] ?? spell.maxUses) + 1);
-        });
-        return { ...p, actionUsesLeft: uses };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-    setShowRecuperoPicker(false); setRecuperoLv1Selected([]); setRecuperoLv2Selected([]);
-  };
-
-  const handleTrainingLayOfHands = async (matchId, healAmt) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const log = `🙏 ${me?.name} usa Lay of Hands! Cura ${healAmt} HP`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        return { ...p, hp: Math.min(p.maxHp, p.hp + healAmt), layOfHandsPool: Math.max(0, (p.layOfHandsPool ?? 0) - healAmt) };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-    setShowLayOfHandsPicker(false);
-  };
-
-  const handleTrainingWildShape = async (matchId, formKey) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    if (!me) return;
-    const wsUsesLeft = me.wildShapeUsesLeft ?? 2;
-    if (wsUsesLeft <= 0) return;
-    const form = WILD_SHAPES[formKey];
-    const { count, sides } = form.hpDice;
-    let newHp = 0;
-    for (let i = 0; i < count; i++) newHp += Math.floor(Math.random() * sides) + 1;
-    const newUsesLeft = wsUsesLeft - 1;
-    const log = `🐾 ${me.name} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/2]`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p =>
-        p.id !== currentUser.uid ? p
-          : { ...p, hp: newHp, wildShape: formKey, preWildShapeHp: p.hp, wildShapeUsesLeft: newUsesLeft }
-      );
-      return { ...m, players, logs: [...m.logs, log] };
-    });
-    setShowTrainingWildPicker(false);
-  };
-
-  const handleTrainingRevertWildShape = async (matchId) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    if (!me) return;
-    const restoredHp = me.preWildShapeHp ?? me.hp;
-    const log = `🧙 ${me.name} ritorna alla forma originale (${restoredHp} HP)`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p =>
-        p.id !== currentUser.uid ? p
-          : { ...p, hp: restoredHp, wildShape: null, preWildShapeHp: null }
-      );
-      return { ...m, players, logs: [...m.logs, log] };
-    });
-  };
-
-  const useTrainingItem = async (matchId, itemKey, targetId) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const item = ARENA_ITEMS.find(i => i.key === itemKey);
-    if (!item || !me) return;
-    const curUses = me.itemUsesLeft?.[itemKey] ?? 0;
-    if (curUses <= 0) return;
-    await applyTrainingUpdate(matchId, m => {
-      let log = null;
-      const ts = new Date().toISOString();
-      const rawPlayers = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const newUses = { ...(p.itemUsesLeft || {}), [itemKey]: Math.max(0, curUses - 1) };
-          if (itemKey === "pozione_cura" || itemKey === "pozione_cura_media") {
-            const { total: heal } = rollDmg(item.damage || "2d12");
-            const newHp = Math.min(p.maxHp, p.hp + heal);
-            log = { pub: `🧪 ${me.name} usa ${item.name} — ${newHp} HP`, ts };
-            return { ...p, hp: newHp, itemUsesLeft: newUses };
-          }
-          return { ...p, itemUsesLeft: newUses };
-        }
-        if (itemKey === "bomba" && p.id === targetId) {
-          const { total: dmg } = rollDmg("2d6");
-          log = { pub: `💣 ${me.name} lancia Bomba su ${p.name} — ${dmg} danni!`, ts };
-          return { ...p, hp: Math.max(0, p.hp - dmg) };
-        }
-        if (itemKey === "pozione_veleno" && p.id === targetId) {
-          log = { pub: `☠ ${me.name} usa Veleno su ${p.name} — subirà 1d6 al prossimo turno!`, ts };
-          return { ...p, poisonDoT: true };
-        }
-        return p;
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, ...(log ? [log] : []), ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, ...(log ? [log] : []), ...extraLogs] };
-    });
-  };
-
-  const handleTrainingHealSpell = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    if (!me) return;
-    const { total: healDice, rolls: healRolls } = rollDmg(action.damage);
-    const useOverride = !!action.healModStat;
-    const spellMod = useOverride ? (me.snapshot?.stats?.[action.healModStat] ?? 0) : getSpellMod(me.snapshot);
-    const heal = Math.max(1, healDice + spellMod);
-    const modKey = useOverride ? action.healModStat.toUpperCase() : getSpellcastingAbility((me.snapshot?.class || "").toLowerCase()).toUpperCase();
-    const modPart = spellMod !== 0 ? ` ${spellMod >= 0 ? "+" : ""}${spellMod} ${modKey}` : "";
-    const log = `${me.name} lancia ${action.icon} ${action.name} → cura sé stesso di ${heal} HP 🎲(${healRolls}${modPart})`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-        return { ...p, hp: Math.min(p.maxHp, p.hp + heal), shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingAidBuff = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    const me = match?.players.find(p => p.id === currentUser.uid);
-    const myClass = (me?.snapshot?.class || "").toLowerCase();
-    const bonusVal = getAidBonusForClass(myClass);
-    const log = `🤝 ${me?.name} si concentra — +${bonusVal} al prossimo tiro per colpire!`;
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-        return { ...p, aidBuff: bonusVal, actionUsesLeft: newUses };
-      });
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingPetWolf = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const tgt = match.players.find(p => p.id === targetId);
-    const { total: dmg, rolls } = rollDmg(action.damage);
-    await applyTrainingUpdate(matchId, m => {
-      const rawPlayers = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
-        }
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
-        return p;
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🐺 Il lupo di ${me?.name} morde ${tgt?.name} 🎲(${rolls})=${dmg} danni! · bonus action`;
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      // Bonus action: il turno NON avanza.
-      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
-    });
-  };
-
-  const handleTrainingPetSpider = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    const tgt = match.players.find(p => p.id === targetId);
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses };
-        }
-        if (p.id === targetId) return { ...p, controlLostTurns: 2 };
-        return p;
-      });
-      const log = `🕷 Il ragno di ${me?.name} intrappola ${tgt?.name} nella tela! Salta 2 turni (NESSUN TS).`;
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingPetEagle = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    const tgt = match.players.find(p => p.id === targetId);
-    const { total: dmg, rolls } = rollDmg(action.damage);
-    await applyTrainingUpdate(matchId, m => {
-      const rawPlayers = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses };
-        }
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), blindDebuff: true, eagleDebuffTurns: 3 };
-        return p;
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🦅 L'aquila di ${me?.name} si avventa su ${tgt?.name}! 🎲(${rolls})=${dmg} danni · accecato + svantaggio per 3 turni.`;
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-    });
-  };
-
-  const handleTrainingConstructGolem = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    const tgt = match.players.find(p => p.id === targetId);
-    const { total: dmg, rolls } = rollDmg(action.damage);
-    await applyTrainingUpdate(matchId, m => {
-      const rawPlayers = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses, nextHitHalved: true };
-        }
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
-        return p;
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🤖 Il Golem di ${me?.name} colpisce ${tgt?.name} 🎲(${rolls})=${dmg} danni · prossimo colpo subìto sarà dimezzato.`;
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-    });
-  };
-
-  const handleTrainingConstructSnake = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    const tgt = match.players.find(p => p.id === targetId);
-    const { total: dmg, rolls } = rollDmg(action.damage);
-    await applyTrainingUpdate(matchId, m => {
-      const rawPlayers = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, actionUsesLeft: newUses };
-        }
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), poisonDoT: true, poisonDoTTurns: 2 };
-        return p;
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🐍 Il Serpente di ${me?.name} morde ${tgt?.name} 🎲(${rolls})=${dmg} danni · veleno 1d6 per 2 turni.`;
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-    });
-  };
-
-  const handleTrainingArmorForge = async (matchId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const me = match.players.find(p => p.id === currentUser.uid);
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, armorForgeTurns: 2, actionUsesLeft: newUses };
-      });
-      const log = `🛠 ${me?.name} forgia un'armatura sul campo! +2 CA per 2 turni.`;
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  // Incantesimo a danno via TS: il bersaglio tira d20 + mod nella stessa abilità di lancio del caster.
-  // Pass = nessun danno · Fail = danno pieno (dado + spell mod del caster).
-  const handleTrainingSpellSave = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const attP = match.players.find(p => p.id === currentUser.uid);
-    const defP = match.players.find(p => p.id === targetId);
-    if (!attP || !defP) return;
-    const attSnap = attP.snapshot || {};
-    const defSnap = defP.snapshot || {};
-    const ability = getSpellcastingAbility((attSnap.class || "").toLowerCase());
-    const dc      = getSpellSaveDC(attSnap);
-    const defMod  = defSnap.stats?.[ability] ?? 0;
-    const d20     = Math.floor(Math.random() * 20) + 1;
-    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${action.name}` });
-    const tsTotal = d20 + defMod;
-    const saves   = tsTotal >= dc;
-    const casterMod = attSnap.stats?.[ability] ?? 0;
-    const concentrationDmg = (attP.concentrationTurns ?? 0) > 0 ? 4 : 0;
-    const { total: baseDmg, rolls: diceRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(action.damage);
-    const damage  = saves ? 0 : Math.max(0, baseDmg + casterMod + concentrationDmg);
-    const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
-    const dmgPart = saves ? "" : ` 🎲(${diceRolls})${casterMod >= 0 ? "+" : ""}${casterMod} ${ability.toUpperCase()}${concentrationTag} = ${damage}`;
-    const log = saves
-      ? `✨ ${defP.name} resiste a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} ≥ ${dc}) — nessun danno.`
-      : `✨ ${attP.name} colpisce ${defP.name} con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal} < ${dc})${dmgPart} — ${damage} danni.`;
-    await applyTrainingUpdate(matchId, m => {
-      const rawPlayers = m.players.map(p => {
-        if (p.id === targetId) {
-          if (saves) return { ...p, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
-          if (p.absorbDamageNext && damage > 0) {
-            const tgtMaxHp = p.snapshot?.stats?.maxHp ?? p.maxHp ?? p.hp;
-            const heal = Math.floor(damage / 2);
-            return { ...p, hp: Math.min(tgtMaxHp, p.hp + heal), absorbDamageNext: false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
-          }
-          return { ...p, hp: Math.max(0, p.hp - damage), ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
-        }
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-          return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), concentrationTurns: Math.max(0,(p.concentrationTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, magicDetectActive: false, bardicInspirationActive: false, actionSurgeActive: false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1), actionUsesLeft: newUses };
-        }
-        return { ...p, ...consumeInvisibility(p) };
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-    });
-  };
-
-  const handleTrainingControlSpell = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match) return;
-    const attP = match.players.find(p => p.id === currentUser.uid);
-    const defP = match.players.find(p => p.id === targetId);
-    if (!attP || !defP) return;
-    const saveAbility = parseSpellSaveAbility(action);
-    const defMod = defP.snapshot?.stats?.[saveAbility] ?? 0;
-    const dc     = getSpellSaveDC(attP.snapshot);
-    const d20    = Math.floor(Math.random() * 20) + 1;
-    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
-    const tsTotal = d20 + defMod;
-    const saves  = tsTotal >= dc;
-    const log = saves
-      ? { pub: `🌀 ${defP.name} resiste a ${action.name} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${dc})!`, attId: currentUser.uid, ts: new Date().toISOString() }
-      : { pub: `🌀 ${defP.name} cade sotto ${action.name} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${dc}) — turno saltato!`, attId: currentUser.uid, ts: new Date().toISOString() };
-    await applyTrainingUpdate(matchId, m => {
-      const players = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-          return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
-        }
-        if (p.id === targetId && !saves) {
-          return { ...p, controlLostTurns: 2 };
-        }
-        return p;
-      });
-      const nextTurn = saves ? advanceTurnT(players, m.turn) : currentUser.uid;
-      return { ...m, players, turn: nextTurn, round: m.round + 1, logs: [...m.logs, log] };
-    });
-  };
-
-  const handleTrainingAction = async (matchId, targetId, action) => {
-    const match = trainingMatches.find(m => m.id === matchId);
-    if (!match || match.turn !== currentUser.uid || match.status !== "active") return;
-    const attP = match.players.find(p => p.id === currentUser.uid);
-    const defP = match.players.find(p => p.id === targetId);
-    if (!attP || !defP) return;
-    const attSnap = attP.snapshot || {};
-    const defSnap = defP.snapshot || {};
-    const attName = attP.name;
-    const defName = defP.name;
-    const armorPenalty = attSnap.selectedArmor?.hitPenalty ?? 0;
-
-    if (action.special === "shield_buff")         { await handleTrainingShieldSkill(matchId); return; }
-    if (action.special === "second_wind")         { await handleTrainingSecondWind(matchId, action); return; }
-    if (action.special === "action_surge")        { await handleTrainingActionSurge(matchId, action); return; }
-    if (action.special === "rage")                { await handleTrainingRage(matchId, action); return; }
-    if (action.special === "hunter_mark")         { await handleTrainingHunterMark(matchId, action); return; }
-    if (action.special === "invisibility")        { await handleTrainingInvisibility(matchId, action); return; }
-    if (action.special === "bardic_inspiration")  { await handleTrainingBardicInspiration(matchId, action); return; }
-    if (action.special === "magic_detect")        { await handleTrainingMagicDetect(matchId, action); return; }
-    if (action.special === "concentrate_buff")    { await handleTrainingConcentrate(matchId, action); return; }
-    if (action.special === "absorb_damage")       { await handleTrainingAbsorbDamage(matchId, action); return; }
-    if (action.special === "fonte_di_magia")      { setShowFontePicker(true); return; }
-    if (action.special === "magical_cunning")     { await handleTrainingMagicalCunning(matchId, action); return; }
-    if (action.special === "recupero_arcano")     { setShowRecuperoPicker(true); return; }
-    if (action.special === "heal")                { await handleTrainingHealSpell(matchId, action); return; }
-    if (action.special === "aid_buff")            { await handleTrainingAidBuff(matchId, action); return; }
-    if (action.special === "control" || action.special === "corona_pazzia") { await handleTrainingControlSpell(matchId, targetId, action); return; }
-    if (action.special === "pet_wolf")            { await handleTrainingPetWolf(matchId, targetId, action); return; }
-    if (action.special === "pet_spider")          { await handleTrainingPetSpider(matchId, targetId, action); return; }
-    if (action.special === "pet_eagle")           { await handleTrainingPetEagle(matchId, targetId, action); return; }
-    if (action.special === "construct_golem")     { await handleTrainingConstructGolem(matchId, targetId, action); return; }
-    if (action.special === "construct_snake")     { await handleTrainingConstructSnake(matchId, targetId, action); return; }
-    if (action.special === "armor_forge")         { await handleTrainingArmorForge(matchId, action); return; }
-
-    // Incantesimi a danno → TS al posto del tiro per colpire (uniforme per tutte le classi).
-    if (isSaveDamageSpell(action))                { await handleTrainingSpellSave(matchId, targetId, action); return; }
-
-    // ── Smite Divino ─────────────────────────────────────────────────────────
-    if (action.special === "smite") {
-      const weapons = (attSnap.selectedActions || []).filter(a => a.type === "weapon");
-      const weapon  = weapons.find(a => attP.equippedWeaponNames?.includes(a.name)) || weapons[0];
-      if (!weapon) return;
-      const strMod  = attSnap.stats?.str ?? 0;
-      const shieldAc = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-      const defAc   = (defSnap.stats?.ac ?? 10) + shieldAc + (defP.defensiveBonus ?? 0);
-      const d20 = Math.floor(Math.random() * 20) + 1;
-      await showD20Roll(d20, { label: "Smite" });
-      const total = d20 + (weapon.hitBonus || 0) + strMod + armorPenalty + readActiveBonus(attP.aidBuff, 4);
-      const isHit = total >= defAc; const isCrit = d20 === 20;
-      const { total: wDmg } = isHit ? rollDmg(weapon.damage) : { total: 0 };
-      const { total: sDmg } = isHit ? rollDmg("2d8") : { total: 0 };
-      const dmg = (wDmg + sDmg + strMod) * (isCrit ? 2 : 1);
-      const log = { pub: `⚡ ${attName} → Smite su ${defName}: ${isHit ? `COLPISCE per ${dmg}${isCrit?" CRITICO!":""}` : "MANCA"}`, attId: currentUser.uid, ts: new Date().toISOString() };
-      await applyTrainingUpdate(matchId, m => {
-        const uses = attP.actionUsesLeft || {};
-        const rawPlayers = m.players.map(p => {
-          if (p.id === targetId && isHit) return { ...p, hp: Math.max(0, p.hp - dmg) };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns||0)-1), rageTurns: Math.max(0, (p.rageTurns||0)-1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0, (uses[action.name]??action.maxUses??1)-1) } };
-          return p;
-        });
-        const { players, extraLogs } = processWsKnockouts(rawPlayers);
-        const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-      });
-      return;
-    }
-
-    // ── Attacco Furtivo ───────────────────────────────────────────────────────
-    if (action.special === "sneak_attack") {
-      const weapons = (attSnap.selectedActions || []).filter(a => a.type === "weapon");
-      const weapon  = weapons.find(a => attP.equippedWeaponNames?.includes(a.name)) || weapons[0];
-      if (!weapon) return;
-      const dexMod = attSnap.stats?.dex ?? 0;
-      const shieldAc = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-      const targetAc  = (defSnap.stats?.ac ?? 10) + shieldAc + (defP.defensiveBonus ?? 0);
-      const aidBonus = readActiveBonus(attP.aidBuff, 4);
-      const selfStealth = (attP.stealthTurns ?? 0) > 0;
-      const defStealth  = (defP.stealthTurns ?? 0) > 0;
-      const sneakHasAdv = selfStealth && !defStealth;
-      const sneakHasDis = defStealth && !selfStealth;
-      const d20a = Math.floor(Math.random() * 20) + 1;
-      const d20b = (sneakHasAdv || sneakHasDis) ? Math.floor(Math.random() * 20) + 1 : 0;
-      const d20  = sneakHasAdv ? Math.max(d20a, d20b) : sneakHasDis ? Math.min(d20a, d20b) : d20a;
-      await showD20Roll(d20, { label: "Attacco Furtivo" });
-      const totalHit = d20 + (weapon.hitBonus || 0) + dexMod + armorPenalty + aidBonus;
-      const isHit = totalHit >= targetAc;
-      const isCrit = d20 === 20;
-      const critMult = isCrit ? 2 : 1;
-      const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weapon.damage) : { total: 0, rolls: "" };
-      const { total: snDmg, rolls: snRolls } = isHit ? rollDmg("1d6") : { total: 0, rolls: "" };
-      const totalDmg = (wDmg + snDmg + dexMod + 3) * critMult;
-      const critTag = isCrit ? " ★CRITICO★" : "";
-      const dexPart = ` ${dexMod >= 0 ? "+" : ""}${dexMod} DES`;
-      const aidPart = aidBonus ? ` +${aidBonus} Aiuto` : "";
-      const advTag  = sneakHasAdv ? ` 🌟vant.[${d20a},${d20b}]` : sneakHasDis ? ` 🌑svant.[${d20a},${d20b}]` : "";
-      const hitStr  = `🎲d20=${d20}${critTag}${advTag} +${weapon.hitBonus || 0} hit${dexPart}${aidPart}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""} = ${totalHit} vs CA ${targetAc}`;
-      const log = {
-        pub: isHit
-          ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [arma 🎲${wRolls} + furtivo 🎲${snRolls}${dexPart} +3 = ${totalDmg}] — ${totalDmg} danni`
-          : `🛡️ ${attName} manca ${defName} con Attacco Furtivo (${totalHit} vs CA ${targetAc})`,
-        att: isHit
-          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${snRolls}${dexPart} +3 = ${totalDmg}] — ${totalDmg} danni`
-          : `🛡️ Manchi ${defName} con Attacco Furtivo [${hitStr}]`,
-        def: isHit
-          ? `🗡 ${attName} ti ha colpito con Attacco Furtivo${critTag} — ${totalDmg} danni`
-          : `🛡️ ${attName} ti ha mancato con Attacco Furtivo`,
-        attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
-      };
-      await applyTrainingUpdate(matchId, m => {
-        const uses = attP.actionUsesLeft || {};
-        const rawPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, hp: isHit ? Math.max(0, p.hp - totalDmg) : p.hp, stealthTurns: Math.max(0, (p.stealthTurns||0)-1) };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, stealthTurns: Math.max(0,(p.stealthTurns||0)-1), actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses??3)-1) } };
-          return p;
-        });
-        const { players, extraLogs } = processWsKnockouts(rawPlayers);
-        const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-      });
-      return;
-    }
-
-    // ── Furtività ─────────────────────────────────────────────────────────────
-    if (action.special === "stealth") {
-      const log = { pub: `🌑 ${attName} entra in Furtività — vantaggio per 3 turni`, attId: currentUser.uid, ts: new Date().toISOString() };
-      await applyTrainingUpdate(matchId, m => {
-        const uses = attP.actionUsesLeft || {};
-        const players = m.players.map(p => {
-          if (p.id !== currentUser.uid) return p;
-          return { ...p, stealthTurns: 3, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: { ...uses, [action.name]: Math.max(0,(uses[action.name]??action.maxUses??1)-1) } };
-        });
-        return { ...m, players, logs: [...m.logs, log] };
-      });
-      return;
-    }
-
-    // ── Veleno ────────────────────────────────────────────────────────────────
-    if (action.special === "poison") {
-      const { total: dmg } = rollDmg(action.damage);
-      const log = { pub: `☠ ${attName} usa Veleno su ${defName} — ${dmg} danni + TS COS (CD 15)`, attId: currentUser.uid, ts: new Date().toISOString() };
-      await applyTrainingUpdate(matchId, m => {
-        const rawPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), pendingConSave: true };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), defensiveBonus: 0 };
-          return p;
-        });
-        const { players, extraLogs } = processWsKnockouts(rawPlayers);
-        const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log, ...extraLogs] };
-      });
-      return;
-    }
-
-    // ── Ragnatela (DEX save, no damage) ──────────────────────────────────────
-    if (action.special === "web") {
-      const defDex = defSnap.stats?.dex ?? 0;
-      const d20w = Math.floor(Math.random() * 20) + 1;
-      await showD20Roll(d20w, { label: "TS · Ragnatela" });
-      const tsTotal = d20w + defDex;
-      const passes = tsTotal >= 15;
-      const log = { pub: passes
-        ? `🕸 ${attName} lancia Ragnatela su ${defName} — TS DES ${tsTotal} ≥ 15: schiva!`
-        : `🕸 ${attName} lancia Ragnatela su ${defName} — TS DES ${tsTotal} < 15: INTRAPPOLATO!`,
-        attId: currentUser.uid, ts: new Date().toISOString() };
-      await applyTrainingUpdate(matchId, m => {
-        const players = m.players.map(p => {
-          if (p.id === targetId) return { ...p, entangled: !passes };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false };
-          return p;
-        });
-        return { ...m, players, turn: advanceTurnT(players, m.turn), round: m.round + 1, logs: [...m.logs, log] };
-      });
-      return;
-    }
-
-    // ── Attacco normale (weapon / spell) ─────────────────────────────────────
-    const attCls        = (attSnap.class || "").toLowerCase();
-    const isSpell       = action.type === "spell";
-    const spellKey      = isSpell ? getSpellcastingAbility(attCls) : null;
-    const statMod       = action.statKey ? (attSnap.stats?.[action.statKey] ?? 0)
-                        : isSpell ? (attSnap.stats?.[spellKey] ?? 0) : 0;
-    const weaponBuff    = !isSpell && (attSnap.arenaBuffs?.weaponBonus ? 1 : 0);
-    const rageDmg       = !isSpell && (attP.rageTurns ?? 0) > 0 ? 2 : 0;
-    const concentrationDmg = (attP.concentrationTurns ?? 0) > 0 ? 4 : 0;
-    const { total: inspBonus, rolls: inspRolls } = attP.bardicInspirationActive ? rollDmg("1d6") : { total: 0, rolls: "" };
-    const magicDetB     = readActiveBonus(attP.magicDetectActive, 3);
-    const hunterMarkB   = (attP.hunterMarkTurns ?? 0) > 0 ? 3 : 0;
-    const eagleActiveT  = (attP.eagleDebuffTurns ?? 0) > 0;
-    const blindPen      = (attP.blindDebuff || eagleActiveT) ? -3 : 0;
-    const hasSorcAdv    = isSorcererClass(attCls) && isSpell;
-    const hasAdv        = hasSorcAdv || (attP.stealthTurns ?? 0) > 0;
-    const hasDis        = (defP.stealthTurns ?? 0) > 0 || eagleActiveT;
-    const d20a = Math.floor(Math.random() * 20) + 1;
-    const d20b = hasAdv || hasDis ? Math.floor(Math.random() * 20) + 1 : 0;
-    const d20  = hasAdv && !hasDis ? Math.max(d20a, d20b) : hasDis && !hasAdv ? Math.min(d20a, d20b) : d20a;
-    await showD20Roll(d20, { label: isSpell ? action.name : `Attacco · ${action.name}` });
-    const aidBonusVal = readActiveBonus(attP.aidBuff, 4);
-    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonusVal + inspBonus + magicDetB + hunterMarkB + blindPen;
-    const shieldLost    = defSnap.hasShield && defP.shieldSuppressed;
-    const shieldAcBonus = (defP.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
-    const armorForgeBonusT = (defP.armorForgeTurns ?? 0) > 0 ? 2 : 0;
-    const defAC  = (defSnap.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldAcBonus + armorForgeBonusT + (defP.defensiveBonus ?? 0);
-    const isCrit = d20 === 20; // nat 20 = critico per qualsiasi attacco (arma o spell)
-    const isHit  = hitTotal >= defAC || isCrit;
-    const isBlind = action.special === "blind_debuff";
-    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
-    const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && attP.weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
-    // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
-    const spellDealsDmg  = isSpell && (action.damage && action.damage !== "—");
-    const dmgStatMod     = !isSpell ? statMod : (spellDealsDmg ? statMod : 0);
-    const damage = (isHit && !isBlind) ? (baseDmg + dmgStatMod + weaponBuff + rageDmg + concentrationDmg) * (isCrit ? 2 : 1) + poisonBonusDmg : 0;
-    const critTag        = isCrit ? " ★CRITICO★" : "";
-    const statPart       = !isSpell && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : "";
-    const spellModPart   = isSpell && spellKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${spellKey.toUpperCase()}` : "";
-    const dmgModPart     = (dmgStatMod !== 0) ? ` ${dmgStatMod >= 0 ? "+" : ""}${dmgStatMod} ${(action.statKey || spellKey || "").toUpperCase()}` : "";
-    const aidPart        = aidBonusVal > 0 ? ` +${aidBonusVal} Aiuto` : "";
-    const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : "";
-    const rageTag        = rageDmg > 0 ? ` | furia +${rageDmg}` : "";
-    const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
-    const poisonTag      = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
-    const inspTag        = inspBonus > 0 ? ` +ispirazione 🎵🎲${inspRolls}=${inspBonus}` : "";
-    const magicDetTag    = magicDetB > 0 ? ` +${magicDetB} 🔮det.` : "";
-    const hunterTag      = hunterMarkB > 0 ? " +3 🎯marchio" : "";
-    const blindPenTag    = blindPen < 0 ? ` ${blindPen} 🙈acc.` : "";
-    const advantageTag   = hasAdv && !hasDis ? ` 🌟vant.[${d20a},${d20b}]` : hasDis && !hasAdv ? ` 🌑svant.[${d20a},${d20b}]` : "";
-    const critDmgNote    = isCrit ? " ×2" : "";
-    const dmgBreakdown   = (isHit && !isBlind) ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${rageTag}${concentrationTag} = ${damage}]` : "";
-    const hitBreakdown   = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus||0} hit${statPart}${spellModPart}${penPart}${aidPart}${inspTag}${magicDetTag}${hunterTag}${blindPenTag} = ${hitTotal} vs CA ${defAC}`;
-    const log = {
-      pub: isHit
-        ? (isBlind ? `🙈 ${attName} accieca ${defName}! (−3 ai tiri per colpire per 1 turno)` : `💥 ${attName} colpisce ${defName} con ${action.name}${critTag} (${hitTotal} vs CA ${defAC})${dmgBreakdown} — ${damage} danni`)
-        : `🛡️ ${attName} manca ${defName} con ${action.name} (${hitTotal} vs CA ${defAC})`,
-      att: isHit
-        ? (isBlind ? `🙈 Acceci ${defName}! [${hitBreakdown}] — −3 ai tiri per colpire` : `💥 Colpisci ${defName} con ${action.name} [${hitBreakdown}]${dmgBreakdown} — ${damage} danni`)
-        : `🛡️ Manchi ${defName} con ${action.name} [${hitBreakdown}]`,
-      def: isHit
-        ? (isBlind ? `🙈 ${attName} ti ha accecato! −3 ai tuoi tiri per colpire per 1 turno` : `⚔️ ${attName} ti ha colpito con ${action.name}${critTag}${dmgBreakdown} — ${damage} danni`)
-        : `🛡️ ${attName} ti ha mancato con ${action.name}`,
-      attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
-    };
-    const surgeWas = !!attP.actionSurgeActive;
-    let absorbedLog = null;
-    await applyTrainingUpdate(matchId, m => {
-      const rawPlayers = m.players.map(p => {
-        if (p.id === targetId) {
-          if (p.absorbDamageNext && damage > 0) {
-            const tgtSnap = p.snapshot || {};
-            const maxHp = tgtSnap.stats?.maxHp ?? p.maxHp ?? p.hp;
-            const heal  = Math.floor(damage / 2);
-            absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
-            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlind && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
-          }
-          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlind && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
-        }
-        if (p.id === currentUser.uid) {
-          const up = { ...p, shieldSkillTurns: Math.max(0,(p.shieldSkillTurns||0)-1), rageTurns: Math.max(0,(p.rageTurns||0)-1), concentrationTurns: Math.max(0,(p.concentrationTurns||0)-1), hunterMarkTurns: Math.max(0,(p.hunterMarkTurns||0)-1), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: false, ...consumeInvisibility(p), stealthTurns: Math.max(0,(p.stealthTurns||0)-1) };
-          if (action.maxUses !== undefined) { const prev = p.actionUsesLeft ?? {}; up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) }; }
-          return up;
-        }
-        return { ...p, ...consumeInvisibility(p) };
-      });
-      const { players: updPlayers, extraLogs } = processWsKnockouts(rawPlayers);
-      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : [])];
-      const alive = updPlayers.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players: updPlayers, status: "finished", winner: alive[0].id, logs: [...allLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-      const next = surgeWas ? currentUser.uid : advanceTurnT(updPlayers, m.turn);
-      return { ...m, players: updPlayers, turn: next, round: m.round + 1, logs: allLogs };
-    });
-  };
-
-  const startTrainingPair = async (matchIdA, matchIdB) => {
-    const matchA = trainingMatches.find(m => m.id === matchIdA);
-    const matchB = trainingMatches.find(m => m.id === matchIdB);
-    if (!matchA || !matchB) return;
-    const playerA = matchA.players[0];
-    const playerB = matchB.players[0];
-    if (!playerA || !playerB) return;
-    await updateDoc(doc(db, "training_matches", matchIdA), {
-      opponentId: matchB.challengerId,
-      players: [playerA, playerB],
-      status: "initiative",
-      turn: null,
-      round: 0,
-      logs: ["⚔️ Il match ha inizio! Tirate iniziativa."],
-    });
-    await updateDoc(doc(db, "training_matches", matchIdB), { status: "finished", winner: null });
-    setTrainingPairSel([]);
+  const removeFunMatch = async (matchId) => {
+    const m = (arenaMeta?.matches || []).find(x => x.matchId === matchId);
+    if (!m || m.kind !== "fun" || m.status !== "finished") return;
+    if (!m.players?.some(p => p.id === currentUser?.uid) && !isMaster) return;
+    const updatedMatches = (arenaMeta.matches || []).filter(x => x.matchId !== matchId);
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
   const toggleWeapon = (item, maxWeapons) => {
@@ -2765,8 +1867,9 @@ export default function Arena() {
     if (arenaMeta.participants.length < 2) return alert("Minimo 2 partecipanti!");
     const shuffled = [...arenaMeta.participants].sort(() => Math.random() - 0.5);
     const matches  = generateMatches(shuffled, 1, arenaMeta.characterSnapshots || {});
+    const existingFun = (arenaMeta.matches || []).filter(m => m.kind === "fun");
     await updateDoc(doc(db, "arena_meta", "global"), {
-      matches, phase: "combat", currentRound: 1, tournamentWinner: null,
+      matches: [...existingFun, ...matches], phase: "combat", currentRound: 1, tournamentWinner: null,
     });
   };
 
@@ -2878,10 +1981,10 @@ export default function Arena() {
     const attName = attackerSnap?.name || "?";
     const defName = defenderSnap?.name || "?";
 
-    // 1 moneta al primo attacco del giocatore in questo match
+    // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
-    if (!_alreadyAwarded) await awardArenaCoins(currentUser.uid, 1);
+    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 1);
 
     // Penalità ai tiri per colpire basata sull'armatura dell'attaccante
     const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
@@ -3118,7 +2221,7 @@ export default function Arena() {
         }
         return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
-      const allDone = updatedMatches.every(m => m.status === "finished");
+      const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
       const cr = arenaMeta.currentRound || 1;
       const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
       if (allDone && winners.length === 1) {
@@ -3298,7 +2401,7 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const allDone = updatedMatches.every(m => m.status === "finished");
+    const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
     const cr = arenaMeta.currentRound || 1;
     const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -3949,10 +3052,10 @@ export default function Arena() {
     const attName = attackerSnap?.name || "?";
     const defName = defenderSnap?.name || "?";
 
-    // 1 moneta al primo attacco del giocatore in questo match
+    // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
-    if (!_alreadyAwarded) await awardArenaCoins(currentUser.uid, 1);
+    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 1);
 
     const ability = getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
     const dc      = getSpellSaveDC(attackerSnap);
@@ -4012,7 +3115,7 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const allDone = updatedMatches.every(m => m.status === "finished");
+    const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
     const cr = arenaMeta.currentRound || 1;
     const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -4239,7 +3342,7 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const allDone = updatedMatches.every(m => m.status === "finished");
+    const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
     const cr = arenaMeta.currentRound || 1;
     const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
     if (allDone && winners.length === 1) {
@@ -4409,7 +3512,12 @@ export default function Arena() {
   }, [arenaMeta]);
 
   useEffect(() => {
-    if (!arenaMeta || arenaMeta.phase !== "combat") return;
+    if (!arenaMeta) return;
+    // Attiva auto-pass se torneo in corso O se ci sono sfide libere in corso.
+    const hasFunInProgress = (arenaMeta.matches || []).some(m =>
+      m.kind === "fun" && (m.status === "initiative" || m.status === "active")
+    );
+    if (arenaMeta.phase !== "combat" && !hasFunInProgress) return;
     const interval = setInterval(() => {
       if (arenaMeta?.timerPaused) return;
       const now = Date.now();
@@ -4468,10 +3576,12 @@ export default function Arena() {
     : Date.now();
   const isRegistered     = arenaMeta.participants?.includes(currentUser?.uid);
   const isPending        = arenaMeta.waitingList?.includes(currentUser?.uid);
-  const allMatchesDone   = arenaMeta.matches?.length > 0 && arenaMeta.matches?.every(m => m.status === "finished");
+  const tournamentMatches = (arenaMeta.matches || []).filter(m => m.kind !== "fun");
+  const funMatches        = (arenaMeta.matches || []).filter(m => m.kind === "fun");
+  const allMatchesDone   = tournamentMatches.length > 0 && tournamentMatches.every(m => m.status === "finished");
   const matchRoundOf = (m) => parseInt(m.matchId?.match(/^R(\d+)_/)?.[1] || "0", 10);
-  const lastPlayedRound = (arenaMeta.matches || []).reduce((max, m) => Math.max(max, matchRoundOf(m)), 0);
-  const currentRoundMatches = (arenaMeta.matches || []).filter(m => matchRoundOf(m) === lastPlayedRound);
+  const lastPlayedRound = tournamentMatches.reduce((max, m) => Math.max(max, matchRoundOf(m)), 0);
+  const currentRoundMatches = tournamentMatches.filter(m => matchRoundOf(m) === lastPlayedRound);
   const currentRoundWinners = currentRoundMatches.filter(m => m.winner).map(m => m.winner);
   const roundWinnerCount = currentRoundWinners.length;
   const canAdvanceRound  = isMaster && arenaMeta.phase === "combat" && allMatchesDone && roundWinnerCount >= 2;
@@ -4513,7 +3623,7 @@ export default function Arena() {
       await resolveBetsForFinishedMatches(updatedMatches);
       await recordMatchHistory(updatedMatches);
 
-      const allDone = updatedMatches.every(m => m.status === "finished");
+      const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
       const cr = arenaMeta.currentRound || 1;
       const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
       if (allDone && winners.length === 1) {
@@ -4555,11 +3665,6 @@ export default function Arena() {
     return { winnerId: null, participants, phase: arenaMeta.phase };
   })();
 
-  const switchMode = (mode) => {
-    if (loadoutPhase !== "idle") cancelLoadout();
-    setArenaMode(mode);
-  };
-
   return (
     <div className="arena-page">
 
@@ -4569,28 +3674,6 @@ export default function Arena() {
         <h1 className="arena-title">Arena dei Campioni</h1>
         <div className="arena-header-deco">⚔</div>
       </div>
-
-      {/* ── MODE TOGGLE ── */}
-      {(arenaMeta.trainingArenaOpen || isMaster) && (
-        <div className="arena-mode-toggle">
-          <button
-            className={`arena-tab${arenaMode === "tournament" ? " active" : ""}`}
-            onClick={() => switchMode("tournament")}
-          >
-            🏆 Torneo
-          </button>
-          <span className="arena-mode-sep">⚔</span>
-          <button
-            className={`arena-tab${arenaMode === "training" ? " active" : ""}`}
-            onClick={() => switchMode("training")}
-          >
-            🥊 Allenamento
-          </button>
-        </div>
-      )}
-
-      {/* ── TOURNAMENT SECTION ── */}
-      {arenaMode === "tournament" && <>
 
       {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
         <div className="champions-arena-banner">
@@ -4712,7 +3795,7 @@ export default function Arena() {
         </div>
       )}
 
-      {arenaMode === "tournament" && champions.length > 0 && (
+      {champions.length > 0 && (
         <HallOfChampions
           champions={champions}
           isMaster={isMaster}
@@ -4845,22 +3928,19 @@ export default function Arena() {
                 </button>
               )
             )}
-            <button
-              className={arenaMeta.trainingArenaOpen ? "btn-timer-pause" : "btn-master-join"}
-              onClick={async () => {
-                await updateDoc(doc(db, "arena_meta", "global"), {
-                  trainingArenaOpen: !arenaMeta.trainingArenaOpen,
-                });
-              }}
-            >
-              {arenaMeta.trainingArenaOpen ? "🥊 Chiudi Arena di Allenamento" : "🥊 Apri Arena di Allenamento"}
-            </button>
             <button className="btn-reset" onClick={async () => {
               await refundAllBets();
+              const preservedFun = (arenaMeta.matches || []).filter(m => m.kind === "fun");
+              // Conserva gli snapshot dei giocatori coinvolti in sfide libere ancora attive.
+              const preservedSnaps = {};
+              preservedFun.forEach(m => (m.players || []).forEach(p => {
+                const s = (arenaMeta.characterSnapshots || {})[p.id];
+                if (s) preservedSnaps[p.id] = s;
+              }));
               await updateDoc(doc(db, "arena_meta", "global"), {
                 phase: "registration", prizes: arenaMeta.prizes || "",
-                participants: [], waitingList: [], matches: [],
-                characterSnapshots: {}, tournamentWinner: null,
+                participants: [], waitingList: [], matches: preservedFun,
+                characterSnapshots: preservedSnaps, tournamentWinner: null,
                 currentRound: 1, matchHistory: [],
                 championsOnly: arenaMeta.championsOnly || false,
               });
@@ -4902,12 +3982,19 @@ export default function Arena() {
 
       {isMaster && <TournamentClassStats liveTournament={liveTournament} onSync={syncMatchHistory} />}
 
-      </> /* end arenaMode === "tournament" block 1 */}
+      {/* ── ZONA LOADOUT (tournament registration) ── */}
+      {(
+        (arenaMeta.phase === "registration" && (!isMaster || loadoutPhase !== "idle")) ||
+        (loadoutContext === "fun" && loadoutPhase !== "idle")
+      ) && (
+        <div className={`join-zone ${loadoutContext === "fun" ? "join-zone-fun" : ""}`}>
 
-      {/* ── ZONA LOADOUT (tournament registration OR training loadout) ── */}
-      {((arenaMode === "tournament" && arenaMeta.phase === "registration" && (!isMaster || loadoutPhase !== "idle")) ||
-        (arenaMode === "training" && loadoutContext === "training" && loadoutPhase !== "idle")) && (
-        <div className="join-zone">
+          {loadoutContext === "fun" && (
+            <div className="fun-loadout-banner">
+              🛡 {funAcceptMatchId ? "Stai accettando una Sfida Libera" : "Stai creando una Sfida Libera"} —
+              nessuna ricompensa, solo per il gusto del combattimento
+            </div>
+          )}
 
           {/* ── Fase CLASS-SELECT: scelta classe ── */}
           {loadoutPhase === "class-select" && charPreview && (
@@ -5459,12 +4546,100 @@ export default function Arena() {
         </div>
       )}
 
-      {arenaMode === "tournament" && <>
+      {/* ── ARENA LIBERA (Fun) — sempre disponibile, separata dal torneo ── */}
+      {currentUser && (() => {
+        const openChallenges = funMatches.filter(m => m.status === "open");
+        const myActiveFun = funMatches.find(m =>
+          (m.status === "initiative" || m.status === "active") &&
+          m.players?.some(p => p.id === currentUser.uid)
+        );
+        const myFinishedFun = funMatches
+          .filter(m => m.status === "finished" && m.players?.some(p => p.id === currentUser.uid))
+          .slice(-3);
+        const cantPlay = isRegistered || isPending;
+        return (
+          <div className="fun-arena-section">
+            <div className="fun-arena-header">
+              <span className="fun-arena-icon">🛡</span>
+              <div className="fun-arena-title-block">
+                <h3 className="fun-arena-title">Arena Libera</h3>
+                <p className="fun-arena-subtitle">
+                  Sfide 1v1 senza ricompense. Stesso regolamento del torneo, solo per il gusto di combattere.
+                </p>
+              </div>
+              {!cantPlay && !myActiveFun && (
+                <button className="btn-fun-create" onClick={openFunCreate}>
+                  ⚔ Crea Sfida
+                </button>
+              )}
+              {cantPlay && (
+                <span className="fun-arena-locked-note">Sei iscritto al torneo: l'Arena Libera è disabilitata.</span>
+              )}
+            </div>
+
+            {openChallenges.length > 0 && (
+              <div className="fun-arena-lobby">
+                <div className="fun-arena-lobby-title">Sfide aperte</div>
+                {openChallenges.map(m => {
+                  const challenger = m.players?.[0];
+                  const cSnap = snapshots[challenger?.id] || {};
+                  const isMine = m.challengerId === currentUser.uid;
+                  return (
+                    <div key={m.matchId} className="fun-challenge-row">
+                      {cSnap.image && <img src={cSnap.image} alt="" className="fun-challenge-avatar" />}
+                      <div className="fun-challenge-info">
+                        <span className="fun-challenge-name">{challenger?.name || "?"}</span>
+                        {cSnap.class && <span className="fun-challenge-class">{cSnap.class}</span>}
+                        <span className="fun-challenge-hp">{challenger?.maxHp ?? "?"} HP · CA {cSnap.stats?.ac ?? "?"}</span>
+                      </div>
+                      {isMine ? (
+                        <button className="btn-fun-cancel" onClick={() => cancelFunChallenge(m.matchId)}>
+                          ✕ Annulla
+                        </button>
+                      ) : (
+                        <button className="btn-fun-accept" onClick={() => openFunAccept(m.matchId)} disabled={cantPlay || !!myActiveFun}>
+                          {myActiveFun ? "Hai già una sfida in corso" : "⚔ Accetta"}
+                        </button>
+                      )}
+                      {isMaster && !isMine && (
+                        <button className="btn-fun-cancel" onClick={() => cancelFunChallenge(m.matchId)}>♛ Rimuovi</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {myFinishedFun.length > 0 && (
+              <div className="fun-arena-history">
+                <div className="fun-arena-history-title">Le tue ultime sfide</div>
+                {myFinishedFun.slice().reverse().map(m => {
+                  const opp = m.players?.find(p => p.id !== currentUser.uid);
+                  const won = m.winner === currentUser.uid;
+                  const draw = !m.winner;
+                  return (
+                    <div key={m.matchId} className={`fun-history-row ${draw ? "draw" : won ? "win" : "lose"}`}>
+                      <span className="fun-history-result">
+                        {draw ? "🤝 Annullata" : won ? `🛡 Hai vinto contro ${opp?.name || "?"}` : `💀 Sconfitto da ${opp?.name || "?"}`}
+                      </span>
+                      <button className="btn-fun-remove" onClick={() => removeFunMatch(m.matchId)} title="Rimuovi dalla lista">×</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {openChallenges.length === 0 && !myActiveFun && myFinishedFun.length === 0 && !cantPlay && (
+              <div className="fun-arena-empty">Nessuna sfida aperta. Sii il primo a lanciarne una!</div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── TABELLONE DEL TORNEO (visibile a tutti gli utenti loggati) ── */}
-      {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && arenaMeta.matches?.length > 0 && (() => {
+      {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
         const byRound = {};
-        arenaMeta.matches.forEach(m => {
+        tournamentMatches.forEach(m => {
           const r = parseInt((m.matchId.match(/^R(\d+)/) || [, 1])[1]);
           (byRound[r] = byRound[r] || []).push(m);
         });
@@ -5566,10 +4741,19 @@ export default function Arena() {
         />
       )}
 
-      {/* ── PANNELLO AZIONI (solo per partecipanti) ── */}
-      {arenaMeta.phase === "combat" && (
+      {/* ── PANNELLO AZIONI (solo per partecipanti) ──
+          Mostra match in cui sono coinvolto: torneo (in combat) e sempre le sfide libere accettate. */}
+      {(arenaMeta.matches || []).some(m =>
+        ((m.kind === "fun") || arenaMeta.phase === "combat") &&
+        m.players?.some(p => p.id === currentUser?.uid) &&
+        m.status !== "open"
+      ) && (
         <div className="matches-container">
-          {arenaMeta.matches.filter(m => m.players.some(p => p.id === currentUser?.uid)).map(m => {
+          {arenaMeta.matches
+            .filter(m => m.players.some(p => p.id === currentUser?.uid))
+            .filter(m => m.kind === "fun" || arenaMeta.phase === "combat")
+            .filter(m => m.status !== "open")
+            .map(m => {
             const myPlayer       = m.players.find(p => p.id === currentUser?.uid);
             const isMyMatch      = !!myPlayer;
             const isMyTurn       = m.turn === currentUser?.uid;
@@ -5602,14 +4786,16 @@ export default function Arena() {
             const equipHas2H       = currentEquipSel.some(n => myWeaponActions.find(w => w.name === n)?.twoHanded);
 
             return (
-              <div key={m.matchId} className={`match-card ${m.status === "finished" ? "finished" : ""}`}>
+              <div key={m.matchId} className={`match-card ${m.status === "finished" ? "finished" : ""} ${m.kind === "fun" ? "match-fun" : ""}`}>
 
                 <div className="match-header">
-                  <span className="match-round-label">Round {arenaMeta.currentRound}</span>
+                  <span className="match-round-label">
+                    {m.kind === "fun" ? "🛡 Sfida Libera" : `Round ${arenaMeta.currentRound}`}
+                  </span>
                   <span className="match-vs-label">{isFFA ? "FFA" : "VS"}</span>
                   <span className="match-status-label">
                     {m.status === "initiative" ? "⚡ Iniziativa"
-                      : m.status === "finished" ? "🏆 Concluso"
+                      : m.status === "finished" ? (m.kind === "fun" ? "✓ Sfida conclusa" : "🏆 Concluso")
                       : isFFA ? "⚔ Tutti contro Tutti"
                       : "⚔ Combattimento"}
                   </span>
@@ -6688,496 +5874,21 @@ export default function Arena() {
                     );
                   })}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      </> /* end arenaMode === "tournament" block 2 */}
-
-      {/* ── TRAINING SECTION ── */}
-      {arenaMode === "training" && loadoutPhase === "idle" && (
-        <div className="training-section">
-          <div className="training-header">
-            <h2 className="training-title">🥊 Arena di Allenamento</h2>
-            <p className="training-subtitle">
-              Sfida un altro giocatore in un combattimento libero — nessuna moneta in palio, nessuna scommessa.
-            </p>
-            {!arenaMeta.trainingArenaOpen && (
-              <p className="training-subtitle" style={{ color: "#c0392b", fontWeight: 600 }}>
-                ⏸ L'Arena di Allenamento è chiusa. Solo il Master può aprirla.
-              </p>
-            )}
-          </div>
-
-          {/* ── Master Panel (monitor only — no approval needed) ── */}
-          {isMaster && (
-            <div className="training-master-panel">
-              <h3 className="training-master-title"><span className="master-crown">♛</span> Monitor Master — Allenamento</h3>
-              <p className="training-subtitle" style={{ marginTop: 0 }}>
-                I giocatori si sfidano liberamente — nessuna approvazione richiesta. Puoi solo annullare una sfida bloccata.
-              </p>
-              <div className="training-master-sections">
-                <div className="training-master-col">
-                  <p className="col-label">Sfide in Attesa di un Avversario ({trainingMatches.filter(m => m.status === "open").length})</p>
-                  {trainingMatches.filter(m => m.status === "open").length === 0 && <p className="empty-note">Nessuna sfida aperta.</p>}
-                  {trainingMatches.filter(m => m.status === "open").map(m => (
-                    <div key={m.id} className="participant-tag">
-                      <span className="p-dot pending" />
-                      <span className="p-name">{m.players?.[0]?.name}</span>
-                      {m.players?.[0]?.snapshot?.class && <span className="p-class">{m.players[0].snapshot.class}</span>}
-                      <span className="p-class" style={{ opacity: 0.7 }}>HP {m.players?.[0]?.maxHp} · CA {m.players?.[0]?.snapshot?.stats?.ac}</span>
-                      <button className="btn-training-cancel" onClick={() => cancelOpenChallenge(m.id)}>Annulla</button>
-                    </div>
-                  ))}
-                </div>
-                <div className="training-master-col">
-                  <p className="col-label">Match in Corso ({trainingMatches.filter(m => m.status === "active" || m.status === "initiative").length})</p>
-                  {trainingMatches.filter(m => m.status === "active" || m.status === "initiative").length === 0 && <p className="empty-note">Nessun match in corso.</p>}
-                  {trainingMatches.filter(m => m.status === "active" || m.status === "initiative").map(m => (
-                    <div key={m.id} className="participant-tag">
-                      <span className="p-dot approved" />
-                      <span className="p-name">{m.players?.[0]?.name} vs {m.players?.[1]?.name}</span>
-                      <span className="p-class">Round {m.round}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Create challenge button */}
-          {arenaMeta.trainingArenaOpen && !trainingMatches.some(m => (m.status === "open" || m.status === "initiative" || m.status === "active") && (m.challengerId === currentUser?.uid || m.opponentId === currentUser?.uid)) && (
-            <div className="training-actions">
-              <button className="btn-training-create" onClick={openTrainingLoadout}>⚔ Crea una Sfida</button>
-            </div>
-          )}
-
-          {/* Open challenges list */}
-          {trainingMatches.filter(m => m.status === "open").length > 0 && (
-            <div className="training-lobby">
-              <h3 className="training-lobby-title">Sfide Aperte</h3>
-              {trainingMatches.filter(m => m.status === "open").map(m => {
-                const isOwn = m.challengerId === currentUser?.uid;
-                return (
-                  <div key={m.id} className="training-challenge-row">
-                    <div className="training-challenge-info">
-                      <span className="training-challenge-name">{m.players?.[0]?.name}</span>
-                      <span className="training-challenge-class">{m.players?.[0]?.snapshot?.class}</span>
-                      <span className="training-challenge-hp">HP: {m.players?.[0]?.hp}/{m.players?.[0]?.maxHp} · CA: {m.players?.[0]?.snapshot?.stats?.ac}</span>
-                    </div>
-                    {isOwn
-                      ? <button className="btn-training-cancel" onClick={() => cancelOpenChallenge(m.id)}>Annulla</button>
-                      : arenaMeta.trainingArenaOpen
-                      ? <button className="btn-training-accept" onClick={() => openTrainingAccept(m.id)}>Accetta Sfida</button>
-                      : null
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Active / initiative training match */}
-          {trainingMatches.filter(m => (m.status === "active" || m.status === "initiative") && (m.challengerId === currentUser?.uid || m.opponentId === currentUser?.uid)).map(m => {
-            const myPlayer  = m.players?.find(p => p.id === currentUser?.uid);
-            const oppPlayer = m.players?.find(p => p.id !== currentUser?.uid);
-            const isMyTurn  = m.turn === currentUser?.uid;
-            const mySnap    = myPlayer?.snapshot || {};
-            const oppSnap   = oppPlayer?.snapshot || {};
-            const myActions = mySnap.selectedActions || [];
-            const wildShapeForm = myPlayer?.wildShape || null;
-            const effectiveActions = wildShapeForm ? (WILD_SHAPES[wildShapeForm]?.actions || []) : myActions;
-            const oppId     = oppPlayer?.id || null;
-            const myHpPct   = myPlayer ? Math.max(0, Math.min(100, (myPlayer.hp / (myPlayer.maxHp || 1)) * 100)) : 100;
-            const oppHpPct  = oppPlayer ? Math.max(0, Math.min(100, (oppPlayer.hp / (oppPlayer.maxHp || 1)) * 100)) : 100;
-            const myHpClass  = myHpPct > 60 ? "hp-high" : myHpPct > 30 ? "hp-med" : "hp-low";
-            const oppHpClass = oppHpPct > 60 ? "hp-high" : oppHpPct > 30 ? "hp-med" : "hp-low";
-            const mySprite   = charSprites[myPlayer?.id]?.spriteUrl || mySnap.image || null;
-            const oppSprite  = charSprites[oppPlayer?.id]?.spriteUrl || oppSnap.image || null;
-            const hasPendingPoison = !!myPlayer?.poisonDoT;
-
-            return (
-              <div key={m.id} className={`arena-match-scene ${m.status}`}>
-
-                {/* ── Pixel battle scene ── */}
-                <div className="arena-battle-scene"
-                  style={arenaMeta?.battleBg ? { backgroundImage: `url(${arenaMeta.battleBg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
-                >
-                  <div className={`arena-fighter-zone left ${(myPlayer?.hp ?? 0) <= 0 ? "char-dead" : "char-alive"} ${isMyTurn && m.status === "active" ? "active-turn" : ""}`}>
-                    <div className="arena-char-wrap">
-                      {mySprite && <img src={mySprite} alt={myPlayer?.name} className="arena-char-sprite" />}
-                      {isMyTurn && m.status === "active" && (myPlayer?.hp ?? 0) > 0 && <div className="arena-turn-ring" />}
-                    </div>
-                    <div className="arena-char-hud">
-                      <span className="arena-char-name-tag">{myPlayer?.name || "?"}</span>
-                      <span className="arena-char-class-tag">{mySnap.class || ""}</span>
-                      <div className="arena-hp-track">
-                        <div className={`arena-hp-fill ${myHpClass}`} style={{ width: `${myHpPct}%` }} />
-                      </div>
-                      <span className="arena-hp-text">{myPlayer?.hp ?? 0} / {myPlayer?.maxHp ?? 0}</span>
-                      <div className="arena-scene-status-row">
-                        {(myPlayer?.rageTurns ?? 0) > 0 && <span className="arena-scene-badge rage">🔥</span>}
-                        {myPlayer?.invisible && <span className="arena-scene-badge invis">👻</span>}
-                        {myPlayer?.blindDebuff && <span className="arena-scene-badge">🙈</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="arena-vs-zone">
-                    <div className="arena-vs-glow">VS</div>
-                    {m.status === "active" && m.turn && (
-                      <div className="arena-turn-display">{m.players?.find(p => p.id === m.turn)?.name || "?"}</div>
-                    )}
-                  </div>
-
-                  <div className={`arena-fighter-zone right ${(oppPlayer?.hp ?? 0) <= 0 ? "char-dead" : "char-alive"} ${!isMyTurn && m.status === "active" ? "active-turn" : ""}`}>
-                    <div className="arena-char-wrap">
-                      {oppSprite && <img src={oppSprite} alt={oppPlayer?.name} className="arena-char-sprite" />}
-                      {!isMyTurn && m.status === "active" && (oppPlayer?.hp ?? 0) > 0 && <div className="arena-turn-ring" />}
-                    </div>
-                    <div className="arena-char-hud">
-                      <span className="arena-char-name-tag">{oppPlayer?.name || "?"}</span>
-                      <span className="arena-char-class-tag">{oppSnap.class || ""}</span>
-                      <div className="arena-hp-track">
-                        <div className={`arena-hp-fill ${oppHpClass}`} style={{ width: `${oppHpPct}%` }} />
-                      </div>
-                      <span className="arena-hp-text">{oppPlayer?.hp ?? 0} / {oppPlayer?.maxHp ?? 0}</span>
-                      <div className="arena-scene-status-row">
-                        {(oppPlayer?.rageTurns ?? 0) > 0 && <span className="arena-scene-badge rage">🔥</span>}
-                        {oppPlayer?.invisible && <span className="arena-scene-badge invis">👻</span>}
-                        {oppPlayer?.blindDebuff && <span className="arena-scene-badge">🙈</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {m.status === "initiative" && (
-                    <div className="arena-initiative-overlay">
-                      <div className="arena-initiative-banner">⚡ INIZIATIVA</div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Mobile action FAB ── */}
-                {isMyTurn && m.status === "active" && (
-                  <>
-                    {showActionModal === m.id && (
-                      <div className="mobile-action-overlay" onClick={() => setShowActionModal(null)} />
-                    )}
-                    {showActionModal !== m.id && (
-                      <button className="mobile-action-fab" onClick={() => setShowActionModal(m.id)}>
-                        ⚔ Azioni
-                      </button>
-                    )}
-                  </>
+                {/* Arena Libera: bottone abbandono / chiudi */}
+                {m.kind === "fun" && m.status !== "finished" && (
+                  <button className="btn-fun-abandon" onClick={() => abandonFunMatch(m.matchId)}>
+                    🏳 Abbandona Sfida
+                  </button>
                 )}
-
-                {/* ── Interface panel ── */}
-                <div className="arena-battle-interface">
-                  <div className="arena-log-panel">
-                    <div className="match-header">
-                      <span className="match-round-label">Round {m.round}</span>
-                      <span className="match-vs-label">VS</span>
-                      <span className="match-status-label">{m.status === "initiative" ? "⚡ Iniziativa" : "⚔ Allenamento"}</span>
-                    </div>
-                    {m.status === "active" && m.turn && (
-                      <div className="turn-tracker">Turno di: <strong>{m.players?.find(p => p.id === m.turn)?.name || "?"}</strong></div>
-                    )}
-
-                    <div className="fighters-row">
-                      {(m.players || []).map((p, idx) => {
-                        const pSnap   = p.snapshot || {};
-                        const isDead  = p.hp <= 0;
-                        const isActive = m.turn === p.id;
-                        const hpPct   = Math.max(0, (p.hp / (p.maxHp || 1)) * 100);
-                        const hpColor = hpPct > 60 ? "#27ae60" : hpPct > 30 ? "#e67e22" : "#c0392b";
-                        return (
-                          <React.Fragment key={p.id}>
-                            {idx > 0 && <div className="vs-divider">VS</div>}
-                            <div className={`fighter-card ${isActive ? "active-turn" : ""} ${isDead ? "defeated" : ""}`}>
-                              {isActive && !isDead && <div className="turn-indicator">Il tuo turno</div>}
-                              {isDead && <div className="defeated-banner">Sconfitto</div>}
-                              <div className="fighter-name">{p.name}</div>
-                              {pSnap.class && <div className="fighter-class">{pSnap.class}</div>}
-                              <div className="fighter-meta">
-                                CA {pSnap.stats?.ac ?? "?"}
-                                {(() => { const t = ((p.shieldSkillTurns ?? 0) > 0 ? 3 : 0) + (p.defensiveBonus ?? 0); return t > 0 ? <span style={{color:"#4ade80",marginLeft:2}}>(+{t})</span> : null; })()}
-                                {" · "}Init {p.init > 0 ? p.init : "—"}
-                              </div>
-                              {p.id === currentUser?.uid && pSnap.stats && (
-                                <div className="fighter-own-stats">
-                                  {[["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]].map(([k,lbl]) => {
-                                    const v = pSnap.stats[k] ?? 0;
-                                    return <span key={k} className="fighter-stat-pill">{lbl} {v >= 0 ? "+" : ""}{v}</span>;
-                                  })}
-                                </div>
-                              )}
-                              <div className="hp-bar-wrap">
-                                <div className="hp-bar-bg">
-                                  <div className="hp-bar-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
-                                </div>
-                                <span className="hp-label">{p.hp} / {p.maxHp ?? 0} HP</span>
-                              </div>
-                              {(p.shieldSkillTurns ?? 0) > 0 && <div className="fighter-shield-skill-badge">🛡 Scudo ({p.shieldSkillTurns} turni)</div>}
-                              {(p.defensiveBonus ?? 0) > 0 && <div className="fighter-defensive-badge">🛡 Difensivo (+{p.defensiveBonus} CA)</div>}
-                              {p.weaponPoisoned && <div className="fighter-poison-badge">☠ Arma Avvelenata (+1d12)</div>}
-                              {p.aidBuff && <div className="fighter-aid-badge">🤝 Aiuto (+4 hit)</div>}
-                              {(p.rageTurns ?? 0) > 0 && <div className="fighter-rage-badge">🔥 Furia (+2 · {p.rageTurns} turni)</div>}
-                              {(p.hunterMarkTurns ?? 0) > 0 && <div className="fighter-rage-badge">🎯 Marchio ({p.hunterMarkTurns} turni)</div>}
-                              {p.actionSurgeActive && <div className="fighter-surge-badge">⚡ Scatto d'Azione</div>}
-                              {p.bardicInspirationActive && <div className="fighter-bard-badge">🎵 Ispirazione (+1d6)</div>}
-                              {p.magicDetectActive && <div className="fighter-bard-badge">🔮 Det. Magico (+3)</div>}
-                              {p.blindDebuff && <div className="fighter-blind-badge">🙈 Accecato (−3)</div>}
-                              {p.invisible && <div className="fighter-invisible-badge">👻 Invisibile</div>}
-                              {m.status === "initiative" && p.id === currentUser?.uid && p.init === 0 && (
-                                <button className="btn-init" onClick={() => rollTrainingInit(m.id)}>🎲 Tira Iniziativa</button>
-                              )}
-                            </div>
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-
-                    <div className="match-log">
-                      {(m.logs || []).slice(-5).map((l, i) => {
-                        const text = typeof l === "object" ? (l.pub || "") : String(l);
-                        const isLatest = i === Math.min((m.logs || []).length, 5) - 1;
-                        return <p key={i} className={`log-entry ${isLatest ? "latest" : ""}`}>{text}</p>;
-                      })}
-                    </div>
-                  </div>
-
-                  <div className={`arena-action-sidebar${showActionModal === m.id ? " mobile-open" : ""}`}>
-                    {showActionModal === m.id && (
-                      <button className="mobile-action-close" onClick={() => setShowActionModal(null)}>✕ Chiudi</button>
-                    )}
-                    {m.status === "active" && (
-                      <div
-                        className="action-panel"
-                        style={{
-                          opacity: isMyTurn ? 1 : 0.55,
-                          pointerEvents: isMyTurn ? "auto" : "none",
-                        }}
-                      >
-                        <div className="target-1v1-label">
-                          {isMyTurn
-                            ? <>Attacchi: <strong>{oppPlayer?.name}</strong></>
-                            : <>⏳ Turno di <strong>{m.players?.find(p => p.id === m.turn)?.name || "?"}</strong> — le tue azioni sono qui sotto</>}
-                        </div>
-
-                        {/* Lay of Hands */}
-                        {(() => {
-                          if (!isPaladinClass((mySnap.class || "").toLowerCase())) return null;
-                          const pool    = myPlayer?.layOfHandsPool ?? 0;
-                          const maxHeal = Math.min(pool, (myPlayer?.maxHp ?? 0) - (myPlayer?.hp ?? 0));
-                          if (showLayOfHandsPicker) return (
-                            <div className="lay-of-hands-picker">
-                              <div className="loh-title">🙏 Lay of Hands — Pozza: {pool} HP</div>
-                              <div className="loh-controls">
-                                <button className="stat-adj-btn" onClick={() => setLayOfHandsAmt(a => Math.max(1, a - 1))} disabled={layOfHandsAmt <= 1}>−</button>
-                                <span className="loh-amount">{layOfHandsAmt} HP</span>
-                                <button className="stat-adj-btn" onClick={() => setLayOfHandsAmt(a => Math.min(maxHeal, a + 1))} disabled={layOfHandsAmt >= maxHeal}>+</button>
-                              </div>
-                              <div className="loh-buttons">
-                                <button className="btn-cancel-wild" onClick={() => setShowLayOfHandsPicker(false)}>Annulla</button>
-                                <button className="btn-join" style={{padding:"6px 18px",fontSize:"0.88rem"}}
-                                  onClick={() => handleTrainingLayOfHands(m.id, layOfHandsAmt)} disabled={layOfHandsAmt < 1 || maxHeal <= 0}>
-                                  Cura {layOfHandsAmt} HP
-                                </button>
-                              </div>
-                            </div>
-                          );
-                          if (pool <= 0) return <div className="btn-wild-shape exhausted">🙏 Lay of Hands — Pozza esaurita</div>;
-                          return (
-                            <button className="btn-wild-shape" onClick={() => { setLayOfHandsAmt(Math.min(1, maxHeal)); setShowLayOfHandsPicker(true); }} disabled={maxHeal <= 0}>
-                              🙏 Lay of Hands <span className="ws-uses-tag">Pozza: {pool} HP</span>
-                            </button>
-                          );
-                        })()}
-
-                        {/* Wild Shape */}
-                        {mySnap.hasWildShape && !wildShapeForm && !showTrainingWildPicker && (() => {
-                          const wsLeft = myPlayer?.wildShapeUsesLeft ?? 2;
-                          return (
-                            <div className="wild-shape-bar">
-                              {wsLeft > 0 ? (
-                                <button className="btn-wild-shape" onClick={() => setShowTrainingWildPicker(true)}>
-                                  🐾 Forma Selvatica <span className="action-uses-badge">{wsLeft}/2</span>
-                                </button>
-                              ) : (
-                                <div className="btn-wild-shape exhausted">🐾 Forma Selvatica — Esaurita</div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                        {showTrainingWildPicker && !wildShapeForm && (
-                          <div className="wild-picker">
-                            <div className="wild-picker-title">Scegli la Forma Selvatica</div>
-                            <div className="wild-picker-forms">
-                              {Object.entries(WILD_SHAPES).map(([key, form]) => (
-                                <button key={key} className="btn-wild-form" onClick={() => handleTrainingWildShape(m.id, key)}>
-                                  <span className="wild-form-icon">{form.icon}</span>
-                                  <span className="wild-form-name">{form.name}</span>
-                                  <span className="wild-form-hp">{form.hpDice.count}d{form.hpDice.sides} HP</span>
-                                </button>
-                              ))}
-                            </div>
-                            <button className="btn-cancel-wild" onClick={() => setShowTrainingWildPicker(false)}>✕ Annulla</button>
-                          </div>
-                        )}
-                        {wildShapeForm && (
-                          <div className="wild-shape-active-bar">
-                            <span className="wild-active-label">
-                              {WILD_SHAPES[wildShapeForm]?.icon} {WILD_SHAPES[wildShapeForm]?.name}
-                            </span>
-                            <button className="btn-revert-wild" onClick={() => handleTrainingRevertWildShape(m.id)}>
-                              ↩ Forma Originale
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Veleno DoT */}
-                        {hasPendingPoison && (
-                          <div className="save-block con">
-                            <p className="save-block-label">☠ Sei avvelenato! Subisci 1d6 danni — poi puoi agire.</p>
-                            <button className="btn-saving-throw" onClick={async () => {
-                              const { total: dotDmg } = rollDmg("1d6");
-                              await applyTrainingUpdate(m.id, match => {
-                                const rawPls = match.players.map(p => p.id === currentUser?.uid ? { ...p, hp: Math.max(0, p.hp - dotDmg), poisonDoT: false } : p);
-                                const { players: pls, extraLogs } = processWsKnockouts(rawPls);
-                                const alive = pls.filter(p => p.hp > 0);
-                                const lg = `☠ ${myPlayer?.name} subisce ${dotDmg} da veleno!`;
-                                if (alive.length === 1) return { ...match, players: pls, status: "finished", winner: alive[0].id, logs: [...match.logs, lg, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} VINCE!`] };
-                                return { ...match, players: pls, logs: [...match.logs, lg, ...extraLogs] };
-                              });
-                            }}>🎲 Subisci danno</button>
-                          </div>
-                        )}
-
-                        {/* Attack buttons */}
-                        {!hasPendingPoison && oppId && (() => {
-                          const equippedNames = myPlayer?.equippedWeaponNames ?? [];
-                          const targetInvis   = oppPlayer?.invisible ?? false;
-                          const isRanged = (a) => a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
-                          const meleeActs  = effectiveActions.filter(a => a.type === "weapon" && !isRanged(a));
-                          const rangedActs = effectiveActions.filter(a => a.type === "weapon" && isRanged(a));
-                          const skillActs  = effectiveActions.filter(a => a.type === "skill" || a.type === "passive");
-                          const spellGrps  = [0,1,2,3].map(lvl => ({ lvl, spells: effectiveActions.filter(a => a.type === "spell" && a.level === lvl) })).filter(g => g.spells.length > 0);
-                          const LVLLABELS  = { 0: "Trucchetti", 1: "Livello 1", 2: "Livello 2", 3: "Livello 3" };
-
-                          const renderTBtn = (action) => {
-                            if (action.type === "passive") return <div key={action.name} className="btn-action passive" title={action.info}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">Passiva</span></div>;
-                            if (action.special === "fonte_di_magia" || action.special === "magical_cunning" || action.special === "recupero_arcano" || action.special === "lay_of_hands") return null;
-                            const ul = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
-                            const noU = ul !== null && ul <= 0;
-                            if (action.special === "shield_buff") return <button key={action.name} className="btn-action skill" onClick={() => handleTrainingShieldSkill(m.id)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">+3 CA · 3 turni</span></button>;
-                            if (action.special === "second_wind") return <button key={action.name} className={`btn-action skill ${noU?"no-uses":""}`} disabled={noU} onClick={() => !noU && handleTrainingSecondWind(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":"1d10+5 cura"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>;
-                            if (action.special === "action_surge") { const act = !!myPlayer?.actionSurgeActive; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingActionSurge(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attivo":noU?"Esaurito":"+1 azione"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "rage") { const act = (myPlayer?.rageTurns ?? 0) > 0; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingRage(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?`✓ ${myPlayer.rageTurns}t`:noU?"Esaurita":"+2 danno"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "hunter_mark") { const act = (myPlayer?.hunterMarkTurns ?? 0) > 0; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingHunterMark(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?`✓ ${myPlayer.hunterMarkTurns}t`:noU?"Esaurito":"+3 hit"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "bardic_inspiration") { const act = !!myPlayer?.bardicInspirationActive; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingBardicInspiration(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attiva":noU?"Esaurita":"+1d6 hit"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "magic_detect") { const act = !!myPlayer?.magicDetectActive; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingMagicDetect(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attivo":noU?"Esaurito":"+3 hit"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "invisibility") { const act = !!myPlayer?.invisible; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingInvisibility(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attiva":noU?"Esaurita":"1 turno"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "aid_buff") { const act = !!myPlayer?.aidBuff; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} onClick={() => !noU && !act && handleTrainingAidBuff(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?"✓ Attivo":noU?"Esaurito":"+4 hit"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "heal") return <button key={action.name} className={`btn-action spell heal ${noU?"no-uses":""}`} disabled={noU} onClick={() => !noU && handleTrainingHealSpell(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`+${action.damage} HP`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>;
-                            if (action.special === "construct_golem") { const blocked = noU || !oppId; return <button key={action.name} className={`btn-action skill ${blocked?"no-uses":""}`} disabled={blocked} title={noU?"Cariche esaurite":"1d8+3 · prossimo colpo subìto dimezzato"} onClick={() => !blocked && handleTrainingConstructGolem(m.id, oppId, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`${action.damage} 🛡½`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "construct_snake") { const blocked = noU || !oppId; return <button key={action.name} className={`btn-action skill ${blocked?"no-uses":""}`} disabled={blocked} title={noU?"Cariche esaurite":"1d6+3 + 1d6 veleno per 2 turni"} onClick={() => !blocked && handleTrainingConstructSnake(m.id, oppId, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{noU?"Esaurito":`${action.damage} ☠`}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            if (action.special === "armor_forge") { const act = (myPlayer?.armorForgeTurns ?? 0) > 0; return <button key={action.name} className={`btn-action skill ${noU||act?"no-uses":""}`} disabled={noU||act} title={act?`Forgia attiva (${myPlayer.armorForgeTurns} turni)`:noU?"Cariche esaurite":"+2 CA per 2 turni"} onClick={() => !noU && !act && handleTrainingArmorForge(m.id, action)}><span className="action-icon">{action.icon}</span><span className="action-name">{action.name}</span><span className="action-dice">{act?`✓ ${myPlayer.armorForgeTurns}t`:noU?"Esaurito":"+2 CA · 2t"}</span>{ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}</button>; }
-                            const isWeap  = action.type === "weapon";
-                            const isEquip = !isWeap || wildShapeForm || equippedNames.includes(action.name);
-                            const isOff   = action.special !== "shield_buff" && action.special !== "aid_buff";
-                            const byInvis = targetInvis && isOff;
-                            const stl = action.special === "stealth" ? (myPlayer?.stealthTurns ?? 0) : 0;
-                            const stlAct = stl > 0;
-                            return (
-                              <button key={action.name}
-                                className={`btn-action ${action.type} ${isWeap?(isEquip?"equipped":"unequipped"):""} ${noU||byInvis||stlAct?"no-uses":""} ${action.special==="smite"&&!noU?"smite-active":""} ${stlAct?"stealth-active":""}`}
-                                disabled={noU || byInvis || stlAct}
-                                title={stlAct ? `🌑 Furtività — ${stl} turni` : noU ? "Usi esauriti" : byInvis ? "👻 Bersaglio invisibile" : `+${action.hitBonus} | ${action.damage}`}
-                                onClick={() => { if (noU || byInvis || stlAct) return; handleTrainingAction(m.id, oppId, action); }}>
-                                <span className="action-icon">{action.icon}</span>
-                                <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{stlAct?`🌑 ${stl}t`:noU?"Esaurito":byInvis?"👻 Invis.":action.special==="control"?"TS CD 13":action.damage!=="—"?action.damage:"—"}</span>
-                                {ul !== null && <span className={`action-uses-badge ${noU?"empty":""}`}>{ul}/{action.maxUses}</span>}
-                              </button>
-                            );
-                          };
-
-                          return (
-                            <div className="action-groups">
-                              {meleeActs.length > 0 && <div className="action-group"><div className="action-group-label melee">⚔ Mischia</div><div className="action-buttons">{meleeActs.map(renderTBtn)}</div></div>}
-                              {rangedActs.length > 0 && <div className="action-group"><div className="action-group-label ranged">🏹 Distanza</div><div className="action-buttons">{rangedActs.map(renderTBtn)}</div></div>}
-                              {spellGrps.map(({ lvl, spells }) => (
-                                <div key={lvl} className="action-group">
-                                  <div className={`action-group-label spell-lv${lvl}`}>{lvl === 0 ? "✨" : "🔮"} {LVLLABELS[lvl]}</div>
-                                  <div className="action-buttons">{spells.map(renderTBtn)}</div>
-                                </div>
-                              ))}
-                              {skillActs.length > 0 && <div className="action-group"><div className="action-group-label skill">⚡ Abilità</div><div className="action-buttons">{skillActs.map(renderTBtn)}</div></div>}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Items */}
-                        {(() => {
-                          const keys = mySnap.selectedItemKeys || [];
-                          if (keys.length === 0) return null;
-                          const usesLeft = myPlayer?.itemUsesLeft || {};
-                          const counts = {};
-                          keys.forEach(k => { counts[k] = (counts[k] || 0) + 1; });
-                          return (
-                            <div className="items-row">
-                              {Object.entries(counts).map(([key]) => {
-                                const item = ARENA_ITEMS.find(i => i.key === key);
-                                if (!item) return null;
-                                const u = usesLeft[key] ?? 0;
-                                const t = counts[key];
-                                const needsT = key === "bomba" || key === "pozione_veleno";
-                                return <button key={key} className={`btn-item ${u <= 0 ? "no-uses" : ""}`} disabled={u <= 0 || (needsT && !oppId)} title={item.info}
-                                  onClick={() => useTrainingItem(m.id, key, needsT ? oppId : null)}>
-                                  <span className="item-icon">{item.icon}</span><span className="item-name">{item.name}</span><span className="item-uses">{u}/{t}</span>
-                                </button>;
-                              })}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-
-                <button className="btn-training-abandon" onClick={() => abandonTrainingMatch(m.id, m)}>Abbandona Sfida</button>
+                {m.kind === "fun" && m.status === "finished" && (
+                  <button className="btn-fun-remove-inline" onClick={() => removeFunMatch(m.matchId)}>
+                    ✕ Chiudi e rimuovi
+                  </button>
+                )}
               </div>
             );
           })}
-
-          {/* Finished training matches involving me — last 4 only */}
-          {trainingMatches.filter(m => m.status === "finished" && (m.challengerId === currentUser?.uid || m.opponentId === currentUser?.uid) && m.players?.some(p => p.id !== currentUser?.uid)).slice(-4).map(m => {
-            const myP  = m.players?.find(p => p.id === currentUser?.uid);
-            const oppP = m.players?.find(p => p.id !== currentUser?.uid);
-            const iWon = m.winner === currentUser?.uid;
-            return (
-              <div key={m.id} className="training-match finished">
-                <div className={`training-result ${iWon ? "win" : "lose"}`}>
-                  {myP?.snapshot?.class && <span className="result-class-tag my-class">{myP.snapshot.class}</span>}
-                  {iWon ? `🏆 Hai vinto contro ${oppP?.name || "?"}` : m.winner ? `💀 Hai perso contro ${oppP?.name || "?"}` : `🤝 Sfida annullata`}
-                  {oppP?.snapshot?.class && <span className="result-class-tag">{oppP.snapshot.class}</span>}
-                </div>
-                <div className="match-log" style={{maxHeight:160,overflowY:"auto"}}>
-                  {(m.logs || []).slice(-8).map((l, i) => {
-                    const text = typeof l === "object" ? (l.pub || "") : String(l);
-                    return <p key={i} className="log-entry">{text}</p>;
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {arenaMeta.trainingArenaOpen && trainingMatches.filter(m => m.status !== "finished").length === 0 && (
-            <div className="training-empty">Nessuna sfida attiva. Creane una per iniziare!</div>
-          )}
         </div>
       )}
 

@@ -35,18 +35,6 @@ service cloud.firestore {
       allow write: if isAuth();
     }
 
-    // ── Training matches ─────────────────────────────────────────────────────
-    match /training_matches/{matchId} {
-      allow read:  if isAuth();
-      allow create: if isAuth();
-      allow update: if isAuth() && (
-        resource.data.challengerId == request.auth.uid ||
-        resource.data.opponentId  == request.auth.uid ||
-        resource.data.opponentId  == null
-      );
-      allow delete: if false;
-    }
-
     // ── Notifications ────────────────────────────────────────────────────────
     match /notifications/{notifId} {
       allow read:  if isAuth() && resource.data.userId == request.auth.uid;
