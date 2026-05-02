@@ -25,7 +25,7 @@ const WIZARD_SPELLS = [
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 4 },
   { name: "Colpo Cromatico",       level: 1, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "🌈", info: "Lv1 · Magico", maxUses: 4 },
   { name: "Onda Tonante",          level: 1, hitBonus: 3,  damage: "2d8",   statKey: null, type: "spell", icon: "💨", info: "Lv1 · Tuono", maxUses: 4 },
-  { name: "Raggio Avvelenato",     level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🤢", info: "Lv1 · TS COS · 2d6 veleno a inizio turno per 3 turni", special: "save_dot", saveDotAbility: "con", saveDotDamage: "2d6", saveDotTurns: 3, maxUses: 4 },
+  { name: "Raggio Avvelenato",     level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🤢", info: "Lv1 · TS COS · 2d6 veleno a inizio turno per 2 turni", special: "save_dot", saveDotAbility: "con", saveDotDamage: "2d6", saveDotTurns: 2, maxUses: 4 },
   { name: "Assorbire Elementi",    level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🔰", info: "Lv1 · +3 ai prossimi 3 TS (difesa elementale)", special: "save_buff", tsBonus: 3, tsAttacks: 3, maxUses: 2 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Raggio Rovente",        level: 2, hitBonus: 3, damage: "6d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 2 },
@@ -285,9 +285,9 @@ const WILD_SHAPES = {
     name: "Ragno", icon: "🕷",
     hpDice: { count: 4, sides: 12 },
     actions: [
-      { name: "Morso",     damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
-      { name: "Veleno",    damage: "1d6+3", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
-      { name: "Ragnatela", damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web"    },
+      { name: "Morso",     level: 0, damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Veleno",    level: 0, damage: "1d6+3", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
+      { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web"    },
     ],
   },
 };
@@ -2968,11 +2968,14 @@ export default function Arena() {
     setRecuperoLv2Selected([]);
   };
 
-  // ── POISON DOT — applica veleno senza perdere il turno (dado configurabile) ─
+  // ── POISON DOT — applica veleno una volta per turno (dado configurabile) ────
   const handleResolvePoisonDoT = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
+    const turnTokenAtClick = myMatch?.turnExpiry || "";
+    // Già risolto in questo stesso turno: non riapplicare.
+    if (me?.poisonResolvedTurnToken && me.poisonResolvedTurnToken === turnTokenAtClick) return;
     const dice = me?.poisonDoTDice || "1d6";
     const { total: poisonDmg, rolls: poisonRolls } = rollDmg(dice);
     const updatedMatches = arenaMeta.matches.map(m => {
@@ -2981,7 +2984,13 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const remainingDoT = Math.max(0, (p.poisonDoTTurns ?? 1) - 1);
         const stillPoisoned = remainingDoT > 0;
-        const patch = { ...p, hp: Math.max(0, (p.hp ?? 0) - poisonDmg), poisonDoT: stillPoisoned, poisonDoTTurns: remainingDoT };
+        const patch = {
+          ...p,
+          hp: Math.max(0, (p.hp ?? 0) - poisonDmg),
+          poisonDoT: stillPoisoned,
+          poisonDoTTurns: remainingDoT,
+          poisonResolvedTurnToken: m.turnExpiry || "",
+        };
         if (!stillPoisoned) patch.poisonDoTDice = null;
         return patch;
       });
@@ -3203,6 +3212,7 @@ export default function Arena() {
   };
 
   // ── WILD SHAPE ─────────────────────────────────────────────────────────────
+  // Trasformarsi è l'azione del turno: dopo la trasformazione il turno passa.
   const handleWildShape = async (matchId, formKey) => {
     const myMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     const wsUsesLeft = myMatchPlayer?.wildShapeUsesLeft ?? 2;
@@ -3213,31 +3223,34 @@ export default function Arena() {
     for (let i = 0; i < count; i++) newHp += Math.floor(Math.random() * sides) + 1;
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Druido";
     const newUsesLeft = wsUsesLeft - 1;
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const preHp = m.players.find(p => p.id === currentUser.uid)?.hp ?? 0;
       const updatedPlayers = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, hp: newHp, wildShape: formKey, preWildShapeHp: preHp, wildShapeUsesLeft: newUsesLeft } : p
+        p.id === currentUser.uid ? { ...p, hp: newHp, wildShape: formKey, preWildShapeHp: preHp, wildShapeUsesLeft: newUsesLeft, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) } : p
       );
-      return { ...m, players: updatedPlayers,
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
         logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/2]`] };
     });
     setShowWildPicker(false);
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
+  // Ritornare alla forma umana è l'azione del turno: dopo il ritorno il turno passa.
   const revertWildShape = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Druido";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const myPData = m.players.find(p => p.id === currentUser.uid);
       const restoredHp = myPData?.preWildShapeHp ?? myPData?.hp ?? 0;
       const updatedPlayers = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, hp: restoredHp, wildShape: null, preWildShapeHp: null }
+          ? { ...p, hp: restoredHp, wildShape: null, preWildShapeHp: null, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) }
           : p
       );
-      return { ...m, players: updatedPlayers,
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
         logs: [...m.logs, `🧙 ${myName} ritorna alla forma originale (${restoredHp} HP)`] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3769,13 +3782,14 @@ export default function Arena() {
             delete up.pendingConSave;
             autoRolledSave = true;
           }
-          if (hasPoisonDoT) {
+          if (hasPoisonDoT && (p.poisonResolvedTurnToken || "") !== (match.turnExpiry || "")) {
             const dice = p.poisonDoTDice || "1d6";
             const { total: poisonDmgAuto } = rollDmg(dice);
             up.hp = Math.max(0, (up.hp ?? 0) - poisonDmgAuto);
             const remaining = Math.max(0, (p.poisonDoTTurns ?? 1) - 1);
             up.poisonDoT = remaining > 0;
             up.poisonDoTTurns = remaining;
+            up.poisonResolvedTurnToken = match.turnExpiry || "";
             if (remaining === 0) up.poisonDoTDice = null;
             newLogs2.push(`☠ ${p.name} subisce il veleno automaticamente: ${poisonDmgAuto} danni [${dice}]!`);
             autoRolledSave = true;
@@ -4870,10 +4884,9 @@ export default function Arena() {
       {/* ── ARENA LIBERA (Fun) — sempre disponibile, separata dal torneo ── */}
       {currentUser && (() => {
         const openChallenges = funMatches.filter(m => m.status === "open");
-        const myActiveFun = funMatches.find(m =>
-          (m.status === "initiative" || m.status === "active") &&
-          m.players?.some(p => p.id === currentUser.uid)
-        );
+        const ongoingFun = funMatches.filter(m => m.status === "initiative" || m.status === "active");
+        const myActiveFun = ongoingFun.find(m => m.players?.some(p => p.id === currentUser.uid));
+        const otherActiveFun = ongoingFun.filter(m => !m.players?.some(p => p.id === currentUser.uid));
         const myFinishedFun = funMatches
           .filter(m => m.status === "finished" && m.players?.some(p => p.id === currentUser.uid))
           .slice(-3);
@@ -4888,6 +4901,11 @@ export default function Arena() {
                   Sfide 1v1 senza ricompense. Stesso regolamento del torneo, solo per il gusto di combattere.
                 </p>
               </div>
+              {ongoingFun.length > 0 && (
+                <span className="fun-arena-live-badge" title={`${ongoingFun.length} sfida/e in corso`}>
+                  🔴 {ongoingFun.length} in corso
+                </span>
+              )}
               {!cantPlay && !myActiveFun && (
                 <button className="btn-fun-create" onClick={openFunCreate}>
                   ⚔ Crea Sfida
@@ -4897,6 +4915,31 @@ export default function Arena() {
                 <span className="fun-arena-locked-note">Sei iscritto al torneo: l'Arena Libera è disabilitata.</span>
               )}
             </div>
+
+            {otherActiveFun.length > 0 && (
+              <div className="fun-arena-lobby">
+                <div className="fun-arena-lobby-title">Sfide in corso</div>
+                {otherActiveFun.map(m => {
+                  const [pa, pb] = m.players || [];
+                  const aSnap = snapshots[pa?.id] || {};
+                  const bSnap = snapshots[pb?.id] || {};
+                  const turnName = m.players?.find(p => p.id === m.turn)?.name;
+                  return (
+                    <div key={m.matchId} className="fun-challenge-row fun-challenge-row--live">
+                      <div className="fun-challenge-info">
+                        <span className="fun-challenge-name">
+                          {pa?.name || "?"}{aSnap.class ? ` (${aSnap.class})` : ""} <span className="fun-challenge-vs">VS</span> {pb?.name || "?"}{bSnap.class ? ` (${bSnap.class})` : ""}
+                        </span>
+                        <span className="fun-challenge-hp">
+                          {m.status === "initiative" ? "⚡ Iniziativa" : `⚔ Turno di ${turnName || "?"}`}
+                          {" · "}HP {pa?.hp ?? "?"} / {pb?.hp ?? "?"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {openChallenges.length > 0 && (
               <div className="fun-arena-lobby">
@@ -4950,7 +4993,7 @@ export default function Arena() {
               </div>
             )}
 
-            {openChallenges.length === 0 && !myActiveFun && myFinishedFun.length === 0 && !cantPlay && (
+            {openChallenges.length === 0 && !myActiveFun && otherActiveFun.length === 0 && myFinishedFun.length === 0 && !cantPlay && (
               <div className="fun-arena-empty">Nessuna sfida aperta. Sii il primo a lanciarne una!</div>
             )}
           </div>
@@ -5090,7 +5133,7 @@ export default function Arena() {
             const pendingDexSave = !!myPlayer?.pendingDexSave;
             const pendingConSave = !!myPlayer?.pendingConSave;
             const pendingControlSave = !!myPlayer?.pendingControlSave;
-            const pendingPoisonDoT = !!myPlayer?.poisonDoT;
+            const pendingPoisonDoT = !!myPlayer?.poisonDoT && (myPlayer?.poisonResolvedTurnToken || "") !== (m.turnExpiry || "");
             const pendingSaveDot = !!myPlayer?.pendingSaveDot;
             const isControlLost  = (myPlayer?.controlLostTurns ?? 0) > 0;
             const hasPendingSave = pendingDexSave || pendingConSave || pendingControlSave || pendingPoisonDoT || pendingSaveDot || isControlLost;
