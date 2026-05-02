@@ -66,6 +66,13 @@ export default function WorldBoss() {
     return activeBosses.length > 0 && activeBosses[0].hp <= 0;
   }, [activeBosses]);
 
+  const areAllPlayersDead = useMemo(() => {
+    if (!players.length) return false;
+    return players.every((p) => (p.stats?.hp ?? 0) <= 0);
+  }, [players]);
+
+  const isFightOver = isBossDefeated || areAllPlayersDead;
+
   const isTimeExpired = useMemo(() => {
     if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return false;
     const now = new Date().getTime();
@@ -498,6 +505,7 @@ export default function WorldBoss() {
   };
 
   const handleBossRoll = async (boss, action) => {
+    if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
     if (selectedTargets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
     const d20 = Math.floor(Math.random() * 20) + 1;
     const bossBonus = parseInt(action.bonus) || 0;
@@ -634,12 +642,12 @@ export default function WorldBoss() {
   const isPlayerDead = !isMaster && (charData?.stats?.hp ?? 0) <= 0;
 
   const isUserLocked =
-    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(currentUser?.uid) || isPlayerDead);
+    !isMaster && (!fightStarted || turnState.phase === "boss" || turnState.actedPlayers.includes(currentUser?.uid) || isPlayerDead || isFightOver);
 
   if (!currentUser) return <div className="rpg-denied">Loggati per entrare.</div>;
 
   const boss = activeBosses[0] ?? null;
-  const isGameOver = isBossDefeated || isTimeExpired;
+  const isGameOver = isBossDefeated || isTimeExpired || areAllPlayersDead;
   const partyForDisplay = players.length > 0
     ? players
     : charData ? [{ id: currentUser.uid, ...charData }] : [];
@@ -656,7 +664,7 @@ export default function WorldBoss() {
             || (fightStarted && !isGameOver
               ? (turnState.phase === "players" ? "⚔ Turno degli Eroi" : "🔥 Il Boss Attacca!")
               : null)
-            || (isBossDefeated ? "🏆 VITTORIA DEGLI EROI!" : isTimeExpired ? "💀 IL BOSS HA PREVALSO!" : "—")}
+            || (isBossDefeated ? "🏆 VITTORIA DEGLI EROI!" : isTimeExpired ? "💀 IL BOSS HA PREVALSO!" : areAllPlayersDead ? "💀 GLI EROI SONO CADUTI!" : "—")}
         </span>
         {isMaster && (
           <div className="rpg-dm-topbar">
@@ -732,6 +740,9 @@ export default function WorldBoss() {
         )}
         {isTimeExpired && (
           <div className="rpg-scene-banner rpg-scene-banner--defeat">💀 IL BOSS HA PREVALSO 💀</div>
+        )}
+        {areAllPlayersDead && !isBossDefeated && !isTimeExpired && (
+          <div className="rpg-scene-banner rpg-scene-banner--defeat">💀 GLI EROI SONO CADUTI 💀</div>
         )}
 
         {/* Pre-fight */}

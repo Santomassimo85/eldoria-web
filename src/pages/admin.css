@@ -1317,6 +1317,21 @@
   color: #fff;
   border-color: var(--red);
 }
+.mkadm-filter--danger {
+  margin-left: auto;
+  border-color: rgba(180, 30, 30, 0.55);
+  color: #b41e1e;
+  font-weight: 600;
+}
+.mkadm-filter--danger:hover:not(:disabled) {
+  background: #b41e1e;
+  color: #fff;
+  border-color: #b41e1e;
+}
+.mkadm-filter--danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .mkadm-empty {
   text-align: center;

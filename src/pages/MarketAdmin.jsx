@@ -109,6 +109,39 @@ export default function MarketAdmin() {
     }
   };
 
+  const handleDeleteAllItems = async () => {
+    if (items.length === 0) {
+      alert("Il magazzino è già vuoto.");
+      return;
+    }
+    if (!window.confirm(`⚠️ ELIMINARE TUTTI i ${items.length} oggetti dal mercato? L'operazione è irreversibile.`)) return;
+    const phrase = window.prompt('Digita "ELIMINA TUTTO" per confermare la rimozione totale:');
+    if (phrase !== "ELIMINA TUTTO") {
+      alert("Conferma errata. Operazione annullata.");
+      return;
+    }
+    setLoading(true);
+    let failed = 0;
+    await Promise.all(items.map(async (item) => {
+      try {
+        if (item.img && item.img.includes("firebasestorage.googleapis.com")) {
+          try {
+            await deleteObject(storageRef(storage, item.img));
+          } catch (err) {
+            console.warn("Pulizia storage fallita per", item.id, err.code);
+          }
+        }
+        await deleteDoc(doc(db, "items", item.id));
+      } catch (err) {
+        failed++;
+        console.error("Errore eliminazione item", item.id, err);
+      }
+    }));
+    setLoading(false);
+    if (failed > 0) alert(`Eliminazione completata con ${failed} errori. Controlla la console.`);
+    else alert("✅ Tutti gli oggetti sono stati eliminati.");
+  };
+
   useEffect(() => {
     if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
     const unsubConfig = onSnapshot(doc(db, "settings", "market_config"), (snap) => {
@@ -440,6 +473,15 @@ export default function MarketAdmin() {
                 {t.label}
               </button>
             ))}
+            <button
+              type="button"
+              className="mkadm-filter mkadm-filter--danger"
+              onClick={handleDeleteAllItems}
+              disabled={loading || items.length === 0}
+              title="Elimina tutti gli oggetti del mercato"
+            >
+              🗑 Elimina tutto
+            </button>
           </div>
         </div>
 
