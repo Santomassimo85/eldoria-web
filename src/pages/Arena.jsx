@@ -3212,18 +3212,21 @@ export default function Arena() {
     if (wsUsesLeft <= 0) return;
     const form = WILD_SHAPES[formKey];
     const { count, sides } = form.hpDice;
-    let newHp = 0;
-    for (let i = 0; i < count; i++) newHp += Math.floor(Math.random() * sides) + 1;
+    // Trasformazione = HP al 100% del massimo della forma scelta.
+    const newHp = count * sides;
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Druido";
     const newUsesLeft = wsUsesLeft - 1;
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    // La trasformazione NON consuma il turno: il druido può ancora attaccare.
+    // Manteniamo turn e turnExpiry invariati.
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
-      const preHp = m.players.find(p => p.id === currentUser.uid)?.hp ?? 0;
+      const me = m.players.find(p => p.id === currentUser.uid);
+      const preHp    = me?.hp    ?? 0;
+      const preMaxHp = me?.maxHp ?? preHp;
       const updatedPlayers = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, hp: newHp, wildShape: formKey, preWildShapeHp: preHp, wildShapeUsesLeft: newUsesLeft, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, hp: newHp, maxHp: newHp, wildShape: formKey, preWildShapeHp: preHp, preWildShapeMaxHp: preMaxHp, wildShapeUsesLeft: newUsesLeft, ...tickEagleEnd(p) } : p
       );
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
+      return { ...m, players: updatedPlayers,
         logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/2]`] };
     });
     setShowWildPicker(false);
@@ -3237,10 +3240,11 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const myPData = m.players.find(p => p.id === currentUser.uid);
-      const restoredHp = myPData?.preWildShapeHp ?? myPData?.hp ?? 0;
+      const restoredHp    = myPData?.preWildShapeHp    ?? myPData?.hp    ?? 0;
+      const restoredMaxHp = myPData?.preWildShapeMaxHp ?? myPData?.maxHp ?? restoredHp;
       const updatedPlayers = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, hp: restoredHp, wildShape: null, preWildShapeHp: null, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) }
+          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) }
           : p
       );
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,

@@ -134,6 +134,26 @@ export default function Riassunti() {
                                             <div
                                                 dangerouslySetInnerHTML={{ __html: summary.content }}
                                             />
+                                            {Array.isArray(summary.images) && summary.images.length > 0 && (
+                                                <div className="summary-gallery">
+                                                    {summary.images.map((url, i) => (
+                                                        <a
+                                                            key={url + i}
+                                                            href={url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="summary-gallery-item"
+                                                        >
+                                                            <img
+                                                                src={url}
+                                                                alt={`${summary.title} — immagine ${i + 1}`}
+                                                                loading="lazy"
+                                                                onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
+                                                            />
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </ToggleSection>
                                     </div>
                                 ))}

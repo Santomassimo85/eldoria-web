@@ -37,6 +37,7 @@ const initialFormData = {
   order: "",
   date: "",
   coverImage: "",
+  images: [],
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -104,6 +105,54 @@ const DropZone = ({ value, uploading, onFile, onClear, label, icon = "📜" }) =
   );
 };
 
+/* Multi-file drop zone for the inline gallery */
+const MultiDropZone = ({ uploading, onFiles, label = "Trascina immagini per la galleria", icon = "🖼" }) => {
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type?.startsWith("image/"));
+    if (files.length) onFiles(files);
+  };
+
+  return (
+    <div
+      className={`sumadm-drop sumadm-drop-multi ${dragOver ? "drag" : ""} ${uploading ? "loading" : ""}`}
+      onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      onClick={() => !uploading && inputRef.current?.click()}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length) onFiles(files);
+          e.target.value = "";
+        }}
+      />
+      {uploading ? (
+        <div className="sumadm-drop-state">
+          <span className="sumadm-drop-spinner" />
+          <strong>Caricamento…</strong>
+        </div>
+      ) : (
+        <div className="sumadm-drop-state">
+          <span className="sumadm-drop-icon">{icon}</span>
+          <strong>{label}</strong>
+          <small>Trascina o clicca · max 5MB ciascuna · selezione multipla</small>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const partyColor = (key) => PARTIES.find((p) => p.key === key)?.color || "#888";
 const stripHtml = (html) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
@@ -116,6 +165,7 @@ export default function SummaryAdmin() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [galleryUploading, setGalleryUploading] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -183,6 +233,46 @@ export default function SummaryAdmin() {
     }
   };
 
+  /* Gallery upload — accepts multiple files, appends to formData.images */
+  const uploadOne = async (file) => {
+    if (!file?.type?.startsWith("image/")) return null;
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`"${file.name}" è troppo grande (max 5MB).`);
+      return null;
+    }
+    const safe = (file.name || "img").replace(/[^a-z0-9._-]/gi, "_").slice(0, 40);
+    const path = `summaries/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, file, { contentType: file.type });
+    return await getDownloadURL(ref);
+  };
+
+  const onGalleryFiles = async (files) => {
+    setGalleryUploading(true);
+    try {
+      const urls = [];
+      for (const f of files) {
+        try {
+          const url = await uploadOne(f);
+          if (url) urls.push(url);
+        } catch (err) {
+          console.error("Upload galleria fallito:", err);
+          alert(`Errore upload "${f.name}": ${err.message || err.code}`);
+        }
+      }
+      if (urls.length) {
+        setFormData((d) => ({ ...d, images: [...(d.images || []), ...urls] }));
+      }
+    } finally {
+      setGalleryUploading(false);
+    }
+  };
+
+  const removeGalleryImage = async (url) => {
+    setFormData((d) => ({ ...d, images: (d.images || []).filter((u) => u !== url) }));
+    cleanupStorageUrl(url);
+  };
+
   /* ── Form handlers ── */
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -203,6 +293,7 @@ export default function SummaryAdmin() {
     if (!window.confirm(`Eliminare "${summary.title}"?`)) return;
     try {
       await cleanupStorageUrl(summary.coverImage);
+      for (const url of (summary.images || [])) await cleanupStorageUrl(url);
       await deleteDoc(doc(db, "summaries", summary.id));
       setStatus(`✅ Riassunto eliminato.`);
     } catch (error) {
@@ -225,6 +316,7 @@ export default function SummaryAdmin() {
           order: Number(formData.order),
           date: formData.date,
           coverImage: formData.coverImage || "",
+          images: formData.images || [],
           updatedAt: new Date().toISOString(),
         });
         setStatus(`✅ "${formData.title}" aggiornato.`);
@@ -232,6 +324,7 @@ export default function SummaryAdmin() {
         const docId = `${formData.party}_${Date.now()}`;
         await setDoc(doc(db, "summaries", docId), {
           ...formData,
+          images: formData.images || [],
           createdAt: new Date().toISOString(),
           order: Number(formData.order) || summaries.length + 1,
         });
@@ -252,6 +345,7 @@ export default function SummaryAdmin() {
       order: summary.order || "",
       date: summary.date || "",
       coverImage: summary.coverImage || "",
+      images: Array.isArray(summary.images) ? summary.images : [],
     });
     setIsEditing(true);
     setEditingId(summary.id);
@@ -421,6 +515,31 @@ export default function SummaryAdmin() {
               />
             </div>
 
+            <div className="sumadm-field">
+              <label>Galleria immagini (mostrate alla fine del riassunto)</label>
+              <MultiDropZone
+                uploading={galleryUploading}
+                onFiles={onGalleryFiles}
+              />
+              {(formData.images || []).length > 0 && (
+                <div className="sumadm-gallery-strip">
+                  {formData.images.map((url) => (
+                    <div key={url} className="sumadm-gallery-thumb">
+                      <img src={url} alt="" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                      <button
+                        type="button"
+                        className="sumadm-gallery-remove"
+                        title="Rimuovi"
+                        onClick={() => removeGalleryImage(url)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="sumadm-actions">
               <button type="submit" disabled={uploading} className="sumadm-btn primary">
                 {uploading ? "⏳ Upload…" : isEditing ? "💾 Salva modifiche" : "🪄 Crea riassunto"}
@@ -468,6 +587,15 @@ export default function SummaryAdmin() {
                 />
               ) : (
                 <p className="sumadm-preview-content placeholder">La cronaca apparirà qui…</p>
+              )}
+              {(formData.images || []).length > 0 && (
+                <div className="summary-gallery">
+                  {formData.images.map((url, i) => (
+                    <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="summary-gallery-item">
+                      <img src={url} alt="" loading="lazy" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                    </a>
+                  ))}
+                </div>
               )}
             </div>
           </div>
