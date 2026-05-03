@@ -43,6 +43,7 @@ export default function MarketAdmin() {
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [globalCountdown, setGlobalCountdown] = useState("");
+  const [marketIsOpen, setMarketIsOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -145,7 +146,11 @@ export default function MarketAdmin() {
   useEffect(() => {
     if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
     const unsubConfig = onSnapshot(doc(db, "settings", "market_config"), (snap) => {
-      if (snap.exists()) setGlobalCountdown(snap.data().nextOpening || "");
+      if (snap.exists()) {
+        const d = snap.data();
+        setGlobalCountdown(d.nextOpening || "");
+        setMarketIsOpen(!!d.isOpen);
+      }
     });
     const unsubItems = onSnapshot(collection(db, "items"), (snap) => {
       setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -154,8 +159,15 @@ export default function MarketAdmin() {
   }, [currentUser]);
 
   const handleUpdateCountdown = async () => {
-    await setDoc(doc(db, "settings", "market_config"), { nextOpening: globalCountdown });
+    await setDoc(doc(db, "settings", "market_config"), { nextOpening: globalCountdown }, { merge: true });
     alert("✅ Programmazione salvata!");
+  };
+
+  const handleToggleMarket = async () => {
+    const next = !marketIsOpen;
+    const verb = next ? "APRIRE" : "CHIUDERE";
+    if (!window.confirm(`${verb} il Mercato Nero? Tutti i giocatori riceveranno una notifica push.`)) return;
+    await setDoc(doc(db, "settings", "market_config"), { isOpen: next }, { merge: true });
   };
 
   const handleEditInit = (item) => {
@@ -255,6 +267,18 @@ export default function MarketAdmin() {
               placeholder="Seleziona apertura"
             />
             <button onClick={handleUpdateCountdown} className="mkadm-btn-save">Salva</button>
+          </div>
+          <div className="mkadm-config-row" style={{ marginTop: 12, alignItems: "center" }}>
+            <span className={`mkadm-market-status ${marketIsOpen ? "open" : "closed"}`}>
+              {marketIsOpen ? "🟢 Mercato APERTO" : "🔴 Mercato CHIUSO"}
+            </span>
+            <button
+              onClick={handleToggleMarket}
+              className={marketIsOpen ? "mkadm-btn-close" : "mkadm-btn-save"}
+              title="Invia notifica push a tutti i giocatori"
+            >
+              {marketIsOpen ? "Chiudi mercato" : "Apri mercato"}
+            </button>
           </div>
         </div>
       </div>

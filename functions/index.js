@@ -186,22 +186,30 @@ async function sendPush({ uids, title, body, url, tag }) {
   if (tokens.length === 0) return;
 
   const messaging = admin.messaging();
-  const data = {
-    url: url || "/",
-    title: title || "",
-    body: body || "",
+  const safeTitle = title || "Exanthia";
+  const safeBody  = body  || "Apri l'app per i dettagli.";
+  // Keep url in `data` so onMessage / SW notificationclick can read it,
+  // but put title/body inside webpush.notification so the OS can render the
+  // notification even when the service worker is asleep (much more reliable
+  // than data-only payloads on installed PWAs).
+  const message = {
+    tokens,
+    data: { url: url || "/" },
+    webpush: {
+      notification: {
+        title: safeTitle,
+        body:  safeBody,
+        icon:  "/logo192.png",
+        badge: "/logo192.png",
+        ...(tag ? { tag } : {}),
+      },
+      fcmOptions: { link: url || "/" },
+    },
   };
-  if (tag) data.tag = tag;
 
   let res;
   try {
-    res = await messaging.sendEachForMulticast({
-      tokens,
-      data,
-      webpush: {
-        fcmOptions: { link: url || "/" },
-      },
-    });
+    res = await messaging.sendEachForMulticast(message);
   } catch (err) {
     console.error("[push] sendEachForMulticast error:", err);
     return;
@@ -306,8 +314,8 @@ exports.pushOnTurnPhase = onDocumentUpdated('battle_meta/turn_tracker', async (e
   const aliveUids = charsSnap.docs.filter(d => (d.data().hp ?? 0) > 0).map(d => d.id);
   await sendPush({
     uids: aliveUids,
-    title: "⚡ Tocca a voi, Eroi!",
-    body: "Il Boss attende il tuo colpo. Entra in battaglia!",
+    title: "⚡ World Boss — Tocca a te!",
+    body: "Il tuo turno è iniziato: entra in battaglia e colpisci il Boss.",
     url: "/world-boss",
     tag: `boss-turn-${after.turnNumber || ""}`,
   });
@@ -344,8 +352,8 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
       const uids = await getAllUids();
       await sendPush({
         uids,
-        title: `🏛 ${arenaName} aperta!`,
-        body: "Le iscrizioni sono aperte. Entra nell'arena!",
+        title: "🏛 Arena — Iscrizioni aperte!",
+        body: "Le iscrizioni al torneo sono aperte. Entra nell'Arena dei Campioni!",
         url: "/arena",
         tag: "arena-open",
       });
@@ -423,16 +431,39 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
   }
 });
 
-// 6) Market — new item available
-exports.pushOnMarketItem = onDocumentCreated('items/{itemId}', async (event) => {
-  const data = event.data?.data();
-  if (!data) return;
+// 6) Market — open/close toggled by master via settings/market_config.isOpen
+async function broadcastMarketState(nowOpen) {
   const uids = await getAllUids();
-  await sendPush({
-    uids,
-    title: "🛒 Nuovo oggetto al Mercato!",
-    body: `${data.name || "Un oggetto"} è ora disponibile. Fai la tua offerta!`,
-    url: "/mercato",
-    tag: `market-new-${event.params.itemId}`,
-  });
+  if (nowOpen) {
+    await sendPush({
+      uids,
+      title: "🛒 Mercato Nero aperto!",
+      body: "Le aste del Mercato Nero sono ora attive. Fai le tue offerte!",
+      url: "/mercato",
+      tag: "market-open",
+    });
+  } else {
+    await sendPush({
+      uids,
+      title: "🛒 Mercato Nero chiuso",
+      body: "Il Mercato Nero ha chiuso le sue porte. Le aste sono terminate.",
+      url: "/mercato",
+      tag: "market-closed",
+    });
+  }
+}
+
+exports.pushOnMarketOpenChange = onDocumentUpdated('settings/market_config', async (event) => {
+  const before = event.data?.before?.data() || {};
+  const after  = event.data?.after?.data()  || {};
+  const wasOpen = !!before.isOpen;
+  const nowOpen = !!after.isOpen;
+  if (wasOpen === nowOpen) return;
+  await broadcastMarketState(nowOpen);
+});
+
+exports.pushOnMarketConfigCreated = onDocumentCreated('settings/market_config', async (event) => {
+  const data = event.data?.data() || {};
+  if (!data.isOpen) return;
+  await broadcastMarketState(true);
 });

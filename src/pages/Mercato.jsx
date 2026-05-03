@@ -426,7 +426,9 @@ export default function Mercato() {
 
   const filteredItems = useMemo(() => {
     const now = new Date();
-    const isMarketOpen = marketConfig?.nextOpening ? now >= new Date(marketConfig.nextOpening) : true;
+    const isMarketOpen = typeof marketConfig?.isOpen === "boolean"
+      ? marketConfig.isOpen
+      : (marketConfig?.nextOpening ? now >= new Date(marketConfig.nextOpening) : true);
     return items.filter((item) => {
       if (!isMaster && !isMarketOpen) return false;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
