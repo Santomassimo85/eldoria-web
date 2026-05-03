@@ -1758,11 +1758,8 @@ export default function Arena() {
   };
 
   // ── ARENA LIBERA: open/cancel/abandon ─────────────────────────────────────
+  // L'Arena Libera è sempre disponibile, anche per chi è iscritto al torneo.
   const openFunCreate = async () => {
-    if (isRegistered || isPending) {
-      alert("Sei iscritto al torneo. Esci dal torneo per giocare in Arena Libera.");
-      return;
-    }
     await openLoadoutPicker();
     // Sovrascrivo il default "tournament" impostato da openLoadoutPicker.
     setLoadoutContext("fun");
@@ -1770,10 +1767,6 @@ export default function Arena() {
   };
 
   const openFunAccept = async (matchId) => {
-    if (isRegistered || isPending) {
-      alert("Sei iscritto al torneo. Esci dal torneo per accettare la sfida.");
-      return;
-    }
     const target = (arenaMeta?.matches || []).find(m => m.matchId === matchId);
     if (!target || target.status !== "open") { alert("Sfida non più disponibile."); return; }
     if (target.challengerId === currentUser?.uid) { alert("Non puoi accettare la tua stessa sfida."); return; }
@@ -4890,7 +4883,6 @@ export default function Arena() {
         const myFinishedFun = funMatches
           .filter(m => m.status === "finished" && m.players?.some(p => p.id === currentUser.uid))
           .slice(-3);
-        const cantPlay = isRegistered || isPending;
         return (
           <div className="fun-arena-section">
             <div className="fun-arena-header">
@@ -4906,13 +4898,10 @@ export default function Arena() {
                   🔴 {ongoingFun.length} in corso
                 </span>
               )}
-              {!cantPlay && !myActiveFun && (
+              {!myActiveFun && (
                 <button className="btn-fun-create" onClick={openFunCreate}>
                   ⚔ Crea Sfida
                 </button>
-              )}
-              {cantPlay && (
-                <span className="fun-arena-locked-note">Sei iscritto al torneo: l'Arena Libera è disabilitata.</span>
               )}
             </div>
 
@@ -4961,7 +4950,7 @@ export default function Arena() {
                           ✕ Annulla
                         </button>
                       ) : (
-                        <button className="btn-fun-accept" onClick={() => openFunAccept(m.matchId)} disabled={cantPlay || !!myActiveFun}>
+                        <button className="btn-fun-accept" onClick={() => openFunAccept(m.matchId)} disabled={!!myActiveFun}>
                           {myActiveFun ? "Hai già una sfida in corso" : "⚔ Accetta"}
                         </button>
                       )}
@@ -4993,7 +4982,7 @@ export default function Arena() {
               </div>
             )}
 
-            {openChallenges.length === 0 && !myActiveFun && otherActiveFun.length === 0 && myFinishedFun.length === 0 && !cantPlay && (
+            {openChallenges.length === 0 && !myActiveFun && otherActiveFun.length === 0 && myFinishedFun.length === 0 && (
               <div className="fun-arena-empty">Nessuna sfida aperta. Sii il primo a lanciarne una!</div>
             )}
           </div>
