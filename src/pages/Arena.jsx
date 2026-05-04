@@ -654,6 +654,7 @@ function isDualWieldRogue(snap, matchPlayer) {
 
 // Numero massimo di azioni per turno: Monaco = 3, Ladro con due armi = 2, altrimenti 1.
 // +1 se il giocatore ha extraTurnActive (Passo Spedito).
+// +1 se Scatto d'Azione è attivo (Guerriero) — concede un'azione extra per questo turno.
 function getMaxActionsPerTurn(snap, matchPlayer) {
   if (!snap) return 1;
   const cls = (snap.class || "").toLowerCase();
@@ -661,6 +662,7 @@ function getMaxActionsPerTurn(snap, matchPlayer) {
   if (isMonkClass(cls)) base = 3;
   else if (isDualWieldRogue(snap, matchPlayer)) base = 2;
   if (matchPlayer?.extraTurnActive) base += 1;
+  if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
 }
 
@@ -1208,6 +1210,12 @@ export default function Arena() {
     const t = setInterval(() => setTick(v => v + 1), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Guardia anti–doppio click: impedisce che due attacchi/skill partano sulla stessa
+  // istantanea di arenaMeta prima che updateDoc sia stato confermato da Firestore.
+  // Senza, online (latenza > local) si possono accumulare clic che partono da uno
+  // stato stantio e l'azione "non succede nulla" agli occhi dell'utente.
+  const actionInFlightRef = useRef(false);
 
   // Master join setup
   const [masterJoinSetup, setMasterJoinSetup] = useState(false);
@@ -2029,6 +2037,16 @@ export default function Arena() {
   };
 
   const handleAttack = async (matchId, targetId, action) => {
+    if (actionInFlightRef.current) return; // anti–doppio click: l'azione precedente non è ancora confermata
+    actionInFlightRef.current = true;
+    try {
+      await _runAttack(matchId, targetId, action);
+    } finally {
+      actionInFlightRef.current = false;
+    }
+  };
+
+  const _runAttack = async (matchId, targetId, action) => {
     const snapshots    = arenaMeta.characterSnapshots || {};
     const attackerSnap = snapshots[currentUser.uid];
     const defenderSnap = snapshots[targetId];
@@ -2204,7 +2222,12 @@ export default function Arena() {
         };
         const playersWithMultiState = players.map(p =>
           p.id === currentUser.uid
-            ? { ...p, multiActionsUsed: newMultiUsed, bonusActionUsed: multiWillStay ? preservedBonusUsed : false, extraTurnActive: multiWillStay ? p.extraTurnActive : false, ...turnEndDecaysSneak }
+            ? { ...p,
+                multiActionsUsed: newMultiUsed,
+                bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
+                extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
+                actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false,
+                ...turnEndDecaysSneak }
             : p
         );
         const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
@@ -2415,7 +2438,6 @@ export default function Arena() {
       attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
     };
 
-    const surgeWasActive = !!(attackerMatchPlayer?.actionSurgeActive);
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
     let updatedMatches = arenaMeta.matches.map(m => {
@@ -2439,7 +2461,7 @@ export default function Arena() {
           const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
           const newMdAtk  = Math.max(0, prevMdAtk - 1);
           const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -2459,14 +2481,13 @@ export default function Arena() {
           participantsAwarded: newParticipantsAwarded,
           logs: [...allLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
-      // Multi-azione (Monaco x3, Ladro doppie armi x2): non avanza il turno finché restano azioni.
+      // Multi-azione (Monaco x3, Ladro doppie armi x2, Scatto d'Azione +1): non avanza il turno finché restano azioni.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
       const usedSoFar = meBefore?.multiActionsUsed ?? 0;
-      const multiWillStay = (usedSoFar + 1) < maxActions;
-      const newMultiUsed = multiWillStay ? usedSoFar + 1 : 0;
+      const stayingThisTurn = (usedSoFar + 1) < maxActions;
+      const newMultiUsed = stayingThisTurn ? usedSoFar + 1 : 0;
       // bonusActionUsed deve persistere per l'intero turno del giocatore: si resetta solo quando il turno avanza davvero.
-      const stayingThisTurn = surgeWasActive || multiWillStay;
       const preservedBonusUsed = !!meBefore?.bonusActionUsed;
       const turnEndDecays = stayingThisTurn ? {} : {
         attackDisadvantageTurns: Math.max(0, (meBefore?.attackDisadvantageTurns ?? 0) - 1),
@@ -2474,10 +2495,14 @@ export default function Arena() {
       };
       const playersWithMultiState = updatedPlayers.map(p =>
         p.id === currentUser.uid
-          ? { ...p, multiActionsUsed: newMultiUsed, bonusActionUsed: stayingThisTurn ? preservedBonusUsed : false, extraTurnActive: stayingThisTurn ? p.extraTurnActive : false, ...turnEndDecays }
+          ? { ...p,
+              multiActionsUsed: newMultiUsed,
+              bonusActionUsed:   stayingThisTurn ? !!preservedBonusUsed   : false,
+              extraTurnActive:   stayingThisTurn ? !!p.extraTurnActive    : false,
+              actionSurgeActive: stayingThisTurn ? !!p.actionSurgeActive  : false,
+              ...turnEndDecays }
           : p
       );
-      // If surge was active, this was the extra action — keep turn on same player for one more action; otherwise advance
       const nextTurn = stayingThisTurn ? currentUser.uid : advanceTurn(playersWithMultiState, m);
       return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: allLogs };
     });
@@ -2502,7 +2527,7 @@ export default function Arena() {
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
   const handleShieldSkill = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
-    const log = `🛡 ${myName} lancia Scudo! (+3 CA per 3 turni)`;
+    const log = { pub: `🛡 ${myName} lancia Scudo! (+3 CA per 3 turni)`, attId: currentUser.uid, ts: new Date().toISOString() };
     const shieldExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -2530,7 +2555,7 @@ export default function Arena() {
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
         return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
       });
-      const log = `💨 ${myName} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`;
+      const log = { pub: `💨 ${myName} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -2538,24 +2563,30 @@ export default function Arena() {
 
   // ── SCATTO D'AZIONE (Fighter) ─────────────────────────────────────────────
   const handleActionSurge = async (matchId, action) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Guerriero";
-    const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
-    const me = myMatch?.players.find(p => p.id === currentUser.uid);
-    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
-    const updatedMatches = arenaMeta.matches.map(m => {
-      if (m.matchId !== matchId) return m;
-      const updatedPlayers = m.players.map(p => {
-        if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, actionSurgeActive: true, bonusActionUsed: true, actionUsesLeft: newUses };
+    if (actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Guerriero";
+      const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+      const me = myMatch?.players.find(p => p.id === currentUser.uid);
+      if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+      const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const updatedMatches = arenaMeta.matches.map(m => {
+        if (m.matchId !== matchId) return m;
+        const updatedPlayers = m.players.map(p => {
+          if (p.id !== currentUser.uid) return p;
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, actionSurgeActive: true, bonusActionUsed: true, actionUsesLeft: newUses };
+        });
+        const log = { pub: `⚡ ${myName} attiva Scatto d'Azione! Guadagna un'azione extra.`, attId: currentUser.uid, ts: new Date().toISOString() };
+        // Turn stays on current player
+        return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: expiry, logs: [...m.logs, log] };
       });
-      const log = `⚡ ${myName} attiva Scatto d'Azione! Guadagna un'azione extra.`;
-      // Turn stays on current player
-      return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: expiry, logs: [...m.logs, log] };
-    });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    } finally {
+      actionInFlightRef.current = false;
+    }
   };
 
   // ── INDIVIDUAZIONE DEL MAGICO / Guida / Aiuto / Luci Fatate / Benedire / Passo Spedito ──
@@ -2575,7 +2606,8 @@ export default function Arena() {
         return { ...p, magicDetectActive: bonusVal, magicDetectAttacks: attacksVal, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
       const turnsTxt = attacksVal === 1 ? "prossimo attacco" : `prossimi ${attacksVal} attacchi`;
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `🔮 ${myName} invoca ${action.name}! (+${bonusVal} ai ${turnsTxt})`] };
+      const log = { pub: `🔮 ${myName} invoca ${action.name}! (+${bonusVal} ai ${turnsTxt})`, attId: currentUser.uid, ts: new Date().toISOString() };
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -2594,7 +2626,8 @@ export default function Arena() {
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
         return { ...p, concentrationTurns: 2, bonusActionUsed: true, actionUsesLeft: newUses };
       });
-      return { ...m, players: updatedPlayers, logs: [...m.logs, `🧘 ${myName} si concentra! +4 danni per 2 turni (bonus action)`] };
+      const log = { pub: `🧘 ${myName} si concentra! +4 danni per 2 turni (bonus action)`, attId: currentUser.uid, ts: new Date().toISOString() };
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -3116,7 +3149,7 @@ export default function Arena() {
         const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
         return { ...p, extraTurnActive: true, ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
-      const log = `💨 ${myName} si prepara a un Passo Spedito: il prossimo turno avrà 2 azioni!`;
+      const log = { pub: `💨 ${myName} si prepara a un Passo Spedito: il prossimo turno avrà 2 azioni!`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3374,7 +3407,7 @@ export default function Arena() {
           // Tocco Vampirico: cura il caster.
           const myMaxHp = attackerSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
           const healedHp = vampHeal > 0 ? Math.min(myMaxHp, (p.hp ?? 0) + vampHeal) : (p.hp ?? 0);
-          return { ...p, hp: healedHp, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, actionSurgeActive: false, bardicInspirationActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+          return { ...p, hp: healedHp, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
         }
         return { ...p, ...consumeInvisibility(p) };
       });
@@ -3395,7 +3428,12 @@ export default function Arena() {
       };
       const playersWithMultiState = players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, multiActionsUsed: newMultiUsed, bonusActionUsed: multiWillStay ? preservedBonusUsed : false, extraTurnActive: multiWillStay ? p.extraTurnActive : false, ...turnEndDecaysSpell }
+          ? { ...p,
+              multiActionsUsed: newMultiUsed,
+              bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
+              extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
+              actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false,
+              ...turnEndDecaysSpell }
           : p
       );
       const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
@@ -6363,7 +6401,7 @@ export default function Arena() {
                       : null;
                     return (
                       <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""}`}>
-                        {isMaster && ts && <span className="log-ts">{ts}</span>}
+                        {ts && <span className="log-ts">{ts}</span>}
                         {text}
                       </p>
                     );
