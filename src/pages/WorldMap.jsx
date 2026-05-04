@@ -11,16 +11,21 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+const TAP_THRESHOLD = 8; // px: movimenti < 8px restano "tap" e non panning
+
 export default function WorldMap() {
   const [activeBosses, setActiveBosses] = useState([]);
   const [npcs, setNpcs]                 = useState([]);
   const [selectedNpc, setSelectedNpc]   = useState(null);
+  const [activeAnchorId, setActiveAnchorId] = useState(null);
   const [zoom, setZoom]                 = useState(1);
   const [pan, setPan]                   = useState({ x: 0, y: 0 });
 
   const viewportRef   = useRef(null);
   const innerRef      = useRef(null);
   const isDragging    = useRef(false);
+  const didDrag       = useRef(false);
+  const dragStartPos  = useRef(null);
   const lastPointer   = useRef({ x: 0, y: 0 });
   const lastTouchDist = useRef(null);
   const zoomRef       = useRef(1);
@@ -87,11 +92,19 @@ export default function WorldMap() {
   const onMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
     isDragging.current = true;
+    didDrag.current = false;
     lastPointer.current = { x: e.clientX, y: e.clientY };
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
   }, []);
 
   const onMouseMove = useCallback((e) => {
     if (!isDragging.current) return;
+    if (!didDrag.current && dragStartPos.current) {
+      const dxs = e.clientX - dragStartPos.current.x;
+      const dys = e.clientY - dragStartPos.current.y;
+      if (Math.hypot(dxs, dys) < TAP_THRESHOLD) return; // soglia tap
+      didDrag.current = true;
+    }
     const dx = e.clientX - lastPointer.current.x;
     const dy = e.clientY - lastPointer.current.y;
     lastPointer.current = { x: e.clientX, y: e.clientY };
@@ -107,9 +120,12 @@ export default function WorldMap() {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      didDrag.current = true; // pinch-zoom non è un tap
     } else {
       isDragging.current = true;
+      didDrag.current = false;
       lastPointer.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      dragStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   }, []);
 
@@ -129,9 +145,17 @@ export default function WorldMap() {
       }
       lastTouchDist.current = dist;
     } else if (isDragging.current && e.touches.length === 1) {
-      const dx = e.touches[0].clientX - lastPointer.current.x;
-      const dy = e.touches[0].clientY - lastPointer.current.y;
-      lastPointer.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      const cx = e.touches[0].clientX;
+      const cy = e.touches[0].clientY;
+      if (!didDrag.current && dragStartPos.current) {
+        const dxs = cx - dragStartPos.current.x;
+        const dys = cy - dragStartPos.current.y;
+        if (Math.hypot(dxs, dys) < TAP_THRESHOLD) return; // entro la soglia: ancora un tap, non panning
+        didDrag.current = true;
+      }
+      const dx = cx - lastPointer.current.x;
+      const dy = cy - lastPointer.current.y;
+      lastPointer.current = { x: cx, y: cy };
       setPan(prev => clampPan(prev.x + dx, prev.y + dy));
     }
   }, [clampPan]);
@@ -143,7 +167,24 @@ export default function WorldMap() {
 
   const resetZoom = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
-  const handleNpcClick = (e, npc) => { e.stopPropagation(); setSelectedNpc(npc); };
+  // Tap su un'ancora: se il movimento era < soglia (didDrag=false) considero il gesto un click utile.
+  const handleNpcClick = (e, npc) => {
+    e.stopPropagation();
+    if (didDrag.current) return;
+    setSelectedNpc(npc);
+  };
+
+  const handleAnchorTap = (e, anchorId) => {
+    e.stopPropagation();
+    if (didDrag.current) return;
+    setActiveAnchorId(prev => (prev === anchorId ? null : anchorId));
+  };
+
+  // Tap su sfondo mappa (non su ancora) chiude il tooltip aperto.
+  const handleViewportTap = () => {
+    if (didDrag.current) return;
+    if (activeAnchorId) setActiveAnchorId(null);
+  };
 
   const innerStyle = {
     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -165,14 +206,17 @@ export default function WorldMap() {
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onClick={handleViewportTap}
       >
         <div ref={innerRef} className="map-inner" style={innerStyle}>
           <img src="/assets/Exanthia.jpg" className="world-map-img" alt="Mappa Mondo" draggable={false} />
 
           {/* BOSS (Ping Rossi) */}
           {activeBosses.map((boss) => (
-            <div key={boss.id} className="map-anchor boss-anchor"
-              style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}>
+            <div key={boss.id}
+              className={`map-anchor boss-anchor${activeAnchorId === `boss-${boss.id}` ? " is-active" : ""}`}
+              style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}
+              onClick={(e) => handleAnchorTap(e, `boss-${boss.id}`)}>
               <div className="ping boss-ping">
                 <div className="ping-ring boss-ring" />
               </div>
@@ -206,8 +250,10 @@ export default function WorldMap() {
             const localNpcs = npcs.filter(n => n.linkedCity === city.name);
             if (localNpcs.length === 0) return null;
             return (
-              <div key={city.name} className="map-anchor city-anchor"
-                style={{ left: `${city.x}%`, top: `${city.y}%` }}>
+              <div key={city.name}
+                className={`map-anchor city-anchor${activeAnchorId === `city-${city.name}` ? " is-active" : ""}`}
+                style={{ left: `${city.x}%`, top: `${city.y}%` }}
+                onClick={(e) => handleAnchorTap(e, `city-${city.name}`)}>
                 <div className="ping city-ping">
                   <div className="ping-ring city-ring" />
                   <span className="city-count">{localNpcs.length}</span>

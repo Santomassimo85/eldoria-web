@@ -175,12 +175,16 @@
   transition: opacity 0.2s ease, visibility 0s linear 0.2s;
 }
 
-.map-anchor:hover .map-tooltip {
+.map-anchor:hover .map-tooltip,
+.map-anchor.is-active .map-tooltip {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
   transition: opacity 0.18s ease, visibility 0s linear 0s;
 }
+
+/* Ancora aperta su tap: assicura che il tooltip non sia coperto da altri ping */
+.map-anchor.is-active { z-index: 30; }
 
 /* ---- BOSS & NPC-free tooltip ----------------------------- */
 .boss-tooltip,
@@ -513,44 +517,50 @@
    ============================================================ */
 @media (max-width: 600px) {
   .map-page {
-    padding: 70px 0 0;
+    padding: 70px 0 8px;
     min-height: 100vh;
     min-height: 100dvh;
-    gap: 0;
+    gap: 4px;
     align-items: stretch;
   }
   .map-page-title {
-    font-size: 0.95rem;
+    font-size: 1rem;
     margin: 0;
     padding: 4px 8px;
     text-align: center;
   }
+  /* La mappa è ~4:3 landscape: forzando height:100% (vecchio CSS) la larghezza
+     superava lo schermo e il device sembrava "tagliare" la mappa. Ora torniamo
+     al sizing per larghezza così il dispositivo mostra l'intera mappa al primo
+     impatto; l'utente può ancora zoomare con pizzico per vedere i dettagli. */
   .map-viewport {
     width: 100%;
-    height: calc(100vh - 100px);
-    height: calc(100dvh - 100px);
     max-width: none;
     border-radius: 0;
     border-left: 0;
     border-right: 0;
     box-shadow: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     background: #1a0f04;
   }
-  /* Mappa riempie l'altezza del viewport; l'eccesso in larghezza è pannable */
   .map-inner {
-    width: auto;
-    height: 100%;
-    max-width: none;
+    width: 100%;
+    height: auto;
   }
   .world-map-img {
-    width: auto;
-    height: 100%;
-    max-width: none;
-    max-height: 100%;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    max-height: none;
     display: block;
+  }
+
+  /* Ping più grandi su mobile per essere tappabili senza zoom */
+  .boss-ping, .city-ping { width: 18px; height: 18px; }
+  .npc-ping { width: 16px; height: 16px; }
+  .city-count {
+    width: 14px; height: 14px;
+    font-size: 0.6rem;
+    top: -8px; right: -8px;
   }
 
   /* UI fluttuante */
