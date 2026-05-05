@@ -13,6 +13,21 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 const TAP_THRESHOLD = 8; // px: movimenti < 8px restano "tap" e non panning
 
+// Placement universale del tooltip: in base alla posizione dell'ancora sulla
+// mappa (in %) decidiamo da quale lato deve aprirsi così non finisce mai
+// fuori dal viewport. Si combina con le classi CSS .tip-y-down/.tip-x-left/right.
+function tooltipPlacementClasses(xPct, yPct) {
+  const cls = [];
+  // Soglie tarate per tooltip ~200px su map ~360px (mobile, caso peggiore):
+  // metà tooltip ≈ 25% della larghezza mappa, da qui il 25% sui lati.
+  // Top: tooltip include immagine 90px + body, ~150px → 30% della mappa più
+  // corta è una soglia conservativa che evita il clipping anche a viewport piccoli.
+  if (yPct < 30) cls.push("tip-y-down");
+  if (xPct < 25) cls.push("tip-x-left");
+  else if (xPct > 75) cls.push("tip-x-right");
+  return cls.join(" ");
+}
+
 export default function WorldMap() {
   const [activeBosses, setActiveBosses] = useState([]);
   const [npcs, setNpcs]                 = useState([]);
@@ -190,6 +205,9 @@ export default function WorldMap() {
     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
     transformOrigin: "center center",
     transition: isDragging.current ? "none" : "transform 0.08s ease-out",
+    // Esposto via CSS var: le ancore (ping + tooltip) si controscalano con
+    // calc(1 / var(--map-zoom)) per restare a dimensione visiva costante.
+    "--map-zoom": zoom,
   };
 
   return (
@@ -214,7 +232,7 @@ export default function WorldMap() {
           {/* BOSS (Ping Rossi) */}
           {activeBosses.map((boss) => (
             <div key={boss.id}
-              className={`map-anchor boss-anchor${activeAnchorId === `boss-${boss.id}` ? " is-active" : ""}`}
+              className={`map-anchor boss-anchor ${tooltipPlacementClasses(boss.mapX, boss.mapY)}${activeAnchorId === `boss-${boss.id}` ? " is-active" : ""}`}
               style={{ left: `${boss.mapX}%`, top: `${boss.mapY}%` }}
               onClick={(e) => handleAnchorTap(e, `boss-${boss.id}`)}>
               <div className="ping boss-ping">
@@ -251,7 +269,7 @@ export default function WorldMap() {
             if (localNpcs.length === 0) return null;
             return (
               <div key={city.name}
-                className={`map-anchor city-anchor${activeAnchorId === `city-${city.name}` ? " is-active" : ""}`}
+                className={`map-anchor city-anchor ${tooltipPlacementClasses(city.x, city.y)}${activeAnchorId === `city-${city.name}` ? " is-active" : ""}`}
                 style={{ left: `${city.x}%`, top: `${city.y}%` }}
                 onClick={(e) => handleAnchorTap(e, `city-${city.name}`)}>
                 <div className="ping city-ping">
@@ -282,7 +300,8 @@ export default function WorldMap() {
             const hasCoords = Number.isFinite(n.mapX) && Number.isFinite(n.mapY);
             return !cityKnown && hasCoords;
           }).map(npc => (
-            <div key={npc.id} className="map-anchor npc-anchor"
+            <div key={npc.id}
+              className={`map-anchor npc-anchor ${tooltipPlacementClasses(npc.mapX, npc.mapY)}`}
               style={{ left: `${npc.mapX}%`, top: `${npc.mapY}%` }}
               onClick={(e) => handleNpcClick(e, npc)}>
               <div className="ping npc-ping">

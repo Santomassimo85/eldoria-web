@@ -76,7 +76,14 @@
    ============================================================ */
 .map-anchor {
   position: absolute;
-  transform: translate(-50%, -50%);
+  /* La controscala (1 / map-zoom) compensa lo `scale(zoom)` del .map-inner,
+     così ping e tooltip mantengono dimensioni visive costanti anche quando
+     l'utente zooma la mappa. transform-origin resta center così l'ancora
+     resta centrata sulle sue coordinate (left%, top%). */
+  transform: translate(-50%, -50%) scale(calc(1 / var(--map-zoom, 1)));
+  transform-origin: center center;
+  /* Stesso timing del .map-inner per restare in sync durante zoom/pan */
+  transition: transform 0.08s ease-out;
   z-index: 10;
 }
 
@@ -185,6 +192,32 @@
 
 /* Ancora aperta su tap: assicura che il tooltip non sia coperto da altri ping */
 .map-anchor.is-active { z-index: 30; }
+
+/* ============================================================
+   PLACEMENT UNIVERSALE DEL TOOLTIP
+   Le classi vengono applicate in JSX in base a (x%, y%) dell'ancora
+   così il tooltip non finisce mai fuori dal viewport.
+   ============================================================ */
+
+/* Apri sotto l'ancora invece che sopra (anchor near top) */
+.map-anchor.tip-y-down .map-tooltip {
+  bottom: auto;
+  top: calc(100% + 10px);
+}
+
+/* Aggancia il bordo sinistro del tooltip al ping (anchor near left edge) */
+.map-anchor.tip-x-left .map-tooltip {
+  left: 0;
+  right: auto;
+  transform: translateX(0);
+}
+
+/* Aggancia il bordo destro del tooltip al ping (anchor near right edge) */
+.map-anchor.tip-x-right .map-tooltip {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
+}
 
 /* ---- BOSS & NPC-free tooltip ----------------------------- */
 .boss-tooltip,
@@ -608,4 +641,19 @@
     overflow-wrap: anywhere;
   }
   .faction-tag { white-space: normal; }
+}
+
+/* Tablet: nessuna modifica strutturale, solo tooltip un po' più grandi
+   sfruttando lo spazio disponibile. */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .boss-tooltip, .npc-tooltip { width: 220px; }
+  .city-tooltip { width: 210px; }
+}
+
+/* Mobile in landscape: dvh basso, riduco padding superiore e altezza titolo
+   per dare più spazio alla mappa. */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .map-page { padding: 56px 0 4px; }
+  .map-page-title { font-size: 0.85rem; padding: 2px 8px; }
+  .map-zoom-hint { display: none; } /* spazio prezioso, niente hint */
 }

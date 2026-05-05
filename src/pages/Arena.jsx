@@ -1389,6 +1389,7 @@ export default function Arena() {
           waitingList: [], participants: [],
           characterSnapshots: {}, matches: [],
           currentRound: 1, tournamentWinner: null,
+          groupA: [], groupB: [],
         });
       }
     });
@@ -1925,54 +1926,178 @@ export default function Arena() {
     });
   };
 
+  // ── Round-robin helpers ────────────────────────────────────────────────────
+  // Circle method: for N ids returns rounds[][pair] schedule. Adds a bye when N is odd.
+  const roundRobinSchedule = (ids) => {
+    const players = [...ids];
+    if (players.length < 2) return [];
+    if (players.length % 2 === 1) players.push(null);
+    const n = players.length;
+    const rounds = [];
+    for (let r = 0; r < n - 1; r++) {
+      const pairs = [];
+      for (let i = 0; i < n / 2; i++) {
+        const a = players[i];
+        const b = players[n - 1 - i];
+        if (a && b) pairs.push([a, b]);
+      }
+      rounds.push(pairs);
+      // rotate, keeping first fixed
+      const fixed = players[0];
+      const rest  = players.slice(1);
+      rest.unshift(rest.pop());
+      players.length = 0;
+      players.push(fixed, ...rest);
+    }
+    return rounds;
+  };
+
+  const buildPlayerForMatch = (id, snapshots) => {
+    const snap = snapshots[id] || {};
+    const baseHp   = snap.stats?.maxHp ?? 70;
+    const startHp  = baseHp + (snap.arenaHpBonus ?? 0);
+    const itemUses = {};
+    (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
+    const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
+    if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
+    const layOfHandsPool = isPaladinClass((snap.class || "").toLowerCase()) ? Math.floor(startHp / 3) : 0;
+    return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
+  };
+
+  const buildGroupRoundMatches = (group, round, snapshots) => {
+    const ids = group === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
+    const schedule = roundRobinSchedule(ids);
+    const pairs = schedule[round - 1] || [];
+    return pairs.map((pair, idx) => ({
+      matchId: `G${group}_R${round}_M${idx}`,
+      kind: "group",
+      group,
+      players: pair.map(id => buildPlayerForMatch(id, snapshots)),
+      status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+      logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
+      isFFA:  false,
+    }));
+  };
+
+  const buildFinalMatch = (winnerA, winnerB, snapshots) => ({
+    matchId: "FINAL_M0",
+    kind: "final",
+    group: null,
+    players: [buildPlayerForMatch(winnerA, snapshots), buildPlayerForMatch(winnerB, snapshots)],
+    status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+    logs:   ["🏆 La Finale ha inizio!"], winner: null, participantsAwarded: [],
+    isFFA:  false,
+  });
+
+  const computeGroupStandings = (group, matches) => {
+    const ids = group === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
+    const wins = {}, losses = {};
+    const h2h = {}; // h2h[a][b] = winnerId
+    matches.forEach(m => {
+      if (m.kind !== "group" || m.group !== group) return;
+      if (m.status !== "finished" || !m.winner) return;
+      (m.players || []).forEach(p => {
+        if (p.id === m.winner) wins[p.id] = (wins[p.id] || 0) + 1;
+        else losses[p.id] = (losses[p.id] || 0) + 1;
+      });
+      if (m.players?.length === 2) {
+        const [a, b] = m.players.map(p => p.id);
+        h2h[a] = h2h[a] || {}; h2h[b] = h2h[b] || {};
+        h2h[a][b] = m.winner; h2h[b][a] = m.winner;
+      }
+    });
+    const standings = ids.map(uid => ({
+      uid,
+      wins:   wins[uid]   || 0,
+      losses: losses[uid] || 0,
+    }));
+    standings.sort((p, q) => {
+      if (q.wins !== p.wins) return q.wins - p.wins;
+      // tiebreak: head-to-head winner
+      const w = h2h[p.uid]?.[q.uid];
+      if (w === p.uid) return -1;
+      if (w === q.uid) return 1;
+      return 0;
+    });
+    return standings;
+  };
+
+  const groupRoundsTotal = () => {
+    const a = roundRobinSchedule(arenaMeta.groupA || []).length;
+    const b = roundRobinSchedule(arenaMeta.groupB || []).length;
+    return Math.max(a, b);
+  };
+
   const startTournament = async () => {
-    if (arenaMeta.participants.length < 2) return alert("Minimo 2 partecipanti!");
+    if ((arenaMeta.participants || []).length < 2) return alert("Minimo 2 partecipanti!");
     const shuffled = [...arenaMeta.participants].sort(() => Math.random() - 0.5);
-    const matches  = generateMatches(shuffled, 1, arenaMeta.characterSnapshots || {});
+    const half = Math.ceil(shuffled.length / 2);
+    const groupA = shuffled.slice(0, half);
+    const groupB = shuffled.slice(half);
+    const snapshots = arenaMeta.characterSnapshots || {};
     const existingFun = (arenaMeta.matches || []).filter(m => m.kind === "fun");
+    // Generate round 1 group matches (need groupA/groupB temporarily applied to local ref)
+    const scheduleA = roundRobinSchedule(groupA);
+    const scheduleB = roundRobinSchedule(groupB);
+    const r1Matches = [];
+    (scheduleA[0] || []).forEach((pair, idx) => {
+      r1Matches.push({
+        matchId: `GA_R1_M${idx}`, kind: "group", group: "A",
+        players: pair.map(id => buildPlayerForMatch(id, snapshots)),
+        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+        logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
+      });
+    });
+    (scheduleB[0] || []).forEach((pair, idx) => {
+      r1Matches.push({
+        matchId: `GB_R1_M${idx}`, kind: "group", group: "B",
+        players: pair.map(id => buildPlayerForMatch(id, snapshots)),
+        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+        logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
+      });
+    });
+    // Edge case: a group with a single player has no matches in round 1; if both groups generated nothing,
+    // jump straight to the final between the two lone players.
+    let initialMatches = [...existingFun, ...r1Matches];
+    if (r1Matches.length === 0 && groupA.length === 1 && groupB.length === 1) {
+      initialMatches = [...existingFun, buildFinalMatch(groupA[0], groupB[0], snapshots)];
+    }
     await updateDoc(doc(db, "arena_meta", "global"), {
-      matches: [...existingFun, ...matches], phase: "combat", currentRound: 1, tournamentWinner: null,
+      matches: initialMatches, phase: "combat", currentRound: 1, tournamentWinner: null,
+      groupA, groupB,
     });
   };
 
   const advanceRound = async () => {
-    const currentRound = arenaMeta.currentRound || 1;
-    const winners = arenaMeta.matches
-      .filter(m => m.status === "finished" && m.winner && m.matchId?.startsWith(`R${currentRound}_`))
-      .map(m => m.winner);
-    if (winners.length < 2) return;
-    const nextRound  = currentRound + 1;
-    const newMatches = generateMatches(winners, nextRound, arenaMeta.characterSnapshots || {});
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: [...arenaMeta.matches, ...newMatches], currentRound: nextRound });
-  };
+    const cr = arenaMeta.currentRound || 1;
+    const snapshots = arenaMeta.characterSnapshots || {};
+    const totalGroupRounds = groupRoundsTotal();
+    const finalExists = (arenaMeta.matches || []).some(m => m.kind === "final");
 
-  const generateMatches = (competitors, round, snapshots) => {
-    const matches = [];
-    let i = 0;
-    while (i < competitors.length) {
-      const remaining      = competitors.length - i;
-      const matchPlayerIds = remaining === 3 ? competitors.slice(i, i + 3) : competitors.slice(i, i + 2);
-      if (matchPlayerIds.length < 2) break;
-      matches.push({
-        matchId: `R${round}_M${matches.length}`,
-        players: matchPlayerIds.map(id => {
-          const snap = snapshots[id] || {};
-          const baseHp   = snap.stats?.maxHp ?? 70;
-          const startHp  = baseHp + (snap.arenaHpBonus ?? 0);
-          const itemUses = {};
-          (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
-          const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
-          if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
-          const layOfHandsPool = isPaladinClass((snap.class || "").toLowerCase()) ? Math.floor(startHp / 3) : 0;
-          return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
-        }),
-        status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
-        logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
-        isFFA:  matchPlayerIds.length === 3,
+    if (cr < totalGroupRounds) {
+      const next = cr + 1;
+      const matches = arenaMeta.matches || [];
+      const more = [
+        ...buildGroupRoundMatches("A", next, snapshots),
+        ...buildGroupRoundMatches("B", next, snapshots),
+      ];
+      if (more.length === 0) return;
+      await updateDoc(doc(db, "arena_meta", "global"), {
+        matches: [...matches, ...more], currentRound: next,
       });
-      i += matchPlayerIds.length;
+      return;
     }
-    return matches;
+    if (!finalExists) {
+      const standA = computeGroupStandings("A", arenaMeta.matches || []);
+      const standB = computeGroupStandings("B", arenaMeta.matches || []);
+      const winnerA = standA[0]?.uid;
+      const winnerB = standB[0]?.uid;
+      if (!winnerA || !winnerB) return;
+      const finalMatch = buildFinalMatch(winnerA, winnerB, snapshots);
+      await updateDoc(doc(db, "arena_meta", "global"), {
+        matches: [...(arenaMeta.matches || []), finalMatch],
+      });
+    }
   };
 
   const sendChampionNotification = async (winnerId, winnerName, prizes, matchesOverride) => {
@@ -2321,14 +2446,12 @@ export default function Arena() {
         }
         return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
-      const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
-      const cr = arenaMeta.currentRound || 1;
-      const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
-      if (allDone && winners.length === 1) {
-        const champSnap = snapshots[winners[0]] || {};
-        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
+      const finalM = updatedMatches.find(m => m.kind === "final");
+      if (finalM && finalM.status === "finished" && finalM.winner) {
+        const champSnap = snapshots[finalM.winner] || {};
+        await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
         await updateDoc(doc(db, "arena_meta", "global"), {
-          matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
+          matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
         });
         return;
       }
@@ -2510,14 +2633,12 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
-    const cr = arenaMeta.currentRound || 1;
-    const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
-    if (allDone && winners.length === 1) {
-      const champSnap = snapshots[winners[0]] || {};
-      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
+    const finalM = updatedMatches.find(m => m.kind === "final");
+    if (finalM && finalM.status === "finished" && finalM.winner) {
+      const champSnap = snapshots[finalM.winner] || {};
+      await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
       await updateDoc(doc(db, "arena_meta", "global"), {
-        matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
+        matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
       });
       return;
     }
@@ -3443,13 +3564,11 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
-    const cr = arenaMeta.currentRound || 1;
-    const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
-    if (allDone && winners.length === 1) {
-      const champSnap = snapshots[winners[0]] || {};
-      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: winners[0], phase: "finished" });
+    const finalM = updatedMatches.find(m => m.kind === "final");
+    if (finalM && finalM.status === "finished" && finalM.winner) {
+      const champSnap = snapshots[finalM.winner] || {};
+      await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished" });
       return;
     }
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3697,13 +3816,11 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
-    const cr = arenaMeta.currentRound || 1;
-    const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
-    if (allDone && winners.length === 1) {
-      const champSnap = (arenaMeta.characterSnapshots || {})[winners[0]] || {};
-      await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: winners[0], phase: "finished" });
+    const finalM = updatedMatches.find(m => m.kind === "final");
+    if (finalM && finalM.status === "finished" && finalM.winner) {
+      const champSnap = (arenaMeta.characterSnapshots || {})[finalM.winner] || {};
+      await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished" });
       return;
     }
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3939,17 +4056,18 @@ export default function Arena() {
   const tournamentMatches = (arenaMeta.matches || []).filter(m => m.kind !== "fun");
   const funMatches        = (arenaMeta.matches || []).filter(m => m.kind === "fun");
   const allMatchesDone   = tournamentMatches.length > 0 && tournamentMatches.every(m => m.status === "finished");
-  const matchRoundOf = (m) => parseInt(m.matchId?.match(/^R(\d+)_/)?.[1] || "0", 10);
-  const lastPlayedRound = tournamentMatches.reduce((max, m) => Math.max(max, matchRoundOf(m)), 0);
-  const currentRoundMatches = tournamentMatches.filter(m => matchRoundOf(m) === lastPlayedRound);
-  const currentRoundWinners = currentRoundMatches.filter(m => m.winner).map(m => m.winner);
-  const roundWinnerCount = currentRoundWinners.length;
-  const canAdvanceRound  = isMaster && arenaMeta.phase === "combat" && allMatchesDone && roundWinnerCount >= 2;
-  const canDeclareChampion = isMaster && arenaMeta.phase === "combat" && allMatchesDone && roundWinnerCount === 1 && !arenaMeta.tournamentWinner;
+  const finalMatch       = tournamentMatches.find(m => m.kind === "final");
+  const finalFinished    = !!(finalMatch && finalMatch.status === "finished" && finalMatch.winner);
+  const totalGroupRounds = groupRoundsTotal();
+  const cr               = arenaMeta.currentRound || 1;
+  const moreGroupRoundsToPlay = cr < totalGroupRounds;
+  const canAdvanceRound  = isMaster && arenaMeta.phase === "combat" && allMatchesDone && !finalMatch && (arenaMeta.groupA?.length || 0) >= 1 && (arenaMeta.groupB?.length || 0) >= 1;
+  const advanceLabel     = moreGroupRoundsToPlay ? `⚔ Round ${cr + 1}` : "🏆 Genera Finale";
+  const canDeclareChampion = isMaster && arenaMeta.phase === "combat" && finalFinished && !arenaMeta.tournamentWinner;
 
   const declareTournamentChampion = async () => {
     if (!canDeclareChampion) return;
-    const championId = currentRoundWinners[0];
+    const championId = finalMatch.winner;
     const champSnap = snapshots[championId] || {};
     try {
       await sendChampionNotification(championId, champSnap.name || "Campione", arenaMeta?.prizes || "");
@@ -3983,14 +4101,12 @@ export default function Arena() {
       await resolveBetsForFinishedMatches(updatedMatches);
       await recordMatchHistory(updatedMatches);
 
-      const allDone = updatedMatches.filter(m => m.kind !== "fun").every(m => m.status === "finished");
-      const cr = arenaMeta.currentRound || 1;
-      const winners = updatedMatches.filter(m => m.matchId?.startsWith(`R${cr}_`) && m.winner).map(m => m.winner);
-      if (allDone && winners.length === 1) {
-        const champSnap = snapshots[winners[0]] || {};
-        await sendChampionNotification(winners[0], champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
+      const finalM = updatedMatches.find(m => m.kind === "final");
+      if (finalM && finalM.status === "finished" && finalM.winner) {
+        const champSnap = snapshots[finalM.winner] || {};
+        await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
         await updateDoc(doc(db, "arena_meta", "global"), {
-          matches: updatedMatches, tournamentWinner: winners[0], phase: "finished",
+          matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
         });
         return;
       }
@@ -4070,7 +4186,9 @@ export default function Arena() {
         ) : arenaMeta.phase === "finished" ? (
           <span className="phase-tag finished">Torneo Concluso</span>
         ) : (
-          <span className="phase-tag combat">Torneo in Corso — Round {arenaMeta.currentRound}</span>
+          <span className="phase-tag combat">
+            {finalMatch ? "Campionato — Finale" : `Campionato — Round ${arenaMeta.currentRound}`}
+          </span>
         )}
         {arenaMeta.timerPaused && (
           <span className="phase-tag paused">⏸ Timer in Pausa</span>
@@ -4269,7 +4387,7 @@ export default function Arena() {
             )}
             {canAdvanceRound && (
               <button className="btn-advance-round" onClick={advanceRound}>
-                ⚔ Round {(arenaMeta.currentRound || 1) + 1}
+                {advanceLabel}
               </button>
             )}
             {canDeclareChampion && (
@@ -4302,6 +4420,7 @@ export default function Arena() {
                 participants: [], waitingList: [], matches: preservedFun,
                 characterSnapshots: preservedSnaps, tournamentWinner: null,
                 currentRound: 1, matchHistory: [],
+                groupA: [], groupB: [],
                 championsOnly: arenaMeta.championsOnly || false,
               });
             }}>↺ Reset</button>
@@ -5031,97 +5150,150 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── TABELLONE DEL TORNEO (visibile a tutti gli utenti loggati) ── */}
+      {/* ── TABELLONE DEL CAMPIONATO (visibile a tutti gli utenti loggati) ── */}
       {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
-        const byRound = {};
-        tournamentMatches.forEach(m => {
-          const r = parseInt((m.matchId.match(/^R(\d+)/) || [, 1])[1]);
-          (byRound[r] = byRound[r] || []).push(m);
-        });
-        const rounds = Object.entries(byRound).sort(([a], [b]) => a - b);
-        return (
-          <div className="bracket-section">
-            <h3 className="bracket-title">⚔ Tabellone del Torneo
-              {arenaMeta.phase === "combat" && <span className="bracket-round-badge">Round {arenaMeta.currentRound}</span>}
-            </h3>
-            <div className="bracket-scroll">
-              {rounds.map(([round, rMatches]) => (
-                <div key={round} className="bracket-round-col">
-                  <div className="bracket-round-header">Round {round}</div>
-                  {rMatches.map(m => {
-                    const isMyMatch = m.players.some(p => p.id === currentUser?.uid);
-                    return (
-                      <div key={m.matchId} className={`bracket-card ${m.status}${isMyMatch ? " my-match" : ""}`}>
-                        {m.isFFA && <div className="bracket-ffa-tag">FFA · 3 giocatori</div>}
-                        {m.players.map((p, idx) => {
-                          const char = snapshots[p.id] || { stats: { maxHp: 70 } };
-                          const maxHp = char.stats?.maxHp ?? 70;
-                          const hpPct = Math.max(0, Math.min(100, (p.hp / maxHp) * 100));
-                          const hpColor = hpPct > 60 ? "#27ae60" : hpPct > 30 ? "#e67e22" : "#c0392b";
-                          const isWin = m.winner === p.id;
-                          const isActive = m.turn === p.id && m.status === "active";
-                          return (
-                            <React.Fragment key={p.id}>
-                              {idx > 0 && <div className="bracket-sep">{m.isFFA ? "·" : "VS"}</div>}
-                              <div className={`bracket-fighter${isWin ? " win" : ""}${m.status === "finished" && m.winner && m.winner !== p.id ? " dead" : ""}${isActive ? " active-turn" : ""}`}>
-                                <div className="bracket-fighter-row">
-                                  {char.image && <img src={char.image} className="bracket-avatar" alt="" />}
-                                  <div className="bracket-fighter-info">
-                                    <span className="bracket-fighter-name">{isWin ? "🏆 " : ""}{p.name}</span>
-                                    {char.class && <span className="bracket-fighter-class">{char.class}</span>}
-                                    {getSnapTitles(char).map(key => ARENA_TITLES[key] && (
-                                      <span key={key} className="bracket-fighter-title" title={ARENA_TITLES[key].short}>
-                                        {ARENA_TITLES[key].icon} {ARENA_TITLES[key].name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                  {m.status === "finished"
-                                    ? <span className={`bracket-result-tag${isWin ? " win" : " loss"}`}>{isWin ? "Vince" : "X"}</span>
-                                    : isActive
-                                    ? <span className="bracket-active-dot" title="Turno in corso">●</span>
-                                    : <span className="bracket-hp-badge" style={{ background: hpColor }}>{p.hp}</span>
-                                  }
-                                </div>
-                                {m.status !== "finished" && (
-                                  <div className="bracket-hp-track">
-                                    <div className="bracket-hp-bar" style={{ width: `${hpPct}%`, background: hpColor }} />
-                                  </div>
-                                )}
-                              </div>
-                            </React.Fragment>
-                          );
-                        })}
-                        <div className={`bracket-status ${m.status}`}>
-                          {m.status === "initiative" ? "⚡ Iniziativa"
-                            : m.status === "active" ? "⚔ In combattimento"
-                            : "✓ Concluso"}
+        const renderMatchCard = (m) => {
+          const isMyMatch = m.players.some(p => p.id === currentUser?.uid);
+          return (
+            <div key={m.matchId} className={`bracket-card ${m.status}${isMyMatch ? " my-match" : ""}`}>
+              {m.players.map((p, idx) => {
+                const char = snapshots[p.id] || { stats: { maxHp: 70 } };
+                const maxHp = char.stats?.maxHp ?? 70;
+                const hpPct = Math.max(0, Math.min(100, (p.hp / maxHp) * 100));
+                const hpColor = hpPct > 60 ? "#27ae60" : hpPct > 30 ? "#e67e22" : "#c0392b";
+                const isWin = m.winner === p.id;
+                const isActive = m.turn === p.id && m.status === "active";
+                return (
+                  <React.Fragment key={p.id}>
+                    {idx > 0 && <div className="bracket-sep">VS</div>}
+                    <div className={`bracket-fighter${isWin ? " win" : ""}${m.status === "finished" && m.winner && m.winner !== p.id ? " dead" : ""}${isActive ? " active-turn" : ""}`}>
+                      <div className="bracket-fighter-row">
+                        {char.image && <img src={char.image} className="bracket-avatar" alt="" />}
+                        <div className="bracket-fighter-info">
+                          <span className="bracket-fighter-name">{isWin ? "🏆 " : ""}{p.name}</span>
+                          {char.class && <span className="bracket-fighter-class">{char.class}</span>}
+                          {getSnapTitles(char).map(key => ARENA_TITLES[key] && (
+                            <span key={key} className="bracket-fighter-title" title={ARENA_TITLES[key].short}>
+                              {ARENA_TITLES[key].icon} {ARENA_TITLES[key].name}
+                            </span>
+                          ))}
                         </div>
-                        {m.logs?.length > 0 && m.status === "active" && (
-                          <div className="bracket-last-log">{logPubText(m.logs[m.logs.length - 1])}</div>
-                        )}
-                        {isMaster && (m.status === "active" || m.status === "initiative") && (
-                          <div className="bracket-force-winner">
-                            <span className="bracket-force-label">♛ Forza vincitore:</span>
-                            <div className="bracket-force-btns">
-                              {m.players.map(p => (
-                                <button
-                                  key={p.id}
-                                  className="btn-force-winner"
-                                  onClick={() => masterForceWinner(m.matchId, p.id)}
-                                  title={`Dichiara ${p.name} vincitore di questo match`}
-                                >
-                                  👑 {(p.name || "?").split(" ")[0]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        {m.status === "finished"
+                          ? <span className={`bracket-result-tag${isWin ? " win" : " loss"}`}>{isWin ? "Vince" : "X"}</span>
+                          : isActive
+                          ? <span className="bracket-active-dot" title="Turno in corso">●</span>
+                          : <span className="bracket-hp-badge" style={{ background: hpColor }}>{p.hp}</span>
+                        }
                       </div>
+                      {m.status !== "finished" && (
+                        <div className="bracket-hp-track">
+                          <div className="bracket-hp-bar" style={{ width: `${hpPct}%`, background: hpColor }} />
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+              <div className={`bracket-status ${m.status}`}>
+                {m.status === "initiative" ? "⚡ Iniziativa"
+                  : m.status === "active" ? "⚔ In combattimento"
+                  : "✓ Concluso"}
+              </div>
+              {m.logs?.length > 0 && m.status === "active" && (
+                <div className="bracket-last-log">{logPubText(m.logs[m.logs.length - 1])}</div>
+              )}
+              {isMaster && (m.status === "active" || m.status === "initiative") && (
+                <div className="bracket-force-winner">
+                  <span className="bracket-force-label">♛ Forza vincitore:</span>
+                  <div className="bracket-force-btns">
+                    {m.players.map(p => (
+                      <button
+                        key={p.id}
+                        className="btn-force-winner"
+                        onClick={() => masterForceWinner(m.matchId, p.id)}
+                        title={`Dichiara ${p.name} vincitore di questo match`}
+                      >
+                        👑 {(p.name || "?").split(" ")[0]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const renderGroupColumn = (groupKey) => {
+          const groupIds = groupKey === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
+          if (groupIds.length === 0) return null;
+          const groupMatches = tournamentMatches.filter(m => m.kind === "group" && m.group === groupKey);
+          const byRound = {};
+          groupMatches.forEach(m => {
+            const r = parseInt((m.matchId.match(/_R(\d+)_/) || [, 1])[1]);
+            (byRound[r] = byRound[r] || []).push(m);
+          });
+          const rounds = Object.entries(byRound).sort(([a], [b]) => a - b);
+          const standings = computeGroupStandings(groupKey, tournamentMatches);
+          return (
+            <div className="bracket-group">
+              <div className="bracket-group-header">
+                <span className="bracket-group-title">Girone {groupKey}</span>
+                <span className="bracket-group-count">{groupIds.length} {groupIds.length === 1 ? "giocatore" : "giocatori"}</span>
+              </div>
+              <table className="bracket-standings">
+                <thead>
+                  <tr><th>#</th><th>Giocatore</th><th>V</th><th>S</th></tr>
+                </thead>
+                <tbody>
+                  {standings.map((s, i) => {
+                    const snap = snapshots[s.uid] || {};
+                    return (
+                      <tr key={s.uid} className={i === 0 ? "leader" : ""}>
+                        <td>{i + 1}</td>
+                        <td>
+                          {snap.image && <img src={snap.image} className="standings-avatar" alt="" />}
+                          {snap.name || "?"}
+                        </td>
+                        <td>{s.wins}</td>
+                        <td>{s.losses}</td>
+                      </tr>
                     );
                   })}
-                </div>
-              ))}
+                </tbody>
+              </table>
+              <div className="bracket-rounds-list">
+                {rounds.map(([round, rMatches]) => (
+                  <div key={round} className="bracket-round-col">
+                    <div className="bracket-round-header">Round {round}</div>
+                    {rMatches.map(renderMatchCard)}
+                  </div>
+                ))}
+                {rounds.length === 0 && (
+                  <div className="bracket-rounds-empty">Nessun match in questo girone.</div>
+                )}
+              </div>
             </div>
+          );
+        };
+
+        const finalM = tournamentMatches.find(m => m.kind === "final");
+
+        return (
+          <div className="bracket-section">
+            <h3 className="bracket-title">⚔ Tabellone del Campionato
+              {arenaMeta.phase === "combat" && !finalM && <span className="bracket-round-badge">Round {arenaMeta.currentRound}</span>}
+              {finalM && <span className="bracket-round-badge final-badge">Finale</span>}
+            </h3>
+            <div className="bracket-groups-wrap">
+              {renderGroupColumn("A")}
+              {renderGroupColumn("B")}
+            </div>
+            {finalM && (
+              <div className="bracket-final-wrap">
+                <div className="bracket-final-header">🏆 Finale di Campionato</div>
+                {renderMatchCard(finalM)}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -5186,7 +5358,10 @@ export default function Arena() {
 
                 <div className="match-header">
                   <span className="match-round-label">
-                    {m.kind === "fun" ? "🛡 Sfida Libera" : `Round ${arenaMeta.currentRound}`}
+                    {m.kind === "fun" ? "🛡 Sfida Libera"
+                      : m.kind === "final" ? "🏆 Finale"
+                      : m.group ? `Girone ${m.group} · Round ${arenaMeta.currentRound}`
+                      : `Round ${arenaMeta.currentRound}`}
                   </span>
                   <span className="match-vs-label">{isFFA ? "FFA" : "VS"}</span>
                   <span className="match-status-label">
