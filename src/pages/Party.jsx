@@ -35,11 +35,12 @@ const PARTIES = [
     color: "#8e44ad",
     motto: "Nel buio si forgiano i nomi più luminosi",
     members: [
-      { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg" },
+      { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg",          hidden: true },
       { name: "Dante",                  race: "Umano V.",              class: "Ladro",    image: "/assets/player/Dante.png" },
-      { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png" },
+      { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png",           hidden: true },
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
+      { name: "Alaric Voltasorte",      race: "???",                   class: "???",      image: "/assets/closedScroll.png" },
     ],
   },
   {
@@ -53,6 +54,18 @@ const PARTIES = [
       { name: "Taaras Stormrage", race: "Mezz'Elfo",  class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
       { name: "Soran",            race: "Umano",      class: "Bardo",    image: "/assets/player/Soran.png" },
       { name: "Zethir",           race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg" },
+    ],
+  },
+  {
+    id: "ECO",
+    name: "Compagnia di Eco",
+    code: "C",
+    color: "#0f766e",
+    motto: "Ogni colpo riecheggia nella storia",
+    members: [
+      { name: "Aksel",            race: "Umano", class: "Arcane Sniper", image: "/assets/player/Aksel.png" },
+      { name: "Dago",             race: "Umano", class: "Artefice",      image: "/assets/player/dago.jpeg" },
+      { name: "Ismael Van Dyke",  race: "Umano", class: "Artefice",      image: "/assets/player/ismael.jpeg" },
     ],
   },
 ];
@@ -88,6 +101,7 @@ function HeroCard({ hero, accent }) {
 
 /* ── Party banner + grid ───────────────────────────────────── */
 function PartySection({ party }) {
+  const visibleMembers = party.members.filter((m) => !m.hidden);
   return (
     <section
       className="party-faction"
@@ -108,14 +122,14 @@ function PartySection({ party }) {
           <p className="party-banner-motto">«{party.motto}»</p>
         </div>
 
-        <div className="party-banner-count" title={`${party.members.length} eroi`}>
-          <strong>{party.members.length}</strong>
+        <div className="party-banner-count" title={`${visibleMembers.length} eroi`}>
+          <strong>{visibleMembers.length}</strong>
           <span>Eroi</span>
         </div>
       </header>
 
       <div className="hero-grid">
-        {party.members.map((m) => (
+        {visibleMembers.map((m) => (
           <HeroCard key={m.name} hero={m} accent={party.color} />
         ))}
       </div>
@@ -128,7 +142,7 @@ export default function Party() {
   const [activeParty, setActiveParty] = useState("all");
 
   const allMembers = useMemo(
-    () => PARTIES.flatMap((p) => p.members.map((m) => ({ ...m, party: p.id }))),
+    () => PARTIES.flatMap((p) => p.members.filter((m) => !m.hidden).map((m) => ({ ...m, party: p.id }))),
     []
   );
 

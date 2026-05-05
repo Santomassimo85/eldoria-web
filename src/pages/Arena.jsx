@@ -286,8 +286,8 @@ const WILD_SHAPES = {
     hpDice: { count: 4, sides: 12 },
     actions: [
       { name: "Morso",     level: 0, damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
-      { name: "Veleno",    level: 0, damage: "1d6+3", statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "poison" },
-      { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web"    },
+      { name: "Veleno",    level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "save_dot", saveDotAbility: "con", saveDotDamage: "1d8", saveDotTurns: 3, saveDotDC: 12 },
+      { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web",    maxUses: 3 },
     ],
   },
 };
@@ -2440,21 +2440,26 @@ export default function Arena() {
       return;
     }
 
-    // ── Ragnatela (DEX save, no damage) ──────────────────────────────
+    // ── Ragnatela (auto-skip 2 turni, NESSUN TS) ─────────────────────
     if (action.special === "web") {
-      const penStr = armorPenalty < 0 ? ` ${armorPenalty} arm.` : '';
       const log = {
-        pub: `🕸 ${attName} lancia Ragnatela su ${defName} — TS DES richiesto (CD 15)`,
-        att: `🕸 Lanci Ragnatela su ${defName}${penStr ? ` [penalità armatura: ${armorPenalty}]` : ''} — TS DES richiesto (CD 15)`,
-        def: `🕸 ${attName} ti lancia una Ragnatela! Devi superare un TS DES (CD 15)`,
+        pub: `🕸 ${attName} lancia Ragnatela su ${defName} — intrappolato! Salta 2 turni (NESSUN TS).`,
+        att: `🕸 Intrappoli ${defName} con la Ragnatela! Salterà i prossimi 2 turni.`,
+        def: `🕸 ${attName} ti intrappola con la Ragnatela! Salti i prossimi 2 turni.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const webExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, pendingDexSave: true };
-          if (p.id === currentUser.uid) return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0 };
+          if (p.id === targetId) return { ...p, controlLostTurns: 2 };
+          if (p.id === currentUser.uid) {
+            const uses = p.actionUsesLeft || {};
+            const newUses = action.maxUses !== undefined
+              ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) }
+              : uses;
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, actionUsesLeft: newUses };
+          }
           return p;
         });
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
@@ -3325,7 +3330,7 @@ export default function Arena() {
   const handleSaveDotSpell = async (matchId, targetId, action) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const myName = mySnap?.name || "?";
-    const dc = getSpellSaveDC(mySnap);
+    const dc = action.saveDotDC ?? getSpellSaveDC(mySnap);
     const ability = action.saveDotAbility || "con";
     const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     await runTransaction(db, async (tx) => {
@@ -5867,8 +5872,9 @@ export default function Arena() {
                                   <span key={a.name} className="wild-form-action-tag">
                                     {a.icon} {a.name} {a.damage !== "—" ? a.damage : ""}
                                     {a.statKey ? ` +${a.statKey.toUpperCase()}` : ""}
-                                    {a.special === "web" ? " (TS DES)" : ""}
+                                    {a.special === "web" ? " (salta 2t)" : ""}
                                     {a.special === "poison" ? " (TS COS)" : ""}
+                                    {a.special === "save_dot" ? ` (TS COS · ${a.saveDotDamage || "1d8"}/turno)` : ""}
                                   </span>
                                 ))}
                               </div>
@@ -6473,7 +6479,7 @@ export default function Arena() {
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const blocked = noUses || !chosenTargetId;
                             const _casterSnap = arenaMeta.characterSnapshots?.[currentUser.uid];
-                            const _dc      = getSpellSaveDC(_casterSnap);
+                            const _dc      = action.saveDotDC ?? getSpellSaveDC(_casterSnap);
                             const _ability = SAVE_LABEL[action.saveDotAbility || "con"];
                             return (
                               <button key={action.name}
@@ -6540,7 +6546,7 @@ export default function Arena() {
                                 : noUsesLeft
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
-                                : action.special === "web" ? "Ragnatela — TS DES bersaglio"
+                                : action.special === "web" ? "Ragnatela — intrappola il bersaglio per 2 turni (NESSUN TS)"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
                                 : action.special === "stealth" ? `Furtività — attiva vantaggio 3 turni · nemico svantaggio 3 turni`
@@ -6560,7 +6566,7 @@ export default function Arena() {
                                   : noUsesLeft ? "Esaurito"
                                   : disabledByInvis ? "👻 Invisibile"
                                   : !isEquipped ? "🔄 Cambia"
-                                  : action.special === "web" ? "TS DES"
+                                  : action.special === "web" ? "🕸 Salta 2t"
                                   : action.special === "poison" ? `${action.damage} +TS COS`
                                   : `${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               </span>

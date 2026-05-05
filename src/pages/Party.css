@@ -241,46 +241,78 @@
   opacity: 0.85;
 }
 
-/* ── Crest ── */
+/* ── Crest (heraldic shield) ── */
 .party-crest {
   position: relative;
-  width: 78px;
-  height: 78px;
+  width: 72px;
+  height: 86px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.18));
+  --shield-shape: polygon(
+    50% 0%, 100% 0%, 100% 56%,
+    92% 74%, 72% 90%, 50% 100%,
+    28% 90%, 8% 74%, 0% 56%, 0% 0%
+  );
 }
 
-.party-crest-ring {
+/* Outer gold rim */
+.party-crest::before {
+  content: "";
   position: absolute;
   inset: 0;
-  border-radius: 50%;
+  clip-path: var(--shield-shape);
+  background: linear-gradient(180deg, #f0d27a 0%, #c8a020 55%, #8a6500 100%);
+}
+
+/* Inner colored field */
+.party-crest-ring {
+  position: absolute;
+  inset: 3px;
+  clip-path: var(--shield-shape);
   background:
-    radial-gradient(circle at 30% 30%, #fff8e0 0%, transparent 55%),
-    linear-gradient(135deg, var(--party-color), color-mix(in srgb, var(--party-color) 55%, #1a0a0a));
-  box-shadow:
-    0 0 0 3px rgba(255,255,255,0.5),
-    0 0 0 4px color-mix(in srgb, var(--party-color) 60%, transparent),
-    0 6px 16px color-mix(in srgb, var(--party-color) 50%, transparent);
-  transition: transform 0.6s cubic-bezier(0.34, 1.4, 0.5, 1);
+    linear-gradient(170deg,
+      color-mix(in srgb, var(--party-color) 75%, #fff8e0) 0%,
+      var(--party-color) 45%,
+      color-mix(in srgb, var(--party-color) 60%, #150505) 100%);
+  transition: filter 0.35s ease;
+}
+
+/* Subtle horizontal heraldic band across the shield */
+.party-crest-ring::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: 38%;
+  height: 14%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(0, 0, 0, 0.18) 100%
+  );
+  pointer-events: none;
 }
 
 .party-faction:hover .party-crest-ring {
-  transform: rotate(8deg) scale(1.04);
+  filter: brightness(1.08) saturate(1.05);
 }
 
 .party-crest-letter {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   font-family: var(--font-title);
   font-size: 2rem;
   font-weight: 700;
-  color: #fff;
-  text-shadow:
-    0 1px 0 rgba(0,0,0,0.4),
-    0 2px 6px rgba(0,0,0,0.35);
+  color: #fffbea;
   letter-spacing: 0;
+  line-height: 1;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.28),
+    0 0 10px color-mix(in srgb, var(--party-color) 65%, transparent);
+  transform: translateY(-3px); /* nudge up so letter sits on the cross-band */
 }
 
 /* ── Title block ── */
@@ -360,8 +392,8 @@
     padding: 16px 18px 16px 16px;
     gap: 14px;
   }
-  .party-crest        { grid-area: crest; width: 60px; height: 60px; }
-  .party-crest-letter { font-size: 1.55rem; }
+  .party-crest        { grid-area: crest; width: 56px; height: 68px; }
+  .party-crest-letter { font-size: 1.55rem; transform: translateY(-2px); }
   .party-banner-text  { grid-area: text; }
   .party-banner-count {
     grid-area: count;
