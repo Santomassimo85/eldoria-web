@@ -22,7 +22,7 @@ const WIZARD_SPELLS = [
   { name: "Dardo Incantato",       level: 1, hitBonus: 39, damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
-  { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 4 },
+  { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
   { name: "Colpo Cromatico",       level: 1, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "🌈", info: "Lv1 · Magico", maxUses: 4 },
   { name: "Onda Tonante",          level: 1, hitBonus: 3,  damage: "2d8",   statKey: null, type: "spell", icon: "💨", info: "Lv1 · Tuono", maxUses: 4 },
   { name: "Raggio Avvelenato",     level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🤢", info: "Lv1 · TS COS · 2d6 veleno a inizio turno per 2 turni", special: "save_dot", saveDotAbility: "con", saveDotDamage: "2d6", saveDotTurns: 2, maxUses: 4 },
@@ -36,7 +36,7 @@ const WIZARD_SPELLS = [
   // ── Livello 3 (bloccati — sbloccabili con Potenziamento) ──────────────────
   { name: "Palla di Fuoco",        level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", maxUses: 1 },
   { name: "Fulmine",               level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", maxUses: 1 },
-  { name: "Contrincantesimo",      level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚫", info: "Lv3 · Controllo · TS o perdi 3 turni", special: "control", maxUses: 1 },
+  { name: "Contrincantesimo",      level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚫", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
 ];
 
 // ── SORCERER SPELLS (Stregone) — pool: 4 trucchetti · 4 lv1 · 3 lv2 (sceglie 4+4+2)
@@ -45,16 +45,16 @@ const SORCERER_SPELLS = [
   { name: "Scossa Folgorante",     level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "⚡",  info: "Trucchetto · Fulmine" },
   { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo" },
   { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno" },
-  { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
+  { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
   { name: "Dardo Incantato",       level: 1, hitBonus: 39, damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre", maxUses: 3 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
-  { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 3 turni", special: "control", maxUses: 3 },
-  { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "6d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 2 },
-  { name: "Frantumare",            level: 2, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
-  { name: "Suggestione",           level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
+  { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "4d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (2 raggi × 2d6)", maxUses: 2 },
+  { name: "Frantumare",            level: 2, hitBonus: 3,  damage: "2d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
+  { name: "Suggestione",           level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Palla di Fuoco",        level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", maxUses: 1 },
   { name: "Fulmine",               level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", maxUses: 1 },
-  { name: "Paura",                 level: 3, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS o perdi 3 turni", special: "control", maxUses: 1 },
+  { name: "Paura",                 level: 3, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
 ];
 
 // ── WARLOCK SPELLS (Oscuro Cultore) — pool: 4 trucchetti · 5 lv1 · 4 lv2 (sceglie 2 trucchetti + 2 slot lv1/lv2 misti)
@@ -65,13 +65,13 @@ const WARLOCK_SPELLS = [
   { name: "Spruzzo Velenoso",       level: 0, hitBonus: 3, damage: "1d12", statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno" },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Braccia di Hadar",       level: 1, hitBonus: 3, damage: "2d6",  statKey: null, type: "spell", icon: "🐙", info: "Lv1 · Necrotico", maxUses: 2 },
-  { name: "Malocchio",              level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "👁", info: "Lv1 · Controllo · TS o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Malocchio",              level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "👁", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Scudo",                  level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
   { name: "Rappresaglia Infernale", level: 1, hitBonus: 3, damage: "2d10", statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco · risposta ai danni", maxUses: 2 },
-  { name: "Charme su Persone",      level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Charme su Persone",      level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Frantumare",             level: 2, hitBonus: 3, damage: "3d8",  statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
-  { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Corona della Pazzia",    level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS SAG o attacca sé stesso", special: "corona_pazzia", maxUses: 2 },
   { name: "Oscurità",               level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌑", info: "Lv2 · Svantaggio ai tiri per colpire del nemico per 3 turni", special: "disadvantage_enemy", disadvantageTurns: 3, maxUses: 2 },
 ];
@@ -88,18 +88,18 @@ const DRUID_SPELLS = [
   { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3 },
   { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +3 CA per 3 turni", special: "shield_buff" },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
-  { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
-  { name: "Onda Tonante",       level: 1, hitBonus: 3, damage: "2d8",   statKey: null, type: "spell", icon: "💨", info: "Lv1 · Tuono", maxUses: 3 },
-  { name: "Intralciare",        level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 3 turni", special: "control", maxUses: 3 },
-  { name: "Luci Fatate",        level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧚", info: "Lv1 · +2 ai prossimi 2 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 2, maxUses: 3 },
-  { name: "Coltello di Ghiaccio",level:1, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🧊", info: "Lv1 · Freddo", maxUses: 3 },
-  { name: "Charme su Persone",  level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 3 },
-  { name: "Assorbire Elementi", level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 ai prossimi 3 TS (difesa elementale)", special: "save_buff", tsBonus: 3, tsAttacks: 3, maxUses: 3 },
+  { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 2 },
+  { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 2 },
+  { name: "Onda Tonante",       level: 1, hitBonus: 3, damage: "2d8",   statKey: null, type: "spell", icon: "💨", info: "Lv1 · Tuono", maxUses: 2 },
+  { name: "Intralciare",        level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 2 },
+  { name: "Luci Fatate",        level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧚", info: "Lv1 · +2 ai prossimi 2 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 2, maxUses: 2 },
+  { name: "Coltello di Ghiaccio",level:1, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🧊", info: "Lv1 · Freddo", maxUses: 2 },
+  { name: "Charme su Persone",  level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
+  { name: "Assorbire Elementi", level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 ai prossimi 3 TS (difesa elementale)", special: "save_buff", tsBonus: 3, tsAttacks: 3, maxUses: 2 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Riscaldare Arma",    level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🔩", info: "Lv2 · Il nemico non può attaccare con armi per 2 turni", special: "weapon_lock", weaponLockTurns: 2, maxUses: 2 },
   { name: "Frantumare",         level: 2, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
-  { name: "Blocca Persone",     level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧲", info: "Lv2 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Blocca Persone",     level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧲", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Raggio di Luna",     level: 2, hitBonus: 3, damage: "2d10",  statKey: null, type: "spell", icon: "🌙", info: "Lv2 · Radiante", maxUses: 2 },
   { name: "Scorza Coriacea",    level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🪵", info: "Lv2 · +3 CA per 3 turni", special: "shield_buff", maxUses: 2 },
   { name: "Lama di Fiamma",     level: 2, hitBonus: 3, damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco", maxUses: 2 },
@@ -120,13 +120,13 @@ const CLERIC_SPELLS = [
   { name: "Dardo Guidato",      level: 1, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🌟", info: "Lv1 · Radiante", maxUses: 3 },
   { name: "Infliggi Ferite",    level: 1, hitBonus: 3, damage: "3d10",  statKey: null, type: "spell", icon: "🩸", info: "Lv1 · Necrotico", maxUses: 3 },
   { name: "Scudo della Fede",   level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA per 3 turni", special: "shield_buff", maxUses: 2 },
-  { name: "Comando",            level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📯", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Comando",            level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📯", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Disgrazia",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌑", info: "Lv1 · −3 ai tiri per colpire del nemico", special: "blind_debuff", maxUses: 3 },
   { name: "Benedire",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "✨", info: "Lv1 · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Arma Spirituale",        level: 2, hitBonus: 3, damage: "1d8+4", statKey: null, type: "spell", icon: "⚔",  info: "Lv2 · Forza", maxUses: 2 },
   { name: "Ristorare Inferiore",    level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove condizioni + cura 1d4+2 HP", special: "heal", maxUses: 2 },
-  { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Aiuto",                  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3, maxUses: 2 },
   { name: "Cecità/Sordità",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · −3 ai tiri per colpire del nemico", special: "blind_debuff", maxUses: 2 },
   { name: "Preghiera di Guarigione",level: 2, hitBonus: 0, damage: "2d8+3", statKey: null, type: "spell", icon: "🙏", info: "Lv2 · Cura potente · ripristina HP", special: "heal", maxUses: 2 },
@@ -136,14 +136,14 @@ const CLERIC_SPELLS = [
 const BARD_SPELLS = [
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Parola Guaritrice",          level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
-  { name: "Charme su Persone",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 3 },
-  { name: "Risata Incontenibile",       level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤣", info: "Lv1 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Charme su Persone",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
+  { name: "Risata Incontenibile",       level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤣", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Individuazione del Magico",  level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🔮", info: "Lv1 · +3 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Frastornare",                level: 2, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
   { name: "Cecità/Sordità",             level: 2, hitBonus: 3, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · −3 ai tiri per colpire del nemico", special: "blind_debuff", maxUses: 2 },
   { name: "Invisibilità",               level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "👻", info: "Lv2 · Il nemico non può attaccarti per 2 turni", special: "invisibility", invisibilityDuration: 2, maxUses: 2 },
-  { name: "Suggestione",                level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS SAG o perdi 3 turni", special: "control", maxUses: 2 },
+  { name: "Suggestione",                level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Melodia Curativa",           level: 1, hitBonus: 0, damage: "2d8",   statKey: null, type: "spell", icon: "🎶", info: "Lv1 · Cura · 2d8 + COS HP", special: "heal", healModStat: "con", maxUses: 2 },
 ];
 
@@ -151,7 +151,7 @@ const BARD_SPELLS = [
 const PALADIN_SPELLS = [
   { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Punizione Travolgente", level: 1, hitBonus: 3, damage: "1d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv1 · Radiante bonus", maxUses: 3 },
-  { name: "Comando",               level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📞", info: "Lv1 · Controllo · TS o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Comando",               level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📞", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Punizione Marchiante",  level: 2, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Radiante", maxUses: 2 },
   { name: "Ristorare Inferiore",   level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove condizioni + cura 1d4+2 HP", special: "heal", maxUses: 2 },
   { name: "Aiuto",                 level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3, maxUses: 2 },
@@ -160,9 +160,9 @@ const PALADIN_SPELLS = [
 // ── RANGER SPELLS (Ranger) — pool: 6 lv1 (sceglie 3)
 const RANGER_SPELLS = [
   { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
-  { name: "Intralciare",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Intralciare",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Grandine di Spine",     level: 1, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🌵", info: "Lv1 · Perforante · bonus attacco ranged", maxUses: 3 },
-  { name: "Colpo Intralciante",    level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕸", info: "Lv1 · Controllo · TS FOR o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Colpo Intralciante",    level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕸", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Nebbia",                level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌫", info: "Lv1 · Svantaggio ai tiri per colpire del nemico per 3 turni", special: "disadvantage_enemy", disadvantageTurns: 3, maxUses: 3 },
   { name: "Passo Spedito",         level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "💨", info: "Lv1 · Doppio turno il prossimo turno", special: "extra_turn", maxUses: 3 },
 ];
@@ -292,22 +292,29 @@ const WILD_SHAPES = {
   },
 };
 
-// Carica del Guerriero — aggiunto automaticamente (max 2 usi)
+// Carica del Guerriero — aggiunto automaticamente (max 3 cariche)
 const CHARGE_ACTION = {
   name: "Carica", hitBonus: 3, damage: "2d6", statKey: "str",
-  type: "skill", icon: "⚔", info: "2d6+FOR · 2 cariche", maxUses: 2,
+  type: "skill", icon: "⚔", info: "2d6+FOR · 3 cariche", maxUses: 3,
 };
 
-// Secondo Respiro (Fighter) — cura 1d10+5, 2 usi
+// Secondo Respiro (Fighter) — cura 1d12+5, 2 usi
 const SECOND_WIND_ACTION = {
-  name: "Secondo Respiro", hitBonus: 0, damage: "1d10", statKey: null,
-  type: "skill", icon: "💨", info: "Cura 1d10+5 · 2 usi", special: "second_wind", maxUses: 2,
+  name: "Secondo Respiro", hitBonus: 0, damage: "1d12", statKey: null,
+  type: "skill", icon: "💨", info: "Cura 1d12+5 · 2 usi", special: "second_wind", maxUses: 2,
 };
 
-// Scatto d'Azione (Fighter) — Bonus Action: guadagna un'azione extra questo turno, 1 uso
+// Scatto d'Azione (Fighter) — Bonus Action: guadagna un'azione extra questo turno, 3 cariche
 const ACTION_SURGE_ACTION = {
   name: "Scatto d'Azione", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "⚡", info: "Bonus Action · azione extra questo turno · 1 uso", special: "action_surge", maxUses: 1, bonusAction: true,
+  type: "skill", icon: "⚡", info: "Bonus Action · azione extra questo turno · 3 cariche", special: "action_surge", maxUses: 3, bonusAction: true,
+};
+
+// Disarmare (Fighter) — disarma il nemico: non può attaccare con armi per 3 turni
+const DISARM_ACTION = {
+  name: "Disarmare", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "🪓", info: "Disarma il nemico: non può attaccare con armi per 3 turni · 2 cariche",
+  special: "weapon_lock", weaponLockTurns: 3, maxUses: 2,
 };
 
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
@@ -437,7 +444,7 @@ const ARTIFICER_SPELLS = [
   { name: "Frost Bite",  level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "❄️", info: "Trucchetto · Freddo · 1d6 danni", maxUses: 4 },
   { name: "Resistance",  level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛡", info: "Trucchetto · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 4 },
   // ── Livello 1 ──
-  { name: "Grease",       level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛢", info: "Lv1 · Controllo · TS DES o perdi 3 turni", special: "control", maxUses: 3 },
+  { name: "Grease",       level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛢", info: "Lv1 · Controllo · TS DES o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Cure Wounds",  level: 1, hitBonus: 0, damage: "1d8",  statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · 1d8 + INT PF", special: "heal", healModStat: "int", maxUses: 3 },
   { name: "Faerie Fire",  level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌟", info: "Lv1 · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
   { name: "False Life",   level: 1, hitBonus: 0, damage: "1d4+4",statKey: null, type: "spell", icon: "🩸", info: "Lv1 · Cura · 1d4+4 PF temporanei", special: "heal", maxUses: 3 },
@@ -639,20 +646,7 @@ function readStealthAdvTurns(p)    { return p?.stealthAdvTurns    ?? p?.stealthT
 function readStealthDisadvTurns(p) { return p?.stealthDisadvTurns ?? p?.stealthTurns ?? 0; }
 function readStealthAnyTurns(p)    { return Math.max(readStealthAdvTurns(p), readStealthDisadvTurns(p)); }
 
-// Ladro con due armi a una mano: doppia azione per turno.
-function isDualWieldRogue(snap, matchPlayer) {
-  if (!snap || !matchPlayer) return false;
-  const cls = (snap.class || "").toLowerCase();
-  if (!isRogueClass(cls)) return false;
-  const equipped = matchPlayer.equippedWeaponNames || [];
-  if (equipped.length < 2) return false;
-  const equippedWeapons = (snap.selectedActions || [])
-    .filter(a => a.type === "weapon" && equipped.includes(a.name));
-  if (equippedWeapons.length < 2) return false;
-  return equippedWeapons.every(w => w.twoHanded !== true);
-}
-
-// Numero massimo di azioni per turno: Monaco = 3, Ladro con due armi = 2, altrimenti 1.
+// Numero massimo di azioni per turno: Monaco = 3, Ladro = 3, altrimenti 1.
 // +1 se il giocatore ha extraTurnActive (Passo Spedito).
 // +1 se Scatto d'Azione è attivo (Guerriero) — concede un'azione extra per questo turno.
 function getMaxActionsPerTurn(snap, matchPlayer) {
@@ -660,7 +654,7 @@ function getMaxActionsPerTurn(snap, matchPlayer) {
   const cls = (snap.class || "").toLowerCase();
   let base = 1;
   if (isMonkClass(cls)) base = 3;
-  else if (isDualWieldRogue(snap, matchPlayer)) base = 2;
+  else if (isRogueClass(cls)) base = 3;
   if (matchPlayer?.extraTurnActive) base += 1;
   if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
@@ -747,7 +741,7 @@ function getLoadoutConfig(charClass) {
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: 4,  autoActions: [MAGICAL_CUNNING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
-  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
@@ -2200,8 +2194,20 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
+  // Helper: il match è bloccato dal pulsante Pausa? Le sfide libere (kind="fun") restano libere.
+  const isMatchPausedForAction = (matchId) => {
+    if (!arenaMeta?.timerPaused) return false;
+    const m = arenaMeta.matches?.find(x => x.matchId === matchId);
+    if (!m) return false;
+    return m.kind !== "fun";
+  };
+
   const handleAttack = async (matchId, targetId, action) => {
     if (actionInFlightRef.current) return; // anti–doppio click: l'azione precedente non è ancora confermata
+    if (isMatchPausedForAction(matchId)) {
+      alert("⏸ L'arena è in pausa. Non puoi agire finché il Master non riprende il match.");
+      return;
+    }
     actionInFlightRef.current = true;
     try {
       await _runAttack(matchId, targetId, action);
@@ -2373,7 +2379,7 @@ export default function Arena() {
         if (alive.length === 1) {
           return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
-        // Multi-azione (Monaco x3, Ladro doppie armi x2): non avanza il turno finché restano azioni.
+        // Multi-azione (Monaco x3, Ladro x3): non avanza il turno finché restano azioni.
         const me = m.players.find(p => p.id === currentUser.uid);
         const maxActions = getMaxActionsPerTurn(attackerSnap, me);
         const usedSoFar = me?.multiActionsUsed ?? 0;
@@ -2643,7 +2649,7 @@ export default function Arena() {
           participantsAwarded: newParticipantsAwarded,
           logs: [...allLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
-      // Multi-azione (Monaco x3, Ladro doppie armi x2, Scatto d'Azione +1): non avanza il turno finché restano azioni.
+      // Multi-azione (Monaco x3, Ladro x3, Scatto d'Azione +1): non avanza il turno finché restano azioni.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
       const usedSoFar = meBefore?.multiActionsUsed ?? 0;
@@ -2703,7 +2709,7 @@ export default function Arena() {
   const handleSecondWind = async (matchId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Guerriero";
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
-    const { total: healAmt, rolls: healRolls } = rollDmg("1d10");
+    const { total: healAmt, rolls: healRolls } = rollDmg("1d12");
     const totalHeal = healAmt + 5;
     const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
@@ -3575,7 +3581,7 @@ export default function Arena() {
       const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      // Multi-azione: Monaco x3, Ladro doppie armi x2, +1 se Passo Spedito attivo.
+      // Multi-azione: Monaco x3, Ladro x3, +1 se Passo Spedito attivo.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
       const usedSoFar = meBefore?.multiActionsUsed ?? 0;
@@ -3737,9 +3743,9 @@ export default function Arena() {
               up.hp = Math.max(0, (up.hp ?? 0) - selfDmg);
               logMsg += ` — Fallisce! Attacca sé stesso con ${weapon?.icon || "⚔"} ${equippedName || "arma"}: ${selfDmg} danni [🎲${selfRolls}]!`;
             } else {
-              // "Lose 3 rounds": il turno corrente passa + 2 turni futuri vengono saltati automaticamente.
+              // "Lose 2 rounds": i prossimi 2 turni del bersaglio vengono saltati automaticamente.
               up.controlLostTurns = 2;
-              logMsg += " — Fallisce! Sotto controllo per 3 turni!";
+              logMsg += " — Fallisce! Sotto controllo per 2 turni!";
             }
             const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
             let nextIndex = (currentIndex + 1) % m.players.length;
@@ -4054,10 +4060,11 @@ export default function Arena() {
   }, [arenaMeta, handleArenaAutoPass]);
 
   // ── Pause/Resume timers (Master only) ──────────────────────────────────────
-  const pauseArenaTimers = async () => {
+  const pauseArenaTimers = async (opts = {}) => {
     await updateDoc(doc(db, "arena_meta", "global"), {
       timerPaused: true,
       pausedAt: new Date().toISOString(),
+      nightAutoPaused: !!opts.night,
     });
   };
 
@@ -4066,6 +4073,8 @@ export default function Arena() {
     const elapsed = Date.now() - new Date(arenaMeta.pausedAt).getTime();
     const updatedMatches = (arenaMeta.matches || []).map(m => {
       if (m.status === "finished") return m;
+      // Le sfide libere (training) non sono mai congelate → non shiftiamo i loro timer.
+      if (m.kind === "fun") return m;
       return {
         ...m,
         turnExpiry: m.turnExpiry
@@ -4079,9 +4088,32 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), {
       timerPaused: false,
       pausedAt: null,
+      nightAutoPaused: false,
       matches: updatedMatches,
     });
   };
+
+  // ── Auto-pausa notturna (00:00 → 06:00) per torneo/campionato ──────────────
+  // Solo i match torneo (kind !== "fun") sono congelati. Le sfide libere restano libere.
+  // Il loop gira solo nei tab del Master per evitare scritture concorrenti.
+  useEffect(() => {
+    if (!isMaster || !arenaMeta) return;
+    if (arenaMeta.phase !== "combat") return;
+    const tick = async () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const inNightWindow = hour >= 0 && hour < 6;
+      if (inNightWindow && !arenaMeta.timerPaused) {
+        try { await pauseArenaTimers({ night: true }); } catch (e) { console.error("auto night pause:", e); }
+      } else if (!inNightWindow && arenaMeta.timerPaused && arenaMeta.nightAutoPaused) {
+        try { await resumeArenaTimers(); } catch (e) { console.error("auto night resume:", e); }
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 60000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMaster, arenaMeta]);
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
   if (!arenaMeta) return <div className="arena-loading">Ingresso nell'Arena...</div>;
@@ -5408,9 +5440,25 @@ export default function Arena() {
             const rawEquipSel      = equipSelections[m.matchId];
             const currentEquipSel  = rawEquipSel !== undefined ? rawEquipSel : [];
             const equipHas2H       = currentEquipSel.some(n => myWeaponActions.find(w => w.name === n)?.twoHanded);
+            const isMatchPaused    = arenaMeta.timerPaused && m.kind !== "fun" && m.status !== "finished";
 
             return (
-              <div key={m.matchId} className={`match-card ${m.status === "finished" ? "finished" : ""} ${m.kind === "fun" ? "match-fun" : ""}`}>
+              <div key={m.matchId} className={`match-card ${m.status === "finished" ? "finished" : ""} ${m.kind === "fun" ? "match-fun" : ""} ${isMatchPaused ? "match-paused" : ""}`}>
+
+                {isMatchPaused && (
+                  <div className="match-pause-banner">
+                    <span className="match-pause-flag">⛔</span>
+                    <div className="match-pause-text">
+                      <div className="match-pause-title">ARENA IN PAUSA</div>
+                      <div className="match-pause-sub">
+                        {arenaMeta.nightAutoPaused
+                          ? "Pausa notturna automatica · 00:00 → 06:00"
+                          : "Il Master ha messo in pausa il match. Nessuna azione disponibile fino alla ripresa."}
+                      </div>
+                    </div>
+                    <span className="match-pause-flag">⛔</span>
+                  </div>
+                )}
 
                 <div className="match-header">
                   <span className="match-round-label">
@@ -6049,7 +6097,7 @@ export default function Arena() {
                             const _ability = SAVE_LABEL[parseSpellSaveAbility(action)] || "SAG";
                             return (
                               <button key={action.name} className={`btn-action spell control ${noUses ? "no-uses" : ""}`}
-                                disabled={noUses || !chosenTargetId} title={noUses ? "Usi esauriti" : `${action.name} — TS ${_ability} (CD ${_dc}) o perdi 3 turni`}
+                                disabled={noUses || !chosenTargetId} title={noUses ? "Usi esauriti" : `${action.name} — TS ${_ability} (CD ${_dc}) o perdi 2 turni`}
                                 onClick={() => !noUses && chosenTargetId && handleControlSpell(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
@@ -6558,7 +6606,7 @@ export default function Arena() {
                       )
                     )}
 
-                    {/* ── Indicatore multi-azione (Monaco x3, Ladro doppie armi x2) ── */}
+                    {/* ── Indicatore multi-azione (Monaco x3, Ladro x3) ── */}
                     {!hasPendingSave && (() => {
                       const maxActs = getMaxActionsPerTurn(mySnap, myPlayer);
                       if (maxActs <= 1) return null;
