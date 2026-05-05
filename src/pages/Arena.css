@@ -833,6 +833,55 @@
   border-color: rgba(130, 10, 10, 0.3);
 }
 
+.btn-bench-all,
+.btn-clear-waiting {
+  padding: 11px 16px;
+  background: transparent;
+  color: #6a4d12;
+  border: 1px solid rgba(180, 140, 40, 0.45);
+  border-radius: 8px;
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-bench-all:hover,
+.btn-clear-waiting:hover {
+  background: rgba(212, 175, 55, 0.10);
+  border-color: rgba(180, 140, 40, 0.7);
+}
+
+.btn-clear-waiting {
+  color: #a04040;
+  border-color: rgba(160, 60, 60, 0.4);
+}
+
+.btn-clear-waiting:hover {
+  background: rgba(200, 60, 60, 0.08);
+  border-color: rgba(160, 60, 60, 0.7);
+}
+
+.btn-bench-one {
+  margin-left: 6px;
+  padding: 2px 8px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.btn-bench-one:hover {
+  background: rgba(180, 140, 40, 0.10);
+  color: #6a4d12;
+  border-color: rgba(180, 140, 40, 0.5);
+}
+
 /* ---- JOIN ZONE -------------------------------------------- */
 .join-zone {
   display: flex;

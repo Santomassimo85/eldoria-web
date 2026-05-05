@@ -1926,6 +1926,45 @@ export default function Arena() {
     });
   };
 
+  const benchParticipant = async (uid) => {
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      participants: arrayRemove(uid),
+      waitingList:  arrayUnion(uid),
+    });
+  };
+
+  const benchAllParticipants = async () => {
+    const ps = arenaMeta.participants || [];
+    if (ps.length === 0) return;
+    const merged = Array.from(new Set([...(arenaMeta.waitingList || []), ...ps]));
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      participants: [],
+      waitingList:  merged,
+    });
+  };
+
+  const clearWaitingList = async () => {
+    if ((arenaMeta.waitingList || []).length === 0) return;
+    if (!window.confirm("Svuotare la lista d'attesa? Le iscrizioni in attesa verranno rimosse.")) return;
+    const waitingIds  = arenaMeta.waitingList || [];
+    const participants = new Set(arenaMeta.participants || []);
+    const funUids = new Set();
+    (arenaMeta.matches || []).filter(m => m.kind === "fun").forEach(m =>
+      (m.players || []).forEach(p => funUids.add(p.id))
+    );
+    const snaps = { ...(arenaMeta.characterSnapshots || {}) };
+    let snapsChanged = false;
+    waitingIds.forEach(uid => {
+      if (!participants.has(uid) && !funUids.has(uid) && snaps[uid]) {
+        delete snaps[uid];
+        snapsChanged = true;
+      }
+    });
+    const updates = { waitingList: [] };
+    if (snapsChanged) updates.characterSnapshots = snaps;
+    await updateDoc(doc(db, "arena_meta", "global"), updates);
+  };
+
   // ── Round-robin helpers ────────────────────────────────────────────────────
   // Circle method: for N ids returns rounds[][pair] schedule. Adds a bye when N is odd.
   const roundRobinSchedule = (ids) => {
@@ -4350,6 +4389,11 @@ export default function Arena() {
                         {ARENA_TITLES[key].icon} {ARENA_TITLES[key].name}
                       </span>
                     ))}
+                    {arenaMeta.phase === "registration" && (
+                      <button className="btn-bench-one" onClick={() => benchParticipant(uid)} title="Sposta in attesa">
+                        ↩
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -4406,22 +4450,34 @@ export default function Arena() {
                 </button>
               )
             )}
+            {(arenaMeta.participants?.length || 0) > 0 && (
+              <button className="btn-bench-all" onClick={benchAllParticipants} title="Sposta tutti i partecipanti nella lista d'attesa">
+                ↩ Tutti in attesa
+              </button>
+            )}
+            {(arenaMeta.waitingList?.length || 0) > 0 && (
+              <button className="btn-clear-waiting" onClick={clearWaitingList} title="Svuota la lista d'attesa">
+                🗑 Svuota attesa
+              </button>
+            )}
             <button className="btn-reset" onClick={async () => {
               await refundAllBets();
               const preservedFun = (arenaMeta.matches || []).filter(m => m.kind === "fun");
-              // Conserva gli snapshot dei giocatori coinvolti in sfide libere ancora attive.
+              // Conserva gli snapshot dei giocatori in fun match attive E quelli ancora in lista d'attesa,
+              // così che il reset non costringa i waitlistati a re-iscriversi.
+              const keepUids = new Set(arenaMeta.waitingList || []);
+              preservedFun.forEach(m => (m.players || []).forEach(p => keepUids.add(p.id)));
+              const allSnaps = arenaMeta.characterSnapshots || {};
               const preservedSnaps = {};
-              preservedFun.forEach(m => (m.players || []).forEach(p => {
-                const s = (arenaMeta.characterSnapshots || {})[p.id];
-                if (s) preservedSnaps[p.id] = s;
-              }));
+              keepUids.forEach(uid => { if (allSnaps[uid]) preservedSnaps[uid] = allSnaps[uid]; });
               await updateDoc(doc(db, "arena_meta", "global"), {
                 phase: "registration", prizes: arenaMeta.prizes || "",
-                participants: [], waitingList: [], matches: preservedFun,
+                participants: [], matches: preservedFun,
                 characterSnapshots: preservedSnaps, tournamentWinner: null,
                 currentRound: 1, matchHistory: [],
                 groupA: [], groupB: [],
                 championsOnly: arenaMeta.championsOnly || false,
+                // waitingList intenzionalmente NON azzerata: usa "Svuota attesa" per pulirla.
               });
             }}>↺ Reset</button>
           </div>
