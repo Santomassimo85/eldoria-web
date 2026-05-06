@@ -12,12 +12,12 @@ import "./Arena.css";
 // ── WIZARD SPELLS (Mago) — pool: 6 trucchetti · 8 lv1 · 5 lv2 · 3 lv3 (sceglie 3+4+2)
 const WIZARD_SPELLS = [
   // ── Trucchetti ──────────────────────────────────────────────────────────────
-  { name: "Dardo di Fuoco",        level: 0, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco" },
-  { name: "Tocco Gelido",          level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Necrotico" },
-  { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3, damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno" },
-  { name: "Scossa Folgorante",     level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "⚡", info: "Trucchetto · Fulmine" },
-  { name: "Raggio di Gelo",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🧊", info: "Trucchetto · Freddo" },
-  { name: "Lama Vorticosa",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🌀", info: "Trucchetto · Tuono · mischia" },
+  { name: "Dardo di Fuoco",        level: 0, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
+  { name: "Tocco Gelido",          level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Necrotico", maxUses: 4 },
+  { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3, damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
+  { name: "Scossa Folgorante",     level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "⚡", info: "Trucchetto · Fulmine", maxUses: 4 },
+  { name: "Raggio di Gelo",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🧊", info: "Trucchetto · Freddo", maxUses: 4 },
+  { name: "Lama Vorticosa",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🌀", info: "Trucchetto · Tuono · mischia", maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Dardo Incantato",       level: 1, hitBonus: 39, damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
@@ -41,10 +41,10 @@ const WIZARD_SPELLS = [
 
 // ── SORCERER SPELLS (Stregone) — pool: 4 trucchetti · 4 lv1 · 3 lv2 (sceglie 4+4+2)
 const SORCERER_SPELLS = [
-  { name: "Dardo di Fuoco",        level: 0, hitBonus: 3,  damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco" },
-  { name: "Scossa Folgorante",     level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "⚡",  info: "Trucchetto · Fulmine" },
-  { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo" },
-  { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno" },
+  { name: "Dardo di Fuoco",        level: 0, hitBonus: 3,  damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
+  { name: "Scossa Folgorante",     level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "⚡",  info: "Trucchetto · Fulmine", maxUses: 4 },
+  { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
+  { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
   { name: "Dardo Incantato",       level: 1, hitBonus: 39, damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre", maxUses: 3 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
@@ -60,9 +60,9 @@ const SORCERER_SPELLS = [
 // ── WARLOCK SPELLS (Oscuro Cultore) — pool: 4 trucchetti · 5 lv1 · 4 lv2 (sceglie 2 trucchetti + 2 slot lv1/lv2 misti)
 const WARLOCK_SPELLS = [
   // ── Trucchetti ──────────────────────────────────────────────────────────────
-  { name: "Deflagrazione Occulta",  level: 0, hitBonus: 3, damage: "1d10", statKey: null, type: "spell", icon: "🟣", info: "Trucchetto · Forza" },
-  { name: "Rintocco Funebre",       level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "🔔", info: "Trucchetto · Necrotico · 1d8 (1d12 se nemico ferito)", damageWhenHurt: "1d12" },
-  { name: "Spruzzo Velenoso",       level: 0, hitBonus: 3, damage: "1d12", statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno" },
+  { name: "Deflagrazione Occulta",  level: 0, hitBonus: 3, damage: "1d10", statKey: null, type: "spell", icon: "🟣", info: "Trucchetto · Forza", maxUses: 4 },
+  { name: "Rintocco Funebre",       level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "🔔", info: "Trucchetto · Necrotico · 1d8 (1d12 se nemico ferito)", damageWhenHurt: "1d12", maxUses: 4 },
+  { name: "Spruzzo Velenoso",       level: 0, hitBonus: 3, damage: "1d12", statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Braccia di Hadar",       level: 1, hitBonus: 3, damage: "2d6",  statKey: null, type: "spell", icon: "🐙", info: "Lv1 · Necrotico", maxUses: 2 },
   { name: "Malocchio",              level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "👁", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 2 },
@@ -78,15 +78,15 @@ const WARLOCK_SPELLS = [
 
 // ── DRUID SPELLS (Druido) — 2 trucchetti · 4 lv1 · 2 lv2
 const DRUID_SPELLS = [
-  // ── Trucchetti (nessun limite di usi) ──────────────────────────────────────
-  { name: "Frusta di Spine",    level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🌿", info: "Trucchetto · Perforante" },
-  { name: "Produrre Fiamma",    level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco" },
-  { name: "Spruzzo Velenoso",   level: 0, hitBonus: 3, damage: "1d12", statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno" },
-  { name: "Infestazione",       level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🐜", info: "Trucchetto · Veleno" },
-  { name: "Morso di Gelo",      level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo" },
-  { name: "Schianto di Tuono",  level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "⚡", info: "Trucchetto · Tuono" },
-  { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3 },
-  { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +3 CA per 3 turni", special: "shield_buff" },
+  // ── Trucchetti ──────────────────────────────────────────────────────────────
+  { name: "Frusta di Spine",    level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🌿", info: "Trucchetto · Perforante", maxUses: 4 },
+  { name: "Produrre Fiamma",    level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
+  { name: "Spruzzo Velenoso",   level: 0, hitBonus: 3, damage: "1d12", statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
+  { name: "Infestazione",       level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🐜", info: "Trucchetto · Veleno", maxUses: 4 },
+  { name: "Morso di Gelo",      level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
+  { name: "Schianto di Tuono",  level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "⚡", info: "Trucchetto · Tuono", maxUses: 4 },
+  { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3, maxUses: 4 },
+  { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +3 CA per 3 turni", special: "shield_buff", maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 2 },
   { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 2 },
@@ -107,28 +107,28 @@ const DRUID_SPELLS = [
 
 // ── CLERIC SPELLS (Chierico) — 3 trucchetti · 4 lv1 · 2 lv2
 const CLERIC_SPELLS = [
-  // ── Trucchetti (nessun limite di usi) ──────────────────────────────────────
-  { name: "Fiamma Sacra",       level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "✨", info: "Trucchetto · Radiante" },
-  { name: "Rintocco dei Morti", level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "💀", info: "Trucchetto · Necrotico" },
-  { name: "Parola di Splendore",level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🌟", info: "Trucchetto · Radiante" },
-  { name: "Infestazione",       level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🐜", info: "Trucchetto · Veleno" },
-  { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3 },
-  { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +3 CA per 3 turni", special: "shield_buff" },
+  // ── Trucchetti ──────────────────────────────────────────────────────────────
+  { name: "Fiamma Sacra",       level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "✨", info: "Trucchetto · Radiante", maxUses: 4 },
+  { name: "Rintocco dei Morti", level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "💀", info: "Trucchetto · Necrotico", maxUses: 4 },
+  { name: "Parola di Splendore",level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🌟", info: "Trucchetto · Radiante", maxUses: 4 },
+  { name: "Infestazione",       level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🐜", info: "Trucchetto · Veleno", maxUses: 4 },
+  { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +1 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 1, buffAttacks: 3, maxUses: 4 },
+  { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Dardo Guidato",      level: 1, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🌟", info: "Lv1 · Radiante", maxUses: 3 },
   { name: "Infliggi Ferite",    level: 1, hitBonus: 3, damage: "3d10",  statKey: null, type: "spell", icon: "🩸", info: "Lv1 · Necrotico", maxUses: 3 },
-  { name: "Scudo della Fede",   level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA per 3 turni", special: "shield_buff", maxUses: 2 },
+  { name: "Scudo della Fede",   level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Comando",            level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📯", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
-  { name: "Disgrazia",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌑", info: "Lv1 · −3 ai tiri per colpire del nemico", special: "blind_debuff", maxUses: 3 },
-  { name: "Benedire",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "✨", info: "Lv1 · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
+  { name: "Disgrazia",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌑", info: "Lv1 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 3 },
+  { name: "Benedire",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "✨", info: "Lv1 · Vantaggio ai tuoi attacchi per 2 turni", special: "self_advantage", advantageTurns: 2, maxUses: 3 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Arma Spirituale",        level: 2, hitBonus: 3, damage: "1d8+4", statKey: null, type: "spell", icon: "⚔",  info: "Lv2 · Forza", maxUses: 2 },
   { name: "Ristorare Inferiore",    level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove condizioni + cura 1d4+2 HP", special: "heal", maxUses: 2 },
   { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
-  { name: "Aiuto",                  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3, maxUses: 2 },
-  { name: "Cecità/Sordità",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · −3 ai tiri per colpire del nemico", special: "blind_debuff", maxUses: 2 },
+  { name: "Aiuto",                  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +1 ai prossimi 2 attacchi", special: "magic_detect", buffBonus: 1, buffAttacks: 2, maxUses: 2 },
+  { name: "Cecità/Sordità",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
   { name: "Preghiera di Guarigione",level: 2, hitBonus: 0, damage: "2d8+3", statKey: null, type: "spell", icon: "🙏", info: "Lv2 · Cura potente · ripristina HP", special: "heal", maxUses: 2 },
 ];
 
@@ -298,10 +298,10 @@ const CHARGE_ACTION = {
   type: "skill", icon: "⚔", info: "2d6+FOR · 3 cariche", maxUses: 3,
 };
 
-// Secondo Respiro (Fighter) — cura 1d12+5, 2 usi
+// Secondo Respiro (Fighter) — cura 1d12+5, 3 usi
 const SECOND_WIND_ACTION = {
   name: "Secondo Respiro", hitBonus: 0, damage: "1d12", statKey: null,
-  type: "skill", icon: "💨", info: "Cura 1d12+5 · 2 usi", special: "second_wind", maxUses: 2,
+  type: "skill", icon: "💨", info: "Cura 1d12+5 · 3 usi", special: "second_wind", maxUses: 3,
 };
 
 // Scatto d'Azione (Fighter) — Bonus Action: guadagna un'azione extra questo turno, 3 cariche
@@ -315,6 +315,18 @@ const DISARM_ACTION = {
   name: "Disarmare", hitBonus: 0, damage: "—", statKey: null,
   type: "skill", icon: "🪓", info: "Disarma il nemico: non può attaccare con armi per 3 turni · 2 cariche",
   special: "weapon_lock", weaponLockTurns: 3, maxUses: 2,
+};
+
+// Presenza Possente (Fighter) — passiva: se tiri 1 al tiro per colpire, ritira il dado
+const PRESENZA_POSSENTE_PASSIVE = {
+  name: "Presenza Possente", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "👑", info: "Passiva · se tiri 1 al tiro per colpire, ritira il dado",
+};
+
+// Critico Migliorato (Fighter) — passiva: critico anche con 19
+const CRITICO_MIGLIORATO_PASSIVE = {
+  name: "Critico Migliorato", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "💥", info: "Passiva · critico con 19 e 20 (non solo 20)",
 };
 
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
@@ -342,11 +354,11 @@ const BARDIC_INSPIRATION_ACTION = {
   special: "bardic_inspiration", maxUses: 1, bonusAction: true,
 };
 
-// Furia (Barbarian) — aggiunto automaticamente (2 cariche, +2 danno armi per 3 turni)
+// Furia (Barbarian) — aggiunto automaticamente (4 cariche, +2 danno armi per 3 turni)
 const RAGE_ACTION = {
   name: "Furia", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🔥", info: "Bonus Action · +2 danno armi per 3 turni · 3 cariche",
-  special: "rage", maxUses: 3, bonusAction: true,
+  type: "skill", icon: "🔥", info: "Bonus Action · +2 danno armi per 3 turni · 4 cariche",
+  special: "rage", maxUses: 4, bonusAction: true,
 };
 
 // Turbine di Lame (Barbarian) — 2 attacchi rapidi, 2d10+FOR+3 totali
@@ -354,6 +366,13 @@ const TURBINE_LAME_ACTION = {
   name: "Turbine di Lame", hitBonus: 3, damage: "2d10+3", statKey: "str",
   type: "skill", icon: "🌪", info: "2 attacchi rapidi · 2d10+FOR+3 · 2 cariche",
   special: "turbine_lame", maxUses: 2,
+};
+
+// Attacco Poderoso (Barbarian) — 2d8+FOR + vantaggio per 3 turni, 2 cariche
+const MIGHTY_STRIKE_ACTION = {
+  name: "Attacco Poderoso", hitBonus: 3, damage: "2d8", statKey: "str",
+  type: "skill", icon: "💪", info: "2d8+FOR · concede vantaggio per 3 turni · 2 cariche",
+  grantsAdvTurns: 3, maxUses: 2,
 };
 
 // Pugno (Monk) — attacco a mani nude, 1d6+DES, sempre disponibile
@@ -741,8 +760,8 @@ function getLoadoutConfig(charClass) {
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: 4,  autoActions: [MAGICAL_CUNNING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
-  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
@@ -2249,7 +2268,7 @@ export default function Arena() {
       if (!weaponAction) return;
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
+      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
       const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const smiteStrMod = attackerSnap?.stats?.str ?? 0;
       const smiteMdAtk = myMatchPlayer?.magicDetectAttacks ?? 0;
@@ -2312,7 +2331,7 @@ export default function Arena() {
       if (!weaponAction) return;
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
+      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
       const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const dexMod = attackerSnap?.stats?.dex ?? 0;
       const sneakMdAtk = myMatchPlayer?.magicDetectAttacks ?? 0;
@@ -2320,7 +2339,7 @@ export default function Arena() {
         ? readActiveBonus(myMatchPlayer?.magicDetectActive, 0)
         : readActiveBonus(myMatchPlayer?.aidBuff, 4);
       // Furtività dà vantaggio su TUTTI gli attacchi del Ladro (Attacco Furtivo incluso).
-      const sneakHasAdvantage    = readStealthAdvTurns(myMatchPlayer) > 0;
+      const sneakHasAdvantage    = readStealthAdvTurns(myMatchPlayer) > 0 || (myMatchPlayer?.selfAdvTurns ?? 0) > 0;
       const sneakHasDisadvantage = readStealthDisadvTurns(defMatchPlayer) > 0;
       const sneakD20a = Math.floor(Math.random() * 20) + 1;
       const sneakD20b = (sneakHasAdvantage || sneakHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -2369,7 +2388,7 @@ export default function Arena() {
             const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
             const newMdAtk  = Math.max(0, prevMdAtk - 1);
             const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), selfAdvTurns: Math.max(0, (p.selfAdvTurns ?? 0) - 1), actionUsesLeft: newUses };
           }
           return p;
         });
@@ -2525,6 +2544,7 @@ export default function Arena() {
     const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     const aidBonus           = readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
     const rageDmgBonus       = !isSpellAction && (attackerMatchPlayer?.rageTurns ?? 0) > 0 ? 2 : 0;
+    const barbarianDmgBonus  = !isSpellAction && isBarbarianClass(attackerClassLower) ? 2 : 0;
     const concentrationDmg   = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 4 : 0;
     const bardInspirationActive = !!attackerMatchPlayer?.bardicInspirationActive;
     const { total: inspirationBonus, rolls: inspirationRolls } = bardInspirationActive ? rollDmg("1d6") : { total: 0, rolls: "" };
@@ -2537,21 +2557,25 @@ export default function Arena() {
     const titleHitCtx        = { classLower: attackerClassLower, isSpellAction, wildShapeForm: attackerMatchPlayer?.wildShape || null };
     const titleHitBonus      = attackerTitles.reduce((sum, k) => sum + getTitleHitBonus({ titleKey: k, ...titleHitCtx }), 0);
     const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-    const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0;
+    const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0;
     const hasDisadvantage    = readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0;
-    const d20a     = Math.floor(Math.random() * 20) + 1;
-    const d20b     = (hasAdvantage || hasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
+    const isFighter = isFighterClass(attackerClassLower);
+    let d20a = Math.floor(Math.random() * 20) + 1;
+    if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1; // Presenza Possente: ritira l'1
+    let d20b = (hasAdvantage || hasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
+    if (d20b === 1 && isFighter && (hasAdvantage || hasDisadvantage)) d20b = Math.floor(Math.random() * 20) + 1;
     const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
     await showD20Roll(d20, { label: isSpellAction ? action.name : `Attacco · ${action.name}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
-    const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
+    const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
     const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
     const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
-    const isCrit   = d20 === 20; // nat 20 = critico per qualsiasi attacco (arma o spell)
+    const critThreshold = isFighter ? 19 : 20; // Critico Migliorato: 19-20 per il guerriero
+    const isCrit   = d20 >= critThreshold; // nat 20 (o 19 per fighter) = critico
     const isHit    = hitTotal >= defAC || isCrit;
     const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
     // Critico spells: doppio danno
@@ -2562,7 +2586,7 @@ export default function Arena() {
     // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
     const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
     const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
     const golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rawDamage > 0;
     const damage = golemHalved ? Math.floor(rawDamage / 2) : rawDamage;
@@ -2576,6 +2600,7 @@ export default function Arena() {
     const critTag        = isCrit ? " ★CRITICO★" : "";
     const poisonTag      = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
     const rageTag        = rageDmgBonus > 0 ? ` | furia +${rageDmgBonus}` : "";
+    const barbDmgTag     = barbarianDmgBonus > 0 ? ` | barb +${barbarianDmgBonus}` : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
     const inspirationTag = inspirationBonus > 0 ? ` +ispirazione 🎵🎲${inspirationRolls}=${inspirationBonus}` : "";
     const magicDetTag    = magicDetectBonus > 0 ? ` +${magicDetectBonus} 🔮det.` : "";
@@ -2589,7 +2614,7 @@ export default function Arena() {
       : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${rageTag}${concentrationTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
@@ -2634,7 +2659,10 @@ export default function Arena() {
           const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
           const newMdAtk  = Math.max(0, prevMdAtk - 1);
           const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1) };
+          const newSelfAdv = action.grantsAdvTurns
+            ? action.grantsAdvTurns
+            : Math.max(0, (p.selfAdvTurns ?? 0) - 1);
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), selfAdvTurns: newSelfAdv };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -2696,15 +2724,23 @@ export default function Arena() {
   };
 
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
-  const handleShieldSkill = async (matchId) => {
+  const handleShieldSkill = async (matchId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
-    const log = { pub: `🛡 ${myName} lancia Scudo! (+3 CA per 3 turni)`, attId: currentUser.uid, ts: new Date().toISOString() };
+    const bonus = action?.shieldBuffBonus ?? 3;
+    const turns = action?.shieldBuffTurns ?? 3;
+    const spellName = action?.name || "Scudo";
+    const log = { pub: `🛡 ${myName} lancia ${spellName}! (+${bonus} CA per ${turns} turni)`, attId: currentUser.uid, ts: new Date().toISOString() };
     const shieldExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
-      const updatedPlayers = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, shieldSkillTurns: 3, defensiveBonus: 0, ...tickEagleEnd(p) } : p
-      );
+      const updatedPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const uses = p.actionUsesLeft || {};
+        const newUses = action?.maxUses !== undefined
+          ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) }
+          : uses;
+        return { ...p, shieldSkillTurns: turns, shieldSkillBonus: bonus, defensiveBonus: 0, ...tickEagleEnd(p), actionUsesLeft: newUses };
+      });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: shieldExpiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3283,6 +3319,28 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
+  // ── SELF ADVANTAGE (Benedire) — vantaggio ai propri attacchi per N turni ────
+  const handleSelfAdvantage = async (matchId, action) => {
+    const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    const myName = mySnap?.name || "?";
+    const turns = action.advantageTurns ?? 2;
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const uses = p.actionUsesLeft || {};
+        const newUses = action.maxUses !== undefined
+          ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) }
+          : uses;
+        return { ...p, selfAdvTurns: turns, ...tickEagleEnd(p), actionUsesLeft: newUses };
+      });
+      const log = `✨ ${myName} invoca ${action.name}! Vantaggio ai prossimi ${turns} attacchi.`;
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
   // ── DISADVANTAGE ENEMY (Nebbia / Oscurità) — svantaggio agli attacchi del nemico ────
   const handleDisadvEnemy = async (matchId, targetId, action) => {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
@@ -3404,6 +3462,42 @@ export default function Arena() {
       );
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} termina il turno volontariamente.`] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── Salta turno (qualsiasi giocatore, qualsiasi tipo di arena) ──────────────
+  // Avanza il turno e fa scalare i timer basati su round (rage, shield, marchio, ecc.).
+  // I buff "al prossimo attacco" (magic_detect, aiuto, veleno) restano intatti perché non hai attaccato.
+  const handleSkipTurn = async (matchId) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const players = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        return {
+          ...p,
+          multiActionsUsed: 0,
+          bonusActionUsed: false,
+          defensiveBonus: 0,
+          actionSurgeActive: false,
+          bardicInspirationActive: false,
+          extraTurnActive: false,
+          ...tickEagleEnd(p),
+          ...consumeInvisibility(p),
+          rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1),
+          shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1),
+          hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
+          concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1),
+          armorForgeTurns: Math.max(0, (p.armorForgeTurns ?? 0) - 1),
+          selfAdvTurns: Math.max(0, (p.selfAdvTurns ?? 0) - 1),
+          stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1),
+          attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1),
+          weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1),
+        };
+      });
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} salta il turno.`] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -5539,7 +5633,7 @@ export default function Arena() {
                           <div className="fighter-meta">
                             CA {char.stats?.ac ?? "?"}
                             {(() => {
-                              const shieldBonus = (p.shieldSkillTurns ?? 0) > 0 ? 3 : 0;
+                              const shieldBonus = (p.shieldSkillTurns ?? 0) > 0 ? (p.shieldSkillBonus ?? 3) : 0;
                               const defBonus = p.defensiveBonus ?? 0;
                               const physShield = p.shieldBonus ?? 0;
                               const total = shieldBonus + defBonus + physShield;
@@ -5576,7 +5670,10 @@ export default function Arena() {
                             <div className="fighter-entangled-badge">🕸 Intrappolato</div>
                           )}
                           {(p.shieldSkillTurns ?? 0) > 0 && (
-                            <div className="fighter-shield-skill-badge">🛡 Scudo ({p.shieldSkillTurns} turni)</div>
+                            <div className="fighter-shield-skill-badge">🛡 Scudo (+{p.shieldSkillBonus ?? 3} CA · {p.shieldSkillTurns} turni)</div>
+                          )}
+                          {(p.selfAdvTurns ?? 0) > 0 && (
+                            <div className="fighter-bard-badge">🌟 Vantaggio ({p.selfAdvTurns} turni)</div>
                           )}
                           {(p.defensiveBonus ?? 0) > 0 && (
                             <div className="fighter-defensive-badge">🛡 Difensivo (+{p.defensiveBonus} CA)</div>
@@ -6440,6 +6537,24 @@ export default function Arena() {
                               </button>
                             );
                           }
+                          if (action.special === "self_advantage") {
+                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const noUses = usesLeft !== null && usesLeft <= 0;
+                            const alreadyActive = (myPlayer?.selfAdvTurns ?? 0) > 0;
+                            const advTurns = action.advantageTurns ?? 2;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action spell ${noUses || alreadyActive ? "no-uses" : ""}`}
+                                disabled={noUses || alreadyActive}
+                                title={alreadyActive ? `Già attivo (${myPlayer.selfAdvTurns} turni rimanenti)` : noUses ? "Cariche esaurite" : `Vantaggio ai prossimi ${advTurns} attacchi`}
+                                onClick={() => !noUses && !alreadyActive && handleSelfAdvantage(m.matchId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.selfAdvTurns}t` : noUses ? "Esaurito" : `🌟 vant. · ${advTurns}t`}</span>
+                                {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
+                              </button>
+                            );
+                          }
                           if (action.special === "extra_turn") {
                             const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
                             const noUses = usesLeft !== null && usesLeft <= 0;
@@ -6495,12 +6610,19 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "shield_buff") {
+                            const sbBonus = action.shieldBuffBonus ?? 3;
+                            const sbTurns = action.shieldBuffTurns ?? 3;
+                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const noUses = usesLeft !== null && usesLeft <= 0;
                             return (
-                              <button key={action.name} className="btn-action skill" title="+3 CA per 3 turni"
-                                onClick={() => handleShieldSkill(m.matchId)}>
+                              <button key={action.name} className={`btn-action skill ${noUses ? "no-uses" : ""}`}
+                                disabled={noUses}
+                                title={noUses ? "Cariche esaurite" : `+${sbBonus} CA per ${sbTurns} turni`}
+                                onClick={() => !noUses && handleShieldSkill(m.matchId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">+3 CA · 3 turni</span>
+                                <span className="action-dice">{noUses ? "Esaurito" : `+${sbBonus} CA · ${sbTurns}t`}</span>
+                                {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );
                           }
@@ -6637,6 +6759,19 @@ export default function Arena() {
                         </div>
                       );
                     })()}
+
+                    {/* ── Salta turno (disponibile per tutti, in qualsiasi arena) ── */}
+                    {!hasPendingSave && (myPlayer?.multiActionsUsed ?? 0) === 0 && (
+                      <div className="dual-action-row">
+                        <button
+                          className="btn-end-dual-turn"
+                          onClick={() => handleSkipTurn(m.matchId)}
+                          title="Passa il turno senza fare nulla"
+                        >
+                          ⏭ Salta Turno
+                        </button>
+                      </div>
+                    )}
 
                     {/* ── Oggetti (Bonus Action) ── */}
                     {!hasPendingSave && (() => {
