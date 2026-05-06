@@ -589,6 +589,15 @@ function tickEagleEnd(p) {
   return { eagleDebuffTurns: newEagle, blindDebuff: newEagle > 0 ? p.blindDebuff : false };
 }
 
+// Riduzione danni: il Barbaro in Furia subisce metà danni da armi e skill (non da incantesimi).
+function applyBarbarianRageReduction(rawDmg, defenderSnap, defenderMatchPlayer, isSpell) {
+  if (rawDmg <= 0 || isSpell) return rawDmg;
+  const defClass = (defenderSnap?.class || "").toLowerCase();
+  if (!["barbarian","barbaro"].some(c => defClass.includes(c))) return rawDmg;
+  if ((defenderMatchPlayer?.rageTurns ?? 0) <= 0) return rawDmg;
+  return Math.floor(rawDmg / 2);
+}
+
 // Titoli cumulativi: legge l'array `arenaTitles` e fa fallback al legacy `arenaTitle` singolo.
 function getCharTitles(ch) {
   if (!ch) return [];
@@ -2284,7 +2293,8 @@ export default function Arena() {
 
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sDmg, rolls: sRolls } = isHit ? rollDmg("2d8") : { total: 0, rolls: "" };
-      const totalDmg = (wDmg + sDmg + smiteStrMod) * critMult;
+      const rawSmiteDmg = (wDmg + sDmg + smiteStrMod) * critMult;
+      const totalDmg = applyBarbarianRageReduction(rawSmiteDmg, defenderSnap, defMatchPlayer, false);
 
       const smiteExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const hitStr = isHit ? `COLPISCE` : `MANCA`;
@@ -2355,7 +2365,8 @@ export default function Arena() {
 
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sneakDmg, rolls: sneakRolls } = isHit ? rollDmg("1d6") : { total: 0, rolls: "" };
-      const totalDmg = (wDmg + sneakDmg + dexMod + 3) * critMult;
+      const rawSneakDmg = (wDmg + sneakDmg + dexMod + 3) * critMult;
+      const totalDmg = applyBarbarianRageReduction(rawSneakDmg, defenderSnap, defMatchPlayer, false);
 
       const sneakExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const critTag = isCrit ? " ★CRITICO★" : "";
@@ -2587,9 +2598,11 @@ export default function Arena() {
     const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
     const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
     const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
+    // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
+    const rageReducedDamage = applyBarbarianRageReduction(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
-    const golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rawDamage > 0;
-    const damage = golemHalved ? Math.floor(rawDamage / 2) : rawDamage;
+    const golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
+    const damage = golemHalved ? Math.floor(rageReducedDamage / 2) : rageReducedDamage;
 
     // Log breakdown
     const statPart       = !isSpellAction && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : '';
@@ -2952,7 +2965,10 @@ export default function Arena() {
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const { total: dmg, rolls } = rollDmg(action.damage);
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const targetSnapPre = arenaMeta.characterSnapshots?.[targetId];
+    const targetMatchPre = myMatch?.players.find(p => p.id === targetId);
+    const dmg = applyBarbarianRageReduction(rawDmg, targetSnapPre, targetMatchPre, false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -2999,7 +3015,9 @@ export default function Arena() {
 
   const handlePetEagle = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
-    const { total: dmg, rolls } = rollDmg(action.damage);
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const _eagleMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _eagleMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -3025,7 +3043,9 @@ export default function Arena() {
   // ── DRAGO DI SMERALDO (Ranger unique) — auto-hit + cura caster ──────────
   const handlePetDrago = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
-    const { total: dmg, rolls } = rollDmg(action.damage);
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const _dragoMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _dragoMatch?.players.find(p => p.id === targetId), false);
     const { total: heal, rolls: healRolls } = rollDmg("1d6");
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -3053,7 +3073,9 @@ export default function Arena() {
   // ── COSTRUTTI (Artefice) ─────────────────────────────────────────────────
   const handleConstructGolem = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
-    const { total: dmg, rolls } = rollDmg(action.damage);
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const _golemMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _golemMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -3079,7 +3101,9 @@ export default function Arena() {
 
   const handleConstructSnake = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
-    const { total: dmg, rolls } = rollDmg(action.damage);
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const _snakeMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _snakeMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
