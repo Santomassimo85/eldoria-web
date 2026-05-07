@@ -347,6 +347,12 @@ const STEALTH_ACTION = {
   type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio attacchi 3 turni · nemico svantaggio 3 turni · 3 cariche", special: "stealth", maxUses: 3,
 };
 
+// Triboli (Rogue) — il nemico salta 2 turni (NESSUN TS), 2 cariche
+const TRIBOLI_ACTION = {
+  name: "Triboli", hitBonus: 0, damage: "", statKey: null,
+  type: "skill", icon: "🪤", info: "Sparge triboli sotto il nemico · salta 2 turni (NESSUN TS) · 2 cariche", special: "triboli", maxUses: 2,
+};
+
 // Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
 const BARDIC_INSPIRATION_ACTION = {
   name: "Ispirazione Bardica", hitBonus: 0, damage: "—", statKey: null,
@@ -775,7 +781,7 @@ function getLoadoutConfig(charClass) {
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [PUGNO_ACTION, CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -1691,6 +1697,20 @@ export default function Arena() {
 
     // ── Branch: Arena Libera (Sfida) ──────────────────────────────────────
     if (loadoutContext === "fun") {
+      // Bug-guard: un partecipante al torneo non può creare/accettare sfide libere,
+      // perché la registrazione fun sovrascriverebbe characterSnapshots[uid] e
+      // cambierebbe la sua classe nei prossimi round del torneo.
+      const inTournament =
+        (arenaMeta?.participants || []).includes(currentUser.uid) ||
+        (arenaMeta?.matches || []).some(
+          m => m.kind !== "fun" && m.status !== "finished" &&
+               (m.players || []).some(p => p.id === currentUser.uid)
+        );
+      if (inTournament) {
+        alert("⚠ Sei iscritto a un torneo in corso. Non puoi creare o accettare Sfide Libere finché il torneo non termina (non puoi cambiare classe a torneo iniziato).");
+        cancelLoadout();
+        return;
+      }
       const baseHp = snapshot.stats.maxHp;
       const itemUses = {};
       (snapshot.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
@@ -2021,8 +2041,11 @@ export default function Arena() {
     (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
     const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
     if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
-    const layOfHandsPool = isPaladinClass((snap.class || "").toLowerCase()) ? Math.floor(startHp / 3) : 0;
-    return { id, name: snap.name || "Sconosciuto", hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
+    const lockedClass = (snap.class || "").toLowerCase().trim();
+    const layOfHandsPool = isPaladinClass(lockedClass) ? Math.floor(startHp / 3) : 0;
+    // Embed `class` so the tournament class is locked at match-build time and
+    // cannot be silently changed by later writes to characterSnapshots.
+    return { id, name: snap.name || "Sconosciuto", class: lockedClass, hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
   };
 
   const buildGroupRoundMatches = (group, round, snapshots) => {
@@ -2470,6 +2493,35 @@ export default function Arena() {
       return;
     }
 
+    // ── Triboli (Rogue: auto-skip 2 turni, NESSUN TS) ─────────────────
+    if (action.special === "triboli") {
+      const log = {
+        pub: `🪤 ${attName} sparge Triboli sotto ${defName} — salta 2 turni (NESSUN TS).`,
+        att: `🪤 Spargi Triboli sotto ${defName}! Salterà i prossimi 2 turni.`,
+        def: `🪤 ${attName} sparge Triboli sotto di te! Salti i prossimi 2 turni.`,
+        attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
+      };
+      const triboliExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const updatedMatches = arenaMeta.matches.map(m => {
+        if (m.matchId !== matchId) return m;
+        const updatedPlayers = m.players.map(p => {
+          if (p.id === targetId) return { ...p, controlLostTurns: 2 };
+          if (p.id === currentUser.uid) {
+            const uses = p.actionUsesLeft || {};
+            const newUses = action.maxUses !== undefined
+              ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) }
+              : uses;
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, actionUsesLeft: newUses };
+          }
+          return p;
+        });
+        const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: triboliExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return;
+    }
+
     // ── Ragnatela (auto-skip 2 turni, NESSUN TS) ─────────────────────
     if (action.special === "web") {
       const log = {
@@ -2543,7 +2595,10 @@ export default function Arena() {
     if (isSaveDamageSpell(action)) { await handleSpellSave(matchId, targetId, action); return; }
 
     // ── Attacco normale ───────────────────────────────────────────────
-    const attackerClassLower = (arenaMeta.characterSnapshots?.[currentUser.uid]?.class || "").toLowerCase();
+    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
+    // Class lock: prefer the class embedded on the match player (locked at match build),
+    // fall back to characterSnapshots only for legacy matches without an embedded class.
+    const attackerClassLower = (attackerMatchPlayer?.class || arenaMeta.characterSnapshots?.[currentUser.uid]?.class || "").toLowerCase();
     const isSpellAction = action.type === "spell";
     const spellcastKey  = isSpellAction ? getSpellcastingAbility(attackerClassLower) : null;
     const statMod  = action.statKey
@@ -2552,7 +2607,6 @@ export default function Arena() {
       ? (attackerSnap?.stats?.[spellcastKey] ?? 0)
       : 0;
     const weaponBuff = !isSpellAction && (attackerSnap?.arenaBuffs?.weaponBonus ? 1 : 0);
-    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     const aidBonus           = readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
     const rageDmgBonus       = !isSpellAction && (attackerMatchPlayer?.rageTurns ?? 0) > 0 ? 2 : 0;
     const barbarianDmgBonus  = !isSpellAction && isBarbarianClass(attackerClassLower) ? 2 : 0;
@@ -3530,7 +3584,7 @@ export default function Arena() {
   // Trasformarsi è l'azione del turno: dopo la trasformazione il turno passa.
   const handleWildShape = async (matchId, formKey) => {
     const myMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
-    const wsUsesLeft = myMatchPlayer?.wildShapeUsesLeft ?? 2;
+    const wsUsesLeft = myMatchPlayer?.wildShapeUsesLeft ?? 1;
     if (wsUsesLeft <= 0) return;
     const form = WILD_SHAPES[formKey];
     const { count, sides } = form.hpDice;
@@ -3549,7 +3603,7 @@ export default function Arena() {
         p.id === currentUser.uid ? { ...p, hp: newHp, maxHp: newHp, wildShape: formKey, preWildShapeHp: preHp, preWildShapeMaxHp: preMaxHp, wildShapeUsesLeft: newUsesLeft, ...tickEagleEnd(p) } : p
       );
       return { ...m, players: updatedPlayers,
-        logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/2]`] };
+        logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/1]`] };
     });
     setShowWildPicker(false);
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -5781,12 +5835,12 @@ export default function Arena() {
 
                     {/* ── Wild Shape: pulsante selezione ── */}
                     {mySnap?.hasWildShape && !wildShapeForm && !showWildPicker && !hasPendingSave && !isEntangled && (() => {
-                      const wsLeft = myPlayer?.wildShapeUsesLeft ?? 2;
+                      const wsLeft = myPlayer?.wildShapeUsesLeft ?? 1;
                       return (
                         <div className="wild-shape-bar">
                           {wsLeft > 0 ? (
                             <button className="btn-wild-shape" onClick={() => setShowWildPicker(true)}>
-                              🐾 Forma Selvatica <span className="action-uses-badge">{wsLeft}/2</span>
+                              🐾 Forma Selvatica <span className="action-uses-badge">{wsLeft}/1</span>
                             </button>
                           ) : (
                             <div className="btn-wild-shape exhausted">🐾 Forma Selvatica — Esaurita</div>
@@ -6693,6 +6747,7 @@ export default function Arena() {
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
                                 : action.special === "web" ? "Ragnatela — intrappola il bersaglio per 2 turni (NESSUN TS)"
+                                : action.special === "triboli" ? "Triboli — il nemico salta 2 turni (NESSUN TS)"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
                                 : action.special === "stealth" ? `Furtività — attiva vantaggio 3 turni · nemico svantaggio 3 turni`
@@ -6713,6 +6768,7 @@ export default function Arena() {
                                   : disabledByInvis ? "👻 Invisibile"
                                   : !isEquipped ? "🔄 Cambia"
                                   : action.special === "web" ? "🕸 Salta 2t"
+                                  : action.special === "triboli" ? "🪤 Salta 2t"
                                   : action.special === "poison" ? `${action.damage} +TS COS`
                                   : `${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               </span>
