@@ -108,7 +108,17 @@ export default function Riassunti() {
                                         <ToggleSection
                                             title={
                                                 <>
-                                                    {summary.title}
+                                                    {summary.coverImage && (
+                                                        <div className="summary-card-cover">
+                                                            <img
+                                                                src={summary.coverImage}
+                                                                alt={summary.title}
+                                                                loading="lazy"
+                                                                onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <span className="summary-card-title-text">{summary.title}</span>
                                                     {summary.date && (
                                                         <span className="summary-card-date-chip">
                                                             {summary.date}
@@ -121,7 +131,7 @@ export default function Riassunti() {
                                                     )}
                                                 </>
                                             }
-                                            titleClass="summaryTitle"
+                                            titleClass={`summaryTitle ${summary.coverImage ? "has-cover" : ""}`}
                                             contentClass="summary-content-padding"
                                             onOpen={() => recordVisit(summary.id)}
                                         >

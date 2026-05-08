@@ -460,6 +460,37 @@ const RANGER_PETS = {
   },
 };
 
+// Demoni Evocati (Warlock) — uno scelto in fase di loadout
+const WARLOCK_DEMONS = {
+  mephit: {
+    key: "mephit", name: "Mephit di Fiamma", icon: "🔥",
+    info: "Bonus action · il mephit lancia fiamme per 1d8+2 · 3 cariche",
+    action: {
+      name: "Mephit di Fiamma", hitBonus: 0, damage: "1d8+2", statKey: null,
+      type: "skill", icon: "🔥", info: "Bonus Action · 1d8+2 danni da fuoco automatici · 3 cariche",
+      special: "demon_mephit", maxUses: 3, bonusAction: true,
+    },
+  },
+  succubus: {
+    key: "succubus", name: "Succubus", icon: "💋",
+    info: "La Succubus ammalia il nemico · TS CAR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
+    action: {
+      name: "Bacio della Succubus", hitBonus: 0, damage: "—", statKey: null,
+      type: "skill", icon: "💋", info: "TS CAR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
+      special: "demon_succubus", saveAbility: "cha", saveDC: 13, maxUses: 2,
+    },
+  },
+  demon: {
+    key: "demon", name: "Demone Maggiore", icon: "👹",
+    info: "Drena 2d6+3 PF dal bersaglio · cura 1d4 al warlock · 2 cariche",
+    action: {
+      name: "Drenaggio Demoniaco", hitBonus: 0, damage: "2d6+3", statKey: null,
+      type: "skill", icon: "👹", info: "2d6+3 danni auto-hit + cura 1d4 PF · 2 cariche",
+      special: "demon_greater", maxUses: 2,
+    },
+  },
+};
+
 // ── ARTIFICER (Artefice) — sbloccato dalla Bottega ──────────────────────────
 // Armi extra: Rifle e Pistola
 const ARTIFICER_RANGED = [
@@ -1227,6 +1258,7 @@ export default function Arena() {
   const [pendingArmor, setPendingArmor]     = useState(null);
   const [pendingShield, setPendingShield]   = useState(null); // null | "legno" | "metallo"
   const [pendingPet, setPendingPet]         = useState(null); // ranger only — "wolf" | "spider" | "eagle" | "drago"
+  const [pendingDemon, setPendingDemon]     = useState(null); // warlock only — "mephit" | "succubus" | "demon"
   const [pendingConstruct, setPendingConstruct] = useState(null); // artificer only — "golem" | "snake"
   const [showWildPicker, setShowWildPicker] = useState(false);
   const [showLayOfHandsPicker, setShowLayOfHandsPicker] = useState(false);
@@ -1673,6 +1705,7 @@ export default function Arena() {
     const buffs = charPreview.arenaBuffs || {};
     const monkPunchUpgraded = (buffs.monkPunchD8 ?? 0) > 0;
     const petAction = (isRangerClass(cls) && pendingPet && RANGER_PETS[pendingPet]) ? RANGER_PETS[pendingPet].action : null;
+    const demonAction = (isWarlockClass(cls) && pendingDemon && WARLOCK_DEMONS[pendingDemon]) ? WARLOCK_DEMONS[pendingDemon].action : null;
     const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
     const finalActions = [
       ...pendingWeapons, ...pendingSpells, ...pendingSkills,
@@ -1682,6 +1715,7 @@ export default function Arena() {
         return a;
       }),
       ...(petAction ? [petAction] : []),
+      ...(demonAction ? [demonAction] : []),
       ...(constructAction ? [constructAction] : []),
     ];
     const selectedItemKeys = Object.entries(pendingItemCounts)
@@ -1700,6 +1734,7 @@ export default function Arena() {
       arenaBuffs:      charPreview.arenaBuffs || {},
       titles:          charPreview.arenaTitles || [],
       selectedPet:     petAction ? pendingPet : null,
+      selectedDemon:   demonAction ? pendingDemon : null,
       selectedConstruct: constructAction ? pendingConstruct : null,
     };
 
@@ -1810,6 +1845,7 @@ export default function Arena() {
     setPendingArmor(null);
     setPendingShield(null);
     setPendingPet(null);
+    setPendingDemon(null);
     setPendingConstruct(null);
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
     setLoadoutContext("tournament");
@@ -3189,6 +3225,99 @@ export default function Arena() {
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
       const log = `🐉 Il Drago di Smeraldo di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni e cura il padrone 🎲(${healRolls})=${heal} PF!`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── DEMONI EVOCATI (Warlock) ─────────────────────────────────────────────
+  const handleDemonMephit = async (matchId, targetId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
+    const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = myMatch?.players.find(p => p.id === currentUser.uid);
+    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const targetSnapPre = arenaMeta.characterSnapshots?.[targetId];
+    const targetMatchPre = myMatch?.players.find(p => p.id === targetId);
+    const dmg = applyBarbarianRageReduction(rawDmg, targetSnapPre, targetMatchPre, false);
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+      const targetName = targetSnap?.name || "?";
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🔥 Il Mephit di ${myName} avvolge ${targetName} nelle fiamme 🎲(${rolls})=${dmg} danni da fuoco! · bonus action`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      // Bonus action: il turno NON avanza.
+      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  const handleDemonSuccubus = async (matchId, targetId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
+    const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+    const targetName = targetSnap?.name || "?";
+    const saveAbility = action.saveAbility || "cha";
+    const saveDC = action.saveDC ?? 13;
+    const defMod = targetSnap?.stats?.[saveAbility] ?? 0;
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
+    const tsTotal = d20 + defMod;
+    const saved = tsTotal >= saveDC;
+    const lostTurns = saved ? 1 : 2;
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
+        }
+        if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
+        return p;
+      });
+      const log = saved
+        ? `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno.`
+        : `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 2 turni.`;
+      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  const handleDemonGreater = async (matchId, targetId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
+    const _demonMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _demonMatch?.players.find(p => p.id === targetId), false);
+    const { total: heal, rolls: healRolls } = rollDmg("1d4");
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+      const targetName = targetSnap?.name || "?";
+      const rawPlayers = m.players.map(p => {
+        if (p.id === currentUser.uid) {
+          const uses = p.actionUsesLeft || {};
+          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+          const maxHp = p.maxHp || p.hp;
+          return { ...p, hp: Math.min(maxHp, p.hp + heal), ...tickEagleEnd(p), actionUsesLeft: newUses };
+        }
+        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        return p;
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `👹 Il Demone di ${myName} drena ${targetName} 🎲(${rolls})=${dmg} danni e ridona al padrone 🎲(${healRolls})=${heal} PF!`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
@@ -4957,20 +5086,23 @@ export default function Arena() {
           {loadoutPhase === "selecting" && charPreview && (() => {
             const config       = getLoadoutConfig(charPreview.class);
             const isRanger     = isRangerClass((charPreview.class || "").toLowerCase());
+            const isWarlock    = isWarlockClass((charPreview.class || "").toLowerCase());
             const isArtificer  = isArtificerClass((charPreview.class || "").toLowerCase());
             const petReady     = !isRanger || !!pendingPet;
+            const demonReady   = !isWarlock || !!pendingDemon;
             const constructReady = !isArtificer || !!pendingConstruct;
             const weaponsLeft  = config.maxWeapons - pendingWeapons.length;
             const spellsLeft   = config.maxSpells  - pendingSpells.length;
             const armorReady   = !!pendingArmor;
             const totalItems   = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
-            const isReady      = weaponsLeft === 0 && spellsLeft === 0 && armorReady && totalItems >= 1 && petReady && constructReady;
+            const isReady      = weaponsLeft === 0 && spellsLeft === 0 && armorReady && totalItems >= 1 && petReady && demonReady && constructReady;
             const btnParts     = [];
             if (weaponsLeft > 0) btnParts.push(`${weaponsLeft} arm${weaponsLeft === 1 ? "a" : "i"}`);
             if (spellsLeft  > 0) btnParts.push(`${spellsLeft} incantesim${spellsLeft === 1 ? "o" : "i"}`);
             if (!armorReady)     btnParts.push("1 armatura");
             if (totalItems < 1)  btnParts.push("1 oggetto");
             if (!petReady)       btnParts.push("1 compagno animale");
+            if (!demonReady)     btnParts.push("1 demone");
             if (!constructReady) btnParts.push("1 costrutto");
             const btnText = isReady ? "Invia Iscrizione" : `Mancano: ${btnParts.join(" + ")}`;
 
@@ -5232,6 +5364,32 @@ export default function Arena() {
                     </>
                   );
                 })()}
+
+                {/* Demone Evocato (Warlock) */}
+                {isWarlock && (
+                  <>
+                    <div className="loadout-section-title">
+                      👁 Demone Evocato — {pendingDemon ? "1/1" : "0/1"}
+                    </div>
+                    <div className="loadout-grid">
+                      {Object.values(WARLOCK_DEMONS).map(demon => {
+                        const isSelected = pendingDemon === demon.key;
+                        return (
+                          <button
+                            key={demon.key}
+                            className={`loadout-item ${isSelected ? "selected" : ""}`}
+                            onClick={() => setPendingDemon(isSelected ? null : demon.key)}
+                          >
+                            <span className="loadout-item-icon">{demon.icon}</span>
+                            <span className="loadout-item-name">{demon.name}</span>
+                            <span className="loadout-item-info">{demon.info}</span>
+                            {isSelected && <span className="loadout-check">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
 
                 {/* Costrutto (Artefice) */}
                 {isArtificerClass((charPreview.class || "").toLowerCase()) && (
@@ -6525,6 +6683,59 @@ export default function Arena() {
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
                                 <span className="action-dice">{noUses ? "Esaurita" : `${action.damage} +💚`}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "demon_mephit") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const baUsed = !!myPlayer?.bonusActionUsed;
+                            const blocked = noUses || baUsed || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={baUsed ? "Bonus action già usata questo turno" : noUses ? "Cariche esaurite" : "Bonus action · 1d8+2 fuoco"}
+                                onClick={() => !blocked && handleDemonMephit(m.matchId, chosenTargetId, action)}>
+                                <span className="bonus-action-tag">⚡ Bonus</span>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{baUsed ? "⚡ Usata" : noUses ? "Esaurita" : action.damage}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "demon_succubus") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const blocked = noUses || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={noUses ? "Cariche esaurite" : "TS CAR (CD 13): fallisce 2t · supera 1t"}
+                                onClick={() => !blocked && handleDemonSuccubus(m.matchId, chosenTargetId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{noUses ? "Esaurita" : "TS CAR · 1-2t"}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
+                          if (action.special === "demon_greater") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const blocked = noUses || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={noUses ? "Cariche esaurite" : "2d6+3 auto-hit + drena 1d4 PF"}
+                                onClick={() => !blocked && handleDemonGreater(m.matchId, chosenTargetId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{noUses ? "Esaurito" : `${action.damage} +💚`}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
