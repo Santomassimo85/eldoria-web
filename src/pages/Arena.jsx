@@ -464,28 +464,29 @@ const RANGER_PETS = {
 const WARLOCK_DEMONS = {
   mephit: {
     key: "mephit", name: "Mephit di Fiamma", icon: "🔥",
-    info: "Bonus action · il mephit lancia fiamme per 1d8+2 · 3 cariche",
+    info: "Bonus action · brucia il nemico: 1d8+2 fuoco per 3 turni · 3 cariche",
     action: {
-      name: "Mephit di Fiamma", hitBonus: 0, damage: "1d8+2", statKey: null,
-      type: "skill", icon: "🔥", info: "Bonus Action · 1d8+2 danni da fuoco automatici · 3 cariche",
+      name: "Mephit di Fiamma", hitBonus: 0, damage: "—", statKey: null,
+      type: "skill", icon: "🔥", info: "Bonus Action · brucia il nemico: 1d8+2 fuoco a inizio turno per 3 turni · 3 cariche",
       special: "demon_mephit", maxUses: 3, bonusAction: true,
+      burnTurns: 3, burnDice: "1d8+2",
     },
   },
   succubus: {
     key: "succubus", name: "Succubus", icon: "💋",
-    info: "La Succubus ammalia il nemico · TS CAR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
+    info: "Ammalia il nemico · TS CAR (CD 13) · fallisce 3t + svantaggio 3t · supera 1t + svantaggio 2t · 2 cariche",
     action: {
       name: "Bacio della Succubus", hitBonus: 0, damage: "—", statKey: null,
-      type: "skill", icon: "💋", info: "TS CAR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
+      type: "skill", icon: "💋", info: "TS CAR (CD 13) · fallisce: salta 3t + svantaggio 3t · supera: salta 1t + svantaggio 2t · 2 cariche",
       special: "demon_succubus", saveAbility: "cha", saveDC: 13, maxUses: 2,
     },
   },
   demon: {
     key: "demon", name: "Demone Maggiore", icon: "👹",
-    info: "Drena 2d6+3 PF dal bersaglio · cura 1d4 al warlock · 2 cariche",
+    info: "Drena 2d6+2 PF dal bersaglio · cura il warlock per la stessa quantità · 2 cariche",
     action: {
-      name: "Drenaggio Demoniaco", hitBonus: 0, damage: "2d6+3", statKey: null,
-      type: "skill", icon: "👹", info: "2d6+3 danni auto-hit + cura 1d4 PF · 2 cariche",
+      name: "Drenaggio Demoniaco", hitBonus: 0, damage: "2d6+2", statKey: null,
+      type: "skill", icon: "👹", info: "2d6+2 danni auto-hit · cura il warlock per la stessa quantità · 2 cariche",
       special: "demon_greater", maxUses: 2,
     },
   },
@@ -3238,29 +3239,32 @@ export default function Arena() {
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const { total: rawDmg, rolls } = rollDmg(action.damage);
-    const targetSnapPre = arenaMeta.characterSnapshots?.[targetId];
-    const targetMatchPre = myMatch?.players.find(p => p.id === targetId);
-    const dmg = applyBarbarianRageReduction(rawDmg, targetSnapPre, targetMatchPre, false);
+    const burnTurns = action.burnTurns ?? 3;
+    const burnDice  = action.burnDice  ?? "1d8+2";
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
       const targetName = targetSnap?.name || "?";
-      const rawPlayers = m.players.map(p => {
+      const updatedPlayers = m.players.map(p => {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
         }
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        if (p.id === targetId) return {
+          ...p,
+          poisonDoT: true,
+          poisonDoTTurns: burnTurns,
+          poisonDoTDice: burnDice,
+          poisonDoTNoun: "in fiamme",
+          poisonDoTSourceLabel: "fuoco",
+          poisonDoTIcon: "🔥",
+        };
         return p;
       });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🔥 Il Mephit di ${myName} avvolge ${targetName} nelle fiamme 🎲(${rolls})=${dmg} danni da fuoco! · bonus action`;
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      const log = `🔥 Il Mephit di ${myName} brucia ${targetName}! Subirà ${burnDice} fuoco a inizio turno per ${burnTurns} turni. · bonus action`;
       // Bonus action: il turno NON avanza.
-      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -3276,7 +3280,8 @@ export default function Arena() {
     await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
     const tsTotal = d20 + defMod;
     const saved = tsTotal >= saveDC;
-    const lostTurns = saved ? 1 : 2;
+    const lostTurns      = saved ? 1 : 3;
+    const disadvantageT  = saved ? 2 : 3;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -3285,12 +3290,16 @@ export default function Arena() {
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
-        if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
+        if (p.id === targetId) return {
+          ...p,
+          controlLostTurns: lostTurns,
+          attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, disadvantageT),
+        };
         return p;
       });
       const log = saved
-        ? `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno.`
-        : `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 2 turni.`;
+        ? `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno · svantaggio per 2 turni.`
+        : `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 3 turni · svantaggio per 3 turni.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3301,7 +3310,6 @@ export default function Arena() {
     const { total: rawDmg, rolls } = rollDmg(action.damage);
     const _demonMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _demonMatch?.players.find(p => p.id === targetId), false);
-    const { total: heal, rolls: healRolls } = rollDmg("1d4");
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -3311,13 +3319,13 @@ export default function Arena() {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           const maxHp = p.maxHp || p.hp;
-          return { ...p, hp: Math.min(maxHp, p.hp + heal), ...tickEagleEnd(p), actionUsesLeft: newUses };
+          return { ...p, hp: Math.min(maxHp, p.hp + dmg), ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
         return p;
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `👹 Il Demone di ${myName} drena ${targetName} 🎲(${rolls})=${dmg} danni e ridona al padrone 🎲(${healRolls})=${heal} PF!`;
+      const log = `👹 Il Demone di ${myName} drena ${targetName} 🎲(${rolls})=${dmg} PF e ridona al padrone gli stessi ${dmg} PF!`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
@@ -3481,7 +3489,7 @@ export default function Arena() {
     setRecuperoLv2Selected([]);
   };
 
-  // ── POISON DOT — applica veleno una volta per turno (dado configurabile) ────
+  // ── POISON DOT — applica DoT una volta per turno (dado/flavor configurabili) ──
   const handleResolvePoisonDoT = async (matchId) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
@@ -3490,25 +3498,32 @@ export default function Arena() {
     // Già risolto in questo stesso turno: non riapplicare.
     if (me?.poisonResolvedTurnToken && me.poisonResolvedTurnToken === turnTokenAtClick) return;
     const dice = me?.poisonDoTDice || "1d6";
+    const sourceLabel = me?.poisonDoTSourceLabel || "veleno";
+    const icon = me?.poisonDoTIcon || "☠";
     const { total: poisonDmg, rolls: poisonRolls } = rollDmg(dice);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const rawPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
         const remainingDoT = Math.max(0, (p.poisonDoTTurns ?? 1) - 1);
-        const stillPoisoned = remainingDoT > 0;
+        const stillAfflicted = remainingDoT > 0;
         const patch = {
           ...p,
           hp: Math.max(0, (p.hp ?? 0) - poisonDmg),
-          poisonDoT: stillPoisoned,
+          poisonDoT: stillAfflicted,
           poisonDoTTurns: remainingDoT,
           poisonResolvedTurnToken: m.turnExpiry || "",
         };
-        if (!stillPoisoned) patch.poisonDoTDice = null;
+        if (!stillAfflicted) {
+          patch.poisonDoTDice = null;
+          patch.poisonDoTNoun = null;
+          patch.poisonDoTSourceLabel = null;
+          patch.poisonDoTIcon = null;
+        }
         return patch;
       });
       const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `☠ ${myName} subisce il veleno: ${poisonDmg} danni [🎲${dice}=${poisonRolls}]!`;
+      const log = `${icon} ${myName} subisce il ${sourceLabel}: ${poisonDmg} danni [🎲${dice}=${poisonRolls}]!`;
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -6344,15 +6359,20 @@ export default function Arena() {
                       );
                     })()}
 
-                    {/* ── Veleno DoT — risolvi prima di agire ── */}
-                    {!pendingDexSave && !pendingConSave && !pendingControlSave && !pendingSaveDot && pendingPoisonDoT && (
-                      <div className="save-block con">
-                        <p className="save-block-label">☠ Sei avvelenato! Subisci {myPlayer?.poisonDoTDice || "1d6"} danni da veleno ({myPlayer?.poisonDoTTurns ?? 1} turno/i rimanenti) — poi puoi agire.</p>
-                        <button className="btn-saving-throw" onClick={() => handleResolvePoisonDoT(m.matchId)}>
-                          🎲 Subisci danno da veleno
-                        </button>
-                      </div>
-                    )}
+                    {/* ── DoT (Veleno / Fuoco / …) — risolvi prima di agire ── */}
+                    {!pendingDexSave && !pendingConSave && !pendingControlSave && !pendingSaveDot && pendingPoisonDoT && (() => {
+                      const dotIcon   = myPlayer?.poisonDoTIcon || "☠";
+                      const dotNoun   = myPlayer?.poisonDoTNoun || "avvelenato";
+                      const dotSource = myPlayer?.poisonDoTSourceLabel || "veleno";
+                      return (
+                        <div className="save-block con">
+                          <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.poisonDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.poisonDoTTurns ?? 1} turno/i rimanenti) — poi puoi agire.</p>
+                          <button className="btn-saving-throw" onClick={() => handleResolvePoisonDoT(m.matchId)}>
+                            🎲 Subisci danno da {dotSource}
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {/* ── TS Save-DOT (Raggio Avvelenato) ── */}
                     {!pendingDexSave && !pendingConSave && !pendingControlSave && pendingSaveDot && (() => {
@@ -6692,16 +6712,18 @@ export default function Arena() {
                             const noUses = usesLeft <= 0;
                             const baUsed = !!myPlayer?.bonusActionUsed;
                             const blocked = noUses || baUsed || !chosenTargetId;
+                            const burnDice = action.burnDice ?? "1d8+2";
+                            const burnT    = action.burnTurns ?? 3;
                             return (
                               <button key={action.name}
                                 className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={baUsed ? "Bonus action già usata questo turno" : noUses ? "Cariche esaurite" : "Bonus action · 1d8+2 fuoco"}
+                                title={baUsed ? "Bonus action già usata questo turno" : noUses ? "Cariche esaurite" : `Bonus action · brucia: ${burnDice} fuoco per ${burnT} turni`}
                                 onClick={() => !blocked && handleDemonMephit(m.matchId, chosenTargetId, action)}>
                                 <span className="bonus-action-tag">⚡ Bonus</span>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{baUsed ? "⚡ Usata" : noUses ? "Esaurita" : action.damage}</span>
+                                <span className="action-dice">{baUsed ? "⚡ Usata" : noUses ? "Esaurita" : `🔥 ${burnDice}×${burnT}t`}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
@@ -6714,11 +6736,11 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={noUses ? "Cariche esaurite" : "TS CAR (CD 13): fallisce 2t · supera 1t"}
+                                title={noUses ? "Cariche esaurite" : "TS CAR (CD 13): fallisce 3t+svant.3t · supera 1t+svant.2t"}
                                 onClick={() => !blocked && handleDemonSuccubus(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{noUses ? "Esaurita" : "TS CAR · 1-2t"}</span>
+                                <span className="action-dice">{noUses ? "Esaurita" : "TS CAR · 1-3t + 🌑"}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
@@ -6731,11 +6753,11 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={noUses ? "Cariche esaurite" : "2d6+3 auto-hit + drena 1d4 PF"}
+                                title={noUses ? "Cariche esaurite" : "Drena 2d6+2 PF · cura il warlock per la stessa quantità"}
                                 onClick={() => !blocked && handleDemonGreater(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{noUses ? "Esaurito" : `${action.damage} +💚`}</span>
+                                <span className="action-dice">{noUses ? "Esaurito" : `${action.damage} ↺💚`}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
