@@ -34,6 +34,28 @@ const BOSS_SYSTEM_UID = "BOSS_MSG";
 const PLAYER_TURN_DURATION = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION = 1 * 60 * 60 * 1000;
 
+// Detect what a spell does so we can route it (heal ally / buff allies / debuff boss / attack).
+// Inferred from the action name + description (Italian + English keywords).
+function detectSpellIntent(action) {
+  const cat = (action.category || "").toLowerCase();
+  // Weapons always attack
+  if (/armi|arma|weapon/.test(cat)) return "attack";
+  const text = `${action.name || ""} ${action.description || ""}`.toLowerCase();
+  // Heal — most specific first
+  if (/\bcur(a|are|i|ato)\b|guarisc|guarigione|cure wounds|healing|tocco curativ|parola guarit|rigenera|ristoro|bende sacre/i.test(text)) return "heal";
+  // Buff (positive effect on allies)
+  if (/ispirazion|inspiration|benedic|bless|\baid\b|aiuto magico|scudo della fede|shield of faith|\bhaste\b|velocità|guida|guidance|favore divin|protezione dal|eroismo|heroism|coraggio/i.test(text)) return "buff";
+  // Debuff (negative effect on enemy / control)
+  if (/svantaggio|paura|spavent|maledizione|\bbane\b|malocchio|frighten|hold person|hold monster|tratteni|paralis|\bsonno\b|\bsleep\b|charme|charm|sciagura|disgrazia|nebbia|oscurità|ostacolo|rallenta|\bslow\b|taccia|silen(zio|ce)|debilita|indebol/i.test(text)) return "debuff";
+  return "attack";
+}
+
+// Spellcasting modifier: highest of INT/WIS/CHA — works for any caster class.
+function getSpellMod(charData) {
+  const s = charData?.stats || {};
+  return Math.max(s.int ?? 0, s.wis ?? 0, s.cha ?? 0);
+}
+
 export default function WorldBoss() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
@@ -59,6 +81,10 @@ export default function WorldBoss() {
     actedPlayers: [],
     fightStarted: false,
   });
+
+  // Spell target picker — opened when player casts a heal/buff spell that needs target selection.
+  // Shape: { action, intent: "heal" | "buff", selected: string[] }
+  const [spellPicker, setSpellPicker] = useState(null);
 
   const fightStarted = turnState.fightStarted === true;
 
@@ -421,9 +447,110 @@ export default function WorldBoss() {
     await updateDoc(doc(db, "battle_meta", "turn_tracker"), { actedPlayers: arrayUnion(currentUser.uid) });
   };
 
+  // ── HEAL SPELL: roll heal dice + spell mod, apply to a single ally (capped at maxHp) ──
+  const castHealOnTarget = async (action, targetId) => {
+    if (isUserLocked) return;
+    const target = players.find((p) => p.id === targetId);
+    if (!target) return;
+    const formula = action.damage && action.damage !== "0" ? action.damage : "1d8";
+    const spellMod = getSpellMod(charData);
+    const cleanFormula = String(formula).replace(/@mod/g, spellMod);
+    const healRoll = rollDice(cleanFormula);
+    const totalHeal = healRoll;
+    const currentHp = target.stats?.hp ?? 0;
+    const maxHp = target.stats?.maxHp ?? currentHp + totalHeal;
+    const newHp = Math.min(maxHp, currentHp + totalHeal);
+    const actualHealed = newHp - currentHp;
+    try {
+      await updateDoc(doc(db, "characters", targetId), { "stats.hp": newHp });
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (Cura)`,
+        damageRoll: `💚 Cura ${target.name?.split(" ")[0] || "alleato"}: +${actualHealed} HP (${currentHp}→${newHp})`,
+        description: `Tiro cura: ${cleanFormula} = ${healRoll}${spellMod !== 0 ? ` (incl. mod magia +${spellMod})` : ""}`,
+        uid: currentUser.uid, category: action.category || "Incantesimo",
+        timestamp: serverTimestamp(),
+        effect: "heal", effectTargets: [`player-${targetId}`],
+      });
+      await endMyTurn();
+    } catch (err) {
+      console.error("Errore cura:", err);
+    }
+  };
+
+  // ── BUFF SPELL: apply advantage on next roll to one or more allies ──
+  // Stores `nextTurnCondition: "advantage"` on each selected character — same field already used.
+  const castBuffOnTargets = async (action, targetIds) => {
+    if (isUserLocked || !targetIds.length) return;
+    try {
+      const batch = writeBatch(db);
+      targetIds.forEach((uid) => {
+        batch.update(doc(db, "characters", uid), { nextTurnCondition: "advantage" });
+      });
+      await batch.commit();
+      const names = targetIds
+        .map((uid) => players.find((p) => p.id === uid)?.name?.split(" ")[0] || "?")
+        .join(", ");
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (Buff)`,
+        damageRoll: `🌟 ${names}: vantaggio al prossimo tiro!`,
+        description: action.description || `${charData?.name || "Eroe"} potenzia gli alleati.`,
+        uid: currentUser.uid, category: action.category || "Incantesimo",
+        timestamp: serverTimestamp(),
+        effect: "buff", effectTargets: targetIds.map((id) => `player-${id}`),
+      });
+      await endMyTurn();
+    } catch (err) {
+      console.error("Errore buff:", err);
+    }
+  };
+
+  // ── DEBUFF SPELL: applies disadvantage to the boss's next attack roll ──
+  const castDebuffOnBoss = async (action) => {
+    const boss = activeBosses[0];
+    if (!boss || isUserLocked) return;
+    try {
+      await updateDoc(doc(db, "bosses", boss.id), {
+        nextTurnCondition: "disadvantage",
+        debuffSource: action.name || null,
+      });
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (Debuff)`,
+        damageRoll: `🌑 ${boss.name}: svantaggio al prossimo attacco!`,
+        description: action.description || `${charData?.name || "Eroe"} ostacola il Boss.`,
+        uid: currentUser.uid, category: action.category || "Incantesimo",
+        timestamp: serverTimestamp(),
+        effect: "debuff", effectTargets: ["boss"],
+      });
+      await endMyTurn();
+    } catch (err) {
+      console.error("Errore debuff:", err);
+    }
+  };
+
   const handleActionRoll = async (action) => {
     const boss = activeBosses[0];
     if (!boss || isUserLocked) return;
+
+    // Route spells by intent (heal/buff/debuff). Weapons always fall through to attack.
+    const intent = detectSpellIntent(action);
+    if (intent === "heal") {
+      setSpellPicker({ action, intent: "heal", selected: [] });
+      return;
+    }
+    if (intent === "buff") {
+      setSpellPicker({ action, intent: "buff", selected: [] });
+      return;
+    }
+    if (intent === "debuff") {
+      const ok = window.confirm(`Lanciare "${action.name}" sul Boss? Applicherà svantaggio al suo prossimo attacco.`);
+      if (!ok) return;
+      await castDebuffOnBoss(action);
+      return;
+    }
+
     const isAttack = action.category === "Armi" || action.category?.toLowerCase().includes("livello") || action.category === "Trucchetto";
     const condition = charData.nextTurnCondition;
     let d20, rollLabel;
@@ -507,7 +634,20 @@ export default function WorldBoss() {
   const handleBossRoll = async (boss, action) => {
     if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
     if (selectedTargets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
-    const d20 = Math.floor(Math.random() * 20) + 1;
+    // Consume any debuff condition (e.g. svantaggio applied by a player spell)
+    const condition = boss.nextTurnCondition;
+    let d20, rollLabel;
+    if (condition === "advantage" || condition === "disadvantage") {
+      const r1 = Math.floor(Math.random() * 20) + 1;
+      const r2 = Math.floor(Math.random() * 20) + 1;
+      d20 = condition === "advantage" ? Math.max(r1, r2) : Math.min(r1, r2);
+      rollLabel = `${condition === "advantage" ? "⬆ Vantaggio" : "⬇ Svantaggio"}[${r1},${r2}]→${d20}`;
+      // Clear after use so it only applies to one roll.
+      try { await updateDoc(doc(db, "bosses", boss.id), { nextTurnCondition: null, debuffSource: null }); } catch (_) {}
+    } else {
+      d20 = Math.floor(Math.random() * 20) + 1;
+      rollLabel = `d20(${d20})`;
+    }
     const bossBonus = parseInt(action.bonus) || 0;
     const hitTotal = d20 + bossBonus;
     const damageDealt = rollDice(action.damage || "1d6");
@@ -534,10 +674,11 @@ export default function WorldBoss() {
     const hitTargets = results.filter((r) => r.hit).map((r) => r.name).join(", ");
     const missedTargets = results.filter((r) => !r.hit).map((r) => r.name).join(", ");
     const hitTargetIds = results.filter((r) => r.hit).map((r) => `player-${r.id}`);
+    const condTag = condition === "disadvantage" ? " 🌑(svantaggio)" : condition === "advantage" ? " ⬆(vantaggio)" : "";
     await addDoc(collection(db, "world_boss_chat"), {
       uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Attacco Boss",
       actionName: action.name,
-      description: `Il Boss scatena ${action.name} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
+      description: `Il Boss scatena ${action.name}${condTag} · Tiro: ${rollLabel} + ${bossBonus} = ${hitTotal} (Danni: ${damageDealt})! ${hitTargets.length > 0 ? "Colpisce: " + hitTargets : ""}${missedTargets.length > 0 ? ". Mancati: " + missedTargets : ""}`,
       masterDetails: results, timestamp: serverTimestamp(),
       ...(hitTargetIds.length > 0 ? { effect: pickEffectForAction(action), effectTargets: hitTargetIds } : {}),
     });
@@ -1085,6 +1226,100 @@ export default function WorldBoss() {
           </div>
         </div>
       )}
+
+      {/* ── SPELL TARGET PICKER MODAL ───────────────────────────────────── */}
+      {spellPicker && (() => {
+        const { action, intent, selected } = spellPicker;
+        const eligible = players.filter((p) => (p.stats?.hp ?? 0) > 0);
+        const isHeal = intent === "heal";
+        const allSelected = !isHeal && selected.length === eligible.length && eligible.length > 0;
+        const toggleOne = (uid) => {
+          if (isHeal) {
+            setSpellPicker((s) => ({ ...s, selected: [uid] }));
+          } else {
+            setSpellPicker((s) => ({
+              ...s,
+              selected: s.selected.includes(uid)
+                ? s.selected.filter((x) => x !== uid)
+                : [...s.selected, uid],
+            }));
+          }
+        };
+        const toggleAll = () => {
+          setSpellPicker((s) => ({
+            ...s,
+            selected: allSelected ? [] : eligible.map((p) => p.id),
+          }));
+        };
+        const confirm = async () => {
+          if (selected.length === 0) return;
+          if (isHeal) {
+            await castHealOnTarget(action, selected[0]);
+          } else {
+            await castBuffOnTargets(action, selected);
+          }
+          setSpellPicker(null);
+        };
+        return (
+          <div className="rpg-spell-picker-backdrop" onClick={() => setSpellPicker(null)}>
+            <div className="rpg-spell-picker" onClick={(e) => e.stopPropagation()}>
+              <div className="rpg-spell-picker-head">
+                <div>
+                  <div className="rpg-spell-picker-icon">{isHeal ? "💚" : "🌟"}</div>
+                  <h3>{isHeal ? "Cura un alleato" : "Buff agli alleati"}</h3>
+                  <p className="rpg-spell-picker-spell">{action.name}</p>
+                  {action.description && <p className="rpg-spell-picker-desc">{action.description}</p>}
+                </div>
+                <button className="rpg-spell-picker-close" onClick={() => setSpellPicker(null)} aria-label="Chiudi">✕</button>
+              </div>
+
+              {!isHeal && eligible.length > 1 && (
+                <button className="rpg-spell-picker-all" onClick={toggleAll}>
+                  {allSelected ? "✓ Tutti selezionati · clic per deselezionare" : "👥 Seleziona TUTTI gli alleati"}
+                </button>
+              )}
+
+              <div className="rpg-spell-picker-list">
+                {eligible.length === 0 ? (
+                  <p className="rpg-spell-picker-empty">Nessun alleato vivo da bersagliare.</p>
+                ) : eligible.map((p) => {
+                  const isOn = selected.includes(p.id);
+                  const hp = p.stats?.hp ?? 0;
+                  const maxHp = p.stats?.maxHp ?? hp;
+                  const pct = maxHp > 0 ? Math.round((hp / maxHp) * 100) : 0;
+                  return (
+                    <button
+                      key={p.id}
+                      className={`rpg-spell-picker-row ${isOn ? "on" : ""}`}
+                      onClick={() => toggleOne(p.id)}
+                    >
+                      <span className="rpg-spell-picker-mark">
+                        {isHeal ? (isOn ? "●" : "○") : (isOn ? "✓" : "")}
+                      </span>
+                      {p.image
+                        ? <img src={p.image} alt="" className="rpg-spell-picker-avatar" />
+                        : <span className="rpg-spell-picker-avatar placeholder">{(p.name || "?").charAt(0)}</span>}
+                      <span className="rpg-spell-picker-name">{p.name || "?"}</span>
+                      <span className="rpg-spell-picker-hp">{hp}/{maxHp} HP ({pct}%)</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="rpg-spell-picker-foot">
+                <button className="rpg-spell-picker-cancel" onClick={() => setSpellPicker(null)}>Annulla</button>
+                <button
+                  className="rpg-spell-picker-confirm"
+                  disabled={selected.length === 0}
+                  onClick={confirm}
+                >
+                  {isHeal ? "💚 Cura" : `🌟 Lancia su ${selected.length || 0} ${selected.length === 1 ? "alleato" : "alleati"}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

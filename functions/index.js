@@ -186,7 +186,7 @@ async function sendPush({ uids, title, body, url, tag }) {
   if (tokens.length === 0) return;
 
   const messaging = admin.messaging();
-  const safeTitle = title || "Exanthia";
+  const safeTitle = title || "Crit Happens";
   const safeBody  = body  || "Apri l'app per i dettagli.";
   // Keep url in `data` so onMessage / SW notificationclick can read it,
   // but put title/body inside webpush.notification so the OS can render the
@@ -249,7 +249,7 @@ exports.pushOnNotification = onDocumentCreated('notifications/{id}', async (even
   if (!data?.userId) return;
   await sendPush({
     uids: [data.userId],
-    title: data.title || "Exanthia",
+    title: data.title || "Crit Happens",
     body: data.message || "",
     url: "/notifications",
     tag: `notif-${event.params.id}`,

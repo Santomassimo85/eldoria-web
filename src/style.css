@@ -184,24 +184,21 @@ header {
 }
 
 .logo {
-     font-weight: bold;
-     font-size: 2rem;
+     display: flex;
+     align-items: center;
      margin-left: 10%;
-     background: linear-gradient(45deg, var(--red), var(--gold));
-     -webkit-background-clip: text;
-     background-clip: text;
-     color: transparent;
      user-select: none;
      z-index: 2;
-     text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.1);
+     text-decoration: none;
+     transition: transform 0.18s ease;
 }
+.logo:hover { transform: scale(1.04); }
 
-.logo span {
-     font-size: 0.8em;
-     color: var(--gold);
-     text-shadow: #614e2a 1px 1px 2px;
-     margin-left: 4px;
-     z-index: 2;
+.logo-img {
+     height: 64px;
+     width: auto;
+     display: block;
+     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
 }
 
 nav {
@@ -1216,6 +1213,7 @@ input {
 /* ============================================================
    RARITY COLOR PALETTE  (used by player showcase + admin table)
    ============================================================ */
+/* Legacy class names — kept for items already in DB */
 .rarity-Comune        { color: #f5f5f5; background: linear-gradient(135deg, #6b6b6b, #4a4a4a); }
 .rarity-Raro          { color: #fff; background: linear-gradient(135deg, #2c8fd6, #1a5d99); }
 .rarity-Magico        { color: #fff; background: linear-gradient(135deg, #8b5cf6, #5b21b6); }
@@ -1227,6 +1225,20 @@ input {
 .rarity-bg-Magico       { --rarity-tint: rgba(139,92,246,0.18); --rarity-edge: #8b5cf6; }
 .rarity-bg-Epico        { --rarity-tint: rgba(217,119,6,0.18);  --rarity-edge: #d97706; }
 .rarity-bg-Leggendario  { --rarity-tint: rgba(212,175,55,0.22); --rarity-edge: #d4af37; }
+
+/* New rarity scheme — matches mercato-nero-pricing.html
+   (item.class is stripped of spaces: "Non comune" → "Noncomune" etc.) */
+.rarity-Noncomune     { color: #053; background: linear-gradient(135deg, #4ade80, #16a34a); }
+.rarity-Rara          { color: #fff; background: linear-gradient(135deg, #60a5fa, #2563eb); }
+.rarity-Moltorara     { color: #fff; background: linear-gradient(135deg, #c084fc, #7e22ce); }
+.rarity-Leggendaria   { color: #2a1500; background: linear-gradient(135deg, #fb923c, #c2410c); box-shadow: 0 0 10px rgba(251,146,60,0.45); }
+.rarity-Artefatto     { color: #fff; background: linear-gradient(135deg, #ef4444, #991b1b); box-shadow: 0 0 12px rgba(239,68,68,0.55); }
+
+.rarity-bg-Noncomune    { --rarity-tint: rgba(74,222,128,0.18);  --rarity-edge: #16a34a; }
+.rarity-bg-Rara         { --rarity-tint: rgba(96,165,250,0.18);  --rarity-edge: #2563eb; }
+.rarity-bg-Moltorara    { --rarity-tint: rgba(192,132,252,0.18); --rarity-edge: #7e22ce; }
+.rarity-bg-Leggendaria  { --rarity-tint: rgba(251,146,60,0.22);  --rarity-edge: #c2410c; }
+.rarity-bg-Artefatto    { --rarity-tint: rgba(239,68,68,0.22);   --rarity-edge: #991b1b; }
 
 /* ============================================================
    PLAYER SHOWCASE  —  detail page for the buyer
@@ -3037,8 +3049,10 @@ a {
      }
 
      .logo {
-          font-size: 1.4rem;
           margin-left: 2%;
+     }
+     .logo-img {
+          height: 48px;
      }
 }
 
@@ -3121,7 +3135,9 @@ a {
 
      .logo {
           margin-left: 0;
-          font-size: 1.4rem;
+     }
+     .logo-img {
+          height: 52px;
      }
 
      .burger.open + nav {

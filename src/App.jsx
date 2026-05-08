@@ -107,6 +107,24 @@ const AdminNavLink = ({ closeMenu }) => {
   return null;
 };
 
+// --- Master-only link to the offline pricing tool (opens in a new tab) ---
+const MasterPricingLink = ({ closeMenu }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  return (
+    <a
+      href="/mercato-nero-pricing.html"
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={closeMenu}
+      style={{ color: "var(--gold)", fontStyle: "italic" }}
+      title="Listino prezzi del Mercato Nero · solo Master"
+    >
+      💀 Listino MN (DM)
+    </a>
+  );
+};
+
 // ── PRESENZA ONLINE ───────────────────────────────────────────────────────────
 function relTime(ms) {
   const sec = Math.floor((Date.now() - ms) / 1000);
@@ -268,10 +286,9 @@ export default function App() {
     <AuthProvider>
       <NotificationOptIn />
       <header>
-        <div className="logo">
-          E X A N T H I A<br />
-          <span>Chronicles</span>
-        </div>
+        <NavLink to="/" className="logo" onClick={closeMenu} aria-label="Crit Happens — Home">
+          <img src="/assets/CritHappensLOGO.png" alt="Crit Happens" className="logo-img" />
+        </NavLink>
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}
         <div className="header-right">
@@ -300,6 +317,7 @@ export default function App() {
 
           <NavDropdown label="Gilda" closeAll={closeMenu}>
             <NavLink to="/mercato">Mercato Nero</NavLink>
+            <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
             <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
             <NavLink to="/cinema">Cinema</NavLink>

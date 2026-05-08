@@ -35,7 +35,7 @@ export default function AdminPanel() {
 
   return (
     <section className="admin-page">
-      <h1 className="admin-page-title">Exanthia Administration Panel</h1>
+      <h1 className="admin-page-title">Crit Happens · Administration Panel</h1>
       <div className="admin-divider"><span className="admin-divider-icon">⚔</span></div>
 
       <p style={{ textAlign: "center", marginBottom: 36, color: "#666", fontSize: "0.9rem" }}>

@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "short_name": "Exanthia",
-  "name": "Exanthia: Archivio Geomantico",
-  "description": "L'archivio ufficiale delle cronache e della geomantia di Exanthia.",
+  "short_name": "Crit Happens",
+  "name": "Crit Happens — Archivio di Exanthia",
+  "description": "L'archivio ufficiale della campagna Crit Happens, ambientata nel mondo di Exanthia.",
   "icons": [
     {
       "src": "/logo192.png?v=2",
@@ -29,14 +29,14 @@
     "sizes": "402x883",
     "type": "image/png",
     "form_factor": "narrow",
-    "label": "Exanthia Mobile"
+    "label": "Crit Happens Mobile"
   },
   {
     "src": "/screenshot-desktop.png",
     "sizes": "1614x1165",
     "type": "image/png",
     "form_factor": "wide",
-    "label": "Exanthia Desktop"
+    "label": "Crit Happens Desktop"
   }
 ],
   "start_url": "/",

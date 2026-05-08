@@ -1480,6 +1480,79 @@
 }
 .mkadm-inv-price { font-size: 0.78rem; color: #555; }
 .mkadm-inv-price strong { color: var(--red); font-family: var(--font-title); font-size: 0.95rem; }
+
+/* Inline quick-edit price input on inventory cards */
+.mkadm-inv-price-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #555;
+}
+.mkadm-inv-price-prefix,
+.mkadm-inv-price-suffix {
+  color: #888;
+  font-size: 0.74rem;
+}
+.mkadm-inv-price-input {
+  width: 64px;
+  padding: 3px 6px;
+  font-family: var(--font-title), serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--red);
+  background: #fffaf0;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 4px;
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.mkadm-inv-price-input::-webkit-outer-spin-button,
+.mkadm-inv-price-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.mkadm-inv-price-input:hover { border-color: var(--gold); }
+.mkadm-inv-price-input:focus {
+  outline: none;
+  border-color: var(--red);
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(176, 48, 48, 0.18);
+}
+.mkadm-inv-price-input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.mkadm-inv-price-edit-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.mkadm-price-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 8px;
+  border: 1px solid;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+}
+
+/* Form price suggestion (under the "Base d'asta" input) */
+.mkadm-price-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.mkadm-price-hint-icon { font-size: 0.95rem; }
 .mkadm-inv-bids {
   font-size: 0.7rem;
   background: #fff1e0;

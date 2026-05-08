@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mercato Nero · Listino Prezzi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-1: #0d0a08;
+    --bg-2: #1a140f;
+    --bg-card: #1f1812;
+    --gold: #c9a14a;
+    --gold-soft: #8b6f30;
+    --text: #d8c89a;
+    --text-dim: #9b8868;
+    --red: #b03030;
+
+    --comune: #9ca3af;
+    --non-comune: #4ade80;
+    --rara: #60a5fa;
+    --molto-rara: #c084fc;
+    --leggendaria: #fb923c;
+    --artefatto: #ef4444;
+  }
+
+  body {
+    background: radial-gradient(ellipse at top, var(--bg-2), var(--bg-1) 70%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Georgia', 'Garamond', serif;
+    min-height: 100vh;
+    line-height: 1.5;
+    padding: 30px 20px 80px;
+  }
+
+  .container { max-width: 1180px; margin: 0 auto; }
+
+  /* ─── HEADER ─── */
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    padding: 22px 20px;
+    border-bottom: 2px solid var(--gold-soft);
+    border-top: 2px solid var(--gold-soft);
+  }
+  h1 {
+    font-size: clamp(1.5rem, 4vw, 2.4rem);
+    color: var(--gold);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .subtitle { color: var(--text-dim); font-style: italic; font-size: 0.92rem; }
+
+  /* ─── LEGEND ─── */
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+    margin-bottom: 36px;
+  }
+  .legend-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-soft);
+    border-top: 3px solid var(--tier-color);
+    border-radius: 4px;
+    padding: 10px 14px;
+    text-align: center;
+  }
+  .legend-name { color: var(--tier-color); font-weight: 700; font-size: 0.84rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .legend-range { color: var(--gold); font-weight: 700; font-size: 1.05rem; margin-top: 2px; }
+
+  /* ─── CATEGORY ─── */
+  .category-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 38px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--gold-soft);
+  }
+  .category-icon { font-size: 1.6rem; }
+  .category-title {
+    color: var(--gold);
+    font-size: 1.5rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .category-count {
+    color: var(--text-dim);
+    font-size: 0.86rem;
+    margin-left: auto;
+  }
+
+  /* ─── TIER GROUP ─── */
+  .tier-group {
+    margin-bottom: 20px;
+  }
+  .tier-label {
+    display: inline-block;
+    color: #0d0a08;
+    background: var(--tier-color);
+    padding: 4px 14px;
+    border-radius: 2px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 10px;
+  }
+
+  .item-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 6px;
+  }
+  .item-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 12px 8px 14px;
+    background: var(--bg-card);
+    border-left: 3px solid var(--tier-color);
+    border-radius: 3px;
+  }
+  .item-info { min-width: 0; }
+  .item-name {
+    color: var(--gold);
+    font-weight: 600;
+    font-size: 0.96rem;
+    line-height: 1.3;
+  }
+  .item-desc {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    font-style: italic;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .item-price {
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 1.15rem;
+    white-space: nowrap;
+  }
+  .item-price small {
+    color: var(--text-dim);
+    font-size: 0.66rem;
+    font-weight: 400;
+    margin-left: 2px;
+    letter-spacing: 0.08em;
+  }
+
+  /* ─── ECONOMY NOTE ─── */
+  .economy-note {
+    background: var(--bg-card);
+    border: 1px dashed var(--gold-soft);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    color: var(--text-dim);
+    font-size: 0.86rem;
+    text-align: center;
+  }
+  .economy-note strong { color: var(--gold); }
+
+  @media print {
+    body { background: white; color: black; }
+    .item-row { background: #f5f1e6; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>💀 Mercato Nero · Listino</h1>
+    <p class="subtitle">Riferimento prezzi rapido per ogni categoria</p>
+  </header>
+
+  <div class="economy-note">
+    <strong>Reddito giocatori:</strong> 30–70 MP/sett · <strong>Top wallet:</strong> 180 MP · <strong>Secondo:</strong> 150 MP · <strong>Altri:</strong> &lt; 100 MP
+  </div>
+
+  <!-- ─── LEGENDA RARITÀ ─── -->
+  <div class="legend">
+    <div class="legend-card" style="--tier-color: var(--comune);"><div class="legend-name">Comune</div><div class="legend-range">5–15 MP</div></div>
+    <div class="legend-card" style="--tier-color: var(--non-comune);"><div class="legend-name">Non comune</div><div class="legend-range">20–50 MP</div></div>
+    <div class="legend-card" style="--tier-color: var(--rara);"><div class="legend-name">Rara</div><div class="legend-range">60–120 MP</div></div>
+    <div class="legend-card" style="--tier-color: var(--molto-rara);"><div class="legend-name">Molto rara</div><div class="legend-range">150–280 MP</div></div>
+    <div class="legend-card" style="--tier-color: var(--leggendaria);"><div class="legend-name">Leggendaria</div><div class="legend-range">350–600 MP</div></div>
+    <div class="legend-card" style="--tier-color: var(--artefatto);"><div class="legend-name">Artefatto</div><div class="legend-range">800+ MP</div></div>
+  </div>
+
+  <!-- ═══ CONSUMABILI ═══ -->
+  <div class="category-header">
+    <span class="category-icon">🧪</span>
+    <h2 class="category-title">Consumabili</h2>
+    <span class="category-count">monouso · pozioni · veleni · pergamene · bombe</span>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--comune);">Comune · 5–15 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Pozione di cura minore</div><div class="item-desc">Cura 1d4+2 PF</div></div><div class="item-price">6<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Veleno semplice</div><div class="item-desc">1d4 dmg, 1 dose</div></div><div class="item-price">8<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Antitossina</div><div class="item-desc">Vantaggio TS veleno per 1h</div></div><div class="item-price">10<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Pergamena cantrip</div><div class="item-desc">Lancia un cantrip una volta</div></div><div class="item-price">12<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Polvere fumogena</div><div class="item-desc">Oscurità per 1d10 round</div></div><div class="item-price">15<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--non-comune); color: #0d0a08;">Non comune · 20–50 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Pozione di cura</div><div class="item-desc">Cura 2d4+2 PF</div></div><div class="item-price">20<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Veleno di mantide</div><div class="item-desc">1d6+1 dmg, 2 dosi</div></div><div class="item-price">30<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Pergamena Lv.1</div><div class="item-desc">Lancia un incantesimo di livello 1</div></div><div class="item-price">35<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Polvere di tracciamento</div><div class="item-desc">Rivela tracce per 1 ora</div></div><div class="item-price">35<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Pozione di velocità</div><div class="item-desc">+10 ft, +1 azione · 3 round</div></div><div class="item-price">45<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Bomba alchemica</div><div class="item-desc">2d6 in area piccola</div></div><div class="item-price">45<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--rara); color: #0d0a08;">Rara · 60–120 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Pozione di cura superiore</div><div class="item-desc">Cura 4d4+4 PF</div></div><div class="item-price">65<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Pozione respiro acquatico</div><div class="item-desc">Respira sott'acqua per 8h</div></div><div class="item-price">70<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Veleno paralizzante</div><div class="item-desc">TS COS 13 o paralisi 1 round</div></div><div class="item-price">80<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Pergamena Lv.2 (Invisibilità)</div><div class="item-desc">Lancia Invisibilità</div></div><div class="item-price">90<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Pergamena Lv.2 (Suggestione)</div><div class="item-desc">Lancia Suggestione</div></div><div class="item-price">100<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Bomba ardente</div><div class="item-desc">3d6 area + brucia 1d4 per 1 round</div></div><div class="item-price">100<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--molto-rara); color: #0d0a08;">Molto rara · 150–280 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Pozione di guarigione completa</div><div class="item-desc">Cura 8d4+8 PF</div></div><div class="item-price">180<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Filtro di vera invisibilità</div><div class="item-desc">Invisibilità senza concentrazione · 1 min</div></div><div class="item-price">220<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Pergamena Lv.3 (Volo)</div><div class="item-desc">Lancia Volo</div></div><div class="item-price">220<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Pergamena Lv.3 (Palla di Fuoco)</div><div class="item-desc">Lancia Palla di Fuoco</div></div><div class="item-price">240<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Veleno assassino</div><div class="item-desc">TS COS 16 o 6d6 dmg</div></div><div class="item-price">250<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Pergamena Lv.3 (Controincanto)</div><div class="item-desc">Lancia Controincanto</div></div><div class="item-price">260<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--leggendaria); color: #0d0a08;">Leggendaria · 350–600 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Pergamena Lv.4</div><div class="item-desc">Lancia un incantesimo di livello 4</div></div><div class="item-price">400<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Lacrima d'angelo</div><div class="item-desc">Rimuove qualunque maledizione</div></div><div class="item-price">450<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Polvere di stelle</div><div class="item-desc">Resurrezione minore (entro 1 minuto)</div></div><div class="item-price">480<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Sangue celestiale</div><div class="item-desc">Componente per Resurrezione</div></div><div class="item-price">500<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Pergamena Lv.5</div><div class="item-desc">Lancia un incantesimo di livello 5</div></div><div class="item-price">550<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Sangue di drago</div><div class="item-desc">Resistenza al tipo del drago per 1h</div></div><div class="item-price">600<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Cuore di lich</div><div class="item-desc">Componente per necromanzia epica</div></div><div class="item-price">700<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ EQUIPAGGIAMENTO ═══ -->
+  <div class="category-header">
+    <span class="category-icon">⚔️</span>
+    <h2 class="category-title">Equipaggiamento</h2>
+    <span class="category-count">permanente · armi · armature · accessori magici</span>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--comune);">Comune · 5–25 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Anello da mendicante</div><div class="item-desc">Sembri povero · vantaggio Inganno per nasconderti in vista</div></div><div class="item-price">8<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Pugnale ben fatto</div><div class="item-desc">Masterwork · +1 a Fabbro / Estetica</div></div><div class="item-price">12<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Borsa nascosta</div><div class="item-desc">+1 furtività con oggetti nascosti</div></div><div class="item-price">12<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Cinta del facchino</div><div class="item-desc">+1 capacità di carico (narrativo)</div></div><div class="item-price">15<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Ferro da scasso fortunato</div><div class="item-desc">+1 a Strumenti da scasso</div></div><div class="item-price">18<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Trinket fortunato</div><div class="item-desc">1/sessione ritira un d20</div></div><div class="item-price">20<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Mantello da viaggiatore</div><div class="item-desc">+1 furtività</div></div><div class="item-price">20<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Lente del falsario</div><div class="item-desc">Vantaggio a Indagare documenti</div></div><div class="item-price">22<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Brace incantata</div><div class="item-desc">Focus arcano economico</div></div><div class="item-price">25<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--non-comune); color: #0d0a08;">Non comune · 60–80 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Pugnale +1</div><div class="item-desc">+1 hit · +1 dmg</div></div><div class="item-price">60<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Stivali elfici</div><div class="item-desc">Vantaggio a furtività</div></div><div class="item-price">60<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Bastone Lv.1</div><div class="item-desc">1 cantrip 3/giorno</div></div><div class="item-price">70<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Scudo +1</div><div class="item-desc">+3 CA totale</div></div><div class="item-price">70<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Spada lunga +1</div><div class="item-desc">+1 hit · +1 dmg</div></div><div class="item-price">80<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Arco +1</div><div class="item-desc">+1 hit · +1 dmg</div></div><div class="item-price">80<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Anello di Protezione minore</div><div class="item-desc">+1 CA OPPURE +1 TS</div></div><div class="item-price">80<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--rara); color: #0d0a08;">Rara · 100–160 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Bastone del lupo</div><div class="item-desc">Parla con animali 1/giorno</div></div><div class="item-price">110<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Mantello di camuffamento</div><div class="item-desc">Vantaggio a nascondersi in vegetazione</div></div><div class="item-price">120<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Armatura +1 (cuoio/maglia)</div><div class="item-desc">+1 CA</div></div><div class="item-price">120<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Bracciali dell'arciere</div><div class="item-desc">+2 dmg con archi</div></div><div class="item-price">130<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Armatura +1 (piastre)</div><div class="item-desc">+1 CA</div></div><div class="item-price">150<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Anello di Protezione</div><div class="item-desc">+1 CA E +1 TS</div></div><div class="item-price">150<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Arma elementale</div><div class="item-desc">+1d6 fuoco/freddo/fulmine</div></div><div class="item-price">160<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--molto-rara); color: #0d0a08;">Molto rara · 260–330 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Arma +2</div><div class="item-desc">+2 hit · +2 dmg</div></div><div class="item-price">260<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Bastone Arcano</div><div class="item-desc">+1 CD agli incantesimi</div></div><div class="item-price">280<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Armatura +2</div><div class="item-desc">+2 CA</div></div><div class="item-price">300<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Anello di Volo</div><div class="item-desc">Volo 60 ft, 10 min/giorno</div></div><div class="item-price">300<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Spada del Critico</div><div class="item-desc">Crit range 19–20</div></div><div class="item-price">320<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Stivali del salto demoniaco</div><div class="item-desc">Teleport 30 ft, 2/giorno</div></div><div class="item-price">330<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--leggendaria); color: #0d0a08;">Leggendaria · 500–800 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Mantello dell'Aquila</div><div class="item-desc">Vantaggio a Percezione e Iniziativa</div></div><div class="item-price">500<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Mantello dello Spettro</div><div class="item-desc">Intangibile 1 round, 1/giorno</div></div><div class="item-price">550<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Arma +3</div><div class="item-desc">+3 hit · +3 dmg</div></div><div class="item-price">550<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Cintura del Titano</div><div class="item-desc">+2 FOR fisso</div></div><div class="item-price">600<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Calice della Vita</div><div class="item-desc">1/giorno cura 8d8 PF</div></div><div class="item-price">650<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Armatura +3</div><div class="item-desc">+3 CA</div></div><div class="item-price">650<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Bracciali Antimagici</div><div class="item-desc">Assorbe 1 incantesimo Lv ≤4 1/giorno</div></div><div class="item-price">700<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Anello del Desiderio Limitato</div><div class="item-desc">1 desiderio minore/anno</div></div><div class="item-price">800<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ SERVIZI ═══ -->
+  <div class="category-header">
+    <span class="category-icon">🗝</span>
+    <h2 class="category-title">Servizi</h2>
+    <span class="category-count">informazioni · documenti · contratti · favori illegali</span>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--comune);">Comune · 5–20 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Voce di taverna verificata</div><div class="item-desc">Una informazione locale</div></div><div class="item-price">8<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Lock pick mediocre</div><div class="item-desc">Apre serrature semplici</div></div><div class="item-price">10<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Travestimento improvvisato</div><div class="item-desc">Cambio look rapido per 1 sera</div></div><div class="item-price">10<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Mappa di tunnel cittadini</div><div class="item-desc">Passaggi sotterranei di una città</div></div><div class="item-price">12<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Passaggio segreto in città</div><div class="item-desc">Una scorciatoia nascosta</div></div><div class="item-price">15<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--comune);"><div class="item-info"><div class="item-name">Falsa segnalazione alle guardie</div><div class="item-desc">Distrai le guardie 30 min</div></div><div class="item-price">18<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--non-comune); color: #0d0a08;">Non comune · 35–55 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Informazione compromettente</div><div class="item-desc">Su un mercante locale</div></div><div class="item-price">35<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Trasporto via carovana segreta</div><div class="item-desc">Spostamento clandestino in regione</div></div><div class="item-price">40<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Identità in città vicina</div><div class="item-desc">Documenti per una città vicina</div></div><div class="item-price">45<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Documenti falsi (cittadini)</div><div class="item-desc">Identità a livello cittadino</div></div><div class="item-price">50<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Intimidazione su commissione</div><div class="item-desc">Una sera di pressione</div></div><div class="item-price">50<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--non-comune);"><div class="item-info"><div class="item-name">Avvelenamento di un pasto</div><div class="item-desc">Nella cucina di un bersaglio</div></div><div class="item-price">55<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--rara); color: #0d0a08;">Rara · 90–150 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Custodia segreta di un oggetto</div><div class="item-desc">Conservato in cassaforte criminale</div></div><div class="item-price">90<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Dossier su un PG nemico</div><div class="item-desc">Storia, contatti, debolezze</div></div><div class="item-price">100<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Mappa di rovine minore</div><div class="item-desc">Localizzazione + dettagli interni</div></div><div class="item-price">110<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Apertura di una cassaforte cittadina</div><div class="item-desc">Scassinata da uno specialista</div></div><div class="item-price">120<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Contatto in un'organizzazione</div><div class="item-desc">Ingresso in gilda/ordine</div></div><div class="item-price">130<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--rara);"><div class="item-info"><div class="item-name">Segreto di un nobile</div><div class="item-desc">Utilizzabile come ricatto</div></div><div class="item-price">150<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--molto-rara); color: #0d0a08;">Molto rara · 250–400 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Contratto sicario (NPC minore)</div><div class="item-desc">Uccisione su commissione</div></div><div class="item-price">250<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Smistamento illegale di magia</div><div class="item-desc">Sposta un oggetto magico aggirando le dogane</div></div><div class="item-price">280<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Allestimento trappola</div><div class="item-desc">Trappola pre-installata contro un gruppo</div></div><div class="item-price">320<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Mappa di tesoro nascosto</div><div class="item-desc">Verificata</div></div><div class="item-price">350<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--molto-rara);"><div class="item-info"><div class="item-name">Identità falsa regionale</div><div class="item-desc">Backstory completa</div></div><div class="item-price">400<small>MP</small></div></div>
+    </div>
+  </div>
+
+  <div class="tier-group">
+    <span class="tier-label" style="background: var(--leggendaria); color: #0d0a08;">Leggendaria · 600–800 MP</span>
+    <div class="item-list">
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Distruzione di un'identità</div><div class="item-desc">Cancellare un PG dai registri ufficiali</div></div><div class="item-price">600<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Contratto contro un nobile</div><div class="item-desc">Uccisione di alto profilo</div></div><div class="item-price">700<small>MP</small></div></div>
+      <div class="item-row" style="--tier-color: var(--leggendaria);"><div class="item-info"><div class="item-name">Patto demoniaco per un favore</div><div class="item-desc">Un favore garantito · prezzo narrativo aggiuntivo</div></div><div class="item-price">800<small>MP</small></div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

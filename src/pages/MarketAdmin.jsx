@@ -10,8 +10,41 @@ import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const RARITIES = ["Comune", "Raro", "Magico", "Epico", "Leggendario"];
+const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
 const ITEM_TYPES = ["Arma", "Armatura", "Accessori", "Artefatto Magico", "Pozioni", "Pergamene", "Reagenti", "Varie"];
+
+// Suggested price ranges per rarity (matches public/mercato-nero-pricing.html)
+const RARITY_PRICE = {
+  "Comune":      { min: 5,   max: 15,  color: "#9ca3af" },
+  "Non comune":  { min: 20,  max: 50,  color: "#22c55e" },
+  "Rara":        { min: 60,  max: 120, color: "#3b82f6" },
+  "Molto rara":  { min: 150, max: 280, color: "#a855f7" },
+  "Leggendaria": { min: 350, max: 600, color: "#f97316" },
+  "Artefatto":   { min: 800, max: null,color: "#ef4444" },
+  // Legacy mappings — for items created before the rarity rename
+  "Raro":         { min: 60,  max: 120, color: "#3b82f6" },
+  "Magico":       { min: 150, max: 280, color: "#a855f7" },
+  "Epico":        { min: 150, max: 280, color: "#a855f7" },
+  "Leggendario":  { min: 350, max: 600, color: "#f97316" },
+};
+
+// Status of a price relative to the rarity range: "below" | "ok" | "above" | "unknown"
+function priceStatus(price, rarity) {
+  const range = RARITY_PRICE[rarity];
+  if (!range || price == null || price === "" || isNaN(price)) return "unknown";
+  const p = Number(price);
+  if (p === 0) return "unknown";
+  if (range.max == null) return p >= range.min ? "ok" : "below";
+  if (p < range.min) return "below";
+  if (p > range.max) return "above";
+  return "ok";
+}
+
+function formatRange(rarity) {
+  const r = RARITY_PRICE[rarity];
+  if (!r) return null;
+  return r.max == null ? `${r.min}+ MP` : `${r.min}–${r.max} MP`;
+}
 
 const initialFormData = {
   name: "", type: "Arma", class: "Comune", saleType: "auction",
@@ -35,6 +68,78 @@ const formatTimeLeft = (iso) => {
   if (h > 0) return { text: `${h}h ${m}m`, expired: false };
   return { text: `${m}m`, expired: false };
 };
+
+// Inline price editor — saves on blur or Enter, shows ✓ briefly on success.
+function QuickPriceEdit({ item, disabled }) {
+  const initial = String(item.startingBid ?? item.price ?? 0);
+  const [val, setVal] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(0);
+
+  // Re-sync when the item's price changes from outside (e.g. another tab).
+  useEffect(() => { setVal(initial); /* eslint-disable-next-line */ }, [initial]);
+
+  const commit = async () => {
+    if (saving || disabled) return;
+    const next = Number(val);
+    if (!Number.isFinite(next) || next < 0) { setVal(initial); return; }
+    if (next === Number(initial)) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "items", item.id), { startingBid: next, price: next });
+      setSavedAt(Date.now());
+    } catch (err) {
+      console.error("Quick price save failed:", err);
+      setVal(initial);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const justSaved = savedAt && (Date.now() - savedAt < 1500);
+
+  // Live suggestion based on the typed value vs. the item's rarity range
+  const range = RARITY_PRICE[item.class];
+  const status = priceStatus(val, item.class);
+  const rangeLabel = formatRange(item.class);
+  const tone = range?.color || "#888";
+
+  return (
+    <span className="mkadm-inv-price-edit-wrap" onClick={(e) => e.stopPropagation()}>
+      <span className="mkadm-inv-price-edit">
+        <span className="mkadm-inv-price-prefix">Base</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={val}
+          disabled={disabled || saving}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setVal(initial); e.target.blur(); } }}
+          className={`mkadm-inv-price-input price-${status}`}
+          style={{ borderColor: status === "ok" ? tone : status === "below" ? "#d97706" : status === "above" ? "#dc2626" : undefined }}
+          aria-label="Prezzo base"
+          title={rangeLabel ? `Range ${item.class}: ${rangeLabel}` : ""}
+        />
+        <span className="mkadm-inv-price-suffix">MP {saving ? "…" : justSaved ? "✓" : ""}</span>
+      </span>
+      {rangeLabel && (
+        <span
+          className={`mkadm-price-chip status-${status}`}
+          style={{ color: tone, borderColor: tone + "66" }}
+          title={`Range consigliato per ${item.class}`}
+        >
+          {status === "ok"     ? "✓ "
+          : status === "below" ? "↓ "
+          : status === "above" ? "↑ "
+          : "💡 "}
+          {rangeLabel}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export default function MarketAdmin() {
   const { currentUser } = useAuth();
@@ -332,6 +437,23 @@ export default function MarketAdmin() {
                   value={formData.startingBid}
                   onChange={(e) => setFormData({ ...formData, startingBid: e.target.value })}
                 />
+                {(() => {
+                  const range = formatRange(formData.class);
+                  if (!range) return null;
+                  const status = priceStatus(formData.startingBid, formData.class);
+                  const tone = RARITY_PRICE[formData.class]?.color || "#888";
+                  const icon = status === "ok" ? "✓" : status === "below" ? "↓" : status === "above" ? "↑" : "💡";
+                  const label = status === "ok"     ? `${formData.class}: prezzo nel range`
+                              : status === "below"  ? `Sotto il range ${formData.class.toLowerCase()}`
+                              : status === "above"  ? `Sopra il range ${formData.class.toLowerCase()}`
+                              : `Suggerito per ${formData.class}`;
+                  return (
+                    <div className="mkadm-price-hint" style={{ color: tone, borderColor: tone + "55" }}>
+                      <span className="mkadm-price-hint-icon">{icon}</span>
+                      <span>{label}: <strong>{range}</strong></span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="mkadm-field">
                 <label>Livello Ratto min</label>
@@ -527,7 +649,7 @@ export default function MarketAdmin() {
                     <h4 className="mkadm-inv-name" title={item.name}>{item.name}</h4>
                     <p className="mkadm-inv-type">{item.type}</p>
                     <div className="mkadm-inv-row">
-                      <span className="mkadm-inv-price">Base <strong>{item.startingBid || item.price || 0}</strong> MP</span>
+                      <QuickPriceEdit item={item} disabled={item.isSold} />
                       {bidCount > 0 && <span className="mkadm-inv-bids">📢 {bidCount}</span>}
                     </div>
                     {tl && !item.isSold && (

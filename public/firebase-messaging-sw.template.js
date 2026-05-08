@@ -20,7 +20,7 @@ const messaging = firebase.messaging();
 // Background message handler — fires when app is closed/backgrounded.
 // We send data-only messages from Cloud Functions, so all fields come from payload.data.
 messaging.onBackgroundMessage((payload) => {
-  const title = payload?.data?.title || "Exanthia";
+  const title = payload?.data?.title || "Crit Happens";
   const body  = payload?.data?.body  || "";
   const url   = payload?.data?.url   || "/";
   const tag   = payload?.data?.tag   || undefined;

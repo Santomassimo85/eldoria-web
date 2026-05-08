@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mercato Nero · Listino Prezzi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-1: #0d0a08;
+    --bg-2: #1a140f;
+    --bg-3: #241b14;
+    --bg-card: #1f1812;
+    --gold: #c9a14a;
+    --gold-soft: #8b6f30;
+    --parchment: #e8d9a8;
+    --text: #d8c89a;
+    --text-dim: #9b8868;
+    --red: #b03030;
+    --red-dark: #7a1f1f;
+
+    --comune: #9ca3af;
+    --non-comune: #4ade80;
+    --rara: #60a5fa;
+    --molto-rara: #c084fc;
+    --leggendaria: #fb923c;
+    --artefatto: #ef4444;
+  }
+
+  body {
+    background: radial-gradient(ellipse at top, var(--bg-2), var(--bg-1) 70%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Georgia', 'Garamond', serif;
+    min-height: 100vh;
+    line-height: 1.5;
+    padding: 30px 20px 80px;
+  }
+
+  .container { max-width: 1280px; margin: 0 auto; }
+
+  /* ─── HEADER ─── */
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+    padding: 28px 20px;
+    background: linear-gradient(180deg, rgba(176,48,48,0.14), transparent);
+    border-bottom: 2px solid var(--gold-soft);
+    border-top: 2px solid var(--gold-soft);
+    position: relative;
+  }
+  header::before, header::after {
+    content: "❦";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold);
+    font-size: 1.4rem;
+  }
+  header::before { left: 16px; }
+  header::after  { right: 16px; }
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    color: var(--gold);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-shadow: 0 0 18px rgba(201,161,74,0.25);
+    margin-bottom: 8px;
+  }
+  .subtitle { color: var(--text-dim); font-style: italic; font-size: 0.95rem; }
+
+  /* ─── ECONOMY BAR ─── */
+  .economy-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+  .eco-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-soft);
+    border-radius: 4px;
+    padding: 14px 18px;
+    text-align: center;
+  }
+  .eco-stat-label { display: block; font-size: 0.74rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+  .eco-stat-val { display: block; color: var(--gold); font-weight: 700; font-size: 1.1rem; }
+
+  /* ─── FILTERS ─── */
+  .filter-group {
+    margin-bottom: 16px;
+  }
+  .filter-label {
+    display: block;
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 8px;
+  }
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filter-btn {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--gold-soft);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.86rem;
+    letter-spacing: 0.04em;
+    transition: all 0.18s;
+  }
+  .filter-btn:hover {
+    background: var(--bg-3);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .filter-btn.active {
+    background: var(--gold);
+    color: #1a140f;
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+  .filter-btn[data-tier="comune"].active     { background: var(--comune); border-color: var(--comune); }
+  .filter-btn[data-tier="non-comune"].active { background: var(--non-comune); border-color: var(--non-comune); color: #0d0a08; }
+  .filter-btn[data-tier="rara"].active       { background: var(--rara); border-color: var(--rara); color: #0d0a08; }
+  .filter-btn[data-tier="molto-rara"].active { background: var(--molto-rara); border-color: var(--molto-rara); color: #0d0a08; }
+  .filter-btn[data-tier="leggendaria"].active{ background: var(--leggendaria); border-color: var(--leggendaria); color: #0d0a08; }
+
+  /* ─── SEARCH ─── */
+  .search-box {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--gold-soft);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 1rem;
+    margin-bottom: 24px;
+  }
+  .search-box:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(201,161,74,0.18);
+  }
+
+  /* ─── ITEMS GRID ─── */
+  .results-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+    color: var(--text-dim);
+    font-size: 0.86rem;
+  }
+  .results-meta strong { color: var(--gold); }
+
+  .items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .item-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-soft);
+    border-left: 4px solid var(--tier-color);
+    border-radius: 4px;
+    padding: 16px 18px;
+    position: relative;
+    transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+  }
+  .item-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--gold);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.5);
+  }
+
+  .item-tier-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--tier-color);
+    color: #0d0a08;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+  .item-name {
+    font-size: 1.05rem;
+    color: var(--gold);
+    margin-bottom: 6px;
+    padding-right: 80px;
+    line-height: 1.3;
+  }
+  .item-cat {
+    font-size: 0.74rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .item-desc {
+    font-size: 0.92rem;
+    color: var(--text);
+    margin-bottom: 14px;
+    font-style: italic;
+    min-height: 38px;
+  }
+  .item-price {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    border-top: 1px solid var(--gold-soft);
+    padding-top: 10px;
+  }
+  .item-price-val {
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+  .item-price-label {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+  }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* ─── SECTIONS ─── */
+  section {
+    margin-bottom: 50px;
+  }
+  .section-title {
+    color: var(--gold);
+    font-size: 1.4rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--gold-soft);
+    padding-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-sub {
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 22px;
+    font-size: 0.92rem;
+  }
+
+  /* ─── CALCULATOR ─── */
+  .calc {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-soft);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 800px) { .calc-grid { grid-template-columns: 1fr; } }
+
+  .calc-field { margin-bottom: 16px; }
+  .calc-field label {
+    display: block;
+    color: var(--text-dim);
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .calc-field select,
+  .calc-field input[type="number"] {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--gold-soft);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.96rem;
+  }
+  .calc-field input[type="number"]:focus,
+  .calc-field select:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-2);
+    padding: 8px 12px;
+    border: 1px solid var(--gold-soft);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.86rem;
+    transition: all 0.15s;
+  }
+  .check-item:hover { border-color: var(--gold); }
+  .check-item input[type="checkbox"] {
+    accent-color: var(--gold);
+    cursor: pointer;
+  }
+  .check-item.active { background: rgba(201,161,74,0.16); border-color: var(--gold); }
+
+  .calc-output {
+    background: var(--bg-2);
+    border: 2px solid var(--gold);
+    border-radius: 4px;
+    padding: 22px;
+    text-align: center;
+    margin-top: 18px;
+  }
+  .calc-out-price {
+    color: var(--gold);
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .calc-out-tier {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.86rem;
+    margin-bottom: 14px;
+  }
+  .calc-breakdown {
+    text-align: left;
+    color: var(--text-dim);
+    font-size: 0.84rem;
+    line-height: 1.7;
+    border-top: 1px dashed var(--gold-soft);
+    padding-top: 12px;
+  }
+  .calc-breakdown div { display: flex; justify-content: space-between; }
+  .calc-breakdown .total { color: var(--gold); font-weight: 700; border-top: 1px solid var(--gold-soft); padding-top: 6px; margin-top: 6px; }
+
+  /* ─── TIER REFERENCE TABLE ─── */
+  .tier-table {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+  }
+  .tier-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-soft);
+    border-top: 3px solid var(--tier-color);
+    border-radius: 4px;
+    padding: 14px;
+  }
+  .tier-card-name {
+    color: var(--tier-color);
+    font-weight: 700;
+    font-size: 0.86rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .tier-card-range {
+    color: var(--gold);
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .tier-card-desc {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  /* ─── PRINT ─── */
+  @media print {
+    body { background: white; color: black; }
+    .filter-row, .search-box, .calc { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>💀 Mercato Nero</h1>
+    <p class="subtitle">Listino prezzi consigliato — Eldoria</p>
+  </header>
+
+  <!-- ─── ECONOMIA ─── -->
+  <section>
+    <div class="economy-bar">
+      <div class="eco-stat"><span class="eco-stat-label">Reddito settimanale</span><span class="eco-stat-val">30–70 MP</span></div>
+      <div class="eco-stat"><span class="eco-stat-label">Top wallet</span><span class="eco-stat-val">180 MP</span></div>
+      <div class="eco-stat"><span class="eco-stat-label">Secondo</span><span class="eco-stat-val">150 MP</span></div>
+      <div class="eco-stat"><span class="eco-stat-label">Altri</span><span class="eco-stat-val">&lt; 100 MP</span></div>
+    </div>
+  </section>
+
+  <!-- ─── FASCE DI RARITÀ ─── -->
+  <section>
+    <h2 class="section-title">⛓ Fasce di rarità</h2>
+    <p class="section-sub">Le fasce indicano il rapporto tra prezzo e cicli di reddito settimanali del giocatore medio.</p>
+    <div class="tier-table">
+      <div class="tier-card" style="--tier-color: var(--comune);">
+        <div class="tier-card-name">Comune</div>
+        <div class="tier-card-range">5–15 MP</div>
+        <div class="tier-card-desc">Acquisto d'impulso, ~1/settimana</div>
+      </div>
+      <div class="tier-card" style="--tier-color: var(--non-comune);">
+        <div class="tier-card-name">Non comune</div>
+        <div class="tier-card-range">20–50 MP</div>
+        <div class="tier-card-desc">Singolo ciclo di reddito</div>
+      </div>
+      <div class="tier-card" style="--tier-color: var(--rara);">
+        <div class="tier-card-name">Rara</div>
+        <div class="tier-card-range">60–120 MP</div>
+        <div class="tier-card-desc">1.5–2.5 settimane di risparmio</div>
+      </div>
+      <div class="tier-card" style="--tier-color: var(--molto-rara);">
+        <div class="tier-card-name">Molto rara</div>
+        <div class="tier-card-range">150–280 MP</div>
+        <div class="tier-card-desc">~1 mese · solo top wallet</div>
+      </div>
+      <div class="tier-card" style="--tier-color: var(--leggendaria);">
+        <div class="tier-card-name">Leggendaria</div>
+        <div class="tier-card-range">350–600 MP</div>
+        <div class="tier-card-desc">2–3 mesi · aspirazionale</div>
+      </div>
+      <div class="tier-card" style="--tier-color: var(--artefatto);">
+        <div class="tier-card-name">Artefatto</div>
+        <div class="tier-card-range">800+ MP</div>
+        <div class="tier-card-desc">Quest-locked · prezzo simbolico</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CATALOGO ─── -->
+  <section>
+    <h2 class="section-title">📜 Catalogo completo</h2>
+    <p class="section-sub">Filtra per rarità o categoria, oppure cerca per nome / effetto.</p>
+
+    <div class="filter-group">
+      <label class="filter-label">Rarità</label>
+      <div class="filter-row" id="tier-filters">
+        <button class="filter-btn active" data-tier="all">Tutte</button>
+        <button class="filter-btn" data-tier="comune">Comune</button>
+        <button class="filter-btn" data-tier="non-comune">Non comune</button>
+        <button class="filter-btn" data-tier="rara">Rara</button>
+        <button class="filter-btn" data-tier="molto-rara">Molto rara</button>
+        <button class="filter-btn" data-tier="leggendaria">Leggendaria</button>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Categoria</label>
+      <div class="filter-row" id="cat-filters">
+        <button class="filter-btn active" data-cat="all">Tutte</button>
+        <button class="filter-btn" data-cat="consumabile">Consumabili</button>
+        <button class="filter-btn" data-cat="equipaggiamento">Equipaggiamento</button>
+        <button class="filter-btn" data-cat="servizio">Servizi</button>
+      </div>
+    </div>
+
+    <input type="search" class="search-box" id="search" placeholder="🔍 Cerca per nome o effetto…">
+
+    <div class="results-meta">
+      <span id="count">0 oggetti</span>
+      <span>Ordinati per prezzo crescente</span>
+    </div>
+
+    <div class="items-grid" id="grid"></div>
+  </section>
+
+  <!-- ─── CALCOLATORE ─── -->
+  <section>
+    <h2 class="section-title">🧮 Calcolatore di prezzo</h2>
+    <p class="section-sub">Componi un nuovo oggetto e ottieni un prezzo suggerito basato sulla formula del mercato nero.</p>
+
+    <div class="calc">
+      <div class="calc-grid">
+        <div>
+          <div class="calc-field">
+            <label>Tipo base</label>
+            <select id="calc-base">
+              <option value="5">Consumabile leggero (base 5)</option>
+              <option value="40">Consumabile pesante / DoT / controllo (base 40)</option>
+              <option value="50">Permanente · +1 stat secondario (base 50)</option>
+              <option value="80">Permanente · +1 hit/CA/TS (base 80)</option>
+              <option value="250">Permanente · +2 (base 250)</option>
+              <option value="550">Permanente · +3 (base 550)</option>
+            </select>
+          </div>
+
+          <div class="calc-field">
+            <label>Dadi di danno</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div>
+                <label style="font-size: 0.74rem;">d6 ×</label>
+                <input type="number" id="calc-d6" value="0" min="0" max="20">
+              </div>
+              <div>
+                <label style="font-size: 0.74rem;">d8 ×</label>
+                <input type="number" id="calc-d8" value="0" min="0" max="20">
+              </div>
+              <div>
+                <label style="font-size: 0.74rem;">d10 ×</label>
+                <input type="number" id="calc-d10" value="0" min="0" max="20">
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-field">
+            <label>Cariche / giorno</label>
+            <input type="number" id="calc-charges" value="0" min="0" max="10">
+          </div>
+
+          <div class="calc-field">
+            <label>Save DC</label>
+            <select id="calc-dc">
+              <option value="1.0">Nessun TS richiesto</option>
+              <option value="1.0">DC 13 (base)</option>
+              <option value="1.2">DC 14 (+20%)</option>
+              <option value="1.4">DC 15 (+40%)</option>
+              <option value="1.7">DC 16 (+70%)</option>
+              <option value="2.0">DC 17+ (+100%)</option>
+            </select>
+          </div>
+
+          <div class="calc-field">
+            <label>Durata (turni extra oltre 1)</label>
+            <input type="number" id="calc-duration" value="0" min="0" max="20">
+          </div>
+        </div>
+
+        <div>
+          <div class="calc-field">
+            <label>Modificatori</label>
+            <div class="checkbox-grid">
+              <label class="check-item"><input type="checkbox" data-mult="1.5" data-name="AoE / Multi-bersaglio"> AoE</label>
+              <label class="check-item"><input type="checkbox" data-mult="1.2" data-name="Bonus action"> Bonus action</label>
+              <label class="check-item"><input type="checkbox" data-mult="1.3" data-name="Reaction"> Reaction</label>
+              <label class="check-item"><input type="checkbox" data-mult="1.5" data-name="Auto-hit (no TS)"> Auto-hit</label>
+              <label class="check-item"><input type="checkbox" data-mult="0.8" data-name="Concentrazione"> Concentrazione</label>
+              <label class="check-item"><input type="checkbox" data-mult="0.85" data-name="Attunement"> Attunement</label>
+              <label class="check-item"><input type="checkbox" data-mult="0.75" data-name="Class-locked"> Class-locked</label>
+              <label class="check-item"><input type="checkbox" data-mult="0.7" data-name="Alignment-locked"> Alignment-lock</label>
+            </div>
+          </div>
+
+          <div class="calc-output">
+            <div class="calc-out-price"><span id="calc-price">0</span> <span style="font-size: 1.1rem; color: var(--text-dim);">MP</span></div>
+            <div class="calc-out-tier" id="calc-tier" style="color: var(--text-dim);">—</div>
+            <div class="calc-breakdown" id="calc-breakdown"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── RIFERIMENTO MODIFICATORI ─── -->
+  <section>
+    <h2 class="section-title">📐 Formula di riferimento</h2>
+    <p class="section-sub">Da usare quando il calcolatore non basta.</p>
+
+    <div class="calc">
+      <p style="margin-bottom: 14px; color: var(--gold); font-family: monospace; font-size: 1rem;">PREZZO ≈ (BASE + dadi danno) × moltiplicatori</p>
+
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Costi dei dadi:</strong> +12 MP per d6 · +18 MP per d8 · +25 MP per d10</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Cariche/giorno:</strong> +30% del base per ogni carica oltre la prima</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Durata:</strong> +8% per turno oltre il primo</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">AoE / Multi-bersaglio:</strong> ×1.5</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Auto-hit / no TS:</strong> ×1.5</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Bonus action:</strong> ×1.2 · <strong style="color: var(--gold);">Reaction:</strong> ×1.3</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Save DC:</strong> 14 ×1.2 · 15 ×1.4 · 16 ×1.7 · 17+ ×2.0</p>
+      <p style="margin-bottom: 8px; color: var(--text-dim);"><strong style="color: var(--gold);">Sconti:</strong> Concentrazione ×0.8 · Attunement ×0.85 · Class-locked ×0.75 · Alignment-locked ×0.7</p>
+    </div>
+  </section>
+
+  <!-- ─── NOTE DI CALIBRAZIONE ─── -->
+  <section>
+    <h2 class="section-title">⚖ Note di calibrazione</h2>
+    <div class="calc">
+      <ul style="list-style: none; padding: 0;">
+        <li style="margin-bottom: 12px; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; color: var(--gold);">▸</span>Lascia <strong style="color: var(--gold);">2–3 oggetti molto rari (200–280 MP)</strong> sempre in vetrina: carota visibile ma fuori portata.</li>
+        <li style="margin-bottom: 12px; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; color: var(--gold);">▸</span>Tieni gli <strong style="color: var(--gold);">oggetti rari (100–150 MP)</strong> ben riforniti: premio mensile per i top, trimestrale per gli altri.</li>
+        <li style="margin-bottom: 12px; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; color: var(--gold);">▸</span>I <strong style="color: var(--gold);">leggendari (350+)</strong> non vanno comprati ora: sono obiettivi a lungo termine. Quando un PG li raggiunge, sostituiscili con altri leggendari più costosi.</li>
+        <li style="margin-bottom: 12px; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; color: var(--gold);">▸</span>Limita gli <strong style="color: var(--gold);">oggetti permanenti +2/+3</strong> a stock 1 per giocatore o per stagione, altrimenti il top wallet snowballa.</li>
+        <li style="margin-bottom: 12px; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; color: var(--gold);">▸</span>Ruota lo stock ogni 1–2 sessioni per simulare il mercato nero: oggetti mai venduti possono sparire o cambiare prezzo.</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // ─── DATA ───
+  const ITEMS = [
+    // CONSUMABILI · Comune
+    { name: "Pozione di cura minore", desc: "Cura 1d4+2 PF", tier: "comune", category: "consumabile", price: 6 },
+    { name: "Veleno semplice", desc: "1d4 dmg, 1 dose", tier: "comune", category: "consumabile", price: 8 },
+    { name: "Antitossina", desc: "Vantaggio TS veleno per 1h", tier: "comune", category: "consumabile", price: 10 },
+    { name: "Pergamena cantrip", desc: "Lancia un cantrip una volta", tier: "comune", category: "consumabile", price: 12 },
+    { name: "Polvere fumogena", desc: "Oscurità per 1d10 round", tier: "comune", category: "consumabile", price: 15 },
+
+    // CONSUMABILI · Non comune
+    { name: "Pozione di cura", desc: "Cura 2d4+2 PF", tier: "non-comune", category: "consumabile", price: 20 },
+    { name: "Veleno di mantide", desc: "1d6+1 dmg, 2 dosi", tier: "non-comune", category: "consumabile", price: 30 },
+    { name: "Pergamena Lv.1", desc: "Lancia un incantesimo di livello 1", tier: "non-comune", category: "consumabile", price: 35 },
+    { name: "Polvere di tracciamento", desc: "Rivela tracce per 1 ora", tier: "non-comune", category: "consumabile", price: 35 },
+    { name: "Pozione di velocità", desc: "+10 ft, +1 azione · 3 round", tier: "non-comune", category: "consumabile", price: 45 },
+    { name: "Bomba alchemica", desc: "2d6 in area piccola", tier: "non-comune", category: "consumabile", price: 45 },
+
+    // CONSUMABILI · Rara
+    { name: "Pozione di cura superiore", desc: "Cura 4d4+4 PF", tier: "rara", category: "consumabile", price: 65 },
+    { name: "Pozione respiro acquatico", desc: "Respira sott'acqua per 8h", tier: "rara", category: "consumabile", price: 70 },
+    { name: "Veleno paralizzante", desc: "TS COS 13 o paralisi 1 round", tier: "rara", category: "consumabile", price: 80 },
+    { name: "Pergamena Lv.2 (Invisibilità)", desc: "Lancia Invisibilità", tier: "rara", category: "consumabile", price: 90 },
+    { name: "Pergamena Lv.2 (Suggestione)", desc: "Lancia Suggestione", tier: "rara", category: "consumabile", price: 100 },
+    { name: "Bomba ardente", desc: "3d6 area + brucia 1d4 per 1 round", tier: "rara", category: "consumabile", price: 100 },
+
+    // CONSUMABILI · Molto rara
+    { name: "Pozione di guarigione completa", desc: "Cura 8d4+8 PF", tier: "molto-rara", category: "consumabile", price: 180 },
+    { name: "Filtro di vera invisibilità", desc: "Invisibilità senza concentrazione · 1 min", tier: "molto-rara", category: "consumabile", price: 220 },
+    { name: "Pergamena Lv.3 (Volo)", desc: "Lancia Volo", tier: "molto-rara", category: "consumabile", price: 220 },
+    { name: "Pergamena Lv.3 (Palla di Fuoco)", desc: "Lancia Palla di Fuoco", tier: "molto-rara", category: "consumabile", price: 240 },
+    { name: "Veleno assassino", desc: "TS COS 16 o 6d6 dmg", tier: "molto-rara", category: "consumabile", price: 250 },
+    { name: "Pergamena Lv.3 (Controincanto)", desc: "Lancia Controincanto", tier: "molto-rara", category: "consumabile", price: 260 },
+
+    // CONSUMABILI · Leggendaria
+    { name: "Pergamena Lv.4", desc: "Lancia un incantesimo di livello 4", tier: "leggendaria", category: "consumabile", price: 400 },
+    { name: "Lacrima d'angelo", desc: "Rimuove qualunque maledizione", tier: "leggendaria", category: "consumabile", price: 450 },
+    { name: "Sangue celestiale", desc: "Componente per Resurrezione", tier: "leggendaria", category: "consumabile", price: 500 },
+    { name: "Pergamena Lv.5", desc: "Lancia un incantesimo di livello 5", tier: "leggendaria", category: "consumabile", price: 550 },
+
+    // EQUIPAGGIAMENTO · Comune
+    { name: "Cinta del facchino", desc: "+1 capacità di carico (narrativo)", tier: "comune", category: "equipaggiamento", price: 15 },
+    { name: "Trinket fortunato", desc: "1/sessione ritira un d20", tier: "comune", category: "equipaggiamento", price: 20 },
+    { name: "Mantello da viaggiatore", desc: "+1 furtività", tier: "comune", category: "equipaggiamento", price: 20 },
+
+    // EQUIPAGGIAMENTO · Non comune
+    { name: "Pugnale +1", desc: "+1 hit · +1 dmg", tier: "non-comune", category: "equipaggiamento", price: 60 },
+    { name: "Stivali elfici", desc: "Vantaggio a furtività", tier: "non-comune", category: "equipaggiamento", price: 60 },
+    { name: "Bastone Lv.1", desc: "1 cantrip 3/giorno", tier: "non-comune", category: "equipaggiamento", price: 70 },
+    { name: "Scudo +1", desc: "+3 CA totale", tier: "non-comune", category: "equipaggiamento", price: 70 },
+    { name: "Spada lunga +1", desc: "+1 hit · +1 dmg", tier: "non-comune", category: "equipaggiamento", price: 80 },
+    { name: "Arco +1", desc: "+1 hit · +1 dmg", tier: "non-comune", category: "equipaggiamento", price: 80 },
+    { name: "Anello di Protezione minore", desc: "+1 CA OPPURE +1 TS", tier: "non-comune", category: "equipaggiamento", price: 80 },
+
+    // EQUIPAGGIAMENTO · Rara
+    { name: "Bastone del lupo", desc: "Parla con animali 1/giorno", tier: "rara", category: "equipaggiamento", price: 110 },
+    { name: "Mantello di camuffamento", desc: "Vantaggio a nascondersi in vegetazione", tier: "rara", category: "equipaggiamento", price: 120 },
+    { name: "Armatura +1 (cuoio/maglia)", desc: "+1 CA", tier: "rara", category: "equipaggiamento", price: 120 },
+    { name: "Bracciali dell'arciere", desc: "+2 dmg con archi", tier: "rara", category: "equipaggiamento", price: 130 },
+    { name: "Armatura +1 (piastre)", desc: "+1 CA", tier: "rara", category: "equipaggiamento", price: 150 },
+    { name: "Anello di Protezione", desc: "+1 CA E +1 TS", tier: "rara", category: "equipaggiamento", price: 150 },
+    { name: "Arma elementale", desc: "+1d6 fuoco/freddo/fulmine", tier: "rara", category: "equipaggiamento", price: 160 },
+
+    // EQUIPAGGIAMENTO · Molto rara
+    { name: "Arma +2", desc: "+2 hit · +2 dmg", tier: "molto-rara", category: "equipaggiamento", price: 260 },
+    { name: "Bastone Arcano", desc: "+1 CD agli incantesimi", tier: "molto-rara", category: "equipaggiamento", price: 280 },
+    { name: "Armatura +2", desc: "+2 CA", tier: "molto-rara", category: "equipaggiamento", price: 300 },
+    { name: "Anello di Volo", desc: "Volo 60 ft, 10 min/giorno", tier: "molto-rara", category: "equipaggiamento", price: 300 },
+    { name: "Spada del Critico", desc: "Crit range 19–20", tier: "molto-rara", category: "equipaggiamento", price: 320 },
+    { name: "Stivali del salto demoniaco", desc: "Teleport 30 ft, 2/giorno", tier: "molto-rara", category: "equipaggiamento", price: 330 },
+
+    // EQUIPAGGIAMENTO · Leggendaria
+    { name: "Mantello dello Spettro", desc: "Intangibile 1 round, 1/giorno", tier: "leggendaria", category: "equipaggiamento", price: 550 },
+    { name: "Arma +3", desc: "+3 hit · +3 dmg", tier: "leggendaria", category: "equipaggiamento", price: 550 },
+    { name: "Cintura del Titano", desc: "+2 FOR fisso", tier: "leggendaria", category: "equipaggiamento", price: 600 },
+    { name: "Armatura +3", desc: "+3 CA", tier: "leggendaria", category: "equipaggiamento", price: 650 },
+
+    // SERVIZI · Comune
+    { name: "Voce di taverna verificata", desc: "Una informazione locale", tier: "comune", category: "servizio", price: 8 },
+    { name: "Lock pick mediocre", desc: "Apre serrature semplici", tier: "comune", category: "servizio", price: 10 },
+    { name: "Passaggio segreto in città", desc: "Una scorciatoia nascosta", tier: "comune", category: "servizio", price: 15 },
+
+    // SERVIZI · Non comune
+    { name: "Informazione compromettente", desc: "Su un mercante locale", tier: "non-comune", category: "servizio", price: 35 },
+    { name: "Documenti falsi (cittadini)", desc: "Identità a livello cittadino", tier: "non-comune", category: "servizio", price: 50 },
+    { name: "Intimidazione su commissione", desc: "Una sera di pressione", tier: "non-comune", category: "servizio", price: 50 },
+
+    // SERVIZI · Rara
+    { name: "Mappa di rovine minore", desc: "Localizzazione + dettagli interni", tier: "rara", category: "servizio", price: 110 },
+    { name: "Contatto in un'organizzazione", desc: "Ingresso in gilda/ordine", tier: "rara", category: "servizio", price: 130 },
+    { name: "Segreto di un nobile", desc: "Utilizzabile come ricatto", tier: "rara", category: "servizio", price: 150 },
+
+    // SERVIZI · Molto rara
+    { name: "Contratto sicario (NPC minore)", desc: "Uccisione su commissione", tier: "molto-rara", category: "servizio", price: 250 },
+    { name: "Mappa di tesoro nascosto", desc: "Verificata", tier: "molto-rara", category: "servizio", price: 350 },
+    { name: "Identità falsa regionale", desc: "Backstory completa", tier: "molto-rara", category: "servizio", price: 400 },
+
+    // SERVIZI · Leggendaria
+    { name: "Contratto contro un nobile", desc: "Uccisione di alto profilo", tier: "leggendaria", category: "servizio", price: 700 },
+  ];
+
+  const TIER_COLOR = {
+    "comune": "var(--comune)",
+    "non-comune": "var(--non-comune)",
+    "rara": "var(--rara)",
+    "molto-rara": "var(--molto-rara)",
+    "leggendaria": "var(--leggendaria)",
+    "artefatto": "var(--artefatto)",
+  };
+  const TIER_LABEL = {
+    "comune": "Comune",
+    "non-comune": "Non comune",
+    "rara": "Rara",
+    "molto-rara": "Molto rara",
+    "leggendaria": "Leggendaria",
+    "artefatto": "Artefatto",
+  };
+  const CAT_LABEL = {
+    "consumabile": "Consumabile",
+    "equipaggiamento": "Equipaggiamento",
+    "servizio": "Servizio",
+  };
+
+  // ─── STATE ───
+  let activeTier = "all";
+  let activeCat = "all";
+  let searchTerm = "";
+
+  // ─── RENDER ───
+  function render() {
+    const grid = document.getElementById("grid");
+    const filtered = ITEMS.filter(it => {
+      if (activeTier !== "all" && it.tier !== activeTier) return false;
+      if (activeCat !== "all" && it.category !== activeCat) return false;
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        if (!it.name.toLowerCase().includes(q) && !it.desc.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    }).sort((a, b) => a.price - b.price);
+
+    document.getElementById("count").innerHTML = `<strong>${filtered.length}</strong> oggett${filtered.length === 1 ? "o" : "i"}`;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div class="empty-state">Nessun oggetto corrisponde ai filtri.</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(it => `
+      <div class="item-card" style="--tier-color: ${TIER_COLOR[it.tier]};">
+        <div class="item-tier-badge">${TIER_LABEL[it.tier]}</div>
+        <div class="item-name">${it.name}</div>
+        <div class="item-cat">${CAT_LABEL[it.category]}</div>
+        <div class="item-desc">${it.desc}</div>
+        <div class="item-price">
+          <span class="item-price-val">${it.price}</span>
+          <span class="item-price-label">MP</span>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // ─── FILTERS ───
+  document.getElementById("tier-filters").addEventListener("click", (e) => {
+    const btn = e.target.closest(".filter-btn");
+    if (!btn) return;
+    document.querySelectorAll("#tier-filters .filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeTier = btn.dataset.tier;
+    render();
+  });
+
+  document.getElementById("cat-filters").addEventListener("click", (e) => {
+    const btn = e.target.closest(".filter-btn");
+    if (!btn) return;
+    document.querySelectorAll("#cat-filters .filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeCat = btn.dataset.cat;
+    render();
+  });
+
+  document.getElementById("search").addEventListener("input", (e) => {
+    searchTerm = e.target.value;
+    render();
+  });
+
+  // ─── CALCULATOR ───
+  function tierFromPrice(p) {
+    if (p <= 15) return { name: "COMUNE", color: "var(--comune)" };
+    if (p <= 50) return { name: "NON COMUNE", color: "var(--non-comune)" };
+    if (p <= 120) return { name: "RARA", color: "var(--rara)" };
+    if (p <= 280) return { name: "MOLTO RARA", color: "var(--molto-rara)" };
+    if (p <= 600) return { name: "LEGGENDARIA", color: "var(--leggendaria)" };
+    return { name: "ARTEFATTO", color: "var(--artefatto)" };
+  }
+
+  function calculate() {
+    const base = parseFloat(document.getElementById("calc-base").value);
+    const d6 = parseInt(document.getElementById("calc-d6").value, 10) || 0;
+    const d8 = parseInt(document.getElementById("calc-d8").value, 10) || 0;
+    const d10 = parseInt(document.getElementById("calc-d10").value, 10) || 0;
+    const charges = parseInt(document.getElementById("calc-charges").value, 10) || 0;
+    const dcMult = parseFloat(document.getElementById("calc-dc").value);
+    const duration = parseInt(document.getElementById("calc-duration").value, 10) || 0;
+
+    const diceCost = d6 * 12 + d8 * 18 + d10 * 25;
+    const chargeMult = 1 + Math.max(0, charges - 1) * 0.30;
+    const durationMult = 1 + duration * 0.08;
+
+    let multipliers = chargeMult * dcMult * durationMult;
+    const activeMods = [];
+    if (chargeMult > 1) activeMods.push({ name: `${charges} cariche/giorno`, val: chargeMult });
+    if (dcMult > 1) activeMods.push({ name: `Save DC bonus`, val: dcMult });
+    if (durationMult > 1) activeMods.push({ name: `Durata extra`, val: durationMult });
+
+    document.querySelectorAll('.checkbox-grid input[type="checkbox"]').forEach(cb => {
+      const li = cb.closest(".check-item");
+      if (cb.checked) {
+        li.classList.add("active");
+        const m = parseFloat(cb.dataset.mult);
+        multipliers *= m;
+        activeMods.push({ name: cb.dataset.name, val: m });
+      } else {
+        li.classList.remove("active");
+      }
+    });
+
+    const subtotal = base + diceCost;
+    const final = Math.round(subtotal * multipliers);
+
+    document.getElementById("calc-price").textContent = final;
+    const tier = tierFromPrice(final);
+    const tEl = document.getElementById("calc-tier");
+    tEl.textContent = tier.name;
+    tEl.style.color = tier.color;
+
+    const breakdown = document.getElementById("calc-breakdown");
+    let html = `<div><span>Base</span><span>${base.toFixed(0)} MP</span></div>`;
+    if (diceCost > 0) html += `<div><span>Dadi (d6×${d6}, d8×${d8}, d10×${d10})</span><span>+${diceCost} MP</span></div>`;
+    html += `<div><span>Subtotale</span><span>${subtotal.toFixed(0)} MP</span></div>`;
+    activeMods.forEach(m => {
+      html += `<div><span>${m.name}</span><span>×${m.val.toFixed(2)}</span></div>`;
+    });
+    html += `<div class="total"><span>Prezzo finale</span><span>${final} MP</span></div>`;
+    breakdown.innerHTML = html;
+  }
+
+  document.querySelectorAll("#calc-base, #calc-d6, #calc-d8, #calc-d10, #calc-charges, #calc-dc, #calc-duration").forEach(el => {
+    el.addEventListener("input", calculate);
+    el.addEventListener("change", calculate);
+  });
+  document.querySelectorAll('.checkbox-grid input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener("change", calculate);
+  });
+
+  // ─── INITIAL ───
+  render();
+  calculate();
+</script>
+</body>
+</html>
