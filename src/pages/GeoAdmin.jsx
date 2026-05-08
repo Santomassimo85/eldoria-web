@@ -161,14 +161,8 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
 
   /* ── Image upload helpers ── */
   const uploadImage = async (file, folder, slotKey) => {
-    if (!file?.type?.startsWith("image/")) {
-      alert("Seleziona un file immagine valido.");
-      return null;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Immagine troppo grande (max 5MB).");
-      return null;
-    }
+    if (!file?.type?.startsWith("image/")) return null;
+    if (file.size > 5 * 1024 * 1024) return null;
     setUploadState((s) => ({ ...s, [slotKey]: true }));
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -179,7 +173,6 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
       return await getDownloadURL(ref);
     } catch (err) {
       console.error("Upload fallito:", err);
-      alert("Errore upload: " + (err.message || err.code || "sconosciuto"));
       return null;
     } finally {
       setUploadState((s) => ({ ...s, [slotKey]: false }));

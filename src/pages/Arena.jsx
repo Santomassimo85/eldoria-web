@@ -19,7 +19,7 @@ const WIZARD_SPELLS = [
   { name: "Raggio di Gelo",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🧊", info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Lama Vorticosa",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🌀", info: "Trucchetto · Tuono · mischia", maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Dardo Incantato",       level: 1, hitBonus: 39, damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre", maxUses: 4 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
@@ -46,7 +46,7 @@ const SORCERER_SPELLS = [
   { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
-  { name: "Dardo Incantato",       level: 1, hitBonus: 39, damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre", maxUses: 3 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 3 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "4d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (2 raggi × 2d6)", maxUses: 2 },
@@ -140,11 +140,11 @@ const BARD_SPELLS = [
   { name: "Risata Incontenibile",       level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤣", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Individuazione del Magico",  level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🔮", info: "Lv1 · +3 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
-  { name: "Frastornare",                level: 2, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
+  { name: "Frastornare",                level: 2, hitBonus: 3, damage: "4d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 3 },
   { name: "Cecità/Sordità",             level: 2, hitBonus: 3, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · −3 ai tiri per colpire del nemico", special: "blind_debuff", maxUses: 2 },
   { name: "Invisibilità",               level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "👻", info: "Lv2 · Il nemico non può attaccarti per 2 turni", special: "invisibility", invisibilityDuration: 2, maxUses: 2 },
   { name: "Suggestione",                level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
-  { name: "Melodia Curativa",           level: 1, hitBonus: 0, damage: "2d8",   statKey: null, type: "spell", icon: "🎶", info: "Lv1 · Cura · 2d8 + COS HP", special: "heal", healModStat: "con", maxUses: 2 },
+  { name: "Melodia Curativa",           level: 1, hitBonus: 0, damage: "2d8",   statKey: null, type: "spell", icon: "🎶", info: "Lv1 · Cura · 2d8 + CAR HP", special: "heal", healModStat: "cha", maxUses: 2 },
 ];
 
 // ── PALADIN SPELLS (Paladino) — pool: 3 lv1 · 3 lv2 (sceglie 2+1)
@@ -287,7 +287,7 @@ const WILD_SHAPES = {
     actions: [
       { name: "Morso",     level: 0, damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
       { name: "Veleno",    level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "save_dot", saveDotAbility: "con", saveDotDamage: "1d8", saveDotTurns: 3, saveDotDC: 12 },
-      { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web",    maxUses: 3 },
+      { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web",    saveAbility: "str", saveDC: 13, maxUses: 3 },
     ],
   },
 };
@@ -341,16 +341,16 @@ const SNEAK_ATTACK_ACTION = {
   type: "skill", icon: "🗡", info: "Arma+1d6+DES+3 · 3 cariche", special: "sneak_attack", maxUses: 3,
 };
 
-// Furtività (Rogue) — buff puro: vantaggio 3 turni, nemico svantaggio 3 turni, 3 cariche
+// Furtività (Rogue) — buff puro: vantaggio ai propri 3 attacchi, 3 cariche
 const STEALTH_ACTION = {
   name: "Furtività", hitBonus: 0, damage: "", statKey: null,
-  type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio attacchi 3 turni · nemico svantaggio 3 turni · 3 cariche", special: "stealth", maxUses: 3,
+  type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio ai tuoi prossimi 3 attacchi · 3 cariche", special: "stealth", maxUses: 3,
 };
 
-// Triboli (Rogue) — il nemico salta 2 turni (NESSUN TS), 2 cariche
+// Triboli (Rogue) — il nemico fa TS DES (CD 13): fallisce → 2 turni; supera → 1 turno
 const TRIBOLI_ACTION = {
   name: "Triboli", hitBonus: 0, damage: "", statKey: null,
-  type: "skill", icon: "🪤", info: "Sparge triboli sotto il nemico · salta 2 turni (NESSUN TS) · 2 cariche", special: "triboli", maxUses: 2,
+  type: "skill", icon: "🪤", info: "Sparge triboli · TS DES (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche", special: "triboli", saveAbility: "dex", saveDC: 13, maxUses: 2,
 };
 
 // Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
@@ -406,6 +406,13 @@ const ASSORBIRE_DANNI_ACTION = {
   special: "absorb_damage", maxUses: 2, bonusAction: true,
 };
 
+// Cura Ki (Monk) — Bonus Action: cura 1d8+SAG HP, 2 cariche
+const KI_HEALING_ACTION = {
+  name: "Cura Ki", hitBonus: 0, damage: "1d8", statKey: null,
+  type: "skill", icon: "🧘", info: "Bonus Action · cura 1d8+SAG HP · 2 cariche",
+  special: "ki_healing", maxUses: 2, bonusAction: true,
+};
+
 // Marchio del Cacciatore (Ranger) — +3 ai tiri per colpire per 3 turni, 2 cariche · BONUS ACTION
 const HUNTER_MARK_ACTION = {
   name: "Marchio del Cacciatore", hitBonus: 0, damage: "—", statKey: null,
@@ -425,11 +432,11 @@ const RANGER_PETS = {
   },
   spider: {
     key: "spider", name: "Ragno", icon: "🕷",
-    info: "Il ragno blocca il nemico · salta 2 turni · NESSUN TS · 2 cariche",
+    info: "Il ragno intrappola il nemico · TS FOR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
     action: {
       name: "Tela del Ragno", hitBonus: 0, damage: "—", statKey: null,
-      type: "skill", icon: "🕷", info: "Il nemico salta 2 turni · NESSUN TS · 2 cariche",
-      special: "pet_spider", maxUses: 2,
+      type: "skill", icon: "🕷", info: "TS FOR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
+      special: "pet_spider", saveAbility: "str", saveDC: 13, maxUses: 2,
     },
   },
   eagle: {
@@ -504,10 +511,10 @@ const FORGIA_ARMATURA_ACTION = {
   special: "armor_forge", maxUses: 2,
 };
 
-// Stregoneria Innata (Sorcerer) — passiva: se il nemico ottiene 4 o meno sul TS, danni raddoppiati
+// Stregoneria Innata (Sorcerer) — passiva: se il nemico ottiene 4 o meno sul TS, danni +50%
 const INNATE_SORCERY_PASSIVE = {
   name: "Stregoneria Innata", hitBonus: 0, damage: "—", statKey: null,
-  type: "passive", icon: "🌟", info: "Passiva · se il nemico tira ≤4 sul TS contro le tue spell, danni raddoppiati",
+  type: "passive", icon: "🌟", info: "Passiva · se il nemico tira ≤4 sul TS contro le tue spell, danni +50%",
 };
 
 // Fonte di Magia (Sorcerer) — ripristina 2 slot magia, 2 cariche
@@ -544,7 +551,7 @@ const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la prop
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
   name: "Smite Divino", hitBonus: 0, damage: "2d8", statKey: null,
-  type: "skill", icon: "⚡", info: "Attacca con arma +2d8 · 1 carica", special: "smite", maxUses: 1,
+  type: "skill", icon: "⚡", info: "Attacca con arma +2d8 · 2 cariche", special: "smite", maxUses: 2,
 };
 
 // Lay of Hands — aggiunto automaticamente al Paladino (pool = 1/3 HP)
@@ -559,10 +566,10 @@ const RECUPERO_ARCANO_ACTION = {
   type: "skill", icon: "📖", info: "Ripristina 2 slot lv1 + 1 slot lv2 · 1 uso", special: "recupero_arcano", maxUses: 1,
 };
 
-// Astuzia Magica (Warlock) — salta il turno ma ripristina tutti gli slot
+// Astuzia Magica (Warlock) — salta il turno e ripristina 1 carica per slot magia
 const MAGICAL_CUNNING_ACTION = {
   name: "Astuzia Magica", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🌀", info: "Salta il turno · ripristina tutti gli slot magia · 1 uso", special: "magical_cunning", maxUses: 1,
+  type: "skill", icon: "🌀", info: "Salta il turno · +1 carica a ogni slot magia (max maxUses) · 1 uso", special: "magical_cunning", maxUses: 1,
 };
 
 // ── TITOLI D'ARENA (assegnati dal Master, attivi solo in Torneo / Arena Campioni) ─
@@ -595,12 +602,13 @@ function tickEagleEnd(p) {
   return { eagleDebuffTurns: newEagle, blindDebuff: newEagle > 0 ? p.blindDebuff : false };
 }
 
-// Riduzione danni: il Barbaro in Furia subisce metà danni da armi e skill (non da incantesimi).
+// Riduzione danni: il Barbaro in Furia subisce metà danni da armi/skill e -25% dagli incantesimi.
 function applyBarbarianRageReduction(rawDmg, defenderSnap, defenderMatchPlayer, isSpell) {
-  if (rawDmg <= 0 || isSpell) return rawDmg;
+  if (rawDmg <= 0) return rawDmg;
   const defClass = (defenderSnap?.class || "").toLowerCase();
   if (!["barbarian","barbaro"].some(c => defClass.includes(c))) return rawDmg;
   if ((defenderMatchPlayer?.rageTurns ?? 0) <= 0) return rawDmg;
+  if (isSpell) return Math.max(1, Math.floor(rawDmg * 0.75));
   return Math.floor(rawDmg / 2);
 }
 
@@ -780,7 +788,7 @@ function getLoadoutConfig(charClass) {
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [PUGNO_ACTION, CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [PUGNO_ACTION, CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
@@ -2463,9 +2471,9 @@ export default function Arena() {
     // ── Furtività (Rogue) — buff puro, nessun attacco ────────────────
     if (action.special === "stealth") {
       const log = {
-        pub: `🌑 ${attName} entra in Furtività — vantaggio per 3 attacchi, ${defName} in svantaggio per 3 attacchi`,
+        pub: `🌑 ${attName} entra in Furtività — vantaggio ai prossimi 3 attacchi`,
         att: `🌑 Entri in Furtività — i tuoi prossimi 3 attacchi hanno vantaggio`,
-        def: `🌑 ${attName} è scivolato nell'ombra! I tuoi prossimi 3 attacchi contro di lui sono in svantaggio`,
+        def: `🌑 ${attName} è scivolato nell'ombra...`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const stealthExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
@@ -2482,7 +2490,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-            return { ...p, stealthAdvTurns: 3, stealthDisadvTurns: 3, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: newMultiUsed };
+            return { ...p, stealthAdvTurns: 3, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: newMultiUsed };
           }
           return p;
         });
@@ -2493,19 +2501,33 @@ export default function Arena() {
       return;
     }
 
-    // ── Triboli (Rogue: auto-skip 2 turni, NESSUN TS) ─────────────────
+    // ── Triboli (Rogue: TS DES CD 13 · fail = 2 turni, save = 1 turno) ─
     if (action.special === "triboli") {
+      const saveAbility = action.saveAbility || "dex";
+      const saveDC = action.saveDC ?? 13;
+      const defMod = defenderSnap?.stats?.[saveAbility] ?? 0;
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
+      const tsTotal = d20 + defMod;
+      const saved = tsTotal >= saveDC;
+      const lostTurns = saved ? 1 : 2;
       const log = {
-        pub: `🪤 ${attName} sparge Triboli sotto ${defName} — salta 2 turni (NESSUN TS).`,
-        att: `🪤 Spargi Triboli sotto ${defName}! Salterà i prossimi 2 turni.`,
-        def: `🪤 ${attName} sparge Triboli sotto di te! Salti i prossimi 2 turni.`,
+        pub: saved
+          ? `🪤 ${attName} sparge Triboli su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno.`
+          : `🪤 ${attName} sparge Triboli su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 2 turni.`,
+        att: saved
+          ? `🪤 Spargi Triboli su ${defName} — TS riuscito (${tsTotal} ≥ ${saveDC}): salterà 1 turno.`
+          : `🪤 Spargi Triboli su ${defName} — TS fallito (${tsTotal} < ${saveDC}): salterà 2 turni.`,
+        def: saved
+          ? `🪤 Schivi parte dei Triboli (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salti 1 turno.`
+          : `🪤 Sei sopraffatto dai Triboli (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salti 2 turni.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const triboliExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, controlLostTurns: 2 };
+          if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = action.maxUses !== undefined
@@ -2522,19 +2544,33 @@ export default function Arena() {
       return;
     }
 
-    // ── Ragnatela (auto-skip 2 turni, NESSUN TS) ─────────────────────
+    // ── Ragnatela (TS FOR CD 13 · fail = 2 turni, save = 1 turno) ────
     if (action.special === "web") {
+      const saveAbility = action.saveAbility || "str";
+      const saveDC = action.saveDC ?? 13;
+      const defMod = defenderSnap?.stats?.[saveAbility] ?? 0;
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
+      const tsTotal = d20 + defMod;
+      const saved = tsTotal >= saveDC;
+      const lostTurns = saved ? 1 : 2;
       const log = {
-        pub: `🕸 ${attName} lancia Ragnatela su ${defName} — intrappolato! Salta 2 turni (NESSUN TS).`,
-        att: `🕸 Intrappoli ${defName} con la Ragnatela! Salterà i prossimi 2 turni.`,
-        def: `🕸 ${attName} ti intrappola con la Ragnatela! Salti i prossimi 2 turni.`,
+        pub: saved
+          ? `🕸 ${attName} lancia Ragnatela su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — si libera in 1 turno.`
+          : `🕸 ${attName} lancia Ragnatela su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — intrappolato per 2 turni.`,
+        att: saved
+          ? `🕸 Lanci la Ragnatela su ${defName} — TS riuscito (${tsTotal} ≥ ${saveDC}): salterà 1 turno.`
+          : `🕸 Lanci la Ragnatela su ${defName} — TS fallito (${tsTotal} < ${saveDC}): salterà 2 turni.`,
+        def: saved
+          ? `🕸 Spezzi la Ragnatela (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salti solo 1 turno.`
+          : `🕸 Sei avvolto dalla Ragnatela (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salti 2 turni.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const webExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, controlLostTurns: 2 };
+          if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = action.maxUses !== undefined
@@ -2906,6 +2942,32 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
+  // ── CURA KI (Monk · Bonus Action: cura 1d8+SAG HP) ────────────────────────
+  const handleKiHealing = async (matchId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Monaco";
+    const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
+    const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = myMatch?.players.find(p => p.id === currentUser.uid);
+    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    const wisMod = mySnap?.stats?.wis ?? 0;
+    const { total: healAmt, rolls: healRolls } = rollDmg(action.damage || "1d8");
+    const totalHeal = Math.max(1, healAmt + wisMod);
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const maxHp = mySnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
+        const uses = p.actionUsesLeft || {};
+        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), bonusActionUsed: true, actionUsesLeft: newUses };
+      });
+      const sign = wisMod >= 0 ? "+" : "";
+      const log = { pub: `🧘 ${myName} canalizza il Ki! Cura 🎲${healRolls}${sign}${wisMod} SAG = ${totalHeal} HP (bonus action)`, attId: currentUser.uid, ts: new Date().toISOString() };
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
   // ── ASSORBIRE DANNI (Monk · Bonus Action: prossimo danno → cura 50%) ──────
   // Il nemico vede solo una posa marziale generica per non perdere l'incentivo ad attaccare.
   const handleAbsorbDamage = async (matchId, action) => {
@@ -3048,20 +3110,30 @@ export default function Arena() {
 
   const handlePetSpider = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
+    const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+    const targetName = targetSnap?.name || "?";
+    const saveAbility = action.saveAbility || "str";
+    const saveDC = action.saveDC ?? 13;
+    const defMod = targetSnap?.stats?.[saveAbility] ?? 0;
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
+    const tsTotal = d20 + defMod;
+    const saved = tsTotal >= saveDC;
+    const lostTurns = saved ? 1 : 2;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
-      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
-      const targetName = targetSnap?.name || "?";
       const updatedPlayers = m.players.map(p => {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
-        if (p.id === targetId) return { ...p, controlLostTurns: 2 };
+        if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
         return p;
       });
-      const log = `🕷 Il ragno di ${myName} intrappola ${targetName} nella tela! Salta 2 turni (NESSUN TS).`;
+      const log = saved
+        ? `🕷 Il ragno di ${myName} intrappola ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno.`
+        : `🕷 Il ragno di ${myName} intrappola ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 2 turni.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3238,15 +3310,16 @@ export default function Arena() {
         const uses = { ...(p.actionUsesLeft || {}) };
         // Consume the Magical Cunning charge
         uses[cunningAction.name] = Math.max(0, (uses[cunningAction.name] ?? cunningAction.maxUses) - 1);
-        // Restore all spell slots to their maxUses
+        // Restore +1 charge to each spell slot (capped at its maxUses)
         (mySnap?.selectedActions || []).forEach(a => {
           if (a.maxUses && a.level > 0) {
-            uses[a.name] = a.maxUses;
+            const cur = uses[a.name] ?? a.maxUses;
+            uses[a.name] = Math.min(a.maxUses, cur + 1);
           }
         });
         return { ...p, ...tickEagleEnd(p), actionUsesLeft: uses };
       });
-      const log = `🌀 ${myName} usa Astuzia Magica! Salta il turno e ripristina tutti gli slot magia.`;
+      const log = `🌀 ${myName} usa Astuzia Magica! Salta il turno e ripristina 1 carica a ogni slot magia.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3691,7 +3764,7 @@ export default function Arena() {
     await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${action.name}` });
     const tsTotal = d20 + defMod + saveBuffBonus;
     const saves   = tsTotal >= dc;
-    // Stregoneria Innata: nemico tira ≤4 sul d20 → danno raddoppiato.
+    // Stregoneria Innata: nemico tira ≤4 sul d20 → danno +50%.
     const sorcererCrit = !saves && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 <= 4;
     // Rintocco Funebre: 1d12 se nemico già ferito.
     const targetMaxHp = defenderSnap?.stats?.maxHp ?? defMatchPlayer?.maxHp ?? defMatchPlayer?.hp ?? 0;
@@ -3703,12 +3776,12 @@ export default function Arena() {
     const concentrationDmg = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 4 : 0;
     const { total: baseDmg, rolls: diceRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(dmgFormula);
     const rawDmg = saves ? 0 : Math.max(0, baseDmg + casterMod + concentrationDmg);
-    const damage = sorcererCrit ? rawDmg * 2 : rawDmg;
+    const damage = sorcererCrit ? Math.floor(rawDmg * 1.5) : rawDmg;
     // Tocco Vampirico: cura il caster su danno inflitto.
     const { total: vampHeal, rolls: vampRolls } = (!saves && action.vampiric && damage > 0) ? rollDmg(action.vampiricHeal || "1d8") : { total: 0, rolls: "" };
     const modSign = casterMod >= 0 ? "+" : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
-    const sorceryTag = sorcererCrit ? " | 🌟Stregoneria Innata x2" : "";
+    const sorceryTag = sorcererCrit ? " | 🌟Stregoneria Innata +50%" : "";
     const hurtTag    = (action.damageWhenHurt && targetIsHurt) ? ` | 🩸ferito (${dmgFormula})` : "";
     const buffTag    = saveBuffBonus > 0 ? ` +${saveBuffBonus} 🛡abs.` : "";
     const dmgPart = saves ? "" : ` 🎲(${diceRolls})${modSign}${casterMod} ${ability.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag} = ${damage}`;
@@ -6047,7 +6120,7 @@ export default function Arena() {
                                   <span key={a.name} className="wild-form-action-tag">
                                     {a.icon} {a.name} {a.damage !== "—" ? a.damage : ""}
                                     {a.statKey ? ` +${a.statKey.toUpperCase()}` : ""}
-                                    {a.special === "web" ? " (salta 2t)" : ""}
+                                    {a.special === "web" ? " (TS FOR · 1-2t)" : ""}
                                     {a.special === "poison" ? " (TS COS)" : ""}
                                     {a.special === "save_dot" ? ` (TS COS · ${a.saveDotDamage || "1d8"}/turno)` : ""}
                                   </span>
@@ -6367,6 +6440,25 @@ export default function Arena() {
                               </button>
                             );
                           }
+                          if (action.special === "ki_healing") {
+                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const noUses = usesLeft !== null && usesLeft <= 0;
+                            const baUsed = !!myPlayer?.bonusActionUsed;
+                            const blocked = noUses || baUsed;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={baUsed ? "Bonus action già usata questo turno" : noUses ? "Cariche esaurite" : "Bonus action · cura 1d8+SAG HP"}
+                                onClick={() => !blocked && handleKiHealing(m.matchId, action)}>
+                                <span className="bonus-action-tag">⚡ Bonus</span>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "1d8+SAG cura"}</span>
+                                {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
+                              </button>
+                            );
+                          }
                           if (action.special === "pet_wolf") {
                             const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
                             const noUses = usesLeft <= 0;
@@ -6394,11 +6486,11 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={noUses ? "Cariche esaurite" : "Il nemico salta 2 turni · NESSUN TS"}
+                                title={noUses ? "Cariche esaurite" : "TS FOR (CD 13): fallisce 2t · supera 1t"}
                                 onClick={() => !blocked && handlePetSpider(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{noUses ? "Esaurita" : "Salta 2t"}</span>
+                                <span className="action-dice">{noUses ? "Esaurita" : "TS FOR · 1-2t"}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
@@ -6746,11 +6838,11 @@ export default function Arena() {
                                 : noUsesLeft
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
-                                : action.special === "web" ? "Ragnatela — intrappola il bersaglio per 2 turni (NESSUN TS)"
-                                : action.special === "triboli" ? "Triboli — il nemico salta 2 turni (NESSUN TS)"
+                                : action.special === "web" ? "Ragnatela — TS FOR (CD 13): fallisce 2t · supera 1t"
+                                : action.special === "triboli" ? "Triboli — TS DES (CD 13): fallisce 2t · supera 1t"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
-                                : action.special === "stealth" ? `Furtività — attiva vantaggio 3 turni · nemico svantaggio 3 turni`
+                                : action.special === "stealth" ? `Furtività — vantaggio ai tuoi prossimi 3 attacchi`
                                 : !isEquipped ? "Clicca per impugnare (spende il turno)"
                                 : `+${action.hitBonus}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""} | ${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               onClick={() => {

@@ -52,14 +52,8 @@ export default function MarketAdmin() {
 
   const handleImageUpload = async (file) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      alert("Per favore seleziona un file immagine valido (jpg, png, webp, gif).");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Immagine troppo grande (max 5MB). Comprimi il file e riprova.");
-      return;
-    }
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) return;
     setUploading(true);
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -71,7 +65,6 @@ export default function MarketAdmin() {
       setFormData(prev => ({ ...prev, img: url }));
     } catch (err) {
       console.error("Upload error:", err);
-      alert("Errore durante l'upload: " + (err.message || err.code || "sconosciuto"));
     } finally {
       setUploading(false);
     }
