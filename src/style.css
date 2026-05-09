@@ -186,6 +186,7 @@ header {
 .logo {
      display: flex;
      align-items: center;
+     gap: 14px;
      margin-left: 10%;
      user-select: none;
      z-index: 2;
@@ -199,6 +200,42 @@ header {
      width: auto;
      display: block;
      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
+}
+
+.logo-wordmark {
+     display: flex;
+     flex-direction: column;
+     line-height: 0.92;
+     font-family: var(--font-title);
+     font-weight: 700;
+     letter-spacing: 0.08em;
+     text-transform: uppercase;
+}
+
+.logo-word {
+     background: linear-gradient(180deg, #e8b94a 0%, #c9941f 45%, #8a4a14 95%);
+     -webkit-background-clip: text;
+     background-clip: text;
+     color: transparent;
+     text-shadow:
+          0 1px 0 rgba(255, 235, 180, 0.55),
+          0 2px 3px rgba(0, 0, 0, 0.28);
+     filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.18));
+}
+
+.logo-word--crit {
+     font-size: 1.85rem;
+     letter-spacing: 0.18em;
+     padding-left: 2px;
+}
+
+.logo-word--happens {
+     font-size: 1.55rem;
+     background: linear-gradient(180deg, #b03030 0%, #7a1f1f 90%);
+     -webkit-background-clip: text;
+     background-clip: text;
+     color: transparent;
+     margin-top: 2px;
 }
 
 nav {
@@ -3050,10 +3087,13 @@ a {
 
      .logo {
           margin-left: 2%;
+          gap: 8px;
      }
      .logo-img {
           height: 48px;
      }
+     .logo-word--crit    { font-size: 1.25rem; letter-spacing: 0.14em; }
+     .logo-word--happens { font-size: 1rem; }
 }
 
 /* Large Desktop Layout */
@@ -3135,10 +3175,13 @@ a {
 
      .logo {
           margin-left: 0;
+          gap: 10px;
      }
      .logo-img {
           height: 52px;
      }
+     .logo-word--crit    { font-size: 1.4rem; letter-spacing: 0.16em; }
+     .logo-word--happens { font-size: 1.15rem; }
 
      .burger.open + nav {
           margin: 0 10%;

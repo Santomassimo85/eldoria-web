@@ -287,7 +287,11 @@ export default function App() {
       <NotificationOptIn />
       <header>
         <NavLink to="/" className="logo" onClick={closeMenu} aria-label="Crit Happens — Home">
-          <img src="/assets/CritHappensLOGO.png" alt="Crit Happens" className="logo-img" />
+          <img src="/assets/CritHappensLOGO.png" alt="" className="logo-img" />
+          <span className="logo-wordmark">
+            <span className="logo-word logo-word--crit">Crit</span>
+            <span className="logo-word logo-word--happens">Happens</span>
+          </span>
         </NavLink>
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}

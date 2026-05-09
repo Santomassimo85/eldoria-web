@@ -1,0 +1,738 @@
+/* ============================================================
+   TEATRO DELLE CRONACHE · Cinema page — LIGHT THEME
+   Parchment foyer · gold marquee · sepia poster wall · dark stage
+   ============================================================ */
+
+.theatrum {
+  min-height: 100vh;
+  padding: 100px 16px 80px;
+  max-width: 1240px;
+  margin: 0 auto;
+  font-family: var(--font-text);
+  color: #2a1d05;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(212, 175, 55, 0.18), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 50% 110%, rgba(176, 48, 48, 0.10), transparent 70%),
+    #fffaf0;
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* Subtle parchment texture overlay */
+.theatrum::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(122, 81, 18, 0.018) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(122, 81, 18, 0.012) 0 1px, transparent 1px 4px);
+  z-index: 0;
+}
+.theatrum > * { position: relative; z-index: 1; }
+
+/* ═══════════════════════════════════════════════════════════
+   LOCKED STATE
+   ═══════════════════════════════════════════════════════════ */
+.theatrum--locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.theatrum-locked-card {
+  text-align: center;
+  padding: 60px 40px;
+  background: #fff;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-top: 4px solid var(--red, #b03030);
+  border-radius: 6px;
+  max-width: 420px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+}
+.theatrum-locked-glyph { font-size: 3.4rem; margin-bottom: 18px; }
+.theatrum-locked-title {
+  font-family: var(--font-title);
+  color: var(--red, #b03030);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 1.4rem;
+  margin: 0 0 12px;
+}
+.theatrum-locked-text { color: #6b5424; font-style: italic; line-height: 1.6; margin: 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   MARQUEE HEADER
+   ═══════════════════════════════════════════════════════════ */
+.theatrum-marquee {
+  text-align: center;
+  padding: 32px 20px 28px;
+  margin-bottom: 50px;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 50%, rgba(255, 245, 200, 0.65), rgba(255, 250, 230, 0.35) 60%, transparent 75%),
+    linear-gradient(180deg, #fff8e6, #fffaf0);
+  border-top: 2px solid rgba(212, 175, 55, 0.55);
+  border-bottom: 2px solid rgba(212, 175, 55, 0.55);
+  position: relative;
+  box-shadow: 0 6px 24px rgba(122, 81, 18, 0.06);
+}
+
+/* Bulb strips — gold on cream */
+.theatrum-bulbs {
+  height: 14px;
+  margin: 0 auto;
+  max-width: 80%;
+  background-image:
+    radial-gradient(circle, #f5c842 1.8px, rgba(212, 175, 55, 0.4) 2.4px, transparent 3px);
+  background-size: 22px 14px;
+  background-position: center;
+  background-repeat: repeat-x;
+  filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.6));
+  animation: theatrum-bulb-pulse 2.4s ease-in-out infinite;
+}
+.theatrum-bulbs--top { margin-bottom: 18px; }
+.theatrum-bulbs--bottom { margin-top: 18px; }
+@keyframes theatrum-bulb-pulse {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.6)); }
+  50%      { opacity: 1;    filter: drop-shadow(0 0 10px rgba(245, 200, 66, 0.95)); }
+}
+
+.theatrum-eyebrow {
+  font-family: var(--font-title);
+  font-size: 0.74rem;
+  letter-spacing: 0.32em;
+  color: #8a6a18;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+  opacity: 0.86;
+}
+
+.theatrum-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.7rem, 5.5vw, 3.2rem);
+  margin: 0 0 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  line-height: 1.05;
+}
+.theatrum-title-word {
+  background: linear-gradient(180deg, #c01818 0%, #7a1f1f 70%, #4a1010 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.6),
+    0 2px 6px rgba(122, 31, 31, 0.18);
+}
+.theatrum-title-amp {
+  font-family: var(--font-text), serif;
+  font-style: italic;
+  font-size: 0.5em;
+  letter-spacing: 0.18em;
+  color: #c9a14a;
+  text-transform: lowercase;
+  align-self: center;
+}
+
+.theatrum-subtitle {
+  color: #6b5424;
+  font-style: italic;
+  font-size: clamp(0.86rem, 1.8vw, 1.02rem);
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.55;
+}
+
+.theatrum-stats {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.theatrum-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #fff;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: #4a3815;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 6px rgba(122, 81, 18, 0.05);
+}
+.theatrum-stat-icon { font-size: 0.92rem; }
+.theatrum-stat-num {
+  font-family: var(--font-title);
+  color: var(--red, #b03030);
+  font-weight: 700;
+  font-size: 0.96rem;
+}
+.theatrum-stat-lbl { color: #6b5424; }
+
+/* ═══════════════════════════════════════════════════════════
+   FEATURED — latest session
+   ═══════════════════════════════════════════════════════════ */
+.theatrum-feature { margin-bottom: 64px; }
+.theatrum-feature-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #8a6a18;
+  margin-bottom: 18px;
+}
+.theatrum-feature-eyebrow-glyph { color: var(--red, #b03030); font-size: 0.9rem; }
+
+.theatrum-feature-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  align-items: center;
+}
+@media (min-width: 880px) {
+  .theatrum-feature-grid {
+    grid-template-columns: 1.4fr 1fr;
+    gap: 36px;
+  }
+}
+
+.theatrum-feature-poster {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: none;
+  padding: 0;
+  background: #1a0e08;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 3px #d4af37,
+    0 0 0 6px rgba(176, 48, 48, 0.5),
+    0 18px 40px rgba(122, 81, 18, 0.25);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.theatrum-feature-poster:hover,
+.theatrum-feature-poster:focus-visible {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 3px #f5c842,
+    0 0 0 8px rgba(176, 48, 48, 0.65),
+    0 24px 50px rgba(122, 81, 18, 0.32);
+  outline: none;
+}
+.theatrum-feature-poster .theatrum-thumb {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease, filter 0.3s ease;
+  filter: brightness(0.92) saturate(1.05);
+}
+.theatrum-feature-poster:hover .theatrum-thumb {
+  transform: scale(1.04);
+  filter: brightness(1.02) saturate(1.1);
+}
+
+/* Vertical film perforations */
+.theatrum-feature-strip {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 18px;
+  left: 0;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 8px, rgba(0,0,0,0.85) 8px 18px, transparent 18px 22px),
+    linear-gradient(180deg, #1a0e08, #0d0604);
+  border-right: 1px solid rgba(212, 175, 55, 0.3);
+  pointer-events: none;
+}
+.theatrum-feature-strip--right {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.theatrum-feature-play {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff5d6, #f5c842 50%, #c9a14a 100%);
+  color: #4a1010;
+  font-size: 1.8rem;
+  display: flex; align-items: center; justify-content: center;
+  padding-left: 6px;
+  box-shadow:
+    0 0 0 4px rgba(255, 250, 240, 0.85),
+    0 0 0 6px rgba(212, 175, 55, 0.7),
+    0 8px 28px rgba(122, 81, 18, 0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.theatrum-feature-poster:hover .theatrum-feature-play {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow:
+    0 0 0 4px #fff,
+    0 0 0 8px rgba(212, 175, 55, 0.9),
+    0 12px 36px rgba(245, 200, 66, 0.5);
+}
+
+.theatrum-feature-meta { padding: 4px 0; }
+.theatrum-feature-num {
+  display: inline-block;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--red, #b03030);
+  background: rgba(176, 48, 48, 0.10);
+  border: 1px solid rgba(176, 48, 48, 0.45);
+  padding: 4px 12px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+.theatrum-feature-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.3rem, 3.4vw, 2rem);
+  color: #2a1d05;
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+.theatrum-feature-date {
+  color: #8a6a18;
+  font-size: 0.86rem;
+  font-style: italic;
+  margin: 0 0 14px;
+}
+.theatrum-feature-desc {
+  color: #4a3815;
+  font-size: 0.96rem;
+  line-height: 1.7;
+  margin: 0 0 22px;
+  border-left: 3px solid rgba(212, 175, 55, 0.55);
+  padding-left: 14px;
+  background: linear-gradient(90deg, rgba(255, 245, 200, 0.45), transparent 60%);
+}
+.theatrum-feature-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, #c01818, #7a1f1f);
+  border: 1px solid #d4af37;
+  color: #fff5d6;
+  font-family: var(--font-title);
+  font-size: 0.92rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 4px 14px rgba(122, 31, 31, 0.25), 0 0 0 1px rgba(212, 175, 55, 0.3) inset;
+}
+.theatrum-feature-cta:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 22px rgba(176, 48, 48, 0.35), 0 0 0 1px #d4af37 inset;
+  transform: translateY(-1px);
+}
+.theatrum-cta-icon {
+  font-size: 0.88rem;
+  color: #f5d896;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ARCHIVE LIST — film-roll rows on a parchment list
+   ═══════════════════════════════════════════════════════════ */
+.theatrum-archive { margin-top: 40px; }
+
+.theatrum-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 0 auto 30px;
+  max-width: 720px;
+}
+.theatrum-divider::before,
+.theatrum-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.7), transparent);
+}
+.theatrum-divider-glyph {
+  color: var(--red, #b03030);
+  font-size: 1.1rem;
+}
+.theatrum-archive-title {
+  font-family: var(--font-title);
+  color: #6b5424;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin: 0;
+  font-size: clamp(0.98rem, 2.4vw, 1.18rem);
+  white-space: nowrap;
+}
+
+.theatrum-rolls {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.theatrum-roll {
+  display: grid;
+  grid-template-columns: 56px 200px 1fr;
+  gap: 18px;
+  align-items: stretch;
+  width: 100%;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-left: 4px solid var(--red, #b03030);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(122, 81, 18, 0.06);
+}
+.theatrum-roll::before {
+  /* film perforation strip */
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 38px;
+  width: 14px;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 6px, rgba(0,0,0,0.7) 6px 14px, transparent 14px 18px),
+    linear-gradient(180deg, #1a0e08, #2a1810);
+  border-left: 1px solid rgba(212, 175, 55, 0.25);
+  border-right: 1px solid rgba(212, 175, 55, 0.25);
+}
+.theatrum-roll:hover,
+.theatrum-roll:focus-visible {
+  outline: none;
+  border-color: rgba(212, 175, 55, 0.85);
+  border-left-color: var(--red, #b03030);
+  background: linear-gradient(90deg, #fff8e6, #fffaf0);
+  transform: translateX(3px);
+  box-shadow: 0 8px 22px rgba(122, 81, 18, 0.14);
+}
+
+.theatrum-roll-num {
+  font-family: var(--font-title);
+  font-size: 1.05rem;
+  color: var(--red, #b03030);
+  letter-spacing: 0.04em;
+  align-self: center;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.8);
+}
+
+.theatrum-roll-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #1a0e08;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+}
+.theatrum-roll-thumb .theatrum-thumb {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.92);
+  transition: filter 0.2s ease, transform 0.3s ease;
+}
+.theatrum-roll:hover .theatrum-roll-thumb .theatrum-thumb {
+  filter: brightness(1.04);
+  transform: scale(1.06);
+}
+.theatrum-roll-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  color: #fff5d6;
+  background: rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+.theatrum-roll:hover .theatrum-roll-play { opacity: 1; }
+
+.theatrum-roll-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+.theatrum-roll-title {
+  font-family: var(--font-title);
+  color: #2a1d05;
+  font-size: clamp(0.96rem, 1.8vw, 1.08rem);
+  letter-spacing: 0.04em;
+  margin: 0;
+  line-height: 1.3;
+}
+.theatrum-roll-desc {
+  color: #6b5424;
+  font-size: 0.84rem;
+  font-style: italic;
+  line-height: 1.55;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.theatrum-roll-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.74rem;
+  color: #8a6a18;
+  margin-top: 4px;
+}
+.theatrum-roll-date,
+.theatrum-roll-platform { letter-spacing: 0.04em; }
+.theatrum-roll-platform { color: var(--red, #b03030); }
+
+/* Mobile */
+@media (max-width: 640px) {
+  .theatrum-roll {
+    grid-template-columns: 52px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .theatrum-roll::before { display: none; }
+  .theatrum-roll-thumb { grid-column: 2; }
+  .theatrum-roll-body { grid-column: 2; }
+  .theatrum-roll-num { grid-row: 1 / span 2; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   THUMB / PLACEHOLDER
+   ═══════════════════════════════════════════════════════════ */
+.theatrum-thumb { display: block; width: 100%; height: 100%; object-fit: cover; }
+.theatrum-thumb--placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background:
+    repeating-linear-gradient(45deg, rgba(122, 14, 14, 0.18) 0 12px, rgba(40, 16, 16, 0.4) 12px 24px),
+    linear-gradient(135deg, #2a1414, #160a0a);
+  color: #f5d896;
+}
+.theatrum-thumb-glyph { font-size: 2rem; filter: drop-shadow(0 0 6px rgba(245, 216, 150, 0.5)); }
+.theatrum-thumb-platform {
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STAGE MODAL — keeps a "lights out" feel for proper viewing
+   ═══════════════════════════════════════════════════════════ */
+.theatrum-stage {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(15, 8, 5, 0.93) 0%, rgba(0, 0, 0, 0.97) 80%);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px 16px;
+  animation: theatrum-stage-fade 0.25s ease;
+}
+@keyframes theatrum-stage-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.theatrum-stage-curtain {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: clamp(20px, 6vw, 60px);
+  background:
+    repeating-linear-gradient(90deg, rgba(122, 14, 14, 0.85) 0 16px, rgba(60, 6, 6, 0.95) 16px 28px),
+    linear-gradient(180deg, #4a0a0a, #2a0606);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.7) inset;
+  pointer-events: none;
+}
+.theatrum-stage-curtain--left {
+  left: 0;
+  animation: theatrum-curtain-left 0.5s cubic-bezier(0.6, 0, 0.4, 1);
+}
+.theatrum-stage-curtain--right {
+  right: 0;
+  animation: theatrum-curtain-right 0.5s cubic-bezier(0.6, 0, 0.4, 1);
+}
+@keyframes theatrum-curtain-left {
+  from { transform: translateX(50%); }
+  to   { transform: translateX(0); }
+}
+@keyframes theatrum-curtain-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.theatrum-stage-frame {
+  position: relative;
+  background: linear-gradient(180deg, #fff8e6, #fffaf0);
+  border: 2px solid #c9a14a;
+  border-radius: 6px;
+  width: 100%;
+  max-width: 1080px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 22px 22px 20px;
+  box-shadow:
+    0 0 0 6px rgba(122, 14, 14, 0.55),
+    0 30px 90px rgba(0, 0, 0, 0.7);
+  animation: theatrum-stage-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes theatrum-stage-pop {
+  from { transform: scale(0.94) translateY(10px); opacity: 0; }
+  to   { transform: scale(1) translateY(0);      opacity: 1; }
+}
+
+.theatrum-stage-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: linear-gradient(180deg, #c01818, #7a1f1f);
+  border: 1px solid #d4af37;
+  color: #fff5d6;
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: var(--font-title);
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(122, 31, 31, 0.3);
+}
+.theatrum-stage-close:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 4px 14px rgba(176, 48, 48, 0.45);
+}
+.theatrum-stage-close-lbl { margin-left: 4px; }
+@media (max-width: 540px) {
+  .theatrum-stage-close-lbl { display: none; }
+}
+
+.theatrum-stage-head {
+  text-align: center;
+  margin-bottom: 14px;
+  padding-right: 110px;
+}
+@media (max-width: 540px) { .theatrum-stage-head { padding-right: 50px; } }
+
+.theatrum-stage-eyebrow {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.32em;
+  color: var(--red, #b03030);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.theatrum-stage-title {
+  font-family: var(--font-title);
+  color: #2a1d05;
+  font-size: clamp(1rem, 2.6vw, 1.4rem);
+  margin: 0 0 4px;
+  letter-spacing: 0.04em;
+}
+.theatrum-stage-date {
+  color: #8a6a18;
+  font-style: italic;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.theatrum-stage-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6) inset, 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+.theatrum-stage-screen iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.theatrum-stage-desc {
+  color: #4a3815;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  text-align: center;
+  font-style: italic;
+  margin: 0;
+  padding: 0 8px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.55);
+  padding-top: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOADING + EMPTY
+   ═══════════════════════════════════════════════════════════ */
+.theatrum-loading,
+.theatrum-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b5424;
+  font-style: italic;
+}
+.theatrum-empty-glyph { font-size: 3rem; margin-bottom: 12px; }
+.theatrum-empty small { display: block; margin-top: 8px; opacity: 0.75; font-size: 0.82rem; }
+
+.theatrum-reel {
+  width: 56px; height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, transparent 6px, #c9a14a 6px 8px, transparent 8px 14px),
+    radial-gradient(circle at center, transparent 16px, #c9a14a 16px 18px, transparent 18px),
+    radial-gradient(circle at 50% 12px, #c9a14a 4px, transparent 4px),
+    radial-gradient(circle at 50% calc(100% - 12px), #c9a14a 4px, transparent 4px),
+    radial-gradient(circle at 12px 50%, #c9a14a 4px, transparent 4px),
+    radial-gradient(circle at calc(100% - 12px) 50%, #c9a14a 4px, transparent 4px),
+    #fff;
+  border: 2px solid #c9a14a;
+  animation: theatrum-reel-spin 2.4s linear infinite;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+}
+@keyframes theatrum-reel-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

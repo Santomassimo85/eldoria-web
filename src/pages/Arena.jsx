@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { db } from "../firebase";
 import {
   doc, getDoc, getDocs, onSnapshot, updateDoc, setDoc, deleteDoc,
@@ -8,6 +9,38 @@ import {
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import "./Arena.css";
+
+/* FIX: P5b/P5c/P5d — reusable modal portal */
+function ArenaModal({ open, onClose, title, children, variant = "modal" }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  const overlayClass = variant === "drawer" ? "arena-drawer-overlay" : "arena-modal-overlay";
+  const dialogClass  = variant === "drawer" ? "arena-drawer-dialog"  : "arena-modal-dialog";
+  return createPortal(
+    <div className={overlayClass} onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={dialogClass} onClick={(e) => e.stopPropagation()}>
+        {variant === "drawer" && <span className="arena-drawer-handle" aria-hidden="true" />}
+        <header className="arena-modal-header">
+          <h3 className="arena-modal-title">{title}</h3>
+          <button type="button" className="arena-modal-close" onClick={onClose} aria-label="Chiudi">✕</button>
+        </header>
+        <div className="arena-modal-body">{children}</div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 // ── WIZARD SPELLS (Mago) — pool: 6 trucchetti · 8 lv1 · 5 lv2 · 3 lv3 (sceglie 3+4+2)
 const WIZARD_SPELLS = [
@@ -21,7 +54,7 @@ const WIZARD_SPELLS = [
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
-  { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
+  { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
   { name: "Colpo Cromatico",       level: 1, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "🌈", info: "Lv1 · Magico", maxUses: 4 },
   { name: "Onda Tonante",          level: 1, hitBonus: 3,  damage: "2d8",   statKey: null, type: "spell", icon: "💨", info: "Lv1 · Tuono", maxUses: 4 },
@@ -47,7 +80,7 @@ const SORCERER_SPELLS = [
   { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
   { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 3 },
-  { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
+  { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "4d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (2 raggi × 2d6)", maxUses: 2 },
   { name: "Frantumare",            level: 2, hitBonus: 3,  damage: "2d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
@@ -66,7 +99,7 @@ const WARLOCK_SPELLS = [
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Braccia di Hadar",       level: 1, hitBonus: 3, damage: "2d6",  statKey: null, type: "spell", icon: "🐙", info: "Lv1 · Necrotico", maxUses: 2 },
   { name: "Malocchio",              level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "👁", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 2 },
-  { name: "Scudo",                  level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 CA/3 turni", special: "shield_buff", maxUses: 2 },
+  { name: "Scudo",                  level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Rappresaglia Infernale", level: 1, hitBonus: 3, damage: "2d10", statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco · risposta ai danni", maxUses: 2 },
   { name: "Charme su Persone",      level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
@@ -85,8 +118,8 @@ const DRUID_SPELLS = [
   { name: "Infestazione",       level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🐜", info: "Trucchetto · Veleno", maxUses: 4 },
   { name: "Morso di Gelo",      level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Schianto di Tuono",  level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "⚡", info: "Trucchetto · Tuono", maxUses: 4 },
-  { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +2 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 3, maxUses: 4 },
-  { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +3 CA per 3 turni", special: "shield_buff", maxUses: 4 },
+  { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +1 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 1, buffAttacks: 3, maxUses: 4 },
+  { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 2 },
   { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 2 },
@@ -267,6 +300,7 @@ const ARENA_ARMORS = {
 const WILD_SHAPES = {
   wolf: {
     name: "Lupo", icon: "🐺",
+    ac: 14,
     hpDice: { count: 4, sides: 12 },
     actions: [
       { name: "Artiglio", damage: "1d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
@@ -275,6 +309,7 @@ const WILD_SHAPES = {
   },
   bear: {
     name: "Orso", icon: "🐻",
+    ac: 16,
     hpDice: { count: 6, sides: 12 },
     actions: [
       { name: "Artiglio", damage: "1d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
@@ -283,14 +318,25 @@ const WILD_SHAPES = {
   },
   spider: {
     name: "Ragno", icon: "🕷",
+    ac: 12,
     hpDice: { count: 4, sides: 12 },
     actions: [
       { name: "Morso",     level: 0, damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
-      { name: "Veleno",    level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "save_dot", saveDotAbility: "con", saveDotDamage: "1d8", saveDotTurns: 3, saveDotDC: 12 },
+      { name: "Veleno",    level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "save_dot", saveDotAbility: "con", saveDotDamage: "1d8", saveDotTurns: 3, saveDotDC: 12, maxUses: 3 },
       { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web",    saveAbility: "str", saveDC: 13, maxUses: 3 },
     ],
   },
 };
+
+// Helper: AC of a player accounting for an active wild-shape form.
+// When the druid is transformed, the form's AC overrides the character's base AC.
+function getEffectiveAc(matchPlayer, charSnapshot) {
+  const baseAc = charSnapshot?.stats?.ac ?? 10;
+  if (matchPlayer?.wildShape && WILD_SHAPES[matchPlayer.wildShape]?.ac != null) {
+    return WILD_SHAPES[matchPlayer.wildShape].ac;
+  }
+  return baseAc;
+}
 
 // Carica del Guerriero — aggiunto automaticamente (max 3 cariche)
 const CHARGE_ACTION = {
@@ -1074,8 +1120,12 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
 // ── MASTER TITLE EDITOR ──────────────────────────────────────────────────────
 // Persistente: i titoli vivono sul documento `characters/{uid}.arenaTitle`
 // e restano per sempre, anche dopo reset/fine torneo.
-function MasterTitleEditor() {
-  const [open, setOpen]         = useState(false);
+function MasterTitleEditor({ forceOpen = false } = {}) {
+  /* FIX: P5c — forceOpen makes this render its body unconditionally
+     (used when wrapped in ArenaModal). The legacy toggle remains
+     when forceOpen is false. */
+  const [openState, setOpen]    = useState(false);
+  const open                    = forceOpen || openState;
   const [allChars, setAllChars] = useState([]);
   const [filter, setFilter]     = useState("");
 
@@ -1119,16 +1169,18 @@ function MasterTitleEditor() {
   const visible = q ? allChars.filter(c => (c.name || "").toLowerCase().includes(q) || (c.class || "").toLowerCase().includes(q)) : allChars;
 
   return (
-    <div className="master-title-editor">
-      <button
-        type="button"
-        className="master-title-toggle"
-        onClick={() => setOpen(v => !v)}
-        aria-expanded={open}
-      >
-        {open ? "▲" : "▼"} ♛ Titoli d'Arena — Permanenti
-        {!open && <span className="master-title-hint">clicca per gestire</span>}
-      </button>
+    <div className={`master-title-editor${forceOpen ? " in-modal" : ""}`}>
+      {!forceOpen && (
+        <button
+          type="button"
+          className="master-title-toggle"
+          onClick={() => setOpen(v => !v)}
+          aria-expanded={open}
+        >
+          {open ? "▲" : "▼"} ♛ Titoli d'Arena — Permanenti
+          {!open && <span className="master-title-hint">clicca per gestire</span>}
+        </button>
+      )}
       {open && (
         <div className="master-title-body">
           <p className="empty-note" style={{ marginBottom: 8 }}>
@@ -1272,6 +1324,24 @@ export default function Arena() {
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
 
   const [arenaInfoOpen, setArenaInfoOpen] = useState(false);
+  /* FIX: P5b/P5c/P5d — modal/drawer state */
+  const [bracketModalOpen, setBracketModalOpen] = useState(false);
+  const [bettingDrawerOpen, setBettingDrawerOpen] = useState(false);
+  const [titlesModalOpen, setTitlesModalOpen] = useState(false);
+  const [statsTournModalOpen, setStatsTournModalOpen] = useState(false);
+  const [statsFunModalOpen, setStatsFunModalOpen] = useState(false);
+
+  /* FIX: P5d — count placed bets for FAB badge */
+  const [userBetsCount, setUserBetsCount] = useState(0);
+  useEffect(() => {
+    if (!currentUser) { setUserBetsCount(0); return; }
+    const qBets = query(
+      collection(db, "arena_bets"),
+      where("uid", "==", currentUser.uid),
+      where("status", "==", "pending")
+    );
+    return onSnapshot(qBets, snap => setUserBetsCount(snap.size));
+  }, [currentUser]);
 
   // Tick ogni secondo per aggiornare i timer in-render
   const [tick, setTick] = useState(0);
@@ -2346,7 +2416,7 @@ export default function Arena() {
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
       const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-      const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const smiteStrMod = attackerSnap?.stats?.str ?? 0;
       const smiteMdAtk = myMatchPlayer?.magicDetectAttacks ?? 0;
       const smiteAidBonus = smiteMdAtk > 0
@@ -2410,7 +2480,7 @@ export default function Arena() {
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
       const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
-      const targetAc = (defenderSnap?.stats?.ac ?? 10) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const dexMod = attackerSnap?.stats?.dex ?? 0;
       const sneakMdAtk = myMatchPlayer?.magicDetectAttacks ?? 0;
       const aidBonus = sneakMdAtk > 0
@@ -2711,7 +2781,7 @@ export default function Arena() {
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
     const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
-    const defAC    = (defenderSnap?.stats?.ac ?? 10) - (shieldLost ? 2 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
+    const defAC    = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost ? 2 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
     const critThreshold = isFighter ? 19 : 20; // Critico Migliorato: 19-20 per il guerriero
     const isCrit   = d20 >= critThreshold; // nat 20 (o 19 per fighter) = critico
     const isHit    = hitTotal >= defAC || isCrit;
@@ -4351,7 +4421,7 @@ export default function Arena() {
           const wasControlled = (p.controlLostTurns ?? 0) > 0;
           let up = wasControlled
             ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false }
-            : { ...p, defensiveBonus: 1, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false };
+            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false };
           if (wasControlled) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           if (hasPendingDex) {
             const d20 = Math.floor(Math.random() * 20) + 1;
@@ -4660,6 +4730,43 @@ export default function Arena() {
         )}
       </div>
 
+      {/* ── QUICK NAV (sticky) ── */}
+      {currentUser && (() => {
+        const hasMyActive = (arenaMeta.matches || []).some(m =>
+          ((m.kind === "fun") || arenaMeta.phase === "combat") &&
+          m.players?.some(p => p.id === currentUser?.uid) &&
+          m.status !== "open"
+        );
+        const hasBracket = (arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0;
+        const goTo = (id) => {
+          const el = document.getElementById(id);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        };
+        return (
+          <nav className="arena-quicknav" aria-label="Navigazione rapida Arena">
+            <span className="arena-quicknav-deco" aria-hidden="true">⚜</span>
+            {hasMyActive && (
+              <button type="button" className="arena-quicknav-chip arena-quicknav-chip--active" onClick={() => goTo("arena-my-match")}>
+                <span className="arena-quicknav-chip-icon">🛡</span>
+                <span className="arena-quicknav-chip-label">La Tua Sfida</span>
+                <span className="arena-quicknav-chip-pulse" aria-hidden="true" />
+              </button>
+            )}
+            <button type="button" className="arena-quicknav-chip" onClick={() => goTo("arena-training")}>
+              <span className="arena-quicknav-chip-icon">⚔</span>
+              <span className="arena-quicknav-chip-label">Arena Libera</span>
+            </button>
+            {hasBracket && (
+              <button type="button" className="arena-quicknav-chip" onClick={() => goTo("arena-bracket")}>
+                <span className="arena-quicknav-chip-icon">♛</span>
+                <span className="arena-quicknav-chip-label">Tabellone</span>
+              </button>
+            )}
+            <span className="arena-quicknav-deco" aria-hidden="true">⚜</span>
+          </nav>
+        );
+      })()}
+
       {/* ── SEZIONE SPIEGAZIONE ── */}
       <div className="arena-info-section">
         <button className="arena-info-toggle" onClick={() => setArenaInfoOpen(v => !v)}>
@@ -4939,10 +5046,63 @@ export default function Arena() {
         </div>
       )}
 
-      {isMaster && <MasterTitleEditor />}
-
-      {isMaster && <TournamentClassStats liveTournament={liveTournament} onSync={syncMatchHistory} />}
+      {/* FIX: P5c — collapsible master panels become trigger buttons + modals */}
       {isMaster && (
+        <div className="arena-modal-trigger-row">
+          <button
+            type="button"
+            className="arena-modal-trigger"
+            onClick={() => setTitlesModalOpen(true)}
+          >
+            <span className="arena-modal-trigger-icon">♛</span>
+            <span className="arena-modal-trigger-text">
+              <span className="arena-modal-trigger-title">Titoli d'Arena</span>
+              <span className="arena-modal-trigger-sub">Permanenti — gestisci titoli</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="arena-modal-trigger"
+            onClick={() => setStatsTournModalOpen(true)}
+          >
+            <span className="arena-modal-trigger-icon">📊</span>
+            <span className="arena-modal-trigger-text">
+              <span className="arena-modal-trigger-title">Statistiche Torneo</span>
+              <span className="arena-modal-trigger-sub">Classi · Tornei archiviati</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="arena-modal-trigger"
+            onClick={() => setStatsFunModalOpen(true)}
+          >
+            <span className="arena-modal-trigger-icon">⚔</span>
+            <span className="arena-modal-trigger-text">
+              <span className="arena-modal-trigger-title">Statistiche Arena Libera</span>
+              <span className="arena-modal-trigger-sub">Sfide concluse</span>
+            </span>
+          </button>
+        </div>
+      )}
+      <ArenaModal
+        open={titlesModalOpen}
+        onClose={() => setTitlesModalOpen(false)}
+        title="♛ Titoli d'Arena — Permanenti"
+      >
+        <MasterTitleEditor forceOpen />
+      </ArenaModal>
+      <ArenaModal
+        open={statsTournModalOpen}
+        onClose={() => setStatsTournModalOpen(false)}
+        title="📊 Statistiche Classi — Torneo"
+      >
+        <TournamentClassStats liveTournament={liveTournament} onSync={syncMatchHistory} forceOpen />
+      </ArenaModal>
+      <ArenaModal
+        open={statsFunModalOpen}
+        onClose={() => setStatsFunModalOpen(false)}
+        title="⚔ Statistiche Classi — Arena Libera"
+      >
         <FunArenaClassStats
           funHistory={arenaMeta.funMatchHistory || []}
           currentMatches={arenaMeta.matches || []}
@@ -4950,8 +5110,9 @@ export default function Arena() {
           onReset={async () => {
             await updateDoc(doc(db, "arena_meta", "global"), { funMatchHistory: [] });
           }}
+          forceOpen
         />
-      )}
+      </ArenaModal>
 
       {/* ── ZONA LOADOUT (tournament registration) ── */}
       {(
@@ -5556,11 +5717,11 @@ export default function Arena() {
           .filter(m => m.status === "finished" && m.players?.some(p => p.id === currentUser.uid))
           .slice(-3);
         return (
-          <div className="fun-arena-section">
+          <div className="fun-arena-section" id="arena-training">
             <div className="fun-arena-header">
-              <span className="fun-arena-icon">🛡</span>
+              <span className="fun-arena-icon">⚔</span>
               <div className="fun-arena-title-block">
-                <h3 className="fun-arena-title">Arena Libera</h3>
+                <h3 className="fun-arena-title">Arena Libera <span className="fun-arena-title-tag">Allenamento</span></h3>
                 <p className="fun-arena-subtitle">
                   Sfide 1v1 senza ricompense. Stesso regolamento del torneo, solo per il gusto di combattere.
                 </p>
@@ -5665,6 +5826,33 @@ export default function Arena() {
       {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
         const renderMatchCard = (m) => {
           const isMyMatch = m.players.some(p => p.id === currentUser?.uid);
+
+          // ── Compact view for finished matches ─────────────────
+          // Single line: [W/L badge] WinnerName  ▸  LoserName(struck-through)
+          // Badge color reflects viewer's outcome if they were in the match.
+          if (m.status === "finished") {
+            const winner = m.players.find(p => p.id === m.winner);
+            const losers = m.players.filter(p => p.id !== m.winner);
+            const myRole = isMyMatch
+              ? (m.winner === currentUser?.uid ? "win" : "loss")
+              : null;
+            return (
+              <div key={m.matchId} className={`bracket-card-mini ${myRole ? `mine-${myRole}` : ""}`}>
+                <span className={`bracket-mini-badge ${myRole || "neutral"}`}>
+                  {myRole === "win" ? "W" : myRole === "loss" ? "L" : "✓"}
+                </span>
+                <span className="bracket-mini-winner" title={winner?.name || "?"}>
+                  {winner?.name || "?"}
+                </span>
+                <span className="bracket-mini-vs" aria-hidden="true">▸</span>
+                <span className="bracket-mini-losers" title={losers.map(l => l.name).join(", ")}>
+                  {losers.map(l => l.name).join(", ") || "—"}
+                </span>
+              </div>
+            );
+          }
+
+          // ── Full detail card for active / initiative / pending ──
           return (
             <div key={m.matchId} className={`bracket-card ${m.status}${isMyMatch ? " my-match" : ""}`}>
               {m.players.map((p, idx) => {
@@ -5672,16 +5860,15 @@ export default function Arena() {
                 const maxHp = char.stats?.maxHp ?? 70;
                 const hpPct = Math.max(0, Math.min(100, (p.hp / maxHp) * 100));
                 const hpColor = hpPct > 60 ? "#27ae60" : hpPct > 30 ? "#e67e22" : "#c0392b";
-                const isWin = m.winner === p.id;
                 const isActive = m.turn === p.id && m.status === "active";
                 return (
                   <React.Fragment key={p.id}>
                     {idx > 0 && <div className="bracket-sep">VS</div>}
-                    <div className={`bracket-fighter${isWin ? " win" : ""}${m.status === "finished" && m.winner && m.winner !== p.id ? " dead" : ""}${isActive ? " active-turn" : ""}`}>
+                    <div className={`bracket-fighter${isActive ? " active-turn" : ""}`}>
                       <div className="bracket-fighter-row">
                         {char.image && <img src={char.image} className="bracket-avatar" alt="" />}
                         <div className="bracket-fighter-info">
-                          <span className="bracket-fighter-name">{isWin ? "🏆 " : ""}{p.name}</span>
+                          <span className="bracket-fighter-name">{p.name}</span>
                           {char.class && <span className="bracket-fighter-class">{char.class}</span>}
                           {getSnapTitles(char).map(key => ARENA_TITLES[key] && (
                             <span key={key} className="bracket-fighter-title" title={ARENA_TITLES[key].short}>
@@ -5689,31 +5876,25 @@ export default function Arena() {
                             </span>
                           ))}
                         </div>
-                        {m.status === "finished"
-                          ? <span className={`bracket-result-tag${isWin ? " win" : " loss"}`}>{isWin ? "Vince" : "X"}</span>
-                          : isActive
+                        {isActive
                           ? <span className="bracket-active-dot" title="Turno in corso">●</span>
                           : <span className="bracket-hp-badge" style={{ background: hpColor }}>{p.hp}</span>
                         }
                       </div>
-                      {m.status !== "finished" && (
-                        <div className="bracket-hp-track">
-                          <div className="bracket-hp-bar" style={{ width: `${hpPct}%`, background: hpColor }} />
-                        </div>
-                      )}
+                      <div className="bracket-hp-track">
+                        <div className="bracket-hp-bar" style={{ width: `${hpPct}%`, background: hpColor }} />
+                      </div>
                     </div>
                   </React.Fragment>
                 );
               })}
               <div className={`bracket-status ${m.status}`}>
-                {m.status === "initiative" ? "⚡ Iniziativa"
-                  : m.status === "active" ? "⚔ In combattimento"
-                  : "✓ Concluso"}
+                {m.status === "initiative" ? "⚡ Iniziativa" : "⚔ In combattimento"}
               </div>
               {m.logs?.length > 0 && m.status === "active" && (
                 <div className="bracket-last-log">{logPubText(m.logs[m.logs.length - 1])}</div>
               )}
-              {isMaster && (m.status === "active" || m.status === "initiative") && (
+              {isMaster && (
                 <div className="bracket-force-winner">
                   <span className="bracket-force-label">♛ Forza vincitore:</span>
                   <div className="bracket-force-btns">
@@ -5789,34 +5970,116 @@ export default function Arena() {
 
         const finalM = tournamentMatches.find(m => m.kind === "final");
 
-        return (
-          <div className="bracket-section">
-            <h3 className="bracket-title">⚔ Tabellone del Campionato
-              {arenaMeta.phase === "combat" && !finalM && <span className="bracket-round-badge">Round {arenaMeta.currentRound}</span>}
-              {finalM && <span className="bracket-round-badge final-badge">Finale</span>}
-            </h3>
-            <div className="bracket-groups-wrap">
-              {renderGroupColumn("A")}
-              {renderGroupColumn("B")}
+        /* FIX: P5b — compact summary card per girone (just the standings) */
+        const renderGroupSummary = (groupKey) => {
+          const groupIds = groupKey === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
+          if (groupIds.length === 0) return null;
+          const standings = computeGroupStandings(groupKey, tournamentMatches);
+          return (
+            <div key={groupKey} className="bracket-summary-card">
+              <h4 className="bracket-summary-card-title">⚜ Girone {groupKey}</h4>
+              <table className="bracket-standings">
+                <thead>
+                  <tr><th>#</th><th>Giocatore</th><th>V</th><th>S</th></tr>
+                </thead>
+                <tbody>
+                  {standings.map((s, i) => {
+                    const snap = snapshots[s.uid] || {};
+                    return (
+                      <tr key={s.uid} className={i === 0 ? "leader" : ""}>
+                        <td>{i + 1}</td>
+                        <td>
+                          {snap.image && <img src={snap.image} className="standings-avatar" alt="" />}
+                          {snap.name || "?"}
+                        </td>
+                        <td>{s.wins}</td>
+                        <td>{s.losses}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            {finalM && (
-              <div className="bracket-final-wrap">
-                <div className="bracket-final-header">🏆 Finale di Campionato</div>
-                {renderMatchCard(finalM)}
+          );
+        };
+
+        return (
+          <>
+            {/* FIX: P5b — inline trigger row + standings summary */}
+            <div className="bracket-open-row" id="arena-bracket">
+              <div className="bracket-open-row-info">
+                <h3 className="bracket-open-row-title">⚔ Tabellone — Riepilogo</h3>
+                {arenaMeta.phase === "combat" && !finalM && (
+                  <span className="bracket-round-badge">Round {arenaMeta.currentRound}</span>
+                )}
+                {finalM && <span className="bracket-round-badge final-badge">Finale</span>}
               </div>
-            )}
-          </div>
+              <button type="button" className="btn-bracket-open" onClick={() => setBracketModalOpen(true)}>
+                📊 Apri Tabellone
+              </button>
+            </div>
+            <div className="bracket-summary-grid">
+              {renderGroupSummary("A")}
+              {renderGroupSummary("B")}
+            </div>
+
+            {/* FIX: P5b — full bracket lives inside modal */}
+            <ArenaModal
+              open={bracketModalOpen}
+              onClose={() => setBracketModalOpen(false)}
+              title="⚔ Tabellone del Campionato"
+            >
+              <div className="bracket-section">
+                <h3 className="bracket-title">⚔ Tabellone del Campionato
+                  {arenaMeta.phase === "combat" && !finalM && <span className="bracket-round-badge">Round {arenaMeta.currentRound}</span>}
+                  {finalM && <span className="bracket-round-badge final-badge">Finale</span>}
+                </h3>
+                <div className="bracket-groups-wrap">
+                  {renderGroupColumn("A")}
+                  {renderGroupColumn("B")}
+                </div>
+                {finalM && (
+                  <div className="bracket-final-wrap">
+                    <div className="bracket-final-header">🏆 Finale di Campionato</div>
+                    {renderMatchCard(finalM)}
+                  </div>
+                )}
+              </div>
+            </ArenaModal>
+          </>
         );
       })()}
 
-      {/* ── SCOMMESSE (non partecipanti + master) ── */}
+      {/* FIX: P5d — Betting moved to floating drawer (FAB-triggered).
+          Inline render is suppressed by CSS; the FAB and drawer below replace it. */}
       {arenaMeta.phase === "combat" && (!isRegistered || isMaster) && currentUser && (
-        <BettingPanel
-          arenaMeta={arenaMeta}
-          snapshots={snapshots}
-          currentUser={currentUser}
-          isMaster={isMaster}
-        />
+        <>
+          <button
+            type="button"
+            className="arena-bet-fab"
+            onClick={() => setBettingDrawerOpen(true)}
+            aria-label="Apri pannello scommesse"
+          >
+            <span className="arena-bet-fab-icon">🎲</span>
+            <span>Scommetti</span>
+            {userBetsCount > 0 && (
+              <span className="arena-bet-fab-badge">{userBetsCount}</span>
+            )}
+          </button>
+          <ArenaModal
+            open={bettingDrawerOpen}
+            onClose={() => setBettingDrawerOpen(false)}
+            title="🎲 Scommesse Arena"
+            variant="drawer"
+          >
+            <BettingPanel
+              arenaMeta={arenaMeta}
+              snapshots={snapshots}
+              currentUser={currentUser}
+              isMaster={isMaster}
+            />
+          </ArenaModal>
+        </>
       )}
 
       {/* ── PANNELLO AZIONI (solo per partecipanti) ──
@@ -5826,7 +6089,15 @@ export default function Arena() {
         m.players?.some(p => p.id === currentUser?.uid) &&
         m.status !== "open"
       ) && (
-        <div className="matches-container">
+        <div className="matches-container" id="arena-my-match">
+          <div className="my-arena-banner">
+            <span className="my-arena-banner-deco">⚔</span>
+            <div className="my-arena-banner-text">
+              <span className="my-arena-banner-eyebrow">La Tua Arena</span>
+              <span className="my-arena-banner-title">Il Tuo Campo di Battaglia</span>
+            </div>
+            <span className="my-arena-banner-deco">⚔</span>
+          </div>
           {arenaMeta.matches
             .filter(m => m.players.some(p => p.id === currentUser?.uid))
             .filter(m => m.kind === "fun" || arenaMeta.phase === "combat")
@@ -5955,7 +6226,7 @@ export default function Arena() {
                             </div>
                           ))}
                           <div className="fighter-meta">
-                            CA {char.stats?.ac ?? "?"}
+                            CA {p.wildShape && WILD_SHAPES[p.wildShape]?.ac != null ? WILD_SHAPES[p.wildShape].ac : (char.stats?.ac ?? "?")}
                             {(() => {
                               const shieldBonus = (p.shieldSkillTurns ?? 0) > 0 ? (p.shieldSkillBonus ?? 3) : 0;
                               const defBonus = p.defensiveBonus ?? 0;
@@ -7216,21 +7487,31 @@ export default function Arena() {
                 )}
 
                 <div className="match-log">
-                  {m.logs.slice(-5).map((l, i) => {
-                    const text = displayLog(l, currentUser?.uid);
-                    const isLatest = i === m.logs.slice(-5).length - 1;
-                    const isAttLog = typeof l === 'object' && l.attId === currentUser?.uid;
-                    const isDefLog = typeof l === 'object' && l.defId === currentUser?.uid;
-                    const ts = typeof l === 'object' && l.ts
-                      ? new Date(l.ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                      : null;
-                    return (
-                      <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""}`}>
-                        {ts && <span className="log-ts">{ts}</span>}
-                        {text}
-                      </p>
-                    );
-                  })}
+                  <div className="match-log-head">
+                    <span className="match-log-icon" aria-hidden="true">📜</span>
+                    <span className="match-log-title">Cronaca dello Scontro</span>
+                    <span className="match-log-count">{(m.logs || []).length} {(m.logs || []).length === 1 ? "evento" : "eventi"}</span>
+                  </div>
+                  <div className="match-log-scroll">
+                    {[...(m.logs || [])].reverse().map((l, i) => {
+                      const text = displayLog(l, currentUser?.uid);
+                      const isLatest = i === 0;
+                      const isAttLog = typeof l === 'object' && l.attId === currentUser?.uid;
+                      const isDefLog = typeof l === 'object' && l.defId === currentUser?.uid;
+                      const ts = typeof l === 'object' && l.ts
+                        ? new Date(l.ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                        : null;
+                      return (
+                        <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""}`}>
+                          {ts && <span className="log-ts">{ts}</span>}
+                          {text}
+                        </p>
+                      );
+                    })}
+                    {(m.logs || []).length === 0 && (
+                      <p className="match-log-empty">— Il combattimento non è ancora iniziato —</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Arena Libera: bottone abbandono / chiudi */}
@@ -7310,8 +7591,10 @@ function HallOfChampions({ champions, isMaster, onRemove }) {
   );
 }
 
-function TournamentClassStats({ liveTournament, onSync }) {
-  const [open, setOpen]       = useState(false);
+function TournamentClassStats({ liveTournament, onSync, forceOpen = false }) {
+  /* FIX: P5c — forceOpen renders body unconditionally (used inside modal) */
+  const [openState, setOpen] = useState(false);
+  const open                  = forceOpen || openState;
   const [history, setHistory] = useState([]);
   const [loaded, setLoaded]   = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -7366,10 +7649,12 @@ function TournamentClassStats({ liveTournament, onSync }) {
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
   return (
-    <div className="class-stats-section">
-      <button className="class-stats-toggle" onClick={() => setOpen(v => !v)}>
-        {open ? "▲" : "▼"} 📊 Statistiche Classi — Torneo / Campioni
-      </button>
+    <div className={`class-stats-section${forceOpen ? " in-modal" : ""}`}>
+      {!forceOpen && (
+        <button className="class-stats-toggle" onClick={() => setOpen(v => !v)}>
+          {open ? "▲" : "▼"} 📊 Statistiche Classi — Torneo / Campioni
+        </button>
+      )}
       {open && (
         <div className="class-stats-body">
           {!loaded ? (
@@ -7438,8 +7723,10 @@ function TournamentClassStats({ liveTournament, onSync }) {
 }
 
 // ── Statistiche classi Arena Libera (basate su funMatchHistory) ─────────────
-function FunArenaClassStats({ funHistory, currentMatches, isMaster, onReset }) {
-  const [open, setOpen] = useState(false);
+function FunArenaClassStats({ funHistory, currentMatches, isMaster, onReset, forceOpen = false }) {
+  /* FIX: P5c — forceOpen renders body unconditionally (used inside modal) */
+  const [openState, setOpen] = useState(false);
+  const open = forceOpen || openState;
   const [resetting, setResetting] = useState(false);
 
   const { top, totalMatches, livePending } = useMemo(() => {
@@ -7498,10 +7785,12 @@ function FunArenaClassStats({ funHistory, currentMatches, isMaster, onReset }) {
   const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
   return (
-    <div className="class-stats-section fun-class-stats">
-      <button className="class-stats-toggle fun" onClick={() => setOpen(v => !v)}>
-        {open ? "▲" : "▼"} 🛡 Statistiche Classi — Arena Libera
-      </button>
+    <div className={`class-stats-section fun-class-stats${forceOpen ? " in-modal" : ""}`}>
+      {!forceOpen && (
+        <button className="class-stats-toggle fun" onClick={() => setOpen(v => !v)}>
+          {open ? "▲" : "▼"} 🛡 Statistiche Classi — Arena Libera
+        </button>
+      )}
       {open && (
         <div className="class-stats-body">
           {totalMatches === 0 ? (

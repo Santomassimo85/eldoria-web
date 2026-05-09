@@ -1,21 +1,64 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
-import "./admin.css";
+import "./Cinema.css";
+
+// Best YouTube thumbnail with HQ fallback baked in via onError.
+const ytThumb = (id) => `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+const ytThumbFallback = (id) => `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+
+const formatDate = (raw) => {
+  if (!raw) return "";
+  const d = raw?.toDate ? raw.toDate() : (raw instanceof Date ? raw : new Date(raw));
+  if (isNaN(d?.getTime?.())) return "";
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" });
+};
+
+const tsMillis = (raw) => {
+  if (!raw) return 0;
+  if (raw?.toMillis) return raw.toMillis();
+  if (raw instanceof Date) return raw.getTime();
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+// Pulls the session number from titles like "Sessione 5: …", "Session 12 — …",
+// "S05 - …", or even just "5: ...". The newest session has the highest number.
+// Falls back to -Infinity so untitled / unnumbered videos sink to the bottom
+// rather than randomly grabbing the featured slot.
+const extractSessionNumber = (title) => {
+  if (!title) return -Infinity;
+  const t = String(title);
+  let m = t.match(/(?:sessione|session)[\s.#:_-]*(\d+)/i);
+  if (m) return parseInt(m[1], 10);
+  m = t.match(/\bS(?:ess)?[._-]?(\d+)\b/i);
+  if (m) return parseInt(m[1], 10);
+  m = t.match(/^[\s#№n.°-]*(\d+)\b/);
+  if (m) return parseInt(m[1], 10);
+  return -Infinity;
+};
 
 export default function Cinema() {
   const { currentUser } = useAuth();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const currentDomain = window.location.hostname;
+  const [playing, setPlaying] = useState(null);
+  const currentDomain = typeof window !== "undefined" ? window.location.hostname : "";
 
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "session_videos"));
-        const vids = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snap = await getDocs(collection(db, "session_videos"));
+        const vids = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        vids.sort((a, b) => {
+          // Primary: session number from the title — most recent session has the highest number.
+          const numA = extractSessionNumber(a.title);
+          const numB = extractSessionNumber(b.title);
+          if (numA !== numB) return numB - numA;
+          // Tiebreaker: upload time, newest first.
+          return tsMillis(b.createdAt) - tsMillis(a.createdAt);
+        });
         setVideos(vids);
       } catch (error) {
         console.error("Error loading videos:", error);
@@ -26,49 +69,222 @@ export default function Cinema() {
     fetchVideos();
   }, []);
 
+  // Close player on Escape
+  useEffect(() => {
+    if (!playing) return;
+    const onKey = (e) => { if (e.key === "Escape") setPlaying(null); };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [playing]);
+
+  const openPlayer = useCallback((v) => setPlaying(v), []);
+  const closePlayer = useCallback(() => setPlaying(null), []);
+
+  const featured = videos[0] || null;
+  const archive = videos.slice(1);
+  const totalEpisodes = videos.length;
+  const latestDateStr = useMemo(() => featured ? formatDate(featured.createdAt) : "", [featured]);
+
   if (!currentUser) {
     return (
-      <section className="cinema-page" style={{ textAlign: "center", paddingTop: "120px" }}>
-        <h2 style={{ color: "var(--red)", fontFamily: "var(--font-title)" }}>Accesso Negato</h2>
-        <p>Devi essere loggato per vedere le registrazioni.</p>
+      <section className="theatrum theatrum--locked">
+        <div className="theatrum-locked-card">
+          <div className="theatrum-locked-glyph">🎭</div>
+          <h2 className="theatrum-locked-title">Sala Chiusa</h2>
+          <p className="theatrum-locked-text">Solo i compagni di viaggio possono entrare nel teatro. Effettua l'accesso per ammirare le memorie della campagna.</p>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="cinema-page">
-      <h1 className="admin-page-title">Archivio Sessioni</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">📽</span></div>
+    <section className="theatrum">
+      {/* ── MARQUEE HEADER ───────────────────────────────── */}
+      <header className="theatrum-marquee">
+        <div className="theatrum-bulbs theatrum-bulbs--top" aria-hidden="true" />
 
+        <p className="theatrum-eyebrow">▸ Cronache · Crit Happens · Theatrum Mundi ◂</p>
+        <h1 className="theatrum-title">
+          <span className="theatrum-title-word">Teatro</span>
+          <span className="theatrum-title-amp">delle</span>
+          <span className="theatrum-title-word">Cronache</span>
+        </h1>
+        <p className="theatrum-subtitle">L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo.</p>
+
+        <div className="theatrum-bulbs theatrum-bulbs--bottom" aria-hidden="true" />
+
+        <div className="theatrum-stats">
+          <span className="theatrum-stat-pill">
+            <span className="theatrum-stat-icon">📽</span>
+            <span className="theatrum-stat-num">{totalEpisodes}</span>
+            <span className="theatrum-stat-lbl">{totalEpisodes === 1 ? "sessione" : "sessioni"} archiviate</span>
+          </span>
+          {latestDateStr && (
+            <span className="theatrum-stat-pill">
+              <span className="theatrum-stat-icon">🎟</span>
+              <span className="theatrum-stat-lbl">ultima: {latestDateStr}</span>
+            </span>
+          )}
+        </div>
+      </header>
+
+      {/* ── BODY ────────────────────────────────────────── */}
       {loading ? (
-        <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Caricamento registrazioni magiche...</p>
-      ) : videos.length === 0 ? (
-        <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Nessuna registrazione trovata.</p>
+        <div className="theatrum-loading">
+          <div className="theatrum-reel" />
+          <p>Le bobine girano…</p>
+        </div>
+      ) : !featured ? (
+        <div className="theatrum-empty">
+          <div className="theatrum-empty-glyph">🎞</div>
+          <p>Nessuna registrazione ancora archiviata.</p>
+          <small>Le memorie del Monaco Errante attendono di essere proiettate.</small>
+        </div>
       ) : (
-        <div className="cinema-video-grid">
-          {videos.map((video) => {
-            const embedSrc = video.platform === "twitch"
-              ? `https://player.twitch.tv/?video=${video.videoId}&parent=${currentDomain}&autoplay=false`
-              : `https://www.youtube.com/embed/${video.videoId}`;
-            return (
-              <div key={video.id} className="cinema-video-card">
-                <div className="cinema-video-embed">
-                  <iframe
-                    src={embedSrc}
-                    title={video.title}
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                </div>
-                <div className="cinema-video-info">
-                  <h3 className="cinema-video-title">{video.title}</h3>
-                  {video.desc && <p className="cinema-video-desc">{video.desc}</p>}
-                </div>
+        <>
+          {/* ── FEATURED ───────────────────────────────── */}
+          <article className="theatrum-feature">
+            <div className="theatrum-feature-eyebrow">
+              <span className="theatrum-feature-eyebrow-glyph">✦</span>
+              Ultima Cronaca · in proiezione
+              <span className="theatrum-feature-eyebrow-glyph">✦</span>
+            </div>
+
+            <div className="theatrum-feature-grid">
+              <button
+                type="button"
+                className="theatrum-feature-poster"
+                onClick={() => openPlayer(featured)}
+                aria-label={`Riproduci ${featured.title}`}
+              >
+                <Thumbnail video={featured} />
+                <span className="theatrum-feature-strip" aria-hidden="true" />
+                <span className="theatrum-feature-strip theatrum-feature-strip--right" aria-hidden="true" />
+                <span className="theatrum-feature-play">▶</span>
+              </button>
+
+              <div className="theatrum-feature-meta">
+                <span className="theatrum-feature-num">
+                  Cronaca №{extractSessionNumber(featured.title) > -Infinity ? extractSessionNumber(featured.title) : totalEpisodes}
+                </span>
+                <h2 className="theatrum-feature-title">{featured.title}</h2>
+                {featured.createdAt && (
+                  <p className="theatrum-feature-date">📅 {formatDate(featured.createdAt)}</p>
+                )}
+                {featured.desc && <p className="theatrum-feature-desc">{featured.desc}</p>}
+                <button type="button" className="theatrum-feature-cta" onClick={() => openPlayer(featured)}>
+                  <span className="theatrum-cta-icon">▶</span>
+                  Entra nel Teatro
+                </button>
               </div>
-            );
-          })}
+            </div>
+          </article>
+
+          {/* ── ARCHIVE LIST ───────────────────────────── */}
+          {archive.length > 0 && (
+            <section className="theatrum-archive">
+              <div className="theatrum-divider">
+                <span className="theatrum-divider-glyph">❦</span>
+                <h3 className="theatrum-archive-title">Sessioni Precedenti</h3>
+                <span className="theatrum-divider-glyph">❦</span>
+              </div>
+
+              <ul className="theatrum-rolls">
+                {archive.map((v, i) => (
+                  <li key={v.id}>
+                    <button
+                      type="button"
+                      className="theatrum-roll"
+                      onClick={() => openPlayer(v)}
+                      aria-label={`Riproduci ${v.title}`}
+                    >
+                      <span className="theatrum-roll-num">
+                        №{extractSessionNumber(v.title) > -Infinity ? extractSessionNumber(v.title) : archive.length - i}
+                      </span>
+                      <div className="theatrum-roll-thumb">
+                        <Thumbnail video={v} />
+                        <span className="theatrum-roll-play">▶</span>
+                      </div>
+                      <div className="theatrum-roll-body">
+                        <h4 className="theatrum-roll-title">{v.title}</h4>
+                        {v.desc && <p className="theatrum-roll-desc">{v.desc}</p>}
+                        <div className="theatrum-roll-foot">
+                          {v.createdAt && (
+                            <span className="theatrum-roll-date">📅 {formatDate(v.createdAt)}</span>
+                          )}
+                          <span className="theatrum-roll-platform">
+                            {v.platform === "twitch" ? "🟣 Twitch" : "▶ YouTube"}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* ── STAGE MODAL ──────────────────────────────── */}
+      {playing && (
+        <div className="theatrum-stage" onClick={closePlayer}>
+          <div className="theatrum-stage-curtain theatrum-stage-curtain--left" aria-hidden="true" />
+          <div className="theatrum-stage-curtain theatrum-stage-curtain--right" aria-hidden="true" />
+          <div className="theatrum-stage-frame" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="theatrum-stage-close" onClick={closePlayer} title="Chiudi (Esc)">
+              ✕ <span className="theatrum-stage-close-lbl">Esci dalla sala</span>
+            </button>
+            <header className="theatrum-stage-head">
+              <span className="theatrum-stage-eyebrow">⛧ Ora in proiezione ⛧</span>
+              <h2 className="theatrum-stage-title">{playing.title}</h2>
+              {playing.createdAt && (
+                <p className="theatrum-stage-date">{formatDate(playing.createdAt)}</p>
+              )}
+            </header>
+            <div className="theatrum-stage-screen">
+              <iframe
+                src={
+                  playing.platform === "twitch"
+                    ? `https://player.twitch.tv/?video=${playing.videoId}&parent=${currentDomain}&autoplay=true`
+                    : `https://www.youtube.com/embed/${playing.videoId}?autoplay=1`
+                }
+                title={playing.title}
+                allowFullScreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              />
+            </div>
+            {playing.desc && <p className="theatrum-stage-desc">{playing.desc}</p>}
+          </div>
         </div>
       )}
     </section>
+  );
+}
+
+// Thumbnail for both YouTube and Twitch.
+// Twitch has no public thumbnail without an API key, so we fall back to a styled placeholder.
+function Thumbnail({ video }) {
+  const [errored, setErrored] = useState(false);
+  if (video.platform === "twitch" || !video.videoId) {
+    return (
+      <div className="theatrum-thumb theatrum-thumb--placeholder">
+        <span className="theatrum-thumb-glyph">🎬</span>
+        <span className="theatrum-thumb-platform">Twitch</span>
+      </div>
+    );
+  }
+  return (
+    <img
+      className="theatrum-thumb"
+      src={errored ? ytThumbFallback(video.videoId) : ytThumb(video.videoId)}
+      alt=""
+      loading="lazy"
+      onError={() => { if (!errored) setErrored(true); }}
+    />
   );
 }
