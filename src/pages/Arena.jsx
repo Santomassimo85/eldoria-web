@@ -393,10 +393,16 @@ const STEALTH_ACTION = {
   type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio ai tuoi prossimi 3 attacchi · 3 cariche", special: "stealth", maxUses: 3,
 };
 
-// Triboli (Rogue) — il nemico fa TS DES (CD 13): fallisce → 2 turni; supera → 1 turno
+// Triboli (Rogue) — applica svantaggio + sanguinamento (1d6/turno) per 3 turni
 const TRIBOLI_ACTION = {
   name: "Triboli", hitBonus: 0, damage: "", statKey: null,
-  type: "skill", icon: "🪤", info: "Sparge triboli · TS DES (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche", special: "triboli", saveAbility: "dex", saveDC: 13, maxUses: 2,
+  type: "skill", icon: "🪤",
+  info: "Sparge triboli · svantaggio agli attacchi e sanguinamento (1d6/turno) per 3 turni · 2 cariche",
+  special: "triboli",
+  disadvantageTurns: 3,
+  bleedTurns: 3,
+  bleedDice: "1d6",
+  maxUses: 2,
 };
 
 // Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
@@ -647,7 +653,7 @@ const RECUPERO_ARCANO_ACTION = {
 // Astuzia Magica (Warlock) — salta il turno e ripristina 1 carica per slot magia
 const MAGICAL_CUNNING_ACTION = {
   name: "Astuzia Magica", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🌀", info: "Salta il turno · +1 carica a ogni slot magia (max maxUses) · 1 uso", special: "magical_cunning", maxUses: 1,
+  type: "skill", icon: "🌀", info: "Salta il turno · +1 carica a ogni slot magia · 2 cariche", special: "magical_cunning", maxUses: 2,
 };
 
 // ── TITOLI D'ARENA (assegnati dal Master, attivi solo in Torneo / Arena Campioni) ─
@@ -843,7 +849,7 @@ function getHpDice(charClass, classLevels) {
 const SPELL_LIMITS = {
   wizard:   { 0: 3, 1: 4, 2: 2, 3: 0 },
   sorcerer: { 0: 4, 1: 4, 2: 2, 3: 0 },
-  warlock:  { 0: 2, 1: 2, 2: 2, 3: 0, nonCantripMax: 2 },
+  warlock:  { 0: 2, 1: 2, 2: 2, 3: 0 },
   druid:    { 0: 2, 1: 4, 2: 2, 3: 0 },
   cleric:   { 0: 3, 1: 4, 2: 2, 3: 0 },
   bard:     { 0: 0, 1: 4, 2: 2, 3: 0 },
@@ -859,7 +865,7 @@ function getLoadoutConfig(charClass) {
   const sumLimits = (lim) => Object.values(lim).reduce((a, b) => a + b, 0);
   if (isWizardClass(cls))   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: SPELL_LIMITS.wizard,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.wizard),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: 4,  autoActions: [MAGICAL_CUNNING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
@@ -2608,33 +2614,31 @@ export default function Arena() {
       return;
     }
 
-    // ── Triboli (Rogue: TS DES CD 13 · fail = 2 turni, save = 1 turno) ─
+    // ── Triboli (Rogue: svantaggio + sanguinamento 1d6/turno per 3 turni, no save) ─
     if (action.special === "triboli") {
-      const saveAbility = action.saveAbility || "dex";
-      const saveDC = action.saveDC ?? 13;
-      const defMod = defenderSnap?.stats?.[saveAbility] ?? 0;
-      const d20 = Math.floor(Math.random() * 20) + 1;
-      await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
-      const tsTotal = d20 + defMod;
-      const saved = tsTotal >= saveDC;
-      const lostTurns = saved ? 1 : 2;
+      const turns      = action.disadvantageTurns ?? 3;
+      const bleedTurns = action.bleedTurns ?? 3;
+      const bleedDice  = action.bleedDice  || "1d6";
       const log = {
-        pub: saved
-          ? `🪤 ${attName} sparge Triboli su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno.`
-          : `🪤 ${attName} sparge Triboli su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 2 turni.`,
-        att: saved
-          ? `🪤 Spargi Triboli su ${defName} — TS riuscito (${tsTotal} ≥ ${saveDC}): salterà 1 turno.`
-          : `🪤 Spargi Triboli su ${defName} — TS fallito (${tsTotal} < ${saveDC}): salterà 2 turni.`,
-        def: saved
-          ? `🪤 Schivi parte dei Triboli (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salti 1 turno.`
-          : `🪤 Sei sopraffatto dai Triboli (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salti 2 turni.`,
+        pub: `🪤 ${attName} sparge Triboli su ${defName} — svantaggio agli attacchi + sanguinamento ${bleedDice}/turno per ${turns} turni.`,
+        att: `🪤 Spargi Triboli su ${defName} — svantaggio + sanguinamento ${bleedDice}/turno per ${turns} turni.`,
+        def: `🪤 Sei trafitto dai Triboli — svantaggio agli attacchi e sanguinamento ${bleedDice}/turno per ${turns} turni.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const triboliExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
+          if (p.id === targetId) return {
+            ...p,
+            attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, turns),
+            poisonDoT: true,
+            poisonDoTTurns: Math.max(p.poisonDoTTurns ?? 0, bleedTurns),
+            poisonDoTDice: bleedDice,
+            poisonDoTSourceLabel: "sanguinamento",
+            poisonDoTNoun: "sanguinante",
+            poisonDoTIcon: "🩸",
+          };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = action.maxUses !== undefined
@@ -7343,7 +7347,7 @@ export default function Arena() {
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
                                 : action.special === "web" ? "Ragnatela — TS FOR (CD 13): fallisce 2t · supera 1t"
-                                : action.special === "triboli" ? "Triboli — TS DES (CD 13): fallisce 2t · supera 1t"
+                                : action.special === "triboli" ? "Triboli — svantaggio + sanguinamento 1d6/turno per 3 turni"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
                                 : action.special === "stealth" ? `Furtività — vantaggio ai tuoi prossimi 3 attacchi`
@@ -7364,7 +7368,7 @@ export default function Arena() {
                                   : disabledByInvis ? "👻 Invisibile"
                                   : !isEquipped ? "🔄 Cambia"
                                   : action.special === "web" ? "🕸 Salta 2t"
-                                  : action.special === "triboli" ? "🪤 Salta 2t"
+                                  : action.special === "triboli" ? "🩸 Sang. 3t · svant."
                                   : action.special === "poison" ? `${action.damage} +TS COS`
                                   : `${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               </span>

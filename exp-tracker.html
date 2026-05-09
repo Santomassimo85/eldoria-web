@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eldoria · Tabella EXP</title>
+  <style>
+    /* ==================================================
+       Eldoria — EXP Tracker (homebrew GDR companion)
+       Standalone HTML/CSS/JS · localStorage persistence
+       ================================================== */
+
+    :root {
+      --paper:      #faf6ed;
+      --paper-2:    #f4ecd5;
+      --surface:    #fffdf6;
+      --surface-2:  #fbf3df;
+      --line:       #c9a961;
+      --line-soft:  #e0cf9d;
+      --line-faint: #f0e3c0;
+      --ink:        #2d2418;
+      --ink-soft:   #6f6453;
+      --gold:       #b08820;
+      --gold-deep:  #7a5e10;
+      --burgundy:   #7d2929;
+      --burgundy-2: #5a1818;
+      --win:        #3a7a4a;
+      --win-bg:     #d8e9d9;
+      --loss:       #a04545;
+      --loss-bg:    #ecd9d9;
+      --shadow-sm:  0 1px 2px rgba(80, 60, 20, 0.08);
+      --shadow-md:  0 3px 10px rgba(80, 60, 20, 0.10);
+      --shadow-lg:  0 6px 22px rgba(80, 60, 20, 0.14);
+      --serif:      "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+      --sans:       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        repeating-linear-gradient( 45deg, rgba(180, 140, 40, 0.025) 0 1px, transparent 1px 6px),
+        repeating-linear-gradient(-45deg, rgba(180, 140, 40, 0.025) 0 1px, transparent 1px 6px),
+        radial-gradient(ellipse 70% 35% at 50% 0%, rgba(255, 220, 130, 0.12) 0%, transparent 75%),
+        linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ---- HEADER ---- */
+    header.app-head {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 24px 6px;
+      text-align: center;
+    }
+    header.app-head h1 {
+      font-family: var(--serif);
+      margin: 0;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--burgundy);
+      text-shadow: 0 1px 0 rgba(255, 248, 220, 0.7);
+    }
+    header.app-head p {
+      margin: 4px 0 0;
+      color: var(--ink-soft);
+      font-style: italic;
+      font-size: 0.92rem;
+    }
+
+    /* ---- TABS ---- */
+    nav.tabs {
+      max-width: 1180px;
+      margin: 18px auto 0;
+      padding: 0 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+    nav.tabs button {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1.5px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-family: var(--serif);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.12s, color 0.15s;
+    }
+    nav.tabs button:hover { background: #fff8e0; border-color: var(--line); transform: translateY(-1px); }
+    nav.tabs button[aria-selected="true"] {
+      background: var(--burgundy);
+      color: #fdf2dc;
+      border-color: var(--burgundy-2);
+    }
+
+    /* ---- MAIN / TABS PANELS ---- */
+    main {
+      max-width: 1180px;
+      margin: 14px auto 80px;
+      padding: 0 16px;
+    }
+    section.tab-panel { display: none; }
+    section.tab-panel.active { display: block; }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-md);
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--burgundy);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line-soft);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .panel h2 .h-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .panel-sub {
+      color: var(--ink-soft);
+      font-size: 0.86rem;
+      margin: -6px 0 14px;
+      font-style: italic;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      border: 1.5px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-family: var(--sans);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.12s, box-shadow 0.2s, color 0.15s;
+      text-decoration: none;
+    }
+    .btn:hover { background: #fff8e0; border-color: var(--line); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .btn:active { transform: translateY(0); }
+    .btn.primary {
+      background: var(--burgundy);
+      color: #fdf2dc;
+      border-color: var(--burgundy-2);
+    }
+    .btn.primary:hover { background: var(--burgundy-2); color: #fff; }
+    .btn.gold {
+      background: var(--gold);
+      color: #2d2418;
+      border-color: var(--gold-deep);
+    }
+    .btn.gold:hover { background: var(--gold-deep); color: #fff; }
+    .btn.danger {
+      background: transparent;
+      color: var(--loss);
+      border-color: #d09898;
+    }
+    .btn.danger:hover { background: rgba(160, 69, 69, 0.08); color: var(--loss); }
+    .btn.tiny { padding: 4px 9px; font-size: 0.74rem; }
+    .btn.ghost {
+      background: transparent;
+      border-color: var(--line-soft);
+      color: var(--ink-soft);
+    }
+    .btn.ghost:hover { color: var(--ink); }
+
+    input[type="text"], input[type="number"], input[type="date"], select, textarea {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1.5px solid var(--line-soft);
+      border-radius: 7px;
+      font-family: var(--sans);
+      font-size: 0.88rem;
+      background: var(--surface);
+      color: var(--ink);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--burgundy);
+      box-shadow: 0 0 0 3px rgba(125, 41, 41, 0.10);
+    }
+    label.field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gold-deep);
+    }
+    label.field input, label.field select, label.field textarea { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink); }
+
+    /* ---- TABELLA EXP ---- */
+    .exp-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.88rem;
+    }
+    .exp-table thead th {
+      text-align: left;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold-deep);
+      padding: 8px 10px;
+      background: #f6e9c8;
+      border-bottom: 1.5px solid var(--line);
+    }
+    .exp-table thead th:nth-child(n+2) { text-align: right; }
+    .exp-table tbody td {
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(180, 140, 40, 0.12);
+      vertical-align: middle;
+    }
+    .exp-table tbody td:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
+    .exp-table tbody tr:hover { background: rgba(176, 136, 32, 0.06); }
+    .exp-table tbody tr.editing { background: rgba(176, 136, 32, 0.12); }
+    .exp-table .level-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--burgundy);
+      color: #fdf2dc;
+      font-family: var(--serif);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .exp-table input[type="number"] {
+      width: 110px;
+      padding: 4px 8px;
+      text-align: right;
+    }
+
+    /* ---- CATEGORY GRID ---- */
+    .cat-group {
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line-soft);
+    }
+    .cat-group:last-child { border-bottom: none; padding-bottom: 0; }
+    .cat-group-title {
+      font-family: var(--serif);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold-deep);
+      margin: 0 0 8px;
+    }
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 8px;
+    }
+    .cat-item {
+      display: grid;
+      grid-template-columns: 30px 1fr 90px auto;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 7px 10px;
+    }
+    .cat-item .cat-icon { font-size: 1.1rem; text-align: center; }
+    .cat-item .cat-name { font-size: 0.88rem; font-weight: 600; }
+    .cat-item .cat-xp {
+      text-align: right;
+      font-family: var(--serif);
+      font-weight: 700;
+      color: var(--gold-deep);
+      font-variant-numeric: tabular-nums;
+    }
+    .cat-item input.cat-name-edit { font-size: 0.86rem; padding: 4px 8px; }
+    .cat-item input.cat-xp-edit { width: 80px; padding: 4px 8px; text-align: right; }
+
+    /* ---- PLAYER CARDS ---- */
+    .player-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .player-card {
+      background: var(--surface);
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.2s, border-color 0.15s;
+      position: relative;
+    }
+    .player-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--line);
+    }
+    .player-card-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .player-emoji {
+      font-size: 1.6rem;
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #fffaf0, #f6e9c8);
+      border: 1.5px solid var(--line);
+      border-radius: 50%;
+    }
+    .player-name-block { flex: 1; min-width: 0; }
+    .player-name {
+      font-family: var(--serif);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--burgundy);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .player-class {
+      font-size: 0.74rem;
+      color: var(--ink-soft);
+      text-transform: capitalize;
+      margin-top: 1px;
+    }
+    .player-level-pill {
+      flex-shrink: 0;
+      background: var(--burgundy);
+      color: #fdf2dc;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-family: var(--serif);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .player-xp-bar-wrap {
+      background: #f4ecd5;
+      border-radius: 6px;
+      height: 10px;
+      overflow: hidden;
+      border: 1px solid var(--line-soft);
+    }
+    .player-xp-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--burgundy));
+      border-radius: 6px;
+      transition: width 0.4s;
+    }
+    .player-xp-numbers {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+    }
+    .player-xp-numbers strong { color: var(--ink); }
+    .player-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 0.74rem;
+    }
+    .meta-pill {
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      padding: 2px 9px;
+      color: var(--ink-soft);
+    }
+    .meta-pill strong { color: var(--ink); font-weight: 700; }
+    .player-card-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .player-card:hover .player-card-actions { opacity: 1; }
+    .player-card-actions .btn { padding: 3px 7px; font-size: 0.7rem; }
+
+    /* ---- ADD PLAYER FORM ---- */
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+    .form-row .actions { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ---- SESSION TAB ---- */
+    .session-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 640px) { .session-row { grid-template-columns: 1fr; } }
+    .player-checkbox-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .player-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--line-soft);
+      border-radius: 999px;
+      font-size: 0.84rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .player-chip.active {
+      background: var(--win-bg);
+      border-color: var(--win);
+      color: #1f5532;
+    }
+    .player-chip input { display: none; }
+
+    .award-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 2fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      margin-bottom: 6px;
+    }
+    @media (max-width: 720px) {
+      .award-row { grid-template-columns: 1fr 1fr; }
+      .award-row .award-note { grid-column: 1 / -1; }
+      .award-row .award-del { grid-column: 1 / -1; justify-self: end; }
+    }
+    .award-row select, .award-row input { padding: 5px 9px; font-size: 0.84rem; }
+    .award-summary {
+      background: linear-gradient(180deg, #fffaf0, #f6e9c8);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 14px;
+    }
+    .award-summary strong {
+      font-family: var(--serif);
+      font-size: 1.1rem;
+      color: var(--burgundy);
+    }
+
+    /* ---- STATS ---- */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: linear-gradient(180deg, var(--surface), var(--surface-2));
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-card .stat-num {
+      font-family: var(--serif);
+      font-size: 1.7rem;
+      color: var(--burgundy);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-card .stat-label {
+      margin-top: 4px;
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      font-weight: 600;
+    }
+
+    .bar-chart .bar-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 80px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      font-size: 0.86rem;
+    }
+    .bar-chart .bar-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+    }
+    .bar-chart .bar-track {
+      background: #f4ecd5;
+      border-radius: 6px;
+      height: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line-soft);
+    }
+    .bar-chart .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--burgundy));
+      border-radius: 6px;
+      min-width: 2px;
+    }
+    .bar-chart .bar-val {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-soft);
+      font-size: 0.82rem;
+    }
+    @media (max-width: 480px) {
+      .bar-chart .bar-row { grid-template-columns: 1fr 60px; }
+      .bar-chart .bar-track { grid-column: 1 / -1; }
+    }
+
+    /* ---- INFO PANEL ---- */
+    .info-area {
+      width: 100%;
+      min-height: 320px;
+      font-family: var(--sans);
+      font-size: 0.92rem;
+      line-height: 1.7;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1.5px solid var(--line-soft);
+      border-radius: 10px;
+      resize: vertical;
+    }
+
+    /* ---- HISTORY DETAIL MODAL ---- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 14, 4, 0.55);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: fade-in 0.18s ease-out;
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .modal-dialog {
+      background: var(--surface);
+      border: 1px solid var(--line-soft);
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.30);
+      width: min(720px, 100%);
+      max-height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #fffbf0, #fdf3dc);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .modal-head h3 {
+      margin: 0;
+      flex: 1;
+      font-family: var(--serif);
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--burgundy);
+    }
+    .modal-close {
+      background: transparent;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      color: var(--ink-soft);
+    }
+    .modal-close:hover { background: rgba(125, 41, 41, 0.08); color: var(--burgundy); }
+    .modal-body {
+      padding: 16px 18px 18px;
+      overflow-y: auto;
+    }
+
+    .session-entry {
+      background: var(--surface-2);
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    .session-entry-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .session-entry-head .session-label {
+      font-family: var(--serif);
+      font-weight: 700;
+      color: var(--burgundy);
+    }
+    .session-entry-head .session-date {
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+    }
+    .session-entry-head .session-total {
+      font-family: var(--serif);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gold-deep);
+      margin-left: auto;
+    }
+    .session-entry .award-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.84rem;
+      color: var(--ink-soft);
+    }
+    .session-entry .award-list .award-line strong { color: var(--ink); margin-right: 6px; }
+    .session-entry .award-list .award-line .award-xp { color: var(--gold-deep); font-weight: 600; }
+
+    .empty-note {
+      color: var(--ink-soft);
+      font-style: italic;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ---- FLOATING TOAST ---- */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      background: var(--burgundy);
+      color: #fdf2dc;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 0.86rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      animation: toast-pop 0.2s ease-out;
+      z-index: 200;
+      pointer-events: none;
+    }
+    @keyframes toast-pop {
+      from { transform: translate(-50%, 8px); opacity: 0; }
+      to { transform: translateX(-50%); opacity: 1; }
+    }
+
+    /* ---- FOOTER ---- */
+    footer.app-foot {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px 20px 30px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      color: var(--ink-soft);
+      font-size: 0.82rem;
+    }
+
+    /* ---- FOUNDRY IMPORT ---- */
+    .foundry-macro-block { margin-top: 6px; }
+    .foundry-macro-summary {
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--burgundy);
+      padding: 6px 0;
+      user-select: none;
+    }
+    #foundry-macro-code {
+      background: #2d2418;
+      color: #f0e3c0;
+      border: 1px solid var(--gold-deep);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.74rem;
+      line-height: 1.5;
+      max-height: 320px;
+      overflow: auto;
+      margin: 0;
+      white-space: pre;
+    }
+    #foundry-import-json {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    /* small helpers */
+    .hr-soft { border: 0; height: 1px; background: var(--line-soft); margin: 14px 0; }
+    .small { font-size: 0.78rem; color: var(--ink-soft); }
+    .center { text-align: center; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 0; }
+    .grow { flex: 1; }
+  </style>
+</head>
+<body>
+
+  <header class="app-head">
+    <h1>⚔ Eldoria · Tabella EXP</h1>
+    <p>Strumento homebrew per assegnare e tracciare l'esperienza dei giocatori</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sezioni">
+    <button data-tab="table"      role="tab" aria-selected="true">📊 Tabella EXP</button>
+    <button data-tab="categories" role="tab" aria-selected="false">⚔ Categorie</button>
+    <button data-tab="players"    role="tab" aria-selected="false">🧙 Giocatori</button>
+    <button data-tab="session"    role="tab" aria-selected="false">🎲 Sessione</button>
+    <button data-tab="stats"      role="tab" aria-selected="false">📈 Statistiche</button>
+    <button data-tab="info"       role="tab" aria-selected="false">ℹ Linee guida</button>
+  </nav>
+
+  <main>
+
+    <!-- ============ TABLE TAB ============ -->
+    <section class="tab-panel active" data-tab="table">
+      <div class="panel">
+        <h2>📊 Tabella dei livelli
+          <span class="h-actions">
+            <button class="btn tiny ghost" id="btn-table-edit">✎ Modifica</button>
+            <button class="btn tiny" id="btn-table-reset">↺ Default</button>
+          </span>
+        </h2>
+        <p class="panel-sub">Soglie XP per livello (homebrew). Personalizzabili — i livelli dei giocatori si ricalcolano automaticamente.</p>
+        <div style="overflow-x: auto;">
+          <table class="exp-table" id="exp-table">
+            <thead>
+              <tr>
+                <th>Livello</th>
+                <th>XP totale</th>
+                <th>XP richiesti</th>
+                <th>Cumulativo</th>
+              </tr>
+            </thead>
+            <tbody id="exp-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CATEGORIES TAB ============ -->
+    <section class="tab-panel" data-tab="categories">
+      <div class="panel">
+        <h2>⚔ Categorie XP
+          <span class="h-actions">
+            <button class="btn tiny ghost" id="btn-cat-edit">✎ Modifica</button>
+            <button class="btn tiny" id="btn-cat-reset">↺ Default</button>
+          </span>
+        </h2>
+        <p class="panel-sub">Le categorie disponibili durante la fase "Sessione". Modifica i valori per adattarli alla tua campagna.</p>
+        <div id="cat-groups"></div>
+        <hr class="hr-soft">
+        <details>
+          <summary class="small" style="cursor: pointer; color: var(--burgundy); font-weight: 600;">+ Aggiungi nuova categoria</summary>
+          <div class="form-row" style="margin-top: 10px;">
+            <label class="field">Gruppo
+              <select id="new-cat-group">
+                <option value="combat">Combattimento</option>
+                <option value="rp">GDR / Roleplay</option>
+                <option value="meta">Meta</option>
+              </select>
+            </label>
+            <label class="field">Icona
+              <input type="text" id="new-cat-icon" maxlength="2" placeholder="⚔">
+            </label>
+            <label class="field">Nome
+              <input type="text" id="new-cat-name" placeholder="Es. Soluzione brillante">
+            </label>
+            <label class="field">XP suggeriti
+              <input type="number" id="new-cat-xp" min="0" step="25" placeholder="100">
+            </label>
+            <div class="actions">
+              <button class="btn primary" id="btn-cat-add">Aggiungi</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============ PLAYERS TAB ============ -->
+    <section class="tab-panel" data-tab="players">
+      <div class="panel">
+        <h2>🧙 Aggiungi giocatore</h2>
+        <div class="form-row">
+          <label class="field">Nome
+            <input type="text" id="new-pl-name" placeholder="Es. Giemme">
+          </label>
+          <label class="field">Classe
+            <input type="text" id="new-pl-class" placeholder="Es. Rogue">
+          </label>
+          <label class="field">Icona
+            <input type="text" id="new-pl-emoji" maxlength="2" placeholder="🧙">
+          </label>
+          <label class="field">Livello iniziale
+            <input type="number" id="new-pl-level" min="1" max="20" value="1">
+          </label>
+          <label class="field">XP iniziale
+            <input type="number" id="new-pl-xp" min="0" value="0">
+          </label>
+          <div class="actions">
+            <button class="btn primary" id="btn-pl-add">Aggiungi</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>📥 Importa da Foundry</h2>
+        <p class="panel-sub">Esegui la macro Foundry per esportare nome, classe, livello e XP di ogni PC, poi incolla il JSON qui sotto.</p>
+
+        <details class="foundry-macro-block">
+          <summary class="foundry-macro-summary">📜 Macro Foundry · clicca per espandere</summary>
+          <div style="margin-top: 8px;">
+            <div class="row" style="margin-bottom: 6px; align-items: center;">
+              <span class="small grow">Crea una macro "Script" in Foundry e incolla questo codice:</span>
+              <button class="btn tiny" id="btn-copy-macro" type="button">📋 Copia macro</button>
+            </div>
+            <pre id="foundry-macro-code"></pre>
+          </div>
+        </details>
+
+        <label class="field" style="margin-top: 14px;">JSON esportato (incolla qui)
+          <textarea id="foundry-import-json" rows="6" placeholder='[
+  {"name":"Dante","class":"Rogue","level":5,"xp":6500},
+  ...
+]'></textarea>
+        </label>
+        <div style="display:flex; align-items:center; gap:10px; margin-top: 8px; flex-wrap: wrap;">
+          <button class="btn primary" id="btn-foundry-import" type="button">📥 Importa</button>
+          <span class="small" id="foundry-import-msg"></span>
+        </div>
+        <p class="small" style="margin-top: 8px;">
+          <strong>Nota:</strong> per giocatori già presenti aggiorna solo classe e livello iniziale (la storia XP è preservata). I nuovi vengono creati con XP iniziale = XP Foundry, oppure con la soglia del livello se Foundry è in milestone.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2>🧙 Roster</h2>
+        <div id="players-grid" class="player-grid"></div>
+      </div>
+    </section>
+
+    <!-- ============ SESSION TAB ============ -->
+    <section class="tab-panel" data-tab="session">
+      <div class="panel">
+        <h2>🎲 Nuova sessione
+          <span class="h-actions">
+            <button class="btn tiny ghost" id="btn-session-clear">↺ Reset</button>
+          </span>
+        </h2>
+        <p class="panel-sub">Imposta sessione, scegli i presenti, aggiungi i premi XP. Premi "Salva sessione" per applicare a tutti i giocatori selezionati.</p>
+
+        <div class="session-row">
+          <label class="field">Etichetta sessione
+            <input type="text" id="sess-label" placeholder="Sessione 12 — Le rovine del faro">
+          </label>
+          <label class="field">Data
+            <input type="date" id="sess-date">
+          </label>
+        </div>
+
+        <hr class="hr-soft">
+        <div style="margin-bottom: 10px;">
+          <strong style="font-family: var(--serif); letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.78rem; color: var(--gold-deep);">Presenti</strong>
+          <span class="small"> · clicca per attivare/disattivare</span>
+        </div>
+        <div class="player-checkbox-row" id="sess-players"></div>
+
+        <hr class="hr-soft">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <strong style="font-family: var(--serif); letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.78rem; color: var(--gold-deep);">Premi XP</strong>
+          <button class="btn tiny" id="btn-award-add">+ Aggiungi premio</button>
+        </div>
+        <div id="award-rows"></div>
+
+        <div class="award-summary">
+          <span>XP totale per giocatore: <strong id="sess-total">0</strong></span>
+          <span class="small">×</span>
+          <span>Presenti: <strong id="sess-count">0</strong></span>
+          <span class="grow"></span>
+          <button class="btn primary" id="btn-session-save">💾 Salva sessione</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATS TAB ============ -->
+    <section class="tab-panel" data-tab="stats">
+      <div class="panel">
+        <h2>📈 Numeri della campagna</h2>
+        <div class="stat-grid" id="stat-grid"></div>
+
+        <h3 style="font-family: var(--serif); font-size: 0.92rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--burgundy); margin: 20px 0 10px;">XP totale per giocatore</h3>
+        <div class="bar-chart" id="bar-players"></div>
+
+        <h3 style="font-family: var(--serif); font-size: 0.92rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--burgundy); margin: 20px 0 10px;">XP per categoria (totale)</h3>
+        <div class="bar-chart" id="bar-categories"></div>
+
+        <h3 style="font-family: var(--serif); font-size: 0.92rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--burgundy); margin: 20px 0 10px;">Sessioni per livello (giocatore)</h3>
+        <div class="bar-chart" id="bar-sessions-per-level"></div>
+      </div>
+    </section>
+
+    <!-- ============ INFO TAB ============ -->
+    <section class="tab-panel" data-tab="info">
+      <div class="panel">
+        <h2>ℹ Linee guida campagna
+          <span class="h-actions">
+            <button class="btn tiny" id="btn-info-reset">↺ Default</button>
+          </span>
+        </h2>
+        <p class="panel-sub">Note libere sulla filosofia di assegnazione XP. Auto-salvate al termine della digitazione.</p>
+        <textarea class="info-area" id="info-text" placeholder="Note sulla campagna…"></textarea>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-foot">
+    <button class="btn ghost tiny" id="btn-export">⬇ Esporta JSON</button>
+    <button class="btn ghost tiny" id="btn-import">⬆ Importa JSON</button>
+    <input type="file" id="import-file" accept="application/json" style="display:none">
+    <button class="btn ghost tiny danger" id="btn-clear-all">🗑 Cancella tutto</button>
+  </footer>
+
+  <!-- player detail modal target -->
+  <div id="modal-root"></div>
+
+  <script>
+    /* ============================================================
+       DATA MODEL + STORAGE
+       ============================================================ */
+
+    // v2 = standard 5e XP table (Foundry-compatible). Bumping the key
+    // invalidates old saved state from the homebrew-v1 defaults.
+    const STORAGE_KEY = "eldoria-exp-tracker-v2";
+
+    // Standard D&D 5e level→XP table — same thresholds Foundry uses.
+    const DEFAULT_LEVEL_TABLE = [
+      { level: 1,  xp: 0       },
+      { level: 2,  xp: 300     },
+      { level: 3,  xp: 900     },
+      { level: 4,  xp: 2700    },
+      { level: 5,  xp: 6500    },
+      { level: 6,  xp: 14000   },
+      { level: 7,  xp: 23000   },
+      { level: 8,  xp: 34000   },
+      { level: 9,  xp: 48000   },
+      { level: 10, xp: 64000   },
+      { level: 11, xp: 85000   },
+      { level: 12, xp: 100000  },
+      { level: 13, xp: 120000  },
+      { level: 14, xp: 140000  },
+      { level: 15, xp: 165000  },
+      { level: 16, xp: 195000  },
+      { level: 17, xp: 225000  },
+      { level: 18, xp: 265000  },
+      { level: 19, xp: 305000  },
+      { level: 20, xp: 355000  },
+    ];
+
+    const DEFAULT_CATEGORIES = [
+      // ── Combat ─────────────────────────────────────────
+      { id: "c-banale",  group: "combat", icon: "🐀", name: "Combat banale",   xp: 50   },
+      { id: "c-facile",  group: "combat", icon: "⚔",  name: "Combat facile",   xp: 150  },
+      { id: "c-medio",   group: "combat", icon: "⚔",  name: "Combat medio",    xp: 300  },
+      { id: "c-diff",    group: "combat", icon: "🗡",  name: "Combat difficile",xp: 600  },
+      { id: "c-letale",  group: "combat", icon: "💀",  name: "Combat letale",   xp: 1000 },
+      { id: "c-bossm",   group: "combat", icon: "👹",  name: "Boss minore",     xp: 1500 },
+      { id: "c-bossM",   group: "combat", icon: "🐉",  name: "Boss maggiore",   xp: 3000 },
+      { id: "c-bossE",   group: "combat", icon: "👑",  name: "Boss epico",      xp: 5000 },
+      // ── Roleplay / GDR ────────────────────────────────
+      { id: "r-mile",    group: "rp", icon: "🏛", name: "Tappa di trama",       xp: 500 },
+      { id: "r-quest",   group: "rp", icon: "🗺", name: "Quest secondaria",     xp: 300 },
+      { id: "r-rp",      group: "rp", icon: "🎭", name: "Roleplay memorabile",  xp: 100 },
+      { id: "r-creat",   group: "rp", icon: "💡", name: "Soluzione creativa",   xp: 150 },
+      { id: "r-indag",   group: "rp", icon: "🔍", name: "Indagine / indizio",   xp: 100 },
+      { id: "r-social",  group: "rp", icon: "🗣", name: "Social / diplomazia",  xp: 100 },
+      { id: "r-patto",   group: "rp", icon: "🤝", name: "Patto / alleanza",     xp: 200 },
+      // ── Meta ───────────────────────────────────────────
+      { id: "m-pres",    group: "meta", icon: "🪑", name: "Presenza sessione",  xp: 100 },
+      { id: "m-mvp",     group: "meta", icon: "⭐", name: "MVP della sessione", xp: 150 },
+      { id: "m-coop",    group: "meta", icon: "🤜", name: "Cooperazione gruppo",xp: 75  },
+      { id: "m-surv",    group: "meta", icon: "🛡", name: "Sopravvivenza dura", xp: 100 },
+    ];
+
+    const DEFAULT_INFO = `🏰 ELDORIA — FILOSOFIA EXP
+
+Questa campagna è homebrew: nemici più forti, oggetti più generosi, e l'XP non viene solo dal combattimento. Il GDR conta tanto quanto i mostri uccisi.
+
+LINEE GUIDA
+• Assegnare XP a fine sessione, non spalmati a casaccio durante.
+• La presenza vale (anche se un giocatore è arrivato a metà).
+• Soluzioni creative > forza bruta. Premiare chi pensa.
+• MVP della sessione = un singolo bonus a chi ha brillato.
+• Boss epici raddoppiabili in caso di scontro narrativo cruciale.
+
+PROGRESSIONE
+• La tabella livelli è più ripida del manuale: i giocatori salgono ~ogni 2-3 sessioni nei livelli bassi, ~ogni 4-5 nei livelli alti.
+• Modifica liberamente: i giocatori si ricalcolano in tempo reale.
+
+NOTE
+Modifica questo testo come vuoi — viene salvato automaticamente.`;
+
+    function defaultState() {
+      return {
+        levels: DEFAULT_LEVEL_TABLE.map(r => ({ ...r })),
+        categories: DEFAULT_CATEGORIES.map(c => ({ ...c })),
+        players: [],
+        info: DEFAULT_INFO,
+        editTable: false,
+        editCats: false,
+      };
+    }
+
+    let state = loadState();
+    let activeTab = "table";
+
+    // session-tab transient state (not persisted)
+    let session = {
+      label: "",
+      date: todayISO(),
+      presentIds: new Set(),
+      awards: [{ categoryId: "", xp: 0, note: "" }],
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        const data = JSON.parse(raw);
+        // shallow merge with defaults (forward compat)
+        return {
+          levels:    Array.isArray(data.levels)     && data.levels.length     ? data.levels     : DEFAULT_LEVEL_TABLE.map(r => ({ ...r })),
+          categories:Array.isArray(data.categories) && data.categories.length ? data.categories : DEFAULT_CATEGORIES.map(c => ({ ...c })),
+          players:   Array.isArray(data.players)    ? data.players : [],
+          info:      typeof data.info === "string"  ? data.info    : DEFAULT_INFO,
+          editTable: false,
+          editCats:  false,
+        };
+      } catch {
+        return defaultState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          levels: state.levels,
+          categories: state.categories,
+          players: state.players,
+          info: state.info,
+        }));
+      } catch (err) {
+        console.warn("save failed:", err);
+      }
+    }
+
+    /* ============================================================
+       UTILITIES
+       ============================================================ */
+
+    function uuid() {
+      return "id-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
+    }
+
+    function todayISO() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }
+
+    function fmtNum(n) {
+      return Number(n || 0).toLocaleString("it-IT");
+    }
+
+    function getLevelForXp(xp) {
+      const sorted = [...state.levels].sort((a, b) => a.level - b.level);
+      let lvl = sorted[0]?.level || 1;
+      for (const row of sorted) {
+        if (xp >= row.xp) lvl = row.level;
+        else break;
+      }
+      return lvl;
+    }
+
+    function getXpForLevel(level) {
+      return state.levels.find(r => r.level === level)?.xp ?? 0;
+    }
+
+    function getMaxLevel() {
+      return state.levels.reduce((m, r) => Math.max(m, r.level), 1);
+    }
+
+    function getNextLevelXp(level) {
+      const max = getMaxLevel();
+      if (level >= max) return null;
+      return getXpForLevel(level + 1);
+    }
+
+    function totalXpAwarded(player) {
+      return (player.history || []).reduce((s, sess) => s + (sess.totalXp || 0), 0);
+    }
+
+    function effectiveXp(player) {
+      // Starting XP + everything earned
+      return (player.startXp || 0) + totalXpAwarded(player);
+    }
+
+    function showToast(msg) {
+      const old = document.querySelector(".toast");
+      if (old) old.remove();
+      const div = document.createElement("div");
+      div.className = "toast";
+      div.textContent = msg;
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 1800);
+    }
+
+    /* ============================================================
+       TAB MANAGEMENT
+       ============================================================ */
+
+    document.querySelectorAll("nav.tabs button[data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        activeTab = tab;
+        document.querySelectorAll("nav.tabs button[data-tab]").forEach(b => {
+          b.setAttribute("aria-selected", String(b === btn));
+        });
+        document.querySelectorAll("section.tab-panel").forEach(panel => {
+          panel.classList.toggle("active", panel.dataset.tab === tab);
+        });
+        renderActiveTab();
+      });
+    });
+
+    function renderActiveTab() {
+      switch (activeTab) {
+        case "table":      renderTable(); break;
+        case "categories": renderCategories(); break;
+        case "players":    renderPlayers(); break;
+        case "session":    renderSession(); break;
+        case "stats":      renderStats(); break;
+        case "info":       renderInfo(); break;
+      }
+    }
+
+    /* ============================================================
+       TABELLA EXP
+       ============================================================ */
+
+    function renderTable() {
+      const tbody = document.getElementById("exp-table-body");
+      const sorted = [...state.levels].sort((a, b) => a.level - b.level);
+      tbody.innerHTML = "";
+      sorted.forEach((row, i) => {
+        const next = sorted[i + 1];
+        const gap = next ? next.xp - row.xp : null;
+        const tr = document.createElement("tr");
+        if (state.editTable) tr.classList.add("editing");
+        tr.innerHTML = `
+          <td><span class="level-pill">${row.level}</span></td>
+          <td>
+            ${state.editTable
+              ? `<input type="number" min="0" step="50" value="${row.xp}" data-level="${row.level}">`
+              : `<strong>${fmtNum(row.xp)}</strong>`}
+          </td>
+          <td>${gap == null ? "—" : fmtNum(gap)}</td>
+          <td class="small">${fmtNum(row.xp)} XP</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      if (state.editTable) {
+        tbody.querySelectorAll("input[type=number]").forEach(inp => {
+          inp.addEventListener("change", () => {
+            const lvl = parseInt(inp.dataset.level, 10);
+            const v = Math.max(0, parseInt(inp.value, 10) || 0);
+            const r = state.levels.find(r => r.level === lvl);
+            if (r) r.xp = v;
+            saveState();
+            renderTable();
+            renderActiveTab(); // refresh stats etc if visible
+          });
+        });
+      }
+      document.getElementById("btn-table-edit").textContent = state.editTable ? "✓ Fatto" : "✎ Modifica";
+    }
+
+    document.getElementById("btn-table-edit").addEventListener("click", () => {
+      state.editTable = !state.editTable;
+      renderTable();
+    });
+    document.getElementById("btn-table-reset").addEventListener("click", () => {
+      if (!confirm("Ripristinare la tabella XP ai valori default?")) return;
+      state.levels = DEFAULT_LEVEL_TABLE.map(r => ({ ...r }));
+      saveState();
+      renderTable();
+      showToast("Tabella ripristinata");
+    });
+
+    /* ============================================================
+       CATEGORIE
+       ============================================================ */
+
+    const CAT_GROUP_LABELS = {
+      combat: "⚔ Combattimento",
+      rp:     "🎭 GDR / Roleplay",
+      meta:   "🪑 Meta",
+    };
+
+    function renderCategories() {
+      const root = document.getElementById("cat-groups");
+      root.innerHTML = "";
+      const groups = { combat: [], rp: [], meta: [] };
+      state.categories.forEach(c => { (groups[c.group] || (groups[c.group] = [])).push(c); });
+
+      Object.entries(groups).forEach(([gKey, items]) => {
+        if (!items.length) return;
+        const wrap = document.createElement("div");
+        wrap.className = "cat-group";
+        wrap.innerHTML = `<div class="cat-group-title">${CAT_GROUP_LABELS[gKey] || gKey}</div><div class="cat-grid"></div>`;
+        const grid = wrap.querySelector(".cat-grid");
+        items.forEach(c => {
+          const item = document.createElement("div");
+          item.className = "cat-item";
+          if (state.editCats) {
+            item.innerHTML = `
+              <input type="text" class="cat-icon-edit" value="${c.icon}" maxlength="2" data-id="${c.id}" data-field="icon" style="text-align:center; padding:4px;">
+              <input type="text" class="cat-name-edit" value="${c.name.replace(/"/g, "&quot;")}" data-id="${c.id}" data-field="name">
+              <input type="number" class="cat-xp-edit" value="${c.xp}" min="0" step="25" data-id="${c.id}" data-field="xp">
+              <button class="btn tiny danger" data-del="${c.id}">×</button>
+            `;
+          } else {
+            item.innerHTML = `
+              <span class="cat-icon">${c.icon}</span>
+              <span class="cat-name">${c.name}</span>
+              <span class="cat-xp">${fmtNum(c.xp)} XP</span>
+              <span></span>
+            `;
+          }
+          grid.appendChild(item);
+        });
+        root.appendChild(wrap);
+      });
+
+      if (state.editCats) {
+        root.querySelectorAll("input[data-field]").forEach(inp => {
+          inp.addEventListener("change", () => {
+            const c = state.categories.find(c => c.id === inp.dataset.id);
+            if (!c) return;
+            const field = inp.dataset.field;
+            c[field] = field === "xp" ? Math.max(0, parseInt(inp.value, 10) || 0) : inp.value;
+            saveState();
+          });
+        });
+        root.querySelectorAll("button[data-del]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.del;
+            const c = state.categories.find(c => c.id === id);
+            if (!c) return;
+            if (!confirm(`Eliminare la categoria "${c.name}"?`)) return;
+            state.categories = state.categories.filter(c => c.id !== id);
+            saveState();
+            renderCategories();
+          });
+        });
+      }
+      document.getElementById("btn-cat-edit").textContent = state.editCats ? "✓ Fatto" : "✎ Modifica";
+    }
+
+    document.getElementById("btn-cat-edit").addEventListener("click", () => {
+      state.editCats = !state.editCats;
+      renderCategories();
+    });
+    document.getElementById("btn-cat-reset").addEventListener("click", () => {
+      if (!confirm("Ripristinare le categorie ai valori default? Verranno persi gli aggiunti / modificati.")) return;
+      state.categories = DEFAULT_CATEGORIES.map(c => ({ ...c }));
+      saveState();
+      renderCategories();
+      showToast("Categorie ripristinate");
+    });
+    document.getElementById("btn-cat-add").addEventListener("click", () => {
+      const group = document.getElementById("new-cat-group").value;
+      const icon  = document.getElementById("new-cat-icon").value.trim() || "✨";
+      const name  = document.getElementById("new-cat-name").value.trim();
+      const xp    = Math.max(0, parseInt(document.getElementById("new-cat-xp").value, 10) || 0);
+      if (!name) { alert("Inserisci un nome."); return; }
+      state.categories.push({ id: uuid(), group, icon, name, xp });
+      saveState();
+      document.getElementById("new-cat-icon").value = "";
+      document.getElementById("new-cat-name").value = "";
+      document.getElementById("new-cat-xp").value = "";
+      renderCategories();
+      showToast(`Aggiunta: ${name}`);
+    });
+
+    /* ============================================================
+       GIOCATORI
+       ============================================================ */
+
+    function renderPlayers() {
+      const grid = document.getElementById("players-grid");
+      grid.innerHTML = "";
+      if (state.players.length === 0) {
+        grid.innerHTML = `<p class="empty-note">Nessun giocatore ancora. Aggiungine uno con il modulo qui sopra.</p>`;
+        return;
+      }
+      // sort by current xp desc
+      const sorted = [...state.players].sort((a, b) => effectiveXp(b) - effectiveXp(a));
+      sorted.forEach(p => {
+        const xp = effectiveXp(p);
+        const lvl = getLevelForXp(xp);
+        const cur = getXpForLevel(lvl);
+        const next = getNextLevelXp(lvl);
+        const intoLvl = xp - cur;
+        const span = next != null ? (next - cur) : 1;
+        const pct = next != null ? Math.min(100, Math.max(0, (intoLvl / span) * 100)) : 100;
+        const sessions = (p.history || []).length;
+
+        const card = document.createElement("div");
+        card.className = "player-card";
+        card.innerHTML = `
+          <div class="player-card-actions">
+            <button class="btn tiny ghost" data-edit="${p.id}">✎</button>
+            <button class="btn tiny danger" data-del="${p.id}">×</button>
+          </div>
+          <div class="player-card-head">
+            <span class="player-emoji">${p.emoji || "🧙"}</span>
+            <div class="player-name-block">
+              <div class="player-name">${escapeHTML(p.name)}</div>
+              <div class="player-class">${escapeHTML(p.class || "—")}</div>
+            </div>
+            <span class="player-level-pill">Lv ${lvl}</span>
+          </div>
+          <div class="player-xp-bar-wrap" title="${fmtNum(intoLvl)} / ${next != null ? fmtNum(next - cur) : "MAX"}">
+            <div class="player-xp-bar" style="width: ${pct}%"></div>
+          </div>
+          <div class="player-xp-numbers">
+            <span><strong>${fmtNum(xp)}</strong> XP totali</span>
+            <span>${next != null ? `${fmtNum(next - xp)} al Lv ${lvl + 1}` : "Livello MAX"}</span>
+          </div>
+          <div class="player-meta-row">
+            <span class="meta-pill">📅 <strong>${sessions}</strong> sessioni</span>
+            <span class="meta-pill">📈 <strong>${fmtNum(totalXpAwarded(p))}</strong> guadagnati</span>
+            ${sessions > 0 ? `<span class="meta-pill">⌀ <strong>${fmtNum(Math.round(totalXpAwarded(p) / sessions))}</strong> XP/sess</span>` : ""}
+          </div>
+        `;
+        card.addEventListener("click", (e) => {
+          if (e.target.closest("[data-edit]") || e.target.closest("[data-del]")) return;
+          openPlayerDetail(p.id);
+        });
+        grid.appendChild(card);
+      });
+
+      grid.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          editPlayerInline(btn.dataset.edit);
+        });
+      });
+      grid.querySelectorAll("[data-del]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const p = state.players.find(p => p.id === btn.dataset.del);
+          if (!p) return;
+          if (!confirm(`Eliminare il giocatore "${p.name}"? Lo storico XP verrà perso.`)) return;
+          state.players = state.players.filter(p => p.id !== btn.dataset.del);
+          saveState();
+          renderPlayers();
+          renderActiveTab();
+          showToast(`Rimosso: ${p.name}`);
+        });
+      });
+    }
+
+    function editPlayerInline(id) {
+      const p = state.players.find(p => p.id === id);
+      if (!p) return;
+      const newName  = prompt("Nome:",  p.name);  if (newName  == null) return;
+      const newClass = prompt("Classe:", p.class || ""); if (newClass == null) return;
+      const newEmoji = prompt("Icona (1-2 caratteri):", p.emoji || "🧙"); if (newEmoji == null) return;
+      p.name  = newName.trim() || p.name;
+      p.class = newClass.trim();
+      p.emoji = (newEmoji.trim() || "🧙").slice(0, 4);
+      saveState();
+      renderPlayers();
+      showToast("Aggiornato");
+    }
+
+    document.getElementById("btn-pl-add").addEventListener("click", () => {
+      const name  = document.getElementById("new-pl-name").value.trim();
+      const cls   = document.getElementById("new-pl-class").value.trim();
+      const emoji = document.getElementById("new-pl-emoji").value.trim() || "🧙";
+      const lvl   = Math.max(1, parseInt(document.getElementById("new-pl-level").value, 10) || 1);
+      let startXp = parseInt(document.getElementById("new-pl-xp").value, 10);
+      if (isNaN(startXp)) startXp = getXpForLevel(lvl);
+
+      if (!name) { alert("Inserisci un nome."); return; }
+      const player = {
+        id: uuid(),
+        name, class: cls, emoji,
+        startLevel: lvl,
+        startXp: Math.max(startXp, getXpForLevel(lvl)),
+        joinedAt: new Date().toISOString(),
+        history: [],
+      };
+      state.players.push(player);
+      saveState();
+      ["new-pl-name","new-pl-class","new-pl-emoji","new-pl-xp"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("new-pl-level").value = "1";
+      renderPlayers();
+      renderSession();
+      showToast(`Aggiunto: ${name}`);
+    });
+
+    /* ============================================================
+       FOUNDRY EXPORT MACRO + IMPORT
+       ============================================================ */
+
+    const FOUNDRY_MACRO_SRC = `// Foundry VTT macro · Eldoria EXP exporter
+// Crea una macro "Script" in Foundry e incolla questo codice.
+
+const players = game.actors
+  .filter(a => a.type === "character" && a.hasPlayerOwner)
+  .map(a => {
+    const sys = a.system ?? {};
+    let totalLevels = 0;
+    let primaryClass = "—";
+    let primaryLevels = 0;
+    const classItems = a.classes ?? {};
+    for (const cls of Object.values(classItems)) {
+      const lvl = Number(cls.system?.levels ?? 0);
+      totalLevels += lvl;
+      if (lvl > primaryLevels) {
+        primaryLevels = lvl;
+        primaryClass  = cls.name;
+      }
+    }
+    if (!totalLevels) totalLevels = Number(sys.details?.level ?? 1);
+    const xp = Number(sys.details?.xp?.value ?? 0);
+    return { name: a.name, class: primaryClass, level: totalLevels || 1, xp };
+  });
+
+const json = JSON.stringify(players, null, 2);
+console.log("=== Eldoria EXP — Player Export ===\\n" + json);
+
+try {
+  await navigator.clipboard.writeText(json);
+  ui.notifications.info(\`✓ Esportati \${players.length} giocatori — JSON copiato negli appunti.\`);
+} catch {
+  ui.notifications.warn("Clipboard non accessibile. Apri la console (F12) e copia il JSON da lì.");
+}
+
+ChatMessage.create({
+  whisper: [game.user.id],
+  content:
+    \`<details open>
+       <summary><strong>📥 Eldoria EXP — \${players.length} giocator\${players.length === 1 ? "e" : "i"}</strong></summary>
+       <pre style="white-space:pre-wrap;font-size:0.78em;background:#fffaf0;border:1px solid #c9a961;border-radius:6px;padding:8px;">\${json.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>
+     </details>\`,
+});`;
+
+    document.getElementById("foundry-macro-code").textContent = FOUNDRY_MACRO_SRC;
+
+    document.getElementById("btn-copy-macro").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(FOUNDRY_MACRO_SRC);
+        showToast("✓ Macro copiata negli appunti");
+      } catch {
+        // fallback: select the text
+        const range = document.createRange();
+        range.selectNode(document.getElementById("foundry-macro-code"));
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        showToast("Selezionato — premi Ctrl+C");
+      }
+    });
+
+    document.getElementById("btn-foundry-import").addEventListener("click", () => {
+      const txt = document.getElementById("foundry-import-json").value.trim();
+      const msgEl = document.getElementById("foundry-import-msg");
+      msgEl.textContent = "";
+      if (!txt) { alert("Incolla prima il JSON esportato dalla macro."); return; }
+      let data;
+      try {
+        data = JSON.parse(txt);
+      } catch (err) {
+        alert("JSON non valido: " + err.message);
+        return;
+      }
+      if (!Array.isArray(data)) {
+        alert("Il JSON deve essere un array di giocatori.");
+        return;
+      }
+
+      let added = 0, updated = 0, skipped = 0;
+      data.forEach(d => {
+        if (!d || !d.name) { skipped++; return; }
+        const nameNorm = String(d.name).trim();
+        const cls = d.class ? String(d.class).trim() : "";
+        const lvl = Math.max(1, parseInt(d.level, 10) || 1);
+        const fxp = Math.max(0, parseInt(d.xp, 10) || 0);
+
+        const existing = state.players.find(p => p.name.toLowerCase() === nameNorm.toLowerCase());
+        if (existing) {
+          // Aggiorna solo classe e livello iniziale; preserva history & startXp
+          if (cls) existing.class = cls;
+          if (lvl) existing.startLevel = lvl;
+          updated++;
+        } else {
+          // Nuovo: usa XP Foundry, oppure soglia del livello se Foundry è in milestone (xp=0)
+          const startXp = fxp > 0 ? fxp : getXpForLevel(lvl);
+          state.players.push({
+            id: uuid(),
+            name: nameNorm,
+            class: cls,
+            emoji: "🧙",
+            startLevel: lvl,
+            startXp,
+            joinedAt: new Date().toISOString(),
+            history: [],
+          });
+          added++;
+        }
+      });
+      saveState();
+      renderPlayers();
+      renderActiveTab();
+      document.getElementById("foundry-import-json").value = "";
+      const parts = [];
+      if (added)   parts.push(`${added} nuovi`);
+      if (updated) parts.push(`${updated} aggiornati`);
+      if (skipped) parts.push(`${skipped} saltati`);
+      msgEl.textContent = parts.length ? `✓ ${parts.join(" · ")}` : "Nessun giocatore importato.";
+      showToast(`✓ Import: ${added + updated} giocatori`);
+    });
+
+    /* ============================================================
+       PLAYER DETAIL MODAL
+       ============================================================ */
+
+    function openPlayerDetail(id) {
+      const p = state.players.find(p => p.id === id);
+      if (!p) return;
+      const xp = effectiveXp(p);
+      const lvl = getLevelForXp(xp);
+      const root = document.getElementById("modal-root");
+      const sessions = [...(p.history || [])].sort((a, b) => (b.sessionDate || "").localeCompare(a.sessionDate || ""));
+
+      const sessionsHtml = sessions.length === 0
+        ? `<p class="empty-note">Nessuna sessione registrata ancora.</p>`
+        : sessions.map(s => `
+          <div class="session-entry">
+            <div class="session-entry-head">
+              <span class="session-label">${escapeHTML(s.sessionLabel || "Sessione")}</span>
+              <span class="session-date">${escapeHTML(s.sessionDate || "")}</span>
+              <span class="session-total">+${fmtNum(s.totalXp || 0)} XP</span>
+            </div>
+            <div class="award-list">
+              ${(s.awards || []).map(a => `
+                <div class="award-line">
+                  <strong>${escapeHTML(a.label || a.categoryId || "?")}</strong>
+                  <span class="award-xp">+${fmtNum(a.xp || 0)} XP</span>
+                  ${a.note ? ` <span class="small">— ${escapeHTML(a.note)}</span>` : ""}
+                </div>
+              `).join("")}
+            </div>
+            <div style="margin-top: 6px; text-align: right;">
+              <button class="btn tiny danger" data-del-sess="${s.sessionId}">× Annulla sessione</button>
+            </div>
+          </div>
+        `).join("");
+
+      root.innerHTML = `
+        <div class="modal-overlay" id="modal-overlay">
+          <div class="modal-dialog">
+            <header class="modal-head">
+              <span style="font-size: 1.4rem;">${p.emoji || "🧙"}</span>
+              <h3>${escapeHTML(p.name)} · Lv ${lvl} · ${fmtNum(xp)} XP</h3>
+              <button class="modal-close" id="modal-close">✕</button>
+            </header>
+            <div class="modal-body">
+              <p class="small">${escapeHTML(p.class || "—")} · ${sessions.length} sessioni · iscritto al Lv ${p.startLevel || 1}</p>
+              <hr class="hr-soft">
+              <h4 style="margin: 0 0 8px; font-family: var(--serif); letter-spacing: 0.06em; text-transform: uppercase; color: var(--burgundy); font-size: 0.86rem;">Storia sessioni</h4>
+              ${sessionsHtml}
+            </div>
+          </div>
+        </div>
+      `;
+
+      const close = () => { root.innerHTML = ""; };
+      document.getElementById("modal-close").addEventListener("click", close);
+      document.getElementById("modal-overlay").addEventListener("click", (e) => {
+        if (e.target.id === "modal-overlay") close();
+      });
+      const onKey = (e) => { if (e.key === "Escape") { close(); window.removeEventListener("keydown", onKey); } };
+      window.addEventListener("keydown", onKey);
+
+      root.querySelectorAll("[data-del-sess]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const sid = btn.dataset.delSess;
+          if (!confirm("Rimuovere questa sessione dal giocatore? L'XP verrà sottratto.")) return;
+          p.history = (p.history || []).filter(s => s.sessionId !== sid);
+          saveState();
+          openPlayerDetail(p.id);
+          renderPlayers();
+          renderActiveTab();
+        });
+      });
+    }
+
+    function escapeHTML(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    /* ============================================================
+       SESSIONE
+       ============================================================ */
+
+    function renderSession() {
+      // populate label/date inputs
+      const labelInp = document.getElementById("sess-label");
+      const dateInp  = document.getElementById("sess-date");
+      labelInp.value = session.label;
+      dateInp.value  = session.date;
+
+      // players checkboxes
+      const wrap = document.getElementById("sess-players");
+      wrap.innerHTML = "";
+      if (state.players.length === 0) {
+        wrap.innerHTML = `<p class="small">Aggiungi prima dei giocatori nella scheda <strong>🧙 Giocatori</strong>.</p>`;
+      } else {
+        state.players.forEach(p => {
+          const isOn = session.presentIds.has(p.id);
+          const chip = document.createElement("label");
+          chip.className = "player-chip" + (isOn ? " active" : "");
+          chip.innerHTML = `<input type="checkbox" ${isOn ? "checked" : ""}><span>${p.emoji || "🧙"} ${escapeHTML(p.name)}</span>`;
+          chip.querySelector("input").addEventListener("change", (e) => {
+            if (e.target.checked) session.presentIds.add(p.id);
+            else session.presentIds.delete(p.id);
+            renderSession();
+          });
+          wrap.appendChild(chip);
+        });
+      }
+
+      // awards
+      const awardsWrap = document.getElementById("award-rows");
+      awardsWrap.innerHTML = "";
+      if (session.awards.length === 0) {
+        awardsWrap.innerHTML = `<p class="small">Nessun premio. <button class="btn tiny" id="btn-award-add-inline">+ Aggiungi</button></p>`;
+        document.getElementById("btn-award-add-inline").addEventListener("click", addAward);
+      } else {
+        session.awards.forEach((aw, idx) => {
+          const row = document.createElement("div");
+          row.className = "award-row";
+          const opts = ['<option value="">— scegli categoria —</option>']
+            .concat(state.categories.map(c =>
+              `<option value="${c.id}" ${c.id === aw.categoryId ? "selected" : ""}>${c.icon} ${escapeHTML(c.name)} (${c.xp} XP)</option>`
+            ))
+            .join("");
+          row.innerHTML = `
+            <select data-idx="${idx}" data-field="categoryId">${opts}</select>
+            <input type="number" data-idx="${idx}" data-field="xp" value="${aw.xp || 0}" min="0" step="25" placeholder="XP">
+            <input type="text" class="award-note" data-idx="${idx}" data-field="note" value="${escapeHTML(aw.note || "")}" placeholder="Nota (opzionale)">
+            <button class="btn tiny danger award-del" data-del="${idx}">×</button>
+          `;
+          awardsWrap.appendChild(row);
+        });
+
+        awardsWrap.querySelectorAll("select, input").forEach(el => {
+          el.addEventListener("input", () => {
+            const idx = parseInt(el.dataset.idx, 10);
+            const field = el.dataset.field;
+            if (!session.awards[idx]) return;
+            if (field === "categoryId") {
+              session.awards[idx].categoryId = el.value;
+              const cat = state.categories.find(c => c.id === el.value);
+              if (cat) session.awards[idx].xp = cat.xp;
+            } else if (field === "xp") {
+              session.awards[idx].xp = Math.max(0, parseInt(el.value, 10) || 0);
+            } else if (field === "note") {
+              session.awards[idx].note = el.value;
+            }
+            renderSessionTotal();
+            // selectively re-render row when xp auto-fills from category
+            if (field === "categoryId") renderSession();
+          });
+        });
+        awardsWrap.querySelectorAll("[data-del]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const idx = parseInt(btn.dataset.del, 10);
+            session.awards.splice(idx, 1);
+            renderSession();
+          });
+        });
+      }
+
+      renderSessionTotal();
+    }
+
+    function renderSessionTotal() {
+      const total = session.awards.reduce((s, a) => s + (parseInt(a.xp, 10) || 0), 0);
+      document.getElementById("sess-total").textContent = fmtNum(total);
+      document.getElementById("sess-count").textContent = session.presentIds.size;
+    }
+
+    function addAward() {
+      session.awards.push({ categoryId: "", xp: 0, note: "" });
+      renderSession();
+    }
+
+    document.getElementById("btn-award-add").addEventListener("click", addAward);
+    document.getElementById("sess-label").addEventListener("input", (e) => { session.label = e.target.value; });
+    document.getElementById("sess-date").addEventListener("input", (e) => { session.date = e.target.value; });
+
+    document.getElementById("btn-session-clear").addEventListener("click", () => {
+      session = { label: "", date: todayISO(), presentIds: new Set(), awards: [{ categoryId: "", xp: 0, note: "" }] };
+      renderSession();
+    });
+
+    document.getElementById("btn-session-save").addEventListener("click", () => {
+      if (session.presentIds.size === 0) { alert("Seleziona almeno un giocatore presente."); return; }
+      const validAwards = session.awards.filter(a => (a.xp || 0) > 0);
+      if (validAwards.length === 0) { alert("Aggiungi almeno un premio XP > 0."); return; }
+      const total = validAwards.reduce((s, a) => s + (a.xp || 0), 0);
+      if (!session.label.trim()) {
+        if (!confirm("Sessione senza etichetta. Salvare comunque?")) return;
+      }
+      const sessionId = "sess-" + Date.now();
+      const sessionLabel = session.label.trim() || `Sessione ${todayISO()}`;
+      const sessionDate  = session.date || todayISO();
+      const awardsToWrite = validAwards.map(a => {
+        const cat = state.categories.find(c => c.id === a.categoryId);
+        return {
+          categoryId: a.categoryId,
+          label: cat ? `${cat.icon} ${cat.name}` : "(custom)",
+          xp: a.xp,
+          note: a.note,
+        };
+      });
+
+      const presentNames = [];
+      session.presentIds.forEach(pid => {
+        const p = state.players.find(p => p.id === pid);
+        if (!p) return;
+        p.history = p.history || [];
+        p.history.push({
+          sessionId,
+          sessionLabel,
+          sessionDate,
+          awards: awardsToWrite,
+          totalXp: total,
+        });
+        presentNames.push(p.name);
+      });
+      saveState();
+      // reset session form
+      session = { label: "", date: todayISO(), presentIds: new Set(), awards: [{ categoryId: "", xp: 0, note: "" }] };
+      renderSession();
+      showToast(`✓ ${total} XP × ${presentNames.length} giocatori`);
+    });
+
+    /* ============================================================
+       STATISTICHE
+       ============================================================ */
+
+    function renderStats() {
+      const players = state.players;
+
+      const totalPlayers   = players.length;
+      const totalSessions  = new Set(players.flatMap(p => (p.history || []).map(s => s.sessionId))).size;
+      const totalXp        = players.reduce((s, p) => s + totalXpAwarded(p), 0);
+      const avgXpPerSess   = totalSessions ? Math.round(totalXp / (totalSessions * (totalPlayers || 1))) : 0;
+
+      // average sessions per level (only counts gained-during-tracking levels)
+      const sessionsPerLevel = (() => {
+        let totalLevels = 0, totalSessionsAttended = 0;
+        players.forEach(p => {
+          const lvl = getLevelForXp(effectiveXp(p));
+          const gained = Math.max(0, lvl - (p.startLevel || 1));
+          totalLevels += gained;
+          totalSessionsAttended += (p.history || []).length;
+        });
+        if (!totalLevels) return null;
+        return (totalSessionsAttended / totalLevels).toFixed(1);
+      })();
+
+      document.getElementById("stat-grid").innerHTML = `
+        <div class="stat-card"><div class="stat-num">${fmtNum(totalPlayers)}</div><div class="stat-label">Giocatori</div></div>
+        <div class="stat-card"><div class="stat-num">${fmtNum(totalSessions)}</div><div class="stat-label">Sessioni</div></div>
+        <div class="stat-card"><div class="stat-num">${fmtNum(totalXp)}</div><div class="stat-label">XP totali</div></div>
+        <div class="stat-card"><div class="stat-num">${fmtNum(avgXpPerSess)}</div><div class="stat-label">⌀ XP / sessione · giocatore</div></div>
+        <div class="stat-card"><div class="stat-num">${sessionsPerLevel ?? "—"}</div><div class="stat-label">⌀ Sessioni per livello</div></div>
+      `;
+
+      // Bar chart: XP per player
+      const playerData = players
+        .map(p => ({ name: p.name, emoji: p.emoji || "🧙", xp: totalXpAwarded(p) }))
+        .sort((a, b) => b.xp - a.xp);
+      renderBarChart("bar-players", playerData, p => `${p.emoji} ${p.name}`, p => p.xp);
+
+      // Bar chart: XP per category
+      const catTotals = {};
+      players.forEach(p => (p.history || []).forEach(s => (s.awards || []).forEach(a => {
+        const key = a.categoryId || a.label || "(custom)";
+        catTotals[key] = (catTotals[key] || 0) + (a.xp || 0);
+      })));
+      const catData = Object.entries(catTotals).map(([id, xp]) => {
+        const cat = state.categories.find(c => c.id === id);
+        return { name: cat ? `${cat.icon} ${cat.name}` : id, xp };
+      }).sort((a, b) => b.xp - a.xp);
+      renderBarChart("bar-categories", catData, x => x.name, x => x.xp);
+
+      // Bar chart: sessions per level (player-level)
+      const splData = players.map(p => {
+        const lvl = getLevelForXp(effectiveXp(p));
+        const gained = Math.max(0, lvl - (p.startLevel || 1));
+        const sess = (p.history || []).length;
+        return {
+          name: `${p.emoji || "🧙"} ${p.name}`,
+          val: gained ? +(sess / gained).toFixed(2) : sess,
+          label: gained ? `${(sess / gained).toFixed(1)} sess/lv` : `${sess} sess (no lvup)`,
+        };
+      }).sort((a, b) => b.val - a.val);
+      renderBarChart("bar-sessions-per-level", splData, x => x.name, x => x.val, x => x.label);
+    }
+
+    function renderBarChart(rootId, data, nameFn, valFn, labelFn) {
+      const root = document.getElementById(rootId);
+      if (!data.length) {
+        root.innerHTML = `<p class="empty-note">Nessun dato ancora.</p>`;
+        return;
+      }
+      const max = Math.max(1, ...data.map(valFn));
+      root.innerHTML = data.map(d => {
+        const v = valFn(d);
+        const pct = (v / max) * 100;
+        return `
+          <div class="bar-row">
+            <span class="bar-name">${escapeHTML(nameFn(d))}</span>
+            <div class="bar-track"><div class="bar-fill" style="width: ${pct}%"></div></div>
+            <span class="bar-val">${labelFn ? escapeHTML(labelFn(d)) : fmtNum(v)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    /* ============================================================
+       INFO
+       ============================================================ */
+
+    function renderInfo() {
+      document.getElementById("info-text").value = state.info;
+    }
+
+    document.getElementById("info-text").addEventListener("input", (e) => {
+      state.info = e.target.value;
+      // debounce-style save
+      clearTimeout(window.__infoTimer);
+      window.__infoTimer = setTimeout(saveState, 500);
+    });
+
+    document.getElementById("btn-info-reset").addEventListener("click", () => {
+      if (!confirm("Ripristinare le linee guida ai valori default?")) return;
+      state.info = DEFAULT_INFO;
+      saveState();
+      renderInfo();
+      showToast("Note ripristinate");
+    });
+
+    /* ============================================================
+       EXPORT / IMPORT / CLEAR
+       ============================================================ */
+
+    document.getElementById("btn-export").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify({
+        levels: state.levels, categories: state.categories,
+        players: state.players, info: state.info,
+        exportedAt: new Date().toISOString(),
+        version: 1,
+      }, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `eldoria-exp-${todayISO()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Esportato");
+    });
+
+    document.getElementById("btn-import").addEventListener("click", () => {
+      document.getElementById("import-file").click();
+    });
+    document.getElementById("import-file").addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!confirm("Importare e SOSTITUIRE i dati attuali?")) return;
+          state = {
+            levels:    Array.isArray(data.levels)     && data.levels.length     ? data.levels     : DEFAULT_LEVEL_TABLE.map(r => ({ ...r })),
+            categories:Array.isArray(data.categories) && data.categories.length ? data.categories : DEFAULT_CATEGORIES.map(c => ({ ...c })),
+            players:   Array.isArray(data.players)    ? data.players : [],
+            info:      typeof data.info === "string"  ? data.info    : DEFAULT_INFO,
+            editTable: false,
+            editCats:  false,
+          };
+          saveState();
+          renderActiveTab();
+          showToast("Importato");
+        } catch (err) {
+          alert("File non valido: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    });
+
+    document.getElementById("btn-clear-all").addEventListener("click", () => {
+      if (!confirm("Cancellare TUTTI i dati (giocatori, sessioni, tabella, note)? Operazione non reversibile.")) return;
+      state = defaultState();
+      saveState();
+      renderActiveTab();
+      showToast("Tutto cancellato");
+    });
+
+    /* ============================================================
+       INIT
+       ============================================================ */
+
+    session.date = todayISO();
+    renderActiveTab();
+    // also render the others once so the data is consistent on first switch
+    setTimeout(() => {
+      ["table","categories","players","session","stats","info"].forEach(t => {
+        if (t === activeTab) return;
+        // pre-render to populate DOM lazily? No — we render on tab switch.
+      });
+    }, 0);
+  </script>
+</body>
+</html>
