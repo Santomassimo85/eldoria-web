@@ -292,8 +292,8 @@
 .pa-ch-team {
   display: inline-flex;
   align-items: center;
-  gap: -8px;
   position: relative;
+  flex-shrink: 0;
 }
 .pa-ch-team-icon {
   width: 38px;
@@ -666,7 +666,7 @@
 .pa-challenge-list { display: flex; flex-direction: column; gap: 8px; }
 .pa-challenge-row {
   display: grid;
-  grid-template-columns: 50px 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 12px;
   align-items: center;
   background: linear-gradient(180deg, #fffaf0, #f6e9c8);
@@ -886,4 +886,93 @@
   .pa-pet-row { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
   .pa-recent-summary { font-size: 0.78rem; }
   .pa-recent-winner { margin-left: 0; flex-basis: 100%; padding-top: 4px; }
+
+  /* Challenge row — let the team avatars wrap and put the button on its own line */
+  .pa-challenge-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .pa-challenge-row > .pa-btn { justify-self: stretch; }
+}
+
+/* ============================================================
+   LIVE BATTLE — phone tweaks
+   ============================================================ */
+@media (max-width: 700px) {
+  .pa-live-field {
+    padding: 10px;
+    gap: 10px;
+  }
+  .pa-live-card {
+    padding: 10px;
+    gap: 10px;
+  }
+  .pa-live-avatar { width: 56px; height: 56px; }
+  .pa-live-name { font-size: 0.95rem; }
+  .pa-live-meta { font-size: 0.72rem; }
+  .pa-live-hp-label { font-size: 0.78rem; }
+  .pa-live-buff, .pa-live-debuff { font-size: 0.7rem; padding: 1px 6px; }
+  .pa-live-actions { padding: 10px; min-height: 90px; }
+  .pa-action-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px;
+  }
+  .pa-action-btn { padding: 8px 10px; }
+  .pa-action-name { font-size: 0.86rem; }
+  .pa-action-meta { font-size: 0.7rem; }
+  .pa-battle-end-title { font-size: 1.5rem; }
+  .pa-type-cycle {
+    gap: 4px;
+    font-size: 0.74rem;
+    padding: 6px 10px;
+    border-radius: 14px;
+    margin: 10px auto;
+  }
+  .pa-type-cycle-label {
+    font-size: 0.7rem;
+    margin-right: 0;
+    flex-basis: 100%;
+    text-align: center;
+  }
+  .pa-type-cycle-node { padding: 1px 8px; }
+  .pa-live-head {
+    padding: 6px 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .pa-live-round { font-size: 0.86rem; letter-spacing: 0.04em; }
+  .pa-bench-icon { width: 32px; height: 32px; }
+  .pa-live-bench-pet { width: 36px; }
+  .pa-bench-hp-mini { width: 32px; }
+  .pa-switch-grid {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+  .pa-switch-avatar { width: 44px; height: 44px; }
+  .pa-switch-name { font-size: 0.78rem; }
+  .pa-switch-hp { font-size: 0.7rem; }
+
+  /* Stack picker footer buttons */
+  .pa-modal-foot { flex-direction: column-reverse; }
+  .pa-modal-foot .pa-btn { width: 100%; text-align: center; }
+}
+
+/* ============================================================
+   LIVE BATTLE — very small phones (< 420px)
+   ============================================================ */
+@media (max-width: 420px) {
+  .pa-action-grid { grid-template-columns: 1fr; }
+  .pa-live-card {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    padding: 8px;
+  }
+  .pa-live-avatar { align-self: center; width: 64px; height: 64px; }
+  .pa-live-side--opp, .pa-live-side--mine { align-items: stretch; }
+  .pa-live-bench { justify-content: center; }
+  .pa-battle-end-title { font-size: 1.3rem; }
+  .pa-pet-row { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; }
+  .pa-pet-mini-icon { width: 48px; height: 48px; }
+  .pa-pet-mini-name { font-size: 0.82rem; }
+  .pa-pet-mini-meta { font-size: 0.66rem; }
 }
