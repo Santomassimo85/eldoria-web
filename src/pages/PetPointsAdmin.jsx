@@ -3,6 +3,10 @@ import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, increment, serverTimestamp, addDoc } from 'firebase/firestore';
+import { PET_SPECIES, RARITY_LABEL, RARITY_COLOR } from '../data/petSpecies';
+import { TYPE_ICON } from '../data/petMoves';
+import { levelFromExp } from '../utils/pet';
+import PetAvatar from '../components/PetAvatar';
 import "./admin.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -18,6 +22,7 @@ export default function PetPointsAdmin() {
   const [tempBalances, setTempBalances] = useState({});
   const [filter, setFilter] = useState('');
   const [busy, setBusy] = useState({}); // uid → bool
+  const [petsOpen, setPetsOpen] = useState({}); // uid → bool
 
   useEffect(() => {
     if (!currentUser) return;
@@ -92,6 +97,34 @@ export default function PetPointsAdmin() {
       flash(`❌ ${err.message}`);
     } finally {
       setBusy(b => ({ ...b, [charId]: false }));
+    }
+  };
+
+  /* Master delete — remove a pet from a player's roster.
+     Confirms, filters the pets array, writes back, notifies the player. */
+  const handleDeletePet = async (char, pet) => {
+    const playerName = char.name || char.email || "il giocatore";
+    if (!window.confirm(
+      `Eliminare definitivamente "${pet.nickname}" dal roster di ${playerName}?\n\nQuesta operazione non si può annullare.`
+    )) return;
+    setBusy(b => ({ ...b, [char.id]: true }));
+    try {
+      const newPets = (char.pets || []).filter(p => p.id !== pet.id);
+      await updateDoc(doc(db, 'characters', char.id), { pets: newPets });
+      try {
+        await addDoc(collection(db, "notifications"), {
+          userId: char.id,
+          read: false,
+          timestamp: serverTimestamp(),
+          title: "♛ Compagno rimosso dal Master",
+          message: `Il compagno "${pet.nickname}" è stato rimosso dal tuo roster.`,
+        });
+      } catch {}
+      flash(`🗑 ${playerName}: rimosso "${pet.nickname}"`);
+    } catch (err) {
+      flash(`❌ ${err.message}`);
+    } finally {
+      setBusy(b => ({ ...b, [char.id]: false }));
     }
   };
 
@@ -202,7 +235,7 @@ export default function PetPointsAdmin() {
                   </button>
                 </div>
 
-                <div style={{ flex: "1 1 100%", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                <div style={{ flex: "1 1 100%", display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>
                   {QUICK_AMOUNTS.map(amt => (
                     <button
                       key={amt}
@@ -228,7 +261,97 @@ export default function PetPointsAdmin() {
                       {amt > 0 ? `+${amt}` : amt}
                     </button>
                   ))}
+                  {pets > 0 && (
+                    <button
+                      onClick={() => setPetsOpen(p => ({ ...p, [char.id]: !p[char.id] }))}
+                      style={{
+                        marginLeft: "auto",
+                        padding: "5px 12px",
+                        borderRadius: 999,
+                        border: "1.5px solid #7d2929",
+                        background: petsOpen[char.id] ? "rgba(125, 41, 41, 0.12)" : "rgba(255, 250, 235, 0.6)",
+                        color: "#7d2929",
+                        fontWeight: 700,
+                        fontSize: "0.84rem",
+                        cursor: "pointer",
+                        transition: "background 0.15s",
+                      }}
+                      title={petsOpen[char.id] ? "Chiudi roster" : "Vedi e gestisci il roster pet"}
+                    >
+                      {petsOpen[char.id] ? "▴ Pets" : `▾ Pets (${pets})`}
+                    </button>
+                  )}
                 </div>
+
+                {petsOpen[char.id] && pets > 0 && (
+                  <div style={{
+                    flex: "1 1 100%",
+                    marginTop: 8,
+                    padding: 10,
+                    background: "rgba(125, 41, 41, 0.04)",
+                    border: "1px dashed #c9a961",
+                    borderRadius: 10,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 8,
+                  }}>
+                    {(char.pets || []).map(pet => {
+                      const sp = PET_SPECIES[pet.speciesKey];
+                      const lvl = levelFromExp(pet.exp || 0);
+                      return (
+                        <div key={pet.id} style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "6px 10px",
+                          background: "#fffdf6",
+                          border: "1px solid #c9a961",
+                          borderLeft: `4px solid ${RARITY_COLOR[sp?.rarity] || "#c9a961"}`,
+                          borderRadius: 8,
+                          fontSize: "0.84rem",
+                        }}>
+                          <PetAvatar
+                            species={sp}
+                            style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid #c9a961", flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
+                            <div style={{ fontWeight: 700, color: "#2d2418", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {pet.nickname || sp?.name || "?"}
+                            </div>
+                            <div style={{ fontSize: "0.74rem", color: "#6f6453" }}>
+                              Lv {lvl} · {sp ? `${TYPE_ICON[sp.type]} ${sp.name}` : "specie sconosciuta"}
+                              {sp && (
+                                <span style={{ color: RARITY_COLOR[sp.rarity], marginLeft: 4 }}>
+                                  · {RARITY_LABEL[sp.rarity]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePet(char, pet)}
+                            disabled={isBusy}
+                            title={`Elimina "${pet.nickname}"`}
+                            style={{
+                              background: "linear-gradient(180deg, #b91c1c, #7d2929)",
+                              color: "#fdf2dc",
+                              border: "1.5px solid #5a1818",
+                              borderRadius: 6,
+                              padding: "4px 10px",
+                              fontWeight: 700,
+                              fontSize: "0.78rem",
+                              cursor: isBusy ? "not-allowed" : "pointer",
+                              opacity: isBusy ? 0.5 : 1,
+                              flexShrink: 0,
+                            }}
+                          >
+                            🗑 Elimina
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })
