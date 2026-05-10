@@ -20,7 +20,7 @@
      · damage = (sum(damageDice) + profBonus) × typeMultiplier
    ============================================================ */
 
-export const PET_TYPES = ["neutral", "fire", "water", "earth", "air"];
+export const PET_TYPES = ["neutral", "fire", "water", "earth", "air", "light", "dark"];
 
 export const TYPE_ICON = {
   neutral: "✦",
@@ -28,6 +28,8 @@ export const TYPE_ICON = {
   water:   "💧",
   earth:   "🌿",
   air:     "⚡",
+  light:   "✨",
+  dark:    "🌑",
 };
 
 export const TYPE_LABEL = {
@@ -36,15 +38,20 @@ export const TYPE_LABEL = {
   water:   "Acqua",
   earth:   "Terra",
   air:     "Aria",
+  light:   "Luce",
+  dark:    "Tenebre",
 };
 
 /* Type effectiveness · 1.5x super, 0.5x weak.
-   Cycle: 🔥 > 🌿 > ⚡ > 💧 > 🔥 */
+   Main cycle:  🔥 > 🌿 > ⚡ > 💧 > 🔥
+   Dualità:     ✨ ⇄ 🌑   (only effective vs each other; neutral vs the elementals) */
 const TYPE_CHART = {
   fire:  { earth: 1.5, water: 0.5 },
   earth: { air:   1.5, fire:  0.5 },
   air:   { water: 1.5, earth: 0.5 },
   water: { fire:  1.5, air:   0.5 },
+  light: { dark:  1.5 },
+  dark:  { light: 1.5 },
 };
 
 export function typeMultiplier(attackType, defenderType) {
@@ -217,5 +224,38 @@ export const PET_MOVES = {
     damageDice: { num: 1, sides: 6 }, toHit: 1, maxUses: 4,
     effect: { kind: "poison", value: 2, turns: 2 },
     desc: "Vento penetrante · 1d6 + sanguinamento 2 PF/t per 2t.",
+  },
+
+  // ────────────────────────────────────────────────────────────
+  // LIGHT ✨ — only super-effective vs Dark; neutro contro gli elementali
+  // ────────────────────────────────────────────────────────────
+  lightbeam: {
+    id: "lightbeam", name: "Raggio di Luce", icon: "🌟", type: "light",
+    category: "skill",
+    damageDice: { num: 1, sides: 8 }, toHit: 1, maxUses: 5,
+    desc: "Lancia un raggio sacro · 1d8 (+1 al colpo). Forte vs 🌑 Tenebre.",
+  },
+  radiance: {
+    id: "radiance", name: "Aurora", icon: "✨", type: "light",
+    category: "skill",
+    damageDice: { num: 2, sides: 6 }, toHit: 0, maxUses: 2,
+    desc: "Esplosione di luce abbagliante · 2d6.",
+  },
+
+  // ────────────────────────────────────────────────────────────
+  // DARK 🌑 — only super-effective vs Light; neutro contro gli elementali
+  // ────────────────────────────────────────────────────────────
+  shadowbolt: {
+    id: "shadowbolt", name: "Dardo d'Ombra", icon: "🦇", type: "dark",
+    category: "skill",
+    damageDice: { num: 1, sides: 8 }, toHit: 1, maxUses: 5,
+    desc: "Scaglia un dardo di pura tenebra · 1d8 (+1 al colpo). Forte vs ✨ Luce.",
+  },
+  dread: {
+    id: "dread", name: "Terrore", icon: "💀", type: "dark",
+    category: "skill",
+    damageDice: { num: 2, sides: 6 }, toHit: 0, maxUses: 2,
+    effect: { kind: "poison", value: 2, turns: 2 },
+    desc: "Onda di paura primordiale · 2d6 + 2 danni psichici/turno per 2t.",
   },
 };

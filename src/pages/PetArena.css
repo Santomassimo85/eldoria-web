@@ -110,6 +110,8 @@
 .pa-pet-mini--water { border-left: 4px solid #2980b9; }
 .pa-pet-mini--earth { border-left: 4px solid #4a8a3a; }
 .pa-pet-mini--air   { border-left: 4px solid #d4af37; }
+.pa-pet-mini--light { border-left: 4px solid #c8a24a; }
+.pa-pet-mini--dark  { border-left: 4px solid #5a3a7a; }
 .pa-pet-mini-icon {
   width: 56px; height: 56px;
   font-size: 1.8rem;
@@ -241,7 +243,18 @@
 .pa-type-cycle-node--earth { border-color: #4a8a3a; color: #4a8a3a; }
 .pa-type-cycle-node--air   { border-color: #b08820; color: #b08820; }
 .pa-type-cycle-node--water { border-color: #2980b9; color: #2980b9; }
+.pa-type-cycle-node--light { border-color: #c8a24a; color: #a8842c; background: linear-gradient(180deg, #fffaeb, #fdf0bd); }
+.pa-type-cycle-node--dark  { border-color: #5a3a7a; color: #5a3a7a; background: linear-gradient(180deg, #f0e8f8, #d8c8e8); }
 .pa-type-cycle-arrow { color: #b08820; font-weight: 700; }
+.pa-type-cycle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 14px auto;
+}
+.pa-type-cycle-wrap .pa-type-cycle { margin: 0 auto; }
+.pa-type-cycle--pair { background: linear-gradient(180deg, #f8f0fa, #ece0e8); border-style: solid; border-color: #b89cc8; }
 
 /* ============================================================
    TEAM PICKER additions (multi-select)
@@ -389,6 +402,8 @@
 .pa-live-card--water { border-left-color: #2980b9; }
 .pa-live-card--earth { border-left-color: #4a8a3a; }
 .pa-live-card--air   { border-left-color: #d4af37; }
+.pa-live-card--light { border-left-color: #c8a24a; }
+.pa-live-card--dark  { border-left-color: #5a3a7a; }
 .pa-live-card--opp { background: linear-gradient(180deg, #fffaf0, #f4dede); }
 .pa-live-avatar {
   width: 72px;
@@ -537,6 +552,8 @@
 .pa-action-btn--water { border-left: 5px solid #2980b9; }
 .pa-action-btn--earth { border-left: 5px solid #4a8a3a; }
 .pa-action-btn--air   { border-left: 5px solid #d4af37; }
+.pa-action-btn--light { border-left: 5px solid #c8a24a; }
+.pa-action-btn--dark  { border-left: 5px solid #5a3a7a; }
 .pa-action-btn--skill { background: linear-gradient(180deg, #fff8e0, #f4dede); }
 .pa-action-btn--switch { border-left: 5px solid #7d2929; }
 .pa-action-btn--out { background: rgba(0, 0, 0, 0.05); }
@@ -800,6 +817,8 @@
 .pa-picker-card--water { border-left: 4px solid #2980b9; }
 .pa-picker-card--earth { border-left: 4px solid #4a8a3a; }
 .pa-picker-card--air   { border-left: 4px solid #d4af37; }
+.pa-picker-card--light { border-left: 4px solid #c8a24a; }
+.pa-picker-card--dark  { border-left: 4px solid #5a3a7a; }
 .pa-picker-icon {
   width: 64px; height: 64px;
   font-size: 2.2rem;

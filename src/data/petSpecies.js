@@ -37,8 +37,10 @@ export const RARITY_COLOR = {
   epic:   "#7d2929",
 };
 
-/* Skill unlock thresholds — index aligns with species.skills */
-export const SKILL_UNLOCK_LEVELS = [4, 10];
+/* Skill unlock thresholds — index aligns with species.skills.
+   With the L10 cap, skills come online at L3 (first) and L7 (second)
+   so a freshly-hatched pet meaningfully grows across all 10 levels. */
+export const SKILL_UNLOCK_LEVELS = [3, 7];
 
 export const PET_SPECIES = {
 
@@ -157,11 +159,11 @@ export const PET_SPECIES = {
   },
   satyr: {
     key: "satyr", name: "Satiro", icon: "🐐", image: "/assets/pets/satyr.png",
-    type: "earth", rarity: "common",
-    desc: "Folletto silvano · suona il flauto, ruba il cuore, fugge in fretta.",
+    type: "light", rarity: "common",
+    desc: "Folletto silvano dei boschi luminosi · suona il flauto, ruba il cuore, fugge in fretta.",
     base: { hp: 22, ac: 12, atk: 4, spd: 7 },
     attacks: ["claw"],
-    skills: ["bloom", "vine"],
+    skills: ["lightbeam", "bloom"],
   },
   ochrejelly: {
     key: "ochrejelly", name: "Gelatina Ocra", icon: "🟡", image: "/assets/pets/ochrejelly.png",
@@ -191,21 +193,21 @@ export const PET_SPECIES = {
   },
   specter: {
     key: "specter", name: "Spettro", icon: "👻", image: "/assets/pets/specter.png",
-    type: "air", rarity: "common",
+    type: "dark", rarity: "common",
     desc: "Anima impigliata tra i mondi · attraversa i muri, drena la vita.",
     base: { hp: 18, ac: 13, atk: 5, spd: 7 },
     attacks: ["claw"],
-    skills: ["drain", "thunder"],
+    skills: ["drain", "shadowbolt"],
   },
 
   // Neutral ✦
   wight: {
     key: "wight", name: "Wight", icon: "💀", image: "/assets/pets/wight.png",
-    type: "neutral", rarity: "common",
+    type: "dark", rarity: "common",
     desc: "Guerriero non-morto · brama vita altrui per nutrire la sua maledizione.",
     base: { hp: 24, ac: 13, atk: 5, spd: 5 },
     attacks: ["slam"],
-    skills: ["drain", "guard"],
+    skills: ["drain", "shadowbolt"],
   },
   bugbear: {
     key: "bugbear", name: "Bugbear", icon: "🪓", image: "/assets/pets/bugbear.png",
@@ -303,11 +305,11 @@ export const PET_SPECIES = {
   // Neutral ✦
   centaur: {
     key: "centaur", name: "Centauro", icon: "🐴", image: "/assets/pets/centaur.png",
-    type: "neutral", rarity: "rare",
-    desc: "Guerriero metà uomo metà cavallo · galoppo e lancia, equilibrio perfetto.",
+    type: "light", rarity: "rare",
+    desc: "Guardiano metà uomo metà cavallo · cuore puro, galoppo che brucia l'oscurità.",
     base: { hp: 30, ac: 13, atk: 6, spd: 8 },
     attacks: ["bite", "slam"],
-    skills: ["thunder", "rest"],
+    skills: ["radiance", "rest"],
   },
 
   // ──────────────────────────────────────────────────────────
@@ -340,11 +342,11 @@ export const PET_SPECIES = {
   },
   braineater: {
     key: "braineater", name: "Divoratore di Intelletto", icon: "🧠", image: "/assets/pets/braineater.png",
-    type: "neutral", rarity: "epic",
+    type: "dark", rarity: "epic",
     desc: "Aberrazione mind-flayer · scava nei crani per nutrirsi di pensieri.",
     base: { hp: 30, ac: 13, atk: 7, spd: 7 },
     attacks: ["claw", "bite"],
-    skills: ["drain", "thunder"],
+    skills: ["drain", "dread"],
   },
 
 };

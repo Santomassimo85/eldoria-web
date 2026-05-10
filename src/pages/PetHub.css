@@ -518,6 +518,8 @@ section.ph-page,
 .ph-move--water   { border-left-color: #2980b9; }
 .ph-move--earth   { border-left-color: #4a8a3a; }
 .ph-move--air     { border-left-color: #d4af37; }
+.ph-move--light   { border-left-color: #c8a24a; }
+.ph-move--dark    { border-left-color: #5a3a7a; }
 .ph-move--neutral { border-left-color: #8a7a4a; }
 /* Skill highlight wins over type for the cat label spacing only */
 .ph-move-row {

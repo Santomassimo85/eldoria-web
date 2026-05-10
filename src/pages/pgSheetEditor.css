@@ -572,6 +572,8 @@
 .pet-card--water { border-left: 5px solid #2980b9; }
 .pet-card--earth { border-left: 5px solid #4a8a3a; }
 .pet-card--air   { border-left: 5px solid #d4af37; }
+.pet-card--light { border-left: 5px solid #c8a24a; }
+.pet-card--dark  { border-left: 5px solid #5a3a7a; }
 
 .pet-card-head {
   display: flex;
@@ -716,6 +718,8 @@
 .pet-move--water  { background: #e6f0f7; border-color: #9cc0db; }
 .pet-move--earth  { background: #e8f1e3; border-color: #a3c5a8; }
 .pet-move--air    { background: #f7f0d8; border-color: #d4c485; }
+.pet-move--light  { background: #fdf3c8; border-color: #d8c068; }
+.pet-move--dark   { background: #ece0ee; border-color: #a888c0; }
 .pet-move--neutral { background: #f5efe0; border-color: #d8c9a0; }
 .pet-move--locked { color: #aaa; background: rgba(0,0,0,0.04); border-style: dashed; font-weight: 500; }
 .pet-move-icon { font-size: 0.86rem; }

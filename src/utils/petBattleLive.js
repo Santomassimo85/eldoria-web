@@ -15,7 +15,7 @@
 
 import { PET_MOVES, typeMultiplier } from "../data/petMoves";
 import { PET_SPECIES, SKILL_UNLOCK_LEVELS } from "../data/petSpecies";
-import { levelFromExp, petStatsAtLevel, petEffectiveHp } from "./pet";
+import { petStatsAtLevel, petEffectiveHp, effectivePetLevel } from "./pet";
 
 export const MAX_TEAM_SIZE = 5;
 export const MIN_TEAM_SIZE = 1;
@@ -29,9 +29,13 @@ export function petSnapshotForBattle(pet) {
   if (!pet) return null;
   const sp = PET_SPECIES[pet.speciesKey];
   if (!sp) return null;
-  const lvl = pet.level || levelFromExp(pet.exp || 0);
+  const lvl = effectivePetLevel(pet);
   const stats = petStatsAtLevel(pet.speciesKey, lvl, pet.bonusStats);
   const startHp = Math.max(1, Math.min(stats.hp, petEffectiveHp(pet)));
+  // Skills unlocked at this level — sourced from SKILL_UNLOCK_LEVELS so the
+  // resolver and the UI stay in sync if cadence ever changes.
+  const unlockedSkills = (sp.skills || [])
+    .filter((_, i) => lvl >= (SKILL_UNLOCK_LEVELS[i] ?? 1));
   return {
     petId: pet.id,
     speciesKey: pet.speciesKey,
@@ -46,7 +50,7 @@ export function petSnapshotForBattle(pet) {
     spd: stats.spd,
     profBonus: stats.profBonus,
     attacks: sp.attacks || [],
-    skills: (sp.skills || []).slice(0, lvl >= 10 ? 2 : lvl >= 4 ? 1 : 0),
+    skills: unlockedSkills,
   };
 }
 
@@ -365,5 +369,8 @@ export function firstAliveSwitch(state, side) {
   return -1;
 }
 
-/* Type cycle for the UI legend. */
+/* Type cycles for the UI legend.
+   - TYPE_CYCLE: the 4-element ring (each beats the next).
+   - LIGHT_DARK_PAIR: separate dual loop, only effective vs each other. */
 export const TYPE_CYCLE = ["fire", "earth", "air", "water"];
+export const LIGHT_DARK_PAIR = ["light", "dark"];

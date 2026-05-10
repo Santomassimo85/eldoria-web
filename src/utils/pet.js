@@ -141,7 +141,10 @@ export function newPetFromSpecies(speciesKey, nickname = null) {
 
 /* ----------------------------------------------------------------
    LEVEL / EXP / STATS curve
+   Level cap is 10. Curve: expForLevel(L) = 5·L² → L10 = 500 EXP.
    ---------------------------------------------------------------- */
+
+export const MAX_PET_LEVEL = 10;
 
 export function expForLevel(level) {
   if (level <= 1) return 0;
@@ -150,8 +153,16 @@ export function expForLevel(level) {
 
 export function levelFromExp(exp) {
   let lvl = 1;
-  while (lvl < 20 && exp >= expForLevel(lvl + 1)) lvl++;
+  while (lvl < MAX_PET_LEVEL && exp >= expForLevel(lvl + 1)) lvl++;
   return lvl;
+}
+
+/* Clamp a pet's level to the current cap regardless of stored value
+   (handles legacy docs whose `level` field was set before the cap). */
+export function effectivePetLevel(pet) {
+  if (!pet) return 1;
+  const stored = pet.level || levelFromExp(pet.exp || 0);
+  return Math.max(1, Math.min(MAX_PET_LEVEL, stored));
 }
 
 /* D&D 5e-style proficiency bonus: +2 at L1..4, +3 at 5..8, +4 at 9..12,
@@ -262,8 +273,8 @@ export function applyItemToPet(pet, itemDef) {
       return { ok: true, pet: next, message: `+${eff.value} EXP` };
     }
     case "level_up": {
-      if (lvl >= 20) return { ok: false, message: "Già al livello massimo." };
-      const target = Math.min(20, lvl + (eff.value || 1));
+      if (lvl >= MAX_PET_LEVEL) return { ok: false, message: "Già al livello massimo." };
+      const target = Math.min(MAX_PET_LEVEL, lvl + (eff.value || 1));
       next.level = target;
       next.exp = expForLevel(target);
       const newStats = petStatsAtLevel(next.speciesKey, target, next.bonusStats);
@@ -302,7 +313,7 @@ export function applyItemToPet(pet, itemDef) {
 export function petUnlockedMoves(pet) {
   const sp = PET_SPECIES[pet?.speciesKey];
   if (!sp) return [];
-  const lvl = pet.level || levelFromExp(pet.exp || 0);
+  const lvl = effectivePetLevel(pet);
   const out = [];
   (sp.attacks || []).forEach(id => {
     const m = PET_MOVES[id];
@@ -322,7 +333,7 @@ export function petUnlockedMoves(pet) {
 export function petNextLockedMove(pet) {
   const sp = PET_SPECIES[pet?.speciesKey];
   if (!sp) return null;
-  const lvl = pet.level || levelFromExp(pet.exp || 0);
+  const lvl = effectivePetLevel(pet);
   for (let i = 0; i < (sp.skills || []).length; i++) {
     const unlock = SKILL_UNLOCK_LEVELS[i] ?? 1;
     if (lvl < unlock) {

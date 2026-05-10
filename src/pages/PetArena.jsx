@@ -13,7 +13,7 @@ import {
   petEffectiveHp, petNextHealTickIn, expFromBattle,
 } from "../utils/pet";
 import {
-  MAX_TEAM_SIZE, MIN_TEAM_SIZE, TYPE_CYCLE,
+  MAX_TEAM_SIZE, MIN_TEAM_SIZE, TYPE_CYCLE, LIGHT_DARK_PAIR,
   petSnapshotForBattle, initLiveBattleState, resolveLiveRound,
   snapshotUnlockedMoves, firstAliveSwitch,
 } from "../utils/petBattleLive";
@@ -310,17 +310,35 @@ export default function PetArena({ embedded = false } = {}) {
    ============================================================ */
 function TypeCycleLegend() {
   return (
-    <div className="pa-type-cycle" title="Ogni tipo è super-efficace contro il successivo (×1.5) e poco efficace contro il precedente (×0.5).">
-      <span className="pa-type-cycle-label">Cerchio di Resistenza</span>
-      {TYPE_CYCLE.map((t, i) => (
-        <React.Fragment key={t}>
-          <span className={`pa-type-cycle-node pa-type-cycle-node--${t}`}>
-            {TYPE_ICON[t]} {TYPE_LABEL[t]}
-          </span>
-          {i < TYPE_CYCLE.length - 1 && <span className="pa-type-cycle-arrow">→</span>}
-        </React.Fragment>
-      ))}
-      <span className="pa-type-cycle-arrow">↺</span>
+    <div className="pa-type-cycle-wrap">
+      <div
+        className="pa-type-cycle"
+        title="Ogni tipo è super-efficace contro il successivo (×1.5) e poco efficace contro il precedente (×0.5)."
+      >
+        <span className="pa-type-cycle-label">Cerchio di Resistenza</span>
+        {TYPE_CYCLE.map((t, i) => (
+          <React.Fragment key={t}>
+            <span className={`pa-type-cycle-node pa-type-cycle-node--${t}`}>
+              {TYPE_ICON[t]} {TYPE_LABEL[t]}
+            </span>
+            {i < TYPE_CYCLE.length - 1 && <span className="pa-type-cycle-arrow">→</span>}
+          </React.Fragment>
+        ))}
+        <span className="pa-type-cycle-arrow">↺</span>
+      </div>
+      <div
+        className="pa-type-cycle pa-type-cycle--pair"
+        title="Luce e Tenebre si combattono solo tra loro: ×1.5 reciproco. Sono neutre contro tutti gli altri elementi."
+      >
+        <span className="pa-type-cycle-label">Dualità</span>
+        <span className={`pa-type-cycle-node pa-type-cycle-node--${LIGHT_DARK_PAIR[0]}`}>
+          {TYPE_ICON[LIGHT_DARK_PAIR[0]]} {TYPE_LABEL[LIGHT_DARK_PAIR[0]]}
+        </span>
+        <span className="pa-type-cycle-arrow">⇄</span>
+        <span className={`pa-type-cycle-node pa-type-cycle-node--${LIGHT_DARK_PAIR[1]}`}>
+          {TYPE_ICON[LIGHT_DARK_PAIR[1]]} {TYPE_LABEL[LIGHT_DARK_PAIR[1]]}
+        </span>
+      </div>
     </div>
   );
 }
