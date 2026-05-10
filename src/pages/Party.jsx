@@ -40,7 +40,7 @@ const PARTIES = [
       { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png",           hidden: true },
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
-      { name: "Alaric Voltasorte",      race: "???",                   class: "???",      image: "/assets/closedScroll.png" },
+      { name: "Alaric Voltasorte",      race: "Halfling",                   class: "Warlock",      image: "/assets/player/alaric.png" },
     ],
   },
   {
@@ -51,7 +51,7 @@ const PARTIES = [
     motto: "Dove cade la foglia, nasce la rotta",
     members: [
       { name: "Makenna",          race: "Changeling", class: "Ladro",    image: "/assets/player/Makenna.jpeg" },
-      { name: "Taaras Stormrage", race: "Mezz'Elfo",  class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
+      // { name: "Taaras Stormrage", race: "Mezz'Elfo",  class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
       { name: "Soran",            race: "Umano",      class: "Bardo",    image: "/assets/player/Soran.png" },
       { name: "Zethir",           race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg" },
     ],

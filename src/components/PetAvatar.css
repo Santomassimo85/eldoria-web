@@ -1,0 +1,15 @@
+/* Shared PetAvatar styles. Call-sites add their own className for size /
+   border styling; these rules cover the inner <img> / emoji variants. */
+
+.pet-avatar--img {
+  object-fit: cover;
+  display: inline-block;
+  border-radius: 50%;
+}
+
+.pet-avatar--emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}

@@ -5,9 +5,144 @@ import ToggleSection from "./ToggleSection";
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
+import { awardPetPoints } from '../utils/pet';
 import './Riassunti.css';
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+const escapeHtml = (s) =>
+    String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+    }[c]));
+
+const stripImages = (html) =>
+    String(html ?? "")
+        .replace(/<img\b[^>]*>/gi, "")
+        .replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, "")
+        .replace(/<figure\b[^>]*>([\s\S]*?)<\/figure>/gi, (_, inner) => inner.trim() ? `<div>${inner}</div>` : "");
+
+const exportPartyAsPdf = (partyKey, summaries) => {
+    const docTitle = `Memorie · Gruppo ${partyKey}`;
+    const todayStr = new Date().toLocaleDateString("it-IT", {
+        day: "2-digit", month: "long", year: "numeric",
+    });
+
+    const summariesHtml = summaries
+        .map((s, i) => `
+            <article class="ex-summary">
+                <div class="ex-summary-num">Sessione ${i + 1}</div>
+                <h2 class="ex-summary-title">${escapeHtml(s.title || "Senza titolo")}</h2>
+                ${s.date ? `<div class="ex-summary-date">${escapeHtml(s.date)}</div>` : ""}
+                ${s.subTitle ? `<div class="ex-summary-sub">${escapeHtml(s.subTitle)}</div>` : ""}
+                <div class="ex-summary-body">${stripImages(s.content)}</div>
+            </article>`)
+        .join("");
+
+    const html = `<!doctype html>
+<html lang="it"><head>
+<meta charset="utf-8" />
+<title>${escapeHtml(docTitle)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Garamond, "EB Garamond", Georgia, serif;
+    max-width: 760px;
+    margin: 32px auto;
+    padding: 0 24px;
+    color: #2a1d0f;
+    background: #fdfaf2;
+  }
+  h1.ex-doc-title {
+    font-family: Cinzel, "Trajan Pro", Georgia, serif;
+    text-align: center;
+    color: #5a1a1a;
+    border-bottom: 2px solid #b08a3e;
+    padding-bottom: 12px;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .ex-doc-meta {
+    text-align: center;
+    color: #8a6f3a;
+    font-style: italic;
+    margin-bottom: 32px;
+    font-size: 0.9rem;
+  }
+  .ex-summary {
+    page-break-after: always;
+    margin-bottom: 48px;
+  }
+  .ex-summary:last-child { page-break-after: auto; }
+  .ex-summary-num {
+    display: inline-block;
+    font-family: Cinzel, "Trajan Pro", Georgia, serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #b08a3e;
+    border: 1px solid #b08a3e;
+    border-radius: 999px;
+    padding: 3px 10px;
+    margin-bottom: 8px;
+  }
+  .ex-summary-title {
+    font-family: Cinzel, "Trajan Pro", Georgia, serif;
+    color: #5a1a1a;
+    margin: 0 0 4px;
+    font-size: 1.7rem;
+    letter-spacing: 0.03em;
+  }
+  .ex-summary-date {
+    color: #8a6f3a;
+    font-style: italic;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+  }
+  .ex-summary-sub {
+    font-style: italic;
+    color: #6a4a26;
+    margin-bottom: 16px;
+  }
+  .ex-summary-body { line-height: 1.65; font-size: 1.02rem; }
+  .ex-summary-body p { margin: 0 0 12px; }
+  @media print {
+    body { margin: 0; background: #fff; }
+    @page { margin: 18mm; }
+  }
+</style></head>
+<body>
+<h1 class="ex-doc-title">${escapeHtml(docTitle)}</h1>
+<div class="ex-doc-meta">${summaries.length} memorie · esportato il ${escapeHtml(todayStr)}</div>
+${summariesHtml}
+<script>
+  window.addEventListener("load", () => setTimeout(() => window.print(), 200));
+</script>
+</body></html>`;
+
+    const win = window.open("", "_blank", "width=960,height=1080");
+    if (win && win.document) {
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+        return;
+    }
+
+    // Popup blocked → fall back to downloading the HTML file. The user can open
+    // it in their browser and print/save-as-PDF from there.
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Memorie-Gruppo-${partyKey}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 export default function Riassunti() {
     const { currentUser } = useAuth();
@@ -25,6 +160,8 @@ export default function Riassunti() {
         setAllSummaries(prev =>
             prev.map(s => s.id === summaryId ? { ...s, viewCount: (s.viewCount || 0) + 1 } : s)
         );
+        // 🐣 pet system: +2 points the first time this summary is read
+        if (currentUser?.uid) awardPetPoints(currentUser.uid, "summary_read", { resourceKey: summaryId });
     };
 
     // --- Caricamento Riassunti da Firestore ---
@@ -98,6 +235,16 @@ export default function Riassunti() {
             ) : (
                 Object.keys(groupedSummaries).map(partyKey => (
                     <div key={partyKey} className="riassunti-party-section">
+                        <div className="riassunti-party-toolbar">
+                            <button
+                                type="button"
+                                className="riassunti-export-btn"
+                                onClick={() => exportPartyAsPdf(partyKey, groupedSummaries[partyKey])}
+                                title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
+                            >
+                                📥 Esporta gruppo {partyKey} (PDF)
+                            </button>
+                        </div>
                         <ToggleSection
                             title={`Gruppo ${partyKey}`}
                             defaultOpen={true}

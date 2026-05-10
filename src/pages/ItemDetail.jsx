@@ -228,6 +228,11 @@ export default function ItemDetail() {
       });
       setMessage("✅ Offerta registrata!");
       setOffer("");
+      // 🐣 pet system: +1 point (capped 5/day)
+      try {
+        const { awardPetPoints } = await import("../utils/pet");
+        awardPetPoints(currentUser.uid, "market_bid", { resourceKey: id });
+      } catch {}
     } catch (err) {
       setMessage(`❌ Errore: ${err}`);
     }

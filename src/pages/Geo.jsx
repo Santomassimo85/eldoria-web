@@ -4,6 +4,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import ToggleSection from "./ToggleSection";
 import { useAuth } from "../AuthContext";
 import GeoAdmin from "./GeoAdmin";
+import { awardPetPoints } from "../utils/pet";
 import './Geo.css';
 
 export default function Geo() {
@@ -20,6 +21,11 @@ export default function Geo() {
     });
     return () => unsub();
   }, []);
+
+  // 🐣 pet system: +1 point per day for opening the Geo archive
+  useEffect(() => {
+    if (currentUser?.uid) awardPetPoints(currentUser.uid, "geo_visit");
+  }, [currentUser]);
 
   if (loading) {
     return (

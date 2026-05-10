@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import ToggleSection from './ToggleSection';
+import { useAuth } from '../AuthContext';
+import { awardPetPoints } from '../utils/pet';
 import './NPC.css';
 
 export default function NPC() {
   const [npcs, setNpcs] = useState([]);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "npcs"), (snap) => {
@@ -13,6 +16,11 @@ export default function NPC() {
     });
     return () => unsub();
   }, []);
+
+  // 🐣 pet system: +1 point per day for visiting the NPC archive
+  useEffect(() => {
+    if (currentUser?.uid) awardPetPoints(currentUser.uid, "npc_visit");
+  }, [currentUser]);
 
   // Raggruppa per linkedCity; senza città → sezione "Erranti"
   const grouped = npcs.reduce((acc, npc) => {

@@ -105,6 +105,43 @@
   margin-bottom: 48px;
 }
 
+.riassunti-party-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.riassunti-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #fdf6e2, #f3dca6);
+  color: #5a1a1a;
+  border: 1.5px solid #b08a3e;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--font-title, "Cinzel"), Georgia, serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(176, 138, 62, 0.18);
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.riassunti-export-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(176, 138, 62, 0.32);
+}
+.riassunti-export-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+  .riassunti-party-toolbar { justify-content: stretch; }
+  .riassunti-export-btn { width: 100%; justify-content: center; }
+}
+
 .riassunti-party-section > .toggle-section > .toggle-title {
   position: relative;
   background: var(--red);

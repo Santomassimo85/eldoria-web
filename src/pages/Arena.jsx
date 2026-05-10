@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
+import { awardPetPoints } from "../utils/pet";
 import "./Arena.css";
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
@@ -1394,10 +1395,21 @@ export default function Arena() {
 
   const awardRoundCoins = async (updatedMatches) => {
     for (const m of updatedMatches) {
-      if (m.kind === "fun") continue; // Arena Libera: nessuna ricompensa
       const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
-      if (m.status === "finished" && prev?.status !== "finished" && m.winner) {
+      const justFinished = m.status === "finished" && prev?.status !== "finished";
+      if (m.kind === "fun") {
+        // 🐣 pet system: +1 point for completing an Arena Libera fight (capped 5/day)
+        if (justFinished) {
+          for (const p of (m.players || [])) {
+            if (p?.id) awardPetPoints(p.id, "arena_libera");
+          }
+        }
+        continue; // Arena Libera: nessuna ricompensa MA
+      }
+      if (justFinished && m.winner) {
         await awardArenaCoins(m.winner, 2);
+        // 🐣 pet system: +3 points to the winner of a tournament round
+        awardPetPoints(m.winner, "arena_round");
       }
     }
   };
@@ -2732,6 +2744,8 @@ export default function Arena() {
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
         });
+        // 🐣 pet system: tournament champion bonus
+        awardPetPoints(finalM.winner, "arena_tournament");
         return;
       }
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -4647,6 +4661,8 @@ export default function Arena() {
         await updateDoc(doc(db, "arena_meta", "global"), {
           matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
         });
+        // 🐣 pet system: tournament champion bonus
+        awardPetPoints(finalM.winner, "arena_tournament");
         return;
       }
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });

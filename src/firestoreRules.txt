@@ -59,6 +59,8 @@ service cloud.firestore {
     }
 
     // --- PERSONAGGI & SCHEDE ---
+    // I writes restano aperti perché il sistema Pet ha bisogno di scrivere
+    // sul doc dell'avversario quando una battle viene risolta.
     match /characters/{charId} {
       allow read: if true;
       allow write: if true;
@@ -95,6 +97,21 @@ service cloud.firestore {
       allow read: if isMaster();
       allow create: if isLoggedIn();
       allow update, delete: if isMaster();
+    }
+
+    // --- PET ARENA (sistema compagni) ---
+    // Sfide aperte e battaglie risolte tra giocatori. Lettura libera per
+    // tutti gli utenti autenticati (leaderboard, log scontri); creazione
+    // riservata allo sfidante; aggiornamento aperto perché chi accetta
+    // scrive il risultato; cancellazione solo da parte dello sfidante.
+    match /pet_battles/{battleId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.challenger.uid == request.auth.uid;
+      allow update: if isLoggedIn();
+      allow delete: if isLoggedIn() && (
+        resource.data.challenger.uid == request.auth.uid ||
+        isMaster()
+      );
     }
 
     // --- NOTIFICHE ---

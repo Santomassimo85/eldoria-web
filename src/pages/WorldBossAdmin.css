@@ -168,6 +168,59 @@ textarea::placeholder { color: #998a6a; opacity: 1; }
   .wb-field-row2, .wb-field-row3 { grid-template-columns: 1fr; }
 }
 
+.wb-actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1.5px dashed rgba(212, 175, 55, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.04), rgba(130, 10, 10, 0.02));
+}
+.wb-actions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wb-actions-head > label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--wb-gold);
+  text-transform: uppercase;
+}
+.wb-actions-head > label small {
+  color: #aaa;
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+.wb-add-action-btn {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(130, 10, 10, 0.12));
+  border: 1.5px solid var(--wb-gold);
+  color: var(--wb-red);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.wb-add-action-btn:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.wb-add-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .wb-actions-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -184,6 +237,12 @@ textarea::placeholder { color: #998a6a; opacity: 1; }
   flex-direction: column;
   gap: 6px;
 }
+.wb-action-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .wb-action-block label {
   font-family: var(--font-title);
   font-size: 0.72rem;
@@ -191,12 +250,67 @@ textarea::placeholder { color: #998a6a; opacity: 1; }
   color: var(--wb-red);
   text-transform: uppercase;
 }
+.wb-remove-action-btn {
+  background: transparent;
+  border: 1px solid rgba(130, 10, 10, 0.4);
+  color: var(--wb-red);
+  width: 26px;
+  height: 26px;
+  line-height: 1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wb-remove-action-btn:hover:not(:disabled) {
+  background: rgba(130, 10, 10, 0.12);
+  border-color: var(--wb-red);
+}
+.wb-remove-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.wb-action-type-select {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--wb-red);
+  background: rgba(212, 175, 55, 0.10);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+.wb-action-help {
+  font-size: 0.7rem;
+  color: #888;
+  font-style: italic;
+  line-height: 1.35;
+}
 .wb-dice-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
   margin-top: 4px;
 }
+.wb-dice-row--single {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+.wb-inline-label {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--wb-red);
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+
+/* Subtle accent per type so cards are scannable */
+.wb-action-block--heal       { border-color: rgba(80, 180, 120, 0.4); }
+.wb-action-block--buff_ca    { border-color: rgba(120, 140, 220, 0.4); }
+.wb-action-block--buff_adv   { border-color: rgba(212, 175, 55, 0.55); }
+.wb-action-block--debuff_dis { border-color: rgba(160, 60, 60, 0.45); }
 
 /* Big evoke button */
 .wb-evoke-btn {

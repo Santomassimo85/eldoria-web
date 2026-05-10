@@ -28,6 +28,7 @@ export default function AdminPanel() {
     { label: "Cinema",             desc: "Carica i link delle registrazioni delle sessioni passate.",            path: "/dm-admin/videos" },
     { label: "Session Summaries",  desc: "Aggiorna i log narrativi delle ultime avventure.",                    path: "/dm-admin/summaries" },
     { label: "Platinum Coins (MP)",desc: "Aggiorna il saldo dei personaggi (Monete Platino).",                  path: "/dm-admin/platinum" },
+    { label: "Punti Bestiario (✦)", desc: "Dona o rimuovi Punti Bestiario per il sistema di compagni / Pet Arena.", path: "/dm-admin/pet-points" },
     { label: "Quest Board",        desc: "Gestisci le missioni sulla bacheca di Hemile.",                       path: "/dm-admin/quests" },
     { label: "Sprite Personaggi",  desc: "Carica o aggiorna lo sprite pixel-art di ogni personaggio.",           path: "/dm-admin/player-sprites" },
     { label: "Invia Notifica",     desc: "Invia un messaggio diretto a un giocatore nel suo menu personale.",   path: "/dm-admin/send-notif", dashed: true },

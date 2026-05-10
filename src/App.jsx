@@ -41,10 +41,15 @@ import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
+import PetArena from "./pages/PetArena";
+import PetHub from "./pages/PetHub";
+import Crafting from "./pages/Crafting";
+import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
+import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 
@@ -285,7 +290,7 @@ export default function App() {
   return (
     <AuthProvider>
       <NotificationOptIn />
-      <header>
+      <header className="app-nav">
         <NavLink to="/" className="logo" onClick={closeMenu} aria-label="Crit Happens — Home">
           <img src="/assets/CritHappensLOGO.png" alt="" className="logo-img" />
           <span className="logo-wordmark">
@@ -323,6 +328,7 @@ export default function App() {
             <NavLink to="/mercato">Mercato Nero</NavLink>
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
+            <NavLink to="/crafting">Crafting</NavLink>
             <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
             <NavLink to="/cinema">Cinema</NavLink>
           </NavDropdown>
@@ -330,6 +336,7 @@ export default function App() {
           <NavDropdown label="Battaglia" closeAll={closeMenu}>
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
+            <NavLink to="/pet">Pet Hub</NavLink>
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
 
@@ -354,6 +361,9 @@ export default function App() {
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
+          <Route path="/pet" element={<PetHub />} />
+          <Route path="/pet-arena" element={<PetArena />} />
+          <Route path="/crafting" element={<Crafting />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
 
@@ -366,6 +376,7 @@ export default function App() {
           <Route path="/dm-admin/videos" element={<VideoAdmin />} />
           <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
           <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
+          <Route path="/dm-admin/pet-points" element={<PetPointsAdmin />} />
           <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
           <Route path="/dm-admin/send-notif" element={<SendNotification />} />
@@ -376,6 +387,7 @@ export default function App() {
 <GlobalChat />
       <DiceRollHost />
       <OnlinePresence />
+      <FirestoreErrorGuard />
 
       <footer>
         <p>

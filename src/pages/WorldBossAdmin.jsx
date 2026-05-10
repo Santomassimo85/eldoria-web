@@ -8,6 +8,7 @@ import {
   doc,
   deleteDoc,
   serverTimestamp,
+  deleteField,
 } from "firebase/firestore";
 import {
   ref as storageRef,
@@ -23,6 +24,26 @@ import "./WorldBossAdmin.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+const MIN_ACTIONS = 2;
+const MAX_ACTIONS = 5;
+
+const ACTION_TYPES = [
+  { value: "attack",     label: "⚔ Attacco",     hint: "Tira d20 + bonus vs CA. Danni: N×d." },
+  { value: "heal",       label: "💖 Cura",        hint: "Cura il Boss di NdT + bonus HP." },
+  { value: "buff_ca",    label: "🛡 +CA",        hint: "Alza la CA del Boss del bonus indicato." },
+  { value: "buff_adv",   label: "⬆ Vantaggio",   hint: "Vantaggio sul prossimo attacco del Boss." },
+  { value: "debuff_dis", label: "⬇ Svantaggio",  hint: "Svantaggio sul prossimo tiro dei bersagli." },
+];
+
+const blankAction = (i = 0) => ({
+  type: "attack",
+  name: "",
+  diceNum: 1,
+  diceType: i === 1 ? "d8" : "d6",
+  bonus: 0,
+  acBonus: 2,
+});
+
 const initialBossState = {
   name: "",
   maxHp: "",
@@ -34,11 +55,111 @@ const initialBossState = {
   description: "",
   gradoSfida: "",
   expiryDate: "",
-  action1: { name: "", diceNum: 1, diceType: "d6", bonus: 0 },
-  action2: { name: "", diceNum: 1, diceType: "d8", bonus: 0 },
+  actions: [blankAction(0), blankAction(1)],
 };
 
 const DICE = ["d4", "d6", "d8", "d10", "d12", "d20"];
+
+const ACTION_PLACEHOLDERS = [
+  "Artiglio del Vuoto",
+  "Grido della Fine",
+  "Sguardo Pietrificante",
+  "Maledizione Nera",
+  "Frantumare Anima",
+];
+
+const normalizeBossActions = (boss) => {
+  if (Array.isArray(boss?.actions) && boss.actions.length >= MIN_ACTIONS) {
+    return boss.actions.map((a) => ({ ...blankAction(0), ...a }));
+  }
+  const legacy = [boss?.action1, boss?.action2, boss?.action3, boss?.action4, boss?.action5]
+    .filter((a) => a && (a.name || a.diceType));
+  const arr = legacy.map((a) => ({ ...blankAction(0), ...a }));
+  while (arr.length < MIN_ACTIONS) arr.push(blankAction(arr.length));
+  return arr.slice(0, MAX_ACTIONS);
+};
+
+/* ──────────────────────────────────────────────────────────────
+   ActionEditor — single boss action card with type-specific fields
+   ────────────────────────────────────────────────────────────── */
+const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
+  const type = action.type || "attack";
+  const meta = ACTION_TYPES.find((t) => t.value === type) || ACTION_TYPES[0];
+  return (
+    <div className={`wb-action-block wb-action-block--${type}`}>
+      <div className="wb-action-block-head">
+        <label>{meta.label} · Azione {idx + 1}</label>
+        <button
+          type="button"
+          className="wb-remove-action-btn"
+          onClick={onRemove}
+          disabled={!canRemove}
+          title={canRemove ? "Rimuovi" : `Minimo ${MIN_ACTIONS} azioni`}
+        >
+          ✕
+        </button>
+      </div>
+
+      <select
+        className="admin-field-input wb-action-type-select"
+        value={type}
+        onChange={(e) => onChange({ type: e.target.value })}
+      >
+        {ACTION_TYPES.map((t) => (
+          <option key={t.value} value={t.value}>{t.label}</option>
+        ))}
+      </select>
+
+      <input
+        className="admin-field-input"
+        placeholder={ACTION_PLACEHOLDERS[idx] || `Azione ${idx + 1}`}
+        value={action.name || ""}
+        onChange={(e) => onChange({ name: e.target.value })}
+      />
+
+      <small className="wb-action-help">{meta.hint}</small>
+
+      {(type === "attack" || type === "heal") && (
+        <div className="wb-dice-row">
+          <input
+            className="admin-field-input"
+            type="number"
+            placeholder="N°"
+            value={action.diceNum ?? 1}
+            onChange={(e) => onChange({ diceNum: e.target.value })}
+          />
+          <select
+            className="admin-field-input"
+            value={action.diceType || "d6"}
+            onChange={(e) => onChange({ diceType: e.target.value })}
+          >
+            {DICE.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <input
+            className="admin-field-input"
+            type="number"
+            placeholder={type === "attack" ? "+ Hit" : "+ Bonus"}
+            value={action.bonus ?? 0}
+            onChange={(e) => onChange({ bonus: e.target.value })}
+          />
+        </div>
+      )}
+
+      {type === "buff_ca" && (
+        <div className="wb-dice-row wb-dice-row--single">
+          <label className="wb-inline-label">+CA</label>
+          <input
+            className="admin-field-input"
+            type="number"
+            placeholder="2"
+            value={action.acBonus ?? 2}
+            onChange={(e) => onChange({ acBonus: e.target.value })}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 /* ──────────────────────────────────────────────────────────────
    SpriteDropzone — drag & drop slot for a boss sprite
@@ -210,6 +331,44 @@ export default function WorldBossAdmin() {
     }
   };
 
+  /* ── Dynamic actions: new boss ── */
+  const updateNewAction = (idx, patch) =>
+    setNewBoss((b) => ({
+      ...b,
+      actions: b.actions.map((a, i) => (i === idx ? { ...a, ...patch } : a)),
+    }));
+  const addNewAction = () =>
+    setNewBoss((b) =>
+      b.actions.length >= MAX_ACTIONS
+        ? b
+        : { ...b, actions: [...b.actions, blankAction(b.actions.length)] }
+    );
+  const removeNewAction = (idx) =>
+    setNewBoss((b) =>
+      b.actions.length <= MIN_ACTIONS
+        ? b
+        : { ...b, actions: b.actions.filter((_, i) => i !== idx) }
+    );
+
+  /* ── Dynamic actions: edit boss ── */
+  const updateEditAction = (idx, patch) =>
+    setEditData((d) => ({
+      ...d,
+      actions: (d.actions || []).map((a, i) => (i === idx ? { ...a, ...patch } : a)),
+    }));
+  const addEditAction = () =>
+    setEditData((d) => {
+      const cur = d.actions || [];
+      if (cur.length >= MAX_ACTIONS) return d;
+      return { ...d, actions: [...cur, blankAction(cur.length)] };
+    });
+  const removeEditAction = (idx) =>
+    setEditData((d) => {
+      const cur = d.actions || [];
+      if (cur.length <= MIN_ACTIONS) return d;
+      return { ...d, actions: cur.filter((_, i) => i !== idx) };
+    });
+
   const updateBossLocation = async (e, bossId) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
@@ -244,7 +403,7 @@ export default function WorldBossAdmin() {
 
   const startEdit = (boss) => {
     setEditingId(boss.id);
-    setEditData({ ...boss });
+    setEditData({ ...boss, actions: normalizeBossActions(boss) });
   };
 
   const saveEdit = async (id) => {
@@ -258,6 +417,12 @@ export default function WorldBossAdmin() {
           parseInt(editData.hp) > parseInt(editData.maxHp)
             ? parseInt(editData.maxHp)
             : parseInt(editData.hp),
+        // Drop legacy per-slot action fields now that we use the actions array.
+        action1: deleteField(),
+        action2: deleteField(),
+        action3: deleteField(),
+        action4: deleteField(),
+        action5: deleteField(),
       });
       setEditingId(null);
       alert("Boss aggiornato!");
@@ -360,45 +525,38 @@ export default function WorldBossAdmin() {
               </div>
             </div>
 
-            <div className="wb-actions-grid">
-              {[1, 2].map((n) => {
-                const k = `action${n}`;
-                const a = newBoss[k];
-                return (
-                  <div key={k} className="wb-action-block">
-                    <label>⚔ Azione {n}</label>
-                    <input
-                      className="admin-field-input"
-                      placeholder={n === 1 ? "Artiglio del Vuoto" : "Grido della Fine"}
-                      value={a.name}
-                      onChange={(e) => setNewBoss({ ...newBoss, [k]: { ...a, name: e.target.value } })}
-                    />
-                    <div className="wb-dice-row">
-                      <input
-                        className="admin-field-input"
-                        type="number"
-                        placeholder="N°"
-                        value={a.diceNum}
-                        onChange={(e) => setNewBoss({ ...newBoss, [k]: { ...a, diceNum: e.target.value } })}
-                      />
-                      <select
-                        className="admin-field-input"
-                        value={a.diceType}
-                        onChange={(e) => setNewBoss({ ...newBoss, [k]: { ...a, diceType: e.target.value } })}
-                      >
-                        {DICE.map((d) => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                      <input
-                        className="admin-field-input"
-                        type="number"
-                        placeholder="+"
-                        value={a.bonus}
-                        onChange={(e) => setNewBoss({ ...newBoss, [k]: { ...a, bonus: e.target.value } })}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="wb-actions-section">
+              <div className="wb-actions-head">
+                <label>
+                  ⚔ Azioni del Boss
+                  <small>{newBoss.actions.length}/{MAX_ACTIONS}</small>
+                </label>
+                <button
+                  type="button"
+                  className="wb-add-action-btn"
+                  onClick={addNewAction}
+                  disabled={newBoss.actions.length >= MAX_ACTIONS}
+                  title={
+                    newBoss.actions.length >= MAX_ACTIONS
+                      ? `Massimo ${MAX_ACTIONS} azioni`
+                      : "Aggiungi un'azione"
+                  }
+                >
+                  + Aggiungi
+                </button>
+              </div>
+              <div className="wb-actions-grid">
+                {newBoss.actions.map((a, idx) => (
+                  <ActionEditor
+                    key={idx}
+                    action={a}
+                    idx={idx}
+                    onChange={(patch) => updateNewAction(idx, patch)}
+                    onRemove={() => removeNewAction(idx)}
+                    canRemove={newBoss.actions.length > MIN_ACTIONS}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className="wb-field">
@@ -653,14 +811,37 @@ export default function WorldBossAdmin() {
                         </div>
                       </div>
 
-                      <div className="wb-field-row2">
-                        <div className="wb-field">
-                          <label>Azione 1</label>
-                          <input className="admin-field-input" value={editData.action1?.name || ""} onChange={(e) => setEditData({ ...editData, action1: { ...editData.action1, name: e.target.value } })} />
+                      <div className="wb-actions-section">
+                        <div className="wb-actions-head">
+                          <label>
+                            ⚔ Azioni del Boss
+                            <small>{(editData.actions || []).length}/{MAX_ACTIONS}</small>
+                          </label>
+                          <button
+                            type="button"
+                            className="wb-add-action-btn"
+                            onClick={addEditAction}
+                            disabled={(editData.actions || []).length >= MAX_ACTIONS}
+                            title={
+                              (editData.actions || []).length >= MAX_ACTIONS
+                                ? `Massimo ${MAX_ACTIONS} azioni`
+                                : "Aggiungi un'azione"
+                            }
+                          >
+                            + Aggiungi
+                          </button>
                         </div>
-                        <div className="wb-field">
-                          <label>Azione 2</label>
-                          <input className="admin-field-input" value={editData.action2?.name || ""} onChange={(e) => setEditData({ ...editData, action2: { ...editData.action2, name: e.target.value } })} />
+                        <div className="wb-actions-grid">
+                          {(editData.actions || []).map((a, idx) => (
+                            <ActionEditor
+                              key={idx}
+                              action={a}
+                              idx={idx}
+                              onChange={(patch) => updateEditAction(idx, patch)}
+                              onRemove={() => removeEditAction(idx)}
+                              canRemove={(editData.actions || []).length > MIN_ACTIONS}
+                            />
+                          ))}
                         </div>
                       </div>
 

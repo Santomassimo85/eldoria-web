@@ -493,3 +493,205 @@
   }
 }
 
+/* ============================================================
+   BESTIARIO — egg shop
+   ============================================================ */
+.am-bestiario-section {
+  background: linear-gradient(180deg, #fffdf6 0%, #f7efd6 100%);
+  border: 1.5px solid #c9a961;
+  border-radius: 14px;
+  padding: 18px 20px 22px;
+  margin: 22px auto 0;
+  max-width: 900px;
+  box-shadow: 0 3px 12px rgba(80, 60, 20, 0.10);
+}
+.am-bestiario-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0cf9d;
+}
+.am-bestiario-head h3 {
+  margin: 0 !important;
+  flex: 1;
+  min-width: 200px;
+}
+.am-bestiario-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #d4af37, #b08820);
+  color: #2d2418;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-family: var(--font-title, serif);
+  border: 1.5px solid #7a5e10;
+  box-shadow: 0 2px 6px rgba(176, 136, 32, 0.3);
+}
+.am-bestiario-balance strong { font-size: 1.05rem; }
+.am-bestiario-balance span:last-child { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; font-weight: 600; }
+.am-bestiario-sub {
+  margin: 0 0 14px;
+  color: #6f6453;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  font-style: italic;
+}
+.am-eggs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.am-egg-card {
+  background: linear-gradient(180deg, #fffaf0, #f6e9c8);
+  border: 2.5px solid #c9a961;
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.am-egg-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(80, 60, 20, 0.15); }
+.am-egg-icon {
+  font-size: 3rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(180, 140, 40, 0.4));
+}
+.am-egg-rarity {
+  font-family: var(--font-title, serif);
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.am-egg-cost {
+  font-family: var(--font-title, serif);
+  font-size: 1.2rem;
+  color: #b08820;
+  font-weight: 700;
+}
+.am-egg-flavor {
+  font-size: 0.74rem;
+  color: #6f6453;
+  margin: 4px 0 0;
+}
+.am-egg-epic-tease {
+  font-size: 0.7rem;
+  color: #7d2929;
+  margin: 0;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.am-egg-buy-btn {
+  width: 100%;
+  margin-top: 8px;
+  background: linear-gradient(180deg, #b91c1c, #7d2929);
+  color: #fdf2dc;
+  border: 1.5px solid #5a1818;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--font-title, serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.12s;
+}
+.am-egg-buy-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.am-egg-buy-btn:disabled {
+  background: #ccc;
+  border-color: #aaa;
+  color: #777;
+  cursor: not-allowed;
+}
+
+/* Pet items shop sub-section */
+.am-bestiario-subhead {
+  font-family: var(--font-title, serif);
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a5e10;
+  margin: 22px 0 6px;
+  padding-top: 16px;
+  border-top: 1px dashed #e0cf9d;
+}
+.am-pet-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.am-pet-item-card {
+  background: #fffaf0;
+  border: 1.5px solid #e0cf9d;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.12s, box-shadow 0.2s, border-color 0.15s;
+}
+.am-pet-item-card:hover {
+  transform: translateY(-1px);
+  border-color: #c9a961;
+  box-shadow: 0 4px 12px rgba(80, 60, 20, 0.12);
+}
+.am-pet-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.am-pet-item-icon { font-size: 1.4rem; }
+.am-pet-item-name {
+  font-family: var(--font-title, serif);
+  font-size: 0.86rem;
+  color: #2d2418;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex: 1;
+  min-width: 0;
+}
+.am-pet-item-owned {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(58, 122, 74, 0.12);
+  color: #1f5532;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid #98c0a0;
+}
+.am-pet-item-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6f6453;
+  line-height: 1.4;
+  flex: 1;
+}
+.am-pet-item-buy-btn {
+  background: linear-gradient(180deg, #c9a961, #b08820);
+  color: #2d2418;
+  border: 1.5px solid #7a5e10;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-family: var(--font-title, serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.12s;
+}
+.am-pet-item-buy-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.am-pet-item-buy-btn:disabled {
+  background: #d8cfb6;
+  color: #999;
+  border-color: #bbb;
+  cursor: not-allowed;
+}
+

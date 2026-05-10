@@ -34,13 +34,35 @@ const BOSS_SYSTEM_UID = "BOSS_MSG";
 const PLAYER_TURN_DURATION = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION = 1 * 60 * 60 * 1000;
 
-// Detect what a spell does so we can route it (heal ally / buff allies / debuff boss / attack).
+// Detect what a spell does so we can route it correctly:
+//   self_buff → +AC on caster (Mage Armor, Shield, Barkskin, …)
+//   heal      → restore HP to a chosen ally
+//   buff      → advantage on next roll for chosen ally(ies)
+//   debuff    → disadvantage on boss's next attack
+//   attack    → roll d20 + bonus vs boss CA, deal damage
 // Inferred from the action name + description (Italian + English keywords).
 function detectSpellIntent(action) {
   const cat = (action.category || "").toLowerCase();
   // Weapons always attack
   if (/armi|arma|weapon/.test(cat)) return "attack";
   const text = `${action.name || ""} ${action.description || ""}`.toLowerCase();
+
+  // Self-buff (AC bonus on caster) — checked BEFORE generic buff so "Shield" the spell
+  // (one round, +5 AC) doesn't get misrouted to ally-buff. Excludes "Shield of Faith"
+  // which targets allies and is matched by the buff regex below.
+  if (
+    /\bmage armou?r\b|\barmatura magica\b/i.test(text) ||
+    /\bbarkskin\b|\bscorza coriacea\b|\bscorza\b/i.test(text) ||
+    /\bstoneskin\b|\bpelle di pietra\b/i.test(text) ||
+    /\bmirror image\b|immagine specul/i.test(text) ||
+    /\bblur\b|\boffuscamento\b|\boffuscare\b/i.test(text) ||
+    /\bsanctuary\b|\bsantuario\b/i.test(text) ||
+    // "Shield" the spell — keep "Shield of Faith" (ally) out
+    (/(\bshield\b|\bscudo\b)/.test(text) && !/shield of faith|scudo della fede/.test(text))
+  ) {
+    return "self_buff";
+  }
+
   // Heal — most specific first
   if (/\bcur(a|are|i|ato)\b|guarisc|guarigione|cure wounds|healing|tocco curativ|parola guarit|rigenera|ristoro|bende sacre/i.test(text)) return "heal";
   // Buff (positive effect on allies)
@@ -48,6 +70,22 @@ function detectSpellIntent(action) {
   // Debuff (negative effect on enemy / control)
   if (/svantaggio|paura|spavent|maledizione|\bbane\b|malocchio|frighten|hold person|hold monster|tratteni|paralis|\bsonno\b|\bsleep\b|charme|charm|sciagura|disgrazia|nebbia|oscurità|ostacolo|rallenta|\bslow\b|taccia|silen(zio|ce)|debilita|indebol/i.test(text)) return "debuff";
   return "attack";
+}
+
+// Pick the AC bonus a self-buff grants. Tries to read "+N CA" / "+N AC" from the
+// description; otherwise falls back to per-spell defaults; final default is +2.
+function selfBuffAcBonus(action) {
+  const text = `${action.name || ""} ${action.description || ""}`.toLowerCase();
+  // Regex grab: "+3 CA", "+2 ac", "ca +3", "+5 ca"
+  const m = text.match(/\+\s*(\d+)\s*(ca|ac)\b/i) || text.match(/(?:ca|ac)\s*\+\s*(\d+)/i);
+  if (m) return Math.min(8, Math.max(1, parseInt(m[1], 10)));
+  if (/\bmage armou?r\b|\barmatura magica\b/.test(text)) return 3;
+  if (/\bshield\b|\bscudo\b/.test(text) && !/scudo della fede/.test(text)) return 5;
+  if (/\bbarkskin\b|\bscorza/.test(text)) return 3;
+  if (/\bstoneskin\b|\bpelle di pietra\b/.test(text)) return 3;
+  if (/\bmirror image\b|immagine specul|\bblur\b|\boffuscamento\b/.test(text)) return 2;
+  if (/\bsanctuary\b|\bsantuario\b/.test(text)) return 2;
+  return 2;
 }
 
 // Spellcasting modifier: highest of INT/WIS/CHA — works for any caster class.
@@ -478,6 +516,34 @@ export default function WorldBoss() {
     }
   };
 
+  // ── SELF-BUFF SPELL: apply temp +AC to the caster (Mage Armor, Shield, …) ──
+  // Persists for the rest of the battle (cleared automatically when the boss is
+  // defeated / battle ends, or manually by re-casting / master). Replaces any
+  // previous self-buff so stacking is intentional.
+  const castSelfBuff = async (action) => {
+    if (isUserLocked) return;
+    const acBonus = selfBuffAcBonus(action);
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), {
+        selfAcBonus: acBonus,
+        selfAcSource: action.name || "Buff difensivo",
+        selfAcAppliedAt: new Date().toISOString(),
+      });
+      await addDoc(collection(db, "world_boss_chat"), {
+        type: "action", senderName: charData?.name || "Eroe",
+        actionName: `${action.name} (Buff su sé)`,
+        damageRoll: `🛡 +${acBonus} CA mentre attivo (CA effettiva: ${(charData?.stats?.ac || 10) + acBonus})`,
+        description: action.description || `${charData?.name || "Eroe"} si protegge magicamente.`,
+        uid: currentUser.uid, category: action.category || "Incantesimo",
+        timestamp: serverTimestamp(),
+        effect: "buff", effectTargets: [`player-${currentUser.uid}`],
+      });
+      await endMyTurn();
+    } catch (err) {
+      console.error("Errore self-buff:", err);
+    }
+  };
+
   // ── BUFF SPELL: apply advantage on next roll to one or more allies ──
   // Stores `nextTurnCondition: "advantage"` on each selected character — same field already used.
   const castBuffOnTargets = async (action, targetIds) => {
@@ -534,8 +600,20 @@ export default function WorldBoss() {
     const boss = activeBosses[0];
     if (!boss || isUserLocked) return;
 
-    // Route spells by intent (heal/buff/debuff). Weapons always fall through to attack.
+    // Route spells by intent (self_buff/heal/buff/debuff). Weapons always fall through to attack.
     const intent = detectSpellIntent(action);
+    if (intent === "self_buff") {
+      const bonus = selfBuffAcBonus(action);
+      const cur = charData?.selfAcBonus || 0;
+      const replacing = cur > 0 && (charData?.selfAcSource !== action.name);
+      const msg = replacing
+        ? `Lanciare "${action.name}" (+${bonus} CA)? Sostituirà il buff attivo "${charData.selfAcSource}" (+${cur}).`
+        : `Lanciare "${action.name}" su te stesso? +${bonus} CA per tutta la battaglia.`;
+      const ok = window.confirm(msg);
+      if (!ok) return;
+      await castSelfBuff(action);
+      return;
+    }
     if (intent === "heal") {
       setSpellPicker({ action, intent: "heal", selected: [] });
       return;
@@ -633,6 +711,77 @@ export default function WorldBoss() {
 
   const handleBossRoll = async (boss, action) => {
     if (isFightOver) return alert("La battaglia è terminata: nessun attacco possibile.");
+    const actionType = action.type || "attack";
+
+    // ── HEAL: boss restores HP by NdT + bonus ──
+    if (actionType === "heal") {
+      const formula = `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}+${parseInt(action.bonus) || 0}`;
+      const healed = rollDice(formula);
+      const newHp = Math.min(boss.maxHp ?? boss.hp ?? 0, (boss.hp || 0) + healed);
+      await updateDoc(doc(db, "bosses", boss.id), { hp: newHp });
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Cura Boss",
+        actionName: action.name,
+        description: `Il Boss invoca ${action.name} e si cura di 💖 ${healed} HP (${formula}). HP: ${newHp}/${boss.maxHp ?? "?"}.`,
+        effect: pickEffectForAction(action), effectTargets: ["boss"],
+        timestamp: serverTimestamp(),
+      });
+      return;
+    }
+
+    // ── BUFF +CA: bump boss CA by acBonus ──
+    if (actionType === "buff_ca") {
+      const bump = parseInt(action.acBonus) || 0;
+      if (bump <= 0) return alert("Imposta un bonus CA > 0 per questa abilità.");
+      const newAc = (boss.ac || 10) + bump;
+      await updateDoc(doc(db, "bosses", boss.id), { ac: newAc });
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
+        actionName: action.name,
+        description: `Il Boss usa ${action.name}: 🛡 CA +${bump} (ora ${newAc}).`,
+        effect: pickEffectForAction(action), effectTargets: ["boss"],
+        timestamp: serverTimestamp(),
+      });
+      return;
+    }
+
+    // ── BUFF advantage: boss gains advantage on its next attack ──
+    if (actionType === "buff_adv") {
+      await updateDoc(doc(db, "bosses", boss.id), { nextTurnCondition: "advantage", debuffSource: action.name || null });
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Buff Boss",
+        actionName: action.name,
+        description: `Il Boss invoca ${action.name}: ⬆ vantaggio sul prossimo attacco.`,
+        effect: pickEffectForAction(action), effectTargets: ["boss"],
+        timestamp: serverTimestamp(),
+      });
+      return;
+    }
+
+    // ── DEBUFF disadvantage: selected players' next roll has disadvantage ──
+    if (actionType === "debuff_dis") {
+      if (selectedTargets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
+      const batch = writeBatch(db);
+      selectedTargets.forEach((uid) => {
+        batch.update(doc(db, "characters", uid), { nextTurnCondition: "disadvantage" });
+      });
+      await batch.commit();
+      const names = players
+        .filter((p) => selectedTargets.includes(p.id))
+        .map((p) => (p.name || "").split(" ")[0])
+        .join(", ");
+      await addDoc(collection(db, "world_boss_chat"), {
+        uid: BOSS_SYSTEM_UID, senderName: boss.name, type: "action", category: "Debuff Boss",
+        actionName: action.name,
+        description: `Il Boss colpisce con ${action.name}: ⬇ svantaggio sul prossimo tiro di ${names}.`,
+        effect: pickEffectForAction(action), effectTargets: selectedTargets.map((uid) => `player-${uid}`),
+        timestamp: serverTimestamp(),
+      });
+      setSelectedTargets([]);
+      return;
+    }
+
+    // ── ATTACK (default) ──
     if (selectedTargets.length === 0) return alert("DM, seleziona almeno un bersaglio!");
     // Consume any debuff condition (e.g. svantaggio applied by a player spell)
     const condition = boss.nextTurnCondition;
@@ -650,12 +799,15 @@ export default function WorldBoss() {
     }
     const bossBonus = parseInt(action.bonus) || 0;
     const hitTotal = d20 + bossBonus;
-    const damageDealt = rollDice(action.damage || "1d6");
+    const damageFormula = action.damage || `${parseInt(action.diceNum) || 1}${action.diceType || "d6"}`;
+    const damageDealt = rollDice(damageFormula);
     const results = [];
     for (const targetId of selectedTargets) {
       const p = players.find((player) => player.id === targetId);
       if (!p) continue;
-      const playerCA = p.stats?.ac || 10;
+      const baseCA = p.stats?.ac || 10;
+      const buffBonus = p.selfAcBonus || 0;
+      const playerCA = baseCA + buffBonus;
       const isHit = hitTotal >= playerCA;
       if (isHit) {
         let remainingDmg = damageDealt;
@@ -669,7 +821,10 @@ export default function WorldBoss() {
           "stats.hp": Math.max(0, currentHp - remainingDmg), "stats.shield": currentShield,
         });
       }
-      results.push({ id: targetId, name: p.name.split(" ")[0], hit: isHit, roll: `${hitTotal} (${d20}+${bossBonus}) vs CA ${playerCA}`, dmg: isHit ? damageDealt : 0 });
+      const caStr = buffBonus > 0
+        ? `CA ${playerCA} (${baseCA}+${buffBonus} ${p.selfAcSource || "buff"})`
+        : `CA ${playerCA}`;
+      results.push({ id: targetId, name: p.name.split(" ")[0], hit: isHit, roll: `${hitTotal} (${d20}+${bossBonus}) vs ${caStr}`, dmg: isHit ? damageDealt : 0 });
     }
     const hitTargets = results.filter((r) => r.hit).map((r) => r.name).join(", ");
     const missedTargets = results.filter((r) => !r.hit).map((r) => r.name).join(", ");
@@ -1064,8 +1219,20 @@ export default function WorldBoss() {
                 {boss && (
                   <>
                     <div className="rpg-section-label">Boss</div>
-                    {boss.action1 && <button className="rpg-btn rpg-btn--atk" onClick={() => handleBossRoll(boss, boss.action1)}>{boss.action1.name}</button>}
-                    {boss.action2 && <button className="rpg-btn rpg-btn--atk" onClick={() => handleBossRoll(boss, boss.action2)}>{boss.action2.name}</button>}
+                    {(Array.isArray(boss.actions) && boss.actions.length > 0
+                      ? boss.actions
+                      : [boss.action1, boss.action2, boss.action3, boss.action4, boss.action5]
+                    )
+                      .filter((a) => a && a.name)
+                      .map((action, idx) => (
+                        <button
+                          key={idx}
+                          className="rpg-btn rpg-btn--atk"
+                          onClick={() => handleBossRoll(boss, action)}
+                        >
+                          {action.name}
+                        </button>
+                      ))}
                     <div className="rpg-btn-row">
                       <button className="rpg-sm-btn" onClick={() => healBossManual(5)}>+5 HP</button>
                       <button className="rpg-sm-btn" onClick={() => healBossManual(10)}>+10 HP</button>
@@ -1106,7 +1273,14 @@ export default function WorldBoss() {
                             {acted && <span className="rpg-check-mark">✓</span>}
                             {isDead && <span className="rpg-dead-mark">💀</span>}
                           </span>
-                          <span className="rpg-master-row-hp">{hp}/{maxHp}{(p.stats?.shield ?? 0) > 0 ? ` 🛡${p.stats.shield}` : ""}</span>
+                          <span className="rpg-master-row-hp">
+                            {hp}/{maxHp}{(p.stats?.shield ?? 0) > 0 ? ` 🛡${p.stats.shield}` : ""}
+                            {(p.selfAcBonus ?? 0) > 0 && (
+                              <span title={p.selfAcSource || "Buff CA attivo"} style={{ marginLeft: 6, fontSize: "0.78em", color: "#1f5532", background: "rgba(58,122,74,0.16)", padding: "1px 6px", borderRadius: 999 }}>
+                                🛡 +{p.selfAcBonus} CA
+                              </span>
+                            )}
+                          </span>
                           <div className="rpg-bar-track rpg-bar-track--sm">
                             <div className={`rpg-bar-hp ${hpCls}`} style={{ width: `${pct}%` }} />
                             {(p.stats?.shield ?? 0) > 0 && (
@@ -1121,6 +1295,13 @@ export default function WorldBoss() {
                           <button className="rpg-sm-btn" onClick={() => { const val = prompt("HP Scudo?"); if (val) updateDoc(doc(db, "characters", p.id), { "stats.shield": increment(parseInt(val)) }); }}>🛡</button>
                           {(p.stats?.shield ?? 0) > 0 && (
                             <button className="rpg-sm-btn rpg-sm-btn--danger" onClick={() => updateDoc(doc(db, "characters", p.id), { "stats.shield": 0 })}>✕</button>
+                          )}
+                          {(p.selfAcBonus ?? 0) > 0 && (
+                            <button className="rpg-sm-btn rpg-sm-btn--danger"
+                                    title={`Rimuovi buff "${p.selfAcSource || "?"}"`}
+                                    onClick={() => updateDoc(doc(db, "characters", p.id), { selfAcBonus: 0, selfAcSource: null, selfAcAppliedAt: null })}>
+                              ✕CA
+                            </button>
                           )}
                           <button
                             className={`rpg-sm-btn rpg-sm-btn--adv${p.nextTurnCondition === "advantage" ? " active" : ""}`}
