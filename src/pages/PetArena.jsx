@@ -14,8 +14,9 @@ import {
 } from "../utils/pet";
 import {
   MAX_TEAM_SIZE, MIN_TEAM_SIZE, TYPE_CYCLE, LIGHT_DARK_PAIR,
+  ACTION_TIMEOUT_MS,
   petSnapshotForBattle, initLiveBattleState, resolveLiveRound,
-  snapshotUnlockedMoves, firstAliveSwitch,
+  snapshotUnlockedMoves, firstAliveSwitch, pickAutoAction,
 } from "../utils/petBattleLive";
 import PetAvatar from "../components/PetAvatar";
 import "./PetArena.css";
@@ -453,7 +454,47 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
   const winner = battle.state.winner;
 
   const [showSwitch, setShowSwitch] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const resolveLockRef = useRef(false);
+  const autoLockRef = useRef({}); // side+round → bool
+
+  /* ── 1Hz tick for countdowns ──────────────────────────── */
+  useEffect(() => {
+    if (winner) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [winner]);
+
+  /* ── Auto-submit when a deadline expires ─────────────── */
+  useEffect(() => {
+    if (winner) return;
+    for (const side of ["challenger", "challenged"]) {
+      const ddl = battle.state.actionDeadlines?.[side];
+      if (!ddl) continue;
+      if (battle.state.pendingActions?.[side]) continue;
+      if (new Date(ddl).getTime() > now) continue;
+
+      // De-dupe: only fire once per (round, side) per client
+      const key = `${battle.state.round}|${side}`;
+      if (autoLockRef.current[key]) continue;
+      autoLockRef.current[key] = true;
+
+      const action = pickAutoAction(
+        battle.id, battle.state.round, side, battle.teams, battle.state
+      );
+      if (!action) continue;
+
+      updateDoc(doc(db, "pet_battles", battle.id), {
+        [`state.pendingActions.${side}`]: action,
+        [`state.actionDeadlines.${side}`]: null,
+        updatedAt: serverTimestamp(),
+      }).catch(err => {
+        console.warn("[auto-submit failed]", err);
+        // Allow retry on next tick
+        autoLockRef.current[key] = false;
+      });
+    }
+  }, [now, battle, winner]);
 
   /* ── Round resolution (challenger client only) ────────── */
   useEffect(() => {
@@ -517,6 +558,7 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
     try {
       await updateDoc(doc(db, "pet_battles", battle.id), {
         [`state.pendingActions.${mySide}`]: action,
+        [`state.actionDeadlines.${mySide}`]: null,
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
@@ -562,6 +604,20 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
     <div className="pa-live">
       <header className="pa-live-head">
         <div className="pa-live-round">Round {battle.state.round}</div>
+        <div className="pa-live-timers">
+          <ActionTimer
+            label="Tu"
+            deadlineIso={battle.state.actionDeadlines?.[mySide]}
+            submitted={!!myPending}
+            now={now}
+          />
+          <ActionTimer
+            label="Avv."
+            deadlineIso={battle.state.actionDeadlines?.[oppSide]}
+            submitted={!!oppPending}
+            now={now}
+          />
+        </div>
         <button className="pa-btn pa-btn--ghost pa-btn--tiny" onClick={handleForfeit}>🏳 Abbandona</button>
       </header>
 
@@ -639,6 +695,24 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ── Action timer badge ───────────────────────────────── */
+function ActionTimer({ label, deadlineIso, submitted, now }) {
+  if (submitted) {
+    return <span className="pa-timer pa-timer--done">{label}: ✓</span>;
+  }
+  if (!deadlineIso) return null;
+  const ms = Math.max(0, new Date(deadlineIso).getTime() - now);
+  const total = Math.ceil(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  const urgent = ms <= 30000;
+  return (
+    <span className={`pa-timer ${urgent ? "pa-timer--urgent" : ""}`} title={`${label}: tempo per scegliere — auto-attacco se scade`}>
+      {label}: ⏱ {m}:{String(s).padStart(2, "0")}
+    </span>
   );
 }
 
@@ -807,6 +881,13 @@ async function persistBattleResults(battle, mySide, oppSide) {
       const sideWon = winner === side;
       const drew = winner === "draw";
 
+      // EXP rules: every pet that participated gains EXP.
+      //   Winners: full reward (15 + 5×opponentAvgLevel).
+      //   Losers / draws: half reward (rounded down, min 1).
+      // Level-up auto-fills HP.
+      const fullReward = expFromBattle(oppAvgLvl);
+      const expReward = sideWon ? fullReward : Math.max(1, Math.floor(fullReward / 2));
+
       team.forEach((snapPet, i) => {
         const idx = pets.findIndex(p => p.id === snapPet.petId);
         if (idx < 0) return;
@@ -815,19 +896,21 @@ async function persistBattleResults(battle, mySide, oppSide) {
         updated.currentHp = Math.max(1, newHp);
         updated.lastHealTick = nowIso;
         updated.restingUntil = restingUntil;
+
+        const lvlBefore = updated.level || levelFromExp(updated.exp || 0);
+        updated.exp = (updated.exp || 0) + expReward;
+        updated.level = levelFromExp(updated.exp);
+        if (updated.level > lvlBefore) {
+          const stats = petStatsAtLevel(updated.speciesKey, updated.level);
+          updated.currentHp = stats.hp; // free heal on level-up
+        }
+
         if (sideWon) {
           updated.wins = (updated.wins || 0) + 1;
-          // Each pet on the winning team gets EXP for the opponent's avg level
-          const lvlBefore = updated.level || levelFromExp(updated.exp || 0);
-          updated.exp = (updated.exp || 0) + expFromBattle(oppAvgLvl);
-          updated.level = levelFromExp(updated.exp);
-          if (updated.level > lvlBefore) {
-            const stats = petStatsAtLevel(updated.speciesKey, updated.level);
-            updated.currentHp = stats.hp; // free heal on level-up
-          }
         } else if (!drew) {
           updated.losses = (updated.losses || 0) + 1;
         }
+
         pets[idx] = updated;
       });
 

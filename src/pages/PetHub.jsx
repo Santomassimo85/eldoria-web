@@ -14,7 +14,46 @@ import {
   petNextHealTickIn,
   petUnlockedMoves,
   petNextLockedMove,
+  PET_POINT_SOURCES,
 } from "../utils/pet";
+
+/* ── Earnings catalog config (icons + hints + display order) ──
+   Pulls amounts/caps from PET_POINT_SOURCES so the panel stays
+   in sync with the actual award logic. */
+const POINT_SOURCE_ICONS = {
+  pet_battle_win:   "🐲",
+  arena_tournament: "🏆",
+  arena_round:      "⚔",
+  arena_libera:     "🤺",
+  daily_login:      "🌅",
+  summary_read:     "📜",
+  npc_visit:        "👤",
+  geo_visit:        "🗺",
+  market_bid:       "💰",
+};
+const POINT_SOURCE_HINTS = {
+  pet_battle_win:   "Vinci una sfida nel Pet Arena live",
+  arena_tournament: "Vinci la finale del torneo dell'Arena",
+  arena_round:      "Vinci un singolo round dell'Arena",
+  arena_libera:     "Concludi una Sfida Libera",
+  daily_login:      "Apri la scheda PG una volta al giorno",
+  summary_read:     "Leggi un riassunto di sessione mai aperto",
+  npc_visit:        "Visita l'Archivio NPC",
+  geo_visit:        "Visita l'Archivio Geomantico",
+  market_bid:       "Fai un'offerta al Mercato Nero",
+};
+const POINT_SOURCE_ORDER = [
+  "arena_tournament", "pet_battle_win", "arena_round",
+  "daily_login", "summary_read", "arena_libera",
+  "market_bid", "npc_visit", "geo_visit",
+];
+
+function formatPointCap(def) {
+  if (def?.oncePerKey) return "una volta per risorsa";
+  if (def?.dailyCap == null) return "nessun limite";
+  if (def?.dailyCap === 1) return "1 al giorno";
+  return `max ${def.dailyCap} al giorno`;
+}
 import PetAvatar from "../components/PetAvatar";
 import PetArena from "./PetArena";
 import "./PetHub.css";
@@ -161,6 +200,29 @@ function BestiariaShop({ uid }) {
         I Punti Bestiario si guadagnano esplorando: vittorie all'arena, offerte al Mercato Nero,
         riassunti letti, archivi consultati, login giornaliero. Schiudi le uova nella tua scheda PG.
       </p>
+
+      {/* How to earn points */}
+      <h3 className="ph-shop-title">💰 Come guadagnare punti</h3>
+      <p className="ph-shop-sub">Tutti i modi per ottenere ✦ Punti Bestiario nel regno di Eldoria.</p>
+      <div className="ph-earnings-grid">
+        {POINT_SOURCE_ORDER.map(key => {
+          const def = PET_POINT_SOURCES[key];
+          if (!def) return null;
+          const cap = formatPointCap(def);
+          const capped = def.dailyCap != null || def.oncePerKey;
+          return (
+            <div key={key} className={`ph-earning ${capped ? "ph-earning--capped" : "ph-earning--free"}`}>
+              <div className="ph-earning-head">
+                <span className="ph-earning-icon">{POINT_SOURCE_ICONS[key] || "✦"}</span>
+                <span className="ph-earning-amount">+{def.amount} ✦</span>
+              </div>
+              <div className="ph-earning-label">{def.label}</div>
+              <div className="ph-earning-hint">{POINT_SOURCE_HINTS[key]}</div>
+              <div className="ph-earning-cap">{cap}</div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Eggs */}
       <h3 className="ph-shop-title">🐣 Uova di Compagno</h3>

@@ -20,6 +20,74 @@ import { petStatsAtLevel, petEffectiveHp, effectivePetLevel } from "./pet";
 export const MAX_TEAM_SIZE = 5;
 export const MIN_TEAM_SIZE = 1;
 
+/* Per-action timeout. After this elapses without an action the
+   auto-submit kicks in with a random move (or a switch if the
+   active pet is fainted). Both clients can fire it; pickAutoAction
+   is deterministic on (battleId, round, side) so the result is the
+   same and the Firestore write is idempotent. */
+export const ACTION_TIMEOUT_MS = 5 * 60 * 1000;
+
+export function nextActionDeadline() {
+  return new Date(Date.now() + ACTION_TIMEOUT_MS).toISOString();
+}
+
+/* ----------------------------------------------------------------
+   Tiny deterministic RNG (mulberry32) seeded from a string. Used
+   only by pickAutoAction so any client can compute the same auto
+   action without coordinating.
+   ---------------------------------------------------------------- */
+function hashSeed(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+function seededRng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* Pick a random valid action for a side that didn't submit in time.
+   - If active is fainted, returns a switch to the first alive pet.
+   - Otherwise picks a random unlocked move with uses remaining;
+     unlimited-use attacks are always eligible.
+   Returns null only if there's no possible action (no alive pets). */
+export function pickAutoAction(battleId, round, side, teams, state) {
+  const rng = seededRng(hashSeed(`${battleId}|${round}|${side}`));
+  const myIdx = state.activeIdx[side];
+  const team = teams[side];
+  if (!team || team.length === 0) return null;
+
+  const myHp = state.hp[side][myIdx];
+  if (myHp <= 0) {
+    // Forced switch — first alive pet
+    for (let i = 0; i < team.length; i++) {
+      if (i !== myIdx && state.hp[side][i] > 0) {
+        return { kind: "switch", toIdx: i };
+      }
+    }
+    return null; // no one alive — battle is already over
+  }
+
+  const me = team[myIdx];
+  const moves = snapshotUnlockedMoves(me).filter(m => {
+    if (m.maxUses == null) return true;
+    const left = state.moveUses[side][myIdx]?.[m.id] ?? m.maxUses;
+    return left > 0;
+  });
+  if (moves.length === 0) return null;
+  const choice = moves[Math.floor(rng() * moves.length)];
+  return { kind: "move", moveId: choice.id };
+}
+
 /* ----------------------------------------------------------------
    Freeze a pet's combat-relevant state at battle start. The live
    battle uses these snapshots throughout — pet edits made on the
@@ -80,6 +148,7 @@ export function initLiveBattleState(teamA, teamB) {
     shield: { challenger: buildSide(teamA).shield,   challenged: buildSide(teamB).shield },
     poison: { challenger: buildSide(teamA).poison,   challenged: buildSide(teamB).poison },
     pendingActions: { challenger: null, challenged: null },
+    actionDeadlines: { challenger: nextActionDeadline(), challenged: nextActionDeadline() },
     log: [`Round 1 — ${teamA[0].icon} ${teamA[0].nickname} vs ${teamB[0].icon} ${teamB[0].nickname}`],
     winner: null,
   };
@@ -344,8 +413,16 @@ export function resolveLiveRound(battle) {
     logs.push(`— Round ${next.round} —`);
   }
 
-  // 5. Clear pending actions for the next round
+  // 5. Clear pending actions for the next round and reseed deadlines
   next.pendingActions = { challenger: null, challenged: null };
+  if (next.winner) {
+    next.actionDeadlines = { challenger: null, challenged: null };
+  } else {
+    next.actionDeadlines = {
+      challenger: nextActionDeadline(),
+      challenged: nextActionDeadline(),
+    };
+  }
   next.log = [...battle.state.log, ...logs];
   return next;
 }

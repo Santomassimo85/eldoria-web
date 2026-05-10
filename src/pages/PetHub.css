@@ -155,6 +155,69 @@ section.ph-page,
 }
 .ph-shop-sub { font-size: 0.84rem; color: #6f6453; margin: 0 0 10px; }
 
+/* ── Earnings grid ────────────────────────────────────── */
+.ph-earnings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.ph-earning {
+  background: linear-gradient(180deg, #fffaf0, #f6e9c8);
+  border: 1px solid #c9a961;
+  border-left: 4px solid #c9a961;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: transform 0.12s, box-shadow 0.2s;
+}
+.ph-earning:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(80, 60, 20, 0.12);
+}
+.ph-earning--free   { border-left-color: #b08820; }
+.ph-earning--capped { border-left-color: #4a8a3a; }
+
+.ph-earning-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.ph-earning-icon { font-size: 1.4rem; line-height: 1; }
+.ph-earning-amount {
+  font-family: var(--font-title, serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #7d2929;
+  letter-spacing: 0.04em;
+}
+.ph-earning-label {
+  font-weight: 700;
+  color: #2d2418;
+  font-size: 0.9rem;
+}
+.ph-earning-hint {
+  font-size: 0.78rem;
+  color: #6f6453;
+  font-style: italic;
+  line-height: 1.4;
+  flex: 1;
+}
+.ph-earning-cap {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a7a4a;
+  border-top: 1px dashed #e0cf9d;
+  padding-top: 4px;
+  margin-top: 2px;
+  font-weight: 600;
+}
+.ph-earning--free .ph-earning-cap { color: #7a5e10; }
+
 /* Egg grid */
 .ph-eggs-grid {
   display: grid;
