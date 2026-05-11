@@ -1,10 +1,10 @@
 /* ============================================================
-   PET SPECIES catalog — 104 D&D monsters, hatchable companions.
+   PET SPECIES catalog — 105 D&D monsters, hatchable companions.
    ------------------------------------------------------------
    Distribution by rarity:
      · 31 common      — easy to roll, low-mid power
      · 34 rare        — solid mid-tier specialists
-     · 28 epic        — bosses-in-a-bottle, very hard to roll
+     · 29 epic        — bosses-in-a-bottle, very hard to roll
      · 11 legendary   — apex tier, ultra-rare even on epic eggs
 
    Per-species data:
@@ -927,6 +927,14 @@ export const PET_SPECIES = {
     attacks: ["slam", "crush"],
     skills: ["spark", "thunder", "stonewall"],
   },
+  stormelemental: {
+    key: "stormelemental", name: "Elementale della Tempesta", icon: "⚡", image: "/assets/pets/stormelemental.png",
+    type: "air", rarity: "epic",
+    desc: "Nuvolone vivente percorso da fulmini · ogni passo è un tuono, ogni pugno una scarica.",
+    base: { hp: 42, ac: 16, atk: 8, spd: 8 },
+    attacks: ["tackle", "claw"],
+    skills: ["spark", "thunder", "cyclone"],
+  },
 
   // ── New legendary
   mindflayerancient: {
@@ -968,7 +976,7 @@ const RARE_KEYS = [
   "marinebrute", "greentreant", "naga", "saurian",
 ];
 const EPIC_KEYS = [
-  // 28 epics
+  // 29 epics
   "frostgiant", "gelatinouscube", "ankylosaurus", "braineater",
   "goristro", "marid", "fomorian", "stonegiant", "medusa",
   "djinni", "irongolem",
@@ -976,7 +984,7 @@ const EPIC_KEYS = [
   "copperdragon", "youngblackdragon", "whitedragon", "yuanti",
   "wendigo", "autumntreant", "icetomb", "bloodwerewolf",
   "succubus", "hornedevil", "firelord", "fireaxedevil",
-  "watermage", "crystalgolem",
+  "watermage", "crystalgolem", "stormelemental",
 ];
 const LEGENDARY_KEYS = [
   // 11 legendaries — extremely rare even on epic eggs
