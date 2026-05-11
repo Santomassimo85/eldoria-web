@@ -1,10 +1,11 @@
 /* ============================================================
-   PET SPECIES catalog — 34 D&D monsters, hatchable companions.
+   PET SPECIES catalog — 76 D&D monsters, hatchable companions.
    ------------------------------------------------------------
    Distribution by rarity:
-     · 21 common  (~62 %)  — easy to roll, low-mid power
-     ·  9 rare    (~26 %)  — solid mid-tier specialists
-     ·  4 epic    (~12 %)  — bosses-in-a-bottle, very hard to roll
+     · 30 common      — easy to roll, low-mid power
+     · 22 rare        — solid mid-tier specialists
+     · 14 epic        — bosses-in-a-bottle, very hard to roll
+     · 10 legendary   — apex tier, ultra-rare even on epic eggs
 
    Per-species data:
      key       — stable id (used in pet.speciesKey on the character doc)
@@ -228,6 +229,80 @@ export const PET_SPECIES = {
     skills: ["rest", "guard"],
   },
 
+  // ── New commons ──
+  imp: {
+    key: "imp", name: "Imp", icon: "😈", image: "/assets/pets/imp.png",
+    type: "fire", rarity: "common",
+    desc: "Diavoletto rosso alato · scaltro, infido, coda con pungiglione velenoso.",
+    base: { hp: 18, ac: 13, atk: 5, spd: 8 },
+    attacks: ["claw"],
+    skills: ["ember", "rest"],
+  },
+  merfolk: {
+    key: "merfolk", name: "Tritone", icon: "🧜", image: "/assets/pets/merfolk.png",
+    type: "water", rarity: "common",
+    desc: "Guerriero delle correnti profonde · tridente e canto di sirena.",
+    base: { hp: 22, ac: 12, atk: 5, spd: 6 },
+    attacks: ["tackle"],
+    skills: ["bubble", "mist"],
+  },
+  mudmephit: {
+    key: "mudmephit", name: "Mefite del Fango", icon: "🟫", image: "/assets/pets/mudmephit.png",
+    type: "earth", rarity: "common",
+    desc: "Spiritello di melma · le ali fangose schizzano nelle fauci nemiche.",
+    base: { hp: 20, ac: 12, atk: 4, spd: 5 },
+    attacks: ["tackle"],
+    skills: ["vine", "spores"],
+  },
+  kenku: {
+    key: "kenku", name: "Kenku", icon: "🐦", image: "/assets/pets/kenku.png",
+    type: "air", rarity: "common",
+    desc: "Uomo-corvo senza ali · ladruncolo mutico che imita ogni voce.",
+    base: { hp: 18, ac: 13, atk: 5, spd: 8 },
+    attacks: ["claw", "pounce"],
+    skills: ["gust"],
+  },
+  halforc: {
+    key: "halforc", name: "Mezzorco", icon: "🪓", image: "/assets/pets/halforc.png",
+    type: "neutral", rarity: "common",
+    desc: "Guerriero figlio di due mondi · forza orchesca, astuzia umana.",
+    base: { hp: 24, ac: 13, atk: 6, spd: 6 },
+    attacks: ["slam"],
+    skills: ["guard", "rest"],
+  },
+  manes: {
+    key: "manes", name: "Manes", icon: "🩸", image: "/assets/pets/manes.png",
+    type: "dark", rarity: "common",
+    desc: "Anima dannata trasformata in demone informe · pulsa di carne marcia.",
+    base: { hp: 22, ac: 11, atk: 5, spd: 4 },
+    attacks: ["claw", "bite"],
+    skills: ["drain", "rest"],
+  },
+  nothic: {
+    key: "nothic", name: "Notico", icon: "👁", image: "/assets/pets/nothic.png",
+    type: "dark", rarity: "common",
+    desc: "Aberrazione monocola · scruta l'anima e si nutre di segreti.",
+    base: { hp: 20, ac: 13, atk: 5, spd: 6 },
+    attacks: ["claw"],
+    skills: ["drain", "shadowbolt"],
+  },
+  ogrezombie: {
+    key: "ogrezombie", name: "Ogre Zombie", icon: "🧟", image: "/assets/pets/ogrezombie.png",
+    type: "dark", rarity: "common",
+    desc: "Ogre rianimato · carne marcia, mazza ancora più grossa.",
+    base: { hp: 26, ac: 11, atk: 6, spd: 3 },
+    attacks: ["slam", "crush"],
+    skills: ["rest"],
+  },
+  deathdog: {
+    key: "deathdog", name: "Cane della Morte", icon: "🐕", image: "/assets/pets/deathdog.png",
+    type: "dark", rarity: "common",
+    desc: "Mastino bicefalo delle terre marce · morsi che corrompono la carne.",
+    base: { hp: 22, ac: 12, atk: 6, spd: 7 },
+    attacks: ["bite", "pounce"],
+    skills: ["drain"],
+  },
+
   // ──────────────────────────────────────────────────────────
   // RARES · 9 species
   // ──────────────────────────────────────────────────────────
@@ -314,6 +389,112 @@ export const PET_SPECIES = {
     skills: ["radiance", "solarflare"],
   },
 
+  // ── New rares ──
+  hellhound: {
+    key: "hellhound", name: "Mastino Infernale", icon: "🐕‍🦺", image: "/assets/pets/hellhound.png",
+    type: "fire", rarity: "rare",
+    desc: "Cane degli inferi · zanne che bruciano e occhi di carbone ardente.",
+    base: { hp: 28, ac: 13, atk: 7, spd: 8 },
+    attacks: ["bite", "pounce"],
+    skills: ["ember", "firewall"],
+  },
+  halfdragon: {
+    key: "halfdragon", name: "Mezzodrago Veterano", icon: "🐲", image: "/assets/pets/halfdragon.png",
+    type: "fire", rarity: "rare",
+    desc: "Soldato dalle squame rosse · stirpe draconica nel sangue, soffio di fiamme in gola.",
+    base: { hp: 32, ac: 14, atk: 7, spd: 6 },
+    attacks: ["slam", "claw"],
+    skills: ["ember", "firewall"],
+  },
+  nightmare: {
+    key: "nightmare", name: "Incubo", icon: "🐎", image: "/assets/pets/nightmare.png",
+    type: "fire", rarity: "rare",
+    desc: "Stallone infernale · zoccoli che bruciano la terra, criniera di fuoco vivo.",
+    base: { hp: 30, ac: 13, atk: 7, spd: 9 },
+    attacks: ["slam", "pounce"],
+    skills: ["ember", "firewall"],
+  },
+  troll: {
+    key: "troll", name: "Troll", icon: "🧌", image: "/assets/pets/troll.png",
+    type: "earth", rarity: "rare",
+    desc: "Gigante verde rigenerante · solo il fuoco arresta le sue ferite.",
+    base: { hp: 34, ac: 13, atk: 7, spd: 5 },
+    attacks: ["claw", "bite"],
+    skills: ["bloom", "rest"],
+  },
+  pegasus: {
+    key: "pegasus", name: "Pegaso", icon: "🦄", image: "/assets/pets/pegasus.png",
+    type: "light", rarity: "rare",
+    desc: "Destriero alato dei cieli benedetti · galoppa tra le nubi del mattino.",
+    base: { hp: 28, ac: 13, atk: 6, spd: 9 },
+    attacks: ["slam", "pounce"],
+    skills: ["lightbeam", "blessing"],
+  },
+  helmedhorror: {
+    key: "helmedhorror", name: "Orrore Elmato", icon: "🛡", image: "/assets/pets/helmedhorror.png",
+    type: "neutral", rarity: "rare",
+    desc: "Armatura animata da magia oscura · scudo torreggiante, spada implacabile.",
+    base: { hp: 32, ac: 15, atk: 6, spd: 5 },
+    attacks: ["slam", "crush"],
+    skills: ["guard", "rest"],
+  },
+  manticore: {
+    key: "manticore", name: "Mantícora", icon: "🦁", image: "/assets/pets/manticore.png",
+    type: "neutral", rarity: "rare",
+    desc: "Leone alato con coda di spine · scaglia dardi mortali dalla distanza.",
+    base: { hp: 30, ac: 13, atk: 7, spd: 8 },
+    attacks: ["bite", "claw"],
+    skills: ["gust", "rest"],
+  },
+  owlbear: {
+    key: "owlbear", name: "Gufo-Orso", icon: "🦉", image: "/assets/pets/owlbear.png",
+    type: "neutral", rarity: "rare",
+    desc: "Ibrido feroce tra orso e gufo · becco affilato, abbraccio mortale.",
+    base: { hp: 34, ac: 13, atk: 7, spd: 6 },
+    attacks: ["bite", "claw"],
+    skills: ["rest", "guard"],
+  },
+  jackalwere: {
+    key: "jackalwere", name: "Sciacallo Mannaro", icon: "🐺", image: "/assets/pets/jackalwere.png",
+    type: "dark", rarity: "rare",
+    desc: "Mutaforma sciacallo · ipnotizza con lo sguardo prima di azzannare.",
+    base: { hp: 28, ac: 13, atk: 7, spd: 8 },
+    attacks: ["bite", "claw"],
+    skills: ["drain", "shadowbolt"],
+  },
+  lamia: {
+    key: "lamia", name: "Lamia", icon: "🐍", image: "/assets/pets/lamia.png",
+    type: "dark", rarity: "rare",
+    desc: "Maledizione femminile metà belva · seduce, poi divora la mente.",
+    base: { hp: 30, ac: 13, atk: 6, spd: 7 },
+    attacks: ["claw"],
+    skills: ["dread", "voidstrike"],
+  },
+  nighthag: {
+    key: "nighthag", name: "Strega Notturna", icon: "🧙‍♀", image: "/assets/pets/nighthag.png",
+    type: "dark", rarity: "rare",
+    desc: "Megera dei sogni · ruba anime mentre i mortali dormono.",
+    base: { hp: 30, ac: 13, atk: 6, spd: 6 },
+    attacks: ["claw"],
+    skills: ["dread", "nightveil"],
+  },
+  minotaurskeleton: {
+    key: "minotaurskeleton", name: "Scheletro Minotauro", icon: "🦴", image: "/assets/pets/minotaurskeleton.png",
+    type: "dark", rarity: "rare",
+    desc: "Minotauro non-morto · carica di ossa e accetta arrugginita.",
+    base: { hp: 30, ac: 13, atk: 7, spd: 6 },
+    attacks: ["slam", "crush"],
+    skills: ["dread", "rest"],
+  },
+  oni: {
+    key: "oni", name: "Oni", icon: "👹", image: "/assets/pets/oni.png",
+    type: "dark", rarity: "rare",
+    desc: "Orco-demone mutaforma · scivola tra le ombre vestendo pelle umana.",
+    base: { hp: 32, ac: 14, atk: 7, spd: 6 },
+    attacks: ["slam", "claw"],
+    skills: ["dread", "nightveil"],
+  },
+
   // ──────────────────────────────────────────────────────────
   // EPICS · 4 species
   // ──────────────────────────────────────────────────────────
@@ -349,6 +530,88 @@ export const PET_SPECIES = {
     base: { hp: 30, ac: 13, atk: 7, spd: 7 },
     attacks: ["claw", "bite"],
     skills: ["drain", "dread"],
+  },
+
+  // ── New epics ──
+  goristro: {
+    key: "goristro", name: "Goristro", icon: "🐂", image: "/assets/pets/goristro.png",
+    type: "fire", rarity: "epic",
+    desc: "Demone-toro dell'Abisso · carica devastante che spezza eserciti.",
+    base: { hp: 44, ac: 15, atk: 8, spd: 5 },
+    attacks: ["slam", "crush"],
+    skills: ["inferno", "pyroblast"],
+  },
+  marid: {
+    key: "marid", name: "Marid", icon: "🧞", image: "/assets/pets/marid.png",
+    type: "water", rarity: "epic",
+    desc: "Genio dei mari · domina maree e raffiche gelide con un sorriso vanitoso.",
+    base: { hp: 40, ac: 15, atk: 7, spd: 7 },
+    attacks: ["slam", "tackle"],
+    skills: ["tidal", "frostlance"],
+  },
+  fomorian: {
+    key: "fomorian", name: "Fomoriano", icon: "👁‍🗨", image: "/assets/pets/fomorian.png",
+    type: "earth", rarity: "epic",
+    desc: "Gigante deforme del sottosuolo · maledizione nello sguardo unico.",
+    base: { hp: 44, ac: 14, atk: 8, spd: 4 },
+    attacks: ["slam", "crush"],
+    skills: ["quake", "rockslide"],
+  },
+  stonegiant: {
+    key: "stonegiant", name: "Gigante di Pietra", icon: "🗿", image: "/assets/pets/stonegiant.png",
+    type: "earth", rarity: "epic",
+    desc: "Titano scolpito nella roccia · ogni martellata fa tremare le caverne.",
+    base: { hp: 42, ac: 16, atk: 8, spd: 5 },
+    attacks: ["slam", "crush"],
+    skills: ["quake", "stonewall"],
+  },
+  medusa: {
+    key: "medusa", name: "Medusa", icon: "🐍", image: "/assets/pets/medusa.png",
+    type: "earth", rarity: "epic",
+    desc: "Sguardo che pietrifica · chiome di serpenti, anima maledetta.",
+    base: { hp: 34, ac: 14, atk: 7, spd: 6 },
+    attacks: ["claw", "bite"],
+    skills: ["stonewall", "dread"],
+  },
+  djinni: {
+    key: "djinni", name: "Djinni", icon: "🌀", image: "/assets/pets/djinni.png",
+    type: "air", rarity: "epic",
+    desc: "Genio del cielo · cavalca i venti del piano elementale dell'aria.",
+    base: { hp: 38, ac: 15, atk: 7, spd: 9 },
+    attacks: ["claw", "tackle"],
+    skills: ["thunder", "cyclone"],
+  },
+  irongolem: {
+    key: "irongolem", name: "Golem di Ferro", icon: "🤖", image: "/assets/pets/irongolem.png",
+    type: "earth", rarity: "epic",
+    desc: "Costrutto di ferro forgiato dagli arcimaghi · immune alla magia minore.",
+    base: { hp: 48, ac: 17, atk: 8, spd: 3 },
+    attacks: ["slam", "crush"],
+    skills: ["quake", "stonewall"],
+  },
+  hezrou: {
+    key: "hezrou", name: "Hezrou", icon: "🐸", image: "/assets/pets/hezrou.png",
+    type: "dark", rarity: "epic",
+    desc: "Demone rospo dell'Abisso · puzza che fa svenire, artigli che dilaniano.",
+    base: { hp: 40, ac: 14, atk: 8, spd: 5 },
+    attacks: ["claw", "bite"],
+    skills: ["drain", "dread"],
+  },
+  deathslaad: {
+    key: "deathslaad", name: "Slaad della Morte", icon: "🦎", image: "/assets/pets/deathslaad.png",
+    type: "dark", rarity: "epic",
+    desc: "Rana caotica del Limbo · esistenza che corrompe la realtà.",
+    base: { hp: 38, ac: 15, atk: 8, spd: 6 },
+    attacks: ["bite", "claw"],
+    skills: ["drain", "shadowbolt"],
+  },
+  nalfeshnee: {
+    key: "nalfeshnee", name: "Nalfeshnee", icon: "🦅", image: "/assets/pets/nalfeshnee.png",
+    type: "dark", rarity: "epic",
+    desc: "Cinghiale demoniaco con ali piumate · grugnito che paralizza l'anima.",
+    base: { hp: 44, ac: 14, atk: 8, spd: 5 },
+    attacks: ["bite", "slam"],
+    skills: ["dread", "voidstrike"],
   },
 
   // ──────────────────────────────────────────────────────────
@@ -390,6 +653,54 @@ export const PET_SPECIES = {
     attacks: ["bite", "claw", "pounce"],
     skills: ["spark", "thunder", "cyclone"],
   },
+  greendragon: {
+    key: "greendragon", name: "Drago Verde", icon: "🐍", image: "/assets/pets/greendragon.png",
+    type: "earth", rarity: "legendary",
+    desc: "Tiranno delle foreste antiche · soffio velenoso che marcisce intere boscaglie.",
+    base: { hp: 56, ac: 18, atk: 10, spd: 6 },
+    attacks: ["bite", "claw", "slam"],
+    skills: ["spores", "vine", "rockslide"],
+  },
+  dragonturtle: {
+    key: "dragonturtle", name: "Drago Tartaruga", icon: "🐢", image: "/assets/pets/dragonturtle.png",
+    type: "water", rarity: "legendary",
+    desc: "Leviatano corazzato degli abissi · guscio impenetrabile, soffio di vapore bollente.",
+    base: { hp: 64, ac: 19, atk: 10, spd: 5 },
+    attacks: ["bite", "slam", "crush"],
+    skills: ["tidal", "tidalheal", "stonewall"],
+  },
+  kraken: {
+    key: "kraken", name: "Kraken", icon: "🐙", image: "/assets/pets/kraken.png",
+    type: "water", rarity: "legendary",
+    desc: "Signore degli oceani · tentacoli sterminatori che inghiottono flotte intere.",
+    base: { hp: 60, ac: 17, atk: 10, spd: 7 },
+    attacks: ["bite", "claw", "crush"],
+    skills: ["tidal", "frostlance", "cyclone"],
+  },
+  balor: {
+    key: "balor", name: "Balor", icon: "🔥", image: "/assets/pets/balor.png",
+    type: "fire", rarity: "legendary",
+    desc: "Generale dell'Abisso · frusta di fiamme in una mano, spada-fulmine nell'altra.",
+    base: { hp: 58, ac: 18, atk: 10, spd: 7 },
+    attacks: ["bite", "claw", "slam"],
+    skills: ["inferno", "pyroblast", "dread"],
+  },
+  solar: {
+    key: "solar", name: "Solar", icon: "🌟", image: "/assets/pets/solar.png",
+    type: "light", rarity: "legendary",
+    desc: "Arcangelo del piano celeste · lama che canta inni di luce purissima.",
+    base: { hp: 56, ac: 19, atk: 10, spd: 8 },
+    attacks: ["slam", "claw", "bite"],
+    skills: ["lightbeam", "radiance", "solarflare"],
+  },
+  ultroloth: {
+    key: "ultroloth", name: "Ultroloth", icon: "👤", image: "/assets/pets/ultroloth.png",
+    type: "dark", rarity: "legendary",
+    desc: "Generale degli yugoloth · sguardo dorato che paralizza, mente che mercanteggia anime.",
+    base: { hp: 54, ac: 17, atk: 10, spd: 8 },
+    attacks: ["claw", "bite", "tackle"],
+    skills: ["drain", "dread", "voidstrike"],
+  },
 
 };
 
@@ -398,28 +709,35 @@ export const PET_SPECIES = {
    ============================================================ */
 
 const COMMON_KEYS = [
-  // 21 commons
-  "kobold", "smokemephit", "quasit",
-  "kuotoa", "icemephit", "lizardfolk",
-  "myconid", "badger", "twigblight", "goblin", "orc", "rust", "axebeak", "satyr", "ochrejelly",
-  "hawk", "grell", "specter",
-  "wight", "bugbear", "quaggoth",
+  // 30 commons
+  "kobold", "smokemephit", "quasit", "imp",
+  "kuotoa", "icemephit", "lizardfolk", "merfolk",
+  "myconid", "badger", "twigblight", "goblin", "orc", "rust", "axebeak", "satyr", "ochrejelly", "mudmephit",
+  "hawk", "grell", "kenku",
+  "specter", "wight", "manes", "nothic", "ogrezombie", "deathdog",
+  "bugbear", "quaggoth", "halforc",
 ];
 const RARE_KEYS = [
-  // 9 rares
-  "spineddevil",
+  // 22 rares
+  "spineddevil", "hellhound", "halfdragon", "nightmare",
   "sahuagin", "greenhag",
-  "dryad", "direwolf", "hookhorror",
-  "peryton", "airelemental",
+  "dryad", "direwolf", "hookhorror", "troll",
+  "peryton", "airelemental", "pegasus",
   "centaur",
+  "helmedhorror", "manticore", "owlbear",
+  "jackalwere", "lamia", "nighthag", "minotaurskeleton", "oni",
 ];
 const EPIC_KEYS = [
-  // 4 epics
+  // 14 epics
   "frostgiant", "gelatinouscube", "ankylosaurus", "braineater",
+  "goristro", "marid", "fomorian", "stonegiant", "medusa",
+  "djinni", "irongolem",
+  "hezrou", "deathslaad", "nalfeshnee",
 ];
 const LEGENDARY_KEYS = [
-  // 4 legendaries — extremely rare even on epic eggs
+  // 10 legendaries — extremely rare even on epic eggs
   "reddragon", "lich", "mindflayer", "tempestdragon",
+  "greendragon", "dragonturtle", "kraken", "balor", "solar", "ultroloth",
 ];
 
 function buildPool(commonW, rareW, epicW, legendaryW = 0) {
