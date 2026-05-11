@@ -46,6 +46,7 @@ import PetHub from "./pages/PetHub";
 import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
+import Feedback from "./pages/Feedback";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
@@ -331,6 +332,7 @@ export default function App() {
             <NavLink to="/crafting">Crafting</NavLink>
             <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
             <NavLink to="/cinema">Cinema</NavLink>
+            <NavLink to="/feedback">💬 Feedback</NavLink>
           </NavDropdown>
 
           <NavDropdown label="Battaglia" closeAll={closeMenu}>
@@ -366,6 +368,7 @@ export default function App() {
           <Route path="/crafting" element={<Crafting />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/feedback" element={<Feedback />} />
 
           {/* ROTTE ADMIN */}
           <Route path="/dm-admin" element={<AdminPanel />} />

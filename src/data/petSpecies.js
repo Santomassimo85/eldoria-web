@@ -754,12 +754,12 @@ function buildPool(commonW, rareW, epicW, legendaryW = 0) {
 }
 
 export const HATCH_POOLS = {
-  // 80% common · 18% rare · 1.99% epic · 0.01% legendary
-  common: buildPool(0.80, 0.18, 0.0199, 0.0001),
-  // 50% common · 42% rare · 7.98% epic · 0.02% legendary
-  rare:   buildPool(0.50, 0.42, 0.0798, 0.0002),
-  // 25% common · 50% rare · 24.96% epic · 0.04% legendary
-  epic:   buildPool(0.25, 0.50, 0.2496, 0.0004),
+  // 80% common · 18% rare · 1.95% epic · 0.05% legendary
+  common: buildPool(0.80, 0.18, 0.0195, 0.0005),
+  // 50% common · 42% rare · 7.8% epic · 0.2% legendary
+  rare:   buildPool(0.50, 0.42, 0.078,  0.002),
+  // 25% common · 50% rare · 24% epic · 1% legendary
+  epic:   buildPool(0.25, 0.50, 0.24,   0.01),
 };
 
 export const EGG_COST = {

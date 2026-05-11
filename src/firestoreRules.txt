@@ -114,6 +114,33 @@ service cloud.firestore {
       );
     }
 
+    // --- FEEDBACK GIOCATORI ---
+    // Una sola entry per (giocatore, funzionalità): doc id deterministico
+    // `${uid}_${featureKey}` enforced via regola, così un utente non può
+    // gonfiare la dashboard con copie multiple per la stessa feature.
+    //   read   → Master legge tutto · player legge solo i propri (query
+    //            client deve includere where("authorUid","==",uid))
+    //   create/update → l'autore in request.resource.data deve coincidere
+    //            con request.auth.uid, e il doc id deve iniziare con
+    //            uid+"_". Le stelle restano vincolate a [0,5].
+    //   delete → l'autore o il Master.
+    match /feedback/{docId} {
+      allow read: if isLoggedIn() && (
+        isMaster() ||
+        resource.data.authorUid == request.auth.uid
+      );
+      allow create, update: if isLoggedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && docId == request.auth.uid + "_" + request.resource.data.feature
+        && request.resource.data.stars is number
+        && request.resource.data.stars >= 0
+        && request.resource.data.stars <= 5;
+      allow delete: if isLoggedIn() && (
+        resource.data.authorUid == request.auth.uid ||
+        isMaster()
+      );
+    }
+
     // --- NOTIFICHE ---
     match /notifications/{msgId} {
       allow read: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
