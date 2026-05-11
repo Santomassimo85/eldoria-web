@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { db } from "../firebase";
 import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-  serverTimestamp, query, orderBy, getDoc, increment, arrayUnion,
+  serverTimestamp, query, orderBy, getDoc, runTransaction,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
@@ -10,7 +10,7 @@ import { PET_SPECIES, RARITY_LABEL, RARITY_COLOR } from "../data/petSpecies";
 import { PET_MOVES, TYPE_ICON, TYPE_LABEL, diceLabel } from "../data/petMoves";
 import {
   petStatsAtLevel, levelFromExp, expForLevel, petUnlockedMoves,
-  petEffectiveHp, petNextHealTickIn, expFromBattle,
+  petEffectiveHp, petNextHealTickIn, expFromBattle, awardPetPoints,
 } from "../utils/pet";
 import {
   MAX_TEAM_SIZE, MIN_TEAM_SIZE, TYPE_CYCLE, LIGHT_DARK_PAIR,
@@ -964,11 +964,33 @@ function SwitchPanel({ team, hp, activeIdx, onSwitch, onCancel, forced }) {
    Persist results — write back HP / EXP / wins / losses /
    restingUntil / lastHealTick for both players' teams.
    Award pet points to the winner.
+
+   Reload-safety: a transaction on the battle doc claims a one-shot
+   `resultsPersisted` flag before any character writes run, so a host
+   refreshing the page after the winner is set cannot re-grant EXP,
+   wins, or pet points. The points award itself also passes the
+   battleId as resourceKey so awardPetPoints' own idempotency check
+   catches any partial-write replay.
    ============================================================ */
 async function persistBattleResults(battle, mySide, oppSide) {
   const restingUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const nowIso = new Date().toISOString();
   const winner = battle.state.winner;
+
+  const battleRef = doc(db, "pet_battles", battle.id);
+  try {
+    const claimed = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(battleRef);
+      if (!snap.exists()) return false;
+      if (snap.data().resultsPersisted) return false;
+      tx.update(battleRef, { resultsPersisted: true, resultsPersistedAt: serverTimestamp() });
+      return true;
+    });
+    if (!claimed) return;
+  } catch (err) {
+    console.warn("[persistBattleResults claim]", err);
+    return;
+  }
 
   const writeForSide = async (side) => {
     const sideData = battle[side];
@@ -1021,18 +1043,18 @@ async function persistBattleResults(battle, mySide, oppSide) {
         pets[idx] = updated;
       });
 
-      const patch = { pets };
+      await updateDoc(ref, { pets });
       if (sideWon) {
-        patch.petPoints = increment(5);
-        patch.petPointsLedger = arrayUnion({
-          source: "pet_battle_win",
-          label: "Vittoria al Pet Arena (live)",
-          amount: 5,
-          ts: nowIso,
-          resourceKey: battle.id,
-        });
+        // Routed through awardPetPoints so the daily cap (pet_battle_win:
+        // 5/day) and oncePerKey check (resourceKey = battle.id) both
+        // apply — and a page refresh during the resolved phase cannot
+        // re-grant points even if this code is somehow re-entered.
+        try {
+          await awardPetPoints(sideData.uid, "pet_battle_win", { resourceKey: battle.id });
+        } catch (err) {
+          console.warn(`[awardPetPoints pet_battle_win ${side}]`, err);
+        }
       }
-      await updateDoc(ref, patch);
     } catch (err) {
       console.warn(`[persistBattleResults ${side}]`, err);
     }

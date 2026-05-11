@@ -53,7 +53,7 @@ const WIZARD_SPELLS = [
   { name: "Raggio di Gelo",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🧊", info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Lama Vorticosa",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🌀", info: "Trucchetto · Tuono · mischia", maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 4 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
@@ -80,7 +80,7 @@ const SORCERER_SPELLS = [
   { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
-  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4+3", statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 3 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 3 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "4d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (2 raggi × 2d6)", maxUses: 2 },
@@ -122,8 +122,8 @@ const DRUID_SPELLS = [
   { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +1 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 1, buffAttacks: 3, maxUses: 4 },
   { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 2 },
-  { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 2 },
+  { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8",   statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 2 },
+  { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4",   statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 2 },
   { name: "Onda Tonante",       level: 1, hitBonus: 3, damage: "2d8",   statKey: null, type: "spell", icon: "💨", info: "Lv1 · Tuono", maxUses: 2 },
   { name: "Intralciare",        level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Luci Fatate",        level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧚", info: "Lv1 · +2 ai prossimi 2 attacchi", special: "magic_detect", buffBonus: 2, buffAttacks: 2, maxUses: 2 },
@@ -149,8 +149,8 @@ const CLERIC_SPELLS = [
   { name: "Guida",              level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⭐", info: "Trucchetto · +1 ai prossimi 3 attacchi", special: "magic_detect", buffBonus: 1, buffAttacks: 3, maxUses: 4 },
   { name: "Resistenza",         level: 0, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🔰", info: "Trucchetto · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
-  { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
+  { name: "Cura Ferite",        level: 1, hitBonus: 0, damage: "1d8",   statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
+  { name: "Parola Guaritrice",  level: 1, hitBonus: 0, damage: "1d4",   statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Dardo Guidato",      level: 1, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🌟", info: "Lv1 · Radiante", maxUses: 3 },
   { name: "Infliggi Ferite",    level: 1, hitBonus: 3, damage: "3d10",  statKey: null, type: "spell", icon: "🩸", info: "Lv1 · Necrotico", maxUses: 3 },
   { name: "Scudo della Fede",   level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
@@ -163,13 +163,13 @@ const CLERIC_SPELLS = [
   { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Aiuto",                  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +1 ai prossimi 2 attacchi", special: "magic_detect", buffBonus: 1, buffAttacks: 2, maxUses: 2 },
   { name: "Cecità/Sordità",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
-  { name: "Preghiera di Guarigione",level: 2, hitBonus: 0, damage: "2d8+3", statKey: null, type: "spell", icon: "🙏", info: "Lv2 · Cura potente · ripristina HP", special: "heal", maxUses: 2 },
+  { name: "Preghiera di Guarigione",level: 2, hitBonus: 0, damage: "2d8",   statKey: null, type: "spell", icon: "🙏", info: "Lv2 · Cura potente · ripristina HP", special: "heal", maxUses: 2 },
 ];
 
 // ── BARD SPELLS (Bardo) — niente trucchetti · 4 lv1 · 2 lv2
 const BARD_SPELLS = [
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Parola Guaritrice",          level: 1, hitBonus: 0, damage: "1d4+3", statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
+  { name: "Parola Guaritrice",          level: 1, hitBonus: 0, damage: "1d4",   statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Charme su Persone",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Risata Incontenibile",       level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤣", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Individuazione del Magico",  level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🔮", info: "Lv1 · +3 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
@@ -183,7 +183,7 @@ const BARD_SPELLS = [
 
 // ── PALADIN SPELLS (Paladino) — pool: 3 lv1 · 3 lv2 (sceglie 2+1)
 const PALADIN_SPELLS = [
-  { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
+  { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8",   statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Punizione Travolgente", level: 1, hitBonus: 3, damage: "1d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv1 · Radiante bonus", maxUses: 3 },
   { name: "Comando",               level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📞", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Punizione Marchiante",  level: 2, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Radiante", maxUses: 2 },
@@ -193,7 +193,7 @@ const PALADIN_SPELLS = [
 
 // ── RANGER SPELLS (Ranger) — pool: 6 lv1 (sceglie 3)
 const RANGER_SPELLS = [
-  { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8+3", statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
+  { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8",   statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Intralciare",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Grandine di Spine",     level: 1, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🌵", info: "Lv1 · Perforante · bonus attacco ranged", maxUses: 3 },
   { name: "Colpo Intralciante",    level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕸", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
@@ -203,41 +203,41 @@ const RANGER_SPELLS = [
 
 // ── ARMI SEMPLICI ──────────────────────────────────────────────────────
 const SIMPLE_WEAPONS = [
-  { name: "Daga",             hitBonus: 3, damage: "1d4+3",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
-  { name: "Randello",         hitBonus: 3, damage: "1d4+3",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false },
-  { name: "Ascetta",          hitBonus: 3, damage: "1d6+3",  statKey: "str", type: "weapon", icon: "🪓", twoHanded: false },
-  { name: "Giavellotto",      hitBonus: 3, damage: "1d6+3",  statKey: "str", type: "weapon", icon: "🎯", twoHanded: false },
-  { name: "Martello Leggero", hitBonus: 3, damage: "1d4+3",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: false },
-  { name: "Mazza",            hitBonus: 3, damage: "1d6+3",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false },
-  { name: "Bastone Ferrato",  hitBonus: 3, damage: "1d8+3",  statKey: "str", type: "weapon", icon: "🪄", twoHanded: true  },
-  { name: "Falcetto",         hitBonus: 3, damage: "1d4+3",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Lancia",           hitBonus: 3, damage: "1d8+3",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false },
-  { name: "Arco Corto",       hitBonus: 3, damage: "1d6+3",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Balestra Leggera", hitBonus: 3, damage: "1d8+3",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Dardo",            hitBonus: 3, damage: "1d4+3",  statKey: "dex", type: "weapon", icon: "🎯", twoHanded: false },
-  { name: "Fionda",           hitBonus: 3, damage: "1d4+3",  statKey: "str", type: "weapon", icon: "⭕",  twoHanded: false },
+  { name: "Daga",             hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
+  { name: "Randello",         hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false },
+  { name: "Ascetta",          hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🪓", twoHanded: false },
+  { name: "Giavellotto",      hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🎯", twoHanded: false },
+  { name: "Martello Leggero", hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: false },
+  { name: "Mazza",            hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false },
+  { name: "Bastone Ferrato",  hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🪄", twoHanded: true  },
+  { name: "Falcetto",         hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
+  { name: "Lancia",           hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false },
+  { name: "Arco Corto",       hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
+  { name: "Balestra Leggera", hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
+  { name: "Dardo",            hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "🎯", twoHanded: false },
+  { name: "Fionda",           hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "⭕",  twoHanded: false },
 ];
 
 // ── ARMI MARZIALI ─────────────────────────────────────────────────────
 const MARTIAL_WEAPONS = [
-  { name: "Ascia da Battaglia",  hitBonus: 3, damage: "1d10+3", statKey: "str", type: "weapon", icon: "🪓", twoHanded: false },
-  { name: "Flagello",            hitBonus: 3, damage: "1d8+3",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Alabarda",            hitBonus: 3, damage: "1d10+3", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true  },
-  { name: "Spadone",             hitBonus: 3, damage: "2d6+3",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true  },
-  { name: "Maglio",              hitBonus: 3, damage: "2d6+3",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: true  },
-  { name: "Ascia Bipenne",       hitBonus: 3, damage: "1d12+3", statKey: "str", type: "weapon", icon: "🪓", twoHanded: true  },
-  { name: "Lancia da Cavaliere", hitBonus: 3, damage: "1d12+3", statKey: "str", type: "weapon", icon: "🏇", twoHanded: true  },
-  { name: "Spada Lunga",         hitBonus: 3, damage: "1d10+3", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Martello da Guerra",  hitBonus: 3, damage: "1d10+3", statKey: "str", type: "weapon", icon: "🔨", twoHanded: false },
-  { name: "Morgenstern",         hitBonus: 3, damage: "1d8+3",  statKey: "str", type: "weapon", icon: "⚙",  twoHanded: false },
-  { name: "Stocco",              hitBonus: 3, damage: "1d8+3",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
-  { name: "Scimitarra",          hitBonus: 3, damage: "1d6+3",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Spada Corta",         hitBonus: 3, damage: "1d6+3",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Tridente",            hitBonus: 3, damage: "1d8+3",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false },
-  { name: "Frusta",              hitBonus: 3, damage: "1d4+3",  statKey: "dex", type: "weapon", icon: "⛓",  twoHanded: false },
-  { name: "Arco Lungo",          hitBonus: 3, damage: "1d8+3",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Balestra Pesante",    hitBonus: 3, damage: "1d10+3", statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Balestra a Mano",     hitBonus: 3, damage: "1d6+3",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: false },
+  { name: "Ascia da Battaglia",  hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "🪓", twoHanded: false },
+  { name: "Flagello",            hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false },
+  { name: "Alabarda",            hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true  },
+  { name: "Spadone",             hitBonus: 3, damage: "2d6",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true  },
+  { name: "Maglio",              hitBonus: 3, damage: "2d6",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: true  },
+  { name: "Ascia Bipenne",       hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🪓", twoHanded: true  },
+  { name: "Lancia da Cavaliere", hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🏇", twoHanded: true  },
+  { name: "Spada Lunga",         hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false },
+  { name: "Martello da Guerra",  hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "🔨", twoHanded: false },
+  { name: "Morgenstern",         hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "⚙",  twoHanded: false },
+  { name: "Stocco",              hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
+  { name: "Scimitarra",          hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
+  { name: "Spada Corta",         hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
+  { name: "Tridente",            hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false },
+  { name: "Frusta",              hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "⛓",  twoHanded: false },
+  { name: "Arco Lungo",          hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
+  { name: "Balestra Pesante",    hitBonus: 3, damage: "1d10", statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
+  { name: "Balestra a Mano",     hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: false },
 ];
 
 // ── Set armi per classe (derivati dagli array base) ───────────────────────────────
@@ -304,8 +304,8 @@ const WILD_SHAPES = {
     ac: 14,
     hpDice: { count: 4, sides: 12 },
     actions: [
-      { name: "Artiglio", damage: "1d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "1d6+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "1d6"  , statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
+      { name: "Morso",    damage: "1d6"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
     ],
   },
   bear: {
@@ -313,8 +313,8 @@ const WILD_SHAPES = {
     ac: 16,
     hpDice: { count: 6, sides: 12 },
     actions: [
-      { name: "Artiglio", damage: "1d6+3", statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "1d6"  , statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
+      { name: "Morso",    damage: "1d4"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
     ],
   },
   spider: {
@@ -322,7 +322,7 @@ const WILD_SHAPES = {
     ac: 12,
     hpDice: { count: 4, sides: 12 },
     actions: [
-      { name: "Morso",     level: 0, damage: "1d4+3", statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Morso",     level: 0, damage: "1d4"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
       { name: "Veleno",    level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "save_dot", saveDotAbility: "con", saveDotDamage: "1d8", saveDotTurns: 3, saveDotDC: 12, maxUses: 3 },
       { name: "Ragnatela", level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "🕸", hitBonus: 0, special: "web",    saveAbility: "str", saveDC: 13, maxUses: 3 },
     ],
@@ -378,14 +378,14 @@ const CRITICO_MIGLIORATO_PASSIVE = {
 
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
 const DEATHBLOW_ACTION = {
-  name: "Colpo Mortale", hitBonus: 3, damage: "4d6+3", statKey: "dex",
+  name: "Colpo Mortale", hitBonus: 3, damage: "4d6"  , statKey: "dex",
   type: "skill", icon: "💀", info: "Solo ≤20% HP · +DES", special: "deathblow", maxUses: 2,
 };
 
 // Attacco Furtivo (Rogue) — arma equipaggiata + 1d6, 3 cariche
 const SNEAK_ATTACK_ACTION = {
   name: "Attacco Furtivo", hitBonus: 0, damage: "1d6", statKey: null,
-  type: "skill", icon: "🗡", info: "Arma+1d6+DES+3 · 3 cariche", special: "sneak_attack", maxUses: 3,
+  type: "skill", icon: "🗡", info: "Arma+1d6+DES · 3 cariche", special: "sneak_attack", maxUses: 3,
 };
 
 // Furtività (Rogue) — buff puro: vantaggio ai propri 3 attacchi, 3 cariche
@@ -422,7 +422,7 @@ const RAGE_ACTION = {
 
 // Turbine di Lame (Barbarian) — 2 attacchi rapidi, 2d10+FOR+3 totali
 const TURBINE_LAME_ACTION = {
-  name: "Turbine di Lame", hitBonus: 3, damage: "2d10+3", statKey: "str",
+  name: "Turbine di Lame", hitBonus: 3, damage: "2d10"  , statKey: "str",
   type: "skill", icon: "🌪", info: "2 attacchi rapidi · 2d10+FOR+3 · 2 cariche",
   special: "turbine_lame", maxUses: 2,
 };
@@ -548,8 +548,8 @@ const WARLOCK_DEMONS = {
 // ── ARTIFICER (Artefice) — sbloccato dalla Bottega ──────────────────────────
 // Armi extra: Rifle e Pistola
 const ARTIFICER_RANGED = [
-  { name: "Rifle",   hitBonus: 3, damage: "1d8+3", statKey: "dex", type: "weapon", icon: "🔫", twoHanded: true,  info: "Arma da fuoco · 1d8+DES" },
-  { name: "Pistola", hitBonus: 3, damage: "1d6+3", statKey: "dex", type: "weapon", icon: "🔫", twoHanded: false, info: "Arma da fuoco · 1d6+DES" },
+  { name: "Rifle",   hitBonus: 3, damage: "1d8", statKey: "dex", type: "weapon", icon: "🔫", twoHanded: true,  info: "Arma da fuoco · 1d8+DES" },
+  { name: "Pistola", hitBonus: 3, damage: "1d6", statKey: "dex", type: "weapon", icon: "🔫", twoHanded: false, info: "Arma da fuoco · 1d6+DES" },
 ];
 const ARTIFICER_WEAPON_OPTIONS = [...SIMPLE_WEAPONS, ...ARTIFICER_RANGED];
 
@@ -1411,7 +1411,7 @@ export default function Arena() {
         // 🐣 pet system: +1 point for completing an Arena Libera fight (capped 5/day)
         if (justFinished) {
           for (const p of (m.players || [])) {
-            if (p?.id) awardPetPoints(p.id, "arena_libera");
+            if (p?.id) awardPetPoints(p.id, "arena_libera", { resourceKey: m.matchId });
           }
         }
         continue; // Arena Libera: nessuna ricompensa MA
@@ -1419,7 +1419,7 @@ export default function Arena() {
       if (justFinished && m.winner) {
         await awardArenaCoins(m.winner, 2);
         // 🐣 pet system: +3 points to the winner of a tournament round
-        awardPetPoints(m.winner, "arena_round");
+        awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
       }
     }
   };
@@ -2531,7 +2531,10 @@ export default function Arena() {
 
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sneakDmg, rolls: sneakRolls } = isHit ? rollDmg("1d6") : { total: 0, rolls: "" };
-      const rawSneakDmg = (wDmg + sneakDmg + dexMod + 3) * critMult;
+      // Sneak Attack: weapon dice + 1d6 sneak dice + DEX mod (no hardcoded +3;
+      // weapon formulas no longer have a baked ability mod since the
+      // double-count fix).
+      const rawSneakDmg = (wDmg + sneakDmg + dexMod) * critMult;
       const totalDmg = applyBarbarianRageReduction(rawSneakDmg, defenderSnap, defMatchPlayer, false);
 
       const sneakExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
@@ -2544,10 +2547,10 @@ export default function Arena() {
       const hitStr = `🎲d20=${d20}${critTag}${sneakAdvTag} +${weaponAction.hitBonus} hit ${dexPart}${aidPart}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""} = ${totalHit} vs CA ${targetAc}`;
       const log = {
         pub: isHit
-          ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [🎲${wRolls}+furtivo 🎲${sneakRolls}+${dexMod} DES+3 = ${totalDmg}] — ${totalDmg} danni`
+          ? `🗡 ${attName} colpisce ${defName} con Attacco Furtivo${critTag} (${totalHit} vs CA ${targetAc}) [🎲${wRolls}+furtivo 🎲${sneakRolls}+${dexMod} DES = ${totalDmg}] — ${totalDmg} danni`
           : `🛡️ ${attName} manca ${defName} con Attacco Furtivo (${totalHit} vs CA ${targetAc})`,
         att: isHit
-          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${sneakRolls} +${dexMod} DES +3 = ${totalDmg}] — ${totalDmg} danni`
+          ? `🗡 Colpisci ${defName} con Attacco Furtivo [${hitStr}] [arma 🎲${wRolls} + furtivo 🎲${sneakRolls} +${dexMod} DES = ${totalDmg}] — ${totalDmg} danni`
           : `🛡️ Manchi ${defName} con Attacco Furtivo [${hitStr}]`,
         def: isHit
           ? `🗡 ${attName} ti ha colpito con Attacco Furtivo${critTag} — ${totalDmg} danni`
@@ -2755,7 +2758,7 @@ export default function Arena() {
           matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
         });
         // 🐣 pet system: tournament champion bonus
-        awardPetPoints(finalM.winner, "arena_tournament");
+        awardPetPoints(finalM.winner, "arena_tournament", { resourceKey: finalM.matchId });
         return;
       }
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -4700,7 +4703,7 @@ export default function Arena() {
           matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished",
         });
         // 🐣 pet system: tournament champion bonus
-        awardPetPoints(finalM.winner, "arena_tournament");
+        awardPetPoints(finalM.winner, "arena_tournament", { resourceKey: finalM.matchId });
         return;
       }
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });

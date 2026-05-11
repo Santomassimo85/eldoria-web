@@ -17,16 +17,20 @@ import { PET_MOVES, typeMultiplier } from "../data/petMoves";
    POINT SOURCES & DAILY CAPS
    ---------------------------------------------------------------- */
 
+/* Every source has a daily cap. Sources tied to a concrete resource
+   (a match, a tournament, a summary, a bid, a live battle) also set
+   oncePerKey: true and must be awarded with { resourceKey } — that
+   makes the grant idempotent across page reloads and replays. */
 export const PET_POINT_SOURCES = {
-  arena_round:      { label: "Round Arena vinto",         amount: 3, dailyCap: null },
-  arena_tournament: { label: "Vincitore del torneo",      amount: 25, dailyCap: null },
-  arena_libera:     { label: "Sfida Libera conclusa",     amount: 1, dailyCap: 5 },
-  market_bid:       { label: "Offerta al Mercato Nero",   amount: 1, dailyCap: 5 },
-  summary_read:     { label: "Riassunto letto",           amount: 2, dailyCap: null, oncePerKey: true },
-  npc_visit:        { label: "Archivio NPC consultato",   amount: 1, dailyCap: 1 },
-  geo_visit:        { label: "Archivio Geomantico letto", amount: 1, dailyCap: 1 },
-  daily_login:      { label: "Login del giorno",          amount: 2, dailyCap: 1 },
-  pet_battle_win:   { label: "Vittoria al Pet Arena",     amount: 5, dailyCap: null },
+  arena_round:      { label: "Round Arena vinto",         amount: 3,  dailyCap: 5,  oncePerKey: true },
+  arena_tournament: { label: "Vincitore del torneo",      amount: 25, dailyCap: 1,  oncePerKey: true },
+  arena_libera:     { label: "Sfida Libera conclusa",     amount: 1,  dailyCap: 5,  oncePerKey: true },
+  market_bid:       { label: "Offerta al Mercato Nero",   amount: 1,  dailyCap: 5,  oncePerKey: true },
+  summary_read:     { label: "Riassunto letto",           amount: 2,  dailyCap: 10, oncePerKey: true },
+  npc_visit:        { label: "Archivio NPC consultato",   amount: 1,  dailyCap: 1 },
+  geo_visit:        { label: "Archivio Geomantico letto", amount: 1,  dailyCap: 1 },
+  daily_login:      { label: "Login del giorno",          amount: 2,  dailyCap: 1 },
+  pet_battle_win:   { label: "Vittoria al Pet Arena",     amount: 5,  dailyCap: 5,  oncePerKey: true },
 };
 
 export function todayKey() {
@@ -56,7 +60,12 @@ export async function awardPetPoints(uid, sourceKey, opts = {}) {
       const data = snap.data();
       const today = todayKey();
       const daily = data.petPointsDaily || {};
-      const todayMap = { ...(daily[today] || {}) };
+      // Legacy docs may have stored a primitive at daily[today] (old bug);
+      // coerce non-objects back to an empty map so the counter is sound.
+      const rawToday = daily[today];
+      const todayMap = (rawToday && typeof rawToday === "object" && !Array.isArray(rawToday))
+        ? { ...rawToday }
+        : {};
       const seen = data.petPointsSeen || {};
 
       if (def.oncePerKey && resourceKey) {
@@ -83,8 +92,12 @@ export async function awardPetPoints(uid, sourceKey, opts = {}) {
       };
 
       if (def.dailyCap != null) {
-        todayMap[sourceKey] = (todayMap[sourceKey] || 0) + 1;
-        patch[`petPointsDaily.${today}`] = todayMap[sourceKey];
+        const nextCount = (todayMap[sourceKey] || 0) + 1;
+        // Nested dot-path so each source has its own counter under the
+        // day map. The previous version wrote the count directly to
+        // `petPointsDaily.${today}`, overwriting the day map with a
+        // bare number — which made every refresh look like a fresh day.
+        patch[`petPointsDaily.${today}.${sourceKey}`] = nextCount;
         const allDays = Object.keys(daily).sort().filter(k => k !== today);
         if (allDays.length > 6) {
           const stale = allDays.slice(0, allDays.length - 6);
@@ -94,7 +107,10 @@ export async function awardPetPoints(uid, sourceKey, opts = {}) {
 
       if (def.oncePerKey && resourceKey) {
         const seenList = seen[sourceKey] || [];
-        patch[`petPointsSeen.${sourceKey}`] = [...seenList, resourceKey];
+        // Keep the most recent 500 resource keys per source so the array
+        // can't grow unbounded but still blocks reasonable replay windows.
+        const trimmed = [...seenList, resourceKey].slice(-500);
+        patch[`petPointsSeen.${sourceKey}`] = trimmed;
       }
 
       tx.update(ref, patch);
