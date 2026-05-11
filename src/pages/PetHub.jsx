@@ -236,6 +236,9 @@ function BestiariaShop({ uid }) {
           const epicSpecies = pool
             .filter(p => PET_SPECIES[p.key]?.rarity === "epic")
             .map(p => PET_SPECIES[p.key]);
+          const legendarySpecies = pool
+            .filter(p => PET_SPECIES[p.key]?.rarity === "legendary")
+            .map(p => PET_SPECIES[p.key]);
           return (
             <div key={rarity} className={`ph-egg-card ph-egg-card--${rarity}`} style={{ borderColor: RARITY_COLOR[rarity] }}>
               <div className="ph-egg-icon">{EGG_ICON[rarity]}</div>
@@ -244,13 +247,18 @@ function BestiariaShop({ uid }) {
               </div>
               <div className="ph-egg-cost">{cost} ✦</div>
               <p className="ph-egg-flavor">
-                {rarity === "common" && "80% comuni · 18% rari · 2% epici"}
-                {rarity === "rare"   && "50% comuni · 42% rari · 8% epici"}
-                {rarity === "epic"   && "25% comuni · 50% rari · 25% epici"}
+                {rarity === "common" && "80% comuni · 18% rari · ~2% epici · 0.01% leggendari"}
+                {rarity === "rare"   && "50% comuni · 42% rari · ~8% epici · 0.02% leggendari"}
+                {rarity === "epic"   && "25% comuni · 50% rari · ~25% epici · 0.04% leggendari"}
               </p>
               {epicSpecies.length > 0 && (
                 <p className="ph-egg-epic-tease" title={epicSpecies.map(s => s.name).join(", ")}>
                   Possibili epici: {epicSpecies.map(s => s.icon).join(" ")}
+                </p>
+              )}
+              {legendarySpecies.length > 0 && (
+                <p className="ph-egg-legendary-tease" title={legendarySpecies.map(s => s.name).join(", ")}>
+                  ✦ Leggendari: {legendarySpecies.map(s => s.icon).join(" ")} ✦
                 </p>
               )}
               <button

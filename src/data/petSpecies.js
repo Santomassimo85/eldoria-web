@@ -23,24 +23,26 @@
    level 4, skills[1] at level 10. See SKILL_UNLOCK_LEVELS below.
    ============================================================ */
 
-export const PET_RARITIES = ["common", "rare", "epic"];
+export const PET_RARITIES = ["common", "rare", "epic", "legendary"];
 
 export const RARITY_LABEL = {
-  common: "Comune",
-  rare:   "Raro",
-  epic:   "Epico",
+  common:    "Comune",
+  rare:      "Raro",
+  epic:      "Epico",
+  legendary: "Leggendario",
 };
 
 export const RARITY_COLOR = {
-  common: "#8a7a4a",
-  rare:   "#2e7aa8",
-  epic:   "#7d2929",
+  common:    "#8a7a4a",
+  rare:      "#2e7aa8",
+  epic:      "#7d2929",
+  legendary: "#b45309",
 };
 
 /* Skill unlock thresholds — index aligns with species.skills.
-   With the L10 cap, skills come online at L3 (first) and L7 (second)
-   so a freshly-hatched pet meaningfully grows across all 10 levels. */
-export const SKILL_UNLOCK_LEVELS = [3, 7];
+   With the L10 cap: skill[0] @ L3, skill[1] @ L7, skill[2] @ L10
+   (only legendaries currently use a third skill slot). */
+export const SKILL_UNLOCK_LEVELS = [3, 7, 10];
 
 export const PET_SPECIES = {
 
@@ -349,6 +351,46 @@ export const PET_SPECIES = {
     skills: ["drain", "dread"],
   },
 
+  // ──────────────────────────────────────────────────────────
+  // LEGENDARIES · 4 species (≤ 0.04% even on epic eggs)
+  // Higher base stats, 2-3 attacks and 2-3 skills. Third skill
+  // unlocks at L10 (level cap), so they reach full power only
+  // when fully grown.
+  // ──────────────────────────────────────────────────────────
+
+  reddragon: {
+    key: "reddragon", name: "Drago Rosso", icon: "🐉", image: "/assets/pets/reddragon.png",
+    type: "fire", rarity: "legendary",
+    desc: "Tiranno alato delle vette vulcaniche · il suo soffio fonde l'acciaio dei regni.",
+    base: { hp: 58, ac: 18, atk: 10, spd: 6 },
+    attacks: ["bite", "claw", "slam"],
+    skills: ["ember", "inferno", "guard"],
+  },
+  lich: {
+    key: "lich", name: "Lich", icon: "☠", image: "/assets/pets/lich.png",
+    type: "dark", rarity: "legendary",
+    desc: "Mago non-morto · ha sigillato la sua anima in un fiale per sfuggire alla morte.",
+    base: { hp: 50, ac: 17, atk: 9, spd: 7 },
+    attacks: ["claw", "tackle"],
+    skills: ["drain", "shadowbolt", "dread"],
+  },
+  mindflayer: {
+    key: "mindflayer", name: "Mind Flayer", icon: "🐙", image: "/assets/pets/mindflayer.png",
+    type: "dark", rarity: "legendary",
+    desc: "Illithid puro · domina la mente prima ancora della carne, padrone dell'Underdark.",
+    base: { hp: 52, ac: 16, atk: 9, spd: 8 },
+    attacks: ["claw", "bite", "tackle"],
+    skills: ["drain", "dread", "rest"],
+  },
+  tempestdragon: {
+    key: "tempestdragon", name: "Drago della Tempesta", icon: "🐲", image: "/assets/pets/tempestdragon.png",
+    type: "air", rarity: "legendary",
+    desc: "Drago della stratosfera · cavalca uragani e scaglia fulmini come dardi.",
+    base: { hp: 54, ac: 17, atk: 9, spd: 9 },
+    attacks: ["bite", "claw", "pounce"],
+    skills: ["spark", "thunder", "gust"],
+  },
+
 };
 
 /* ============================================================
@@ -375,25 +417,31 @@ const EPIC_KEYS = [
   // 4 epics
   "frostgiant", "gelatinouscube", "ankylosaurus", "braineater",
 ];
+const LEGENDARY_KEYS = [
+  // 4 legendaries — extremely rare even on epic eggs
+  "reddragon", "lich", "mindflayer", "tempestdragon",
+];
 
-function buildPool(commonW, rareW, epicW) {
+function buildPool(commonW, rareW, epicW, legendaryW = 0) {
   const out = [];
-  const cEach = commonW / COMMON_KEYS.length;
-  const rEach = rareW   / RARE_KEYS.length;
-  const eEach = epicW   / EPIC_KEYS.length;
-  COMMON_KEYS.forEach(key => out.push({ key, weight: cEach }));
-  RARE_KEYS.forEach(key   => out.push({ key, weight: rEach }));
-  EPIC_KEYS.forEach(key   => out.push({ key, weight: eEach }));
+  const cEach = commonW    / COMMON_KEYS.length;
+  const rEach = rareW      / RARE_KEYS.length;
+  const eEach = epicW      / EPIC_KEYS.length;
+  const lEach = legendaryW / LEGENDARY_KEYS.length;
+  COMMON_KEYS.forEach(key    => out.push({ key, weight: cEach }));
+  RARE_KEYS.forEach(key      => out.push({ key, weight: rEach }));
+  EPIC_KEYS.forEach(key      => out.push({ key, weight: eEach }));
+  LEGENDARY_KEYS.forEach(key => out.push({ key, weight: lEach }));
   return out;
 }
 
 export const HATCH_POOLS = {
-  // 80% common · 18% rare · 2% epic
-  common: buildPool(0.80, 0.18, 0.02),
-  // 50% common · 42% rare · 8% epic
-  rare:   buildPool(0.50, 0.42, 0.08),
-  // 25% common · 50% rare · 25% epic
-  epic:   buildPool(0.25, 0.50, 0.25),
+  // 80% common · 18% rare · 1.99% epic · 0.01% legendary
+  common: buildPool(0.80, 0.18, 0.0199, 0.0001),
+  // 50% common · 42% rare · 7.98% epic · 0.02% legendary
+  rare:   buildPool(0.50, 0.42, 0.0798, 0.0002),
+  // 25% common · 50% rare · 24.96% epic · 0.04% legendary
+  epic:   buildPool(0.25, 0.50, 0.2496, 0.0004),
 };
 
 export const EGG_COST = {
