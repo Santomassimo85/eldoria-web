@@ -237,7 +237,7 @@ function BestiariaShop({ uid }) {
             .filter(p => PET_SPECIES[p.key]?.rarity === "epic")
             .map(p => PET_SPECIES[p.key]);
           return (
-            <div key={rarity} className="ph-egg-card" style={{ borderColor: RARITY_COLOR[rarity] }}>
+            <div key={rarity} className={`ph-egg-card ph-egg-card--${rarity}`} style={{ borderColor: RARITY_COLOR[rarity] }}>
               <div className="ph-egg-icon">{EGG_ICON[rarity]}</div>
               <div className="ph-egg-rarity" style={{ color: RARITY_COLOR[rarity] }}>
                 Uovo {RARITY_LABEL[rarity]}
