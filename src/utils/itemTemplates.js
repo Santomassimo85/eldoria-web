@@ -41,11 +41,16 @@ export const createMarketItem = (data) => {
     // --- REQUISITI SISTEMA RATTI ---
     minLevel: Number(data.minLevel || 0), // Livello minimo richiesto per vedere l'oggetto
 
+    /* PET payload — present when the listing is an egg or a pet item from
+       the catalog. The buyer-delivery flow uses this to know what to
+       hand out: { kind: "egg", rarity } or { kind: "petItem", itemKey }. */
+    petPayload: data.petPayload || null,
+
     // Logica di Mercato e Stato
     isSold: false,
     isRefunded: false,
-    currentBid: 0, 
-    bids: {}, 
+    currentBid: 0,
+    bids: {},
     bidderEmails: {},
     createdAt: new Date().toISOString(),
   };

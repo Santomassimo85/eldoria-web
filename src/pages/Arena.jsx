@@ -536,10 +536,10 @@ const WARLOCK_DEMONS = {
   },
   demon: {
     key: "demon", name: "Demone Maggiore", icon: "👹",
-    info: "Drena 2d6+2 PF dal bersaglio · cura il warlock per la stessa quantità · 2 cariche",
+    info: "Drena 2d12 PF dal bersaglio · cura il warlock per la stessa quantità · 2 cariche",
     action: {
-      name: "Drenaggio Demoniaco", hitBonus: 0, damage: "2d6+2", statKey: null,
-      type: "skill", icon: "👹", info: "2d6+2 danni auto-hit · cura il warlock per la stessa quantità · 2 cariche",
+      name: "Drenaggio Demoniaco", hitBonus: 0, damage: "2d12", statKey: null,
+      type: "skill", icon: "👹", info: "2d12 danni auto-hit · cura il warlock per la stessa quantità · 2 cariche",
       special: "demon_greater", maxUses: 2,
     },
   },
@@ -655,6 +655,16 @@ const RECUPERO_ARCANO_ACTION = {
 const MAGICAL_CUNNING_ACTION = {
   name: "Astuzia Magica", hitBonus: 0, damage: "—", statKey: null,
   type: "skill", icon: "🌀", info: "Salta il turno · +1 carica a ogni slot magia · 2 cariche", special: "magical_cunning", maxUses: 2,
+};
+
+/* Patto Demoniaco (Warlock) — sacrifica 1d4 PF per 3 turni di +1d12 ai
+   danni delle spell che colpiscono. La penalità è pagata subito; il buff
+   `pattoTurns` decresce a ogni attacco del warlock. */
+const PATTO_DEMONIACO_ACTION = {
+  name: "Patto Demoniaco", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "🩸",
+  info: "Sacrifica 1d4 PF · per 3 turni le tue spell che colpiscono fanno +1d12 danni · 2 cariche",
+  special: "patto_demoniaco", maxUses: 2,
 };
 
 // ── TITOLI D'ARENA (assegnati dal Master, attivi solo in Torneo / Arena Campioni) ─
@@ -866,7 +876,7 @@ function getLoadoutConfig(charClass) {
   const sumLimits = (lim) => Object.values(lim).reduce((a, b) => a + b, 0);
   if (isWizardClass(cls))   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: SPELL_LIMITS.wizard,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.wizard),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION, PATTO_DEMONIACO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
@@ -2809,10 +2819,13 @@ export default function Arena() {
     // Weapon poison bonus
     const weaponPoisoned = !!attackerMatchPlayer?.weaponPoisoned;
     const { total: poisonBonusDmg, rolls: poisonRolls } = isHit && weaponPoisoned ? rollDmg("1d12") : { total: 0, rolls: "" };
+    // Patto Demoniaco (Warlock): +1d12 ai danni delle spell che colpiscono per 3 turni dopo l'attivazione.
+    const pattoActive = (attackerMatchPlayer?.pattoTurns ?? 0) > 0;
+    const { total: pattoBonusDmg, rolls: pattoRolls } = isHit && isSpellAction && pattoActive ? rollDmg("1d12") : { total: 0, rolls: "" };
     // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
     const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
     const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg) * critMult + poisonBonusDmg : 0;
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg) * critMult + poisonBonusDmg + pattoBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     const rageReducedDamage = applyBarbarianRageReduction(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
@@ -2827,6 +2840,7 @@ export default function Arena() {
     const penPart        = armorPenalty < 0 ? ` ${armorPenalty} arm.` : '';
     const critTag        = isCrit ? " ★CRITICO★" : "";
     const poisonTag      = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
+    const pattoTag       = pattoBonusDmg > 0 ? ` | 🩸patto 🎲${pattoRolls}=${pattoBonusDmg}` : "";
     const rageTag        = rageDmgBonus > 0 ? ` | furia +${rageDmgBonus}` : "";
     const barbDmgTag     = barbarianDmgBonus > 0 ? ` | barb +${barbarianDmgBonus}` : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
@@ -2842,7 +2856,7 @@ export default function Arena() {
       : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
     const log = {
@@ -2890,7 +2904,7 @@ export default function Arena() {
           const newSelfAdv = action.grantsAdvTurns
             ? action.grantsAdvTurns
             : Math.max(0, (p.selfAdvTurns ?? 0) - 1);
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), selfAdvTurns: newSelfAdv };
+          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), pattoTurns: Math.max(0, (p.pattoTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), selfAdvTurns: newSelfAdv };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -3524,6 +3538,30 @@ export default function Arena() {
   };
 
   // ── ASTUZIA MAGICA (Warlock) — salta turno, ripristina tutti gli slot ──────
+  // ── PATTO DEMONIACO (Warlock) ─────────────────────────────────────────────
+  // Sacrifica 1d4 PF e attiva pattoTurns=3. Mentre pattoTurns > 0, ogni
+  // spell che colpisce aggiunge 1d12 ai danni (vedi spell damage path).
+  const handlePattoDemoniaco = async (matchId, action) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const { total: selfDmg, rolls: selfRolls } = rollDmg("1d4");
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const rawPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const uses = p.actionUsesLeft || {};
+        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+        return { ...p, hp: Math.max(0, p.hp - selfDmg), pattoTurns: 3, ...tickEagleEnd(p), actionUsesLeft: newUses };
+      });
+      const { players, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `🩸 ${myName} stringe un Patto Demoniaco · sacrifica 🎲(${selfRolls})=${selfDmg} PF · per 3 turni le sue spell che colpiscono fanno +1d12 danni!`;
+      const alive = players.filter(p => p.hp > 0);
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
   const handleMagicalCunning = async (matchId, cunningAction) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Oscuro Cultore";
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
@@ -6502,6 +6540,31 @@ export default function Arena() {
                       );
                     })()}
 
+                    {/* ── Patto Demoniaco (Warlock) ── */}
+                    {(() => {
+                      const mySnap = snapshots[currentUser?.uid];
+                      const isWarlock = isWarlockClass((mySnap?.class || "").toLowerCase());
+                      if (!isWarlock) return null;
+                      const pattoAction = (mySnap?.selectedActions || []).find(a => a.special === "patto_demoniaco");
+                      if (!pattoAction) return null;
+                      const usesLeft = myPlayer?.actionUsesLeft?.[pattoAction.name] ?? pattoAction.maxUses;
+                      const noUses = usesLeft <= 0;
+                      const pattoT = myPlayer?.pattoTurns ?? 0;
+                      if (pattoT > 0) {
+                        return <div className="btn-wild-shape" style={{ background: "#7c2d12", color: "#fef9c3" }}>🩸 Patto Attivo · +1d12 spell · {pattoT}t</div>;
+                      }
+                      if (noUses) return <div className="btn-wild-shape exhausted">🩸 Patto Demoniaco — Esaurito</div>;
+                      return (
+                        <button
+                          className="btn-wild-shape"
+                          title="Sacrifica 1d4 PF · per 3 turni le tue spell che colpiscono fanno +1d12 danni"
+                          onClick={() => handlePattoDemoniaco(m.matchId, pattoAction)}
+                        >
+                          🩸 Patto Demoniaco <span className="ws-uses-tag">{usesLeft}/{pattoAction.maxUses} uso</span>
+                        </button>
+                      );
+                    })()}
+
                     {/* ── Recupero Arcano (Wizard) ── */}
                     {(() => {
                       const mySnap = snapshots[currentUser?.uid];
@@ -6795,6 +6858,7 @@ export default function Arena() {
                           }
                           if (action.special === "fonte_di_magia") return null; // rendered in outer block
                           if (action.special === "magical_cunning") return null; // rendered in outer block
+                          if (action.special === "patto_demoniaco") return null; // rendered in outer block
                           if (action.special === "recupero_arcano") return null; // rendered in outer block
                           if (action.special === "deathblow" && targetHpPct > 20) return null;
                           const isDeathblow = action.special === "deathblow";
@@ -7044,7 +7108,7 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={noUses ? "Cariche esaurite" : "Drena 2d6+2 PF · cura il warlock per la stessa quantità"}
+                                title={noUses ? "Cariche esaurite" : "Drena 2d12 PF · cura il warlock per la stessa quantità"}
                                 onClick={() => !blocked && handleDemonGreater(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>

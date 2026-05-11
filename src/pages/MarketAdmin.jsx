@@ -8,10 +8,38 @@ import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "fi
 import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
+import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
+import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
-const ITEM_TYPES = ["Arma", "Armatura", "Accessori", "Artefatto Magico", "Pozioni", "Pergamene", "Reagenti", "Varie"];
+const ITEM_TYPES = [
+  "Arma", "Armatura", "Accessori", "Artefatto Magico",
+  "Pozioni", "Pergamene", "Reagenti", "Varie",
+  "Uovo Pet", "Oggetto Pet",
+];
+
+/* Pet-listing helpers — restricted to the rarities/items that already
+   exist elsewhere in the game so we never invent new payloads. */
+const ADMIN_EGG_RARITIES = ["common", "rare", "epic"]; // legendaries only come from hatching
+const EGG_FLAVOR = {
+  common: "🥚 Uovo Comune · 80% comuni · 18% rari · ~2% epici · 0.01% leggendari.",
+  rare:   "🟦 Uovo Raro · 50% comuni · 42% rari · ~8% epici · 0.02% leggendari.",
+  epic:   "🟪 Uovo Epico · 25% comuni · 50% rari · ~25% epici · 0.04% leggendari.",
+};
+const EGG_MARKET_RARITY = {
+  common: "Non comune",
+  rare:   "Rara",
+  epic:   "Molto rara",
+};
+
+/* Render an emoji as a small SVG and return a data URI. Used so the
+   form's image-required check passes naturally when the admin picks
+   a pet-payload item without uploading a custom artwork. */
+function emojiToDataUri(emoji) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#fef9c3"/><text x="50" y="68" font-size="64" text-anchor="middle" dominant-baseline="middle">${emoji}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
 
 // Suggested price ranges per rarity (matches public/mercato-nero-pricing.html)
 const RARITY_PRICE = {
@@ -49,6 +77,9 @@ function formatRange(rarity) {
 const initialFormData = {
   name: "", type: "Arma", class: "Comune", saleType: "auction",
   startingBid: "", endDate: "", description: "", img: "", minLevel: 0,
+  // Pet-payload fields — only populated when type is "Uovo Pet" or "Oggetto Pet"
+  petRarity: "common",
+  petItemKey: "",
 };
 
 const formatEndDate = (iso) => {
@@ -274,7 +305,11 @@ export default function MarketAdmin() {
       ...initialFormData,
       ...item,
       saleType: "auction",
-      endDate: item.endDate ? new Date(item.endDate).toISOString().slice(0, 16) : ""
+      endDate: item.endDate ? new Date(item.endDate).toISOString().slice(0, 16) : "",
+      // Surface the pet-payload into the form-level selectors so the
+      // admin sees the right sub-option when editing a pet listing.
+      petRarity: item.petPayload?.kind === "egg" ? item.petPayload.rarity : "common",
+      petItemKey: item.petPayload?.kind === "petItem" ? item.petPayload.itemKey : "",
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -284,10 +319,68 @@ export default function MarketAdmin() {
     setFormData(initialFormData);
   };
 
+  /* When the admin switches to a pet-payload type, prime the sub-selector
+     and auto-fill name/description/class/image from the chosen template. */
+  const handleTypeChange = (newType) => {
+    if (newType === "Uovo Pet") {
+      const rarity = formData.petRarity || "common";
+      setFormData(prev => ({
+        ...prev,
+        type: newType,
+        petRarity: rarity,
+        petItemKey: "",
+        name: `Uovo ${RARITY_LABEL[rarity]}`,
+        description: EGG_FLAVOR[rarity],
+        class: EGG_MARKET_RARITY[rarity],
+        img: prev.img || emojiToDataUri(EGG_ICON[rarity] || "🥚"),
+      }));
+    } else if (newType === "Oggetto Pet") {
+      const firstKey = formData.petItemKey || ITEMS_ORDER[0];
+      const it = PET_ITEMS[firstKey];
+      setFormData(prev => ({
+        ...prev,
+        type: newType,
+        petItemKey: firstKey,
+        petRarity: "common",
+        name: it?.name || "",
+        description: it ? `${it.icon} ${it.desc}` : "",
+        class: "Non comune",
+        img: prev.img || (it ? emojiToDataUri(it.icon) : ""),
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, type: newType }));
+    }
+  };
+
+  const handleEggRarityChange = (rarity) => {
+    setFormData(prev => ({
+      ...prev,
+      petRarity: rarity,
+      name: `Uovo ${RARITY_LABEL[rarity]}`,
+      description: EGG_FLAVOR[rarity],
+      class: EGG_MARKET_RARITY[rarity],
+      img: emojiToDataUri(EGG_ICON[rarity] || "🥚"),
+    }));
+  };
+
+  const handlePetItemKeyChange = (itemKey) => {
+    const it = PET_ITEMS[itemKey];
+    if (!it) return;
+    setFormData(prev => ({
+      ...prev,
+      petItemKey: itemKey,
+      name: it.name,
+      description: `${it.icon} ${it.desc}`,
+      class: "Non comune",
+      img: emojiToDataUri(it.icon),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (uploading) return;
-    if (!formData.img) {
+    const isPetType = formData.type === "Uovo Pet" || formData.type === "Oggetto Pet";
+    if (!isPetType && !formData.img) {
       alert("Carica un'immagine prima di salvare l'oggetto.");
       return;
     }
@@ -297,6 +390,20 @@ export default function MarketAdmin() {
       saleType: "auction",
       startingBid: Number(formData.startingBid || 0)
     };
+
+    /* Attach a petPayload so the buyer-delivery flow knows what to give
+       (an egg of a specific rarity vs. a specific consumable item). */
+    if (formData.type === "Uovo Pet" && formData.petRarity) {
+      dataToSubmit.petPayload = { kind: "egg", rarity: formData.petRarity };
+    } else if (formData.type === "Oggetto Pet" && formData.petItemKey) {
+      dataToSubmit.petPayload = { kind: "petItem", itemKey: formData.petItemKey };
+    } else {
+      // Clean stray field when editing back from a pet listing to a standard one
+      dataToSubmit.petPayload = null;
+    }
+    // Strip transient form-only fields
+    delete dataToSubmit.petRarity;
+    delete dataToSubmit.petItemKey;
 
     if (editId) {
       await updateDoc(doc(db, "items", editId), dataToSubmit);
@@ -419,12 +526,64 @@ export default function MarketAdmin() {
                   className="admin-field-select"
                   required
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  onChange={(e) => handleTypeChange(e.target.value)}
                 >
                   {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
             </div>
+
+            {/* ── Pet-payload sub-selector ── */}
+            {formData.type === "Uovo Pet" && (
+              <div className="mkadm-field">
+                <label>Rarità dell'uovo (dal catalogo Pet)</label>
+                <select
+                  className="admin-field-select"
+                  required
+                  value={formData.petRarity}
+                  onChange={(e) => handleEggRarityChange(e.target.value)}
+                >
+                  {ADMIN_EGG_RARITIES.map(r => (
+                    <option key={r} value={r}>
+                      {EGG_ICON[r] || "🥚"} Uovo {RARITY_LABEL[r]}
+                    </option>
+                  ))}
+                </select>
+                <p className="mkadm-price-hint" style={{ color: "#7c3aed", borderColor: "#a78bfa55" }}>
+                  <span className="mkadm-price-hint-icon">🥚</span>
+                  <span>
+                    Verrà consegnato come <strong>uovo {RARITY_LABEL[formData.petRarity]}</strong> nello zaino del vincitore.
+                  </span>
+                </p>
+              </div>
+            )}
+            {formData.type === "Oggetto Pet" && (
+              <div className="mkadm-field">
+                <label>Oggetto Pet (dal catalogo)</label>
+                <select
+                  className="admin-field-select"
+                  required
+                  value={formData.petItemKey}
+                  onChange={(e) => handlePetItemKeyChange(e.target.value)}
+                >
+                  {ITEMS_ORDER.map(key => {
+                    const it = PET_ITEMS[key];
+                    if (!it) return null;
+                    return (
+                      <option key={key} value={key}>
+                        {it.icon} {it.name}
+                      </option>
+                    );
+                  })}
+                </select>
+                {formData.petItemKey && PET_ITEMS[formData.petItemKey] && (
+                  <p className="mkadm-price-hint" style={{ color: "#0d9488", borderColor: "#5eead455" }}>
+                    <span className="mkadm-price-hint-icon">{PET_ITEMS[formData.petItemKey].icon}</span>
+                    <span>{PET_ITEMS[formData.petItemKey].desc}</span>
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mkadm-field-row">
               <div className="mkadm-field">
