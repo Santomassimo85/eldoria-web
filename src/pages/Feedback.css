@@ -369,6 +369,28 @@
   border: 1px solid var(--fb-ink);
 }
 
+/* Trash button used by both MyFeedbackList and MasterDashboard. */
+.fb-row-del {
+  background: var(--fb-con);
+  color: #ffffff;
+  border: 2px solid var(--fb-ink);
+  width: 34px;
+  height: 34px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 var(--fb-ink);
+  flex-shrink: 0;
+  transition: transform 0.06s, box-shadow 0.06s;
+  margin-left: auto;
+}
+.fb-row-del:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 var(--fb-ink); }
+.fb-row-del:active { transform: translate(2px, 2px); box-shadow: 0 0 0 0 var(--fb-ink); }
+.fb-row-del--master {
+  background: var(--fb-master);
+  border-color: var(--fb-master);
+  box-shadow: 2px 2px 0 0 var(--fb-ink);
+}
+
 /* ── Mobile ───────────────────────────────────────────── */
 @media (max-width: 600px) {
   .fb-title { font-size: 1.6rem; }

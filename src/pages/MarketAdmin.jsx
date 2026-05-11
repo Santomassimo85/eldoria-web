@@ -21,16 +21,18 @@ const ITEM_TYPES = [
 
 /* Pet-listing helpers — restricted to the rarities/items that already
    exist elsewhere in the game so we never invent new payloads. */
-const ADMIN_EGG_RARITIES = ["common", "rare", "epic"]; // legendaries only come from hatching
+const ADMIN_EGG_RARITIES = ["common", "rare", "epic", "legendary"];
 const EGG_FLAVOR = {
-  common: "🥚 Uovo Comune · 80% comuni · 18% rari · ~2% epici · 0.01% leggendari.",
-  rare:   "🟦 Uovo Raro · 50% comuni · 42% rari · ~8% epici · 0.02% leggendari.",
-  epic:   "🟪 Uovo Epico · 25% comuni · 50% rari · ~25% epici · 0.04% leggendari.",
+  common:    "🥚 Uovo Comune · 80% comuni · 18% rari · ~2% epici · 0.05% leggendari.",
+  rare:      "🥚 Uovo Raro · 50% comuni · 42% rari · ~8% epici · 0.2% leggendari.",
+  epic:      "🥚 Uovo Epico · 25% comuni · 50% rari · ~24% epici · 1% leggendari.",
+  legendary: "🥚 Uovo Leggendario · 20% rari · 55% epici · 25% leggendari · nessun comune.",
 };
 const EGG_MARKET_RARITY = {
-  common: "Non comune",
-  rare:   "Rara",
-  epic:   "Molto rara",
+  common:    "Non comune",
+  rare:      "Rara",
+  epic:      "Molto rara",
+  legendary: "Leggendaria",
 };
 
 /* Render an emoji as a small SVG and return a data URI. Used so the

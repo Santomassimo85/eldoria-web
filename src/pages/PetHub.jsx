@@ -20,6 +20,16 @@ import {
   awardPetPoints,
 } from "../utils/pet";
 
+/* ── Egg tint filters ──
+   Same 🥚 emoji for every rarity, recolored via CSS filter so
+   the shop shows blue / purple / golden eggs without art assets. */
+const EGG_FILTER = {
+  common:    "saturate(0.85)",
+  rare:      "hue-rotate(190deg) saturate(2.4) brightness(0.95) drop-shadow(0 0 4px #2e7aa8)",
+  epic:      "hue-rotate(260deg) saturate(2.4) brightness(0.95) drop-shadow(0 0 4px #7d2929)",
+  legendary: "saturate(2.4) brightness(1.15) drop-shadow(0 0 8px #fbbf24) drop-shadow(0 0 14px #f59e0b)",
+};
+
 /* ── Earnings catalog config (icons + hints + display order) ──
    Pulls amounts/caps from PET_POINT_SOURCES so the panel stays
    in sync with the actual award logic. */
@@ -258,7 +268,7 @@ function BestiariaShop({ uid }) {
       {/* Eggs */}
       <h3 className="ph-shop-title">🐣 Uova di Compagno</h3>
       <div className="ph-eggs-grid">
-        {["common", "rare", "epic"].map(rarity => {
+        {["common", "rare", "epic", "legendary"].map(rarity => {
           const cost = EGG_COST[rarity];
           const canAfford = petPoints >= cost;
           const pool = HATCH_POOLS[rarity] || [];
@@ -270,15 +280,16 @@ function BestiariaShop({ uid }) {
             .map(p => PET_SPECIES[p.key]);
           return (
             <div key={rarity} className={`ph-egg-card ph-egg-card--${rarity}`} style={{ borderColor: RARITY_COLOR[rarity] }}>
-              <div className="ph-egg-icon">{EGG_ICON[rarity]}</div>
+              <div className="ph-egg-icon" style={{ filter: EGG_FILTER[rarity] }}>{EGG_ICON[rarity]}</div>
               <div className="ph-egg-rarity" style={{ color: RARITY_COLOR[rarity] }}>
                 Uovo {RARITY_LABEL[rarity]}
               </div>
               <div className="ph-egg-cost">{cost} ✦</div>
               <p className="ph-egg-flavor">
-                {rarity === "common" && "80% comuni · 18% rari · ~2% epici · 0.01% leggendari"}
-                {rarity === "rare"   && "50% comuni · 42% rari · ~8% epici · 0.02% leggendari"}
-                {rarity === "epic"   && "25% comuni · 50% rari · ~25% epici · 0.04% leggendari"}
+                {rarity === "common"    && "80% comuni · 18% rari · ~2% epici · 0.05% leggendari"}
+                {rarity === "rare"      && "50% comuni · 42% rari · ~8% epici · 0.2% leggendari"}
+                {rarity === "epic"      && "25% comuni · 50% rari · ~24% epici · 1% leggendari"}
+                {rarity === "legendary" && "20% rari · 55% epici · 25% leggendari · nessun comune"}
               </p>
               {epicSpecies.length > 0 && (
                 <p className="ph-egg-epic-tease" title={epicSpecies.map(s => s.name).join(", ")}>
@@ -443,7 +454,7 @@ function BestiariaNido({ uid }) {
               key={egg.id}
               className={`ph-nido-egg ph-nido-egg--${egg.rarity} ${hatching === egg.id ? "ph-nido-egg--shaking" : ""}`}
             >
-              <span className="ph-nido-egg-icon">{EGG_ICON[egg.rarity] || "🥚"}</span>
+              <span className="ph-nido-egg-icon" style={{ filter: EGG_FILTER[egg.rarity] }}>{EGG_ICON[egg.rarity] || "🥚"}</span>
               <span className="ph-nido-egg-rarity">
                 Uovo {RARITY_LABEL[egg.rarity]}
               </span>

@@ -64,6 +64,14 @@ function formatDate(ts) {
   return d.toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
 }
 
+/* Delete a feedback doc by id. Caller is responsible for confirming
+   intent — Firestore rules already restrict who can delete what
+   (author or master), so a silent failure here just means the user
+   wasn't allowed to delete this particular doc. */
+async function deleteFeedbackById(docId) {
+  await deleteDoc(doc(db, "feedback", docId));
+}
+
 /* ── Star rating control ───────────────────────────────── */
 function StarRating({ value, onChange, readOnly = false }) {
   const [hover, setHover] = useState(0);
@@ -337,6 +345,17 @@ function MyFeedbackList({ currentUser }) {
     return () => unsub();
   }, [currentUser]);
 
+  const deleteRow = async (d) => {
+    const label = d.featureLabel || FEATURE_LABEL[d.feature] || d.feature;
+    if (!window.confirm(`Eliminare il tuo feedback su "${label}"?`)) return;
+    try {
+      await deleteFeedbackById(d.id);
+    } catch (err) {
+      console.error("delete feedback failed:", err);
+      window.alert("Eliminazione fallita: " + (err?.message || err));
+    }
+  };
+
   if (items.length === 0) {
     return <p className="fb-empty">Non hai ancora lasciato feedback.</p>;
   }
@@ -347,6 +366,15 @@ function MyFeedbackList({ currentUser }) {
           <div className="fb-mine-head">
             <span className="fb-mine-feat">{d.featureLabel || FEATURE_LABEL[d.feature] || d.feature}</span>
             <StarRating value={d.stars || 0} onChange={() => {}} readOnly />
+            <button
+              type="button"
+              className="fb-row-del"
+              onClick={() => deleteRow(d)}
+              title="Elimina questo feedback"
+              aria-label={`Elimina feedback su ${d.featureLabel || d.feature}`}
+            >
+              🗑
+            </button>
           </div>
           {d.message && <p className="fb-mine-msg">"{d.message}"</p>}
           <div className="fb-mine-chips">
@@ -407,6 +435,19 @@ function MasterDashboard() {
     });
   }, [items, filterFeat, minStars]);
 
+  const deleteRow = async (d) => {
+    const label = d.featureLabel || FEATURE_LABEL[d.feature] || d.feature;
+    if (!window.confirm(
+      `MASTER — eliminare il feedback di "${d.authorName || "?"}" (${d.authorEmail || "?"}) su "${label}"?\n\nQuesta operazione non si può annullare.`
+    )) return;
+    try {
+      await deleteFeedbackById(d.id);
+    } catch (err) {
+      console.error("master delete feedback failed:", err);
+      window.alert("Eliminazione fallita: " + (err?.message || err));
+    }
+  };
+
   return (
     <div className="fb-master">
       <h2 className="fb-section-title">📊 Dashboard Master · panoramica</h2>
@@ -455,6 +496,15 @@ function MasterDashboard() {
               <div className="fb-row-head">
                 <span className="fb-row-feat">{d.featureLabel || FEATURE_LABEL[d.feature] || d.feature}</span>
                 <StarRating value={d.stars || 0} onChange={() => {}} readOnly />
+                <button
+                  type="button"
+                  className="fb-row-del fb-row-del--master"
+                  onClick={() => deleteRow(d)}
+                  title="Master · elimina questo feedback"
+                  aria-label="Elimina feedback"
+                >
+                  🗑
+                </button>
               </div>
               <div className="fb-row-author">
                 <strong>{d.authorName || "—"}</strong>

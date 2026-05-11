@@ -755,21 +755,27 @@ function buildPool(commonW, rareW, epicW, legendaryW = 0) {
 
 export const HATCH_POOLS = {
   // 80% common · 18% rare · 1.95% epic · 0.05% legendary
-  common: buildPool(0.80, 0.18, 0.0195, 0.0005),
+  common:    buildPool(0.80, 0.18, 0.0195, 0.0005),
   // 50% common · 42% rare · 7.8% epic · 0.2% legendary
-  rare:   buildPool(0.50, 0.42, 0.078,  0.002),
+  rare:      buildPool(0.50, 0.42, 0.078,  0.002),
   // 25% common · 50% rare · 24% epic · 1% legendary
-  epic:   buildPool(0.25, 0.50, 0.24,   0.01),
+  epic:      buildPool(0.25, 0.50, 0.24,   0.01),
+  // 0% common · 20% rare · 55% epic · 25% legendary — premium tier
+  legendary: buildPool(0.00, 0.20, 0.55,   0.25),
 };
 
 export const EGG_COST = {
-  common: 25,
-  rare:   75,
-  epic:   180,
+  common:    25,
+  rare:      75,
+  epic:      180,
+  legendary: 1000,
 };
 
+/* All eggs share the same shape — the rarity color is applied
+   visually via a CSS filter in PetHub.jsx (EGG_FILTER). */
 export const EGG_ICON = {
-  common: "🥚",
-  rare:   "🟦",
-  epic:   "🟪",
+  common:    "🥚",
+  rare:      "🥚",
+  epic:      "🥚",
+  legendary: "🥚",
 };
