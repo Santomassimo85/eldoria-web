@@ -1,11 +1,11 @@
 /* ============================================================
-   PET SPECIES catalog — 76 D&D monsters, hatchable companions.
+   PET SPECIES catalog — 104 D&D monsters, hatchable companions.
    ------------------------------------------------------------
    Distribution by rarity:
-     · 30 common      — easy to roll, low-mid power
-     · 22 rare        — solid mid-tier specialists
-     · 14 epic        — bosses-in-a-bottle, very hard to roll
-     · 10 legendary   — apex tier, ultra-rare even on epic eggs
+     · 31 common      — easy to roll, low-mid power
+     · 34 rare        — solid mid-tier specialists
+     · 28 epic        — bosses-in-a-bottle, very hard to roll
+     · 11 legendary   — apex tier, ultra-rare even on epic eggs
 
    Per-species data:
      key       — stable id (used in pet.speciesKey on the character doc)
@@ -702,6 +702,242 @@ export const PET_SPECIES = {
     skills: ["drain", "dread", "voidstrike"],
   },
 
+  // ──────────────────────────────────────────────────────────
+  // SECOND WAVE — added with new artwork batch
+  // ──────────────────────────────────────────────────────────
+
+  // ── New common
+  zombie: {
+    key: "zombie", name: "Zombi", icon: "🧟", image: "/assets/pets/zombie.png",
+    type: "dark", rarity: "common",
+    desc: "Carcassa risvegliata · barcollante ma instancabile, divora i caduti.",
+    base: { hp: 24, ac: 11, atk: 4, spd: 4 },
+    attacks: ["slam"],
+    skills: ["drain", "guard"],
+  },
+
+  // ── New rares
+  yeti: {
+    key: "yeti", name: "Yeti", icon: "🦍", image: "/assets/pets/yeti.png",
+    type: "water", rarity: "rare",
+    desc: "Bestia bianca delle nevi eterne · urlo gelido, pugno pesante.",
+    base: { hp: 30, ac: 13, atk: 7, spd: 6 },
+    attacks: ["slam", "claw"],
+    skills: ["bubble", "frostlance"],
+  },
+  wingedkobold: {
+    key: "wingedkobold", name: "Kobold Alato", icon: "🦇", image: "/assets/pets/wingedkobold.png",
+    type: "air", rarity: "rare",
+    desc: "Kobold con ali coriacee · piomba dall'alto con giavellotti.",
+    base: { hp: 26, ac: 14, atk: 6, spd: 9 },
+    attacks: ["claw", "pounce"],
+    skills: ["spark", "aircutter"],
+  },
+  winterwolf: {
+    key: "winterwolf", name: "Lupo dell'Inverno", icon: "🐺", image: "/assets/pets/winterwolf.png",
+    type: "water", rarity: "rare",
+    desc: "Lupo gigante del nord · soffio gelido che ricopre le prede di brina.",
+    base: { hp: 30, ac: 13, atk: 7, spd: 8 },
+    attacks: ["bite", "pounce"],
+    skills: ["bubble", "frostlance"],
+  },
+  shamblingmound: {
+    key: "shamblingmound", name: "Tumulo Ambulante", icon: "🌳", image: "/assets/pets/shamblingmound.png",
+    type: "earth", rarity: "rare",
+    desc: "Cumulo di muschio e tronchi viventi · assorbe colpi e fulmini.",
+    base: { hp: 34, ac: 13, atk: 6, spd: 4 },
+    attacks: ["slam", "crush"],
+    skills: ["vine", "stonewall"],
+  },
+  greenwyrmling: {
+    key: "greenwyrmling", name: "Wyrmling Verde", icon: "🐉", image: "/assets/pets/greenwyrmling.png",
+    type: "earth", rarity: "rare",
+    desc: "Drago verde appena schiuso · alito acido anche da piccolo.",
+    base: { hp: 28, ac: 14, atk: 7, spd: 8 },
+    attacks: ["bite", "claw"],
+    skills: ["spores", "vine"],
+  },
+  frostarcher: {
+    key: "frostarcher", name: "Arciere di Brina", icon: "🏹", image: "/assets/pets/frostarcher.png",
+    type: "water", rarity: "rare",
+    desc: "Scheletro vincolato dal gelo · scocca frecce di ghiaccio puntuto.",
+    base: { hp: 26, ac: 13, atk: 7, spd: 7 },
+    attacks: ["claw", "pounce"],
+    skills: ["bubble", "frostlance"],
+  },
+  phasespider: {
+    key: "phasespider", name: "Ragno di Fase", icon: "🕷", image: "/assets/pets/phasespider.png",
+    type: "dark", rarity: "rare",
+    desc: "Predatore traslucido · scivola tra i piani per colpire alle spalle.",
+    base: { hp: 28, ac: 14, atk: 7, spd: 9 },
+    attacks: ["bite", "pounce"],
+    skills: ["drain", "shadowbolt"],
+  },
+  windwraith: {
+    key: "windwraith", name: "Spettro del Vento", icon: "🌬", image: "/assets/pets/windwraith.png",
+    type: "air", rarity: "rare",
+    desc: "Anima sospesa nell'aria · turbine intangibile che taglia come una lama.",
+    base: { hp: 26, ac: 14, atk: 6, spd: 9 },
+    attacks: ["claw", "tackle"],
+    skills: ["spark", "gust"],
+  },
+  marinebrute: {
+    key: "marinebrute", name: "Bruto Marino", icon: "🦈", image: "/assets/pets/marinebrute.png",
+    type: "water", rarity: "rare",
+    desc: "Gigantesca aberrazione abissale · pelle blu coriacea, pugno frantumante.",
+    base: { hp: 34, ac: 13, atk: 7, spd: 5 },
+    attacks: ["slam", "crush"],
+    skills: ["bubble", "tidal"],
+  },
+  greentreant: {
+    key: "greentreant", name: "Treant Sapiente", icon: "🌳", image: "/assets/pets/greentreant.png",
+    type: "earth", rarity: "rare",
+    desc: "Albero senziente, custode dei boschi · le sue fronde guariscono i fedeli.",
+    base: { hp: 32, ac: 14, atk: 6, spd: 4 },
+    attacks: ["slam", "claw"],
+    skills: ["vine", "bloom"],
+  },
+  naga: {
+    key: "naga", name: "Naga", icon: "🐍", image: "/assets/pets/naga.png",
+    type: "water", rarity: "rare",
+    desc: "Stirpe serpente delle acque · velocità ondulante, morso paralizzante.",
+    base: { hp: 28, ac: 14, atk: 7, spd: 8 },
+    attacks: ["bite", "tackle"],
+    skills: ["bubble", "spores"],
+  },
+  saurian: {
+    key: "saurian", name: "Saurian", icon: "🦎", image: "/assets/pets/saurian.png",
+    type: "dark", rarity: "rare",
+    desc: "Umanoide rettile dalle fauci sottili · si muove silenzioso nell'ombra.",
+    base: { hp: 28, ac: 14, atk: 7, spd: 8 },
+    attacks: ["bite", "claw"],
+    skills: ["drain", "shadowbolt"],
+  },
+
+  // ── New epics
+  copperdragon: {
+    key: "copperdragon", name: "Drago di Rame", icon: "🐉", image: "/assets/pets/copperdragon.png",
+    type: "fire", rarity: "epic",
+    desc: "Drago metallico burlone · ali ramate, soffio acido che intaglia la pietra.",
+    base: { hp: 44, ac: 16, atk: 8, spd: 7 },
+    attacks: ["bite", "claw"],
+    skills: ["ember", "firewall", "inferno"],
+  },
+  youngblackdragon: {
+    key: "youngblackdragon", name: "Drago Nero Giovane", icon: "🐲", image: "/assets/pets/youngblackdragon.png",
+    type: "dark", rarity: "epic",
+    desc: "Drago crepuscolare delle paludi · alito d'acido nero, scaglie corazzate.",
+    base: { hp: 46, ac: 16, atk: 8, spd: 7 },
+    attacks: ["bite", "claw"],
+    skills: ["shadowbolt", "dread", "spores"],
+  },
+  whitedragon: {
+    key: "whitedragon", name: "Drago Bianco", icon: "🐉", image: "/assets/pets/whitedragon.png",
+    type: "water", rarity: "epic",
+    desc: "Drago glaciale dei picchi · alito di brina che cristallizza la carne.",
+    base: { hp: 44, ac: 16, atk: 8, spd: 6 },
+    attacks: ["bite", "claw"],
+    skills: ["bubble", "frostlance", "tidal"],
+  },
+  yuanti: {
+    key: "yuanti", name: "Yuan-ti Malison", icon: "🐍", image: "/assets/pets/yuanti.png",
+    type: "dark", rarity: "epic",
+    desc: "Ibrido serpente-uomo · spadaccino feroce dal culto antico.",
+    base: { hp: 40, ac: 16, atk: 8, spd: 8 },
+    attacks: ["bite", "claw"],
+    skills: ["shadowbolt", "drain", "dread"],
+  },
+  wendigo: {
+    key: "wendigo", name: "Wendigo", icon: "🦌", image: "/assets/pets/wendigo.png",
+    type: "dark", rarity: "epic",
+    desc: "Spirito del gelo e della fame · corna di cervo, ululato che spezza l'anima.",
+    base: { hp: 42, ac: 15, atk: 9, spd: 8 },
+    attacks: ["claw", "pounce"],
+    skills: ["dread", "frostlance", "drain"],
+  },
+  autumntreant: {
+    key: "autumntreant", name: "Treant Autunnale", icon: "🍁", image: "/assets/pets/autumntreant.png",
+    type: "earth", rarity: "epic",
+    desc: "Antico custode autunnale · foglie come lame, radici come catene.",
+    base: { hp: 46, ac: 16, atk: 8, spd: 5 },
+    attacks: ["slam", "crush"],
+    skills: ["vine", "quake", "rockslide"],
+  },
+  icetomb: {
+    key: "icetomb", name: "Re del Sepolcro Glaciale", icon: "⚰", image: "/assets/pets/icetomb.png",
+    type: "water", rarity: "epic",
+    desc: "Cadavere sigillato nel ghiaccio · armi conficcate, vendetta infinita.",
+    base: { hp: 44, ac: 16, atk: 8, spd: 6 },
+    attacks: ["slam", "claw"],
+    skills: ["frostlance", "drain", "stonewall"],
+  },
+  bloodwerewolf: {
+    key: "bloodwerewolf", name: "Mannaro Insanguinato", icon: "🐺", image: "/assets/pets/bloodwerewolf.png",
+    type: "dark", rarity: "epic",
+    desc: "Lupo mannaro al delirio · zanne che strappano e spruzzano sangue.",
+    base: { hp: 42, ac: 15, atk: 9, spd: 8 },
+    attacks: ["bite", "pounce"],
+    skills: ["drain", "shadowbolt", "dread"],
+  },
+  succubus: {
+    key: "succubus", name: "Succubus", icon: "😈", image: "/assets/pets/succubus.png",
+    type: "dark", rarity: "epic",
+    desc: "Demone seduttore · ruba la vita con un bacio, ruba l'anima con uno sguardo.",
+    base: { hp: 38, ac: 16, atk: 8, spd: 9 },
+    attacks: ["claw", "tackle"],
+    skills: ["drain", "nightveil", "shadowbolt"],
+  },
+  hornedevil: {
+    key: "hornedevil", name: "Diavolo Cornuto", icon: "😈", image: "/assets/pets/hornedevil.png",
+    type: "fire", rarity: "epic",
+    desc: "Sentinella infernale · frusta di fuoco e corno tagliente, fedele agli arconti.",
+    base: { hp: 44, ac: 16, atk: 8, spd: 7 },
+    attacks: ["slam", "claw"],
+    skills: ["ember", "firewall", "inferno"],
+  },
+  firelord: {
+    key: "firelord", name: "Signore del Fuoco", icon: "🔥", image: "/assets/pets/firelord.png",
+    type: "fire", rarity: "epic",
+    desc: "Elementale di fiamma viva · volto di brace, mani che fondono l'acciaio.",
+    base: { hp: 42, ac: 15, atk: 9, spd: 7 },
+    attacks: ["slam", "claw"],
+    skills: ["ember", "inferno", "pyroblast"],
+  },
+  fireaxedevil: {
+    key: "fireaxedevil", name: "Diavolo Asciaro", icon: "🪓", image: "/assets/pets/fireaxedevil.png",
+    type: "fire", rarity: "epic",
+    desc: "Demone armato di scure incandescente · ogni colpo brucia oltre la ferita.",
+    base: { hp: 44, ac: 16, atk: 9, spd: 6 },
+    attacks: ["slam", "crush"],
+    skills: ["ember", "firewall", "pyroblast"],
+  },
+  watermage: {
+    key: "watermage", name: "Mago delle Maree", icon: "🌊", image: "/assets/pets/watermage.png",
+    type: "water", rarity: "epic",
+    desc: "Arcanista delle profondità · richiama onde e cura le ferite dei suoi.",
+    base: { hp: 40, ac: 15, atk: 7, spd: 8 },
+    attacks: ["tackle", "claw"],
+    skills: ["bubble", "tidal", "tidalheal"],
+  },
+  crystalgolem: {
+    key: "crystalgolem", name: "Golem di Cristallo", icon: "💎", image: "/assets/pets/crystalgolem.png",
+    type: "air", rarity: "epic",
+    desc: "Costrutto di cristallo carico di fulmini · ogni colpo emette scariche.",
+    base: { hp: 46, ac: 17, atk: 8, spd: 6 },
+    attacks: ["slam", "crush"],
+    skills: ["spark", "thunder", "stonewall"],
+  },
+
+  // ── New legendary
+  mindflayerancient: {
+    key: "mindflayerancient", name: "Illithid Antico", icon: "🧠", image: "/assets/pets/mindflayerancient.png",
+    type: "dark", rarity: "legendary",
+    desc: "Mind Flayer antico dell'Underdark · tentacoli che mangiano i ricordi prima della carne.",
+    base: { hp: 56, ac: 17, atk: 10, spd: 8 },
+    attacks: ["claw", "bite", "tackle"],
+    skills: ["drain", "voidstrike", "dread"],
+  },
+
 };
 
 /* ============================================================
@@ -709,16 +945,17 @@ export const PET_SPECIES = {
    ============================================================ */
 
 const COMMON_KEYS = [
-  // 30 commons
+  // 31 commons
   "kobold", "smokemephit", "quasit", "imp",
   "kuotoa", "icemephit", "lizardfolk", "merfolk",
   "myconid", "badger", "twigblight", "goblin", "orc", "rust", "axebeak", "satyr", "ochrejelly", "mudmephit",
   "hawk", "grell", "kenku",
   "specter", "wight", "manes", "nothic", "ogrezombie", "deathdog",
   "bugbear", "quaggoth", "halforc",
+  "zombie",
 ];
 const RARE_KEYS = [
-  // 22 rares
+  // 34 rares
   "spineddevil", "hellhound", "halfdragon", "nightmare",
   "sahuagin", "greenhag",
   "dryad", "direwolf", "hookhorror", "troll",
@@ -726,18 +963,26 @@ const RARE_KEYS = [
   "centaur",
   "helmedhorror", "manticore", "owlbear",
   "jackalwere", "lamia", "nighthag", "minotaurskeleton", "oni",
+  "yeti", "wingedkobold", "winterwolf", "shamblingmound",
+  "greenwyrmling", "frostarcher", "phasespider", "windwraith",
+  "marinebrute", "greentreant", "naga", "saurian",
 ];
 const EPIC_KEYS = [
-  // 14 epics
+  // 28 epics
   "frostgiant", "gelatinouscube", "ankylosaurus", "braineater",
   "goristro", "marid", "fomorian", "stonegiant", "medusa",
   "djinni", "irongolem",
   "hezrou", "deathslaad", "nalfeshnee",
+  "copperdragon", "youngblackdragon", "whitedragon", "yuanti",
+  "wendigo", "autumntreant", "icetomb", "bloodwerewolf",
+  "succubus", "hornedevil", "firelord", "fireaxedevil",
+  "watermage", "crystalgolem",
 ];
 const LEGENDARY_KEYS = [
-  // 10 legendaries — extremely rare even on epic eggs
+  // 11 legendaries — extremely rare even on epic eggs
   "reddragon", "lich", "mindflayer", "tempestdragon",
   "greendragon", "dragonturtle", "kraken", "balor", "solar", "ultroloth",
+  "mindflayerancient",
 ];
 
 function buildPool(commonW, rareW, epicW, legendaryW = 0) {
