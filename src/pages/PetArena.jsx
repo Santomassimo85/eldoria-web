@@ -632,8 +632,27 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
   }, [myActiveFainted, myAlive, myPending]);
 
   const handleForfeit = async () => {
+    if (winner) return;
     if (!window.confirm("Sicuro di voler abbandonare? Perderai la sfida.")) return;
-    await submitAction({ kind: "forfeit" });
+    const ownerName = battle[mySide]?.ownerName || "Giocatore";
+    const forfeitLine = { side: mySide, text: `🏳 ${ownerName} ha abbandonato la battaglia.` };
+    const endState = {
+      ...battle.state,
+      pendingActions: { challenger: null, challenged: null },
+      actionDeadlines: { challenger: null, challenged: null },
+      winner: oppSide,
+      log: [...(battle.state.log || []), forfeitLine],
+    };
+    try {
+      await updateDoc(doc(db, "pet_battles", battle.id), {
+        state: endState,
+        status: "resolved",
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("forfeit failed:", err);
+      alert("Errore: " + err.message);
+    }
   };
 
   if (winner) {
