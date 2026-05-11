@@ -167,6 +167,7 @@ function PlayerForm({ currentUser, characterName }) {
   const [pros, setPros] = useState([]);
   const [cons, setCons] = useState([]);
   const [message, setMessage] = useState("");
+  const [bug, setBug] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // { ok, text }
 
@@ -186,8 +187,9 @@ function PlayerForm({ currentUser, characterName }) {
           setPros(Array.isArray(d.pros) ? d.pros : []);
           setCons(Array.isArray(d.cons) ? d.cons : []);
           setMessage(d.message || "");
+          setBug(d.bug || "");
         } else {
-          setStars(0); setPros([]); setCons([]); setMessage("");
+          setStars(0); setPros([]); setCons([]); setMessage(""); setBug("");
         }
       } catch (err) {
         console.warn("[feedback load]", err);
@@ -204,8 +206,10 @@ function PlayerForm({ currentUser, characterName }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!currentUser) return;
-    if (stars === 0 && !message.trim() && pros.length === 0 && cons.length === 0) {
-      setStatus({ ok: false, text: "Lascia almeno una valutazione, un pro/contro o un messaggio." });
+    const bugTrim = bug.trim();
+    const msgTrim = message.trim();
+    if (stars === 0 && !msgTrim && !bugTrim && pros.length === 0 && cons.length === 0) {
+      setStatus({ ok: false, text: "Lascia almeno una valutazione, un pro/contro, un messaggio o un bug." });
       return;
     }
     setLoading(true);
@@ -221,7 +225,9 @@ function PlayerForm({ currentUser, characterName }) {
         stars,
         pros,
         cons,
-        message: message.trim(),
+        message: msgTrim,
+        bug: bugTrim,                 // quick bug report (separate from message)
+        hasBug: bugTrim.length > 0,   // flag for fast filtering in master dashboard
         authorUid: currentUser.uid,
         authorName: characterName || "Eroe",
         authorEmail: currentUser.email || "",
@@ -229,7 +235,7 @@ function PlayerForm({ currentUser, characterName }) {
         // createdAt only set on first submit (merge keeps it stable).
         createdAt: serverTimestamp(),
       }, { merge: true });
-      setStatus({ ok: true, text: "Grazie! Feedback salvato." });
+      setStatus({ ok: true, text: bugTrim ? "Grazie! Feedback e bug salvati." : "Grazie! Feedback salvato." });
     } catch (err) {
       console.error("submit feedback failed:", err);
       setStatus({ ok: false, text: "Salvataggio fallito. Riprova." });
@@ -243,7 +249,7 @@ function PlayerForm({ currentUser, characterName }) {
     if (!window.confirm(`Eliminare il tuo feedback su "${FEATURE_LABEL[featureKey]}"?`)) return;
     try {
       await deleteDoc(doc(db, "feedback", feedbackDocId(currentUser.uid, featureKey)));
-      setStars(0); setPros([]); setCons([]); setMessage("");
+      setStars(0); setPros([]); setCons([]); setMessage(""); setBug("");
       setStatus({ ok: true, text: "Feedback eliminato." });
     } catch (err) {
       console.error("delete feedback failed:", err);
@@ -293,11 +299,29 @@ function PlayerForm({ currentUser, characterName }) {
           className="fb-textarea"
           rows={4}
           maxLength={1000}
-          placeholder="Spiega cosa ti piace, cosa migliorerebbe l'esperienza, eventuali bug..."
+          placeholder="Spiega cosa ti piace, cosa migliorerebbe l'esperienza..."
           value={message}
           onChange={e => setMessage(e.target.value)}
         />
         <span className="fb-counter">{message.length}/1000</span>
+      </label>
+
+      {/* Quick bug field — separate from the regular message so the Master
+          can filter / triage at a glance. Players use this when they just
+          want to flag "qualcosa è rotto" without writing a full review. */}
+      <label className="fb-field fb-field--bug">
+        <span className="fb-field-label fb-field-label--bug">
+          🐛 Bug · qualcosa da controllare/correggere?
+        </span>
+        <textarea
+          className="fb-textarea fb-textarea--bug"
+          rows={2}
+          maxLength={500}
+          placeholder="Descrivi velocemente: cosa hai fatto, cosa è successo, cosa ti aspettavi."
+          value={bug}
+          onChange={e => setBug(e.target.value)}
+        />
+        <span className="fb-counter">{bug.length}/500</span>
       </label>
 
       {status && (
@@ -377,6 +401,12 @@ function MyFeedbackList({ currentUser }) {
             </button>
           </div>
           {d.message && <p className="fb-mine-msg">"{d.message}"</p>}
+          {d.bug && (
+            <p className="fb-bug-block">
+              <span className="fb-bug-tag">🐛 BUG</span>
+              <span className="fb-bug-text">{d.bug}</span>
+            </p>
+          )}
           <div className="fb-mine-chips">
             {(d.pros || []).map(p => <span key={p} className="fb-chip fb-chip--on">✓ {p}</span>)}
             {(d.cons || []).map(c => <span key={c} className="fb-chip fb-chip--on fb-chip--con">✗ {c}</span>)}
@@ -398,6 +428,7 @@ function MasterDashboard() {
   const [items, setItems] = useState([]);
   const [filterFeat, setFilterFeat] = useState("all");
   const [minStars, setMinStars] = useState(0);
+  const [onlyBugs, setOnlyBugs] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -415,7 +446,7 @@ function MasterDashboard() {
   // from the average so they don't pull every feature down to 0.
   const stats = useMemo(() => {
     const out = {};
-    for (const f of FEATURES) out[f.key] = { count: 0, sum: 0, rated: 0 };
+    for (const f of FEATURES) out[f.key] = { count: 0, sum: 0, rated: 0, bugs: 0 };
     for (const d of items) {
       const s = out[d.feature];
       if (!s) continue;
@@ -423,17 +454,26 @@ function MasterDashboard() {
       if (typeof d.stars === "number" && d.stars > 0) {
         s.sum += d.stars; s.rated++;
       }
+      // Count anything with a non-empty bug field, regardless of the
+      // legacy `hasBug` flag (older docs may not have it set).
+      if (typeof d.bug === "string" && d.bug.trim().length > 0) s.bugs++;
     }
     return out;
   }, [items]);
+
+  const totalBugs = useMemo(
+    () => items.reduce((n, d) => n + (typeof d.bug === "string" && d.bug.trim() ? 1 : 0), 0),
+    [items]
+  );
 
   const visible = useMemo(() => {
     return items.filter(d => {
       if (filterFeat !== "all" && d.feature !== filterFeat) return false;
       if ((d.stars || 0) < minStars) return false;
+      if (onlyBugs && !(typeof d.bug === "string" && d.bug.trim())) return false;
       return true;
     });
-  }, [items, filterFeat, minStars]);
+  }, [items, filterFeat, minStars, onlyBugs]);
 
   const deleteRow = async (d) => {
     const label = d.featureLabel || FEATURE_LABEL[d.feature] || d.feature;
@@ -457,16 +497,44 @@ function MasterDashboard() {
           const s = stats[f.key];
           const avg = s.rated > 0 ? (s.sum / s.rated).toFixed(2) : "—";
           return (
-            <div key={f.key} className="fb-stat-card">
+            <div
+              key={f.key}
+              className={`fb-stat-card ${s.bugs > 0 ? "fb-stat-card--bug" : ""}`}
+            >
               <div className="fb-stat-feat">{f.label}</div>
               <div className="fb-stat-row">
                 <span className="fb-stat-avg">{avg}{s.rated > 0 ? " ★" : ""}</span>
                 <span className="fb-stat-count">{s.count} feedback</span>
               </div>
+              {s.bugs > 0 && (
+                <button
+                  type="button"
+                  className="fb-stat-bug"
+                  onClick={() => { setFilterFeat(f.key); setOnlyBugs(true); }}
+                  title="Filtra solo i bug di questa funzionalità"
+                >
+                  🐛 {s.bugs} bug
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+
+      {totalBugs > 0 && (
+        <div className="fb-bug-banner">
+          🐛 <strong>{totalBugs}</strong> segnalazion{totalBugs === 1 ? "e" : "i"} bug aperte.
+          {!onlyBugs && (
+            <button
+              type="button"
+              className="fb-bug-banner-btn"
+              onClick={() => { setOnlyBugs(true); setFilterFeat("all"); }}
+            >
+              Mostrale tutte →
+            </button>
+          )}
+        </div>
+      )}
 
       <h2 className="fb-section-title">📜 Tutti i feedback</h2>
 
@@ -483,6 +551,14 @@ function MasterDashboard() {
           <select value={minStars} onChange={e => setMinStars(Number(e.target.value))}>
             {[0, 1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} ★</option>)}
           </select>
+        </label>
+        <label className="fb-filter-bug">
+          <input
+            type="checkbox"
+            checked={onlyBugs}
+            onChange={e => setOnlyBugs(e.target.checked)}
+          />
+          🐛 Solo bug
         </label>
         <span className="fb-filter-count">{visible.length} risultati</span>
       </div>
@@ -511,6 +587,12 @@ function MasterDashboard() {
                 <span className="fb-row-email"> · {d.authorEmail || "—"}</span>
                 <span className="fb-row-uid"> · uid: <code>{d.authorUid}</code></span>
               </div>
+              {d.bug && (
+                <p className="fb-bug-block">
+                  <span className="fb-bug-tag">🐛 BUG</span>
+                  <span className="fb-bug-text">{d.bug}</span>
+                </p>
+              )}
               {d.message && <p className="fb-row-msg">"{d.message}"</p>}
               {(d.pros?.length > 0 || d.cons?.length > 0) && (
                 <div className="fb-row-chips">
