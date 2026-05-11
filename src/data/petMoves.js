@@ -170,6 +170,20 @@ export const PET_MOVES = {
     effect: { kind: "poison", value: 3, turns: 2 },
     desc: "Esplosione · 2d6 + ustione 3 PF/turno per 2t.",
   },
+  firewall: {
+    id: "firewall", name: "Muro di Fuoco", icon: "🧱", type: "fire",
+    category: "skill",
+    damageDice: { num: 1, sides: 6 }, toHit: 1, maxUses: 3,
+    effect: { kind: "shield", value: 3, turns: 2 },
+    desc: "Lingue di fiamma respingono i nemici · 1d6 + 3 CA per 2t.",
+  },
+  pyroblast: {
+    id: "pyroblast", name: "Pirobomba", icon: "💣", type: "fire",
+    category: "skill",
+    damageDice: { num: 2, sides: 8 }, toHit: 0, maxUses: 1,
+    effect: { kind: "poison", value: 3, turns: 2 },
+    desc: "Definitiva esplosione ignea · 2d8 + ustione 3 PF/t per 2t. Uso singolo.",
+  },
 
   // ────────────────────────────────────────────────────────────
   // WATER 💧
@@ -186,6 +200,19 @@ export const PET_MOVES = {
     damageDice: { num: 2, sides: 6 }, toHit: 0, maxUses: 2,
     desc: "Onda travolgente · 2d6.",
   },
+  tidalheal: {
+    id: "tidalheal", name: "Onda Curativa", icon: "💦", type: "water",
+    category: "skill",
+    damageDice: null, toHit: 0, maxUses: 2,
+    effect: { kind: "heal", value: 14 },
+    desc: "Marea benefica · recupera 14 PF.",
+  },
+  frostlance: {
+    id: "frostlance", name: "Lancia Glaciale", icon: "❄", type: "water",
+    category: "skill",
+    damageDice: { num: 1, sides: 10 }, toHit: 1, maxUses: 3,
+    desc: "Punta di ghiaccio focalizzata · 1d10 (+1 al colpo). Super vs 🔥.",
+  },
 
   // ────────────────────────────────────────────────────────────
   // EARTH 🌿
@@ -201,6 +228,19 @@ export const PET_MOVES = {
     category: "skill",
     damageDice: { num: 2, sides: 6 }, toHit: 0, maxUses: 2,
     desc: "Sussulto sismico · 2d6.",
+  },
+  stonewall: {
+    id: "stonewall", name: "Muro di Pietra", icon: "🗿", type: "earth",
+    category: "skill",
+    damageDice: null, toHit: 0, maxUses: 2,
+    effect: { kind: "shield", value: 5, turns: 3 },
+    desc: "Cinta di roccia attorno al compagno · +5 CA per 3 turni.",
+  },
+  rockslide: {
+    id: "rockslide", name: "Frana", icon: "⛰", type: "earth",
+    category: "skill",
+    damageDice: { num: 2, sides: 8 }, toHit: 0, maxUses: 1,
+    desc: "Una valanga di rocce travolge il bersaglio · 2d8. Uso singolo.",
   },
 
   // ────────────────────────────────────────────────────────────
@@ -225,6 +265,18 @@ export const PET_MOVES = {
     effect: { kind: "poison", value: 2, turns: 2 },
     desc: "Vento penetrante · 1d6 + sanguinamento 2 PF/t per 2t.",
   },
+  aircutter: {
+    id: "aircutter", name: "Lama d'Aria", icon: "🌬", type: "air",
+    category: "skill",
+    damageDice: { num: 1, sides: 8 }, toHit: 2, maxUses: 4,
+    desc: "Lama d'aria compressa, micidiale precisione · 1d8 (+2 al colpo).",
+  },
+  cyclone: {
+    id: "cyclone", name: "Ciclone", icon: "🌀", type: "air",
+    category: "skill",
+    damageDice: { num: 2, sides: 8 }, toHit: 0, maxUses: 1,
+    desc: "Vortice devastante che inghiotte tutto · 2d8. Uso singolo.",
+  },
 
   // ────────────────────────────────────────────────────────────
   // LIGHT ✨ — only super-effective vs Dark; neutro contro gli elementali
@@ -240,6 +292,19 @@ export const PET_MOVES = {
     category: "skill",
     damageDice: { num: 2, sides: 6 }, toHit: 0, maxUses: 2,
     desc: "Esplosione di luce abbagliante · 2d6.",
+  },
+  blessing: {
+    id: "blessing", name: "Benedizione", icon: "🕊", type: "light",
+    category: "skill",
+    damageDice: null, toHit: 0, maxUses: 2,
+    effect: { kind: "heal", value: 13 },
+    desc: "Aura divina ristoratrice · recupera 13 PF.",
+  },
+  solarflare: {
+    id: "solarflare", name: "Bagliore Solare", icon: "☀", type: "light",
+    category: "skill",
+    damageDice: { num: 2, sides: 8 }, toHit: 0, maxUses: 1,
+    desc: "Lampo accecante di pura luce · 2d8. Uso singolo. Forte vs 🌑.",
   },
 
   // ────────────────────────────────────────────────────────────
@@ -257,5 +322,19 @@ export const PET_MOVES = {
     damageDice: { num: 2, sides: 6 }, toHit: 0, maxUses: 2,
     effect: { kind: "poison", value: 2, turns: 2 },
     desc: "Onda di paura primordiale · 2d6 + 2 danni psichici/turno per 2t.",
+  },
+  nightveil: {
+    id: "nightveil", name: "Velo Notturno", icon: "🌑", type: "dark",
+    category: "skill",
+    damageDice: null, toHit: 0, maxUses: 2,
+    effect: { kind: "shield", value: 4, turns: 3 },
+    desc: "Coltre d'ombra avvolge il compagno · +4 CA per 3 turni.",
+  },
+  voidstrike: {
+    id: "voidstrike", name: "Colpo del Vuoto", icon: "🕳", type: "dark",
+    category: "skill",
+    damageDice: { num: 1, sides: 8 }, toHit: 1, maxUses: 3,
+    effect: { kind: "heal", value: 4 },
+    desc: "Lama abissale che ruba l'essenza · 1d8 + cura 4 PF a chi colpisce.",
   },
 };

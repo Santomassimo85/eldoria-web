@@ -45,6 +45,13 @@ export default function PetArena({ embedded = false } = {}) {
   }, [currentUser]);
 
   // ── Stream battles (v2 = live) ──────────────────────────────
+  // activeBattles intentionally includes "resolved" battles where I'm
+  // a participant. The status flips from "active" to "resolved" in the
+  // same updateDoc that sets state.winner, so if we filtered to
+  // "active" only, LiveBattleScreen would unmount the instant the
+  // battle ended — taking the EXP-persist useEffect with it. Keeping
+  // resolved battles in this list lets the screen stay mounted long
+  // enough for the per-side claim to fire.
   useEffect(() => {
     if (!currentUser) return;
     const q = query(collection(db, "pet_battles"), orderBy("createdAt", "desc"));
@@ -53,17 +60,45 @@ export default function PetArena({ embedded = false } = {}) {
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(b => b.version === 2);
       setOpen(all.filter(b => b.status === "open"));
-      setActive(all.filter(b => b.status === "active" && (b.challenger?.uid === currentUser.uid || b.challenged?.uid === currentUser.uid)));
+      setActive(all.filter(b => {
+        if (b.status !== "active" && b.status !== "resolved") return false;
+        return b.challenger?.uid === currentUser.uid || b.challenged?.uid === currentUser.uid;
+      }));
       setResolved(all.filter(b => b.status === "resolved").slice(0, 8));
     });
   }, [currentUser]);
 
-  // ── Auto-enter battle screen when I have an active battle ───
+  // ── Auto-enter battle screen when I have a fresh active battle ──
+  //  Only auto-enter battles that are still in progress; resolved ones
+  //  stay in activeBattles but should not re-pull the user in once they
+  //  click "Torna al lobby".
   useEffect(() => {
     if (activeBattleId) return;
-    const mine = activeBattles[0];
+    const mine = activeBattles.find(b => b.status === "active");
     if (mine) setActiveBattleId(mine.id);
   }, [activeBattles, activeBattleId]);
+
+  // ── Backstop persist: run persistBattleResults for any of my resolved
+  //  battles where my side hasn't been claimed yet. Handles reload /
+  //  tab-backgrounded / user-exited-too-fast cases. The transactional
+  //  claim inside persistBattleResults makes this idempotent.
+  useEffect(() => {
+    if (!currentUser) return;
+    for (const b of activeBattles) {
+      if (b.status !== "resolved") continue;
+      const mySide = b.challenger?.uid === currentUser.uid ? "challenger"
+        : b.challenged?.uid === currentUser.uid ? "challenged" : null;
+      if (!mySide) continue;
+      const persisted = b.resultsPersisted;
+      const alreadyMine = persisted === true
+        ? mySide === "challenger"
+        : !!(persisted && typeof persisted === "object" && persisted[mySide]);
+      if (alreadyMine) continue;
+      persistBattleResults(b, mySide).catch(err =>
+        console.warn("[lobby backstop persist]", err)
+      );
+    }
+  }, [currentUser, activeBattles]);
 
   const myPets = useMemo(() => Array.isArray(me?.pets) ? me.pets : [], [me]);
   const isResting = (pet) => pet.restingUntil && new Date(pet.restingUntil) > new Date();

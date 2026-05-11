@@ -57,7 +57,7 @@ export const PET_SPECIES = {
     desc: "Lucertoletta scaltra del clan dei draghi · piccola, veloce, sfacciata.",
     base: { hp: 18, ac: 13, atk: 4, spd: 8 },
     attacks: ["claw"],
-    skills: ["ember", "guard"],
+    skills: ["ember", "firewall"],
   },
   smokemephit: {
     key: "smokemephit", name: "Mefite del Fumo", icon: "💨", image: "/assets/pets/smokemephit.png",
@@ -165,7 +165,7 @@ export const PET_SPECIES = {
     desc: "Folletto silvano dei boschi luminosi · suona il flauto, ruba il cuore, fugge in fretta.",
     base: { hp: 22, ac: 12, atk: 4, spd: 7 },
     attacks: ["claw"],
-    skills: ["lightbeam", "bloom"],
+    skills: ["lightbeam", "blessing"],
   },
   ochrejelly: {
     key: "ochrejelly", name: "Gelatina Ocra", icon: "🟡", image: "/assets/pets/ochrejelly.png",
@@ -199,7 +199,7 @@ export const PET_SPECIES = {
     desc: "Anima impigliata tra i mondi · attraversa i muri, drena la vita.",
     base: { hp: 18, ac: 13, atk: 5, spd: 7 },
     attacks: ["claw"],
-    skills: ["drain", "shadowbolt"],
+    skills: ["drain", "voidstrike"],
   },
 
   // Neutral ✦
@@ -283,7 +283,7 @@ export const PET_SPECIES = {
     desc: "Bestiale predatore sotterraneo · uncini che strappano l'armatura.",
     base: { hp: 32, ac: 14, atk: 7, spd: 5 },
     attacks: ["claw", "bite"],
-    skills: ["quake", "guard"],
+    skills: ["quake", "rockslide"],
   },
 
   // Air ⚡
@@ -301,7 +301,7 @@ export const PET_SPECIES = {
     desc: "Vortice senziente · turbina e travolge senza lasciare il segno.",
     base: { hp: 26, ac: 13, atk: 5, spd: 8 },
     attacks: ["tackle"],
-    skills: ["thunder", "gust"],
+    skills: ["thunder", "aircutter"],
   },
 
   // Neutral ✦
@@ -311,7 +311,7 @@ export const PET_SPECIES = {
     desc: "Guardiano metà uomo metà cavallo · cuore puro, galoppo che brucia l'oscurità.",
     base: { hp: 30, ac: 13, atk: 6, spd: 8 },
     attacks: ["bite", "slam"],
-    skills: ["radiance", "rest"],
+    skills: ["radiance", "solarflare"],
   },
 
   // ──────────────────────────────────────────────────────────
@@ -324,7 +324,7 @@ export const PET_SPECIES = {
     desc: "Titano delle terre artiche · ogni martellata fa tremare il ghiaccio.",
     base: { hp: 38, ac: 15, atk: 8, spd: 4 },
     attacks: ["slam", "crush"],
-    skills: ["tidal", "guard"],
+    skills: ["tidal", "frostlance"],
   },
   gelatinouscube: {
     key: "gelatinouscube", name: "Cubo Gelatinoso", icon: "🟦", image: "/assets/pets/gelatinouscube.png",
@@ -332,7 +332,7 @@ export const PET_SPECIES = {
     desc: "Tomba semovente dei sotterranei · digerisce tutto ciò che ingoia.",
     base: { hp: 42, ac: 11, atk: 6, spd: 2 },
     attacks: ["tackle", "crush"],
-    skills: ["tidal", "rest"],
+    skills: ["tidal", "tidalheal"],
   },
   ankylosaurus: {
     key: "ankylosaurus", name: "Anchilosauro", icon: "🦕", image: "/assets/pets/ankylosaurus.png",
@@ -340,7 +340,7 @@ export const PET_SPECIES = {
     desc: "Carro armato preistorico · armatura di osso, coda come una mazza.",
     base: { hp: 42, ac: 17, atk: 8, spd: 3 },
     attacks: ["slam", "crush"],
-    skills: ["quake", "guard"],
+    skills: ["quake", "stonewall"],
   },
   braineater: {
     key: "braineater", name: "Divoratore di Intelletto", icon: "🧠", image: "/assets/pets/braineater.png",
@@ -364,7 +364,7 @@ export const PET_SPECIES = {
     desc: "Tiranno alato delle vette vulcaniche · il suo soffio fonde l'acciaio dei regni.",
     base: { hp: 58, ac: 18, atk: 10, spd: 6 },
     attacks: ["bite", "claw", "slam"],
-    skills: ["ember", "inferno", "guard"],
+    skills: ["ember", "inferno", "pyroblast"],
   },
   lich: {
     key: "lich", name: "Lich", icon: "☠", image: "/assets/pets/lich.png",
@@ -380,7 +380,7 @@ export const PET_SPECIES = {
     desc: "Illithid puro · domina la mente prima ancora della carne, padrone dell'Underdark.",
     base: { hp: 52, ac: 16, atk: 9, spd: 8 },
     attacks: ["claw", "bite", "tackle"],
-    skills: ["drain", "dread", "rest"],
+    skills: ["drain", "dread", "nightveil"],
   },
   tempestdragon: {
     key: "tempestdragon", name: "Drago della Tempesta", icon: "🐲", image: "/assets/pets/tempestdragon.png",
@@ -388,7 +388,7 @@ export const PET_SPECIES = {
     desc: "Drago della stratosfera · cavalca uragani e scaglia fulmini come dardi.",
     base: { hp: 54, ac: 17, atk: 9, spd: 9 },
     attacks: ["bite", "claw", "pounce"],
-    skills: ["spark", "thunder", "gust"],
+    skills: ["spark", "thunder", "cyclone"],
   },
 
 };
