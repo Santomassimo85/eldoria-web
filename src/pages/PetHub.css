@@ -374,12 +374,46 @@ section.ph-page,
 .ph-care-card {
   background: linear-gradient(180deg, #fffdf6 0%, #f9efd6 100%);
   border: 1.5px solid #c9a961;
+  border-left: 6px solid #c9a961;
   border-radius: 10px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
 }
+/* Element type — fills the card with a vivid tinted gradient. */
+.ph-care-card--fire    { background: linear-gradient(180deg, #fff5f0, #ffd9c8); border-color: #c0392b; }
+.ph-care-card--water   { background: linear-gradient(180deg, #f0f8ff, #c8e0f0); border-color: #2980b9; }
+.ph-care-card--earth   { background: linear-gradient(180deg, #f4faf0, #d0e6c0); border-color: #4a8a3a; }
+.ph-care-card--air     { background: linear-gradient(180deg, #fffbeb, #f5e8b8); border-color: #b8920b; }
+.ph-care-card--light   { background: linear-gradient(180deg, #fffdf0, #fdf0bd); border-color: #c8a24a; }
+.ph-care-card--dark    { background: linear-gradient(180deg, #f0e8f8, #d0c0e0); border-color: #5a3a7a; }
+.ph-care-card--neutral { background: linear-gradient(180deg, #fffdf6, #ebe0c8); border-color: #b4a078; }
+/* Rarity — left border + outer glow scales with rarity. */
+.ph-care-card--rarity-common  { border-left-color: #8a7a4a; }
+.ph-care-card--rarity-rare    {
+  border-left-color: #2e7aa8;
+  box-shadow: 0 2px 10px rgba(46, 122, 168, 0.18);
+}
+.ph-care-card--rarity-epic    {
+  border-left-color: #7d2929;
+  box-shadow: 0 2px 14px rgba(125, 41, 41, 0.30), inset 0 0 0 1px rgba(125, 41, 41, 0.20);
+}
+.ph-master-del-btn {
+  margin-left: auto;
+  background: linear-gradient(180deg, #b91c1c, #7d2929);
+  color: #fdf2dc;
+  border: 1.5px solid #5a1818;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.15s, transform 0.1s;
+}
+.ph-master-del-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 
 .ph-care-card-head {
   display: flex;
@@ -477,12 +511,84 @@ section.ph-page,
   font-size: 0.74rem;
 }
 .ph-meta-chip {
-  display: inline-block;
-  padding: 1px 8px;
-  border: 1px solid #c9a961;
-  background: rgba(255, 250, 235, 0.5);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border: 1.5px solid #c9a961;
+  background: rgba(255, 250, 235, 0.7);
   border-radius: 999px;
   color: #2d2418;
+  font-weight: 600;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+}
+.ph-type-chip { font-weight: 700; }
+.ph-type-chip--fire    { background: rgba(192, 57, 43, 0.18); color: #8b1a0a; border-color: #c0392b; }
+.ph-type-chip--water   { background: rgba(41, 128, 185, 0.18); color: #194e75; border-color: #2980b9; }
+.ph-type-chip--earth   { background: rgba(74, 138, 58, 0.20); color: #2a5520; border-color: #4a8a3a; }
+.ph-type-chip--air     { background: rgba(212, 175, 55, 0.24); color: #7a5b00; border-color: #b8920b; }
+.ph-type-chip--light   { background: rgba(200, 162, 74, 0.22); color: #7a5300; border-color: #c8a24a; }
+.ph-type-chip--dark    { background: rgba(90, 58, 122, 0.22); color: #2e1c4d; border-color: #5a3a7a; }
+.ph-type-chip--neutral { background: rgba(180, 160, 120, 0.20); color: #4a3f28; border-color: #b4a078; }
+.ph-rarity-chip { font-weight: 700; background: rgba(255, 253, 246, 0.9); }
+.ph-rarity-chip--epic   { box-shadow: 0 0 0 1px rgba(125, 41, 41, 0.25); }
+.ph-rarity-chip--rare   { box-shadow: 0 0 0 1px rgba(46, 122, 168, 0.20); }
+
+/* Stats legend (Pet Compagni panel) */
+.ph-stats-legend {
+  margin: 0 0 12px;
+  background: linear-gradient(180deg, #fffdf6, #f4ebd0);
+  border: 1px solid #d4b87a;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ph-stats-legend-toggle {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #5a3a1a;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.ph-stats-legend-toggle:hover { background: rgba(212, 184, 122, 0.18); }
+.ph-stats-legend-body {
+  padding: 8px 16px 12px;
+  border-top: 1px dashed #d4b87a;
+  background: rgba(255, 253, 246, 0.6);
+}
+.ph-stats-legend-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 0;
+  font-size: 0.84rem;
+  color: #2d2418;
+  line-height: 1.45;
+  border-bottom: 1px dashed rgba(180, 140, 40, 0.2);
+}
+.ph-stats-legend-row:last-child { border-bottom: none; }
+.ph-stat-key {
+  font-weight: 800;
+  color: #7d2929;
+  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+}
+.ph-stats-legend-row code {
+  background: rgba(180, 140, 40, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+@media (max-width: 520px) {
+  .ph-stats-legend-row { grid-template-columns: 110px 1fr; }
 }
 
 /* ── Bars ─────────────────────────────────────────────── */

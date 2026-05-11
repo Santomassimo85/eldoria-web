@@ -58,6 +58,8 @@ import PetAvatar from "../components/PetAvatar";
 import PetArena from "./PetArena";
 import "./PetHub.css";
 
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
 /* PetHub — single home for all pet features.
    Tabs: Arena (battles) · Bottega (eggs + items, paid in petPoints). */
 export default function PetHub() {
@@ -115,7 +117,7 @@ export default function PetHub() {
 
       <div className="ph-tab-body">
         {tab === "arena"    && <PetArena embedded />}
-        {tab === "compagni" && <PetCompagniPanel uid={currentUser.uid} />}
+        {tab === "compagni" && <PetCompagniPanel uid={currentUser.uid} isMaster={currentUser.email === MASTER_EMAIL} />}
         {tab === "shop"     && <BestiariaShop uid={currentUser.uid} />}
       </div>
     </section>
@@ -299,6 +301,62 @@ function BestiariaShop({ uid }) {
 }
 
 /* Small reusable stat tile used in the Compagni panel. */
+function PetStatsLegend() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="ph-stats-legend">
+      <button
+        type="button"
+        className="ph-stats-legend-toggle"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        {open ? "▼" : "▶"} ❔ Cosa significano le statistiche dei compagni?
+      </button>
+      {open && (
+        <div className="ph-stats-legend-body">
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">❤️ PF max</span>
+            <span>Punti Ferita massimi. +2 per livello. Salire di livello ripristina tutti i PF al massimo.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">🛡 CA</span>
+            <span>Classe Armatura. L'attaccante tira <code>d20 + Colpo</code> e deve eguagliare o superare la CA per colpire. +1 ogni 4 livelli.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">🎯 +Colpo</span>
+            <span>Bonus al tiro per colpire. Sommato al d20 di ogni attacco. +1 ogni 2 livelli oltre alla base specie.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">⚡ SPD</span>
+            <span>Velocità. Chi è più veloce attacca per primo nel round. +1 ogni 3 livelli.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">⭐ Prof</span>
+            <span>Bonus competenza. Sommato ai dadi di danno (es. <code>1d6+Prof</code>). +2 a Lv1-4, +3 a Lv5-8, +4 a Lv9+.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">🔥 PA tot.</span>
+            <span>Punti Azione totali per scontro: somma degli usi di tutte le skill a uso limitato. Gli attacchi base sono illimitati.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">🎲 d20</span>
+            <span>Nat <b>20</b> = colpo critico (doppi dadi di danno). Nat <b>1</b> = fallimento critico (manca a prescindere dalla CA).</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">🌟 ×1.5 / 💤 ×0.5</span>
+            <span>Moltiplicatore di tipo. Fire&gt;Earth&gt;Air&gt;Water&gt;Fire (super-efficace ×1.5, poco efficace ×0.5). Luce ⇄ Tenebre.</span>
+          </div>
+          <div className="ph-stats-legend-row">
+            <span className="ph-stat-key">💚 Bonus</span>
+            <span>Il numero verde accanto a una stat (es. <code>16 +2</code>) è il bonus permanente da oggetti consumati. Si somma alla stat di base.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatCell({ icon, label, value, bonus, hint }) {
   return (
     <div className="ph-stat-cell" title={hint || ""}>
@@ -320,7 +378,7 @@ function StatCell({ icon, label, value, bonus, hint }) {
    damage dice and per-battle action points, plus the heal
    bag for using items on pets.
    ============================================================ */
-function PetCompagniPanel({ uid }) {
+function PetCompagniPanel({ uid, isMaster }) {
   const [charData, setCharData] = useState(null);
   const [pickerFor, setPickerFor] = useState(null); // pet.id
   const [message, setMessage] = useState(null);
@@ -341,6 +399,21 @@ function PetCompagniPanel({ uid }) {
   const pets = Array.isArray(charData?.pets) ? charData.pets : [];
   const inv = charData?.petItems || {};
   const inventoryEntries = Object.entries(inv).filter(([, c]) => c > 0);
+
+  const deletePet = async (pet) => {
+    if (!isMaster) return;
+    if (!window.confirm(
+      `Eliminare definitivamente "${pet.nickname}" dal tuo roster?\n\nQuesta operazione non si può annullare.`
+    )) return;
+    try {
+      const newPets = pets.filter(p => p.id !== pet.id);
+      await updateDoc(doc(db, "characters", uid), { pets: newPets });
+      showMsg(`🗑 "${pet.nickname}" rimosso dal roster.`);
+    } catch (err) {
+      console.error("deletePet failed:", err);
+      showMsg("Eliminazione fallita.", false);
+    }
+  };
 
   const applyItem = async (pet, itemKey) => {
     const item = PET_ITEMS[itemKey];
@@ -378,6 +451,8 @@ function PetCompagniPanel({ uid }) {
       {message && (
         <div className={`ph-msg ${message.ok ? "" : "ph-msg--err"}`}>{message.text}</div>
       )}
+
+      <PetStatsLegend />
 
       <div className="ph-care-bag">
         <span className="ph-care-bag-label">🎒 Zaino</span>
@@ -436,7 +511,10 @@ function PetCompagniPanel({ uid }) {
           const isOpen = pickerFor === pet.id;
 
           return (
-            <div key={pet.id} className="ph-care-card">
+            <div
+              key={pet.id}
+              className={`ph-care-card ph-care-card--${sp.type} ph-care-card--rarity-${sp.rarity}`}
+            >
               {/* ── Header ────────────────────────── */}
               <div className="ph-care-card-head">
                 <PetAvatar species={sp} className="ph-care-avatar" />
@@ -444,12 +522,27 @@ function PetCompagniPanel({ uid }) {
                   <div className="ph-care-card-name">{pet.nickname}</div>
                   <div className="ph-care-card-meta">
                     <span className="ph-meta-chip">Lv {lvl}</span>
-                    <span className="ph-meta-chip">{TYPE_ICON[sp.type]} {TYPE_LABEL[sp.type]}</span>
-                    <span className="ph-meta-chip" style={{ borderColor: RARITY_COLOR[sp.rarity], color: RARITY_COLOR[sp.rarity] }}>
-                      {RARITY_LABEL[sp.rarity]}
+                    <span className={`ph-meta-chip ph-type-chip ph-type-chip--${sp.type}`}>
+                      {TYPE_ICON[sp.type]} {TYPE_LABEL[sp.type]}
+                    </span>
+                    <span
+                      className={`ph-meta-chip ph-rarity-chip ph-rarity-chip--${sp.rarity}`}
+                      style={{ borderColor: RARITY_COLOR[sp.rarity], color: RARITY_COLOR[sp.rarity] }}
+                    >
+                      ★ {RARITY_LABEL[sp.rarity]}
                     </span>
                   </div>
                 </div>
+                {isMaster && (
+                  <button
+                    type="button"
+                    className="ph-master-del-btn"
+                    onClick={() => deletePet(pet)}
+                    title="Master · elimina questo compagno dal roster"
+                  >
+                    🗑
+                  </button>
+                )}
               </div>
 
               {/* ── Bars: PF + EXP ────────────────── */}
