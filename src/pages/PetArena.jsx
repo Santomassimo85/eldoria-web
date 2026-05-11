@@ -344,6 +344,55 @@ function TypeCycleLegend() {
   );
 }
 
+/* ── Stats legend (collapsible) ────────────────────────── */
+function StatsLegend() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="pa-stats-legend">
+      <button
+        type="button"
+        className="pa-stats-legend-toggle"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        {open ? "▼" : "▶"} ❔ Cosa significano le statistiche?
+      </button>
+      {open && (
+        <div className="pa-stats-legend-body">
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">🛡 CA</span>
+            <span>Classe Armatura. L'attaccante tira <b>d20 + ATK + mod. mossa</b> e deve eguagliare o superare la CA per colpire.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">⚔ ATK</span>
+            <span>Bonus al tiro per colpire. Cresce di +1 ogni 2 livelli (oltre alla base specie).</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">💨 SPD</span>
+            <span>Velocità. Determina chi attacca per primo nel round; cresce ogni 3 livelli.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">🎯 PROF</span>
+            <span>Bonus competenza. Sommato ai dadi di danno (es. <code>1d6+PROF</code>). +2 a Lv1-4, +3 a Lv5-8, +4 a Lv9+.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">PF</span>
+            <span>Punti Ferita. Cresce di +2 per livello; salire di livello ripristina i PF al massimo.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">🎲 d20</span>
+            <span>Tiro per colpire: nat <b>20</b> = critico (doppi dadi danno), nat <b>1</b> = fallimento critico (manca a prescindere).</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">×1.5 / ×0.5</span>
+            <span>Moltiplicatore di tipo. Vedi il "Cerchio di Resistenza" sopra: super-efficace o poco efficace contro alcuni elementi.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ============================================================
    TEAM PICKER MODAL — pick 1 to MAX_TEAM_SIZE pets.
    When accepting, lock the team size to match the challenger.
@@ -500,7 +549,9 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
   useEffect(() => {
     if (winner) return;
     if (!isChallenger) return;
-    if (!myPending || !oppPending) return;
+    // Forfeits short-circuit: resolve immediately even with one side pending.
+    const forfeitPending = myPending?.kind === "forfeit" || oppPending?.kind === "forfeit";
+    if (!forfeitPending && (!myPending || !oppPending)) return;
     if (resolveLockRef.current) return;
     resolveLockRef.current = true;
 
@@ -509,8 +560,12 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
         const fresh = await getDoc(doc(db, "pet_battles", battle.id));
         if (!fresh.exists()) return;
         const data = fresh.data();
-        // Re-check both actions are still present (avoid double-resolve)
-        if (!data.state?.pendingActions?.challenger || !data.state?.pendingActions?.challenged) return;
+        const aPend = data.state?.pendingActions?.challenger;
+        const bPend = data.state?.pendingActions?.challenged;
+        const aFor = aPend?.kind === "forfeit";
+        const bFor = bPend?.kind === "forfeit";
+        // Allow resolution when both submitted OR either side forfeited.
+        if (!aFor && !bFor && (!aPend || !bPend)) return;
         if (data.state.winner) return;
         const newState = resolveLiveRound({
           challenger: data.challenger,
@@ -627,6 +682,7 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
       </header>
 
       <TypeCycleLegend />
+      <StatsLegend />
 
       <div className="pa-live-field">
         {/* Opponent side */}
@@ -730,13 +786,28 @@ function ActionTimer({ label, deadlineIso, submitted, now }) {
 function PetCard({ pet, hp, shield, poison, opponent }) {
   if (!pet) return null;
   const hpPct = Math.max(0, Math.min(100, (hp / pet.maxHp) * 100));
+  const fmt = (n) => (n >= 0 ? `+${n}` : `${n}`);
   return (
     <div className={`pa-live-card pa-live-card--${pet.type} ${opponent ? "pa-live-card--opp" : ""}`}>
       <PetAvatar species={{ image: PET_SPECIES[pet.speciesKey]?.image, icon: pet.icon, name: pet.nickname }} className="pa-live-avatar" />
       <div className="pa-live-info">
         <div className="pa-live-name">{pet.nickname}</div>
         <div className="pa-live-meta">
-          Lv {pet.level} · {TYPE_ICON[pet.type]} {TYPE_LABEL[pet.type]} · CA {pet.ac}
+          Lv {pet.level} · <span className={`pa-type-badge pa-type-badge--${pet.type}`}>{TYPE_ICON[pet.type]} {TYPE_LABEL[pet.type]}</span>
+        </div>
+        <div className="pa-live-stats">
+          <span className="pa-stat" title="Classe Armatura — l'attaccante deve eguagliare o superare questo numero per colpire">
+            🛡 CA <b>{pet.ac}</b>
+          </span>
+          <span className="pa-stat" title="Bonus al tiro per colpire — sommato al d20 di ogni attacco">
+            ⚔ ATK <b>{fmt(pet.atkBonus)}</b>
+          </span>
+          <span className="pa-stat" title="Velocità — chi è più veloce attacca per primo nel round">
+            💨 SPD <b>{pet.spd}</b>
+          </span>
+          <span className="pa-stat" title="Bonus competenza — sommato ai dadi di danno">
+            🎯 PROF <b>{fmt(pet.profBonus)}</b>
+          </span>
         </div>
         <div className="pa-live-hp-label">
           <span>PF {hp} / {pet.maxHp}</span>
@@ -911,8 +982,8 @@ async function persistBattleResults(battle, mySide, oppSide) {
         updated.exp = (updated.exp || 0) + expReward;
         updated.level = levelFromExp(updated.exp);
         if (updated.level > lvlBefore) {
-          const stats = petStatsAtLevel(updated.speciesKey, updated.level);
-          updated.currentHp = stats.hp; // free heal on level-up
+          const stats = petStatsAtLevel(updated.speciesKey, updated.level, updated.bonusStats);
+          updated.currentHp = stats.hp; // free heal on level-up (preserves item bonusStats)
         }
 
         if (sideWon) {

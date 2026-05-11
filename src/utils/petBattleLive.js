@@ -336,23 +336,28 @@ export function resolveLiveRound(battle) {
     const total = d20 + me.atkBonus + (move.toHit || 0);
     const crit = d20 === 20;
     const fumble = d20 === 1;
-    const atkSign = me.atkBonus >= 0 ? `+${me.atkBonus}` : `${me.atkBonus}`;
-    const moveSign = (move.toHit || 0) ? ` ${move.toHit > 0 ? "+" : ""}${move.toHit}` : "";
-    const toHitTag = ` ${atkSign}${moveSign}`;
+    const fmtSigned = (n) => n >= 0 ? `+${n}` : `${n}`;
+    const atkPart = ` ${fmtSigned(me.atkBonus)}(atk)`;
+    const movePart = (move.toHit || 0) ? ` ${fmtSigned(move.toHit)}(eff)` : "";
+    const rollFormula = `🎲 d20[${d20}]${atkPart}${movePart} = ${total}`;
 
     if (fumble) {
-      logs.push({ side, text: `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=1 → fallimento critico!` });
+      logs.push({ side, text: `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} · ✗ fallimento critico!` });
       continue;
     }
     const hit = crit || total >= them.ac;
     if (!hit) {
-      logs.push({ side, text: `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=${d20}${toHitTag} = ${total} vs CA ${them.ac} · manca!` });
+      logs.push({ side, text: `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} vs CA ${them.ac} · ✗ manca` });
       continue;
     }
 
     const typeMul = typeMultiplier(move.type, them.type);
-    const diceRolled = rollDice(crit ? move.damageDice.num * 2 : move.damageDice.num, move.damageDice.sides);
-    const rawDmg = Math.max(1, Math.round((diceRolled + me.profBonus) * typeMul));
+    const numDice = crit ? move.damageDice.num * 2 : move.damageDice.num;
+    const rolls = [];
+    for (let i = 0; i < numDice; i++) rolls.push(rollDie(move.damageDice.sides));
+    const diceSum = rolls.reduce((a, b) => a + b, 0);
+    const preMul = diceSum + me.profBonus;
+    const rawDmg = Math.max(1, Math.round(preMul * typeMul));
 
     // Apply shield reduction
     const sh = next.shield[opp][theirIdx];
@@ -360,15 +365,17 @@ export function resolveLiveRound(battle) {
     const dealt = Math.max(1, rawDmg - blocked);
     next.hp[opp][theirIdx] = Math.max(0, next.hp[opp][theirIdx] - dealt);
 
-    const mulTag = typeMul > 1 ? " 🌟super-efficace" : typeMul < 1 ? " 💤poco efficace" : "";
-    const blockedTag = blocked > 0 ? ` (scudo blocca ${blocked})` : "";
-    const critTag = crit ? " 🎯CRITICO!" : "";
-    const diceLabel = `${diceTag(move.damageDice, crit)}+${me.profBonus}=${diceRolled + me.profBonus}`;
+    const hitVerb = crit ? "🎯 CRITICO!" : "✓ colpisce";
+    const diceLabel = `${diceTag(move.damageDice, crit)}[${rolls.join("+")}]${fmtSigned(me.profBonus)}=${preMul}`;
+    let mulPart = "";
+    if (typeMul > 1) mulPart = ` ×${typeMul} 🌟super-eff = ${rawDmg}`;
+    else if (typeMul < 1) mulPart = ` ×${typeMul} 💤poco-eff = ${rawDmg}`;
+    const blockedTag = blocked > 0 ? ` (🛡 blocca ${blocked})` : "";
     logs.push({
       side,
       text:
-        `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=${d20}${toHitTag} = ${total} vs CA ${them.ac} · colpisce!${critTag}` +
-        ` · danni ${diceLabel}${mulTag} → ${them.nickname} -${dealt} PF (${next.hp[opp][theirIdx] + dealt}→${next.hp[opp][theirIdx]})${blockedTag}.`
+        `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} vs CA ${them.ac} · ${hitVerb} · ` +
+        `💥 ${diceLabel}${mulPart} → -${dealt} PF a ${them.nickname} (${next.hp[opp][theirIdx] + dealt}→${next.hp[opp][theirIdx]})${blockedTag}`
     });
 
     // Post-hit effects
