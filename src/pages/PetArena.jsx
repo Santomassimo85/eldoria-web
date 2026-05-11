@@ -506,6 +506,13 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
   const [now, setNow] = useState(Date.now());
   const resolveLockRef = useRef(false);
   const autoLockRef = useRef({}); // side+round → bool
+  const logRef = useRef(null);    // battle log scroll container
+
+  /* Keep the latest log line in view on every update. */
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [battle.state.log?.length]);
 
   /* ── 1Hz tick for countdowns ──────────────────────────── */
   useEffect(() => {
@@ -769,7 +776,7 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
       </div>
 
       {/* Battle log */}
-      <div className="pa-battle-log">
+      <div className="pa-battle-log" ref={logRef}>
         {(battle.state.log || []).slice(-15).map((line, i) => {
           const text = typeof line === "string" ? line : line.text;
           const lineSide = typeof line === "object" && line ? line.side : null;
