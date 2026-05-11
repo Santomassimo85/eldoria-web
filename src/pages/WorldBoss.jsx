@@ -315,7 +315,15 @@ export default function WorldBoss() {
     let sneakDamage = 0;
     const characterClass = charData?.class?.toLowerCase() || "";
     const isRogue = characterClass === "ladro" || characterClass === "rogue";
-    if (isRogue) sneakDamage = Math.floor(Math.random() * 6) + 1;
+    const sneakDiceCount = (charData?.level ?? 1) >= 3 ? 2 : 1;
+    const sneakRolls = [];
+    if (isRogue) {
+      for (let i = 0; i < sneakDiceCount; i++) {
+        const r = Math.floor(Math.random() * 6) + 1;
+        sneakRolls.push(r);
+        sneakDamage += r;
+      }
+    }
     const finalDamage = totalRoll + statMod + sneakDamage;
     const currentShield = boss.shield || 0;
     const currentHp = boss.hp || 0;
@@ -332,7 +340,7 @@ export default function WorldBoss() {
       await updateDoc(doc(db, "bosses", boss.id), { hp: newHp, shield: newShield });
       let detailString = `${dmgDiceCount}${die} (${rollsDetail.join("+")})`;
       if (statMod !== 0) detailString += ` ${statMod > 0 ? "+ " + statMod : statMod}`;
-      if (isRogue) detailString += ` + 1d6 Ladro (${sneakDamage})`;
+      if (isRogue) detailString += ` + ${sneakDiceCount}d6 Ladro (${sneakRolls.join("+")})`;
       let shieldNote = currentShield > 0 ? ` (Scudo colpito! Rimanente: ${newShield})` : "";
       await addDoc(collection(db, "world_boss_chat"), {
         type: "action", senderName: charData?.name || "Eroe",
@@ -672,9 +680,16 @@ export default function WorldBoss() {
         let damageString = `🎯 COLPITO! | 🎲 ${dieDetail} ${staticBonus !== 0 ? "+ bonus(" + staticBonus + ")" : ""}`;
         if (isCritical) damageString = `🔥 CRITICO! | (${dieRollTotal} + ${staticBonus}) x2`;
         if (charData?.class?.toLowerCase() === "ladro" || charData?.class?.toLowerCase() === "rogue") {
-          const sneak = Math.floor(Math.random() * 6) + 1;
-          totalDamage += sneak;
-          damageString += ` + 1d6 Furtivo(${sneak})`;
+          const sneakDice = (charData?.level ?? 1) >= 3 ? 2 : 1;
+          const sneakRolls = [];
+          let sneakTotal = 0;
+          for (let i = 0; i < sneakDice; i++) {
+            const r = Math.floor(Math.random() * 6) + 1;
+            sneakRolls.push(r);
+            sneakTotal += r;
+          }
+          totalDamage += sneakTotal;
+          damageString += ` + ${sneakDice}d6 Furtivo(${sneakRolls.join("+")}=${sneakTotal})`;
         }
         const currentShield = boss.shield || 0;
         const currentHp = boss.hp || 0;
