@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { doc, onSnapshot, updateDoc, increment, arrayUnion } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, increment, arrayUnion, arrayRemove } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { EGG_COST, EGG_ICON, RARITY_LABEL, RARITY_COLOR, HATCH_POOLS, PET_SPECIES } from "../data/petSpecies";
 import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
@@ -15,6 +15,9 @@ import {
   petUnlockedMoves,
   petNextLockedMove,
   PET_POINT_SOURCES,
+  rollHatchSpecies,
+  newPetFromSpecies,
+  awardPetPoints,
 } from "../utils/pet";
 
 /* ── Earnings catalog config (icons + hints + display order) ──
@@ -61,10 +64,18 @@ import "./PetHub.css";
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 /* PetHub — single home for all pet features.
-   Tabs: Arena (battles) · Bottega (eggs + items, paid in petPoints). */
+   Tabs: Arena (battles) · Nido (eggs + wallet) · Compagni (roster) · Bottega (shop). */
 export default function PetHub() {
   const { currentUser } = useAuth();
   const [tab, setTab] = useState("arena");
+
+  /* Daily-login point award — fires once per day per user when they
+     open the Pet Hub. Moved here from PgSheetEditor so opening any
+     pet-related screen counts toward the bonus. */
+  useEffect(() => {
+    if (!currentUser) return;
+    awardPetPoints(currentUser.uid, "daily_login");
+  }, [currentUser]);
 
   if (!currentUser) {
     return (
@@ -102,6 +113,16 @@ export default function PetHub() {
         </button>
         <button
           type="button"
+          className={`ph-tab ph-tab--nido ${tab === "nido" ? "ph-tab--active" : ""}`}
+          onClick={() => setTab("nido")}
+          role="tab"
+          aria-selected={tab === "nido"}
+        >
+          <span className="ph-tab-icon" aria-hidden="true">🥚</span>
+          <span className="ph-tab-label">Nido</span>
+        </button>
+        <button
+          type="button"
           className={`ph-tab ph-tab--compagni ${tab === "compagni" ? "ph-tab--active" : ""}`}
           onClick={() => setTab("compagni")}
           role="tab"
@@ -124,6 +145,7 @@ export default function PetHub() {
 
       <div className="ph-tab-body">
         {tab === "arena"    && <PetArena embedded />}
+        {tab === "nido"     && <BestiariaNido uid={currentUser.uid} />}
         {tab === "compagni" && <PetCompagniPanel uid={currentUser.uid} isMaster={currentUser.email === MASTER_EMAIL} />}
         {tab === "shop"     && <BestiariaShop uid={currentUser.uid} />}
       </div>
@@ -311,6 +333,167 @@ function BestiariaShop({ uid }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   BESTIARIA NIDO — wallet · point ledger · egg incubator
+   Egg hatching + the points balance live here (moved out of
+   PgSheetEditor). The roster is in the Compagni tab.
+   ============================================================ */
+function BestiariaNido({ uid }) {
+  const [charData, setCharData] = useState(null);
+  const [hatching, setHatching] = useState(null);     // egg id currently incubating
+  const [hatchResult, setHatchResult] = useState(null); // { pet, rarity } reveal modal
+  const [showLedger, setShowLedger] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    if (!uid) return;
+    const unsub = onSnapshot(doc(db, "characters", uid), s => {
+      if (s.exists()) setCharData(s.data());
+    });
+    return () => unsub();
+  }, [uid]);
+
+  const showMsg = (text, ok = true) => {
+    setMessage({ text, ok });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const points = charData?.petPoints || 0;
+  const eggs   = Array.isArray(charData?.petEggs) ? charData.petEggs : [];
+  const ledger = Array.isArray(charData?.petPointsLedger) ? charData.petPointsLedger : [];
+
+  const hatchEgg = async (egg) => {
+    if (!uid || !egg || hatching) return;
+    setHatching(egg.id);
+    try {
+      const speciesKey = rollHatchSpecies(egg.rarity);
+      const newPet = newPetFromSpecies(speciesKey);
+      // Mini "shake" pause so the player sees the animation before the reveal
+      await new Promise(r => setTimeout(r, 1100));
+      await updateDoc(doc(db, "characters", uid), {
+        petEggs: arrayRemove(egg),
+        pets: arrayUnion(newPet),
+      });
+      setHatchResult({ pet: newPet, rarity: egg.rarity });
+    } catch (err) {
+      console.error("hatch failed:", err);
+      showMsg("Schiusa fallita: " + err.message, false);
+    } finally {
+      setHatching(null);
+    }
+  };
+
+  return (
+    <div className="ph-nido">
+      {message && (
+        <div className={`ph-msg ${message.ok ? "" : "ph-msg--err"}`}>{message.text}</div>
+      )}
+
+      {/* Wallet + ledger toggle */}
+      <div className="ph-nido-head">
+        <div className="ph-shop-balance">
+          <span>✦</span>
+          <strong>{points}</strong>
+          <span>punti Bestiario</span>
+        </div>
+        <button
+          type="button"
+          className="ph-btn ph-nido-ledger-btn"
+          onClick={() => setShowLedger(v => !v)}
+        >
+          {showLedger ? "Nascondi log" : "Storia punti"}
+        </button>
+      </div>
+
+      {showLedger && (
+        <div className="ph-nido-ledger">
+          {ledger.length === 0 ? (
+            <p className="ph-nido-empty">Nessun punto guadagnato ancora.</p>
+          ) : ledger.slice(0, 12).map((e, i) => (
+            <div key={i} className="ph-nido-ledger-row">
+              <span className="ph-nido-ledger-amount">+{e.amount}</span>
+              <span className="ph-nido-ledger-label">{e.label}</span>
+              <span className="ph-nido-ledger-time">
+                {new Date(e.ts).toLocaleString("it-IT", {
+                  day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                })}
+              </span>
+            </div>
+          ))}
+          <p className="ph-nido-empty ph-nido-ledger-hint">
+            Guadagni punti con: vittorie all'arena · sfide libere · offerte al mercato · letture (riassunti, NPC, archivio Geomantico) · login giornaliero · vittorie al Pet Arena.
+          </p>
+        </div>
+      )}
+
+      <h3 className="ph-shop-title">🥚 Le tue uova</h3>
+
+      {eggs.length === 0 ? (
+        <p className="ph-nido-empty">
+          Nessun uovo nello zaino. Compra uova nella <strong>Bottega</strong> e schiudile qui per scoprire quale compagno spunterà.
+        </p>
+      ) : (
+        <div className="ph-nido-eggs">
+          {eggs.map(egg => (
+            <div
+              key={egg.id}
+              className={`ph-nido-egg ph-nido-egg--${egg.rarity} ${hatching === egg.id ? "ph-nido-egg--shaking" : ""}`}
+            >
+              <span className="ph-nido-egg-icon">{EGG_ICON[egg.rarity] || "🥚"}</span>
+              <span className="ph-nido-egg-rarity">
+                Uovo {RARITY_LABEL[egg.rarity]}
+              </span>
+              <button
+                type="button"
+                className="ph-egg-buy-btn"
+                disabled={!!hatching}
+                onClick={() => hatchEgg(egg)}
+              >
+                {hatching === egg.id ? "Schiusa…" : "Schiudi"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Hatch reveal modal */}
+      {hatchResult && (
+        <div className="ph-hatch-overlay" onClick={() => setHatchResult(null)}>
+          <div
+            className={`ph-hatch-card ph-hatch-card--${hatchResult.rarity}`}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="ph-hatch-rarity">
+              {RARITY_LABEL[hatchResult.rarity]}
+            </div>
+            <PetAvatar
+              species={PET_SPECIES[hatchResult.pet.speciesKey]}
+              className="ph-hatch-avatar"
+            />
+            <h3 className="ph-hatch-name">
+              {PET_SPECIES[hatchResult.pet.speciesKey]?.name}
+            </h3>
+            <p className="ph-hatch-desc">
+              {PET_SPECIES[hatchResult.pet.speciesKey]?.desc}
+            </p>
+            <div className="ph-hatch-type">
+              <span>{TYPE_ICON[PET_SPECIES[hatchResult.pet.speciesKey]?.type]}</span>
+              <span>{TYPE_LABEL[PET_SPECIES[hatchResult.pet.speciesKey]?.type]}</span>
+            </div>
+            <button
+              type="button"
+              className="ph-egg-buy-btn ph-hatch-close"
+              onClick={() => setHatchResult(null)}
+            >
+              Aggiungi al roster
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

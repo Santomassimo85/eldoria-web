@@ -25,6 +25,7 @@
   --ph-muted:      #525252;
   --ph-stone:      #f5f5f4;
   --ph-arena:      #dc2626;
+  --ph-nido:       #7c3aed;
   --ph-compagni:   #0d9488;
   --ph-shop:       #ea580c;
   --ph-rare:       #1d4ed8;
@@ -153,6 +154,7 @@ section.ph-page,
   top: 0;
 }
 .ph-tab--arena    { --tab-color: var(--ph-arena);    }
+.ph-tab--nido     { --tab-color: var(--ph-nido);     }
 .ph-tab--compagni { --tab-color: var(--ph-compagni); }
 .ph-tab--shop     { --tab-color: var(--ph-shop);     }
 
@@ -1114,3 +1116,255 @@ section.ph-page,
   font-size: 0.72rem;
   letter-spacing: 0.08em;
 }
+
+/* ============================================================
+   NIDO TAB — wallet, ledger, eggs, hatch reveal modal
+   ============================================================ */
+.ph-nido {
+  background: var(--ph-card);
+  border: 3px solid var(--ph-ink);
+  padding: 22px 22px 26px;
+  box-shadow: 6px 6px 0 0 var(--ph-ink);
+}
+
+.ph-nido-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ph-btn {
+  background: var(--ph-card);
+  color: var(--ph-ink);
+  border: 3px solid var(--ph-ink);
+  padding: 8px 16px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
+  box-shadow: 4px 4px 0 0 var(--ph-ink);
+}
+.ph-btn:hover:not(:disabled) {
+  background: var(--ph-amber);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 var(--ph-ink);
+}
+.ph-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ph-nido-ledger-btn { margin-left: auto; }
+
+.ph-nido-ledger {
+  background: var(--ph-amber-soft);
+  border: 3px solid var(--ph-ink);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  box-shadow: 4px 4px 0 0 var(--ph-ink);
+}
+.ph-nido-ledger-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 2px dashed #d6d3d1;
+  font-size: 0.86rem;
+}
+.ph-nido-ledger-row:last-of-type { border-bottom: none; }
+.ph-nido-ledger-amount {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  color: var(--ph-ink);
+  background: var(--ph-amber);
+  border: 2px solid var(--ph-ink);
+  padding: 1px 8px;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+.ph-nido-ledger-label {
+  font-weight: 700;
+  color: var(--ph-ink);
+  letter-spacing: 0.02em;
+}
+.ph-nido-ledger-time {
+  font-size: 0.74rem;
+  color: var(--ph-muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ph-nido-ledger-hint {
+  margin-top: 10px !important;
+  font-size: 0.78rem;
+  color: var(--ph-muted);
+  line-height: 1.5;
+  font-style: italic;
+}
+.ph-nido-empty {
+  margin: 12px 0;
+  font-size: 0.9rem;
+  color: var(--ph-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Egg grid in the Nido (hatching versions) */
+.ph-nido-eggs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+.ph-nido-egg {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 14px;
+  background: var(--ph-card);
+  border: 3px solid var(--ph-ink);
+  text-align: center;
+  box-shadow: 5px 5px 0 0 var(--ph-ink);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.ph-nido-egg:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0 0 var(--ph-ink);
+}
+.ph-nido-egg--common { background: var(--ph-paper); }
+.ph-nido-egg--rare {
+  background: #dbeafe;
+  border-color: var(--ph-rare);
+  box-shadow: 5px 5px 0 0 var(--ph-rare);
+}
+.ph-nido-egg--epic {
+  background: var(--ph-amber-soft);
+  border-color: var(--ph-epic);
+  box-shadow: 5px 5px 0 0 var(--ph-epic);
+}
+.ph-nido-egg-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+.ph-nido-egg-rarity {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.92rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ph-ink);
+}
+.ph-nido-egg--shaking {
+  animation: ph-nido-shake 0.25s ease-in-out infinite;
+}
+@keyframes ph-nido-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-4deg); }
+  75%      { transform: rotate(4deg); }
+}
+
+/* ── HATCH REVEAL MODAL ─────────────────────────────────── */
+.ph-hatch-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 14, 4, 0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--navbar-h) + 12px) 20px 20px;
+  animation: ph-fade 0.18s ease-out;
+}
+.ph-hatch-card {
+  position: relative;
+  width: min(380px, 100%);
+  background: var(--ph-card);
+  border: 4px solid var(--ph-ink);
+  padding: 24px 20px 20px;
+  text-align: center;
+  box-shadow: 10px 10px 0 0 var(--ph-ink);
+  animation: ph-hatch-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes ph-hatch-pop {
+  from { transform: translateY(20px) scale(0.85); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.ph-hatch-card--rare {
+  background: #eff6ff;
+  border-color: var(--ph-rare);
+  box-shadow: 10px 10px 0 0 var(--ph-rare);
+}
+.ph-hatch-card--epic {
+  background: var(--ph-amber-soft);
+  border-color: var(--ph-epic);
+  box-shadow: 10px 10px 0 0 var(--ph-epic);
+}
+.ph-hatch-card--legendary {
+  background: var(--ph-legendary);
+  border-color: var(--ph-ink);
+  box-shadow: 10px 10px 0 0 var(--ph-amber);
+  color: var(--ph-cream);
+}
+.ph-hatch-rarity {
+  display: inline-block;
+  background: var(--ph-amber);
+  color: var(--ph-ink);
+  border: 3px solid var(--ph-ink);
+  padding: 4px 14px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.ph-hatch-card--rare      .ph-hatch-rarity { background: var(--ph-rare); color: #ffffff; }
+.ph-hatch-card--epic      .ph-hatch-rarity { background: var(--ph-epic); color: var(--ph-cream); }
+.ph-hatch-card--legendary .ph-hatch-rarity { background: var(--ph-amber); color: var(--ph-ink); }
+.ph-hatch-avatar {
+  width: 110px;
+  height: 110px;
+  margin: 4px auto 10px;
+  background: var(--ph-card);
+  border: 3px solid var(--ph-ink);
+  border-radius: 0;
+  font-size: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ph-hatch-name {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: inherit;
+  margin: 4px 0 6px;
+}
+.ph-hatch-desc {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  margin: 0 0 12px;
+  color: inherit;
+  opacity: 0.85;
+}
+.ph-hatch-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ph-card);
+  color: var(--ph-ink);
+  border: 2.5px solid var(--ph-ink);
+  padding: 3px 14px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.ph-hatch-close { width: 100%; margin-top: 6px; }
