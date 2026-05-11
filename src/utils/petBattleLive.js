@@ -207,11 +207,11 @@ export function resolveLiveRound(battle) {
 
   // 0. Forfeits short-circuit the battle.
   if (actionA?.kind === "forfeit") {
-    logs.push(`🏳 ${battle.challenger.ownerName} si è arreso.`);
+    logs.push({ side: "challenger", text: `🏳 ${battle.challenger.ownerName} si è arreso.` });
     next.winner = "challenged";
   }
   if (actionB?.kind === "forfeit") {
-    logs.push(`🏳 ${battle.challenged?.ownerName || "Sfidato"} si è arreso.`);
+    logs.push({ side: "challenged", text: `🏳 ${battle.challenged?.ownerName || "Sfidato"} si è arreso.` });
     next.winner = "challenger";
   }
   if (next.winner) {
@@ -231,7 +231,7 @@ export function resolveLiveRound(battle) {
     ) {
       next.activeIdx.challenger = actionA.toIdx;
       const newPet = teams.challenger[actionA.toIdx];
-      logs.push(`🔄 ${battle.challenger.ownerName} fa entrare ${newPet.icon} ${newPet.nickname}!`);
+      logs.push({ side: "challenger", text: `🔄 ${battle.challenger.ownerName} fa entrare ${newPet.icon} ${newPet.nickname}!` });
     }
   }
   if (actionB?.kind === "switch") {
@@ -244,7 +244,7 @@ export function resolveLiveRound(battle) {
     ) {
       next.activeIdx.challenged = actionB.toIdx;
       const newPet = teams.challenged[actionB.toIdx];
-      logs.push(`🔄 ${battle.challenged.ownerName} fa entrare ${newPet.icon} ${newPet.nickname}!`);
+      logs.push({ side: "challenged", text: `🔄 ${battle.challenged.ownerName} fa entrare ${newPet.icon} ${newPet.nickname}!` });
     }
   }
 
@@ -256,7 +256,7 @@ export function resolveLiveRound(battle) {
     if (p.turns > 0 && next.hp[side][idx] > 0) {
       const before = next.hp[side][idx];
       next.hp[side][idx] = Math.max(0, before - p.val);
-      logs.push(`☠ ${activeName} subisce ${p.val} danni dal veleno (${before}→${next.hp[side][idx]}).`);
+      logs.push({ side, text: `☠ ${activeName} subisce ${p.val} danni dal veleno (${before}→${next.hp[side][idx]}).` });
       p.turns -= 1;
     }
     // Shield wears down by 1 turn at start
@@ -271,8 +271,8 @@ export function resolveLiveRound(battle) {
     challenger: next.hp.challenger[next.activeIdx.challenger] <= 0,
     challenged: next.hp.challenged[next.activeIdx.challenged] <= 0,
   };
-  if (fainted.challenger) logs.push(`💀 ${teams.challenger[next.activeIdx.challenger].nickname} è KO!`);
-  if (fainted.challenged) logs.push(`💀 ${teams.challenged[next.activeIdx.challenged].nickname} è KO!`);
+  if (fainted.challenger) logs.push({ side: "challenger", text: `💀 ${teams.challenger[next.activeIdx.challenger].nickname} è KO!` });
+  if (fainted.challenged) logs.push({ side: "challenged", text: `💀 ${teams.challenged[next.activeIdx.challenged].nickname} è KO!` });
 
   // 3. Process attacks in SPD order.
   const moveActions = [];
@@ -302,7 +302,7 @@ export function resolveLiveRound(battle) {
     const them = teams[opp][theirIdx];
     const move = PET_MOVES[action.moveId];
     if (!move) {
-      logs.push(`${me.icon} ${me.nickname} è confuso e salta il turno.`);
+      logs.push({ side, text: `${me.icon} ${me.nickname} è confuso e salta il turno.` });
       continue;
     }
 
@@ -310,7 +310,7 @@ export function resolveLiveRound(battle) {
     if (move.maxUses != null) {
       const left = next.moveUses[side][myIdx][move.id] ?? 0;
       if (left <= 0) {
-        logs.push(`${me.icon} ${me.nickname} prova ${move.icon} ${move.name} · esaurita!`);
+        logs.push({ side, text: `${me.icon} ${me.nickname} prova ${move.icon} ${move.name} · esaurita!` });
         continue;
       }
       next.moveUses[side][myIdx][move.id] = left - 1;
@@ -321,12 +321,12 @@ export function resolveLiveRound(battle) {
       if (move.effect?.kind === "heal") {
         const before = next.hp[side][myIdx];
         next.hp[side][myIdx] = Math.min(me.maxHp, before + (move.effect.value || 0));
-        logs.push(`${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · +${next.hp[side][myIdx] - before} PF.`);
+        logs.push({ side, text: `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · +${next.hp[side][myIdx] - before} PF.` });
       } else if (move.effect?.kind === "shield") {
         const sh = next.shield[side][myIdx];
         sh.turns = move.effect.turns || 2;
         sh.val = move.effect.value || 0;
-        logs.push(`🛡 ${me.nickname} usa ${move.icon} ${move.name} · +${sh.val} CA per ${sh.turns}t.`);
+        logs.push({ side, text: `🛡 ${me.nickname} usa ${move.icon} ${move.name} · +${sh.val} CA per ${sh.turns}t.` });
       }
       continue;
     }
@@ -336,15 +336,17 @@ export function resolveLiveRound(battle) {
     const total = d20 + me.atkBonus + (move.toHit || 0);
     const crit = d20 === 20;
     const fumble = d20 === 1;
-    const toHitTag = (move.toHit || 0) ? ` ${move.toHit > 0 ? "+" : ""}${move.toHit}` : "";
+    const atkSign = me.atkBonus >= 0 ? `+${me.atkBonus}` : `${me.atkBonus}`;
+    const moveSign = (move.toHit || 0) ? ` ${move.toHit > 0 ? "+" : ""}${move.toHit}` : "";
+    const toHitTag = ` ${atkSign}${moveSign}`;
 
     if (fumble) {
-      logs.push(`${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=1 → fallimento critico!`);
+      logs.push({ side, text: `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=1 → fallimento critico!` });
       continue;
     }
     const hit = crit || total >= them.ac;
     if (!hit) {
-      logs.push(`${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=${d20}${toHitTag} = ${total} vs CA ${them.ac} · manca!`);
+      logs.push({ side, text: `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=${d20}${toHitTag} = ${total} vs CA ${them.ac} · manca!` });
       continue;
     }
 
@@ -362,34 +364,36 @@ export function resolveLiveRound(battle) {
     const blockedTag = blocked > 0 ? ` (scudo blocca ${blocked})` : "";
     const critTag = crit ? " 🎯CRITICO!" : "";
     const diceLabel = `${diceTag(move.damageDice, crit)}+${me.profBonus}=${diceRolled + me.profBonus}`;
-    logs.push(
-      `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=${d20}${toHitTag} = ${total} vs CA ${them.ac} · colpisce!${critTag}` +
-      ` · danni ${diceLabel}${mulTag} → ${them.nickname} -${dealt} PF (${next.hp[opp][theirIdx] + dealt}→${next.hp[opp][theirIdx]})${blockedTag}.`
-    );
+    logs.push({
+      side,
+      text:
+        `${me.icon} ${me.nickname} usa ${move.icon} ${move.name} · 🎲 d20=${d20}${toHitTag} = ${total} vs CA ${them.ac} · colpisce!${critTag}` +
+        ` · danni ${diceLabel}${mulTag} → ${them.nickname} -${dealt} PF (${next.hp[opp][theirIdx] + dealt}→${next.hp[opp][theirIdx]})${blockedTag}.`
+    });
 
     // Post-hit effects
     if (move.effect?.kind === "poison") {
       const ps = next.poison[opp][theirIdx];
       ps.turns = Math.max(ps.turns, move.effect.turns || 2);
       ps.val = Math.max(ps.val, move.effect.value || 0);
-      logs.push(`☠ ${them.nickname} è avvelenato/in fiamme (${ps.val}/t · ${ps.turns}t).`);
+      logs.push({ side, text: `☠ ${them.nickname} è avvelenato/in fiamme (${ps.val}/t · ${ps.turns}t).` });
     } else if (move.effect?.kind === "shield") {
       const mys = next.shield[side][myIdx];
       mys.turns = move.effect.turns || 2;
       mys.val = move.effect.value || 0;
-      logs.push(`🛡 ${me.nickname} guadagna ${mys.val} CA per ${mys.turns}t.`);
+      logs.push({ side, text: `🛡 ${me.nickname} guadagna ${mys.val} CA per ${mys.turns}t.` });
     } else if (move.effect?.kind === "heal" && move.damageDice) {
       // Life-drain attack — heal the attacker
       const beforeMe = next.hp[side][myIdx];
       next.hp[side][myIdx] = Math.min(me.maxHp, beforeMe + (move.effect.value || 0));
       if (next.hp[side][myIdx] > beforeMe) {
-        logs.push(`🩸 ${me.nickname} drena ${next.hp[side][myIdx] - beforeMe} PF dalla ferita.`);
+        logs.push({ side, text: `🩸 ${me.nickname} drena ${next.hp[side][myIdx] - beforeMe} PF dalla ferita.` });
       }
     }
 
     // Did the hit KO the target?
     if (next.hp[opp][theirIdx] <= 0) {
-      logs.push(`💀 ${them.nickname} è KO!`);
+      logs.push({ side, text: `💀 ${them.nickname} è KO!` });
     }
   }
 
@@ -405,12 +409,12 @@ export function resolveLiveRound(battle) {
       ? teams.challenger[next.activeIdx.challenger]
       : teams.challenged[next.activeIdx.challenged];
     const wOwner = next.winner === "challenger" ? battle.challenger.ownerName : battle.challenged.ownerName;
-    logs.push(`🏆 ${wOwner} vince con ${wPet.icon} ${wPet.nickname}!`);
+    logs.push({ side: next.winner, text: `🏆 ${wOwner} vince con ${wPet.icon} ${wPet.nickname}!` });
   } else if (next.winner === "draw") {
-    logs.push("⚖ Pareggio — entrambi i team sono caduti!");
+    logs.push({ side: null, text: "⚖ Pareggio — entrambi i team sono caduti!" });
   } else {
     next.round += 1;
-    logs.push(`— Round ${next.round} —`);
+    logs.push({ side: null, text: `— Round ${next.round} —` });
   }
 
   // 5. Clear pending actions for the next round and reseed deadlines

@@ -554,7 +554,9 @@ export function resolveBattle({ a, b, seed }) {
 
       // Attack roll
       const atk = rollAttack(rng, me, move, them);
-      const toHitTag = (move.toHit || 0) ? ` ${move.toHit > 0 ? "+" : ""}${move.toHit}` : "";
+      const atkSign = me.atkBonus >= 0 ? `+${me.atkBonus}` : `${me.atkBonus}`;
+      const moveSign = (move.toHit || 0) ? ` ${move.toHit > 0 ? "+" : ""}${move.toHit}` : "";
+      const toHitTag = ` ${atkSign}${moveSign}`;
 
       if (atk.fumble) {
         logs.push(`${me.icon} ${me.name} usa ${move.icon} ${move.name} · 🎲 d20=1 → fallimento critico!`);

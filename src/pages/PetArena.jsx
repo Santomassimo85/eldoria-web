@@ -591,9 +591,14 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
         {won && <p className="pa-battle-end-sub">+5 punti Bestiario · EXP guadagnata · 30 min di riposo per la squadra</p>}
         {!won && winner !== "draw" && <p className="pa-battle-end-sub">La tua squadra si ritira a leccarsi le ferite (30 min di riposo).</p>}
         <div className="pa-battle-log pa-battle-log--end">
-          {(battle.state.log || []).slice(-30).map((line, i) => (
-            <div key={i} className="pa-battle-line">{line}</div>
-          ))}
+          {(battle.state.log || []).slice(-30).map((line, i) => {
+            const text = typeof line === "string" ? line : line.text;
+            const lineSide = typeof line === "object" && line ? line.side : null;
+            const sideClass = lineSide === mySide ? " pa-battle-line--mine"
+              : lineSide && lineSide !== "draw" ? " pa-battle-line--opp"
+              : "";
+            return <div key={i} className={`pa-battle-line${sideClass}`}>{text}</div>;
+          })}
         </div>
         <button className="pa-btn pa-btn--primary" onClick={onExit}>Torna al lobby</button>
       </div>
@@ -690,9 +695,14 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
 
       {/* Battle log */}
       <div className="pa-battle-log">
-        {(battle.state.log || []).slice(-15).map((line, i) => (
-          <div key={i} className="pa-battle-line">{line}</div>
-        ))}
+        {(battle.state.log || []).slice(-15).map((line, i) => {
+          const text = typeof line === "string" ? line : line.text;
+          const lineSide = typeof line === "object" && line ? line.side : null;
+          const sideClass = lineSide === mySide ? " pa-battle-line--mine"
+            : lineSide && lineSide !== "draw" ? " pa-battle-line--opp"
+            : "";
+          return <div key={i} className={`pa-battle-line${sideClass}`}>{text}</div>;
+        })}
       </div>
     </div>
   );
