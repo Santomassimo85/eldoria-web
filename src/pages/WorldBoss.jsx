@@ -353,7 +353,7 @@ export default function WorldBoss() {
       setDmgDiceCount(1);
       setDmgSelectedStat(null);
       await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-        [`attackCounts.${currentUser.uid}`]: increment(1),
+        [`attackCounts.${boss.id}.${currentUser.uid}`]: increment(1),
       });
       await endMyTurn();
     } catch (err) {
@@ -710,7 +710,7 @@ export default function WorldBoss() {
       }
       await addDoc(collection(db, "world_boss_chat"), actionData);
       await updateDoc(doc(db, "battle_meta", "turn_tracker"), {
-        [`attackCounts.${currentUser.uid}`]: increment(1),
+        [`attackCounts.${boss.id}.${currentUser.uid}`]: increment(1),
       });
       await endMyTurn();
     } else {
@@ -1282,8 +1282,8 @@ export default function WorldBoss() {
                           <span className="rpg-master-row-name">
                             {isTgt && <span className="rpg-target-mark">◀</span>}
                             {(p.name || "?").split(" ")[0]}
-                            <span className="rpg-attack-counter" title="Attacchi totali al boss">
-                              ⚔ {turnState.attackCounts?.[p.id] ?? 0}
+                            <span className="rpg-attack-counter" title="Attacchi a questo boss">
+                              ⚔ {turnState.attackCounts?.[activeBosses[0]?.id]?.[p.id] ?? 0}
                             </span>
                             {acted && <span className="rpg-check-mark">✓</span>}
                             {isDead && <span className="rpg-dead-mark">💀</span>}
