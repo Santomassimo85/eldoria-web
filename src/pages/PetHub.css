@@ -740,6 +740,34 @@ section.ph-page,
   box-shadow: 2px 2px 0 0 var(--ph-ink);
 }
 
+.ph-master-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 12px;
+}
+.ph-master-del-all-btn {
+  background: var(--ph-arena);
+  color: var(--ph-cream);
+  border: 3px solid var(--ph-ink);
+  border-radius: 0;
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+  box-shadow: 4px 4px 0 0 var(--ph-ink);
+}
+.ph-master-del-all-btn:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0 0 var(--ph-ink);
+}
+.ph-master-del-all-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 var(--ph-ink);
+}
+
 .ph-care-card-head {
   display: flex;
   align-items: center;

@@ -613,6 +613,30 @@ function PetCompagniPanel({ uid, isMaster }) {
     }
   };
 
+  const deleteAllPets = async () => {
+    if (!isMaster) return;
+    if (pets.length === 0) return;
+    // Two-step confirm: a yes/no then a typed phrase. Without the second
+    // step a stray Enter on the first dialog wipes the whole roster.
+    if (!window.confirm(
+      `Eliminare TUTTI i ${pets.length} compagni dal tuo roster?\n\nQuesta operazione non si può annullare.`
+    )) return;
+    const phrase = window.prompt(
+      `Per confermare scrivi: ELIMINA TUTTO`
+    );
+    if (phrase !== "ELIMINA TUTTO") {
+      showMsg("Conferma non valida — operazione annullata.", false);
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "characters", uid), { pets: [] });
+      showMsg(`🗑 Roster azzerato (${pets.length} compagni rimossi).`);
+    } catch (err) {
+      console.error("deleteAllPets failed:", err);
+      showMsg("Eliminazione fallita.", false);
+    }
+  };
+
   const applyItem = async (pet, itemKey) => {
     const item = PET_ITEMS[itemKey];
     if (!item) return;
@@ -651,6 +675,19 @@ function PetCompagniPanel({ uid, isMaster }) {
       )}
 
       <PetStatsLegend />
+
+      {isMaster && pets.length > 0 && (
+        <div className="ph-master-toolbar">
+          <button
+            type="button"
+            className="ph-master-del-all-btn"
+            onClick={deleteAllPets}
+            title="Master · elimina TUTTI i compagni dal tuo roster"
+          >
+            🗑 Elimina tutti i miei compagni ({pets.length})
+          </button>
+        </div>
+      )}
 
       <div className="ph-care-bag">
         <span className="ph-care-bag-label">🎒 Zaino</span>

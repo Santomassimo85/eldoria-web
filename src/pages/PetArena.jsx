@@ -163,6 +163,7 @@ export default function PetArena({ embedded = false } = {}) {
       )}
 
       <TypeCycleLegend />
+      <BattleExpLegend />
 
       {/* My pets summary */}
       <div className="pa-panel">
@@ -340,6 +341,85 @@ function TypeCycleLegend() {
           {TYPE_ICON[LIGHT_DARK_PAIR[1]]} {TYPE_LABEL[LIGHT_DARK_PAIR[1]]}
         </span>
       </div>
+    </div>
+  );
+}
+
+/* ── EXP table (collapsible) ───────────────────────────
+   Single source of truth: numbers are computed via battleExpReward
+   and expForLevel so this table never drifts from what
+   persistBattleResults actually writes. */
+function BattleExpLegend() {
+  const [open, setOpen] = useState(false);
+  // Sample table rows so players can read a concrete number without
+  // doing the math themselves. Levels 1/3/5/8/10 cover the curve.
+  const sampleLvls = [1, 3, 5, 8, 10];
+  return (
+    <div className="pa-stats-legend pa-exp-legend">
+      <button
+        type="button"
+        className="pa-stats-legend-toggle"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        {open ? "▼" : "▶"} ✨ Tabella EXP — come si guadagna esperienza
+      </button>
+      {open && (
+        <div className="pa-stats-legend-body">
+          <div className="pa-exp-section-title">🐉 In battaglia</div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">🏆 Vittoria</span>
+            <span><b>15 + 5 × Lv medio avversario</b> EXP per ogni compagno schierato.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">💀 Sconfitta</span>
+            <span>Metà ricompensa vittoria (arrot. per difetto, min 1) per ogni compagno schierato.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">⚖ Pareggio</span>
+            <span>Metà ricompensa per entrambe le squadre, come la sconfitta.</span>
+          </div>
+
+          <table className="pa-exp-table">
+            <thead>
+              <tr>
+                <th>Lv medio avversario</th>
+                <th>🏆 Vittoria</th>
+                <th>💀 / ⚖</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sampleLvls.map(lvl => (
+                <tr key={lvl}>
+                  <td>Lv {lvl}</td>
+                  <td><b>+{battleExpReward(lvl, true)}</b> EXP</td>
+                  <td>+{battleExpReward(lvl, false)} EXP</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="pa-exp-section-title">🎒 Oggetti consumabili</div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">💎 Pietra dell'Esperienza</span>
+            <span><b>+50 EXP</b> istantanei al compagno. Costo: 30 punti Bestiario.</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">🍬 Caramella Rara</span>
+            <span><b>+1 livello</b> istantaneo (porta esattamente alla soglia del livello successivo, max Lv 10). Costo: 90 punti.</span>
+          </div>
+
+          <div className="pa-exp-section-title">📈 Curva livelli</div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">Soglia(L)</span>
+            <span><code>5 × L²</code> EXP totali. L2: 20 · L3: 45 · L5: 125 · L8: 320 · L10: 500 (cap).</span>
+          </div>
+          <div className="pa-stats-legend-row">
+            <span className="pa-stat-key">Salita di livello</span>
+            <span>Ripristina i PF al massimo e sblocca eventuali nuove abilità.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -597,21 +677,23 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
     })();
   }, [myPending, oppPending, isChallenger, battle.id, winner]);
 
-  /* ── On battle end, persist back to both players ──────── */
+  /* ── On battle end, persist MY side's results ──────────
+     Each client persists only its own side because Firestore rules
+     don't allow cross-user character-doc writes. A transactional
+     per-side claim on the battle doc prevents replay on reload. */
   const persistedRef = useRef(false);
   useEffect(() => {
     if (!winner) return;
     if (persistedRef.current) return;
-    if (!isChallenger) return; // only host writes results
     persistedRef.current = true;
     (async () => {
       try {
-        await persistBattleResults(battle, mySide, oppSide);
+        await persistBattleResults(battle, mySide);
       } catch (err) {
         console.error("persist results failed:", err);
       }
     })();
-  }, [winner, isChallenger, battle, mySide, oppSide]);
+  }, [winner, battle, mySide]);
 
   /* ── Submit my action ────────────────────────────────── */
   const submitAction = async (action) => {
@@ -664,13 +746,24 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
 
   if (winner) {
     const won = winner === mySide;
+    const oppAvgLvl = battleOppAvgLvl(battle.teams?.[oppSide] || []);
+    const expReward = battleExpReward(oppAvgLvl, won);
+    const myTeamSize = (battle.teams?.[mySide] || []).length;
     return (
       <div className="pa-battle-end">
         <h2 className={`pa-battle-end-title pa-battle-end-title--${winner === "draw" ? "draw" : won ? "win" : "loss"}`}>
           {winner === "draw" ? "⚖ Pareggio" : won ? "🏆 Vittoria!" : "💀 Sconfitta"}
         </h2>
-        {won && <p className="pa-battle-end-sub">+5 punti Bestiario · EXP guadagnata · 30 min di riposo per la squadra</p>}
-        {!won && winner !== "draw" && <p className="pa-battle-end-sub">La tua squadra si ritira a leccarsi le ferite (30 min di riposo).</p>}
+        <div className="pa-battle-end-rewards">
+          <span className="pa-reward-chip pa-reward-chip--exp">
+            ✨ +{expReward} EXP × {myTeamSize} compagn{myTeamSize === 1 ? "o" : "i"}
+            <em className="pa-reward-sub"> (avv. Lv medio {oppAvgLvl})</em>
+          </span>
+          {won && (
+            <span className="pa-reward-chip pa-reward-chip--pts">🐾 +5 punti Bestiario</span>
+          )}
+          <span className="pa-reward-chip pa-reward-chip--rest">😴 30 min di riposo</span>
+        </div>
         <div className="pa-battle-log pa-battle-log--end">
           {(battle.state.log || []).slice(-30).map((line, i) => {
             const text = typeof line === "string" ? line : line.text;
@@ -961,18 +1054,23 @@ function SwitchPanel({ team, hp, activeIdx, onSwitch, onCancel, forced }) {
 }
 
 /* ============================================================
-   Persist results — write back HP / EXP / wins / losses /
-   restingUntil / lastHealTick for both players' teams.
-   Award pet points to the winner.
+   Persist results FOR MY OWN SIDE — write back HP / EXP / wins /
+   losses / restingUntil / lastHealTick for my team, then award
+   pet points if I won.
 
-   Reload-safety: a transaction on the battle doc claims a one-shot
-   `resultsPersisted` flag before any character writes run, so a host
-   refreshing the page after the winner is set cannot re-grant EXP,
-   wins, or pet points. The points award itself also passes the
-   battleId as resourceKey so awardPetPoints' own idempotency check
+   Each client persists only its own side. Firestore security rules
+   typically forbid cross-user writes, which is why the previous
+   "host writes both sides" approach silently dropped EXP for the
+   non-host player.
+
+   Reload-safety: a per-side flag on the battle doc
+   (`resultsPersisted.${mySide}`) is claimed transactionally before
+   any character writes run, so refreshing after the winner is set
+   cannot re-grant EXP / wins / points. The points award also passes
+   battleId as resourceKey so awardPetPoints' oncePerKey check
    catches any partial-write replay.
    ============================================================ */
-async function persistBattleResults(battle, mySide, oppSide) {
+async function persistBattleResults(battle, mySide) {
   const restingUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const nowIso = new Date().toISOString();
   const winner = battle.state.winner;
@@ -982,8 +1080,19 @@ async function persistBattleResults(battle, mySide, oppSide) {
     const claimed = await runTransaction(db, async (tx) => {
       const snap = await tx.get(battleRef);
       if (!snap.exists()) return false;
-      if (snap.data().resultsPersisted) return false;
-      tx.update(battleRef, { resultsPersisted: true, resultsPersistedAt: serverTimestamp() });
+      const persisted = snap.data().resultsPersisted;
+      // Back-compat: an older client may have set this as a boolean
+      // before per-side claims existed. Treat that as "challenger
+      // already persisted" and let the challenged side run.
+      if (persisted === true) {
+        if (mySide === "challenger") return false;
+      } else if (persisted && typeof persisted === "object" && persisted[mySide]) {
+        return false;
+      }
+      tx.update(battleRef, {
+        [`resultsPersisted.${mySide}`]: true,
+        [`resultsPersistedAt.${mySide}`]: serverTimestamp(),
+      });
       return true;
     });
     if (!claimed) return;
@@ -992,74 +1101,72 @@ async function persistBattleResults(battle, mySide, oppSide) {
     return;
   }
 
-  const writeForSide = async (side) => {
-    const sideData = battle[side];
-    if (!sideData?.uid) return;
-    const ref = doc(db, "characters", sideData.uid);
-    try {
-      const snap = await getDoc(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
-      const pets = Array.isArray(data.pets) ? data.pets.slice() : [];
-      const team = battle.teams[side] || [];
-      const opp = side === "challenger" ? "challenged" : "challenger";
-      const oppTeam = battle.teams[opp] || [];
-      const oppAvgLvl = Math.max(1, Math.round(
-        oppTeam.reduce((s, p) => s + (p.level || 1), 0) / Math.max(1, oppTeam.length)
-      ));
-      const sideWon = winner === side;
-      const drew = winner === "draw";
+  const sideData = battle[mySide];
+  if (!sideData?.uid) return;
+  const ref = doc(db, "characters", sideData.uid);
+  try {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const pets = Array.isArray(data.pets) ? data.pets.slice() : [];
+    const team = battle.teams[mySide] || [];
+    const opp = mySide === "challenger" ? "challenged" : "challenger";
+    const oppTeam = battle.teams[opp] || [];
+    const oppAvgLvl = battleOppAvgLvl(oppTeam);
+    const sideWon = winner === mySide;
+    const drew = winner === "draw";
 
-      // EXP rules: every pet that participated gains EXP.
-      //   Winners: full reward (15 + 5×opponentAvgLevel).
-      //   Losers / draws: half reward (rounded down, min 1).
-      // Level-up auto-fills HP.
-      const fullReward = expFromBattle(oppAvgLvl);
-      const expReward = sideWon ? fullReward : Math.max(1, Math.floor(fullReward / 2));
+    // EXP rules — kept in one place (battleExpReward) so the lobby
+    // table, the end-screen badge, and the persist write all agree.
+    const expReward = battleExpReward(oppAvgLvl, sideWon);
 
-      team.forEach((snapPet, i) => {
-        const idx = pets.findIndex(p => p.id === snapPet.petId);
-        if (idx < 0) return;
-        const updated = { ...pets[idx] };
-        const newHp = battle.state.hp[side][i];
-        updated.currentHp = Math.max(1, newHp);
-        updated.lastHealTick = nowIso;
-        updated.restingUntil = restingUntil;
+    team.forEach((snapPet, i) => {
+      const idx = pets.findIndex(p => p.id === snapPet.petId);
+      if (idx < 0) return;
+      const updated = { ...pets[idx] };
+      const newHp = battle.state.hp[mySide][i];
+      updated.currentHp = Math.max(1, newHp);
+      updated.lastHealTick = nowIso;
+      updated.restingUntil = restingUntil;
 
-        const lvlBefore = updated.level || levelFromExp(updated.exp || 0);
-        updated.exp = (updated.exp || 0) + expReward;
-        updated.level = levelFromExp(updated.exp);
-        if (updated.level > lvlBefore) {
-          const stats = petStatsAtLevel(updated.speciesKey, updated.level, updated.bonusStats);
-          updated.currentHp = stats.hp; // free heal on level-up (preserves item bonusStats)
-        }
-
-        if (sideWon) {
-          updated.wins = (updated.wins || 0) + 1;
-        } else if (!drew) {
-          updated.losses = (updated.losses || 0) + 1;
-        }
-
-        pets[idx] = updated;
-      });
-
-      await updateDoc(ref, { pets });
-      if (sideWon) {
-        // Routed through awardPetPoints so the daily cap (pet_battle_win:
-        // 5/day) and oncePerKey check (resourceKey = battle.id) both
-        // apply — and a page refresh during the resolved phase cannot
-        // re-grant points even if this code is somehow re-entered.
-        try {
-          await awardPetPoints(sideData.uid, "pet_battle_win", { resourceKey: battle.id });
-        } catch (err) {
-          console.warn(`[awardPetPoints pet_battle_win ${side}]`, err);
-        }
+      const lvlBefore = updated.level || levelFromExp(updated.exp || 0);
+      updated.exp = (updated.exp || 0) + expReward;
+      updated.level = levelFromExp(updated.exp);
+      if (updated.level > lvlBefore) {
+        const stats = petStatsAtLevel(updated.speciesKey, updated.level, updated.bonusStats);
+        updated.currentHp = stats.hp; // free heal on level-up (preserves item bonusStats)
       }
-    } catch (err) {
-      console.warn(`[persistBattleResults ${side}]`, err);
-    }
-  };
 
-  await writeForSide("challenger");
-  await writeForSide("challenged");
+      if (sideWon) {
+        updated.wins = (updated.wins || 0) + 1;
+      } else if (!drew) {
+        updated.losses = (updated.losses || 0) + 1;
+      }
+
+      pets[idx] = updated;
+    });
+
+    await updateDoc(ref, { pets });
+    if (sideWon) {
+      try {
+        await awardPetPoints(sideData.uid, "pet_battle_win", { resourceKey: battle.id });
+      } catch (err) {
+        console.warn(`[awardPetPoints pet_battle_win ${mySide}]`, err);
+      }
+    }
+  } catch (err) {
+    console.warn(`[persistBattleResults ${mySide}]`, err);
+  }
+}
+
+/* Shared helpers — kept top-level so both persistBattleResults and
+   the UI table/badge compute the same numbers. Single source of truth. */
+function battleOppAvgLvl(oppTeam) {
+  if (!Array.isArray(oppTeam) || oppTeam.length === 0) return 1;
+  const sum = oppTeam.reduce((s, p) => s + (p.level || 1), 0);
+  return Math.max(1, Math.round(sum / oppTeam.length));
+}
+function battleExpReward(oppAvgLvl, sideWon) {
+  const full = expFromBattle(oppAvgLvl); // 15 + 5*lvl
+  return sideWon ? full : Math.max(1, Math.floor(full / 2));
 }
