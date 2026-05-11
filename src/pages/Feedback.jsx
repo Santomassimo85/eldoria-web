@@ -11,8 +11,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  doc, collection, onSnapshot, getDoc, setDoc, deleteDoc,
-  serverTimestamp, query, orderBy, where,
+  doc, collection, onSnapshot, getDoc, setDoc, updateDoc, deleteDoc,
+  addDoc, serverTimestamp, query, orderBy, where,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
@@ -70,6 +70,38 @@ function formatDate(ts) {
    wasn't allowed to delete this particular doc. */
 async function deleteFeedbackById(docId) {
   await deleteDoc(doc(db, "feedback", docId));
+}
+
+/* Master writes (or clears) a reply on a feedback doc and pushes a
+   notification to the author. Pulling the notify into the same call
+   keeps the two writes co-located so it's obvious which feedback the
+   notification refers to.
+
+   Passing `replyText = ""` clears the reply and skips the notification
+   — useful when the master wants to retract a draft they typed by
+   mistake without spamming the player. */
+async function saveMasterReply(feedback, replyText, masterUser) {
+  const trimmed = (replyText || "").trim();
+  await updateDoc(doc(db, "feedback", feedback.id), {
+    masterReply: trimmed,
+    masterReplyAt: trimmed ? serverTimestamp() : null,
+    masterReplyBy: trimmed ? (masterUser?.uid || null) : null,
+  });
+  if (!trimmed) return;
+  if (!feedback.authorUid) return;
+  // Notification body — capped so a long master reply doesn't blow up
+  // the notification card. The full text is always available on the
+  // feedback page itself.
+  const featureLabel = feedback.featureLabel || FEATURE_LABEL[feedback.feature] || feedback.feature;
+  const preview = trimmed.length > 220 ? trimmed.slice(0, 217) + "…" : trimmed;
+  const titlePrefix = feedback.bug ? "🐛 Risposta del Master al tuo bug" : "💬 Risposta del Master al tuo feedback";
+  await addDoc(collection(db, "notifications"), {
+    userId: feedback.authorUid,
+    read: false,
+    timestamp: serverTimestamp(),
+    title: titlePrefix,
+    message: `[${featureLabel}] ${preview}`,
+  });
 }
 
 /* ── Star rating control ───────────────────────────────── */
@@ -168,6 +200,7 @@ function PlayerForm({ currentUser, characterName }) {
   const [cons, setCons] = useState([]);
   const [message, setMessage] = useState("");
   const [bug, setBug] = useState("");
+  const [loadedFeedback, setLoadedFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // { ok, text }
 
@@ -188,8 +221,10 @@ function PlayerForm({ currentUser, characterName }) {
           setCons(Array.isArray(d.cons) ? d.cons : []);
           setMessage(d.message || "");
           setBug(d.bug || "");
+          setLoadedFeedback({ id: snap.id, ...d });
         } else {
           setStars(0); setPros([]); setCons([]); setMessage(""); setBug("");
+          setLoadedFeedback(null);
         }
       } catch (err) {
         console.warn("[feedback load]", err);
@@ -269,6 +304,11 @@ function PlayerForm({ currentUser, characterName }) {
           {FEATURES.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
         </select>
       </label>
+
+      {/* If the master has already replied to this feature, surface
+          that reply at the top of the form so the player sees it
+          before deciding what to edit. */}
+      <MasterReplyBlock feedback={loadedFeedback} />
 
       <div className="fb-field">
         <span className="fb-field-label">Valutazione</span>
@@ -411,10 +451,126 @@ function MyFeedbackList({ currentUser }) {
             {(d.pros || []).map(p => <span key={p} className="fb-chip fb-chip--on">✓ {p}</span>)}
             {(d.cons || []).map(c => <span key={c} className="fb-chip fb-chip--on fb-chip--con">✗ {c}</span>)}
           </div>
+          <MasterReplyBlock feedback={d} />
           <div className="fb-mine-meta">Aggiornato {formatDate(d.updatedAt)}</div>
         </li>
       ))}
     </ul>
+  );
+}
+
+/* ── MasterReplyForm ─────────────────────────────────────
+   Inline reply editor shown under each feedback in the master
+   dashboard. Pre-fills the existing reply if there is one so the
+   master can edit / clear instead of overwriting. Pushes a
+   notification to the author on save (handled by saveMasterReply). */
+function MasterReplyForm({ feedback, masterUser }) {
+  const [text, setText] = useState(feedback.masterReply || "");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  // If a fresh snapshot for this feedback arrives (e.g. someone else
+  // editing in another tab), keep the textarea in sync with the doc.
+  useEffect(() => {
+    if (!open) setText(feedback.masterReply || "");
+  }, [feedback.masterReply, open]);
+
+  const save = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await saveMasterReply(feedback, text, masterUser);
+      setOpen(false);
+    } catch (e) {
+      console.error("master reply save failed:", e);
+      setErr(e?.message || "Errore.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const clear = async () => {
+    if (!feedback.masterReply) { setText(""); setOpen(false); return; }
+    if (!window.confirm("Cancellare la risposta del Master? Il giocatore non riceverà un'altra notifica.")) return;
+    setBusy(true); setErr(null);
+    try {
+      await saveMasterReply(feedback, "", masterUser);
+      setText("");
+      setOpen(false);
+    } catch (e) {
+      console.error("master reply clear failed:", e);
+      setErr(e?.message || "Errore.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className={`fb-reply-toggle ${feedback.masterReply ? "fb-reply-toggle--has" : ""}`}
+        onClick={() => setOpen(true)}
+      >
+        {feedback.masterReply ? "✏ Modifica risposta del Master" : "💬 Rispondi"}
+      </button>
+    );
+  }
+  return (
+    <div className="fb-reply-edit">
+      <textarea
+        className="fb-textarea fb-textarea--reply"
+        rows={3}
+        maxLength={1000}
+        placeholder="Scrivi la tua risposta. Il giocatore riceverà una notifica."
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
+      <div className="fb-reply-edit-actions">
+        <button
+          type="button"
+          className="fb-btn fb-btn--primary"
+          onClick={save}
+          disabled={busy || (text.trim() === (feedback.masterReply || "").trim())}
+        >
+          {busy ? "Invio..." : (feedback.masterReply ? "💾 Aggiorna + notifica" : "📨 Invia + notifica")}
+        </button>
+        {feedback.masterReply && (
+          <button
+            type="button"
+            className="fb-btn fb-btn--ghost"
+            onClick={clear}
+            disabled={busy}
+          >
+            🗑 Cancella risposta
+          </button>
+        )}
+        <button
+          type="button"
+          className="fb-btn fb-btn--ghost"
+          onClick={() => { setOpen(false); setText(feedback.masterReply || ""); }}
+          disabled={busy}
+        >
+          ✕ Annulla
+        </button>
+      </div>
+      {err && <div className="fb-status fb-status--err">{err}</div>}
+    </div>
+  );
+}
+
+/* Read-only reply block — shown on the player side when the master
+   has answered. The styling matches the master accent so the player
+   immediately recognizes it as coming from the DM. */
+function MasterReplyBlock({ feedback }) {
+  if (!feedback?.masterReply) return null;
+  return (
+    <div className="fb-reply-block">
+      <div className="fb-reply-block-head">
+        <span className="fb-reply-tag">💬 Master</span>
+        <span className="fb-reply-when">{formatDate(feedback.masterReplyAt)}</span>
+      </div>
+      <p className="fb-reply-text">{feedback.masterReply}</p>
+    </div>
   );
 }
 
@@ -424,7 +580,7 @@ function MyFeedbackList({ currentUser }) {
    Includes per-feature averages so you see at a glance which
    areas players love and which ones need work.
    ============================================================ */
-function MasterDashboard() {
+function MasterDashboard({ masterUser }) {
   const [items, setItems] = useState([]);
   const [filterFeat, setFilterFeat] = useState("all");
   const [minStars, setMinStars] = useState(0);
@@ -601,6 +757,8 @@ function MasterDashboard() {
                 </div>
               )}
               <div className="fb-row-meta">Aggiornato {formatDate(d.updatedAt)} · Creato {formatDate(d.createdAt)}</div>
+              <MasterReplyBlock feedback={d} />
+              <MasterReplyForm feedback={d} masterUser={masterUser} />
             </li>
           ))}
         </ul>
@@ -661,7 +819,7 @@ export default function Feedback() {
 
       {isMaster && (
         <div className="fb-panel fb-panel--master">
-          <MasterDashboard />
+          <MasterDashboard masterUser={currentUser} />
         </div>
       )}
     </section>

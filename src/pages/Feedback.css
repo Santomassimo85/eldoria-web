@@ -475,6 +475,82 @@
 }
 .fb-filter-bug input { transform: scale(1.2); }
 
+/* ── Master reply ─────────────────────────────────────── */
+.fb-reply-block {
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-left: 6px solid var(--fb-master);
+  border-top: 2px solid var(--fb-ink);
+  border-right: 2px solid var(--fb-ink);
+  border-bottom: 2px solid var(--fb-ink);
+  box-shadow: 3px 3px 0 0 var(--fb-master);
+}
+.fb-reply-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.fb-reply-tag {
+  background: var(--fb-master);
+  color: #ffffff;
+  border: 2px solid var(--fb-ink);
+  padding: 2px 8px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+.fb-reply-when {
+  font-size: 0.74rem;
+  opacity: 0.6;
+}
+.fb-reply-text {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--fb-ink);
+  white-space: pre-wrap;
+}
+
+.fb-reply-toggle {
+  margin-top: 8px;
+  background: var(--fb-master);
+  color: #ffffff;
+  border: 2px solid var(--fb-ink);
+  padding: 5px 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 var(--fb-ink);
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+.fb-reply-toggle:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 0 var(--fb-ink); }
+.fb-reply-toggle--has { background: #4a2855; }
+
+.fb-reply-edit {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--fb-master-soft);
+  border: 3px solid var(--fb-master);
+  box-shadow: 4px 4px 0 0 var(--fb-master);
+}
+.fb-textarea--reply {
+  background: #ffffff;
+  border-color: var(--fb-master);
+  box-shadow: 3px 3px 0 0 var(--fb-master);
+  width: 100%;
+  box-sizing: border-box;
+}
+.fb-reply-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
 /* Trash button used by both MyFeedbackList and MasterDashboard. */
 .fb-row-del {
   background: var(--fb-con);
