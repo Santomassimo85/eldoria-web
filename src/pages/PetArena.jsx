@@ -29,6 +29,7 @@ export default function PetArena({ embedded = false } = {}) {
   const [resolvedBattles, setResolved] = useState([]);
   const [picker, setPicker] = useState(null); // { mode: "create" | "accept", battleId? }
   const [activeBattleId, setActiveBattleId] = useState(null);
+  const [myPetsOpen, setMyPetsOpen] = useState(true);
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -202,43 +203,63 @@ export default function PetArena({ embedded = false } = {}) {
 
       {/* My pets summary */}
       <div className="pa-panel">
-        <h2 className="pa-panel-title">⚔ I tuoi compagni</h2>
-        {myPets.length === 0 ? (
-          <p className="pa-empty">Non hai ancora nessun compagno. Vai alla <Link to="/pet">Bottega</Link> ▸ Bestiario.</p>
-        ) : (
-          <div className="pa-pet-row">
-            {myPets.map(pet => {
-              const sp = PET_SPECIES[pet.speciesKey];
-              if (!sp) return null;
-              const lvl = levelFromExp(pet.exp || 0);
-              const stats = petStatsAtLevel(pet.speciesKey, lvl);
-              const curHp = petEffectiveHp(pet);
-              const hpPct = Math.max(0, Math.min(100, (curHp / stats.hp) * 100));
-              const resting = isResting(pet);
-              const minutesLeft = resting ? Math.ceil((new Date(pet.restingUntil) - new Date()) / 60000) : 0;
-              const tickMs = petNextHealTickIn(pet);
-              const tickMin = tickMs > 0 ? Math.max(1, Math.ceil(tickMs / 60000)) : 0;
-              return (
-                <div key={pet.id} className={`pa-pet-mini pa-pet-mini--${sp.type}`}>
-                  <PetAvatar species={sp} className="pa-pet-mini-icon" />
-                  <div className="pa-pet-mini-name">{pet.nickname}</div>
-                  <div className="pa-pet-mini-meta">Lv {lvl} · {TYPE_ICON[sp.type]}</div>
-                  <div className="pa-pet-mini-bar">
-                    <div className="pa-pet-mini-bar-fill" style={{ width: `${hpPct}%` }} />
-                  </div>
-                  <div className="pa-pet-mini-hp">{curHp}/{stats.hp} PF</div>
-                  {tickMin > 0 && <div className="pa-pet-mini-regen">💚 +1 PF tra {tickMin}m</div>}
-                  {resting && <div className="pa-resting">😴 {minutesLeft}min</div>}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {eligiblePets.length > 0 && (
-          <button type="button" className="pa-btn pa-btn--primary pa-create-btn"
-                  onClick={() => setPicker({ mode: "create" })}>
-            ⚔ Lancia una sfida (squadra di 1-{MAX_TEAM_SIZE})
-          </button>
+        <button
+          type="button"
+          className="pa-panel-toggle"
+          onClick={() => setMyPetsOpen(v => !v)}
+          aria-expanded={myPetsOpen}
+        >
+          <span className="pa-panel-toggle-caret">{myPetsOpen ? "▼" : "▶"}</span>
+          <span className="pa-panel-title pa-panel-title--inline">⚔ I tuoi compagni</span>
+          <span className="pa-panel-toggle-count">{myPets.length}</span>
+        </button>
+        {myPetsOpen && (
+          <>
+            {myPets.length === 0 ? (
+              <p className="pa-empty">Non hai ancora nessun compagno. Vai alla <Link to="/pet">Bottega</Link> ▸ Bestiario.</p>
+            ) : (
+              <div className="pa-pet-row">
+                {myPets.map(pet => {
+                  const sp = PET_SPECIES[pet.speciesKey];
+                  if (!sp) return null;
+                  const lvl = levelFromExp(pet.exp || 0);
+                  const stats = petStatsAtLevel(pet.speciesKey, lvl);
+                  const curHp = petEffectiveHp(pet);
+                  const hpPct = Math.max(0, Math.min(100, (curHp / stats.hp) * 100));
+                  const resting = isResting(pet);
+                  const minutesLeft = resting ? Math.ceil((new Date(pet.restingUntil) - new Date()) / 60000) : 0;
+                  const tickMs = petNextHealTickIn(pet);
+                  const tickMin = tickMs > 0 ? Math.max(1, Math.ceil(tickMs / 60000)) : 0;
+                  return (
+                    <div key={pet.id} className={`pa-pet-mini pa-pet-mini--${sp.type} pa-pet-mini--rarity-${sp.rarity}`}>
+                      <div
+                        className={`pa-pet-mini-rarity pa-pet-mini-rarity--${sp.rarity}`}
+                        style={{ backgroundColor: RARITY_COLOR[sp.rarity] }}
+                        title={RARITY_LABEL[sp.rarity]}
+                      >
+                        ★ {RARITY_LABEL[sp.rarity]}
+                      </div>
+                      <PetAvatar species={sp} className="pa-pet-mini-icon" />
+                      <div className="pa-pet-mini-name">{pet.nickname}</div>
+                      <div className="pa-pet-mini-meta">Lv {lvl} · {TYPE_ICON[sp.type]}</div>
+                      <div className="pa-pet-mini-bar">
+                        <div className="pa-pet-mini-bar-fill" style={{ width: `${hpPct}%` }} />
+                      </div>
+                      <div className="pa-pet-mini-hp">{curHp}/{stats.hp} PF</div>
+                      {tickMin > 0 && <div className="pa-pet-mini-regen">💚 +1 PF tra {tickMin}m</div>}
+                      {resting && <div className="pa-resting">😴 {minutesLeft}min</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {eligiblePets.length > 0 && (
+              <button type="button" className="pa-btn pa-btn--primary pa-create-btn"
+                      onClick={() => setPicker({ mode: "create" })}>
+                ⚔ Lancia una sfida (squadra di 1-{MAX_TEAM_SIZE})
+              </button>
+            )}
+          </>
         )}
       </div>
 

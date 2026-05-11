@@ -1396,3 +1396,51 @@ section.ph-page,
   margin-bottom: 16px;
 }
 .ph-hatch-close { width: 100%; margin-top: 6px; }
+
+/* ── MP find inside an egg (hatch reveal modal) ─────────────────── */
+.ph-hatch-mp {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 6px 14px;
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+  border: 2.5px solid #b45309;
+  color: #1f2937;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  box-shadow: 2px 2px 0 0 #b45309;
+}
+.ph-hatch-mp-icon { font-size: 1.2rem; }
+
+/* ── Compagni tab: action row (use item + sell) ─────────────────── */
+.ph-care-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.ph-care-actions .ph-care-use-btn { flex: 1 1 160px; margin-top: 0; }
+.ph-care-sell-btn {
+  flex: 1 1 160px;
+  background: var(--ph-amber);
+  color: var(--ph-ink);
+  border: 3px solid var(--ph-ink);
+  padding: 10px 14px;
+  font-family: var(--font-title, serif);
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 var(--ph-ink);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
+}
+.ph-care-sell-btn:hover {
+  background: var(--ph-shop, #16a34a);
+  color: var(--ph-cream);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 var(--ph-ink);
+}

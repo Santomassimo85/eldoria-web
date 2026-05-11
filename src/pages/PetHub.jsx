@@ -67,6 +67,38 @@ function formatPointCap(def) {
   if (def?.dailyCap === 1) return "1 al giorno";
   return `max ${def.dailyCap} al giorno`;
 }
+
+/* ── Egg hatch MP drop ──
+   Very small chance for an egg to contain a few Monete di Platino
+   (MP, the premium currency). Chance + amount scale with egg rarity
+   so legendary eggs feel rewarding even when the species pull is
+   mid-tier. */
+const EGG_MP_DROP = {
+  common:    { chance: 0.005, min: 5,  max: 10 },
+  rare:      { chance: 0.015, min: 5,  max: 15 },
+  epic:      { chance: 0.04,  min: 10, max: 20 },
+  legendary: { chance: 0.10,  min: 15, max: 25 },
+};
+
+function rollEggMpDrop(rarity) {
+  const def = EGG_MP_DROP[rarity];
+  if (!def) return 0;
+  if (Math.random() >= def.chance) return 0;
+  return def.min + Math.floor(Math.random() * (def.max - def.min + 1));
+}
+
+/* ── Sell-pet refund table ──
+   Players can sell unwanted pets back for petPoints. Base by
+   rarity + per-level bonus so a leveled pet refunds more than a
+   raw hatch — but always less than the egg cost (no farming exploit). */
+const SELL_BASE = { common: 5,  rare: 12, epic: 30, legendary: 80 };
+const SELL_PER_LVL = { common: 1, rare: 2,  epic: 3,  legendary: 5 };
+
+function petSellValue(rarity, level) {
+  const base = SELL_BASE[rarity] ?? 0;
+  const perLvl = SELL_PER_LVL[rarity] ?? 0;
+  return base + perLvl * Math.max(1, level || 1);
+}
 import PetAvatar from "../components/PetAvatar";
 import PetArena from "./PetArena";
 import "./PetHub.css";
@@ -289,7 +321,7 @@ function BestiariaShop({ uid }) {
                 {rarity === "common"    && "80% comuni · 18% rari · ~2% epici · 0.05% leggendari"}
                 {rarity === "rare"      && "50% comuni · 42% rari · ~8% epici · 0.2% leggendari"}
                 {rarity === "epic"      && "25% comuni · 50% rari · ~24% epici · 1% leggendari"}
-                {rarity === "legendary" && "20% rari · 55% epici · 25% leggendari · nessun comune"}
+                {rarity === "legendary" && "30% rari · 60% epici · 10% leggendari · nessun comune"}
               </p>
               {epicSpecies.length > 0 && (
                 <p className="ph-egg-epic-tease" title={epicSpecies.map(s => s.name).join(", ")}>
@@ -383,13 +415,16 @@ function BestiariaNido({ uid }) {
     try {
       const speciesKey = rollHatchSpecies(egg.rarity);
       const newPet = newPetFromSpecies(speciesKey);
+      const mpFound = rollEggMpDrop(egg.rarity);
       // Mini "shake" pause so the player sees the animation before the reveal
       await new Promise(r => setTimeout(r, 1100));
-      await updateDoc(doc(db, "characters", uid), {
+      const patch = {
         petEggs: arrayRemove(egg),
         pets: arrayUnion(newPet),
-      });
-      setHatchResult({ pet: newPet, rarity: egg.rarity });
+      };
+      if (mpFound > 0) patch.platinum = increment(mpFound);
+      await updateDoc(doc(db, "characters", uid), patch);
+      setHatchResult({ pet: newPet, rarity: egg.rarity, mpFound });
     } catch (err) {
       console.error("hatch failed:", err);
       showMsg("Schiusa fallita: " + err.message, false);
@@ -495,6 +530,14 @@ function BestiariaNido({ uid }) {
               <span>{TYPE_ICON[PET_SPECIES[hatchResult.pet.speciesKey]?.type]}</span>
               <span>{TYPE_LABEL[PET_SPECIES[hatchResult.pet.speciesKey]?.type]}</span>
             </div>
+            {hatchResult.mpFound > 0 && (
+              <div className="ph-hatch-mp">
+                <span className="ph-hatch-mp-icon">🪙</span>
+                <span>
+                  Hai trovato <strong>{hatchResult.mpFound} MP</strong> dentro l'uovo!
+                </span>
+              </div>
+            )}
             <button
               type="button"
               className="ph-egg-buy-btn ph-hatch-close"
@@ -645,6 +688,30 @@ function PetCompagniPanel({ uid, isMaster }) {
     } catch (err) {
       console.error("deleteAllPets failed:", err);
       showMsg("Eliminazione fallita.", false);
+    }
+  };
+
+  const sellPet = async (pet) => {
+    if (!uid || !pet) return;
+    const sp = PET_SPECIES[pet.speciesKey];
+    if (!sp) return;
+    const lvl = levelFromExp(pet.exp || 0);
+    const refund = petSellValue(sp.rarity, lvl);
+    if (!window.confirm(
+      `Vendere "${pet.nickname}" (Lv ${lvl} · ${RARITY_LABEL[sp.rarity]})?\n\n` +
+      `Riceverai ${refund} ✦ Punti Bestiario.\n` +
+      `Questa operazione non si può annullare.`
+    )) return;
+    try {
+      const newPets = pets.filter(p => p.id !== pet.id);
+      await updateDoc(doc(db, "characters", uid), {
+        pets: newPets,
+        petPoints: increment(refund),
+      });
+      showMsg(`💰 "${pet.nickname}" venduto · +${refund} ✦`);
+    } catch (err) {
+      console.error("sellPet failed:", err);
+      showMsg("Vendita fallita.", false);
     }
   };
 
@@ -868,15 +935,25 @@ function PetCompagniPanel({ uid, isMaster }) {
                 </div>
               </div>
 
-              {/* ── Use item ──────────────────────── */}
-              <button
-                type="button"
-                className="ph-care-use-btn"
-                onClick={() => setPickerFor(isOpen ? null : pet.id)}
-                disabled={inventoryEntries.length === 0}
-              >
-                {isOpen ? "✕ Chiudi" : "🎒 Usa oggetto"}
-              </button>
+              {/* ── Actions: use item + sell ─────── */}
+              <div className="ph-care-actions">
+                <button
+                  type="button"
+                  className="ph-care-use-btn"
+                  onClick={() => setPickerFor(isOpen ? null : pet.id)}
+                  disabled={inventoryEntries.length === 0}
+                >
+                  {isOpen ? "✕ Chiudi" : "🎒 Usa oggetto"}
+                </button>
+                <button
+                  type="button"
+                  className="ph-care-sell-btn"
+                  onClick={() => sellPet(pet)}
+                  title={`Vendi questo compagno per ${petSellValue(sp.rarity, lvl)} ✦`}
+                >
+                  💰 Vendi · {petSellValue(sp.rarity, lvl)} ✦
+                </button>
+              </div>
 
               {isOpen && (
                 <div className="ph-care-picker">

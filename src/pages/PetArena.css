@@ -140,6 +140,39 @@
   display: inline-block;
   font-weight: 900;
 }
+.pa-panel-title--inline { margin: 0; }
+.pa-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0 0 12px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.pa-panel-toggle:hover .pa-panel-title { background: var(--pa-amber); }
+.pa-panel-toggle-caret {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: var(--pa-ink);
+  width: 14px;
+  text-align: center;
+}
+.pa-panel-toggle-count {
+  margin-left: auto;
+  font-family: var(--font-title, serif);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--pa-muted);
+  background: var(--pa-card);
+  border: 2px solid var(--pa-ink);
+  padding: 2px 10px;
+}
 .pa-empty {
   color: var(--pa-muted);
   font-style: italic;
@@ -186,6 +219,37 @@
 .pa-pet-mini--light   { --type-color: var(--pa-amber);  }
 .pa-pet-mini--dark    { --type-color: #6b21a8;          }
 .pa-pet-mini--neutral { --type-color: var(--pa-muted);  }
+
+/* Rarity highlight on the card + visible badge in the corner */
+.pa-pet-mini--rarity-common    { box-shadow: 4px 4px 0 0 var(--pa-ink); }
+.pa-pet-mini--rarity-rare      { box-shadow: 4px 4px 0 0 #2563eb, inset 0 0 0 1px #2563eb33; }
+.pa-pet-mini--rarity-epic      { box-shadow: 4px 4px 0 0 #7c3aed, inset 0 0 0 1px #7c3aed33; }
+.pa-pet-mini--rarity-legendary { box-shadow: 4px 4px 0 0 #b45309, 0 0 14px #fbbf2466, inset 0 0 0 1px #b4530933; }
+.pa-pet-mini-rarity {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-family: var(--font-title, serif);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 2px 8px;
+  border: 2px solid var(--pa-ink);
+  box-shadow: 2px 2px 0 0 var(--pa-ink);
+  z-index: 2;
+  white-space: nowrap;
+}
+.pa-pet-mini-rarity--legendary {
+  color: #1f2937;
+  text-shadow: 0 1px 0 #fde68a;
+  animation: pa-legendary-pulse 2.4s ease-in-out infinite;
+}
+@keyframes pa-legendary-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0 #fbbf24); }
+  50%      { filter: drop-shadow(0 0 6px #fbbf24); }
+}
 .pa-pet-mini-icon {
   width: 56px; height: 56px;
   font-size: 1.8rem;

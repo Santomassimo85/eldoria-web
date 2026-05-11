@@ -760,15 +760,15 @@ export const HATCH_POOLS = {
   rare:      buildPool(0.50, 0.42, 0.078,  0.002),
   // 25% common · 50% rare · 24% epic · 1% legendary
   epic:      buildPool(0.25, 0.50, 0.24,   0.01),
-  // 0% common · 20% rare · 55% epic · 25% legendary — premium tier
-  legendary: buildPool(0.00, 0.20, 0.55,   0.25),
+  // 0% common · 30% rare · 60% epic · 10% legendary — premium tier
+  legendary: buildPool(0.00, 0.30, 0.60,   0.10),
 };
 
 export const EGG_COST = {
   common:    25,
   rare:      75,
   epic:      180,
-  legendary: 1000,
+  legendary: 500,
 };
 
 /* All eggs share the same shape — the rarity color is applied

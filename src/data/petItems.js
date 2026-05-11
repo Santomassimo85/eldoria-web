@@ -48,7 +48,7 @@ export const PET_ITEMS = {
     name: "Caramella Rara",
     icon: "🍬",
     desc: "+1 livello al compagno (capped a Lv 20).",
-    cost: 90,
+    cost: 200,
     effect: { kind: "level_up", value: 1 },
     requiresAlive: false,
   },

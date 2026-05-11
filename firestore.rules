@@ -2,52 +2,135 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Authenticated helper ─────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function isLoggedIn() {
+      return request.auth != null;
+    }
     function isAuth() {
       return request.auth != null;
     }
     function isOwner(uid) {
       return isAuth() && request.auth.uid == uid;
     }
-
-    // ── Characters ───────────────────────────────────────────────────────────
-    match /characters/{uid} {
-      allow read:  if isAuth();
-      allow write: if isOwner(uid);
+    function isMaster() {
+      return isLoggedIn() && (
+        request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
+        request.auth.token.email == "santomassimo85@gmail.com"
+      );
     }
 
-    // ── World Boss chat ──────────────────────────────────────────────────────
-    match /world_boss_chat/{msgId} {
-      allow read:  if isAuth();
-      allow create: if isAuth();
-      allow update, delete: if false;
+    // ── World Boss & turn tracker ────────────────────────────────────────────
+    match /battle_meta/turn_tracker {
+      allow read: if isLoggedIn();
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn() && (
+        isMaster() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actedPlayers', 'phase', 'expiryDate', 'turnNumber', 'attackCounts'])
+      );
     }
 
-    // ── Battle meta (World Boss turn tracker) ────────────────────────────────
     match /battle_meta/{docId} {
-      allow read:  if isAuth();
-      allow write: if isAuth();
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn();
     }
 
-    // ── Arena meta (tournament) ──────────────────────────────────────────────
+    match /world_boss_system/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
+    match /bosses/{bossId} {
+      allow read: if true;
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn() && (
+        isMaster() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'shield'])
+      );
+    }
+
+    // ── Presence (online status) ─────────────────────────────────────────────
+    match /presence/{uid} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.token.email == "santomassimo85@gmail.com";
+    }
+
+    // ── Chat ─────────────────────────────────────────────────────────────────
+    match /world_boss_chat/{msgId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn();
+      allow update, delete: if isMaster(); 
+    }
+
+    // Global chat: owner can delete their own messages
+    match /global_chat/{messageId} {
+      allow read, create: if isLoggedIn();
+      allow delete: if isLoggedIn() && (resource.data.uid == request.auth.uid || isMaster());
+      allow update: if isMaster();
+    }
+
+    // ── Characters & sheets ──────────────────────────────────────────────────
+    // Writes intentionally open because the Pet system needs to write to the
+    // opponent's character doc when a battle resolves.
+    match /characters/{charId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /pg_sheets/{userId} {
+      allow read, write: if isMaster() || (isLoggedIn() && request.auth.uid == userId);
+    }
+
+    // ── Arena ────────────────────────────────────────────────────────────────
+    match /arena_config/{docId} {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
+    match /arena_meta/global {
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn();
+    }
+
     match /arena_meta/{docId} {
-      allow read:  if isAuth();
-      allow write: if isAuth();
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn();
     }
 
-    // ── Notifications ────────────────────────────────────────────────────────
-    match /notifications/{notifId} {
-      allow read:  if isAuth() && resource.data.userId == request.auth.uid;
-      allow create: if isAuth();
-      allow update, delete: if false;
+    match /characters_arena/{charId} {
+      allow read: if isLoggedIn();
+      allow write: if isLoggedIn() && (request.auth.uid + "_arena" == charId || isMaster());
     }
 
-    // ── Arena bets ───────────────────────────────────────────────────────────
+    match /arena_bets/{betId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn();
+      allow delete: if isMaster();
+    }
+
+    match /arena_tournament_history/{docId} {
+      allow read: if isMaster();
+      allow create: if isLoggedIn();
+      allow update, delete: if isMaster();
+    }
+
+    // Legacy / generic bets collection
     match /bets/{betId} {
       allow read:  if isAuth();
       allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
       allow update: if isAuth();
       allow delete: if false;
+    }
+
+    // ── Pet Arena (companion system) ─────────────────────────────────────────
+    match /pet_battles/{battleId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.challenger.uid == request.auth.uid;
+      allow update: if isLoggedIn();
+      allow delete: if isLoggedIn() && (
+        resource.data.challenger.uid == request.auth.uid ||
+        isMaster()
+      );
     }
 
     // ── Player sprites ───────────────────────────────────────────────────────
@@ -65,5 +148,80 @@ service cloud.firestore {
       allow read:  if isAuth();
       allow write: if isAuth();
     }
+
+    // ── Feedback (player reviews + master replies) ───────────────────────────
+    // Deterministic doc id: `${uid}_${featureKey}`
+    //   read   → Master sees all; players see only their own
+    //   create → only the author, on their own deterministic doc id, stars 0..5
+    //   update → author (same constraints) OR Master (to write masterReply)
+    //   delete → author or Master
+    match /feedback/{docId} {
+      allow read: if isLoggedIn() && (
+        isMaster() ||
+        resource.data.authorUid == request.auth.uid
+      );
+      allow create: if isLoggedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && docId == request.auth.uid + "_" + request.resource.data.feature
+        && request.resource.data.stars is number
+        && request.resource.data.stars >= 0
+        && request.resource.data.stars <= 5;
+      allow update: if isLoggedIn() && (
+        (
+          request.resource.data.authorUid == request.auth.uid
+          && docId == request.auth.uid + "_" + request.resource.data.feature
+          && request.resource.data.stars is number
+          && request.resource.data.stars >= 0
+          && request.resource.data.stars <= 5
+        ) || (
+          isMaster()
+          && request.resource.data.authorUid == resource.data.authorUid
+        )
+      );
+      allow delete: if isLoggedIn() && (
+        resource.data.authorUid == request.auth.uid ||
+        isMaster()
+      );
+    }
+
+    // ── Notifications ────────────────────────────────────────────────────────
+    match /notifications/{msgId} {
+      allow read: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+      allow delete: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());
+    }
+
+    // ── Market & items ───────────────────────────────────────────────────────
+    match /items/{itemId} {
+      allow read: if true;
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn();
+    }
+
+    match /settings/market_config {
+      allow read: if isLoggedIn();
+      allow write: if isMaster();
+    }
+
+    // ── Misc collections ─────────────────────────────────────────────────────
+    match /geo_archive/{docId}    { allow read: if true; allow write: if isMaster(); }
+    match /map_pins/{pinId}       { allow read: if true; allow write: if isMaster(); }
+    match /npcs/{npcId}           { allow read: if true; allow write: if isMaster(); }
+    match /sessions/{partyId}     { allow read: if true; allow write: if isMaster(); }
+    match /quests/{questId} {
+      allow read: if true;
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn();
+    }
+    match /session_videos/{video} { allow read: if isLoggedIn(); allow write: if isMaster(); }
+    match /summaries/{summaryId} {
+      allow read: if true;
+      allow write: if isMaster();
+      allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']);
+    }
+    match /messages/{msgId}       { allow create: if isLoggedIn(); allow read, write: if isMaster(); }
+    match /party_tracks/{partyId} { allow read, write: if isLoggedIn(); }
+    match /rolls/{rollId}         { allow read, create: if isLoggedIn(); }
   }
 }
