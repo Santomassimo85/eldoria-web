@@ -318,10 +318,10 @@ function BestiariaShop({ uid }) {
               </div>
               <div className="ph-egg-cost">{cost} ✦</div>
               <p className="ph-egg-flavor">
-                {rarity === "common"    && "80% comuni · 18% rari · ~2% epici · 0.05% leggendari"}
-                {rarity === "rare"      && "50% comuni · 42% rari · ~8% epici · 0.2% leggendari"}
-                {rarity === "epic"      && "25% comuni · 50% rari · ~24% epici · 1% leggendari"}
-                {rarity === "legendary" && "30% rari · 60% epici · 10% leggendari · nessun comune"}
+                {rarity === "common"    && "90% comuni · 9.5% rari · 0.5% epici · 0.01% leggendari"}
+                {rarity === "rare"      && "65% comuni · 32% rari · ~3% epici · 0.05% leggendari"}
+                {rarity === "epic"      && "40% comuni · 47% rari · 12% epici · 1% leggendari"}
+                {rarity === "legendary" && "50% rari · 45% epici · 5% leggendari · nessun comune"}
               </p>
               {epicSpecies.length > 0 && (
                 <p className="ph-egg-epic-tease" title={epicSpecies.map(s => s.name).join(", ")}>
