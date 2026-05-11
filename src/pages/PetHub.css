@@ -6,45 +6,117 @@
 
 section.ph-page,
 .ph-page {
+  position: relative;
+  isolation: isolate;
   max-width: 920px;
   margin: 0 auto;
   /* Reserve space for the fixed navbar (--navbar-h grows on smaller screens). */
   padding: calc(var(--navbar-h) + 28px) 18px 40px;
   color: #2d2418;
   min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 12% 8%,  rgba(236, 72, 153, 0.10) 0%, transparent 38%),
+    radial-gradient(ellipse at 88% 18%, rgba(6, 182, 212, 0.10)  0%, transparent 38%),
+    radial-gradient(ellipse at 50% 95%, rgba(251, 146, 60, 0.10) 0%, transparent 42%),
+    radial-gradient(ellipse at 20% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 38%),
+    #fffdf6;
 }
+/* Decorative sparkle dots scattered across the page background. */
+.ph-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.65;
+  background-image:
+    radial-gradient(circle 2px   at 12% 14%, #facc15 50%, transparent 51%),
+    radial-gradient(circle 1.5px at 78% 22%, #ec4899 50%, transparent 51%),
+    radial-gradient(circle 2px   at 32% 38%, #06b6d4 50%, transparent 51%),
+    radial-gradient(circle 1.5px at 64% 48%, #a855f7 50%, transparent 51%),
+    radial-gradient(circle 2px   at 88% 62%, #fb923c 50%, transparent 51%),
+    radial-gradient(circle 1.5px at 18% 72%, #f59e0b 50%, transparent 51%),
+    radial-gradient(circle 2px   at 50% 86%, #facc15 50%, transparent 51%),
+    radial-gradient(circle 1.5px at 8%  92%, #ec4899 50%, transparent 51%);
+  background-repeat: repeat;
+  background-size: 460px 520px;
+}
+.ph-page > * { position: relative; z-index: 1; }
 
 .ph-head {
   text-align: center;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
   position: relative;
+  padding: 8px 8px 4px;
 }
 .ph-title {
   font-family: var(--font-title, serif);
-  font-size: 2.4rem;
-  letter-spacing: 0.08em;
-  margin: 0 0 6px;
-  background: linear-gradient(90deg, #7d2929 0%, #b91c1c 30%, #facc15 50%, #b91c1c 70%, #7d2929 100%);
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1.1;
+}
+.ph-title-pet {
+  font-size: 1.1em;
+  display: inline-block;
+  filter: drop-shadow(0 4px 6px rgba(236, 72, 153, 0.35));
+  animation: ph-pet-bounce 2.4s ease-in-out infinite;
+}
+@keyframes ph-pet-bounce {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-8px) rotate(4deg); }
+}
+.ph-title-text {
+  background: linear-gradient(90deg,
+    #ec4899 0%,
+    #f59e0b 25%,
+    #facc15 50%,
+    #06b6d4 75%,
+    #a855f7 100%);
+  background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 2px 10px rgba(125, 41, 41, 0.18);
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.08));
+  filter: drop-shadow(0 2px 4px rgba(236, 72, 153, 0.18));
+  font-weight: 800;
+  animation: ph-rainbow-shift 6s linear infinite;
 }
+@keyframes ph-rainbow-shift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.ph-title-spark {
+  font-size: 0.65em;
+  display: inline-block;
+  animation: ph-sparkle 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.7));
+}
+@keyframes ph-sparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
+  50%      { transform: scale(1.35) rotate(180deg); opacity: 1; }
+}
+
 .ph-sub {
   margin: 0 auto 4px;
-  font-size: 0.92rem;
-  color: #6f5320;
+  font-size: 0.98rem;
+  color: #6b21a8;
   font-style: italic;
   max-width: 540px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .ph-head::after {
-  content: "";
+  content: "✦ · ✿ · ✦";
   display: block;
-  height: 2px;
-  width: 180px;
-  margin: 12px auto 0;
-  background: linear-gradient(90deg, transparent, #c9a961 30%, #facc15 50%, #c9a961 70%, transparent);
+  margin: 10px auto 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.5em;
+  color: #ec4899;
+  text-shadow: 0 0 8px rgba(236, 72, 153, 0.35);
+  opacity: 0.7;
 }
 .ph-quick-links {
   display: flex;
@@ -73,54 +145,132 @@ section.ph-page,
 .ph-locked-icon { font-size: 3rem; margin-bottom: 10px; }
 .ph-locked h2 { color: #7d2929; margin: 6px 0; }
 
-/* Tabs */
+/* ── Floating pastel tab cards ──────────────────────────── */
 .ph-tabs {
   display: flex;
   justify-content: center;
-  gap: 6px;
-  margin: 14px 0 22px;
-  border-bottom: 2px solid #c9a961;
+  gap: 14px;
+  margin: 8px 0 26px;
   flex-wrap: wrap;
+  padding: 12px 6px 18px;
+  border: none;
 }
 .ph-tab {
-  background: linear-gradient(180deg, #fffaf0, #f1e0ad);
-  border: 2px solid #c9a961;
-  border-bottom: none;
-  border-radius: 12px 12px 0 0;
-  padding: 9px 20px;
+  --tab-c1: #e5e7eb;          /* light pastel (top) */
+  --tab-c2: #94a3b8;          /* mid pastel (bottom + border) */
+  --tab-c-deep: #475569;      /* deep pastel (active text + shadow) */
+  --tab-c-soft: #f1f5f9;      /* very light pastel for inactive bg */
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 96px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--tab-c-soft) 100%);
+  border: 3px solid #e5e7eb;
+  border-radius: 22px;
+  padding: 12px 22px 10px;
   font-family: var(--font-title, serif);
-  font-size: 0.96rem;
-  letter-spacing: 0.08em;
-  color: #6f5320;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: #64748b;
   cursor: pointer;
-  transition: transform 0.12s, color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.18s;
-  position: relative;
-  top: 2px;
   font-weight: 700;
-}
-.ph-tab:hover {
-  color: #7d2929;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(201, 169, 97, 0.25);
-}
-.ph-tab--active {
-  background: linear-gradient(180deg, #fff4d1, #fbdfb6);
-  border-color: #b91c1c;
-  color: #7d2929;
-  font-weight: 800;
-  top: 1px;
+  position: relative;
+  top: 0;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
   box-shadow:
-    0 -3px 14px rgba(250, 204, 21, 0.30),
-    inset 0 0 0 1px rgba(250, 204, 21, 0.45);
+    0 4px 14px rgba(148, 163, 184, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Per-tab pastel themes */
+.ph-tab--arena {
+  --tab-c1: #fce7f3;
+  --tab-c2: #f9a8d4;
+  --tab-c-deep: #be185d;
+  --tab-c-soft: #fdf2f8;
+}
+.ph-tab--compagni {
+  --tab-c1: #cffafe;
+  --tab-c2: #67e8f9;
+  --tab-c-deep: #0e7490;
+  --tab-c-soft: #ecfeff;
+}
+.ph-tab--shop {
+  --tab-c1: #ffedd5;
+  --tab-c2: #fdba74;
+  --tab-c-deep: #c2410c;
+  --tab-c-soft: #fff7ed;
+}
+
+.ph-tab-icon {
+  font-size: 1.7rem;
+  line-height: 1;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.12));
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ph-tab-label {
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ph-tab:hover {
+  transform: translateY(-4px);
+  color: var(--tab-c-deep);
+  border-color: var(--tab-c2);
+  background: linear-gradient(180deg, #ffffff 0%, var(--tab-c1) 100%);
+  box-shadow:
+    0 10px 22px color-mix(in srgb, var(--tab-c2) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.ph-tab:hover .ph-tab-icon {
+  transform: scale(1.15) rotate(-6deg);
+}
+
+.ph-tab--active {
+  background: linear-gradient(180deg, var(--tab-c1) 0%, var(--tab-c2) 100%);
+  border-color: var(--tab-c-deep);
+  color: var(--tab-c-deep);
+  font-weight: 800;
+  transform: translateY(-6px);
+  box-shadow:
+    0 14px 30px color-mix(in srgb, var(--tab-c-deep) 38%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--tab-c2) 25%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  animation: ph-tab-bob 3.2s ease-in-out infinite;
+}
+@keyframes ph-tab-bob {
+  0%, 100% { transform: translateY(-6px); }
+  50%      { transform: translateY(-9px); }
+}
+.ph-tab--active .ph-tab-icon {
+  transform: scale(1.1);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.20));
 }
 .ph-tab--active::after {
   content: "";
   position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: -2px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #b91c1c, #facc15, #b91c1c, transparent);
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--tab-c2);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--tab-c-deep) 50%, transparent);
+  opacity: 0.85;
+}
+
+@media (max-width: 520px) {
+  .ph-tab { min-width: 80px; padding: 10px 14px 8px; }
+  .ph-tab-icon { font-size: 1.4rem; }
+  .ph-tab-label { font-size: 0.74rem; }
 }
 
 .ph-tab-body { animation: ph-fade 0.25s ease-out; }

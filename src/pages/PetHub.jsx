@@ -81,37 +81,44 @@ export default function PetHub() {
   return (
     <section className="ph-page">
       <header className="ph-head">
-        <h1 className="ph-title">🐉 Pet Hub</h1>
-        <p className="ph-sub">Tutto sui tuoi compagni in un unico posto · sfide, cura, uova e oggetti.</p>
+        <h1 className="ph-title">
+          <span className="ph-title-pet">🐉</span>
+          <span className="ph-title-text">Pet Hub</span>
+          <span className="ph-title-spark">✨</span>
+        </h1>
+        <p className="ph-sub">Il tuo bestiario magico · sfide, compagni, uova e tesori ✦</p>
       </header>
 
       <div className="ph-tabs" role="tablist">
         <button
           type="button"
-          className={`ph-tab ${tab === "arena" ? "ph-tab--active" : ""}`}
+          className={`ph-tab ph-tab--arena ${tab === "arena" ? "ph-tab--active" : ""}`}
           onClick={() => setTab("arena")}
           role="tab"
           aria-selected={tab === "arena"}
         >
-          ⚔ Arena
+          <span className="ph-tab-icon" aria-hidden="true">⚔</span>
+          <span className="ph-tab-label">Arena</span>
         </button>
         <button
           type="button"
-          className={`ph-tab ${tab === "compagni" ? "ph-tab--active" : ""}`}
+          className={`ph-tab ph-tab--compagni ${tab === "compagni" ? "ph-tab--active" : ""}`}
           onClick={() => setTab("compagni")}
           role="tab"
           aria-selected={tab === "compagni"}
         >
-          📜 Compagni
+          <span className="ph-tab-icon" aria-hidden="true">📜</span>
+          <span className="ph-tab-label">Compagni</span>
         </button>
         <button
           type="button"
-          className={`ph-tab ${tab === "shop" ? "ph-tab--active" : ""}`}
+          className={`ph-tab ph-tab--shop ${tab === "shop" ? "ph-tab--active" : ""}`}
           onClick={() => setTab("shop")}
           role="tab"
           aria-selected={tab === "shop"}
         >
-          🐣 Bottega
+          <span className="ph-tab-icon" aria-hidden="true">🐣</span>
+          <span className="ph-tab-label">Bottega</span>
         </button>
       </div>
 
