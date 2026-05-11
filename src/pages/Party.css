@@ -1,6 +1,6 @@
 /* ============================================================
    PARTY — "Le Compagnie di Exanthia"
-   Cinematic faction-banner redesign
+   Flat-design redesign (no gradients, no depth shadows)
    ============================================================ */
 
 .party-page {
@@ -24,7 +24,6 @@
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: #9a7a20;
-  opacity: 0.85;
   margin-bottom: 12px;
 }
 
@@ -35,7 +34,6 @@
   letter-spacing: 0.06em;
   line-height: 1.15;
   margin-bottom: 14px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(130,10,10,0.08);
 }
 
 .party-divider {
@@ -52,17 +50,13 @@
   content: "";
   flex: 1;
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--gold));
-}
-
-.party-divider::after {
-  background: linear-gradient(to left, transparent, var(--gold));
+  background: var(--gold);
+  opacity: 0.5;
 }
 
 .party-divider-icon {
   font-size: 1rem;
   color: var(--gold);
-  opacity: 0.85;
 }
 
 .party-lore {
@@ -72,7 +66,6 @@
   font-size: clamp(0.88rem, 2.2vw, 1rem);
   line-height: 1.7;
   color: #4a3a14;
-  opacity: 0.85;
 }
 
 /* ─── STATS RIBBON ──────────────────────────────────────────── */
@@ -90,17 +83,15 @@
   align-items: center;
   justify-content: center;
   padding: 14px 8px;
-  background: linear-gradient(160deg, #fdf6e3, #fff8ed);
-  border: 1.5px solid rgba(212, 175, 55, 0.25);
+  background: #fdf6e3;
+  border: 1.5px solid #e0cf9d;
   border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .party-stat:hover {
-  transform: translateY(-2px);
-  border-color: rgba(212, 175, 55, 0.55);
-  box-shadow: 0 6px 16px rgba(130, 10, 10, 0.08);
+  background: #fffaf0;
+  border-color: var(--gold);
 }
 
 .party-stat strong {
@@ -140,20 +131,19 @@
   gap: 8px;
   padding: 8px 16px;
   background: #fffdf7;
-  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  border: 1.5px solid #e0cf9d;
   border-radius: 22px;
   font-family: var(--font-title);
   font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: #6f5520;
   cursor: pointer;
-  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.12s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .party-tab:hover {
   border-color: var(--tab-color);
   color: var(--tab-color);
-  transform: translateY(-1px);
 }
 
 .party-tab-dot {
@@ -161,19 +151,16 @@
   height: 9px;
   border-radius: 50%;
   background: var(--tab-color);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.6) inset;
 }
 
 .party-tab.on {
-  background: linear-gradient(135deg, var(--tab-color), color-mix(in srgb, var(--tab-color) 70%, #1a0a0a));
+  background: var(--tab-color);
   border-color: var(--tab-color);
   color: #fff;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--tab-color) 35%, transparent);
 }
 
 .party-tab.on .party-tab-dot {
   background: #fff;
-  box-shadow: 0 0 0 2px var(--tab-color) inset;
 }
 
 /* ─── PARTY LIST ────────────────────────────────────────────── */
@@ -187,12 +174,6 @@
 .party-faction {
   position: relative;
   padding-top: 4px;
-  animation: faction-in 0.55s ease-out both;
-}
-
-@keyframes faction-in {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ─── BANNER ───────────────────────────────────────────────── */
@@ -203,45 +184,22 @@
   align-items: center;
   gap: 20px;
   padding: 20px 26px 20px 22px;
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--party-color) 14%, #fdf6e3) 0%,
-      #fff8ed 60%,
-      color-mix(in srgb, var(--party-color) 8%, #fff8ed) 100%);
-  border: 1.5px solid color-mix(in srgb, var(--party-color) 35%, rgba(212,175,55,0.4));
+  background: color-mix(in srgb, var(--party-color) 14%, #fdf6e3);
+  border: 1.5px solid var(--party-color);
   border-radius: 16px;
-  box-shadow:
-    0 6px 22px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(255,255,255,0.5) inset;
   margin-bottom: 22px;
   overflow: hidden;
 }
 
-/* Decorative left edge stripe in party color */
+/* Decorative left edge stripe in party color (flat) */
 .party-banner-edge {
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 6px;
-  background: linear-gradient(180deg,
-    var(--party-color),
-    color-mix(in srgb, var(--party-color) 50%, #1a0a0a));
-  box-shadow: 0 0 14px color-mix(in srgb, var(--party-color) 60%, transparent);
+  background: var(--party-color);
 }
 
-/* Subtle radial sigil texture in the background */
-.party-banner::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 90% 50%,
-      color-mix(in srgb, var(--party-color) 12%, transparent) 0%,
-      transparent 45%);
-  opacity: 0.85;
-}
-
-/* ── Crest (heraldic shield) ── */
+/* ── Crest (heraldic shield, flat) ── */
 .party-crest {
   position: relative;
   width: 72px;
@@ -250,7 +208,6 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.18));
   --shield-shape: polygon(
     50% 0%, 100% 0%, 100% 56%,
     92% 74%, 72% 90%, 50% 100%,
@@ -258,46 +215,21 @@
   );
 }
 
-/* Outer gold rim */
+/* Outer gold rim (flat color) */
 .party-crest::before {
   content: "";
   position: absolute;
   inset: 0;
   clip-path: var(--shield-shape);
-  background: linear-gradient(180deg, #f0d27a 0%, #c8a020 55%, #8a6500 100%);
+  background: var(--gold);
 }
 
-/* Inner colored field */
+/* Inner colored field (flat) */
 .party-crest-ring {
   position: absolute;
   inset: 3px;
   clip-path: var(--shield-shape);
-  background:
-    linear-gradient(170deg,
-      color-mix(in srgb, var(--party-color) 75%, #fff8e0) 0%,
-      var(--party-color) 45%,
-      color-mix(in srgb, var(--party-color) 60%, #150505) 100%);
-  transition: filter 0.35s ease;
-}
-
-/* Subtle horizontal heraldic band across the shield */
-.party-crest-ring::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0;
-  top: 38%;
-  height: 14%;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(0, 0, 0, 0.18) 100%
-  );
-  pointer-events: none;
-}
-
-.party-faction:hover .party-crest-ring {
-  filter: brightness(1.08) saturate(1.05);
+  background: var(--party-color);
 }
 
 .party-crest-letter {
@@ -309,10 +241,6 @@
   color: #fffbea;
   letter-spacing: 0;
   line-height: 1;
-  text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.28),
-    0 0 10px color-mix(in srgb, var(--party-color) 65%, transparent);
-  transform: translateY(-3px); /* nudge up so letter sits on the cross-band */
 }
 
 /* ── Title block ── */
@@ -327,15 +255,14 @@
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--party-color) 75%, #2a1a08);
+  color: var(--party-color);
   margin-bottom: 4px;
-  opacity: 0.85;
 }
 
 .party-banner-name {
   font-family: var(--font-title);
   font-size: clamp(1.05rem, 3.4vw, 1.55rem);
-  color: color-mix(in srgb, var(--party-color) 80%, #1a0a0a);
+  color: var(--party-color);
   letter-spacing: 0.04em;
   line-height: 1.2;
   margin: 0;
@@ -346,7 +273,6 @@
   font-style: italic;
   font-size: clamp(0.78rem, 2.1vw, 0.92rem);
   color: #5b461c;
-  opacity: 0.85;
   line-height: 1.45;
 }
 
@@ -360,10 +286,9 @@
   justify-content: center;
   min-width: 72px;
   padding: 10px 14px;
-  background: rgba(255,255,255,0.7);
-  border: 1.5px solid color-mix(in srgb, var(--party-color) 45%, rgba(212,175,55,0.35));
+  background: #ffffff;
+  border: 1.5px solid var(--party-color);
   border-radius: 12px;
-  backdrop-filter: blur(2px);
 }
 
 .party-banner-count strong {
@@ -393,7 +318,7 @@
     gap: 14px;
   }
   .party-crest        { grid-area: crest; width: 56px; height: 68px; }
-  .party-crest-letter { font-size: 1.55rem; transform: translateY(-2px); }
+  .party-crest-letter { font-size: 1.55rem; }
   .party-banner-text  { grid-area: text; }
   .party-banner-count {
     grid-area: count;
@@ -428,7 +353,7 @@
   }
 }
 
-/* ─── HERO CARD ────────────────────────────────────────────── */
+/* ─── HERO CARD (flat) ──────────────────────────────────────── */
 .hero-card {
   --accent: var(--gold);
   position: relative;
@@ -436,23 +361,16 @@
   flex-direction: column;
   color: inherit;
   background: #1a1208;
-  border: 1.5px solid color-mix(in srgb, var(--accent) 35%, rgba(212,175,55,0.3));
+  border: 2px solid var(--accent);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow:
-    0 4px 16px rgba(0,0,0,0.12),
-    0 0 0 1px rgba(255,255,255,0.04) inset;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: border-color 0.15s, background 0.15s;
   isolation: isolate;
 }
 
 .hero-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent);
-  box-shadow:
-    0 12px 28px rgba(0,0,0,0.2),
-    0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
-    0 0 22px color-mix(in srgb, var(--accent) 30%, transparent);
+  border-color: #fff;
+  background: #2a1f10;
 }
 
 /* photo */
@@ -467,30 +385,10 @@
   height: 100%;
   object-fit: cover;
   object-position: center top;
-  transform: scale(1.02);
-  transition: transform 0.55s ease, filter 0.4s ease;
-  filter: saturate(0.95);
 }
 
-.hero-card:hover .hero-card-photo img {
-  transform: scale(1.08);
-  filter: saturate(1.05);
-}
-
-/* dark gradient at the bottom for nameplate legibility */
-.hero-card-shade {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    transparent 45%,
-    rgba(20, 12, 4, 0.55) 75%,
-    rgba(20, 12, 4, 0.92) 100%
-  );
-  transition: opacity 0.3s ease;
-}
+/* flat opaque footer behind the nameplate (no gradient) */
+.hero-card-shade { display: none; }
 
 /* nameplate */
 .hero-card-plate {
@@ -501,33 +399,22 @@
   padding: 12px 14px 14px;
   z-index: 1;
   text-align: left;
-  border-top: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  background: linear-gradient(180deg,
-    transparent 0%,
-    rgba(20,12,4,0.55) 35%,
-    rgba(20,12,4,0.92) 100%);
-  transform: translateY(0);
-  transition: transform 0.3s ease;
-}
-
-.hero-card:hover .hero-card-plate {
-  transform: translateY(-2px);
+  background: var(--accent);
 }
 
 .hero-card-name {
   font-family: var(--font-title);
   font-size: clamp(0.86rem, 2.4vw, 1rem);
   letter-spacing: 0.04em;
-  color: #fdf6e3;
+  color: #1a0a0a;
   margin: 0 0 4px;
   line-height: 1.2;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
 
 .hero-card-meta {
   font-family: var(--font-text);
   font-size: 0.72rem;
-  color: color-mix(in srgb, var(--accent) 60%, #f3e2b5);
+  color: #1a0a0a;
   margin: 0;
   display: flex;
   align-items: center;
