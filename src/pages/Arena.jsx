@@ -1969,6 +1969,31 @@ export default function Arena() {
     setFunAcceptMatchId(matchId);
   };
 
+  /* Auto-scroll to the loadout panel when it opens for an Arena Libera
+     create/accept. Without this, players get stuck staring at the
+     unchanged screen because the panel renders far below the fold.
+     We only scroll on the *initial* open (idle → class-select) so the
+     view doesn't jump every time the user advances a step. */
+  const prevLoadoutPhaseRef = useRef("idle");
+  useEffect(() => {
+    const prev = prevLoadoutPhaseRef.current;
+    prevLoadoutPhaseRef.current = loadoutPhase;
+    if (loadoutContext !== "fun") return;
+    if (!(prev === "idle" && loadoutPhase !== "idle")) return;
+    // Wait two frames so the panel is mounted + painted before scrolling.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const el = document.getElementById("arena-loadout");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, [loadoutPhase, loadoutContext]);
+
   const cancelFunChallenge = async (matchId) => {
     const m = (arenaMeta?.matches || []).find(x => x.matchId === matchId);
     if (!m || m.kind !== "fun" || m.status !== "open") return;
@@ -4541,7 +4566,81 @@ export default function Arena() {
           }
           return up;
         });
-        if (!autoRolledSave) newLogs2.push(`🛡 ${currentPlayerObj.name} non ha agito — Posizione Difensiva (+1 CA)`);
+        // ── AUTO-ATTACCO su timeout ──────────────────────────────────────
+        // Se il giocatore non ha agito (e non era sotto controllo o impegnato
+        // a tirare salvataggi automatici), invece di stare fermo prova a
+        // colpire UNA VOLTA il primo avversario vivo con l'arma equipaggiata.
+        // Un colpo solo anche per i multi-attaccanti; nessuna feature di
+        // classe (smite, furia, ispirazione…) per tenerlo prevedibile.
+        const updatedCurrentP = updatedPlayers.find(p => p.id === currentTurnId);
+        const wasControlled = (currentPlayerObj.controlLostTurns ?? 0) > 0;
+        const isWildShaped  = !!currentPlayerObj.wildShape;
+        let didAutoAttack = false;
+
+        if (!autoRolledSave && !wasControlled && !isWildShaped) {
+          const attackerSnap   = data.characterSnapshots?.[currentTurnId] || {};
+          const equippedNames  = updatedCurrentP?.equippedWeaponNames || currentPlayerObj.equippedWeaponNames || [];
+          const allWeapons     = (attackerSnap.selectedActions || []).filter(a => a.type === "weapon");
+          const weapon         = allWeapons.find(a => equippedNames.includes(a.name)) || allWeapons[0];
+          const aliveOpponents = alivePlayers.filter(p => p.id !== currentTurnId);
+          const target         = aliveOpponents[0];
+
+          if (weapon && target) {
+            const targetSnap         = data.characterSnapshots?.[target.id] || {};
+            const targetMatchPlayer  = updatedPlayers.find(p => p.id === target.id) || target;
+            const attName            = attackerSnap.name || currentPlayerObj.name || "?";
+            const defName            = targetSnap.name   || target.name           || "?";
+
+            const statKey      = weapon.statKey || "str";
+            const statMod      = attackerSnap.stats?.[statKey] ?? 0;
+            const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
+
+            const shieldLost       = targetSnap?.hasShield && targetMatchPlayer?.shieldSuppressed;
+            const shieldSkillBonus = (targetMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (targetMatchPlayer?.shieldSkillBonus ?? 3) : 0;
+            const armorForgeBonus  = (targetMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
+            const defensiveAcBonus = targetMatchPlayer?.defensiveBonus ?? 0;
+            const defAC = getEffectiveAc(targetMatchPlayer, targetSnap) - (shieldLost ? 2 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
+
+            const d20      = Math.floor(Math.random() * 20) + 1;
+            const isCrit   = d20 === 20;
+            const hitTotal = d20 + (weapon.hitBonus || 0) + statMod + armorPenalty;
+            const isHit    = hitTotal >= defAC || isCrit;
+
+            let damageDealt = 0;
+            let diceInfo    = "";
+            if (isHit) {
+              const { total: baseDmg, rolls: diceRolls } = rollDmg(weapon.damage);
+              const critMult = isCrit ? 2 : 1;
+              const rawDmg   = (baseDmg + statMod) * critMult;
+              damageDealt    = applyBarbarianRageReduction(rawDmg, targetSnap, targetMatchPlayer, false);
+              const sign     = statMod >= 0 ? "+" : "";
+              diceInfo       = ` 🎲${diceRolls}${statMod !== 0 ? `${sign}${statMod}` : ""}${isCrit ? "×2" : ""} = ${damageDealt}`;
+            }
+
+            const critTag  = isCrit ? " ★CRITICO★" : "";
+            const hitBd    = `d20(${d20})+${weapon.hitBonus ?? 0}${statMod !== 0 ? (statMod >= 0 ? `+${statMod}` : `${statMod}`) : ""}${armorPenalty !== 0 ? ` ${armorPenalty}arm.` : ""} = ${hitTotal} vs CA ${defAC}`;
+            newLogs2.push(
+              isHit
+                ? `⏰ ${attName} non ha agito — attacco automatico con ${weapon.name}: COLPISCE ${defName}${critTag} [${hitBd}]${diceInfo ? ` →${diceInfo} danni` : ""}`
+                : `⏰ ${attName} non ha agito — attacco automatico con ${weapon.name}: MANCA ${defName} [${hitBd}]`
+            );
+
+            if (isHit && damageDealt > 0) {
+              for (let i = 0; i < updatedPlayers.length; i++) {
+                if (updatedPlayers[i].id === target.id) {
+                  updatedPlayers[i] = { ...updatedPlayers[i], hp: Math.max(0, (updatedPlayers[i].hp ?? 0) - damageDealt) };
+                  break;
+                }
+              }
+            }
+            didAutoAttack = true;
+          }
+        }
+
+        if (!autoRolledSave && !didAutoAttack) {
+          newLogs2.push(`🛡 ${currentPlayerObj.name} non ha agito — Posizione Difensiva`);
+        }
+
         const newExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
         const updatedMatch = {
           ...match, players: updatedPlayers, turn: nextTurnId,
@@ -5180,7 +5279,7 @@ export default function Arena() {
         (arenaMeta.phase === "registration" && (!isMaster || loadoutPhase !== "idle")) ||
         (loadoutContext === "fun" && loadoutPhase !== "idle")
       ) && (
-        <div className={`join-zone ${loadoutContext === "fun" ? "join-zone-fun" : ""}`}>
+        <div id="arena-loadout" className={`join-zone ${loadoutContext === "fun" ? "join-zone-fun" : ""}`}>
 
           {loadoutContext === "fun" && (
             <div className="fun-loadout-banner">

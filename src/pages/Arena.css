@@ -960,6 +960,7 @@
   padding: 12px 8px 40px;
   box-sizing: border-box;
   width: 100%;
+  scroll-margin-top: calc(var(--navbar-h) + 80px);
 }
 
 .join-zone-inner {

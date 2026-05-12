@@ -618,6 +618,69 @@ function TeamPickerModal({ pets, onClose, onPick, mode, requireSize }) {
 }
 
 /* ============================================================
+   PIXEL BURST — 8-bit / Game Boy style hit FX overlay
+   Per move-type 4-colour palette. Rendered absolutely over the
+   target's PetCard, scales up with a brief cluster of pixels.
+   ============================================================ */
+const PIXEL_PALETTES = {
+  // Original DMG green for plain hits
+  neutral: ["#0f380f", "#306230", "#8bac0f", "#9bbc0f"],
+  fire:    ["#3d0a0a", "#a01818", "#f25f1a", "#ffc14d"],
+  water:   ["#0a1d3a", "#1d76b8", "#56c5f5", "#a8e3ff"],
+  earth:   ["#2a1b0e", "#6a4a26", "#c08d4d", "#f0c878"],
+  air:     ["#231042", "#5a2dad", "#a86bff", "#fff066"],
+  light:   ["#3a2c00", "#a87800", "#ffd633", "#fff5a5"],
+  dark:    ["#0e0426", "#3a1370", "#9046c8", "#d99cff"],
+};
+
+// 5×5 burst pattern — 1 = pixel, 0 = empty. Center heavy with
+// outward sparks to feel like an explosion sprite.
+const BURST_PATTERN = [
+  [0, 1, 0, 1, 0],
+  [1, 1, 1, 1, 1],
+  [0, 1, 1, 1, 0],
+  [1, 1, 1, 1, 1],
+  [0, 1, 0, 1, 0],
+];
+
+function PixelBurst({ type = "neutral", crit = false }) {
+  const palette = PIXEL_PALETTES[type] || PIXEL_PALETTES.neutral;
+  const pixels = [];
+  for (let r = 0; r < BURST_PATTERN.length; r++) {
+    for (let c = 0; c < BURST_PATTERN[r].length; c++) {
+      if (!BURST_PATTERN[r][c]) continue;
+      // Layer colours so pixels closer to center are brighter.
+      const cx = (BURST_PATTERN.length - 1) / 2;
+      const dist = Math.abs(r - cx) + Math.abs(c - cx);
+      const idx  = dist <= 0 ? 3 : dist === 1 ? 2 : dist === 2 ? 1 : 0;
+      // Stagger animation by ring so the burst feels like it grows
+      // outward, with a tiny per-pixel jitter for an old-game feel.
+      const ringDelay = dist * 40 + Math.random() * 25;
+      pixels.push(
+        <span
+          key={`${r}-${c}`}
+          className="pa-pixel-burst-pixel"
+          style={{
+            top:  `${(r / (BURST_PATTERN.length    - 1)) * 100}%`,
+            left: `${(c / (BURST_PATTERN[0].length - 1)) * 100}%`,
+            background: palette[idx],
+            animationDelay: `${ringDelay}ms`,
+            // Cap the visual delay so total motion sits within ~650ms
+            animationDuration: "520ms",
+          }}
+        />
+      );
+    }
+  }
+  return (
+    <div className={`pa-pixel-burst pa-pixel-burst--${type} ${crit ? "pa-pixel-burst--crit" : ""}`} aria-hidden="true">
+      <div className="pa-pixel-burst-grid">{pixels}</div>
+      {crit && <div className="pa-pixel-burst-crit-text">CRIT!</div>}
+    </div>
+  );
+}
+
+/* ============================================================
    LIVE BATTLE SCREEN — turn-based real-time PvP
    ============================================================ */
 function LiveBattleScreen({ battle, me, onExit, embedded }) {
@@ -644,11 +707,48 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
   const autoLockRef = useRef({}); // side+round → bool
   const logRef = useRef(null);    // battle log scroll container
 
+  /* Per-side pixel burst FX, retriggered each time a new hit log appears.
+     burst = { mine: { type, kind, ts } | null, opp: { ... } | null } */
+  const [burst, setBurst] = useState({ mine: null, opp: null });
+  const lastLogLenRef = useRef((battle.state?.log || []).length);
+
   /* Keep the latest log line in view on every update. */
   useEffect(() => {
     const el = logRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [battle.state.log?.length]);
+
+  /* Detect new attack-hit log entries and trigger a pixel burst on the
+     target side. Engine writes { kind, moveType, targetSide } on hit/crit. */
+  useEffect(() => {
+    const log = battle.state?.log || [];
+    const newLines = log.slice(lastLogLenRef.current);
+    lastLogLenRef.current = log.length;
+    if (newLines.length === 0) return;
+    let pendingMine = null;
+    let pendingOpp = null;
+    for (const line of newLines) {
+      if (typeof line !== "object" || !line) continue;
+      if (line.kind !== "hit" && line.kind !== "crit") continue;
+      const onSide = line.targetSide === mySide ? "mine" : "opp";
+      const fx = { type: line.moveType || "neutral", kind: line.kind, ts: Date.now() + Math.random() };
+      if (onSide === "mine") pendingMine = fx;
+      else                   pendingOpp = fx;
+    }
+    if (pendingMine || pendingOpp) {
+      setBurst(prev => ({
+        mine: pendingMine || prev.mine,
+        opp:  pendingOpp  || prev.opp,
+      }));
+    }
+  }, [battle.state?.log, mySide]);
+
+  /* Auto-clear bursts after their animation ends (~650ms). */
+  useEffect(() => {
+    if (!burst.mine && !burst.opp) return;
+    const t = setTimeout(() => setBurst({ mine: null, opp: null }), 700);
+    return () => clearTimeout(t);
+  }, [burst.mine, burst.opp]);
 
   /* ── 1Hz tick for countdowns ──────────────────────────── */
   useEffect(() => {
@@ -870,6 +970,7 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
             poison={battle.state.poison[oppSide][oppActiveIdx]}
             opponent
           />
+          {burst.opp && <PixelBurst key={burst.opp.ts} type={burst.opp.type} crit={burst.opp.kind === "crit"} />}
           <BenchRow team={oppTeam} activeIdx={oppActiveIdx} hp={battle.state.hp[oppSide]} />
         </div>
 
@@ -884,6 +985,7 @@ function LiveBattleScreen({ battle, me, onExit, embedded }) {
             shield={battle.state.shield[mySide][myActiveIdx]}
             poison={battle.state.poison[mySide][myActiveIdx]}
           />
+          {burst.mine && <PixelBurst key={burst.mine.ts} type={burst.mine.type} crit={burst.mine.kind === "crit"} />}
           <BenchRow team={myTeam} activeIdx={myActiveIdx} hp={battle.state.hp[mySide]} />
         </div>
       </div>

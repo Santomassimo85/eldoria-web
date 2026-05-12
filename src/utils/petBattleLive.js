@@ -342,12 +342,12 @@ export function resolveLiveRound(battle) {
     const rollFormula = `🎲 d20[${d20}]${atkPart}${movePart} = ${total}`;
 
     if (fumble) {
-      logs.push({ side, text: `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} · ✗ fallimento critico!` });
+      logs.push({ side, kind: "fumble", moveType: move.type, targetSide: opp, text: `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} · ✗ fallimento critico!` });
       continue;
     }
     const hit = crit || total >= them.ac;
     if (!hit) {
-      logs.push({ side, text: `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} vs CA ${them.ac} · ✗ manca` });
+      logs.push({ side, kind: "miss", moveType: move.type, targetSide: opp, text: `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} vs CA ${them.ac} · ✗ manca` });
       continue;
     }
 
@@ -373,6 +373,9 @@ export function resolveLiveRound(battle) {
     const blockedTag = blocked > 0 ? ` (🛡 blocca ${blocked})` : "";
     logs.push({
       side,
+      kind: crit ? "crit" : "hit",
+      moveType: move.type,
+      targetSide: opp,
       text:
         `${me.icon} ${me.nickname} → ${move.icon} ${move.name} · ${rollFormula} vs CA ${them.ac} · ${hitVerb} · ` +
         `💥 ${diceLabel}${mulPart} → -${dealt} PF a ${them.nickname} (${next.hp[opp][theirIdx] + dealt}→${next.hp[opp][theirIdx]})${blockedTag}`

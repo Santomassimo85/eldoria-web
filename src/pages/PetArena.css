@@ -686,6 +686,7 @@
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+  position: relative; /* anchor for .pa-pixel-burst overlay */
 }
 .pa-live-side--opp { align-items: flex-end; }
 .pa-live-side--mine { align-items: flex-start; }
@@ -1544,4 +1545,99 @@
   .pa-pet-mini-icon { width: 48px; height: 48px; }
   .pa-pet-mini-name { font-size: 0.82rem; }
   .pa-pet-mini-meta { font-size: 0.66rem; }
+}
+
+/* ============================================================
+   PIXEL BURST — 8-bit/Game-Boy style hit FX, retro & vivid
+   ============================================================ */
+.pa-pixel-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  pointer-events: none;
+  z-index: 20;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  /* Subtle radial glow tinted to the move type, masking the pixel grid */
+  filter: drop-shadow(0 0 6px currentColor);
+}
+.pa-pixel-burst-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.pa-pixel-burst-pixel {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;       /* center the pixel on its top/left */
+  background: #fff;
+  opacity: 0;
+  transform: scale(0.4);
+  animation-name: pa-pixel-pop;
+  animation-fill-mode: both;
+  animation-timing-function: steps(4, jump-none);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+/* Per-type colour for the drop-shadow glow */
+.pa-pixel-burst--neutral { color: #9bbc0f; }
+.pa-pixel-burst--fire    { color: #ffc14d; }
+.pa-pixel-burst--water   { color: #56c5f5; }
+.pa-pixel-burst--earth   { color: #f0c878; }
+.pa-pixel-burst--air     { color: #fff066; }
+.pa-pixel-burst--light   { color: #ffd633; }
+.pa-pixel-burst--dark    { color: #d99cff; }
+
+@keyframes pa-pixel-pop {
+  0%   { opacity: 0;   transform: scale(0.2) translate(0, 0); }
+  25%  { opacity: 1;   transform: scale(1.25) translate(0, -2px); }
+  55%  { opacity: 1;   transform: scale(1)    translate(0, 0); }
+  100% { opacity: 0;   transform: scale(0.8)  translate(0, 4px); }
+}
+
+/* Crit variant — bigger, brighter, with shouty text */
+.pa-pixel-burst--crit {
+  width: 180px;
+  height: 180px;
+  filter: drop-shadow(0 0 12px currentColor);
+}
+.pa-pixel-burst--crit .pa-pixel-burst-pixel { width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+.pa-pixel-burst-crit-text {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  font-weight: 900;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  color: #fff;
+  text-shadow:
+    -2px 0  0 #000, 2px 0 0 #000, 0 -2px 0 #000, 0 2px 0 #000,
+     0   0 8px currentColor;
+  animation: pa-pixel-shout 0.6s cubic-bezier(0.16, 1.4, 0.4, 1);
+  white-space: nowrap;
+}
+@keyframes pa-pixel-shout {
+  0%   { transform: translateX(-50%) scale(0)   rotate(-12deg); opacity: 0; }
+  40%  { transform: translateX(-50%) scale(1.3) rotate(6deg);   opacity: 1; }
+  100% { transform: translateX(-50%) scale(1)   rotate(0);      opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .pa-pixel-burst       { width: 110px; height: 110px; }
+  .pa-pixel-burst-pixel { width: 13px;  height: 13px;  margin: -6.5px 0 0 -6.5px; }
+  .pa-pixel-burst--crit { width: 140px; height: 140px; }
+  .pa-pixel-burst--crit .pa-pixel-burst-pixel { width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; }
+  .pa-pixel-burst-crit-text { font-size: 0.78rem; top: -18px; }
+}
+@media (max-width: 480px) {
+  .pa-pixel-burst       { width: 92px;  height: 92px; }
+  .pa-pixel-burst-pixel { width: 11px;  height: 11px; margin: -5.5px 0 0 -5.5px; }
+  .pa-pixel-burst--crit { width: 116px; height: 116px; }
+  .pa-pixel-burst--crit .pa-pixel-burst-pixel { width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+  .pa-pixel-burst-crit-text { font-size: 0.7rem; top: -16px; }
 }
