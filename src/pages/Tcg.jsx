@@ -1322,6 +1322,56 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }
 }
 
 /* ============================================================
+   BATTLE LOG — kind detection + number highlighting
+   ============================================================ */
+const LOG_KIND_MAP = [
+  ["🎴", "play"],
+  ["⚔",  "attack"],
+  ["→",  "damage"],
+  ["💀", "death"],
+  ["🩸", "pierce"],
+  ["💞", "heal"],
+  ["👻", "veil"],
+  ["💥", "cinder"],
+  ["▶",  "turn"],
+  ["⏭",  "skip"],
+  ["🏆", "win"],
+  ["🏳", "forfeit"],
+  ["🗑", "discard"],
+];
+
+function parseLogLine(text) {
+  for (const [emoji, kind] of LOG_KIND_MAP) {
+    if (text.startsWith(emoji)) {
+      return { kind, icon: emoji, body: text.slice(emoji.length).trim() };
+    }
+  }
+  return { kind: "default", icon: "•", body: text };
+}
+
+/* Wrap standalone numbers (incl. X/Y, ×N.N) in <strong> so damage / HP
+   / multipliers pop visually without changing the log payload itself. */
+function highlightLogBody(body) {
+  const parts = body.split(/(×\d+(?:\.\d+)?|\d+(?:\/\d+)?)/g);
+  return parts.map((part, i) =>
+    /^(×|\d)/.test(part)
+      ? <strong key={i} className="tcg-log-num">{part}</strong>
+      : <React.Fragment key={i}>{part}</React.Fragment>
+  );
+}
+
+function LogLine({ line, mySide }) {
+  const { kind, icon, body } = parseLogLine(line.text);
+  const sideCls = line.side === mySide ? "mine" : "opp";
+  return (
+    <div className={`tcg-log-line tcg-log-line--${sideCls} tcg-log-line--${kind}`}>
+      <span className="tcg-log-icon" aria-hidden="true">{icon}</span>
+      <span className="tcg-log-text">{highlightLogBody(body)}</span>
+    </div>
+  );
+}
+
+/* ============================================================
    LIVE MATCH — full battle board
    ============================================================ */
 function LiveMatch({ match, uid, onExit }) {
@@ -1423,9 +1473,7 @@ function LiveMatch({ match, uid, onExit }) {
           </div>
           <div className="tcg-end-log" ref={logRef}>
             {(state.log || []).slice(-20).map((line, i) => (
-              <div key={i} className={`tcg-log-line tcg-log-line--${line.side === mySide ? "mine" : "opp"}`}>
-                {line.text}
-              </div>
+              <LogLine key={i} line={line} mySide={mySide} />
             ))}
           </div>
           <button className="tcg-btn tcg-btn--hero" onClick={onExit}>
@@ -1578,9 +1626,7 @@ function LiveMatch({ match, uid, onExit }) {
         </button>
         <div className="tcg-log" ref={logRef}>
           {(state.log || []).slice(-7).map((line, i) => (
-            <div key={i} className={`tcg-log-line tcg-log-line--${line.side === mySide ? "mine" : "opp"}`}>
-              {line.text}
-            </div>
+            <LogLine key={i} line={line} mySide={mySide} />
           ))}
         </div>
       </div>

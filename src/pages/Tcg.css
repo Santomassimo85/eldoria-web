@@ -1009,24 +1009,126 @@ section.tcg-page,
 .tcg-log {
   flex: 1;
   min-width: 260px;
-  max-height: 140px;
+  max-height: 160px;
   overflow-y: auto;
-  background: var(--tcg-ink);
-  color: var(--tcg-cream);
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f1420 100%);
+  color: #e5e7eb;
   border: 3px solid var(--tcg-ink);
-  padding: 8px 12px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.78rem;
-  line-height: 1.5;
+  padding: 8px;
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.4;
   box-shadow: 4px 4px 0 0 var(--tcg-amber);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tcg-amber) #0f1420;
 }
+.tcg-log::-webkit-scrollbar { width: 8px; }
+.tcg-log::-webkit-scrollbar-track { background: #0f1420; }
+.tcg-log::-webkit-scrollbar-thumb {
+  background: var(--tcg-amber);
+  border: 2px solid #0f1420;
+}
+
+/* Log line — pill row with kind-coded left accent, icon bubble, body */
 .tcg-log-line {
-  padding: 1px 0;
-  border-bottom: 1px dashed #404040;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 9px 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid #475569;
+  border-radius: 0 6px 6px 0;
+  animation: tcg-log-in 0.28s ease-out both;
 }
-.tcg-log-line:last-child { border-bottom: none; }
-.tcg-log-line--mine { color: #93c5fd; }
-.tcg-log-line--opp  { color: #fca5a5; }
+@keyframes tcg-log-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.tcg-log-icon {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
+}
+.tcg-log-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+.tcg-log-num {
+  display: inline-block;
+  padding: 0 4px;
+  margin: 0 1px;
+  background: rgba(251, 191, 36, 0.18);
+  color: #fde68a;
+  border-radius: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Side tints — your actions feel "warm/blue", opponent "cool/red" */
+.tcg-log-line--mine { background: rgba(96, 165, 250, 0.10); }
+.tcg-log-line--opp  { background: rgba(248, 113, 113, 0.10); }
+.tcg-log-line--mine .tcg-log-text { color: #dbeafe; }
+.tcg-log-line--opp  .tcg-log-text { color: #fee2e2; }
+
+/* Kind-coded accents and icon emphasis */
+.tcg-log-line--play     { border-left-color: #38bdf8; }
+.tcg-log-line--attack   { border-left-color: #f97316; }
+.tcg-log-line--attack   .tcg-log-icon { animation: tcg-log-clash 0.5s ease-out; }
+.tcg-log-line--damage   { border-left-color: #ef4444; }
+.tcg-log-line--damage   .tcg-log-text { font-size: 0.78rem; opacity: 0.92; }
+.tcg-log-line--death    { border-left-color: #6b7280; background: rgba(107, 114, 128, 0.12); }
+.tcg-log-line--death    .tcg-log-text { font-style: italic; }
+.tcg-log-line--pierce   { border-left-color: #b91c1c; }
+.tcg-log-line--pierce   .tcg-log-num { background: rgba(239, 68, 68, 0.25); color: #fecaca; }
+.tcg-log-line--heal     { border-left-color: #ec4899; }
+.tcg-log-line--heal     .tcg-log-num { background: rgba(236, 72, 153, 0.22); color: #fbcfe8; }
+.tcg-log-line--veil     { border-left-color: #14b8a6; }
+.tcg-log-line--veil     .tcg-log-icon { animation: tcg-log-bob 1.4s ease-in-out infinite; }
+.tcg-log-line--cinder   { border-left-color: #ea580c; }
+.tcg-log-line--cinder   .tcg-log-icon { animation: tcg-log-pop 0.4s ease-out; }
+.tcg-log-line--turn {
+  border-left-color: var(--tcg-amber);
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.16), transparent);
+  font-family: var(--font-title, serif);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  padding: 6px 10px;
+}
+.tcg-log-line--turn .tcg-log-text { color: #fde68a; }
+.tcg-log-line--skip     { border-left-color: #94a3b8; opacity: 0.82; }
+.tcg-log-line--win {
+  border-left-color: var(--tcg-amber);
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.28), rgba(251, 191, 36, 0.05));
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+.tcg-log-line--win .tcg-log-text { color: #fde68a; }
+.tcg-log-line--forfeit  { border-left-color: #71717a; opacity: 0.85; }
+.tcg-log-line--discard  { border-left-color: #78716c; opacity: 0.85; font-style: italic; }
+.tcg-log-line--default  { border-left-color: #475569; }
+
+@keyframes tcg-log-clash {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(-18deg) scale(1.15); }
+  60%  { transform: rotate(12deg) scale(1.05); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes tcg-log-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@keyframes tcg-log-pop {
+  0%   { transform: scale(0.5); }
+  60%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
 
 /* END SCREEN */
 .tcg-end {
@@ -1094,17 +1196,28 @@ section.tcg-page,
 .tcg-end-vs { margin: 0 6px; color: var(--tcg-muted); }
 .tcg-end-card--win .tcg-end-vs { color: var(--tcg-amber); }
 .tcg-end-log {
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
-  background: var(--tcg-ink);
-  color: var(--tcg-cream);
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f1420 100%);
+  color: #e5e7eb;
   border: 3px solid var(--tcg-ink);
   padding: 10px;
   text-align: left;
-  font-family: 'Courier New', monospace;
-  font-size: 0.78rem;
-  line-height: 1.5;
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.4;
   margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tcg-amber) #0f1420;
+}
+.tcg-end-log::-webkit-scrollbar { width: 8px; }
+.tcg-end-log::-webkit-scrollbar-track { background: #0f1420; }
+.tcg-end-log::-webkit-scrollbar-thumb {
+  background: var(--tcg-amber);
+  border: 2px solid #0f1420;
 }
 .tcg-end-card--win .tcg-end-log { border-color: var(--tcg-amber); }
 
@@ -2227,4 +2340,163 @@ section.tcg-page,
   .tcg-card-flavor { display: none; }
   .tcg-hand { gap: 6px; }
   .tcg-codex-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}
+
+/* ============================================================
+   TCG BATTLE — mobile responsive header + player strip + cards
+   Fixes cramped HP/mana/piles/cards on phones
+   ============================================================ */
+@media (max-width: 720px) {
+  .tcg-match { gap: 10px; }
+
+  .tcg-match-head {
+    padding: 8px 10px;
+    gap: 8px;
+    box-shadow: 3px 3px 0 0 var(--tcg-amber);
+  }
+  .tcg-match-round { font-size: 0.78rem; flex: 1 1 100%; text-align: center; order: 3; }
+  .tcg-match-head .tcg-btn--tiny { font-size: 0.72rem; padding: 5px 9px; }
+
+  .tcg-zone { padding: 8px; gap: 8px; box-shadow: 4px 4px 0 0 var(--tcg-ink); }
+  .tcg-zone--opp  { box-shadow: 4px 4px 0 0 var(--tcg-epic); }
+  .tcg-zone--mine { box-shadow: 4px 4px 0 0 var(--tcg-codex); }
+
+  .tcg-pstrip {
+    padding: 6px 10px;
+    gap: 5px;
+    box-shadow: 2px 2px 0 0 var(--tcg-ink);
+  }
+  .tcg-pstrip-name { font-size: 0.82rem; gap: 5px; }
+  .tcg-pstrip-row { gap: 8px; }
+  .tcg-pstrip-hp { flex: 1 1 100%; min-width: 0; gap: 2px; }
+  .tcg-pstrip-hp-label { font-size: 0.82rem; }
+  .tcg-pstrip-hp-track { height: 10px; }
+
+  .tcg-pstrip-pile {
+    padding: 2px 8px;
+    font-size: 0.78rem;
+    gap: 4px;
+  }
+
+  /* Mana rail: tighter, smaller crystals, condensed numbers */
+  .tcg-mana { gap: 6px; padding: 4px 8px; }
+  .tcg-mana-num-icon { font-size: 0.95rem; margin-right: 2px; }
+  .tcg-mana-num-cur { font-size: 1.15rem; }
+  .tcg-mana-num-sep { font-size: 0.85rem; }
+  .tcg-mana-num-max { font-size: 0.85rem; }
+  .tcg-mana-crystal { width: 10px; height: 13px; border-width: 1.5px; }
+  .tcg-mana-rail { max-width: 140px; gap: 2px; }
+}
+
+@media (max-width: 480px) {
+  .tcg-match-head {
+    padding: 7px 8px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 0 var(--tcg-amber);
+  }
+  .tcg-match-round { font-size: 0.72rem; letter-spacing: 0.04em; }
+
+  .tcg-zone {
+    padding: 6px;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 0 var(--tcg-ink);
+  }
+  .tcg-zone--opp  { box-shadow: 3px 3px 0 0 var(--tcg-epic); }
+  .tcg-zone--mine { box-shadow: 3px 3px 0 0 var(--tcg-codex); }
+
+  .tcg-pstrip {
+    padding: 6px 8px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 0 var(--tcg-ink);
+    gap: 4px;
+  }
+  .tcg-pstrip-name { font-size: 0.78rem; }
+  /* Row 1: HP bar spans full width.
+     Row 2: mana on left, deck + hand pile chips on right. */
+  .tcg-pstrip-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      "hp   hp    hp"
+      "mana deck  hand";
+    gap: 6px;
+    align-items: center;
+  }
+  .tcg-pstrip-hp { grid-area: hp; flex: 1 1 auto; min-width: 0; }
+  .tcg-pstrip-hp-label { font-size: 0.78rem; }
+  .tcg-pstrip-hp-track { height: 9px; }
+  .tcg-mana { grid-area: mana; justify-self: start; }
+  .tcg-pstrip-row > .tcg-pstrip-pile:nth-child(3) { grid-area: deck; }
+  .tcg-pstrip-row > .tcg-pstrip-pile:nth-child(4) { grid-area: hand; }
+  .tcg-pstrip-pile {
+    padding: 2px 7px;
+    font-size: 0.74rem;
+    border-width: 2px;
+  }
+
+  /* Mana — even tighter on phones */
+  .tcg-mana {
+    padding: 3px 7px;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 0 var(--tcg-ink);
+    gap: 5px;
+  }
+  .tcg-mana-num-cur { font-size: 1rem; }
+  .tcg-mana-num-icon { font-size: 0.85rem; }
+  .tcg-mana-crystal { width: 9px; height: 11px; }
+  .tcg-mana-rail { max-width: 110px; }
+
+  /* Board: smaller min-height + wrap cards */
+  .tcg-board { min-height: 130px; padding: 5px; gap: 5px; }
+  .tcg-board-empty { font-size: 0.8rem; }
+
+  /* Divider: compact face-attack button */
+  .tcg-divider { gap: 6px; margin: 2px 0; }
+  .tcg-face-attack {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    box-shadow: 3px 3px 0 0 var(--tcg-ink);
+    text-align: center;
+    flex: 1 1 100%;
+  }
+  .tcg-divider-hint { font-size: 0.72rem; padding: 3px 8px; flex: 1 1 100%; text-align: center; }
+
+  /* Hand: tighter container */
+  .tcg-hand-wrap {
+    padding: 8px;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 0 var(--tcg-amber);
+  }
+  .tcg-hand-label { font-size: 0.74rem; margin-bottom: 6px; }
+  .tcg-hand { justify-content: center; }
+
+  /* Action bar / log */
+  .tcg-action-bar { gap: 8px; }
+  .tcg-action-bar .tcg-btn--end { flex: 1 1 100%; text-align: center; }
+  .tcg-log {
+    min-width: 0;
+    flex: 1 1 100%;
+    max-height: 130px;
+    padding: 6px;
+    font-size: 0.76rem;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 0 var(--tcg-amber);
+    gap: 3px;
+  }
+  .tcg-log-line { padding: 4px 7px; gap: 6px; }
+  .tcg-log-line--turn { font-size: 0.7rem; padding: 4px 8px; }
+  .tcg-log-icon { font-size: 0.85rem; }
+}
+
+@media (max-width: 380px) {
+  .tcg-card--md { width: 102px; }
+  .tcg-card-art { height: 68px; }
+  .tcg-card-name { font-size: 0.66rem; }
+  .tcg-pstrip-name { font-size: 0.72rem; }
+  .tcg-pstrip-hp-label { font-size: 0.74rem; }
+  .tcg-mana-rail { max-width: 88px; }
+  .tcg-mana-crystal { width: 8px; height: 10px; }
+  .tcg-pstrip-pile { font-size: 0.7rem; padding: 2px 6px; }
+  .tcg-match-head .tcg-btn--tiny { font-size: 0.66rem; padding: 4px 7px; }
 }

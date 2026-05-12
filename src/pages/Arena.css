@@ -6783,3 +6783,306 @@
   .hall-rank { display: none; }
   .hall-avatar { width: 32px !important; height: 32px !important; }
 }
+
+/* ============================================================
+   ARENA LIBERA (Training) — vivid theme + responsive polish
+   Overrides the earlier white panel + improves UX on all sizes
+   ============================================================ */
+.fun-arena-section {
+  background: linear-gradient(135deg, #0f4c75 0%, #1b6ca8 45%, #14b8a6 100%) !important;
+  border: none !important;
+  border-left: 5px solid #06b6d4 !important;
+  border-radius: 16px !important;
+  box-shadow:
+    0 10px 30px rgba(11, 79, 117, 0.28),
+    0 2px 6px rgba(20, 184, 166, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  padding: 22px 22px 20px !important;
+  margin: 28px auto !important;
+  color: #f0fbff;
+  position: relative;
+  overflow: hidden;
+}
+.fun-arena-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(45, 212, 191, 0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 50% at 0% 100%, rgba(99, 102, 241, 0.20) 0%, transparent 70%);
+  pointer-events: none;
+  display: block !important;
+}
+.fun-arena-section > * { position: relative; z-index: 1; }
+
+.fun-arena-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+.fun-arena-icon {
+  font-size: 1.9rem;
+  color: #fde68a;
+  text-shadow: 0 2px 8px rgba(253, 230, 138, 0.4);
+  flex-shrink: 0;
+}
+.fun-arena-title-block { flex: 1 1 220px; min-width: 0; }
+.fun-arena-title {
+  margin: 0 0 3px;
+  font-family: var(--font-title);
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+  color: #fff;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fun-arena-title-tag {
+  font-family: var(--font-text);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0f4c75;
+  background: linear-gradient(135deg, #fde68a, #fbbf24);
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(251, 191, 36, 0.4);
+}
+.fun-arena-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(240, 251, 255, 0.88);
+  font-style: italic;
+  line-height: 1.4;
+}
+.fun-arena-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.95);
+  color: #fff;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.btn-fun-create {
+  background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%) !important;
+  color: #1a2e3a !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  font-family: var(--font-title);
+  font-size: 0.82rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow:
+    0 4px 14px rgba(249, 115, 22, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+  white-space: nowrap;
+}
+.btn-fun-create:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 6px 20px rgba(249, 115, 22, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+.btn-fun-create:active { transform: translateY(0); }
+
+.fun-arena-lobby {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.fun-arena-lobby-title {
+  font-family: var(--font-title);
+  font-size: 0.78rem !important;
+  color: #0f4c75 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(15, 76, 117, 0.25);
+}
+.fun-challenge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(15, 76, 117, 0.08);
+  flex-wrap: wrap;
+}
+.fun-challenge-row:last-child { border-bottom: none; }
+.fun-challenge-row--live {
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 3px solid #ef4444;
+  padding-left: 8px;
+  border-radius: 6px;
+}
+.fun-challenge-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #14b8a6;
+  flex-shrink: 0;
+}
+.fun-challenge-info { flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fun-challenge-name { font-weight: 700; font-size: 0.9rem; color: #0f3a4a; }
+.fun-challenge-class { font-size: 0.74rem; color: #4a6c80; text-transform: capitalize; }
+.fun-challenge-hp { font-size: 0.72rem; color: #6f8a9c; }
+.fun-challenge-vs { color: #ef4444; font-weight: 800; margin: 0 6px; }
+
+.btn-fun-accept {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.35);
+  transition: transform 0.15s, filter 0.2s, box-shadow 0.2s;
+}
+.btn-fun-accept:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.5);
+}
+.btn-fun-accept:disabled {
+  background: #b0bcc4 !important;
+  color: #fff !important;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn-fun-cancel {
+  background: transparent;
+  border: 1px solid rgba(15, 76, 117, 0.35) !important;
+  color: #4a6c80 !important;
+  border-radius: 8px !important;
+  padding: 7px 14px !important;
+  font-size: 0.8rem !important;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-fun-cancel:hover {
+  background: rgba(15, 76, 117, 0.06);
+  border-color: rgba(15, 76, 117, 0.55) !important;
+}
+
+.fun-arena-history {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.7) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+.fun-arena-history-title {
+  font-family: var(--font-title);
+  font-size: 0.74rem !important;
+  color: #0f4c75 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.fun-history-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(15, 76, 117, 0.06);
+}
+.fun-history-row:last-child { border-bottom: none; }
+.fun-history-row.win .fun-history-result  { color: #047857; font-weight: 600; }
+.fun-history-row.lose .fun-history-result { color: #b91c1c; }
+.fun-history-row.draw .fun-history-result { color: #6b7280; font-style: italic; }
+
+.fun-arena-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.88rem;
+  padding: 14px 0 6px;
+  font-style: italic;
+}
+
+/* match-card variant within active panel: vivid teal accent */
+.match-card.match-fun {
+  border-top-color: #14b8a6 !important;
+  border-color: rgba(20, 184, 166, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.18) !important;
+}
+.match-card.match-fun .match-round-label { color: #0d9488 !important; }
+.fun-loadout-banner {
+  background: linear-gradient(135deg, #0f4c75 0%, #14b8a6 100%) !important;
+  color: #fff !important;
+}
+
+/* ---- RESPONSIVE — Arena Libera ---------------------------- */
+@media (max-width: 720px) {
+  .fun-arena-section { padding: 18px 16px 16px !important; margin: 22px auto !important; }
+  .fun-arena-header { gap: 10px; }
+  .fun-arena-icon { font-size: 1.5rem; }
+  .fun-arena-live-badge { order: 3; }
+  .btn-fun-create { order: 4; flex: 1 1 100%; text-align: center; }
+}
+@media (max-width: 520px) {
+  .fun-arena-section {
+    padding: 16px 14px 14px !important;
+    border-radius: 14px !important;
+    border-left-width: 4px !important;
+  }
+  .fun-arena-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .fun-arena-icon { align-self: flex-start; }
+  .fun-arena-title-block { flex: 1 1 auto; }
+  .fun-arena-title { font-size: 1.05rem; }
+  .fun-arena-title-tag { font-size: 0.58rem; }
+  .fun-arena-subtitle { font-size: 0.8rem; }
+  .fun-arena-live-badge { align-self: flex-start; }
+  .btn-fun-create { width: 100%; padding: 12px 18px !important; }
+  .fun-arena-lobby { padding: 10px 12px !important; }
+  .fun-challenge-row {
+    gap: 10px;
+    padding: 10px 4px;
+  }
+  .fun-challenge-info { flex: 1 1 100%; order: 2; }
+  .fun-challenge-avatar { order: 1; }
+  .btn-fun-accept,
+  .btn-fun-cancel {
+    order: 3;
+    flex: 1 1 100%;
+    padding: 10px 14px !important;
+    font-size: 0.85rem !important;
+  }
+  .fun-challenge-row--live .fun-challenge-info { flex-basis: 100%; }
+}
+@media (max-width: 380px) {
+  .fun-arena-title { letter-spacing: 0.04em; }
+  .fun-arena-title-tag { padding: 2px 8px; }
+}
