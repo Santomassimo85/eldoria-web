@@ -231,6 +231,34 @@ function TcgGame() {
     }
   };
 
+  /* ── Skip the starter pack PERMANENTLY ─────────────────
+     Writes `tcgStarterClaimed: true` (with a tcgStarterSkipped
+     marker for auditing) so the modal never reopens on refresh
+     or re-deploy. Only a master TCG reset can bring it back.
+     Confirms first because this is a one-way decision: the
+     player forfeits the free starter pack. */
+  const skipStarter = async () => {
+    if (!currentUser || !me) return;
+    if (me.tcgStarterClaimed) { setStarterOpen(false); return; }
+    const ok = window.confirm(
+      "Sei sicuro di voler saltare?\n\n" +
+      "Se confermi NON riceverai il Pacchetto Iniziale gratuito e il messaggio non comparirà più.\n" +
+      "Potrai comunque giocare comprando forzieri dalla Bottega quando avrai abbastanza ✦."
+    );
+    if (!ok) return;
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), {
+        tcgStarterClaimed: true,
+        tcgStarterSkipped: true,
+      });
+      setMe(prev => prev ? { ...prev, tcgStarterClaimed: true, tcgStarterSkipped: true } : prev);
+      setStarterOpen(false);
+    } catch (err) {
+      console.error("starter skip failed:", err);
+      alert("Errore: " + err.message);
+    }
+  };
+
   /* ── Buy a pack ───────────────────────────────────────── */
   const buyPack = async (packKey) => {
     if (!currentUser || !me) return;
@@ -520,7 +548,7 @@ function TcgGame() {
       {starterOpen && (
         <StarterModal
           onPick={claimStarter}
-          onSkip={() => setStarterOpen(false)}
+          onSkip={skipStarter}
         />
       )}
 
@@ -646,7 +674,8 @@ function StarterModal({ onPick, onSkip }) {
         <p className="tcg-starter-sub">
           Scegli uno dei quattro elementi base e ricevi <strong>20 carte gratis</strong> per
           iniziare. Otterrai un mazzo da gioco completo con preferenza per
-          l'elemento scelto. Questa scelta è una sola volta per ogni avventuriero.
+          l'elemento scelto. <strong>Questa scelta è una sola volta per ogni avventuriero:</strong> dopo
+          la prima conferma (o se salti) il messaggio non riapparirà più, nemmeno dopo un riavvio.
           <br />
           <em>Luce</em> e <em>Tenebra</em> sono disponibili solo nella Bottega.
         </p>
@@ -670,8 +699,12 @@ function StarterModal({ onPick, onSkip }) {
           })}
         </div>
         <div className="tcg-starter-actions">
-          <button className="tcg-btn tcg-btn--ghost" onClick={onSkip}>
-            Salta (potrai scegliere dopo)
+          <button
+            className="tcg-btn tcg-btn--ghost"
+            onClick={onSkip}
+            title="Rinuncia al Pacchetto Iniziale: il messaggio non comparirà più"
+          >
+            Salta definitivamente
           </button>
           <button
             className="tcg-btn tcg-btn--hero"
