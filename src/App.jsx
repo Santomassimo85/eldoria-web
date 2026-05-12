@@ -43,6 +43,7 @@ import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
 import PetArena from "./pages/PetArena";
 import PetHub from "./pages/PetHub";
+import Tcg from "./pages/Tcg";
 import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
@@ -339,6 +340,7 @@ export default function App() {
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
             <NavLink to="/pet">Pet Hub</NavLink>
+            <NavLink to="/tcg">🎴 TCG</NavLink>
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
 
@@ -365,6 +367,7 @@ export default function App() {
           <Route path="/arena-bottega" element={<ArenaMarket />} />
           <Route path="/pet" element={<PetHub />} />
           <Route path="/pet-arena" element={<PetArena />} />
+          <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<Crafting />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
           <Route path="/notifications" element={<Notifications />} />

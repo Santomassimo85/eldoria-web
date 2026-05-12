@@ -133,6 +133,17 @@ service cloud.firestore {
       );
     }
 
+    // ── TCG (1v1 card game) ──────────────────────────────────────────────────
+    match /tcg_matches/{matchId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.challenger.uid == request.auth.uid;
+      allow update: if isLoggedIn();
+      allow delete: if isLoggedIn() && (
+        resource.data.challenger.uid == request.auth.uid ||
+        isMaster()
+      );
+    }
+
     // ── Player sprites ───────────────────────────────────────────────────────
     match /player_sprites/{docId} {
       allow read:  if isAuth();
