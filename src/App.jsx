@@ -43,7 +43,7 @@ import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
 import PetArena from "./pages/PetArena";
 import PetHub from "./pages/PetHub";
-import Tcg from "./pages/Tcg";
+import Tcg, { isTcgUnlockedFor } from "./pages/Tcg";
 import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
@@ -112,6 +112,16 @@ const AdminNavLink = ({ closeMenu }) => {
     );
   }
   return null;
+};
+
+// --- TCG nav link — hidden while the page is locked unless the
+//     current account is on the TCG allow-list (master, testers). ---
+const TcgNavLink = ({ onClick }) => {
+  const { currentUser } = useAuth();
+  if (!isTcgUnlockedFor(currentUser?.email)) return null;
+  return (
+    <NavLink to="/tcg" onClick={onClick}>🎴 TCG</NavLink>
+  );
 };
 
 // --- Master-only link to the offline pricing tool (opens in a new tab) ---
@@ -340,7 +350,7 @@ export default function App() {
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
             <NavLink to="/pet">Pet Hub</NavLink>
-            <NavLink to="/tcg">🎴 TCG</NavLink>
+            <TcgNavLink />
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
 

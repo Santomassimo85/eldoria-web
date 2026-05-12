@@ -21,13 +21,51 @@ import {
 } from "../utils/tcg";
 import "./Tcg.css";
 
+/* The page is currently locked to the master account while the
+   game gets its final polish. Set TCG_LOCKED = false (or whitelist
+   more emails in TCG_ALLOWED_EMAILS) when ready to ship to players.
+   Exported so App.jsx's nav can hide the menu entry while locked. */
+export const TCG_LOCKED = true;
+export const TCG_ALLOWED_EMAILS = new Set([
+  "santomassimo85@gmail.com",
+]);
+
+export function isTcgUnlockedFor(email) {
+  if (!TCG_LOCKED) return true;
+  return TCG_ALLOWED_EMAILS.has(email || "");
+}
+
 /* ============================================================
    ELDORIA TCG — Magic-style D&D 1v1 trading card game.
-   Tabs: Sfide · Bottega · Collezione · Carte · Manuale.
-   First-time players are prompted to pick a free starter pack
-   (20 cards biased toward an element of their choosing).
+   Default export is a thin gate that either renders the real
+   game (master / allow-listed accounts) or a "coming soon"
+   screen for everyone else.
    ============================================================ */
 export default function Tcg() {
+  const { currentUser } = useAuth();
+  if (!isTcgUnlockedFor(currentUser?.email)) {
+    return <TcgLockedGate />;
+  }
+  return <TcgGame />;
+}
+
+function TcgLockedGate() {
+  return (
+    <section className="tcg-page">
+      <div className="tcg-locked">
+        <div className="tcg-locked-icon">🔒</div>
+        <h2>Eldoria TCG</h2>
+        <p>Il tavolo da gioco è in fase di rifinitura finale.</p>
+        <p className="tcg-locked-sub">Torna presto: i forzieri delle carte stanno per aprirsi! 🎴✨</p>
+      </div>
+    </section>
+  );
+}
+
+/* Tabs: Sfide · Bottega · Collezione · Carte · Manuale.
+   First-time players are prompted to pick a free starter pack
+   (20 cards biased toward an element of their choosing). */
+function TcgGame() {
   const { currentUser } = useAuth();
   const [tab, setTab] = useState("lobby");
   const [me, setMe] = useState(null);

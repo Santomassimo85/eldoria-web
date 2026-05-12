@@ -59,7 +59,11 @@ section.tcg-page,
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.tcg-locked p { color: var(--tcg-muted); }
+.tcg-locked p { color: var(--tcg-muted); margin: 6px 0; }
+.tcg-locked-sub {
+  font-size: 0.88rem;
+  font-style: italic;
+}
 
 /* ── HEADER ───────────────────────────────────────────────── */
 .tcg-head {
