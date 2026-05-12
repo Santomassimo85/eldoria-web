@@ -1270,6 +1270,7 @@ function CardArt({ def }) {
    ============================================================ */
 function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }) {
   const mechs = def.mechanics || [];
+  const isFlying = mechs.includes("flying");
   const tip = `${def.name}\nPF ${bc.hp}/${bc.maxHp} · ⚔ ${bc.atk}\n` +
     mechs.map(k => `${TCG_MECHANICS[k].icon} ${TCG_MECHANICS[k].name}`).join(" · ");
   const Tag = onClick ? "button" : "div";
@@ -1286,12 +1287,19 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }
         (onClick ? " tcg-card--clickable" : "") +
         (status === "sick" ? " tcg-board-card--sick" : "") +
         (status === "tapped" ? " tcg-board-card--tapped" : "") +
-        (status === "ready" ? " tcg-board-card--ready" : "")
+        (status === "ready" ? " tcg-board-card--ready" : "") +
+        (isFlying ? " tcg-board-card--flying" : "")
       }
       onClick={onClick}
       disabled={disabled}
       title={tip}
     >
+      {isFlying && (
+        <>
+          <span className="tcg-flying-wings" aria-hidden="true">🪽</span>
+          <span className="tcg-flying-shadow" aria-hidden="true" />
+        </>
+      )}
       <div className="tcg-card-header">
         <span className="tcg-card-cost">{def.cost}</span>
         <span className="tcg-card-name">{def.name}</span>
@@ -1327,6 +1335,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }
 const LOG_KIND_MAP = [
   ["🎴", "play"],
   ["⚔",  "attack"],
+  ["🪽", "flying"],
   ["→",  "damage"],
   ["💀", "death"],
   ["🩸", "pierce"],
@@ -1383,7 +1392,60 @@ function LiveMatch({ match, uid, onExit }) {
 
   const [selectedAttacker, setSelectedAttacker] = useState(null);
   const [compliment, setCompliment] = useState("");
+  const [attackSplash, setAttackSplash] = useState(null); // { attacker, defender, side, kind, key }
   const logRef = useRef(null);
+  const lastLogLenRef = useRef((match.state?.log || []).length);
+
+  /* Attack splash — when a new ⚔ or 🪽 log entry appears, show an MTG-style
+     clash overlay for ~1100ms. We parse the most recent action log
+     deltas so both players see the same splash. */
+  useEffect(() => {
+    const log = state.log || [];
+    const newLines = log.slice(lastLogLenRef.current);
+    lastLogLenRef.current = log.length;
+    if (newLines.length === 0) return;
+    // Find the most recent attack-class line.
+    for (let i = newLines.length - 1; i >= 0; i--) {
+      const line = newLines[i];
+      const t = line.text || "";
+      if (t.startsWith("⚔") || t.startsWith("🪽")) {
+        let kind = t.startsWith("🪽") ? "flying" : "ground";
+        let attacker = null;
+        let defender = null;
+        // "⚔ <attacker> attacca <defender>."
+        let m = t.match(/^[⚔🪽]\s*(.+?)\s+attacca\s+(.+?)[\.…]/u);
+        if (m) {
+          attacker = m[1].trim();
+          defender = m[2].trim();
+        } else {
+          // "⚔ <attacker> colpisce direttamente per X danni!"
+          // "🪽 <attacker> sorvola la linea nemica e colpisce per X danni!"
+          m = t.match(/^[⚔🪽]\s*(.+?)\s+(?:colpisce|sorvola)/u);
+          if (m) {
+            attacker = m[1].trim();
+            defender = "👑";
+            kind = t.startsWith("🪽") ? "flying-face" : "face";
+          }
+        }
+        if (attacker) {
+          setAttackSplash({
+            attacker,
+            defender,
+            side: line.side,
+            kind,
+            key: `${log.length}-${i}`,
+          });
+        }
+        break;
+      }
+    }
+  }, [state.log]);
+
+  useEffect(() => {
+    if (!attackSplash) return;
+    const t = setTimeout(() => setAttackSplash(null), 1100);
+    return () => clearTimeout(t);
+  }, [attackSplash]);
 
   /* Roll a compliment once when the match ends and I won */
   useEffect(() => {
@@ -1405,8 +1467,13 @@ function LiveMatch({ match, uid, onExit }) {
 
   const matchRef = doc(db, "tcg_matches", match.id);
 
-  const updateState = async (newState, statusOverride) => {
+  /* updateState writes the new state and optionally captures a snapshot
+     of the previous state for one-step undo. End-turn and forfeit clear
+     the snapshot so the opponent's turn can't be rolled back. */
+  const updateState = async (newState, opts = {}) => {
+    const { snapshotForUndo = false, statusOverride = null } = opts;
     const patch = { state: newState, updatedAt: serverTimestamp() };
+    patch.prevState = snapshotForUndo ? state : null;
     if (statusOverride) patch.status = statusOverride;
     else if (newState.winner) patch.status = "ended";
     try {
@@ -1420,7 +1487,7 @@ function LiveMatch({ match, uid, onExit }) {
   const handlePlayCard = async (instId) => {
     if (!canPlayCard(state, mySide, instId)) return;
     const next = playCard(state, mySide, instId);
-    await updateState(next);
+    await updateState(next, { snapshotForUndo: true });
   };
 
   const handleSelectAttacker = (instId) => {
@@ -1432,13 +1499,23 @@ function LiveMatch({ match, uid, onExit }) {
     if (!selectedAttacker) return;
     const next = attackWith(state, mySide, selectedAttacker, targetInstId);
     setSelectedAttacker(null);
-    await updateState(next);
+    // Don't allow undoing an attack that ended the game — too messy.
+    await updateState(next, { snapshotForUndo: !next.winner });
+  };
+
+  /* Restore the snapshot captured before the last action. Only valid
+     during your own turn, before the game ends. */
+  const canUndo = myTurn && !state.winner && !!match.prevState;
+  const handleUndo = async () => {
+    if (!canUndo) return;
+    setSelectedAttacker(null);
+    await updateState(match.prevState, { snapshotForUndo: false });
   };
 
   const handleEndTurn = async () => {
     const next = endTurn(state, mySide);
     setSelectedAttacker(null);
-    await updateState(next);
+    await updateState(next); // snapshot cleared — turn flips to opponent
   };
 
   const handleForfeit = async () => {
@@ -1491,6 +1568,32 @@ function LiveMatch({ match, uid, onExit }) {
 
   return (
     <div className="tcg-match">
+      {attackSplash && (
+        <div
+          key={attackSplash.key}
+          className={
+            `tcg-attack-splash tcg-attack-splash--${attackSplash.kind}` +
+            (attackSplash.side === mySide ? " tcg-attack-splash--mine" : " tcg-attack-splash--opp")
+          }
+          aria-hidden="true"
+        >
+          <div className="tcg-attack-splash-card">
+            <div className="tcg-attack-splash-attacker">
+              {attackSplash.kind.startsWith("flying") ? "🪽" : "⚔"} {attackSplash.attacker}
+            </div>
+            <div className="tcg-attack-splash-vs">
+              <span className="tcg-attack-splash-clash">💥</span>
+              <span className="tcg-attack-splash-spark tcg-attack-splash-spark--1">✦</span>
+              <span className="tcg-attack-splash-spark tcg-attack-splash-spark--2">✦</span>
+              <span className="tcg-attack-splash-spark tcg-attack-splash-spark--3">✦</span>
+              <span className="tcg-attack-splash-spark tcg-attack-splash-spark--4">✦</span>
+            </div>
+            <div className="tcg-attack-splash-defender">
+              {attackSplash.defender}
+            </div>
+          </div>
+        </div>
+      )}
       <header className="tcg-match-head">
         <button className="tcg-btn tcg-btn--ghost tcg-btn--tiny" onClick={onExit}>← Lobby</button>
         <div className="tcg-match-round">
@@ -1616,14 +1719,25 @@ function LiveMatch({ match, uid, onExit }) {
 
       {/* Action bar + log */}
       <div className="tcg-action-bar">
-        <button
-          type="button"
-          className="tcg-btn tcg-btn--end"
-          onClick={handleEndTurn}
-          disabled={!myTurn}
-        >
-          ⏭ Fine turno
-        </button>
+        <div className="tcg-action-bar-buttons">
+          <button
+            type="button"
+            className="tcg-btn tcg-btn--end"
+            onClick={handleEndTurn}
+            disabled={!myTurn}
+          >
+            ⏭ Fine turno
+          </button>
+          <button
+            type="button"
+            className="tcg-btn tcg-btn--undo"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title={canUndo ? "Annulla l'ultima azione" : "Niente da annullare"}
+          >
+            ↩ Annulla
+          </button>
+        </div>
         <div className="tcg-log" ref={logRef}>
           {(state.log || []).slice(-7).map((line, i) => (
             <LogLine key={i} line={line} mySide={mySide} />
@@ -1778,7 +1892,7 @@ function Rules() {
       </div>
 
       <div className="tcg-panel">
-        <h2 className="tcg-panel-title">⚡ Le 8 meccaniche</h2>
+        <h2 className="tcg-panel-title">⚡ Le meccaniche</h2>
         <div className="tcg-mechs-grid">
           {MECHANICS_ORDER.map(k => {
             const m = TCG_MECHANICS[k];

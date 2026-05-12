@@ -226,14 +226,28 @@ export function attackWith(state, side, attackerInstId, targetInstId) {
   const aMech = aDef.mechanics || [];
   const isBulwark = aMech.includes("bulwark");
   if (isBulwark) return state; // bulwark cannot attack
+  const attackerFlies = aMech.includes("flying");
 
-  // Must respect Bulwark on opponent — if any bulwark exists, must target one
+  // Reachable target predicate: a non-flying attacker can't touch flying
+  // defenders. A flying attacker can hit anything.
+  const canReach = (c) => {
+    const cMech = TCG_CARDS[c.cardId].mechanics || [];
+    if (cMech.includes("flying") && !attackerFlies) return false;
+    return true;
+  };
+
+  // Bulwarks only taunt attackers that can actually reach them.
+  // (A non-flying bulwark does NOT block a flying attacker — it flies past.)
   const oppBoard = next.board[oside];
-  const oppBulwarks = oppBoard.filter(c => (TCG_CARDS[c.cardId].mechanics || []).includes("bulwark"));
-  if (oppBulwarks.length > 0) {
+  const tauntingBulwarks = oppBoard.filter(c => {
+    const cMech = TCG_CARDS[c.cardId].mechanics || [];
+    if (!cMech.includes("bulwark")) return false;
+    return canReach(c);
+  });
+  if (tauntingBulwarks.length > 0) {
     if (targetInstId === null) return state; // can't go face
-    const targetIsBulwark = oppBulwarks.some(c => c.instId === targetInstId);
-    if (!targetIsBulwark) return state; // must hit a bulwark first
+    const targetIsBulwark = tauntingBulwarks.some(c => c.instId === targetInstId);
+    if (!targetIsBulwark) return state; // must hit a reachable bulwark first
   }
 
   attacker.tapped = true;
@@ -242,9 +256,17 @@ export function attackWith(state, side, attackerInstId, targetInstId) {
     // Direct hit on opponent face — no element mod for face damage in MVP
     const dmg = attacker.atk;
     next.hp[oside] = Math.max(0, next.hp[oside] - dmg);
+    // Flavor: if attacker is flying and the opponent has any ground creatures,
+    // say it flies over them on the way to the champion.
+    const flewOver = attackerFlies && oppBoard.some(c => {
+      const cMech = TCG_CARDS[c.cardId].mechanics || [];
+      return !cMech.includes("flying");
+    });
     next.log = [...next.log, {
       side,
-      text: `⚔ ${aDef.name} colpisce direttamente per ${dmg} danni!`,
+      text: flewOver
+        ? `🪽 ${aDef.name} sorvola la linea nemica e colpisce per ${dmg} danni!`
+        : `⚔ ${aDef.name} colpisce direttamente per ${dmg} danni!`,
     }];
     applySoulburn(next, side, dmg, aMech);
     if (next.hp[oside] <= 0) endGame(next, side, "PF azzerati");
@@ -255,6 +277,8 @@ export function attackWith(state, side, attackerInstId, targetInstId) {
   if (!target) return state;
   const tDef = TCG_CARDS[target.cardId];
   const tMech = tDef.mechanics || [];
+  // Non-flying attacker cannot reach a flying defender.
+  if (tMech.includes("flying") && !attackerFlies) return state;
 
   // Element multipliers — applied to each side's strike
   const aMul = elementMultiplier(aDef.element, tDef.element);
@@ -447,11 +471,33 @@ export function canAttack(state, side, instId) {
 export function legalAttackTargets(state, side, attackerInstId) {
   const oside = opp(side);
   const oppBoard = state.board[oside];
-  const bulwarks = oppBoard.filter(c => (TCG_CARDS[c.cardId].mechanics || []).includes("bulwark"));
-  if (bulwarks.length > 0) {
-    return { creatures: bulwarks.map(c => c.instId), face: false };
+  const attacker = state.board[side].find(c => c.instId === attackerInstId);
+  if (!attacker) return { creatures: [], face: false };
+
+  const aMech = (TCG_CARDS[attacker.cardId].mechanics || []);
+  const attackerFlies = aMech.includes("flying");
+
+  // Reachable target predicate.
+  // A non-flying attacker cannot reach flying defenders.
+  // A flying attacker can hit anything (ground or air).
+  const reachable = (c) => {
+    const cMech = TCG_CARDS[c.cardId].mechanics || [];
+    if (cMech.includes("flying") && !attackerFlies) return false;
+    return true;
+  };
+
+  // Bulwarks only taunt the attacker if the attacker can actually reach them.
+  const tauntingBulwarks = oppBoard.filter(c => {
+    const cMech = TCG_CARDS[c.cardId].mechanics || [];
+    if (!cMech.includes("bulwark")) return false;
+    return reachable(c);
+  });
+  if (tauntingBulwarks.length > 0) {
+    return { creatures: tauntingBulwarks.map(c => c.instId), face: false };
   }
-  return { creatures: oppBoard.map(c => c.instId), face: true };
+
+  const creatures = oppBoard.filter(reachable).map(c => c.instId);
+  return { creatures, face: true };
 }
 
 export { opp as oppSide };

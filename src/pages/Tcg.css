@@ -1091,6 +1091,11 @@ section.tcg-page,
 .tcg-log-line--veil     .tcg-log-icon { animation: tcg-log-bob 1.4s ease-in-out infinite; }
 .tcg-log-line--cinder   { border-left-color: #ea580c; }
 .tcg-log-line--cinder   .tcg-log-icon { animation: tcg-log-pop 0.4s ease-out; }
+.tcg-log-line--flying   {
+  border-left-color: #a78bfa;
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.14), rgba(167, 139, 250, 0.04));
+}
+.tcg-log-line--flying   .tcg-log-icon { animation: tcg-log-bob 1.2s ease-in-out infinite; }
 .tcg-log-line--turn {
   border-left-color: var(--tcg-amber);
   background: linear-gradient(90deg, rgba(251, 191, 36, 0.16), transparent);
@@ -2362,20 +2367,26 @@ section.tcg-page,
   .tcg-zone--mine { box-shadow: 4px 4px 0 0 var(--tcg-codex); }
 
   .tcg-pstrip {
-    padding: 6px 10px;
-    gap: 5px;
+    padding: 8px 10px;
+    gap: 7px;
     box-shadow: 2px 2px 0 0 var(--tcg-ink);
   }
   .tcg-pstrip-name { font-size: 0.82rem; gap: 5px; }
-  .tcg-pstrip-row { gap: 8px; }
-  .tcg-pstrip-hp { flex: 1 1 100%; min-width: 0; gap: 2px; }
-  .tcg-pstrip-hp-label { font-size: 0.82rem; }
+  .tcg-pstrip-row { gap: 8px 10px; row-gap: 8px; }
+  .tcg-pstrip-hp { flex: 1 1 100%; min-width: 0; gap: 3px; }
+  .tcg-pstrip-hp-label {
+    font-size: 0.74rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
   .tcg-pstrip-hp-track { height: 10px; }
 
   .tcg-pstrip-pile {
-    padding: 2px 8px;
-    font-size: 0.78rem;
+    padding: 3px 8px;
+    font-size: 0.74rem;
     gap: 4px;
+    font-variant-numeric: tabular-nums;
   }
 
   /* Mana rail: tighter, smaller crystals, condensed numbers */
@@ -2405,33 +2416,47 @@ section.tcg-page,
   .tcg-zone--mine { box-shadow: 3px 3px 0 0 var(--tcg-codex); }
 
   .tcg-pstrip {
-    padding: 6px 8px;
+    padding: 8px;
     border-width: 2px;
     box-shadow: 2px 2px 0 0 var(--tcg-ink);
-    gap: 4px;
+    gap: 7px;
   }
   .tcg-pstrip-name { font-size: 0.78rem; }
   /* Row 1: HP bar spans full width.
-     Row 2: mana on left, deck + hand pile chips on right. */
+     Row 2: mana on left, deck + hand pile chips on right.
+     min-content / minmax keep the row from squeezing the HP label when
+     numbers grow (e.g. 100/100). */
   .tcg-pstrip-row {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
       "hp   hp    hp"
       "mana deck  hand";
-    gap: 6px;
+    gap: 8px 8px;
     align-items: center;
   }
-  .tcg-pstrip-hp { grid-area: hp; flex: 1 1 auto; min-width: 0; }
-  .tcg-pstrip-hp-label { font-size: 0.78rem; }
-  .tcg-pstrip-hp-track { height: 9px; }
+  .tcg-pstrip-hp {
+    grid-area: hp;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 4px;
+  }
+  .tcg-pstrip-hp-label {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+  .tcg-pstrip-hp-track { height: 10px; }
   .tcg-mana { grid-area: mana; justify-self: start; }
   .tcg-pstrip-row > .tcg-pstrip-pile:nth-child(3) { grid-area: deck; }
   .tcg-pstrip-row > .tcg-pstrip-pile:nth-child(4) { grid-area: hand; }
   .tcg-pstrip-pile {
-    padding: 2px 7px;
-    font-size: 0.74rem;
+    padding: 3px 7px;
+    font-size: 0.7rem;
     border-width: 2px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   /* Mana — even tighter on phones */
@@ -2489,12 +2514,239 @@ section.tcg-page,
   .tcg-log-icon { font-size: 0.85rem; }
 }
 
+/* ============================================================
+   FLYING CREATURES — board card float + wing badge + shadow
+   ============================================================ */
+.tcg-board-card--flying {
+  position: relative;
+  animation: tcg-fly-float 3.4s ease-in-out infinite;
+  z-index: 1;
+}
+.tcg-board-card--flying:hover { animation-play-state: paused; }
+@keyframes tcg-fly-float {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50%      { transform: translateY(-5px) rotate(0.6deg); }
+}
+.tcg-flying-wings {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  font-size: 1.1rem;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(124, 58, 237, 0.6));
+  animation: tcg-fly-flap 0.9s ease-in-out infinite;
+  z-index: 2;
+}
+@keyframes tcg-fly-flap {
+  0%, 100% { transform: rotate(-10deg) scale(1); }
+  50%      { transform: rotate(12deg)  scale(1.15); }
+}
+.tcg-flying-shadow {
+  position: absolute;
+  bottom: -10px;
+  left: 18%;
+  right: 18%;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.32) 0%, transparent 75%);
+  filter: blur(1.5px);
+  pointer-events: none;
+  animation: tcg-fly-shadow 3.4s ease-in-out infinite;
+  z-index: 0;
+}
+@keyframes tcg-fly-shadow {
+  0%, 100% { transform: scale(1, 1);   opacity: 0.55; }
+  50%      { transform: scale(0.75, 0.6); opacity: 0.32; }
+}
+/* Tooltip-style wings pulse for legendary fliers */
+.tcg-card--r-legendary.tcg-board-card--flying .tcg-flying-wings {
+  filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.85));
+}
+
+/* ============================================================
+   ATTACK SPLASH — MTG-style clash overlay (transient, ~1.1s)
+   ============================================================ */
+.tcg-attack-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tcg-splash-bg 1.1s ease-out forwards;
+}
+@keyframes tcg-splash-bg {
+  0%   { background: radial-gradient(circle at center, rgba(15, 23, 42, 0.0), transparent 70%); }
+  15%  { background: radial-gradient(circle at center, rgba(15, 23, 42, 0.42), transparent 65%); }
+  100% { background: radial-gradient(circle at center, rgba(15, 23, 42, 0.0), transparent 60%); }
+}
+.tcg-attack-splash-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0f1420 100%);
+  border: 3px solid var(--tcg-amber);
+  box-shadow:
+    8px 8px 0 0 var(--tcg-ink),
+    0 0 32px rgba(251, 191, 36, 0.6);
+  color: #fde68a;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 1.05rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  animation: tcg-splash-pop 1.1s cubic-bezier(0.16, 1.2, 0.5, 1) forwards;
+  white-space: nowrap;
+  max-width: calc(100vw - 24px);
+}
+@keyframes tcg-splash-pop {
+  0%   { transform: scale(0.5) rotate(-6deg); opacity: 0; }
+  18%  { transform: scale(1.18) rotate(2deg); opacity: 1; }
+  35%  { transform: scale(1) rotate(0);       opacity: 1; }
+  75%  { transform: scale(1) rotate(0);       opacity: 1; }
+  100% { transform: scale(1.08) rotate(0);    opacity: 0; }
+}
+.tcg-attack-splash-attacker,
+.tcg-attack-splash-defender {
+  flex: 0 1 auto;
+  max-width: 36vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tcg-attack-splash-attacker {
+  color: #93c5fd;
+  animation: tcg-splash-lunge-l 0.55s ease-out;
+}
+.tcg-attack-splash--opp .tcg-attack-splash-attacker { color: #fca5a5; }
+.tcg-attack-splash-defender {
+  color: #fca5a5;
+  animation: tcg-splash-lunge-r 0.55s ease-out;
+}
+.tcg-attack-splash--opp .tcg-attack-splash-defender { color: #93c5fd; }
+@keyframes tcg-splash-lunge-l {
+  0%   { transform: translateX(-40px); opacity: 0; }
+  60%  { transform: translateX(8px);  opacity: 1; }
+  100% { transform: translateX(0);    opacity: 1; }
+}
+@keyframes tcg-splash-lunge-r {
+  0%   { transform: translateX(40px);  opacity: 0; }
+  60%  { transform: translateX(-8px); opacity: 1; }
+  100% { transform: translateX(0);    opacity: 1; }
+}
+.tcg-attack-splash-vs {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tcg-attack-splash-clash {
+  font-size: 2.4rem;
+  animation: tcg-splash-clash 0.6s cubic-bezier(0.16, 1.5, 0.3, 1);
+  filter: drop-shadow(0 0 14px rgba(251, 191, 36, 0.9));
+}
+@keyframes tcg-splash-clash {
+  0%   { transform: scale(0)    rotate(-180deg); opacity: 0; }
+  60%  { transform: scale(1.5)  rotate(20deg);   opacity: 1; }
+  100% { transform: scale(1)    rotate(0);       opacity: 1; }
+}
+.tcg-attack-splash-spark {
+  position: absolute;
+  font-size: 0.9rem;
+  color: #fde68a;
+  opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.9));
+  animation: tcg-splash-spark 0.8s ease-out;
+}
+.tcg-attack-splash-spark--1 { animation-delay: 0.15s; transform-origin: center; }
+.tcg-attack-splash-spark--2 { animation-delay: 0.22s; }
+.tcg-attack-splash-spark--3 { animation-delay: 0.28s; }
+.tcg-attack-splash-spark--4 { animation-delay: 0.35s; }
+@keyframes tcg-splash-spark {
+  0%   { transform: translate(0,0) scale(0.4); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.tcg-attack-splash-spark--1 { animation-name: tcg-spark-ne; }
+.tcg-attack-splash-spark--2 { animation-name: tcg-spark-nw; }
+.tcg-attack-splash-spark--3 { animation-name: tcg-spark-se; }
+.tcg-attack-splash-spark--4 { animation-name: tcg-spark-sw; }
+@keyframes tcg-spark-ne { 0% { transform: translate(0,0) scale(0.3); opacity:0;} 30% {opacity:1;} 100% { transform: translate( 36px,-30px) scale(1.1); opacity:0; } }
+@keyframes tcg-spark-nw { 0% { transform: translate(0,0) scale(0.3); opacity:0;} 30% {opacity:1;} 100% { transform: translate(-36px,-30px) scale(1.1); opacity:0; } }
+@keyframes tcg-spark-se { 0% { transform: translate(0,0) scale(0.3); opacity:0;} 30% {opacity:1;} 100% { transform: translate( 36px, 30px) scale(1.1); opacity:0; } }
+@keyframes tcg-spark-sw { 0% { transform: translate(0,0) scale(0.3); opacity:0;} 30% {opacity:1;} 100% { transform: translate(-36px, 30px) scale(1.1); opacity:0; } }
+
+/* Flying-attack splash: blue/violet tint + whoosh icon */
+.tcg-attack-splash--flying .tcg-attack-splash-card,
+.tcg-attack-splash--flying-face .tcg-attack-splash-card {
+  border-color: #a78bfa;
+  box-shadow:
+    8px 8px 0 0 var(--tcg-ink),
+    0 0 32px rgba(167, 139, 250, 0.7);
+}
+.tcg-attack-splash--flying .tcg-attack-splash-clash,
+.tcg-attack-splash--flying-face .tcg-attack-splash-clash {
+  filter: drop-shadow(0 0 14px rgba(167, 139, 250, 0.95));
+}
+
+/* ============================================================
+   UNDO BUTTON + ACTION BAR GROUPING
+   ============================================================ */
+.tcg-action-bar-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+.tcg-btn--undo {
+  background: #fff;
+  border: 3px solid var(--tcg-ink);
+  color: var(--tcg-ink);
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  box-shadow: 3px 3px 0 0 var(--tcg-ink);
+  transition: background 0.15s, transform 0.12s, box-shadow 0.15s, opacity 0.15s;
+}
+.tcg-btn--undo:hover:not(:disabled) {
+  background: #fef3c7;
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 0 var(--tcg-ink);
+}
+.tcg-btn--undo:disabled { opacity: 0.35; box-shadow: 2px 2px 0 0 var(--tcg-ink); }
+
+@media (max-width: 480px) {
+  .tcg-action-bar-buttons {
+    flex-direction: row;
+    flex: 1 1 100%;
+    gap: 6px;
+  }
+  .tcg-action-bar-buttons .tcg-btn--end { flex: 2 1 0; }
+  .tcg-action-bar-buttons .tcg-btn--undo { flex: 1 1 0; padding: 8px 10px; font-size: 0.78rem; }
+  .tcg-attack-splash-card {
+    padding: 12px 14px;
+    gap: 8px;
+    font-size: 0.82rem;
+  }
+  .tcg-attack-splash-vs { width: 44px; height: 44px; }
+  .tcg-attack-splash-clash { font-size: 1.8rem; }
+  .tcg-flying-wings { font-size: 0.95rem; top: -6px; right: -4px; }
+}
+
 @media (max-width: 380px) {
   .tcg-card--md { width: 102px; }
   .tcg-card-art { height: 68px; }
   .tcg-card-name { font-size: 0.66rem; }
+  .tcg-pstrip { padding: 8px 7px; gap: 7px; }
   .tcg-pstrip-name { font-size: 0.72rem; }
-  .tcg-pstrip-hp-label { font-size: 0.74rem; }
+  .tcg-pstrip-hp-label { font-size: 0.68rem; }
+  .tcg-pstrip-hp-track { height: 9px; }
   .tcg-mana-rail { max-width: 88px; }
   .tcg-mana-crystal { width: 8px; height: 10px; }
   .tcg-pstrip-pile { font-size: 0.7rem; padding: 2px 6px; }

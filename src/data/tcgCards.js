@@ -153,11 +153,19 @@ export const TCG_MECHANICS = {
     rules:
       "Quando viene distrutta, infligge 2 danni al campione avversario.",
   },
+  flying: {
+    key: "flying",
+    name: "Volo",
+    icon: "🪽",
+    color: "#7c3aed",
+    rules:
+      "Ignora i Baluardi senza Volo: può colpire direttamente il campione avversario passandogli sopra. Può essere danneggiata solo da creature con Volo.",
+  },
 };
 
 export const MECHANICS_ORDER = [
   "surge", "vanguard", "bulwark", "pierce",
-  "soulburn", "reckon", "veil", "cinder",
+  "soulburn", "reckon", "veil", "cinder", "flying",
 ];
 
 /* ── CARD POOL ─────────────────────────────────────────────
@@ -226,7 +234,7 @@ export const TCG_CARDS = {
   reddragon: {
     id: "reddragon", name: "Drago Rosso", image: "/assets/pets/reddragon.png", icon: "🐉",
     element: "fire", rarity: "legendary", cost: 8, atk: 9, hp: 9,
-    mechanics: ["surge", "pierce", "cinder"],
+    mechanics: ["surge", "pierce", "cinder", "flying"],
     flavor: "Avarizia con le ali. Quando muore, l'eco delle fiamme resta.",
   },
 
@@ -334,49 +342,49 @@ export const TCG_CARDS = {
   hawk: {
     id: "hawk", name: "Falco", image: "/assets/pets/hawk.png", icon: "🦅",
     element: "air", rarity: "common", cost: 1, atk: 2, hp: 1,
-    mechanics: ["surge"],
+    mechanics: ["surge", "flying"],
     flavor: "Vede il topo prima che il topo si veda.",
   },
   wingedkobold: {
     id: "wingedkobold", name: "Kobold Alato", image: "/assets/pets/wingedkobold.png", icon: "🦖",
     element: "air", rarity: "common", cost: 2, atk: 2, hp: 2,
-    mechanics: ["surge", "cinder"],
+    mechanics: ["surge", "cinder", "flying"],
     flavor: "Si schianta con stile. Sempre.",
   },
   airelemental: {
     id: "airelemental", name: "Elementale dell'Aria", image: "/assets/pets/airelemental.png", icon: "🌬",
     element: "air", rarity: "rare", cost: 3, atk: 3, hp: 3,
-    mechanics: ["surge", "pierce"],
+    mechanics: ["surge", "pierce", "flying"],
     flavor: "Non lo afferri. Lo respiri. E ti taglia dentro.",
   },
   peryton: {
     id: "peryton", name: "Periton", image: "/assets/pets/peryton.png", icon: "🦌",
     element: "air", rarity: "rare", cost: 3, atk: 4, hp: 2,
-    mechanics: ["surge", "pierce"],
+    mechanics: ["surge", "pierce", "flying"],
     flavor: "L'ombra di un cervo, gli artigli di un'aquila.",
   },
   manticore: {
     id: "manticore", name: "Manticora", image: "/assets/pets/manticore.png", icon: "🦁",
     element: "air", rarity: "rare", cost: 4, atk: 4, hp: 4,
-    mechanics: ["pierce"],
+    mechanics: ["pierce", "flying"],
     flavor: "Faccia umana, voce di leone, code piene di lance.",
   },
   djinni: {
     id: "djinni", name: "Djinni", image: "/assets/pets/djinni.png", icon: "🧞",
     element: "air", rarity: "epic", cost: 5, atk: 5, hp: 6,
-    mechanics: ["surge", "vanguard"],
+    mechanics: ["surge", "vanguard", "flying"],
     flavor: "Genio dei cieli. I tuoi tre desideri non basteranno.",
   },
   stormelemental: {
     id: "stormelemental", name: "Elementale di Tempesta", image: "/assets/pets/stormelemental.png", icon: "⛈",
     element: "air", rarity: "epic", cost: 6, atk: 6, hp: 6,
-    mechanics: ["surge", "pierce", "cinder"],
+    mechanics: ["surge", "pierce", "cinder", "flying"],
     flavor: "Tuono che cammina. Pioggia che taglia.",
   },
   tempestdragon: {
     id: "tempestdragon", name: "Drago della Tempesta", image: "/assets/pets/tempestdragon.png", icon: "🌩",
     element: "air", rarity: "legendary", cost: 8, atk: 8, hp: 9,
-    mechanics: ["surge", "pierce", "vanguard"],
+    mechanics: ["surge", "pierce", "vanguard", "flying"],
     flavor: "Vola sopra le nuvole. Scende sotto forma di sentenza.",
   },
 
@@ -384,13 +392,13 @@ export const TCG_CARDS = {
   pegasus: {
     id: "pegasus", name: "Pegaso", image: "/assets/pets/pegasus.png", icon: "🦄",
     element: "light", rarity: "common", cost: 2, atk: 2, hp: 3,
-    mechanics: ["soulburn"],
+    mechanics: ["soulburn", "flying"],
     flavor: "Le sue ali profumano di alba.",
   },
   copperdragon: {
     id: "copperdragon", name: "Drago di Rame", image: "/assets/pets/copperdragon.png", icon: "🐲",
     element: "light", rarity: "rare", cost: 4, atk: 4, hp: 4,
-    mechanics: ["soulburn", "vanguard"],
+    mechanics: ["soulburn", "vanguard", "flying"],
     flavor: "Burlone delle terre soleggiate. Sa anche essere serio.",
   },
   helmedhorror: {
@@ -428,7 +436,7 @@ export const TCG_CARDS = {
   specter: {
     id: "specter", name: "Spettro", image: "/assets/pets/specter.png", icon: "👻",
     element: "dark", rarity: "rare", cost: 3, atk: 3, hp: 3,
-    mechanics: ["pierce", "soulburn"],
+    mechanics: ["pierce", "soulburn", "flying"],
     flavor: "Ti svuota di vita. Si nutre del tuo respiro.",
   },
   wight: {
