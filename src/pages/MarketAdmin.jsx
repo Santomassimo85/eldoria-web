@@ -10,13 +10,16 @@ import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
 import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
 import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
+import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
 const ITEM_TYPES = [
   "Arma", "Armatura", "Accessori", "Artefatto Magico",
   "Pozioni", "Pergamene", "Reagenti", "Varie",
-  "Uovo Pet", "Oggetto Pet",
+  // PET SYSTEM — hidden while disabled
+  // "Uovo Pet", "Oggetto Pet",
+  "Pacchetto Carte", "Carta TCG",
 ];
 
 /* Pet-listing helpers — restricted to the rarities/items that already
@@ -34,6 +37,38 @@ const EGG_MARKET_RARITY = {
   epic:      "Molto rara",
   legendary: "Leggendaria",
 };
+
+/* TCG market helpers — packs come in two rarities × six elements.
+   Single cards are restricted to epic/legendary on purpose: commons and
+   rares are pack-only, so the rarest creatures stay as the named lots. */
+const TCG_PACK_RARITIES = ["epic", "legendary"];
+const TCG_PACK_RARITY_LABEL = { epic: "Epico", legendary: "Leggendario" };
+const TCG_PACK_MARKET_RARITY = { epic: "Molto rara", legendary: "Leggendaria" };
+const TCG_CARD_MARKET_RARITY = { epic: "Molto rara", legendary: "Leggendaria" };
+const TCG_ELEMENTS = ["fire", "water", "earth", "air", "light", "dark"];
+const TCG_ELEMENT_LABEL = {
+  fire:  "Fuoco",  water: "Acqua", earth: "Terra",
+  air:   "Aria",   light: "Luce",  dark:  "Oscurità",
+};
+const TCG_ELEMENT_ICON = {
+  fire: "🔥", water: "💧", earth: "🌿",
+  air:  "💨", light: "✨", dark:  "🌑",
+};
+
+const TCG_PACK_FLAVOR = (rarity, element) =>
+  `${TCG_ELEMENT_ICON[element]} Pacchetto ${TCG_PACK_RARITY_LABEL[rarity]} · ` +
+  `contiene carte ${rarity === "legendary" ? "rare e leggendarie" : "rare ed epiche"} ` +
+  `dell'elemento ${TCG_ELEMENT_LABEL[element]}.`;
+
+const TCG_EPIC_LEGENDARY_CARDS = TCG_CARD_LIST
+  .filter(c => c.rarity === "epic" || c.rarity === "legendary")
+  .sort((a, b) => {
+    const elA = TCG_ELEMENTS.indexOf(a.element);
+    const elB = TCG_ELEMENTS.indexOf(b.element);
+    if (elA !== elB) return elA - elB;
+    if (a.rarity !== b.rarity) return a.rarity === "legendary" ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 
 /* Render an emoji as a small SVG and return a data URI. Used so the
    form's image-required check passes naturally when the admin picks
@@ -82,6 +117,10 @@ const initialFormData = {
   // Pet-payload fields — only populated when type is "Uovo Pet" or "Oggetto Pet"
   petRarity: "common",
   petItemKey: "",
+  // TCG-payload fields — only populated when type is "Pacchetto Carte" or "Carta TCG"
+  tcgPackRarity: "epic",
+  tcgPackElement: "fire",
+  tcgCardId: "",
 };
 
 const formatEndDate = (iso) => {
@@ -312,6 +351,10 @@ export default function MarketAdmin() {
       // admin sees the right sub-option when editing a pet listing.
       petRarity: item.petPayload?.kind === "egg" ? item.petPayload.rarity : "common",
       petItemKey: item.petPayload?.kind === "petItem" ? item.petPayload.itemKey : "",
+      // Same idea for TCG listings.
+      tcgPackRarity: item.tcgPayload?.kind === "cardPack" ? item.tcgPayload.rarity : "epic",
+      tcgPackElement: item.tcgPayload?.kind === "cardPack" ? item.tcgPayload.element : "fire",
+      tcgCardId: item.tcgPayload?.kind === "tcgCard" ? item.tcgPayload.cardId : "",
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -349,6 +392,35 @@ export default function MarketAdmin() {
         class: "Non comune",
         img: prev.img || (it ? emojiToDataUri(it.icon) : ""),
       }));
+    } else if (newType === "Pacchetto Carte") {
+      const rarity = formData.tcgPackRarity || "epic";
+      const element = formData.tcgPackElement || "fire";
+      setFormData(prev => ({
+        ...prev,
+        type: newType,
+        tcgPackRarity: rarity,
+        tcgPackElement: element,
+        tcgCardId: "",
+        name: `Pacchetto ${TCG_PACK_RARITY_LABEL[rarity]} · ${TCG_ELEMENT_LABEL[element]}`,
+        description: TCG_PACK_FLAVOR(rarity, element),
+        class: TCG_PACK_MARKET_RARITY[rarity],
+        img: prev.img || emojiToDataUri(TCG_ELEMENT_ICON[element]),
+      }));
+    } else if (newType === "Carta TCG") {
+      const cardId = formData.tcgCardId || TCG_EPIC_LEGENDARY_CARDS[0]?.id || "";
+      const card = TCG_CARDS[cardId];
+      setFormData(prev => ({
+        ...prev,
+        type: newType,
+        tcgCardId: cardId,
+        tcgPackRarity: "epic",
+        name: card?.name || "",
+        description: card
+          ? `${TCG_ELEMENT_ICON[card.element]} ${card.name} — ${card.flavor || ""}`
+          : "",
+        class: card ? TCG_CARD_MARKET_RARITY[card.rarity] : "Molto rara",
+        img: card?.image || prev.img || "",
+      }));
     } else {
       setFormData(prev => ({ ...prev, type: newType }));
     }
@@ -378,11 +450,41 @@ export default function MarketAdmin() {
     }));
   };
 
+  const handleTcgPackChange = (next) => {
+    setFormData(prev => {
+      const rarity = next.rarity ?? prev.tcgPackRarity;
+      const element = next.element ?? prev.tcgPackElement;
+      return {
+        ...prev,
+        tcgPackRarity: rarity,
+        tcgPackElement: element,
+        name: `Pacchetto ${TCG_PACK_RARITY_LABEL[rarity]} · ${TCG_ELEMENT_LABEL[element]}`,
+        description: TCG_PACK_FLAVOR(rarity, element),
+        class: TCG_PACK_MARKET_RARITY[rarity],
+        img: emojiToDataUri(TCG_ELEMENT_ICON[element]),
+      };
+    });
+  };
+
+  const handleTcgCardIdChange = (cardId) => {
+    const card = TCG_CARDS[cardId];
+    if (!card) return;
+    setFormData(prev => ({
+      ...prev,
+      tcgCardId: cardId,
+      name: card.name,
+      description: `${TCG_ELEMENT_ICON[card.element]} ${card.name} — ${card.flavor || ""}`,
+      class: TCG_CARD_MARKET_RARITY[card.rarity] || "Molto rara",
+      img: card.image || prev.img,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (uploading) return;
     const isPetType = formData.type === "Uovo Pet" || formData.type === "Oggetto Pet";
-    if (!isPetType && !formData.img) {
+    const isTcgType = formData.type === "Pacchetto Carte" || formData.type === "Carta TCG";
+    if (!isPetType && !isTcgType && !formData.img) {
       alert("Carica un'immagine prima di salvare l'oggetto.");
       return;
     }
@@ -403,9 +505,31 @@ export default function MarketAdmin() {
       // Clean stray field when editing back from a pet listing to a standard one
       dataToSubmit.petPayload = null;
     }
+
+    /* Same idea for TCG lots: packs carry rarity+element, single cards
+       carry the card id. The delivery flow reads tcgPayload to know
+       what to drop into the winner's TCG inventory. */
+    if (formData.type === "Pacchetto Carte") {
+      dataToSubmit.tcgPayload = {
+        kind: "cardPack",
+        rarity: formData.tcgPackRarity,
+        element: formData.tcgPackElement,
+      };
+    } else if (formData.type === "Carta TCG" && formData.tcgCardId) {
+      dataToSubmit.tcgPayload = {
+        kind: "tcgCard",
+        cardId: formData.tcgCardId,
+      };
+    } else {
+      dataToSubmit.tcgPayload = null;
+    }
+
     // Strip transient form-only fields
     delete dataToSubmit.petRarity;
     delete dataToSubmit.petItemKey;
+    delete dataToSubmit.tcgPackRarity;
+    delete dataToSubmit.tcgPackElement;
+    delete dataToSubmit.tcgCardId;
 
     if (editId) {
       await updateDoc(doc(db, "items", editId), dataToSubmit);
@@ -582,6 +706,86 @@ export default function MarketAdmin() {
                   <p className="mkadm-price-hint" style={{ color: "#0d9488", borderColor: "#5eead455" }}>
                     <span className="mkadm-price-hint-icon">{PET_ITEMS[formData.petItemKey].icon}</span>
                     <span>{PET_ITEMS[formData.petItemKey].desc}</span>
+                  </p>
+                )}
+              </div>
+            )}
+            {formData.type === "Pacchetto Carte" && (
+              <div className="mkadm-field-row">
+                <div className="mkadm-field">
+                  <label>Rarità del pacchetto</label>
+                  <select
+                    className="admin-field-select"
+                    required
+                    value={formData.tcgPackRarity}
+                    onChange={(e) => handleTcgPackChange({ rarity: e.target.value })}
+                  >
+                    {TCG_PACK_RARITIES.map(r => (
+                      <option key={r} value={r}>
+                        {r === "legendary" ? "👑" : "💠"} {TCG_PACK_RARITY_LABEL[r]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mkadm-field">
+                  <label>Elemento</label>
+                  <select
+                    className="admin-field-select"
+                    required
+                    value={formData.tcgPackElement}
+                    onChange={(e) => handleTcgPackChange({ element: e.target.value })}
+                  >
+                    {TCG_ELEMENTS.map(el => (
+                      <option key={el} value={el}>
+                        {TCG_ELEMENT_ICON[el]} {TCG_ELEMENT_LABEL[el]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mkadm-field" style={{ gridColumn: "1 / -1" }}>
+                  <p className="mkadm-price-hint" style={{ color: "#6d28d9", borderColor: "#a78bfa55" }}>
+                    <span className="mkadm-price-hint-icon">🎴</span>
+                    <span>
+                      {TCG_PACK_FLAVOR(formData.tcgPackRarity, formData.tcgPackElement)}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
+            {formData.type === "Carta TCG" && (
+              <div className="mkadm-field">
+                <label>Carta (solo epiche e leggendarie)</label>
+                <select
+                  className="admin-field-select"
+                  required
+                  value={formData.tcgCardId}
+                  onChange={(e) => handleTcgCardIdChange(e.target.value)}
+                >
+                  <option value="" disabled>— Scegli una carta —</option>
+                  {TCG_ELEMENTS.map(el => {
+                    const cards = TCG_EPIC_LEGENDARY_CARDS.filter(c => c.element === el);
+                    if (cards.length === 0) return null;
+                    return (
+                      <optgroup key={el} label={`${TCG_ELEMENT_ICON[el]} ${TCG_ELEMENT_LABEL[el]}`}>
+                        {cards.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.rarity === "legendary" ? "👑" : "💠"} {c.name} · {c.rarity === "legendary" ? "Leggendario" : "Epico"}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+                {formData.tcgCardId && TCG_CARDS[formData.tcgCardId] && (
+                  <p className="mkadm-price-hint" style={{ color: "#b45309", borderColor: "#fcd34d55" }}>
+                    <span className="mkadm-price-hint-icon">
+                      {TCG_ELEMENT_ICON[TCG_CARDS[formData.tcgCardId].element]}
+                    </span>
+                    <span>
+                      <strong>{TCG_CARDS[formData.tcgCardId].name}</strong>
+                      {" — "}
+                      {TCG_CARDS[formData.tcgCardId].flavor || "Carta esclusiva del catalogo TCG."}
+                    </span>
                   </p>
                 )}
               </div>

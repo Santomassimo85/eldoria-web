@@ -41,8 +41,10 @@ import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
-import PetArena from "./pages/PetArena";
-import PetHub from "./pages/PetHub";
+// PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
+// imports and the matching nav link / routes below.
+// import PetArena from "./pages/PetArena";
+// import PetHub from "./pages/PetHub";
 import Tcg, { isTcgUnlockedFor } from "./pages/Tcg";
 import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
@@ -349,7 +351,7 @@ export default function App() {
           <NavDropdown label="Battaglia" closeAll={closeMenu}>
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
-            <NavLink to="/pet">Pet Hub</NavLink>
+            {/* <NavLink to="/pet">Pet Hub</NavLink> */}
             <TcgNavLink />
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
@@ -375,8 +377,8 @@ export default function App() {
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />
           <Route path="/arena-bottega" element={<ArenaMarket />} />
-          <Route path="/pet" element={<PetHub />} />
-          <Route path="/pet-arena" element={<PetArena />} />
+          {/* <Route path="/pet" element={<PetHub />} /> */}
+          {/* <Route path="/pet-arena" element={<PetArena />} /> */}
           <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<Crafting />} />
           <Route path="/world-boss-fight" element={<WorldBoss />} />
