@@ -2842,3 +2842,736 @@ section.tcg-page,
   .tcg-pstrip-pile { font-size: 0.7rem; padding: 2px 6px; }
   .tcg-match-head .tcg-btn--tiny { font-size: 0.66rem; padding: 4px 7px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   ──  V2 ADDITIONS — spells, affinities, burn status ─────────
+   Visual layer for the new card type (📜 spell), spell target
+   picker, champion burn indicator and codex/affinity badges.
+   ════════════════════════════════════════════════════════════ */
+
+/* Spell card face — parchment beige with scroll ribbon */
+.tcg-card--spell {
+  background: linear-gradient(180deg, #fff7e0 0%, #fde2a8 100%) !important;
+  border-color: #b45309 !important;
+}
+.tcg-card--spell .tcg-card-header {
+  background: linear-gradient(180deg, #fde2a8, #f0c069) !important;
+  border-bottom: 2px solid #b45309 !important;
+}
+.tcg-card--spell .tcg-card-name { color: #6b3a00 !important; }
+.tcg-card--spell .tcg-card-art  {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(180, 83, 9, 0.04) 0 8px,
+    rgba(180, 83, 9, 0.10) 8px 16px
+  );
+}
+.tcg-card-effect {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #4a2a00;
+  background: rgba(255, 255, 255, 0.55);
+  border: 2px solid #b45309;
+  border-left-width: 6px;
+  padding: 7px 9px;
+  margin: 6px 8px;
+  text-align: left;
+  font-style: italic;
+}
+.tcg-card-stats--spell {
+  justify-content: center !important;
+  background: #b45309 !important;
+}
+.tcg-card-stats--spell .tcg-card-stat--spell {
+  color: #fff7e0 !important;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+/* Type badge in upper-right of art */
+.tcg-card-type-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  background: rgba(31, 31, 31, 0.85);
+  color: #fef9c3;
+  border: 2px solid #fef9c3;
+  pointer-events: none;
+}
+.tcg-card-type-badge--spell {
+  background: #b45309;
+  color: #fff7e0;
+  border-color: #fff7e0;
+}
+.tcg-card--sm .tcg-card-type-badge { font-size: 0.5rem; padding: 1px 4px; top: 3px; right: 3px; }
+
+/* Hand: pending-spell selected highlight */
+.tcg-card--pending-spell {
+  outline: 3px dashed #ea580c;
+  outline-offset: 3px;
+  animation: tcgSpellPulse 1.2s ease-in-out infinite;
+}
+@keyframes tcgSpellPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.55); }
+  50%      { box-shadow: 0 0 18px 4px rgba(234, 88, 12, 0.85); }
+}
+.tcg-hand-label-spell {
+  color: #b45309;
+  font-weight: 900;
+}
+
+/* Spell target banner in the divider */
+.tcg-spell-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  background: #fff7e0;
+  border: 3px solid #b45309;
+  box-shadow: 5px 5px 0 0 #1f1f1f;
+  padding: 8px 12px;
+  font-family: var(--font-title, serif);
+}
+.tcg-spell-banner-icon { font-size: 1.4rem; }
+.tcg-spell-banner-body { flex: 1; min-width: 0; font-size: 0.86rem; color: #4a2a00; letter-spacing: 0.04em; }
+.tcg-spell-banner-body strong { letter-spacing: 0.06em; text-transform: uppercase; }
+.tcg-spell-banner-cancel {
+  background: #b45309;
+  color: #fff7e0;
+  border: 3px solid #1f1f1f;
+  padding: 6px 12px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 #1f1f1f;
+}
+.tcg-spell-banner-cancel:hover {
+  background: #ea580c;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 #1f1f1f;
+}
+
+.tcg-face-attack--spell {
+  background: linear-gradient(180deg, #ea580c, #b45309) !important;
+}
+
+/* Champion burn indicator on player strip */
+.tcg-pstrip-burn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  background: #1f1f1f;
+  color: #fde047;
+  border: 2px solid #dc2626;
+  padding: 2px 7px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: tcgBurnFlicker 0.9s ease-in-out infinite alternate;
+}
+
+/* Damage-shield indicator on player strip */
+.tcg-pstrip-shield {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  background: #1d4ed8;
+  color: #eff6ff;
+  border: 2px solid #1e3a8a;
+  padding: 2px 7px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Secret-trap zone indicator on player strip */
+.tcg-pstrip-secrets {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  background: #1f1f1f;
+  color: #fef9c3;
+  border: 2px solid #b45309;
+  padding: 2px 7px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: help;
+}
+@keyframes tcgBurnFlicker {
+  from { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+  to   { box-shadow: 0 0 10px 2px rgba(234, 88, 12, 0.85); }
+}
+
+/* CardDetail spell variant */
+.tcg-detail--type-spell {
+  border-color: #b45309;
+  background: linear-gradient(180deg, #fff7e0, #fde2a8);
+}
+.tcg-detail-effect {
+  margin: 8px 4px 0;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 3px solid #b45309;
+  border-left-width: 8px;
+  box-shadow: 4px 4px 0 0 #1f1f1f;
+}
+.tcg-detail-effect-text {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.5;
+  color: #4a2a00;
+  font-style: italic;
+}
+.tcg-type-chip,
+.tcg-detail-stat--spell .tcg-detail-stat-val {
+  font-size: 0.86rem;
+}
+.tcg-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #1f1f1f;
+  color: #fef9c3;
+  border: 2px solid #fef9c3;
+  padding: 3px 9px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+.tcg-type-chip--spell {
+  background: #b45309;
+  color: #fff7e0;
+  border-color: #fff7e0;
+}
+
+/* Codex type filters */
+.tcg-filter--type-creature.tcg-filter--on { background: #15803d; color: #fff; }
+.tcg-filter--type-spell.tcg-filter--on    { background: #b45309; color: #fff; }
+
+/* Spell pop-out icons for new mechanics — pick up automatic styling
+   from the existing .tcg-card-mech--<key> base; just add a color
+   accent for Bruciatura (fire) and Linfa (earth). */
+.tcg-card-mech--bruciatura { background: rgba(220, 38, 38, 0.12);  color: #b91c1c; border-color: #dc2626; }
+.tcg-card-mech--linfa      { background: rgba(21, 128, 61, 0.12);  color: #15803d; border-color: #16a34a; }
+.tcg-card-mech--cacciatore { background: rgba(146, 64, 14, 0.12);  color: #92400e; border-color: #b45309; }
+.tcg-mech-card--bruciatura .tcg-mech-card-icon { background: #dc2626; }
+.tcg-mech-card--linfa      .tcg-mech-card-icon { background: #16a34a; }
+.tcg-mech-card--cacciatore .tcg-mech-card-icon { background: #92400e; }
+
+/* Affinity legend (used in Rules) */
+.tcg-aff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.tcg-aff-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+  border: 3px solid #1f1f1f;
+  box-shadow: 5px 5px 0 0 #1f1f1f;
+  padding: 12px 14px;
+}
+.tcg-aff-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tcg-aff-card-icon {
+  width: 32px; height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f1f1f;
+  color: #fef9c3;
+  border: 2px solid #1f1f1f;
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+.tcg-aff-card--fire  .tcg-aff-card-icon { background: #dc2626; }
+.tcg-aff-card--water .tcg-aff-card-icon { background: #1d4ed8; }
+.tcg-aff-card--earth .tcg-aff-card-icon { background: #15803d; }
+.tcg-aff-card--air   .tcg-aff-card-icon { background: #ea580c; }
+.tcg-aff-card--light .tcg-aff-card-icon { background: #fbbf24; color: #1f1f1f; }
+.tcg-aff-card--dark  .tcg-aff-card-icon { background: #6b21a8; }
+.tcg-aff-card-elem { font-size: 0.78rem; opacity: 0.7; }
+.tcg-aff-card-rules { font-size: 0.86rem; color: #525252; line-height: 1.4; }
+
+/* Master-only TCG reset button (lives in the wallet bar) */
+.tcg-master-reset {
+  margin-left: auto;
+  background: #1f1f1f;
+  color: #fef9c3;
+  border: 3px solid #dc2626;
+  padding: 6px 12px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.74rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 #dc2626;
+  transition: transform .08s, box-shadow .08s, background .15s;
+}
+.tcg-master-reset:hover {
+  background: #dc2626;
+  color: #fef9c3;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 #1f1f1f;
+}
+
+/* Spell catalog tile (used in Rules) */
+.tcg-spell-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.tcg-spell-list-row {
+  background: #fff7e0;
+  border: 3px solid #b45309;
+  border-left-width: 8px;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+.tcg-spell-list-row strong { color: #6b3a00; letter-spacing: 0.04em; }
+.tcg-spell-list-row em { color: #525252; font-style: italic; }
+
+/* ── Enchantment & Counter rule rows (Rules tab) ── */
+.tcg-spell-list-row--enchant {
+  background: #f0fff4;
+  border-color: #15803d;
+}
+.tcg-spell-list-row--enchant strong { color: #14532d; }
+.tcg-spell-list-row--counter {
+  background: #eff6ff;
+  border-color: #1d4ed8;
+}
+.tcg-spell-list-row--counter strong { color: #1e3a8a; }
+
+/* ════════════════════════════════════════════════════════════
+   ──  Enchantment (🌟) card face — emerald aura look ─────────
+   ════════════════════════════════════════════════════════════ */
+.tcg-card--type-enchantment {
+  background: linear-gradient(180deg, #f0fff4 0%, #c6f6d5 100%) !important;
+  border-color: #15803d !important;
+}
+.tcg-card--type-enchantment .tcg-card-header {
+  background: linear-gradient(180deg, #bbf7d0, #4ade80) !important;
+  border-bottom: 2px solid #15803d !important;
+}
+.tcg-card--type-enchantment .tcg-card-name { color: #14532d !important; }
+.tcg-card--type-enchantment .tcg-card-art {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(74, 222, 128, 0.30), transparent 70%),
+    repeating-linear-gradient(135deg,
+      rgba(21, 128, 61, 0.05) 0 6px,
+      rgba(21, 128, 61, 0.12) 6px 12px);
+}
+.tcg-card--type-enchantment .tcg-card-effect {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: #15803d;
+  color: #14532d;
+}
+.tcg-card-type-badge--enchantment {
+  background: #15803d;
+  color: #f0fff4;
+  border-color: #f0fff4;
+}
+.tcg-card-stats--enchantment {
+  background: #15803d !important;
+}
+.tcg-card-stats--enchantment .tcg-card-stat--spell {
+  color: #f0fff4 !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ──  Counter (🛡) card face — silver-cobalt shield look ─────
+   ════════════════════════════════════════════════════════════ */
+.tcg-card--type-counter {
+  background: linear-gradient(180deg, #eff6ff 0%, #bfdbfe 100%) !important;
+  border-color: #1d4ed8 !important;
+}
+.tcg-card--type-counter .tcg-card-header {
+  background: linear-gradient(180deg, #c7d2fe, #6366f1) !important;
+  border-bottom: 2px solid #1d4ed8 !important;
+}
+.tcg-card--type-counter .tcg-card-name { color: #1e3a8a !important; }
+.tcg-card--type-counter .tcg-card-art {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(99, 102, 241, 0.28), transparent 70%),
+    repeating-linear-gradient(90deg,
+      rgba(29, 78, 216, 0.05) 0 6px,
+      rgba(29, 78, 216, 0.12) 6px 12px);
+}
+.tcg-card--type-counter .tcg-card-effect {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: #1d4ed8;
+  color: #1e3a8a;
+}
+.tcg-card-type-badge--counter {
+  background: #1d4ed8;
+  color: #eff6ff;
+  border-color: #eff6ff;
+}
+.tcg-card-stats--counter {
+  background: #1d4ed8 !important;
+}
+.tcg-card-stats--counter .tcg-card-stat--spell {
+  color: #eff6ff !important;
+}
+
+/* ── CardDetail variants for the new types ── */
+.tcg-detail--type-enchantment { border-color: #15803d; background: linear-gradient(180deg, #f0fff4, #c6f6d5); }
+.tcg-detail--type-enchantment .tcg-detail-effect { border-color: #15803d; }
+.tcg-detail--type-counter     { border-color: #1d4ed8; background: linear-gradient(180deg, #eff6ff, #bfdbfe); }
+.tcg-detail--type-counter     .tcg-detail-effect { border-color: #1d4ed8; }
+.tcg-type-chip--enchantment   { background: #15803d; color: #f0fff4; border-color: #f0fff4; }
+.tcg-type-chip--counter       { background: #1d4ed8; color: #eff6ff; border-color: #eff6ff; }
+
+/* ── Codex filters: type buttons ── */
+.tcg-filter--type-enchantment.tcg-filter--on { background: #15803d; color: #fff; }
+.tcg-filter--type-counter.tcg-filter--on     { background: #1d4ed8; color: #fff; }
+
+/* ════════════════════════════════════════════════════════════
+   ── COMBAT PREVIEW BADGE ──────────────────────────────────
+   Two tiers: a big VERDICT pill (kill / trade / death / hit /
+   revive) colored by outcome, and a small damage line below
+   (−5 ↩ −2). The verdict carries the meaning at a glance; the
+   numbers are for players who want the math. Multiplier chips
+   and pierce icons removed from the preview — they're already
+   in the combat log for post-mortem audit.
+   ════════════════════════════════════════════════════════════ */
+.tcg-board-slot {
+  position: relative;
+  display: inline-flex;
+}
+/* Tiny one-line pill: verdict-icon + damage-dealt [/ damage-taken].
+   The verdict WORD ("DOPPIA MORTE", etc.) moves to a tooltip so
+   the pill stays ~60-90px wide and fits above any card without
+   overlapping neighbors. */
+.tcg-combat-preview {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--cv-bg, #1f1f1f);
+  color: var(--cv-fg, #fef9c3);
+  border: 2px solid #1f1f1f;
+  box-shadow: 2px 2px 0 0 #1f1f1f;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.86rem;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tcg-combat-preview::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--cv-bg, #1f1f1f);
+}
+.tcg-combat-preview-icon {
+  font-size: 0.96rem;
+  line-height: 1;
+}
+.tcg-combat-preview-num {
+  font-size: 1.0rem;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+.tcg-combat-preview-num--self {
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+.tcg-combat-preview-sep {
+  opacity: 0.5;
+  font-size: 0.82rem;
+}
+
+/* Per-verdict color theming — only the wrapper carries the
+   accent, the layout stays identical. */
+.tcg-combat-preview--kill    { --cv-bg: #15803d; --cv-fg: #f0fdf4; }
+.tcg-combat-preview--death   { --cv-bg: #b91c1c; --cv-fg: #fef2f2; }
+.tcg-combat-preview--trade   { --cv-bg: #b45309; --cv-fg: #fef3c7; }
+.tcg-combat-preview--hit     { --cv-bg: #1d4ed8; --cv-fg: #eff6ff; }
+.tcg-combat-preview--revive  { --cv-bg: #6b21a8; --cv-fg: #faf5ff; }
+
+/* KILL/DEATH/TRADE get a subtle pulse to draw attention to
+   game-state-changing outcomes. HIT stays static. */
+.tcg-combat-preview--kill,
+.tcg-combat-preview--death,
+.tcg-combat-preview--trade,
+.tcg-combat-preview--revive {
+  animation: tcgPreviewPulse 1.6s ease-in-out infinite;
+}
+@keyframes tcgPreviewPulse {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-3px); }
+}
+
+@media (max-width: 600px) {
+  .tcg-combat-preview { top: -26px; padding: 2px 6px; font-size: 0.78rem; }
+  .tcg-combat-preview-icon { font-size: 0.86rem; }
+  .tcg-combat-preview-num  { font-size: 0.92rem; }
+}
+
+/* Face-attack damage chip — shows champion HP before → after
+   ("👑 25 → 20") so the button speaks the same language as the
+   creature preview ("❤ 8 → 0"). */
+.tcg-face-attack-hp {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 2px 9px;
+  background: #fef3c7;
+  color: #1f1f1f;
+  border: 2px solid #1f1f1f;
+  font-family: var(--font-title, serif);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+.tcg-face-attack-hp strong { color: #b91c1c; font-weight: 900; font-size: 0.92rem; }
+.tcg-face-attack-arrow     { opacity: 0.55; font-size: 0.8rem; }
+.tcg-face-attack-skull     { color: #b91c1c; }
+.tcg-face-attack-burn {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  background: #fde047;
+  color: #1f1f1f;
+  border: 2px solid #1f1f1f;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.74rem;
+}
+
+/* ════════════════════════════════════════════════════════════
+   ── MTG-STYLE STATS BADGE (5/6) ────────────────────────────
+   Bottom-right of every creature card. The "/" is the
+   universal MTG language for power/toughness; we use it for
+   ATK/HP. Wounded HP gets a red tint and the max is shown
+   small to its right ("4/8") so players always see how far
+   the creature has fallen from full health.
+   ════════════════════════════════════════════════════════════ */
+.tcg-card-stats.tcg-card-stats--mtg {
+  justify-content: flex-end;
+  background: transparent;
+  padding: 0;
+  border-top: none;
+}
+/* The 5/6 badge is now visually SPLIT — ATK on warm red, HP on
+   forest green, divided by a thick black bar. The "/" separator
+   is hidden by CSS so it doesn't visually duplicate the divider.
+   This makes "attack vs hit-points" obvious at a glance. */
+.tcg-card-mtg-pt {
+  display: inline-flex;
+  align-items: stretch;
+  margin: 4px 6px 6px;
+  border: 3px solid #1f1f1f;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1.18rem;
+  line-height: 1;
+  box-shadow: 3px 3px 0 0 #1f1f1f;
+  overflow: hidden;
+}
+.tcg-card-mtg-atk,
+.tcg-card-mtg-hp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 5px 10px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+  letter-spacing: 0.02em;
+}
+.tcg-card-mtg-atk {
+  background: #dc2626;
+  color: #fff7ed;
+  border-right: 3px solid #1f1f1f;
+}
+.tcg-card-mtg-hp {
+  background: #15803d;
+  color: #f0fdf4;
+}
+.tcg-card-mtg-hp--wounded {
+  background: #ea580c;
+  color: #fff7ed;
+  animation: tcgWoundedPulse 1.4s ease-in-out infinite alternate;
+}
+@keyframes tcgWoundedPulse {
+  from { box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0); }
+  to   { box-shadow: inset 0 0 14px 2px rgba(255, 200, 110, 0.45); }
+}
+.tcg-card-mtg-sep { display: none; } /* divider provided by border-right */
+.tcg-card-mtg-hp-max {
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 4px;
+  opacity: 0.85;
+  color: inherit;
+}
+.tcg-card--sm .tcg-card-mtg-pt {
+  font-size: 1.02rem;
+  margin: 3px 4px 4px;
+  box-shadow: 2px 2px 0 0 #1f1f1f;
+}
+.tcg-card--sm .tcg-card-mtg-atk,
+.tcg-card--sm .tcg-card-mtg-hp {
+  padding: 4px 8px;
+  min-width: 18px;
+}
+.tcg-card--sm .tcg-card-mtg-hp-max { font-size: 0.62rem; }
+
+/* ════════════════════════════════════════════════════════════
+   ── FLOATING DAMAGE / HEAL NUMBERS ─────────────────────────
+   Each event from state.events spawns a transient floating
+   number anchored to the affected card or champion. The
+   number rises, scales up briefly, then fades. Events are
+   queued sequentially in JS (FLOAT_GAP_MS), so multiple hits
+   in one engine action read as a paced sequence on screen.
+   ════════════════════════════════════════════════════════════ */
+.tcg-floats-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tcg-floats-layer--champion {
+  inset: auto 0 8px 0;
+  height: 60%;
+  align-items: flex-end;
+}
+.tcg-pstrip { position: relative; } /* enable floats-layer absolute anchoring */
+
+/* Floats use -webkit-text-stroke for a thick black outline so the
+   number stays readable against any card art (dark, bright, busy).
+   The glow layer plus stacked text-shadows produce a Hearthstone-
+   like "punch" effect. */
+.tcg-float {
+  display: inline-block;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 2.8rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  animation: tcgFloatRise 1.1s cubic-bezier(.22,.61,.36,1) forwards;
+  pointer-events: none;
+  -webkit-text-stroke: 2.5px #1f1f1f;
+  paint-order: stroke fill;
+}
+.tcg-float--damage {
+  color: #ffeb3b;
+  text-shadow:
+    0 0 10px #ef4444,
+    0 0 22px rgba(239, 68, 68, 0.85),
+    3px 3px 0 #1f1f1f;
+}
+.tcg-float--heal {
+  color: #d9f99d;
+  text-shadow:
+    0 0 10px #22c55e,
+    0 0 22px rgba(34, 197, 94, 0.85),
+    3px 3px 0 #1f1f1f;
+}
+@keyframes tcgFloatRise {
+  0%   { transform: translateY(12px) scale(0.4); opacity: 0; }
+  10%  { transform: translateY(0)     scale(1.55); opacity: 1; }
+  25%  { transform: translateY(-10px) scale(1.20); opacity: 1; }
+  60%  { transform: translateY(-34px) scale(1.05); opacity: 1; }
+  100% { transform: translateY(-68px) scale(0.95); opacity: 0; }
+}
+
+/* Slightly smaller on small board cards and mobile, but still
+   bigger than the prior version so they remain very visible. */
+.tcg-card--sm .tcg-float { font-size: 2.1rem; -webkit-text-stroke-width: 2px; }
+@media (max-width: 600px) {
+  .tcg-float { font-size: 2.2rem; -webkit-text-stroke-width: 2px; }
+  .tcg-card--sm .tcg-float { font-size: 1.7rem; -webkit-text-stroke-width: 1.5px; }
+}
+
+/* ── Inspect button (🔍) on every match-card ──
+   Sits top-LEFT of the art so it can't collide with the
+   type/rarity/foil badges (top-right). Stops mouse/touch
+   propagation so it doesn't fight the parent's long-press. */
+.tcg-card-inspect-btn {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #1f1f1f;
+  background: rgba(255, 248, 225, 0.92);
+  color: #1f1f1f;
+  font-size: 0.74rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 #1f1f1f;
+  transition: transform .08s, box-shadow .08s, background .15s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.tcg-card-inspect-btn:hover {
+  background: #fde68a;
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 #1f1f1f;
+}
+.tcg-card-inspect-btn--board {
+  width: 20px;
+  height: 20px;
+  font-size: 0.66rem;
+  box-shadow: 1px 1px 0 0 #1f1f1f;
+  top: 3px;
+  left: 3px;
+}
+@media (max-width: 480px) {
+  .tcg-card-inspect-btn        { width: 26px; height: 26px; font-size: 0.82rem; }
+  .tcg-card-inspect-btn--board { width: 22px; height: 22px; font-size: 0.72rem; }
+}

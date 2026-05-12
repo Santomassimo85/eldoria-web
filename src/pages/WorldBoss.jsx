@@ -1102,9 +1102,14 @@ export default function WorldBoss() {
       {/* ── TAB BAR ── */}
       {(isMaster || fightStarted) && (
         <div className="rpg-mob-tabs">
-          {[["status","🛡 Status"],["actions","⚔ Azioni"],["log","📜 Log"]].map(([key,label]) => (
+          {[
+            ["status", "🛡", "Status"],
+            ["actions", "⚔", "Azioni"],
+            ["log", "📜", "Log"],
+          ].map(([key, icon, label]) => (
             <button key={key} className={`rpg-mob-tab${mobileTab===key?" active":""}`} onClick={() => setMobileTab(key)}>
-              {label}
+              <span className="rpg-tab-icon">{icon}</span>
+              <span className="rpg-tab-label">{label}</span>
             </button>
           ))}
         </div>

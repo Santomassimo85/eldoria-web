@@ -3,18 +3,20 @@ import { db } from "../firebase";
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot,
   query, orderBy, serverTimestamp, increment,
+  getDocs, writeBatch, deleteField,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import {
   TCG_CARDS, TCG_CARD_LIST, TCG_MECHANICS, MECHANICS_ORDER,
-  ELEMENT_ICON, ELEMENT_LABEL, RARITY_LABEL, RARITY_COLOR,
+  TCG_AFFINITIES, ELEMENT_ICON, ELEMENT_LABEL, RARITY_LABEL, RARITY_COLOR,
   ELEMENT_CYCLE, LIGHT_DARK, randomCompliment,
   PACK_DEFS, PACK_ORDER, openPack, openStarterPack,
   TRASH_REFUND, FOIL_TRASH_REFUND, FOIL_RATE, trashRefundFor,
+  getCardType, getMechLabel, TYPE_LABEL, TYPE_ICON,
 } from "../data/tcgCards";
 import {
   initMatchState, playCard, attackWith, endTurn, forfeit,
-  canPlayCard, canAttack, legalAttackTargets, oppSide,
+  canPlayCard, canAttack, legalAttackTargets, legalSpellTargets, predictCombat, oppSide,
   STARTING_HP, DECK_REQUIRED_SIZE,
   isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection,
   resolveDeckForMatch,
@@ -29,10 +31,72 @@ export const TCG_LOCKED = false;
 export const TCG_ALLOWED_EMAILS = new Set([
   "santomassimo85@gmail.com",
 ]);
+/* Master account — sees the destructive "Reset TCG" button. */
+const TCG_MASTER_EMAIL = "santomassimo85@gmail.com";
 
 export function isTcgUnlockedFor(email) {
   if (!TCG_LOCKED) return true;
   return TCG_ALLOWED_EMAILS.has(email || "");
+}
+
+/* Master action: wipe TCG progress on EVERY character + delete ALL
+   matches. Iterates Firestore in batches of 450 ops. Designed to be
+   triggered by a double-confirmed button in the lobby. Each player's
+   StarterModal will re-open on their next snapshot because their
+   tcgStarterClaimed flag is removed. */
+async function resetAllTcgData(showMsg) {
+  const charPatch = {
+    tcgCollection:     deleteField(),
+    tcgFoils:          deleteField(),
+    tcgDeck:           deleteField(),
+    tcgStarterClaimed: deleteField(),
+    tcgStarterElement: deleteField(),
+  };
+  try {
+    showMsg("⏳ Reset in corso…", true);
+
+    // 1) Wipe TCG fields on every character doc
+    const charsSnap = await getDocs(collection(db, "characters"));
+    let batch = writeBatch(db);
+    let ops = 0;
+    let charCount = 0;
+    for (const d of charsSnap.docs) {
+      batch.update(d.ref, charPatch);
+      ops++;
+      charCount++;
+      if (ops >= 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+      }
+    }
+    if (ops > 0) await batch.commit();
+
+    // 2) Delete every match (open, active, ended)
+    const matchesSnap = await getDocs(collection(db, "tcg_matches"));
+    batch = writeBatch(db);
+    ops = 0;
+    let matchCount = 0;
+    for (const d of matchesSnap.docs) {
+      batch.delete(d.ref);
+      ops++;
+      matchCount++;
+      if (ops >= 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+      }
+    }
+    if (ops > 0) await batch.commit();
+
+    showMsg(
+      `✅ Reset completato: ${charCount} giocator${charCount === 1 ? "e" : "i"}, ${matchCount} partit${matchCount === 1 ? "a" : "e"} eliminat${matchCount === 1 ? "a" : "e"}. Tutti riceveranno il Pacchetto Iniziale al prossimo accesso.`,
+      true
+    );
+  } catch (err) {
+    console.error("TCG reset failed:", err);
+    showMsg("❌ Reset fallito: " + err.message, false);
+  }
 }
 
 /* ============================================================
@@ -361,6 +425,24 @@ function TcgGame() {
             </span>
           </>
         )}
+        {currentUser?.email === TCG_MASTER_EMAIL && (
+          <button
+            type="button"
+            className="tcg-master-reset"
+            onClick={() => {
+              if (!window.confirm(
+                "⚠ ATTENZIONE: questo cancellerà la collezione TCG di TUTTI i giocatori (compresa la tua), tutti i mazzi, e tutte le partite in corso o concluse.\n\nProcedere?"
+              )) return;
+              if (!window.confirm(
+                "Doppio controllo: vuoi davvero RESETTARE TUTTO IL TCG? Questa operazione è irreversibile."
+              )) return;
+              resetAllTcgData(showMsg);
+            }}
+            title="Master: reset completo del TCG per tutti i giocatori — irreversibile"
+          >
+            🔄 Reset TCG
+          </button>
+        )}
       </div>
 
       {message && (
@@ -470,6 +552,85 @@ function splitDrawn(drawn) {
     else        normals[d.cardId] = (normals[d.cardId] || 0) + 1;
   }
   return { normals, foils };
+}
+
+/* Human-readable rendering of a spell's effect. Used on the card
+   face (where stats would normally be) and on the detail modal.
+   Mirrors the kinds the engine understands in tcg.js. */
+function describeEffect(def) {
+  const fx = def?.effect;
+  if (!fx) return def?.flavor || "";
+  switch (fx.kind) {
+    case "damage":
+      return `Infligge ${fx.amount} danni a un bersaglio scelto (creatura o campione).`;
+    case "burn_champion":
+      return `Applica Bruciatura ${fx.x} al campione avversario.`;
+    case "aoe":
+      return `Infligge ${fx.amount} danni a tutte le creature avversarie.`;
+    case "aoe_full":
+      return `Infligge ${fx.amount} danni a tutte le creature e al campione avversario.`;
+    case "heal_champion":
+      return `Cura ${fx.amount} PF al tuo campione${fx.draw ? ` e peschi ${fx.draw}` : ""}.`;
+    case "bounce":
+      return `Riporta una creatura nemica nella mano del proprietario.`;
+    case "buff": {
+      const gr = (fx.grants || []).map(g => TCG_MECHANICS[g]?.name || g).join(" + ");
+      return `Una tua creatura riceve +${fx.atk}/+${fx.hp}${gr ? ` e ${gr}` : ""}.`;
+    }
+    case "grant_keyword": {
+      const m = TCG_MECHANICS[fx.keyword]?.name || fx.keyword;
+      return `Una tua creatura riceve ${m}${fx.value != null ? ` ${fx.value}` : ""}.`;
+    }
+    case "global_buff":
+      return `Tutte le tue creature ricevono +${fx.atk}/+${fx.hp} permanente.`;
+    case "destroy": {
+      if (fx.filter?.minAtk != null) return `Distrugge una creatura nemica con ATK ≥ ${fx.filter.minAtk}.`;
+      if (fx.filter?.maxAtk != null) return `Distrugge una creatura nemica con ATK ≤ ${fx.filter.maxAtk}.`;
+      return `Distrugge una creatura nemica scelta.`;
+    }
+    case "raise_dead":
+      return `Riporta in mano l'ultima creatura caduta dal tuo cimitero.`;
+    case "grant_temp_keyword": {
+      const m = TCG_MECHANICS[fx.keyword]?.name || fx.keyword;
+      return `Una tua creatura riceve ${m}${fx.value != null ? ` ${fx.value}` : ""} per ~${fx.duration || 2} turni.`;
+    }
+    case "champion_regen":
+      return `Il tuo campione recupera ${fx.amount} PF all'inizio di ogni tuo turno (permanente).`;
+    case "wake":
+      return `Una tua creatura perde il sonno d'evocazione e si stappa: può attaccare subito.`;
+    case "extinguish":
+      return `Cancella tutti i turni di Bruciatura accumulati sul tuo campione.`;
+    case "dispel":
+      return `Dissolve tutti i bonus magici (keyword concesse e buff temporanei) da una creatura nemica.`;
+    case "damage_shield":
+      return `Il tuo campione guadagna un Argine che assorbe i prossimi ${fx.amount} danni in entrata.`;
+    /* ── Secret/trap kinds (counters) ──────────────────── */
+    case "secret_extinguish":
+      return `Segreta · Si attiva quando l'avversario applica Bruciatura al tuo campione. Cancella ogni traccia di Bruciatura.`;
+    case "secret_cancel_magic":
+      return `Segreta · Si attiva quando l'avversario lancia un Incantesimo, un'Aura o una Contromagia. Lo annulla prima che risolva.`;
+    case "secret_arcane_ward":
+      return `Segreta · Si attiva quando il tuo campione sta per subire danni. Aggiunge ${fx.amount} PF di Argine che vengono consumati per primi.`;
+    case "secret_negate":
+      return `Segreta · Si attiva quando l'avversario evoca una creatura. La distrugge prima che possa agire.`;
+    default:
+      return def?.flavor || "";
+  }
+}
+
+/* Short human label of a spell's target requirement, used in the
+   target-picker banner. */
+function describeTargetNeed(def) {
+  const need = def?.effect?.target || "none";
+  switch (need) {
+    case "none":            return "lancio immediato";
+    case "enemy_champion":  return "il campione avversario";
+    case "enemy_creature":  return "una creatura nemica";
+    case "ally_creature":   return "una tua creatura";
+    case "any_creature":    return "una creatura qualsiasi";
+    case "any":             return "una creatura o un campione";
+    default:                return "un bersaglio";
+  }
 }
 
 /* ============================================================
@@ -606,12 +767,16 @@ function PackRevealModal({ packDef, cards, onClose, onView }) {
 function CardDetailModal({ cardId, foil = false, onClose }) {
   const c = TCG_CARDS[cardId];
   if (!c) return null;
+  const cardType = getCardType(c);
+  const isCreature = cardType === "creature";
+  const isSpell = !isCreature;
   const mechs = c.mechanics || [];
   return (
     <div className="tcg-overlay" onClick={onClose}>
       <div
         className={
           `tcg-modal tcg-detail tcg-detail--r-${c.rarity} tcg-detail--el-${c.element}` +
+          ` tcg-detail--type-${cardType}` +
           (foil ? " tcg-detail--foil" : "")
         }
         onClick={e => e.stopPropagation()}
@@ -633,6 +798,9 @@ function CardDetailModal({ cardId, foil = false, onClose }) {
             <span className={`tcg-element-chip tcg-element-chip--${c.element}`}>
               {ELEMENT_ICON[c.element]} {ELEMENT_LABEL[c.element]}
             </span>
+            <span className={`tcg-type-chip tcg-type-chip--${cardType}`}>
+              {TYPE_ICON[cardType]} {TYPE_LABEL[cardType]}
+            </span>
             {foil && (
               <span className="tcg-detail-foil-chip" title="Edizione brillante">
                 ✨ BRILLANTE
@@ -643,45 +811,69 @@ function CardDetailModal({ cardId, foil = false, onClose }) {
 
         <h2 className="tcg-detail-name">{c.name}</h2>
 
-        <div className="tcg-detail-stats">
-          <div className="tcg-detail-stat tcg-detail-stat--mana">
-            <span className="tcg-detail-stat-icon">🔮</span>
-            <span className="tcg-detail-stat-val">{c.cost}</span>
-            <span className="tcg-detail-stat-label">Mana</span>
-          </div>
-          <div className="tcg-detail-stat tcg-detail-stat--atk">
-            <span className="tcg-detail-stat-icon">⚔</span>
-            <span className="tcg-detail-stat-val">{c.atk}</span>
-            <span className="tcg-detail-stat-label">Attacco</span>
-          </div>
-          <div className="tcg-detail-stat tcg-detail-stat--hp">
-            <span className="tcg-detail-stat-icon">❤</span>
-            <span className="tcg-detail-stat-val">{c.hp}</span>
-            <span className="tcg-detail-stat-label">Punti Ferita</span>
-          </div>
-        </div>
+        {isSpell ? (
+          <>
+            <div className="tcg-detail-stats">
+              <div className="tcg-detail-stat tcg-detail-stat--mana">
+                <span className="tcg-detail-stat-icon">🔮</span>
+                <span className="tcg-detail-stat-val">{c.cost}</span>
+                <span className="tcg-detail-stat-label">Mana</span>
+              </div>
+              <div className="tcg-detail-stat tcg-detail-stat--spell">
+                <span className="tcg-detail-stat-icon">📜</span>
+                <span className="tcg-detail-stat-val">{TYPE_LABEL[cardType]}</span>
+                <span className="tcg-detail-stat-label">Tipo</span>
+              </div>
+            </div>
 
-        {mechs.length > 0 && (
-          <div className="tcg-detail-mechs">
-            <h4 className="tcg-detail-section">⚡ Abilità</h4>
-            {mechs.map(k => {
-              const m = TCG_MECHANICS[k];
-              return (
-                <div key={k} className={`tcg-detail-mech tcg-detail-mech--${k}`}>
-                  <div className="tcg-detail-mech-head">
-                    <span
-                      className="tcg-detail-mech-icon"
-                      style={{ background: m.color }}
-                    >
-                      {m.icon}
-                    </span>
-                    <strong className="tcg-detail-mech-name">{m.name}</strong>
-                  </div>
-                  <div className="tcg-detail-mech-rules">{m.rules}</div>
-                </div>
-              );
-            })}
-          </div>
+            <div className="tcg-detail-effect">
+              <h4 className="tcg-detail-section">{TYPE_ICON[cardType]} Effetto · {TYPE_LABEL[cardType]}</h4>
+              <p className="tcg-detail-effect-text">{describeEffect(c)}</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="tcg-detail-stats">
+              <div className="tcg-detail-stat tcg-detail-stat--mana">
+                <span className="tcg-detail-stat-icon">🔮</span>
+                <span className="tcg-detail-stat-val">{c.cost}</span>
+                <span className="tcg-detail-stat-label">Mana</span>
+              </div>
+              <div className="tcg-detail-stat tcg-detail-stat--atk">
+                <span className="tcg-detail-stat-icon">⚔</span>
+                <span className="tcg-detail-stat-val">{c.atk}</span>
+                <span className="tcg-detail-stat-label">Attacco</span>
+              </div>
+              <div className="tcg-detail-stat tcg-detail-stat--hp">
+                <span className="tcg-detail-stat-icon">❤</span>
+                <span className="tcg-detail-stat-val">{c.hp}</span>
+                <span className="tcg-detail-stat-label">Punti Ferita</span>
+              </div>
+            </div>
+
+            {mechs.length > 0 && (
+              <div className="tcg-detail-mechs">
+                <h4 className="tcg-detail-section">⚡ Abilità</h4>
+                {mechs.map(k => {
+                  const m = TCG_MECHANICS[k];
+                  return (
+                    <div key={k} className={`tcg-detail-mech tcg-detail-mech--${k}`}>
+                      <div className="tcg-detail-mech-head">
+                        <span
+                          className="tcg-detail-mech-icon"
+                          style={{ background: m.color }}
+                        >
+                          {m.icon}
+                        </span>
+                        <strong className="tcg-detail-mech-name">{getMechLabel(c, k)}</strong>
+                      </div>
+                      <div className="tcg-detail-mech-rules">{m.rules}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
         <div className="tcg-detail-flavor">
@@ -1177,17 +1369,59 @@ function ElementWheelLegend() {
   );
 }
 
+/* Long-press / right-click inspect hook for cards. Returns a
+   bundle of event handlers a card can spread, plus a `guardClick`
+   wrapper that suppresses the synthetic click if a long-press
+   already fired (so an inspect doesn't also play the card). The
+   fire delay (500ms) is tuned to feel intentional but not slow. */
+function useLongPress(onInspect, ms = 500) {
+  const timerRef = useRef(null);
+  const firedRef = useRef(false);
+  if (!onInspect) {
+    return { start: undefined, cancel: undefined, guardClick: (h) => h, onContext: undefined };
+  }
+  const start = (e) => {
+    // Ignore middle/right clicks here — right-click is handled by onContextMenu
+    if (e.type === "mousedown" && e.button !== 0) return;
+    firedRef.current = false;
+    timerRef.current = setTimeout(() => {
+      firedRef.current = true;
+      onInspect();
+    }, ms);
+  };
+  const cancel = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+  const guardClick = (handler) => (e) => {
+    if (firedRef.current) {
+      firedRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    handler?.(e);
+  };
+  const onContext = (e) => { e.preventDefault(); onInspect(); };
+  return { start, cancel, guardClick, onContext };
+}
+
 /* ============================================================
    CARD — full MTG-style card visual
    ============================================================ */
-function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false }) {
+function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false, onInspect }) {
   const def = card;
   const cost = def.cost;
+  const cardType = getCardType(def);
+  const isCreature = cardType === "creature";
+  const isSpellLikeCard = !isCreature; // spell / enchantment / counter all share the spell-flow visual
   const mechs = def.mechanics || [];
+  const tipBody = isCreature
+    ? mechs.map(k => `${TCG_MECHANICS[k].icon} ${getMechLabel(def, k)}: ${TCG_MECHANICS[k].rules}`).join("\n")
+    : `${describeEffect(def)}`;
   const tip = showTooltip
-    ? `${def.name} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n` +
-      mechs.map(k => `${TCG_MECHANICS[k].icon} ${TCG_MECHANICS[k].name}: ${TCG_MECHANICS[k].rules}`).join("\n")
+    ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto, clic destro o 🔍 per ingrandire)" : ""}`
     : undefined;
+  const lp = useLongPress(onInspect);
   const Tag = onClick ? "button" : "div";
   return (
     <Tag
@@ -1196,13 +1430,22 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
         `tcg-card tcg-card--${size}` +
         ` tcg-card--el-${def.element}` +
         ` tcg-card--r-${def.rarity}` +
+        ` tcg-card--type-${cardType}` +
+        (isCreature ? " tcg-card--creature" : " tcg-card--spell") +
         (foil ? " tcg-card--foil" : "") +
         (selected ? " tcg-card--selected" : "") +
         (disabled ? " tcg-card--disabled" : "") +
         (onClick ? " tcg-card--clickable" : "") +
         (className ? " " + className : "")
       }
-      onClick={onClick}
+      onClick={lp.guardClick(onClick)}
+      onMouseDown={lp.start}
+      onMouseUp={lp.cancel}
+      onMouseLeave={lp.cancel}
+      onTouchStart={lp.start}
+      onTouchEnd={lp.cancel}
+      onTouchCancel={lp.cancel}
+      onContextMenu={lp.onContext}
       disabled={disabled}
       title={tip}
     >
@@ -1223,29 +1466,56 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
             ★ {RARITY_LABEL[def.rarity]}
           </span>
         )}
+        <span className={`tcg-card-type-badge tcg-card-type-badge--${cardType}`} title={TYPE_LABEL[cardType]}>
+          {TYPE_ICON[cardType]} {TYPE_LABEL[cardType]}
+        </span>
+        {onInspect && (
+          <button
+            type="button"
+            className="tcg-card-inspect-btn"
+            onClick={(e) => { e.stopPropagation(); onInspect(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            title="Ingrandisci e vedi i dettagli"
+            aria-label="Ingrandisci"
+          >🔍</button>
+        )}
       </div>
 
-      {mechs.length > 0 && (
-        <div className="tcg-card-mechs">
-          {mechs.map(k => {
-            const m = TCG_MECHANICS[k];
-            return (
-              <span key={k} className={`tcg-card-mech tcg-card-mech--${k}`} title={`${m.name}: ${m.rules}`}>
-                {m.icon} {m.name}
-              </span>
-            );
-          })}
-        </div>
+      {isCreature ? (
+        mechs.length > 0 && (
+          <div className="tcg-card-mechs">
+            {mechs.map(k => {
+              const m = TCG_MECHANICS[k];
+              return (
+                <span key={k} className={`tcg-card-mech tcg-card-mech--${k}`} title={`${getMechLabel(def, k)}: ${m.rules}`}>
+                  {m.icon} {getMechLabel(def, k)}
+                </span>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        <div className="tcg-card-effect">{describeEffect(def)}</div>
       )}
 
       {size !== "sm" && (
         <div className="tcg-card-flavor">{def.flavor}</div>
       )}
 
-      <div className="tcg-card-stats">
-        <span className="tcg-card-stat tcg-card-stat--atk">⚔ {def.atk}</span>
-        <span className="tcg-card-stat tcg-card-stat--hp">❤ {def.hp}</span>
-      </div>
+      {isCreature ? (
+        <div className="tcg-card-stats tcg-card-stats--mtg">
+          <span className="tcg-card-mtg-pt" title={`Attacco / Punti Ferita`}>
+            <span className="tcg-card-mtg-atk">{def.atk}</span>
+            <span className="tcg-card-mtg-sep">/</span>
+            <span className="tcg-card-mtg-hp">{def.hp}</span>
+          </span>
+        </div>
+      ) : (
+        <div className={`tcg-card-stats tcg-card-stats--spell tcg-card-stats--${cardType}`}>
+          <span className="tcg-card-stat tcg-card-stat--spell">{TYPE_ICON[cardType]} {TYPE_LABEL[cardType]}</span>
+        </div>
+      )}
     </Tag>
   );
 }
@@ -1269,11 +1539,27 @@ function CardArt({ def }) {
 /* ============================================================
    BOARD CARD — Card variant showing live HP & status
    ============================================================ */
-function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim }) {
-  const mechs = def.mechanics || [];
+function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [] }) {
+  const baseMechs = def.mechanics || [];
+  const granted = bc.grants || [];
+  const tempBuffKeywords = (bc.tempBuffs || []).map(t => t.keyword);
+  const mechs = Array.from(new Set([...baseMechs, ...granted, ...tempBuffKeywords]));
   const isFlying = mechs.includes("flying");
+  const labelFor = (k) => {
+    const m = TCG_MECHANICS[k];
+    if (!m) return "";
+    if (m.hasValue) {
+      const v = bc.grantedValues?.[k]
+        ?? (bc.tempBuffs || []).find(t => t.keyword === k)?.value
+        ?? def?.mechanicsValues?.[k];
+      return v != null ? `${m.name} ${v}` : m.name;
+    }
+    return m.name;
+  };
   const tip = `${def.name}\nPF ${bc.hp}/${bc.maxHp} · ⚔ ${bc.atk}\n` +
-    mechs.map(k => `${TCG_MECHANICS[k].icon} ${TCG_MECHANICS[k].name}`).join(" · ");
+    mechs.map(k => `${TCG_MECHANICS[k].icon} ${labelFor(k)}`).join(" · ") +
+    (onInspect ? `\n\n(Tieni premuto, clic destro o 🔍 per ingrandire)` : "");
+  const lp = useLongPress(onInspect);
   const Tag = onClick ? "button" : "div";
   // attackAnim shape: { role: "attacker-up" | "attacker-down" | "target", ts: number }
   const animCls = attackAnim
@@ -1299,7 +1585,14 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
         (isFlying ? " tcg-board-card--flying" : "") +
         animCls
       }
-      onClick={onClick}
+      onClick={lp.guardClick(onClick)}
+      onMouseDown={lp.start}
+      onMouseUp={lp.cancel}
+      onMouseLeave={lp.cancel}
+      onTouchStart={lp.start}
+      onTouchEnd={lp.cancel}
+      onTouchCancel={lp.cancel}
+      onContextMenu={lp.onContext}
       disabled={disabled}
       title={tip}
     >
@@ -1309,6 +1602,15 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
           <span className="tcg-flying-shadow" aria-hidden="true" />
         </>
       )}
+      {floats.length > 0 && (
+        <div className="tcg-floats-layer" aria-hidden="true">
+          {floats.map(f => (
+            <span key={f.id} className={`tcg-float tcg-float--${f.kind}`}>
+              {f.kind === "heal" ? `+${f.amount}` : `−${f.amount}`}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="tcg-card-header">
         <span className="tcg-card-cost">{def.cost}</span>
         <span className="tcg-card-name">{def.name}</span>
@@ -1316,19 +1618,36 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
       </div>
       <div className="tcg-card-art tcg-card-art--small">
         <CardArt def={def} />
+        {onInspect && (
+          <button
+            type="button"
+            className="tcg-card-inspect-btn tcg-card-inspect-btn--board"
+            onClick={(e) => { e.stopPropagation(); onInspect(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            title="Ingrandisci e vedi i dettagli"
+            aria-label="Ingrandisci"
+          >🔍</button>
+        )}
       </div>
       {mechs.length > 0 && (
         <div className="tcg-card-mechs tcg-card-mechs--mini">
           {mechs.map(k => {
             const m = TCG_MECHANICS[k];
-            return <span key={k} className="tcg-card-mech-mini" title={m.name}>{m.icon}</span>;
+            return <span key={k} className="tcg-card-mech-mini" title={labelFor(k)}>{m.icon}</span>;
           })}
         </div>
       )}
-      <div className="tcg-card-stats">
-        <span className="tcg-card-stat tcg-card-stat--atk">⚔ {bc.atk}</span>
-        <span className="tcg-card-stat tcg-card-stat--hp">
-          ❤ {bc.hp}<em className="tcg-card-stat-sub">/{bc.maxHp}</em>
+      <div className="tcg-card-stats tcg-card-stats--mtg">
+        <span className="tcg-card-mtg-pt" title={`${bc.atk} attacco / ${bc.hp} su ${bc.maxHp} PF`}>
+          <span className="tcg-card-mtg-atk">{bc.atk}</span>
+          <span className="tcg-card-mtg-sep">/</span>
+          <span className={`tcg-card-mtg-hp ${bc.hp < bc.maxHp ? "tcg-card-mtg-hp--wounded" : ""}`}>
+            {bc.hp}
+          </span>
+          {bc.hp !== bc.maxHp && (
+            <span className="tcg-card-mtg-hp-max" aria-label="su massimo">/{bc.maxHp}</span>
+          )}
         </span>
       </div>
       {status === "sick" && <div className="tcg-board-tag">😴 sonnolento</div>}
@@ -1390,6 +1709,59 @@ function LogLine({ line, mySide }) {
 }
 
 /* ============================================================
+   COMBAT PREVIEW — floating overlay above a legal attack target.
+   Reads the engine's predictCombat() so the badge can't lie:
+   if the bar says -5 💀 the target really will die from that
+   click. Pierce overflow and Rinato (Veil) saves are surfaced
+   so trades are auditable without playing them out.
+   ============================================================ */
+/* Boils the prediction down to a single label + tone the player
+   can read in one glance. The verdict is what matters mid-game;
+   the raw damage numbers go in a smaller second row. The full
+   multiplier breakdown stays in the combat log for post-mortem. */
+function combatVerdict(p) {
+  if (p.targetRevives) {
+    return { icon: "👻", label: "NON UCCIDE", tone: "revive" };
+  }
+  if (p.targetDies && p.attackerDies) {
+    return { icon: "⚔", label: "DOPPIA MORTE", tone: "trade" };
+  }
+  if (p.targetDies) {
+    const tail = p.pierceDmg > 0 ? ` +${p.pierceDmg} 👑` : "";
+    return { icon: "💥", label: `LO UCCIDI${tail}`, tone: "kill" };
+  }
+  if (p.attackerDies) {
+    return { icon: "💔", label: "MUORI", tone: "death" };
+  }
+  return { icon: "🩸", label: "COLPISCI", tone: "hit" };
+}
+
+function CombatPreview({ prediction }) {
+  if (!prediction || prediction.kind !== "creature") return null;
+  const { damageToTarget, damageToAttacker } = prediction;
+  const verdict = combatVerdict(prediction);
+  // Damage to target is always shown; retaliation slides in next to it
+  // when non-zero. The verdict word goes to the hover title so the pill
+  // can stay one line.
+  return (
+    <div
+      className={`tcg-combat-preview tcg-combat-preview--${verdict.tone}`}
+      title={verdict.label}
+      aria-label={`${verdict.label}: infliggi ${damageToTarget}${damageToAttacker > 0 ? `, subisci ${damageToAttacker}` : ""}`}
+    >
+      <span className="tcg-combat-preview-icon">{verdict.icon}</span>
+      <span className="tcg-combat-preview-num">{damageToTarget}</span>
+      {damageToAttacker > 0 && (
+        <>
+          <span className="tcg-combat-preview-sep">/</span>
+          <span className="tcg-combat-preview-num tcg-combat-preview-num--self">{damageToAttacker}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
    LIVE MATCH — full battle board
    ============================================================ */
 function LiveMatch({ match, uid, onExit }) {
@@ -1400,10 +1772,19 @@ function LiveMatch({ match, uid, onExit }) {
   const myTurn = state.activeSide === mySide;
 
   const [selectedAttacker, setSelectedAttacker] = useState(null);
+  const [pendingSpell, setPendingSpell] = useState(null); // { instId, def, targets }
+  const [viewingCard, setViewingCard] = useState(null);   // { cardId } | null — opens CardDetailModal
   const [compliment, setCompliment] = useState("");
   const [attackSplash, setAttackSplash] = useState(null); // { attacker, defender, side, kind, key }
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
+  const [floats, setFloats] = useState([]);               // [{ id, kind, target, side, instId?, amount }]
   const [muted, setMuted] = useState(isSfxMuted());
+  // Animation queue — events from the engine fire sequentially with a small
+  // gap so each one is visible. Engine state still commits in one go to
+  // Firestore; only the visible effects are paced.
+  const floatQueueRef = useRef([]);
+  const floatPumpRef  = useRef(null);
+  const lastEventIdxRef = useRef((match.state?.events || []).length);
   const logRef = useRef(null);
   const lastLogLenRef = useRef((match.state?.log || []).length);
   const lastAttackTsRef = useRef(match.state?.lastAttack?.ts || 0);
@@ -1498,6 +1879,44 @@ function LiveMatch({ match, uid, onExit }) {
     }
   }, [state.log]);
 
+  /* Float pipeline — watch state.events length and queue new ones for paced
+     playback. Each event spawns a floating number; we run them sequentially
+     with FLOAT_GAP_MS between starts so the player can read each hit. */
+  const FLOAT_GAP_MS = 350;
+  const FLOAT_LIFE_MS = 1100;
+  useEffect(() => {
+    const events = state.events || [];
+    if (events.length < lastEventIdxRef.current) {
+      // Undo/restore: rewind cursor without re-animating.
+      lastEventIdxRef.current = events.length;
+      return;
+    }
+    const newOnes = events.slice(lastEventIdxRef.current);
+    lastEventIdxRef.current = events.length;
+    if (newOnes.length === 0) return;
+    floatQueueRef.current.push(...newOnes);
+    if (floatPumpRef.current) return; // already running
+    const tick = () => {
+      const evt = floatQueueRef.current.shift();
+      if (!evt) { floatPumpRef.current = null; return; }
+      const id = Math.random().toString(36).slice(2, 9);
+      setFloats(f => [...f, { id, ...evt }]);
+      // Auto-remove after the CSS animation ends.
+      setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), FLOAT_LIFE_MS);
+      floatPumpRef.current = setTimeout(tick, FLOAT_GAP_MS);
+    };
+    tick();
+  }, [state.events?.length]);
+
+  /* Tidy timers on unmount so nothing fires into a stale component. */
+  useEffect(() => {
+    return () => {
+      if (floatPumpRef.current) clearTimeout(floatPumpRef.current);
+      floatPumpRef.current = null;
+      floatQueueRef.current = [];
+    };
+  }, []);
+
   /* Fire win/lose chime once when the game ends. */
   useEffect(() => {
     if (!state.winner || wonRef.current) return;
@@ -1524,9 +1943,12 @@ function LiveMatch({ match, uid, onExit }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [state.log?.length]);
 
-  /* Clear selected attacker when not my turn */
+  /* Clear selected attacker / pending spell when not my turn */
   useEffect(() => {
-    if (!myTurn) setSelectedAttacker(null);
+    if (!myTurn) {
+      setSelectedAttacker(null);
+      setPendingSpell(null);
+    }
   }, [myTurn]);
 
   const matchRef = doc(db, "tcg_matches", match.id);
@@ -1550,12 +1972,39 @@ function LiveMatch({ match, uid, onExit }) {
 
   const handlePlayCard = async (instId) => {
     if (!canPlayCard(state, mySide, instId)) return;
-    const next = playCard(state, mySide, instId);
-    await updateState(next, { snapshotForUndo: true });
+    const card = state.hand[mySide].find(c => c.instId === instId);
+    const def = card ? TCG_CARDS[card.cardId] : null;
+    if (!def) return;
+    const type = getCardType(def);
+
+    // Creature: just play. Spell with no target: cast immediately.
+    if (type === "creature") {
+      const next = playCard(state, mySide, instId);
+      await updateState(next, { snapshotForUndo: true });
+      return;
+    }
+    // Spell
+    const need = def.effect?.target || "none";
+    if (need === "none") {
+      const next = playCard(state, mySide, instId, null);
+      await updateState(next, { snapshotForUndo: true });
+      return;
+    }
+    // Toggle: clicking the same spell again cancels pending mode
+    if (pendingSpell?.instId === instId) {
+      setPendingSpell(null);
+      return;
+    }
+    // Enter target-picking mode (also drop any attacker selection)
+    const targets = legalSpellTargets(state, mySide, instId);
+    setSelectedAttacker(null);
+    setPendingSpell({ instId, def, targets });
   };
 
   const handleSelectAttacker = (instId) => {
     if (!canAttack(state, mySide, instId)) return;
+    // Selecting an attacker cancels any spell-target picking in progress
+    setPendingSpell(null);
     setSelectedAttacker(instId === selectedAttacker ? null : instId);
   };
 
@@ -1563,9 +2012,17 @@ function LiveMatch({ match, uid, onExit }) {
     if (!selectedAttacker) return;
     const next = attackWith(state, mySide, selectedAttacker, targetInstId);
     setSelectedAttacker(null);
-    // Don't allow undoing an attack that ended the game — too messy.
     await updateState(next, { snapshotForUndo: !next.winner });
   };
+
+  const handleSpellTarget = async (target) => {
+    if (!pendingSpell) return;
+    const next = playCard(state, mySide, pendingSpell.instId, target);
+    setPendingSpell(null);
+    await updateState(next, { snapshotForUndo: !next.winner });
+  };
+
+  const cancelPendingSpell = () => setPendingSpell(null);
 
   /* Restore the snapshot captured before the last action. Only valid
      during your own turn, before the game ends. */
@@ -1594,6 +2051,20 @@ function LiveMatch({ match, uid, onExit }) {
   const targets = selectedAttacker
     ? legalAttackTargets(state, mySide, selectedAttacker)
     : { creatures: [], face: false };
+
+  /* Helper: is bc.instId a legal target for the pending spell? */
+  const isLegalSpellTarget = (sideOfCard, instId) => {
+    if (!pendingSpell?.targets) return false;
+    const t = pendingSpell.targets;
+    if (t.kind === "none") return false;
+    const list = t.creatures?.[sideOfCard];
+    return Array.isArray(list) && list.includes(instId);
+  };
+  const isLegalSpellChampion = (champSide) => {
+    if (!pendingSpell?.targets) return false;
+    const champs = pendingSpell.targets.champions;
+    return Array.isArray(champs) && champs.includes(champSide);
+  };
 
   /* Per-card animation lookup. Returns null when the card isn't involved
      in the current lastAttack, otherwise the role + a ts that drives the
@@ -1708,46 +2179,109 @@ function LiveMatch({ match, uid, onExit }) {
           handCount={oppHand.length}
           opponent
           isActive={!myTurn}
+          burn={state.burn?.[oSide] || 0}
+          secretCount={state.secrets?.[oSide]?.length || 0}
+          shield={state.dmgShield?.[oSide] || 0}
+          floats={floats.filter(f => f.target === "champion" && f.side === oSide)}
         />
         <div className="tcg-board tcg-board--opp">
           {oppBoard.length === 0 ? (
             <div className="tcg-board-empty">Campo vuoto</div>
           ) : oppBoard.map(bc => {
             const def = TCG_CARDS[bc.cardId];
-            const isLegal = selectedAttacker && targets.creatures.includes(bc.instId);
+            const isAttackLegal = !!selectedAttacker && targets.creatures.includes(bc.instId);
+            const isSpellLegal  = isLegalSpellTarget(oSide, bc.instId);
+            const onClick = isAttackLegal
+              ? () => handleAttackTarget(bc.instId)
+              : isSpellLegal
+                ? () => handleSpellTarget({ kind: "creature", side: oSide, instId: bc.instId })
+                : undefined;
+            const isLegal = isAttackLegal || isSpellLegal;
+            const prediction = isAttackLegal
+              ? predictCombat(state, mySide, selectedAttacker, bc.instId)
+              : null;
             return (
-              <BoardCard
-                key={bc.instId}
-                bc={bc}
-                def={def}
-                onClick={isLegal ? () => handleAttackTarget(bc.instId) : undefined}
-                disabled={!isLegal}
-                selected={isLegal}
-                status={bc.tapped ? "tapped" : null}
-                attackAnim={getCardAnim(bc.instId)}
-              />
+              <div key={bc.instId} className="tcg-board-slot">
+                <BoardCard
+                  bc={bc}
+                  def={def}
+                  onClick={onClick}
+                  disabled={!isLegal}
+                  selected={isLegal}
+                  status={bc.tapped ? "tapped" : null}
+                  attackAnim={getCardAnim(bc.instId)}
+                  onInspect={() => setViewingCard({ cardId: bc.cardId })}
+                  floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
+                />
+                {prediction && <CombatPreview prediction={prediction} />}
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* Center divider with face-attack target */}
+      {/* Center divider with face-attack / spell-face target */}
       <div className="tcg-divider">
         <div className="tcg-divider-line" />
-        {selectedAttacker && targets.face && (
-          <button
-            className="tcg-face-attack"
-            onClick={() => handleAttackTarget(null)}
-            title="Colpisci direttamente il campione avversario"
-          >
-            🎯 Colpisci il Campione ({match[oSide].name})
-          </button>
-        )}
-        {selectedAttacker && !targets.face && targets.creatures.length > 0 && (
-          <div className="tcg-divider-hint">
-            🛡 Devi colpire prima un Baluardo!
+        {pendingSpell && (
+          <div className="tcg-spell-banner">
+            <span className="tcg-spell-banner-icon">📜</span>
+            <div className="tcg-spell-banner-body">
+              <strong>{pendingSpell.def.name}</strong>
+              <span> · Scegli {describeTargetNeed(pendingSpell.def)}.</span>
+            </div>
+            <button type="button" className="tcg-spell-banner-cancel" onClick={cancelPendingSpell}>
+              ✕ Annulla
+            </button>
           </div>
         )}
+        {pendingSpell && isLegalSpellChampion(oSide) && (
+          <button
+            className="tcg-face-attack tcg-face-attack--spell"
+            onClick={() => handleSpellTarget({ kind: "champion", side: oSide })}
+            title="Lancia l'incantesimo sul campione avversario"
+          >
+            🎯 Lancia su {match[oSide].name}
+          </button>
+        )}
+        {!pendingSpell && selectedAttacker && targets.face && (() => {
+          const facePred = predictCombat(state, mySide, selectedAttacker, null);
+          const hpBefore = facePred?.championHpBefore ?? 0;
+          const hpAfter  = facePred?.championHpAfter  ?? 0;
+          const burn     = facePred?.bruciatura ?? 0;
+          const shieldAbsorb = facePred?.shieldAbsorb ?? 0;
+          return (
+            <button
+              className="tcg-face-attack"
+              onClick={() => handleAttackTarget(null)}
+              title={
+                `${match[oSide].name}: ${hpBefore} → ${hpAfter} PF` +
+                (shieldAbsorb > 0 ? ` (🛡 −${shieldAbsorb})` : "") +
+                (burn > 0 ? ` · 🔥 Bruciatura ${burn}` : "")
+              }
+            >
+              🎯 Colpisci {match[oSide].name}
+              <span className="tcg-face-attack-hp">
+                ❤ {hpBefore} <span className="tcg-face-attack-arrow">→</span> <strong>{hpAfter}</strong>
+                {hpAfter === 0 && <span className="tcg-face-attack-skull"> 💀</span>}
+              </span>
+              {burn > 0 && <span className="tcg-face-attack-burn">🔥 {burn}</span>}
+            </button>
+          );
+        })()}
+        {!pendingSpell && selectedAttacker && !targets.face && targets.creatures.length > 0 && (() => {
+          // Distinguish "must hit a Bulwark first" from the new general
+          // "lane is blocked" rule. The opp's reachable creatures with
+          // Bulwark mean priority targeting; otherwise it's just defenders
+          // in the way.
+          const oppB = state.board[oSide];
+          const reachableInst = new Set(targets.creatures);
+          const reachableBulwarks = oppB.filter(c => reachableInst.has(c.instId) && (TCG_CARDS[c.cardId]?.mechanics || []).includes("bulwark"));
+          if (reachableBulwarks.length > 0) {
+            return <div className="tcg-divider-hint">🛡 Devi colpire prima un Baluardo!</div>;
+          }
+          return <div className="tcg-divider-hint">🛡 La difesa avversaria blocca il campione: abbattila prima!</div>;
+        })()}
         <div className="tcg-divider-line" />
       </div>
 
@@ -1760,17 +2294,25 @@ function LiveMatch({ match, uid, onExit }) {
             const def = TCG_CARDS[bc.cardId];
             const ready = canAttack(state, mySide, bc.instId);
             const isSelected = selectedAttacker === bc.instId;
+            const isSpellLegal = isLegalSpellTarget(mySide, bc.instId);
+            const onClick = isSpellLegal
+              ? () => handleSpellTarget({ kind: "creature", side: mySide, instId: bc.instId })
+              : ready
+                ? () => handleSelectAttacker(bc.instId)
+                : undefined;
             const status = bc.tapped ? "tapped" : (bc.sick ? "sick" : (ready ? "ready" : null));
             return (
               <BoardCard
                 key={bc.instId}
                 bc={bc}
                 def={def}
-                onClick={ready ? () => handleSelectAttacker(bc.instId) : undefined}
-                disabled={!ready}
-                selected={isSelected}
+                onClick={onClick}
+                disabled={!onClick}
+                selected={isSelected || isSpellLegal}
                 status={status}
                 attackAnim={getCardAnim(bc.instId)}
+                onInspect={() => setViewingCard({ cardId: bc.cardId })}
+                floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
               />
             );
           })}
@@ -1784,6 +2326,11 @@ function LiveMatch({ match, uid, onExit }) {
           deckCount={state.deck[mySide].length}
           handCount={myHand.length}
           isActive={myTurn}
+          burn={state.burn?.[mySide] || 0}
+          secretCount={state.secrets?.[mySide]?.length || 0}
+          shield={state.dmgShield?.[mySide] || 0}
+          ownSecrets={state.secrets?.[mySide] || []}
+          floats={floats.filter(f => f.target === "champion" && f.side === mySide)}
         />
       </div>
 
@@ -1791,6 +2338,11 @@ function LiveMatch({ match, uid, onExit }) {
       <div className="tcg-hand-wrap">
         <div className="tcg-hand-label">
           🎴 La tua mano · {myHand.length} carte
+          {pendingSpell && (
+            <span className="tcg-hand-label-spell">
+              {" "}· 📜 Castando <strong>{pendingSpell.def.name}</strong>
+            </span>
+          )}
         </div>
         <div className="tcg-hand">
           {myHand.length === 0 ? (
@@ -1798,13 +2350,17 @@ function LiveMatch({ match, uid, onExit }) {
           ) : myHand.map(c => {
             const def = TCG_CARDS[c.cardId];
             const playable = canPlayCard(state, mySide, c.instId);
+            const isPending = pendingSpell?.instId === c.instId;
             return (
               <Card
                 key={c.instId}
                 card={def}
                 size="md"
                 onClick={() => handlePlayCard(c.instId)}
-                disabled={!playable}
+                disabled={!playable && !isPending}
+                selected={isPending}
+                className={isPending ? "tcg-card--pending-spell" : ""}
+                onInspect={() => setViewingCard({ cardId: c.cardId })}
               />
             );
           })}
@@ -1838,6 +2394,13 @@ function LiveMatch({ match, uid, onExit }) {
           ))}
         </div>
       </div>
+
+      {viewingCard && (
+        <CardDetailModal
+          cardId={viewingCard.cardId}
+          onClose={() => setViewingCard(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1845,13 +2408,40 @@ function LiveMatch({ match, uid, onExit }) {
 /* ============================================================
    PLAYER STRIP — HP, mana, deck, hand counts
    ============================================================ */
-function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, opponent, isActive }) {
+function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, ownSecrets = null, floats = [] }) {
   const hpPct = Math.max(0, Math.min(100, (hp / STARTING_HP) * 100));
+  const secretsTip = ownSecrets && ownSecrets.length
+    ? "Le tue Contromagie segrete:\n" + ownSecrets.map(s => `  • ${TCG_CARDS[s.cardId]?.name || s.cardId}`).join("\n")
+    : (opponent ? `${secretCount} contromagi${secretCount === 1 ? "a" : "e"} segret${secretCount === 1 ? "a" : "e"} sul campo avversario` : "Nessuna contromagia segreta");
   return (
     <div className={`tcg-pstrip ${opponent ? "tcg-pstrip--opp" : "tcg-pstrip--mine"} ${isActive ? "tcg-pstrip--active" : ""}`}>
+      {floats.length > 0 && (
+        <div className="tcg-floats-layer tcg-floats-layer--champion" aria-hidden="true">
+          {floats.map(f => (
+            <span key={f.id} className={`tcg-float tcg-float--${f.kind}`}>
+              {f.kind === "heal" ? `+${f.amount}` : `−${f.amount}`}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="tcg-pstrip-name">
         {isActive && <span className="tcg-pstrip-dot" />}
         {opponent ? "👤" : "🎯"} {name}
+        {burn > 0 && (
+          <span className="tcg-pstrip-burn" title={`Bruciatura: 1 danno all'inizio dei prossimi ${burn} turni di ${name}`}>
+            🔥 {burn}
+          </span>
+        )}
+        {shield > 0 && (
+          <span className="tcg-pstrip-shield" title={`Argine: assorbe i prossimi ${shield} danni in entrata`}>
+            🛡 +{shield}
+          </span>
+        )}
+        {secretCount > 0 && (
+          <span className="tcg-pstrip-secrets" title={secretsTip}>
+            🛡 {secretCount} {secretCount === 1 ? "trappola" : "trappole"}
+          </span>
+        )}
       </div>
       <div className="tcg-pstrip-row">
         <div className="tcg-pstrip-hp">
@@ -1907,8 +2497,15 @@ function Codex({ onView }) {
   const [filter, setFilter] = useState("all");
   const filtered = useMemo(() => {
     if (filter === "all") return TCG_CARD_LIST;
+    if (filter === "creature" || filter === "spell" || filter === "enchantment" || filter === "counter") {
+      return TCG_CARD_LIST.filter(c => getCardType(c) === filter);
+    }
     return TCG_CARD_LIST.filter(c => c.element === filter || c.rarity === filter);
   }, [filter]);
+  const creatureCount    = TCG_CARD_LIST.filter(c => getCardType(c) === "creature").length;
+  const spellCount       = TCG_CARD_LIST.filter(c => getCardType(c) === "spell").length;
+  const enchantmentCount = TCG_CARD_LIST.filter(c => getCardType(c) === "enchantment").length;
+  const counterCount     = TCG_CARD_LIST.filter(c => getCardType(c) === "counter").length;
 
   return (
     <div className="tcg-codex">
@@ -1918,6 +2515,18 @@ function Codex({ onView }) {
       <div className="tcg-codex-filters">
         <button className={`tcg-filter ${filter === "all" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("all")}>
           Tutte ({TCG_CARD_LIST.length})
+        </button>
+        <button className={`tcg-filter tcg-filter--type-creature ${filter === "creature" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("creature")}>
+          🐲 Creature ({creatureCount})
+        </button>
+        <button className={`tcg-filter tcg-filter--type-spell ${filter === "spell" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("spell")}>
+          📜 Incantesimi ({spellCount})
+        </button>
+        <button className={`tcg-filter tcg-filter--type-enchantment ${filter === "enchantment" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("enchantment")}>
+          🌟 Aure ({enchantmentCount})
+        </button>
+        <button className={`tcg-filter tcg-filter--type-counter ${filter === "counter" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("counter")}>
+          🛡 Contromagie ({counterCount})
         </button>
         {Object.entries(ELEMENT_ICON).map(([el, ic]) => (
           <button key={el} className={`tcg-filter tcg-filter--el-${el} ${filter === el ? "tcg-filter--on" : ""}`} onClick={() => setFilter(el)}>
@@ -1948,16 +2557,144 @@ function Codex({ onView }) {
    RULES — mechanics + flow rulebook
    ============================================================ */
 function Rules() {
+  const byElCost = (a, b) => (a.element + a.cost).localeCompare(b.element + b.cost);
+  const spellCards       = TCG_CARD_LIST.filter(c => getCardType(c) === "spell").sort(byElCost);
+  const enchantmentCards = TCG_CARD_LIST.filter(c => getCardType(c) === "enchantment").sort(byElCost);
+  const counterCards     = TCG_CARD_LIST.filter(c => getCardType(c) === "counter").sort(byElCost);
   return (
     <div className="tcg-rules">
       <div className="tcg-panel">
         <h2 className="tcg-panel-title">⚔ Come si gioca</h2>
         <ul className="tcg-rules-list">
           <li>Ogni giocatore parte con <strong>{STARTING_HP} PF</strong>, una mano di 4 carte e un mazzo di {DECK_REQUIRED_SIZE}.</li>
-          <li>A ogni turno il giocatore attivo guadagna <strong>+1 di Mana massimo</strong> (fino a 10) e ricarica tutto il mana.</li>
-          <li>Si pesca 1 carta a turno. Le creature evocate hanno <em>sonno d'evocazione</em> e non possono attaccare lo stesso turno (a meno di "Furia").</li>
-          <li>In combattimento, una creatura ne attacca un'altra (o il campione avversario) infliggendo i danni del proprio attacco. La difesa replica con il suo attacco.</li>
+          <li>A ogni turno il giocatore attivo guadagna <strong>+1 di Mana massimo</strong> (fino a 10) e ricarica tutto il mana, poi pesca 1 carta.</li>
+          <li>Le carte sono di due tipi: <strong>🐲 Creature</strong> (vanno in campo, attaccano e difendono) e <strong>📜 Incantesimi</strong> (effetto singolo, poi finiscono al cimitero).</li>
+          <li>Le creature evocate hanno <em>sonno d'evocazione</em> e non possono attaccare lo stesso turno — a meno che non abbiano <strong>Furia</strong> o vengano risvegliate dall'affinità <strong>Brezza</strong>.</li>
+          <li>In combattimento, una creatura attacca una creatura nemica (o il campione) e ognuna infligge i propri danni; le meccaniche (Affondo, Avanguardia, Letale…) cambiano l'ordine e la regola.</li>
+          <li><strong>🛡 Difesa del campione</strong>: puoi colpire il campione avversario solo se la sua difesa è sgombra. Una creatura a terra blocca tutte le altre creature a terra; una creatura con <strong>Volo</strong> blocca solo altri volatili. <strong>Volo</strong> sorvola i difensori a terra; <strong>Cacciatore</strong> permette invece di colpire i volatili dal suolo, ma non garantisce il sorvolo della difesa.</li>
           <li>Vince chi porta a 0 i PF dell'avversario. Se finisci il mazzo, subisci 2 danni da affaticamento ad ogni pesca.</li>
+        </ul>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🜂 Affinità degli elementi (passive)</h2>
+        <p className="tcg-panel-sub">
+          Ogni volta che giochi una carta del suo elemento, scatta automaticamente l'affinità corrispondente — sia per le creature sia per gli incantesimi.
+          Sono il vero "colore" del tuo mazzo: identità giocate.
+        </p>
+        <div className="tcg-aff-grid">
+          {["fire","water","earth","air","light","dark"].map(el => {
+            const a = TCG_AFFINITIES[el];
+            return (
+              <div key={el} className={`tcg-aff-card tcg-aff-card--${el}`}>
+                <div className="tcg-aff-card-head">
+                  <span className="tcg-aff-card-icon">{a.icon}</span>
+                  <span>{a.name}</span>
+                </div>
+                <div className="tcg-aff-card-elem">{ELEMENT_ICON[el]} {ELEMENT_LABEL[el]}</div>
+                <div className="tcg-aff-card-rules">{a.rules}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🌟 Cerchio degli elementi</h2>
+        <ElementWheelLegend />
+        <p className="tcg-panel-sub">
+          Quando un attacco (o un incantesimo a bersaglio singolo) è super-efficace contro l'elemento bersaglio, infligge <strong>×1.5</strong> danni.
+          Quando è poco efficace, <strong>×0.5</strong>. Luce e Tenebra si combattono solo tra loro (×1.5 reciproco)
+          e sono neutre contro gli altri elementi.
+        </p>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">⚡ Le meccaniche</h2>
+        <p className="tcg-panel-sub">
+          Le abilità stampate sulle creature. Le ultime due — <strong>Bruciatura X</strong> e <strong>Linfa X</strong> — hanno un valore variabile sulla singola carta.
+        </p>
+        <div className="tcg-mechs-grid">
+          {MECHANICS_ORDER.map(k => {
+            const m = TCG_MECHANICS[k];
+            return (
+              <div key={k} className={`tcg-mech-card tcg-mech-card--${k}`}>
+                <div className="tcg-mech-card-head">
+                  <span className="tcg-mech-card-icon" style={{ background: m.color }}>{m.icon}</span>
+                  <span className="tcg-mech-card-name">{m.name}{m.hasValue ? " X" : ""}</span>
+                </div>
+                <div className="tcg-mech-card-rules">{m.rules}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">📜 Incantesimi</h2>
+        <p className="tcg-panel-sub">
+          Carte d'effetto a uso singolo. Alcune chiedono di scegliere un bersaglio (creatura o campione): clicca la carta in mano per
+          entrare in modalità mira, poi clicca il bersaglio. Altre risolvono subito (cure, AoE, draw, resurrezioni). Anche gli
+          incantesimi attivano l'affinità del loro elemento.
+        </p>
+        <div className="tcg-spell-list">
+          {spellCards.map(c => (
+            <div key={c.id} className="tcg-spell-list-row">
+              <strong>{ELEMENT_ICON[c.element]} {c.name}</strong>
+              {" "}<em>· {c.cost} ◆ · {RARITY_LABEL[c.rarity]}</em>
+              <br />
+              {describeEffect(c)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🌟 Aure (incantamenti)</h2>
+        <p className="tcg-panel-sub">
+          Le Aure si differenziano dagli Incantesimi: invece di un effetto secco, concedono <strong>keyword temporanee</strong>{" "}
+          (come Volo o Cacciatore per 2 turni) o <strong>effetti persistenti sul campione</strong> (come una rigenerazione costante).
+          La carta finisce al cimitero, ma il beneficio resta sulla creatura o sul campione finché non scade o viene Dissolto.
+        </p>
+        <div className="tcg-spell-list">
+          {enchantmentCards.map(c => (
+            <div key={c.id} className="tcg-spell-list-row tcg-spell-list-row--enchant">
+              <strong>{ELEMENT_ICON[c.element]} {c.name}</strong>
+              {" "}<em>· {c.cost} ◆ · {RARITY_LABEL[c.rarity]}</em>
+              <br />
+              {describeEffect(c)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🛡 Contromagie (trappole segrete)</h2>
+        <p className="tcg-panel-sub">
+          Le Contromagie funzionano come <strong>trappole segrete</strong>. Le prepari nel tuo turno (la carta finisce a faccia
+          coperta nella tua zona segreta) e si attivano <strong>automaticamente</strong> quando il loro innesco si verifica
+          durante il turno dell'avversario. Dopo l'attivazione vanno al cimitero. L'avversario vede solo quante trappole hai
+          preparato, non quali. Puoi avere al massimo cinque trappole attive per lato.
+        </p>
+        <div className="tcg-spell-list">
+          {counterCards.map(c => (
+            <div key={c.id} className="tcg-spell-list-row tcg-spell-list-row--counter">
+              <strong>{ELEMENT_ICON[c.element]} {c.name}</strong>
+              {" "}<em>· {c.cost} ◆ · {RARITY_LABEL[c.rarity]}</em>
+              <br />
+              {describeEffect(c)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🃏 Tipi di carta</h2>
+        <ul className="tcg-rules-list">
+          <li><strong>🐲 Creatura</strong> — entra in campo, ha ATK e PF, può attaccare a partire dal turno successivo (o subito con Furia). Resta finché non viene distrutta.</li>
+          <li><strong>📜 Incantesimo</strong> — niente ATK/PF, risolve un effetto e finisce al cimitero. Costa solo mana. Se ha un bersaglio, te lo chiede prima di lanciarlo.</li>
+          <li><strong>🌟 Aura</strong> — come un incantesimo, ma il suo effetto è una keyword temporanea su una creatura o un beneficio persistente sul campione. La carta va al cimitero, l'effetto rimane.</li>
+          <li><strong>🛡 Contromagia</strong> — risposta anti-magica: dissolve buff, spegne Bruciatura, schermo del campione o distruzione assoluta di una creatura.</li>
         </ul>
       </div>
 
@@ -1966,41 +2703,13 @@ function Rules() {
         <ul className="tcg-rules-list">
           <li>Al primo accesso ricevi un <strong>Pacchetto Iniziale gratuito</strong> di 20 carte (scegli l'elemento).</li>
           <li>I forzieri elementali standard costano <strong>80 ✦</strong>. I forzieri di <strong>Luce</strong> e <strong>Tenebra</strong> costano <strong>200 ✦</strong> ma offrono il 5% di Leggendari.</li>
-          <li>Ogni forziere contiene 8 carte. Lo slot premio rolla rarità casuali fino al Leggendario.</li>
-          <li>Nel pannello <strong>Collezione</strong> costruisci e salvi un mazzo da 20 carte tra quelle possedute. Le carte indesiderate possono essere <strong>distrutte</strong> per recuperare ✦ (3/8/20/50 per rarità).</li>
+          <li>Ogni forziere contiene 8 carte, miste tra creature e incantesimi del suo elemento. Lo slot premio rolla rarità casuali fino al Leggendario.</li>
+          <li>Nel pannello <strong>Collezione</strong> costruisci e salvi un mazzo da {DECK_REQUIRED_SIZE} carte tra quelle possedute. Le carte indesiderate possono essere <strong>distrutte</strong> per recuperare ✦ (3/8/20/50 per rarità).</li>
           <li>
             <strong>✨ Carte Brillanti</strong> — ogni carta acquistata in Bottega ha una probabilità del <strong>{(FOIL_RATE * 100).toFixed(1)}%</strong> di essere "brillante",
             una versione olografica rarissima e meravigliosa. Stesse statistiche, ma molto più preziosa: la distruzione restituisce <strong>4× ✦</strong>.
           </li>
         </ul>
-      </div>
-
-      <div className="tcg-panel">
-        <h2 className="tcg-panel-title">🌟 Cerchio degli elementi</h2>
-        <ElementWheelLegend />
-        <p className="tcg-panel-sub">
-          Quando un attacco è super-efficace contro l'elemento bersaglio, infligge <strong>×1.5</strong> danni.
-          Quando è poco efficace, <strong>×0.5</strong>. Luce e Tenebra si combattono solo tra loro (×1.5 reciproco)
-          e sono neutre contro gli altri elementi.
-        </p>
-      </div>
-
-      <div className="tcg-panel">
-        <h2 className="tcg-panel-title">⚡ Le meccaniche</h2>
-        <div className="tcg-mechs-grid">
-          {MECHANICS_ORDER.map(k => {
-            const m = TCG_MECHANICS[k];
-            return (
-              <div key={k} className={`tcg-mech-card tcg-mech-card--${k}`}>
-                <div className="tcg-mech-card-head">
-                  <span className="tcg-mech-card-icon" style={{ background: m.color }}>{m.icon}</span>
-                  <span className="tcg-mech-card-name">{m.name}</span>
-                </div>
-                <div className="tcg-mech-card-rules">{m.rules}</div>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       <div className="tcg-panel">
@@ -2013,9 +2722,9 @@ function Rules() {
               </div>
               <div className="tcg-rarity-card-desc">
                 {r === "common"    && "Le carte di base. Costano poco mana e formano lo zoccolo del mazzo."}
-                {r === "rare"      && "Specialisti affidabili. Una meccanica di rilievo o stat sopra la media."}
-                {r === "epic"      && "Bestie di rispetto. Più meccaniche combinate, costo medio-alto."}
-                {r === "legendary" && "Le creature da copertina. Stat alte, 3 meccaniche, esemplari rarissimi."}
+                {r === "rare"      && "Specialisti affidabili. Una meccanica di rilievo o effetto magico utile."}
+                {r === "epic"      && "Bestie di rispetto e magie potenti. Più meccaniche combinate, costo medio-alto."}
+                {r === "legendary" && "Le creature da copertina. Stat alte, più meccaniche, esemplari rarissimi."}
               </div>
             </div>
           ))}
