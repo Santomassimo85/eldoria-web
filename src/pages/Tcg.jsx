@@ -77,6 +77,10 @@ function TcgGame() {
   const [message, setMessage] = useState(null);         // { text, ok }
   const [viewingCard, setViewingCard] = useState(null); // { cardId, foil } | null
   const viewCard = (cardId, foil = false) => setViewingCard({ cardId, foil });
+  // Make the starter-pack decision once per session. Without this,
+  // the "Salta" button and the snapshot-lag right after a claim
+  // would both bounce the modal back open via the starterOpen dep.
+  const starterCheckedRef = useRef(false);
 
   const showMsg = (text, ok = true) => {
     setMessage({ text, ok });
@@ -91,14 +95,18 @@ function TcgGame() {
     });
   }, [currentUser]);
 
-  /* ── Open starter modal once when the player has never
-       claimed it. We wait for `me` to load to avoid flashing. */
+  /* ── Open starter modal once per session, the first time
+       `me` is loaded and tcgStarterClaimed is still falsy.
+       Guarded by a ref so dismissing (skip OR claim) never
+       re-opens it even if the Firestore snapshot lags. */
   useEffect(() => {
     if (!me) return;
-    if (me.tcgStarterClaimed) return;
-    if (starterOpen) return;
-    setStarterOpen(true);
-  }, [me, starterOpen]);
+    if (starterCheckedRef.current) return;
+    starterCheckedRef.current = true;
+    if (!me.tcgStarterClaimed) {
+      setStarterOpen(true);
+    }
+  }, [me]);
 
   /* ── Stream all TCG matches ───────────────────────────── */
   useEffect(() => {
@@ -144,6 +152,9 @@ function TcgGame() {
     }
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), patch);
+      // Optimistic local update so the modal can never re-trigger
+      // off a stale `me` snapshot (race with the onSnapshot listener).
+      setMe(prev => prev ? { ...prev, tcgStarterClaimed: true, tcgStarterElement: element } : prev);
       setPackReveal({
         packDef: { ...PACK_DEFS[element], name: "Pacchetto Iniziale", size: drawn.length },
         cards: drawn,
