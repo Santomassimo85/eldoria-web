@@ -1183,11 +1183,15 @@ section.tcg-page,
   inset: 0;
   z-index: 9999;
   background: rgba(20, 14, 4, 0.78);
+  /* Top-anchor the modal: padding-top reserves space for the fixed
+     navbar, and `margin: auto 0` on .tcg-modal vertically centers
+     small modals while letting tall ones sit at the top + scroll. */
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: calc(var(--navbar-h, 0) + 16px) 16px 16px;
+  padding: calc(var(--navbar-h) + 20px) 16px 40px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   animation: tcg-fade .18s ease-out;
 }
 @keyframes tcg-fade {
@@ -1197,6 +1201,8 @@ section.tcg-page,
 .tcg-modal {
   position: relative;
   width: min(720px, 100%);
+  /* Auto vertical centering when there is room, top-anchored otherwise. */
+  margin: auto 0;
   background: var(--tcg-card);
   border: 5px solid var(--tcg-ink);
   padding: 24px 22px;
@@ -1355,11 +1361,18 @@ section.tcg-page,
 }
 .tcg-reveal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+  /* Match the 180px width of .tcg-card--md so revealed cards never
+     overlap into each other on narrow viewports. */
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
   justify-items: center;
   margin-bottom: 16px;
   min-height: 200px;
+}
+@media (max-width: 480px) {
+  .tcg-reveal-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
 }
 .tcg-reveal-card {
   animation: tcg-reveal-pop .4s cubic-bezier(.34,1.56,.64,1);
