@@ -1548,6 +1548,89 @@
 }
 
 /* ============================================================
+   ENLARGE-PET-CARD — roster avatar btn + picker corner 🔍 chip
+   ============================================================ */
+.pa-pet-mini-avatar-btn {
+  position: relative;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  transition: transform 0.12s;
+}
+.pa-pet-mini-avatar-btn:hover { transform: scale(1.06); }
+.pa-pet-mini-avatar-btn:focus-visible {
+  outline: 3px solid var(--pa-amber, #fbbf24);
+  outline-offset: 2px;
+}
+.pa-pet-mini-zoom {
+  position: absolute;
+  bottom: 0;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  background: var(--pa-amber, #fbbf24);
+  border: 2px solid var(--pa-ink, #1f1f1f);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  box-shadow: 1px 1px 0 0 var(--pa-ink, #1f1f1f);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.15s, transform 0.15s;
+  pointer-events: none;
+}
+.pa-pet-mini-avatar-btn:hover .pa-pet-mini-zoom,
+.pa-pet-mini-avatar-btn:focus-visible .pa-pet-mini-zoom {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Picker wrap — needed because we can't nest buttons inside the
+   selectable card. The wrap anchors the 🔍 chip via position:relative;
+   the inner .pa-picker-card keeps its existing look. */
+.pa-picker-card-wrap {
+  display: block;
+  position: relative;
+}
+.pa-picker-card-wrap .pa-picker-card {
+  width: 100%;
+}
+.pa-picker-zoom {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pa-card, #fff);
+  border: 2px solid var(--pa-ink, #1f1f1f);
+  border-radius: 0;
+  font-size: 0.78rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 var(--pa-ink, #1f1f1f);
+  transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+}
+.pa-picker-zoom:hover {
+  background: var(--pa-amber, #fbbf24);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 var(--pa-ink, #1f1f1f);
+}
+.pa-picker-zoom:focus-visible {
+  outline: 2px solid var(--pa-amber, #fbbf24);
+  outline-offset: 2px;
+}
+
+/* ============================================================
    PIXEL BURST — 8-bit/Game-Boy style hit FX, retro & vivid
    ============================================================ */
 .pa-pixel-burst {

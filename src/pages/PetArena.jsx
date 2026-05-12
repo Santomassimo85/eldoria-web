@@ -19,6 +19,7 @@ import {
   snapshotUnlockedMoves, firstAliveSwitch, pickAutoAction,
 } from "../utils/petBattleLive";
 import PetAvatar from "../components/PetAvatar";
+import PetCardDetail from "../components/PetCardDetail";
 import "./PetArena.css";
 
 export default function PetArena({ embedded = false } = {}) {
@@ -30,6 +31,7 @@ export default function PetArena({ embedded = false } = {}) {
   const [picker, setPicker] = useState(null); // { mode: "create" | "accept", battleId? }
   const [activeBattleId, setActiveBattleId] = useState(null);
   const [myPetsOpen, setMyPetsOpen] = useState(true);
+  const [enlargedPet, setEnlargedPet] = useState(null); // shared by roster + picker
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -239,7 +241,16 @@ export default function PetArena({ embedded = false } = {}) {
                       >
                         ★ {RARITY_LABEL[sp.rarity]}
                       </div>
-                      <PetAvatar species={sp} className="pa-pet-mini-icon" />
+                      <button
+                        type="button"
+                        className="pa-pet-mini-avatar-btn"
+                        onClick={() => setEnlargedPet(pet)}
+                        title={`Apri la scheda di ${pet.nickname}`}
+                        aria-label={`Apri la scheda di ${pet.nickname}`}
+                      >
+                        <PetAvatar species={sp} className="pa-pet-mini-icon" />
+                        <span className="pa-pet-mini-zoom" aria-hidden="true">🔍</span>
+                      </button>
                       <div className="pa-pet-mini-name">{pet.nickname}</div>
                       <div className="pa-pet-mini-meta">Lv {lvl} · {TYPE_ICON[sp.type]}</div>
                       <div className="pa-pet-mini-bar">
@@ -353,11 +364,17 @@ export default function PetArena({ embedded = false } = {}) {
               if (battle) acceptChallenge(battle, team);
             }
           }}
+          onEnlarge={setEnlargedPet}
           mode={picker.mode}
           requireSize={picker.mode === "accept"
             ? openMatches.find(b => b.id === picker.battleId)?.teams?.challenger?.length
             : null}
         />
+      )}
+
+      {/* Enlarged pet card — shared TCG-style detail overlay */}
+      {enlargedPet && (
+        <PetCardDetail pet={enlargedPet} onClose={() => setEnlargedPet(null)} />
       )}
     </Wrapper>
   );
@@ -533,7 +550,7 @@ function StatsLegend() {
    TEAM PICKER MODAL — pick 1 to MAX_TEAM_SIZE pets.
    When accepting, lock the team size to match the challenger.
    ============================================================ */
-function TeamPickerModal({ pets, onClose, onPick, mode, requireSize }) {
+function TeamPickerModal({ pets, onClose, onPick, mode, requireSize, onEnlarge }) {
   const [selected, setSelected] = useState([]); // array of pet.id
 
   const toggle = (petId) => {
@@ -573,11 +590,24 @@ function TeamPickerModal({ pets, onClose, onPick, mode, requireSize }) {
                 const isSel = selected.includes(pet.id);
                 const order = isSel ? selected.indexOf(pet.id) + 1 : null;
                 return (
-                  <button
-                    key={pet.id}
-                    className={`pa-picker-card pa-picker-card--${sp?.type} ${isSel ? "pa-picker-card--selected" : ""}`}
-                    onClick={() => toggle(pet.id)}
-                  >
+                  <div key={pet.id} className="pa-picker-card-wrap">
+                    {onEnlarge && (
+                      <button
+                        type="button"
+                        className="pa-picker-zoom"
+                        onClick={() => onEnlarge(pet)}
+                        title={`Apri la scheda di ${pet.nickname}`}
+                        aria-label={`Apri la scheda di ${pet.nickname}`}
+                      >
+                        🔍
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`pa-picker-card pa-picker-card--${sp?.type} ${isSel ? "pa-picker-card--selected" : ""}`}
+                      onClick={() => toggle(pet.id)}
+                      aria-pressed={isSel}
+                    >
                     {order && <span className="pa-team-order">#{order}</span>}
                     <PetAvatar species={sp} className="pa-picker-icon" />
                     <div className="pa-picker-name">{pet.nickname}</div>
@@ -596,7 +626,8 @@ function TeamPickerModal({ pets, onClose, onPick, mode, requireSize }) {
                         </span>
                       ))}
                     </div>
-                  </button>
+                    </button>
+                  </div>
                 );
               })}
             </div>
