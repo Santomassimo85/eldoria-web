@@ -21,11 +21,10 @@ import {
 } from "../utils/tcg";
 import "./Tcg.css";
 
-/* The page is currently locked to the master account while the
-   game gets its final polish. Set TCG_LOCKED = false (or whitelist
-   more emails in TCG_ALLOWED_EMAILS) when ready to ship to players.
-   Exported so App.jsx's nav can hide the menu entry while locked. */
-export const TCG_LOCKED = true;
+/* Unlocked for all logged-in players. To re-gate the page, flip
+   this to true (and edit TCG_ALLOWED_EMAILS below to whitelist
+   specific testers). Exported so App.jsx's nav stays in sync. */
+export const TCG_LOCKED = false;
 export const TCG_ALLOWED_EMAILS = new Set([
   "santomassimo85@gmail.com",
 ]);

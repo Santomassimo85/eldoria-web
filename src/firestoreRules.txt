@@ -114,6 +114,25 @@ service cloud.firestore {
       );
     }
 
+    // --- TCG (gioco di carte 1v1) ---
+    // Stessa intenzione di pet_battles: lettura libera per chi è loggato,
+    // creazione consentita allo sfidante (o al Master per pratica),
+    // update aperto durante la partita, delete riservato a sfidante/Master.
+    match /tcg_matches/{matchId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && (
+        isMaster() ||
+        (request.resource.data.challenger != null
+          && request.resource.data.challenger.uid == request.auth.uid)
+      );
+      allow update: if isLoggedIn();
+      allow delete: if isLoggedIn() && (
+        isMaster() ||
+        (resource.data.challenger != null
+          && resource.data.challenger.uid == request.auth.uid)
+      );
+    }
+
     // --- FEEDBACK GIOCATORI ---
     // Una sola entry per (giocatore, funzionalità): doc id deterministico
     // `${uid}_${featureKey}` enforced via regola, così un utente non può

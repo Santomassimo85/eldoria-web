@@ -94,6 +94,17 @@ function getSpellMod(charData) {
   return Math.max(s.int ?? 0, s.wis ?? 0, s.cha ?? 0);
 }
 
+// 5e proficiency bonus by level: 1-4 → +2, 5-8 → +3, 9-12 → +4, 13-16 → +5, 17+ → +6.
+function getProfBonus(charData) {
+  const lvl = Math.max(1, parseInt(charData?.level) || 1);
+  return Math.ceil(lvl / 4) + 1;
+}
+
+// Full spell attack bonus = spell mod + proficiency.
+function getSpellAttackBonus(charData) {
+  return getSpellMod(charData) + getProfBonus(charData);
+}
+
 export default function WorldBoss() {
   const { currentUser } = useAuth();
   const [charData, setCharData] = useState(null);
@@ -650,14 +661,31 @@ export default function WorldBoss() {
       d20 = Math.floor(Math.random() * 20) + 1;
       rollLabel = `d20(${d20})`;
     }
-    const bonusToHit = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+    const parsedBonus = parseInt(action.bonus?.replace(/[^0-9+-]/g, "")) || 0;
+    // Spell hit-roll fallback: when the action is a cantrip or "Livello X"
+    // spell, prefer the proper spell attack bonus (spellMod + prof) if it
+    // beats the stored bonus. This fixes level 1+ spells whose Foundry sync
+    // didn't compute a bonus (cantrips usually had it baked in correctly).
+    const isSpell = action.category === "Trucchetto"
+      || (action.category?.toLowerCase().includes("livello"));
+    let bonusToHit = parsedBonus;
+    let bonusLabel = `bonus(${parsedBonus})`;
+    if (isSpell) {
+      const spellMod = getSpellMod(charData);
+      const profBonus = getProfBonus(charData);
+      const spellAtk = spellMod + profBonus;
+      if (spellAtk > parsedBonus) {
+        bonusToHit = spellAtk;
+        bonusLabel = `magia(+${spellMod}) + comp(+${profBonus}) = +${spellAtk}`;
+      }
+    }
     const hitTotal = d20 + bonusToHit;
     const isCritical = d20 === 20;
     let actionData = {
       type: "action", senderName: charData?.name || "Eroe",
       actionName: action.name + (isCritical ? " (CRITICO!)" : ""),
       timestamp: serverTimestamp(), uid: currentUser.uid, category: action.category,
-      hitRoll: `🎲 ${rollLabel} + bonus(${bonusToHit}) = ${hitTotal} `,
+      hitRoll: `🎲 ${rollLabel} + ${bonusLabel} = ${hitTotal} `,
     };
     if (isAttack) {
       const effectKey = pickEffectForAction(action);
