@@ -1571,3 +1571,55 @@ export function resolveDeckForMatch(deck, collection, foils = {}) {
   if (built) return built;
   return buildRandomDeck();
 }
+
+/* Build a 20-card deck biased toward a chosen element, mechanic and/or
+   card type. The user's owned cards (collection + foils) form the pool;
+   foil copies count alongside normals (the engine treats them the same
+   at match time). Options:
+     element  — "fire" / "water" / "earth" / "air" / "light" / "dark"
+     mechanic — any key in TCG_MECHANICS (creature keyword)
+     type     — "creature" / "spell" / "enchantment" / "counter"
+     strict   — when true, ONLY cards matching all filters are used. If
+                fewer than 20 owned cards match, returns null. When
+                false, matching cards fill the deck FIRST, then the
+                remaining slots are filled from the rest of the pool.
+   Returns a 20-element cardId array, or null when the filters can't be
+   satisfied (strict mode) or the collection has < 20 cards total. */
+export function buildFilteredDeck(collection, foils = {}, opts = {}) {
+  const { element, mechanic, type, strict = false } = opts || {};
+
+  // Merge owned counts (foils are interchangeable with normals at match time).
+  const owned = {};
+  for (const [id, n] of Object.entries(collection || {})) {
+    if (TCG_CARDS[id]) owned[id] = (owned[id] || 0) + n;
+  }
+  for (const [id, n] of Object.entries(foils || {})) {
+    if (TCG_CARDS[id]) owned[id] = (owned[id] || 0) + n;
+  }
+
+  const matches = (c) => {
+    if (element  && c.element !== element) return false;
+    if (mechanic && !((c.mechanics || []).includes(mechanic))) return false;
+    if (type     && getCardType(c) !== type) return false;
+    return true;
+  };
+
+  // Two buckets so non-strict mode can prioritize matching cards first.
+  const matchingPool = [];
+  const restPool     = [];
+  for (const [id, n] of Object.entries(owned)) {
+    const c = TCG_CARDS[id];
+    if (!c) continue;
+    const m = matches(c);
+    for (let i = 0; i < n; i++) (m ? matchingPool : restPool).push(id);
+  }
+
+  if (strict) {
+    if (matchingPool.length < DECK_SIZE) return null;
+    return shuffle(matchingPool).slice(0, DECK_SIZE);
+  }
+  // Misto: shuffle matching first, then fill with the rest.
+  const combined = [...shuffle(matchingPool), ...shuffle(restPool)];
+  if (combined.length < DECK_SIZE) return null;
+  return combined.slice(0, DECK_SIZE);
+}

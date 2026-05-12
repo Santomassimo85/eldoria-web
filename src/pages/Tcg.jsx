@@ -18,7 +18,7 @@ import {
   initMatchState, playCard, attackWith, endTurn, forfeit,
   canPlayCard, canAttack, legalAttackTargets, legalSpellTargets, predictCombat, oppSide,
   STARTING_HP, DECK_REQUIRED_SIZE,
-  isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection,
+  isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection, buildFilteredDeck,
   resolveDeckForMatch,
 } from "../utils/tcg";
 import { playSfx, setSfxMuted, isSfxMuted, primeSfx } from "../utils/tcgSfx";
@@ -972,6 +972,9 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
   // Local editing state — initialized from saved deck
   const [editingDeck, setEditingDeck] = useState(savedDeck);
   const [filter, setFilter] = useState("all"); // all | element | rarity | inDeck | notInDeck
+  // Filtered auto-build dropdown state
+  const [autoOpts, setAutoOpts] = useState({ element: "", mechanic: "", type: "", strict: false });
+  const [autoOpen, setAutoOpen] = useState(false);
   const lastSavedRef = useRef(savedDeck);
 
   // When the saved deck changes externally (e.g. after trash trimmed it),
@@ -1060,6 +1063,42 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
     setEditingDeck(built);
   };
 
+  const autoFillFiltered = () => {
+    // Strip empty-string options so the helper treats them as "any".
+    const o = { strict: autoOpts.strict };
+    if (autoOpts.element)  o.element  = autoOpts.element;
+    if (autoOpts.mechanic) o.mechanic = autoOpts.mechanic;
+    if (autoOpts.type)     o.type     = autoOpts.type;
+    const built = buildFilteredDeck(collection_, foils_, o);
+    if (!built) {
+      if (o.strict) {
+        alert("Non hai abbastanza carte che corrispondono ai filtri scelti. Disattiva 'Solo carte filtrate' o cambia filtro.");
+      } else {
+        alert("Servono almeno 20 carte nella collezione per generare un mazzo.");
+      }
+      return;
+    }
+    setEditingDeck(built);
+  };
+
+  // Reactively count how many owned cards match the current filter, so the
+  // user knows whether strict mode is even feasible before clicking.
+  const filteredMatchCount = useMemo(() => {
+    let n = 0;
+    const allCounts = {};
+    for (const [id, k] of Object.entries(collection_)) allCounts[id] = (allCounts[id] || 0) + k;
+    for (const [id, k] of Object.entries(foils_))      allCounts[id] = (allCounts[id] || 0) + k;
+    for (const [id, k] of Object.entries(allCounts)) {
+      const c = TCG_CARDS[id];
+      if (!c) continue;
+      if (autoOpts.element  && c.element !== autoOpts.element)  continue;
+      if (autoOpts.mechanic && !(c.mechanics || []).includes(autoOpts.mechanic)) continue;
+      if (autoOpts.type     && getCardType(c) !== autoOpts.type) continue;
+      n += k;
+    }
+    return n;
+  }, [collection_, foils_, autoOpts.element, autoOpts.mechanic, autoOpts.type]);
+
   const resetToSaved = () => {
     setEditingDeck(savedDeck);
   };
@@ -1122,6 +1161,13 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
 
         <div className="tcg-deck-actions">
           <button className="tcg-btn" onClick={autoFill}>🎲 Auto-genera</button>
+          <button
+            className={`tcg-btn ${autoOpen ? "tcg-btn--on" : ""}`}
+            onClick={() => setAutoOpen(o => !o)}
+            title="Genera un mazzo con preferenze su elemento/abilità/tipo"
+          >
+            🎯 Auto-genera con filtro {autoOpen ? "▴" : "▾"}
+          </button>
           <button className="tcg-btn" onClick={clearDeck} disabled={editingDeck.length === 0}>🗑 Svuota</button>
           <button className="tcg-btn" onClick={resetToSaved} disabled={!dirty}>↺ Annulla modifiche</button>
           <button
@@ -1132,6 +1178,83 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
             💾 Salva mazzo
           </button>
         </div>
+
+        {autoOpen && (
+          <div className="tcg-autobuild">
+            <p className="tcg-autobuild-hint">
+              Genera un mazzo con preferenze: il builder pesca prima le carte che corrispondono ai filtri,
+              poi riempie i posti rimanenti con altre carte della tua collezione. Spunta <strong>Solo carte filtrate</strong>{" "}
+              per un mazzo "puro" (richiede 20 carte che corrispondano).
+            </p>
+            <div className="tcg-autobuild-form">
+              <label className="tcg-autobuild-field">
+                <span className="tcg-autobuild-label">Elemento</span>
+                <select
+                  className="tcg-autobuild-select"
+                  value={autoOpts.element}
+                  onChange={e => setAutoOpts(o => ({ ...o, element: e.target.value }))}
+                >
+                  <option value="">Qualsiasi</option>
+                  {Object.entries(ELEMENT_LABEL).map(([k, label]) => (
+                    <option key={k} value={k}>{ELEMENT_ICON[k]} {label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="tcg-autobuild-field">
+                <span className="tcg-autobuild-label">Abilità</span>
+                <select
+                  className="tcg-autobuild-select"
+                  value={autoOpts.mechanic}
+                  onChange={e => setAutoOpts(o => ({ ...o, mechanic: e.target.value }))}
+                  title="Solo creature con questa keyword stampata"
+                >
+                  <option value="">Qualsiasi</option>
+                  {MECHANICS_ORDER.map(k => {
+                    const m = TCG_MECHANICS[k];
+                    return <option key={k} value={k}>{m.icon} {m.name}{m.hasValue ? " X" : ""}</option>;
+                  })}
+                </select>
+              </label>
+              <label className="tcg-autobuild-field">
+                <span className="tcg-autobuild-label">Tipo</span>
+                <select
+                  className="tcg-autobuild-select"
+                  value={autoOpts.type}
+                  onChange={e => setAutoOpts(o => ({ ...o, type: e.target.value }))}
+                >
+                  <option value="">Qualsiasi</option>
+                  <option value="creature">🐲 Creatura</option>
+                  <option value="spell">📜 Incantesimo</option>
+                  <option value="enchantment">🌟 Aura</option>
+                  <option value="counter">🛡 Contromagia</option>
+                </select>
+              </label>
+              <label className="tcg-autobuild-field tcg-autobuild-field--check">
+                <input
+                  type="checkbox"
+                  checked={autoOpts.strict}
+                  onChange={e => setAutoOpts(o => ({ ...o, strict: e.target.checked }))}
+                />
+                <span>Solo carte filtrate (mazzo puro)</span>
+              </label>
+            </div>
+            <div className="tcg-autobuild-actions">
+              <span className="tcg-autobuild-count">
+                {filteredMatchCount} carte corrispondono
+                {autoOpts.strict && filteredMatchCount < DECK_REQUIRED_SIZE && (
+                  <span className="tcg-autobuild-warn"> · servono almeno {DECK_REQUIRED_SIZE} per la modalità pura</span>
+                )}
+              </span>
+              <button
+                className="tcg-btn tcg-btn--hero"
+                onClick={autoFillFiltered}
+                disabled={autoOpts.strict && filteredMatchCount < DECK_REQUIRED_SIZE}
+              >
+                🎯 Genera mazzo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* COLLECTION FILTER + GRID */}
@@ -2568,7 +2691,7 @@ function Rules() {
         <ul className="tcg-rules-list">
           <li>Ogni giocatore parte con <strong>{STARTING_HP} PF</strong>, una mano di 4 carte e un mazzo di {DECK_REQUIRED_SIZE}.</li>
           <li>A ogni turno il giocatore attivo guadagna <strong>+1 di Mana massimo</strong> (fino a 10) e ricarica tutto il mana, poi pesca 1 carta.</li>
-          <li>Le carte sono di due tipi: <strong>🐲 Creature</strong> (vanno in campo, attaccano e difendono) e <strong>📜 Incantesimi</strong> (effetto singolo, poi finiscono al cimitero).</li>
+          <li>Le carte sono di quattro tipi: <strong>🐲 Creature</strong> (vanno in campo, attaccano e difendono), <strong>📜 Incantesimi</strong> (effetto singolo, poi finiscono al cimitero), <strong>🌟 Aure</strong> (concedono keyword temporanee o effetti persistenti) e <strong>🛡 Contromagie</strong> (trappole segrete che si attivano nel turno dell'avversario).</li>
           <li>Le creature evocate hanno <em>sonno d'evocazione</em> e non possono attaccare lo stesso turno — a meno che non abbiano <strong>Furia</strong> o vengano risvegliate dall'affinità <strong>Brezza</strong>.</li>
           <li>In combattimento, una creatura attacca una creatura nemica (o il campione) e ognuna infligge i propri danni; le meccaniche (Affondo, Avanguardia, Letale…) cambiano l'ordine e la regola.</li>
           <li><strong>🛡 Difesa del campione</strong>: puoi colpire il campione avversario solo se la sua difesa è sgombra. Una creatura a terra blocca tutte le altre creature a terra; una creatura con <strong>Volo</strong> blocca solo altri volatili. <strong>Volo</strong> sorvola i difensori a terra; <strong>Cacciatore</strong> permette invece di colpire i volatili dal suolo, ma non garantisce il sorvolo della difesa.</li>
@@ -2607,6 +2730,51 @@ function Rules() {
           Quando è poco efficace, <strong>×0.5</strong>. Luce e Tenebra si combattono solo tra loro (×1.5 reciproco)
           e sono neutre contro gli altri elementi.
         </p>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🎯 Leggere la partita</h2>
+        <p className="tcg-panel-sub">
+          Tutti i segnali visivi che vedi durante una sfida. Una volta che li riconosci, capire chi vince ogni scambio diventa
+          immediato.
+        </p>
+        <ul className="tcg-rules-list">
+          <li>
+            <strong>Stat sulla carta</strong> — il riquadro in basso a destra è diviso in due metà: a sinistra l'<span style={{ background:"#dc2626",color:"#fff",padding:"1px 7px",fontWeight:900 }}>ATK</span> in rosso, a destra i <span style={{ background:"#15803d",color:"#fff",padding:"1px 7px",fontWeight:900 }}>PF</span> in verde. Quando la creatura è ferita la metà PF diventa <span style={{ background:"#ea580c",color:"#fff",padding:"1px 7px",fontWeight:900 }}>arancione</span> con un piccolo pulse, e accanto compare il massimo (es. <code>4/8</code>).
+          </li>
+          <li>
+            <strong>Numeri volanti</strong> — ogni colpo o cura fa salire un numero sopra la carta o sul campione: <span style={{ color:"#dc2626", fontWeight:900 }}>−5</span> in rosso quando si subiscono danni, <span style={{ color:"#15803d", fontWeight:900 }}>+3</span> in verde quando si recuperano PF. I numeri si susseguono uno alla volta, così ogni hit è leggibile.
+          </li>
+          <li>
+            <strong>Preview di combattimento</strong> — quando selezioni un attaccante, sopra ogni bersaglio legale compare una pillola colorata con un'icona-verdetto e i danni in gioco:
+            <ul style={{ marginTop: 6, listStyle: "none", paddingLeft: 0 }}>
+              <li>💥 <strong>LO UCCIDI</strong> — verde: lo uccidi, tu sopravvivi</li>
+              <li>💔 <strong>MUORI</strong> — rosso: muori in rappresaglia</li>
+              <li>⚔ <strong>DOPPIA MORTE</strong> — ambra: muoiono entrambi</li>
+              <li>🩸 <strong>COLPISCI</strong> — blu: nessuno muore, entrambi si feriscono</li>
+              <li>👻 <strong>NON UCCIDE</strong> — viola: Rinato salva il bersaglio a 1 PF</li>
+            </ul>
+            Il primo numero nella pillola è il danno inflitto, il secondo (dopo <code>/</code>) la rappresaglia subita. Sul pulsante "Colpisci il campione" vedi anche i PF prima → dopo dell'avversario.
+          </li>
+          <li>
+            <strong>Ingrandire una carta</strong> — durante la partita puoi sempre vedere descrizioni complete delle abilità tenendo premuto sulla carta, facendo clic destro, oppure cliccando l'icona <strong>🔍</strong> in alto a sinistra. Funziona sulle carte in mano e sulle creature di entrambi gli schieramenti.
+          </li>
+          <li>
+            <strong>Indicatori sul campione</strong> — nella barra del nome:
+            <span title="Bruciatura" style={{ marginLeft: 6, background:"#1f1f1f", color:"#fde047", border:"2px solid #dc2626", padding:"1px 6px", fontWeight:900, fontSize:"0.8rem", textTransform:"uppercase" }}>🔥 N</span>{" "}
+            turni di Bruciatura residui;
+            <span title="Argine" style={{ marginLeft: 6, background:"#1d4ed8", color:"#fff", border:"2px solid #1e3a8a", padding:"1px 6px", fontWeight:900, fontSize:"0.8rem", textTransform:"uppercase" }}>🛡 +N</span>{" "}
+            PF di Argine ancora da assorbire;
+            <span title="Trappole" style={{ marginLeft: 6, background:"#1f1f1f", color:"#fef9c3", border:"2px solid #b45309", padding:"1px 6px", fontWeight:900, fontSize:"0.8rem", textTransform:"uppercase" }}>🛡 N TRAPPOLE</span>{" "}
+            Contromagie segrete in attesa (passa il cursore sopra la tua per leggerle).
+          </li>
+          <li>
+            <strong>Cristalli di Mana</strong> in fondo alla barra di ogni giocatore — i pieni sono il mana disponibile, gli spenti il massimo. A ogni turno cresce di +1 fino a 10.
+          </li>
+          <li>
+            <strong>Registro</strong> in basso a destra — riporta ogni azione con un'icona iniziale. Ogni linea di danno mostra anche la matematica fra parentesi quadre: <code>[3 × ×1.5]</code> = base ATK × moltiplicatore elementale.
+          </li>
+        </ul>
       </div>
 
       <div className="tcg-panel">
@@ -2691,11 +2859,14 @@ function Rules() {
       <div className="tcg-panel">
         <h2 className="tcg-panel-title">🃏 Tipi di carta</h2>
         <ul className="tcg-rules-list">
-          <li><strong>🐲 Creatura</strong> — entra in campo, ha ATK e PF, può attaccare a partire dal turno successivo (o subito con Furia). Resta finché non viene distrutta.</li>
+          <li><strong>🐲 Creatura</strong> — entra in campo, ha ATK e PF, può attaccare a partire dal turno successivo (o subito con Furia). Resta finché non viene distrutta. Difende il campione dalla sua corsia (terra/cielo).</li>
           <li><strong>📜 Incantesimo</strong> — niente ATK/PF, risolve un effetto e finisce al cimitero. Costa solo mana. Se ha un bersaglio, te lo chiede prima di lanciarlo.</li>
           <li><strong>🌟 Aura</strong> — come un incantesimo, ma il suo effetto è una keyword temporanea su una creatura o un beneficio persistente sul campione. La carta va al cimitero, l'effetto rimane.</li>
-          <li><strong>🛡 Contromagia</strong> — risposta anti-magica: dissolve buff, spegne Bruciatura, schermo del campione o distruzione assoluta di una creatura.</li>
+          <li><strong>🛡 Contromagia</strong> — trappola segreta: la prepari sul tuo turno e si attiva automaticamente quando il suo innesco scatta nel turno dell'avversario (subisci Bruciatura, l'avversario lancia magia, il campione sta per essere colpito, o l'avversario evoca una creatura).</li>
         </ul>
+        <p className="tcg-panel-sub" style={{ marginTop: 12 }}>
+          <strong>💡 Suggerimento</strong> — tieni premuto su una carta (o clic destro, o tocca <strong>🔍</strong>) per vedere descrizioni complete delle abilità in qualsiasi momento, anche durante la partita.
+        </p>
       </div>
 
       <div className="tcg-panel">

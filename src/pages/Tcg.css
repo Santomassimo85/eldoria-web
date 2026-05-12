@@ -3262,6 +3262,108 @@ section.tcg-page,
 .tcg-filter--type-counter.tcg-filter--on     { background: #1d4ed8; color: #fff; }
 
 /* ════════════════════════════════════════════════════════════
+   ── FILTERED AUTO-BUILD FORM ───────────────────────────────
+   Collapsible panel under the Collection deck-actions row.
+   Three dropdowns (element/mechanic/type) + strict checkbox
+   + live match count. Same chunky brutalist DNA as the rest
+   of the TCG page so it doesn't read as a separate dialog.
+   ════════════════════════════════════════════════════════════ */
+.tcg-autobuild {
+  margin-top: 12px;
+  padding: 14px 16px 16px;
+  background: #fef9c3;
+  border: 3px solid #1f1f1f;
+  border-left-width: 7px;
+  box-shadow: 4px 4px 0 0 #1f1f1f;
+}
+.tcg-autobuild-hint {
+  margin: 0 0 12px;
+  font-size: 0.86rem;
+  color: #525252;
+  line-height: 1.45;
+}
+.tcg-autobuild-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.tcg-autobuild-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tcg-autobuild-field--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tcg-autobuild-label {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.72rem;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #1f1f1f;
+}
+.tcg-autobuild-select {
+  background: #fff;
+  color: #1f1f1f;
+  border: 3px solid #1f1f1f;
+  padding: 6px 8px;
+  font-family: var(--font-title, serif);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 #1f1f1f;
+}
+.tcg-autobuild-select:focus {
+  outline: none;
+  border-color: #b91c1c;
+  box-shadow: 2px 2px 0 0 #b91c1c;
+}
+.tcg-autobuild-field--check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #b91c1c;
+}
+.tcg-autobuild-field--check span {
+  font-family: var(--font-title, serif);
+  font-weight: 700;
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+  color: #1f1f1f;
+}
+.tcg-autobuild-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px dashed rgba(31, 31, 31, 0.35);
+  flex-wrap: wrap;
+}
+.tcg-autobuild-count {
+  font-family: var(--font-title, serif);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #525252;
+}
+.tcg-autobuild-warn {
+  color: #b91c1c;
+  font-weight: 900;
+}
+.tcg-btn.tcg-btn--on {
+  background: var(--tcg-amber);
+  color: var(--tcg-ink);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 var(--tcg-ink);
+}
+
+/* ════════════════════════════════════════════════════════════
    ── COMBAT PREVIEW BADGE ──────────────────────────────────
    Two tiers: a big VERDICT pill (kill / trade / death / hit /
    revive) colored by outcome, and a small damage line below
