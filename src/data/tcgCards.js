@@ -479,3 +479,152 @@ export const WIN_COMPLIMENTS = [
 export function randomCompliment() {
   return WIN_COMPLIMENTS[Math.floor(Math.random() * WIN_COMPLIMENTS.length)];
 }
+
+/* ============================================================
+   SHOP — element packs.
+   Each pack contains 8 cards. Standard packs (fire/water/earth/
+   air) cost 80 ✦ and have a 0.5% legendary chance on their
+   premium slot. Light/Dark packs cost 200 ✦ and have a 5%
+   legendary chance — exotic and rare by design.
+   ------------------------------------------------------------
+   slots: each entry is either a rarity string ("common"/"rare")
+   for guaranteed slots, or one of the dynamic slot keys
+   ("premium" / "premium-elite") which roll via premiumOdds.
+   elementBias: 0-1 chance the card matches the pack's element;
+   on a miss the slot rolls from the wider pool (still
+   honoring rarity).
+   ============================================================ */
+
+export const PACK_DEFS = {
+  fire: {
+    key: "fire", element: "fire",
+    name: "Forziere del Fuoco", icon: "🔥",
+    cost: 80, size: 8,
+    description:
+      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte di Fuoco.",
+    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
+    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    elementBias: 0.75,
+  },
+  water: {
+    key: "water", element: "water",
+    name: "Forziere dell'Acqua", icon: "💧",
+    cost: 80, size: 8,
+    description:
+      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte d'Acqua.",
+    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
+    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    elementBias: 0.75,
+  },
+  earth: {
+    key: "earth", element: "earth",
+    name: "Forziere della Terra", icon: "🌿",
+    cost: 80, size: 8,
+    description:
+      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte di Terra.",
+    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
+    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    elementBias: 0.75,
+  },
+  air: {
+    key: "air", element: "air",
+    name: "Forziere dell'Aria", icon: "💨",
+    cost: 80, size: 8,
+    description:
+      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte d'Aria.",
+    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
+    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    elementBias: 0.75,
+  },
+  light: {
+    key: "light", element: "light",
+    name: "Reliquiario di Luce", icon: "✨",
+    cost: 200, size: 8,
+    description:
+      "Esotico e raro. 4 comuni · 3 rare · 1 slot d'élite · 5% di un Leggendario.",
+    slots: ["common", "common", "common", "common", "rare", "rare", "rare", "premium-elite"],
+    premiumOdds: { rare: 50, epic: 45, legendary: 5 },
+    elementBias: 1.0,
+  },
+  dark: {
+    key: "dark", element: "dark",
+    name: "Sigillo di Tenebra", icon: "🌑",
+    cost: 200, size: 8,
+    description:
+      "Esotico e raro. 4 comuni · 3 rare · 1 slot d'élite · 5% di un Leggendario.",
+    slots: ["common", "common", "common", "common", "rare", "rare", "rare", "premium-elite"],
+    premiumOdds: { rare: 50, epic: 45, legendary: 5 },
+    elementBias: 1.0,
+  },
+};
+
+export const PACK_ORDER = ["fire", "water", "earth", "air", "light", "dark"];
+
+/* ── Rarity weighted roll ─────────────────────────────────── */
+function rollRarity(odds) {
+  const entries = Object.entries(odds);
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  let roll = Math.random() * total;
+  for (const [r, w] of entries) {
+    if (roll < w) return r;
+    roll -= w;
+  }
+  return entries[entries.length - 1][0];
+}
+
+/* ── Pick a single card honoring rarity + element bias ──── */
+function pickCardId(packElement, rarity, elementBias) {
+  const ofRarityAndEl = TCG_CARD_LIST.filter(
+    c => c.rarity === rarity && c.element === packElement
+  );
+  const ofRarity = TCG_CARD_LIST.filter(c => c.rarity === rarity);
+  const useEl = Math.random() < elementBias && ofRarityAndEl.length > 0;
+  const pool = useEl ? ofRarityAndEl : (ofRarity.length > 0 ? ofRarity : TCG_CARD_LIST);
+  return pool[Math.floor(Math.random() * pool.length)].id;
+}
+
+/* ── Open a pack: returns an array of cardIds ────────────── */
+export function openPack(packKey) {
+  const def = PACK_DEFS[packKey];
+  if (!def) return [];
+  const out = [];
+  for (const slot of def.slots) {
+    let rarity;
+    if (slot === "premium" || slot === "premium-elite") {
+      rarity = rollRarity(def.premiumOdds);
+    } else {
+      rarity = slot;
+    }
+    out.push(pickCardId(def.element, rarity, def.elementBias));
+  }
+  return out;
+}
+
+/* ── Free starter pack — 20 cards, picked once per player ─
+   Distribution: 14 commons, 5 rares, 1 epic — heavily biased
+   toward the chosen element. Gives the player exactly enough
+   cards for a 20-card deck so they can play immediately. */
+export function openStarterPack(element) {
+  if (!PACK_DEFS[element]) return [];
+  const bias = 0.85;
+  const slots = [
+    ...Array(14).fill("common"),
+    ...Array(5).fill("rare"),
+    ...Array(1).fill("epic"),
+  ];
+  return slots.map(r => pickCardId(element, r, bias));
+}
+
+/* ── Trash refunds — selling unwanted cards back for ✦ ─── */
+export const TRASH_REFUND = {
+  common:    3,
+  rare:      8,
+  epic:      20,
+  legendary: 50,
+};
+
+export function trashRefundFor(cardId) {
+  const c = TCG_CARDS[cardId];
+  if (!c) return 0;
+  return TRASH_REFUND[c.rarity] || 0;
+}

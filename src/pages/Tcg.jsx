@@ -2,24 +2,30 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { db } from "../firebase";
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot,
-  query, orderBy, serverTimestamp,
+  query, orderBy, serverTimestamp, increment,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import {
   TCG_CARDS, TCG_CARD_LIST, TCG_MECHANICS, MECHANICS_ORDER,
-  ELEMENT_ICON, ELEMENT_LABEL, ELEMENT_COLOR, RARITY_LABEL, RARITY_COLOR,
+  ELEMENT_ICON, ELEMENT_LABEL, RARITY_LABEL, RARITY_COLOR,
   ELEMENT_CYCLE, LIGHT_DARK, randomCompliment,
+  PACK_DEFS, PACK_ORDER, openPack, openStarterPack,
+  TRASH_REFUND, trashRefundFor,
 } from "../data/tcgCards";
 import {
-  buildRandomDeck, initMatchState, playCard, attackWith, endTurn, forfeit,
-  canPlayCard, canAttack, legalAttackTargets, oppSide, STARTING_HP,
+  initMatchState, playCard, attackWith, endTurn, forfeit,
+  canPlayCard, canAttack, legalAttackTargets, oppSide,
+  STARTING_HP, DECK_REQUIRED_SIZE,
+  isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection,
+  resolveDeckForMatch,
 } from "../utils/tcg";
 import "./Tcg.css";
 
 /* ============================================================
-   TCG — Magic-style D&D 1v1 trading card game.
-   Tabs: Sfide (lobby), Carte (codex), Manuale (rulebook).
-   When in a match, the lobby is replaced by the live board.
+   ELDORIA TCG — Magic-style D&D 1v1 trading card game.
+   Tabs: Sfide · Bottega · Collezione · Carte · Manuale.
+   First-time players are prompted to pick a free starter pack
+   (20 cards biased toward an element of their choosing).
    ============================================================ */
 export default function Tcg() {
   const { currentUser } = useAuth();
@@ -29,6 +35,14 @@ export default function Tcg() {
   const [activeMatches, setActiveMatches] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
   const [activeMatchId, setActiveMatchId] = useState(null);
+  const [packReveal, setPackReveal] = useState(null);   // { packDef, cards }
+  const [starterOpen, setStarterOpen] = useState(false);
+  const [message, setMessage] = useState(null);         // { text, ok }
+
+  const showMsg = (text, ok = true) => {
+    setMessage({ text, ok });
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   /* ── Live "me" snapshot ───────────────────────────────── */
   useEffect(() => {
@@ -37,6 +51,15 @@ export default function Tcg() {
       if (s.exists()) setMe({ uid: currentUser.uid, ...s.data() });
     });
   }, [currentUser]);
+
+  /* ── Open starter modal once when the player has never
+       claimed it. We wait for `me` to load to avoid flashing. */
+  useEffect(() => {
+    if (!me) return;
+    if (me.tcgStarterClaimed) return;
+    if (starterOpen) return;
+    setStarterOpen(true);
+  }, [me, starterOpen]);
 
   /* ── Stream all TCG matches ───────────────────────────── */
   useEffect(() => {
@@ -60,15 +83,116 @@ export default function Tcg() {
     if (mine) setActiveMatchId(mine.id);
   }, [activeMatches, activeMatchId]);
 
+  /* ── Claim free starter pack ─────────────────────────── */
+  const claimStarter = async (element) => {
+    if (!currentUser || !me) return;
+    if (me.tcgStarterClaimed) { setStarterOpen(false); return; }
+    const cardIds = openStarterPack(element);
+    if (cardIds.length === 0) return;
+    const counts = countIds(cardIds);
+    const patch = {
+      tcgStarterClaimed: true,
+      tcgStarterElement: element,
+      tcgDeck: cardIds.slice(0, DECK_REQUIRED_SIZE), // auto-build starter deck
+    };
+    for (const [id, n] of Object.entries(counts)) {
+      patch[`tcgCollection.${id}`] = increment(n);
+    }
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), patch);
+      setPackReveal({ packDef: { ...PACK_DEFS[element], name: "Pacchetto Iniziale", size: cardIds.length }, cards: cardIds });
+      setStarterOpen(false);
+    } catch (err) {
+      console.error("starter claim failed:", err);
+      alert("Errore: " + err.message);
+    }
+  };
+
+  /* ── Buy a pack ───────────────────────────────────────── */
+  const buyPack = async (packKey) => {
+    if (!currentUser || !me) return;
+    const def = PACK_DEFS[packKey];
+    if (!def) return;
+    const balance = me.petPoints || 0;
+    if (balance < def.cost) {
+      showMsg(`Servono ${def.cost - balance} ✦ in più.`, false);
+      return;
+    }
+    const cardIds = openPack(packKey);
+    const counts = countIds(cardIds);
+    const patch = { petPoints: increment(-def.cost) };
+    for (const [id, n] of Object.entries(counts)) {
+      patch[`tcgCollection.${id}`] = increment(n);
+    }
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), patch);
+      setPackReveal({ packDef: def, cards: cardIds });
+    } catch (err) {
+      console.error("buyPack failed:", err);
+      showMsg("Acquisto fallito: " + err.message, false);
+    }
+  };
+
+  /* ── Trash a card from collection (refund in ✦) ──────── */
+  const trashCard = async (cardId) => {
+    if (!currentUser || !me) return;
+    const owned = (me.tcgCollection || {})[cardId] || 0;
+    if (owned <= 0) return;
+    const card = TCG_CARDS[cardId];
+    if (!card) return;
+    const refund = trashRefundFor(cardId);
+    if (!window.confirm(
+      `Distruggere una copia di "${card.name}" (${RARITY_LABEL[card.rarity]})?\n` +
+      `Recupererai ${refund} ✦ Punti Bestiario.\n` +
+      `Possedute: ${owned} · operazione irreversibile.`
+    )) return;
+    const inDeck = deckCount(me.tcgDeck, cardId);
+    let patch = {
+      [`tcgCollection.${cardId}`]: increment(-1),
+      petPoints: increment(refund),
+    };
+    // If the deck depends on this copy, trim the excess out so the
+    // saved deck stays legal.
+    if (inDeck > owned - 1) {
+      const newDeck = [...me.tcgDeck];
+      let toRemove = inDeck - (owned - 1);
+      for (let i = newDeck.length - 1; i >= 0 && toRemove > 0; i--) {
+        if (newDeck[i] === cardId) { newDeck.splice(i, 1); toRemove--; }
+      }
+      patch.tcgDeck = newDeck;
+    }
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), patch);
+      showMsg(`🗑 "${card.name}" distrutto · +${refund} ✦`);
+    } catch (err) {
+      console.error("trashCard failed:", err);
+      showMsg("Distruzione fallita.", false);
+    }
+  };
+
+  /* ── Save / clear deck ────────────────────────────────── */
+  const saveDeck = async (newDeck) => {
+    if (!currentUser) return;
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), { tcgDeck: newDeck });
+      showMsg(`💾 Mazzo salvato (${newDeck.length} carte).`);
+    } catch (err) {
+      console.error("saveDeck failed:", err);
+      showMsg("Salvataggio mazzo fallito.", false);
+    }
+  };
+
   /* ── Create challenge ─────────────────────────────────── */
   const createChallenge = async () => {
     if (!currentUser || !me) return;
+    const deck = resolveDeckForMatch(me.tcgDeck, me.tcgCollection);
     try {
       await addDoc(collection(db, "tcg_matches"), {
         status: "open",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         challenger: { uid: currentUser.uid, name: me.name || "Sfidante" },
+        challengerDeck: deck,
         challenged: null,
         state: null,
       });
@@ -86,8 +210,10 @@ export default function Tcg() {
       return;
     }
     try {
-      const cDeck = buildRandomDeck();
-      const dDeck = buildRandomDeck();
+      const cDeck = (isValidDeck(match.challengerDeck))
+        ? match.challengerDeck
+        : resolveDeckForMatch(null, null);
+      const dDeck = resolveDeckForMatch(me.tcgDeck, me.tcgCollection);
       const initState = initMatchState(cDeck, dDeck);
       await updateDoc(doc(db, "tcg_matches", match.id), {
         status: "active",
@@ -135,6 +261,9 @@ export default function Tcg() {
     );
   }
 
+  const collection_ = me?.tcgCollection || {};
+  const points = me?.petPoints || 0;
+
   return (
     <section className="tcg-page">
       <header className="tcg-head">
@@ -146,6 +275,20 @@ export default function Tcg() {
         <p className="tcg-sub">Magia, draghi e tattica · sfide 1v1 con carte di rarità leggendaria</p>
       </header>
 
+      <div className="tcg-wallet-bar">
+        <span>✦</span>
+        <strong>{points}</strong>
+        <span>Punti Bestiario</span>
+        <span className="tcg-wallet-divider">·</span>
+        <span>📚</span>
+        <strong>{Object.values(collection_).reduce((s, n) => s + n, 0)}</strong>
+        <span>carte in collezione</span>
+      </div>
+
+      {message && (
+        <div className={`tcg-msg ${message.ok ? "" : "tcg-msg--err"}`}>{message.text}</div>
+      )}
+
       <div className="tcg-tabs" role="tablist">
         <button
           type="button"
@@ -154,6 +297,22 @@ export default function Tcg() {
         >
           <span className="tcg-tab-icon">⚔</span>
           <span className="tcg-tab-label">Sfide</span>
+        </button>
+        <button
+          type="button"
+          className={`tcg-tab tcg-tab--shop ${tab === "shop" ? "tcg-tab--active" : ""}`}
+          onClick={() => setTab("shop")}
+        >
+          <span className="tcg-tab-icon">🛒</span>
+          <span className="tcg-tab-label">Bottega</span>
+        </button>
+        <button
+          type="button"
+          className={`tcg-tab tcg-tab--coll ${tab === "collection" ? "tcg-tab--active" : ""}`}
+          onClick={() => setTab("collection")}
+        >
+          <span className="tcg-tab-icon">📚</span>
+          <span className="tcg-tab-label">Collezione</span>
         </button>
         <button
           type="button"
@@ -177,6 +336,7 @@ export default function Tcg() {
         {tab === "lobby" && (
           <Lobby
             currentUser={currentUser}
+            me={me}
             openMatches={openMatches}
             recentMatches={recentMatches}
             onCreate={createChallenge}
@@ -184,17 +344,470 @@ export default function Tcg() {
             onCancel={cancelChallenge}
           />
         )}
+        {tab === "shop" && <Shop points={points} onBuy={buyPack} />}
+        {tab === "collection" && (
+          <CollectionTab
+            me={me}
+            onTrash={trashCard}
+            onSaveDeck={saveDeck}
+          />
+        )}
         {tab === "codex" && <Codex />}
         {tab === "rules" && <Rules />}
       </div>
+
+      {starterOpen && (
+        <StarterModal
+          onPick={claimStarter}
+          onSkip={() => setStarterOpen(false)}
+        />
+      )}
+
+      {packReveal && (
+        <PackRevealModal
+          packDef={packReveal.packDef}
+          cards={packReveal.cards}
+          onClose={() => setPackReveal(null)}
+        />
+      )}
     </section>
   );
 }
 
+/* Counts duplicates in an array of cardIds. */
+function countIds(arr) {
+  const out = {};
+  for (const id of arr) out[id] = (out[id] || 0) + 1;
+  return out;
+}
+
 /* ============================================================
-   LOBBY — challenge list, create & accept buttons
+   STARTER MODAL — pick one element, get 20 cards free.
    ============================================================ */
-function Lobby({ currentUser, openMatches, recentMatches, onCreate, onAccept, onCancel }) {
+function StarterModal({ onPick, onSkip }) {
+  const [picked, setPicked] = useState(null);
+  return (
+    <div className="tcg-overlay">
+      <div className="tcg-modal tcg-starter">
+        <div className="tcg-starter-icon">🎁</div>
+        <h2 className="tcg-starter-title">Benvenuto nel TCG di Eldoria</h2>
+        <p className="tcg-starter-sub">
+          Scegli un elemento e ricevi <strong>20 carte gratis</strong> per
+          iniziare. Otterrai un mazzo da gioco completo con preferenza per
+          l'elemento scelto. Questa scelta è una sola volta per ogni avventuriero.
+        </p>
+        <div className="tcg-starter-grid">
+          {PACK_ORDER.map(el => {
+            const pd = PACK_DEFS[el];
+            return (
+              <button
+                key={el}
+                type="button"
+                className={`tcg-starter-pick tcg-starter-pick--${el} ${picked === el ? "tcg-starter-pick--on" : ""}`}
+                onClick={() => setPicked(el)}
+              >
+                <div className="tcg-starter-pick-icon">{pd.icon}</div>
+                <div className="tcg-starter-pick-name">{ELEMENT_LABEL[el]}</div>
+                <div className="tcg-starter-pick-desc">
+                  {(el === "light" || el === "dark")
+                    ? "Esotico · poche carte ma uniche"
+                    : "Standard · ampio bestiario"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="tcg-starter-actions">
+          <button className="tcg-btn tcg-btn--ghost" onClick={onSkip}>
+            Salta (potrai scegliere dopo)
+          </button>
+          <button
+            className="tcg-btn tcg-btn--hero"
+            disabled={!picked}
+            onClick={() => picked && onPick(picked)}
+          >
+            🎁 Ricevi il pacchetto
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   PACK REVEAL MODAL — shows the 8 cards just opened.
+   ============================================================ */
+function PackRevealModal({ packDef, cards, onClose }) {
+  const [step, setStep] = useState(0);
+  // Reveal cards one by one for drama; "step" is the count visible.
+  useEffect(() => {
+    if (step >= cards.length) return;
+    const t = setTimeout(() => setStep(s => s + 1), 160);
+    return () => clearTimeout(t);
+  }, [step, cards.length]);
+
+  const bestRarity = useMemo(() => {
+    const rank = { common: 1, rare: 2, epic: 3, legendary: 4 };
+    let best = "common";
+    for (const id of cards) {
+      const c = TCG_CARDS[id];
+      if (c && rank[c.rarity] > rank[best]) best = c.rarity;
+    }
+    return best;
+  }, [cards]);
+
+  return (
+    <div className="tcg-overlay" onClick={onClose}>
+      <div
+        className={`tcg-modal tcg-reveal tcg-reveal--${bestRarity}`}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="tcg-reveal-head">
+          <span className="tcg-reveal-pack-icon">{packDef.icon}</span>
+          <div>
+            <div className="tcg-reveal-pack-name">{packDef.name}</div>
+            <div className="tcg-reveal-pack-sub">{cards.length} carte ricevute</div>
+          </div>
+          {bestRarity === "legendary" && (
+            <div className="tcg-reveal-jackpot">★ LEGGENDARIO! ★</div>
+          )}
+          {bestRarity === "epic" && (
+            <div className="tcg-reveal-jackpot tcg-reveal-jackpot--epic">★ EPICO! ★</div>
+          )}
+        </div>
+        <div className="tcg-reveal-grid">
+          {cards.slice(0, step).map((id, i) => {
+            const c = TCG_CARDS[id];
+            return c
+              ? <Card key={i} card={c} size="md" className="tcg-reveal-card" />
+              : null;
+          })}
+        </div>
+        <button className="tcg-btn tcg-btn--hero" onClick={onClose}>
+          Continua
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   SHOP — buy element packs with ✦ Punti Bestiario.
+   ============================================================ */
+function Shop({ points, onBuy }) {
+  return (
+    <div className="tcg-shop">
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🛒 Forzieri della Bottega</h2>
+        <p className="tcg-panel-sub">
+          Ogni forziere contiene <strong>8 carte</strong>. I forzieri elementali
+          standard hanno una <strong>0.5%</strong> di probabilità di contenere
+          un Leggendario; i forzieri di <strong>Luce</strong> e <strong>Tenebra</strong>
+          sono più costosi ma offrono il <strong>5%</strong> di Leggendario e più rare garantite.
+        </p>
+        <div className="tcg-packs-grid">
+          {PACK_ORDER.map(key => {
+            const pd = PACK_DEFS[key];
+            const canBuy = points >= pd.cost;
+            return (
+              <div key={key} className={`tcg-pack tcg-pack--${key}`}>
+                <div className="tcg-pack-banner">
+                  <span className="tcg-pack-icon">{pd.icon}</span>
+                  <span className="tcg-pack-name">{pd.name}</span>
+                </div>
+                <div className="tcg-pack-odds">
+                  {pd.slots.filter(s => s === "common").length}× COMUNE
+                  {" · "}
+                  {pd.slots.filter(s => s === "rare").length}× RARO
+                  {" · "}
+                  1× PREMIO
+                </div>
+                <div className="tcg-pack-premium">
+                  Slot premio: {Object.entries(pd.premiumOdds)
+                    .map(([r, w]) => `${w}% ${RARITY_LABEL[r]}`)
+                    .join(" · ")}
+                </div>
+                <p className="tcg-pack-desc">{pd.description}</p>
+                <div className="tcg-pack-cost-row">
+                  <span className="tcg-pack-cost">{pd.cost} ✦</span>
+                </div>
+                <button
+                  type="button"
+                  className="tcg-btn tcg-btn--hero tcg-pack-buy"
+                  disabled={!canBuy}
+                  onClick={() => onBuy(key)}
+                >
+                  {canBuy ? "🎁 Apri" : `Mancano ${pd.cost - points} ✦`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">💰 Come si guadagnano i Punti Bestiario</h2>
+        <p className="tcg-panel-sub">
+          Vinci all'Arena, partecipa al Pet Battle, fai offerte al Mercato Nero,
+          leggi riassunti di sessione, visita gli Archivi, oppure semplicemente
+          fai login giornaliero. La <strong>Bottega del Pet Hub</strong> mostra
+          tutte le fonti di ✦.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   COLLECTION TAB — owned cards + deck builder + trash
+   ============================================================ */
+function CollectionTab({ me, onTrash, onSaveDeck }) {
+  const collection_ = me?.tcgCollection || {};
+  const savedDeck = Array.isArray(me?.tcgDeck) ? me.tcgDeck : [];
+
+  // Local editing state — initialized from saved deck
+  const [editingDeck, setEditingDeck] = useState(savedDeck);
+  const [filter, setFilter] = useState("all"); // all | element | rarity | inDeck | notInDeck
+  const lastSavedRef = useRef(savedDeck);
+
+  // When the saved deck changes externally (e.g. after trash trimmed it),
+  // rebase the editing buffer if the user hasn't made changes.
+  useEffect(() => {
+    const dirty = JSON.stringify(editingDeck) !== JSON.stringify(lastSavedRef.current);
+    if (!dirty) {
+      setEditingDeck(savedDeck);
+    }
+    lastSavedRef.current = savedDeck;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(savedDeck)]);
+
+  const cards = useMemo(() => {
+    const owned = Object.entries(collection_)
+      .filter(([, n]) => n > 0)
+      .map(([id, n]) => ({ id, count: n, def: TCG_CARDS[id] }))
+      .filter(o => !!o.def);
+    if (filter === "all") return sortCards(owned);
+    if (["common", "rare", "epic", "legendary"].includes(filter)) {
+      return sortCards(owned.filter(o => o.def.rarity === filter));
+    }
+    if (["fire", "water", "earth", "air", "light", "dark"].includes(filter)) {
+      return sortCards(owned.filter(o => o.def.element === filter));
+    }
+    if (filter === "inDeck") {
+      return sortCards(owned.filter(o => deckCount(editingDeck, o.id) > 0));
+    }
+    if (filter === "unused") {
+      return sortCards(owned.filter(o => deckCount(editingDeck, o.id) < o.count));
+    }
+    return sortCards(owned);
+  }, [collection_, filter, editingDeck]);
+
+  const totalOwned = useMemo(
+    () => Object.values(collection_).reduce((s, n) => s + n, 0),
+    [collection_],
+  );
+
+  const deckCounts = useMemo(() => {
+    const map = {};
+    for (const id of editingDeck) map[id] = (map[id] || 0) + 1;
+    return map;
+  }, [editingDeck]);
+
+  const addToDeck = (cardId) => {
+    if (editingDeck.length >= DECK_REQUIRED_SIZE) return;
+    const ownedN = collection_[cardId] || 0;
+    const used = deckCounts[cardId] || 0;
+    if (used >= ownedN) return; // out of copies
+    setEditingDeck(d => [...d, cardId]);
+  };
+
+  const removeFromDeck = (atIndex) => {
+    setEditingDeck(d => d.filter((_, i) => i !== atIndex));
+  };
+
+  const clearDeck = () => {
+    if (!window.confirm("Svuotare il mazzo in costruzione?")) return;
+    setEditingDeck([]);
+  };
+
+  const autoFill = () => {
+    const built = autoBuildDeckFromCollection(collection_);
+    if (!built) {
+      alert("Servono almeno 20 carte nella collezione per generare un mazzo.");
+      return;
+    }
+    setEditingDeck(built);
+  };
+
+  const resetToSaved = () => {
+    setEditingDeck(savedDeck);
+  };
+
+  const dirty = JSON.stringify(editingDeck) !== JSON.stringify(savedDeck);
+  const deckValid = isValidDeck(editingDeck) && ownsDeck(editingDeck, collection_);
+
+  if (totalOwned === 0) {
+    return (
+      <div className="tcg-panel tcg-empty-card">
+        <div className="tcg-empty-icon">📚</div>
+        <h3>La tua collezione è vuota</h3>
+        <p>Vai alla <strong>Bottega</strong> per aprire il tuo primo Forziere — o riceverai un pacchetto iniziale gratuito al tuo prossimo accesso!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tcg-coll">
+      {/* DECK BUILDER */}
+      <div className="tcg-panel">
+        <div className="tcg-panel-head">
+          <h2 className="tcg-panel-title">🃏 Il tuo mazzo · {editingDeck.length}/{DECK_REQUIRED_SIZE}</h2>
+          <div className="tcg-deck-status">
+            {deckValid
+              ? <span className="tcg-tag tcg-tag--ok">✓ Mazzo valido</span>
+              : <span className="tcg-tag tcg-tag--warn">⚠ Mazzo non completo o non legale</span>}
+            {dirty && <span className="tcg-tag tcg-tag--dirty">● Modifiche non salvate</span>}
+          </div>
+        </div>
+        <p className="tcg-panel-sub">
+          Trascina (o clicca) le carte della collezione per aggiungerle. Clicca una carta nel mazzo per rimuoverla.
+          Servono esattamente <strong>{DECK_REQUIRED_SIZE} carte</strong>. Quando giochi una sfida verrà usato il tuo mazzo
+          salvato; se non è pronto, il gioco ne genera uno automaticamente dalla collezione.
+        </p>
+
+        <div className="tcg-deck-tray">
+          {editingDeck.length === 0 ? (
+            <div className="tcg-deck-empty">Nessuna carta nel mazzo · usa "Auto-genera" o aggiungile manualmente</div>
+          ) : editingDeck.map((cardId, idx) => {
+            const c = TCG_CARDS[cardId];
+            if (!c) return null;
+            return (
+              <button
+                key={`${cardId}-${idx}`}
+                type="button"
+                className={`tcg-deck-slot tcg-deck-slot--${c.rarity} tcg-deck-slot--el-${c.element}`}
+                onClick={() => removeFromDeck(idx)}
+                title={`${c.name} · clicca per rimuovere`}
+              >
+                <span className="tcg-deck-slot-cost">{c.cost}</span>
+                <span className="tcg-deck-slot-el">{ELEMENT_ICON[c.element]}</span>
+                <span className="tcg-deck-slot-name">{c.name}</span>
+                <span className="tcg-deck-slot-stat">{c.atk}/{c.hp}</span>
+                <span className="tcg-deck-slot-x">✕</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="tcg-deck-actions">
+          <button className="tcg-btn" onClick={autoFill}>🎲 Auto-genera</button>
+          <button className="tcg-btn" onClick={clearDeck} disabled={editingDeck.length === 0}>🗑 Svuota</button>
+          <button className="tcg-btn" onClick={resetToSaved} disabled={!dirty}>↺ Annulla modifiche</button>
+          <button
+            className="tcg-btn tcg-btn--hero"
+            disabled={!dirty || !deckValid}
+            onClick={() => onSaveDeck(editingDeck)}
+          >
+            💾 Salva mazzo
+          </button>
+        </div>
+      </div>
+
+      {/* COLLECTION FILTER + GRID */}
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">📚 La tua collezione · {totalOwned} carte</h2>
+        <div className="tcg-codex-filters">
+          <button className={`tcg-filter ${filter === "all" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("all")}>
+            Tutte ({cards.length})
+          </button>
+          <button className={`tcg-filter ${filter === "unused" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("unused")}>
+            Disponibili
+          </button>
+          <button className={`tcg-filter ${filter === "inDeck" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("inDeck")}>
+            Nel mazzo
+          </button>
+          {Object.entries(ELEMENT_ICON).map(([el, ic]) => (
+            <button key={el} className={`tcg-filter tcg-filter--el-${el} ${filter === el ? "tcg-filter--on" : ""}`} onClick={() => setFilter(el)}>
+              {ic} {ELEMENT_LABEL[el]}
+            </button>
+          ))}
+          {["common", "rare", "epic", "legendary"].map(r => (
+            <button key={r} className={`tcg-filter tcg-filter--r-${r} ${filter === r ? "tcg-filter--on" : ""}`} onClick={() => setFilter(r)}>
+              ★ {RARITY_LABEL[r]}
+            </button>
+          ))}
+        </div>
+
+        <div className="tcg-coll-grid">
+          {cards.length === 0 ? (
+            <p className="tcg-empty">Nessuna carta corrisponde al filtro.</p>
+          ) : cards.map(({ id, count, def }) => {
+            const usedInDeck = deckCounts[id] || 0;
+            const available = count - usedInDeck;
+            const deckFull = editingDeck.length >= DECK_REQUIRED_SIZE;
+            return (
+              <div key={id} className="tcg-coll-cell">
+                <Card card={def} size="md" />
+                <div className="tcg-coll-meta">
+                  <span className="tcg-coll-owned">×{count}</span>
+                  {usedInDeck > 0 && (
+                    <span className="tcg-coll-indeck">Mazzo: {usedInDeck}</span>
+                  )}
+                  <span className="tcg-coll-refund" title="Distruzione: recupero in ✦">
+                    🗑 {TRASH_REFUND[def.rarity]}
+                  </span>
+                </div>
+                <div className="tcg-coll-actions">
+                  <button
+                    type="button"
+                    className="tcg-btn tcg-btn--tiny"
+                    onClick={() => {
+                      // Add to deck
+                      if (available <= 0 || deckFull) return;
+                      setEditingDeck(d => [...d, id]);
+                    }}
+                    disabled={available <= 0 || deckFull}
+                    title={deckFull ? "Mazzo pieno" : (available <= 0 ? "Tutte le copie sono nel mazzo" : "Aggiungi al mazzo")}
+                  >
+                    + Mazzo
+                  </button>
+                  <button
+                    type="button"
+                    className="tcg-btn tcg-btn--tiny tcg-btn--danger"
+                    onClick={() => onTrash(id)}
+                    title={`Distruggi una copia · recupera ${TRASH_REFUND[def.rarity]} ✦`}
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Sort cards: legendary→common, then by cost, then by name. */
+function sortCards(arr) {
+  const rank = { legendary: 0, epic: 1, rare: 2, common: 3 };
+  return arr.slice().sort((a, b) => {
+    const r = rank[a.def.rarity] - rank[b.def.rarity];
+    if (r !== 0) return r;
+    const c = (a.def.cost || 0) - (b.def.cost || 0);
+    if (c !== 0) return c;
+    return a.def.name.localeCompare(b.def.name);
+  });
+}
+
+/* ============================================================
+   LOBBY — challenge list, create & accept
+   ============================================================ */
+function Lobby({ currentUser, me, openMatches, recentMatches, onCreate, onAccept, onCancel }) {
+  const deckOk = isValidDeck(me?.tcgDeck) && ownsDeck(me?.tcgDeck, me?.tcgCollection);
+  const totalOwned = Object.values(me?.tcgCollection || {}).reduce((s, n) => s + n, 0);
+
   return (
     <div className="tcg-lobby">
       <ElementWheelLegend />
@@ -205,7 +818,11 @@ function Lobby({ currentUser, openMatches, recentMatches, onCreate, onAccept, on
         </div>
         <p className="tcg-panel-sub">
           Lancia una sfida 1v1: il primo avventuriero che la accetta combatterà contro di te.
-          Ogni partita usa un mazzo casuale di 20 carte.
+          {deckOk
+            ? " Userai il tuo mazzo salvato."
+            : (totalOwned >= 20
+              ? " Non hai un mazzo salvato: ne verrà generato uno dalla tua collezione."
+              : " La tua collezione è troppo piccola: verrà usato un mazzo casuale di prova.")}
         </p>
         <button type="button" className="tcg-btn tcg-btn--hero" onClick={onCreate}>
           🎴 Lancia una sfida
@@ -393,7 +1010,7 @@ function CardArt({ def }) {
 }
 
 /* ============================================================
-   BOARD CARD — variant of Card showing live HP & status
+   BOARD CARD — Card variant showing live HP & status
    ============================================================ */
 function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }) {
   const mechs = def.mechanics || [];
@@ -459,7 +1076,6 @@ function LiveMatch({ match, uid, onExit }) {
   const myTurn = state.activeSide === mySide;
 
   const [selectedAttacker, setSelectedAttacker] = useState(null);
-  const [endNoticeShown, setEndNoticeShown] = useState(false);
   const [compliment, setCompliment] = useState("");
   const logRef = useRef(null);
 
@@ -790,11 +1406,21 @@ function Rules() {
       <div className="tcg-panel">
         <h2 className="tcg-panel-title">⚔ Come si gioca</h2>
         <ul className="tcg-rules-list">
-          <li>Ogni giocatore parte con <strong>{STARTING_HP} PF</strong>, una mano di 4 carte e un mazzo di 20.</li>
+          <li>Ogni giocatore parte con <strong>{STARTING_HP} PF</strong>, una mano di 4 carte e un mazzo di {DECK_REQUIRED_SIZE}.</li>
           <li>A ogni turno il giocatore attivo guadagna <strong>+1 di Mana massimo</strong> (fino a 10) e ricarica tutto il mana.</li>
           <li>Si pesca 1 carta a turno. Le creature evocate hanno <em>sonno d'evocazione</em> e non possono attaccare lo stesso turno (a meno di "Furia").</li>
           <li>In combattimento, una creatura ne attacca un'altra (o il campione avversario) infliggendo i danni del proprio attacco. La difesa replica con il suo attacco.</li>
           <li>Vince chi porta a 0 i PF dell'avversario. Se finisci il mazzo, subisci 2 danni da affaticamento ad ogni pesca.</li>
+        </ul>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">🛒 Bottega e Collezione</h2>
+        <ul className="tcg-rules-list">
+          <li>Al primo accesso ricevi un <strong>Pacchetto Iniziale gratuito</strong> di 20 carte (scegli l'elemento).</li>
+          <li>I forzieri elementali standard costano <strong>80 ✦</strong>. I forzieri di <strong>Luce</strong> e <strong>Tenebra</strong> costano <strong>200 ✦</strong> ma offrono il 5% di Leggendari.</li>
+          <li>Ogni forziere contiene 8 carte. Lo slot premio rolla rarità casuali fino al Leggendario.</li>
+          <li>Nel pannello <strong>Collezione</strong> costruisci e salvi un mazzo da 20 carte tra quelle possedute. Le carte indesiderate possono essere <strong>distrutte</strong> per recuperare ✦ (3/8/20/50 per rarità).</li>
         </ul>
       </div>
 

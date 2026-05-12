@@ -455,3 +455,69 @@ export function legalAttackTargets(state, side, attackerInstId) {
 }
 
 export { opp as oppSide };
+
+/* ============================================================
+   DECK + COLLECTION HELPERS
+   ------------------------------------------------------------
+   Collection shape on the character doc:
+     tcgCollection: { [cardId]: count, ... }
+     tcgDeck:       [cardId, cardId, ...] (length 20 when valid)
+   ============================================================ */
+export const DECK_REQUIRED_SIZE = DECK_SIZE;
+
+/* Returns true when the deck is a 20-card array of known card ids. */
+export function isValidDeck(deck) {
+  if (!Array.isArray(deck) || deck.length !== DECK_SIZE) return false;
+  return deck.every(id => !!TCG_CARDS[id]);
+}
+
+/* Returns true when the collection has enough copies of every
+   card the deck references (i.e. the deck is legally yours). */
+export function ownsDeck(deck, collection) {
+  if (!Array.isArray(deck)) return false;
+  const needed = {};
+  for (const id of deck) needed[id] = (needed[id] || 0) + 1;
+  for (const [id, n] of Object.entries(needed)) {
+    if ((collection?.[id] || 0) < n) return false;
+  }
+  return true;
+}
+
+/* Returns the number of copies of `cardId` currently used in `deck`. */
+export function deckCount(deck, cardId) {
+  if (!Array.isArray(deck)) return 0;
+  let n = 0;
+  for (const id of deck) if (id === cardId) n++;
+  return n;
+}
+
+/* Builds a 20-card deck from a player's collection. Used as the
+   auto-fill button in the deck builder and as a fallback when
+   their saved deck is invalid or they own >20 cards but never
+   made one. Returns null when the collection has <20 cards. */
+export function autoBuildDeckFromCollection(collection) {
+  const flat = [];
+  for (const [id, n] of Object.entries(collection || {})) {
+    if (!TCG_CARDS[id]) continue;
+    for (let i = 0; i < n; i++) flat.push(id);
+  }
+  if (flat.length < DECK_SIZE) return null;
+  const shuffled = flat
+    .map(id => ({ id, r: Math.random() }))
+    .sort((a, b) => a.r - b.r)
+    .map(o => o.id);
+  return shuffled.slice(0, DECK_SIZE);
+}
+
+/* Resolves the deck used in an actual match. Tries the player's
+   saved deck first; if invalid or unowned, auto-builds from the
+   collection; if collection too small, falls back to a fully
+   random pool deck so the game can still start. */
+export function resolveDeckForMatch(deck, collection) {
+  if (isValidDeck(deck) && ownsDeck(deck, collection)) return deck;
+  const built = autoBuildDeckFromCollection(collection);
+  if (built) return built;
+  return buildRandomDeck();
+}
+
+

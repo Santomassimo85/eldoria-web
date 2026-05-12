@@ -1138,6 +1138,516 @@ section.tcg-page,
 .tcg-rarity-card--legendary .tcg-rarity-card-desc { color: #fde047; }
 
 /* ============================================================
+   WALLET BAR + MESSAGE BANNER
+   ============================================================ */
+.tcg-wallet-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tcg-amber);
+  border: 3px solid var(--tcg-ink);
+  padding: 8px 18px;
+  margin: 0 0 14px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  font-size: 0.94rem;
+  color: var(--tcg-ink);
+  box-shadow: 4px 4px 0 0 var(--tcg-ink);
+  text-transform: uppercase;
+}
+.tcg-wallet-bar strong { font-size: 1.05rem; }
+.tcg-wallet-divider {
+  color: var(--tcg-muted);
+  margin: 0 6px;
+}
+.tcg-msg {
+  background: #d1fae5;
+  border: 3px solid #047857;
+  color: #064e3b;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-weight: 800;
+  box-shadow: 4px 4px 0 0 var(--tcg-ink);
+}
+.tcg-msg--err {
+  background: #fee2e2;
+  border-color: #991b1b;
+  color: #7f1d1d;
+}
+
+/* ============================================================
+   OVERLAY + MODAL SHARED
+   ============================================================ */
+.tcg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(20, 14, 4, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--navbar-h, 0) + 16px) 16px 16px;
+  overflow-y: auto;
+  animation: tcg-fade .18s ease-out;
+}
+@keyframes tcg-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.tcg-modal {
+  position: relative;
+  width: min(720px, 100%);
+  background: var(--tcg-card);
+  border: 5px solid var(--tcg-ink);
+  padding: 24px 22px;
+  box-shadow: 10px 10px 0 0 var(--tcg-amber);
+  animation: tcg-pop .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes tcg-pop {
+  from { transform: translateY(20px) scale(.92); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* ============================================================
+   STARTER MODAL — pick element on first entry
+   ============================================================ */
+.tcg-starter { text-align: center; }
+.tcg-starter-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.tcg-starter-title {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+.tcg-starter-sub {
+  font-size: 0.92rem;
+  color: var(--tcg-muted);
+  margin: 0 0 18px;
+  line-height: 1.55;
+}
+.tcg-starter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.tcg-starter-pick {
+  --pick-color: var(--tcg-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--tcg-card);
+  border: 3px solid var(--pick-color);
+  color: var(--tcg-ink);
+  cursor: pointer;
+  box-shadow: 4px 4px 0 0 var(--tcg-ink);
+  transition: transform .08s, box-shadow .08s, background .15s;
+  font-family: inherit;
+}
+.tcg-starter-pick--fire   { --pick-color: var(--tcg-fire); }
+.tcg-starter-pick--water  { --pick-color: var(--tcg-water); }
+.tcg-starter-pick--earth  { --pick-color: var(--tcg-earth); }
+.tcg-starter-pick--air    { --pick-color: var(--tcg-air); }
+.tcg-starter-pick--light  { --pick-color: var(--tcg-light); }
+.tcg-starter-pick--dark   { --pick-color: var(--tcg-dark); }
+.tcg-starter-pick:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 var(--tcg-ink);
+}
+.tcg-starter-pick--on {
+  background: var(--pick-color);
+  color: #fff;
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 0 var(--tcg-ink);
+}
+.tcg-starter-pick--on.tcg-starter-pick--light { color: var(--tcg-ink); }
+.tcg-starter-pick-icon { font-size: 1.8rem; line-height: 1; }
+.tcg-starter-pick-name {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.94rem;
+}
+.tcg-starter-pick-desc {
+  font-size: 0.74rem;
+  opacity: 0.85;
+  text-align: center;
+  line-height: 1.35;
+}
+.tcg-starter-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   PACK REVEAL MODAL
+   ============================================================ */
+.tcg-reveal {
+  text-align: center;
+  width: min(840px, 100%);
+}
+.tcg-reveal--legendary {
+  background: var(--tcg-legendary);
+  border-color: var(--tcg-ink);
+  box-shadow: 10px 10px 0 0 var(--tcg-legendary-gold);
+}
+.tcg-reveal--legendary .tcg-reveal-pack-name,
+.tcg-reveal--legendary .tcg-reveal-pack-sub {
+  color: var(--tcg-cream);
+}
+.tcg-reveal--epic {
+  background: var(--tcg-amber-soft);
+  border-color: var(--tcg-epic);
+  box-shadow: 10px 10px 0 0 var(--tcg-epic);
+}
+.tcg-reveal-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: left;
+}
+.tcg-reveal-pack-icon { font-size: 2.6rem; line-height: 1; }
+.tcg-reveal-pack-name {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tcg-reveal-pack-sub {
+  font-size: 0.86rem;
+  color: var(--tcg-muted);
+}
+.tcg-reveal-jackpot {
+  background: var(--tcg-legendary-gold);
+  color: var(--tcg-ink);
+  border: 3px solid var(--tcg-ink);
+  padding: 6px 14px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.94rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 0 var(--tcg-ink);
+  animation: tcg-jackpot 1.2s ease-in-out infinite;
+}
+.tcg-reveal-jackpot--epic {
+  background: var(--tcg-epic);
+  color: var(--tcg-cream);
+}
+@keyframes tcg-jackpot {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05) rotate(-1deg); }
+}
+.tcg-reveal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  justify-items: center;
+  margin-bottom: 16px;
+  min-height: 200px;
+}
+.tcg-reveal-card {
+  animation: tcg-reveal-pop .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes tcg-reveal-pop {
+  from { transform: translateY(20px) scale(.85); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* ============================================================
+   SHOP
+   ============================================================ */
+.tcg-shop { display: flex; flex-direction: column; gap: 16px; }
+.tcg-packs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.tcg-pack {
+  --pack-color: var(--tcg-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--tcg-card);
+  border: 4px solid var(--pack-color);
+  padding: 0 12px 12px;
+  box-shadow: 6px 6px 0 0 var(--tcg-ink);
+  transition: transform .1s, box-shadow .1s;
+  overflow: hidden;
+}
+.tcg-pack:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 4px 4px 0 0 var(--tcg-ink);
+}
+.tcg-pack--fire   { --pack-color: var(--tcg-fire); }
+.tcg-pack--water  { --pack-color: var(--tcg-water); }
+.tcg-pack--earth  { --pack-color: var(--tcg-earth); }
+.tcg-pack--air    { --pack-color: var(--tcg-air); }
+.tcg-pack--light {
+  --pack-color: var(--tcg-light);
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+}
+.tcg-pack--dark {
+  --pack-color: var(--tcg-dark);
+  background: var(--tcg-legendary);
+  color: var(--tcg-cream);
+}
+.tcg-pack--dark .tcg-pack-desc,
+.tcg-pack--dark .tcg-pack-premium,
+.tcg-pack--dark .tcg-pack-odds {
+  color: #fde047;
+}
+.tcg-pack-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -12px;
+  padding: 10px 14px;
+  background: var(--pack-color);
+  color: #fff;
+  border-bottom: 3px solid var(--tcg-ink);
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tcg-pack--light .tcg-pack-banner { color: var(--tcg-ink); }
+.tcg-pack-icon { font-size: 1.8rem; line-height: 1; }
+.tcg-pack-name { font-size: 0.96rem; flex: 1; }
+.tcg-pack-odds {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--tcg-ink);
+}
+.tcg-pack-premium {
+  background: var(--tcg-amber-soft);
+  border: 2px solid var(--tcg-ink);
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  color: var(--tcg-ink);
+  font-weight: 700;
+}
+.tcg-pack--dark .tcg-pack-premium {
+  background: #1e1b4b;
+  border-color: var(--tcg-legendary-gold);
+  color: #fde047 !important;
+}
+.tcg-pack-desc {
+  font-size: 0.82rem;
+  color: var(--tcg-muted);
+  line-height: 1.45;
+  margin: 0;
+  flex: 1;
+}
+.tcg-pack-cost-row {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0;
+}
+.tcg-pack-cost {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  background: var(--tcg-amber);
+  border: 3px solid var(--tcg-ink);
+  padding: 4px 16px;
+  color: var(--tcg-ink);
+}
+.tcg-pack-buy { width: 100%; }
+
+/* ============================================================
+   COLLECTION + DECK BUILDER
+   ============================================================ */
+.tcg-coll { display: flex; flex-direction: column; gap: 16px; }
+
+.tcg-deck-status {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tcg-tag {
+  display: inline-block;
+  background: var(--tcg-stone);
+  border: 2px solid var(--tcg-ink);
+  padding: 2px 10px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tcg-tag--ok    { background: #d1fae5; color: #064e3b; border-color: #047857; }
+.tcg-tag--warn  { background: #fee2e2; color: #991b1b; border-color: #991b1b; }
+.tcg-tag--dirty { background: var(--tcg-amber); color: var(--tcg-ink); }
+
+.tcg-deck-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px;
+  background: var(--tcg-legendary);
+  border: 3px solid var(--tcg-ink);
+  margin: 10px 0;
+  min-height: 80px;
+  box-shadow: 4px 4px 0 0 var(--tcg-amber);
+}
+.tcg-deck-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c7d2fe;
+  font-style: italic;
+  font-size: 0.86rem;
+}
+.tcg-deck-slot {
+  --slot-color: var(--tcg-stone);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--slot-color);
+  border: 2px solid var(--tcg-ink);
+  padding: 3px 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform .08s, box-shadow .08s, background .15s;
+}
+.tcg-deck-slot:hover {
+  background: #fee2e2;
+  transform: translate(1px, 1px);
+}
+.tcg-deck-slot-cost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  background: var(--tcg-amber);
+  border: 1.5px solid var(--tcg-ink);
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 0.7rem;
+}
+.tcg-deck-slot-el { font-size: 0.84rem; }
+.tcg-deck-slot-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tcg-deck-slot-stat {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.74rem;
+  background: var(--tcg-ink);
+  color: var(--tcg-cream);
+  padding: 0 5px;
+}
+.tcg-deck-slot-x { color: #991b1b; font-weight: 900; }
+
+.tcg-deck-slot--el-fire    { --slot-color: #fee2e2; }
+.tcg-deck-slot--el-water   { --slot-color: #dbeafe; }
+.tcg-deck-slot--el-earth   { --slot-color: #d1fae5; }
+.tcg-deck-slot--el-air     { --slot-color: #fed7aa; }
+.tcg-deck-slot--el-light   { --slot-color: var(--tcg-amber-soft); }
+.tcg-deck-slot--el-dark    { --slot-color: #ede9fe; }
+
+.tcg-deck-slot--rare      { border-color: var(--tcg-rare); border-width: 2.5px; }
+.tcg-deck-slot--epic      { border-color: var(--tcg-epic); border-width: 2.5px; }
+.tcg-deck-slot--legendary {
+  border-color: var(--tcg-legendary-gold);
+  border-width: 2.5px;
+  background: linear-gradient(135deg, var(--tcg-legendary) 0%, #312e81 100%) !important;
+  color: var(--tcg-cream);
+}
+.tcg-deck-slot--legendary .tcg-deck-slot-name { color: var(--tcg-amber); }
+
+.tcg-deck-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+/* COLLECTION GRID */
+.tcg-coll-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  justify-items: center;
+  margin-top: 14px;
+}
+.tcg-coll-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  max-width: 200px;
+}
+.tcg-coll-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+.tcg-coll-owned {
+  background: var(--tcg-amber);
+  border: 2px solid var(--tcg-ink);
+  padding: 1px 8px;
+  color: var(--tcg-ink);
+  font-family: var(--font-title, serif);
+  letter-spacing: 0.04em;
+}
+.tcg-coll-indeck {
+  background: var(--tcg-legendary);
+  color: var(--tcg-cream);
+  border: 2px solid var(--tcg-ink);
+  padding: 1px 8px;
+}
+.tcg-coll-refund {
+  background: var(--tcg-stone);
+  border: 2px solid var(--tcg-ink);
+  padding: 1px 8px;
+  color: var(--tcg-ink);
+  cursor: help;
+}
+.tcg-coll-actions {
+  display: flex;
+  gap: 4px;
+}
+.tcg-coll-actions .tcg-btn--tiny { flex: 1; padding: 5px 6px; }
+
+.tcg-empty-card {
+  text-align: center;
+  padding: 60px 22px;
+}
+.tcg-empty-icon { font-size: 3rem; margin-bottom: 8px; }
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
