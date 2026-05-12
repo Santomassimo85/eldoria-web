@@ -1595,12 +1595,41 @@ function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, oppo
             <div className="tcg-pstrip-hp-fill" style={{ width: `${hpPct}%` }} />
           </div>
         </div>
-        <div className="tcg-pstrip-mana" title="Mana disponibile / massimo">
-          <span className="tcg-pstrip-mana-icon">🔮</span>
-          <strong>{mana}</strong>/<em>{maxMana}</em>
-        </div>
+        <ManaCrystals current={mana} max={maxMana} active={isActive} />
         <div className="tcg-pstrip-pile" title="Carte nel mazzo">📚 {deckCount}</div>
         <div className="tcg-pstrip-pile" title="Carte in mano">🃏 {handCount}</div>
+      </div>
+    </div>
+  );
+}
+
+/* Hearthstone-style mana crystal row. Each crystal is a diamond:
+   full → glowing cyan gem with pulse; empty → dim slot. We always
+   render at least one slot so the rail is visible from turn 0. */
+function ManaCrystals({ current, max, active }) {
+  const slots = Math.max(1, max);
+  return (
+    <div
+      className={`tcg-mana ${active ? "tcg-mana--active" : ""}`}
+      title={`Mana ${current} / ${max}`}
+    >
+      <div className="tcg-mana-num">
+        <span className="tcg-mana-num-icon">🔮</span>
+        <span className="tcg-mana-num-cur">{current}</span>
+        <span className="tcg-mana-num-sep">/</span>
+        <span className="tcg-mana-num-max">{max}</span>
+      </div>
+      <div className="tcg-mana-rail">
+        {Array.from({ length: slots }, (_, i) => (
+          <span
+            key={i}
+            className={
+              "tcg-mana-crystal " +
+              (i < current ? "tcg-mana-crystal--full" : "tcg-mana-crystal--empty")
+            }
+            aria-hidden="true"
+          />
+        ))}
       </div>
     </div>
   );

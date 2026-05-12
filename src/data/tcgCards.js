@@ -585,11 +585,12 @@ function pickCardId(packElement, rarity, elementBias) {
 
 /* ── Foil rate — "brilliant" cards (Magic-style foils) ───
    Each card drawn from a pack has this chance of rolling
-   foil — independent of rarity. Foils are purely cosmetic
-   (a holographic shimmer effect) but very rare and prized.
-   Starter packs intentionally never roll foils so the
-   wonder is reserved for the shop. */
-export const FOIL_RATE = 0.025; // 2.5% per card
+   foil — independent of rarity. Tuned to be truly rare:
+   ~1 foil every ~25 packs (200 cards) at 0.5%. Foils are
+   purely cosmetic (a holographic shimmer effect). Starter
+   packs intentionally never roll foils so the wonder is
+   reserved for the shop. */
+export const FOIL_RATE = 0.005; // 0.5% per card
 
 function rollFoil() {
   return Math.random() < FOIL_RATE;

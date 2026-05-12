@@ -810,7 +810,6 @@ section.tcg-page,
   background: linear-gradient(to right, #991b1b, #dc2626);
   transition: width .25s ease;
 }
-.tcg-pstrip-mana,
 .tcg-pstrip-pile {
   display: inline-flex;
   align-items: center;
@@ -823,13 +822,110 @@ section.tcg-page,
   font-size: 0.86rem;
   letter-spacing: 0.04em;
 }
-.tcg-pstrip-mana {
-  background: #dbeafe;
-  border-color: var(--tcg-codex);
-  color: var(--tcg-codex);
+
+/* ── MANA CRYSTAL RAIL ────────────────────────────────────
+   Number readout + diamond-shaped crystals; full ones glow
+   cyan and pulse, spent ones dim out. Sits inline in the
+   player strip. */
+.tcg-mana {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+  border: 3px solid var(--tcg-ink);
+  box-shadow: 3px 3px 0 0 var(--tcg-ink);
+  color: var(--tcg-cream);
 }
-.tcg-pstrip-mana-icon { font-size: 1rem; }
-.tcg-pstrip-mana em { color: var(--tcg-muted); font-style: normal; }
+.tcg-mana--active {
+  border-color: #67e8f9;
+  box-shadow: 3px 3px 0 0 #67e8f9, 0 0 14px rgba(103, 232, 249, 0.55);
+}
+.tcg-mana-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.tcg-mana-num-icon {
+  font-size: 1.05rem;
+  margin-right: 4px;
+  filter: drop-shadow(0 0 4px rgba(103, 232, 249, 0.8));
+}
+.tcg-mana-num-cur {
+  font-size: 1.45rem;
+  color: #67e8f9;
+  text-shadow: 0 0 8px rgba(103, 232, 249, 0.85);
+}
+.tcg-mana-num-sep {
+  color: #94a3b8;
+  font-size: 1rem;
+  margin: 0 1px;
+}
+.tcg-mana-num-max {
+  font-size: 1rem;
+  color: #c7d2fe;
+  opacity: 0.85;
+}
+
+.tcg-mana-rail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+  max-width: 220px;
+}
+.tcg-mana-crystal {
+  width: 14px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid #4338ca;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.25s;
+}
+.tcg-mana-crystal--empty {
+  opacity: 0.55;
+}
+.tcg-mana-crystal--full {
+  background: linear-gradient(180deg, #a5f3fc 0%, #22d3ee 35%, #0284c7 75%, #1e3a8a 100%);
+  border-color: #a5f3fc;
+  box-shadow:
+    0 0 6px rgba(103, 232, 249, 0.85),
+    inset 0 0 5px rgba(255, 255, 255, 0.55);
+  animation: tcg-mana-pulse 2.2s ease-in-out infinite;
+}
+@keyframes tcg-mana-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 5px rgba(103, 232, 249, 0.7),
+      inset 0 0 4px rgba(255, 255, 255, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 13px rgba(103, 232, 249, 1),
+      inset 0 0 7px rgba(255, 255, 255, 0.65);
+  }
+}
+/* Cascade the pulse so the rail shimmers like a wave */
+.tcg-mana-crystal--full:nth-child(2) { animation-delay: 0.10s; }
+.tcg-mana-crystal--full:nth-child(3) { animation-delay: 0.20s; }
+.tcg-mana-crystal--full:nth-child(4) { animation-delay: 0.30s; }
+.tcg-mana-crystal--full:nth-child(5) { animation-delay: 0.40s; }
+.tcg-mana-crystal--full:nth-child(6) { animation-delay: 0.50s; }
+.tcg-mana-crystal--full:nth-child(7) { animation-delay: 0.60s; }
+.tcg-mana-crystal--full:nth-child(8) { animation-delay: 0.70s; }
+.tcg-mana-crystal--full:nth-child(9) { animation-delay: 0.80s; }
+.tcg-mana-crystal--full:nth-child(10){ animation-delay: 0.90s; }
+
+@media (max-width: 600px) {
+  .tcg-mana { gap: 6px; padding: 4px 8px; }
+  .tcg-mana-num-cur { font-size: 1.2rem; }
+  .tcg-mana-crystal { width: 11px; height: 14px; }
+  .tcg-mana-rail { max-width: 160px; }
+}
 
 /* DIVIDER + FACE-ATTACK */
 .tcg-divider {
