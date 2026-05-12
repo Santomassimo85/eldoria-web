@@ -10,7 +10,7 @@ import {
   ELEMENT_ICON, ELEMENT_LABEL, RARITY_LABEL, RARITY_COLOR,
   ELEMENT_CYCLE, LIGHT_DARK, randomCompliment,
   PACK_DEFS, PACK_ORDER, openPack, openStarterPack,
-  TRASH_REFUND, trashRefundFor,
+  TRASH_REFUND, FOIL_TRASH_REFUND, FOIL_RATE, trashRefundFor,
 } from "../data/tcgCards";
 import {
   initMatchState, playCard, attackWith, endTurn, forfeit,
@@ -38,6 +38,8 @@ export default function Tcg() {
   const [packReveal, setPackReveal] = useState(null);   // { packDef, cards }
   const [starterOpen, setStarterOpen] = useState(false);
   const [message, setMessage] = useState(null);         // { text, ok }
+  const [viewingCard, setViewingCard] = useState(null); // { cardId, foil } | null
+  const viewCard = (cardId, foil = false) => setViewingCard({ cardId, foil });
 
   const showMsg = (text, ok = true) => {
     setMessage({ text, ok });
@@ -89,20 +91,26 @@ export default function Tcg() {
     if (me.tcgStarterClaimed) { setStarterOpen(false); return; }
     // Light and Dark are shop-exclusive — refuse them as a starter choice.
     if (element === "light" || element === "dark") return;
-    const cardIds = openStarterPack(element);
-    if (cardIds.length === 0) return;
-    const counts = countIds(cardIds);
+    const drawn = openStarterPack(element); // [{cardId, foil}]
+    if (drawn.length === 0) return;
+    const { normals, foils } = splitDrawn(drawn);
     const patch = {
       tcgStarterClaimed: true,
       tcgStarterElement: element,
-      tcgDeck: cardIds.slice(0, DECK_REQUIRED_SIZE), // auto-build starter deck
+      tcgDeck: drawn.slice(0, DECK_REQUIRED_SIZE).map(d => d.cardId),
     };
-    for (const [id, n] of Object.entries(counts)) {
+    for (const [id, n] of Object.entries(normals)) {
       patch[`tcgCollection.${id}`] = increment(n);
+    }
+    for (const [id, n] of Object.entries(foils)) {
+      patch[`tcgFoils.${id}`] = increment(n);
     }
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), patch);
-      setPackReveal({ packDef: { ...PACK_DEFS[element], name: "Pacchetto Iniziale", size: cardIds.length }, cards: cardIds });
+      setPackReveal({
+        packDef: { ...PACK_DEFS[element], name: "Pacchetto Iniziale", size: drawn.length },
+        cards: drawn,
+      });
       setStarterOpen(false);
     } catch (err) {
       console.error("starter claim failed:", err);
@@ -120,15 +128,18 @@ export default function Tcg() {
       showMsg(`Servono ${def.cost - balance} ✦ in più.`, false);
       return;
     }
-    const cardIds = openPack(packKey);
-    const counts = countIds(cardIds);
+    const drawn = openPack(packKey); // [{cardId, foil}]
+    const { normals, foils } = splitDrawn(drawn);
     const patch = { petPoints: increment(-def.cost) };
-    for (const [id, n] of Object.entries(counts)) {
+    for (const [id, n] of Object.entries(normals)) {
       patch[`tcgCollection.${id}`] = increment(n);
+    }
+    for (const [id, n] of Object.entries(foils)) {
+      patch[`tcgFoils.${id}`] = increment(n);
     }
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), patch);
-      setPackReveal({ packDef: def, cards: cardIds });
+      setPackReveal({ packDef: def, cards: drawn });
     } catch (err) {
       console.error("buyPack failed:", err);
       showMsg("Acquisto fallito: " + err.message, false);
@@ -136,28 +147,33 @@ export default function Tcg() {
   };
 
   /* ── Trash a card from collection (refund in ✦) ──────── */
-  const trashCard = async (cardId) => {
+  const trashCard = async (cardId, foil = false) => {
     if (!currentUser || !me) return;
-    const owned = (me.tcgCollection || {})[cardId] || 0;
+    const collMap = foil ? (me.tcgFoils || {}) : (me.tcgCollection || {});
+    const owned = collMap[cardId] || 0;
     if (owned <= 0) return;
     const card = TCG_CARDS[cardId];
     if (!card) return;
-    const refund = trashRefundFor(cardId);
+    const refund = trashRefundFor(cardId, foil);
     if (!window.confirm(
-      `Distruggere una copia di "${card.name}" (${RARITY_LABEL[card.rarity]})?\n` +
+      `Distruggere una copia ${foil ? "✨ BRILLANTE " : ""}di "${card.name}" (${RARITY_LABEL[card.rarity]})?\n` +
       `Recupererai ${refund} ✦ Punti Bestiario.\n` +
       `Possedute: ${owned} · operazione irreversibile.`
     )) return;
-    const inDeck = deckCount(me.tcgDeck, cardId);
-    let patch = {
-      [`tcgCollection.${cardId}`]: increment(-1),
+    const fieldPath = foil ? `tcgFoils.${cardId}` : `tcgCollection.${cardId}`;
+    const patch = {
+      [fieldPath]: increment(-1),
       petPoints: increment(refund),
     };
-    // If the deck depends on this copy, trim the excess out so the
-    // saved deck stays legal.
-    if (inDeck > owned - 1) {
-      const newDeck = [...me.tcgDeck];
-      let toRemove = inDeck - (owned - 1);
+    // The deck draws from the combined (normal + foil) pool. If
+    // trashing brings the total below the deck count, trim.
+    const totalNormalAfter = (me.tcgCollection?.[cardId] || 0) - (foil ? 0 : 1);
+    const totalFoilAfter   = (me.tcgFoils?.[cardId] || 0)      - (foil ? 1 : 0);
+    const totalAfter = totalNormalAfter + totalFoilAfter;
+    const inDeck = deckCount(me.tcgDeck, cardId);
+    if (inDeck > totalAfter) {
+      const newDeck = [...(me.tcgDeck || [])];
+      let toRemove = inDeck - totalAfter;
       for (let i = newDeck.length - 1; i >= 0 && toRemove > 0; i--) {
         if (newDeck[i] === cardId) { newDeck.splice(i, 1); toRemove--; }
       }
@@ -165,7 +181,7 @@ export default function Tcg() {
     }
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), patch);
-      showMsg(`🗑 "${card.name}" distrutto · +${refund} ✦`);
+      showMsg(`🗑 ${foil ? "✨ " : ""}"${card.name}" distrutto · +${refund} ✦`);
     } catch (err) {
       console.error("trashCard failed:", err);
       showMsg("Distruzione fallita.", false);
@@ -187,7 +203,7 @@ export default function Tcg() {
   /* ── Create challenge ─────────────────────────────────── */
   const createChallenge = async () => {
     if (!currentUser || !me) return;
-    const deck = resolveDeckForMatch(me.tcgDeck, me.tcgCollection);
+    const deck = resolveDeckForMatch(me.tcgDeck, me.tcgCollection, me.tcgFoils);
     try {
       await addDoc(collection(db, "tcg_matches"), {
         status: "open",
@@ -215,7 +231,7 @@ export default function Tcg() {
       const cDeck = (isValidDeck(match.challengerDeck))
         ? match.challengerDeck
         : resolveDeckForMatch(null, null);
-      const dDeck = resolveDeckForMatch(me.tcgDeck, me.tcgCollection);
+      const dDeck = resolveDeckForMatch(me.tcgDeck, me.tcgCollection, me.tcgFoils);
       const initState = initMatchState(cDeck, dDeck);
       await updateDoc(doc(db, "tcg_matches", match.id), {
         status: "active",
@@ -264,7 +280,10 @@ export default function Tcg() {
   }
 
   const collection_ = me?.tcgCollection || {};
+  const foils_ = me?.tcgFoils || {};
   const points = me?.petPoints || 0;
+  const totalNormals = Object.values(collection_).reduce((s, n) => s + n, 0);
+  const totalFoils = Object.values(foils_).reduce((s, n) => s + n, 0);
 
   return (
     <section className="tcg-page">
@@ -283,8 +302,16 @@ export default function Tcg() {
         <span>Punti Bestiario</span>
         <span className="tcg-wallet-divider">·</span>
         <span>📚</span>
-        <strong>{Object.values(collection_).reduce((s, n) => s + n, 0)}</strong>
-        <span>carte in collezione</span>
+        <strong>{totalNormals + totalFoils}</strong>
+        <span>carte</span>
+        {totalFoils > 0 && (
+          <>
+            <span className="tcg-wallet-divider">·</span>
+            <span className="tcg-wallet-foil" title="Carte brillanti possedute">
+              ✨ <strong>{totalFoils}</strong> brillant{totalFoils === 1 ? "e" : "i"}
+            </span>
+          </>
+        )}
       </div>
 
       {message && (
@@ -352,9 +379,10 @@ export default function Tcg() {
             me={me}
             onTrash={trashCard}
             onSaveDeck={saveDeck}
+            onView={viewCard}
           />
         )}
-        {tab === "codex" && <Codex />}
+        {tab === "codex" && <Codex onView={viewCard} />}
         {tab === "rules" && <Rules />}
       </div>
 
@@ -370,17 +398,29 @@ export default function Tcg() {
           packDef={packReveal.packDef}
           cards={packReveal.cards}
           onClose={() => setPackReveal(null)}
+          onView={viewCard}
+        />
+      )}
+
+      {viewingCard && (
+        <CardDetailModal
+          cardId={viewingCard.cardId}
+          foil={viewingCard.foil}
+          onClose={() => setViewingCard(null)}
         />
       )}
     </section>
   );
 }
 
-/* Counts duplicates in an array of cardIds. */
-function countIds(arr) {
-  const out = {};
-  for (const id of arr) out[id] = (out[id] || 0) + 1;
-  return out;
+/* Splits a drawn pack ([{cardId, foil}]) into two count maps. */
+function splitDrawn(drawn) {
+  const normals = {}, foils = {};
+  for (const d of drawn) {
+    if (d.foil) foils[d.cardId] = (foils[d.cardId] || 0) + 1;
+    else        normals[d.cardId] = (normals[d.cardId] || 0) + 1;
+  }
+  return { normals, foils };
 }
 
 /* ============================================================
@@ -439,29 +479,34 @@ function StarterModal({ onPick, onSkip }) {
 /* ============================================================
    PACK REVEAL MODAL — shows the 8 cards just opened.
    ============================================================ */
-function PackRevealModal({ packDef, cards, onClose }) {
+function PackRevealModal({ packDef, cards, onClose, onView }) {
   const [step, setStep] = useState(0);
   // Reveal cards one by one for drama; "step" is the count visible.
   useEffect(() => {
     if (step >= cards.length) return;
-    const t = setTimeout(() => setStep(s => s + 1), 160);
+    const t = setTimeout(() => setStep(s => s + 1), 200);
     return () => clearTimeout(t);
   }, [step, cards.length]);
 
   const bestRarity = useMemo(() => {
     const rank = { common: 1, rare: 2, epic: 3, legendary: 4 };
     let best = "common";
-    for (const id of cards) {
-      const c = TCG_CARDS[id];
+    for (const d of cards) {
+      const c = TCG_CARDS[d.cardId];
       if (c && rank[c.rarity] > rank[best]) best = c.rarity;
     }
     return best;
   }, [cards]);
 
+  const foilCount = useMemo(
+    () => cards.filter(d => d.foil).length,
+    [cards],
+  );
+
   return (
     <div className="tcg-overlay" onClick={onClose}>
       <div
-        className={`tcg-modal tcg-reveal tcg-reveal--${bestRarity}`}
+        className={`tcg-modal tcg-reveal tcg-reveal--${bestRarity} ${foilCount > 0 ? "tcg-reveal--has-foil" : ""}`}
         onClick={e => e.stopPropagation()}
       >
         <div className="tcg-reveal-head">
@@ -470,6 +515,11 @@ function PackRevealModal({ packDef, cards, onClose }) {
             <div className="tcg-reveal-pack-name">{packDef.name}</div>
             <div className="tcg-reveal-pack-sub">{cards.length} carte ricevute</div>
           </div>
+          {foilCount > 0 && (
+            <div className="tcg-reveal-jackpot tcg-reveal-jackpot--foil">
+              ✨ {foilCount === 1 ? "BRILLANTE!" : `${foilCount} BRILLANTI!`} ✨
+            </div>
+          )}
           {bestRarity === "legendary" && (
             <div className="tcg-reveal-jackpot">★ LEGGENDARIO! ★</div>
           )}
@@ -478,15 +528,125 @@ function PackRevealModal({ packDef, cards, onClose }) {
           )}
         </div>
         <div className="tcg-reveal-grid">
-          {cards.slice(0, step).map((id, i) => {
-            const c = TCG_CARDS[id];
+          {cards.slice(0, step).map((d, i) => {
+            const c = TCG_CARDS[d.cardId];
             return c
-              ? <Card key={i} card={c} size="md" className="tcg-reveal-card" />
+              ? <Card
+                  key={i}
+                  card={c}
+                  foil={d.foil}
+                  size="md"
+                  className="tcg-reveal-card"
+                  onClick={onView ? () => onView(d.cardId, d.foil) : undefined}
+                />
               : null;
           })}
         </div>
         <button className="tcg-btn tcg-btn--hero" onClick={onClose}>
           Continua
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   CARD DETAIL MODAL — enlarged card view with full info.
+   Triggered from Codex, Collection, and Pack reveal.
+   ============================================================ */
+function CardDetailModal({ cardId, foil = false, onClose }) {
+  const c = TCG_CARDS[cardId];
+  if (!c) return null;
+  const mechs = c.mechanics || [];
+  return (
+    <div className="tcg-overlay" onClick={onClose}>
+      <div
+        className={
+          `tcg-modal tcg-detail tcg-detail--r-${c.rarity} tcg-detail--el-${c.element}` +
+          (foil ? " tcg-detail--foil" : "")
+        }
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="tcg-detail-close"
+          onClick={onClose}
+          title="Chiudi"
+        >✕</button>
+
+        <div className="tcg-detail-art">
+          <CardArt def={c} />
+          {foil && <span className="tcg-card-foil-shine" aria-hidden="true" />}
+          <div className="tcg-detail-badges">
+            <span className={`tcg-rarity-chip tcg-rarity-chip--${c.rarity}`}>
+              ★ {RARITY_LABEL[c.rarity]}
+            </span>
+            <span className={`tcg-element-chip tcg-element-chip--${c.element}`}>
+              {ELEMENT_ICON[c.element]} {ELEMENT_LABEL[c.element]}
+            </span>
+            {foil && (
+              <span className="tcg-detail-foil-chip" title="Edizione brillante">
+                ✨ BRILLANTE
+              </span>
+            )}
+          </div>
+        </div>
+
+        <h2 className="tcg-detail-name">{c.name}</h2>
+
+        <div className="tcg-detail-stats">
+          <div className="tcg-detail-stat tcg-detail-stat--mana">
+            <span className="tcg-detail-stat-icon">🔮</span>
+            <span className="tcg-detail-stat-val">{c.cost}</span>
+            <span className="tcg-detail-stat-label">Mana</span>
+          </div>
+          <div className="tcg-detail-stat tcg-detail-stat--atk">
+            <span className="tcg-detail-stat-icon">⚔</span>
+            <span className="tcg-detail-stat-val">{c.atk}</span>
+            <span className="tcg-detail-stat-label">Attacco</span>
+          </div>
+          <div className="tcg-detail-stat tcg-detail-stat--hp">
+            <span className="tcg-detail-stat-icon">❤</span>
+            <span className="tcg-detail-stat-val">{c.hp}</span>
+            <span className="tcg-detail-stat-label">Punti Ferita</span>
+          </div>
+        </div>
+
+        {mechs.length > 0 && (
+          <div className="tcg-detail-mechs">
+            <h4 className="tcg-detail-section">⚡ Abilità</h4>
+            {mechs.map(k => {
+              const m = TCG_MECHANICS[k];
+              return (
+                <div key={k} className={`tcg-detail-mech tcg-detail-mech--${k}`}>
+                  <div className="tcg-detail-mech-head">
+                    <span
+                      className="tcg-detail-mech-icon"
+                      style={{ background: m.color }}
+                    >
+                      {m.icon}
+                    </span>
+                    <strong className="tcg-detail-mech-name">{m.name}</strong>
+                  </div>
+                  <div className="tcg-detail-mech-rules">{m.rules}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="tcg-detail-flavor">
+          <span className="tcg-detail-flavor-quote">"</span>
+          {c.flavor}
+          <span className="tcg-detail-flavor-quote">"</span>
+        </div>
+
+        <button
+          type="button"
+          className="tcg-btn tcg-btn--hero tcg-detail-done"
+          onClick={onClose}
+        >
+          Chiudi
         </button>
       </div>
     </div>
@@ -563,8 +723,9 @@ function Shop({ points, onBuy }) {
 /* ============================================================
    COLLECTION TAB — owned cards + deck builder + trash
    ============================================================ */
-function CollectionTab({ me, onTrash, onSaveDeck }) {
+function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
   const collection_ = me?.tcgCollection || {};
+  const foils_ = me?.tcgFoils || {};
   const savedDeck = Array.isArray(me?.tcgDeck) ? me.tcgDeck : [];
 
   // Local editing state — initialized from saved deck
@@ -584,11 +745,19 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
   }, [JSON.stringify(savedDeck)]);
 
   const cards = useMemo(() => {
-    const owned = Object.entries(collection_)
-      .filter(([, n]) => n > 0)
-      .map(([id, n]) => ({ id, count: n, def: TCG_CARDS[id] }))
-      .filter(o => !!o.def);
+    const owned = [];
+    for (const [id, n] of Object.entries(collection_)) {
+      if (n > 0 && TCG_CARDS[id]) {
+        owned.push({ id, count: n, foil: false, def: TCG_CARDS[id] });
+      }
+    }
+    for (const [id, n] of Object.entries(foils_)) {
+      if (n > 0 && TCG_CARDS[id]) {
+        owned.push({ id, count: n, foil: true, def: TCG_CARDS[id] });
+      }
+    }
     if (filter === "all") return sortCards(owned);
+    if (filter === "foil") return sortCards(owned.filter(o => o.foil));
     if (["common", "rare", "epic", "legendary"].includes(filter)) {
       return sortCards(owned.filter(o => o.def.rarity === filter));
     }
@@ -599,14 +768,23 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
       return sortCards(owned.filter(o => deckCount(editingDeck, o.id) > 0));
     }
     if (filter === "unused") {
-      return sortCards(owned.filter(o => deckCount(editingDeck, o.id) < o.count));
+      // A row is "available" if the combined pool exceeds usage in deck.
+      return sortCards(owned.filter(o => {
+        const totalForId = (collection_[o.id] || 0) + (foils_[o.id] || 0);
+        return deckCount(editingDeck, o.id) < totalForId;
+      }));
     }
     return sortCards(owned);
-  }, [collection_, filter, editingDeck]);
+  }, [collection_, foils_, filter, editingDeck]);
 
   const totalOwned = useMemo(
-    () => Object.values(collection_).reduce((s, n) => s + n, 0),
-    [collection_],
+    () => Object.values(collection_).reduce((s, n) => s + n, 0)
+        + Object.values(foils_).reduce((s, n) => s + n, 0),
+    [collection_, foils_],
+  );
+  const totalFoil = useMemo(
+    () => Object.values(foils_).reduce((s, n) => s + n, 0),
+    [foils_],
   );
 
   const deckCounts = useMemo(() => {
@@ -617,9 +795,9 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
 
   const addToDeck = (cardId) => {
     if (editingDeck.length >= DECK_REQUIRED_SIZE) return;
-    const ownedN = collection_[cardId] || 0;
+    const total = (collection_[cardId] || 0) + (foils_[cardId] || 0);
     const used = deckCounts[cardId] || 0;
-    if (used >= ownedN) return; // out of copies
+    if (used >= total) return; // out of copies
     setEditingDeck(d => [...d, cardId]);
   };
 
@@ -633,7 +811,7 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
   };
 
   const autoFill = () => {
-    const built = autoBuildDeckFromCollection(collection_);
+    const built = autoBuildDeckFromCollection(collection_, foils_);
     if (!built) {
       alert("Servono almeno 20 carte nella collezione per generare un mazzo.");
       return;
@@ -646,7 +824,7 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
   };
 
   const dirty = JSON.stringify(editingDeck) !== JSON.stringify(savedDeck);
-  const deckValid = isValidDeck(editingDeck) && ownsDeck(editingDeck, collection_);
+  const deckValid = isValidDeck(editingDeck) && ownsDeck(editingDeck, collection_, foils_);
 
   if (totalOwned === 0) {
     return (
@@ -717,7 +895,12 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
 
       {/* COLLECTION FILTER + GRID */}
       <div className="tcg-panel">
-        <h2 className="tcg-panel-title">📚 La tua collezione · {totalOwned} carte</h2>
+        <h2 className="tcg-panel-title">
+          📚 La tua collezione · {totalOwned} carte
+          {totalFoil > 0 && (
+            <span className="tcg-panel-title-foil"> · ✨ {totalFoil} brillant{totalFoil === 1 ? "e" : "i"}</span>
+          )}
+        </h2>
         <div className="tcg-codex-filters">
           <button className={`tcg-filter ${filter === "all" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("all")}>
             Tutte ({cards.length})
@@ -728,6 +911,11 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
           <button className={`tcg-filter ${filter === "inDeck" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("inDeck")}>
             Nel mazzo
           </button>
+          {totalFoil > 0 && (
+            <button className={`tcg-filter tcg-filter--foil ${filter === "foil" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("foil")}>
+              ✨ Brillanti
+            </button>
+          )}
           {Object.entries(ELEMENT_ICON).map(([el, ic]) => (
             <button key={el} className={`tcg-filter tcg-filter--el-${el} ${filter === el ? "tcg-filter--on" : ""}`} onClick={() => setFilter(el)}>
               {ic} {ELEMENT_LABEL[el]}
@@ -743,41 +931,51 @@ function CollectionTab({ me, onTrash, onSaveDeck }) {
         <div className="tcg-coll-grid">
           {cards.length === 0 ? (
             <p className="tcg-empty">Nessuna carta corrisponde al filtro.</p>
-          ) : cards.map(({ id, count, def }) => {
+          ) : cards.map(({ id, count, foil, def }) => {
+            const totalForId = (collection_[id] || 0) + (foils_[id] || 0);
             const usedInDeck = deckCounts[id] || 0;
-            const available = count - usedInDeck;
-            const deckFull = editingDeck.length >= DECK_REQUIRED_SIZE;
+            const canAddToDeck = totalForId > usedInDeck && editingDeck.length < DECK_REQUIRED_SIZE;
+            const refundTable = foil ? FOIL_TRASH_REFUND : TRASH_REFUND;
             return (
-              <div key={id} className="tcg-coll-cell">
-                <Card card={def} size="md" />
+              <div key={`${id}-${foil ? "f" : "n"}`} className={`tcg-coll-cell ${foil ? "tcg-coll-cell--foil" : ""}`}>
+                <Card
+                  card={def}
+                  size="md"
+                  foil={foil}
+                  onClick={onView ? () => onView(id, foil) : undefined}
+                />
                 <div className="tcg-coll-meta">
-                  <span className="tcg-coll-owned">×{count}</span>
+                  <span className={`tcg-coll-owned ${foil ? "tcg-coll-owned--foil" : ""}`}>
+                    {foil ? "✨ " : ""}×{count}
+                  </span>
                   {usedInDeck > 0 && (
                     <span className="tcg-coll-indeck">Mazzo: {usedInDeck}</span>
                   )}
                   <span className="tcg-coll-refund" title="Distruzione: recupero in ✦">
-                    🗑 {TRASH_REFUND[def.rarity]}
+                    🗑 {refundTable[def.rarity]}
                   </span>
                 </div>
                 <div className="tcg-coll-actions">
                   <button
                     type="button"
                     className="tcg-btn tcg-btn--tiny"
-                    onClick={() => {
-                      // Add to deck
-                      if (available <= 0 || deckFull) return;
-                      setEditingDeck(d => [...d, id]);
-                    }}
-                    disabled={available <= 0 || deckFull}
-                    title={deckFull ? "Mazzo pieno" : (available <= 0 ? "Tutte le copie sono nel mazzo" : "Aggiungi al mazzo")}
+                    onClick={addToDeck.bind(null, id)}
+                    disabled={!canAddToDeck}
+                    title={
+                      editingDeck.length >= DECK_REQUIRED_SIZE
+                        ? "Mazzo pieno"
+                        : (totalForId <= usedInDeck
+                          ? "Tutte le copie sono nel mazzo"
+                          : "Aggiungi al mazzo")
+                    }
                   >
                     + Mazzo
                   </button>
                   <button
                     type="button"
                     className="tcg-btn tcg-btn--tiny tcg-btn--danger"
-                    onClick={() => onTrash(id)}
-                    title={`Distruggi una copia · recupera ${TRASH_REFUND[def.rarity]} ✦`}
+                    onClick={() => onTrash(id, foil)}
+                    title={`Distruggi una copia ${foil ? "brillante " : ""}· recupera ${refundTable[def.rarity]} ✦`}
                   >
                     🗑
                   </button>
@@ -799,7 +997,11 @@ function sortCards(arr) {
     if (r !== 0) return r;
     const c = (a.def.cost || 0) - (b.def.cost || 0);
     if (c !== 0) return c;
-    return a.def.name.localeCompare(b.def.name);
+    const n = a.def.name.localeCompare(b.def.name);
+    if (n !== 0) return n;
+    // Same card: foil row first (rarer/prettier).
+    if (a.foil !== b.foil) return a.foil ? -1 : 1;
+    return 0;
   });
 }
 
@@ -807,8 +1009,9 @@ function sortCards(arr) {
    LOBBY — challenge list, create & accept
    ============================================================ */
 function Lobby({ currentUser, me, openMatches, recentMatches, onCreate, onAccept, onCancel }) {
-  const deckOk = isValidDeck(me?.tcgDeck) && ownsDeck(me?.tcgDeck, me?.tcgCollection);
-  const totalOwned = Object.values(me?.tcgCollection || {}).reduce((s, n) => s + n, 0);
+  const deckOk = isValidDeck(me?.tcgDeck) && ownsDeck(me?.tcgDeck, me?.tcgCollection, me?.tcgFoils);
+  const totalOwned = Object.values(me?.tcgCollection || {}).reduce((s, n) => s + n, 0)
+                   + Object.values(me?.tcgFoils || {}).reduce((s, n) => s + n, 0);
 
   return (
     <div className="tcg-lobby">
@@ -928,12 +1131,12 @@ function ElementWheelLegend() {
 /* ============================================================
    CARD — full MTG-style card visual
    ============================================================ */
-function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true }) {
+function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false }) {
   const def = card;
   const cost = def.cost;
   const mechs = def.mechanics || [];
   const tip = showTooltip
-    ? `${def.name} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}\n${def.flavor}\n` +
+    ? `${def.name} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n` +
       mechs.map(k => `${TCG_MECHANICS[k].icon} ${TCG_MECHANICS[k].name}: ${TCG_MECHANICS[k].rules}`).join("\n")
     : undefined;
   const Tag = onClick ? "button" : "div";
@@ -944,6 +1147,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
         `tcg-card tcg-card--${size}` +
         ` tcg-card--el-${def.element}` +
         ` tcg-card--r-${def.rarity}` +
+        (foil ? " tcg-card--foil" : "") +
         (selected ? " tcg-card--selected" : "") +
         (disabled ? " tcg-card--disabled" : "") +
         (onClick ? " tcg-card--clickable" : "") +
@@ -963,6 +1167,8 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
 
       <div className="tcg-card-art">
         <CardArt def={def} />
+        {foil && <span className="tcg-card-foil-shine" aria-hidden="true" />}
+        {foil && <span className="tcg-card-foil-badge" title="Carta Brillante — esemplare rarissimo">✨ BRILLANTE</span>}
         {def.rarity !== "common" && (
           <span className={`tcg-card-rarity-badge tcg-card-rarity-badge--${def.rarity}`}>
             ★ {RARITY_LABEL[def.rarity]}
@@ -1366,7 +1572,7 @@ function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, oppo
 /* ============================================================
    CODEX — show every card in the pool
    ============================================================ */
-function Codex() {
+function Codex({ onView }) {
   const [filter, setFilter] = useState("all");
   const filtered = useMemo(() => {
     if (filter === "all") return TCG_CARD_LIST;
@@ -1375,6 +1581,9 @@ function Codex() {
 
   return (
     <div className="tcg-codex">
+      <p className="tcg-panel-sub tcg-codex-hint">
+        💡 Clicca una carta per ingrandirla, leggere la descrizione e tutti i dettagli delle abilità.
+      </p>
       <div className="tcg-codex-filters">
         <button className={`tcg-filter ${filter === "all" ? "tcg-filter--on" : ""}`} onClick={() => setFilter("all")}>
           Tutte ({TCG_CARD_LIST.length})
@@ -1392,7 +1601,12 @@ function Codex() {
       </div>
       <div className="tcg-codex-grid">
         {filtered.map(c => (
-          <Card key={c.id} card={c} size="md" />
+          <Card
+            key={c.id}
+            card={c}
+            size="md"
+            onClick={onView ? () => onView(c.id) : undefined}
+          />
         ))}
       </div>
     </div>
@@ -1423,6 +1637,10 @@ function Rules() {
           <li>I forzieri elementali standard costano <strong>80 ✦</strong>. I forzieri di <strong>Luce</strong> e <strong>Tenebra</strong> costano <strong>200 ✦</strong> ma offrono il 5% di Leggendari.</li>
           <li>Ogni forziere contiene 8 carte. Lo slot premio rolla rarità casuali fino al Leggendario.</li>
           <li>Nel pannello <strong>Collezione</strong> costruisci e salvi un mazzo da 20 carte tra quelle possedute. Le carte indesiderate possono essere <strong>distrutte</strong> per recuperare ✦ (3/8/20/50 per rarità).</li>
+          <li>
+            <strong>✨ Carte Brillanti</strong> — ogni carta acquistata in Bottega ha una probabilità del <strong>{(FOIL_RATE * 100).toFixed(1)}%</strong> di essere "brillante",
+            una versione olografica rarissima e meravigliosa. Stesse statistiche, ma molto più preziosa: la distruzione restituisce <strong>4× ✦</strong>.
+          </li>
         </ul>
       </div>
 

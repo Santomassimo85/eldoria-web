@@ -583,7 +583,19 @@ function pickCardId(packElement, rarity, elementBias) {
   return pool[Math.floor(Math.random() * pool.length)].id;
 }
 
-/* ── Open a pack: returns an array of cardIds ────────────── */
+/* ── Foil rate — "brilliant" cards (Magic-style foils) ───
+   Each card drawn from a pack has this chance of rolling
+   foil — independent of rarity. Foils are purely cosmetic
+   (a holographic shimmer effect) but very rare and prized.
+   Starter packs intentionally never roll foils so the
+   wonder is reserved for the shop. */
+export const FOIL_RATE = 0.025; // 2.5% per card
+
+function rollFoil() {
+  return Math.random() < FOIL_RATE;
+}
+
+/* ── Open a pack: returns [{ cardId, foil }, ...] ────────── */
 export function openPack(packKey) {
   const def = PACK_DEFS[packKey];
   if (!def) return [];
@@ -595,15 +607,18 @@ export function openPack(packKey) {
     } else {
       rarity = slot;
     }
-    out.push(pickCardId(def.element, rarity, def.elementBias));
+    out.push({
+      cardId: pickCardId(def.element, rarity, def.elementBias),
+      foil: rollFoil(),
+    });
   }
   return out;
 }
 
-/* ── Free starter pack — 20 cards, picked once per player ─
-   Distribution: 14 commons, 5 rares, 1 epic — heavily biased
-   toward the chosen element. Gives the player exactly enough
-   cards for a 20-card deck so they can play immediately. */
+/* ── Free starter pack — 20 non-foil cards, picked once per
+   player. Distribution: 14 commons, 5 rares, 1 epic — heavily
+   biased toward the chosen element. Foils don't drop from
+   starter — only from purchased packs. */
 export function openStarterPack(element) {
   if (!PACK_DEFS[element]) return [];
   const bias = 0.85;
@@ -612,7 +627,10 @@ export function openStarterPack(element) {
     ...Array(5).fill("rare"),
     ...Array(1).fill("epic"),
   ];
-  return slots.map(r => pickCardId(element, r, bias));
+  return slots.map(r => ({
+    cardId: pickCardId(element, r, bias),
+    foil: false,
+  }));
 }
 
 /* ── Trash refunds — selling unwanted cards back for ✦ ─── */
@@ -623,8 +641,17 @@ export const TRASH_REFUND = {
   legendary: 50,
 };
 
-export function trashRefundFor(cardId) {
+/* Foils refund roughly 4× normal — they're rare collector items. */
+export const FOIL_TRASH_REFUND = {
+  common:    12,
+  rare:      32,
+  epic:      80,
+  legendary: 200,
+};
+
+export function trashRefundFor(cardId, foil = false) {
   const c = TCG_CARDS[cardId];
   if (!c) return 0;
-  return TRASH_REFUND[c.rarity] || 0;
+  const table = foil ? FOIL_TRASH_REFUND : TRASH_REFUND;
+  return table[c.rarity] || 0;
 }

@@ -472,13 +472,17 @@ export function isValidDeck(deck) {
 }
 
 /* Returns true when the collection has enough copies of every
-   card the deck references (i.e. the deck is legally yours). */
-export function ownsDeck(deck, collection) {
+   card the deck references (i.e. the deck is legally yours).
+   Foil copies count as additional available stock — the engine
+   doesn't distinguish them at match time, they're a cosmetic
+   layer on top of the same cardId pool. */
+export function ownsDeck(deck, collection, foils = {}) {
   if (!Array.isArray(deck)) return false;
   const needed = {};
   for (const id of deck) needed[id] = (needed[id] || 0) + 1;
   for (const [id, n] of Object.entries(needed)) {
-    if ((collection?.[id] || 0) < n) return false;
+    const have = (collection?.[id] || 0) + (foils?.[id] || 0);
+    if (have < n) return false;
   }
   return true;
 }
@@ -495,9 +499,13 @@ export function deckCount(deck, cardId) {
    auto-fill button in the deck builder and as a fallback when
    their saved deck is invalid or they own >20 cards but never
    made one. Returns null when the collection has <20 cards. */
-export function autoBuildDeckFromCollection(collection) {
+export function autoBuildDeckFromCollection(collection, foils = {}) {
   const flat = [];
   for (const [id, n] of Object.entries(collection || {})) {
+    if (!TCG_CARDS[id]) continue;
+    for (let i = 0; i < n; i++) flat.push(id);
+  }
+  for (const [id, n] of Object.entries(foils || {})) {
     if (!TCG_CARDS[id]) continue;
     for (let i = 0; i < n; i++) flat.push(id);
   }
@@ -513,9 +521,9 @@ export function autoBuildDeckFromCollection(collection) {
    saved deck first; if invalid or unowned, auto-builds from the
    collection; if collection too small, falls back to a fully
    random pool deck so the game can still start. */
-export function resolveDeckForMatch(deck, collection) {
-  if (isValidDeck(deck) && ownsDeck(deck, collection)) return deck;
-  const built = autoBuildDeckFromCollection(collection);
+export function resolveDeckForMatch(deck, collection, foils = {}) {
+  if (isValidDeck(deck) && ownsDeck(deck, collection, foils)) return deck;
+  const built = autoBuildDeckFromCollection(collection, foils);
   if (built) return built;
   return buildRandomDeck();
 }
