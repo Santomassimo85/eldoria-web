@@ -87,6 +87,8 @@ export default function Tcg() {
   const claimStarter = async (element) => {
     if (!currentUser || !me) return;
     if (me.tcgStarterClaimed) { setStarterOpen(false); return; }
+    // Light and Dark are shop-exclusive — refuse them as a starter choice.
+    if (element === "light" || element === "dark") return;
     const cardIds = openStarterPack(element);
     if (cardIds.length === 0) return;
     const counts = countIds(cardIds);
@@ -392,12 +394,14 @@ function StarterModal({ onPick, onSkip }) {
         <div className="tcg-starter-icon">🎁</div>
         <h2 className="tcg-starter-title">Benvenuto nel TCG di Eldoria</h2>
         <p className="tcg-starter-sub">
-          Scegli un elemento e ricevi <strong>20 carte gratis</strong> per
+          Scegli uno dei quattro elementi base e ricevi <strong>20 carte gratis</strong> per
           iniziare. Otterrai un mazzo da gioco completo con preferenza per
           l'elemento scelto. Questa scelta è una sola volta per ogni avventuriero.
+          <br />
+          <em>Luce</em> e <em>Tenebra</em> sono disponibili solo nella Bottega.
         </p>
         <div className="tcg-starter-grid">
-          {PACK_ORDER.map(el => {
+          {["fire", "water", "earth", "air"].map(el => {
             const pd = PACK_DEFS[el];
             return (
               <button
@@ -409,9 +413,7 @@ function StarterModal({ onPick, onSkip }) {
                 <div className="tcg-starter-pick-icon">{pd.icon}</div>
                 <div className="tcg-starter-pick-name">{ELEMENT_LABEL[el]}</div>
                 <div className="tcg-starter-pick-desc">
-                  {(el === "light" || el === "dark")
-                    ? "Esotico · poche carte ma uniche"
-                    : "Standard · ampio bestiario"}
+                  Standard · ampio bestiario
                 </div>
               </button>
             );
