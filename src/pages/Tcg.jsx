@@ -19,6 +19,7 @@ import {
   isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection,
   resolveDeckForMatch,
 } from "../utils/tcg";
+import { playSfx, setSfxMuted, isSfxMuted, primeSfx } from "../utils/tcgSfx";
 import "./Tcg.css";
 
 /* Unlocked for all logged-in players. To re-gate the page, flip
@@ -1268,15 +1269,22 @@ function CardArt({ def }) {
 /* ============================================================
    BOARD CARD — Card variant showing live HP & status
    ============================================================ */
-function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }) {
+function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim }) {
   const mechs = def.mechanics || [];
   const isFlying = mechs.includes("flying");
   const tip = `${def.name}\nPF ${bc.hp}/${bc.maxHp} · ⚔ ${bc.atk}\n` +
     mechs.map(k => `${TCG_MECHANICS[k].icon} ${TCG_MECHANICS[k].name}`).join(" · ");
   const Tag = onClick ? "button" : "div";
+  // attackAnim shape: { role: "attacker-up" | "attacker-down" | "target", ts: number }
+  const animCls = attackAnim
+    ? ` tcg-board-card--anim-${attackAnim.role}`
+    : "";
   return (
     <Tag
       type={onClick ? "button" : undefined}
+      // Re-mounting via key forces the CSS animation to restart on each new
+      // attack against the same instId (otherwise the keyframe wouldn't replay).
+      key={attackAnim ? `anim-${attackAnim.ts}` : undefined}
       className={
         `tcg-card tcg-card--${size}` +
         ` tcg-card--el-${def.element}` +
@@ -1288,7 +1296,8 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status }
         (status === "sick" ? " tcg-board-card--sick" : "") +
         (status === "tapped" ? " tcg-board-card--tapped" : "") +
         (status === "ready" ? " tcg-board-card--ready" : "") +
-        (isFlying ? " tcg-board-card--flying" : "")
+        (isFlying ? " tcg-board-card--flying" : "") +
+        animCls
       }
       onClick={onClick}
       disabled={disabled}
@@ -1393,18 +1402,66 @@ function LiveMatch({ match, uid, onExit }) {
   const [selectedAttacker, setSelectedAttacker] = useState(null);
   const [compliment, setCompliment] = useState("");
   const [attackSplash, setAttackSplash] = useState(null); // { attacker, defender, side, kind, key }
+  const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
+  const [muted, setMuted] = useState(isSfxMuted());
   const logRef = useRef(null);
   const lastLogLenRef = useRef((match.state?.log || []).length);
+  const lastAttackTsRef = useRef(match.state?.lastAttack?.ts || 0);
+  const wonRef = useRef(false);
 
-  /* Attack splash — when a new ⚔ or 🪽 log entry appears, show an MTG-style
-     clash overlay for ~1100ms. We parse the most recent action log
-     deltas so both players see the same splash. */
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setSfxMuted(next);
+    if (!next) primeSfx();
+  };
+
+  /* Card animation — driven by state.lastAttack (written by the engine).
+     When ts changes we set a transient animState that BoardCard reads to
+     pick its lunge/shake class. Auto-clears after 500ms. */
+  useEffect(() => {
+    const la = state.lastAttack;
+    if (!la || !la.ts || la.ts === lastAttackTsRef.current) return;
+    lastAttackTsRef.current = la.ts;
+    setAttackAnim({
+      attackerId: la.attacker,
+      targetId: la.target,    // null when face attack
+      side: la.side,
+      ts: la.ts,
+    });
+  }, [state.lastAttack?.ts]);
+
+  useEffect(() => {
+    if (!attackAnim) return;
+    const t = setTimeout(() => setAttackAnim(null), 500);
+    return () => clearTimeout(t);
+  }, [attackAnim]);
+
+  /* Attack splash + sound effects — driven by new log entries.
+     The same delta scan picks up plays, attacks, deaths, etc. and fires
+     a sound per event; the most recent attack also drives the splash. */
   useEffect(() => {
     const log = state.log || [];
     const newLines = log.slice(lastLogLenRef.current);
     lastLogLenRef.current = log.length;
     if (newLines.length === 0) return;
-    // Find the most recent attack-class line.
+
+    // 1) Fire sounds for every new event (in order).
+    for (const line of newLines) {
+      const t = line.text || "";
+      if      (t.startsWith("🪽"))  playSfx("flying");
+      else if (t.startsWith("⚔"))   playSfx("attack");
+      else if (t.startsWith("🎴"))  playSfx("play");
+      else if (t.startsWith("💀"))  playSfx("death");
+      else if (t.startsWith("💥"))  playSfx("cinder");
+      else if (t.startsWith("🩸"))  playSfx("pierce");
+      else if (t.startsWith("💞"))  playSfx("heal");
+      else if (t.startsWith("👻"))  playSfx("veil");
+      else if (t.startsWith("▶"))   playSfx("turn");
+      // Win/lose handled separately so we only chime once.
+    }
+
+    // 2) Find the most recent attack-class line for the splash.
     for (let i = newLines.length - 1; i >= 0; i--) {
       const line = newLines[i];
       const t = line.text || "";
@@ -1440,6 +1497,13 @@ function LiveMatch({ match, uid, onExit }) {
       }
     }
   }, [state.log]);
+
+  /* Fire win/lose chime once when the game ends. */
+  useEffect(() => {
+    if (!state.winner || wonRef.current) return;
+    wonRef.current = true;
+    playSfx(state.winner === mySide ? "win" : "lose");
+  }, [state.winner, mySide]);
 
   useEffect(() => {
     if (!attackSplash) return;
@@ -1509,6 +1573,9 @@ function LiveMatch({ match, uid, onExit }) {
   const handleUndo = async () => {
     if (!canUndo) return;
     setSelectedAttacker(null);
+    setAttackAnim(null);
+    // Suppress re-animating an older attack that the restored state carries.
+    lastAttackTsRef.current = match.prevState?.lastAttack?.ts || 0;
     await updateState(match.prevState, { snapshotForUndo: false });
   };
 
@@ -1527,6 +1594,23 @@ function LiveMatch({ match, uid, onExit }) {
   const targets = selectedAttacker
     ? legalAttackTargets(state, mySide, selectedAttacker)
     : { creatures: [], face: false };
+
+  /* Per-card animation lookup. Returns null when the card isn't involved
+     in the current lastAttack, otherwise the role + a ts that drives the
+     CSS keyframe restart via `key`. */
+  const getCardAnim = (instId) => {
+    if (!attackAnim) return null;
+    if (attackAnim.attackerId === instId) {
+      return {
+        role: attackAnim.side === mySide ? "attacker-up" : "attacker-down",
+        ts: attackAnim.ts,
+      };
+    }
+    if (attackAnim.targetId && attackAnim.targetId === instId) {
+      return { role: "target", ts: attackAnim.ts };
+    }
+    return null;
+  };
 
   /* End screen */
   if (state.winner) {
@@ -1599,6 +1683,14 @@ function LiveMatch({ match, uid, onExit }) {
         <div className="tcg-match-round">
           Turno {state.round} · {myTurn ? "🟢 Tocca a te" : "⏳ Avversario"}
         </div>
+        <button
+          className="tcg-btn tcg-btn--ghost tcg-btn--tiny tcg-btn--mute"
+          onClick={toggleMute}
+          title={muted ? "Riattiva l'audio" : "Silenzia"}
+          aria-label={muted ? "Riattiva audio" : "Silenzia"}
+        >
+          {muted ? "🔇" : "🔊"}
+        </button>
         <button className="tcg-btn tcg-btn--ghost tcg-btn--tiny tcg-btn--danger" onClick={handleForfeit}>
           🏳 Abbandona
         </button>
@@ -1632,6 +1724,7 @@ function LiveMatch({ match, uid, onExit }) {
                 disabled={!isLegal}
                 selected={isLegal}
                 status={bc.tapped ? "tapped" : null}
+                attackAnim={getCardAnim(bc.instId)}
               />
             );
           })}
@@ -1677,6 +1770,7 @@ function LiveMatch({ match, uid, onExit }) {
                 disabled={!ready}
                 selected={isSelected}
                 status={status}
+                attackAnim={getCardAnim(bc.instId)}
               />
             );
           })}

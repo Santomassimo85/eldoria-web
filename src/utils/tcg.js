@@ -252,6 +252,16 @@ export function attackWith(state, side, attackerInstId, targetInstId) {
 
   attacker.tapped = true;
 
+  // Snapshot of the attack so both clients can animate (lunge/shake)
+  // without re-deriving the actors from the log.
+  next.lastAttack = {
+    attacker: attackerInstId,
+    target: targetInstId,    // null when going face
+    side,
+    flying: attackerFlies,
+    ts: Date.now(),
+  };
+
   if (targetInstId === null) {
     // Direct hit on opponent face — no element mod for face damage in MVP
     const dmg = attacker.atk;
