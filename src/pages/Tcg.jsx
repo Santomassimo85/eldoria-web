@@ -406,17 +406,19 @@ function TcgGame() {
     );
   }
 
-  /* ── If in a match, render the live board only ───────── */
+  /* ── If in a match, render the live board only.
+        Battle is rendered in its own full-viewport shell (outside .tcg-page)
+        so the page background can't scroll behind it. ────────── */
   const activeMatch = activeMatches.find(m => m.id === activeMatchId);
   if (activeMatch) {
     return (
-      <section className="tcg-page">
+      <div className="tcg-battle-shell">
         <LiveMatch
           match={activeMatch}
           uid={currentUser.uid}
           onExit={() => setActiveMatchId(null)}
         />
-      </section>
+      </div>
     );
   }
 
@@ -1972,7 +1974,10 @@ function useIsPortrait() {
 function SidePreview({ focusedCardId, onClear, onOpenDetail, myTurn, onEndTurn }) {
   const def = focusedCardId ? TCG_CARDS[focusedCardId] : null;
   return (
-    <aside className="tcg-side-preview" aria-label="Pannello carta in focus e fine turno">
+    <aside
+      className={`tcg-side-preview${def ? "" : " tcg-side-preview--empty"}`}
+      aria-label="Pannello carta in focus e fine turno"
+    >
       <div className="tcg-side-preview-card-wrap">
         {def ? (
           <Card card={def} size="md" showTooltip={false} />
@@ -2029,7 +2034,6 @@ function LiveMatch({ match, uid, onExit }) {
   const oSide = oppSide(mySide);
   const state = match.state;
   const myTurn = state.activeSide === mySide;
-  const isPortrait = useIsPortrait();
 
   const [selectedAttacker, setSelectedAttacker] = useState(null);
   const [pendingSpell, setPendingSpell] = useState(null); // { instId, def, targets }
@@ -2058,6 +2062,20 @@ function LiveMatch({ match, uid, onExit }) {
     setSfxMuted(next);
     if (!next) primeSfx();
   };
+
+  /* Lock body scroll while a battle is on screen. The battle shell is
+     position:fixed and fills the viewport — letting the body scroll
+     behind it makes the page jitter on mobile when you swipe a card. */
+  useEffect(() => {
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, []);
 
   /* Card animation — driven by state.lastAttack (written by the engine).
      When ts changes we set a transient animState that BoardCard reads to
@@ -2490,19 +2508,24 @@ function LiveMatch({ match, uid, onExit }) {
     // The effect re-mounts only on side change; latest state/updateState are read via refs.
   }, [mySide]);
 
-  /* Card focus tracking — hover (desktop) sets the side preview to the
-     hovered card. Touch fires on tap+hold (long-press redirected below). */
+  /* Card focus tracking — hover (desktop) and tap (mobile) both set
+     the side preview to the targeted card. Touch devices never fire
+     mouseover, so pointerdown is the one that actually works on phones. */
   useEffect(() => {
     const root = matchRootRef.current;
     if (!root) return;
-    function onOver(e) {
+    function pickCard(e) {
       const el = e.target?.closest?.("[data-tcg-card-id]");
       if (!el) return;
       const id = el.getAttribute("data-tcg-card-id");
       if (id) setFocusedCardId(id);
     }
-    root.addEventListener("mouseover", onOver);
-    return () => root.removeEventListener("mouseover", onOver);
+    root.addEventListener("mouseover", pickCard);
+    root.addEventListener("pointerdown", pickCard);
+    return () => {
+      root.removeEventListener("mouseover", pickCard);
+      root.removeEventListener("pointerdown", pickCard);
+    };
   }, []);
 
   /* Per-card animation lookup. Returns null when the card isn't involved
@@ -2561,7 +2584,7 @@ function LiveMatch({ match, uid, onExit }) {
   const oppBoard = state.board[oSide];
 
   return (
-    <div ref={matchRootRef} className={`tcg-match tcg-match--arcane${isPortrait ? " tcg-match--portrait" : ""}`}>
+    <div ref={matchRootRef} className="tcg-match tcg-match--arcane">
       {/* Stage: in portrait this gets CSS-rotated 90deg so phones with
           orientation lock still see the game in landscape. The arcane
           background lives inside the stage so it rotates with it. */}
@@ -2835,7 +2858,10 @@ function LiveMatch({ match, uid, onExit }) {
         onEndTurn={handleEndTurn}
       />
 
-      {/* Action bar + log */}
+      {/* Action bar + log. The mobile-only Fine Turno button lives here
+          so it's always reachable on phones without overlapping the hand;
+          on desktop it stays in the SidePreview side panel and this one
+          is hidden via CSS. */}
       <div className="tcg-action-bar">
         <div className="tcg-action-bar-buttons">
           <button
@@ -2853,6 +2879,15 @@ function LiveMatch({ match, uid, onExit }) {
             <LogLine key={i} line={line} mySide={mySide} />
           ))}
         </div>
+        <button
+          type="button"
+          className={`tcg-action-turn-btn${myTurn ? " tcg-action-turn-btn--my" : ""}`}
+          onClick={handleEndTurn}
+          disabled={!myTurn}
+          aria-label={myTurn ? "Termina il tuo turno" : "Sta giocando l'avversario"}
+        >
+          {myTurn ? "⏭ Fine" : "⏳"}
+        </button>
       </div>
 
       {viewingCard && (

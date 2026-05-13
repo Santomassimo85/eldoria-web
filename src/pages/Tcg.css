@@ -4146,3 +4146,367 @@ section.tcg-page,
   transition: transform 0.1s ease-out;
 }
 .tcg-drag-ghost.tcg-drag-ghost--invalid { filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6)) grayscale(0.5); }
+
+/* ============================================================
+   BATTLE SHELL — MTG-Arena-mobile redesign
+   Locks the match to the viewport, kills the page background
+   scroll, and shrinks cards fluidly so phones can actually use
+   the board. Overrides the older .tcg-match--portrait rotation
+   hack: on portrait phones we lay things out vertically instead
+   of rotating the canvas 90deg.
+   ============================================================ */
+.tcg-battle-shell {
+  position: fixed;
+  inset: 0;
+  /* Site navbar is z-index 1000 — battle takes over the screen entirely. */
+  z-index: 1500;
+  overflow: hidden;
+  background: #0a0500;
+  /* Use dynamic viewport units so iOS Safari URL bar doesn't clip */
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* The match fills the shell — no max-width, no padding leak,
+   no min-height ramp. Existing arcane theme background stays. */
+.tcg-battle-shell .tcg-match.tcg-match--arcane {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+/* Fluid card width — scales with the smaller viewport edge so
+   landscape phones get bigger cards than portrait phones, but
+   never tiny on tablets. */
+.tcg-battle-shell .tcg-match.tcg-match--arcane {
+  --tcg-card-w: clamp(72px, 14vmin, 140px);
+}
+.tcg-battle-shell .tcg-card--sm,
+.tcg-battle-shell .tcg-card--md {
+  width: var(--tcg-card-w);
+  padding: 3px;
+  gap: 2px;
+}
+.tcg-battle-shell .tcg-card--lg {
+  width: calc(var(--tcg-card-w) * 1.4);
+}
+.tcg-battle-shell .tcg-card-name { font-size: 0.66rem; }
+.tcg-battle-shell .tcg-card-art { height: calc(var(--tcg-card-w) * 0.62); }
+.tcg-battle-shell .tcg-card-art-emoji { font-size: calc(var(--tcg-card-w) * 0.32); }
+.tcg-battle-shell .tcg-card-cost { font-size: 0.78rem; padding: 1px 5px; }
+.tcg-battle-shell .tcg-card-element { font-size: 0.78rem; }
+.tcg-battle-shell .tcg-card-flavor { display: none; }
+.tcg-battle-shell .tcg-card-stats { font-size: 0.72rem; }
+.tcg-battle-shell .tcg-card-mech,
+.tcg-battle-shell .tcg-card-mech-mini { font-size: 0.6rem; padding: 0 3px; }
+
+/* Make every card a primary tap target. Touch devices can't hover,
+   so the card itself responds: 100ms press visual + always-visible
+   magnifier button on the corner for explicit "open detail". */
+.tcg-battle-shell .tcg-card { transition: transform 80ms ease-out; }
+.tcg-battle-shell .tcg-card--clickable:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97);
+}
+.tcg-battle-shell .tcg-card-inspect-btn { opacity: 1; }
+
+/* ── Stage layout: grid that fills the shell ────────────────
+   Landscape (>= 720px): main column + 200px side panel.
+   Portrait  (<  720px): single column, side panel becomes a
+   floating overlay (see below) so the field can breathe.       */
+.tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(160px, 22vw, 220px);
+  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 6px;
+  overflow: hidden;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-column: 1 / -1; grid-row: 1; }
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-column: 1; grid-row: 2; min-height: 0; }
+.tcg-battle-shell .tcg-match--arcane .tcg-divider   { grid-column: 1; grid-row: 3; }
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-column: 1; grid-row: 4; min-height: 0; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap { grid-column: 1; grid-row: 5; }
+.tcg-battle-shell .tcg-match--arcane .tcg-side-preview {
+  grid-column: 2;
+  grid-row: 2 / span 3;
+  align-self: stretch;
+  min-height: 0;
+}
+/* Action bar / log moves to the side panel column on landscape
+   so it doesn't steal vertical room from the board. Capped to
+   the hand row's height so the field gets the remaining space. */
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
+  grid-column: 2;
+  grid-row: 5;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px;
+  max-height: calc(var(--tcg-card-w) * 1.55 + 28px);
+  overflow: hidden;
+  min-height: 0;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-log {
+  max-height: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 0.72rem;
+  overflow-y: auto;
+}
+/* Compact turn button inside the action bar — hidden on landscape
+   (the side panel already has the big Fine Turno button). */
+.tcg-battle-shell .tcg-action-turn-btn {
+  display: none;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  color: #fff;
+  font-family: var(--font-title, serif);
+  font-weight: 800;
+  border: 2px solid #fbbf24;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.55);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tcg-battle-shell .tcg-action-turn-btn--my {
+  background: linear-gradient(135deg, #15803d, #22c55e);
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.55);
+}
+.tcg-battle-shell .tcg-action-turn-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* Zones become tighter: strip + horizontally-scrolling board */
+.tcg-battle-shell .tcg-match--arcane .tcg-zone {
+  padding: 4px 6px;
+  gap: 4px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-board {
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-content: center;
+  scrollbar-width: thin;
+  padding: 4px;
+  gap: 4px;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-board::-webkit-scrollbar { height: 6px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-board::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.5); border-radius: 3px;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-board-slot { flex-shrink: 0; }
+
+/* Header: a single thin strip with tiny buttons */
+.tcg-battle-shell .tcg-match--arcane .tcg-match-head {
+  padding: 4px 8px;
+  gap: 8px;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-match-round {
+  font-size: 0.72rem;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-btn--tiny {
+  padding: 4px 8px;
+  font-size: 0.7rem;
+}
+
+/* Hand strip — single horizontally-scrolling row. The wrap is capped
+   to one card's height so it can't push the field off the screen. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
+  padding: 4px 6px;
+  max-height: calc(var(--tcg-card-w) * 1.55 + 28px);
+  min-height: calc(var(--tcg-card-w) * 1.45 + 22px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
+  font-size: 0.66rem;
+  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 4px;
+  padding-bottom: 2px;
+  align-items: flex-start;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* iOS momentum scroll */
+  -webkit-overflow-scrolling: touch;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand > * {
+  flex-shrink: 0;
+  max-height: 100%;
+}
+/* Cards in the hand strip clip overflow so a spell with long
+   effect text can't stretch the row vertically. Tap to open
+   the full card in the side preview / detail modal. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card,
+.tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
+  height: 100%;
+  max-height: calc(var(--tcg-card-w) * 1.45);
+  overflow: hidden;
+}
+
+/* Side preview — always visible on landscape, sticks to right column */
+.tcg-battle-shell .tcg-side-preview {
+  padding: 6px;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tcg-battle-shell .tcg-side-preview-card-wrap {
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.tcg-battle-shell .tcg-side-preview .tcg-card {
+  width: 100%;
+  max-width: none;
+  --tcg-card-w: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+.tcg-battle-shell .tcg-side-preview .tcg-card-art {
+  height: clamp(80px, 14vh, 160px);
+  flex-shrink: 0;
+}
+.tcg-battle-shell .tcg-side-preview .tcg-card-flavor {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.tcg-battle-shell .tcg-side-turn-btn {
+  padding: 8px 6px;
+  flex-shrink: 0;
+}
+.tcg-battle-shell .tcg-side-turn-btn-main { font-size: 0.92rem; }
+.tcg-battle-shell .tcg-side-turn-btn-label { font-size: 0.62rem; }
+
+/* ── Portrait phones: single column, side preview floats ──── */
+@media (max-width: 720px) {
+  .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
+    gap: 4px;
+    padding: 4px;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-row: 1; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp  { grid-row: 2; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-divider    { grid-row: 3; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 4; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap  { grid-row: 5; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
+    grid-column: 1;
+    grid-row: 6;
+    flex-direction: row;
+    padding: 3px 6px;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-log {
+    max-height: 56px;
+    overflow-y: auto;
+    font-size: 0.68rem;
+  }
+
+  /* Side preview floats over the right edge of the screen.
+     Visible only when a card is focused (the JSX gives it
+     a `tcg-side-preview--empty` class when there's nothing
+     to show — see SidePreview). The big End Turn button
+     becomes a sticky bottom-right floating button.        */
+  .tcg-battle-shell .tcg-side-preview {
+    position: fixed;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    width: min(48vw, 200px);
+    max-height: 80vh;
+    z-index: 200;
+    grid-column: 1;
+    grid-row: auto;
+    background: linear-gradient(180deg, rgba(75, 38, 15, 0.96), rgba(30, 15, 5, 0.98));
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255, 200, 130, 0.18) inset;
+    border: 2px solid rgba(255, 200, 100, 0.65);
+  }
+  /* On portrait the side preview is only visible when a card is
+     focused — when empty it disappears entirely. The Fine Turno
+     button moves into the action bar (tcg-action-turn-btn) so it
+     stays reachable without floating over the hand. */
+  .tcg-battle-shell .tcg-side-preview--empty {
+    display: none;
+  }
+  .tcg-battle-shell .tcg-side-preview .tcg-side-turn-btn {
+    /* Hide the side preview's own turn button on portrait —
+       action bar owns the end-turn UX on small screens. */
+    display: none;
+  }
+  .tcg-battle-shell .tcg-action-turn-btn {
+    display: inline-flex;
+  }
+  /* Action bar on portrait holds: Annulla + log + Fine Turno
+     in a single row, so log gets a shorter width but stays
+     scrollable. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-log {
+    min-width: 0;
+    max-height: 40px;
+    flex: 1 1 0;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
+    flex-shrink: 0;
+  }
+  .tcg-battle-shell .tcg-action-turn-btn { flex-shrink: 0; }
+}
+
+/* Very narrow phones — shave a bit more off */
+@media (max-width: 380px) {
+  .tcg-battle-shell .tcg-match.tcg-match--arcane {
+    --tcg-card-w: clamp(64px, 22vw, 92px);
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-match-head .tcg-btn--tiny {
+    padding: 3px 6px;
+    font-size: 0.64rem;
+  }
+}
+
+/* ── Cancel the legacy 90deg rotation hack ──────────────────
+   The new layout doesn't need it; keeping the old rules active
+   would conflict with the new grid (fixed-position + transform). */
+.tcg-battle-shell .tcg-match--portrait,
+.tcg-battle-shell .tcg-match--portrait .tcg-match-stage {
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  transform: none;
+  overflow: visible;
+}
