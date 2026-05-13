@@ -1937,6 +1937,54 @@ function CombatPreview({ prediction }) {
 }
 
 /* ============================================================
+   ROTATE HINT — JS-detected portrait nag (orientation-lock proof)
+   Uses innerWidth vs innerHeight (not CSS @media orientation), works
+   even when iOS/Android has orientation lock enabled. Always dismissable,
+   and remembers the dismissal across the session.
+   ============================================================ */
+function RotateHint() {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return sessionStorage.getItem("tcgRotateHintDismissed") === "1"; } catch { return false; }
+  });
+  const [isPortrait, setIsPortrait] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerHeight > window.innerWidth && window.innerWidth < 900;
+  });
+  useEffect(() => {
+    function recompute() {
+      setIsPortrait(window.innerHeight > window.innerWidth && window.innerWidth < 900);
+    }
+    window.addEventListener("resize", recompute);
+    window.addEventListener("orientationchange", recompute);
+    // Some phones fire orientationchange before the viewport actually updates;
+    // a short delayed re-check catches that case.
+    const t = setTimeout(recompute, 400);
+    return () => {
+      window.removeEventListener("resize", recompute);
+      window.removeEventListener("orientationchange", recompute);
+      clearTimeout(t);
+    };
+  }, []);
+  if (dismissed || !isPortrait) return null;
+  const close = () => {
+    setDismissed(true);
+    try { sessionStorage.setItem("tcgRotateHintDismissed", "1"); } catch { /* ignore */ }
+  };
+  return (
+    <div className="tcg-rotate-prompt" role="dialog" aria-label="Suggerimento orientamento">
+      <button type="button" className="tcg-rotate-prompt-close" onClick={close} aria-label="Chiudi">✕</button>
+      <div className="tcg-rotate-prompt-icon">🔄</div>
+      <div className="tcg-rotate-prompt-text">
+        Per la migliore esperienza, ruota il telefono in orizzontale.
+      </div>
+      <button type="button" className="tcg-rotate-prompt-continue" onClick={close}>
+        Continua comunque
+      </button>
+    </div>
+  );
+}
+
+/* ============================================================
    LIVE MATCH — full battle board
    ============================================================ */
 function LiveMatch({ match, uid, onExit }) {
@@ -2466,11 +2514,7 @@ function LiveMatch({ match, uid, onExit }) {
         <div className="tcg-arcane-motes" />
         <div className="tcg-arcane-glow" />
       </div>
-      {/* Portrait nag: phones get a "rotate me" hint until they go landscape */}
-      <div className="tcg-rotate-prompt" aria-hidden="true">
-        <div className="tcg-rotate-prompt-icon">🔄</div>
-        <div className="tcg-rotate-prompt-text">Ruota il telefono in orizzontale per giocare</div>
-      </div>
+      <RotateHint />
       {attackSplash && (
         <div
           key={attackSplash.key}

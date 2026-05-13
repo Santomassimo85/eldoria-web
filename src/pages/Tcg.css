@@ -3968,37 +3968,68 @@ section.tcg-page,
   .tcg-match--arcane .tcg-action-bar { padding: 4px 6px; }
 }
 
-/* ── Portrait phone prompt: tell user to rotate ── */
-.tcg-match--arcane .tcg-rotate-prompt { display: none; }
-@media (orientation: portrait) and (max-width: 900px) {
-  .tcg-match--arcane .tcg-rotate-prompt {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 9000;
-    background: radial-gradient(ellipse at center, rgba(40, 12, 75, 0.97), rgba(5, 1, 12, 0.99));
-    color: #f5e9ff;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    padding: 24px;
-    text-align: center;
-    pointer-events: auto;
-  }
-  .tcg-match--arcane .tcg-rotate-prompt-icon {
-    font-size: 5rem;
-    animation: tcg-rotate-spin 2.2s ease-in-out infinite;
-    text-shadow: 0 0 20px rgba(217, 70, 239, 0.8);
-  }
-  .tcg-match--arcane .tcg-rotate-prompt-text {
-    font-family: var(--font-title, serif);
-    font-weight: 700;
-    font-size: 1.1rem;
-    letter-spacing: 0.04em;
-    text-shadow: 0 0 10px rgba(217, 70, 239, 0.6);
-    max-width: 320px;
-  }
+/* ── Portrait phone prompt: orientation-lock proof, dismissable ── */
+/* Visibility is now controlled by React (component returns null when in landscape
+   or after the user dismisses it). When rendered, it always shows. */
+.tcg-rotate-prompt {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: radial-gradient(ellipse at center, rgba(40, 12, 75, 0.97), rgba(5, 1, 12, 0.99));
+  color: #f5e9ff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 24px;
+  text-align: center;
+  pointer-events: auto;
+}
+.tcg-rotate-prompt-icon {
+  font-size: 5rem;
+  animation: tcg-rotate-spin 2.2s ease-in-out infinite;
+  text-shadow: 0 0 20px rgba(217, 70, 239, 0.8);
+}
+.tcg-rotate-prompt-text {
+  font-family: var(--font-title, serif);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px rgba(217, 70, 239, 0.6);
+  max-width: 320px;
+}
+.tcg-rotate-prompt-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(217, 70, 239, 0.25);
+  border: 1px solid rgba(244, 114, 182, 0.6);
+  color: #fef3ff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tcg-rotate-prompt-close:hover { background: rgba(217, 70, 239, 0.45); }
+.tcg-rotate-prompt-continue {
+  margin-top: 6px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  border: 1px solid #c4b5fd;
+  color: #fff;
+  font-family: var(--font-title, serif);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.55);
+}
+.tcg-rotate-prompt-continue:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 22px rgba(168, 85, 247, 0.75);
 }
 @keyframes tcg-rotate-spin {
   0%, 100% { transform: rotate(-15deg); }
