@@ -1533,13 +1533,17 @@ function ElementWheelLegend() {
 function useLongPress(onInspect, ms = 500) {
   const timerRef = useRef(null);
   const firedRef = useRef(false);
+  const startPosRef = useRef(null);
   if (!onInspect) {
-    return { start: undefined, cancel: undefined, guardClick: (h) => h, onContext: undefined };
+    return { start: undefined, cancel: undefined, guardClick: (h) => h, onContext: undefined, onMove: undefined };
   }
   const start = (e) => {
     // Ignore middle/right clicks here — right-click is handled by onContextMenu
     if (e.type === "mousedown" && e.button !== 0) return;
     firedRef.current = false;
+    const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    startPosRef.current = { x, y };
     timerRef.current = setTimeout(() => {
       firedRef.current = true;
       onInspect();
@@ -1547,6 +1551,14 @@ function useLongPress(onInspect, ms = 500) {
   };
   const cancel = () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+  const onMove = (e) => {
+    if (!startPosRef.current || !timerRef.current) return;
+    const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    const dx = x - startPosRef.current.x;
+    const dy = y - startPosRef.current.y;
+    if (Math.hypot(dx, dy) > 8) cancel();
   };
   const guardClick = (handler) => (e) => {
     if (firedRef.current) {
@@ -1558,13 +1570,13 @@ function useLongPress(onInspect, ms = 500) {
     handler?.(e);
   };
   const onContext = (e) => { e.preventDefault(); onInspect(); };
-  return { start, cancel, guardClick, onContext };
+  return { start, cancel, guardClick, onContext, onMove };
 }
 
 /* ============================================================
    CARD — full MTG-style card visual
    ============================================================ */
-function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false, onInspect }) {
+function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false, onInspect, dataDraggable }) {
   const def = card;
   const cost = def.cost;
   const cardType = getCardType(def);
@@ -1598,12 +1610,15 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
       onMouseDown={lp.start}
       onMouseUp={lp.cancel}
       onMouseLeave={lp.cancel}
+      onMouseMove={lp.onMove}
       onTouchStart={lp.start}
       onTouchEnd={lp.cancel}
       onTouchCancel={lp.cancel}
+      onTouchMove={lp.onMove}
       onContextMenu={lp.onContext}
       disabled={disabled}
       title={tip}
+      data-tcg-draggable={dataDraggable || undefined}
     >
       <div className="tcg-card-header">
         <span className="tcg-card-cost" title="Costo di mana">{cost}</span>
@@ -1695,7 +1710,7 @@ function CardArt({ def }) {
 /* ============================================================
    BOARD CARD — Card variant showing live HP & status
    ============================================================ */
-function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [] }) {
+function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [], dataDraggable, dataDrop }) {
   const baseMechs = def.mechanics || [];
   const granted = bc.grants || [];
   const tempBuffKeywords = (bc.tempBuffs || []).map(t => t.keyword);
@@ -1745,12 +1760,16 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
       onMouseDown={lp.start}
       onMouseUp={lp.cancel}
       onMouseLeave={lp.cancel}
+      onMouseMove={lp.onMove}
       onTouchStart={lp.start}
       onTouchEnd={lp.cancel}
       onTouchCancel={lp.cancel}
+      onTouchMove={lp.onMove}
       onContextMenu={lp.onContext}
       disabled={disabled}
       title={tip}
+      data-tcg-draggable={dataDraggable || undefined}
+      data-tcg-drop={dataDrop || undefined}
     >
       {isFlying && (
         <>
@@ -2222,6 +2241,168 @@ function LiveMatch({ match, uid, onExit }) {
     return Array.isArray(champs) && champs.includes(champSide);
   };
 
+  /* ──────────────────────────────────────────────────────────────
+     DRAG AND DROP — pointer-events based, works on touch and mouse.
+     Drag from hand → drop on play-zone (creature) or on a target
+     (spell-with-target). Drag from your own creature → drop on
+     enemy creature or champion to attack. Tap-to-play still works.
+     ────────────────────────────────────────────────────────────── */
+  const [dragInfo, setDragInfo] = useState(null); // { kind, instId, def, x, y }
+  const dragGhostRef = useRef(null);
+  const dragHoverElRef = useRef(null);
+  const dragStartedRef = useRef(false);
+  const justDraggedRef = useRef(false);
+  const downStartRef = useRef(null);
+  const stateRef = useRef(state);
+  const updateStateRef = useRef(null);
+  useEffect(() => { stateRef.current = state; });
+  useEffect(() => { updateStateRef.current = updateState; });
+
+  useEffect(() => {
+    const THRESHOLD = 6;
+
+    function onPointerDown(e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      const el = e.target?.closest?.("[data-tcg-draggable]");
+      if (!el) return;
+      const spec = el.getAttribute("data-tcg-draggable");
+      if (!spec) return;
+      const [kind, ...rest] = spec.split(":");
+      const instId = rest.join(":");
+      downStartRef.current = { x: e.clientX, y: e.clientY, kind, instId };
+      dragStartedRef.current = false;
+    }
+
+    function onPointerMove(e) {
+      const downStart = downStartRef.current;
+      if (!downStart) return;
+      if (!dragStartedRef.current) {
+        if (Math.hypot(e.clientX - downStart.x, e.clientY - downStart.y) < THRESHOLD) return;
+        // Begin drag — resolve card def from hand or board
+        const s = stateRef.current;
+        const fromHand  = s.hand[mySide].find(c => c.instId === downStart.instId);
+        const fromBoard = s.board[mySide].find(c => c.instId === downStart.instId);
+        const inst = fromHand || fromBoard;
+        const def = inst ? TCG_CARDS[inst.cardId] : null;
+        if (!def) { downStartRef.current = null; return; }
+        dragStartedRef.current = true;
+        setDragInfo({ kind: downStart.kind, instId: downStart.instId, def, x: e.clientX, y: e.clientY });
+      }
+      // Update ghost position via direct DOM (avoids per-pixel React renders)
+      if (dragGhostRef.current) {
+        dragGhostRef.current.style.left = `${e.clientX}px`;
+        dragGhostRef.current.style.top  = `${e.clientY}px`;
+      }
+      // Update hover drop zone
+      const drop = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-tcg-drop]") || null;
+      if (drop !== dragHoverElRef.current) {
+        dragHoverElRef.current?.classList.remove("tcg-drop-hover");
+        drop?.classList.add("tcg-drop-hover");
+        dragHoverElRef.current = drop;
+      }
+    }
+
+    function dispatchDrop(kind, instId, dropId) {
+      const s = stateRef.current;
+      if (!dropId) return;
+      if (kind === "hand") {
+        if (!canPlayCard(s, mySide, instId)) return;
+        const card = s.hand[mySide].find(c => c.instId === instId);
+        const def = card ? TCG_CARDS[card.cardId] : null;
+        if (!def) return;
+        const type = getCardType(def);
+        if (type === "creature") {
+          if (dropId === "play-zone" || dropId.startsWith(`creature:${mySide}:`) || dropId === `champion:${mySide}`) {
+            const next = playCard(s, mySide, instId);
+            updateStateRef.current?.(next, { snapshotForUndo: true });
+          }
+          return;
+        }
+        const need = def.effect?.target || "none";
+        if (need === "none") {
+          if (dropId === "play-zone" || dropId.startsWith("creature:") || dropId.startsWith("champion:")) {
+            const next = playCard(s, mySide, instId, null);
+            updateStateRef.current?.(next, { snapshotForUndo: true });
+          }
+          return;
+        }
+        const t = legalSpellTargets(s, mySide, instId);
+        let target = null;
+        if (dropId.startsWith("creature:")) {
+          const parts = dropId.split(":");
+          const side = parts[1];
+          const tid  = parts.slice(2).join(":");
+          if (t.creatures?.[side]?.includes(tid)) target = { kind: "creature", side, instId: tid };
+        } else if (dropId.startsWith("champion:")) {
+          const side = dropId.split(":")[1];
+          if (t.champions?.includes(side)) target = { kind: "champion", side };
+        }
+        if (target) {
+          const next = playCard(s, mySide, instId, target);
+          updateStateRef.current?.(next, { snapshotForUndo: !next.winner });
+        }
+        return;
+      }
+      if (kind === "board") {
+        if (!canAttack(s, mySide, instId)) return;
+        const oSide2 = oppSide(mySide);
+        const t = legalAttackTargets(s, mySide, instId);
+        if (dropId === `champion:${oSide2}` && t.face) {
+          const next = attackWith(s, mySide, instId, null);
+          updateStateRef.current?.(next, { snapshotForUndo: !next.winner });
+        } else if (dropId.startsWith(`creature:${oSide2}:`)) {
+          const tid = dropId.split(":").slice(2).join(":");
+          if (t.creatures.includes(tid)) {
+            const next = attackWith(s, mySide, instId, tid);
+            updateStateRef.current?.(next, { snapshotForUndo: !next.winner });
+          }
+        }
+      }
+    }
+
+    function onPointerUp(e) {
+      const downStart = downStartRef.current;
+      if (!downStart) return;
+      const wasDragging = dragStartedRef.current;
+      const ds = downStart;
+      downStartRef.current = null;
+      dragStartedRef.current = false;
+      if (!wasDragging) return;
+      const drop = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-tcg-drop]") || null;
+      const dropId = drop?.getAttribute("data-tcg-drop") || null;
+      dragHoverElRef.current?.classList.remove("tcg-drop-hover");
+      dragHoverElRef.current = null;
+      justDraggedRef.current = true;
+      // Reset on next macrotask — the synthetic click fires right after pointerup
+      setTimeout(() => { justDraggedRef.current = false; }, 50);
+      setDragInfo(null);
+      dispatchDrop(ds.kind, ds.instId, dropId);
+    }
+
+    function onClickCapture(e) {
+      if (justDraggedRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointercancel", onPointerUp);
+    document.addEventListener("click", onClickCapture, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", onPointerUp);
+      document.removeEventListener("pointercancel", onPointerUp);
+      document.removeEventListener("click", onClickCapture, true);
+      dragHoverElRef.current?.classList.remove("tcg-drop-hover");
+      dragHoverElRef.current = null;
+    };
+    // The effect re-mounts only on side change; latest state/updateState are read via refs.
+  }, [mySide]);
+
   /* Per-card animation lookup. Returns null when the card isn't involved
      in the current lastAttack, otherwise the role + a ts that drives the
      CSS keyframe restart via `key`. */
@@ -2278,7 +2459,18 @@ function LiveMatch({ match, uid, onExit }) {
   const oppBoard = state.board[oSide];
 
   return (
-    <div className="tcg-match">
+    <div className="tcg-match tcg-match--arcane">
+      {/* Dark magical scene: drifting motes + arcane rune ring (pure CSS) */}
+      <div className="tcg-arcane-bg" aria-hidden="true">
+        <div className="tcg-arcane-runes" />
+        <div className="tcg-arcane-motes" />
+        <div className="tcg-arcane-glow" />
+      </div>
+      {/* Portrait nag: phones get a "rotate me" hint until they go landscape */}
+      <div className="tcg-rotate-prompt" aria-hidden="true">
+        <div className="tcg-rotate-prompt-icon">🔄</div>
+        <div className="tcg-rotate-prompt-text">Ruota il telefono in orizzontale per giocare</div>
+      </div>
       {attackSplash && (
         <div
           key={attackSplash.key}
@@ -2325,6 +2517,7 @@ function LiveMatch({ match, uid, onExit }) {
 
       {/* Opponent zone */}
       <div className="tcg-zone tcg-zone--opp">
+        <div data-tcg-drop={`champion:${oSide}`} className="tcg-drop-target tcg-drop-target--champion">
         <PlayerStrip
           side={oSide}
           name={match[oSide].name}
@@ -2340,6 +2533,7 @@ function LiveMatch({ match, uid, onExit }) {
           shield={state.dmgShield?.[oSide] || 0}
           floats={floats.filter(f => f.target === "champion" && f.side === oSide)}
         />
+        </div>
         <div className="tcg-board tcg-board--opp">
           {oppBoard.length === 0 ? (
             <div className="tcg-board-empty">Campo vuoto</div>
@@ -2357,7 +2551,7 @@ function LiveMatch({ match, uid, onExit }) {
               ? predictCombat(state, mySide, selectedAttacker, bc.instId)
               : null;
             return (
-              <div key={bc.instId} className="tcg-board-slot">
+              <div key={bc.instId} className="tcg-board-slot" data-tcg-drop={`creature:${oSide}:${bc.instId}`}>
                 <BoardCard
                   bc={bc}
                   def={def}
@@ -2443,7 +2637,7 @@ function LiveMatch({ match, uid, onExit }) {
 
       {/* My zone */}
       <div className="tcg-zone tcg-zone--mine">
-        <div className="tcg-board tcg-board--mine">
+        <div className="tcg-board tcg-board--mine" data-tcg-drop="play-zone">
           {myBoard.length === 0 ? (
             <div className="tcg-board-empty">Gioca una carta dalla mano</div>
           ) : myBoard.map(bc => {
@@ -2469,10 +2663,13 @@ function LiveMatch({ match, uid, onExit }) {
                 attackAnim={getCardAnim(bc.instId)}
                 onInspect={() => setViewingCard({ cardId: bc.cardId })}
                 floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
+                dataDraggable={myTurn && ready ? `board:${bc.instId}` : undefined}
+                dataDrop={`creature:${mySide}:${bc.instId}`}
               />
             );
           })}
         </div>
+        <div data-tcg-drop={`champion:${mySide}`} className="tcg-drop-target tcg-drop-target--champion">
         <PlayerStrip
           side={mySide}
           name={match[mySide].name}
@@ -2488,6 +2685,7 @@ function LiveMatch({ match, uid, onExit }) {
           ownSecrets={state.secrets?.[mySide] || []}
           floats={floats.filter(f => f.target === "champion" && f.side === mySide)}
         />
+        </div>
       </div>
 
       {/* Hand */}
@@ -2517,6 +2715,7 @@ function LiveMatch({ match, uid, onExit }) {
                 selected={isPending}
                 className={isPending ? "tcg-card--pending-spell" : ""}
                 onInspect={() => setViewingCard({ cardId: c.cardId })}
+                dataDraggable={myTurn && playable ? `hand:${c.instId}` : undefined}
               />
             );
           })}
@@ -2556,6 +2755,17 @@ function LiveMatch({ match, uid, onExit }) {
           cardId={viewingCard.cardId}
           onClose={() => setViewingCard(null)}
         />
+      )}
+
+      {dragInfo && (
+        <div
+          ref={dragGhostRef}
+          className="tcg-drag-ghost"
+          style={{ left: dragInfo.x, top: dragInfo.y }}
+          aria-hidden="true"
+        >
+          <Card card={dragInfo.def} size="md" showTooltip={false} />
+        </div>
       )}
     </div>
   );

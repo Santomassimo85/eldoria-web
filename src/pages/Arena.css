@@ -4043,6 +4043,36 @@
 }
 .save-block.control p { color: #c4b5fd; margin: 0 0 8px; font-size: 0.88rem; }
 
+/* ── Vivid control-TS variant: catches the eye when a per-turn TS is required ── */
+.save-block.control.control-vivid {
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.28), rgba(139, 92, 246, 0.35));
+  border: 2px solid #e879f9;
+  box-shadow: 0 0 14px rgba(217, 70, 239, 0.55), 0 0 28px rgba(139, 92, 246, 0.35) inset;
+  animation: ctrl-vivid-pulse 1.6s ease-in-out infinite;
+}
+.save-block.control.control-vivid .save-block-label {
+  color: #fef3ff;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(217, 70, 239, 0.7);
+}
+.btn-ts-vivid {
+  background: linear-gradient(135deg, #f0abfc, #c084fc) !important;
+  color: #2a0a3a !important;
+  border: 1px solid #f5d0fe !important;
+  box-shadow: 0 0 10px rgba(240, 171, 252, 0.7);
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+}
+.btn-ts-vivid:hover {
+  background: linear-gradient(135deg, #f5d0fe, #d8b4fe) !important;
+  box-shadow: 0 0 16px rgba(240, 171, 252, 0.95);
+  transform: translateY(-1px);
+}
+@keyframes ctrl-vivid-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(217, 70, 239, 0.55), 0 0 28px rgba(139, 92, 246, 0.35) inset; }
+  50%      { box-shadow: 0 0 22px rgba(217, 70, 239, 0.85), 0 0 36px rgba(139, 92, 246, 0.55) inset; }
+}
+
 /* ── Arena Info Section ──────────────────────────────── */
 .arena-info-section {
   margin: 16px 0;

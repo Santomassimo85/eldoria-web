@@ -4188,7 +4188,17 @@ export default function Arena() {
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
             return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
           }
-          if (p.id === targetId) return { ...p, pendingControlSave: action.special === "corona_pazzia" ? "corona_pazzia" : true, pendingControlDC: ctrlDC, pendingControlSaveAbility: saveAbility };
+          if (p.id === targetId) {
+            const isCoronaSpell = action.special === "corona_pazzia";
+            return {
+              ...p,
+              pendingControlSave: isCoronaSpell ? "corona_pazzia" : true,
+              pendingControlDC: ctrlDC,
+              pendingControlSaveAbility: saveAbility,
+              // Non-corona control: arm a 2-turn budget so the target re-rolls each turn until they save or it expires.
+              ...(isCoronaSpell ? {} : { controlLostTurns: 2 }),
+            };
+          }
           return p;
         });
         const nextIndex = (m.players.findIndex(p => p.id === m.turn) + 1) % m.players.length;
@@ -4277,30 +4287,46 @@ export default function Arena() {
         }
         if (context === "control_spell" || context === "corona_pazzia") {
           const isCorona = p.pendingControlSave === "corona_pazzia" || context === "corona_pazzia";
-          delete up.pendingControlSave;
-          delete up.pendingControlDC;
-          delete up.pendingControlSaveAbility;
-          if (!pass) {
-            if (isCorona) {
-              // Enemy attacks themselves with their equipped weapon
-              const mySnap2 = (arenaMeta.characterSnapshots || {})[currentUser.uid];
-              const equippedName = p.equippedWeaponNames?.[0];
-              const weapon = (mySnap2?.selectedActions || []).find(a => a.name === equippedName && a.type === "weapon");
-              const dmgFormula = weapon?.damage || "1d6";
-              const { total: selfDmg, rolls: selfRolls } = rollDmg(dmgFormula);
-              up.hp = Math.max(0, (up.hp ?? 0) - selfDmg);
-              logMsg += ` — Fallisce! Attacca sé stesso con ${weapon?.icon || "⚔"} ${equippedName || "arma"}: ${selfDmg} danni [🎲${selfRolls}]!`;
-            } else {
-              // "Lose 2 rounds": i prossimi 2 turni del bersaglio vengono saltati automaticamente.
-              up.controlLostTurns = 2;
-              logMsg += " — Fallisce! Sotto controllo per 2 turni!";
-            }
+          if (pass) {
+            // Free: clear all control state and let the player act this turn.
+            delete up.pendingControlSave;
+            delete up.pendingControlDC;
+            delete up.pendingControlSaveAbility;
+            up.controlLostTurns = 0;
+            logMsg += " — Passa! Si libera dal controllo e può agire normalmente.";
+          } else if (isCorona) {
+            // Corona della Pazzia: one-shot self-damage, no recurring TS.
+            const mySnap2 = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+            const equippedName = p.equippedWeaponNames?.[0];
+            const weapon = (mySnap2?.selectedActions || []).find(a => a.name === equippedName && a.type === "weapon");
+            const dmgFormula = weapon?.damage || "1d6";
+            const { total: selfDmg, rolls: selfRolls } = rollDmg(dmgFormula);
+            up.hp = Math.max(0, (up.hp ?? 0) - selfDmg);
+            delete up.pendingControlSave;
+            delete up.pendingControlDC;
+            delete up.pendingControlSaveAbility;
+            logMsg += ` — Fallisce! Attacca sé stesso con ${weapon?.icon || "⚔"} ${equippedName || "arma"}: ${selfDmg} danni [🎲${selfRolls}]!`;
             const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
             let nextIndex = (currentIndex + 1) % m.players.length;
             while (m.players[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
             extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString() };
           } else {
-            logMsg += " — Passa! Può agire normalmente.";
+            // Regular control spell: burn one turn of the control budget, auto-skip, re-roll TS next turn until pass or budget exhausted.
+            const remaining = Math.max(0, (p.controlLostTurns ?? 2) - 1);
+            up.controlLostTurns = remaining;
+            if (remaining > 0) {
+              // Keep TS armed for next turn.
+              logMsg += ` — Fallisce! Turno saltato — ${remaining} turno/i di controllo rimasti (TS al prossimo turno).`;
+            } else {
+              delete up.pendingControlSave;
+              delete up.pendingControlDC;
+              delete up.pendingControlSaveAbility;
+              logMsg += " — Fallisce! Turno saltato — l'effetto si esaurisce.";
+            }
+            const currentIndex = m.players.findIndex(pl => pl.id === currentUser.uid);
+            let nextIndex = (currentIndex + 1) % m.players.length;
+            while (m.players[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
+            extraTurn = { turn: m.players[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString() };
           }
         }
         return up;
@@ -4506,7 +4532,7 @@ export default function Arena() {
           let up = wasControlled
             ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false }
             : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false };
-          if (wasControlled) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
+          if (wasControlled && !hasPendingCtrl) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           if (hasPendingDex) {
             const d20 = Math.floor(Math.random() * 20) + 1;
             const mod = data.characterSnapshots?.[p.id]?.stats?.dex ?? 0;
@@ -4549,19 +4575,37 @@ export default function Arena() {
             const sign    = ctrlMod >= 0 ? "+" : "";
             const lbl     = SAVE_LABEL[ctrlAbility] || ctrlAbility.toUpperCase();
             const isCorona = p.pendingControlSave === "corona_pazzia";
-            if (!pass && isCorona) {
+            if (pass) {
+              // Free on auto-roll: clear all control state.
+              delete up.pendingControlSave;
+              delete up.pendingControlDC;
+              delete up.pendingControlSaveAbility;
+              up.controlLostTurns = 0;
+              newLogs2.push(`🌀 ${p.name} TS ${lbl} Controllo automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ✅ PASSA — Si libera!`);
+            } else if (isCorona) {
+              // Corona: one-shot self-damage, no recurring TS.
               const snapForAuto = data?.characterSnapshots?.[p.id];
               const equippedNameAuto = p.equippedWeaponNames?.[0];
               const weaponAuto = (snapForAuto?.selectedActions || []).find(a => a.name === equippedNameAuto && a.type === "weapon");
               const { total: selfDmgAuto } = rollDmg(weaponAuto?.damage || "1d6");
               up.hp = Math.max(0, (up.hp ?? 0) - selfDmgAuto);
+              delete up.pendingControlSave;
+              delete up.pendingControlDC;
+              delete up.pendingControlSaveAbility;
               newLogs2.push(`🌀 ${p.name} TS ${lbl} Corona della Pazzia automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — Attacca sé stesso: ${selfDmgAuto} danni!`);
             } else {
-              newLogs2.push(`🌀 ${p.name} TS ${lbl} Controllo automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ${pass ? "✅ PASSA" : "❌ FALLISCE — Turno perso!"}`);
+              // Regular control fail on auto-roll: burn one budget turn, keep TS armed if budget remains.
+              const remaining = Math.max(0, (p.controlLostTurns ?? 2) - 1);
+              up.controlLostTurns = remaining;
+              if (remaining > 0) {
+                newLogs2.push(`🌀 ${p.name} TS ${lbl} Controllo automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — Turno saltato (${remaining} rimanenti, nuovo TS al prossimo turno).`);
+              } else {
+                delete up.pendingControlSave;
+                delete up.pendingControlDC;
+                delete up.pendingControlSaveAbility;
+                newLogs2.push(`🌀 ${p.name} TS ${lbl} Controllo automatico: ${d20}${sign}${ctrlMod}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — Turno saltato, effetto esaurito.`);
+              }
             }
-            delete up.pendingControlSave;
-            delete up.pendingControlDC;
-            delete up.pendingControlSaveAbility;
             autoRolledSave = true;
           }
           return up;
@@ -6801,14 +6845,16 @@ export default function Arena() {
                       const ctrlAbilityUI = myPlayer?.pendingControlSaveAbility || "wis";
                       const ctrlDcUI      = myPlayer?.pendingControlDC || 13;
                       const ctrlLblUI     = SAVE_LABEL[ctrlAbilityUI] || ctrlAbilityUI.toUpperCase();
+                      const ctrlRemaining = myPlayer?.controlLostTurns ?? 0;
+                      const isCoronaUI    = pendingControlSave === "corona_pazzia";
                       return (
-                        <div className="save-block control">
+                        <div className="save-block control control-vivid">
                           <p className="save-block-label">
-                            {pendingControlSave === "corona_pazzia"
+                            {isCoronaUI
                               ? `🌀 Corona della Pazzia! TS ${ctrlLblUI} (CD ${ctrlDcUI}) — se fallisci attacchi te stesso!`
-                              : `🌀 Tiro Salvezza contro Spell di Controllo! TS ${ctrlLblUI} (CD ${ctrlDcUI})`}
+                              : `🌀 Sotto Controllo! TS ${ctrlLblUI} (CD ${ctrlDcUI}) ogni turno — passa per liberarti, fallisci e perdi il turno${ctrlRemaining > 0 ? ` (${ctrlRemaining} turno/i rimanenti)` : ""}.`}
                           </p>
-                          <button className="btn-saving-throw" onClick={() => rollSavingThrow(m.matchId, ctrlAbilityUI, pendingControlSave === "corona_pazzia" ? "corona_pazzia" : "control_spell")}>
+                          <button className="btn-saving-throw btn-ts-vivid" onClick={() => rollSavingThrow(m.matchId, ctrlAbilityUI, isCoronaUI ? "corona_pazzia" : "control_spell")}>
                             🎲 TS {ctrlLblUI}
                           </button>
                         </div>
@@ -6858,7 +6904,7 @@ export default function Arena() {
                       </div>
                     )}
 
-                    {isControlLost && isMyTurn && (
+                    {isControlLost && !pendingControlSave && isMyTurn && (
                       <div className="save-block control-lost">
                         <p className="save-block-label">🌀 Sei sotto controllo! Salti il turno · {(myPlayer?.controlLostTurns ?? 0)} turno/i rimanenti dopo questo.</p>
                         <button className="btn-saving-throw" onClick={() => skipControlTurn(m.matchId)}>
