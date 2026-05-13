@@ -17,9 +17,9 @@ import {
 import {
   initMatchState, playCard, attackWith, endTurn, forfeit,
   canPlayCard, canAttack, legalAttackTargets, legalSpellTargets, predictCombat, oppSide,
-  STARTING_HP, DECK_REQUIRED_SIZE,
+  STARTING_HP, DECK_REQUIRED_SIZE, MAX_HAND,
   isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection, buildFilteredDeck,
-  resolveDeckForMatch,
+  resolveDeckForMatch, discardCard,
   normalizeCost, totalCost, ELEMENTS,
 } from "../utils/tcg";
 import { playSfx, setSfxMuted, isSfxMuted, primeSfx } from "../utils/tcgSfx";
@@ -189,20 +189,31 @@ function TcgGame() {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setOpenMatches(all.filter(m => m.status === "open"));
       setActiveMatches(all.filter(m => {
-        if (m.status !== "active") return false;
-        return m.challenger?.uid === currentUser.uid || m.challenged?.uid === currentUser.uid;
+        // Keep matches the user is in, including just-ended ones so the
+        // end-of-match screen (winner + ✦ reward) actually renders. Without
+        // this, the moment the engine writes status: "ended" the LiveMatch
+        // component unmounts and the user is dumped to the lobby with no
+        // popup. Exiting via the "Torna alla lobby" button still works
+        // because exitedMatchIdsRef blocks auto-rejoin of the ended match.
+        const mine = m.challenger?.uid === currentUser.uid || m.challenged?.uid === currentUser.uid;
+        if (!mine) return false;
+        return m.status === "active" || m.status === "ended";
       }));
       setRecentMatches(all.filter(m => m.status === "ended").slice(0, 8));
     });
   }, [currentUser]);
 
   /* ── Auto-enter active match ──────────────────────────────
-     Only auto-enter matches the user hasn't explicitly exited.
-     Without this guard, clicking "← Lobby" was instantly undone
-     because this effect re-ran with the same Firestore match. */
+     Only auto-enter matches that are still in "active" status AND
+     the user hasn't explicitly exited. Ended matches stay in
+     activeMatches (so the end-of-match screen can render mid-session)
+     but aren't auto-entered on page reload — otherwise the user would
+     see the same "VITTORIA!" popup every time they revisit the page. */
   useEffect(() => {
     if (activeMatchId) return;
-    const mine = activeMatches.find(m => !exitedMatchIdsRef.current.has(m.id));
+    const mine = activeMatches.find(m =>
+      m.status === "active" && !exitedMatchIdsRef.current.has(m.id)
+    );
     if (mine) setActiveMatchId(mine.id);
   }, [activeMatches, activeMatchId]);
 
@@ -688,7 +699,7 @@ function StarterModal({ onPick, onSkip }) {
         <div className="tcg-starter-icon">🎁</div>
         <h2 className="tcg-starter-title">Benvenuto nel TCG di Eldoria</h2>
         <p className="tcg-starter-sub">
-          Scegli uno dei quattro elementi base e ricevi <strong>20 carte gratis</strong> per
+          Scegli uno dei quattro elementi base e ricevi <strong>{DECK_REQUIRED_SIZE} carte gratis</strong> per
           iniziare. Otterrai un mazzo da gioco completo con preferenza per
           l'elemento scelto. <strong>Questa scelta è una sola volta per ogni avventuriero:</strong> dopo
           la prima conferma (o se salti) il messaggio non riapparirà più, nemmeno dopo un riavvio.
@@ -1110,7 +1121,7 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
   const autoFill = () => {
     const built = autoBuildDeckFromCollection(collection_, foils_);
     if (!built) {
-      alert("Servono almeno 20 carte nella collezione per generare un mazzo.");
+      alert(`Servono almeno ${DECK_REQUIRED_SIZE} carte nella collezione per generare un mazzo.`);
       return;
     }
     setEditingDeck(built);
@@ -1127,7 +1138,7 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
       if (o.strict) {
         alert("Non hai abbastanza carte che corrispondono ai filtri scelti. Disattiva 'Solo carte filtrate' o cambia filtro.");
       } else {
-        alert("Servono almeno 20 carte nella collezione per generare un mazzo.");
+        alert(`Servono almeno ${DECK_REQUIRED_SIZE} carte nella collezione per generare un mazzo.`);
       }
       return;
     }
@@ -1237,7 +1248,7 @@ function CollectionTab({ me, onTrash, onSaveDeck, onView }) {
             <p className="tcg-autobuild-hint">
               Genera un mazzo con preferenze: il builder pesca prima le carte che corrispondono ai filtri,
               poi riempie i posti rimanenti con altre carte della tua collezione. Spunta <strong>Solo carte filtrate</strong>{" "}
-              per un mazzo "puro" (richiede 20 carte che corrispondano).
+              per un mazzo "puro" (richiede {DECK_REQUIRED_SIZE} carte che corrispondano).
             </p>
             <div className="tcg-autobuild-form">
               <label className="tcg-autobuild-field">
@@ -2113,6 +2124,8 @@ function LiveMatch({ match, uid, onExit }) {
   const matchRootRef = useRef(null);                       // root <div> of the match — used for hover delegation
   const [compliment, setCompliment] = useState("");
   const [attackSplash, setAttackSplash] = useState(null); // { attacker, defender, side, kind, key }
+  const [spellSplash, setSpellSplash] = useState(null);   // { cardId, side, type, ts }
+  const lastSpellTsRef = useRef(match.state?.lastSpell?.ts || 0);
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
   const [floats, setFloats] = useState([]);               // [{ id, kind, target, side, instId?, amount }]
   const [muted, setMuted] = useState(isSfxMuted());
@@ -2120,6 +2133,10 @@ function LiveMatch({ match, uid, onExit }) {
      (set by the awardPetPoints call in the win-detection effect below). */
   const [endReward, setEndReward] = useState(null);
   // { points: N, label: "...", reason?: "daily-cap"|"already-seen"|... }
+  /* Discard mode: when on, clicking a hand card discards it instead of
+     playing. Lets the player free a slot when the hand is full, instead
+     of silently burning newly-drawn cards. */
+  const [discardMode, setDiscardMode] = useState(false);
   // Animation queue — events from the engine fire sequentially with a small
   // gap so each one is visible. Engine state still commits in one go to
   // Firestore; only the visible effects are paced.
@@ -2310,6 +2327,29 @@ function LiveMatch({ match, uid, onExit }) {
     return () => clearTimeout(t);
   }, [attackSplash]);
 
+  /* Spell / enchantment / counter cast splash — watch the engine's
+     `lastSpell` write and trigger a centered card-cast animation.
+     Enchantments and counters get a longer duration so the player has
+     time to see what their opponent just cast. */
+  useEffect(() => {
+    const ls = state.lastSpell;
+    if (!ls || !ls.ts || ls.ts === lastSpellTsRef.current) return;
+    lastSpellTsRef.current = ls.ts;
+    const def = TCG_CARDS[ls.cardId];
+    if (!def) return;
+    const type = getCardType(def);
+    setSpellSplash({ cardId: ls.cardId, side: ls.side, type, ts: ls.ts });
+  }, [state.lastSpell?.ts]);
+
+  useEffect(() => {
+    if (!spellSplash) return;
+    // Enchantments + counters linger longer than regular spells (so the
+    // opponent doesn't miss what just hit them).
+    const dur = (spellSplash.type === "enchantment" || spellSplash.type === "counter") ? 2200 : 1500;
+    const t = setTimeout(() => setSpellSplash(null), dur);
+    return () => clearTimeout(t);
+  }, [spellSplash]);
+
   /* Roll a compliment once when the match ends and I won */
   useEffect(() => {
     if (state.winner && state.winner === mySide && !compliment) {
@@ -2350,7 +2390,23 @@ function LiveMatch({ match, uid, onExit }) {
     }
   };
 
+  const handleDiscardCard = async (instId) => {
+    if (!myTurn || state.winner) return;
+    const card = state.hand[mySide].find(c => c.instId === instId);
+    if (!card) return;
+    const def = TCG_CARDS[card.cardId];
+    if (!window.confirm(`Scartare "${def?.name || card.cardId}"? Andrà al cimitero.`)) return;
+    const next = discardCard(state, mySide, instId);
+    await updateState(next, { snapshotForUndo: true });
+    setDiscardMode(false);
+  };
+
   const handlePlayCard = async (instId) => {
+    // In discard mode any hand-card click discards instead of plays.
+    if (discardMode) {
+      await handleDiscardCard(instId);
+      return;
+    }
     if (!canPlayCard(state, mySide, instId)) return;
     const card = state.hand[mySide].find(c => c.instId === instId);
     const def = card ? TCG_CARDS[card.cardId] : null;
@@ -2765,6 +2821,41 @@ function LiveMatch({ match, uid, onExit }) {
           </div>
         </div>
       )}
+      {spellSplash && (() => {
+        const def = TCG_CARDS[spellSplash.cardId];
+        if (!def) return null;
+        const type = spellSplash.type;
+        const isMine = spellSplash.side === mySide;
+        return (
+          <div
+            key={spellSplash.ts}
+            className={
+              `tcg-spell-splash tcg-spell-splash--${type}` +
+              ` tcg-spell-splash--el-${def.element}` +
+              (isMine ? " tcg-spell-splash--mine" : " tcg-spell-splash--opp")
+            }
+            aria-hidden="true"
+          >
+            <div className="tcg-spell-splash-card">
+              <div className="tcg-spell-splash-type-icon">
+                {type === "enchantment" ? "🌟" : type === "counter" ? "🛡" : "📜"}
+              </div>
+              <div className="tcg-spell-splash-name">{def.name}</div>
+              <div className="tcg-spell-splash-meta">
+                <span className="tcg-spell-splash-type">
+                  {type === "enchantment" ? "Aura" : type === "counter" ? "Contromagia" : "Incantesimo"}
+                </span>
+                <span className="tcg-spell-splash-elem">{ELEMENT_ICON[def.element]}</span>
+              </div>
+              <div className="tcg-spell-splash-cast">
+                {isMine ? "TU LANCI" : "L'AVVERSARIO LANCIA"}
+              </div>
+              <span className="tcg-spell-splash-glow" aria-hidden="true" />
+              <span className="tcg-spell-splash-ring" aria-hidden="true" />
+            </div>
+          </div>
+        );
+      })()}
       <header className="tcg-match-head">
         <button className="tcg-btn tcg-btn--ghost tcg-btn--tiny" onClick={onExit}>← Lobby</button>
         <div className="tcg-match-round">
@@ -2799,6 +2890,7 @@ function LiveMatch({ match, uid, onExit }) {
           burn={state.burn?.[oSide] || 0}
           secretCount={state.secrets?.[oSide]?.length || 0}
           shield={state.dmgShield?.[oSide] || 0}
+          regen={state.champRegen?.[oSide] || 0}
           floats={floats.filter(f => f.target === "champion" && f.side === oSide)}
         />
         </div>
@@ -2953,6 +3045,7 @@ function LiveMatch({ match, uid, onExit }) {
           burn={state.burn?.[mySide] || 0}
           secretCount={state.secrets?.[mySide]?.length || 0}
           shield={state.dmgShield?.[mySide] || 0}
+          regen={state.champRegen?.[mySide] || 0}
           ownSecrets={state.secrets?.[mySide] || []}
           floats={floats.filter(f => f.target === "champion" && f.side === mySide)}
         />
@@ -2962,7 +3055,17 @@ function LiveMatch({ match, uid, onExit }) {
       {/* Hand */}
       <div className="tcg-hand-wrap">
         <div className="tcg-hand-label">
-          🎴 La tua mano · {myHand.length} carte
+          🎴 La tua mano · {myHand.length}/{MAX_HAND} carte
+          {myHand.length >= MAX_HAND && !discardMode && (
+            <span className="tcg-hand-label-warn">
+              {" "}· ⚠ <strong>Mano piena</strong>: le carte pescate verranno bruciate. Premi <strong>🗑 Scarta</strong> per liberare uno slot.
+            </span>
+          )}
+          {discardMode && (
+            <span className="tcg-hand-label-warn">
+              {" "}· 🗑 <strong>Tocca una carta per scartarla</strong>
+            </span>
+          )}
           {pendingSpell && (
             <span className="tcg-hand-label-spell">
               {" "}· 📜 Castando <strong>{pendingSpell.def.name}</strong>
@@ -2982,11 +3085,14 @@ function LiveMatch({ match, uid, onExit }) {
                 card={def}
                 size="md"
                 onClick={() => handlePlayCard(c.instId)}
-                disabled={!playable && !isPending}
-                selected={isPending}
-                className={isPending ? "tcg-card--pending-spell" : ""}
+                disabled={discardMode ? false : (!playable && !isPending)}
+                selected={isPending || discardMode}
+                className={
+                  (isPending ? "tcg-card--pending-spell" : "") +
+                  (discardMode ? " tcg-card--discard-target" : "")
+                }
                 onInspect={() => setFocusedCardId(c.cardId)}
-                dataDraggable={myTurn && playable ? `hand:${c.instId}` : undefined}
+                dataDraggable={myTurn && playable && !discardMode ? `hand:${c.instId}` : undefined}
                 dataCardId={c.cardId}
               />
             );
@@ -3020,6 +3126,24 @@ function LiveMatch({ match, uid, onExit }) {
             ↩ Annulla
           </button>
         </div>
+        <button
+          type="button"
+          className={`tcg-action-log-btn${discardMode ? " tcg-action-log-btn--active" : ""}`}
+          onClick={() => setDiscardMode(m => !m)}
+          disabled={!myTurn || myHand.length === 0}
+          aria-pressed={discardMode}
+          title={
+            !myTurn
+              ? "Solo durante il tuo turno"
+              : discardMode
+                ? "Annulla scarto"
+                : myHand.length >= MAX_HAND
+                  ? "Mano piena! Scarta una carta"
+                  : "Scarta una carta dalla mano"
+          }
+        >
+          🗑 {discardMode ? "Annulla" : "Scarta"}{myHand.length >= MAX_HAND ? " ⚠" : ""}
+        </button>
         <button
           type="button"
           className="tcg-action-log-btn"
@@ -3101,7 +3225,7 @@ function LiveMatch({ match, uid, onExit }) {
 /* ============================================================
    PLAYER STRIP — HP, mana, deck, hand counts
    ============================================================ */
-function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTurn = 0, deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, ownSecrets = null, floats = [] }) {
+function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTurn = 0, deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, regen = 0, ownSecrets = null, floats = [] }) {
   const hpPct = Math.max(0, Math.min(100, (hp / STARTING_HP) * 100));
   const secretsTip = ownSecrets && ownSecrets.length
     ? "Le tue Contromagie segrete:\n" + ownSecrets.map(s => `  • ${TCG_CARDS[s.cardId]?.name || s.cardId}`).join("\n")
@@ -3128,6 +3252,11 @@ function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTu
         {shield > 0 && (
           <span className="tcg-pstrip-shield" title={`Argine: assorbe i prossimi ${shield} danni in entrata`}>
             🛡 +{shield}
+          </span>
+        )}
+        {regen > 0 && (
+          <span className="tcg-pstrip-regen" title={`Aureola: ${name} recupera ${regen} PF all'inizio di ogni suo turno`}>
+            👑 +{regen}/turno
           </span>
         )}
         {secretCount > 0 && (
@@ -3291,7 +3420,13 @@ function Rules() {
           <li>Le carte sono di quattro tipi: <strong>🐲 Creature</strong> (vanno in campo, attaccano e difendono), <strong>📜 Incantesimi</strong> (effetto singolo, poi finiscono al cimitero), <strong>🌟 Aure</strong> (concedono keyword temporanee o effetti persistenti) e <strong>🛡 Contromagie</strong> (trappole segrete che si attivano nel turno dell'avversario).</li>
           <li>Le creature evocate hanno <em>sonno d'evocazione</em> e non possono attaccare lo stesso turno — a meno che non abbiano <strong>Furia</strong> o vengano risvegliate dall'affinità <strong>Brezza</strong>.</li>
           <li>In combattimento, una creatura attacca una creatura nemica (o il campione) e ognuna infligge i propri danni; le meccaniche (Affondo, Avanguardia, Letale…) cambiano l'ordine e la regola.</li>
-          <li><strong>🛡 Difesa del campione</strong>: puoi colpire il campione avversario solo se la sua difesa è sgombra. Una creatura a terra blocca tutte le altre creature a terra; una creatura con <strong>Volo</strong> blocca solo altri volatili. <strong>Volo</strong> sorvola i difensori a terra; <strong>Cacciatore</strong> permette invece di colpire i volatili dal suolo, ma non garantisce il sorvolo della difesa.</li>
+          <li><strong>🛡 Difesa del campione</strong>: puoi colpire il campione avversario solo se la sua difesa è sgombra. Le regole di blocco sono:
+            <ul>
+              <li>Un attaccante <strong>a terra</strong> è bloccato da qualsiasi creatura nemica a terra (i volatili non lo intercettano).</li>
+              <li>Un attaccante con <strong>Volo</strong> sorvola le creature normali e arriva diritto al campione… <em>a meno che</em> sul campo nemico non ci sia almeno una creatura con <strong>🛡 Baluardo</strong>: in quel caso il volatile DEVE colpire il Baluardo prima di raggiungere il campione.</li>
+              <li><strong>Cacciatore</strong> permette a un attaccante a terra di colpire i volatili nemici, ma non sblocca il campione.</li>
+            </ul>
+          </li>
           <li>Vince chi porta a 0 i PF dell'avversario. Se finisci il mazzo, subisci 2 danni da affaticamento ad ogni pesca.</li>
         </ul>
       </div>
@@ -3469,7 +3604,7 @@ function Rules() {
       <div className="tcg-panel">
         <h2 className="tcg-panel-title">🛒 Bottega e Collezione</h2>
         <ul className="tcg-rules-list">
-          <li>Al primo accesso ricevi un <strong>Pacchetto Iniziale gratuito</strong> di 20 carte (scegli l'elemento).</li>
+          <li>Al primo accesso ricevi un <strong>Pacchetto Iniziale gratuito</strong> di {DECK_REQUIRED_SIZE} carte mono-elemento (scegli l'elemento). Include {Math.round(DECK_REQUIRED_SIZE * 0.28)} cristalli per il mana.</li>
           <li>I forzieri elementali standard costano <strong>80 ✦</strong>. I forzieri di <strong>Luce</strong> e <strong>Tenebra</strong> costano <strong>200 ✦</strong> ma offrono il 5% di Leggendari.</li>
           <li>Ogni forziere contiene 8 carte, miste tra creature e incantesimi del suo elemento. Lo slot premio rolla rarità casuali fino al Leggendario.</li>
           <li>Nel pannello <strong>Collezione</strong> costruisci e salvi un mazzo da {DECK_REQUIRED_SIZE} carte tra quelle possedute. Le carte indesiderate possono essere <strong>distrutte</strong> per recuperare ✦ (3/8/20/50 per rarità).</li>

@@ -34,7 +34,7 @@ import {
 
 export const STARTING_HP       = 25;
 export const STARTING_HAND_SIZE = 4;
-export const DECK_SIZE         = 20;
+export const DECK_SIZE         = 50;
 export const MAX_MANA          = 10;
 export const MAX_BOARD         = 6;
 export const MAX_HAND          = 7;
@@ -1166,14 +1166,15 @@ export function attackWith(state, side, attackerInstId, targetInstId) {
     const targetIsBulwark = tauntingBulwarks.some(c => c.instId === targetInstId);
     if (!targetIsBulwark) return state;
   } else if (targetInstId === null) {
-    // No Bulwarks but face still requires a clear lane: ground attackers
-    // are blocked by any ground defender; flying attackers by any flying
-    // defender. Cacciatore doesn't grant face-bypass.
-    const blocksFace = (c) => {
-      const cFlies = effectiveMechanics(c).includes("flying");
-      return attackerFlies ? cFlies : !cFlies;
-    };
-    if (oppBoard.some(blocksFace)) return state;
+    // No Bulwarks: lane defense rules apply.
+    //   • Ground attacker → blocked by any ground defender.
+    //   • Flying attacker → cannot be blocked by ordinary defenders
+    //     (only Bulwark stops it, handled above). A flying creature
+    //     can ignore other flyers and dive on the champion.
+    if (!attackerFlies) {
+      const blocksFace = (c) => !effectiveMechanics(c).includes("flying");
+      if (oppBoard.some(blocksFace)) return state;
+    }
   }
 
   attacker.tapped = true;
@@ -1379,6 +1380,30 @@ function endGame(state, winnerSide, reason) {
   }];
 }
 
+/* ── Action: discard a card from hand ─────────────────────
+   Lets a player voluntarily send a hand card to the graveyard.
+   Useful when the hand cap (MAX_HAND) is about to silently burn
+   freshly-drawn cards, giving the player agency to pick which one
+   to drop. Only allowed during your own turn, before the game
+   ends, and the card must currently be in your hand. */
+export function discardCard(state, side, instId) {
+  if (state.winner) return state;
+  if (state.activeSide !== side) return state;
+  const next = clone(state);
+  const idx = next.hand[side].findIndex(c => c.instId === instId);
+  if (idx < 0) return state;
+  const card = next.hand[side][idx];
+  const def = TCG_CARDS[card.cardId];
+  next.hand[side].splice(idx, 1);
+  next.graveyard[side] = [...next.graveyard[side], card.cardId];
+  next.log = [...next.log, {
+    side,
+    text: `🗑 ${sideName(side)} scarta ${def?.name || card.cardId}.`,
+    kind: "discard",
+  }];
+  return next;
+}
+
 /* ── Action: end turn ─────────────────────────────────────── */
 export function endTurn(state, side) {
   if (state.winner) return state;
@@ -1572,14 +1597,13 @@ export function legalAttackTargets(state, side, attackerInstId) {
     if (cMech.includes("flying") && !attackerFlies && !attackerReaches) return false;
     return true;
   };
-  // A defender "blocks the champion path" if it shares the attacker's lane:
-  //   • Non-flying attacker → blocked by every ground creature
-  //   • Flying attacker     → blocked only by flying creatures (ground
-  //     defenders can't reach the sky)
-  // Cacciatore is offensive reach only; it does NOT grant face-bypass.
+  // A defender "blocks the champion path" only for ground attackers:
+  //   • Ground attacker → blocked by every ground creature.
+  //   • Flying attacker → not blocked by ordinary defenders; only a
+  //     Bulwark stops it (handled via tauntingBulwarks below).
   const blocksFace = (c) => {
-    const cFlies = effectiveMechanics(c).includes("flying");
-    return attackerFlies ? cFlies : !cFlies;
+    if (attackerFlies) return false;
+    return !effectiveMechanics(c).includes("flying");
   };
 
   const tauntingBulwarks = oppBoard.filter(c => {
@@ -1739,7 +1763,7 @@ export function resolveDeckForMatch(deck, collection, foils = {}) {
    free utility cards); we just inject them on the fly. The crystals
    chosen mirror the deck's element distribution so the mana you draw
    matches the colors you want to cast. */
-export function ensureCrystals(deck, minCount = 6) {
+export function ensureCrystals(deck, minCount = Math.max(6, Math.round(DECK_SIZE * 0.28))) {
   if (!Array.isArray(deck) || deck.length !== DECK_SIZE) return deck;
   let crystalCount = 0;
   const elemCounts = {};

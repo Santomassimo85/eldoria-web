@@ -337,7 +337,7 @@ export const SPELL_TARGETS = [
    Each card:
      id         — unique key
      name       — italian display name
-     image      — /assets/pets/*.png (placeholder, until /tcgCard exists)
+     image      — /assets/tgc_card/*.png (placeholder, until /tcgCard exists)
      icon       — emoji fallback
      element    — fire/water/earth/air/light/dark
      rarity     — common/rare/epic/legendary
@@ -355,51 +355,51 @@ export const TCG_CARDS = {
 
   /* ── FIRE 🔥 ──────────────────────────────────── */
   imp: {
-    id: "imp", name: "Diavoletto", image: "/assets/pets/imp.png", icon: "👺",
+    id: "imp", name: "Diavoletto", image: "/assets/tgc_card/imp.png", icon: "👺",
     element: "fire", rarity: "common", cost: 1, mana: { fire: 1 }, atk: 2, hp: 1,
     mechanics: ["surge"],
     flavor: "Una scintilla con le ali e un cattivo carattere.",
   },
   hellhound: {
-    id: "hellhound", name: "Mastino Infernale", image: "/assets/pets/hellhound.png", icon: "🐕‍🔥",
+    id: "hellhound", name: "Mastino Infernale", image: "/assets/tgc_card/hellhound.png", icon: "🐕‍🔥",
     element: "fire", rarity: "common", cost: 2, mana: { fire: 2 }, atk: 3, hp: 2,
     mechanics: ["surge", "bruciatura"],
     mechanicsValues: { bruciatura: 1 },
     flavor: "Caccia in branco, brucia da solo.",
   },
   spineddevil: {
-    id: "spineddevil", name: "Diavolo Spinato", image: "/assets/pets/spineddevil.png", icon: "🦂",
+    id: "spineddevil", name: "Diavolo Spinato", image: "/assets/tgc_card/spineddevil.png", icon: "🦂",
     element: "fire", rarity: "common", cost: 2, mana: { fire: 1, any: 1 }, atk: 2, hp: 3,
     mechanics: ["cinder", "cacciatore"],
     flavor: "Le sue spine volano in alto. Anche i corvi le temono.",
   },
   fireaxedevil: {
-    id: "fireaxedevil", name: "Diavolo dell'Ascia", image: "/assets/pets/fireaxedevil.png", icon: "🪓",
+    id: "fireaxedevil", name: "Diavolo dell'Ascia", image: "/assets/tgc_card/fireaxedevil.png", icon: "🪓",
     element: "fire", rarity: "rare", cost: 3, mana: { fire: 2, any: 1 }, atk: 4, hp: 3,
     mechanics: ["pierce"],
     flavor: "L'ascia infuocata non si ferma davanti alla carne.",
   },
   hornedevil: {
-    id: "hornedevil", name: "Diavolo Cornuto", image: "/assets/pets/hornedevil.png", icon: "😈",
+    id: "hornedevil", name: "Diavolo Cornuto", image: "/assets/tgc_card/hornedevil.png", icon: "😈",
     element: "fire", rarity: "rare", cost: 4, mana: { fire: 3, any: 1 }, atk: 5, hp: 4,
     mechanics: ["vanguard"],
     flavor: "Le sue corna trafiggono prima del grido.",
   },
   hezrou: {
-    id: "hezrou", name: "Hezrou", image: "/assets/pets/hezrou.png", icon: "🐸",
+    id: "hezrou", name: "Hezrou", image: "/assets/tgc_card/hezrou.png", icon: "🐸",
     element: "fire", rarity: "epic", cost: 5, mana: { fire: 4, any: 1 }, atk: 5, hp: 7,
     mechanics: ["bulwark", "cinder"],
     flavor: "Il suo fetore brucia i polmoni di chi osa avvicinarsi.",
   },
   balor: {
-    id: "balor", name: "Balor", image: "/assets/pets/balor.png", icon: "🔥",
+    id: "balor", name: "Balor", image: "/assets/tgc_card/balor.png", icon: "🔥",
     element: "fire", rarity: "epic", cost: 7, mana: { fire: 6, any: 1 }, atk: 8, hp: 6,
     mechanics: ["surge", "pierce", "bruciatura"],
     mechanicsValues: { bruciatura: 2 },
     flavor: "Frusta di fiamma, spada di fulmine. La fine di un'armata.",
   },
   reddragon: {
-    id: "reddragon", name: "Drago Rosso", image: "/assets/pets/reddragon.png", icon: "🐉",
+    id: "reddragon", name: "Drago Rosso", image: "/assets/tgc_card/reddragon.png", icon: "🐉",
     element: "fire", rarity: "legendary", cost: 8, mana: { fire: 8 }, atk: 9, hp: 9,
     mechanics: ["surge", "pierce", "bruciatura", "flying"],
     mechanicsValues: { bruciatura: 3 },
@@ -408,49 +408,49 @@ export const TCG_CARDS = {
 
   /* ── WATER 💧 ─────────────────────────────────── */
   kuotoa: {
-    id: "kuotoa", name: "Kuo-Toa", image: "/assets/pets/kuotoa.png", icon: "🐠",
+    id: "kuotoa", name: "Kuo-Toa", image: "/assets/tgc_card/kuotoa.png", icon: "🐠",
     element: "water", rarity: "common", cost: 1, mana: { water: 1 }, atk: 1, hp: 3,
     mechanics: [],
     flavor: "Adora un dio improbabile. Lo difende lo stesso.",
   },
   sahuagin: {
-    id: "sahuagin", name: "Sahuagin", image: "/assets/pets/sahuagin.png", icon: "🦈",
+    id: "sahuagin", name: "Sahuagin", image: "/assets/tgc_card/sahuagin.png", icon: "🦈",
     element: "water", rarity: "common", cost: 2, mana: { water: 1, any: 1 }, atk: 3, hp: 2,
     mechanics: ["surge", "cacciatore"],
     flavor: "Il suo arpione vola dritto verso il cielo.",
   },
   merfolk: {
-    id: "merfolk", name: "Tritone", image: "/assets/pets/merfolk.png", icon: "🧜",
+    id: "merfolk", name: "Tritone", image: "/assets/tgc_card/merfolk.png", icon: "🧜",
     element: "water", rarity: "common", cost: 2, mana: { water: 2 }, atk: 2, hp: 3,
     mechanics: ["soulburn"],
     flavor: "Il suo canto cura il sangue di chi lo ama.",
   },
   watermage: {
-    id: "watermage", name: "Mago dell'Acqua", image: "/assets/pets/watermage.png", icon: "🌊",
+    id: "watermage", name: "Mago dell'Acqua", image: "/assets/tgc_card/watermage.png", icon: "🌊",
     element: "water", rarity: "rare", cost: 3, mana: { water: 3 }, atk: 2, hp: 4,
     mechanics: ["soulburn"],
     flavor: "Onda dopo onda, ricuce le ferite del suo padrone.",
   },
   marinebrute: {
-    id: "marinebrute", name: "Bruto Marino", image: "/assets/pets/marinebrute.png", icon: "🐙",
+    id: "marinebrute", name: "Bruto Marino", image: "/assets/tgc_card/marinebrute.png", icon: "🐙",
     element: "water", rarity: "rare", cost: 4, mana: { water: 3, any: 1 }, atk: 3, hp: 6,
     mechanics: ["bulwark"],
     flavor: "Tentacoli come ancore. Niente passa.",
   },
   marid: {
-    id: "marid", name: "Marid", image: "/assets/pets/marid.png", icon: "🌀",
+    id: "marid", name: "Marid", image: "/assets/tgc_card/marid.png", icon: "🌀",
     element: "water", rarity: "epic", cost: 5, mana: { water: 4, any: 1 }, atk: 5, hp: 6,
     mechanics: ["soulburn", "vanguard"],
     flavor: "Genio dell'oceano. La sua collera ribolle prima di colpire.",
   },
   dragonturtle: {
-    id: "dragonturtle", name: "Drago Tartaruga", image: "/assets/pets/dragonturtle.png", icon: "🐢",
+    id: "dragonturtle", name: "Drago Tartaruga", image: "/assets/tgc_card/dragonturtle.png", icon: "🐢",
     element: "water", rarity: "epic", cost: 6, mana: { water: 5, any: 1 }, atk: 5, hp: 9,
     mechanics: ["bulwark", "vanguard"],
     flavor: "Antico abisso vivente. Affonda flotte solo respirando.",
   },
   kraken: {
-    id: "kraken", name: "Kraken", image: "/assets/pets/kraken.png", icon: "🦑",
+    id: "kraken", name: "Kraken", image: "/assets/tgc_card/kraken.png", icon: "🦑",
     element: "water", rarity: "legendary", cost: 9, mana: { water: 9 }, atk: 8, hp: 10,
     mechanics: ["pierce", "bulwark", "reckon"],
     flavor: "Le tempeste sono i suoi sospiri. Le navi i suoi giocattoli.",
@@ -458,52 +458,52 @@ export const TCG_CARDS = {
 
   /* ── EARTH 🌿 ─────────────────────────────────── */
   myconid: {
-    id: "myconid", name: "Myconide", image: "/assets/pets/myconid.png", icon: "🍄",
+    id: "myconid", name: "Myconide", image: "/assets/tgc_card/myconid.png", icon: "🍄",
     element: "earth", rarity: "common", cost: 1, mana: { earth: 1 }, atk: 1, hp: 3,
     mechanics: ["veil", "linfa"],
     mechanicsValues: { linfa: 1 },
     flavor: "Le spore tornano sempre, anche dopo l'inverno.",
   },
   badger: {
-    id: "badger", name: "Tasso Furioso", image: "/assets/pets/badger.png", icon: "🦡",
+    id: "badger", name: "Tasso Furioso", image: "/assets/tgc_card/badger.png", icon: "🦡",
     element: "earth", rarity: "common", cost: 2, mana: { earth: 1, any: 1 }, atk: 3, hp: 2,
     mechanics: ["reckon"],
     flavor: "Piccolo, basso, e mortalmente cocciuto.",
   },
   twigblight: {
-    id: "twigblight", name: "Rovo Animato", image: "/assets/pets/twigblight.png", icon: "🌿",
+    id: "twigblight", name: "Rovo Animato", image: "/assets/tgc_card/twigblight.png", icon: "🌿",
     element: "earth", rarity: "common", cost: 1, mana: { earth: 1 }, atk: 2, hp: 2,
     mechanics: ["linfa"],
     mechanicsValues: { linfa: 1 },
     flavor: "Sembra un cespuglio. Lo è. Ma morde. E ricresce.",
   },
   hookhorror: {
-    id: "hookhorror", name: "Orrore Uncinato", image: "/assets/pets/hookhorror.png", icon: "🦀",
+    id: "hookhorror", name: "Orrore Uncinato", image: "/assets/tgc_card/hookhorror.png", icon: "🦀",
     element: "earth", rarity: "rare", cost: 3, mana: { earth: 2, any: 1 }, atk: 3, hp: 4,
     mechanics: ["pierce", "cacciatore"],
     flavor: "Gli uncini agganciano la pietra. E ciò che vola sopra.",
   },
   shamblingmound: {
-    id: "shamblingmound", name: "Cumulo Strisciante", image: "/assets/pets/shamblingmound.png", icon: "🌳",
+    id: "shamblingmound", name: "Cumulo Strisciante", image: "/assets/tgc_card/shamblingmound.png", icon: "🌳",
     element: "earth", rarity: "rare", cost: 4, mana: { earth: 3, any: 1 }, atk: 3, hp: 6,
     mechanics: ["bulwark", "linfa"],
     mechanicsValues: { linfa: 1 },
     flavor: "Marcisce. Si rialza. Marcisce di nuovo. Cammina.",
   },
   crystalgolem: {
-    id: "crystalgolem", name: "Golem di Cristallo", image: "/assets/pets/crystalgolem.png", icon: "💎",
+    id: "crystalgolem", name: "Golem di Cristallo", image: "/assets/tgc_card/crystalgolem.png", icon: "💎",
     element: "earth", rarity: "epic", cost: 5, mana: { earth: 4, any: 1 }, atk: 4, hp: 8,
     mechanics: ["bulwark", "vanguard"],
     flavor: "Riflette ogni colpo prima di restituirlo come una sentenza.",
   },
   irongolem: {
-    id: "irongolem", name: "Golem di Ferro", image: "/assets/pets/irongolem.png", icon: "🤖",
+    id: "irongolem", name: "Golem di Ferro", image: "/assets/tgc_card/irongolem.png", icon: "🤖",
     element: "earth", rarity: "epic", cost: 7, mana: { earth: 6, any: 1 }, atk: 7, hp: 8,
     mechanics: ["bulwark", "pierce"],
     flavor: "Una fortezza che cammina, dimenticata da chi l'ha forgiata.",
   },
   ankylosaurus: {
-    id: "ankylosaurus", name: "Anchilosauro", image: "/assets/pets/ankylosaurus.png", icon: "🦕",
+    id: "ankylosaurus", name: "Anchilosauro", image: "/assets/tgc_card/ankylosaurus.png", icon: "🦕",
     element: "earth", rarity: "legendary", cost: 8, mana: { earth: 8 }, atk: 7, hp: 11,
     mechanics: ["bulwark", "reckon", "linfa"],
     mechanicsValues: { linfa: 2 },
@@ -512,49 +512,49 @@ export const TCG_CARDS = {
 
   /* ── AIR 💨 ───────────────────────────────────── */
   hawk: {
-    id: "hawk", name: "Falco", image: "/assets/pets/hawk.png", icon: "🦅",
+    id: "hawk", name: "Falco", image: "/assets/tgc_card/hawk.png", icon: "🦅",
     element: "air", rarity: "common", cost: 1, mana: { air: 1 }, atk: 2, hp: 1,
     mechanics: ["surge", "flying"],
     flavor: "Vede il topo prima che il topo si veda.",
   },
   wingedkobold: {
-    id: "wingedkobold", name: "Kobold Alato", image: "/assets/pets/wingedkobold.png", icon: "🦖",
+    id: "wingedkobold", name: "Kobold Alato", image: "/assets/tgc_card/wingedkobold.png", icon: "🦖",
     element: "air", rarity: "common", cost: 2, mana: { air: 1, any: 1 }, atk: 2, hp: 2,
     mechanics: ["surge", "cinder", "flying"],
     flavor: "Si schianta con stile. Sempre.",
   },
   airelemental: {
-    id: "airelemental", name: "Elementale dell'Aria", image: "/assets/pets/airelemental.png", icon: "🌬",
+    id: "airelemental", name: "Elementale dell'Aria", image: "/assets/tgc_card/airelemental.png", icon: "🌬",
     element: "air", rarity: "rare", cost: 3, mana: { air: 2, any: 1 }, atk: 3, hp: 3,
     mechanics: ["surge", "pierce", "flying"],
     flavor: "Non lo afferri. Lo respiri. E ti taglia dentro.",
   },
   peryton: {
-    id: "peryton", name: "Periton", image: "/assets/pets/peryton.png", icon: "🦌",
+    id: "peryton", name: "Periton", image: "/assets/tgc_card/peryton.png", icon: "🦌",
     element: "air", rarity: "rare", cost: 3, mana: { air: 2, any: 1 }, atk: 4, hp: 2,
     mechanics: ["surge", "pierce", "flying"],
     flavor: "L'ombra di un cervo, gli artigli di un'aquila.",
   },
   manticore: {
-    id: "manticore", name: "Manticora", image: "/assets/pets/manticore.png", icon: "🦁",
+    id: "manticore", name: "Manticora", image: "/assets/tgc_card/manticore.png", icon: "🦁",
     element: "air", rarity: "rare", cost: 4, mana: { air: 3, any: 1 }, atk: 4, hp: 4,
     mechanics: ["pierce", "flying"],
     flavor: "Faccia umana, voce di leone, code piene di lance.",
   },
   djinni: {
-    id: "djinni", name: "Djinni", image: "/assets/pets/djinni.png", icon: "🧞",
+    id: "djinni", name: "Djinni", image: "/assets/tgc_card/djinni.png", icon: "🧞",
     element: "air", rarity: "epic", cost: 5, mana: { air: 4, any: 1 }, atk: 5, hp: 6,
     mechanics: ["surge", "vanguard", "flying"],
     flavor: "Genio dei cieli. I tuoi tre desideri non basteranno.",
   },
   stormelemental: {
-    id: "stormelemental", name: "Elementale di Tempesta", image: "/assets/pets/stormelemental.png", icon: "⛈",
+    id: "stormelemental", name: "Elementale di Tempesta", image: "/assets/tgc_card/stormelemental.png", icon: "⛈",
     element: "air", rarity: "epic", cost: 6, mana: { air: 5, any: 1 }, atk: 6, hp: 6,
     mechanics: ["surge", "pierce", "cinder", "flying"],
     flavor: "Tuono che cammina. Pioggia che taglia.",
   },
   tempestdragon: {
-    id: "tempestdragon", name: "Drago della Tempesta", image: "/assets/pets/tempestdragon.png", icon: "🌩",
+    id: "tempestdragon", name: "Drago della Tempesta", image: "/assets/tgc_card/tempestdragon.png", icon: "🌩",
     element: "air", rarity: "legendary", cost: 8, mana: { air: 8 }, atk: 8, hp: 9,
     mechanics: ["surge", "pierce", "vanguard", "flying"],
     flavor: "Vola sopra le nuvole. Scende sotto forma di sentenza.",
@@ -562,31 +562,31 @@ export const TCG_CARDS = {
 
   /* ── LIGHT ✨ ─────────────────────────────────── */
   pegasus: {
-    id: "pegasus", name: "Pegaso", image: "/assets/pets/pegasus.png", icon: "🦄",
+    id: "pegasus", name: "Pegaso", image: "/assets/tgc_card/pegasus.png", icon: "🦄",
     element: "light", rarity: "common", cost: 2, mana: { light: 2 }, atk: 2, hp: 3,
     mechanics: ["soulburn", "flying"],
     flavor: "Le sue ali profumano di alba.",
   },
   copperdragon: {
-    id: "copperdragon", name: "Drago di Rame", image: "/assets/pets/copperdragon.png", icon: "🐲",
+    id: "copperdragon", name: "Drago di Rame", image: "/assets/tgc_card/copperdragon.png", icon: "🐲",
     element: "light", rarity: "rare", cost: 4, mana: { light: 3, any: 1 }, atk: 4, hp: 4,
     mechanics: ["soulburn", "vanguard", "flying"],
     flavor: "Burlone delle terre soleggiate. Sa anche essere serio.",
   },
   helmedhorror: {
-    id: "helmedhorror", name: "Orrore Elmato", image: "/assets/pets/helmedhorror.png", icon: "⚔",
+    id: "helmedhorror", name: "Orrore Elmato", image: "/assets/tgc_card/helmedhorror.png", icon: "⚔",
     element: "light", rarity: "rare", cost: 4, mana: { light: 3, any: 1 }, atk: 3, hp: 5,
     mechanics: ["bulwark", "vanguard", "cacciatore"],
     flavor: "Lancia eretta verso il cielo. Niente vi passa senza pagare.",
   },
   satyr: {
-    id: "satyr", name: "Satiro", image: "/assets/pets/satyr.png", icon: "🐐",
+    id: "satyr", name: "Satiro", image: "/assets/tgc_card/satyr.png", icon: "🐐",
     element: "light", rarity: "common", cost: 1, mana: { light: 1 }, atk: 1, hp: 2,
     mechanics: ["veil"],
     flavor: "Suona, balla, ricresce sotto la luna piena.",
   },
   solar: {
-    id: "solar", name: "Solare", image: "/assets/pets/solar.png", icon: "🌟",
+    id: "solar", name: "Solare", image: "/assets/tgc_card/solar.png", icon: "🌟",
     element: "light", rarity: "legendary", cost: 9, mana: { light: 9 }, atk: 8, hp: 10,
     mechanics: ["vanguard", "soulburn", "veil"],
     flavor: "Un angelo della guerra. Un angelo della guerra giusta.",
@@ -594,43 +594,43 @@ export const TCG_CARDS = {
 
   /* ── DARK 🌑 ──────────────────────────────────── */
   zombie: {
-    id: "zombie", name: "Zombi", image: "/assets/pets/zombie.png", icon: "🧟",
+    id: "zombie", name: "Zombi", image: "/assets/tgc_card/zombie.png", icon: "🧟",
     element: "dark", rarity: "common", cost: 1, mana: { dark: 1 }, atk: 1, hp: 3,
     mechanics: ["veil"],
     flavor: "Già morto una volta. Cosa potrà mai andare storto?",
   },
   manes: {
-    id: "manes", name: "Manes", image: "/assets/pets/manes.png", icon: "👹",
+    id: "manes", name: "Manes", image: "/assets/tgc_card/manes.png", icon: "👹",
     element: "dark", rarity: "common", cost: 1, mana: { dark: 1 }, atk: 2, hp: 1,
     mechanics: ["cinder"],
     flavor: "Anima dannata, urla anche dopo la morte.",
   },
   specter: {
-    id: "specter", name: "Spettro", image: "/assets/pets/specter.png", icon: "👻",
+    id: "specter", name: "Spettro", image: "/assets/tgc_card/specter.png", icon: "👻",
     element: "dark", rarity: "rare", cost: 3, mana: { dark: 2, any: 1 }, atk: 3, hp: 3,
     mechanics: ["pierce", "soulburn", "flying"],
     flavor: "Ti svuota di vita. Si nutre del tuo respiro.",
   },
   wight: {
-    id: "wight", name: "Wight", image: "/assets/pets/wight.png", icon: "💀",
+    id: "wight", name: "Wight", image: "/assets/tgc_card/wight.png", icon: "💀",
     element: "dark", rarity: "rare", cost: 3, mana: { dark: 3 }, atk: 4, hp: 2,
     mechanics: ["soulburn"],
     flavor: "Ogni vittima diventa carne dell'esercito.",
   },
   nightmare: {
-    id: "nightmare", name: "Incubo", image: "/assets/pets/nightmare.png", icon: "🐴",
+    id: "nightmare", name: "Incubo", image: "/assets/tgc_card/nightmare.png", icon: "🐴",
     element: "dark", rarity: "epic", cost: 5, mana: { dark: 4, any: 1 }, atk: 6, hp: 5,
     mechanics: ["surge", "cinder"],
     flavor: "Galoppa nei sogni. Atterra nei tuoi peggiori.",
   },
   mindflayer: {
-    id: "mindflayer", name: "Mente Adunca", image: "/assets/pets/mindflayer.png", icon: "🦑",
+    id: "mindflayer", name: "Mente Adunca", image: "/assets/tgc_card/mindflayer.png", icon: "🦑",
     element: "dark", rarity: "epic", cost: 6, mana: { dark: 5, any: 1 }, atk: 5, hp: 6,
     mechanics: ["reckon", "soulburn"],
     flavor: "Estrae il cervello. Ne fa un pasto. Lo serve a sé stesso.",
   },
   lich: {
-    id: "lich", name: "Lich", image: "/assets/pets/lich.png", icon: "☠",
+    id: "lich", name: "Lich", image: "/assets/tgc_card/lich.png", icon: "☠",
     element: "dark", rarity: "legendary", cost: 8, mana: { dark: 8 }, atk: 7, hp: 9,
     mechanics: ["reckon", "veil", "soulburn"],
     flavor: "Ha sconfitto la morte. Ora la usa come arma.",
@@ -821,6 +821,287 @@ export const TCG_CARDS = {
       trigger: "enemy_summon",
     },
     flavor: "Un nome cancellato dal libro del mondo. Anche un dio non basta a riscriverlo.",
+  },
+
+  /* ════════════════════════════════════════════════════════
+     ── EXPANSION SET — added with the 50-card deck size.
+        Each new creature uses an image from /assets/tgc_card/;
+        non-creature additions use placeholder images until
+        the player supplies final art (see README in repo).
+     ════════════════════════════════════════════════════════ */
+
+  /* ── FIRE 🔥 expansion ──────────────────────────────── */
+  saurian: {
+    id: "saurian", name: "Sauride", image: "/assets/tgc_card/saurian.png", icon: "🦎",
+    element: "fire", rarity: "common", cost: 2, mana: { fire: 2 }, atk: 2, hp: 3,
+    mechanics: ["surge"],
+    flavor: "Caccia in muta, sputa fuoco.",
+  },
+  bloodwerewolf: {
+    id: "bloodwerewolf", name: "Lupo Sanguinario", image: "/assets/tgc_card/bloodwerewolf.png", icon: "🐺",
+    element: "fire", rarity: "rare", cost: 3, mana: { fire: 2, any: 1 }, atk: 4, hp: 3,
+    mechanics: ["surge", "bruciatura"],
+    mechanicsValues: { bruciatura: 1 },
+    flavor: "La luna piena lo trasforma in cenere viva.",
+  },
+  goristro: {
+    id: "goristro", name: "Goristro", image: "/assets/tgc_card/goristro.png", icon: "🐂",
+    element: "fire", rarity: "epic", cost: 6, mana: { fire: 5, any: 1 }, atk: 7, hp: 5,
+    mechanics: ["surge", "pierce"],
+    flavor: "Ottanta tonnellate di rabbia con le corna.",
+  },
+  firelord: {
+    id: "firelord", name: "Signore del Fuoco", image: "/assets/tgc_card/firelord.png", icon: "🔥",
+    element: "fire", rarity: "epic", cost: 7, mana: { fire: 6, any: 1 }, atk: 6, hp: 8,
+    mechanics: ["bulwark", "bruciatura", "cinder"],
+    mechanicsValues: { bruciatura: 2 },
+    flavor: "Re del cuore della fornace.",
+  },
+  smokemephit: {
+    id: "smokemephit", name: "Mefite di Fumo", image: "/assets/tgc_card/smokemephit.png", icon: "💨",
+    element: "fire", rarity: "common", cost: 1, mana: { fire: 1 }, atk: 1, hp: 2,
+    mechanics: ["surge", "veil"],
+    flavor: "Si dissolve nell'aria. Riappare alle tue spalle.",
+  },
+
+  /* ── WATER 💧 expansion ─────────────────────────────── */
+  frostarcher: {
+    id: "frostarcher", name: "Arcere di Ghiaccio", image: "/assets/tgc_card/frostarcher.png", icon: "🏹",
+    element: "water", rarity: "common", cost: 2, mana: { water: 1, any: 1 }, atk: 3, hp: 2,
+    mechanics: ["cacciatore"],
+    flavor: "Le sue frecce di ghiaccio non si sciolgono mai.",
+  },
+  whitedragon: {
+    id: "whitedragon", name: "Drago Bianco", image: "/assets/tgc_card/whitedragon.png", icon: "🐉",
+    element: "water", rarity: "rare", cost: 4, mana: { water: 3, any: 1 }, atk: 4, hp: 4,
+    mechanics: ["surge", "flying"],
+    flavor: "Drago bianco del nord. Il suo respiro congela il fuoco.",
+  },
+  frostgiant: {
+    id: "frostgiant", name: "Gigante del Gelo", image: "/assets/tgc_card/frostgiant.png", icon: "❄",
+    element: "water", rarity: "epic", cost: 5, mana: { water: 4, any: 1 }, atk: 6, hp: 6,
+    mechanics: ["bulwark"],
+    flavor: "Un'avalanche che cammina.",
+  },
+  yeti: {
+    id: "yeti", name: "Yeti", image: "/assets/tgc_card/yeti.png", icon: "🦍",
+    element: "water", rarity: "rare", cost: 3, mana: { water: 2, any: 1 }, atk: 4, hp: 3,
+    mechanics: ["surge"],
+    flavor: "Aspetta, in silenzio, finché qualcuno non si avvicina.",
+  },
+  winterwolf: {
+    id: "winterwolf", name: "Lupo d'Inverno", image: "/assets/tgc_card/winterwolf.png", icon: "🐺",
+    element: "water", rarity: "common", cost: 2, mana: { water: 2 }, atk: 2, hp: 3,
+    mechanics: ["surge", "cinder"],
+    flavor: "Caccia tra le nevi. Il suo respiro è bianca morte.",
+  },
+
+  /* ── EARTH 🌿 expansion ─────────────────────────────── */
+  dryad: {
+    id: "dryad", name: "Driade", image: "/assets/tgc_card/dryad.png", icon: "🌳",
+    element: "earth", rarity: "common", cost: 2, mana: { earth: 2 }, atk: 1, hp: 4,
+    mechanics: ["veil", "linfa"],
+    mechanicsValues: { linfa: 1 },
+    flavor: "Custode delle querce. Sparisce tra le foglie.",
+  },
+  bugbear: {
+    id: "bugbear", name: "Bugbear", image: "/assets/tgc_card/bugbear.png", icon: "👹",
+    element: "earth", rarity: "common", cost: 2, mana: { earth: 1, any: 1 }, atk: 3, hp: 2,
+    mechanics: ["surge"],
+    flavor: "Robusto. Lento. Letale.",
+  },
+  autumntreant: {
+    id: "autumntreant", name: "Treant d'Autunno", image: "/assets/tgc_card/autumntreant.png", icon: "🍂",
+    element: "earth", rarity: "rare", cost: 4, mana: { earth: 3, any: 1 }, atk: 3, hp: 6,
+    mechanics: ["bulwark", "linfa"],
+    mechanicsValues: { linfa: 1 },
+    flavor: "Le sue foglie cadono in autunno. Lui non cade mai.",
+  },
+  greentreant: {
+    id: "greentreant", name: "Treant Verde", image: "/assets/tgc_card/greentreant.png", icon: "🌲",
+    element: "earth", rarity: "epic", cost: 5, mana: { earth: 4, any: 1 }, atk: 4, hp: 8,
+    mechanics: ["bulwark", "linfa"],
+    mechanicsValues: { linfa: 2 },
+    flavor: "Antico signore del bosco.",
+  },
+  stonegiant: {
+    id: "stonegiant", name: "Gigante di Pietra", image: "/assets/tgc_card/stonegiant.png", icon: "⛰",
+    element: "earth", rarity: "epic", cost: 6, mana: { earth: 5, any: 1 }, atk: 6, hp: 7,
+    mechanics: ["bulwark", "pierce"],
+    flavor: "Una montagna in marcia.",
+  },
+  owlbear: {
+    id: "owlbear", name: "Gufo-Orso", image: "/assets/tgc_card/owlbear.png", icon: "🦉",
+    element: "earth", rarity: "rare", cost: 3, mana: { earth: 2, any: 1 }, atk: 4, hp: 3,
+    mechanics: ["surge", "pierce"],
+    flavor: "Becchio d'aquila, mole d'orso. Cattivo carattere.",
+  },
+  greendragon: {
+    id: "greendragon", name: "Drago Verde", image: "/assets/tgc_card/greendragon.png", icon: "🐲",
+    element: "earth", rarity: "epic", cost: 7, mana: { earth: 6, any: 1 }, atk: 7, hp: 8,
+    mechanics: ["pierce", "flying", "linfa"],
+    mechanicsValues: { linfa: 1 },
+    flavor: "Drago del giardino del mondo. Le sue ali sono foglie.",
+  },
+
+  /* ── AIR 💨 expansion ───────────────────────────────── */
+  axebeak: {
+    id: "axebeak", name: "Becco d'Ascia", image: "/assets/tgc_card/axebeak.png", icon: "🦅",
+    element: "air", rarity: "common", cost: 2, mana: { air: 1, any: 1 }, atk: 3, hp: 1,
+    mechanics: ["surge", "flying"],
+    flavor: "Un becco grande quanto un'ascia. Si vede da lontano.",
+  },
+  kenku: {
+    id: "kenku", name: "Kenku", image: "/assets/tgc_card/kenku.png", icon: "🐦",
+    element: "air", rarity: "common", cost: 1, mana: { air: 1 }, atk: 1, hp: 2,
+    mechanics: ["flying"],
+    flavor: "Imita ogni voce. Mai la propria.",
+  },
+  windwraith: {
+    id: "windwraith", name: "Spettro del Vento", image: "/assets/tgc_card/windwraith.png", icon: "🌫",
+    element: "air", rarity: "rare", cost: 3, mana: { air: 2, any: 1 }, atk: 4, hp: 2,
+    mechanics: ["surge", "flying", "veil"],
+    flavor: "Vento che ha imparato a portare rancore.",
+  },
+  icemephit: {
+    id: "icemephit", name: "Mefite di Ghiaccio", image: "/assets/tgc_card/icemephit.png", icon: "🧊",
+    element: "air", rarity: "common", cost: 1, mana: { air: 1 }, atk: 2, hp: 2,
+    mechanics: ["surge", "flying"],
+    flavor: "Piccolo elementale d'aria gelida. Esplode in cristalli al primo colpo.",
+  },
+
+  /* ── LIGHT ✨ expansion ─────────────────────────────── */
+  centaur: {
+    id: "centaur", name: "Centauro", image: "/assets/tgc_card/centaur.png", icon: "🏃",
+    element: "light", rarity: "common", cost: 2, mana: { light: 2 }, atk: 3, hp: 2,
+    mechanics: ["surge", "cacciatore"],
+    flavor: "Veloce come il vento, dritto come una freccia.",
+  },
+  naga: {
+    id: "naga", name: "Naga", image: "/assets/tgc_card/naga.png", icon: "🐍",
+    element: "light", rarity: "rare", cost: 4, mana: { light: 3, any: 1 }, atk: 3, hp: 5,
+    mechanics: ["soulburn", "vanguard"],
+    flavor: "Saggia regina serpente. La sua aura è giudizio.",
+  },
+  halfdragon: {
+    id: "halfdragon", name: "Mezzo-Drago", image: "/assets/tgc_card/halfdragon.png", icon: "🐲",
+    element: "light", rarity: "epic", cost: 5, mana: { light: 4, any: 1 }, atk: 5, hp: 5,
+    mechanics: ["soulburn", "vanguard", "flying"],
+    flavor: "Mezzo umano, mezzo drago. Tutta gloria.",
+  },
+
+  /* ── DARK 🌑 expansion ──────────────────────────────── */
+  quasit: {
+    id: "quasit", name: "Quasit", image: "/assets/tgc_card/quasit.png", icon: "🦇",
+    element: "dark", rarity: "common", cost: 1, mana: { dark: 1 }, atk: 1, hp: 2,
+    mechanics: ["surge"],
+    flavor: "Demone tascabile. Non ti accorgi mai del primo.",
+  },
+  goblin: {
+    id: "goblin", name: "Goblin", image: "/assets/tgc_card/goblin.png", icon: "👺",
+    element: "dark", rarity: "common", cost: 1, mana: { dark: 1 }, atk: 2, hp: 1,
+    mechanics: ["surge"],
+    flavor: "Piccolo, cattivo, ride troppo.",
+  },
+  kobold: {
+    id: "kobold", name: "Coboldo", image: "/assets/tgc_card/kobold.png", icon: "🦎",
+    element: "dark", rarity: "common", cost: 1, mana: { dark: 1 }, atk: 1, hp: 2,
+    mechanics: ["cinder"],
+    flavor: "Sa esattamente dove non vorresti che si nascondesse.",
+  },
+  orc: {
+    id: "orc", name: "Orco", image: "/assets/tgc_card/orc.png", icon: "👹",
+    element: "dark", rarity: "common", cost: 2, mana: { dark: 2 }, atk: 3, hp: 2,
+    mechanics: ["surge"],
+    flavor: "Carica e basta.",
+  },
+  succubus: {
+    id: "succubus", name: "Succubus", image: "/assets/tgc_card/succubus.png", icon: "👿",
+    element: "dark", rarity: "rare", cost: 3, mana: { dark: 2, any: 1 }, atk: 2, hp: 4,
+    mechanics: ["soulburn", "veil"],
+    flavor: "Sussurra promesse. Sussurra fine.",
+  },
+  wendigo: {
+    id: "wendigo", name: "Wendigo", image: "/assets/tgc_card/wendigo.png", icon: "🐺",
+    element: "dark", rarity: "rare", cost: 4, mana: { dark: 3, any: 1 }, atk: 4, hp: 3,
+    mechanics: ["cinder", "soulburn"],
+    flavor: "Cammina nell'inverno per sempre.",
+  },
+  medusa: {
+    id: "medusa", name: "Medusa", image: "/assets/tgc_card/medusa.png", icon: "🐍",
+    element: "dark", rarity: "epic", cost: 5, mana: { dark: 4, any: 1 }, atk: 3, hp: 6,
+    mechanics: ["reckon", "soulburn"],
+    flavor: "Il suo sguardo è una sentenza di pietra.",
+  },
+  nighthag: {
+    id: "nighthag", name: "Strega della Notte", image: "/assets/tgc_card/nighthag.png", icon: "🧙",
+    element: "dark", rarity: "epic", cost: 5, mana: { dark: 4, any: 1 }, atk: 4, hp: 5,
+    mechanics: ["soulburn", "veil"],
+    flavor: "Ti raggiunge nei sogni. Si ferma quando sei morto.",
+  },
+
+  /* ════════════════════════════════════════════════════════
+     ── EXPANSION SPELLS / AURAS / COUNTERS ─────────────────
+     The expansion set widens deck-building options. Their
+     `image` fields point to placeholder filenames you'll
+     supply later — the cards render with their emoji icon
+     until the real image lands at /assets/tgc_card/.
+     ════════════════════════════════════════════════════════ */
+
+  spell_thunderstrike: {
+    id: "spell_thunderstrike", name: "Folgore Tonante", image: "/assets/tgc_card/placeholder_thunderstrike.png", icon: "⚡",
+    element: "air", rarity: "rare", cost: 4, mana: { air: 3, any: 1 }, type: "spell",
+    effect: { kind: "damage", amount: 5, target: "any" },
+    flavor: "Il cielo non perdona chi vola troppo in alto.",
+  },
+  spell_earthsplit: {
+    id: "spell_earthsplit", name: "Spaccatura Tellurica", image: "/assets/tgc_card/placeholder_earthsplit.png", icon: "🌍",
+    element: "earth", rarity: "epic", cost: 5, mana: { earth: 4, any: 1 }, type: "spell",
+    effect: { kind: "aoe", amount: 2 },
+    flavor: "La terra si apre. Le creature in piedi cadono.",
+  },
+  spell_blacksun: {
+    id: "spell_blacksun", name: "Sole Nero", image: "/assets/tgc_card/placeholder_blacksun.png", icon: "🌑",
+    element: "dark", rarity: "rare", cost: 3, mana: { dark: 3 }, type: "spell",
+    effect: { kind: "destroy", target: "enemy_creature", filter: { maxAtk: 4 } },
+    flavor: "Un'eclissi che non finisce. Le creature deboli si dissolvono.",
+  },
+  spell_holylight: {
+    id: "spell_holylight", name: "Luce Sacra", image: "/assets/tgc_card/placeholder_holylight.png", icon: "🌟",
+    element: "light", rarity: "rare", cost: 3, mana: { light: 3 }, type: "spell",
+    effect: { kind: "heal_champion", amount: 6, draw: 1 },
+    flavor: "Un raggio di sole filtrato dal divino. Cura e illumina.",
+  },
+  ench_shieldofdawn: {
+    id: "ench_shieldofdawn", name: "Scudo dell'Alba", image: "/assets/tgc_card/placeholder_shieldofdawn.png", icon: "🛡",
+    element: "light", rarity: "epic", cost: 5, mana: { light: 4, any: 1 }, type: "enchantment",
+    effect: { kind: "champion_regen", amount: 3 },
+    flavor: "Ogni alba ricuce le ferite del giorno prima.",
+  },
+  ench_bloodfrenzy: {
+    id: "ench_bloodfrenzy", name: "Frenesia di Sangue", image: "/assets/tgc_card/placeholder_bloodfrenzy.png", icon: "🩸",
+    element: "dark", rarity: "common", cost: 2, mana: { dark: 2 }, type: "enchantment",
+    effect: { kind: "wake", target: "ally_creature" },
+    flavor: "Il sangue chiama il sangue. La creatura non aspetta.",
+  },
+  ctr_stoneward: {
+    id: "ctr_stoneward", name: "Argine di Roccia", image: "/assets/tgc_card/placeholder_stoneward.png", icon: "🪨",
+    element: "earth", rarity: "rare", cost: 3, mana: { earth: 2, any: 1 }, type: "counter",
+    effect: {
+      kind: "secret_arcane_ward",
+      trigger: "face_damage",
+      amount: 4,
+    },
+    flavor: "Una muraglia che cresce sotto il campione.",
+  },
+  ctr_winterbloom: {
+    id: "ctr_winterbloom", name: "Bocciolo d'Inverno", image: "/assets/tgc_card/placeholder_winterbloom.png", icon: "❄",
+    element: "water", rarity: "common", cost: 1, mana: { water: 1 }, type: "counter",
+    effect: {
+      kind: "secret_cancel_magic",
+      trigger: "enemy_magic_cast",
+    },
+    flavor: "Il fiore gela la magia in volo.",
   },
 
   /* ── CRYSTALS 💎 ──────────────────────────────────────────────
@@ -1020,15 +1301,14 @@ export function openPack(packKey) {
   return out;
 }
 
-/* ── Free starter pack — 20 non-foil cards, picked once per
-   player. Distribution: 6 element-crystals + 12 commons + 1 rare
-   + 1 epic, all of the chosen element (no splash, no legendary).
+/* ── Free starter pack — 50 non-foil cards, picked once per
+   player. Distribution: 14 element-crystals + 30 commons + 4 rares
+   + 2 epics, all of the chosen element (no splash, no legendary).
    The crystals come bundled so the player can actually pay for
    their cards in their first match without waiting for shop packs.
-   Fallback: if an element has no epic or no rare (light has 0
-   epics; light/dark have few commons), we substitute a rare or
-   common from the same element. Foils don't drop from starter —
-   only from purchased packs. */
+   Fallback: if an element has fewer epics/rares than slots needed,
+   the extra slots fall back to the next rarity tier down. Foils
+   don't drop from starter — only from purchased packs. */
 export function openStarterPack(element) {
   if (!PACK_DEFS[element]) return [];
   if (!["fire","water","earth","air","light","dark"].includes(element)) return [];
@@ -1041,23 +1321,30 @@ export function openStarterPack(element) {
   const epics   = inEl("epic");
   if (commons.length === 0) return []; // Defensive — every element has commons.
   const pickFrom = (list) => list[Math.floor(Math.random() * list.length)].id;
+  const pickFromOrFallback = (primary, fallbacks) => {
+    for (const list of [primary, ...fallbacks]) {
+      if (list && list.length > 0) return pickFrom(list);
+    }
+    return pickFrom(commons);
+  };
 
   const out = [];
-  // 6 elemental crystals — basic mana sources for the new player's deck.
-  for (let i = 0; i < 6; i++) out.push({ cardId: "crystal_" + element, foil: false });
-  // 12 commons of the chosen element. Pools as small as 2 cards (light,
-  // dark) intentionally roll duplicates so the player ends up with playable
-  // multiples for deck-building.
-  for (let i = 0; i < 12; i++) out.push({ cardId: pickFrom(commons), foil: false });
-  // 1 rare of the element, falling back to a common.
-  out.push({ cardId: pickFrom(rares.length ? rares : commons), foil: false });
-  // 1 epic of the element. Light has no epics — fall back to a rare,
-  // then to a common, preserving the 20-card count.
-  out.push({ cardId: pickFrom(
-    epics.length  ? epics  :
-    rares.length  ? rares  :
-    commons
-  ), foil: false });
+  // 14 elemental crystals — ~28% of the deck, enough mana cards to
+  // hit a 5-cost play by turn 5-6 most games.
+  for (let i = 0; i < 14; i++) out.push({ cardId: "crystal_" + element, foil: false });
+  // 30 commons of the chosen element. Pools intentionally roll
+  // duplicates so the player ends up with playable multiples for
+  // deck-building.
+  for (let i = 0; i < 30; i++) out.push({ cardId: pickFrom(commons), foil: false });
+  // 4 rares of the element (fall back to common).
+  for (let i = 0; i < 4; i++) {
+    out.push({ cardId: pickFromOrFallback(rares, [commons]), foil: false });
+  }
+  // 2 epics. Light still has 0 epics — fall back to rare then common
+  // so the starter always totals exactly 50 cards.
+  for (let i = 0; i < 2; i++) {
+    out.push({ cardId: pickFromOrFallback(epics, [rares, commons]), foil: false });
+  }
   return out;
 }
 
