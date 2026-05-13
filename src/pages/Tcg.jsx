@@ -2661,7 +2661,7 @@ function LiveMatch({ match, uid, onExit }) {
           name={match[oSide].name}
           hp={state.hp[oSide]}
           mana={state.mana[oSide]}
-          maxMana={state.maxMana[oSide]}
+          crystals={state.crystals?.[oSide] || []}
           deckCount={state.deck[oSide].length}
           handCount={oppHand.length}
           opponent
@@ -2815,7 +2815,7 @@ function LiveMatch({ match, uid, onExit }) {
           name={match[mySide].name}
           hp={state.hp[mySide]}
           mana={state.mana[mySide]}
-          maxMana={state.maxMana[mySide]}
+          crystals={state.crystals?.[mySide] || []}
           deckCount={state.deck[mySide].length}
           handCount={myHand.length}
           isActive={myTurn}
@@ -2970,7 +2970,7 @@ function LiveMatch({ match, uid, onExit }) {
 /* ============================================================
    PLAYER STRIP — HP, mana, deck, hand counts
    ============================================================ */
-function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, ownSecrets = null, floats = [] }) {
+function PlayerStrip({ side, name, hp, mana, crystals = [], deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, ownSecrets = null, floats = [] }) {
   const hpPct = Math.max(0, Math.min(100, (hp / STARTING_HP) * 100));
   const secretsTip = ownSecrets && ownSecrets.length
     ? "Le tue Contromagie segrete:\n" + ownSecrets.map(s => `  • ${TCG_CARDS[s.cardId]?.name || s.cardId}`).join("\n")
@@ -3012,7 +3012,7 @@ function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, oppo
             <div className="tcg-pstrip-hp-fill" style={{ width: `${hpPct}%` }} />
           </div>
         </div>
-        <ManaCrystals current={mana} max={maxMana} active={isActive} />
+        <ElementalMana mana={mana} crystals={crystals} active={isActive} />
         <div className="tcg-pstrip-pile" title="Carte nel mazzo">📚 {deckCount}</div>
         <div className="tcg-pstrip-pile" title="Carte in mano">🃏 {handCount}</div>
       </div>
@@ -3020,34 +3020,52 @@ function PlayerStrip({ side, name, hp, mana, maxMana, deckCount, handCount, oppo
   );
 }
 
-/* Hearthstone-style mana crystal row. Each crystal is a diamond:
-   full → glowing cyan gem with pulse; empty → dim slot. We always
-   render at least one slot so the rail is visible from turn 0. */
-function ManaCrystals({ current, max, active }) {
-  const slots = Math.max(1, max);
+/* MTG-style per-element mana pool. Each element shows current/max,
+   where "max" is the count of crystals of that element on the field.
+   Hidden when there are no crystals of that element (clean strip).
+   Empty state (turn 1) shows a hint that the player needs to play
+   a Crystal card to generate mana. */
+const TCG_ELEMENTS = ["fire", "water", "earth", "air", "light", "dark"];
+const ELEMENT_PIP = {
+  fire:  { icon: "🔥", color: "#dc2626" },
+  water: { icon: "💧", color: "#1d4ed8" },
+  earth: { icon: "🌿", color: "#15803d" },
+  air:   { icon: "🌪", color: "#ea580c" },
+  light: { icon: "✨", color: "#fbbf24" },
+  dark:  { icon: "🌑", color: "#6b21a8" },
+};
+function ElementalMana({ mana, crystals = [], active }) {
+  // Tally how many crystals of each element on the field (= max for that color).
+  const max = { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0 };
+  for (const el of crystals) if (max[el] !== undefined) max[el] += 1;
+  const cur = mana || max; // fallback to max in case state is in flux
+  const totalCrystals = crystals.length;
   return (
     <div
-      className={`tcg-mana ${active ? "tcg-mana--active" : ""}`}
-      title={`Mana ${current} / ${max}`}
+      className={`tcg-mana tcg-mana--elemental ${active ? "tcg-mana--active" : ""}`}
+      title={`Cristalli sul campo: ${totalCrystals}`}
     >
-      <div className="tcg-mana-num">
-        <span className="tcg-mana-num-icon">🔮</span>
-        <span className="tcg-mana-num-cur">{current}</span>
-        <span className="tcg-mana-num-sep">/</span>
-        <span className="tcg-mana-num-max">{max}</span>
-      </div>
-      <div className="tcg-mana-rail">
-        {Array.from({ length: slots }, (_, i) => (
-          <span
-            key={i}
-            className={
-              "tcg-mana-crystal " +
-              (i < current ? "tcg-mana-crystal--full" : "tcg-mana-crystal--empty")
-            }
-            aria-hidden="true"
-          />
-        ))}
-      </div>
+      {totalCrystals === 0 ? (
+        <span className="tcg-mana-empty">💎 Nessun cristallo</span>
+      ) : (
+        TCG_ELEMENTS.map(el => {
+          if (max[el] === 0) return null;
+          const c = cur[el] || 0;
+          return (
+            <span
+              key={el}
+              className={`tcg-mana-elpip tcg-mana-elpip--${el}`}
+              style={{ "--pip": ELEMENT_PIP[el].color }}
+              title={`${el}: ${c} / ${max[el]}`}
+            >
+              <span className="tcg-mana-elpip-icon">{ELEMENT_PIP[el].icon}</span>
+              <span className="tcg-mana-elpip-num">
+                <strong>{c}</strong>/{max[el]}
+              </span>
+            </span>
+          );
+        })
+      )}
     </div>
   );
 }

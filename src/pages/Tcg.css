@@ -4207,12 +4207,32 @@ body.tcg-battle-active .app-nav { display: none !important; }
 .tcg-battle-shell .tcg-card--lg {
   width: calc(var(--tcg-card-w) * 1.4);
 }
-.tcg-battle-shell .tcg-card-name { font-size: 0.66rem; }
+.tcg-battle-shell .tcg-card-name {
+  font-size: 0.66rem;
+  /* Truncate long names so they never push the layout */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .tcg-battle-shell .tcg-card-art { height: calc(var(--tcg-card-w) * 0.62); }
 .tcg-battle-shell .tcg-card-art-emoji { font-size: calc(var(--tcg-card-w) * 0.32); }
 .tcg-battle-shell .tcg-card-cost { font-size: 0.78rem; padding: 1px 5px; }
-.tcg-battle-shell .tcg-card-element { font-size: 0.78rem; }
-.tcg-battle-shell .tcg-card-flavor { display: none; }
+.tcg-battle-shell .tcg-card-element {
+  font-size: 1rem;
+  /* Make the element symbol prominent on thumbnails — it's the only
+     way to read a card's affinity at a glance when the text is hidden. */
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.6));
+}
+/* On thumbnails (hand + board), hide the descriptive text — the player
+   gets full info in the side preview or detail modal. Keeping the text
+   inside the card makes it overflow and look broken at small sizes. */
+.tcg-battle-shell .tcg-hand .tcg-card-flavor,
+.tcg-battle-shell .tcg-board .tcg-card-flavor,
+.tcg-battle-shell .tcg-hand .tcg-card-effect,
+.tcg-battle-shell .tcg-board .tcg-card-effect { display: none; }
+/* The side preview / modal show everything — restore visibility there. */
+.tcg-battle-shell .tcg-side-preview .tcg-card-flavor,
+.tcg-battle-shell .tcg-side-preview .tcg-card-effect { display: block; }
 .tcg-battle-shell .tcg-card-stats { font-size: 0.72rem; }
 .tcg-battle-shell .tcg-card-mech,
 .tcg-battle-shell .tcg-card-mech-mini { font-size: 0.6rem; padding: 0 3px; }
@@ -4593,6 +4613,55 @@ body.tcg-battle-active .app-nav { display: none !important; }
   }
   .tcg-battle-shell .tcg-action-turn-btn { flex-shrink: 0; }
   .tcg-battle-shell .tcg-action-log-btn { flex-shrink: 0; }
+}
+
+/* ── ELEMENTAL MANA POOL — replaces the cyan crystal rail ──
+   Per-element pip with current/max count. Hidden colors don't
+   render so the strip stays compact. */
+.tcg-mana--elemental {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 8px;
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+  border: 2px solid var(--tcg-ink);
+  box-shadow: 3px 3px 0 0 var(--tcg-ink);
+  color: var(--tcg-cream);
+  min-height: 28px;
+}
+.tcg-mana--elemental.tcg-mana--active {
+  border-color: #67e8f9;
+  box-shadow: 3px 3px 0 0 #67e8f9, 0 0 12px rgba(103, 232, 249, 0.45);
+}
+.tcg-mana-elpip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--pip, #94a3b8);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.tcg-mana-elpip-icon { font-size: 0.95rem; filter: drop-shadow(0 0 3px var(--pip)); }
+.tcg-mana-elpip-num strong { color: var(--pip); font-weight: 900; }
+.tcg-mana-elpip-num { color: #c7d2fe; font-size: 0.78rem; }
+.tcg-mana-empty {
+  color: #94a3b8;
+  font-size: 0.74rem;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+/* Crystal card type — soft glow so it reads as "land/mana source" */
+.tcg-card--type-crystal {
+  outline: 1px dashed rgba(212, 175, 55, 0.5);
+  outline-offset: -3px;
+}
+.tcg-card--type-crystal .tcg-card-art {
+  background: radial-gradient(circle at 50% 40%, var(--el-color, #94a3b8) 0%, rgba(15, 23, 42, 0.85) 65%);
 }
 
 /* Tighten action-bar buttons on small phones so all three fit

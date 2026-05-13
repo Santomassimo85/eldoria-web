@@ -289,26 +289,29 @@ export function getMechLabel(card, mechKey) {
    When a card lacks `type`, it is treated as a creature for
    backward compatibility with the v1 catalog.
    ──────────────────────────────────────────────────────────── */
-export const CARD_TYPES = ["creature", "spell", "enchantment", "counter"];
+export const CARD_TYPES = ["creature", "spell", "enchantment", "counter", "crystal"];
 export const TYPE_LABEL = {
   creature:    "Creatura",
   spell:       "Incantesimo",
   enchantment: "Aura",
   counter:     "Contromagia",
+  crystal:     "Cristallo",
 };
 export const TYPE_ICON = {
   creature:    "🐲",
   spell:       "📜",
   enchantment: "🌟",
   counter:     "🛡",
+  crystal:     "💎",
 };
 
 /* A card is "creature" if marked so or unset; otherwise its
    explicit type. Anything not creature is resolved through the
-   spell-flow in the engine. */
+   spell-flow in the engine. Crystals are MTG-style mana sources
+   (one play per turn, permanent on the field). */
 export function getCardType(card) {
   const t = card?.type;
-  if (t === "spell" || t === "enchantment" || t === "counter") return t;
+  if (t === "spell" || t === "enchantment" || t === "counter" || t === "crystal") return t;
   return "creature";
 }
 export function isSpellLike(card) {
@@ -818,6 +821,43 @@ export const TCG_CARDS = {
       trigger: "enemy_summon",
     },
     flavor: "Un nome cancellato dal libro del mondo. Anche un dio non basta a riscriverlo.",
+  },
+
+  /* ── CRYSTALS 💎 ──────────────────────────────────────────────
+     MTG-style "lands" — play at most one per turn, no mana cost.
+     Stays on the field as a permanent source of one mana of its
+     element every turn (refilled at start-of-your-turn). Decks
+     auto-include a handful of these so players can actually pay
+     for their creatures and spells. */
+  crystal_fire: {
+    id: "crystal_fire", name: "Cristallo di Fuoco", image: null, icon: "🔥",
+    element: "fire", rarity: "common", cost: 0, type: "crystal",
+    flavor: "Un frammento di lava cristallizzata, ancora caldo al tatto.",
+  },
+  crystal_water: {
+    id: "crystal_water", name: "Cristallo d'Acqua", image: null, icon: "💧",
+    element: "water", rarity: "common", cost: 0, type: "crystal",
+    flavor: "Un nodo di marea solidificata. Mormora ancora.",
+  },
+  crystal_earth: {
+    id: "crystal_earth", name: "Cristallo di Terra", image: null, icon: "🌿",
+    element: "earth", rarity: "common", cost: 0, type: "crystal",
+    flavor: "Pietra viva. Le sue radici scendono dove l'occhio non arriva.",
+  },
+  crystal_air: {
+    id: "crystal_air", name: "Cristallo d'Aria", image: null, icon: "🌪",
+    element: "air", rarity: "common", cost: 0, type: "crystal",
+    flavor: "Quasi non lo vedi. Eppure ti spinge.",
+  },
+  crystal_light: {
+    id: "crystal_light", name: "Cristallo di Luce", image: null, icon: "✨",
+    element: "light", rarity: "common", cost: 0, type: "crystal",
+    flavor: "Brilla anche quando tutto intorno è notte.",
+  },
+  crystal_dark: {
+    id: "crystal_dark", name: "Cristallo Oscuro", image: null, icon: "🌑",
+    element: "dark", rarity: "common", cost: 0, type: "crystal",
+    flavor: "Più lo guardi, più il mondo sembra dimenticarti.",
   },
 };
 

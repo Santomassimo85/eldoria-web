@@ -39,6 +39,90 @@ export const MAX_MANA          = 10;
 export const MAX_BOARD         = 6;
 export const MAX_HAND          = 7;
 export const MAX_SECRETS       = 5;
+export const MAX_CRYSTALS_PER_TURN = 1;
+export const ELEMENTS = ["fire", "water", "earth", "air", "light", "dark"];
+
+/* ── ELEMENTAL MANA HELPERS ──────────────────────────────────
+   v3 replaces the single integer mana with a per-element pool
+   fed by MTG-style "Crystal" cards. Old data still works: a card
+   with a legacy `cost: N` number is auto-derived to
+   { [element]: ceil(N/2), any: floor(N/2) }. New cards can opt
+   in by setting `cost: { fire: 2, any: 1 }` directly.
+   ──────────────────────────────────────────────────────────── */
+export function emptyMana() {
+  return { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0 };
+}
+export function normalizeCost(def) {
+  if (def?.cost && typeof def.cost === "object") {
+    return {
+      fire:  def.cost.fire  || 0,
+      water: def.cost.water || 0,
+      earth: def.cost.earth || 0,
+      air:   def.cost.air   || 0,
+      light: def.cost.light || 0,
+      dark:  def.cost.dark  || 0,
+      any:   def.cost.any   || 0,
+    };
+  }
+  const n = Math.max(0, Number(def?.cost) || 0);
+  const elem = Math.ceil(n / 2);
+  const any  = Math.floor(n / 2);
+  const out = { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0, any };
+  if (def?.element && elem > 0 && ELEMENTS.includes(def.element)) out[def.element] = elem;
+  return out;
+}
+export function totalCost(def) {
+  const c = normalizeCost(def);
+  return ELEMENTS.reduce((s, e) => s + c[e], 0) + c.any;
+}
+function poolTotal(pool) {
+  return ELEMENTS.reduce((s, e) => s + (pool?.[e] || 0), 0);
+}
+export function canAffordCost(pool, cost) {
+  // Every colored requirement must be covered by that exact color.
+  for (const el of ELEMENTS) {
+    if ((cost[el] || 0) > (pool?.[el] || 0)) return false;
+  }
+  // Remaining "any" must fit in the leftover pool.
+  const colored = ELEMENTS.reduce((s, e) => s + (cost[e] || 0), 0);
+  const leftover = poolTotal(pool) - colored;
+  return leftover >= (cost.any || 0);
+}
+/* Returns a new pool with `cost` paid. Pays colored requirements first,
+   then spends "any" from least-needed-looking colors so combo elements
+   aren't wasted. Caller must guarantee canAffordCost(pool, cost). */
+export function payCost(pool, cost) {
+  const next = { ...pool };
+  for (const el of ELEMENTS) next[el] -= (cost[el] || 0);
+  let anyLeft = cost.any || 0;
+  // Spend `any` from elements NOT needed elsewhere in this cost first.
+  const sortedEls = ELEMENTS.slice().sort((a, b) => (cost[a] || 0) - (cost[b] || 0));
+  for (const el of sortedEls) {
+    if (anyLeft <= 0) break;
+    const spend = Math.min(next[el], anyLeft);
+    next[el] -= spend;
+    anyLeft  -= spend;
+  }
+  return next;
+}
+/* Sum mana produced by all crystals on the field (a {fire,...} pool). */
+export function crystalsToMana(crystalList) {
+  const out = emptyMana();
+  for (const el of (crystalList || [])) {
+    if (out[el] !== undefined) out[el] += 1;
+  }
+  return out;
+}
+/* Pretty-print a cost like "🔥🔥⚪" for logs. */
+function formatCost(cost) {
+  const icons = { fire: "🔥", water: "💧", earth: "🌿", air: "🌪", light: "✨", dark: "🌑" };
+  let s = "";
+  for (const el of ELEMENTS) {
+    for (let i = 0; i < (cost[el] || 0); i++) s += icons[el];
+  }
+  for (let i = 0; i < (cost.any || 0); i++) s += "⚪";
+  return s || "—";
+}
 
 /* ── Random utilities ─────────────────────────────────────── */
 function shuffle(arr) {
@@ -79,6 +163,29 @@ function clone(s) {
       if (!bc.grants)        bc.grants = [];
       if (!bc.grantedValues) bc.grantedValues = {};
       if (!bc.tempBuffs)     bc.tempBuffs = [];
+    }
+  }
+  /* v3: per-element mana + crystal field. Migrate older matches so
+     in-flight games stay playable instead of crashing on first action.
+     Old `mana[side] = N` is mapped to an even pool (N/6 per element). */
+  if (!next.crystals) next.crystals = { challenger: [], challenged: [] };
+  if (!Array.isArray(next.crystals.challenger)) next.crystals.challenger = [];
+  if (!Array.isArray(next.crystals.challenged)) next.crystals.challenged = [];
+  if (!next.crystalsPlayedThisTurn) next.crystalsPlayedThisTurn = { challenger: 0, challenged: 0 };
+  for (const s2 of ["challenger", "challenged"]) {
+    const m = next.mana?.[s2];
+    if (typeof m === "number") {
+      // Legacy state — spread the integer across elements so the player can still cast.
+      const each = Math.floor(m / ELEMENTS.length);
+      const rem  = m - each * ELEMENTS.length;
+      const pool = emptyMana();
+      for (const el of ELEMENTS) pool[el] = each;
+      if (rem > 0) pool.fire += rem; // arbitrary bucket for the remainder
+      next.mana[s2] = pool;
+    } else if (!m || typeof m !== "object") {
+      next.mana[s2] = emptyMana();
+    } else {
+      next.mana[s2] = { ...emptyMana(), ...m };
     }
   }
   return next;
@@ -150,8 +257,12 @@ export function initMatchState(challengerDeck, challengedDeck) {
     activeSide,
     phase: "main",
     hp:        { challenger: STARTING_HP, challenged: STARTING_HP },
-    maxMana:   { challenger: 0, challenged: 0 },
-    mana:      { challenger: 0, challenged: 0 },
+    /* v3 — mana is per-element, fed by crystals on the field.
+       maxMana is kept for log compatibility (cap) but mana refresh
+       is driven by crystals[side].length. */
+    mana:      { challenger: emptyMana(), challenged: emptyMana() },
+    crystals:  { challenger: [], challenged: [] },               // ["fire", "water", ...]
+    crystalsPlayedThisTurn: { challenger: 0, challenged: 0 },
     deck:      { challenger: cDeck, challenged: dDeck },
     hand:      { challenger: cHand, challenged: dHand },
     board:     { challenger: [], challenged: [] },
@@ -334,9 +445,11 @@ function startTurn(state, side) {
   next.activeSide = side;
   next.phase = "main";
   if (!isFirstTurnEver) next.round = state.round + 1;
-  // Mana grows by 1 each turn (capped), refills to max
-  next.maxMana[side] = Math.min(MAX_MANA, next.maxMana[side] + 1);
-  next.mana[side] = next.maxMana[side];
+  /* v3 mana refresh: pool is fully restored to whatever the player's
+     crystals produce. No "grows by 1" — players control their mana
+     ramp by playing crystal cards. */
+  next.mana[side] = crystalsToMana(next.crystals?.[side]);
+  next.crystalsPlayedThisTurn[side] = 0;
   // Reset per-turn affinity flags for the side whose turn is starting
   next.affinityUsed[side] = { water: false, dark: false };
   // Untap creatures and clear summoning sickness
@@ -553,19 +666,36 @@ export function playCard(state, side, instId, targetSpec = null) {
   const def = TCG_CARDS[handCard.cardId];
   if (!def) return state;
 
-  if (next.mana[side] < def.cost) return state;
-
   const type = getCardType(def);
+
+  /* Crystal: free, no target, max 1 per turn. Joins the crystal field
+     and immediately produces +1 mana of its element for this turn. */
+  if (type === "crystal") {
+    if ((next.crystalsPlayedThisTurn?.[side] || 0) >= MAX_CRYSTALS_PER_TURN) return state;
+    next.hand[side].splice(handIdx, 1);
+    next.crystals[side] = [...(next.crystals[side] || []), def.element];
+    next.crystalsPlayedThisTurn[side] = (next.crystalsPlayedThisTurn[side] || 0) + 1;
+    next.mana[side] = next.mana[side] || emptyMana();
+    next.mana[side][def.element] = (next.mana[side][def.element] || 0) + 1;
+    next.log = [...next.log, {
+      side,
+      text: `💎 ${sideName(side)} pone ${def.name} (+1 mana ${def.element}).`,
+    }];
+    return next;
+  }
+
+  const cost = normalizeCost(def);
+  if (!canAffordCost(next.mana[side], cost)) return state;
 
   if (type === "creature") {
     if (next.board[side].length >= MAX_BOARD) return state;
-    next.mana[side] -= def.cost;
+    next.mana[side] = payCost(next.mana[side], cost);
     next.hand[side].splice(handIdx, 1);
     const bc = makeBoardCard(handCard.cardId);
     next.board[side].push(bc);
     next.log = [...next.log, {
       side,
-      text: `🎴 ${sideName(side)} evoca ${def.name} (${def.atk}/${bc.hp}, costo ${def.cost}).`,
+      text: `🎴 ${sideName(side)} evoca ${def.name} (${def.atk}/${bc.hp}, costo ${formatCost(cost)}).`,
     }];
     // Wake opp's enemy_summon secrets (Negazione) — they may set hp=0 here.
     triggerSecrets(next, opp(side), "enemy_summon", { instId: bc.instId });
@@ -580,7 +710,7 @@ export function playCard(state, side, instId, targetSpec = null) {
   // Counter: goes face-down to the secrets zone if it carries a trigger.
   if (type === "counter" && def.effect?.trigger) {
     if ((next.secrets[side]?.length || 0) >= MAX_SECRETS) return state;
-    next.mana[side] -= def.cost;
+    next.mana[side] = payCost(next.mana[side], cost);
     next.hand[side].splice(handIdx, 1);
     next.secrets[side] = [
       ...(next.secrets[side] || []),
@@ -597,11 +727,11 @@ export function playCard(state, side, instId, targetSpec = null) {
   // share the same play-flow. Validate target, deduct mana, then check for
   // opp's "enemy_magic_cast" secret (Dissolvi Magia) which may cancel us.
   if (!isValidSpellTarget(next, side, def, targetSpec)) return state;
-  next.mana[side] -= def.cost;
+  next.mana[side] = payCost(next.mana[side], cost);
   next.hand[side].splice(handIdx, 1);
   next.log = [...next.log, {
     side,
-    text: `${TYPE_ICON_FOR(type)} ${sideName(side)} lancia ${def.name} (costo ${def.cost}).`,
+    text: `${TYPE_ICON_FOR(type)} ${sideName(side)} lancia ${def.name} (costo ${formatCost(cost)}).`,
   }];
   next.lastSpell = { cardId: def.id, side, ts: Date.now() };
 
@@ -1258,8 +1388,14 @@ export function canPlayCard(state, side, instId) {
   if (!card) return false;
   const def = TCG_CARDS[card.cardId];
   if (!def) return false;
-  if (state.mana[side] < def.cost) return false;
   const cardType = getCardType(def);
+  /* Crystals are free to play but limited to 1/turn. They go to the
+     crystal field, not the creature board, so MAX_BOARD doesn't apply. */
+  if (cardType === "crystal") {
+    return (state.crystalsPlayedThisTurn?.[side] || 0) < MAX_CRYSTALS_PER_TURN;
+  }
+  // Every other card type costs mana — check the per-element pool.
+  if (!canAffordCost(state.mana?.[side], normalizeCost(def))) return false;
   if (cardType === "creature") {
     return state.board[side].length < MAX_BOARD;
   }
@@ -1566,10 +1702,52 @@ export function autoBuildDeckFromCollection(collection, foils = {}) {
 }
 
 export function resolveDeckForMatch(deck, collection, foils = {}) {
-  if (isValidDeck(deck) && ownsDeck(deck, collection, foils)) return deck;
-  const built = autoBuildDeckFromCollection(collection, foils);
-  if (built) return built;
-  return buildRandomDeck();
+  let resolved;
+  if (isValidDeck(deck) && ownsDeck(deck, collection, foils)) resolved = deck;
+  else {
+    const built = autoBuildDeckFromCollection(collection, foils);
+    resolved = built || buildRandomDeck();
+  }
+  return ensureCrystals(resolved);
+}
+
+/* Make sure every match-bound deck carries enough Crystal cards so
+   the player can actually pay for spells beyond turn 1. We don't
+   require the user to own crystals (they're effectively "lands" —
+   free utility cards); we just inject them on the fly. The crystals
+   chosen mirror the deck's element distribution so the mana you draw
+   matches the colors you want to cast. */
+export function ensureCrystals(deck, minCount = 6) {
+  if (!Array.isArray(deck) || deck.length !== DECK_SIZE) return deck;
+  let crystalCount = 0;
+  const elemCounts = {};
+  for (const id of deck) {
+    const def = TCG_CARDS[id];
+    if (!def) continue;
+    if (getCardType(def) === "crystal") { crystalCount++; continue; }
+    if (def.element && ELEMENTS.includes(def.element)) {
+      elemCounts[def.element] = (elemCounts[def.element] || 0) + 1;
+    }
+  }
+  if (crystalCount >= minCount) return deck;
+  const sortedEls = Object.entries(elemCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([e]) => e);
+  // Distribute over the top 2-3 elements; fall back to fire/water if the
+  // deck somehow has no element-tagged cards.
+  const topEls = sortedEls.slice(0, 3);
+  if (topEls.length === 0) topEls.push("fire", "water");
+
+  const out = deck.slice();
+  let added = 0;
+  const needed = minCount - crystalCount;
+  for (let i = 0; i < out.length && added < needed; i++) {
+    const def = TCG_CARDS[out[i]];
+    if (def && getCardType(def) === "crystal") continue;
+    out[i] = "crystal_" + topEls[added % topEls.length];
+    added++;
+  }
+  return shuffle(out);
 }
 
 /* Build a 20-card deck biased toward a chosen element, mechanic and/or
