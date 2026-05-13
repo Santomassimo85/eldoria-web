@@ -2039,6 +2039,7 @@ function LiveMatch({ match, uid, onExit }) {
   const [pendingSpell, setPendingSpell] = useState(null); // { instId, def, targets }
   const [viewingCard, setViewingCard] = useState(null);   // { cardId } | null — opens CardDetailModal
   const [focusedCardId, setFocusedCardId] = useState(null); // cardId shown in the side preview panel
+  const [showLog, setShowLog] = useState(false);          // log popup open?
   const matchRootRef = useRef(null);                       // root <div> of the match — used for hover delegation
   const [compliment, setCompliment] = useState("");
   const [attackSplash, setAttackSplash] = useState(null); // { attacker, defender, side, kind, key }
@@ -2871,9 +2872,10 @@ function LiveMatch({ match, uid, onExit }) {
         onEndTurn={handleEndTurn}
       />
 
-      {/* Action bar + log. The mobile-only Fine Turno button lives here
-          so it's always reachable on phones without overlapping the hand;
-          on desktop it stays in the SidePreview side panel and this one
+      {/* Action bar. The full log moved to a popup (📜 button); the bar
+          now holds just three primary actions: Annulla / Log / Fine Turno.
+          On portrait, the Fine Turno button is the primary end-turn UX;
+          on desktop the side-preview's big button handles it and this one
           is hidden via CSS. */}
       <div className="tcg-action-bar">
         <div className="tcg-action-bar-buttons">
@@ -2887,11 +2889,15 @@ function LiveMatch({ match, uid, onExit }) {
             ↩ Annulla
           </button>
         </div>
-        <div className="tcg-log" ref={logRef}>
-          {(state.log || []).slice(-7).map((line, i) => (
-            <LogLine key={i} line={line} mySide={mySide} />
-          ))}
-        </div>
+        <button
+          type="button"
+          className="tcg-action-log-btn"
+          onClick={() => setShowLog(true)}
+          aria-label="Apri il registro della partita"
+          title="Mostra cronologia mosse"
+        >
+          📜 Log
+        </button>
         <button
           type="button"
           className={`tcg-action-turn-btn${myTurn ? " tcg-action-turn-btn--my" : ""}`}
@@ -2902,6 +2908,42 @@ function LiveMatch({ match, uid, onExit }) {
           {myTurn ? "⏭ FINE TURNO" : "⏳ Avversario"}
         </button>
       </div>
+
+      {/* Log popup — opens on demand, closes on overlay click or × button.
+          Lines render newest-first so the most recent move is right at the
+          top without needing to scroll. */}
+      {showLog && (
+        <div
+          className="tcg-overlay tcg-log-overlay"
+          onClick={() => setShowLog(false)}
+        >
+          <div
+            className="tcg-modal tcg-log-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="tcg-log-modal-head">
+              <span className="tcg-log-modal-title">📜 Cronologia partita</span>
+              <button
+                type="button"
+                className="tcg-log-modal-close"
+                onClick={() => setShowLog(false)}
+                aria-label="Chiudi cronologia"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="tcg-log-modal-body" ref={logRef}>
+              {(state.log || []).length === 0 ? (
+                <div className="tcg-log-modal-empty">Nessuna mossa ancora.</div>
+              ) : (
+                state.log.slice().reverse().map((line, i) => (
+                  <LogLine key={i} line={line} mySide={mySide} />
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewingCard && (
         <CardDetailModal

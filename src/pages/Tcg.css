@@ -4302,6 +4302,96 @@ body.tcg-battle-active .app-nav { display: none !important; }
 }
 .tcg-battle-shell .tcg-action-turn-btn:disabled { opacity: 0.65; cursor: default; animation: none; }
 
+/* Compact "📜 Log" button — opens the log popup. Sits between
+   Annulla and Fine Turno in the action bar. */
+.tcg-battle-shell .tcg-action-log-btn {
+  padding: 8px 12px;
+  background: rgba(75, 38, 15, 0.85);
+  color: #fde9c4;
+  font-family: var(--font-title, serif);
+  font-weight: 800;
+  border: 2px solid rgba(212, 175, 55, 0.6);
+  border-radius: 8px;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.tcg-battle-shell .tcg-action-log-btn:hover {
+  background: rgba(115, 60, 22, 0.95);
+  border-color: #ffd58b;
+}
+
+/* Log popup — full-screen overlay + centered modal. Uses the existing
+   .tcg-overlay/.tcg-modal scaffolding for blur + close-on-outside-click. */
+.tcg-log-overlay {
+  z-index: 2000;
+}
+.tcg-log-modal {
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(45, 22, 8, 0.97), rgba(20, 10, 4, 0.98));
+  border: 2px solid rgba(212, 175, 55, 0.65);
+  border-radius: 12px;
+  color: #fde9c4;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  padding: 0;
+}
+.tcg-log-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+  background: linear-gradient(180deg, rgba(80, 40, 16, 0.7), rgba(40, 20, 8, 0.8));
+  flex-shrink: 0;
+}
+.tcg-log-modal-title {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffd58b;
+  font-size: 0.92rem;
+}
+.tcg-log-modal-close {
+  background: rgba(20, 10, 4, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #fde9c4;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tcg-log-modal-close:hover { background: rgba(80, 40, 15, 0.85); border-color: #ffd58b; }
+.tcg-log-modal-body {
+  padding: 10px 12px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(15, 7, 3, 0.6);
+}
+.tcg-log-modal-empty {
+  color: rgba(255, 200, 130, 0.65);
+  font-style: italic;
+  text-align: center;
+  padding: 18px 8px;
+  font-size: 0.86rem;
+}
+
 /* Zones become tighter: strip + horizontally-scrolling board */
 .tcg-battle-shell .tcg-match--arcane .tcg-zone {
   padding: 4px 6px;
@@ -4482,24 +4572,20 @@ body.tcg-battle-active .app-nav { display: none !important; }
   .tcg-battle-shell .tcg-action-turn-btn {
     display: inline-flex;
   }
-  /* Action bar on portrait holds: Annulla + log + Fine Turno
-     in a single row, so log gets a shorter width but stays
-     scrollable. */
+  /* Action bar on portrait holds three primary buttons evenly
+     spread: Annulla / Log / Fine Turno. */
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
+    justify-content: space-between;
     gap: 6px;
-  }
-  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-log {
-    min-width: 0;
-    max-height: 40px;
-    flex: 1 1 0;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
     flex-shrink: 0;
   }
   .tcg-battle-shell .tcg-action-turn-btn { flex-shrink: 0; }
+  .tcg-battle-shell .tcg-action-log-btn { flex-shrink: 0; }
 }
 
 /* Very narrow phones — shave a bit more off */
