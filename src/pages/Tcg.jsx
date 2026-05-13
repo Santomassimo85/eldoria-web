@@ -2063,17 +2063,21 @@ function LiveMatch({ match, uid, onExit }) {
     if (!next) primeSfx();
   };
 
-  /* Lock body scroll while a battle is on screen. The battle shell is
-     position:fixed and fills the viewport — letting the body scroll
-     behind it makes the page jitter on mobile when you swipe a card. */
+  /* Lock body scroll AND hide the site navbar while a battle is on
+     screen. The battle shell is position:fixed and fills the viewport;
+     the white site nav (z-index 1000) showed through on some devices
+     where stacking contexts intercept the z-index battle, and the
+     in-battle "← Lobby" button is the back-to-hub affordance. */
   useEffect(() => {
     const prevBody = document.body.style.overflow;
     const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
+    document.body.classList.add("tcg-battle-active");
     return () => {
       document.body.style.overflow = prevBody;
       document.documentElement.style.overflow = prevHtml;
+      document.body.classList.remove("tcg-battle-active");
     };
   }, []);
 
@@ -2508,23 +2512,32 @@ function LiveMatch({ match, uid, onExit }) {
     // The effect re-mounts only on side change; latest state/updateState are read via refs.
   }, [mySide]);
 
-  /* Card focus tracking — hover (desktop) and tap (mobile) both set
-     the side preview to the targeted card. Touch devices never fire
-     mouseover, so pointerdown is the one that actually works on phones. */
+  /* Card focus tracking — pointer events unify mouse hover and touch
+     press-and-hold. The preview is shown only while the pointer is
+     actually on a card; it clears the moment the finger lifts or the
+     mouse moves away. (User feedback: a sticky preview is annoying
+     because the panel covers other cards.) */
   useEffect(() => {
     const root = matchRootRef.current;
     if (!root) return;
-    function pickCard(e) {
+    function onOver(e) {
       const el = e.target?.closest?.("[data-tcg-card-id]");
       if (!el) return;
       const id = el.getAttribute("data-tcg-card-id");
       if (id) setFocusedCardId(id);
     }
-    root.addEventListener("mouseover", pickCard);
-    root.addEventListener("pointerdown", pickCard);
+    function onOut(e) {
+      // pointerout fires when leaving the element OR moving to a child.
+      // relatedTarget is null when truly leaving (touch lift, mouse off).
+      const next = e.relatedTarget;
+      if (next && next.closest && next.closest("[data-tcg-card-id]")) return;
+      setFocusedCardId(null);
+    }
+    root.addEventListener("pointerover", onOver);
+    root.addEventListener("pointerout", onOut);
     return () => {
-      root.removeEventListener("mouseover", pickCard);
-      root.removeEventListener("pointerdown", pickCard);
+      root.removeEventListener("pointerover", onOver);
+      root.removeEventListener("pointerout", onOut);
     };
   }, []);
 
@@ -2886,7 +2899,7 @@ function LiveMatch({ match, uid, onExit }) {
           disabled={!myTurn}
           aria-label={myTurn ? "Termina il tuo turno" : "Sta giocando l'avversario"}
         >
-          {myTurn ? "⏭ Fine" : "⏳"}
+          {myTurn ? "⏭ FINE TURNO" : "⏳ Avversario"}
         </button>
       </div>
 

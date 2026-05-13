@@ -4122,11 +4122,16 @@ section.tcg-page,
 .tcg-match--portrait .tcg-action-bar { padding: 4px 6px; }
 
 /* ── Drag and drop visuals ──────────────────────────────────── */
-.tcg-match--arcane .tcg-card[data-tcg-draggable="true"] {
+/* Match any draggable card — the attribute holds spec strings like
+   "hand:abc123" or "board:abc123", NOT the literal "true", so the
+   old "=true" selector never matched and `touch-action: none` was
+   never applied. Without it, mobile browsers eat the drag with
+   their default pan/scroll gesture. */
+.tcg-match--arcane .tcg-card[data-tcg-draggable] {
   touch-action: none;
   cursor: grab;
 }
-.tcg-match--arcane .tcg-card[data-tcg-draggable="true"]:active { cursor: grabbing; }
+.tcg-match--arcane .tcg-card[data-tcg-draggable]:active { cursor: grabbing; }
 .tcg-match--arcane .tcg-card--dragging { opacity: 0.35; transform: scale(0.95); }
 .tcg-match--arcane [data-tcg-drop] { transition: box-shadow 0.15s, background-color 0.15s; }
 .tcg-match--arcane [data-tcg-drop].tcg-drop-hover {
@@ -4167,6 +4172,10 @@ section.tcg-page,
   height: 100vh;
   height: 100dvh;
 }
+
+/* Hide the global site navbar while a battle is on screen — the
+   "← Lobby" button in the battle header is the back-to-hub action. */
+body.tcg-battle-active .app-nav { display: none !important; }
 
 /* The match fills the shell — no max-width, no padding leak,
    no min-height ramp. Existing arcane theme background stays. */
@@ -4262,30 +4271,36 @@ section.tcg-page,
   font-size: 0.72rem;
   overflow-y: auto;
 }
-/* Compact turn button inside the action bar — hidden on landscape
-   (the side panel already has the big Fine Turno button). */
+/* Turn button inside the action bar — hidden on landscape (the side
+   panel has the big Fine Turno button). On portrait this is the
+   PRIMARY end-turn affordance, so make it impossible to miss. */
 .tcg-battle-shell .tcg-action-turn-btn {
   display: none;
-  padding: 8px 10px;
-  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #6b21a8, #9333ea);
   color: #fff;
   font-family: var(--font-title, serif);
-  font-weight: 800;
+  font-weight: 900;
   border: 2px solid #fbbf24;
-  border-radius: 8px;
+  border-radius: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  font-size: 0.82rem;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.55);
+  box-shadow: 0 3px 12px rgba(107, 33, 168, 0.6), 0 0 0 1px rgba(255, 215, 130, 0.4) inset;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .tcg-battle-shell .tcg-action-turn-btn--my {
   background: linear-gradient(135deg, #15803d, #22c55e);
-  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.55);
+  box-shadow: 0 3px 12px rgba(34, 197, 94, 0.7), 0 0 0 1px rgba(187, 247, 208, 0.45) inset;
+  animation: tcg-turn-btn-pulse 1.8s ease-in-out infinite;
 }
-.tcg-battle-shell .tcg-action-turn-btn:disabled { opacity: 0.55; cursor: default; }
+@keyframes tcg-turn-btn-pulse {
+  0%, 100% { box-shadow: 0 3px 12px rgba(34, 197, 94, 0.7), 0 0 0 1px rgba(187, 247, 208, 0.45) inset; }
+  50%      { box-shadow: 0 4px 18px rgba(34, 197, 94, 0.95), 0 0 0 2px rgba(187, 247, 208, 0.65) inset; }
+}
+.tcg-battle-shell .tcg-action-turn-btn:disabled { opacity: 0.65; cursor: default; animation: none; }
 
 /* Zones become tighter: strip + horizontally-scrolling board */
 .tcg-battle-shell .tcg-match--arcane .tcg-zone {
