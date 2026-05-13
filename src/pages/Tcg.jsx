@@ -1576,7 +1576,7 @@ function useLongPress(onInspect, ms = 500) {
 /* ============================================================
    CARD — full MTG-style card visual
    ============================================================ */
-function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false, onInspect, dataDraggable }) {
+function Card({ card, size = "md", onClick, disabled, selected, className = "", showTooltip = true, foil = false, onInspect, dataDraggable, dataCardId }) {
   const def = card;
   const cost = def.cost;
   const cardType = getCardType(def);
@@ -1619,6 +1619,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
       disabled={disabled}
       title={tip}
       data-tcg-draggable={dataDraggable || undefined}
+      data-tcg-card-id={dataCardId || undefined}
     >
       <div className="tcg-card-header">
         <span className="tcg-card-cost" title="Costo di mana">{cost}</span>
@@ -1710,7 +1711,7 @@ function CardArt({ def }) {
 /* ============================================================
    BOARD CARD — Card variant showing live HP & status
    ============================================================ */
-function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [], dataDraggable, dataDrop }) {
+function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [], dataDraggable, dataDrop, dataCardId }) {
   const baseMechs = def.mechanics || [];
   const granted = bc.grants || [];
   const tempBuffKeywords = (bc.tempBuffs || []).map(t => t.keyword);
@@ -1770,6 +1771,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
       title={tip}
       data-tcg-draggable={dataDraggable || undefined}
       data-tcg-drop={dataDrop || undefined}
+      data-tcg-card-id={dataCardId || undefined}
     >
       {isFlying && (
         <>
@@ -1962,6 +1964,63 @@ function useIsPortrait() {
 }
 
 /* ============================================================
+   SIDE PREVIEW — Arena-style right panel: focused card + big phase button.
+   Hover (desktop) or long-press / 🔍 (mobile) on any card sets the focused
+   card. The big button is the primary "end your turn" action — replaces
+   the small button in the action bar.
+   ============================================================ */
+function SidePreview({ focusedCardId, onClear, onOpenDetail, myTurn, onEndTurn }) {
+  const def = focusedCardId ? TCG_CARDS[focusedCardId] : null;
+  return (
+    <aside className="tcg-side-preview" aria-label="Pannello carta in focus e fine turno">
+      <div className="tcg-side-preview-card-wrap">
+        {def ? (
+          <Card card={def} size="md" showTooltip={false} />
+        ) : (
+          <div className="tcg-side-preview-empty">
+            Passa il puntatore o tieni premuto su una carta per vederla qui.
+          </div>
+        )}
+      </div>
+      {def && (
+        <button
+          type="button"
+          className="tcg-side-preview-details"
+          onClick={onOpenDetail}
+          title="Apri la scheda dettagliata"
+        >
+          🔍 Dettagli
+        </button>
+      )}
+      {def && (
+        <button
+          type="button"
+          className="tcg-side-preview-details"
+          onClick={onClear}
+          title="Nascondi questa carta dal pannello"
+        >
+          ✕ Chiudi anteprima
+        </button>
+      )}
+      <button
+        type="button"
+        className={`tcg-side-turn-btn${myTurn ? " tcg-side-turn-btn--my" : ""}`}
+        onClick={onEndTurn}
+        disabled={!myTurn}
+        title={myTurn ? "Termina il tuo turno" : "Sta giocando l'avversario"}
+      >
+        <span className="tcg-side-turn-btn-label">
+          {myTurn ? "Tocca a te" : "Avversario"}
+        </span>
+        <span className="tcg-side-turn-btn-main">
+          {myTurn ? "⏭ Fine turno" : "⏳ Attendi"}
+        </span>
+      </button>
+    </aside>
+  );
+}
+
+/* ============================================================
    LIVE MATCH — full battle board
    ============================================================ */
 function LiveMatch({ match, uid, onExit }) {
@@ -1975,6 +2034,8 @@ function LiveMatch({ match, uid, onExit }) {
   const [selectedAttacker, setSelectedAttacker] = useState(null);
   const [pendingSpell, setPendingSpell] = useState(null); // { instId, def, targets }
   const [viewingCard, setViewingCard] = useState(null);   // { cardId } | null — opens CardDetailModal
+  const [focusedCardId, setFocusedCardId] = useState(null); // cardId shown in the side preview panel
+  const matchRootRef = useRef(null);                       // root <div> of the match — used for hover delegation
   const [compliment, setCompliment] = useState("");
   const [attackSplash, setAttackSplash] = useState(null); // { attacker, defender, side, kind, key }
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
@@ -2429,6 +2490,21 @@ function LiveMatch({ match, uid, onExit }) {
     // The effect re-mounts only on side change; latest state/updateState are read via refs.
   }, [mySide]);
 
+  /* Card focus tracking — hover (desktop) sets the side preview to the
+     hovered card. Touch fires on tap+hold (long-press redirected below). */
+  useEffect(() => {
+    const root = matchRootRef.current;
+    if (!root) return;
+    function onOver(e) {
+      const el = e.target?.closest?.("[data-tcg-card-id]");
+      if (!el) return;
+      const id = el.getAttribute("data-tcg-card-id");
+      if (id) setFocusedCardId(id);
+    }
+    root.addEventListener("mouseover", onOver);
+    return () => root.removeEventListener("mouseover", onOver);
+  }, []);
+
   /* Per-card animation lookup. Returns null when the card isn't involved
      in the current lastAttack, otherwise the role + a ts that drives the
      CSS keyframe restart via `key`. */
@@ -2485,7 +2561,7 @@ function LiveMatch({ match, uid, onExit }) {
   const oppBoard = state.board[oSide];
 
   return (
-    <div className={`tcg-match tcg-match--arcane${isPortrait ? " tcg-match--portrait" : ""}`}>
+    <div ref={matchRootRef} className={`tcg-match tcg-match--arcane${isPortrait ? " tcg-match--portrait" : ""}`}>
       {/* Stage: in portrait this gets CSS-rotated 90deg so phones with
           orientation lock still see the game in landscape. The arcane
           background lives inside the stage so it rotates with it. */}
@@ -2585,8 +2661,9 @@ function LiveMatch({ match, uid, onExit }) {
                   selected={isLegal}
                   status={bc.tapped ? "tapped" : null}
                   attackAnim={getCardAnim(bc.instId)}
-                  onInspect={() => setViewingCard({ cardId: bc.cardId })}
+                  onInspect={() => setFocusedCardId(bc.cardId)}
                   floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
+                  dataCardId={bc.cardId}
                 />
                 {prediction && <CombatPreview prediction={prediction} />}
               </div>
@@ -2686,10 +2763,11 @@ function LiveMatch({ match, uid, onExit }) {
                 selected={isSelected || isSpellLegal}
                 status={status}
                 attackAnim={getCardAnim(bc.instId)}
-                onInspect={() => setViewingCard({ cardId: bc.cardId })}
+                onInspect={() => setFocusedCardId(bc.cardId)}
                 floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
                 dataDraggable={myTurn && ready ? `board:${bc.instId}` : undefined}
                 dataDrop={`creature:${mySide}:${bc.instId}`}
+                dataCardId={bc.cardId}
               />
             );
           })}
@@ -2739,25 +2817,27 @@ function LiveMatch({ match, uid, onExit }) {
                 disabled={!playable && !isPending}
                 selected={isPending}
                 className={isPending ? "tcg-card--pending-spell" : ""}
-                onInspect={() => setViewingCard({ cardId: c.cardId })}
+                onInspect={() => setFocusedCardId(c.cardId)}
                 dataDraggable={myTurn && playable ? `hand:${c.instId}` : undefined}
+                dataCardId={c.cardId}
               />
             );
           })}
         </div>
       </div>
 
+      {/* Side preview panel: focused card + big phase button (Arena-style) */}
+      <SidePreview
+        focusedCardId={focusedCardId}
+        onClear={() => setFocusedCardId(null)}
+        onOpenDetail={() => focusedCardId && setViewingCard({ cardId: focusedCardId })}
+        myTurn={myTurn}
+        onEndTurn={handleEndTurn}
+      />
+
       {/* Action bar + log */}
       <div className="tcg-action-bar">
         <div className="tcg-action-bar-buttons">
-          <button
-            type="button"
-            className="tcg-btn tcg-btn--end"
-            onClick={handleEndTurn}
-            disabled={!myTurn}
-          >
-            ⏭ Fine turno
-          </button>
           <button
             type="button"
             className="tcg-btn tcg-btn--undo"
