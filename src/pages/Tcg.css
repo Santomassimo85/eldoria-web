@@ -4237,7 +4237,10 @@ body.tcg-battle-active .app-nav { display: none !important; }
   grid-template-columns: minmax(0, 1fr) clamp(160px, 22vw, 220px);
   grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
   gap: 6px;
-  padding: 6px;
+  /* Bottom padding reserves the iOS home-indicator / Android gesture
+     zone so the action bar (with Fine Turno) is never hidden behind
+     the system UI. Top padding handles the notch / status bar. */
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 6px calc(6px + env(safe-area-inset-bottom, 0px)) 6px;
   overflow: hidden;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-column: 1 / -1; grid-row: 1; }
@@ -4573,7 +4576,10 @@ body.tcg-battle-active .app-nav { display: none !important; }
     display: inline-flex;
   }
   /* Action bar on portrait holds three primary buttons evenly
-     spread: Annulla / Log / Fine Turno. */
+     spread: Annulla / Log / Fine Turno. The override on
+     .tcg-action-bar-buttons cancels the legacy @media 480px rule
+     `flex: 1 1 100%` which otherwise makes Annulla eat the whole
+     row and squeezes the Log + Fine Turno buttons to 0 width. */
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
     flex-direction: row;
     flex-wrap: nowrap;
@@ -4582,10 +4588,29 @@ body.tcg-battle-active .app-nav { display: none !important; }
     gap: 6px;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+    width: auto;
   }
   .tcg-battle-shell .tcg-action-turn-btn { flex-shrink: 0; }
   .tcg-battle-shell .tcg-action-log-btn { flex-shrink: 0; }
+}
+
+/* Tighten action-bar buttons on small phones so all three fit
+   without clipping "FINE TURNO". */
+@media (max-width: 520px) {
+  .tcg-battle-shell .tcg-action-turn-btn {
+    padding: 8px 10px;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+  }
+  .tcg-battle-shell .tcg-action-log-btn {
+    padding: 7px 10px;
+    font-size: 0.7rem;
+  }
+  .tcg-battle-shell .tcg-action-bar-buttons .tcg-btn--undo {
+    padding: 7px 10px;
+    font-size: 0.72rem;
+  }
 }
 
 /* Very narrow phones — shave a bit more off */

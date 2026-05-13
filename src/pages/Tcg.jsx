@@ -2905,7 +2905,7 @@ function LiveMatch({ match, uid, onExit }) {
           disabled={!myTurn}
           aria-label={myTurn ? "Termina il tuo turno" : "Sta giocando l'avversario"}
         >
-          {myTurn ? "⏭ FINE TURNO" : "⏳ Avversario"}
+          {myTurn ? "⏭ FINE TURNO" : "⏳ FINE TURNO"}
         </button>
       </div>
 
