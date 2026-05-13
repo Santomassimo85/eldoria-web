@@ -1198,6 +1198,79 @@ section.tcg-page,
   text-transform: uppercase;
   font-size: 0.9rem;
 }
+
+/* Winner banner + ✦ reward block on the end screen */
+.tcg-end-winner-row {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin: 6px 0 14px;
+  color: var(--tcg-ink);
+}
+.tcg-end-card--win .tcg-end-winner-row { color: var(--tcg-amber); }
+.tcg-end-card--loss .tcg-end-winner-row { color: var(--tcg-cream); opacity: 0.85; }
+.tcg-end-reward {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 16px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+  border: 3px solid var(--tcg-amber);
+  color: var(--tcg-cream);
+  box-shadow: 4px 4px 0 0 var(--tcg-ink), 0 0 20px rgba(251, 191, 36, 0.4);
+  font-family: var(--font-title, serif);
+  min-height: 44px;
+}
+.tcg-end-card--win .tcg-end-reward {
+  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+  box-shadow: 4px 4px 0 0 var(--tcg-ink), 0 0 28px rgba(34, 197, 94, 0.55);
+  animation: tcg-end-reward-pulse 1.8s ease-in-out infinite;
+}
+@keyframes tcg-end-reward-pulse {
+  0%, 100% { box-shadow: 4px 4px 0 0 var(--tcg-ink), 0 0 24px rgba(34, 197, 94, 0.55); }
+  50%      { box-shadow: 4px 4px 0 0 var(--tcg-ink), 0 0 36px rgba(34, 197, 94, 0.85); }
+}
+.tcg-end-reward-icon {
+  font-size: 1.6rem;
+  color: var(--tcg-amber);
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.7);
+}
+.tcg-end-reward-amount {
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: #fef3c7;
+  text-shadow: 0 1px 0 #000;
+}
+.tcg-end-reward-label {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+.tcg-end-reward-source {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex-basis: 100%;
+  text-align: center;
+}
+.tcg-end-reward-pending {
+  font-style: italic;
+  opacity: 0.72;
+  font-size: 0.84rem;
+}
+.tcg-end-reward-capped {
+  font-style: italic;
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
 .tcg-end-vs { margin: 0 6px; color: var(--tcg-muted); }
 .tcg-end-card--win .tcg-end-vs { color: var(--tcg-amber); }
 .tcg-end-log {
@@ -3148,6 +3221,31 @@ section.tcg-page,
   box-shadow: 1px 1px 0 0 #1f1f1f;
 }
 
+/* Points-earning table inside the Manual */
+.tcg-points-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  background: var(--tcg-card);
+  border: 2px solid var(--tcg-ink);
+}
+.tcg-points-table th,
+.tcg-points-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--tcg-ink);
+  font-size: 0.92rem;
+}
+.tcg-points-table thead th {
+  background: var(--tcg-ink);
+  color: var(--tcg-cream);
+  font-family: var(--font-title, serif);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+.tcg-points-table tbody tr:nth-child(even) { background: var(--tcg-cream); }
+.tcg-points-table tbody tr:last-child td { border-bottom: none; }
+
 /* Spell catalog tile (used in Rules) */
 .tcg-spell-list {
   display: grid;
@@ -4503,14 +4601,101 @@ body.tcg-battle-active .app-nav { display: none !important; }
   display: flex;
   flex-direction: column;
 }
-.tcg-battle-shell .tcg-side-preview-card-wrap {
-  min-height: 0;
+.tcg-battle-shell .tcg-side-preview-scroll {
   flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+.tcg-battle-shell .tcg-side-preview-card-wrap {
   width: 100%;
-  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  flex-shrink: 0;
+}
+/* Inline ability + effect blocks — shown while the card is focused
+   so press-and-hold reveals all the rules without needing a click. */
+.tcg-battle-shell .tcg-side-preview-effect,
+.tcg-battle-shell .tcg-side-preview-mechs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(15, 8, 4, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.32);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.tcg-battle-shell .tcg-side-preview-effect-label,
+.tcg-battle-shell .tcg-side-preview-mechs-label {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffd58b;
+}
+.tcg-battle-shell .tcg-side-preview-effect-text {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #fde9c4;
+}
+.tcg-battle-shell .tcg-side-preview-mech {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.22);
+}
+.tcg-battle-shell .tcg-side-preview-mech:first-of-type { border-top: none; padding-top: 0; }
+.tcg-battle-shell .tcg-side-preview-mech-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tcg-battle-shell .tcg-side-preview-mech-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.78rem;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+.tcg-battle-shell .tcg-side-preview-mech-name {
+  font-size: 0.78rem;
+  color: #ffd58b;
+  letter-spacing: 0.02em;
+}
+.tcg-battle-shell .tcg-side-preview-mech-rules {
+  font-size: 0.72rem;
+  line-height: 1.32;
+  color: #e7d6b2;
+}
+.tcg-battle-shell .tcg-side-preview-flavor {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: rgba(255, 215, 139, 0.72);
+  line-height: 1.4;
+  padding: 4px 6px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.18);
+}
+.tcg-battle-shell .tcg-side-preview-flavor-quote {
+  font-size: 1rem;
+  color: rgba(255, 215, 139, 0.55);
+  margin: 0 2px;
+}
+.tcg-battle-shell .tcg-side-preview-empty-msg {
+  color: rgba(255, 200, 130, 0.65);
+  font-style: italic;
+  text-align: center;
+  font-size: 0.78rem;
+  padding: 18px 8px;
 }
 .tcg-battle-shell .tcg-side-preview .tcg-card {
   width: 100%;

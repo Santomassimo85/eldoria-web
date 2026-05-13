@@ -2325,30 +2325,58 @@ export default function Arena() {
     const snapshots = arenaMeta.characterSnapshots || {};
     const totalGroupRounds = groupRoundsTotal();
     const finalExists = (arenaMeta.matches || []).some(m => m.kind === "final");
+    const groupA = arenaMeta.groupA || [];
+    const groupB = arenaMeta.groupB || [];
 
-    if (cr < totalGroupRounds) {
-      const next = cr + 1;
-      const matches = arenaMeta.matches || [];
-      const more = [
-        ...buildGroupRoundMatches("A", next, snapshots),
-        ...buildGroupRoundMatches("B", next, snapshots),
-      ];
-      if (more.length === 0) return;
-      await updateDoc(doc(db, "arena_meta", "global"), {
-        matches: [...matches, ...more], currentRound: next,
-      });
-      return;
-    }
-    if (!finalExists) {
+    /* Diagnostic context — the tournament was silently halting at the
+       round → final boundary with no UI feedback. Log + alert any
+       reason we bail so the master can see why nothing happened. */
+    const ctx = { cr, totalGroupRounds, finalExists, groupA: groupA.length, groupB: groupB.length };
+    console.log("[arena] advanceRound", ctx);
+
+    try {
+      if (cr < totalGroupRounds) {
+        const next = cr + 1;
+        const matches = arenaMeta.matches || [];
+        const more = [
+          ...buildGroupRoundMatches("A", next, snapshots),
+          ...buildGroupRoundMatches("B", next, snapshots),
+        ];
+        if (more.length === 0) {
+          console.warn("[arena] advanceRound: no matches generated for round", next, ctx);
+          alert(`Errore: nessun match generato per il Round ${next}.\nGirone A: ${groupA.length} giocatori · Girone B: ${groupB.length} giocatori.\nControlla che entrambi i gironi abbiano almeno 2 giocatori.`);
+          return;
+        }
+        await updateDoc(doc(db, "arena_meta", "global"), {
+          matches: [...matches, ...more], currentRound: next,
+        });
+        console.log("[arena] advanceRound: generated", more.length, "matches for round", next);
+        return;
+      }
+
+      if (finalExists) {
+        console.log("[arena] advanceRound: final already exists, nothing to do");
+        return;
+      }
+
       const standA = computeGroupStandings("A", arenaMeta.matches || []);
       const standB = computeGroupStandings("B", arenaMeta.matches || []);
       const winnerA = standA[0]?.uid;
       const winnerB = standB[0]?.uid;
-      if (!winnerA || !winnerB) return;
+      console.log("[arena] advanceRound: standings A:", standA, "B:", standB);
+      if (!winnerA || !winnerB) {
+        console.warn("[arena] advanceRound: missing winners", { winnerA, winnerB, standA, standB });
+        alert(`Errore: impossibile determinare i vincitori dei gironi.\nGirone A: ${standA.length} classifiche · Girone B: ${standB.length} classifiche.\nProbabilmente uno dei gironi non ha partecipanti.`);
+        return;
+      }
       const finalMatch = buildFinalMatch(winnerA, winnerB, snapshots);
       await updateDoc(doc(db, "arena_meta", "global"), {
         matches: [...(arenaMeta.matches || []), finalMatch],
       });
+      console.log("[arena] advanceRound: final generated", winnerA, "vs", winnerB);
+    } catch (e) {
+      console.error("[arena] advanceRound failed:", e);
+      alert(`Errore durante l'avanzamento del torneo: ${e?.message || e}`);
     }
   };
 

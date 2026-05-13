@@ -23,6 +23,8 @@ import {
   normalizeCost, totalCost, ELEMENTS,
 } from "../utils/tcg";
 import { playSfx, setSfxMuted, isSfxMuted, primeSfx } from "../utils/tcgSfx";
+import { startBgm, stopBgm, setBgmMuted } from "../utils/tcgBgm";
+import { PET_POINT_SOURCES, awardPetPoints } from "../utils/pet";
 import "./Tcg.css";
 
 /* Unlocked for all logged-in players. To re-gate the page, flip
@@ -138,6 +140,11 @@ function TcgGame() {
   const [activeMatches, setActiveMatches] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
   const [activeMatchId, setActiveMatchId] = useState(null);
+  /* Track matches the user has explicitly exited via "← Lobby" so the
+     auto-enter effect doesn't immediately throw them back in. Without
+     this, clicking Lobby was a no-op: the state cleared, the effect
+     re-ran, found the same active match in Firestore, re-entered it. */
+  const exitedMatchIdsRef = useRef(new Set());
   const [packReveal, setPackReveal] = useState(null);   // { packDef, cards }
   const [starterOpen, setStarterOpen] = useState(false);
   const [message, setMessage] = useState(null);         // { text, ok }
@@ -189,10 +196,13 @@ function TcgGame() {
     });
   }, [currentUser]);
 
-  /* ── Auto-enter active match ──────────────────────────── */
+  /* ── Auto-enter active match ──────────────────────────────
+     Only auto-enter matches the user hasn't explicitly exited.
+     Without this guard, clicking "← Lobby" was instantly undone
+     because this effect re-ran with the same Firestore match. */
   useEffect(() => {
     if (activeMatchId) return;
-    const mine = activeMatches[0];
+    const mine = activeMatches.find(m => !exitedMatchIdsRef.current.has(m.id));
     if (mine) setActiveMatchId(mine.id);
   }, [activeMatches, activeMatchId]);
 
@@ -417,7 +427,10 @@ function TcgGame() {
         <LiveMatch
           match={activeMatch}
           uid={currentUser.uid}
-          onExit={() => setActiveMatchId(null)}
+          onExit={() => {
+            if (activeMatchId) exitedMatchIdsRef.current.add(activeMatchId);
+            setActiveMatchId(null);
+          }}
         />
       </div>
     );
@@ -2008,39 +2021,61 @@ function useIsPortrait() {
    ============================================================ */
 function SidePreview({ focusedCardId, onClear, onOpenDetail, myTurn, onEndTurn }) {
   const def = focusedCardId ? TCG_CARDS[focusedCardId] : null;
+  /* Build inline detail blocks so the user sees every mechanic and
+     effect explanation WHILE pressing the card — without needing to
+     release (which hides the preview) and tap a "Dettagli" button. */
+  const cardType = def ? getCardType(def) : null;
+  const isCreature = cardType === "creature";
+  const mechs = def ? (def.mechanics || []) : [];
+  const effectText = def && !isCreature ? describeEffect(def) : null;
   return (
     <aside
       className={`tcg-side-preview${def ? "" : " tcg-side-preview--empty"}`}
       aria-label="Pannello carta in focus e fine turno"
     >
-      <div className="tcg-side-preview-card-wrap">
-        {def ? (
-          <Card card={def} size="md" showTooltip={false} />
-        ) : (
-          <div className="tcg-side-preview-empty">
+      {def ? (
+        <div className="tcg-side-preview-scroll">
+          <div className="tcg-side-preview-card-wrap">
+            <Card card={def} size="md" showTooltip={false} />
+          </div>
+          {effectText && (
+            <div className="tcg-side-preview-effect">
+              <span className="tcg-side-preview-effect-label">{TYPE_ICON[cardType]} Effetto</span>
+              <span className="tcg-side-preview-effect-text">{effectText}</span>
+            </div>
+          )}
+          {mechs.length > 0 && (
+            <div className="tcg-side-preview-mechs">
+              <span className="tcg-side-preview-mechs-label">⚡ Abilità</span>
+              {mechs.map(k => {
+                const m = TCG_MECHANICS[k];
+                if (!m) return null;
+                return (
+                  <div key={k} className={`tcg-side-preview-mech tcg-side-preview-mech--${k}`}>
+                    <div className="tcg-side-preview-mech-head">
+                      <span className="tcg-side-preview-mech-icon" style={{ background: m.color }}>{m.icon}</span>
+                      <strong className="tcg-side-preview-mech-name">{getMechLabel(def, k)}</strong>
+                    </div>
+                    <div className="tcg-side-preview-mech-rules">{m.rules}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {def.flavor && (
+            <div className="tcg-side-preview-flavor">
+              <span className="tcg-side-preview-flavor-quote">“</span>
+              {def.flavor}
+              <span className="tcg-side-preview-flavor-quote">”</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="tcg-side-preview-card-wrap">
+          <div className="tcg-side-preview-empty-msg">
             Passa il puntatore o tieni premuto su una carta per vederla qui.
           </div>
-        )}
-      </div>
-      {def && (
-        <button
-          type="button"
-          className="tcg-side-preview-details"
-          onClick={onOpenDetail}
-          title="Apri la scheda dettagliata"
-        >
-          🔍 Dettagli
-        </button>
-      )}
-      {def && (
-        <button
-          type="button"
-          className="tcg-side-preview-details"
-          onClick={onClear}
-          title="Nascondi questa carta dal pannello"
-        >
-          ✕ Chiudi anteprima
-        </button>
+        </div>
       )}
       <button
         type="button"
@@ -2081,6 +2116,10 @@ function LiveMatch({ match, uid, onExit }) {
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
   const [floats, setFloats] = useState([]);               // [{ id, kind, target, side, instId?, amount }]
   const [muted, setMuted] = useState(isSfxMuted());
+  /* End-of-match summary: how many ✦ Punti Bestiario the player just earned
+     (set by the awardPetPoints call in the win-detection effect below). */
+  const [endReward, setEndReward] = useState(null);
+  // { points: N, label: "...", reason?: "daily-cap"|"already-seen"|... }
   // Animation queue — events from the engine fire sequentially with a small
   // gap so each one is visible. Engine state still commits in one go to
   // Firestore; only the visible effects are paced.
@@ -2096,6 +2135,7 @@ function LiveMatch({ match, uid, onExit }) {
     const next = !muted;
     setMuted(next);
     setSfxMuted(next);
+    setBgmMuted(next);
     if (!next) primeSfx();
   };
 
@@ -2110,10 +2150,17 @@ function LiveMatch({ match, uid, onExit }) {
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
     document.body.classList.add("tcg-battle-active");
+    /* Kick off the chiptune BGM. Browsers won't let it actually play
+       until the first user gesture lands, but `startBgm` is idempotent
+       — once the user clicks any button, the suspended audio context
+       resumes and the loop is heard. */
+    setBgmMuted(isSfxMuted());
+    startBgm();
     return () => {
       document.body.style.overflow = prevBody;
       document.documentElement.style.overflow = prevHtml;
       document.body.classList.remove("tcg-battle-active");
+      stopBgm();
     };
   }, []);
 
@@ -2237,12 +2284,25 @@ function LiveMatch({ match, uid, onExit }) {
     };
   }, []);
 
-  /* Fire win/lose chime once when the game ends. */
+  /* Fire win/lose chime once when the game ends — and award ✦ points
+     (idempotent via resourceKey: match.id). The result populates the
+     endReward modal so the player sees what they earned. */
   useEffect(() => {
     if (!state.winner || wonRef.current) return;
     wonRef.current = true;
-    playSfx(state.winner === mySide ? "win" : "lose");
-  }, [state.winner, mySide]);
+    const isWin = state.winner === mySide;
+    playSfx(isWin ? "win" : "lose");
+    const source = isWin ? "tcg_match_win" : "tcg_match_play";
+    const def = PET_POINT_SOURCES[source];
+    awardPetPoints(uid, source, { resourceKey: match.id }).then((r) => {
+      setEndReward({
+        points: r?.awarded || 0,
+        label:  def?.label || (isWin ? "Vittoria TCG" : "Sfida TCG"),
+        reason: r?.reason || null,
+        amount: def?.amount || 0,  // base reward shown when capped
+      });
+    });
+  }, [state.winner, mySide, uid, match.id]);
 
   useEffect(() => {
     if (!attackSplash) return;
@@ -2404,7 +2464,12 @@ function LiveMatch({ match, uid, onExit }) {
   useEffect(() => { updateStateRef.current = updateState; });
 
   useEffect(() => {
-    const THRESHOLD = 6;
+    /* A desktop mouse click can twitch a few pixels between mousedown and
+       mouseup. With a 6-px threshold those clicks were being misread as
+       drags, which then suppressed the click via onClickCapture — the
+       card appeared "unclickable" after a hover. 10 px is forgiving for
+       a click while still feeling responsive to a real drag. */
+    const THRESHOLD = 10;
 
     function onPointerDown(e) {
       if (e.button !== undefined && e.button !== 0) return;
@@ -2550,9 +2615,10 @@ function LiveMatch({ match, uid, onExit }) {
 
   /* Card focus tracking — pointer events unify mouse hover and touch
      press-and-hold. The preview is shown only while the pointer is
-     actually on a card; it clears the moment the finger lifts or the
-     mouse moves away. (User feedback: a sticky preview is annoying
-     because the panel covers other cards.) */
+     actually on a card OR over the preview panel itself (so desktop
+     users can move into the panel to read longer ability text without
+     it vanishing). On touch, pointerout fires on finger-lift and the
+     preview hides as expected. */
   useEffect(() => {
     const root = matchRootRef.current;
     if (!root) return;
@@ -2563,10 +2629,15 @@ function LiveMatch({ match, uid, onExit }) {
       if (id) setFocusedCardId(id);
     }
     function onOut(e) {
-      // pointerout fires when leaving the element OR moving to a child.
-      // relatedTarget is null when truly leaving (touch lift, mouse off).
       const next = e.relatedTarget;
-      if (next && next.closest && next.closest("[data-tcg-card-id]")) return;
+      // Truly leaving the whole match area — clear.
+      if (!next || typeof next.closest !== "function") {
+        setFocusedCardId(null);
+        return;
+      }
+      // Moving between cards, or into the preview panel — keep focus.
+      if (next.closest("[data-tcg-card-id]")) return;
+      if (next.closest(".tcg-side-preview")) return;
       setFocusedCardId(null);
     }
     root.addEventListener("pointerover", onOver);
@@ -2597,6 +2668,7 @@ function LiveMatch({ match, uid, onExit }) {
   /* End screen */
   if (state.winner) {
     const won = state.winner === mySide;
+    const winnerName = won ? match[mySide].name : match[oSide].name;
     return (
       <div className="tcg-end">
         <div className={`tcg-end-card ${won ? "tcg-end-card--win" : "tcg-end-card--loss"}`}>
@@ -2604,6 +2676,9 @@ function LiveMatch({ match, uid, onExit }) {
           <h2 className="tcg-end-title">
             {won ? "VITTORIA!" : "SCONFITTA"}
           </h2>
+          <div className="tcg-end-winner-row">
+            👑 <strong>{winnerName}</strong> vince la sfida
+          </div>
           {won && (
             <div className="tcg-end-compliment">
               <span className="tcg-end-compliment-quote">"</span>
@@ -2611,6 +2686,26 @@ function LiveMatch({ match, uid, onExit }) {
               <span className="tcg-end-compliment-quote">"</span>
             </div>
           )}
+          <div className="tcg-end-reward">
+            {endReward == null ? (
+              <span className="tcg-end-reward-pending">Calcolo ricompensa…</span>
+            ) : endReward.points > 0 ? (
+              <>
+                <span className="tcg-end-reward-icon">✦</span>
+                <span className="tcg-end-reward-amount">+{endReward.points}</span>
+                <span className="tcg-end-reward-label">Punti Bestiario</span>
+                <span className="tcg-end-reward-source">({endReward.label})</span>
+              </>
+            ) : (
+              <span className="tcg-end-reward-capped">
+                {endReward.reason === "daily-cap"
+                  ? `Tetto giornaliero raggiunto — niente ✦ extra oggi.`
+                  : endReward.reason === "already-seen"
+                  ? `Ricompensa già assegnata per questa partita.`
+                  : `Nessun ✦ assegnato.`}
+              </span>
+            )}
+          </div>
           <div className="tcg-end-summary">
             {match.challenger.name} <span className="tcg-end-vs">vs</span> {match.challenged.name}
           </div>
@@ -3191,7 +3286,8 @@ function Rules() {
         <h2 className="tcg-panel-title">⚔ Come si gioca</h2>
         <ul className="tcg-rules-list">
           <li>Ogni giocatore parte con <strong>{STARTING_HP} PF</strong>, una mano di 4 carte e un mazzo di {DECK_REQUIRED_SIZE}.</li>
-          <li>A ogni turno il giocatore attivo guadagna <strong>+1 di Mana massimo</strong> (fino a 10) e ricarica tutto il mana, poi pesca 1 carta.</li>
+          <li>Il mana è <strong>per elemento</strong>: per pagare le carte servono i colori giusti. Lo ottieni giocando <strong>💎 Cristalli</strong> — uno per turno — che producono +1 di mana del loro elemento ogni turno (stile "lands" di MTG). Le carte hanno un costo con pip colorate (es. <code>🔥🔥⚪</code>): le pip elementali si pagano solo con quel colore, la pip ⚪ con qualsiasi colore.</li>
+          <li>A ogni turno ricarichi automaticamente tutto il mana che i tuoi cristalli producono, e peschi 1 carta. Non c'è un cap fisso: cresci finché giochi cristalli.</li>
           <li>Le carte sono di quattro tipi: <strong>🐲 Creature</strong> (vanno in campo, attaccano e difendono), <strong>📜 Incantesimi</strong> (effetto singolo, poi finiscono al cimitero), <strong>🌟 Aure</strong> (concedono keyword temporanee o effetti persistenti) e <strong>🛡 Contromagie</strong> (trappole segrete che si attivano nel turno dell'avversario).</li>
           <li>Le creature evocate hanno <em>sonno d'evocazione</em> e non possono attaccare lo stesso turno — a meno che non abbiano <strong>Furia</strong> o vengano risvegliate dall'affinità <strong>Brezza</strong>.</li>
           <li>In combattimento, una creatura attacca una creatura nemica (o il campione) e ognuna infligge i propri danni; le meccaniche (Affondo, Avanguardia, Letale…) cambiano l'ordine e la regola.</li>
@@ -3382,6 +3478,41 @@ function Rules() {
             una versione olografica rarissima e meravigliosa. Stesse statistiche, ma molto più preziosa: la distruzione restituisce <strong>4× ✦</strong>.
           </li>
         </ul>
+      </div>
+
+      <div className="tcg-panel">
+        <h2 className="tcg-panel-title">✦ Come ottenere Punti Bestiario</h2>
+        <p className="tcg-panel-sub">
+          I Punti Bestiario sono la valuta che spendi in Bottega per comprare forzieri.
+          Si guadagnano vivendo l'app: ogni azione ne dà una piccola quantità, con un tetto
+          giornaliero per ciascuna fonte. Niente grinding — basta giocare ogni giorno e i
+          punti si accumulano in modo costante.
+        </p>
+        <table className="tcg-points-table">
+          <thead>
+            <tr>
+              <th>Fonte</th>
+              <th style={{ textAlign: "right" }}>Ricompensa</th>
+              <th style={{ textAlign: "right" }}>Tetto / giorno</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(PET_POINT_SOURCES).map(([key, def]) => (
+              <tr key={key}>
+                <td>{def.label}</td>
+                <td style={{ textAlign: "right" }}><strong>+{def.amount} ✦</strong></td>
+                <td style={{ textAlign: "right" }}>{def.dailyCap != null ? `${def.dailyCap}×` : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="tcg-panel-sub" style={{ marginTop: 10 }}>
+          <strong>💡 Consigli</strong>:
+          il login giornaliero da solo vale {PET_POINT_SOURCES.daily_login?.amount || 2} ✦ ogni giorno,
+          la lettura dei riassunti fino a {(PET_POINT_SOURCES.summary_read?.amount || 2) * (PET_POINT_SOURCES.summary_read?.dailyCap || 10)} ✦,
+          e una buona corsa nell'Arena può facilmente fruttare 15-20 ✦ tra round vinti e tornei.
+          In poche settimane di gioco normale ti basta per più forzieri elementali.
+        </p>
       </div>
 
       <div className="tcg-panel">

@@ -13,6 +13,7 @@ export default function PlatinumAdmin() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [tempBalances, setTempBalances] = useState({});
+  const [tempPetPoints, setTempPetPoints] = useState({});
 
   useEffect(() => {
     if (!currentUser) return;
@@ -23,6 +24,13 @@ export default function PlatinumAdmin() {
         const next = { ...prev };
         charList.forEach(char => {
           if (!(char.id in next)) next[char.id] = char.platinum || 0;
+        });
+        return next;
+      });
+      setTempPetPoints(prev => {
+        const next = { ...prev };
+        charList.forEach(char => {
+          if (!(char.id in next)) next[char.id] = char.petPoints || 0;
         });
         return next;
       });
@@ -58,11 +66,51 @@ export default function PlatinumAdmin() {
     }
   };
 
+  const handlePetPointsChange = (uid, value) => {
+    const numericValue = value === '' ? '' : parseInt(value);
+    setTempPetPoints(prev => ({ ...prev, [uid]: numericValue }));
+  };
+
+  const handleSavePetPoints = async (charId) => {
+    const newPoints = tempPetPoints[charId];
+    if (newPoints === '' || isNaN(newPoints)) return;
+    setStatus('Salvataggio Punti Bestiario...');
+    try {
+      await updateDoc(doc(db, 'characters', charId), {
+        petPoints: Math.max(0, Number(newPoints)),
+        lastUpdated: new Date().toISOString()
+      });
+      setStatus('✅ Punti Bestiario aggiornati!');
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      setStatus(`❌ Errore: ${error.message}`);
+    }
+  };
+
+  const adjustPetPoints = async (charId, delta) => {
+    const char = characters.find(c => c.id === charId);
+    if (!char) return;
+    const current = Number(char.petPoints || 0);
+    const next = Math.max(0, current + delta);
+    setStatus(`${delta >= 0 ? '+' : ''}${delta} Punti Bestiario...`);
+    try {
+      await updateDoc(doc(db, 'characters', charId), {
+        petPoints: next,
+        lastUpdated: new Date().toISOString()
+      });
+      setTempPetPoints(prev => ({ ...prev, [charId]: next }));
+      setStatus(`✅ Punti Bestiario: ${current} → ${next}`);
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      setStatus(`❌ Errore: ${error.message}`);
+    }
+  };
+
   return (
     <section className="admin-platinum-page">
       <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
 
-      <h1 className="admin-page-title">Monete Platino (MP)</h1>
+      <h1 className="admin-page-title">Monete Platino (MP) e Punti Bestiario (TCG)</h1>
       <div className="admin-divider"><span className="admin-divider-icon">🪙</span></div>
 
       {status && (
@@ -95,6 +143,50 @@ export default function PlatinumAdmin() {
                 >
                   Salva
                 </button>
+              </div>
+              <div className="platinum-input-group" style={{ marginTop: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => adjustPetPoints(char.id, -10)}
+                  className="btn-admin-save"
+                  style={{ minWidth: 44 }}
+                  title="-10 Punti Bestiario"
+                >−10</button>
+                <button
+                  type="button"
+                  onClick={() => adjustPetPoints(char.id, -1)}
+                  className="btn-admin-save"
+                  style={{ minWidth: 40 }}
+                  title="-1 Punto Bestiario"
+                >−1</button>
+                <input
+                  type="number"
+                  className="platinum-input"
+                  value={tempPetPoints[char.id] ?? ''}
+                  onChange={(e) => handlePetPointsChange(char.id, e.target.value)}
+                  title="Punti Bestiario totali"
+                />
+                <span className="platinum-unit">✦</span>
+                <button
+                  type="button"
+                  onClick={() => adjustPetPoints(char.id, +1)}
+                  className="btn-admin-save"
+                  style={{ minWidth: 40 }}
+                  title="+1 Punto Bestiario"
+                >+1</button>
+                <button
+                  type="button"
+                  onClick={() => adjustPetPoints(char.id, +10)}
+                  className="btn-admin-save"
+                  style={{ minWidth: 44 }}
+                  title="+10 Punti Bestiario"
+                >+10</button>
+                <button
+                  type="button"
+                  onClick={() => handleSavePetPoints(char.id)}
+                  className="btn-admin-save"
+                  title="Imposta il totale dei Punti Bestiario al valore mostrato"
+                >Salva</button>
               </div>
             </div>
           ))

@@ -31,6 +31,8 @@ export const PET_POINT_SOURCES = {
   geo_visit:        { label: "Archivio Geomantico letto", amount: 1,  dailyCap: 1 },
   daily_login:      { label: "Login del giorno",          amount: 2,  dailyCap: 1 },
   pet_battle_win:   { label: "Vittoria al Pet Arena",     amount: 5,  dailyCap: 5,  oncePerKey: true },
+  tcg_match_win:    { label: "Vittoria nel TCG",           amount: 5,  dailyCap: 5,  oncePerKey: true },
+  tcg_match_play:   { label: "Sfida TCG conclusa",         amount: 1,  dailyCap: 5,  oncePerKey: true },
 };
 
 export function todayKey() {
