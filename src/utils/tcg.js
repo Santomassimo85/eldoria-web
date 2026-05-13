@@ -52,21 +52,43 @@ export const ELEMENTS = ["fire", "water", "earth", "air", "light", "dark"];
 export function emptyMana() {
   return { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0 };
 }
+/* Rarity-tiered elemental ratio: higher-rarity cards demand more of
+   their own color, so legendaries are near-mono and commons are loose.
+   The formula was hand-tuned against the 66-card catalog so:
+     - Diavoletto (common, fire 1)     → { fire: 1 }
+     - Mago Acqua  (rare, water 3)     → { water: 2, any: 1 }
+     - Marid       (epic, water 5)     → { water: 4, any: 1 }
+     - Drago Rosso (legendary, fire 8) → { fire: 7, any: 1 }
+   Individual cards can still override with `cost: {fire:3, water:1}`. */
+const ELEMENTAL_RATIO_BY_RARITY = {
+  common:    0.5,
+  rare:      0.65,
+  epic:      0.75,
+  legendary: 0.85,
+};
 export function normalizeCost(def) {
-  if (def?.cost && typeof def.cost === "object") {
+  // Explicit elemental override via `mana: { fire: 3, any: 1 }`.
+  // Cards keep their numeric `cost` for sorting/shop pricing/UI text.
+  const explicit = (def?.mana && typeof def.mana === "object") ? def.mana
+                 : (def?.cost && typeof def.cost === "object") ? def.cost
+                 : null;
+  if (explicit) {
     return {
-      fire:  def.cost.fire  || 0,
-      water: def.cost.water || 0,
-      earth: def.cost.earth || 0,
-      air:   def.cost.air   || 0,
-      light: def.cost.light || 0,
-      dark:  def.cost.dark  || 0,
-      any:   def.cost.any   || 0,
+      fire:  explicit.fire  || 0,
+      water: explicit.water || 0,
+      earth: explicit.earth || 0,
+      air:   explicit.air   || 0,
+      light: explicit.light || 0,
+      dark:  explicit.dark  || 0,
+      any:   explicit.any   || 0,
     };
   }
+  // Fallback: derive from numeric cost + rarity. Used for any card that
+  // hasn't been hand-tuned yet.
   const n = Math.max(0, Number(def?.cost) || 0);
-  const elem = Math.ceil(n / 2);
-  const any  = Math.floor(n / 2);
+  const ratio = ELEMENTAL_RATIO_BY_RARITY[def?.rarity] ?? 0.5;
+  const elem = Math.min(n, Math.ceil(n * ratio));
+  const any  = Math.max(0, n - elem);
   const out = { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0, any };
   if (def?.element && elem > 0 && ELEMENTS.includes(def.element)) out[def.element] = elem;
   return out;

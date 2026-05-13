@@ -20,6 +20,7 @@ import {
   STARTING_HP, DECK_REQUIRED_SIZE,
   isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection, buildFilteredDeck,
   resolveDeckForMatch,
+  normalizeCost, totalCost, ELEMENTS,
 } from "../utils/tcg";
 import { playSfx, setSfxMuted, isSfxMuted, primeSfx } from "../utils/tcgSfx";
 import "./Tcg.css";
@@ -851,8 +852,10 @@ function CardDetailModal({ cardId, foil = false, onClose }) {
             <div className="tcg-detail-stats">
               <div className="tcg-detail-stat tcg-detail-stat--mana">
                 <span className="tcg-detail-stat-icon">🔮</span>
-                <span className="tcg-detail-stat-val">{c.cost}</span>
-                <span className="tcg-detail-stat-label">Mana</span>
+                <span className="tcg-detail-stat-val tcg-detail-stat-val--pips">
+                  <CostPips def={c} size="lg" />
+                </span>
+                <span className="tcg-detail-stat-label">Costo</span>
               </div>
               <div className="tcg-detail-stat tcg-detail-stat--spell">
                 <span className="tcg-detail-stat-icon">📜</span>
@@ -871,8 +874,10 @@ function CardDetailModal({ cardId, foil = false, onClose }) {
             <div className="tcg-detail-stats">
               <div className="tcg-detail-stat tcg-detail-stat--mana">
                 <span className="tcg-detail-stat-icon">🔮</span>
-                <span className="tcg-detail-stat-val">{c.cost}</span>
-                <span className="tcg-detail-stat-label">Mana</span>
+                <span className="tcg-detail-stat-val tcg-detail-stat-val--pips">
+                  <CostPips def={c} size="lg" />
+                </span>
+                <span className="tcg-detail-stat-label">Costo</span>
               </div>
               <div className="tcg-detail-stat tcg-detail-stat--atk">
                 <span className="tcg-detail-stat-icon">⚔</span>
@@ -1575,6 +1580,36 @@ function useLongPress(onInspect, ms = 500) {
   return { start, cancel, guardClick, onContext, onMove };
 }
 
+/* Colored cost pips — one chip per element in the card's cost, plus
+   one chip for "any" generic cost. Total cost is shown as a small
+   number in each chip so a card costing {fire: 2, any: 1} reads as
+   `🔥2 ⚪1` instead of an opaque "3". */
+function CostPips({ def, size = "sm" }) {
+  const cost = normalizeCost(def);
+  const total = totalCost(def);
+  if (total === 0) return null;
+  const chips = [];
+  for (const el of ELEMENTS) {
+    const n = cost[el];
+    if (n <= 0) continue;
+    chips.push(
+      <span key={el} className={`tcg-cost-pip tcg-cost-pip--${el}`} title={`${ELEMENT_LABEL[el]}: ${n}`}>
+        <span className="tcg-cost-pip-icon">{ELEMENT_ICON[el]}</span>
+        <span className="tcg-cost-pip-num">{n}</span>
+      </span>
+    );
+  }
+  if (cost.any > 0) {
+    chips.push(
+      <span key="any" className="tcg-cost-pip tcg-cost-pip--any" title={`Mana qualsiasi: ${cost.any}`}>
+        <span className="tcg-cost-pip-icon">⚪</span>
+        <span className="tcg-cost-pip-num">{cost.any}</span>
+      </span>
+    );
+  }
+  return <span className={`tcg-cost-pips tcg-cost-pips--${size}`}>{chips}</span>;
+}
+
 /* ============================================================
    CARD — full MTG-style card visual
    ============================================================ */
@@ -1624,7 +1659,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
       data-tcg-card-id={dataCardId || undefined}
     >
       <div className="tcg-card-header">
-        <span className="tcg-card-cost" title="Costo di mana">{cost}</span>
+        <CostPips def={def} size={size} />
         <span className="tcg-card-name">{def.name}</span>
         <span className="tcg-card-element" title={ELEMENT_LABEL[def.element]}>
           {ELEMENT_ICON[def.element]}
@@ -1791,7 +1826,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
         </div>
       )}
       <div className="tcg-card-header">
-        <span className="tcg-card-cost">{def.cost}</span>
+        <CostPips def={def} size={size} />
         <span className="tcg-card-name">{def.name}</span>
         <span className="tcg-card-element">{ELEMENT_ICON[def.element]}</span>
       </div>
@@ -2816,6 +2851,7 @@ function LiveMatch({ match, uid, onExit }) {
           hp={state.hp[mySide]}
           mana={state.mana[mySide]}
           crystals={state.crystals?.[mySide] || []}
+          crystalsPlayedThisTurn={state.crystalsPlayedThisTurn?.[mySide] || 0}
           deckCount={state.deck[mySide].length}
           handCount={myHand.length}
           isActive={myTurn}
@@ -2970,7 +3006,7 @@ function LiveMatch({ match, uid, onExit }) {
 /* ============================================================
    PLAYER STRIP — HP, mana, deck, hand counts
    ============================================================ */
-function PlayerStrip({ side, name, hp, mana, crystals = [], deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, ownSecrets = null, floats = [] }) {
+function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTurn = 0, deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, ownSecrets = null, floats = [] }) {
   const hpPct = Math.max(0, Math.min(100, (hp / STARTING_HP) * 100));
   const secretsTip = ownSecrets && ownSecrets.length
     ? "Le tue Contromagie segrete:\n" + ownSecrets.map(s => `  • ${TCG_CARDS[s.cardId]?.name || s.cardId}`).join("\n")
@@ -3012,7 +3048,7 @@ function PlayerStrip({ side, name, hp, mana, crystals = [], deckCount, handCount
             <div className="tcg-pstrip-hp-fill" style={{ width: `${hpPct}%` }} />
           </div>
         </div>
-        <ElementalMana mana={mana} crystals={crystals} active={isActive} />
+        <ElementalMana mana={mana} crystals={crystals} active={isActive} crystalPlayed={crystalsPlayedThisTurn > 0} isMine={!opponent} />
         <div className="tcg-pstrip-pile" title="Carte nel mazzo">📚 {deckCount}</div>
         <div className="tcg-pstrip-pile" title="Carte in mano">🃏 {handCount}</div>
       </div>
@@ -3034,7 +3070,7 @@ const ELEMENT_PIP = {
   light: { icon: "✨", color: "#fbbf24" },
   dark:  { icon: "🌑", color: "#6b21a8" },
 };
-function ElementalMana({ mana, crystals = [], active }) {
+function ElementalMana({ mana, crystals = [], active, crystalPlayed = false, isMine = false }) {
   // Tally how many crystals of each element on the field (= max for that color).
   const max = { fire: 0, water: 0, earth: 0, air: 0, light: 0, dark: 0 };
   for (const el of crystals) if (max[el] !== undefined) max[el] += 1;
@@ -3043,7 +3079,7 @@ function ElementalMana({ mana, crystals = [], active }) {
   return (
     <div
       className={`tcg-mana tcg-mana--elemental ${active ? "tcg-mana--active" : ""}`}
-      title={`Cristalli sul campo: ${totalCrystals}`}
+      title={`Cristalli sul campo: ${totalCrystals}${isMine ? ` · Cristalli giocati questo turno: ${crystalPlayed ? "1/1" : "0/1"}` : ""}`}
     >
       {totalCrystals === 0 ? (
         <span className="tcg-mana-empty">💎 Nessun cristallo</span>
@@ -3065,6 +3101,14 @@ function ElementalMana({ mana, crystals = [], active }) {
             </span>
           );
         })
+      )}
+      {isMine && (
+        <span
+          className={`tcg-mana-cstcounter ${crystalPlayed ? "tcg-mana-cstcounter--used" : ""}`}
+          title={crystalPlayed ? "Hai già giocato il cristallo di questo turno." : "Puoi ancora giocare 1 cristallo questo turno."}
+        >
+          💎 {crystalPlayed ? "1/1" : "0/1"}
+        </span>
       )}
     </div>
   );
