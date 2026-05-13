@@ -3765,7 +3765,7 @@ section.tcg-page,
 }
 
 /* Lift all real content above the bg layer */
-.tcg-match--arcane > *:not(.tcg-arcane-bg):not(.tcg-rotate-prompt) {
+.tcg-match--arcane > *:not(.tcg-arcane-bg) {
   position: relative;
   z-index: 1;
 }
@@ -3968,73 +3968,65 @@ section.tcg-page,
   .tcg-match--arcane .tcg-action-bar { padding: 4px 6px; }
 }
 
-/* ── Portrait phone prompt: orientation-lock proof, dismissable ── */
-/* Visibility is now controlled by React (component returns null when in landscape
-   or after the user dismisses it). When rendered, it always shows. */
-.tcg-rotate-prompt {
+/* ── Force-landscape: CSS-rotate the match on portrait phones ──
+   Orientation lock can prevent the device from going landscape, so we
+   rotate the game 90deg ourselves. The user simply tilts the phone
+   landscape (or even keeps it portrait — but landscape is intended).
+
+   .tcg-match-stage is the rotation target. In landscape it stays as a
+   normal flex column wrapper. In portrait it is repositioned as a fixed
+   100vh × 100vw rectangle, then rotated 90deg around its top-left so it
+   visually fills the viewport in landscape proportions. */
+.tcg-match-stage {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  width: 100%;
+}
+.tcg-match--portrait {
+  /* Keep the root pinned so the rotated stage has a stable containing block */
   position: fixed;
   inset: 0;
-  z-index: 9000;
-  background: radial-gradient(ellipse at center, rgba(40, 12, 75, 0.97), rgba(5, 1, 12, 0.99));
-  color: #f5e9ff;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
-  padding: 24px;
-  text-align: center;
-  pointer-events: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
 }
-.tcg-rotate-prompt-icon {
-  font-size: 5rem;
-  animation: tcg-rotate-spin 2.2s ease-in-out infinite;
-  text-shadow: 0 0 20px rgba(217, 70, 239, 0.8);
+.tcg-match--portrait .tcg-match-stage {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  width: 100vh;
+  height: 100vw;
+  transform-origin: top left;
+  transform: rotate(90deg);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+  gap: 10px;
 }
-.tcg-rotate-prompt-text {
-  font-family: var(--font-title, serif);
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.04em;
-  text-shadow: 0 0 10px rgba(217, 70, 239, 0.6);
-  max-width: 320px;
+/* The ghost lives outside the stage (in viewport coords) so we don't have
+   to undo the rotation in JS. In portrait mode rotate the ghost the same
+   90deg so it appears upright from the user's landscape viewpoint. */
+.tcg-match--portrait .tcg-drag-ghost {
+  transform: translate(-50%, -50%) rotate(86deg);
 }
-.tcg-rotate-prompt-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(217, 70, 239, 0.25);
-  border: 1px solid rgba(244, 114, 182, 0.6);
-  color: #fef3ff;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.tcg-rotate-prompt-close:hover { background: rgba(217, 70, 239, 0.45); }
-.tcg-rotate-prompt-continue {
-  margin-top: 6px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #a855f7, #6366f1);
-  border: 1px solid #c4b5fd;
-  color: #fff;
-  font-family: var(--font-title, serif);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 0 16px rgba(168, 85, 247, 0.55);
-}
-.tcg-rotate-prompt-continue:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 22px rgba(168, 85, 247, 0.75);
-}
-@keyframes tcg-rotate-spin {
-  0%, 100% { transform: rotate(-15deg); }
-  50%      { transform: rotate(75deg); }
-}
+/* Hand becomes shorter in portrait so the action bar still fits */
+.tcg-match--portrait .tcg-card--md,
+.tcg-match--portrait .tcg-card--sm { width: 96px; padding: 3px; gap: 2px; }
+.tcg-match--portrait .tcg-card-name { font-size: 0.66rem; }
+.tcg-match--portrait .tcg-card-art { height: 60px; }
+.tcg-match--portrait .tcg-card-art-emoji { font-size: 1.8rem; }
+.tcg-match--portrait .tcg-card-flavor { display: none; }
+.tcg-match--portrait .tcg-board { min-height: 96px; padding: 4px; gap: 4px; }
+.tcg-match--portrait .tcg-match-head { padding: 4px 8px; }
+.tcg-match--portrait .tcg-match-head .tcg-match-round { font-size: 0.72rem; }
+.tcg-match--portrait .tcg-zone { padding: 6px; gap: 6px; }
+.tcg-match--portrait .tcg-hand-wrap { padding: 4px 6px; }
+.tcg-match--portrait .tcg-hand-label { font-size: 0.7rem; margin-bottom: 3px; }
+.tcg-match--portrait .tcg-divider { margin: 2px 0; }
+.tcg-match--portrait .tcg-action-bar { padding: 4px 6px; }
 
 /* ── Drag and drop visuals ──────────────────────────────────── */
 .tcg-match--arcane .tcg-card[data-tcg-draggable="true"] {

@@ -1936,28 +1936,21 @@ function CombatPreview({ prediction }) {
   );
 }
 
-/* ============================================================
-   ROTATE HINT — JS-detected portrait nag (orientation-lock proof)
-   Uses innerWidth vs innerHeight (not CSS @media orientation), works
-   even when iOS/Android has orientation lock enabled. Always dismissable,
-   and remembers the dismissal across the session.
-   ============================================================ */
-function RotateHint() {
-  const [dismissed, setDismissed] = useState(() => {
-    try { return sessionStorage.getItem("tcgRotateHintDismissed") === "1"; } catch { return false; }
-  });
-  const [isPortrait, setIsPortrait] = useState(() => {
+/* Detect a portrait viewport (innerWidth < innerHeight on a phone-sized screen).
+   Used to auto-rotate the match stage 90deg via CSS so the game always shows
+   in landscape regardless of orientation lock. Works even when CSS
+   @media (orientation: ...) is unreliable. */
+function useIsPortrait() {
+  const compute = () => {
     if (typeof window === "undefined") return false;
     return window.innerHeight > window.innerWidth && window.innerWidth < 900;
-  });
+  };
+  const [isPortrait, setIsPortrait] = useState(compute);
   useEffect(() => {
-    function recompute() {
-      setIsPortrait(window.innerHeight > window.innerWidth && window.innerWidth < 900);
-    }
+    const recompute = () => setIsPortrait(compute());
     window.addEventListener("resize", recompute);
     window.addEventListener("orientationchange", recompute);
-    // Some phones fire orientationchange before the viewport actually updates;
-    // a short delayed re-check catches that case.
+    // Some phones fire orientationchange before the viewport actually updates.
     const t = setTimeout(recompute, 400);
     return () => {
       window.removeEventListener("resize", recompute);
@@ -1965,23 +1958,7 @@ function RotateHint() {
       clearTimeout(t);
     };
   }, []);
-  if (dismissed || !isPortrait) return null;
-  const close = () => {
-    setDismissed(true);
-    try { sessionStorage.setItem("tcgRotateHintDismissed", "1"); } catch { /* ignore */ }
-  };
-  return (
-    <div className="tcg-rotate-prompt" role="dialog" aria-label="Suggerimento orientamento">
-      <button type="button" className="tcg-rotate-prompt-close" onClick={close} aria-label="Chiudi">✕</button>
-      <div className="tcg-rotate-prompt-icon">🔄</div>
-      <div className="tcg-rotate-prompt-text">
-        Per la migliore esperienza, ruota il telefono in orizzontale.
-      </div>
-      <button type="button" className="tcg-rotate-prompt-continue" onClick={close}>
-        Continua comunque
-      </button>
-    </div>
-  );
+  return isPortrait;
 }
 
 /* ============================================================
@@ -1993,6 +1970,7 @@ function LiveMatch({ match, uid, onExit }) {
   const oSide = oppSide(mySide);
   const state = match.state;
   const myTurn = state.activeSide === mySide;
+  const isPortrait = useIsPortrait();
 
   const [selectedAttacker, setSelectedAttacker] = useState(null);
   const [pendingSpell, setPendingSpell] = useState(null); // { instId, def, targets }
@@ -2507,14 +2485,17 @@ function LiveMatch({ match, uid, onExit }) {
   const oppBoard = state.board[oSide];
 
   return (
-    <div className="tcg-match tcg-match--arcane">
+    <div className={`tcg-match tcg-match--arcane${isPortrait ? " tcg-match--portrait" : ""}`}>
+      {/* Stage: in portrait this gets CSS-rotated 90deg so phones with
+          orientation lock still see the game in landscape. The arcane
+          background lives inside the stage so it rotates with it. */}
+      <div className="tcg-match-stage">
       {/* Dark magical scene: drifting motes + arcane rune ring (pure CSS) */}
       <div className="tcg-arcane-bg" aria-hidden="true">
         <div className="tcg-arcane-runes" />
         <div className="tcg-arcane-motes" />
         <div className="tcg-arcane-glow" />
       </div>
-      <RotateHint />
       {attackSplash && (
         <div
           key={attackSplash.key}
@@ -2800,6 +2781,7 @@ function LiveMatch({ match, uid, onExit }) {
           onClose={() => setViewingCard(null)}
         />
       )}
+      </div>{/* /tcg-match-stage */}
 
       {dragInfo && (
         <div
