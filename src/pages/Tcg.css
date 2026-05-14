@@ -398,6 +398,7 @@ section.tcg-page,
   color: var(--tcg-ink);
   border: 4px solid var(--el-color);
   padding: 6px;
+  border-radius: 6px;
   box-shadow: 5px 5px 0 0 var(--tcg-ink);
   transition: transform .1s, box-shadow .1s;
   font-family: inherit;
@@ -1156,6 +1157,27 @@ section.tcg-page,
   justify-content: center;
   align-items: flex-start;
   padding: 12px;
+}
+/* Inside the battle shell (which is `position: fixed; overflow: hidden`)
+   the end-of-match screen would otherwise clip on short / portrait
+   phones — the result + reward + log + "Torna alla lobby" button just
+   disappear off the bottom edge. Make .tcg-end fill the shell and own
+   its own vertical scroll. */
+.tcg-battle-shell .tcg-end {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  /* Padding-top reserves room for the iOS notch / Android status bar
+     and a little breathing space; padding-bottom keeps the lobby
+     button clear of the home indicator. */
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.tcg-battle-shell .tcg-end .tcg-end-card {
+  flex-shrink: 0;
 }
 .tcg-end-card {
   width: min(560px, 100%);
@@ -4514,9 +4536,21 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 /* Fluid card width — scales with the smaller viewport edge so
    landscape phones get bigger cards than portrait phones, but
    never tiny on tablets. Narrowed (was 14vmin / 140px) so the
-   battle row fits multiple cards without horizontal overflow. */
+   battle row fits multiple cards without horizontal overflow.
+
+   Hand cards are noticeably bigger than board thumbnails so the
+   art is readable in hand without lifting. --tcg-hand-peek is the
+   amount of the card visible above the screen edge by default — the
+   bottom of my-zone reserves this much padding so creatures don't
+   slip behind the overlay. */
 .tcg-battle-shell .tcg-match.tcg-match--arcane {
   --tcg-card-w: clamp(58px, 10.5vmin, 104px);
+  --tcg-hand-card-w: clamp(150px, 22vmin, 240px);
+  --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.45);
+  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.5);
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine {
+  padding-bottom: var(--tcg-hand-peek);
 }
 .tcg-battle-shell .tcg-card--sm,
 .tcg-battle-shell .tcg-card--md {
@@ -4575,11 +4609,11 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   inset: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
+  /* Battlefield fills the screen. The hand and action bar are
+     absolute overlays anchored at the bottom (see below), so they
+     no longer eat grid rows. */
+  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 6px;
-  /* Bottom padding reserves the iOS home-indicator / Android gesture
-     zone so the action bar (with Fine Turno) is never hidden behind
-     the system UI. Top padding handles the notch / status bar. */
   padding: calc(6px + env(safe-area-inset-top, 0px)) 6px calc(6px + env(safe-area-inset-bottom, 0px)) 6px;
   overflow: hidden;
 }
@@ -4587,16 +4621,21 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-column: 1; grid-row: 2; min-height: 0; }
 .tcg-battle-shell .tcg-match--arcane .tcg-divider   { grid-column: 1; grid-row: 3; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-column: 1; grid-row: 4; min-height: 0; }
-.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap { grid-column: 1; grid-row: 5; }
+/* Hand + action bar are positioned as overlays — see overrides below.
+   The action bar sits just above the hand peek so it never gets
+   obscured by lifted cards. */
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
-  grid-column: 1;
-  grid-row: 6;
+  position: absolute;
+  right: 8px;
+  bottom: calc(var(--tcg-hand-peek) + 6px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  width: auto;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  padding: 3px 6px;
+  padding: 0;
   max-height: none;
   min-height: 0;
 }
@@ -4972,66 +5011,73 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   font-size: 0.7rem;
 }
 
-/* Hand strip — single horizontally-scrolling row. Hand cards are
-   the same size as board cards (--tcg-card-w) so they're readable
-   without a hover preview. Hover/touch lifts the active card up
-   (translateY) like MTG Arena. Smooth-scroll snap on the row keeps
-   the carousel feel on touch. */
+/* Hand — floats over the battlefield as an overlay so it never
+   steals layout space. Cards "peek up" from the bottom of the
+   screen by default (only the top portion visible) and lift to
+   full visibility on hover/focus/touch — MTG Arena style.
+
+   The wrap itself collapses to zero height; its children are
+   absolutely positioned. This lets the cards be much bigger than
+   what `flex-shrink` would allow if they all shared the available
+   width — instead, they keep their full size and the row scrolls
+   horizontally when there are too many to fit. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
-  --tcg-hand-card-w: var(--tcg-card-w);
-  padding: 4px 6px;
-  /* Reserve a bit of headroom so the lifted card doesn't get
-     clipped by the wrap's own bounds. */
-  max-height: calc(var(--tcg-hand-card-w) * 1.6 + 32px);
-  min-height: calc(var(--tcg-hand-card-w) * 1.5 + 26px);
+  /* Hand-card sizing variables (--tcg-hand-card-w / -h, --tcg-hand-peek)
+     are defined on .tcg-match--arcane so the my-zone can reserve room
+     for the peek using the same values. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  max-height: none;
+  min-height: 0;
+  height: 0;
+
   overflow: visible;
-  display: flex;
-  flex-direction: column;
-  transition: max-height 0.22s ease, min-height 0.22s ease, padding 0.22s ease;
+  pointer-events: none;
+  transition: none;
 }
-/* When a hand card is hovered/focused, grow the wrap so the
-   lifted card has room to rise without clipping at the top edge.
-   Uses :has() — modern browsers (Safari 15.4+, Chrome 105+, FF 121+). */
-.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap:has(.tcg-card--clickable:hover),
-.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap:has(.tcg-card--clickable:focus-visible),
-.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap:has(.tcg-card[data-tcg-draggable]:active) {
-  max-height: calc(var(--tcg-hand-card-w) * 2.4 + 40px);
-  min-height: calc(var(--tcg-hand-card-w) * 2.2 + 32px);
-}
-/* Collapsed: only the label bar is visible. Tap to re-open. The
-   bar is auto-collapsed when it isn't the player's turn so the
-   field gets the focus (and the user can't accidentally drag during
-   the opponent's animation pass). */
-.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap--collapsed {
-  max-height: 32px;
-  min-height: 32px;
-  padding: 4px 6px;
-}
+
+/* Collapsed: hide the cards entirely; only the toggle chip remains. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap--collapsed .tcg-hand {
   display: none;
 }
+
+/* Label: small chip pinned just above the peeking card tops. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
-  font-size: 0.66rem;
-  margin-bottom: 2px;
-  flex-shrink: 0;
-  /* Native button styling reset — the label is now an interactive
-     toggle, but visually it's still a strip of text. */
-  background: none;
-  border: 0;
-  color: inherit;
-  text-align: left;
-  font: inherit;
-  font-size: 0.66rem;
+  pointer-events: auto;
+  position: absolute;
+  left: 10px;
+  bottom: calc(var(--tcg-hand-peek) + 4px);
+  z-index: 1;
+  width: fit-content;
+  background: rgba(10, 5, 25, 0.82);
+  color: var(--tcg-cream);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 4px;
+  padding: 3px 10px;
+  margin: 0;
+  font-size: 0.68rem;
   cursor: pointer;
-  padding: 0;
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.68rem;
   letter-spacing: inherit;
+  text-align: left;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-label:hover {
   color: #ffd58b;
+  background: rgba(20, 10, 40, 0.9);
 }
 .tcg-hand-label-toggle {
   display: inline-block;
@@ -5041,79 +5087,111 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   opacity: 0.85;
   flex-shrink: 0;
 }
+
+/* Hand row: absolutely positioned so its bottom sits below the
+   stage edge (peek-h above stage_bot). Cards align flex-end so
+   only their TOP portion is visible above the screen edge; the
+   bottom is clipped by the stage's overflow: hidden.
+
+   Cards OVERLAP horizontally (negative margin) — fan-style hand
+   like Hearthstone / MTG Arena. Hovered card lifts way up and
+   comes to the front via z-index.
+
+   The row is intentionally tall (2 × card_h) so a hover-lifted
+   card has room to translate upward without being clipped by the
+   row's own overflow-y (which the spec forces to auto whenever
+   overflow-x is auto). */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tcg-hand-peek) - var(--tcg-hand-card-h));
+  height: calc(var(--tcg-hand-card-h) * 2.3);
+
+  display: flex;
   flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: center;
+  /* No gap — cards overlap via negative margin instead. */
+  gap: 0;
+  padding: 0 12px;
+
   overflow-x: auto;
-  overflow-y: hidden;
-  gap: 4px;
-  padding-bottom: 2px;
-  align-items: flex-start;
-  flex: 1 1 auto;
-  min-height: 0;
-  /* iOS momentum scroll */
+  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  /* Slim, themed scrollbar; lives below stage edge so invisible. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.5) transparent;
+
+  /* Enable scroll capture on this row so swipes / wheel work. */
+  pointer-events: auto;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand::-webkit-scrollbar {
+  height: 4px;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.5);
+  border-radius: 2px;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand > * {
-  flex-shrink: 0;
-  max-height: 100%;
+  flex: 0 0 var(--tcg-hand-card-w);
 }
-/* Cards in the hand strip clip overflow so a spell with long
-   effect text can't stretch the row vertically. Tap to open
-   the full card in the side preview / detail modal. */
-.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card,
+/* Overlap: each subsequent card slides ~45% under the previous
+   one so the visible "tab" of each is the left ~55% (cost / name /
+   element band + most of the art). */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand > * + * {
+  margin-left: calc(var(--tcg-hand-card-w) * -0.45);
+}
+
+/* Hand cards: full --tcg-hand-card-w wide, no shrinking. The art
+   takes ~62% of the width so it's genuinely visible. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
+  --tcg-card-w: var(--tcg-hand-card-w);
+  position: relative;
+  width: var(--tcg-hand-card-w);
+  height: var(--tcg-hand-card-h);
+  max-height: var(--tcg-hand-card-h);
+  overflow: hidden;
+  transform-origin: center bottom;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  will-change: transform;
+}
+/* Board cards keep their previous size cap (board cards stay
+   small thumbnails so the field stays readable). */
 .tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
   height: 100%;
   max-height: calc(var(--tcg-card-w) * 1.45);
   overflow: hidden;
 }
 
-/* Hand cards — same readable size as board cards. Hovered card
-   lifts up by 14% of its height so the player can pick it out of
-   the fanned row, similar to MTG Arena. The popup still opens
-   after 1.5 s for the full detail view. */
-.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
-  --tcg-card-w: var(--tcg-hand-card-w);
-  transform-origin: center bottom;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
-  will-change: transform;
-}
-.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
-  /* `position: relative` is required for z-index on hover to win
-     against any absolute / overlaid sibling content. */
-  position: relative;
-}
+/* Hover / focus / drag-active: card pops out of the fan, lifts
+   way up, slides to the front, and gets a strong gold highlight
+   so the player can't miss which one they're aiming at. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
-  /* Lift higher (was -16%) so the card visibly pops out of the row
-     and the hand-wrap (which now grows via :has() above) follows. */
-  transform: translateY(-55%) scale(1.15);
+  transform: translateY(calc(var(--tcg-hand-card-h) * -0.85)) scale(1.18);
   z-index: 200;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.8), 0 0 28px rgba(167, 139, 250, 0.7), 0 0 0 2px rgba(199, 210, 254, 0.4) inset;
-  filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.5));
+  outline: 3px solid #ffd54a;
+  outline-offset: 2px;
+  box-shadow:
+    0 28px 60px rgba(0, 0, 0, 0.9),
+    0 0 48px rgba(255, 213, 74, 0.85),
+    0 0 0 2px rgba(255, 232, 130, 0.6) inset;
+  filter:
+    drop-shadow(0 0 18px rgba(255, 213, 74, 0.75))
+    brightness(1.06);
 }
 /* Selected hand card (pending spell, discard target) stays lifted
-   so the player can see the chosen card without hovering. */
+   and gold-outlined, slightly less than the hover state. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
-  transform: translateY(-30%) scale(1.05);
+  transform: translateY(calc(var(--tcg-hand-card-h) * -0.7)) scale(1.1);
   z-index: 150;
-}
-.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap { overflow: visible; }
-/* Smooth horizontal scroll on the hand row — snap-to-card on touch
-   so flicking lands on a card edge, and CSS `scroll-behavior: smooth`
-   on JS-driven scrolls (e.g. when a new card is drawn). */
-.tcg-battle-shell .tcg-match--arcane .tcg-hand {
-  overflow-y: visible;
-  scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: 8px;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-}
-.tcg-battle-shell .tcg-match--arcane .tcg-hand > * {
-  scroll-snap-align: center;
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
 }
 
 /* Side preview — centered MTG-style popup. Renders only when a card
@@ -5284,13 +5362,19 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      limiting axis — actually grow large enough to read stats. */
   .tcg-battle-shell .tcg-match.tcg-match--arcane {
     --tcg-card-w: clamp(72px, 20vh, 120px);
+    /* Phone hand cards are big and don't shrink — the row scrolls
+       horizontally when there are too many to fit. The min keeps
+       cards readable on tiny landscape phones; the max keeps them
+       sane on tablets. Peek is 42% (not the full 50%) on phone so
+       the my-zone keeps enough vertical room for creatures. */
+    --tcg-hand-card-w: clamp(160px, 38vh, 240px);
+    --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.45);
+    --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.42);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
     grid-template-columns: minmax(0, 1fr);
-    /* Make the field zones the dominant rows — 2fr each — so they
-       eat the spare height. Header/divider/hand/actions are auto-
-       sized rows that hug their content. */
-    grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 2fr) auto auto;
+    /* Field zones dominate; hand + action bar are overlay (no row). */
+    grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 2fr);
     gap: 2px;
     padding: 2px;
   }
@@ -5298,7 +5382,6 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp  { grid-row: 2; }
   .tcg-battle-shell .tcg-match--arcane .tcg-divider    { grid-row: 3; }
   .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 4; }
-  .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap  { grid-row: 5; }
   .tcg-battle-shell .tcg-match--arcane .tcg-log {
     max-height: 56px;
     overflow-y: auto;
@@ -5356,8 +5439,10 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      the entire zone. */
   .tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
     height: 100%;
-    max-height: clamp(120px, 32vh, 240px);
-    min-height: 100px;
+    max-height: clamp(110px, 30vh, 220px);
+    /* Shrink-friendly min so creatures don't overflow vertically
+       when the bigger hand peek eats into my-zone height. */
+    min-height: 70px;
     width: auto;
     max-width: none;
     aspect-ratio: 1 / 1.45;
@@ -5379,76 +5464,47 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     z-index: 5;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
+    /* Phone hand-card sizing is set at the match level above. */
     background: transparent;
     border: 0;
     box-shadow: none;
-    padding: 0 4px;
-    /* Hand cards 2-2.5× the previous size so the art is readable
-       without lifting. Hover/touch still lifts the card to reveal
-       the full description + ability text above the field. */
-    --tcg-hand-card-w: clamp(110px, 28vh, 200px);
-    max-height: calc(var(--tcg-hand-card-w) * 0.55 + 14px);
-    min-height: calc(var(--tcg-hand-card-w) * 0.5 + 12px);
-    overflow: visible;
-    z-index: 30;
-    transition: max-height 0.22s ease, min-height 0.22s ease;
-  }
-  /* Cards align LEFT so the hand row hugs the left edge, leaving
-     the right side free for the action chips & counters. */
-  .tcg-battle-shell .tcg-match--arcane .tcg-hand {
-    justify-content: flex-start;
-    align-items: flex-end;
-  }
-  /* No wrap expansion on phone — the wrap stays peek-sized at all
-     times so the only "body" on screen is the card itself. The
-     lifted card overflows upward via overflow: visible and floats
-     freely over the field; nothing else grows behind it. */
-  /* Hand row anchors cards from their BOTTOM so the wrap clips the
-     bottom edge of the card naturally — top of the card extends up
-     and is visible above the strip. */
-  .tcg-battle-shell .tcg-match--arcane .tcg-hand {
-    align-items: flex-end;
     padding: 0;
+    margin: 0;
+    overflow: visible;
+    transition: none;
+  }
+  /* Hand row: smaller padding on phone — the cards still need
+     room to flex-shrink when there are many in hand. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand {
+    justify-content: center;
+    padding: 0 6px;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
-    /* Force the card to its FULL natural size — without this, the
-       short wrap collapses the card via the legacy `height: 100%`
-       rule and you get squished thumbnails. */
-    width: var(--tcg-hand-card-w);
-    height: calc(var(--tcg-hand-card-w) * 1.45);
-    max-height: none;
-    flex: 0 0 auto;
-    /* `position: relative` is REQUIRED for z-index on hover to win
-       against the absolute-positioned pstrip overlay above. */
-    position: relative;
-    /* Push card DOWN so only its top ~half peeks above the strip. */
-    transform: translateY(45%);
-    transform-origin: bottom center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    /* No translateY(45%) here — the hand container is already
+       sized to the peek (half the card) and the rest extends below
+       the viewport edge, which the battle-shell clips. */
+    transform: none;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
-    /* Lift fully out — card is now wholly above the bottom strip. */
-    transform: translateY(-55%) scale(1.1);
-    z-index: 200;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.85), 0 0 28px rgba(167, 139, 250, 0.7), 0 0 0 2px rgba(199, 210, 254, 0.4) inset;
-    filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.5));
+    transform: translateY(calc(var(--tcg-hand-card-h) * -0.85)) scale(1.18);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
-    transform: translateY(-30%) scale(1.02);
-    z-index: 150;
+    transform: translateY(calc(var(--tcg-hand-card-h) * -0.7)) scale(1.1);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
-    /* The label is now just a tiny chevron + count, no decoration. */
-    background: transparent;
-    color: rgba(232, 213, 255, 0.7);
-    padding: 0;
-    font-size: 0.6rem;
-    line-height: 1;
-    margin-bottom: 1px;
+    /* Subtle chip on phone — keeps the toggle reachable but doesn't
+       eat real estate. */
+    background: rgba(10, 5, 25, 0.7);
+    color: rgba(232, 213, 255, 0.85);
+    padding: 2px 8px;
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    border-radius: 3px;
+    font-size: 0.62rem;
+    margin: 0 6px 2px;
   }
 
   /* ── Player strip: floating bar with name CENTERED at the
@@ -5531,13 +5587,8 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 
   /* ── Action chips cluster bottom-right ── */
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
-    grid-column: 1;
-    grid-row: 6;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 4px;
+    /* Stay absolute (set in the base rule above) — just tighten
+       the phone styling. The grid no longer reserves a row for it. */
     padding: 2px 4px;
     background: transparent;
     border: 0;
