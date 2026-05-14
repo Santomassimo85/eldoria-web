@@ -682,6 +682,21 @@ section.tcg-page,
   z-index: 2;
 }
 .tcg-board-tag--revived { background: #0d9488; left: auto; right: 6px; }
+/* Icon-only variant — compact 18×18 chip for status badges (sonnolenza,
+   tapped, rinato) so a stack of mini-creatures stays readable. */
+.tcg-board-tag--icon {
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  letter-spacing: 0;
+  border-radius: 50%;
+}
 
 /* ============================================================
    LIVE MATCH BOARD
@@ -3806,15 +3821,31 @@ section.tcg-page,
 .tcg-match.tcg-match--arcane {
   position: relative;
   isolation: isolate;
-  /* Warm tabletop: amber center spotlight on a deep wooden floor */
+  /* Epic void battlefield: deep cosmic indigo with a violet nebula
+     glow at the center, sprinkled starfield, and a hard vignette
+     pulling the eye to the board. */
   background:
-    radial-gradient(ellipse 80% 55% at 50% 45%, rgba(255, 170, 80, 0.55) 0%, rgba(220, 120, 50, 0.25) 25%, transparent 60%),
-    radial-gradient(ellipse at 50% 50%, rgba(60, 30, 10, 0.55) 0%, rgba(15, 7, 3, 0.9) 80%),
-    linear-gradient(180deg, #160903 0%, #3c1f0c 28%, #6b3a17 50%, #3c1f0c 78%, #150803 100%);
-  color: #fde9c4;
+    /* sparse starfield — two static radial-gradients faked as dots */
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 22%, rgba(255, 255, 255, 0.75) 50%, transparent 51%),
+    radial-gradient(1px 1px at 36% 64%, rgba(255, 255, 255, 0.7)  50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 72%, rgba(255, 255, 255, 0.65) 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 86%, rgba(255, 255, 255, 0.75) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 64% 12%, rgba(200, 180, 255, 0.9) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 8% 50%, rgba(180, 220, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 92% 40%, rgba(220, 200, 255, 0.85) 50%, transparent 51%),
+    /* violet nebula glow at center */
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(139, 92, 246, 0.32) 0%, rgba(76, 29, 149, 0.18) 35%, transparent 70%),
+    /* cyan accent on top half — battlefield horizon */
+    radial-gradient(ellipse 60% 30% at 50% 30%, rgba(34, 211, 238, 0.18) 0%, transparent 60%),
+    /* magenta accent at bottom — your side */
+    radial-gradient(ellipse 60% 30% at 50% 80%, rgba(217, 70, 239, 0.22) 0%, transparent 60%),
+    /* the void itself */
+    linear-gradient(180deg, #02010a 0%, #0a0428 22%, #1a0d3e 50%, #0a0428 78%, #02010a 100%);
+  color: #f8f4ff;
   padding: 8px;
-  border: 2px solid rgba(212, 175, 55, 0.45);
-  box-shadow: 0 0 60px rgba(120, 60, 15, 0.45) inset, 0 0 40px rgba(0, 0, 0, 0.65);
+  border: 2px solid rgba(167, 139, 250, 0.4);
+  box-shadow: 0 0 60px rgba(76, 29, 149, 0.45) inset, 0 0 40px rgba(0, 0, 0, 0.8);
   border-radius: 8px;
   overflow: hidden;
   min-height: 100dvh;
@@ -3825,12 +3856,12 @@ section.tcg-page,
   pointer-events: none;
   z-index: 0;
 }
-/* Subtle inner glow layer */
+/* Subtle inner glow layer — violet nebula */
 .tcg-match--arcane .tcg-arcane-runes {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 45% at 50% 50%, rgba(255, 200, 130, 0.14) 0%, transparent 75%);
+    radial-gradient(ellipse 90% 45% at 50% 50%, rgba(167, 139, 250, 0.16) 0%, transparent 75%);
   opacity: 1;
   filter: none;
   animation: none;
@@ -3842,12 +3873,12 @@ section.tcg-page,
 .tcg-match--arcane .tcg-arcane-motes {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 110% 70% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.45) 78%, rgba(0, 0, 0, 0.75) 100%);
+  background: radial-gradient(ellipse 110% 70% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.55) 78%, rgba(0, 0, 0, 0.85) 100%);
   background-size: 100% 100%;
   animation: none;
   opacity: 1;
 }
-/* Center spotlight that breathes */
+/* Center spotlight that breathes — violet/cyan pulse */
 .tcg-match--arcane .tcg-arcane-glow {
   position: absolute;
   left: 50%;
@@ -3855,8 +3886,8 @@ section.tcg-page,
   width: 70vmin;
   height: 30vmin;
   transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse, rgba(255, 200, 100, 0.28) 0%, transparent 70%);
-  filter: blur(22px);
+  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.32) 0%, rgba(34, 211, 238, 0.12) 45%, transparent 70%);
+  filter: blur(28px);
   animation: tcg-arena-pulse 5s ease-in-out infinite;
   border-radius: 50%;
 }
@@ -3884,41 +3915,41 @@ section.tcg-page,
 .tcg-match--arcane .tcg-action-bar { grid-column: 1; }
 .tcg-match--arcane .tcg-side-preview { grid-column: 2; grid-row: 2 / -1; align-self: stretch; }
 
-/* Header — gilded wood strip */
+/* Header — obsidian strip with violet arcane trim */
 .tcg-match--arcane .tcg-match-head {
-  background: linear-gradient(180deg, rgba(75, 38, 15, 0.9), rgba(35, 18, 7, 0.92));
-  color: #fde9c4;
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 12px rgba(212, 175, 55, 0.18) inset;
+  background: linear-gradient(180deg, rgba(20, 10, 45, 0.92), rgba(8, 4, 24, 0.95));
+  color: #f8f4ff;
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 0 12px rgba(167, 139, 250, 0.22) inset;
   padding: 6px 12px;
   border-radius: 8px;
 }
 .tcg-match--arcane .tcg-match-round {
-  color: #ffd58b;
-  text-shadow: 0 0 8px rgba(255, 165, 80, 0.45);
+  color: #e9d5ff;
+  text-shadow: 0 0 8px rgba(167, 139, 250, 0.6);
 }
 .tcg-match--arcane .tcg-btn--tiny {
-  background: rgba(80, 40, 15, 0.7);
-  border: 1px solid rgba(212, 175, 55, 0.5);
-  color: #fde9c4;
+  background: rgba(40, 20, 80, 0.75);
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  color: #f8f4ff;
 }
 .tcg-match--arcane .tcg-btn--tiny:hover:not(:disabled) {
-  background: rgba(115, 60, 22, 0.85);
-  border-color: #ffd58b;
+  background: rgba(76, 29, 149, 0.9);
+  border-color: #c4b5fd;
 }
 
-/* Zones — wood-trimmed strips, warm color accents per side */
+/* Zones — obsidian strips with red/blue accent edges per side */
 .tcg-match--arcane .tcg-zone {
-  background: linear-gradient(180deg, rgba(80, 40, 16, 0.45) 0%, rgba(30, 16, 7, 0.55) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  box-shadow: 0 4px 14px rgba(0,0,0,0.4), 0 0 0 1px rgba(255, 200, 130, 0.07) inset;
+  background: linear-gradient(180deg, rgba(20, 10, 45, 0.55) 0%, rgba(8, 4, 24, 0.7) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.32);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.55), 0 0 0 1px rgba(199, 210, 254, 0.08) inset;
   backdrop-filter: none;
   border-radius: 10px;
   padding: 6px 8px;
   gap: 6px;
 }
-.tcg-match--arcane .tcg-zone--opp  { border-top: 2px solid rgba(239, 68, 68, 0.6); }
-.tcg-match--arcane .tcg-zone--mine { border-bottom: 2px solid rgba(56, 189, 248, 0.6); }
+.tcg-match--arcane .tcg-zone--opp  { border-top: 2px solid rgba(239, 68, 68, 0.7); }
+.tcg-match--arcane .tcg-zone--mine { border-bottom: 2px solid rgba(56, 189, 248, 0.7); }
 /* Slight scale-down on opponent's cards to fake "back row is farther" perspective */
 .tcg-match--arcane .tcg-zone--opp .tcg-card { transform: scale(0.94); transform-origin: top center; }
 .tcg-match--arcane .tcg-zone--opp .tcg-card--clickable:hover:not(:disabled) {
@@ -3926,8 +3957,8 @@ section.tcg-page,
 }
 
 .tcg-match--arcane .tcg-board {
-  background: rgba(15, 7, 3, 0.25);
-  border: 1px dashed rgba(255, 200, 130, 0.22);
+  background: rgba(2, 1, 10, 0.35);
+  border: 1px dashed rgba(199, 210, 254, 0.22);
   border-radius: 8px;
   min-height: 130px;
   padding: 6px;
@@ -3936,26 +3967,26 @@ section.tcg-page,
   justify-content: center;
 }
 .tcg-match--arcane .tcg-board-empty {
-  color: rgba(255, 200, 130, 0.55);
+  color: rgba(199, 210, 254, 0.6);
   font-style: italic;
 }
 
-/* Divider — horizon line glowing amber */
+/* Divider — horizon line glowing violet/cyan */
 .tcg-match--arcane .tcg-divider { position: relative; margin: 2px 0; }
 .tcg-match--arcane .tcg-divider-line {
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 200, 100, 0.7), rgba(255, 140, 50, 0.9), rgba(255, 200, 100, 0.7), transparent);
-  box-shadow: 0 0 10px rgba(255, 140, 50, 0.55);
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.7), rgba(167, 139, 250, 0.9), rgba(217, 70, 239, 0.7), transparent);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
 }
 .tcg-match--arcane .tcg-divider-hint {
-  color: #ffd58b;
-  text-shadow: 0 0 6px rgba(255, 140, 50, 0.55);
+  color: #e9d5ff;
+  text-shadow: 0 0 6px rgba(139, 92, 246, 0.6);
 }
 .tcg-match--arcane .tcg-spell-banner {
-  background: rgba(80, 35, 10, 0.92);
-  border: 1px solid rgba(255, 200, 100, 0.55);
-  color: #fde9c4;
-  box-shadow: 0 0 12px rgba(255, 140, 50, 0.4);
+  background: rgba(30, 15, 60, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.6);
+  color: #f8f4ff;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.45);
 }
 .tcg-match--arcane .tcg-face-attack {
   background: linear-gradient(135deg, #b91c1c, #ef4444);
@@ -3970,18 +4001,18 @@ section.tcg-page,
   box-shadow: 0 4px 14px rgba(67, 56, 202, 0.55), 0 0 0 1px rgba(199, 210, 254, 0.4) inset;
 }
 
-/* Hand — leather/wood tray at the bottom */
+/* Hand — obsidian tray with violet trim */
 .tcg-match--arcane .tcg-hand-wrap {
-  background: linear-gradient(180deg, rgba(75, 38, 15, 0.88), rgba(35, 18, 7, 0.92));
-  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: linear-gradient(180deg, rgba(20, 10, 45, 0.92), rgba(8, 4, 24, 0.95));
+  border: 1px solid rgba(167, 139, 250, 0.5);
   border-radius: 10px;
   padding: 6px 8px;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.45) inset, 0 0 12px rgba(212, 175, 55, 0.15) inset;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.55) inset, 0 0 12px rgba(139, 92, 246, 0.2) inset;
   backdrop-filter: none;
 }
 .tcg-match--arcane .tcg-hand-label {
-  color: #ffd58b;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  color: #e9d5ff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.7);
   margin-bottom: 4px;
   font-size: 0.78rem;
 }
@@ -3996,15 +4027,15 @@ section.tcg-page,
 }
 .tcg-match--arcane .tcg-hand > * { scroll-snap-align: start; flex-shrink: 0; }
 .tcg-match--arcane .tcg-hand::-webkit-scrollbar { height: 6px; }
-.tcg-match--arcane .tcg-hand::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.6); border-radius: 4px; }
+.tcg-match--arcane .tcg-hand::-webkit-scrollbar-thumb { background: rgba(167, 139, 250, 0.6); border-radius: 4px; }
 
-/* Action bar — slim, no more End Turn here (moved to side panel) */
+/* Action bar — slim violet panel */
 .tcg-match--arcane .tcg-action-bar {
-  background: rgba(30, 15, 5, 0.78);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(8, 4, 24, 0.78);
+  border: 1px solid rgba(167, 139, 250, 0.32);
   border-radius: 8px;
   padding: 6px 10px;
-  box-shadow: 0 0 0 1px rgba(255, 200, 130, 0.06) inset;
+  box-shadow: 0 0 0 1px rgba(199, 210, 254, 0.07) inset;
 }
 .tcg-match--arcane .tcg-btn--end {
   background: linear-gradient(135deg, #b45309, #d97706);
@@ -4014,35 +4045,35 @@ section.tcg-page,
 }
 .tcg-match--arcane .tcg-btn--end:disabled { opacity: 0.45; box-shadow: none; }
 .tcg-match--arcane .tcg-btn--undo {
-  background: rgba(75, 38, 15, 0.7);
-  border: 1px solid rgba(212, 175, 55, 0.5);
-  color: #fde9c4;
+  background: rgba(40, 20, 80, 0.7);
+  border: 1px solid rgba(167, 139, 250, 0.5);
+  color: #e9d5ff;
 }
 .tcg-match--arcane .tcg-log {
-  background: rgba(20, 10, 4, 0.7);
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  color: #fde9c4;
+  background: rgba(2, 1, 10, 0.7);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  color: #e9d5ff;
   border-radius: 6px;
 }
 
-/* Cards on the warm playmat */
+/* Cards on the void playmat */
 .tcg-match--arcane .tcg-card {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(167, 139, 250, 0.06) inset;
 }
 .tcg-match--arcane .tcg-card--clickable:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 10px 22px rgba(255, 165, 80, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  box-shadow: 0 10px 22px rgba(167, 139, 250, 0.45), 0 0 0 1px rgba(199, 210, 254, 0.1) inset;
 }
 .tcg-match--arcane .tcg-card--selected {
-  box-shadow: 0 0 0 3px #fbbf24, 0 0 22px rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 0 3px #c4b5fd, 0 0 22px rgba(167, 139, 250, 0.8);
 }
 
-/* Magnifier button — amber */
+/* Magnifier button — violet */
 .tcg-match--arcane .tcg-card-inspect-btn {
-  background: rgba(251, 191, 36, 0.92);
-  border: 1px solid #fef3c7;
-  color: #422006;
-  box-shadow: 0 0 8px rgba(251, 191, 36, 0.55);
+  background: rgba(167, 139, 250, 0.92);
+  border: 1px solid #ede9fe;
+  color: #1e1b4b;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.6);
   width: 28px; height: 28px;
   font-size: 0.95rem;
   opacity: 1;
@@ -4052,10 +4083,120 @@ section.tcg-page,
   font-size: 0.8rem;
 }
 
-/* Player strip — warm cream text */
+/* Slim transparent player strip — MTG Arena style. Reads as a
+   thin band of name + status icons + HP number + a flat HP bar
+   pinned at the bottom edge of the player zone. No box / no
+   background eating real estate. The "active" state just glows
+   the HP bar; the panel itself stays compact at all times. */
+.tcg-match--arcane .tcg-pstrip {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: #f8f4ff;
+  padding: 2px 8px 0;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: filter 0.22s ease;
+}
+.tcg-match--arcane .tcg-pstrip-name {
+  color: #f8f4ff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  line-height: 1.15;
+}
+/* Body row — HP value + mana + piles inline. Compact, no box.
+   Each child uses its own chip style (mana, piles already dark
+   glass via the rules below). */
+.tcg-match--arcane .tcg-pstrip-row {
+  background: transparent;
+  border: 0;
+  padding: 2px 0 0;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tcg-match--arcane .tcg-pstrip-hp {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* HP number sits inline; the actual bar is pinned to the bottom
+   edge of the strip via absolute positioning so it lines up with
+   the player zone's border. */
+.tcg-match--arcane .tcg-pstrip-hp-label {
+  color: #fecaca;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+.tcg-match--arcane .tcg-pstrip-hp-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(2, 1, 10, 0.6);
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+.tcg-match--arcane .tcg-pstrip-hp-fill {
+  height: 100%;
+  background: linear-gradient(to right, #b91c1c, #ef4444);
+  transition: width 0.25s ease;
+}
+/* Active player — HP bar glows and gets a tiny bit taller so
+   it's obvious who's playing without the whole panel changing. */
+.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp-track {
+  height: 6px;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.7);
+}
+.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp-fill {
+  background: linear-gradient(to right, #b91c1c, #ef4444, #fbbf24);
+}
+/* Deck / hand counter chips — tiny dark glass pills, just enough
+   to read the number without eating real estate. */
+.tcg-match--arcane .tcg-pstrip-pile {
+  background: rgba(8, 4, 24, 0.85);
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  color: #e9d5ff;
+  padding: 1px 7px;
+  font-size: 0.74rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px rgba(199, 210, 254, 0.06) inset;
+}
+.tcg-match--arcane .tcg-pstrip-pile:hover {
+  background: rgba(40, 20, 80, 0.92);
+  border-color: #c4b5fd;
+}
+/* Compact mana readout inside the slim pstrip — no big indigo
+   block; just a chip with the number + a thin row of crystals. */
+.tcg-match--arcane .tcg-pstrip .tcg-mana {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 5px;
+  color: #c7d2fe;
+}
+.tcg-match--arcane .tcg-pstrip .tcg-mana-num-cur { font-size: 1rem; }
+.tcg-match--arcane .tcg-pstrip .tcg-mana-num-max { font-size: 0.78rem; }
+.tcg-match--arcane .tcg-pstrip .tcg-mana-crystal { width: 8px; height: 10px; }
+.tcg-match--arcane .tcg-pstrip .tcg-mana-rail { max-width: 120px; gap: 2px; }
+/* The legacy --active background block is intentionally gone —
+   active state is signalled by the HP bar glow alone now. */
 .tcg-match--arcane .tcg-pstrip,
 .tcg-match--arcane [class^="tcg-pstrip"] {
-  color: #fde9c4;
+  color: #f8f4ff;
 }
 
 /* ── SIDE PREVIEW PANEL ─────────────────────────────────────── */
@@ -4272,14 +4413,38 @@ section.tcg-page,
   transition: transform 0.1s ease-out;
 }
 .tcg-drag-ghost.tcg-drag-ghost--invalid { filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6)) grayscale(0.5); }
+/* The ghost must look like the hand thumbnail, not the full card detail.
+   Hand thumbnails already hide flavor/effect text via the battle-shell
+   rule — apply the same hiding + height cap here so the dragged card
+   doesn't stretch into a long ribbon when the card has a long flavor
+   line or spell effect text. */
+.tcg-drag-ghost .tcg-card {
+  width: var(--tcg-card-w, 96px);
+  max-height: calc(var(--tcg-card-w, 96px) * 1.45);
+  overflow: hidden;
+  padding: 3px;
+  gap: 2px;
+}
+.tcg-drag-ghost .tcg-card-flavor,
+.tcg-drag-ghost .tcg-card-effect { display: none; }
+.tcg-drag-ghost .tcg-card-name {
+  font-size: 0.66rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tcg-drag-ghost .tcg-card-art { height: calc(var(--tcg-card-w, 96px) * 0.62); }
+.tcg-drag-ghost .tcg-card-art-emoji { font-size: calc(var(--tcg-card-w, 96px) * 0.32); }
+.tcg-drag-ghost .tcg-card-inspect-btn { display: none; }
 
 /* ============================================================
    BATTLE SHELL — MTG-Arena-mobile redesign
    Locks the match to the viewport, kills the page background
    scroll, and shrinks cards fluidly so phones can actually use
-   the board. Overrides the older .tcg-match--portrait rotation
-   hack: on portrait phones we lay things out vertically instead
-   of rotating the canvas 90deg.
+   the board. On portrait-held phones the whole match is rotated
+   90deg via CSS so the player only ever sees a landscape board
+   (the user is expected to tilt the phone — but if they don't,
+   the layout still reads landscape).
    ============================================================ */
 .tcg-battle-shell {
   position: fixed;
@@ -4293,10 +4458,41 @@ section.tcg-page,
   height: 100vh;
   height: 100dvh;
 }
+/* Force-landscape on portrait-held phones: rotate the match 90deg
+   around the top-left corner, then sized to 100vh × 100vw so it
+   fills the viewport rotated. The user just tilts the phone and
+   the board reads naturally. The rotation only applies when the
+   layout-side JS sets `.tcg-match--portrait` (its detection bakes
+   in a viewport-width ceiling so tablets/desktops in portrait
+   mode aren't forced into the rotation). */
+.tcg-battle-shell .tcg-match.tcg-match--arcane.tcg-match--portrait {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  width: 100vh;
+  height: 100vw;
+  inset: auto;
+  transform-origin: top left;
+  transform: rotate(90deg);
+  border-radius: 0;
+}
+/* The drag-ghost lives inside the rotated container but its
+   left/top are set in unrotated viewport coords by the pointer
+   handler — the math to map between frames isn't worth doing.
+   Hide the ghost on rotated portrait; the drop-zone hover halo
+   (which IS in the rotated frame, found via elementFromPoint)
+   still gives the player feedback. */
+.tcg-battle-shell .tcg-match.tcg-match--portrait .tcg-drag-ghost {
+  display: none;
+}
 
 /* Hide the global site navbar while a battle is on screen — the
-   "← Lobby" button in the battle header is the back-to-hub action. */
-body.tcg-battle-active .app-nav { display: none !important; }
+   "← Lobby" button in the battle header is the back-to-hub action.
+   Also hide the bottom-right chat bubble/window so it doesn't sit
+   on top of the hand or block drops. */
+body.tcg-battle-active .app-nav,
+body.tcg-battle-active .chat-toggle-btn,
+body.tcg-battle-active .global-chat-window { display: none !important; }
 
 /* The match fills the shell — no max-width, no padding leak,
    no min-height ramp. Existing arcane theme background stays. */
@@ -4315,9 +4511,10 @@ body.tcg-battle-active .app-nav { display: none !important; }
 
 /* Fluid card width — scales with the smaller viewport edge so
    landscape phones get bigger cards than portrait phones, but
-   never tiny on tablets. */
+   never tiny on tablets. Narrowed (was 14vmin / 140px) so the
+   battle row fits multiple cards without horizontal overflow. */
 .tcg-battle-shell .tcg-match.tcg-match--arcane {
-  --tcg-card-w: clamp(72px, 14vmin, 140px);
+  --tcg-card-w: clamp(58px, 10.5vmin, 104px);
 }
 .tcg-battle-shell .tcg-card--sm,
 .tcg-battle-shell .tcg-card--md {
@@ -4367,16 +4564,16 @@ body.tcg-battle-active .app-nav { display: none !important; }
 }
 .tcg-battle-shell .tcg-card-inspect-btn { opacity: 1; }
 
-/* ── Stage layout: grid that fills the shell ────────────────
-   Landscape (>= 720px): main column + 200px side panel.
-   Portrait  (<  720px): single column, side panel becomes a
-   floating overlay (see below) so the field can breathe.       */
+/* ── Stage layout: single-column grid that fills the shell ──
+   The side preview is no longer a column — it became a centered
+   floating popup (MTG Arena style), so the board zones get the
+   full width on every viewport. */
 .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(160px, 22vw, 220px);
-  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
   gap: 6px;
   /* Bottom padding reserves the iOS home-indicator / Android gesture
      zone so the action bar (with Fine Turno) is never hidden behind
@@ -4384,29 +4581,31 @@ body.tcg-battle-active .app-nav { display: none !important; }
   padding: calc(6px + env(safe-area-inset-top, 0px)) 6px calc(6px + env(safe-area-inset-bottom, 0px)) 6px;
   overflow: hidden;
 }
-.tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-column: 1 / -1; grid-row: 1; }
+.tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-column: 1; grid-row: 1; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-column: 1; grid-row: 2; min-height: 0; }
 .tcg-battle-shell .tcg-match--arcane .tcg-divider   { grid-column: 1; grid-row: 3; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-column: 1; grid-row: 4; min-height: 0; }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap { grid-column: 1; grid-row: 5; }
-.tcg-battle-shell .tcg-match--arcane .tcg-side-preview {
-  grid-column: 2;
-  grid-row: 2 / span 3;
-  align-self: stretch;
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
+  grid-column: 1;
+  grid-row: 6;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 3px 6px;
+  max-height: none;
   min-height: 0;
 }
-/* Action bar / log moves to the side panel column on landscape
-   so it doesn't steal vertical room from the board. Capped to
-   the hand row's height so the field gets the remaining space. */
-.tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
-  grid-column: 2;
-  grid-row: 5;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px 6px;
-  max-height: calc(var(--tcg-card-w) * 1.55 + 28px);
-  overflow: hidden;
-  min-height: 0;
+/* Wrapper around Annulla — must NOT inherit the legacy
+   `.tcg-action-bar-buttons { flex: 1 1 100% }` rule from
+   the older 480px media query that stretches Annulla to
+   eat the whole row. */
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
+  flex: 0 0 auto;
+  width: auto;
+  display: contents;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-log {
   max-height: 100%;
@@ -4415,36 +4614,24 @@ body.tcg-battle-active .app-nav { display: none !important; }
   font-size: 0.72rem;
   overflow-y: auto;
 }
-/* Turn button inside the action bar — hidden on landscape (the side
-   panel has the big Fine Turno button). On portrait this is the
-   PRIMARY end-turn affordance, so make it impossible to miss. */
+/* Fine Turno — chip uses the unified style above. Just toggles the
+   accent left-border + green pulse when it's your turn so the
+   primary action is unmissable without changing palette. */
 .tcg-battle-shell .tcg-action-turn-btn {
   display: none;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, #6b21a8, #9333ea);
-  color: #fff;
-  font-family: var(--font-title, serif);
-  font-weight: 900;
-  border: 2px solid #fbbf24;
-  border-radius: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.82rem;
-  cursor: pointer;
-  box-shadow: 0 3px 12px rgba(107, 33, 168, 0.6), 0 0 0 1px rgba(255, 215, 130, 0.4) inset;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 .tcg-battle-shell .tcg-action-turn-btn--my {
-  background: linear-gradient(135deg, #15803d, #22c55e);
-  box-shadow: 0 3px 12px rgba(34, 197, 94, 0.7), 0 0 0 1px rgba(187, 247, 208, 0.45) inset;
+  border-left-color: #4ade80;
+  background: rgba(20, 50, 28, 0.88);
+  color: #f0fdf4;
+  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.55), 0 0 0 1px rgba(134, 239, 172, 0.35) inset;
   animation: tcg-turn-btn-pulse 1.8s ease-in-out infinite;
 }
 @keyframes tcg-turn-btn-pulse {
-  0%, 100% { box-shadow: 0 3px 12px rgba(34, 197, 94, 0.7), 0 0 0 1px rgba(187, 247, 208, 0.45) inset; }
-  50%      { box-shadow: 0 4px 18px rgba(34, 197, 94, 0.95), 0 0 0 2px rgba(187, 247, 208, 0.65) inset; }
+  0%, 100% { box-shadow: 0 2px 10px rgba(34, 197, 94, 0.55), 0 0 0 1px rgba(134, 239, 172, 0.35) inset; }
+  50%      { box-shadow: 0 3px 16px rgba(34, 197, 94, 0.9),  0 0 0 2px rgba(134, 239, 172, 0.6)  inset; }
 }
-.tcg-battle-shell .tcg-action-turn-btn:disabled { opacity: 0.65; cursor: default; animation: none; }
+.tcg-battle-shell .tcg-action-turn-btn:disabled { animation: none; }
 
 /* Spell / enchantment / counter cast splash — centered overlay
    that grows, glows, then fades. Enchantments hold longer (CSS
@@ -4621,27 +4808,61 @@ body.tcg-battle-active .app-nav { display: none !important; }
   box-shadow: 0 2px 10px rgba(239, 68, 68, 0.65);
 }
 
-/* Compact "📜 Log" button — opens the log popup. Sits between
-   Annulla and Fine Turno in the action bar. */
-.tcg-battle-shell .tcg-action-log-btn {
-  padding: 8px 12px;
-  background: rgba(75, 38, 15, 0.85);
-  color: #fde9c4;
+/* ── Compact action-bar chips ───────────────────────────────
+   All four bottom buttons (Annulla / Scarta / Log / Fine Turno)
+   share the dark-violet chip style of the in-battle UI — same
+   palette as the player-strip pile counters, so they read as
+   part of the same control surface instead of clashing colored
+   buttons. The function is conveyed by the icon + a thin accent
+   left-border per role, not by the whole button color.          */
+.tcg-battle-shell .tcg-action-bar .tcg-btn--undo,
+.tcg-battle-shell .tcg-action-log-btn,
+.tcg-battle-shell .tcg-action-turn-btn {
+  padding: 2px 6px;
   font-family: var(--font-title, serif);
-  font-weight: 800;
-  border: 2px solid rgba(212, 175, 55, 0.6);
-  border-radius: 8px;
-  font-size: 0.76rem;
+  font-weight: 900;
+  font-size: 0.55rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  border-radius: 5px;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(167, 139, 250, 0.55);
+  border-left-width: 4px;
+  line-height: 1.05;
+  min-height: 20px;
+  background: rgba(8, 4, 24, 0.85);
+  color: #e9d5ff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(199, 210, 254, 0.08) inset;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
-.tcg-battle-shell .tcg-action-log-btn:hover {
-  background: rgba(115, 60, 22, 0.95);
-  border-color: #ffd58b;
+.tcg-battle-shell .tcg-action-bar .tcg-btn--undo:hover:not(:disabled),
+.tcg-battle-shell .tcg-action-log-btn:hover:not(:disabled),
+.tcg-battle-shell .tcg-action-turn-btn:hover:not(:disabled) {
+  background: rgba(40, 20, 80, 0.92);
+  border-color: #c4b5fd;
+  transform: translateY(-1px);
+}
+.tcg-battle-shell .tcg-action-bar .tcg-btn--undo:disabled,
+.tcg-battle-shell .tcg-action-log-btn:disabled,
+.tcg-battle-shell .tcg-action-turn-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Per-role accent on the left border — keeps the visual identity
+   without the whole-button color clash. */
+.tcg-battle-shell .tcg-action-bar .tcg-btn--undo  { border-left-color: #38bdf8; }      /* water cyan */
+.tcg-battle-shell .tcg-action-log-btn--discard    { border-left-color: #f43f5e; }      /* fire red */
+.tcg-battle-shell .tcg-action-log-btn--log        { border-left-color: #fbbf24; }      /* earth amber */
+.tcg-battle-shell .tcg-action-turn-btn            { border-left-color: #a78bfa; }      /* arcane violet (opponent turn) */
+/* Discard-mode (active) — red glow signals "tap to cancel" */
+.tcg-battle-shell .tcg-action-log-btn--active {
+  background: rgba(127, 29, 29, 0.85) !important;
+  border-color: #fca5a5 !important;
+  border-left-color: #fecaca !important;
+  color: #fff1f2 !important;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.55), 0 0 0 1px rgba(252, 165, 165, 0.35) inset !important;
 }
 
 /* Log popup — full-screen overlay + centered modal. Uses the existing
@@ -4654,11 +4875,11 @@ body.tcg-battle-active .app-nav { display: none !important; }
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(45, 22, 8, 0.97), rgba(20, 10, 4, 0.98));
-  border: 2px solid rgba(212, 175, 55, 0.65);
+  background: linear-gradient(180deg, rgba(20, 10, 45, 0.97), rgba(8, 4, 24, 0.98));
+  border: 2px solid rgba(167, 139, 250, 0.65);
   border-radius: 12px;
-  color: #fde9c4;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+  color: #f8f4ff;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
   overflow: hidden;
   padding: 0;
 }
@@ -4667,8 +4888,8 @@ body.tcg-battle-active .app-nav { display: none !important; }
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
-  background: linear-gradient(180deg, rgba(80, 40, 16, 0.7), rgba(40, 20, 8, 0.8));
+  border-bottom: 1px solid rgba(167, 139, 250, 0.35);
+  background: linear-gradient(180deg, rgba(40, 20, 80, 0.75), rgba(20, 10, 45, 0.85));
   flex-shrink: 0;
 }
 .tcg-log-modal-title {
@@ -4676,13 +4897,13 @@ body.tcg-battle-active .app-nav { display: none !important; }
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #ffd58b;
+  color: #e9d5ff;
   font-size: 0.92rem;
 }
 .tcg-log-modal-close {
-  background: rgba(20, 10, 4, 0.6);
-  border: 1px solid rgba(212, 175, 55, 0.5);
-  color: #fde9c4;
+  background: rgba(8, 4, 24, 0.6);
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  color: #f8f4ff;
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -4693,7 +4914,7 @@ body.tcg-battle-active .app-nav { display: none !important; }
   align-items: center;
   justify-content: center;
 }
-.tcg-log-modal-close:hover { background: rgba(80, 40, 15, 0.85); border-color: #ffd58b; }
+.tcg-log-modal-close:hover { background: rgba(40, 20, 80, 0.85); border-color: #c4b5fd; }
 .tcg-log-modal-body {
   padding: 10px 12px;
   overflow-y: auto;
@@ -4701,10 +4922,10 @@ body.tcg-battle-active .app-nav { display: none !important; }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: rgba(15, 7, 3, 0.6);
+  background: rgba(2, 1, 10, 0.6);
 }
 .tcg-log-modal-empty {
-  color: rgba(255, 200, 130, 0.65);
+  color: rgba(199, 210, 254, 0.7);
   font-style: italic;
   text-align: center;
   padding: 18px 8px;
@@ -4749,19 +4970,64 @@ body.tcg-battle-active .app-nav { display: none !important; }
   font-size: 0.7rem;
 }
 
-/* Hand strip — single horizontally-scrolling row. The wrap is capped
-   to one card's height so it can't push the field off the screen. */
+/* Hand strip — single horizontally-scrolling row. Hand cards are
+   the same size as board cards (--tcg-card-w) so they're readable
+   without a hover preview. Hover/touch lifts the active card up
+   (translateY) like MTG Arena. Smooth-scroll snap on the row keeps
+   the carousel feel on touch. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
+  --tcg-hand-card-w: var(--tcg-card-w);
   padding: 4px 6px;
-  max-height: calc(var(--tcg-card-w) * 1.55 + 28px);
-  min-height: calc(var(--tcg-card-w) * 1.45 + 22px);
-  overflow: hidden;
+  /* Reserve a bit of headroom so the lifted card doesn't get
+     clipped by the wrap's own bounds. */
+  max-height: calc(var(--tcg-hand-card-w) * 1.6 + 32px);
+  min-height: calc(var(--tcg-hand-card-w) * 1.5 + 26px);
+  overflow: visible;
   display: flex;
   flex-direction: column;
+  transition: max-height 0.22s ease, min-height 0.22s ease, padding 0.22s ease;
+}
+/* Collapsed: only the label bar is visible. Tap to re-open. The
+   bar is auto-collapsed when it isn't the player's turn so the
+   field gets the focus (and the user can't accidentally drag during
+   the opponent's animation pass). */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap--collapsed {
+  max-height: 32px;
+  min-height: 32px;
+  padding: 4px 6px;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap--collapsed .tcg-hand {
+  display: none;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
   font-size: 0.66rem;
   margin-bottom: 2px;
+  flex-shrink: 0;
+  /* Native button styling reset — the label is now an interactive
+     toggle, but visually it's still a strip of text. */
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  font-size: 0.66rem;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  letter-spacing: inherit;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-label:hover {
+  color: #ffd58b;
+}
+.tcg-hand-label-toggle {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  font-size: 0.7rem;
+  opacity: 0.85;
   flex-shrink: 0;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand {
@@ -4790,15 +5056,82 @@ body.tcg-battle-active .app-nav { display: none !important; }
   overflow: hidden;
 }
 
-/* Side preview — always visible on landscape, sticks to right column */
+/* Hand cards — same readable size as board cards. Hovered card
+   lifts up by 14% of its height so the player can pick it out of
+   the fanned row, similar to MTG Arena. The popup still opens
+   after 1.5 s for the full detail view. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
+  --tcg-card-w: var(--tcg-hand-card-w);
+  transform-origin: center bottom;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  will-change: transform;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
+  transform: translateY(-16%);
+  z-index: 50;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.7), 0 0 22px rgba(167, 139, 250, 0.55), 0 0 0 1px rgba(199, 210, 254, 0.2) inset;
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.35));
+}
+/* Selected hand card (pending spell, discard target) stays lifted
+   so the player can see the chosen card without hovering. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
+  transform: translateY(-12%);
+  z-index: 40;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap { overflow: visible; }
+/* Smooth horizontal scroll on the hand row — snap-to-card on touch
+   so flicking lands on a card edge, and CSS `scroll-behavior: smooth`
+   on JS-driven scrolls (e.g. when a new card is drawn). */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand {
+  overflow-y: visible;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 8px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-hand > * {
+  scroll-snap-align: center;
+}
+
+/* Side preview — centered MTG-style popup. Renders only when a card
+   is focused (the JSX adds `tcg-side-preview--empty` when nothing is
+   focused — hidden via the rule below). `pointer-events: none` keeps
+   the popup from blocking clicks/drags on the cards beneath it. */
 .tcg-battle-shell .tcg-side-preview {
-  padding: 6px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(320px, 62vw);
+  max-height: 78vh;
+  z-index: 600;
+  padding: 10px;
   gap: 6px;
-  min-height: 0;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(20, 10, 45, 0.97), rgba(8, 4, 24, 0.98));
+  border: 2px solid rgba(167, 139, 250, 0.7);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.85), 0 0 36px rgba(139, 92, 246, 0.4), 0 0 0 1px rgba(199, 210, 254, 0.15) inset;
+  animation: tcg-side-preview-pop 0.18s ease-out;
 }
+.tcg-battle-shell .tcg-side-preview--empty { display: none; }
+@keyframes tcg-side-preview-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* The big Fine Turno lives inside the side preview by default, but
+   with the centered popup the side panel button is hidden — the
+   action bar's tcg-action-turn-btn is now the always-visible end-turn
+   action on every viewport. */
+.tcg-battle-shell .tcg-side-preview .tcg-side-turn-btn { display: none; }
+.tcg-battle-shell .tcg-action-turn-btn { display: inline-flex; }
 .tcg-battle-shell .tcg-side-preview-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -4932,70 +5265,55 @@ body.tcg-battle-active .app-nav { display: none !important; }
   .tcg-battle-shell .tcg-match--arcane .tcg-divider    { grid-row: 3; }
   .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 4; }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap  { grid-row: 5; }
-  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
-    grid-column: 1;
-    grid-row: 6;
-    flex-direction: row;
-    padding: 3px 6px;
-  }
   .tcg-battle-shell .tcg-match--arcane .tcg-log {
     max-height: 56px;
     overflow-y: auto;
     font-size: 0.68rem;
   }
 
-  /* Side preview floats over the right edge of the screen.
-     Visible only when a card is focused (the JSX gives it
-     a `tcg-side-preview--empty` class when there's nothing
-     to show — see SidePreview). The big End Turn button
-     becomes a sticky bottom-right floating button.        */
+  /* Side preview popup is centered & smaller on portrait so it
+     doesn't cover the whole field. Position/animation come from
+     the base rule above — this just tightens the size. */
   .tcg-battle-shell .tcg-side-preview {
-    position: fixed;
-    top: 50%;
-    right: 4px;
-    transform: translateY(-50%);
-    width: min(48vw, 200px);
-    max-height: 80vh;
-    z-index: 200;
-    grid-column: 1;
-    grid-row: auto;
-    background: linear-gradient(180deg, rgba(75, 38, 15, 0.96), rgba(30, 15, 5, 0.98));
-    box-shadow: 0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255, 200, 130, 0.18) inset;
-    border: 2px solid rgba(255, 200, 100, 0.65);
+    width: min(84vw, 260px);
+    max-height: 70vh;
   }
-  /* On portrait the side preview is only visible when a card is
-     focused — when empty it disappears entirely. The Fine Turno
-     button moves into the action bar (tcg-action-turn-btn) so it
-     stays reachable without floating over the hand. */
-  .tcg-battle-shell .tcg-side-preview--empty {
-    display: none;
-  }
-  .tcg-battle-shell .tcg-side-preview .tcg-side-turn-btn {
-    /* Hide the side preview's own turn button on portrait —
-       action bar owns the end-turn UX on small screens. */
-    display: none;
-  }
-  .tcg-battle-shell .tcg-action-turn-btn {
-    display: inline-flex;
-  }
-  /* Action bar on portrait holds three primary buttons evenly
-     spread: Annulla / Log / Fine Turno. The override on
-     .tcg-action-bar-buttons cancels the legacy @media 480px rule
-     `flex: 1 1 100%` which otherwise makes Annulla eat the whole
-     row and squeezes the Log + Fine Turno buttons to 0 width. */
+  /* Action bar on portrait — clusters the chips on the right
+     and uses the same compact silhouette as desktop. The
+     `space-between` override that the legacy @media 480px rule
+     produced was making the bar feel "stretched"; flex-end packs
+     the chips tight. */
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
+    grid-column: 1;
+    grid-row: 6;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 2px 4px;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
     flex: 0 0 auto;
     width: auto;
+    display: contents;
   }
-  .tcg-battle-shell .tcg-action-turn-btn { flex-shrink: 0; }
-  .tcg-battle-shell .tcg-action-log-btn { flex-shrink: 0; }
+  /* Even tinier text on portrait so all four chips fit one line. */
+  .tcg-battle-shell .tcg-action-bar .tcg-btn--undo,
+  .tcg-battle-shell .tcg-action-log-btn,
+  .tcg-battle-shell .tcg-action-turn-btn {
+    padding: 2px 5px;
+    font-size: 0.5rem;
+    min-height: 18px;
+    border-left-width: 3px;
+  }
+  /* Hand cards even smaller on phones — half-thumbnail size; hover
+     scale-up still gives the preview before the popup. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
+    --tcg-hand-card-w: clamp(30px, 9vmin, 52px);
+  }
+  .tcg-match--arcane .tcg-pstrip-name { font-size: 0.72rem; }
+  .tcg-match--arcane .tcg-pstrip-hp-label { font-size: 0.74rem; }
 }
 
 /* ── COLORED COST PIPS — replaces the single cost number ────
@@ -5152,15 +5470,14 @@ body.tcg-battle-active .app-nav { display: none !important; }
   }
 }
 
-/* ── Cancel the legacy 90deg rotation hack ──────────────────
-   The new layout doesn't need it; keeping the old rules active
-   would conflict with the new grid (fixed-position + transform). */
-.tcg-battle-shell .tcg-match--portrait,
-.tcg-battle-shell .tcg-match--portrait .tcg-match-stage {
-  position: static;
-  inset: auto;
-  width: auto;
-  height: auto;
-  transform: none;
-  overflow: visible;
+/* The 90deg rotation block (see BATTLE SHELL section above) now
+   owns the portrait behaviour — this block intentionally left
+   blank so no late rule re-cancels the rotation. */
+.tcg-battle-shell .tcg-match.tcg-match--portrait .tcg-match-stage {
+  /* Stage needs to fill the rotated parent; the parent is now
+     100vh × 100vw, so a percentage-based fill keeps the grid
+     responsive. */
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }

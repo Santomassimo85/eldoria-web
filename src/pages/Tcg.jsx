@@ -1651,10 +1651,19 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
     ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto, clic destro o 🔍 per ingrandire)" : ""}`
     : undefined;
   const lp = useLongPress(onInspect);
-  const Tag = onClick ? "button" : "div";
+  /* Always render a <div> — using a real <button> element for the
+     card breaks the DOM nesting rule because the inspect (🔍) child
+     is itself a <button>. role="button" + tabIndex preserve a11y
+     when the card is clickable, plus an Enter/Space keydown handler
+     to fire onClick from the keyboard. */
+  const handleKey = onClick && !disabled
+    ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); lp.guardClick(onClick)(e); } }
+    : undefined;
   return (
-    <Tag
-      type={onClick ? "button" : undefined}
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick && !disabled ? 0 : undefined}
+      aria-disabled={disabled || undefined}
       className={
         `tcg-card tcg-card--${size}` +
         ` tcg-card--el-${def.element}` +
@@ -1667,7 +1676,8 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
         (onClick ? " tcg-card--clickable" : "") +
         (className ? " " + className : "")
       }
-      onClick={lp.guardClick(onClick)}
+      onClick={onClick && !disabled ? lp.guardClick(onClick) : undefined}
+      onKeyDown={handleKey}
       onMouseDown={lp.start}
       onMouseUp={lp.cancel}
       onMouseLeave={lp.cancel}
@@ -1677,7 +1687,6 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
       onTouchCancel={lp.cancel}
       onTouchMove={lp.onMove}
       onContextMenu={lp.onContext}
-      disabled={disabled}
       title={tip}
       data-tcg-draggable={dataDraggable || undefined}
       data-tcg-card-id={dataCardId || undefined}
@@ -1749,7 +1758,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
           <span className="tcg-card-stat tcg-card-stat--spell">{TYPE_ICON[cardType]} {TYPE_LABEL[cardType]}</span>
         </div>
       )}
-    </Tag>
+    </div>
   );
 }
 
@@ -1793,14 +1802,19 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
     mechs.map(k => `${TCG_MECHANICS[k].icon} ${labelFor(k)}`).join(" · ") +
     (onInspect ? `\n\n(Tieni premuto, clic destro o 🔍 per ingrandire)` : "");
   const lp = useLongPress(onInspect);
-  const Tag = onClick ? "button" : "div";
+  /* Always a <div> — same nested-button reason as Card. */
+  const handleKey = onClick && !disabled
+    ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); lp.guardClick(onClick)(e); } }
+    : undefined;
   // attackAnim shape: { role: "attacker-up" | "attacker-down" | "target", ts: number }
   const animCls = attackAnim
     ? ` tcg-board-card--anim-${attackAnim.role}`
     : "";
   return (
-    <Tag
-      type={onClick ? "button" : undefined}
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick && !disabled ? 0 : undefined}
+      aria-disabled={disabled || undefined}
       // Re-mounting via key forces the CSS animation to restart on each new
       // attack against the same instId (otherwise the keyframe wouldn't replay).
       key={attackAnim ? `anim-${attackAnim.ts}` : undefined}
@@ -1818,7 +1832,8 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
         (isFlying ? " tcg-board-card--flying" : "") +
         animCls
       }
-      onClick={lp.guardClick(onClick)}
+      onClick={onClick && !disabled ? lp.guardClick(onClick) : undefined}
+      onKeyDown={handleKey}
       onMouseDown={lp.start}
       onMouseUp={lp.cancel}
       onMouseLeave={lp.cancel}
@@ -1828,7 +1843,6 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
       onTouchCancel={lp.cancel}
       onTouchMove={lp.onMove}
       onContextMenu={lp.onContext}
-      disabled={disabled}
       title={tip}
       data-tcg-draggable={dataDraggable || undefined}
       data-tcg-drop={dataDrop || undefined}
@@ -1888,10 +1902,10 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
           )}
         </span>
       </div>
-      {status === "sick" && <div className="tcg-board-tag">😴 sonnolento</div>}
-      {status === "tapped" && <div className="tcg-board-tag">✓ usato</div>}
-      {bc.revived && <div className="tcg-board-tag tcg-board-tag--revived">👻 rinato</div>}
-    </Tag>
+      {status === "sick" && <div className="tcg-board-tag tcg-board-tag--icon" title="Sonnolenza da evocazione — non può attaccare questo turno">😴</div>}
+      {status === "tapped" && <div className="tcg-board-tag tcg-board-tag--icon" title="Già usato questo turno">✓</div>}
+      {bc.revived && <div className="tcg-board-tag tcg-board-tag--icon tcg-board-tag--revived" title="Rinato dal cimitero">👻</div>}
+    </div>
   );
 }
 
@@ -2129,6 +2143,7 @@ function LiveMatch({ match, uid, onExit }) {
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
   const [floats, setFloats] = useState([]);               // [{ id, kind, target, side, instId?, amount }]
   const [muted, setMuted] = useState(isSfxMuted());
+  const isPortrait = useIsPortrait();
   /* End-of-match summary: how many ✦ Punti Bestiario the player just earned
      (set by the awardPetPoints call in the win-detection effect below). */
   const [endReward, setEndReward] = useState(null);
@@ -2137,6 +2152,14 @@ function LiveMatch({ match, uid, onExit }) {
      playing. Lets the player free a slot when the hand is full, instead
      of silently burning newly-drawn cards. */
   const [discardMode, setDiscardMode] = useState(false);
+  /* Hand collapse: when it isn't your turn, the hand auto-collapses so
+     the field gets the spotlight. The user can tap the hand strip to
+     peek without ending the collapse — and as soon as the turn comes
+     back to them, the hand expands automatically. */
+  const [handCollapsed, setHandCollapsed] = useState(!myTurn);
+  useEffect(() => {
+    setHandCollapsed(!myTurn);
+  }, [myTurn]);
   // Animation queue — events from the engine fire sequentially with a small
   // gap so each one is visible. Engine state still commits in one go to
   // Firestore; only the visible effects are paced.
@@ -2669,38 +2692,65 @@ function LiveMatch({ match, uid, onExit }) {
     // The effect re-mounts only on side change; latest state/updateState are read via refs.
   }, [mySide]);
 
-  /* Card focus tracking — pointer events unify mouse hover and touch
-     press-and-hold. The preview is shown only while the pointer is
-     actually on a card OR over the preview panel itself (so desktop
-     users can move into the panel to read longer ability text without
-     it vanishing). On touch, pointerout fires on finger-lift and the
-     preview hides as expected. */
+  /* Card focus tracking — the preview is a centered MTG-style popup
+     that appears after the pointer rests on a card for ~1.5s. The
+     delay prevents the popup from blocking drag interactions: by the
+     time it would have appeared, the user has either committed to a
+     drag (pointerdown cancels the timer) or actually wants a closer
+     look. Long-press / right-click / 🔍 button paths bypass the delay
+     via onInspect and still open the preview instantly. */
   useEffect(() => {
     const root = matchRootRef.current;
     if (!root) return;
+    let hoverTimer = null;
+    let pendingId = null;
+    const cancelPending = () => {
+      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+      pendingId = null;
+    };
     function onOver(e) {
       const el = e.target?.closest?.("[data-tcg-card-id]");
       if (!el) return;
       const id = el.getAttribute("data-tcg-card-id");
-      if (id) setFocusedCardId(id);
+      if (!id || id === pendingId) return;
+      cancelPending();
+      pendingId = id;
+      hoverTimer = setTimeout(() => {
+        if (dragStartedRef.current) return;
+        setFocusedCardId(id);
+        hoverTimer = null;
+      }, 1500);
     }
     function onOut(e) {
       const next = e.relatedTarget;
-      // Truly leaving the whole match area — clear.
       if (!next || typeof next.closest !== "function") {
+        cancelPending();
         setFocusedCardId(null);
         return;
       }
-      // Moving between cards, or into the preview panel — keep focus.
-      if (next.closest("[data-tcg-card-id]")) return;
-      if (next.closest(".tcg-side-preview")) return;
+      // Moving between cards — re-arm timer for the next card via onOver.
+      if (next.closest("[data-tcg-card-id]")) {
+        cancelPending();
+        setFocusedCardId(null);
+        return;
+      }
+      cancelPending();
+      setFocusedCardId(null);
+    }
+    // Any press on a card cancels the pending popup and hides it — so
+    // the user can drag or tap without the popup getting in the way.
+    function onDown() {
+      cancelPending();
       setFocusedCardId(null);
     }
     root.addEventListener("pointerover", onOver);
     root.addEventListener("pointerout", onOut);
+    root.addEventListener("pointerdown", onDown, true);
     return () => {
       root.removeEventListener("pointerover", onOver);
       root.removeEventListener("pointerout", onOut);
+      root.removeEventListener("pointerdown", onDown, true);
+      cancelPending();
     };
   }, []);
 
@@ -2784,7 +2834,7 @@ function LiveMatch({ match, uid, onExit }) {
   const oppBoard = state.board[oSide];
 
   return (
-    <div ref={matchRootRef} className="tcg-match tcg-match--arcane">
+    <div ref={matchRootRef} className={`tcg-match tcg-match--arcane${isPortrait ? " tcg-match--portrait" : ""}`}>
       {/* Stage: in portrait this gets CSS-rotated 90deg so phones with
           orientation lock still see the game in landscape. The arcane
           background lives inside the stage so it rotates with it. */}
@@ -3053,9 +3103,21 @@ function LiveMatch({ match, uid, onExit }) {
       </div>
 
       {/* Hand */}
-      <div className="tcg-hand-wrap">
-        <div className="tcg-hand-label">
+      <div className={`tcg-hand-wrap${handCollapsed ? " tcg-hand-wrap--collapsed" : ""}`}>
+        <button
+          type="button"
+          className="tcg-hand-label"
+          onClick={() => setHandCollapsed(c => !c)}
+          aria-expanded={!handCollapsed}
+          title={handCollapsed ? "Tocca per aprire la mano" : "Tocca per minimizzare"}
+        >
+          <span className="tcg-hand-label-toggle" aria-hidden="true">{handCollapsed ? "▲" : "▼"}</span>
           🎴 La tua mano · {myHand.length}/{MAX_HAND} carte
+          {!myTurn && (
+            <span className="tcg-hand-label-warn">
+              {" "}· ⏳ <strong>Turno avversario</strong>
+            </span>
+          )}
           {myHand.length >= MAX_HAND && !discardMode && (
             <span className="tcg-hand-label-warn">
               {" "}· ⚠ <strong>Mano piena</strong>: le carte pescate verranno bruciate. Premi <strong>🗑 Scarta</strong> per liberare uno slot.
@@ -3071,7 +3133,7 @@ function LiveMatch({ match, uid, onExit }) {
               {" "}· 📜 Castando <strong>{pendingSpell.def.name}</strong>
             </span>
           )}
-        </div>
+        </button>
         <div className="tcg-hand">
           {myHand.length === 0 ? (
             <div className="tcg-board-empty">Mano vuota</div>
@@ -3128,7 +3190,7 @@ function LiveMatch({ match, uid, onExit }) {
         </div>
         <button
           type="button"
-          className={`tcg-action-log-btn${discardMode ? " tcg-action-log-btn--active" : ""}`}
+          className={`tcg-action-log-btn tcg-action-log-btn--discard${discardMode ? " tcg-action-log-btn--active" : ""}`}
           onClick={() => setDiscardMode(m => !m)}
           disabled={!myTurn || myHand.length === 0}
           aria-pressed={discardMode}
@@ -3146,7 +3208,7 @@ function LiveMatch({ match, uid, onExit }) {
         </button>
         <button
           type="button"
-          className="tcg-action-log-btn"
+          className="tcg-action-log-btn tcg-action-log-btn--log"
           onClick={() => setShowLog(true)}
           aria-label="Apri il registro della partita"
           title="Mostra cronologia mosse"

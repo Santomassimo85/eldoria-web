@@ -1,7 +1,13 @@
 /* ============================================================
-   TCG battle BGM — chiptune music synthesized on the fly with
-   the Web Audio API. No external files; pure square/triangle
-   oscillators give the authentic low-bitrate NES feel.
+   TCG battle BGM — calm classical loop synthesized on the fly
+   with the Web Audio API. No external files; sine and triangle
+   oscillators give it a soft, string-like timbre instead of the
+   harsh chiptune square waves it used to be.
+
+   The loop is a Pachelbel-Canon-style progression in C major:
+     C  G  Am  Em  F  C  F  G
+   …with a sustained lead voice over a walking bass and a gentle
+   eighth-note arpeggio. Tempo ~70 BPM (largo/adagio).
 
    Public API:
      startBgm()        — begin the loop (no-op if already playing)
@@ -21,43 +27,63 @@ let scheduleId   = null;
 let isPlaying    = false;
 let muted        = false;
 
-/* Frequencies for a one-octave bank (C minor pentatonic flavor) */
+/* C-major / A-minor diatonic notes across three octaves — enough
+   range for the lead, bass, and arpeggio voices below. */
 const NOTE = {
-  C3: 130.81, D3: 146.83, Eb3: 155.56, F3: 174.61, G3: 196.00, Ab3: 207.65, Bb3: 233.08,
-  C4: 261.63, D4: 293.66, Eb4: 311.13, F4: 349.23, G4: 392.00, Ab4: 415.30, Bb4: 466.16,
-  C5: 523.25, D5: 587.33, Eb5: 622.25, F5: 698.46, G5: 783.99,
+  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00,
 };
 
-/* Tempo: 132 BPM, four-on-the-floor feel for a battle. */
-const BPM       = 132;
+/* Tempo: 70 BPM (largo). Each chord lasts 2 beats. */
+const BPM       = 70;
 const SEC_BEAT  = 60 / BPM;
 
-/* Lead melody — a heroic minor-key loop, 16 beats long. */
+/* Lead voice — sustained two-beat melodic line over each chord.
+   Pachelbel-style descending top-voice canon, calmed down with
+   long held notes instead of a fast melody. */
 const LEAD = [
-  ["C5", 1], ["Eb5", 1], ["G5", 1], ["Eb5", 1],
-  ["F5", 1], ["Eb5", 1], ["D5", 1], ["C5", 1],
-  ["Bb4", 1], ["C5", 1], ["D5", 1], ["Eb5", 1],
-  ["D5", 1], ["C5", 1], ["G4", 1], [null, 1],
+  ["E5", 2], ["D5", 2],   // C  → G
+  ["C5", 2], ["B4", 2],   // Am → Em
+  ["A4", 2], ["G4", 2],   // F  → C
+  ["F4", 2], ["G4", 2],   // F  → G
 ];
 
-/* Bass: walking eighth notes following i-VI-VII-i progression. */
+/* Bass voice — root note of each chord, held for the full 2 beats. */
 const BASS = [
-  ["C3", 2], ["G3", 2], ["C3", 2], ["G3", 2],
-  ["Ab3", 2], ["Eb3", 2], ["Ab3", 2], ["Eb3", 2],
-  ["Bb3", 2], ["F3", 2], ["Bb3", 2], ["F3", 2],
-  ["C3", 2], ["G3", 2], ["C3", 2], ["D3", 2],
+  ["C3", 2], ["G3", 2],
+  ["A3", 2], ["E3", 2],
+  ["F3", 2], ["C3", 2],
+  ["F3", 2], ["G3", 2],
 ];
 
-/* Light arpeggio on a second voice for a bit of NES sparkle. */
+/* Arpeggio voice — gentle eighth-note triad arpeggios on each
+   chord (4 notes per beat, 2 beats per chord = 8 notes/chord). */
 const ARP = [
-  ["G4", 0.5], ["Eb4", 0.5], ["C4", 0.5], ["Eb4", 0.5],
-  ["G4", 0.5], ["Eb4", 0.5], ["C4", 0.5], ["Eb4", 0.5],
-  ["Ab4", 0.5], ["F4", 0.5], ["C4", 0.5], ["F4", 0.5],
-  ["Ab4", 0.5], ["F4", 0.5], ["C4", 0.5], ["F4", 0.5],
-  ["Bb4", 0.5], ["F4", 0.5], ["D4", 0.5], ["F4", 0.5],
-  ["Bb4", 0.5], ["F4", 0.5], ["D4", 0.5], ["F4", 0.5],
-  ["G4", 0.5], ["Eb4", 0.5], ["C4", 0.5], ["Eb4", 0.5],
-  ["G4", 0.5], ["Eb4", 0.5], ["D4", 0.5], ["G4", 0.5],
+  // C (C E G)
+  ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
+  ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
+  // G (G B D)
+  ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
+  ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
+  // Am (A C E)
+  ["A3", 0.5], ["C4", 0.5], ["E4", 0.5], ["C4", 0.5],
+  ["A3", 0.5], ["C4", 0.5], ["E4", 0.5], ["C4", 0.5],
+  // Em (E G B)
+  ["E3", 0.5], ["G3", 0.5], ["B3", 0.5], ["G3", 0.5],
+  ["E3", 0.5], ["G3", 0.5], ["B3", 0.5], ["G3", 0.5],
+  // F (F A C)
+  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
+  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
+  // C (C E G)
+  ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
+  ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
+  // F (F A C)
+  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
+  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
+  // G (G B D)
+  ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
+  ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
 ];
 
 const LOOP_BEATS = 16;
@@ -69,13 +95,15 @@ function getCtx() {
     if (!AC) return null;
     ctx = new AC();
     masterGain = ctx.createGain();
-    masterGain.gain.value = muted ? 0 : 0.10;
+    masterGain.gain.value = muted ? 0 : 0.08;
     masterGain.connect(ctx.destination);
   }
   return ctx;
 }
 
-/* Schedule a single note. Slight envelope so square waves don't click. */
+/* Schedule a single note. Soft envelope (longer attack/release)
+   gives the sine voices a string-like swell instead of the abrupt
+   click of a square wave. */
 function note(startAt, freq, durSec, type, vol) {
   if (freq == null) return;
   const c = ctx;
@@ -84,32 +112,36 @@ function note(startAt, freq, durSec, type, vol) {
   osc.frequency.value = freq;
   const g = c.createGain();
   const peak = Math.max(0, vol);
-  const ATK  = 0.005;
-  const REL  = Math.min(0.04, durSec * 0.4);
+  // Gentle attack/release so notes blend instead of clicking.
+  const ATK = Math.min(0.08, durSec * 0.15);
+  const REL = Math.min(0.18, durSec * 0.35);
   g.gain.setValueAtTime(0, startAt);
   g.gain.linearRampToValueAtTime(peak, startAt + ATK);
   g.gain.setValueAtTime(peak, startAt + Math.max(ATK, durSec - REL));
   g.gain.linearRampToValueAtTime(0, startAt + durSec);
   osc.connect(g).connect(masterGain);
   osc.start(startAt);
-  osc.stop(startAt + durSec + 0.02);
+  osc.stop(startAt + durSec + 0.05);
 }
 
 /* Schedule one full 16-beat loop starting at `loopStart`. */
 function scheduleOneLoop(loopStart) {
   let t = loopStart;
   for (const [n, b] of LEAD) {
-    note(t, NOTE[n], b * SEC_BEAT * 0.92, "square", 0.16);
+    // Sine = soft, breath-like sustain for the melodic top voice.
+    note(t, NOTE[n], b * SEC_BEAT * 0.95, "sine", 0.18);
     t += b * SEC_BEAT;
   }
   t = loopStart;
   for (const [n, b] of BASS) {
-    note(t, NOTE[n], b * SEC_BEAT * 0.5, "triangle", 0.22);
+    // Triangle = warm, mellow bass with a hint of edge.
+    note(t, NOTE[n], b * SEC_BEAT * 0.9, "triangle", 0.14);
     t += b * SEC_BEAT;
   }
   t = loopStart;
   for (const [n, b] of ARP) {
-    note(t, NOTE[n], b * SEC_BEAT * 0.6, "square", 0.06);
+    // Sine arpeggio — kept very quiet so it sits behind the lead.
+    note(t, NOTE[n], b * SEC_BEAT * 0.85, "sine", 0.05);
     t += b * SEC_BEAT;
   }
 }
@@ -165,6 +197,6 @@ export function setBgmMuted(m) {
   if (masterGain && ctx) {
     const now = ctx.currentTime;
     masterGain.gain.cancelScheduledValues(now);
-    masterGain.gain.setTargetAtTime(muted ? 0 : 0.10, now, 0.05);
+    masterGain.gain.setTargetAtTime(muted ? 0 : 0.08, now, 0.05);
   }
 }
