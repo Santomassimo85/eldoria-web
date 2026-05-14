@@ -15,9 +15,9 @@ import {
   getCardType, getMechLabel, TYPE_LABEL, TYPE_ICON,
 } from "../data/tcgCards";
 import {
-  initMatchState, playCard, attackWith, endTurn, forfeit,
+  initMatchState, playCard, attackWith, endTurn, autoSkipTurn, forfeit,
   canPlayCard, canAttack, legalAttackTargets, legalSpellTargets, predictCombat, oppSide,
-  STARTING_HP, DECK_REQUIRED_SIZE, MAX_HAND,
+  STARTING_HP, DECK_REQUIRED_SIZE, MAX_HAND, TURN_DURATION_MS,
   isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection, buildFilteredDeck,
   resolveDeckForMatch, discardCard,
   normalizeCost, totalCost, ELEMENTS,
@@ -967,15 +967,18 @@ function Shop({ points, onBuy }) {
       <div className="tcg-panel">
         <h2 className="tcg-panel-title">🛒 Forzieri della Bottega</h2>
         <p className="tcg-panel-sub">
-          Ogni forziere contiene <strong>8 carte</strong>. I forzieri elementali
-          standard hanno una <strong>0.5%</strong> di probabilità di contenere
-          un Leggendario; i forzieri di <strong>Luce</strong> e <strong>Tenebra</strong>
-          sono più costosi ma offrono il <strong>5%</strong> di Leggendario e più rare garantite.
+          Ogni forziere contiene <strong>15 carte</strong>: 7 comuni, 3 rare, 1 rara/epica,
+          2 cristalli mana, 1 slot con chance brillante e 1 slot premio (raro → leggendario).
+          I forzieri elementali standard danno un <strong>2%</strong> di Leggendario nello slot premio;
+          il forziere <strong>Multicolore</strong> mescola tutti gli elementi; i forzieri di
+          <strong> Luce</strong> e <strong>Tenebra</strong> sono esotici e più costosi
+          ma offrono il <strong>5%</strong> di Leggendario.
         </p>
         <div className="tcg-packs-grid">
           {PACK_ORDER.map(key => {
             const pd = PACK_DEFS[key];
             const canBuy = points >= pd.cost;
+            const slotCount = (k) => pd.slots.filter(s => s === k).length;
             return (
               <div key={key} className={`tcg-pack tcg-pack--${key}`}>
                 <div className="tcg-pack-banner">
@@ -983,9 +986,15 @@ function Shop({ points, onBuy }) {
                   <span className="tcg-pack-name">{pd.name}</span>
                 </div>
                 <div className="tcg-pack-odds">
-                  {pd.slots.filter(s => s === "common").length}× COMUNE
+                  {slotCount("common")}× COMUNE
                   {" · "}
-                  {pd.slots.filter(s => s === "rare").length}× RARO
+                  {slotCount("rare")}× RARO
+                  {" · "}
+                  {slotCount("rarePlus")}× RARA/EPICA
+                  {" · "}
+                  {slotCount("crystal")}× CRISTALLO
+                  {" · "}
+                  {slotCount("foilChance")}× ✨BRILLANTE
                   {" · "}
                   1× PREMIO
                 </div>
@@ -2394,6 +2403,17 @@ function LiveMatch({ match, uid, onExit }) {
     }
   }, [myTurn]);
 
+  /* Turn-clock tick. Re-render every second so the countdown in
+     the header updates smoothly. The auto-skip effect below reads
+     the same `state.turnExpiry` and triggers `autoSkipTurn` when
+     the deadline passes. */
+  const [, setTurnTick] = useState(0);
+  useEffect(() => {
+    if (state.winner) return undefined;
+    const t = setInterval(() => setTurnTick(v => v + 1), 1000);
+    return () => clearInterval(t);
+  }, [state.winner]);
+
   const matchRef = doc(db, "tcg_matches", match.id);
 
   /* updateState writes the new state and optionally captures a snapshot
@@ -2412,6 +2432,38 @@ function LiveMatch({ match, uid, onExit }) {
       alert("Errore: " + err.message);
     }
   };
+
+  /* Auto-skip on timeout. EITHER client can fire this — the spectator
+     drives it if the active player is AFK; the active player drives it
+     if they're online but stalled. The local ref guards against this
+     client firing twice for the same turn (the in-flight Firestore
+     write hasn't flipped activeSide yet). */
+  const autoSkipFiredRef = useRef(null);
+  useEffect(() => {
+    autoSkipFiredRef.current = null;
+  }, [state.activeSide, state.round]);
+  useEffect(() => {
+    if (state.winner) return undefined;
+    if (!state.turnExpiry) return undefined;
+    const check = async () => {
+      if (Date.now() < state.turnExpiry) return;
+      const turnKey = `${state.round}:${state.activeSide}`;
+      if (autoSkipFiredRef.current === turnKey) return;
+      autoSkipFiredRef.current = turnKey;
+      try {
+        const next = autoSkipTurn(state, state.activeSide);
+        if (next !== state) await updateState(next);
+      } catch (e) {
+        console.error("tcg auto-skip failed:", e);
+      }
+    };
+    check();
+    const t = setInterval(check, 1000);
+    return () => clearInterval(t);
+    // Re-arm when the turn flips (new activeSide/round) so the next
+    // turn gets its own deadline check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.turnExpiry, state.activeSide, state.round, state.winner]);
 
   const handleDiscardCard = async (instId) => {
     if (!myTurn || state.winner) return;
@@ -2575,9 +2627,12 @@ function LiveMatch({ match, uid, onExit }) {
         const def = inst ? TCG_CARDS[inst.cardId] : null;
         if (!def) { downStartRef.current = null; return; }
         dragStartedRef.current = true;
+        // Ghost rides on the pointer — the CSS transform on
+        // .tcg-drag-ghost positions the card so its body sits above
+        // the pointer (so the player can see what they're dragging
+        // and the finger doesn't cover the card).
         setDragInfo({ kind: downStart.kind, instId: downStart.instId, def, x: e.clientX, y: e.clientY });
       }
-      // Update ghost position via direct DOM (avoids per-pixel React renders)
       if (dragGhostRef.current) {
         dragGhostRef.current.style.left = `${e.clientX}px`;
         dragGhostRef.current.style.top  = `${e.clientY}px`;
@@ -2910,6 +2965,17 @@ function LiveMatch({ match, uid, onExit }) {
         <button className="tcg-btn tcg-btn--ghost tcg-btn--tiny" onClick={onExit}>← Lobby</button>
         <div className="tcg-match-round">
           Turno {state.round} · {myTurn ? "🟢 Tocca a te" : "⏳ Avversario"}
+          {state.turnExpiry && !state.winner && (() => {
+            const msLeft = Math.max(0, state.turnExpiry - Date.now());
+            const min = Math.floor(msLeft / 60000);
+            const sec = Math.floor((msLeft % 60000) / 1000);
+            const urgent = msLeft < 20000;
+            return (
+              <span className={`tcg-turn-timer${urgent ? " tcg-turn-timer--urgent" : ""}`} title="Tempo rimanente per agire">
+                ⏱ {String(min).padStart(2, "0")}:{String(sec).padStart(2, "0")}
+              </span>
+            );
+          })()}
         </div>
         <button
           className="tcg-btn tcg-btn--ghost tcg-btn--tiny tcg-btn--mute"
@@ -3141,6 +3207,7 @@ function LiveMatch({ match, uid, onExit }) {
             const def = TCG_CARDS[c.cardId];
             const playable = canPlayCard(state, mySide, c.instId);
             const isPending = pendingSpell?.instId === c.instId;
+            const isDragging = dragInfo?.kind === "hand" && dragInfo?.instId === c.instId;
             return (
               <Card
                 key={c.instId}
@@ -3151,7 +3218,8 @@ function LiveMatch({ match, uid, onExit }) {
                 selected={isPending || discardMode}
                 className={
                   (isPending ? "tcg-card--pending-spell" : "") +
-                  (discardMode ? " tcg-card--discard-target" : "")
+                  (discardMode ? " tcg-card--discard-target" : "") +
+                  (isDragging ? " tcg-card--dragging" : "")
                 }
                 onInspect={() => setFocusedCardId(c.cardId)}
                 dataDraggable={myTurn && playable && !discardMode ? `hand:${c.instId}` : undefined}

@@ -1,13 +1,13 @@
 /* ============================================================
-   TCG battle BGM — calm classical loop synthesized on the fly
-   with the Web Audio API. No external files; sine and triangle
-   oscillators give it a soft, string-like timbre instead of the
-   harsh chiptune square waves it used to be.
+   TCG battle BGM — bouncy fantasy-village loop, synthesized on
+   the fly with the Web Audio API. No external files; triangle and
+   sine oscillators give it a warm, woody timbre — closer to a tin
+   whistle + plucked lute than the slow string drone it was before.
 
-   The loop is a Pachelbel-Canon-style progression in C major:
-     C  G  Am  Em  F  C  F  G
-   …with a sustained lead voice over a walking bass and a gentle
-   eighth-note arpeggio. Tempo ~70 BPM (largo/adagio).
+   Loop: a cheerful I–V–vi–IV / I–V–IV–V progression (Pachelbel-
+   adjacent but happier and more melodic) at ~96 BPM. The lead
+   phrases breathe (eighth-note runs broken up by rests) so the
+   loop doesn't blur into a wall of sound.
 
    Public API:
      startBgm()        — begin the loop (no-op if already playing)
@@ -27,62 +27,81 @@ let scheduleId   = null;
 let isPlaying    = false;
 let muted        = false;
 
-/* C-major / A-minor diatonic notes across three octaves — enough
-   range for the lead, bass, and arpeggio voices below. */
+/* Diatonic notes spanning the lead, bass, and arpeggio ranges. */
 const NOTE = {
   C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
   C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
   C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00,
 };
 
-/* Tempo: 70 BPM (largo). Each chord lasts 2 beats. */
-const BPM       = 70;
+/* Tempo: 96 BPM (allegro moderato — bouncy, never frantic). */
+const BPM       = 96;
 const SEC_BEAT  = 60 / BPM;
 
-/* Lead voice — sustained two-beat melodic line over each chord.
-   Pachelbel-style descending top-voice canon, calmed down with
-   long held notes instead of a fast melody. */
+/* 8 chords × 2 beats = 16 beats per loop.
+   Chord plan: C  G  Am  F  C  G  F  G  (happy folk-pop progression). */
+
+/* Lead voice — short bouncy phrases with rests so the loop has
+   "breath" and doesn't feel like a sustained drone. A null note
+   = rest (the note() function treats freq=null as silence). */
 const LEAD = [
-  ["E5", 2], ["D5", 2],   // C  → G
-  ["C5", 2], ["B4", 2],   // Am → Em
-  ["A4", 2], ["G4", 2],   // F  → C
-  ["F4", 2], ["G4", 2],   // F  → G
+  // C  → playful opening: triadic skip + rest
+  ["E5", 0.5], ["G5", 0.5], ["E5", 0.5], [null, 0.5],
+  // G  → answering phrase
+  ["D5", 0.5], ["G5", 0.5], ["D5", 0.5], [null, 0.5],
+  // Am → gentle dip into the relative minor
+  ["C5", 0.5], ["E5", 0.5], ["A4", 1.0],
+  // F  → uplifting climb
+  ["F4", 0.5], ["A4", 0.5], ["C5", 1.0],
+  // C  → return home, melodic ornament
+  ["G4", 0.5], ["E5", 0.5], ["G5", 0.5], ["E5", 0.5],
+  // G
+  ["D5", 0.5], ["B4", 0.5], ["G4", 0.5], [null, 0.5],
+  // F  → sustained, then walk down
+  ["A4", 0.5], ["C5", 0.5], ["A4", 1.0],
+  // G  → setup for next loop iteration
+  ["B4", 0.5], ["D5", 0.5], ["G4", 1.0],
 ];
 
-/* Bass voice — root note of each chord, held for the full 2 beats. */
+/* Bass voice — root + fifth pulse (root on beat 1, fifth on beat 2)
+   to make the harmony feel like a strolling lute, not a held drone. */
 const BASS = [
-  ["C3", 2], ["G3", 2],
-  ["A3", 2], ["E3", 2],
-  ["F3", 2], ["C3", 2],
-  ["F3", 2], ["G3", 2],
+  // C
+  ["C3", 1], ["G3", 1],
+  // G
+  ["G3", 1], ["D3", 1],
+  // Am
+  ["A3", 1], ["E3", 1],
+  // F
+  ["F3", 1], ["C3", 1],
+  // C
+  ["C3", 1], ["G3", 1],
+  // G
+  ["G3", 1], ["D3", 1],
+  // F
+  ["F3", 1], ["C3", 1],
+  // G
+  ["G3", 1], ["D3", 1],
 ];
 
-/* Arpeggio voice — gentle eighth-note triad arpeggios on each
-   chord (4 notes per beat, 2 beats per chord = 8 notes/chord). */
+/* Arpeggio voice — sparse triad sparkles, 4 notes per chord, kept
+   well below the lead in volume so it sits behind the melody. */
 const ARP = [
-  // C (C E G)
+  // C
   ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
-  ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
-  // G (G B D)
+  // G
   ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
-  ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
-  // Am (A C E)
+  // Am
   ["A3", 0.5], ["C4", 0.5], ["E4", 0.5], ["C4", 0.5],
-  ["A3", 0.5], ["C4", 0.5], ["E4", 0.5], ["C4", 0.5],
-  // Em (E G B)
-  ["E3", 0.5], ["G3", 0.5], ["B3", 0.5], ["G3", 0.5],
-  ["E3", 0.5], ["G3", 0.5], ["B3", 0.5], ["G3", 0.5],
-  // F (F A C)
+  // F
   ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
-  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
-  // C (C E G)
+  // C
   ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
-  ["C4", 0.5], ["E4", 0.5], ["G4", 0.5], ["E4", 0.5],
-  // F (F A C)
-  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
-  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
-  // G (G B D)
+  // G
   ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
+  // F
+  ["F3", 0.5], ["A3", 0.5], ["C4", 0.5], ["A3", 0.5],
+  // G
   ["G3", 0.5], ["B3", 0.5], ["D4", 0.5], ["B3", 0.5],
 ];
 
@@ -95,30 +114,29 @@ function getCtx() {
     if (!AC) return null;
     ctx = new AC();
     masterGain = ctx.createGain();
-    masterGain.gain.value = muted ? 0 : 0.08;
+    masterGain.gain.value = muted ? 0 : 0.07;
     masterGain.connect(ctx.destination);
   }
   return ctx;
 }
 
-/* Schedule a single note. Soft envelope (longer attack/release)
-   gives the sine voices a string-like swell instead of the abrupt
-   click of a square wave. */
+/* Schedule a single note. A slightly snappier attack (vs. the old
+   slow swell) gives notes a "plucked" feel; the release still
+   tapers smoothly so adjacent notes don't click. */
 function note(startAt, freq, durSec, type, vol) {
-  if (freq == null) return;
+  if (freq == null) return; // rest
   const c = ctx;
   const osc = c.createOscillator();
   osc.type = type;
   osc.frequency.value = freq;
   const g = c.createGain();
   const peak = Math.max(0, vol);
-  // Gentle attack/release so notes blend instead of clicking.
-  const ATK = Math.min(0.08, durSec * 0.15);
-  const REL = Math.min(0.18, durSec * 0.35);
+  const ATK = Math.min(0.015, durSec * 0.05); // fast pluck
+  const REL = Math.min(0.14, durSec * 0.45);  // gentle tail
   g.gain.setValueAtTime(0, startAt);
   g.gain.linearRampToValueAtTime(peak, startAt + ATK);
   g.gain.setValueAtTime(peak, startAt + Math.max(ATK, durSec - REL));
-  g.gain.linearRampToValueAtTime(0, startAt + durSec);
+  g.gain.exponentialRampToValueAtTime(0.001, startAt + durSec);
   osc.connect(g).connect(masterGain);
   osc.start(startAt);
   osc.stop(startAt + durSec + 0.05);
@@ -128,20 +146,20 @@ function note(startAt, freq, durSec, type, vol) {
 function scheduleOneLoop(loopStart) {
   let t = loopStart;
   for (const [n, b] of LEAD) {
-    // Sine = soft, breath-like sustain for the melodic top voice.
-    note(t, NOTE[n], b * SEC_BEAT * 0.95, "sine", 0.18);
+    // Triangle = warm, woody, tin-whistle-ish lead.
+    note(t, NOTE[n], b * SEC_BEAT * 0.85, "triangle", 0.16);
     t += b * SEC_BEAT;
   }
   t = loopStart;
   for (const [n, b] of BASS) {
-    // Triangle = warm, mellow bass with a hint of edge.
-    note(t, NOTE[n], b * SEC_BEAT * 0.9, "triangle", 0.14);
+    // Triangle bass with shorter sustain → walking lute feel.
+    note(t, NOTE[n], b * SEC_BEAT * 0.65, "triangle", 0.13);
     t += b * SEC_BEAT;
   }
   t = loopStart;
   for (const [n, b] of ARP) {
-    // Sine arpeggio — kept very quiet so it sits behind the lead.
-    note(t, NOTE[n], b * SEC_BEAT * 0.85, "sine", 0.05);
+    // Sine sparkles — light, sits behind the lead.
+    note(t, NOTE[n], b * SEC_BEAT * 0.7, "sine", 0.045);
     t += b * SEC_BEAT;
   }
 }
@@ -162,8 +180,7 @@ function tick() {
 /* Wait for a real user gesture before scheduling notes. Browsers
    block AudioContext.start() on a suspended context and warn for
    every blocked oscillator — without this gate the scheduler ticks
-   every 250 ms and floods the console (and burns CPU) with hundreds
-   of "AudioContext was not allowed to start" warnings. */
+   every 250 ms and floods the console with hundreds of warnings. */
 let pendingStart = false;
 function attachGestureUnlock() {
   if (pendingStart) return;
@@ -173,8 +190,6 @@ function attachGestureUnlock() {
     window.removeEventListener("keydown", onGesture, true);
     window.removeEventListener("touchstart", onGesture, true);
     pendingStart = false;
-    // Recurse — by now a gesture has happened, so the AudioContext
-    // can be resumed without producing the autoplay warning.
     startBgm();
   };
   window.addEventListener("pointerdown", onGesture, true);
@@ -187,8 +202,6 @@ export function startBgm() {
   const c = getCtx();
   if (!c) return;
   if (c.state === "suspended") {
-    // No user gesture yet — defer everything. Don't read currentTime,
-    // don't schedule notes, don't tick. Wait silently.
     attachGestureUnlock();
     c.resume().catch(() => {});
     return;
@@ -203,7 +216,6 @@ export function stopBgm() {
   if (scheduleId) { clearTimeout(scheduleId); scheduleId = null; }
   if (ctx) {
     try {
-      // Fade master out quickly before tearing down to avoid a click.
       const now = ctx.currentTime;
       masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
@@ -226,6 +238,6 @@ export function setBgmMuted(m) {
   if (masterGain && ctx) {
     const now = ctx.currentTime;
     masterGain.gain.cancelScheduledValues(now);
-    masterGain.gain.setTargetAtTime(muted ? 0 : 0.08, now, 0.05);
+    masterGain.gain.setTargetAtTime(muted ? 0 : 0.07, now, 0.05);
   }
 }

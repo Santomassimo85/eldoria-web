@@ -657,6 +657,115 @@ section.tcg-page,
 
 /* board-card overrides */
 .tcg-board-card { position: relative; }
+
+/* ── Board cards: artwork is the BACKGROUND ────────────────────
+   On the battlefield the card art fills the entire card body
+   (everything except the element-colored header) as a pure
+   background image. The original DOM order — header, art, mechs,
+   stats — is preserved; only the ART element is absolutely
+   positioned so the image sits BEHIND the mechs/stats and the
+   mechs+stats keep their natural flex-flow positions. Result: same
+   icon layout as before, but a big readable picture behind them.
+   Hand cards keep their original layered layout — only
+   `.tcg-board-card` is affected. */
+.tcg-board-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.tcg-board-card .tcg-card-header {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+}
+/* Art is taken out of flow and stretched over the whole card.
+   The header sits visually above it via z-index; the header's own
+   solid background hides the part of the art that would otherwise
+   show through the header strip. */
+.tcg-board-card .tcg-card-art--small {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  z-index: 0;
+}
+.tcg-board-card .tcg-card-art--small .tcg-card-art-img {
+  width: 100%;
+  height: 100%;
+  /* `contain` keeps the artwork at its real aspect ratio while
+     scaling to fill the available area; the card's element color
+     shows through any letterboxed margin so the background reads
+     as part of the card, not white space. */
+  object-fit: contain;
+  object-position: center;
+}
+.tcg-board-card .tcg-card-art--small .tcg-card-art-emoji {
+  font-size: 3.2rem;
+}
+/* Mechs + stats stay in NORMAL flex flow, just lifted above the
+   art background via z-index. They appear in the same spots they
+   used to occupy — mechs as a short row near the top of the body,
+   stats pinned to the bottom via the auto margin. */
+.tcg-board-card .tcg-card-mechs--mini {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  margin: 4px 4px 0;
+  padding: 1px 3px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
+  width: fit-content;
+  min-height: 0;
+  pointer-events: none;
+}
+.tcg-board-card .tcg-card-mech-mini {
+  background: rgba(255, 255, 255, 0.92);
+}
+/* ATK/HP block stays in normal flex flow at the bottom of the
+   card — the chunky pill reads as part of the creature, like
+   M:tG's power/toughness corner. The body of the card is the
+   artwork (positioned absolute behind everything else above). */
+.tcg-board-card .tcg-card-stats--mtg {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  margin-top: auto;
+  pointer-events: none;
+}
+/* Compact the pill on board thumbnails so the full A / X / max
+   string fits a 96-180px card without the leftmost number being
+   clipped by the card edge. */
+.tcg-board-card .tcg-card-stats--mtg .tcg-card-mtg-pt {
+  font-size: 0.86rem;
+  margin: 0 auto 2px;
+}
+.tcg-board-card .tcg-card-stats--mtg .tcg-card-mtg-atk,
+.tcg-board-card .tcg-card-stats--mtg .tcg-card-mtg-hp {
+  padding: 2px 6px;
+  min-width: 14px;
+}
+.tcg-board-card .tcg-card-stats--mtg .tcg-card-mtg-hp-max {
+  font-size: 0.58rem;
+  margin-left: 2px;
+}
+.tcg-board-card .tcg-card-stats--mtg {
+  justify-content: center;
+}
+.tcg-board-card .tcg-card-inspect-btn--board {
+  z-index: 3;
+}
+.tcg-board-card .tcg-board-tag {
+  z-index: 3;
+}
 .tcg-board-card--ready {
   outline: 3px dashed #15803d;
   outline-offset: 2px;
@@ -725,6 +834,33 @@ section.tcg-page,
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.94rem;
+}
+/* Per-turn countdown — 2-minute limit; turns red and pulses in the
+   final 20 seconds so the active player can't miss it. */
+.tcg-turn-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  padding: 1px 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(199, 210, 254, 0.45);
+  border-radius: 6px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.86rem;
+  color: #fef3c7;
+  letter-spacing: 0.04em;
+}
+.tcg-turn-timer--urgent {
+  color: #fff;
+  background: rgba(190, 18, 60, 0.85);
+  border-color: #fca5a5;
+  animation: tcg-turn-timer-pulse 1s ease-in-out infinite;
+}
+@keyframes tcg-turn-timer-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); }
+  50%      { box-shadow: 0 0 10px 3px rgba(244, 63, 94, 0.8); }
 }
 
 .tcg-zone {
@@ -1739,6 +1875,20 @@ section.tcg-page,
 .tcg-pack--water  { --pack-color: var(--tcg-water); }
 .tcg-pack--earth  { --pack-color: var(--tcg-earth); }
 .tcg-pack--air    { --pack-color: var(--tcg-air); }
+.tcg-pack--mixed {
+  /* The multicolore pack uses a 6-stop rainbow banner so it reads
+     as obviously "all elements" rather than another monochrome
+     element-themed chest. */
+  --pack-color: linear-gradient(
+    90deg,
+    var(--tcg-fire)  0%,
+    var(--tcg-air)   20%,
+    var(--tcg-light) 40%,
+    var(--tcg-earth) 60%,
+    var(--tcg-water) 80%,
+    var(--tcg-dark)  100%
+  );
+}
 .tcg-pack--light {
   --pack-color: var(--tcg-light);
   background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
@@ -3543,7 +3693,7 @@ section.tcg-page,
   top: -28px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 6;
+  z-index: 60;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -3567,6 +3717,26 @@ section.tcg-page,
   transform: translateX(-50%);
   border: 4px solid transparent;
   border-top-color: var(--cv-bg, #1f1f1f);
+}
+/* The preview belongs to the TARGET of the attack — always an opp
+   creature. Opp creatures sit at the top of the screen, so a pill
+   anchored above OR below the card runs off the edges on phones.
+   Float it to the SIDE of the card, vertically centered, where
+   there's always horizontal room in the row gaps. The pointer/arrow
+   now juts left, into the target card. */
+.tcg-board--opp .tcg-combat-preview {
+  top: 50%;
+  bottom: auto;
+  left: 100%;
+  transform: translate(6px, -50%);
+}
+.tcg-board--opp .tcg-combat-preview::after {
+  top: 50%;
+  bottom: auto;
+  left: -6px;
+  transform: translateY(-50%);
+  border-color: transparent;
+  border-right-color: var(--cv-bg, #1f1f1f);
 }
 .tcg-combat-preview-icon {
   font-size: 0.96rem;
@@ -4416,7 +4586,16 @@ section.tcg-page,
   cursor: grab;
 }
 .tcg-match--arcane .tcg-card[data-tcg-draggable]:active { cursor: grabbing; }
-.tcg-match--arcane .tcg-card--dragging { opacity: 0.35; transform: scale(0.95); }
+/* Source card disappears during a drag — the ghost (which is the
+   same visual size as the hand card) takes over. Without this, the
+   player sees TWO cards: the original sitting in the hand AND the
+   ghost following the pointer, which reads as "another small one
+   came out". One card, one drag. */
+.tcg-match--arcane .tcg-card--dragging {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: none !important;
+}
 .tcg-match--arcane [data-tcg-drop] { transition: box-shadow 0.15s, background-color 0.15s; }
 .tcg-match--arcane [data-tcg-drop].tcg-drop-hover {
   box-shadow: 0 0 0 3px #fde047, 0 0 30px rgba(253, 224, 71, 0.6);
@@ -4429,34 +4608,38 @@ section.tcg-page,
   position: fixed;
   z-index: 9500;
   pointer-events: none;
-  transform: translate(-50%, -50%) rotate(-4deg);
+  /* Ghost is anchored at its TOP-CENTER on the pointer (translate
+     -50% horizontally, 0 vertically) so the card hangs off the
+     pointer/finger rather than centering on it — this keeps the
+     bulk of the card visible above the finger on touch and to the
+     right of the cursor on desktop. */
+  transform: translate(-50%, -10%) rotate(-3deg);
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 20px rgba(217, 70, 239, 0.55));
-  opacity: 0.95;
-  transition: transform 0.1s ease-out;
+  opacity: 0.96;
+  transition: none;
 }
 .tcg-drag-ghost.tcg-drag-ghost--invalid { filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6)) grayscale(0.5); }
-/* The ghost must look like the hand thumbnail, not the full card detail.
-   Hand thumbnails already hide flavor/effect text via the battle-shell
-   rule — apply the same hiding + height cap here so the dragged card
-   doesn't stretch into a long ribbon when the card has a long flavor
-   line or spell effect text. */
+/* The ghost mirrors the HAND card size (not the tiny board thumbnail)
+   so the player sees the same card they grabbed, just floating with
+   the pointer. */
 .tcg-drag-ghost .tcg-card {
-  width: var(--tcg-card-w, 96px);
-  max-height: calc(var(--tcg-card-w, 96px) * 1.45);
+  --tcg-card-w: var(--tcg-hand-card-w, 180px);
+  width: var(--tcg-hand-card-w, 180px);
+  max-height: calc(var(--tcg-hand-card-w, 180px) * 1.45);
   overflow: hidden;
-  padding: 3px;
+  padding: 4px;
   gap: 2px;
 }
 .tcg-drag-ghost .tcg-card-flavor,
 .tcg-drag-ghost .tcg-card-effect { display: none; }
 .tcg-drag-ghost .tcg-card-name {
-  font-size: 0.66rem;
+  font-size: 0.74rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tcg-drag-ghost .tcg-card-art { height: calc(var(--tcg-card-w, 96px) * 0.62); }
-.tcg-drag-ghost .tcg-card-art-emoji { font-size: calc(var(--tcg-card-w, 96px) * 0.32); }
+.tcg-drag-ghost .tcg-card-art { height: calc(var(--tcg-hand-card-w, 180px) * 0.62); }
+.tcg-drag-ghost .tcg-card-art-emoji { font-size: calc(var(--tcg-hand-card-w, 180px) * 0.32); }
 .tcg-drag-ghost .tcg-card-inspect-btn { display: none; }
 
 /* ============================================================
@@ -4547,8 +4730,61 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   --tcg-card-w: clamp(58px, 10.5vmin, 104px);
   --tcg-hand-card-w: clamp(150px, 22vmin, 240px);
   --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.45);
-  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.5);
+  /* By default the hand cards expose only ~1/5 of their height
+     above the screen edge — just enough to read the top band
+     (cost + name + element). The rest is below the viewport;
+     hover lifts the whole card into view. */
+  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.2);
 }
+/* Unified battlefield — strip the colored backgrounds and
+   chunky borders off the two zones and the central divider so
+   the arcane background reads as ONE continuous battlefield,
+   not a split mine-vs-opp panel. */
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+/* No center divider band — the two zones meet directly so the
+   field reads as one continuous battlefield. Anything the divider
+   needs to render (Lancia su / Colpisci buttons, spell banner,
+   hints) floats over the seam absolutely instead of carving a
+   dedicated row. */
+.tcg-battle-shell .tcg-match--arcane .tcg-divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0 12px;
+  z-index: 20;
+  background: transparent;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* The flex spacer lines used to push the button to the centre
+     of a 1-row band; with the band gone they're useless. */
+  gap: 0;
+  /* Collapse to zero height so it doesn't slice a row out of the
+     grid layout. Its actual content keeps its own size and floats
+     via pointer-events: auto on the children. */
+  height: 0;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-divider-line {
+  display: none;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-divider > *:not(.tcg-divider-line) {
+  pointer-events: auto;
+}
+/* The match-stage grid can drop the dedicated divider row now. */
+.tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-row: 2; }
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 3; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine {
   padding-bottom: var(--tcg-hand-peek);
 }
@@ -4569,6 +4805,11 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   text-overflow: ellipsis;
 }
 .tcg-battle-shell .tcg-card-art { height: calc(var(--tcg-card-w) * 0.62); }
+/* Board cards override the height cap — see `.tcg-board-card` rules
+   above; on the field the art fills the entire card body. */
+.tcg-battle-shell .tcg-board-card .tcg-card-art--small {
+  height: auto;
+}
 .tcg-battle-shell .tcg-card-art-emoji { font-size: calc(var(--tcg-card-w) * 0.32); }
 .tcg-battle-shell .tcg-card-cost { font-size: 0.78rem; padding: 1px 5px; }
 .tcg-battle-shell .tcg-card-element {
@@ -4621,23 +4862,93 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-column: 1; grid-row: 2; min-height: 0; }
 .tcg-battle-shell .tcg-match--arcane .tcg-divider   { grid-column: 1; grid-row: 3; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-column: 1; grid-row: 4; min-height: 0; }
-/* Hand + action bar are positioned as overlays — see overrides below.
-   The action bar sits just above the hand peek so it never gets
-   obscured by lifted cards. */
+/* Action bar — vertical stack of card-styled chip buttons pinned
+   to the right edge of the battlefield. Sits well above the hand
+   peek so it never gets covered by a lifted card. */
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
   position: absolute;
   right: 8px;
-  bottom: calc(var(--tcg-hand-peek) + 6px + env(safe-area-inset-bottom, 0px));
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 50;
   width: auto;
-  flex-direction: row;
+  display: flex;
+  flex-direction: column;
   flex-wrap: nowrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
   padding: 0;
   max-height: none;
   min-height: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+/* Card-style buttons: thick border, hard drop-shadow, colored fill
+   per action — same vocabulary as the cards in hand so the action
+   strip reads as part of the game UI, not a system toolbar. */
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-btn--undo,
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn,
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 3px solid #1c1410;
+  box-shadow: 3px 3px 0 0 #1c1410;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-btn--undo {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  color: #fff;
+  border-color: #082f49;
+  box-shadow: 3px 3px 0 0 #082f49;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn--discard {
+  background: linear-gradient(180deg, #f87171 0%, #b91c1c 100%);
+  color: #fff;
+  border-color: #450a0a;
+  box-shadow: 3px 3px 0 0 #450a0a;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn--log {
+  background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
+  color: #fff7d6;
+  border-color: #451a03;
+  box-shadow: 3px 3px 0 0 #451a03;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn {
+  background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
+  color: #f0fdf4;
+  border-color: #052e16;
+  box-shadow: 3px 3px 0 0 #052e16;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn:not(.tcg-action-turn-btn--my) {
+  background: linear-gradient(180deg, #a78bfa 0%, #6d28d9 100%);
+  border-color: #2e1065;
+  box-shadow: 3px 3px 0 0 #2e1065;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar > *:hover:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 currentColor;
+  filter: brightness(1.08);
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar > *:disabled {
+  filter: grayscale(0.6) brightness(0.7);
+  cursor: not-allowed;
+  box-shadow: 1px 1px 0 0 #1c1410;
+  transform: none;
 }
 /* Wrapper around Annulla — must NOT inherit the legacy
    `.tcg-action-bar-buttons { flex: 1 1 100% }` rule from
@@ -4991,6 +5302,20 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   scrollbar-width: thin;
   padding: 4px;
   gap: 4px;
+  /* Replace the ugly dashed `2px dashed --tcg-ink` outline from the
+     generic .tcg-board rule with a soft "battlefield mat" — no hard
+     border, just a faint inner glow + radial vignette so the field
+     reads as ITS OWN region without slicing the arcane background. */
+  background:
+    radial-gradient(ellipse at center,
+      rgba(167, 139, 250, 0.10) 0%,
+      rgba(167, 139, 250, 0.04) 40%,
+      transparent 75%);
+  border: 0;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgba(199, 210, 254, 0.18),
+    inset 0 0 24px rgba(139, 92, 246, 0.18);
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-board::-webkit-scrollbar { height: 6px; }
 .tcg-battle-shell .tcg-match--arcane .tcg-board::-webkit-scrollbar-thumb {
@@ -5116,26 +5441,18 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   gap: 0;
   padding: 0 12px;
 
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  /* Slim, themed scrollbar; lives below stage edge so invisible. */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.5) transparent;
-
-  /* Enable scroll capture on this row so swipes / wheel work. */
-  pointer-events: auto;
-}
-.tcg-battle-shell .tcg-match--arcane .tcg-hand::-webkit-scrollbar {
-  height: 4px;
-}
-.tcg-battle-shell .tcg-match--arcane .tcg-hand::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 55, 0.5);
-  border-radius: 2px;
+  /* Critical: the hand container is TALL (2.3× card height) to leave
+     room for the hover-lifted card. That tall region sits invisibly
+     OVER the my-zone. If the hand caught pointer events, every click
+     on a board creature in the lower half of the screen would land on
+     the hand instead. So the hand passes events through; only the
+     cards themselves catch clicks. */
+  pointer-events: none;
+  overflow: visible;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand > * {
   flex: 0 0 var(--tcg-hand-card-w);
+  pointer-events: auto;
 }
 /* Overlap: each subsequent card slides ~45% under the previous
    one so the visible "tab" of each is the left ~55% (cost / name /
@@ -5154,8 +5471,34 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   max-height: var(--tcg-hand-card-h);
   overflow: hidden;
   transform-origin: center bottom;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  /* Slower transitions so the lift / drop / fan-shift feels weighty
+     when scrolling between cards or grabbing one to drag. */
+  transition:
+    transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.28s ease,
+    filter 0.28s ease;
   will-change: transform;
+  /* Solid + vivid: hand cards stay fully opaque even when the
+     player can't currently afford them. The generic disabled rule
+     dimmed them to 0.5 which made them read as "almost transparent"
+     over the arcane background — that's the look we explicitly
+     don't want. Unplayable cards get a strong desaturate / dim
+     instead of opacity so they stay readable but recede. */
+  opacity: 1 !important;
+}
+/* Playable cards (the player has enough mana / can act on them) —
+   the cards NOT marked --disabled. Lift them out of the fan with a
+   subtle warm glow so the player's eye lands on what they can
+   actually cast. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:not(.tcg-card--disabled) {
+  filter:
+    saturate(1.15)
+    brightness(1.06)
+    drop-shadow(0 0 6px rgba(255, 213, 74, 0.55));
+}
+/* Unplayable cards — heavy dim so they fade into the background. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card.tcg-card--disabled {
+  filter: saturate(0.25) brightness(0.55) contrast(0.95);
 }
 /* Board cards keep their previous size cap (board cards stay
    small thumbnails so the field stays readable). */
@@ -5363,25 +5706,25 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   .tcg-battle-shell .tcg-match.tcg-match--arcane {
     --tcg-card-w: clamp(72px, 20vh, 120px);
     /* Phone hand cards are big and don't shrink — the row scrolls
-       horizontally when there are too many to fit. The min keeps
-       cards readable on tiny landscape phones; the max keeps them
-       sane on tablets. Peek is 42% (not the full 50%) on phone so
-       the my-zone keeps enough vertical room for creatures. */
+       horizontally when there are too many to fit. Peek = 1/5 of
+       the card height so the battlefield keeps virtually all the
+       vertical room; hover lifts the whole card into view. */
     --tcg-hand-card-w: clamp(160px, 38vh, 240px);
     --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.45);
-    --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.42);
+    --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.2);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
     grid-template-columns: minmax(0, 1fr);
-    /* Field zones dominate; hand + action bar are overlay (no row). */
-    grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 2fr);
+    /* Field zones dominate; the divider band is gone — its contents
+       float absolutely at the seam — and the hand + action bar are
+       overlays. So the grid is just header / opp / mine. */
+    grid-template-rows: auto minmax(0, 2fr) minmax(0, 2fr);
     gap: 2px;
     padding: 2px;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-row: 1; }
   .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp  { grid-row: 2; }
-  .tcg-battle-shell .tcg-match--arcane .tcg-divider    { grid-row: 3; }
-  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 4; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 3; }
   .tcg-battle-shell .tcg-match--arcane .tcg-log {
     max-height: 56px;
     overflow-y: auto;
@@ -5585,14 +5928,19 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     font-size: 0.6rem;
   }
 
-  /* ── Action chips cluster bottom-right ── */
+  /* Action stack: keep the vertical card-style layout from the base
+     rule; just shrink the chips a bit so they don't crowd the
+     battlefield on smaller screens. */
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
-    /* Stay absolute (set in the base rule above) — just tighten
-       the phone styling. The grid no longer reserves a row for it. */
-    padding: 2px 4px;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
+    gap: 6px;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-btn--undo,
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn,
+  .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn {
+    min-width: 64px;
+    min-height: 36px;
+    padding: 5px 8px;
+    font-size: 0.62rem;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
     flex: 0 0 auto;
@@ -5612,6 +5960,40 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      anyway (already hidden via .tcg-hand .tcg-card-flavor /
      .tcg-card-effect rules above). The element icon + cost +
      stats are what the player needs to see at a glance. */
+
+  /* "Lancia su …" / "Colpisci …" button — the action stack lives
+     on the right edge on phone, so push the divider's target button
+     to the LEFT and shrink it so it doesn't get tucked behind the
+     stack. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-divider {
+    justify-content: flex-start;
+    padding-left: 6px;
+    /* Reserve room on the right for the vertical action stack
+       (≈ 84px chip + 8px right inset + 8px breathing room). */
+    padding-right: 104px;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-face-attack,
+  .tcg-battle-shell .tcg-match--arcane .tcg-face-attack--spell {
+    flex: 0 0 auto;
+    margin-right: auto;
+    padding: 4px 8px;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    max-width: calc(100vw - 120px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The two flex spacer lines inside .tcg-divider would force the
+     button to the centre — shrink them so the button hugs the left. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-divider .tcg-divider-line {
+    flex: 0 0 0;
+    width: 0;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-spell-banner {
+    margin-right: auto;
+    font-size: 0.7rem;
+  }
 }
 
 /* ── COLORED COST PIPS — replaces the single cost number ────

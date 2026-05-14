@@ -52,7 +52,7 @@ const TCG_ELEMENT_LABEL = {
 };
 const TCG_ELEMENT_ICON = {
   fire: "🔥", water: "💧", earth: "🌿",
-  air:  "💨", light: "✨", dark:  "🌑",
+  air:  "🌪", light: "✨", dark:  "🌑",
 };
 
 const TCG_PACK_FLAVOR = (rarity, element) =>

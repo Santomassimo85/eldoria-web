@@ -24,7 +24,7 @@ export const ELEMENT_ICON = {
   fire:  "🔥",
   water: "💧",
   earth: "🌿",
-  air:   "💨",
+  air:   "🌪",
   light: "✨",
   dark:  "🌑",
 };
@@ -510,7 +510,7 @@ export const TCG_CARDS = {
     flavor: "La sua coda spacca le montagne. La sua corteccia ricresce ogni alba.",
   },
 
-  /* ── AIR 💨 ───────────────────────────────────── */
+  /* ── AIR 🌪 ───────────────────────────────────── */
   hawk: {
     id: "hawk", name: "Falco", image: "/assets/tgc_card/hawk.png", icon: "🦅",
     element: "air", rarity: "common", cost: 1, mana: { air: 1 }, atk: 2, hp: 1,
@@ -700,7 +700,7 @@ export const TCG_CARDS = {
     flavor: "Le ferite si chiudono. Le radici tornano a bere.",
   },
 
-  /* ── AIR 💨 spells ────────────────────────────── */
+  /* ── AIR 🌪 spells ────────────────────────────── */
   spell_bladestorm: {
     id: "spell_bladestorm", name: "Tempesta di Lame", image: null, icon: "🌪",
     element: "air", rarity: "common", cost: 2, mana: { air: 2 }, type: "spell",
@@ -944,7 +944,7 @@ export const TCG_CARDS = {
     flavor: "Drago del giardino del mondo. Le sue ali sono foglie.",
   },
 
-  /* ── AIR 💨 expansion ───────────────────────────────── */
+  /* ── AIR 🌪 expansion ───────────────────────────────── */
   axebeak: {
     id: "axebeak", name: "Becco d'Ascia", image: "/assets/tgc_card/axebeak.png", icon: "🦅",
     element: "air", rarity: "common", cost: 2, mana: { air: 1, any: 1 }, atk: 3, hp: 1,
@@ -1432,7 +1432,7 @@ export const TCG_CARDS = {
     flavor: "Tagliagli un braccio. Ricresce, più cattivo.",
   },
 
-  /* ── AIR 💨 — expansion 2 ────────────────────────── */
+  /* ── AIR 🌪 — expansion 2 ────────────────────────── */
   boneranger: {
     id: "boneranger", name: "Ranger d'Ossa", image: "/assets/tgc_card/boneranger.png", icon: "🏹",
     element: "air", rarity: "common", cost: 2, mana: { air: 1, any: 1 }, atk: 2, hp: 3,
@@ -1773,70 +1773,102 @@ export function randomCompliment() {
    honoring rarity).
    ============================================================ */
 
+/* Standard 15-card layout shared by every single-element pack. */
+const STANDARD_PACK_SLOTS = [
+  "common", "common", "common", "common", "common", "common", "common",
+  "rare", "rare", "rare",
+  "rarePlus",
+  "crystal", "crystal",
+  "foilChance",
+  "premium",
+];
+const STANDARD_PACK_DESC =
+  "15 carte · 7 comuni · 3 rare · 1 rara-o-epica · 2 cristalli · 1 con chance brillante · 1 premio (raro→leggendario).";
+const ELITE_PACK_SLOTS = [
+  "common", "common", "common", "common", "common", "common", "common",
+  "rare", "rare", "rare",
+  "rarePlus",
+  "crystal", "crystal",
+  "foilChance",
+  "premium-elite",
+];
+const ELITE_PACK_DESC =
+  "15 carte · 7 comuni · 3 rare · 1 rara-o-epica · 2 cristalli · 1 con chance brillante · 1 premio d'élite.";
+
 export const PACK_DEFS = {
   fire: {
     key: "fire", element: "fire",
     name: "Forziere del Fuoco", icon: "🔥",
-    cost: 80, size: 8,
-    description:
-      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte di Fuoco.",
-    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
-    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    cost: 80, size: 15,
+    description: STANDARD_PACK_DESC + " Alta probabilità di carte di Fuoco.",
+    slots: STANDARD_PACK_SLOTS,
+    premiumOdds: { rare: 80, epic: 18, legendary: 2 },
     elementBias: 0.75,
   },
   water: {
     key: "water", element: "water",
     name: "Forziere dell'Acqua", icon: "💧",
-    cost: 80, size: 8,
-    description:
-      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte d'Acqua.",
-    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
-    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    cost: 80, size: 15,
+    description: STANDARD_PACK_DESC + " Alta probabilità di carte d'Acqua.",
+    slots: STANDARD_PACK_SLOTS,
+    premiumOdds: { rare: 80, epic: 18, legendary: 2 },
     elementBias: 0.75,
   },
   earth: {
     key: "earth", element: "earth",
     name: "Forziere della Terra", icon: "🌿",
-    cost: 80, size: 8,
-    description:
-      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte di Terra.",
-    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
-    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    cost: 80, size: 15,
+    description: STANDARD_PACK_DESC + " Alta probabilità di carte di Terra.",
+    slots: STANDARD_PACK_SLOTS,
+    premiumOdds: { rare: 80, epic: 18, legendary: 2 },
     elementBias: 0.75,
   },
   air: {
     key: "air", element: "air",
-    name: "Forziere dell'Aria", icon: "💨",
-    cost: 80, size: 8,
-    description:
-      "5 comuni · 2 rare · 1 slot premio · alta probabilità di carte d'Aria.",
-    slots: ["common", "common", "common", "common", "common", "rare", "rare", "premium"],
-    premiumOdds: { rare: 79.5, epic: 20, legendary: 0.5 },
+    name: "Forziere dell'Aria", icon: "🌪",
+    cost: 80, size: 15,
+    description: STANDARD_PACK_DESC + " Alta probabilità di carte d'Aria.",
+    slots: STANDARD_PACK_SLOTS,
+    premiumOdds: { rare: 80, epic: 18, legendary: 2 },
     elementBias: 0.75,
+  },
+  mixed: {
+    key: "mixed", element: null,
+    name: "Forziere Multicolore", icon: "🌈",
+    cost: 100, size: 15,
+    description:
+      "15 carte di tutti i colori. 7 comuni · 3 rare · 1 rara-o-epica · 2 cristalli · 1 con chance brillante · 1 premio.",
+    slots: STANDARD_PACK_SLOTS,
+    premiumOdds: { rare: 80, epic: 18, legendary: 2 },
+    elementBias: 0, // pure random across all elements
   },
   light: {
     key: "light", element: "light",
     name: "Reliquiario di Luce", icon: "✨",
-    cost: 200, size: 8,
-    description:
-      "Esotico e raro. 4 comuni · 3 rare · 1 slot d'élite · 5% di un Leggendario.",
-    slots: ["common", "common", "common", "common", "rare", "rare", "rare", "premium-elite"],
+    cost: 200, size: 15,
+    description: ELITE_PACK_DESC + " Esotico — 5% di un Leggendario.",
+    slots: ELITE_PACK_SLOTS,
     premiumOdds: { rare: 50, epic: 45, legendary: 5 },
     elementBias: 1.0,
   },
   dark: {
     key: "dark", element: "dark",
     name: "Sigillo di Tenebra", icon: "🌑",
-    cost: 200, size: 8,
-    description:
-      "Esotico e raro. 4 comuni · 3 rare · 1 slot d'élite · 5% di un Leggendario.",
-    slots: ["common", "common", "common", "common", "rare", "rare", "rare", "premium-elite"],
+    cost: 200, size: 15,
+    description: ELITE_PACK_DESC + " Esotico — 5% di un Leggendario.",
+    slots: ELITE_PACK_SLOTS,
     premiumOdds: { rare: 50, epic: 45, legendary: 5 },
     elementBias: 1.0,
   },
 };
 
-export const PACK_ORDER = ["fire", "water", "earth", "air", "light", "dark"];
+export const PACK_ORDER = ["fire", "water", "earth", "air", "mixed", "light", "dark"];
+
+/* Element pool used by the mixed pack and crystal-slot fallback. */
+const PACK_ELEMENTS = ["fire", "water", "earth", "air", "light", "dark"];
+function randomElement() {
+  return PACK_ELEMENTS[Math.floor(Math.random() * PACK_ELEMENTS.length)];
+}
 
 /* ── Rarity weighted roll ─────────────────────────────────── */
 function rollRarity(odds) {
@@ -1850,14 +1882,19 @@ function rollRarity(odds) {
   return entries[entries.length - 1][0];
 }
 
-/* ── Pick a single card honoring rarity + element bias ──── */
+/* ── Pick a single card honoring rarity + element bias ────
+   Crystals are excluded from regular rarity rolls — they have
+   their own dedicated `crystal` slot in the new pack layout, so
+   leaving them in the common pool would double-count them. */
 function pickCardId(packElement, rarity, elementBias) {
+  const notCrystal = (c) => c.type !== "crystal";
   const ofRarityAndEl = TCG_CARD_LIST.filter(
-    c => c.rarity === rarity && c.element === packElement
+    c => c.rarity === rarity && c.element === packElement && notCrystal(c)
   );
-  const ofRarity = TCG_CARD_LIST.filter(c => c.rarity === rarity);
-  const useEl = Math.random() < elementBias && ofRarityAndEl.length > 0;
-  const pool = useEl ? ofRarityAndEl : (ofRarity.length > 0 ? ofRarity : TCG_CARD_LIST);
+  const ofRarity = TCG_CARD_LIST.filter(c => c.rarity === rarity && notCrystal(c));
+  const useEl = packElement && Math.random() < elementBias && ofRarityAndEl.length > 0;
+  const pool = useEl ? ofRarityAndEl : (ofRarity.length > 0 ? ofRarity : TCG_CARD_LIST.filter(notCrystal));
+  if (pool.length === 0) return TCG_CARD_LIST[0].id;
   return pool[Math.floor(Math.random() * pool.length)].id;
 }
 
@@ -1874,28 +1911,71 @@ function rollFoil() {
   return Math.random() < FOIL_RATE;
 }
 
-/* ── Open a pack: returns [{ cardId, foil }, ...] ────────── */
+/* Boosted foil chance for the dedicated "foilChance" slot — most
+   of the time it just drops a common card, but every now and then
+   it lands a shimmering brilliant version. Other slots still use
+   the baseline FOIL_RATE. */
+export const FOIL_RATE_BOOSTED = 0.08; // 8%
+
+/* "rarePlus" slot — almost always a rare, with a slim epic shot. */
+const RARE_PLUS_ODDS = { rare: 94, epic: 6 };
+
+/* ── Open a pack: returns [{ cardId, foil }, ...] ──────────
+   Slot keys:
+     "common" / "rare"  — fixed-rarity card
+     "rarePlus"         — mostly rare, slim chance of epic
+     "crystal"          — crystal of the pack's element (random
+                          element for the mixed pack)
+     "foilChance"       — common card with elevated foil odds
+     "premium" / "premium-elite"
+                        — rolls via def.premiumOdds */
 export function openPack(packKey) {
   const def = PACK_DEFS[packKey];
   if (!def) return [];
   const out = [];
   for (const slot of def.slots) {
+    // Crystal slot: always drops a crystal of the pack's element.
+    // For the mixed pack (def.element == null) it rolls a random
+    // element so the player gets varied mana.
+    if (slot === "crystal") {
+      const el = def.element || randomElement();
+      out.push({ cardId: `crystal_${el}`, foil: false });
+      continue;
+    }
+
+    // Decide rarity for this slot.
     let rarity;
     if (slot === "premium" || slot === "premium-elite") {
       rarity = rollRarity(def.premiumOdds);
+    } else if (slot === "rarePlus") {
+      rarity = rollRarity(RARE_PLUS_ODDS);
+    } else if (slot === "foilChance") {
+      rarity = "common";
     } else {
       rarity = slot;
     }
+
+    // Mixed pack ignores element bias entirely — every non-crystal
+    // card is rolled across the full element pool.
+    const elementForPick = def.element ?? null;
+    const bias = def.element ? def.elementBias : 0;
+
+    // Foil chance: the dedicated foilChance slot uses the boosted
+    // rate; everything else uses the regular FOIL_RATE.
+    const foil = slot === "foilChance"
+      ? Math.random() < FOIL_RATE_BOOSTED
+      : rollFoil();
+
     out.push({
-      cardId: pickCardId(def.element, rarity, def.elementBias),
-      foil: rollFoil(),
+      cardId: pickCardId(elementForPick, rarity, bias),
+      foil,
     });
   }
   return out;
 }
 
-/* ── Free starter pack — 50 non-foil cards, picked once per
-   player. Distribution: 14 element-crystals + 30 commons + 4 rares
+/* ── Free starter pack — 60 non-foil cards, picked once per
+   player. Distribution: 17 element-crystals + 36 commons + 5 rares
    + 2 epics, all of the chosen element (no splash, no legendary).
    The crystals come bundled so the player can actually pay for
    their cards in their first match without waiting for shop packs.
@@ -1922,19 +2002,19 @@ export function openStarterPack(element) {
   };
 
   const out = [];
-  // 14 elemental crystals — ~28% of the deck, enough mana cards to
-  // hit a 5-cost play by turn 5-6 most games.
-  for (let i = 0; i < 14; i++) out.push({ cardId: "crystal_" + element, foil: false });
-  // 30 commons of the chosen element. Pools intentionally roll
+  // 17 elemental crystals — ~28% of the 60-card deck, enough mana
+  // cards to hit a 5-cost play by turn 5-6 most games.
+  for (let i = 0; i < 17; i++) out.push({ cardId: "crystal_" + element, foil: false });
+  // 36 commons of the chosen element. Pools intentionally roll
   // duplicates so the player ends up with playable multiples for
   // deck-building.
-  for (let i = 0; i < 30; i++) out.push({ cardId: pickFrom(commons), foil: false });
-  // 4 rares of the element (fall back to common).
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 36; i++) out.push({ cardId: pickFrom(commons), foil: false });
+  // 5 rares of the element (fall back to common).
+  for (let i = 0; i < 5; i++) {
     out.push({ cardId: pickFromOrFallback(rares, [commons]), foil: false });
   }
   // 2 epics. Light still has 0 epics — fall back to rare then common
-  // so the starter always totals exactly 50 cards.
+  // so the starter always totals exactly 60 cards.
   for (let i = 0; i < 2; i++) {
     out.push({ cardId: pickFromOrFallback(epics, [rares, commons]), foil: false });
   }

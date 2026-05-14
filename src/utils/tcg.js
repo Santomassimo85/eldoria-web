@@ -33,14 +33,19 @@ import {
 } from "../data/tcgCards";
 
 export const STARTING_HP       = 25;
-export const STARTING_HAND_SIZE = 4;
-export const DECK_SIZE         = 50;
+export const STARTING_HAND_SIZE = 6;
+export const DECK_SIZE         = 60;
 export const MAX_MANA          = 10;
 export const MAX_BOARD         = 6;
 export const MAX_HAND          = 7;
 export const MAX_SECRETS       = 5;
 export const MAX_CRYSTALS_PER_TURN = 1;
 export const ELEMENTS = ["fire", "water", "earth", "air", "light", "dark"];
+/* Per-turn wall-clock limit. If the active player hasn't ended the
+   turn within this window, the client triggers `autoSkipTurn` to
+   pass the turn automatically (with a forced discard down to MAX_HAND
+   if the auto-skipped player is sitting on more cards than the cap). */
+export const TURN_DURATION_MS = 2 * 60 * 1000;
 
 /* ── ELEMENTAL MANA HELPERS ──────────────────────────────────
    v3 replaces the single integer mana with a per-element pool
@@ -548,6 +553,10 @@ function startTurn(state, side) {
     side,
     text: `▶ Turno ${next.round} — tocca a ${sideName(side)}.`,
   }];
+  // Stamp the wall-clock deadline for this turn so both clients can
+  // render the countdown and so the auto-skip can fire when the
+  // active player goes idle.
+  next.turnExpiry = Date.now() + TURN_DURATION_MS;
   return next;
 }
 
@@ -1412,6 +1421,40 @@ export function endTurn(state, side) {
   next.log = [...next.log, {
     side,
     text: `⏭ ${sideName(side)} passa il turno.`,
+  }];
+  return startTurn(next, opp(side));
+}
+
+/* ── Action: auto-skip turn (timeout) ─────────────────────────
+   Fires when the active player's TURN_DURATION_MS deadline passes.
+   `side` is the side BEING SKIPPED (the active one), so any
+   client — including the spectator — can trigger this once the
+   deadline lapses.
+
+   Rule: if the auto-skipped player is holding more cards than the
+   hand cap (MAX_HAND), the excess cards are discarded oldest-first
+   so the turn always ends with the hand within the cap. */
+export function autoSkipTurn(state, side) {
+  if (state.winner) return state;
+  if (state.activeSide !== side) return state;
+  let next = clone(state);
+  const overflow = (next.hand[side]?.length || 0) - MAX_HAND;
+  if (overflow > 0) {
+    for (let i = 0; i < overflow; i++) {
+      const card = next.hand[side].shift();
+      if (!card) break;
+      const def = TCG_CARDS[card.cardId];
+      next.graveyard[side] = [...next.graveyard[side], card.cardId];
+      next.log = [...next.log, {
+        side,
+        text: `🗑 ${sideName(side)} (timeout): scarta ${def?.name || card.cardId}.`,
+        kind: "discard",
+      }];
+    }
+  }
+  next.log = [...next.log, {
+    side,
+    text: `⏰ ${sideName(side)} non ha agito in tempo — turno passato automaticamente.`,
   }];
   return startTurn(next, opp(side));
 }
