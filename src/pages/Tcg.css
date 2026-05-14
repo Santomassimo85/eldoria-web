@@ -4467,11 +4467,13 @@ section.tcg-page,
    mode aren't forced into the rotation). */
 .tcg-battle-shell .tcg-match.tcg-match--arcane.tcg-match--portrait {
   position: fixed;
+  /* `inset: auto` MUST come before top/left — it's shorthand for
+     all four sides and would reset them if it came after. */
+  inset: auto;
   top: 0;
   left: 100vw;
   width: 100vh;
   height: 100vw;
-  inset: auto;
   transform-origin: top left;
   transform: rotate(90deg);
   border-radius: 0;
@@ -4987,6 +4989,15 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   flex-direction: column;
   transition: max-height 0.22s ease, min-height 0.22s ease, padding 0.22s ease;
 }
+/* When a hand card is hovered/focused, grow the wrap so the
+   lifted card has room to rise without clipping at the top edge.
+   Uses :has() — modern browsers (Safari 15.4+, Chrome 105+, FF 121+). */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap:has(.tcg-card--clickable:hover),
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap:has(.tcg-card--clickable:focus-visible),
+.tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap:has(.tcg-card[data-tcg-draggable]:active) {
+  max-height: calc(var(--tcg-hand-card-w) * 2.4 + 40px);
+  min-height: calc(var(--tcg-hand-card-w) * 2.2 + 32px);
+}
 /* Collapsed: only the label bar is visible. Tap to re-open. The
    bar is auto-collapsed when it isn't the player's turn so the
    field gets the focus (and the user can't accidentally drag during
@@ -5066,21 +5077,28 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
   will-change: transform;
 }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
+  /* `position: relative` is required for z-index on hover to win
+     against any absolute / overlaid sibling content. */
+  position: relative;
+}
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
-  transform: translateY(-16%);
-  z-index: 50;
-  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.7), 0 0 22px rgba(167, 139, 250, 0.55), 0 0 0 1px rgba(199, 210, 254, 0.2) inset;
-  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.35));
+  /* Lift higher (was -16%) so the card visibly pops out of the row
+     and the hand-wrap (which now grows via :has() above) follows. */
+  transform: translateY(-55%) scale(1.15);
+  z-index: 200;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.8), 0 0 28px rgba(167, 139, 250, 0.7), 0 0 0 2px rgba(199, 210, 254, 0.4) inset;
+  filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.5));
 }
 /* Selected hand card (pending spell, discard target) stays lifted
    so the player can see the chosen card without hovering. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
-  transform: translateY(-12%);
-  z-index: 40;
+  transform: translateY(-30%) scale(1.05);
+  z-index: 150;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap { overflow: visible; }
 /* Smooth horizontal scroll on the hand row — snap-to-card on touch
@@ -5252,13 +5270,29 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-side-turn-btn-main { font-size: 0.92rem; }
 .tcg-battle-shell .tcg-side-turn-btn-label { font-size: 0.62rem; }
 
-/* ── Portrait phones: single column, side preview floats ──── */
-@media (max-width: 720px) {
+/* ── Phone (landscape ≤900px): MTG-Arena-on-mobile layout ────
+   The whole match goes full-bleed: zones and hand have NO box,
+   they float over the void background. Hand cards are big and
+   readable (their preview-on-touch + centered popup still let
+   the player inspect details). Player strips collapse to a one-
+   line ribbon: avatar + name + HP value + tiny status pips, with
+   the HP bar pinned to the zone edge. Action chips become tiny
+   floating buttons in the corner.                               */
+@media (max-width: 900px) {
+  /* Card width sized off viewport HEIGHT (vh) instead of vmin so
+     the board cards on landscape phones — where height is the
+     limiting axis — actually grow large enough to read stats. */
+  .tcg-battle-shell .tcg-match.tcg-match--arcane {
+    --tcg-card-w: clamp(72px, 20vh, 120px);
+  }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
-    gap: 4px;
-    padding: 4px;
+    /* Make the field zones the dominant rows — 2fr each — so they
+       eat the spare height. Header/divider/hand/actions are auto-
+       sized rows that hug their content. */
+    grid-template-rows: auto minmax(0, 2fr) auto minmax(0, 2fr) auto auto;
+    gap: 2px;
+    padding: 2px;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-row: 1; }
   .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp  { grid-row: 2; }
@@ -5275,14 +5309,227 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      doesn't cover the whole field. Position/animation come from
      the base rule above — this just tightens the size. */
   .tcg-battle-shell .tcg-side-preview {
-    width: min(84vw, 260px);
-    max-height: 70vh;
+    width: min(60vw, 240px);
+    max-height: 80vh;
   }
-  /* Action bar on portrait — clusters the chips on the right
-     and uses the same compact silhouette as desktop. The
-     `space-between` override that the legacy @media 480px rule
-     produced was making the bar feel "stretched"; flex-end packs
-     the chips tight. */
+
+  /* ── Strip ALL chrome from zones, hand wrap, and pstrips so
+     the battlefield reads as one unbroken void. The cards float
+     over it like MTG Arena. The pstrips become absolute overlays
+     pinned to the outer edge of each zone so the board zone takes
+     the FULL height — cards are readable, stats are visible. ── */
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0 4px;
+    gap: 0;
+    position: relative;
+    display: block;
+    min-height: 0;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp,
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine {
+    border-top: 0;
+    border-bottom: 0;
+  }
+  /* Reserve room at the zone edge for the absolute pstrip overlay
+     so board cards don't visually slam into the player ribbon. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp  { padding-top: 28px; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { padding-bottom: 28px; }
+  /* Board fills the entire zone now that the pstrip is overlaid. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-board {
+    background: transparent;
+    border: 0;
+    min-height: 0;
+    padding: 2px;
+    gap: 4px;
+    height: 100%;
+    align-items: center;
+    align-content: center;
+  }
+  /* Cards on the board scale to the zone height — width follows
+     the card's natural aspect ratio. NO max-width — that was
+     forcing them tiny when the zone had plenty of vertical room.
+     The aspect-ratio + height drive the size; the cap stays
+     generous so a single card on an empty board doesn't dominate
+     the entire zone. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
+    height: 100%;
+    max-height: clamp(120px, 32vh, 240px);
+    min-height: 100px;
+    width: auto;
+    max-width: none;
+    aspect-ratio: 1 / 1.45;
+    flex-shrink: 0;
+  }
+  /* Drop target wrapping the pstrip — overlay it on the zone. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp .tcg-drop-target--champion {
+    position: absolute;
+    top: 2px;
+    left: 0;
+    right: 0;
+    z-index: 5;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine .tcg-drop-target--champion {
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    right: 0;
+    z-index: 5;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0 4px;
+    /* Hand cards 2-2.5× the previous size so the art is readable
+       without lifting. Hover/touch still lifts the card to reveal
+       the full description + ability text above the field. */
+    --tcg-hand-card-w: clamp(110px, 28vh, 200px);
+    max-height: calc(var(--tcg-hand-card-w) * 0.55 + 14px);
+    min-height: calc(var(--tcg-hand-card-w) * 0.5 + 12px);
+    overflow: visible;
+    z-index: 30;
+    transition: max-height 0.22s ease, min-height 0.22s ease;
+  }
+  /* Cards align LEFT so the hand row hugs the left edge, leaving
+     the right side free for the action chips & counters. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand {
+    justify-content: flex-start;
+    align-items: flex-end;
+  }
+  /* No wrap expansion on phone — the wrap stays peek-sized at all
+     times so the only "body" on screen is the card itself. The
+     lifted card overflows upward via overflow: visible and floats
+     freely over the field; nothing else grows behind it. */
+  /* Hand row anchors cards from their BOTTOM so the wrap clips the
+     bottom edge of the card naturally — top of the card extends up
+     and is visible above the strip. */
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
+    /* Force the card to its FULL natural size — without this, the
+       short wrap collapses the card via the legacy `height: 100%`
+       rule and you get squished thumbnails. */
+    width: var(--tcg-hand-card-w);
+    height: calc(var(--tcg-hand-card-w) * 1.45);
+    max-height: none;
+    flex: 0 0 auto;
+    /* `position: relative` is REQUIRED for z-index on hover to win
+       against the absolute-positioned pstrip overlay above. */
+    position: relative;
+    /* Push card DOWN so only its top ~half peeks above the strip. */
+    transform: translateY(45%);
+    transform-origin: bottom center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
+    /* Lift fully out — card is now wholly above the bottom strip. */
+    transform: translateY(-55%) scale(1.1);
+    z-index: 200;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.85), 0 0 28px rgba(167, 139, 250, 0.7), 0 0 0 2px rgba(199, 210, 254, 0.4) inset;
+    filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.5));
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
+    transform: translateY(-30%) scale(1.02);
+    z-index: 150;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
+    /* The label is now just a tiny chevron + count, no decoration. */
+    background: transparent;
+    color: rgba(232, 213, 255, 0.7);
+    padding: 0;
+    font-size: 0.6rem;
+    line-height: 1;
+    margin-bottom: 1px;
+  }
+
+  /* ── Player strip: floating bar with name CENTERED at the
+     bottom of the zone, and counters/HP pushed to the right
+     edge. Pure CSS — the JSX still renders name + body row but
+     we visually arrange them with absolute / margin tricks. ── */
+  .tcg-match--arcane .tcg-pstrip {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0 6px 4px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    column-gap: 8px;
+    row-gap: 0;
+    position: relative;
+  }
+  /* Name floats centered (transparent — no background, no box). */
+  .tcg-match--arcane .tcg-pstrip-name {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(139, 92, 246, 0.4);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1;
+  }
+  .tcg-match--arcane .tcg-pstrip-row {
+    flex: 0 1 auto;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .tcg-match--arcane .tcg-pstrip-hp {
+    flex: 0 0 auto;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+  .tcg-match--arcane .tcg-pstrip-hp-label {
+    font-size: 0.78rem;
+    font-weight: 900;
+    color: #fecaca;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  }
+  /* HIDE the long horizontal HP bar on phone — it visually cut
+     the field in half. The numeric ❤ value in the label is enough
+     and the rest of the room belongs to the battlefield. */
+  .tcg-match--arcane .tcg-pstrip-hp-track { display: none; }
+  /* Counter / status pips become tiny inline icons. */
+  .tcg-match--arcane .tcg-pstrip-pile {
+    padding: 0 5px;
+    font-size: 0.66rem;
+    border-width: 1px;
+  }
+  .tcg-match--arcane .tcg-pstrip .tcg-mana-num-cur { font-size: 0.86rem; }
+  .tcg-match--arcane .tcg-pstrip .tcg-mana-rail { display: none; }
+
+  /* ── Match header: thinner ── */
+  .tcg-battle-shell .tcg-match--arcane .tcg-match-head {
+    padding: 2px 6px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-match-round { font-size: 0.66rem; }
+  .tcg-battle-shell .tcg-match--arcane .tcg-btn--tiny {
+    padding: 2px 6px;
+    font-size: 0.6rem;
+  }
+
+  /* ── Action chips cluster bottom-right ── */
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
     grid-column: 1;
     grid-row: 6;
@@ -5292,13 +5539,15 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     justify-content: flex-end;
     gap: 4px;
     padding: 2px 4px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-bar-buttons {
     flex: 0 0 auto;
     width: auto;
     display: contents;
   }
-  /* Even tinier text on portrait so all four chips fit one line. */
   .tcg-battle-shell .tcg-action-bar .tcg-btn--undo,
   .tcg-battle-shell .tcg-action-log-btn,
   .tcg-battle-shell .tcg-action-turn-btn {
@@ -5307,13 +5556,11 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     min-height: 18px;
     border-left-width: 3px;
   }
-  /* Hand cards even smaller on phones — half-thumbnail size; hover
-     scale-up still gives the preview before the popup. */
-  .tcg-battle-shell .tcg-match--arcane .tcg-hand-wrap {
-    --tcg-hand-card-w: clamp(30px, 9vmin, 52px);
-  }
-  .tcg-match--arcane .tcg-pstrip-name { font-size: 0.72rem; }
-  .tcg-match--arcane .tcg-pstrip-hp-label { font-size: 0.74rem; }
+
+  /* On phone, the cards in the hand have no descriptive text
+     anyway (already hidden via .tcg-hand .tcg-card-flavor /
+     .tcg-card-effect rules above). The element icon + cost +
+     stats are what the player needs to see at a glance. */
 }
 
 /* ── COLORED COST PIPS — replaces the single cost number ────
@@ -5471,13 +5718,17 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 }
 
 /* The 90deg rotation block (see BATTLE SHELL section above) now
-   owns the portrait behaviour — this block intentionally left
-   blank so no late rule re-cancels the rotation. */
+   owns the portrait behaviour. Cancel the LEGACY rules that also
+   tried to rotate / fixed-position the stage — together they were
+   double-rotating the content offscreen, leaving a black battle. */
 .tcg-battle-shell .tcg-match.tcg-match--portrait .tcg-match-stage {
-  /* Stage needs to fill the rotated parent; the parent is now
-     100vh × 100vw, so a percentage-based fill keeps the grid
-     responsive. */
+  position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  top: auto;
+  left: auto;
+  transform: none;
+  transform-origin: 0 0;
+  overflow: hidden;
 }

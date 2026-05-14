@@ -159,12 +159,41 @@ function tick() {
   scheduleId = setTimeout(tick, 250);
 }
 
+/* Wait for a real user gesture before scheduling notes. Browsers
+   block AudioContext.start() on a suspended context and warn for
+   every blocked oscillator — without this gate the scheduler ticks
+   every 250 ms and floods the console (and burns CPU) with hundreds
+   of "AudioContext was not allowed to start" warnings. */
+let pendingStart = false;
+function attachGestureUnlock() {
+  if (pendingStart) return;
+  pendingStart = true;
+  const onGesture = () => {
+    window.removeEventListener("pointerdown", onGesture, true);
+    window.removeEventListener("keydown", onGesture, true);
+    window.removeEventListener("touchstart", onGesture, true);
+    pendingStart = false;
+    // Recurse — by now a gesture has happened, so the AudioContext
+    // can be resumed without producing the autoplay warning.
+    startBgm();
+  };
+  window.addEventListener("pointerdown", onGesture, true);
+  window.addEventListener("keydown", onGesture, true);
+  window.addEventListener("touchstart", onGesture, true);
+}
+
 export function startBgm() {
   if (isPlaying) return;
   const c = getCtx();
   if (!c) return;
+  if (c.state === "suspended") {
+    // No user gesture yet — defer everything. Don't read currentTime,
+    // don't schedule notes, don't tick. Wait silently.
+    attachGestureUnlock();
+    c.resume().catch(() => {});
+    return;
+  }
   isPlaying = true;
-  if (c.state === "suspended") c.resume().catch(() => {});
   nextLoopTime = c.currentTime + 0.1;
   tick();
 }
