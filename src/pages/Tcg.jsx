@@ -15,8 +15,11 @@ import {
   getCardType, getMechLabel, TYPE_LABEL, TYPE_ICON,
 } from "../data/tcgCards";
 import {
-  initMatchState, playCard, attackWith, endTurn, autoSkipTurn, forfeit,
-  canPlayCard, canAttack, legalAttackTargets, legalSpellTargets, predictCombat, oppSide,
+  initMatchState, playCard, endTurn, autoSkipTurn, forfeit,
+  declareAttackers, legalBlockersFor, assignBlock, confirmBlocks,
+  combatBlockMandatoryUnmet, resolveCombatTimeout,
+  passPriority, resolveStackTimeout, castResponse, canRespond,
+  canPlayCard, canAttack, legalSpellTargets, predictCombat, oppSide,
   STARTING_HP, DECK_REQUIRED_SIZE, MAX_HAND, TURN_DURATION_MS,
   isValidDeck, ownsDeck, deckCount, autoBuildDeckFromCollection, buildFilteredDeck,
   resolveDeckForMatch, discardCard,
@@ -1781,6 +1784,8 @@ function CardArt({ def }) {
         className="tcg-card-art-img"
         onError={() => setFailed(true)}
         loading="lazy"
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
       />
     );
   }
@@ -1912,6 +1917,38 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
           )}
         </span>
       </div>
+      {(() => {
+        /* Aura zone — Magic-style: the enchantments APPLIED to this
+           creature (granted keywords + temporary aura buffs) sit in
+           a small overlapped strip at the card's lower edge so it
+           reads as "belonging" to this card. Innate mechanics are
+           NOT shown here (those are the creature's own). Renders
+           nothing — and takes no space — when there are no auras. */
+        const auras = [
+          ...granted.map(k => ({ k, temp: false })),
+          ...(bc.tempBuffs || []).map(t => ({ k: t.keyword, temp: true, turns: t.turns })),
+        ].filter(a => TCG_MECHANICS[a.k]);
+        if (auras.length === 0) return null;
+        return (
+          <div className="tcg-board-auras" aria-hidden="true">
+            {auras.map((a, i) => {
+              const m = TCG_MECHANICS[a.k];
+              return (
+                <span
+                  key={`${a.k}-${i}`}
+                  className={`tcg-board-aura${a.temp ? " tcg-board-aura--temp" : ""}`}
+                  title={`Aura: ${labelFor(a.k)}${a.temp && a.turns ? ` (${a.turns} turni)` : ""}`}
+                >
+                  <span className="tcg-board-aura-icon">{m.icon}</span>
+                  <span className="tcg-board-aura-name">
+                    {m.name}{a.temp && a.turns ? ` ${a.turns}t` : ""}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        );
+      })()}
       {status === "sick" && <div className="tcg-board-tag tcg-board-tag--icon" title="Sonnolenza da evocazione — non può attaccare questo turno">😴</div>}
       {status === "tapped" && <div className="tcg-board-tag tcg-board-tag--icon" title="Già usato questo turno">✓</div>}
       {bc.revived && <div className="tcg-board-tag tcg-board-tag--icon tcg-board-tag--revived" title="Rinato dal cimitero">👻</div>}
@@ -2017,6 +2054,40 @@ function CombatPreview({ prediction }) {
         <>
           <span className="tcg-combat-preview-sep">/</span>
           <span className="tcg-combat-preview-num tcg-combat-preview-num--self">{damageToAttacker}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* Same predictCombat() data, but worded from the DEFENDER's point
+   of view (shown on each legal blocker during the block phase).
+   `prediction` = predictCombat(state, attackerSide, attackerInst,
+   thisBlockerInst): damageToTarget hits MY blocker, damageToAttacker
+   is what my blocker deals back. */
+function blockVerdict(p) {
+  if (p.attackerDies && p.targetDies) return { icon: "⚔", label: "SCAMBIO", tone: "trade" };
+  if (p.attackerDies)               return { icon: "💥", label: "UCCIDI L'ATTACCANTE", tone: "kill" };
+  if (p.targetDies)                 return { icon: "💔", label: "IL BLOCCANTE MUORE", tone: "death" };
+  return { icon: "🛡", label: "REGGI IL COLPO", tone: "hit" };
+}
+function BlockPreview({ prediction }) {
+  if (!prediction || prediction.kind !== "creature") return null;
+  const dmgTaken = prediction.damageToTarget;   // damage onto MY blocker
+  const dmgDealt = prediction.damageToAttacker; // damage MY blocker returns
+  const v = blockVerdict(prediction);
+  return (
+    <div
+      className={`tcg-combat-preview tcg-combat-preview--${v.tone}`}
+      title={v.label}
+      aria-label={`${v.label}: subisci ${dmgTaken}${dmgDealt > 0 ? `, infliggi ${dmgDealt}` : ""}`}
+    >
+      <span className="tcg-combat-preview-icon">{v.icon}</span>
+      <span className="tcg-combat-preview-num tcg-combat-preview-num--self">{dmgTaken}</span>
+      {dmgDealt > 0 && (
+        <>
+          <span className="tcg-combat-preview-sep">/</span>
+          <span className="tcg-combat-preview-num">{dmgDealt}</span>
         </>
       )}
     </div>
@@ -2140,7 +2211,25 @@ function LiveMatch({ match, uid, onExit }) {
   const state = match.state;
   const myTurn = state.activeSide === mySide;
 
-  const [selectedAttacker, setSelectedAttacker] = useState(null);
+  /* ── Declare-all combat (declare attackers → assign blocks → resolve) ── */
+  const combat          = (state.phase === "block" && state.combat) ? state.combat : null;
+  const inBlockPhase    = !!combat;
+  const iAmDefender     = inBlockPhase && combat.side === oSide;
+  const combatBlocks    = combat?.blocks || {};
+  const blockMandatory  = inBlockPhase ? combatBlockMandatoryUnmet(state) : false;
+
+  /* ── Stage 2: priority window on the effect stack ── */
+  const inStackPhase    = state.phase === "stack" && (state.stack?.length || 0) > 0;
+  const stackTop        = inStackPhase ? state.stack[state.stack.length - 1] : null;
+  const iHavePriority   = inStackPhase && state.priority === mySide;
+  const stackTopName    = stackTop ? (TCG_CARDS[stackTop.cardId]?.name || "un effetto") : null;
+
+  /* Attackers the active player has selected (main phase), before
+     pressing "Dichiara attacco". */
+  const [attackSel, setAttackSel] = useState([]);
+  /* Which enemy attacker the defender is currently assigning
+     blockers to. */
+  const [focusBlockAtk, setFocusBlockAtk] = useState(null);
   /* Cursor anchor for the MTG-Arena-style attack arrow. When a
      creature is selected as the attacker, the arrow follows the
      pointer until the player commits to a target. */
@@ -2239,7 +2328,7 @@ function LiveMatch({ match, uid, onExit }) {
   useEffect(() => {
     if (!attackAnim) return;
     // 800ms — matches the slowed lunge/shake duration (0.75s + tiny buffer).
-    const t = setTimeout(() => setAttackAnim(null), 800);
+    const t = setTimeout(() => setAttackAnim(null), 1300);
     return () => clearTimeout(t);
   }, [attackAnim]);
 
@@ -2318,7 +2407,7 @@ function LiveMatch({ match, uid, onExit }) {
      playback. Each event spawns a floating number; we run them sequentially
      with FLOAT_GAP_MS between starts so the player can read each hit. */
   const FLOAT_GAP_MS = 350;
-  const FLOAT_LIFE_MS = 1100;
+  const FLOAT_LIFE_MS = 1900;
   useEffect(() => {
     const events = state.events || [];
     if (events.length < lastEventIdxRef.current) {
@@ -2418,7 +2507,7 @@ function LiveMatch({ match, uid, onExit }) {
   /* Clear selected attacker / pending spell when not my turn */
   useEffect(() => {
     if (!myTurn) {
-      setSelectedAttacker(null);
+      setAttackSel([]);
       setPendingSpell(null);
     }
   }, [myTurn]);
@@ -2427,7 +2516,7 @@ function LiveMatch({ match, uid, onExit }) {
      attack OR a spell is waiting for its target, track the pointer
      so the SVG overlay can draw a curve from the source card to the
      cursor/finger. Clears as soon as the selection is resolved. */
-  const isTargeting = !!selectedAttacker || !!pendingSpell;
+  const isTargeting = !!pendingSpell;
   useEffect(() => {
     if (!isTargeting) {
       setAttackCursor(null);
@@ -2507,6 +2596,64 @@ function LiveMatch({ match, uid, onExit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.turnExpiry, state.activeSide, state.round, state.winner]);
 
+  /* Combat-block timeout. If the defender doesn't confirm blocks
+     before combat.expiry, EITHER client resolves the combat with
+     whatever was assigned (guarded per combat.ts). */
+  const blockTimeoutFiredRef = useRef(null);
+  useEffect(() => {
+    if (state.winner) return undefined;
+    if (state.phase !== "block" || !state.combat) return undefined;
+    const paTs = state.combat.ts;
+    const exp  = state.combat.expiry || 0;
+    const check = async () => {
+      if (Date.now() < exp) return;
+      if (blockTimeoutFiredRef.current === paTs) return;
+      blockTimeoutFiredRef.current = paTs;
+      try {
+        const next = resolveCombatTimeout(state);
+        if (next !== state) await updateState(next);
+      } catch (e) {
+        console.error("tcg combat-timeout failed:", e);
+      }
+    };
+    check();
+    const t = setInterval(check, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase, state.combat?.ts, state.winner]);
+
+  /* Stack-phase timeout. If the priority holder doesn't pass before
+     stackExpiry, EITHER client resolves the stack (same as a pass);
+     guarded per the top object's ts so it fires once. */
+  const stackTimeoutFiredRef = useRef(null);
+  useEffect(() => {
+    if (state.winner) return undefined;
+    if (state.phase !== "stack" || !(state.stack?.length)) return undefined;
+    const topTs = state.stack[state.stack.length - 1]?.ts;
+    const exp   = state.stackExpiry || 0;
+    const check = async () => {
+      if (Date.now() < exp) return;
+      if (stackTimeoutFiredRef.current === topTs) return;
+      stackTimeoutFiredRef.current = topTs;
+      try {
+        const next = resolveStackTimeout(state);
+        if (next !== state) await updateState(next);
+      } catch (e) {
+        console.error("tcg stack-timeout failed:", e);
+      }
+    };
+    check();
+    const t = setInterval(check, 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase, state.stackExpiry, state.winner]);
+
+  /* Reset the defender's focused-attacker whenever combat changes
+     or the block phase ends. */
+  useEffect(() => {
+    setFocusBlockAtk(null);
+  }, [state.phase, state.combat?.ts]);
+
   const handleDiscardCard = async (instId) => {
     if (!myTurn || state.winner) return;
     const card = state.hand[mySide].find(c => c.instId === instId);
@@ -2522,6 +2669,13 @@ function LiveMatch({ match, uid, onExit }) {
     // In discard mode any hand-card click discards instead of plays.
     if (discardMode) {
       await handleDiscardCard(instId);
+      return;
+    }
+    // Stage 3: holding stack priority → a counter card is cast as a
+    // response on top of the stack instead of normal play.
+    if (iHavePriority && canRespond(state, mySide, instId)) {
+      const r = castResponse(state, mySide, instId);
+      if (r !== state) await updateState(r, { snapshotForUndo: false });
       return;
     }
     if (!canPlayCard(state, mySide, instId)) return;
@@ -2550,22 +2704,57 @@ function LiveMatch({ match, uid, onExit }) {
     }
     // Enter target-picking mode (also drop any attacker selection)
     const targets = legalSpellTargets(state, mySide, instId);
-    setSelectedAttacker(null);
+    setAttackSel([]);
     setPendingSpell({ instId, def, targets });
   };
 
-  const handleSelectAttacker = (instId) => {
+  /* Main phase: toggle one of my creatures in/out of the attack
+     selection (declare them all at once with the pill). */
+  const handleToggleAttacker = (instId) => {
+    if (!myTurn || state.phase !== "main") return;
     if (!canAttack(state, mySide, instId)) return;
-    // Selecting an attacker cancels any spell-target picking in progress
     setPendingSpell(null);
-    setSelectedAttacker(instId === selectedAttacker ? null : instId);
+    setAttackSel(sel =>
+      sel.includes(instId) ? sel.filter(x => x !== instId) : [...sel, instId]
+    );
+  };
+  const handleDeclareAttack = async () => {
+    if (attackSel.length === 0) return;
+    const next = declareAttackers(state, mySide, attackSel);
+    if (next === state) return;
+    setAttackSel([]);
+    // Opens the block phase for the defender: no undo afterwards.
+    await updateState(next, { snapshotForUndo: false });
   };
 
-  const handleAttackTarget = async (targetInstId) => {
-    if (!selectedAttacker) return;
-    const next = attackWith(state, mySide, selectedAttacker, targetInstId);
-    setSelectedAttacker(null);
-    await updateState(next, { snapshotForUndo: !next.winner });
+  /* Defender: pick which enemy attacker to assign blockers to. */
+  const handleFocusAttacker = (attackerInstId) => {
+    if (!iAmDefender || !combat.attackers.includes(attackerInstId)) return;
+    setFocusBlockAtk(cur => (cur === attackerInstId ? null : attackerInstId));
+  };
+  /* Defender: toggle one of my creatures as a blocker for the
+     focused attacker. */
+  const handleAssignBlocker = async (blockerInstId) => {
+    if (!iAmDefender || !focusBlockAtk) return;
+    const next = assignBlock(state, mySide, focusBlockAtk, blockerInstId);
+    if (next === state) return;
+    await updateState(next, { snapshotForUndo: false });
+  };
+  /* Defender: lock in the assignment (or no blocks) and resolve. */
+  const handleConfirmBlocks = async () => {
+    if (!iAmDefender) return;
+    const next = confirmBlocks(state, mySide);
+    if (next === state) return;
+    setFocusBlockAtk(null);
+    await updateState(next, { snapshotForUndo: false });
+  };
+
+  /* Stage 2: the priority holder passes → the stack resolves. */
+  const handlePassPriority = async () => {
+    if (!iHavePriority) return;
+    const next = passPriority(state, mySide);
+    if (next === state) return;
+    await updateState(next, { snapshotForUndo: false });
   };
 
   const handleSpellTarget = async (target) => {
@@ -2579,10 +2768,10 @@ function LiveMatch({ match, uid, onExit }) {
 
   /* Restore the snapshot captured before the last action. Only valid
      during your own turn, before the game ends. */
-  const canUndo = myTurn && !state.winner && !!match.prevState;
+  const canUndo = myTurn && !state.winner && !inStackPhase && !inBlockPhase && !!match.prevState;
   const handleUndo = async () => {
     if (!canUndo) return;
-    setSelectedAttacker(null);
+    setAttackSel([]);
     setAttackAnim(null);
     // Suppress re-animating an older attack that the restored state carries.
     lastAttackTsRef.current = match.prevState?.lastAttack?.ts || 0;
@@ -2591,7 +2780,7 @@ function LiveMatch({ match, uid, onExit }) {
 
   const handleEndTurn = async () => {
     const next = endTurn(state, mySide);
-    setSelectedAttacker(null);
+    setAttackSel([]);
     await updateState(next); // snapshot cleared — turn flips to opponent
   };
 
@@ -2601,9 +2790,6 @@ function LiveMatch({ match, uid, onExit }) {
     await updateState(next);
   };
 
-  const targets = selectedAttacker
-    ? legalAttackTargets(state, mySide, selectedAttacker)
-    : { creatures: [], face: false };
 
   /* Helper: is bc.instId a legal target for the pending spell? */
   const isLegalSpellTarget = (sideOfCard, instId) => {
@@ -2750,18 +2936,12 @@ function LiveMatch({ match, uid, onExit }) {
         return;
       }
       if (kind === "board") {
+        // Declare-all combat: dragging a creature toward the enemy
+        // adds it to the attack selection (confirm with the pill).
         if (!canAttack(s, mySide, instId)) return;
         const oSide2 = oppSide(mySide);
-        const t = legalAttackTargets(s, mySide, instId);
-        if (dropId === `champion:${oSide2}` && t.face) {
-          const next = attackWith(s, mySide, instId, null);
-          updateStateRef.current?.(next, { snapshotForUndo: !next.winner });
-        } else if (dropId.startsWith(`creature:${oSide2}:`)) {
-          const tid = dropId.split(":").slice(2).join(":");
-          if (t.creatures.includes(tid)) {
-            const next = attackWith(s, mySide, instId, tid);
-            updateStateRef.current?.(next, { snapshotForUndo: !next.winner });
-          }
+        if (dropId === `champion:${oSide2}` || dropId.startsWith(`creature:${oSide2}:`)) {
+          setAttackSel(sel => (sel.includes(instId) ? sel : [...sel, instId]));
         }
       }
     }
@@ -3138,32 +3318,34 @@ function LiveMatch({ match, uid, onExit }) {
             <div className="tcg-board-empty">Campo vuoto</div>
           ) : oppBoard.map(bc => {
             const def = TCG_CARDS[bc.cardId];
-            const isAttackLegal = !!selectedAttacker && targets.creatures.includes(bc.instId);
             const isSpellLegal  = isLegalSpellTarget(oSide, bc.instId);
-            const onClick = isAttackLegal
-              ? () => handleAttackTarget(bc.instId)
-              : isSpellLegal
-                ? () => handleSpellTarget({ kind: "creature", side: oSide, instId: bc.instId })
+            const isAtkToFocus  = iAmDefender && combat.attackers.includes(bc.instId);
+            const isFocused     = isAtkToFocus && focusBlockAtk === bc.instId;
+            const blkCount      = (combatBlocks[bc.instId] || []).length;
+            const onClick = isSpellLegal
+              ? () => handleSpellTarget({ kind: "creature", side: oSide, instId: bc.instId })
+              : isAtkToFocus
+                ? () => handleFocusAttacker(bc.instId)
                 : undefined;
-            const isLegal = isAttackLegal || isSpellLegal;
-            const prediction = isAttackLegal
-              ? predictCombat(state, mySide, selectedAttacker, bc.instId)
-              : null;
             return (
               <div key={bc.instId} className="tcg-board-slot" data-tcg-drop={`creature:${oSide}:${bc.instId}`}>
                 <BoardCard
                   bc={bc}
                   def={def}
                   onClick={onClick}
-                  disabled={!isLegal}
-                  selected={isLegal}
+                  disabled={!onClick}
+                  selected={isSpellLegal || isFocused}
                   status={bc.tapped ? "tapped" : null}
                   attackAnim={getCardAnim(bc.instId)}
                   onInspect={() => setFocusedCardId(bc.cardId)}
                   floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
                   dataCardId={bc.cardId}
                 />
-                {prediction && <CombatPreview prediction={prediction} />}
+                {isAtkToFocus && (
+                  <div className={`tcg-atk-badge${isFocused ? " tcg-atk-badge--on" : ""}`}>
+                    ⚔{blkCount > 0 ? ` · 🛡${blkCount}` : ""}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -3194,44 +3376,6 @@ function LiveMatch({ match, uid, onExit }) {
             🎯 Lancia su {match[oSide].name}
           </button>
         )}
-        {!pendingSpell && selectedAttacker && targets.face && (() => {
-          const facePred = predictCombat(state, mySide, selectedAttacker, null);
-          const hpBefore = facePred?.championHpBefore ?? 0;
-          const hpAfter  = facePred?.championHpAfter  ?? 0;
-          const burn     = facePred?.bruciatura ?? 0;
-          const shieldAbsorb = facePred?.shieldAbsorb ?? 0;
-          return (
-            <button
-              className="tcg-face-attack"
-              onClick={() => handleAttackTarget(null)}
-              title={
-                `${match[oSide].name}: ${hpBefore} → ${hpAfter} PF` +
-                (shieldAbsorb > 0 ? ` (🛡 −${shieldAbsorb})` : "") +
-                (burn > 0 ? ` · 🔥 Bruciatura ${burn}` : "")
-              }
-            >
-              🎯 Colpisci {match[oSide].name}
-              <span className="tcg-face-attack-hp">
-                ❤ {hpBefore} <span className="tcg-face-attack-arrow">→</span> <strong>{hpAfter}</strong>
-                {hpAfter === 0 && <span className="tcg-face-attack-skull"> 💀</span>}
-              </span>
-              {burn > 0 && <span className="tcg-face-attack-burn">🔥 {burn}</span>}
-            </button>
-          );
-        })()}
-        {!pendingSpell && selectedAttacker && !targets.face && targets.creatures.length > 0 && (() => {
-          // Distinguish "must hit a Bulwark first" from the new general
-          // "lane is blocked" rule. The opp's reachable creatures with
-          // Bulwark mean priority targeting; otherwise it's just defenders
-          // in the way.
-          const oppB = state.board[oSide];
-          const reachableInst = new Set(targets.creatures);
-          const reachableBulwarks = oppB.filter(c => reachableInst.has(c.instId) && (TCG_CARDS[c.cardId]?.mechanics || []).includes("bulwark"));
-          if (reachableBulwarks.length > 0) {
-            return <div className="tcg-divider-hint">🛡 Devi colpire prima un Baluardo!</div>;
-          }
-          return <div className="tcg-divider-hint">🛡 La difesa avversaria blocca il campione: abbattila prima!</div>;
-        })()}
         <div className="tcg-divider-line" />
       </div>
 
@@ -3243,31 +3387,52 @@ function LiveMatch({ match, uid, onExit }) {
           ) : myBoard.map(bc => {
             const def = TCG_CARDS[bc.cardId];
             const ready = canAttack(state, mySide, bc.instId);
-            const isSelected = selectedAttacker === bc.instId;
+            const isInAtkSel = attackSel.includes(bc.instId);
             const isSpellLegal = isLegalSpellTarget(mySide, bc.instId);
-            const onClick = isSpellLegal
+            const canBlockFocus = iAmDefender && focusBlockAtk
+              && legalBlockersFor(state, focusBlockAtk).includes(bc.instId);
+            const assignedToFocus = iAmDefender && focusBlockAtk
+              && (combatBlocks[focusBlockAtk] || []).includes(bc.instId);
+            const assignedAny = iAmDefender
+              && Object.values(combatBlocks).some(l => l.includes(bc.instId));
+            const onClick = (canBlockFocus || assignedToFocus)
+              ? () => handleAssignBlocker(bc.instId)
+              : isSpellLegal
               ? () => handleSpellTarget({ kind: "creature", side: mySide, instId: bc.instId })
-              : ready
-                ? () => handleSelectAttacker(bc.instId)
+              : (myTurn && state.phase === "main" && ready)
+                ? () => handleToggleAttacker(bc.instId)
                 : undefined;
             const status = bc.tapped ? "tapped" : (bc.sick ? "sick" : (ready ? "ready" : null));
-            return (
+            const blockPred = (canBlockFocus || assignedToFocus)
+              ? predictCombat(state, combat.side, focusBlockAtk, bc.instId)
+              : null;
+            const card = (
               <BoardCard
                 key={bc.instId}
                 bc={bc}
                 def={def}
                 onClick={onClick}
                 disabled={!onClick}
-                selected={isSelected || isSpellLegal}
+                selected={isSpellLegal || isInAtkSel || assignedToFocus || assignedAny}
                 status={status}
                 attackAnim={getCardAnim(bc.instId)}
                 onInspect={() => setFocusedCardId(bc.cardId)}
                 floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
-                dataDraggable={myTurn && ready ? `board:${bc.instId}` : undefined}
+                dataDraggable={myTurn && state.phase === "main" && ready ? `board:${bc.instId}` : undefined}
                 dataDrop={`creature:${mySide}:${bc.instId}`}
                 dataCardId={bc.cardId}
               />
             );
+            // During the block phase, wrap legal blockers in a slot
+            // so the defender sees the predicted trade (same overlay
+            // the attacker gets). Bare card otherwise — no structural
+            // change to normal play.
+            return blockPred ? (
+              <div key={bc.instId} className="tcg-board-slot">
+                {card}
+                <BlockPreview prediction={blockPred} />
+              </div>
+            ) : card;
           })}
         </div>
         <div data-tcg-drop={`champion:${mySide}`} className="tcg-drop-target tcg-drop-target--champion">
@@ -3291,6 +3456,140 @@ function LiveMatch({ match, uid, onExit }) {
         </div>
       </div>
 
+      {/* Floating HUD — status line, pile and combat/priority
+          controls live in ONE absolute overlay so they NEVER
+          reflow or shrink the battlefield (MTG-Arena style:
+          everything floats, the field stays full-size). */}
+      <div className="tcg-float-hud">
+      {(() => {
+        let blockMsg = null;
+        if (inBlockPhase) {
+          const nAtk = combat.attackers.length;
+          if (iAmDefender) {
+            const focusName = focusBlockAtk
+              ? (TCG_CARDS[state.board[combat.side]?.find(c => c.instId === focusBlockAtk)?.cardId]?.name || "attaccante")
+              : null;
+            blockMsg = focusBlockAtk
+              ? <>🛡 Blocchi per <strong>{focusName}</strong> — tocca le tue creature, poi <strong>Conferma</strong>{blockMandatory ? <> · <strong>blocco Baluardo obbligatorio</strong></> : null}</>
+              : <>🛡 L'avversario attacca con <strong>{nAtk}</strong> creatur{nAtk === 1 ? "a" : "e"} — tocca un attaccante per assegnargli i bloccanti, poi <strong>Conferma</strong></>;
+          } else {
+            blockMsg = <>⏳ Hai dichiarato <strong>{nAtk}</strong> attaccant{nAtk === 1 ? "e" : "i"} — l'avversario assegna i blocchi…</>;
+          }
+        } else if (inStackPhase) {
+          blockMsg = iHavePriority
+            ? <>📜 <strong>{stackTopName}</strong> sulla pila — rispondi con una Contromagia oppure premi <strong>Passa</strong></>
+            : <>⏳ <strong>{stackTopName}</strong> sulla pila — in attesa della risposta dell'avversario…</>;
+        }
+        return (
+          <div
+            className={
+              "tcg-status-line" +
+              (inBlockPhase || inStackPhase ? " tcg-status-line--block" : "") +
+              (!inBlockPhase && !inStackPhase && !myTurn ? " tcg-status-line--wait" : "") +
+              (!inBlockPhase && !inStackPhase && pendingSpell ? " tcg-status-line--spell" : "") +
+              (!inBlockPhase && !inStackPhase && (discardMode || (myHand.length >= MAX_HAND && !discardMode)) ? " tcg-status-line--warn" : "")
+            }
+            role="status"
+            aria-live="polite"
+          >
+            {blockMsg ? blockMsg
+              : pendingSpell ? (
+              <>📜 Castando <strong>{pendingSpell.def.name}</strong> · scegli un bersaglio</>
+            ) : discardMode ? (
+              <>🗑 <strong>Tocca una carta</strong> per scartarla</>
+            ) : (myHand.length >= MAX_HAND) ? (
+              <>⚠ <strong>Mano piena</strong> — le carte pescate verranno bruciate: premi 🗑 Scarta</>
+            ) : !myTurn ? (
+              <>⏳ <strong>Turno dell'avversario</strong></>
+            ) : (
+              <>🟢 <strong>È il tuo turno</strong></>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Attacker: declare the selected creatures. */}
+      {myTurn && state.phase === "main" && attackSel.length > 0 && (
+        <div className="tcg-block-bar">
+          <button
+            type="button"
+            className="tcg-block-pass tcg-block-confirm"
+            onClick={handleDeclareAttack}
+          >
+            🗡 Dichiara attacco ({attackSel.length})
+          </button>
+          <button
+            type="button"
+            className="tcg-block-pass"
+            onClick={() => setAttackSel([])}
+          >
+            ✕ Annulla
+          </button>
+        </div>
+      )}
+
+      {/* Defender: confirm the block assignment (or no blocks). */}
+      {iAmDefender && (
+        <div className="tcg-block-bar">
+          <button
+            type="button"
+            className="tcg-block-pass tcg-block-confirm"
+            disabled={blockMandatory}
+            title={blockMandatory ? "Un Baluardo deve bloccare" : ""}
+            onClick={handleConfirmBlocks}
+          >
+            ✅ Conferma blocchi
+          </button>
+        </div>
+      )}
+
+      {/* Visible PILE — the effect stack, shown to BOTH players.
+          Bottom→top; the topmost (next to resolve) is highlighted. */}
+      {inStackPhase && (
+        <div className="tcg-pile" aria-label="Pila degli effetti">
+          <div className="tcg-pile-title">📚 Pila — si risolve dall'alto</div>
+          <div className="tcg-pile-items">
+            {state.stack.map((obj, i) => {
+              const od = TCG_CARDS[obj.cardId];
+              const isTop = i === state.stack.length - 1;
+              const mine = obj.controller === mySide;
+              return (
+                <div
+                  key={obj.id || `${obj.ts}-${i}`}
+                  className={
+                    "tcg-pile-item" +
+                    (isTop ? " tcg-pile-item--top" : "") +
+                    (obj.kind === "response" ? " tcg-pile-item--response" : "") +
+                    (mine ? " tcg-pile-item--mine" : " tcg-pile-item--opp")
+                  }
+                  title={od?.flavor || od?.name || ""}
+                >
+                  <span className="tcg-pile-item-kind">
+                    {obj.kind === "response" ? "🛡" : "📜"}
+                  </span>
+                  <span className="tcg-pile-item-name">{od?.name || "Effetto"}</span>
+                  <span className="tcg-pile-item-who">{mine ? "tu" : "avv."}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Stack priority — the responder passes (Stage 2: pass-only). */}
+      {iHavePriority && (
+        <div className="tcg-block-bar">
+          <button
+            type="button"
+            className="tcg-block-pass"
+            onClick={handlePassPriority}
+          >
+            ⏭ Passa
+          </button>
+        </div>
+      )}
+      </div>{/* /tcg-float-hud */}
+
       {/* Hand */}
       <div className={`tcg-hand-wrap${handCollapsed ? " tcg-hand-wrap--collapsed" : ""}`}>
         <button
@@ -3302,33 +3601,14 @@ function LiveMatch({ match, uid, onExit }) {
         >
           <span className="tcg-hand-label-toggle" aria-hidden="true">{handCollapsed ? "▲" : "▼"}</span>
           🎴 La tua mano · {myHand.length}/{MAX_HAND} carte
-          {!myTurn && (
-            <span className="tcg-hand-label-warn">
-              {" "}· ⏳ <strong>Turno avversario</strong>
-            </span>
-          )}
-          {myHand.length >= MAX_HAND && !discardMode && (
-            <span className="tcg-hand-label-warn">
-              {" "}· ⚠ <strong>Mano piena</strong>: le carte pescate verranno bruciate. Premi <strong>🗑 Scarta</strong> per liberare uno slot.
-            </span>
-          )}
-          {discardMode && (
-            <span className="tcg-hand-label-warn">
-              {" "}· 🗑 <strong>Tocca una carta per scartarla</strong>
-            </span>
-          )}
-          {pendingSpell && (
-            <span className="tcg-hand-label-spell">
-              {" "}· 📜 Castando <strong>{pendingSpell.def.name}</strong>
-            </span>
-          )}
         </button>
         <div className="tcg-hand">
           {myHand.length === 0 ? (
             <div className="tcg-board-empty">Mano vuota</div>
           ) : myHand.map(c => {
             const def = TCG_CARDS[c.cardId];
-            const playable = canPlayCard(state, mySide, c.instId);
+            const respondable = iHavePriority && canRespond(state, mySide, c.instId);
+            const playable = respondable || canPlayCard(state, mySide, c.instId);
             const isPending = pendingSpell?.instId === c.instId;
             const isDragging = dragInfo?.kind === "hand" && dragInfo?.instId === c.instId;
             return (
@@ -3338,7 +3618,7 @@ function LiveMatch({ match, uid, onExit }) {
                 size="md"
                 onClick={() => handlePlayCard(c.instId)}
                 disabled={discardMode ? false : (!playable && !isPending)}
-                selected={isPending || discardMode}
+                selected={isPending || discardMode || respondable}
                 className={
                   (isPending ? "tcg-card--pending-spell" : "") +
                   (discardMode ? " tcg-card--discard-target" : "") +
@@ -3460,17 +3740,11 @@ function LiveMatch({ match, uid, onExit }) {
         />
       )}
 
-      {/* MTG-Arena targeting line — rendered while choosing a target,
-          either for a creature attack (selectedAttacker) or a spell
-          waiting on its target (pendingSpell). Start anchor comes
-          from the live DOM rect of the source card so the curve
-          follows transforms / scrolls / any screen size. */}
-      {(selectedAttacker || pendingSpell) && attackCursor && (() => {
-        const el = selectedAttacker
-          ? matchRootRef.current?.querySelector(
-              `[data-tcg-drop="creature:${mySide}:${selectedAttacker}"]`
-            )
-          : matchRootRef.current?.querySelector(".tcg-card--pending-spell");
+      {/* MTG-Arena targeting line — only for spell targeting now
+          (attackers are declared via multi-select, not a single
+          pointer drag). */}
+      {pendingSpell && attackCursor && (() => {
+        const el = matchRootRef.current?.querySelector(".tcg-card--pending-spell");
         const rect = el?.getBoundingClientRect();
         if (!rect) return null;
         const sx = rect.left + rect.width / 2;
@@ -3479,6 +3753,21 @@ function LiveMatch({ match, uid, onExit }) {
           gradId: "tcgArrowGradAim",
         });
       })()}
+
+      {/* Declared-attack beams — one per declared attacker → the
+          enemy hero, shown to BOTH players during the block phase
+          so the defender sees who is swinging. */}
+      {inBlockPhase && combat.attackers.map((aid, i) => {
+        const defSide = combat.side === mySide ? oSide : mySide;
+        const from = dropCenter(`[data-tcg-drop="creature:${combat.side}:${aid}"]`);
+        const to = dropCenter(`[data-tcg-drop="champion:${defSide}"]`);
+        if (!from || !to) return null;
+        return renderBeam(from.x, from.y, to.x, to.y, {
+          variant: "declare",
+          gradId: `tcgArrowGradDeclare${i}`,
+          svgKey: `declare-${combat.ts}-${aid}`,
+        });
+      })}
 
       {/* Transient ATTACK STRIKE arrow — when an attack resolves a
           glowing arrow flashes attacker→target (or →champion on a

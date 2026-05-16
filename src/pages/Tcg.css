@@ -569,6 +569,13 @@ section.tcg-page,
   object-fit: cover;
   display: block;
   image-rendering: pixelated;
+  /* Stop the browser's native image-drag on desktop — it would
+     fire pointercancel and kill the custom card drag (mouse then
+     felt "undraggable" while touch worked). */
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
 }
 .tcg-card-art-emoji {
   font-size: 3.6rem;
@@ -798,14 +805,13 @@ section.tcg-page,
   z-index: 80;
   pointer-events: none;
   overflow: visible;
-  /* The amber arrow against a dark battlefield reads instantly;
-     a soft pulse keeps the eye on the aim while targeting. */
-  filter: drop-shadow(0 0 12px rgba(253, 224, 71, 0.55));
-  animation: tcg-attack-arrow-pulse 0.9s var(--tcg-ease) infinite;
+  /* Clean thin arrow with a soft amber glow, in the game's palette. */
+  filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.4));
+  animation: tcg-attack-arrow-pulse 1.4s var(--tcg-ease) infinite;
 }
 @keyframes tcg-attack-arrow-pulse {
-  0%, 100% { filter: drop-shadow(0 0 10px rgba(253, 224, 71, 0.5)); }
-  50%      { filter: drop-shadow(0 0 20px rgba(253, 224, 71, 0.95)); }
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(253, 224, 71, 0.32)); }
+  50%      { filter: drop-shadow(0 0 11px rgba(253, 224, 71, 0.6)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .tcg-attack-arrow { animation: none; }
@@ -822,22 +828,16 @@ section.tcg-page,
 }
 .tcg-arrow-glow {
   stroke: var(--tcg-arrow-2);
-  stroke-opacity: 0.30;
-  stroke-width: 20;
+  stroke-opacity: 0.22;
+  stroke-width: 10;
 }
 .tcg-arrow-core {
-  stroke-width: 6;
-}
-.tcg-arrow-flow {
-  stroke: var(--tcg-arrow-1);
-  stroke-width: 3.5;
-  stroke-dasharray: 1 17;
+  stroke-width: 2.5;
   stroke-opacity: 0.95;
-  animation: tcg-arrow-flow 0.5s linear infinite;
 }
-@keyframes tcg-arrow-flow {
-  to { stroke-dashoffset: -36; }
-}
+/* Raw dashed "energy" overlay removed — the brief wants a clean,
+   thin line, not a coarse dash pattern. */
+.tcg-arrow-flow { display: none; }
 /* gradient stops (defined as <stop class> in the SVG) */
 .tcg-arrow-grad-a { stop-color: var(--tcg-arrow-3); }
 .tcg-arrow-grad-b { stop-color: var(--tcg-arrow-2); }
@@ -847,28 +847,18 @@ section.tcg-page,
   stroke: #1c1410;
   stroke-width: 1.1;
 }
+/* Small, static, soft endpoints — no busy pulsing. */
 .tcg-arrow-origin {
   fill: none;
   stroke: var(--tcg-arrow-2);
-  stroke-width: 3;
-  animation: tcg-arrow-origin 1.1s var(--tcg-ease) infinite;
+  stroke-width: 2;
+  stroke-opacity: 0.45;
+  r: 5;
 }
 .tcg-arrow-tip {
   fill: var(--tcg-arrow-2);
-  animation: tcg-arrow-tip 0.9s var(--tcg-ease) infinite;
-}
-@keyframes tcg-arrow-origin {
-  0%, 100% { r: 7;  stroke-opacity: 0.55; }
-  50%      { r: 12; stroke-opacity: 0.95; }
-}
-@keyframes tcg-arrow-tip {
-  0%, 100% { r: 6; fill-opacity: 0.55; }
-  50%      { r: 9; fill-opacity: 0.95; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tcg-arrow-flow,
-  .tcg-arrow-origin,
-  .tcg-arrow-tip { animation: none; }
+  fill-opacity: 0.7;
+  r: 4.5;
 }
 
 /* ── Transient attack-strike arrow: snaps in, holds, fades out
@@ -882,10 +872,6 @@ section.tcg-page,
   14%  { opacity: 1; transform: scale(1); }
   68%  { opacity: 1; }
   100% { opacity: 0; }
-}
-/* The strike's energy flows faster — reads as a launched bolt. */
-.tcg-attack-arrow--strike .tcg-arrow-flow {
-  animation-duration: 0.32s;
 }
 @media (prefers-reduced-motion: reduce) {
   .tcg-attack-arrow--strike { animation: tcg-strike-life-fade 1.1s linear forwards; }
@@ -985,6 +971,60 @@ section.tcg-page,
   line-height: 1;
   letter-spacing: 0;
   border-radius: 50%;
+}
+
+/* ── Aura zone (Magic-style enchantments attached to a creature) ──
+   Sits as a smaller, slightly-overlapped strip at the lower edge of
+   the board card so it visually "belongs" to that creature. Absolute
+   → it never pushes neighbouring cards, and it renders only when the
+   creature actually has auras, so an un-enchanted card costs zero
+   extra space. Colours reuse the existing earth/amber tokens. */
+.tcg-board-auras {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  width: max-content;
+  max-width: 94%;
+  pointer-events: none;
+  z-index: 3;
+}
+.tcg-board-aura {
+  /* ~0.7 of the parent's text scale → clear visual hierarchy
+     below the main creature card. */
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 1px 5px;
+  font-size: clamp(0.42rem, 0.85vw, 0.6rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #eafff2;
+  background: rgba(8, 24, 16, 0.82);
+  border: 1px solid var(--tcg-earth);
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 0 8px rgba(21, 128, 61, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tcg-board-aura--temp {
+  border-color: var(--tcg-amber);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 0 8px rgba(251, 191, 36, 0.5);
+}
+.tcg-board-aura-icon { font-size: 1.05em; line-height: 1; }
+.tcg-board-aura-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 7em;
 }
 
 /* ============================================================
@@ -3007,17 +3047,17 @@ section.tcg-page,
    Plays for ~450ms; the JSX restarts it via key= remount.
    ============================================================ */
 .tcg-board-card--anim-attacker-up {
-  animation: tcg-lunge-up 0.75s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
+  animation: tcg-lunge-up 1.15s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
   z-index: 5;
   filter: drop-shadow(0 4px 10px rgba(251, 191, 36, 0.55));
 }
 .tcg-board-card--anim-attacker-down {
-  animation: tcg-lunge-down 0.75s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
+  animation: tcg-lunge-down 1.15s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
   z-index: 5;
   filter: drop-shadow(0 -4px 10px rgba(239, 68, 68, 0.55));
 }
 .tcg-board-card--anim-target {
-  animation: tcg-target-shake 0.75s ease-in-out;
+  animation: tcg-target-shake 1.15s ease-in-out;
   z-index: 4;
 }
 .tcg-board-card--anim-target::after {
@@ -3027,7 +3067,7 @@ section.tcg-page,
   inset: -2px;
   background: radial-gradient(circle at center, rgba(239, 68, 68, 0.55) 0%, transparent 70%);
   pointer-events: none;
-  animation: tcg-hit-flash 0.75s ease-out forwards;
+  animation: tcg-hit-flash 1.15s ease-out forwards;
   z-index: 3;
 }
 @keyframes tcg-lunge-up {
@@ -4106,7 +4146,7 @@ section.tcg-page,
   font-size: 2.8rem;
   letter-spacing: 0.02em;
   line-height: 1;
-  animation: tcgFloatRise 1.1s cubic-bezier(.22,.61,.36,1) forwards;
+  animation: tcgFloatRise 1.9s cubic-bezier(.22,.61,.36,1) forwards;
   pointer-events: none;
   -webkit-text-stroke: 2.5px #1f1f1f;
   paint-order: stroke fill;
@@ -4680,59 +4720,35 @@ section.tcg-page,
   align-items: center;
   flex-wrap: wrap;
 }
-/* ── Life as a circular node (MTG-Arena style) ─────────────────
-   The HP block becomes a gold-ringed disc with the life total
-   centred. The old proportional bar is dropped (a life TOTAL,
-   not a gauge — like MTG Arena). Markup unchanged. */
+/* ── FIX 2 — name + HP as plain, clean, legible text. No disc,
+   ring, glow or special background: just the number, sitting
+   right under the name. ───────────────────────────────────── */
 .tcg-match--arcane .tcg-pstrip-hp {
   flex: 0 0 auto;
-  width: var(--tcg-life-size);
-  height: var(--tcg-life-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(124, 45, 18, 0.55), rgba(8, 6, 18, 0.92) 70%);
-  border: 3px solid var(--tcg-glow-gold);
-  box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
-    0 0 14px rgba(251, 191, 36, 0.45);
-  transition: box-shadow var(--tcg-motion) var(--tcg-ease),
-              transform var(--tcg-motion) var(--tcg-ease);
+  display: inline-flex;
+  align-items: baseline;
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
 .tcg-match--arcane .tcg-pstrip-hp-label {
-  color: #fff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   font-family: var(--font-title, serif);
-  font-size: clamp(1.05rem, 2.4vw, 1.6rem);
+  font-size: clamp(0.92rem, 1.7vw, 1.3rem);
   font-weight: 900;
   line-height: 1;
-  letter-spacing: 0;
-  text-align: center;
+  letter-spacing: 0.02em;
 }
-/* The old linear gauge is folded into the disc — hidden. */
+/* No proportional bar — a clean life TOTAL. */
 .tcg-match--arcane .tcg-pstrip-hp-track,
 .tcg-match--arcane .tcg-pstrip-hp-fill {
   display: none;
 }
-/* Active player — the life disc pulses gold so it's obvious whose
-   turn it is without reading text. */
-.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp {
-  border-color: #fff3c4;
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
-    0 0 22px rgba(251, 191, 36, 0.85);
-  animation: tcgLifePulse 1.6s var(--tcg-ease) infinite;
-}
-@keyframes tcgLifePulse {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.06); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp { animation: none; }
+/* Active player — just a brighter tint, no decoration. */
+.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-name,
+.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp-label {
+  color: #fff3c4;
 }
 /* Deck / hand counter chips — tiny dark glass pills, just enough
    to read the number without eating real estate. */
@@ -5132,16 +5148,22 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
    bottom of my-zone reserves this much padding so creatures don't
    slip behind the overlay. */
 .tcg-battle-shell .tcg-match.tcg-match--arcane {
-  /* ONE adaptive UI: card size scales with viewport WIDTH via
-     clamp() (small on phones, large on desktop), height follows
-     the card aspect ratio (× 1.4). No vmin/vh — those made cards
-     huge on tall phones and tiny on wide desktops. */
-  --tcg-card-w: clamp(76px, 9vw, 140px);
-  --tcg-hand-card-w: clamp(96px, 11.5vw, 178px);
-  --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.4);
-  /* Hand cards peek ~1/3 of their height above the screen edge;
-     hover/tap lifts the whole card into view. */
-  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.34);
+  /* SINGLE KNOB — every card (hand, battlefield, aura) derives its
+     size from --card-w. Tweak this one value to rescale all cards.
+     Width scales with viewport width via clamp(); height follows
+     the card aspect ratio (× 1.4). */
+  /* Single knob. clamp() keeps it tiny on phones (≈64px @375),
+     comfortable on desktop (capped 130px) — never enormous. */
+  --card-w: clamp(64px, 8.5vw, 130px);
+  --tcg-card-w: var(--card-w);
+  --tcg-hand-card-w: var(--card-w);
+  --tcg-hand-card-h: calc(var(--card-w) * 1.4);
+  /* FIX 3 — hand cards peek ~62% of their height at rest (was 34%):
+     most of each card is a useful, readable preview. Hover/tap
+     still lifts the whole card fully into view. The stage padding
+     and action bar already track this var, so the field stays
+     clear of the higher hand automatically. */
+  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.62);
 }
 /* Unified battlefield — strip the colored backgrounds and
    chunky borders off the two zones and the central divider so
@@ -5252,23 +5274,34 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
    The side preview is no longer a column — it became a centered
    floating popup (MTG Arena style), so the board zones get the
    full width on every viewport. */
+/* FIX 1 — ONE full-height battlefield. The stage is a flex COLUMN:
+   header (auto) · battlefield (flex:1, all remaining space) · the
+   hand stays an absolute overlay at the bottom, so the stage just
+   reserves its peek height as padding. The two zones share the one
+   continuous arcane background (no per-board mats / separate bands)
+   and each take flex:1 so the field is never squeezed into a thin
+   strip — cards get their full natural height. */
 .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  /* Battlefield fills the screen. The hand and action bar are
-     absolute overlays anchored at the bottom (see below), so they
-     no longer eat grid rows. */
-  grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 6px;
-  padding: calc(6px + env(safe-area-inset-top, 0px)) 6px calc(6px + env(safe-area-inset-bottom, 0px)) 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding:
+    calc(6px + env(safe-area-inset-top, 0px))
+    6px
+    calc(var(--tcg-hand-peek) + 10px + env(safe-area-inset-bottom, 0px))
+    6px;
   overflow: hidden;
 }
-.tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-column: 1; grid-row: 1; }
-.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-column: 1; grid-row: 2; min-height: 0; }
-.tcg-battle-shell .tcg-match--arcane .tcg-divider   { grid-column: 1; grid-row: 3; }
-.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-column: 1; grid-row: 4; min-height: 0; }
+.tcg-battle-shell .tcg-match--arcane .tcg-match-head {
+  flex: 0 0 auto;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine {
+  flex: 1 1 0;
+  min-height: 0;
+}
 /* Action bar — MTG-Arena style:
    - The PRIMARY "Fine Turno" button is huge, anchored to the
      bottom-right corner like Arena's COMBAT / END TURN button.
@@ -5402,7 +5435,9 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   filter: brightness(1.08);
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar > *:disabled {
-  filter: grayscale(0.6) brightness(0.7);
+  /* Dim but still clearly readable (label + colour stay legible). */
+  filter: grayscale(0.3) brightness(0.86);
+  opacity: 0.78;
   cursor: not-allowed;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   transform: none;
@@ -5657,7 +5692,7 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-action-bar .tcg-btn--undo:disabled,
 .tcg-battle-shell .tcg-action-log-btn:disabled,
 .tcg-battle-shell .tcg-action-turn-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.62;
   cursor: not-allowed;
 }
 /* Per-role accent on the left border — keeps the visual identity
@@ -5760,20 +5795,19 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   scrollbar-width: thin;
   padding: 4px;
   gap: 4px;
-  /* Replace the ugly dashed `2px dashed --tcg-ink` outline from the
-     generic .tcg-board rule with a soft "battlefield mat" — no hard
-     border, just a faint inner glow + radial vignette so the field
-     reads as ITS OWN region without slicing the arcane background. */
-  background:
-    radial-gradient(ellipse at center,
-      rgba(167, 139, 250, 0.10) 0%,
-      rgba(167, 139, 250, 0.04) 40%,
-      transparent 75%);
+  /* FIX 1 — NO per-board mat / panel. Both halves share the single
+     continuous arcane battlefield background, so the field reads as
+     ONE space, not two stacked fasce. */
+  background: none;
   border: 0;
-  border-radius: 12px;
-  box-shadow:
-    inset 0 0 0 1px rgba(199, 210, 254, 0.18),
-    inset 0 0 24px rgba(139, 92, 246, 0.18);
+  border-radius: 0;
+  box-shadow: none;
+}
+/* Too many creatures: they overlap slightly instead of shrinking
+   in height (height stays full); horizontal scroll is the last
+   resort only when overlap isn't enough. */
+.tcg-battle-shell .tcg-match--arcane .tcg-board > * + * {
+  margin-left: clamp(-30px, -2vw, -10px);
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-board::-webkit-scrollbar { height: 6px; }
 .tcg-battle-shell .tcg-match--arcane .tcg-board::-webkit-scrollbar-thumb {
@@ -5848,6 +5882,200 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 }
 
 /* Label: small chip pinned just above the peeking card tops. */
+/* FIX 2 — dedicated status line. It is an in-flow flex child of
+   the stage column (between the battlefield and the hand), so it
+   reserves its OWN thin band and the warnings/turn/casting text
+   can NEVER overlap the cards. Plain centred text, no box. */
+/* Floating HUD — one absolute overlay holding the status line,
+   pile and combat/priority controls. It is OUT of the flex flow
+   so it can never resize/hide the battlefield. Centred just above
+   the hand; the container ignores pointer events (cards stay
+   clickable) while its buttons re-enable them. */
+.tcg-float-hud {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--tcg-hand-peek) + 14px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 55;
+  width: min(92vw, 540px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.tcg-float-hud:empty { display: none; }
+
+.tcg-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 4px 14px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: rgba(8, 5, 20, 0.78);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  backdrop-filter: blur(2px);
+  font-size: clamp(0.66rem, 1.4vw, 0.84rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e9d5ff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.tcg-status-line strong { font-weight: 900; }
+.tcg-status-line--wait  { color: #cbd5e1; }
+.tcg-status-line--spell { color: #c4b5fd; }
+.tcg-status-line--warn  { color: #fde047; }
+.tcg-status-line--block {
+  color: var(--tcg-amber);
+  font-weight: 900;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.5), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Defender "Non bloccare" control — its own thin in-flow row just
+   above the hand (never overlaps cards), brutalist pill to match
+   the action buttons. */
+.tcg-block-bar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+/* Visible effect pile — floats in the HUD, bottom→top, top item
+   highlighted as next-to-resolve. */
+.tcg-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(8, 5, 20, 0.7);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  backdrop-filter: blur(2px);
+  max-width: 100%;
+}
+.tcg-pile-title {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: clamp(0.6rem, 1.2vw, 0.78rem);
+  letter-spacing: 0.04em;
+  color: var(--tcg-amber);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.tcg-pile-items {
+  display: flex;
+  flex-direction: column-reverse; /* top of stack on top visually */
+  gap: 3px;
+  max-height: 28vh;
+  overflow-y: auto;
+}
+.tcg-pile-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  background: rgba(20, 14, 36, 0.92);
+  color: #ece7ff;
+  font-weight: 800;
+  font-size: clamp(0.58rem, 1.1vw, 0.74rem);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+.tcg-pile-item--mine     { border-color: rgba(74, 222, 128, 0.6); }
+.tcg-pile-item--opp      { border-color: rgba(248, 113, 113, 0.6); }
+.tcg-pile-item--response { background: rgba(36, 16, 48, 0.94); }
+.tcg-pile-item--top {
+  outline: 2px solid var(--tcg-amber);
+  outline-offset: 1px;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.55);
+}
+.tcg-pile-item-kind { font-size: 1em; }
+.tcg-pile-item-name { overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.tcg-pile-item-who {
+  font-size: 0.82em;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Declare-all combat: badge on an enemy attacker the defender can
+   tap to assign blockers (⚔ + 🛡 count); highlighted when focused. */
+.tcg-atk-badge {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border: 2px solid rgba(0, 0, 0, 0.6);
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(0.56rem, 1vw, 0.7rem);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.tcg-atk-badge--on {
+  background: var(--tcg-amber);
+  color: #1f1f1f;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.7);
+}
+.tcg-block-pass {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+  color: #f8fafc;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.74rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  cursor: pointer;
+  transition: transform var(--tcg-motion) var(--tcg-ease),
+              box-shadow var(--tcg-motion) var(--tcg-ease);
+}
+.tcg-block-pass:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+}
+/* Confirm = green (same "confirm" semantic the palette already
+   uses for Fine Turno); disabled until a blocker is picked. */
+.tcg-block-confirm {
+  background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
+  color: #f0fdf4;
+}
+.tcg-block-pass:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
   pointer-events: auto;
   position: absolute;
@@ -6058,11 +6286,18 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   filter: saturate(0.25) brightness(0.55) contrast(0.95);
   animation: none;
 }
-/* Board cards keep their previous size cap (board cards stay
-   small thumbnails so the field stays readable). */
+/* Board cards: SAME single-knob size as the hand (width = --card-w,
+   height = --card-w × 1.4). They no longer stretch to the full
+   battlefield height (that ballooned them to absurd sizes on tall
+   / large screens). Proportionate and responsive at every width;
+   the flex:1 battlefield just centres them. */
 .tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
-  height: 100%;
-  max-height: calc(var(--tcg-card-w) * 1.45);
+  width: var(--card-w);
+  height: calc(var(--card-w) * 1.4);
+  max-height: calc(var(--card-w) * 1.4);
+  min-height: 0;
+  aspect-ratio: auto;
+  flex: 0 0 auto;
   overflow: hidden;
 }
 
@@ -6258,30 +6493,20 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
    the HP bar pinned to the zone edge. Action chips become tiny
    floating buttons in the corner.                               */
 @media (max-width: 900px) {
-  /* Card width sized off viewport HEIGHT (vh) instead of vmin so
-     the board cards on landscape phones — where height is the
-     limiting axis — actually grow large enough to read stats. */
-  .tcg-battle-shell .tcg-match.tcg-match--arcane {
-    /* Phone/tablet: same vw-based scale as desktop (one adaptive
-       UI). Slightly higher floor so a landscape phone stays
-       readable; height still follows × 1.4. */
-    --tcg-card-w: clamp(72px, 10vw, 132px);
-    --tcg-hand-card-w: clamp(92px, 13vw, 168px);
-    --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.4);
-    --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.34);
-  }
+  /* Card sizing is handled by the single --card-w knob above (it
+     already scales with viewport width), so no per-breakpoint
+     size override here — one value rescales every card. */
+  /* FIX 1 — same flex column on phones; just tighter spacing.
+     (display:flex comes from the base rule; keep the hand-peek
+     bottom reservation so the field never slips under the hand.) */
   .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
-    grid-template-columns: minmax(0, 1fr);
-    /* Field zones dominate; the divider band is gone — its contents
-       float absolutely at the seam — and the hand + action bar are
-       overlays. So the grid is just header / opp / mine. */
-    grid-template-rows: auto minmax(0, 2fr) minmax(0, 2fr);
     gap: 2px;
-    padding: 2px;
+    padding:
+      calc(2px + env(safe-area-inset-top, 0px))
+      2px
+      calc(var(--tcg-hand-peek) + 8px + env(safe-area-inset-bottom, 0px))
+      2px;
   }
-  .tcg-battle-shell .tcg-match--arcane .tcg-match-head { grid-row: 1; }
-  .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp  { grid-row: 2; }
-  .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 3; }
   .tcg-battle-shell .tcg-match--arcane .tcg-log {
     max-height: 56px;
     overflow-y: auto;
@@ -6331,21 +6556,15 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     align-items: center;
     align-content: center;
   }
-  /* Cards on the board scale to the zone height — width follows
-     the card's natural aspect ratio. NO max-width — that was
-     forcing them tiny when the zone had plenty of vertical room.
-     The aspect-ratio + height drive the size; the cap stays
-     generous so a single card on an empty board doesn't dominate
-     the entire zone. */
+  /* Phones: same single-knob size as everywhere else — never
+     stretch to the zone height. */
   .tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
-    height: 100%;
-    max-height: clamp(96px, 24vh, 172px);
-    /* Shrink-friendly min so creatures don't overflow vertically
-       when the bigger hand peek eats into my-zone height. */
-    min-height: 70px;
-    width: auto;
+    width: var(--card-w);
+    height: calc(var(--card-w) * 1.4);
+    max-height: calc(var(--card-w) * 1.4);
+    min-height: 0;
     max-width: none;
-    aspect-ratio: 1 / 1.45;
+    aspect-ratio: auto;
     flex-shrink: 0;
   }
   /* Drop target wrapping the pstrip — overlay it on the zone. */
@@ -6424,16 +6643,20 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     row-gap: 0;
     position: relative;
   }
-  /* Name floats centered (transparent — no background, no box). */
+  /* FIX 2 — name is in-flow next to the HP (no absolute centring,
+     so it never overlaps the other elements). Plain text. */
   .tcg-match--arcane .tcg-pstrip-name {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    position: static;
+    transform: none;
+    left: auto;
+    margin-right: auto;
     font-size: 0.78rem;
     font-weight: 900;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(139, 92, 246, 0.4);
-    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 46vw;
     z-index: 1;
   }
   .tcg-match--arcane .tcg-pstrip-row {
@@ -6454,10 +6677,10 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     gap: 4px;
   }
   .tcg-match--arcane .tcg-pstrip-hp-label {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     font-weight: 900;
-    color: #fecaca;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   }
   /* HIDE the long horizontal HP bar on phone — it visually cut
      the field in half. The numeric ❤ value in the label is enough
@@ -6696,11 +6919,9 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   }
 }
 
-/* Very narrow phones — shave a bit more off */
+/* Very narrow phones — card sizing stays on the single --card-w
+   knob (already clamps small enough at 375px). */
 @media (max-width: 380px) {
-  .tcg-battle-shell .tcg-match.tcg-match--arcane {
-    --tcg-card-w: clamp(64px, 22vw, 92px);
-  }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-head .tcg-btn--tiny {
     padding: 3px 6px;
     font-size: 0.64rem;

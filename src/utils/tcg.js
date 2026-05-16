@@ -177,6 +177,13 @@ function clone(s) {
   if (!next.secrets)    next.secrets    = { challenger: [], challenged: [] };
   if (!Array.isArray(next.secrets.challenger)) next.secrets.challenger = [];
   if (!Array.isArray(next.secrets.challenged)) next.secrets.challenged = [];
+  if (!next.phase) next.phase = "main";
+  if (next.pendingAttack === undefined) next.pendingAttack = null;
+  if (next.combat === undefined) next.combat = null; // declare-all combat
+  if (!Array.isArray(next.stack)) next.stack = [];   // Stage 1: effect stack
+  if (next.priority === undefined) next.priority = null; // who may respond (Stage 2+)
+  if (next.stackExpiry === undefined) next.stackExpiry = null; // Stage 2: priority deadline
+  if (next.stackPassed === undefined) next.stackPassed = null; // Stage 3: last side that passed
   if (!next.affinityUsed) {
     next.affinityUsed = {
       challenger: { water: false, dark: false },
@@ -283,6 +290,10 @@ export function initMatchState(challengerDeck, challengedDeck) {
     round: 1,
     activeSide,
     phase: "main",
+    stack: [],          // Stage 1: effect stack (LIFO)
+    priority: null,      // Stage 2+: who may respond before resolution
+    stackExpiry: null,   // Stage 2: deadline for the priority holder
+    stackPassed: null,   // Stage 3: side that just passed priority
     hp:        { challenger: STARTING_HP, challenged: STARTING_HP },
     /* v3 — mana is per-element, fed by crystals on the field.
        maxMana is kept for log compatibility (cap) but mana refresh
@@ -372,8 +383,10 @@ function triggerSecrets(state, defenderSide, eventType, eventData) {
     if (s.trigger !== eventType) continue;
     const def = TCG_CARDS[s.cardId];
     if (!def) continue;
-    // Resolve
-    const result = resolveSecret(state, defenderSide, def, eventData) || {};
+    // Resolve (effect application unified through the trigger funnel)
+    const result = resolveTrigger(state, {
+      trig: "secret", defenderSide, def, eventData,
+    }) || {};
     // Remove from secrets, push to graveyard
     state.secrets[defenderSide].splice(i, 1);
     state.graveyard[defenderSide] = [...state.graveyard[defenderSide], s.cardId];
@@ -471,6 +484,12 @@ function startTurn(state, side) {
   const isFirstTurnEver = state.log.length === 0;
   next.activeSide = side;
   next.phase = "main";
+  next.pendingAttack = null;
+  next.combat = null;       // a turn never begins mid-combat
+  next.stack = [];          // a turn never begins with a pending stack
+  next.priority = null;
+  next.stackExpiry = null;
+  next.stackPassed = null;
   if (!isFirstTurnEver) next.round = state.round + 1;
   /* v3 mana refresh: pool is fully restored to whatever the player's
      crystals produce. No "grows by 1" — players control their mana
@@ -733,7 +752,7 @@ export function playCard(state, side, instId, targetSpec = null) {
     // Affinity fires AFTER any negation. If the creature was negated, it
     // already has hp=0 but applyAffinity for Earth Radici still buffs
     // OTHER creatures of yours (the negated one is skipped via justPlayed).
-    applyAffinity(next, side, def);
+    resolveTrigger(next, { trig: "affinity", side, def });
     resolveDeaths(next);
     return next;
   }
@@ -774,12 +793,111 @@ export function playCard(state, side, instId, targetSpec = null) {
     return next;
   }
 
-  applySpellEffect(next, side, def, targetSpec);
-  next.graveyard[side] = [...next.graveyard[side], handCard.cardId];
-  applyAffinity(next, side, def);
-  resolveDeaths(next);
-  if (next.hp[opp(side)] <= 0 && !next.winner) endGame(next, side, "PF azzerati");
-  if (next.hp[side]      <= 0 && !next.winner) endGame(next, opp(side), "PF azzerati");
+  // Stage 2/3: the spell/enchantment goes onto the stack, then the
+  // OPPONENT gets priority — they may pass OR cast a response
+  // (counter) on top. Resolution is one-at-a-time in passPriority().
+  pushStack(next, {
+    id: rid(),
+    kind: "spell",
+    controller: side,
+    cardId: handCard.cardId,
+    targetSpec: targetSpec ?? null,
+    ts: Date.now(),
+  });
+  next.phase = "stack";
+  next.priority = opp(side);
+  next.stackPassed = null;
+  next.stackExpiry = Date.now() + TURN_DURATION_MS;
+  return next;
+}
+
+/* ── Action: cast a RESPONSE on the stack (Stage 3) ────────────
+   Only the priority holder, only during a stack window, only with
+   a counter-type card. It is pushed ON TOP of the stack (true
+   LIFO); when it resolves it cancels the object directly beneath
+   it. Priority then bounces to the opponent (who may respond to
+   the response). */
+export function canRespond(state, side, instId) {
+  if (state.winner || state.phase !== "stack") return false;
+  if (state.priority !== side) return false;
+  const card = state.hand?.[side]?.find(c => c.instId === instId);
+  if (!card) return false;
+  const def = TCG_CARDS[card.cardId];
+  if (!def || getCardType(def) !== "counter") return false;
+  return canAffordCost(state.mana?.[side], normalizeCost(def));
+}
+export function castResponse(state, side, instId) {
+  if (!canRespond(state, side, instId)) return state;
+  const next = clone(state);
+  const idx = next.hand[side].findIndex(c => c.instId === instId);
+  if (idx < 0) return state;
+  const handCard = next.hand[side][idx];
+  const def = TCG_CARDS[handCard.cardId];
+  next.mana[side] = payCost(next.mana[side], normalizeCost(def));
+  next.hand[side].splice(idx, 1);
+  pushStack(next, {
+    id: rid(),
+    kind: "response",
+    controller: side,
+    cardId: handCard.cardId,
+    ts: Date.now(),
+  });
+  next.log = [...next.log, {
+    side,
+    text: `🛡 ${sideName(side)} risponde con ${def.name}.`,
+  }];
+  next.stackPassed = null;
+  next.priority = opp(side);
+  next.stackExpiry = Date.now() + TURN_DURATION_MS;
+  return next;
+}
+
+/* ── Action: pass priority ─────────────────────────────────────
+   Stage 3 ping-pong: a pass hands priority to the opponent. When
+   BOTH players pass in succession (no new object added), the TOP
+   object resolves (LIFO), then priority returns to the turn's
+   active player if anything remains; otherwise back to main. */
+export function passPriority(state, side) {
+  if (state.winner) return state;
+  if (state.phase !== "stack") return state;
+  if (state.priority !== side) return state;
+  const next = clone(state);
+  if (next.stackPassed === opp(side)) {
+    // Both passed → resolve exactly one (the top of the stack).
+    resolveTopOfStack(next);
+    next.stackPassed = null;
+    if (!next.winner && Array.isArray(next.stack) && next.stack.length > 0) {
+      next.priority = next.activeSide;          // active player acts first
+      next.stackExpiry = Date.now() + TURN_DURATION_MS;
+    } else {
+      next.phase = "main";
+      next.priority = null;
+      next.stackExpiry = null;
+    }
+  } else {
+    next.stackPassed = side;
+    next.priority = opp(side);
+    next.stackExpiry = Date.now() + TURN_DURATION_MS;
+  }
+  return next;
+}
+
+/* Timeout fallback: the priority holder didn't act before
+   stackExpiry — resolve the stack (same as a pass) so the match
+   can't stall. Either client may fire this once the deadline
+   passes (guarded by the top object's ts on the UI side). */
+export function resolveStackTimeout(state) {
+  if (state.phase !== "stack") return state;
+  const next = clone(state);
+  next.log = [...next.log, {
+    side: next.priority || next.activeSide,
+    text: `⏰ Nessuna risposta — l'effetto si risolve.`,
+  }];
+  resolveStack(next);
+  next.phase = "main";
+  next.priority = null;
+  next.stackExpiry = null;
+  next.stackPassed = null;
   return next;
 }
 
@@ -1138,163 +1256,259 @@ function computeSpellMultiplier(spellDef, target, state) {
   return elementMultiplier(spellDef.element, tDef.element);
 }
 
-/* ── Action: attack with a creature ───────────────────────── */
-export function attackWith(state, side, attackerInstId, targetInstId) {
+/* ════════════════════════════════════════════════════════════
+   COMBAT — declare-all-attackers (MTG-style)
+   The active player declares ANY number of their creatures as
+   attackers; the defender then assigns blockers per attacker
+   (each defender creature blocks at most one attacker); then
+   everything resolves together. Attackers hit the opponent's
+   hero unless blocked.
+   ════════════════════════════════════════════════════════════ */
+
+export function declareAttackers(state, side, attackerInstIds) {
   if (state.winner) return state;
   if (state.activeSide !== side) return state;
-
+  if (state.phase !== "main") return state;
+  const ids = [...new Set(Array.isArray(attackerInstIds) ? attackerInstIds : [])]
+    .filter(id => canAttack(state, side, id));
+  if (ids.length === 0) return state;
   const next = clone(state);
-  const oside = opp(side);
-  const attacker = next.board[side].find(c => c.instId === attackerInstId);
-  if (!attacker) return state;
-  if (attacker.sick) return state;
-  if (attacker.tapped) return state;
-
-  const aDef = TCG_CARDS[attacker.cardId];
-  const aMech = effectiveMechanics(attacker);
-  if (aMech.includes("bulwark")) return state; // bulwark cannot attack
-  const attackerFlies = aMech.includes("flying");
-  const attackerReaches = aMech.includes("cacciatore");
-  const bruciaturaX = effectiveMechValue(attacker, "bruciatura") || 0;
-
-  const canReach = (c) => {
-    const cMech = effectiveMechanics(c);
-    // Cacciatore: a grounded attacker with reach can still hit flying defenders.
-    if (cMech.includes("flying") && !attackerFlies && !attackerReaches) return false;
-    return true;
-  };
-
-  const oppBoard = next.board[oside];
-  const tauntingBulwarks = oppBoard.filter(c => {
-    const cMech = effectiveMechanics(c);
-    if (!cMech.includes("bulwark")) return false;
-    return canReach(c);
-  });
-  if (tauntingBulwarks.length > 0) {
-    if (targetInstId === null) return state;
-    const targetIsBulwark = tauntingBulwarks.some(c => c.instId === targetInstId);
-    if (!targetIsBulwark) return state;
-  } else if (targetInstId === null) {
-    // No Bulwarks: lane defense rules apply.
-    //   • Ground attacker → blocked by any ground defender.
-    //   • Flying attacker → cannot be blocked by ordinary defenders
-    //     (only Bulwark stops it, handled above). A flying creature
-    //     can ignore other flyers and dive on the champion.
-    if (!attackerFlies) {
-      const blocksFace = (c) => !effectiveMechanics(c).includes("flying");
-      if (oppBoard.some(blocksFace)) return state;
-    }
+  for (const id of ids) {
+    const a = next.board[side].find(c => c.instId === id);
+    if (a) a.tapped = true;
   }
+  next.combat = {
+    side,
+    attackers: ids,
+    blocks: {},
+    ts: Date.now(),
+    expiry: Date.now() + TURN_DURATION_MS,
+  };
+  next.phase = "block";
+  const names = ids
+    .map(id => TCG_CARDS[next.board[side].find(c => c.instId === id)?.cardId]?.name)
+    .filter(Boolean)
+    .join(", ");
+  next.lastAttack = { attacker: ids[0], target: null, side, flying: false, ts: Date.now() };
+  next.log = [...next.log, {
+    side,
+    text: `🗡 ${sideName(side)} dichiara l'attacco con ${ids.length} creatur${ids.length === 1 ? "a" : "e"}: ${names}.`,
+  }];
+  return next;
+}
 
-  attacker.tapped = true;
+/* Defender creatures that may legally block THIS attacker:
+   untapped, flying-evasion respected, not already assigned to a
+   different attacker in this combat. */
+export function legalBlockersFor(state, attackerInstId) {
+  const cm = state.combat;
+  if (!cm || state.phase !== "block") return [];
+  if (!cm.attackers.includes(attackerInstId)) return [];
+  const atkSide = cm.side;
+  const defSide = opp(atkSide);
+  const attacker = state.board[atkSide]?.find(c => c.instId === attackerInstId);
+  if (!attacker) return [];
+  const attackerFlies = effectiveMechanics(attacker).includes("flying");
+  const usedElsewhere = new Set();
+  for (const [aid, list] of Object.entries(cm.blocks || {})) {
+    if (aid === attackerInstId) continue;
+    for (const b of list) usedElsewhere.add(b);
+  }
+  return (state.board[defSide] || [])
+    .filter(c => {
+      if (c.tapped) return false;
+      if (usedElsewhere.has(c.instId)) return false;
+      if (attackerFlies) {
+        const m = effectiveMechanics(c);
+        if (!m.includes("flying") && !m.includes("cacciatore")) return false;
+      }
+      return true;
+    })
+    .map(c => c.instId);
+}
+
+/* Toggle a blocker onto an attacker (a blocker blocks only one
+   attacker — it is removed from any other first). */
+export function assignBlock(state, defenderSide, attackerInstId, blockerInstId) {
+  const cm = state.combat;
+  if (state.winner || !cm || state.phase !== "block") return state;
+  if (defenderSide !== opp(cm.side)) return state;
+  if (!cm.attackers.includes(attackerInstId)) return state;
+  const next = clone(state);
+  const blocks = next.combat.blocks || (next.combat.blocks = {});
+  const cur = blocks[attackerInstId] || [];
+  if (cur.includes(blockerInstId)) {
+    blocks[attackerInstId] = cur.filter(b => b !== blockerInstId);
+    return next;
+  }
+  if (!legalBlockersFor(next, attackerInstId).includes(blockerInstId)) return state;
+  for (const aid of Object.keys(blocks)) {
+    blocks[aid] = (blocks[aid] || []).filter(b => b !== blockerInstId);
+  }
+  blocks[attackerInstId] = [...(blocks[attackerInstId] || []), blockerInstId];
+  return next;
+}
+
+/* Bulwark = "must block if able": confirm is blocked while an
+   unassigned defender Bulwark could still legally block some
+   declared attacker. */
+export function combatBlockMandatoryUnmet(state) {
+  const cm = state.combat;
+  if (!cm || state.phase !== "block") return false;
+  const defSide = opp(cm.side);
+  const assigned = new Set();
+  for (const list of Object.values(cm.blocks || {})) for (const b of list) assigned.add(b);
+  return (state.board[defSide] || []).some(c => {
+    if (assigned.has(c.instId)) return false;
+    if (c.tapped) return false;
+    if (!effectiveMechanics(c).includes("bulwark")) return false;
+    return cm.attackers.some(aid => legalBlockersFor(state, aid).includes(c.instId));
+  });
+}
+
+/* Resolve ONE attacker vs its assigned blockers (or the hero).
+   Reuses every keyword rule (Avanguardia / Letale / Affondo /
+   Vampirismo / Bruciatura via resolveTrigger; Rinato / Cenere
+   via resolveDeaths). */
+function resolveOneAttacker(next, atkSide, attackerInstId, blockerIds) {
+  const oside = opp(atkSide);
+  const attacker = next.board[atkSide].find(c => c.instId === attackerInstId);
+  if (!attacker) return;
+  const aDef  = TCG_CARDS[attacker.cardId];
+  const aMech = effectiveMechanics(attacker);
+  const bruciaturaX = effectiveMechValue(attacker, "bruciatura") || 0;
+  const blockers = (blockerIds || [])
+    .map(id => next.board[oside].find(c => c.instId === id))
+    .filter(b => b && b.hp > 0);
 
   next.lastAttack = {
     attacker: attackerInstId,
-    target: targetInstId,
-    side,
-    flying: attackerFlies,
+    target: blockers[0]?.instId || null,
+    side: atkSide,
+    flying: aMech.includes("flying"),
     ts: Date.now(),
   };
 
-  if (targetInstId === null) {
-    // Direct hit on opponent face
+  if (blockers.length === 0) {
     const dmg = attacker.atk;
     dealChampionDamage(next, oside, dmg);
-    const flewOver = attackerFlies && oppBoard.some(c => {
-      const cMech = effectiveMechanics(c);
-      return !cMech.includes("flying");
-    });
     next.log = [...next.log, {
-      side,
-      text: flewOver
-        ? `🪽 ${aDef.name} sorvola la linea nemica e colpisce per ${dmg} danni!`
-        : `⚔ ${aDef.name} colpisce direttamente per ${dmg} danni!`,
+      side: atkSide,
+      text: `⚔ ${aDef.name} colpisce direttamente per ${dmg} danni!`,
     }];
-    // Bruciatura on champion hit
     if (bruciaturaX > 0 && dmg > 0) {
-      next.burn[oside] = (next.burn[oside] || 0) + bruciaturaX;
-      next.log = [...next.log, {
-        side,
-        text: `🔥 Bruciatura ${bruciaturaX}: il campione subirà 1 danno all'inizio dei prossimi ${bruciaturaX} turni.`,
-      }];
-      triggerSecrets(next, oside, "burn_applied", { stacks: bruciaturaX });
+      resolveTrigger(next, { trig: "bruciatura", side: oside, stacks: bruciaturaX, logSide: atkSide, variant: "turnstart" });
     }
-    applySoulburn(next, side, dmg, aMech);
-    if (next.hp[oside] <= 0) endGame(next, side, "PF azzerati");
-    return next;
+    resolveTrigger(next, { trig: "soulburn", side: atkSide, dmg, mech: aMech });
+    return;
   }
 
-  const target = oppBoard.find(c => c.instId === targetInstId);
-  if (!target) return state;
-  const tDef = TCG_CARDS[target.cardId];
-  const tMech = effectiveMechanics(target);
-  // Flying defenders are unreachable unless the attacker flies or has Cacciatore.
-  if (tMech.includes("flying") && !attackerFlies && !attackerReaches) return state;
-
-  const aMul = elementMultiplier(aDef.element, tDef.element);
-  const tMul = elementMultiplier(tDef.element, aDef.element);
-  const aDmg = Math.round(attacker.atk * aMul);
-  const tDmg = Math.round(target.atk   * tMul);
-  const targetHpBefore = target.hp;
-
-  const aFirst = aMech.includes("vanguard") && !tMech.includes("vanguard");
-  const tFirst = tMech.includes("vanguard") && !aMech.includes("vanguard");
-
-  // Build a matchup summary showing BOTH multipliers when they differ
-  // from ×1, so the player can audit why each side's damage came out the
-  // way it did. "→×1.5 ↩×0.5" reads "deals 1.5×, takes 0.5× back".
-  const aTag = aMul > 1 ? "→×1.5 super-efficace" : aMul < 1 ? "→×0.5 poco efficace" : null;
-  const tTag = tMul > 1 ? "↩×1.5"               : tMul < 1 ? "↩×0.5"               : null;
-  const mulHints = [aTag, tTag].filter(Boolean).join(" · ");
+  const blkNames = blockers.map(b => TCG_CARDS[b.cardId].name).join(", ");
   next.log = [...next.log, {
-    side,
-    text: `⚔ ${aDef.name} attacca ${tDef.name}${mulHints ? ` (${mulHints})` : ""}.`,
+    side: atkSide,
+    text: `🛡 ${blkNames} blocca${blockers.length > 1 ? "no" : ""} ${aDef.name}.`,
   }];
 
+  const anyBlockerVanguard = blockers.some(b => effectiveMechanics(b).includes("vanguard"));
+  const aFirst = aMech.includes("vanguard") && !anyBlockerVanguard;
+  const tFirst = anyBlockerVanguard && !aMech.includes("vanguard");
+  const aReckon = aMech.includes("reckon");
+
+  const distribute = () => {
+    let pool = attacker.atk, dealt = 0;
+    for (const b of blockers) {
+      if (pool <= 0) break;
+      if (b.hp <= 0) continue;
+      const mul = elementMultiplier(aDef.element, TCG_CARDS[b.cardId].element);
+      const rawNeed  = aReckon ? 1 : (mul > 0 ? Math.ceil(b.hp / mul) : b.hp);
+      const rawSpent = Math.min(pool, rawNeed);
+      const dmg      = aReckon ? b.hp : Math.round(rawSpent * mul);
+      dealDamageToCreature(next, atkSide, b, dmg, attacker, aMech, mul, attacker.atk);
+      pool -= rawSpent; dealt += dmg;
+    }
+    return { leftover: pool, dealt };
+  };
+  const blockersStrike = () => {
+    for (const b of blockers) {
+      if (b.hp <= 0) continue;
+      const bMech = effectiveMechanics(b);
+      const tMul  = elementMultiplier(TCG_CARDS[b.cardId].element, aDef.element);
+      dealDamageToCreature(next, oside, attacker, Math.round(b.atk * tMul), b, bMech, tMul, b.atk);
+    }
+  };
+
+  let leftover = 0, aDealt = 0;
   if (aFirst) {
-    dealDamageToCreature(next, side, target, aDmg, attacker, aMech, aMul, attacker.atk);
-    if (target.hp > 0) {
-      dealDamageToCreature(next, oside, attacker, tDmg, target, tMech, tMul, target.atk);
-    } else {
-      next.log = [...next.log, { side, text: `💢 ${tDef.name} non fa in tempo a rispondere!` }];
-    }
+    ({ leftover, dealt: aDealt } = distribute());
+    blockersStrike();
   } else if (tFirst) {
-    dealDamageToCreature(next, oside, attacker, tDmg, target, tMech, tMul, target.atk);
-    if (attacker.hp > 0) {
-      dealDamageToCreature(next, side, target, aDmg, attacker, aMech, aMul, attacker.atk);
-    } else {
-      next.log = [...next.log, { side: oside, text: `💢 ${aDef.name} cade prima di colpire!` }];
-    }
+    blockersStrike();
+    if (attacker.hp > 0) ({ leftover, dealt: aDealt } = distribute());
+    else next.log = [...next.log, { side: oside, text: `💢 ${aDef.name} cade prima di colpire!` }];
   } else {
-    dealDamageToCreature(next, side, target, aDmg, attacker, aMech, aMul, attacker.atk);
-    dealDamageToCreature(next, oside, attacker, tDmg, target, tMech, tMul, target.atk);
+    ({ leftover, dealt: aDealt } = distribute());
+    blockersStrike();
   }
 
-  // Pierce: excess damage spills to face — bruciatura ALSO triggers here
-  if (aMech.includes("pierce") && target.hp <= 0) {
-    const overkill = Math.max(0, aDmg - targetHpBefore);
-    if (overkill > 0) {
-      dealChampionDamage(next, oside, overkill);
-      next.log = [...next.log, {
-        side,
-        text: `🩸 Affondo! ${overkill} danni passano al campione avversario.`,
-      }];
-      if (bruciaturaX > 0) {
-        next.burn[oside] = (next.burn[oside] || 0) + bruciaturaX;
-        next.log = [...next.log, {
-          side,
-          text: `🔥 Bruciatura ${bruciaturaX}: il campione subirà 1 danno per ${bruciaturaX} turni.`,
-        }];
-        triggerSecrets(next, oside, "burn_applied", { stacks: bruciaturaX });
-      }
+  if (aMech.includes("pierce") && leftover > 0) {
+    dealChampionDamage(next, oside, leftover);
+    next.log = [...next.log, {
+      side: atkSide,
+      text: `🩸 Affondo! ${leftover} danni passano al campione avversario.`,
+    }];
+    if (bruciaturaX > 0) {
+      resolveTrigger(next, { trig: "bruciatura", side: oside, stacks: bruciaturaX, logSide: atkSide, variant: "pierce" });
     }
   }
 
-  applySoulburn(next, side, aDmg, aMech);
-  resolveDeaths(next);
+  resolveTrigger(next, { trig: "soulburn", side: atkSide, dmg: aDealt, mech: aMech });
+  const aliveBlk = blockers.filter(b => b.hp > 0).map(b => TCG_CARDS[b.cardId].name);
+  const deadBlk  = blockers.filter(b => b.hp <= 0).map(b => TCG_CARDS[b.cardId].name);
+  next.log = [...next.log, {
+    side: atkSide,
+    text: `🛡 Esito — ${aDef.name}: ${attacker.hp > 0 ? `sopravvive (${attacker.hp} PF)` : "distrutto"}`
+      + (deadBlk.length ? ` · uccide: ${deadBlk.join(", ")}` : "")
+      + (aliveBlk.length ? ` · resistono: ${aliveBlk.join(", ")}` : ""),
+  }];
+}
 
-  if (next.hp[oside] <= 0) endGame(next, side, "PF azzerati");
-  if (next.hp[side]  <= 0) endGame(next, oside, "PF azzerati (rappresaglia)");
+function resolveCombat(next) {
+  const cm = next.combat;
+  if (!cm) return;
+  const atkSide = cm.side;
+  for (const aid of cm.attackers) {
+    resolveOneAttacker(next, atkSide, aid, (cm.blocks || {})[aid] || []);
+    resolveDeaths(next);
+    if (next.winner) break;
+  }
+  next.combat = null;
+  next.phase = "main";
+  if (!next.winner) {
+    if (next.hp[opp(atkSide)] <= 0) endGame(next, atkSide, "PF azzerati");
+    else if (next.hp[atkSide] <= 0) endGame(next, opp(atkSide), "PF azzerati (rappresaglia)");
+  }
+}
+
+export function confirmBlocks(state, defenderSide) {
+  if (state.winner) return state;
+  const cm = state.combat;
+  if (!cm || state.phase !== "block") return state;
+  if (defenderSide !== opp(cm.side)) return state;
+  if (combatBlockMandatoryUnmet(state)) return state;
+  const next = clone(state);
+  resolveCombat(next);
+  return next;
+}
+
+export function resolveCombatTimeout(state) {
+  const cm = state.combat;
+  if (!cm || state.phase !== "block") return state;
+  const next = clone(state);
+  next.log = [...next.log, {
+    side: opp(cm.side),
+    text: `⏰ Il difensore non assegna i blocchi in tempo — il combattimento si risolve.`,
+  }];
+  resolveCombat(next);
   return next;
 }
 
@@ -1340,6 +1554,180 @@ function applySoulburn(state, side, dmg, mech) {
   }
 }
 
+/* ── STAGE 0: the effect seam ──────────────────────────────────
+   Every state-mutating effect can be expressed as a tagged
+   descriptor and applied through this single dispatcher. Today it
+   is a thin, behaviour-neutral pass-through to the existing
+   helpers (same args, same order, identical result). Later stages
+   (stack / priority) will route these through a queue WITHOUT
+   touching the call sites again. Mutates `next` in place; only
+   `damage_champion` returns a value (remaining damage), preserved
+   for callers that read it. */
+function resolveEffect(next, effect) {
+  switch (effect.kind) {
+    case "damage_creature":
+      dealDamageToCreature(
+        next, effect.attackerSide, effect.victim, effect.rawDmg,
+        effect.dealer, effect.dealerMech, effect.mul, effect.baseAtk,
+      );
+      return undefined;
+    case "damage_champion":
+      return dealChampionDamage(next, effect.side, effect.amount, effect.opts || {});
+    case "spell_effect":
+      applySpellEffect(next, effect.side, effect.def, effect.targetSpec);
+      return undefined;
+    case "soulburn":
+      applySoulburn(next, effect.side, effect.dmg, effect.mech);
+      return undefined;
+    case "deaths":
+      resolveDeaths(next);
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+/* ── STAGE 1: the effect stack ─────────────────────────────────
+   Casting pushes a stack object; resolveStack() pops LIFO and
+   applies it through the Stage-0 seam. Stage 1 has NO response
+   window — resolveStack() is called immediately after the push,
+   so a single spell behaves byte-identically to before. The
+   loop already resolves one object at a time with deaths/endgame
+   between pops, which is exactly the shape Stages 2-4 build on.
+   Only `cardId` is stored (not the def object) so the stack stays
+   small / serialises cleanly to Firestore. */
+function pushStack(next, obj) {
+  if (!Array.isArray(next.stack)) next.stack = [];
+  next.stack.push(obj);
+}
+/* Resolve ONE popped stack object. A "spell" applies its effect
+   (Stage-1 tail). A "response" (counter cast on the stack) cancels
+   the object directly below it — the thing it was cast in response
+   to — sending that card to its owner's graveyard with no effect. */
+/* ── STAGE 4b: triggered-ability dispatcher ────────────────────
+   Triggered abilities ("when X dies / when Y happens") are
+   expressed as trigger descriptors and applied through this one
+   funnel. Migrated one keyword family at a time; each migration
+   is behaviour-neutral (same effect, same log, same order) so it
+   can be parity-checked. First family: Cenere (cinder). */
+function resolveTrigger(next, trig) {
+  switch (trig.trig) {
+    case "cinder": {
+      dealChampionDamage(next, trig.side, trig.amount);
+      next.log = [...next.log, {
+        side: trig.owner,
+        text: `💥 Cenere! ${trig.name} esplode infliggendo ${trig.amount} danni al campione avversario.`,
+      }];
+      return;
+    }
+    case "veil": {
+      trig.bc.hp = 1;
+      trig.bc.revived = true;
+      trig.bc.tapped = true;
+      next.log = [...next.log, {
+        side: trig.owner,
+        text: `👻 Rinato! ${trig.name} torna in piedi con 1 PF.`,
+      }];
+      return;
+    }
+    case "bruciatura": {
+      next.burn[trig.side] = (next.burn[trig.side] || 0) + trig.stacks;
+      next.log = [...next.log, {
+        side: trig.logSide,
+        text: trig.variant === "turnstart"
+          ? `🔥 Bruciatura ${trig.stacks}: il campione subirà 1 danno all'inizio dei prossimi ${trig.stacks} turni.`
+          : `🔥 Bruciatura ${trig.stacks}: il campione subirà 1 danno per ${trig.stacks} turni.`,
+      }];
+      triggerSecrets(next, trig.side, "burn_applied", { stacks: trig.stacks });
+      return;
+    }
+    case "soulburn":
+      applySoulburn(next, trig.side, trig.dmg, trig.mech);
+      return;
+    case "affinity":
+      applyAffinity(next, trig.side, trig.def);
+      return;
+    case "secret":
+      // Secrets (Contromagie face-down) are reactive triggers too.
+      // The matcher/queue stays in triggerSecrets(); only the
+      // EFFECT application is unified here. Timing unchanged — the
+      // result (e.g. { cancelled }) is forwarded to the caller.
+      return resolveSecret(next, trig.defenderSide, trig.def, trig.eventData);
+    default:
+      return;
+  }
+}
+
+/* ── STAGE 4a: state-based actions ─────────────────────────────
+   The canonical "between resolutions" check: clear dead creatures
+   (Rinato / Cenere / graveyard via resolveDeaths) then award the
+   game on a 0-PF champion. `winnerOnTie` keeps the win if BOTH
+   champions are at 0 simultaneously — passing the effect's
+   controller here reproduces the previous inline spell behaviour
+   exactly (caster wins the tie). This single funnel is the hook
+   Stage 4b (triggered-ability objects) will extend. */
+function checkStateBasedActions(next, winnerOnTie) {
+  resolveEffect(next, { kind: "deaths" });
+  if (next.winner) return;
+  const cDead = next.hp.challenger <= 0;
+  const dDead = next.hp.challenged <= 0;
+  if (cDead && dDead) {
+    endGame(next, winnerOnTie || "challenger", "PF azzerati");
+  } else if (cDead) {
+    endGame(next, "challenged", "PF azzerati");
+  } else if (dDead) {
+    endGame(next, "challenger", "PF azzerati");
+  }
+}
+
+function resolveStackObject(next, obj) {
+  if (!obj) return;
+  if (obj.kind === "spell") {
+    const def = TCG_CARDS[obj.cardId];
+    if (!def) return;
+    const ctrl = obj.controller;
+    resolveEffect(next, { kind: "spell_effect", side: ctrl, def, targetSpec: obj.targetSpec });
+    next.graveyard[ctrl] = [...next.graveyard[ctrl], obj.cardId];
+    resolveTrigger(next, { trig: "affinity", side: ctrl, def });
+    checkStateBasedActions(next, ctrl);
+    return;
+  }
+  if (obj.kind === "response") {
+    const rDef = TCG_CARDS[obj.cardId];
+    const ctrl = obj.controller;
+    const victim = (Array.isArray(next.stack) && next.stack.length > 0)
+      ? next.stack.pop() : null;
+    if (victim) {
+      const vDef = TCG_CARDS[victim.cardId];
+      next.graveyard[victim.controller] =
+        [...next.graveyard[victim.controller], victim.cardId];
+      next.log = [...next.log, {
+        side: ctrl,
+        text: `🛡 ${rDef?.name || "Contromagia"} annulla ${vDef?.name || "l'effetto"}.`,
+      }];
+    } else {
+      next.log = [...next.log, {
+        side: ctrl,
+        text: `🛡 ${rDef?.name || "Contromagia"} svanisce: nessun bersaglio.`,
+      }];
+    }
+    next.graveyard[ctrl] = [...next.graveyard[ctrl], obj.cardId];
+    return;
+  }
+}
+/* Pop & resolve exactly ONE object (interactive ping-pong path). */
+function resolveTopOfStack(next) {
+  if (!Array.isArray(next.stack) || next.stack.length === 0) return;
+  resolveStackObject(next, next.stack.pop());
+}
+/* Full drain — used by the timeout fallback so a stalled stack can
+   never hard-lock the match. */
+function resolveStack(next) {
+  while (Array.isArray(next.stack) && next.stack.length > 0) {
+    resolveTopOfStack(next);
+  }
+}
+
 function resolveDeaths(state) {
   for (const s of ["challenger", "challenged"]) {
     const survivors = [];
@@ -1352,22 +1740,14 @@ function resolveDeaths(state) {
       const def = TCG_CARDS[bc.cardId];
       const mech = effectiveMechanics(bc);
       if (mech.includes("veil") && !bc.revived) {
-        bc.hp = 1;
-        bc.revived = true;
-        bc.tapped = true;
+        resolveTrigger(state, { trig: "veil", bc, name: def.name, owner: s });
         survivors.push(bc);
-        state.log = [...state.log, {
-          side: s,
-          text: `👻 Rinato! ${def.name} torna in piedi con 1 PF.`,
-        }];
         continue;
       }
       if (mech.includes("cinder")) {
-        dealChampionDamage(state, oside, 2);
-        state.log = [...state.log, {
-          side: s,
-          text: `💥 Cenere! ${def.name} esplode infliggendo 2 danni al campione avversario.`,
-        }];
+        resolveTrigger(state, {
+          trig: "cinder", side: oside, amount: 2, name: def.name, owner: s,
+        });
       }
       state.graveyard[s] = [...state.graveyard[s], bc.cardId];
       state.log = [...state.log, {
@@ -1417,6 +1797,7 @@ export function discardCard(state, side, instId) {
 export function endTurn(state, side) {
   if (state.winner) return state;
   if (state.activeSide !== side) return state;
+  if (state.phase !== "main") return state; // resolve the open block/stack first
   const next = clone(state);
   next.log = [...next.log, {
     side,
@@ -1436,6 +1817,10 @@ export function endTurn(state, side) {
    so the turn always ends with the hand within the cap. */
 export function autoSkipTurn(state, side) {
   if (state.winner) return state;
+  // A pending block timed out: resolve it as "no block" instead of
+  // skipping the attacker's whole turn.
+  if (state.phase === "block") return resolveCombatTimeout(state);
+  if (state.phase === "stack") return resolveStackTimeout(state);
   if (state.activeSide !== side) return state;
   let next = clone(state);
   const overflow = (next.hand[side]?.length || 0) - MAX_HAND;
@@ -1474,6 +1859,7 @@ export function forfeit(state, side) {
 /* ── Helpers exposed to the UI ────────────────────────────── */
 export function canPlayCard(state, side, instId) {
   if (state.winner || state.activeSide !== side) return false;
+  if (state.phase !== "main") return false; // a stack/block window is open
   const card = state.hand[side].find(c => c.instId === instId);
   if (!card) return false;
   const def = TCG_CARDS[card.cardId];
@@ -1501,6 +1887,7 @@ export function canPlayCard(state, side, instId) {
 
 export function canAttack(state, side, instId) {
   if (state.winner || state.activeSide !== side) return false;
+  if (state.phase !== "main") return false; // a block/stack window is open
   const c = state.board[side].find(x => x.instId === instId);
   if (!c) return false;
   if (c.sick || c.tapped) return false;
@@ -1635,33 +2022,18 @@ export function legalAttackTargets(state, side, attackerInstId) {
   const attackerFlies   = aMech.includes("flying");
   const attackerReaches = aMech.includes("cacciatore");
 
+  // Full-MTG declare: the hero is ALWAYS a legal target (the
+  // defender decides whether to block). The old lane-defense /
+  // forced-Bulwark targeting is gone. A specific enemy creature
+  // can still be singled out, but a flying one only by a flyer
+  // or Cacciatore (it can't be reached on the ground).
   const reachable = (c) => {
     const cMech = effectiveMechanics(c);
     if (cMech.includes("flying") && !attackerFlies && !attackerReaches) return false;
     return true;
   };
-  // A defender "blocks the champion path" only for ground attackers:
-  //   • Ground attacker → blocked by every ground creature.
-  //   • Flying attacker → not blocked by ordinary defenders; only a
-  //     Bulwark stops it (handled via tauntingBulwarks below).
-  const blocksFace = (c) => {
-    if (attackerFlies) return false;
-    return !effectiveMechanics(c).includes("flying");
-  };
-
-  const tauntingBulwarks = oppBoard.filter(c => {
-    const cMech = effectiveMechanics(c);
-    if (!cMech.includes("bulwark")) return false;
-    return reachable(c);
-  });
-  if (tauntingBulwarks.length > 0) {
-    return { creatures: tauntingBulwarks.map(c => c.instId), face: false };
-  }
-
-  const blockers = oppBoard.filter(blocksFace);
-  const face = blockers.length === 0;
   const creatures = oppBoard.filter(reachable).map(c => c.instId);
-  return { creatures, face };
+  return { creatures, face: true };
 }
 
 /* Spell target listing for the UI overlay. Returns the
