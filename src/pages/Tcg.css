@@ -413,6 +413,13 @@ section.tcg-page,
   flex-direction: column;
   gap: 4px;
   width: 180px;
+  /* Uniform card height everywhere (collection / shop / pack /
+     codex). Anything that doesn't fit is clipped — the player can
+     click a card to enlarge it for the full text. Cards that set an
+     explicit height (board cards in battle) are unaffected because
+     aspect-ratio is ignored when width AND height are both set. */
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
   background: var(--bg);
   color: var(--tcg-ink);
   border: 4px solid var(--el-color);
@@ -426,6 +433,15 @@ section.tcg-page,
 .tcg-card--sm { width: 132px; padding: 4px; gap: 3px; }
 .tcg-card--md { width: 180px; }
 .tcg-card--lg { width: 224px; padding: 8px; }
+/* Card face stays clean everywhere (collection / shop / pack /
+   codex / battlefield): NO description or flavor text on the card
+   itself — that lives only in the enlarged detail view
+   (.tcg-detail-*, which is unaffected by this rule). Let the
+   artwork take the freed space. */
+.tcg-card .tcg-card-effect,
+.tcg-card .tcg-card-flavor { display: none !important; }
+.tcg-card .tcg-card-art { flex: 1 1 auto; }
+
 .tcg-card--clickable { cursor: pointer; }
 .tcg-card--clickable:hover:not(:disabled) {
   transform: translate(2px, 2px);
@@ -548,21 +564,44 @@ section.tcg-page,
   line-height: 1;
 }
 
-/* CARD ART */
-.tcg-card-art {
-  position: relative;
+/* CARD ART — FULL-BLEED. The artwork fills the entire card; only
+   the element-coloured header (cost + name + element) and the
+   atk/hp stats float on top of it. */
+.tcg-card-art,
+.tcg-card .tcg-card-art--small {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 132px;
+  height: 100%;
+  margin: 0;
   background: var(--tcg-stone);
-  border: 2px solid var(--tcg-ink);
+  border: 0;
+  border-radius: inherit;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 0;
 }
-.tcg-card--sm .tcg-card-art { height: 88px; }
-.tcg-card--lg .tcg-card-art { height: 160px; }
-.tcg-card-art--small { height: 80px; }
+/* Header floats over the top of the full-bleed art. */
+.tcg-card > .tcg-card-header {
+  position: relative;
+  z-index: 3;
+  margin: 0;
+}
+/* Stats pinned to the bottom over a legibility scrim. */
+.tcg-card > .tcg-card-stats {
+  position: relative;
+  z-index: 3;
+  margin-top: auto;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 55%);
+  padding-top: 14px;
+}
+/* Ability chips also float (above the scrim, below the header). */
+.tcg-card > .tcg-card-mechs {
+  position: relative;
+  z-index: 3;
+}
 .tcg-card-art-img {
   width: 100%;
   height: 100%;
@@ -2101,6 +2140,124 @@ section.tcg-page,
 @keyframes tcg-reveal-pop {
   from { transform: translateY(20px) scale(.85); opacity: 0; }
   to   { transform: none; opacity: 1; }
+}
+
+/* Face-down card in a pack reveal — no pop, invites a click. */
+.tcg-reveal-card--cover {
+  animation: none;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.tcg-reveal-card--cover:hover,
+.tcg-reveal-card--cover:focus-visible {
+  transform: translateY(-6px) scale(1.03);
+  filter: brightness(1.12);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+  outline: none;
+}
+/* Flip-in when a card is turned face-up. */
+.tcg-reveal-card--flip {
+  animation: tcg-card-flip .45s cubic-bezier(.34,1.4,.64,1);
+  transform-style: preserve-3d;
+}
+@keyframes tcg-card-flip {
+  from { transform: rotateY(90deg) scale(.92); opacity: 0; }
+  to   { transform: rotateY(0) scale(1); opacity: 1; }
+}
+.tcg-reveal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Generic face-down card (cover) — sized exactly like the card it
+   replaces so layouts don't jump. */
+.tcg-card-cover {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+  aspect-ratio: 5 / 7;
+  background: #0b0816;
+  border: 4px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 5px 5px 0 0 var(--tcg-ink);
+}
+.tcg-card-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ── Visible DECK on the battlefield ──────────────────────────
+   A small stack of element backs pinned to the left edge of each
+   player's row, with the remaining-card count. */
+.tcg-deck-pile {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.tcg-zone--opp .tcg-deck-pile { bottom: auto; top: 6px; }
+.tcg-deck-pile-stack {
+  position: relative;
+  width: calc(var(--card-w) * 0.62);
+  height: calc(var(--card-w) * 0.62 * 1.4);
+}
+.tcg-deck-pile-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 1.5px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  transform: translate(calc(var(--i) * 2px), calc(var(--i) * -2px));
+}
+.tcg-deck-pile-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.2rem;
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+}
+/* Count badge: always pinned to the deck stack itself — centred and
+   hovering over its bottom edge — so it tracks the cards at every
+   size instead of drifting. Scales with the card width. */
+.tcg-deck-pile-count {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 45%);
+  z-index: 5;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: clamp(0.6rem, calc(var(--card-w) * 0.13), 0.95rem);
+  line-height: 1;
+  color: #fff;
+  background: rgba(8, 4, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 0.18em 0.6em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 /* ============================================================
@@ -5228,6 +5385,9 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   border: none;
   border-radius: 0;
   overflow: hidden;
+  /* Battlefield artwork (over a dark fallback so letterboxed edges
+     stay in-theme). */
+  background: #02010a url("/bf_tgc.png") center center / cover no-repeat;
 }
 
 /* MTG-Arena battlefield: a faint tiled stone texture over the
@@ -5288,14 +5448,28 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      comfortable on desktop (capped 130px) — never enormous. */
   --card-w: clamp(64px, 8.4vw, 126px);
   --tcg-card-w: var(--card-w);
-  --tcg-hand-card-w: var(--card-w);
-  --tcg-hand-card-h: calc(var(--card-w) * 1.4);
+  /* Hand cards get their OWN scale knob (--hand-scale) so phones can
+     have bigger hand cards without enlarging the battlefield cards.
+     Height + peek derive from the hand width so they track it. */
+  --hand-scale: 1;
+  --tcg-hand-card-w: calc(var(--card-w) * var(--hand-scale));
+  --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.4);
   /* FIX 3 — hand cards peek ~62% of their height at rest (was 34%):
      most of each card is a useful, readable preview. Hover/tap
      still lifts the whole card fully into view. The stage padding
      and action bar already track this var, so the field stays
      clear of the higher hand automatically. */
-  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.62);
+  --hand-peek-f: 0.62;
+  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * var(--hand-peek-f));
+}
+/* Smartphones: hand cards ~30% bigger and peeking much higher so
+   they're not half-hidden behind the screen edge. Battlefield cards
+   keep their size (only --hand-scale changes). */
+@media (max-width: 820px) {
+  .tcg-battle-shell .tcg-match.tcg-match--arcane {
+    --hand-scale: 1.3;
+    --hand-peek-f: 0.86;
+  }
 }
 /* Unified battlefield — strip the colored backgrounds and
    chunky borders off the two zones and the central divider so
@@ -5419,10 +5593,15 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* Reserve only a SLIVER for the hand so the battlefield stays
+     full-screen and never crops the cards in play. The hand is an
+     absolute overlay that simply sits on top of the lower edge
+     (MTG-Arena style) — it does NOT carve a panel out of the
+     field. */
   padding:
     calc(6px + env(safe-area-inset-top, 0px))
     6px
-    calc(var(--tcg-hand-peek) + 10px + env(safe-area-inset-bottom, 0px))
+    calc(var(--tcg-hand-card-h) * 0.30 + 8px + env(safe-area-inset-bottom, 0px))
     6px;
   overflow: hidden;
 }
@@ -6021,8 +6200,9 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   min-height: 0;
   flex: 1 1 auto;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  /* Never slice a card in play. Too-many-creatures is handled by the
+     negative-margin overlap below, not by clipping. */
+  overflow: visible;
   align-content: center;
   scrollbar-width: thin;
   padding: 4px;
@@ -7170,4 +7350,268 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   transform: none;
   transform-origin: 0 0;
   overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FULL-BLEED CARD ART (enforced last so it wins over every legacy
+   per-breakpoint .tcg-card-art height rule). The artwork covers the
+   whole card; only the coloured header and the atk/hp stats sit on
+   top. The enlarged detail view uses .tcg-detail-art and is NOT
+   affected. ═══════════════════════════════════════════════════ */
+.tcg-card .tcg-card-art {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: inherit;
+  z-index: 0;
+}
+.tcg-card .tcg-card-art-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+.tcg-card > .tcg-card-header { position: relative; z-index: 3; }
+.tcg-card > .tcg-card-mechs  { position: relative; z-index: 3; }
+.tcg-card > .tcg-card-stats {
+  position: relative;
+  z-index: 3;
+  margin-top: auto;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.74) 60%);
+  padding: 12px 4px 3px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP 1 — COMPACT CARD: only art + ability ICONS + corner stat
+   badges. No description text (that lives only in the enlarged
+   view). Everything floats over the full-bleed art; nothing
+   reflows the card. Sizes scale with --card-w so they stay sharp
+   from 375px to 1920px. ════════════════════════════════════════ */
+
+/* Slim element-coloured header (cost · name · element) over the art. */
+.tcg-card > .tcg-card-header {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 4;
+  padding: 3px 5px;
+  gap: 4px;
+  border: 0;
+  background: linear-gradient(180deg, var(--el-color) 0%,
+              color-mix(in srgb, var(--el-color) 70%, transparent) 100%);
+}
+.tcg-card > .tcg-card-header .tcg-card-name {
+  font-size: clamp(0.5rem, calc(var(--card-w) * 0.105), 0.86rem);
+}
+
+/* Ability ICONS — small round pills, stacked at the top-right just
+   under the header. Icon only, never text, on the compact card. */
+.tcg-card .tcg-card-mechs--mini {
+  position: absolute;
+  top: clamp(20px, calc(var(--card-w) * 0.26), 30px);
+  right: 3px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.tcg-card .tcg-card-mechs--mini .tcg-card-mech-mini {
+  width: clamp(15px, calc(var(--card-w) * 0.2), 26px);
+  height: clamp(15px, calc(var(--card-w) * 0.2), 26px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.55rem, calc(var(--card-w) * 0.13), 0.95rem);
+  background: rgba(8, 4, 24, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  cursor: help;
+}
+
+/* Corner STAT badges (creature): ⚔ bottom-left, ❤ bottom-right. */
+.tcg-card > .tcg-card-stats--mtg {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 4;
+  display: block;
+  padding: 0;
+  background: none;
+}
+.tcg-card > .tcg-card-stats--mtg .tcg-card-mtg-pt {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 3px 3px;
+}
+.tcg-card .tcg-card-mtg-sep { display: none; }
+.tcg-card .tcg-card-mtg-atk,
+.tcg-card .tcg-card-mtg-hp {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: clamp(20px, calc(var(--card-w) * 0.26), 34px);
+  justify-content: center;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: clamp(0.62rem, calc(var(--card-w) * 0.165), 1.15rem);
+  line-height: 1;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 999px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+.tcg-card .tcg-card-mtg-atk {
+  background: linear-gradient(180deg, #f87171, #b91c1c);
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+}
+.tcg-card .tcg-card-mtg-atk::before { content: "⚔"; font-size: 0.85em; }
+.tcg-card .tcg-card-mtg-hp {
+  background: linear-gradient(180deg, #4ade80, #15803d);
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+}
+.tcg-card .tcg-card-mtg-hp::before { content: "❤"; font-size: 0.8em; }
+.tcg-card .tcg-card-mtg-hp--wounded {
+  background: linear-gradient(180deg, #fb923c, #c2410c);
+}
+.tcg-card .tcg-card-mtg-hp-max {
+  font-size: 0.7em;
+  opacity: 0.85;
+}
+
+/* Spell / enchant / counter: one small type badge, bottom-centre. */
+.tcg-card > .tcg-card-stats--spell {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  padding: 0 0 3px;
+  background: none;
+}
+.tcg-card > .tcg-card-stats--spell .tcg-card-stat--spell {
+  font-size: clamp(0.5rem, calc(var(--card-w) * 0.12), 0.82rem);
+  font-weight: 900;
+  color: #fff;
+  background: rgba(8, 4, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  padding: 2px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* Stat badges must stay readable even when cards overlap on the
+   board — gentler overlap so the right-edge ❤ is never buried. */
+.tcg-battle-shell .tcg-match--arcane .tcg-board > * + * {
+  margin-left: clamp(-16px, -1.1vw, -5px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP 2 — ENLARGED FLOATING CARD + side description panel.
+   The overlay floats above the field (field stays put); the card
+   sits next to a light tooltip-like "what it does" panel. Click
+   outside or ESC closes (handled in JSX). ══════════════════════ */
+.tcg-detail-stage {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2vw, 22px);
+  max-width: 100%;
+  max-height: 100%;
+}
+/* Floating description: semi-transparent dark, soft, no heavy
+   border — an elegant tooltip beside the card. */
+.tcg-detail-aside {
+  flex: 0 0 auto;
+  width: clamp(180px, 24vw, 320px);
+  max-height: 84vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(10, 6, 24, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.6);
+  color: #ece8ff;
+  animation: tcg-fade .2s ease-out;
+}
+.tcg-detail-aside-title {
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding-bottom: 6px;
+}
+.tcg-detail-aside-block { display: flex; flex-direction: column; gap: 3px; }
+.tcg-detail-aside-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9rem;
+  color: #fde68a;
+}
+.tcg-detail-aside-icon { font-size: 1.05rem; }
+.tcg-detail-aside-rules {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: #d8d2ee;
+}
+.tcg-detail-aside-empty {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #b8b2d0;
+  font-style: italic;
+}
+.tcg-detail-aside-flavor {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #b8b2d0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 8px;
+}
+
+/* In battle the card is sized to the viewport height (existing
+   rule). Keep the stage centred; the panel rides alongside. */
+.tcg-battle-shell .tcg-overlay .tcg-detail-stage {
+  width: 100%;
+  height: 100%;
+}
+
+/* Narrow / portrait: stack the panel UNDER the card and let the
+   whole stack scroll within the overlay. */
+@media (max-width: 640px), (orientation: portrait) {
+  .tcg-detail-stage {
+    flex-direction: column;
+    gap: 10px;
+    padding: 8px;
+  }
+  .tcg-detail-aside {
+    width: min(94vw, 420px);
+    max-height: 34vh;
+  }
+  .tcg-battle-shell .tcg-overlay .tcg-detail-stage {
+    height: auto;
+    overflow-y: auto;
+  }
+  .tcg-battle-shell .tcg-overlay .tcg-detail {
+    height: auto;
+    max-height: 60vh;
+  }
 }

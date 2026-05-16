@@ -753,13 +753,13 @@ function StarterModal({ onPick, onSkip }) {
    PACK REVEAL MODAL — shows the 8 cards just opened.
    ============================================================ */
 function PackRevealModal({ packDef, cards, onClose, onView }) {
-  const [step, setStep] = useState(0);
-  // Reveal cards one by one for drama; "step" is the count visible.
-  useEffect(() => {
-    if (step >= cards.length) return;
-    const t = setTimeout(() => setStep(s => s + 1), 200);
-    return () => clearTimeout(t);
-  }, [step, cards.length]);
+  // Cards start FACE-DOWN. The player flips them one at a time (click
+  // a cover) or all at once via "Rivela tutte".
+  const [revealed, setRevealed] = useState(() => cards.map(() => false));
+  const flip = (i) =>
+    setRevealed(r => (r[i] ? r : r.map((v, idx) => (idx === i ? true : v))));
+  const revealAll = () => setRevealed(cards.map(() => true));
+  const allRevealed = revealed.every(Boolean);
 
   const bestRarity = useMemo(() => {
     const rank = { common: 1, rare: 2, epic: 3, legendary: 4 };
@@ -788,36 +788,58 @@ function PackRevealModal({ packDef, cards, onClose, onView }) {
             <div className="tcg-reveal-pack-name">{packDef.name}</div>
             <div className="tcg-reveal-pack-sub">{cards.length} carte ricevute</div>
           </div>
-          {foilCount > 0 && (
+          {/* Jackpot banners only AFTER everything is flipped, so they
+              don't spoil the surprise. */}
+          {allRevealed && foilCount > 0 && (
             <div className="tcg-reveal-jackpot tcg-reveal-jackpot--foil">
               ✨ {foilCount === 1 ? "BRILLANTE!" : `${foilCount} BRILLANTI!`} ✨
             </div>
           )}
-          {bestRarity === "legendary" && (
+          {allRevealed && bestRarity === "legendary" && (
             <div className="tcg-reveal-jackpot">★ LEGGENDARIO! ★</div>
           )}
-          {bestRarity === "epic" && (
+          {allRevealed && bestRarity === "epic" && (
             <div className="tcg-reveal-jackpot tcg-reveal-jackpot--epic">★ EPICO! ★</div>
           )}
         </div>
         <div className="tcg-reveal-grid">
-          {cards.slice(0, step).map((d, i) => {
+          {cards.map((d, i) => {
             const c = TCG_CARDS[d.cardId];
-            return c
-              ? <Card
+            if (!c) return null;
+            if (!revealed[i]) {
+              return (
+                <CardCover
                   key={i}
-                  card={c}
-                  foil={d.foil}
+                  element={c.element}
                   size="md"
-                  className="tcg-reveal-card"
-                  onClick={onView ? () => onView(d.cardId, d.foil) : undefined}
+                  className="tcg-reveal-card tcg-reveal-card--cover"
+                  onClick={() => flip(i)}
+                  title="Tocca per scoprire"
                 />
-              : null;
+              );
+            }
+            return (
+              <Card
+                key={i}
+                card={c}
+                foil={d.foil}
+                size="md"
+                className="tcg-reveal-card tcg-reveal-card--flip"
+                onClick={onView ? () => onView(d.cardId, d.foil) : undefined}
+              />
+            );
           })}
         </div>
-        <button className="tcg-btn tcg-btn--hero" onClick={onClose}>
-          Continua
-        </button>
+        <div className="tcg-reveal-actions">
+          {!allRevealed && (
+            <button className="tcg-btn tcg-btn--ghost" onClick={revealAll}>
+              👁 Rivela tutte
+            </button>
+          )}
+          <button className="tcg-btn tcg-btn--hero" onClick={onClose}>
+            {allRevealed ? "Continua" : "Salta"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -828,21 +850,36 @@ function PackRevealModal({ packDef, cards, onClose, onView }) {
    Triggered from Codex, Collection, and Pack reveal.
    ============================================================ */
 function CardDetailModal({ cardId, foil = false, onClose }) {
+  // ESC closes the enlarged view (in addition to click-outside / ✕).
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const c = TCG_CARDS[cardId];
   if (!c) return null;
   const cardType = getCardType(c);
   const isCreature = cardType === "creature";
   const isSpell = !isCreature;
   const mechs = c.mechanics || [];
+  // Extended "what it does" text shown in the floating side panel.
+  const abilityBlocks = isCreature
+    ? mechs.map(k => ({
+        key: k,
+        icon: TCG_MECHANICS[k]?.icon || "⚡",
+        name: getMechLabel(c, k),
+        rules: TCG_MECHANICS[k]?.rules || "",
+      }))
+    : [{ key: "effect", icon: TYPE_ICON[cardType], name: TYPE_LABEL[cardType], rules: describeEffect(c) }];
   return (
     <div className="tcg-overlay" onClick={onClose}>
+      <div className="tcg-detail-stage" onClick={e => e.stopPropagation()}>
       <div
         className={
           `tcg-modal tcg-detail tcg-detail--r-${c.rarity} tcg-detail--el-${c.element}` +
           ` tcg-detail--type-${cardType}` +
           (foil ? " tcg-detail--foil" : "")
         }
-        onClick={e => e.stopPropagation()}
       >
         <button
           type="button"
@@ -956,6 +993,28 @@ function CardDetailModal({ cardId, foil = false, onClose }) {
         >
           Chiudi
         </button>
+      </div>
+
+      {/* Floating, tooltip-like description panel — sits beside the
+          enlarged card (below it on narrow screens). Light, no heavy
+          borders, semi-transparent dark. */}
+      <aside className="tcg-detail-aside" onClick={e => e.stopPropagation()}>
+        <div className="tcg-detail-aside-title">{c.name}</div>
+        {abilityBlocks.length === 0 ? (
+          <p className="tcg-detail-aside-empty">Nessuna abilità speciale.</p>
+        ) : (
+          abilityBlocks.map(b => (
+            <div key={b.key} className="tcg-detail-aside-block">
+              <div className="tcg-detail-aside-head">
+                <span className="tcg-detail-aside-icon">{b.icon}</span>
+                <strong>{b.name}</strong>
+              </div>
+              {b.rules && <p className="tcg-detail-aside-rules">{b.rules}</p>}
+            </div>
+          ))
+        )}
+        {c.flavor && <p className="tcg-detail-aside-flavor">“{c.flavor}”</p>}
+      </aside>
       </div>
     </div>
   );
@@ -1739,12 +1798,12 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
 
       {isCreature ? (
         mechs.length > 0 && (
-          <div className="tcg-card-mechs">
+          <div className="tcg-card-mechs tcg-card-mechs--mini">
             {mechs.map(k => {
               const m = TCG_MECHANICS[k];
               return (
-                <span key={k} className={`tcg-card-mech tcg-card-mech--${k}`} title={`${getMechLabel(def, k)}: ${m.rules}`}>
-                  {m.icon} {getMechLabel(def, k)}
+                <span key={k} className="tcg-card-mech-mini" title={`${getMechLabel(def, k)}: ${m.rules}`}>
+                  {m.icon}
                 </span>
               );
             })}
@@ -1791,6 +1850,87 @@ function CardArt({ def }) {
     );
   }
   return <span className="tcg-card-art-emoji">{def.icon}</span>;
+}
+
+/* Element card-back art (public/card_cover/*.png). The element keys
+   differ from the file names for two of them. */
+const CARD_COVER = {
+  fire:  "/card_cover/fire.png",
+  water: "/card_cover/water.png",
+  earth: "/card_cover/nature.png",
+  air:   "/card_cover/air.png",
+  light: "/card_cover/light.png",
+  dark:  "/card_cover/darkness.png",
+};
+function cardCoverSrc(element) {
+  return CARD_COVER[element] || CARD_COVER.dark;
+}
+/* A face-down card: the element back, sized exactly like a normal
+   card so it slots into hands / piles / the deck stack. */
+function CardCover({ element, size = "md", className = "", onClick, title }) {
+  return (
+    <div
+      className={`tcg-card tcg-card--${size} tcg-card-cover${className ? " " + className : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(e); } } : undefined}
+      title={title}
+      aria-label={title || "Carta coperta"}
+    >
+      <img
+        src={cardCoverSrc(element)}
+        alt=""
+        className="tcg-card-cover-img"
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
+/* Most common element among a list of cardIds — used to pick the
+   thematic back for a player's deck stack (stable, no info leak for
+   mono-element decks). */
+function dominantElement(cardIds) {
+  const tally = {};
+  for (const id of cardIds || []) {
+    const el = TCG_CARDS[id]?.element;
+    if (el) tally[el] = (tally[el] || 0) + 1;
+  }
+  let best = null, bestN = -1;
+  for (const [el, n] of Object.entries(tally)) {
+    if (n > bestN) { best = el; bestN = n; }
+  }
+  return best || "dark";
+}
+
+/* Visible deck stack on the battlefield — a few layered element
+   backs with the remaining-count badge. Presentation only. */
+function DeckPile({ cardIds, label }) {
+  const count = cardIds?.length || 0;
+  const el = dominantElement(cardIds);
+  const layers = Math.min(4, Math.max(1, count));
+  return (
+    <div className="tcg-deck-pile" title={`${label}: ${count} carte`} aria-label={`${label}: ${count} carte`}>
+      <div className="tcg-deck-pile-stack">
+        {Array.from({ length: layers }).map((_, i) => (
+          <img
+            key={i}
+            src={cardCoverSrc(el)}
+            alt=""
+            className="tcg-deck-pile-layer"
+            style={{ "--i": i }}
+            draggable={false}
+            aria-hidden="true"
+          />
+        ))}
+        {count === 0 && <div className="tcg-deck-pile-empty">∅</div>}
+        <span className="tcg-deck-pile-count">{count}</span>
+      </div>
+    </div>
+  );
 }
 
 /* ============================================================
@@ -3461,6 +3601,7 @@ function LiveMatch({ match, uid, onExit }) {
             </div>
           ))}
         </div>
+        <DeckPile cardIds={state.deck[oSide]} label={`Mazzo di ${match[oSide].name}`} />
       </div>
 
       {/* Center divider with face-attack / spell-face target */}
@@ -3559,6 +3700,7 @@ function LiveMatch({ match, uid, onExit }) {
             </div>
           ))}
         </div>
+        <DeckPile cardIds={state.deck[mySide]} label="Il tuo mazzo" />
         <div data-tcg-drop={`champion:${mySide}`} className="tcg-drop-target tcg-drop-target--champion">
         <PlayerStrip
           side={mySide}
