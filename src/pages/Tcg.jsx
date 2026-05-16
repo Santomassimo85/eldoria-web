@@ -1839,6 +1839,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
         (status === "tapped" ? " tcg-board-card--tapped" : "") +
         (status === "ready" ? " tcg-board-card--ready" : "") +
         (isFlying ? " tcg-board-card--flying" : "") +
+        (bc.justPlayed ? " tcg-board-card--just-played" : "") +
         animCls
       }
       onClick={onClick && !disabled ? lp.guardClick(onClick) : undefined}
@@ -2140,6 +2141,10 @@ function LiveMatch({ match, uid, onExit }) {
   const myTurn = state.activeSide === mySide;
 
   const [selectedAttacker, setSelectedAttacker] = useState(null);
+  /* Cursor anchor for the MTG-Arena-style attack arrow. When a
+     creature is selected as the attacker, the arrow follows the
+     pointer until the player commits to a target. */
+  const [attackCursor, setAttackCursor] = useState(null); // { x, y } | null
   const [pendingSpell, setPendingSpell] = useState(null); // { instId, def, targets }
   const [viewingCard, setViewingCard] = useState(null);   // { cardId } | null — opens CardDetailModal
   const [focusedCardId, setFocusedCardId] = useState(null); // cardId shown in the side preview panel
@@ -2150,6 +2155,7 @@ function LiveMatch({ match, uid, onExit }) {
   const [spellSplash, setSpellSplash] = useState(null);   // { cardId, side, type, ts }
   const lastSpellTsRef = useRef(match.state?.lastSpell?.ts || 0);
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
+  const [attackBeam, setAttackBeam] = useState(null);     // transient strike arrow { attackerId, targetId, side, ts }
   const [floats, setFloats] = useState([]);               // [{ id, kind, target, side, instId?, amount }]
   const [muted, setMuted] = useState(isSfxMuted());
   const isPortrait = useIsPortrait();
@@ -2220,19 +2226,32 @@ function LiveMatch({ match, uid, onExit }) {
     const la = state.lastAttack;
     if (!la || !la.ts || la.ts === lastAttackTsRef.current) return;
     lastAttackTsRef.current = la.ts;
-    setAttackAnim({
+    const payload = {
       attackerId: la.attacker,
       targetId: la.target,    // null when face attack
       side: la.side,
       ts: la.ts,
-    });
+    };
+    setAttackAnim(payload);
+    setAttackBeam(payload);
   }, [state.lastAttack?.ts]);
 
   useEffect(() => {
     if (!attackAnim) return;
-    const t = setTimeout(() => setAttackAnim(null), 500);
+    // 800ms — matches the slowed lunge/shake duration (0.75s + tiny buffer).
+    const t = setTimeout(() => setAttackAnim(null), 800);
     return () => clearTimeout(t);
   }, [attackAnim]);
+
+  /* Transient strike arrow — flashes attacker→target for ~1s then
+     fades. Kept separate from attackAnim so the lunge timing (800ms)
+     is untouched. Presentation only; reuses the engine's lastAttack
+     signal. */
+  useEffect(() => {
+    if (!attackBeam) return;
+    const t = setTimeout(() => setAttackBeam(null), 1100);
+    return () => clearTimeout(t);
+  }, [attackBeam]);
 
   /* Attack splash + sound effects — driven by new log entries.
      The same delta scan picks up plays, attacks, deaths, etc. and fires
@@ -2355,7 +2374,8 @@ function LiveMatch({ match, uid, onExit }) {
 
   useEffect(() => {
     if (!attackSplash) return;
-    const t = setTimeout(() => setAttackSplash(null), 1100);
+    // 1.8s — matches the slowed tcg-splash-bg keyframe duration.
+    const t = setTimeout(() => setAttackSplash(null), 1800);
     return () => clearTimeout(t);
   }, [attackSplash]);
 
@@ -2402,6 +2422,28 @@ function LiveMatch({ match, uid, onExit }) {
       setPendingSpell(null);
     }
   }, [myTurn]);
+
+  /* MTG-Arena-style targeting line: while a creature is selected to
+     attack OR a spell is waiting for its target, track the pointer
+     so the SVG overlay can draw a curve from the source card to the
+     cursor/finger. Clears as soon as the selection is resolved. */
+  const isTargeting = !!selectedAttacker || !!pendingSpell;
+  useEffect(() => {
+    if (!isTargeting) {
+      setAttackCursor(null);
+      return undefined;
+    }
+    const onMove = (e) => {
+      const x = e.clientX ?? e.touches?.[0]?.clientX;
+      const y = e.clientY ?? e.touches?.[0]?.clientY;
+      if (x == null || y == null) return;
+      setAttackCursor({ x, y });
+    };
+    window.addEventListener("pointermove", onMove);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+    };
+  }, [isTargeting]);
 
   /* Turn-clock tick. Re-render every second so the countdown in
      the header updates smoothly. The auto-skip effect below reads
@@ -2610,7 +2652,12 @@ function LiveMatch({ match, uid, onExit }) {
       if (!spec) return;
       const [kind, ...rest] = spec.split(":");
       const instId = rest.join(":");
-      downStartRef.current = { x: e.clientX, y: e.clientY, kind, instId };
+      const rect = el.getBoundingClientRect();
+      downStartRef.current = {
+        x: e.clientX, y: e.clientY, kind, instId, el,
+        startCx: rect.left + rect.width / 2,
+        startCy: rect.top + rect.height / 2,
+      };
       dragStartedRef.current = false;
     }
 
@@ -2627,18 +2674,33 @@ function LiveMatch({ match, uid, onExit }) {
         const def = inst ? TCG_CARDS[inst.cardId] : null;
         if (!def) { downStartRef.current = null; return; }
         dragStartedRef.current = true;
-        // Ghost rides on the pointer — the CSS transform on
-        // .tcg-drag-ghost positions the card so its body sits above
-        // the pointer (so the player can see what they're dragging
-        // and the finger doesn't cover the card).
-        setDragInfo({ kind: downStart.kind, instId: downStart.instId, def, x: e.clientX, y: e.clientY });
+        // Move the SOURCE card itself via inline position: fixed
+        // (driven by --drag-x / --drag-y CSS vars). No ghost, no
+        // separate element — exactly what the player grabbed
+        // follows the pointer.
+        downStart.el.classList.add("tcg-card--being-dragged");
+        setDragInfo({ kind: downStart.kind, instId: downStart.instId, def });
       }
-      if (dragGhostRef.current) {
-        dragGhostRef.current.style.left = `${e.clientX}px`;
-        dragGhostRef.current.style.top  = `${e.clientY}px`;
+      // Update the source card's anchor every frame. The center of
+      // the card tracks the pointer offset by the same delta the
+      // pointer has moved since the press began (so the card stays
+      // exactly where the finger picked it up — no snap to cursor).
+      const dx = e.clientX - downStart.x;
+      const dy = e.clientY - downStart.y;
+      const cx = downStart.startCx + dx;
+      const cy = downStart.startCy + dy;
+      downStart.el.style.setProperty("--drag-x", `${cx}px`);
+      downStart.el.style.setProperty("--drag-y", `${cy}px`);
+      // Update hover drop zone (use elementsFromPoint so the dragged
+      // card itself — which now sits under the pointer — doesn't
+      // block detection of the drop target underneath).
+      const stack = document.elementsFromPoint(e.clientX, e.clientY);
+      let drop = null;
+      for (const node of stack) {
+        if (node === downStart.el || node.contains?.(downStart.el)) continue;
+        drop = node.closest?.("[data-tcg-drop]") || null;
+        if (drop) break;
       }
-      // Update hover drop zone
-      const drop = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-tcg-drop]") || null;
       if (drop !== dragHoverElRef.current) {
         dragHoverElRef.current?.classList.remove("tcg-drop-hover");
         drop?.classList.add("tcg-drop-hover");
@@ -2711,14 +2773,30 @@ function LiveMatch({ match, uid, onExit }) {
       const ds = downStart;
       downStartRef.current = null;
       dragStartedRef.current = false;
-      if (!wasDragging) return;
-      const drop = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-tcg-drop]") || null;
+      if (!wasDragging) {
+        return;
+      }
+      // Resolve the drop target, skipping the dragged card itself
+      // (which sits under the pointer with high z-index).
+      const stack = document.elementsFromPoint(e.clientX, e.clientY);
+      let drop = null;
+      for (const node of stack) {
+        if (node === ds.el || node.contains?.(ds.el)) continue;
+        drop = node.closest?.("[data-tcg-drop]") || null;
+        if (drop) break;
+      }
       const dropId = drop?.getAttribute("data-tcg-drop") || null;
       dragHoverElRef.current?.classList.remove("tcg-drop-hover");
       dragHoverElRef.current = null;
       justDraggedRef.current = true;
       // Reset on next macrotask — the synthetic click fires right after pointerup
       setTimeout(() => { justDraggedRef.current = false; }, 50);
+      // Release the source card from its dragged state.
+      if (ds.el) {
+        ds.el.classList.remove("tcg-card--being-dragged");
+        ds.el.style.removeProperty("--drag-x");
+        ds.el.style.removeProperty("--drag-y");
+      }
       setDragInfo(null);
       dispatchDrop(ds.kind, ds.instId, dropId);
     }
@@ -2824,6 +2902,51 @@ function LiveMatch({ match, uid, onExit }) {
       return { role: "target", ts: attackAnim.ts };
     }
     return null;
+  };
+
+  /* Shared beam renderer — the curved glowing arrow used both for
+     the live targeting line and the transient attack strike. Geometry
+     only; all colours/animation live in Tcg.css. `gradId` must be
+     unique per instance so two beams can coexist. */
+  const renderBeam = (sx, sy, tx, ty, { variant, gradId, svgKey }) => {
+    const mx = (sx + tx) / 2;
+    const my = (sy + ty) / 2 - Math.abs(tx - sx) * 0.22 - 64;
+    const d = `M ${sx} ${sy} Q ${mx} ${my} ${tx} ${ty}`;
+    return (
+      <svg
+        key={svgKey}
+        className={`tcg-attack-arrow${variant ? ` tcg-attack-arrow--${variant}` : ""}`}
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={gradId} gradientUnits="userSpaceOnUse"
+                          x1={sx} y1={sy} x2={tx} y2={ty}>
+            <stop className="tcg-arrow-grad-a" offset="0%" />
+            <stop className="tcg-arrow-grad-b" offset="55%" />
+            <stop className="tcg-arrow-grad-c" offset="100%" />
+          </linearGradient>
+          <marker id={`${gradId}-head`} viewBox="0 0 18 18" refX="9" refY="9"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path className="tcg-arrow-head" d="M0 0 L18 9 L0 18 L5 9 Z" />
+          </marker>
+        </defs>
+        <path className="tcg-arrow-glow" d={d} />
+        <path className="tcg-arrow-core" d={d}
+              stroke={`url(#${gradId})`} markerEnd={`url(#${gradId}-head)`} />
+        <path className="tcg-arrow-flow" d={d} />
+        <circle className="tcg-arrow-origin" cx={sx} cy={sy} r="9" />
+        <circle className="tcg-arrow-tip" cx={tx} cy={ty} r="7" />
+      </svg>
+    );
+  };
+
+  /* Centre point of a board card / champion drop zone, in viewport
+     coords, from the live DOM rect (resolution-independent). */
+  const dropCenter = (sel) => {
+    const el = matchRootRef.current?.querySelector(sel);
+    const r = el?.getBoundingClientRect();
+    if (!r) return null;
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   };
 
   /* End screen */
@@ -3336,18 +3459,53 @@ function LiveMatch({ match, uid, onExit }) {
           onClose={() => setViewingCard(null)}
         />
       )}
+
+      {/* MTG-Arena targeting line — rendered while choosing a target,
+          either for a creature attack (selectedAttacker) or a spell
+          waiting on its target (pendingSpell). Start anchor comes
+          from the live DOM rect of the source card so the curve
+          follows transforms / scrolls / any screen size. */}
+      {(selectedAttacker || pendingSpell) && attackCursor && (() => {
+        const el = selectedAttacker
+          ? matchRootRef.current?.querySelector(
+              `[data-tcg-drop="creature:${mySide}:${selectedAttacker}"]`
+            )
+          : matchRootRef.current?.querySelector(".tcg-card--pending-spell");
+        const rect = el?.getBoundingClientRect();
+        if (!rect) return null;
+        const sx = rect.left + rect.width / 2;
+        const sy = rect.top + rect.height / 2;
+        return renderBeam(sx, sy, attackCursor.x, attackCursor.y, {
+          gradId: "tcgArrowGradAim",
+        });
+      })()}
+
+      {/* Transient ATTACK STRIKE arrow — when an attack resolves a
+          glowing arrow flashes attacker→target (or →champion on a
+          face attack), holds, then fades out (~1s). Endpoints come
+          from the live DOM rects so it's resolution-independent.
+          Driven by the engine's lastAttack signal via attackBeam. */}
+      {attackBeam && (() => {
+        const atkSide = attackBeam.side;
+        const defSide = atkSide === mySide ? oSide : mySide;
+        const from = dropCenter(
+          `[data-tcg-drop="creature:${atkSide}:${attackBeam.attackerId}"]`
+        );
+        const to = attackBeam.targetId
+          ? dropCenter(`[data-tcg-drop="creature:${defSide}:${attackBeam.targetId}"]`)
+          : dropCenter(`[data-tcg-drop="champion:${defSide}"]`);
+        if (!from || !to) return null;
+        return renderBeam(from.x, from.y, to.x, to.y, {
+          variant: "strike",
+          gradId: "tcgArrowGradStrike",
+          svgKey: `strike-${attackBeam.ts}`,
+        });
+      })()}
       </div>{/* /tcg-match-stage */}
 
-      {dragInfo && (
-        <div
-          ref={dragGhostRef}
-          className="tcg-drag-ghost"
-          style={{ left: dragInfo.x, top: dragInfo.y }}
-          aria-hidden="true"
-        >
-          <Card card={dragInfo.def} size="md" showTooltip={false} />
-        </div>
-      )}
+      {/* No more separate drag ghost — the source card itself is
+          repositioned via `.tcg-card--being-dragged` on the live
+          DOM element while a drag is in flight. */}
     </div>
   );
 }

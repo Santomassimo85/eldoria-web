@@ -246,7 +246,8 @@ const _mw = (n) => MARTIAL_WEAPONS.find(w => w.name === n);
 const CLERIC_WEAPON_OPTIONS  = SIMPLE_WEAPONS;
 const DRUID_WEAPON_OPTIONS   = SIMPLE_WEAPONS;
 const BARD_WEAPON_OPTIONS    = [...SIMPLE_WEAPONS, _mw("Stocco")].filter(Boolean);
-const ROGUE_WEAPON_OPTIONS   = [...SIMPLE_WEAPONS, _mw("Stocco"), _mw("Scimitarra"), _mw("Spada Corta"), _mw("Frusta"), _mw("Balestra a Mano")].filter(Boolean);
+// Il Ladro combatte a due armi (mano1 + mano2): niente armi a due mani.
+const ROGUE_WEAPON_OPTIONS   = [...SIMPLE_WEAPONS, _mw("Stocco"), _mw("Scimitarra"), _mw("Spada Corta"), _mw("Frusta"), _mw("Balestra a Mano")].filter(Boolean).filter(w => !w.twoHanded);
 const RANGER_WEAPON_OPTIONS  = [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS];
 const MONK_WEAPON_OPTIONS    = [...SIMPLE_WEAPONS, _mw("Spada Corta"), _mw("Frusta"), _mw("Balestra a Mano")].filter(Boolean);
 const WIZARD_WEAPON_OPTIONS  = [_sw("Bastone Ferrato"), _sw("Daga")].filter(Boolean);
@@ -2477,6 +2478,21 @@ export default function Arena() {
       return;
     }
 
+    // 🗡 Ladro — struttura del turno: 1 attacco mano1 + 1 attacco mano2 + 1 abilità
+    // (Attacco Furtivo o Triboli) + 1 bonus action. Ogni arma una sola volta a turno;
+    // una sola abilità a turno. Furtività resta libera (non occupa slot).
+    if (isRogueClass((attackerSnap?.class || "").toLowerCase())) {
+      const _skillSlot = action.special === "sneak_attack" || action.special === "triboli";
+      if (action.type === "weapon" && (_myMatchEarly?.turnWeaponsUsed || []).includes(action.name)) {
+        alert("🗡 Hai già attaccato con quest'arma questo turno. Usa l'altra mano o un'abilità.");
+        return;
+      }
+      if (_skillSlot && _myMatchEarly?.turnSkillUsed) {
+        alert("🗡 Hai già usato un'abilità (Attacco Furtivo o Triboli) questo turno.");
+        return;
+      }
+    }
+
     // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
@@ -2646,6 +2662,8 @@ export default function Arena() {
           p.id === currentUser.uid
             ? { ...p,
                 multiActionsUsed: newMultiUsed,
+                turnSkillUsed:     multiWillStay ? true : false,
+                turnWeaponsUsed:   multiWillStay ? (me?.turnWeaponsUsed || []) : [],
                 bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
                 extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
                 actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false,
@@ -2671,17 +2689,14 @@ export default function Arena() {
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const me = m.players.find(p => p.id === currentUser.uid);
-        const maxActions = getMaxActionsPerTurn(attackerSnap, me);
-        const usedSoFar = me?.multiActionsUsed ?? 0;
-        const multiWillStay = (usedSoFar + 1) < maxActions;
-        const newMultiUsed = multiWillStay ? usedSoFar + 1 : 0;
-        // Furtività non fa avanzare il turno: bonusActionUsed deve restare quello che era.
+        // Furtività = azione gratuita: non avanza il turno né consuma uno slot
+        // multi-azione del Ladro. bonusActionUsed resta quello che era.
         const preservedBonusUsed = !!me?.bonusActionUsed;
         const players = m.players.map(p => {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-            return { ...p, stealthAdvTurns: 3, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: newMultiUsed };
+            return { ...p, stealthAdvTurns: 3, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: me?.multiActionsUsed ?? 0 };
           }
           return p;
         });
@@ -2727,39 +2742,53 @@ export default function Arena() {
           return p;
         });
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
-        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: triboliExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
+        // Triboli = slot abilità del Ladro: non termina il turno finché restano
+        // azioni (mano1/mano2). Una sola abilità a turno (turnSkillUsed).
+        const me = m.players.find(p => p.id === currentUser.uid);
+        const maxActions = getMaxActionsPerTurn(attackerSnap, me);
+        const usedSoFar = me?.multiActionsUsed ?? 0;
+        const multiWillStay = (usedSoFar + 1) < maxActions;
+        const newMultiUsed = multiWillStay ? usedSoFar + 1 : 0;
+        const preservedBonusUsed = !!me?.bonusActionUsed;
+        const playersWithMultiState = updatedPlayers.map(p =>
+          p.id === currentUser.uid
+            ? { ...p,
+                multiActionsUsed: newMultiUsed,
+                turnSkillUsed:     multiWillStay ? true : false,
+                turnWeaponsUsed:   multiWillStay ? (me?.turnWeaponsUsed || []) : [],
+                bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
+                extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
+                actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false }
+            : p
+        );
+        const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
+        return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: triboliExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
     }
 
-    // ── Ragnatela (TS FOR CD 13 · fail = 2 turni, save = 1 turno) ────
+    // ── Ragnatela (intrappola · TS FOR CD 13 OGNI turno per liberarsi) ────
     if (action.special === "web") {
       const saveAbility = action.saveAbility || "str";
       const saveDC = action.saveDC ?? 13;
-      const defMod = defenderSnap?.stats?.[saveAbility] ?? 0;
-      const d20 = Math.floor(Math.random() * 20) + 1;
-      await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
-      const tsTotal = d20 + defMod;
-      const saved = tsTotal >= saveDC;
-      const lostTurns = saved ? 1 : 2;
       const log = {
-        pub: saved
-          ? `🕸 ${attName} lancia Ragnatela su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — si libera in 1 turno.`
-          : `🕸 ${attName} lancia Ragnatela su ${defName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — intrappolato per 2 turni.`,
-        att: saved
-          ? `🕸 Lanci la Ragnatela su ${defName} — TS riuscito (${tsTotal} ≥ ${saveDC}): salterà 1 turno.`
-          : `🕸 Lanci la Ragnatela su ${defName} — TS fallito (${tsTotal} < ${saveDC}): salterà 2 turni.`,
-        def: saved
-          ? `🕸 Spezzi la Ragnatela (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salti solo 1 turno.`
-          : `🕸 Sei avvolto dalla Ragnatela (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salti 2 turni.`,
+        pub: `🕸 ${attName} lancia Ragnatela su ${defName} — intrappolato! TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi.`,
+        att: `🕸 Lanci la Ragnatela su ${defName} — dovrà superare un TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi.`,
+        def: `🕸 Sei avvolto dalla Ragnatela — TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarti.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const webExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const updatedPlayers = m.players.map(p => {
-          if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
+          if (p.id === targetId) return {
+            ...p,
+            pendingControlSave: true,
+            pendingControlDC: saveDC,
+            pendingControlSaveAbility: saveAbility,
+            controlLostTurns: 2,
+          };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = action.maxUses !== undefined
@@ -2992,10 +3021,17 @@ export default function Arena() {
         attackDisadvantageTurns: Math.max(0, (meBefore?.attackDisadvantageTurns ?? 0) - 1),
         weaponLockTurns: Math.max(0, (meBefore?.weaponLockTurns ?? 0) - 1),
       };
+      // 🗡 Ladro: traccia le armi usate nel turno (ogni mano una sola volta).
+      const _rogueAtt = isRogueClass((attackerSnap?.class || "").toLowerCase());
+      const _accWeaponsUsed = (_rogueAtt && action.type === "weapon")
+        ? [ ...((meBefore?.turnWeaponsUsed) || []), action.name ]
+        : ((meBefore?.turnWeaponsUsed) || []);
       const playersWithMultiState = updatedPlayers.map(p =>
         p.id === currentUser.uid
           ? { ...p,
               multiActionsUsed: newMultiUsed,
+              turnWeaponsUsed:   stayingThisTurn ? _accWeaponsUsed : [],
+              turnSkillUsed:     stayingThisTurn ? !!meBefore?.turnSkillUsed : false,
               bonusActionUsed:   stayingThisTurn ? !!preservedBonusUsed   : false,
               extraTurnActive:   stayingThisTurn ? !!p.extraTurnActive    : false,
               actionSurgeActive: stayingThisTurn ? !!p.actionSurgeActive  : false,
@@ -3309,12 +3345,6 @@ export default function Arena() {
     const targetName = targetSnap?.name || "?";
     const saveAbility = action.saveAbility || "str";
     const saveDC = action.saveDC ?? 13;
-    const defMod = targetSnap?.stats?.[saveAbility] ?? 0;
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
-    const tsTotal = d20 + defMod;
-    const saved = tsTotal >= saveDC;
-    const lostTurns = saved ? 1 : 2;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -3323,12 +3353,16 @@ export default function Arena() {
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
         }
-        if (p.id === targetId) return { ...p, controlLostTurns: lostTurns };
+        if (p.id === targetId) return {
+          ...p,
+          pendingControlSave: true,
+          pendingControlDC: saveDC,
+          pendingControlSaveAbility: saveAbility,
+          controlLostTurns: 2,
+        };
         return p;
       });
-      const log = saved
-        ? `🕷 Il ragno di ${myName} intrappola ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — salta 1 turno.`
-        : `🕷 Il ragno di ${myName} intrappola ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 2 turni.`;
+      const log = `🕷 Il ragno di ${myName} intrappola ${targetName} — TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -3900,7 +3934,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) } : p
       );
       const log = reason === "invisible"
         ? `👻 ${myName} non riesce a colpire un bersaglio invisibile e salta il turno.`
@@ -3920,7 +3954,7 @@ export default function Arena() {
       const remaining = Math.max(0, (meBefore?.controlLostTurns ?? 0) - 1);
       const players = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) }
+          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) }
           : p
       );
       const log = `🌀 ${myName} è sotto controllo e perde il turno (${remaining} turni rimanenti).`;
@@ -3935,7 +3969,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) } : p
       );
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} termina il turno volontariamente.`] };
@@ -3956,6 +3990,8 @@ export default function Arena() {
         return {
           ...p,
           multiActionsUsed: 0,
+          turnWeaponsUsed: [],
+          turnSkillUsed: false,
           bonusActionUsed: false,
           defensiveBonus: 0,
           actionSurgeActive: false,
@@ -4019,7 +4055,7 @@ export default function Arena() {
       const restoredMaxHp = myPData?.preWildShapeMaxHp ?? myPData?.maxHp ?? restoredHp;
       const updatedPlayers = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, bonusActionUsed: false, ...tickEagleEnd(p) }
+          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) }
           : p
       );
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
@@ -4558,8 +4594,8 @@ export default function Arena() {
           // Sotto controllo: il timer scade → decrementa il contatore invece di applicare la posizione difensiva.
           const wasControlled = (p.controlLostTurns ?? 0) > 0;
           let up = wasControlled
-            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false }
-            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, bonusActionUsed: false };
+            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false }
+            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false };
           if (wasControlled && !hasPendingCtrl) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           if (hasPendingDex) {
             const d20 = Math.floor(Math.random() * 20) + 1;
@@ -4918,6 +4954,34 @@ export default function Arena() {
         <div className="arena-header-deco">⚔</div>
       </div>
 
+      {/* ── RICOMPENSA PROSSIMA ARENA (visibile a tutti) ── */}
+      {(isMaster || (arenaMeta.prizes && arenaMeta.prizes.trim())) && (
+        <div className="arena-reward-panel">
+          <div className="arena-reward-deco" aria-hidden="true">🏆</div>
+          <div className="arena-reward-body">
+            <div className="arena-reward-label">Ricompensa della prossima Arena</div>
+            {isMaster ? (
+              <div className="arena-reward-editor">
+                <textarea
+                  className="arena-reward-textarea"
+                  rows={2}
+                  placeholder="Descrivi la ricompensa che vedranno tutti i giocatori…"
+                  value={prizeText}
+                  onChange={e => setPrizeText(e.target.value)}
+                />
+                <button className="arena-reward-save" onClick={savePrizes}>💾 Salva</button>
+                {arenaMeta.prizes && arenaMeta.prizes.trim() && (
+                  <p className="arena-reward-current">In palio ora: <strong>{arenaMeta.prizes}</strong></p>
+                )}
+              </div>
+            ) : (
+              <div className="arena-reward-text">{arenaMeta.prizes}</div>
+            )}
+          </div>
+          <div className="arena-reward-deco" aria-hidden="true">🏆</div>
+        </div>
+      )}
+
       {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
         <div className="champions-arena-banner">
           <div className="champions-arena-deco-left">⚜</div>
@@ -5100,10 +5164,7 @@ export default function Arena() {
 
           {arenaMeta.phase === "registration" && (
             <div className="prize-editor">
-              <p className="col-label">🏆 Premi in Palio</p>
-              <textarea className="prize-textarea" rows={2} placeholder="Descrivi i premi dell'arena…"
-                value={prizeText} onChange={e => setPrizeText(e.target.value)} />
-              <button className="btn-save-prize" onClick={savePrizes}>Salva</button>
+              <p className="col-label">♛ Opzioni Iscrizioni</p>
               <label className="champions-only-toggle">
                 <input
                   type="checkbox"
@@ -6821,7 +6882,7 @@ export default function Arena() {
                                   <span key={a.name} className="wild-form-action-tag">
                                     {a.icon} {a.name} {a.damage !== "—" ? a.damage : ""}
                                     {a.statKey ? ` +${a.statKey.toUpperCase()}` : ""}
-                                    {a.special === "web" ? " (TS FOR · 1-2t)" : ""}
+                                    {a.special === "web" ? " (TS FOR ogni turno)" : ""}
                                     {a.special === "poison" ? " (TS COS)" : ""}
                                     {a.special === "save_dot" ? ` (TS COS · ${a.saveDotDamage || "1d8"}/turno)` : ""}
                                   </span>
@@ -7592,17 +7653,26 @@ export default function Arena() {
                           const disabledByInvis = targetIsInvisible && isOffensive && isEquipped;
                           const stealthTurnsLeft = action.special === "stealth" ? readStealthAnyTurns(myPlayer) : 0;
                           const isStealthActive = stealthTurnsLeft > 0;
+                          // 🗡 Ladro: una sola arma per mano e una sola abilità (Furtivo/Triboli) a turno.
+                          const isRogueMe = isRogueClass((mySnap?.class || "").toLowerCase());
+                          const handUsedThisTurn = isRogueMe && isWeapon && isEquipped && (myPlayer?.turnWeaponsUsed || []).includes(action.name);
+                          const skillSlotUsed = isRogueMe && (action.special === "sneak_attack" || action.special === "triboli") && !!myPlayer?.turnSkillUsed;
+                          const rogueBlocked = handUsedThisTurn || skillSlotUsed;
                           return (
                             <button
                               key={action.name}
-                              className={`btn-action ${action.type} ${isWeapon && !wildShapeForm ? (isEquipped ? "equipped" : "unequipped") : ""} ${noUsesLeft || disabledByInvis || isStealthActive ? "no-uses" : ""} ${isDeathblow ? "deathblow-ready" : ""} ${action.special === "smite" && !noUsesLeft ? "smite-active" : ""} ${isStealthActive ? "stealth-active" : ""}`}
-                              disabled={noUsesLeft || disabledByInvis || isStealthActive}
+                              className={`btn-action ${action.type} ${isWeapon && !wildShapeForm ? (isEquipped ? "equipped" : "unequipped") : ""} ${noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked ? "no-uses" : ""} ${isDeathblow ? "deathblow-ready" : ""} ${action.special === "smite" && !noUsesLeft ? "smite-active" : ""} ${isStealthActive ? "stealth-active" : ""}`}
+                              disabled={noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked}
                               title={isStealthActive
                                 ? `🌑 Furtività attiva — ${stealthTurnsLeft} turno/i rimasti`
+                                : handUsedThisTurn
+                                ? "🗡 Arma già usata questo turno — usa l'altra mano"
+                                : skillSlotUsed
+                                ? "🗡 Abilità già usata questo turno (1 tra Attacco Furtivo / Triboli)"
                                 : noUsesLeft
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
-                                : action.special === "web" ? "Ragnatela — TS FOR (CD 13): fallisce 2t · supera 1t"
+                                : action.special === "web" ? "Ragnatela — intrappola: TS FOR (CD 13) ogni turno per liberarsi"
                                 : action.special === "triboli" ? "Triboli — svantaggio + sanguinamento 1d6/turno per 3 turni"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
@@ -7610,7 +7680,7 @@ export default function Arena() {
                                 : !isEquipped ? "Clicca per impugnare (spende il turno)"
                                 : `+${action.hitBonus}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""} | ${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               onClick={() => {
-                                if (noUsesLeft || disabledByInvis || isStealthActive) return;
+                                if (noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked) return;
                                 isEquipped
                                   ? handleAttack(m.matchId, chosenTargetId, action)
                                   : handleSwitchWeapon(m.matchId, action.name);
@@ -7620,10 +7690,12 @@ export default function Arena() {
                               <span className="action-name">{action.name}</span>
                               <span className="action-dice">
                                 {isStealthActive ? `🌑 ${stealthTurnsLeft}t attiva`
+                                  : handUsedThisTurn ? "✓ Usata"
+                                  : skillSlotUsed ? "✓ Abilità usata"
                                   : noUsesLeft ? "Esaurito"
                                   : disabledByInvis ? "👻 Invisibile"
                                   : !isEquipped ? "🔄 Cambia"
-                                  : action.special === "web" ? "🕸 Salta 2t"
+                                  : action.special === "web" ? "🕸 Intrappola"
                                   : action.special === "triboli" ? "🩸 Sang. 3t · svant."
                                   : action.special === "poison" ? `${action.damage} +TS COS`
                                   : `${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}

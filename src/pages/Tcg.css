@@ -31,6 +31,25 @@
   --tcg-air:    #ea580c;
   --tcg-light:  #fbbf24;
   --tcg-dark:   #6b21a8;
+
+  /* ── MTG-Arena restyle tokens (in-match only) ────────────── */
+  --tcg-table-core:  #2a1a4a;   /* radial table centre (deep violet) */
+  --tcg-table-edge:  #07060f;   /* radial table edge (near-black)    */
+  --tcg-vignette:    rgba(0,0,0,0.62);
+  --tcg-card-bg:     #161226;   /* glossy dark card body             */
+  --tcg-card-bg-2:   #241a3d;   /* card body gradient highlight      */
+  --tcg-card-frame:  rgba(255,255,255,0.14);
+  --tcg-card-radius: clamp(8px, 1vw, 14px);
+  --tcg-glow-gold:   #fbbf24;   /* playable pulse                    */
+  --tcg-glow-purple: #a78bfa;   /* selected lift glow                */
+  --tcg-ink-soft:    #ece7ff;   /* light text on dark card           */
+  --tcg-motion:      240ms;
+  --tcg-ease:        cubic-bezier(0.22, 0.61, 0.36, 1);
+  --tcg-life-size:   clamp(54px, 8vw, 84px);
+  /* targeting-arrow beam palette */
+  --tcg-arrow-1:     #fff7d6;   /* hot core / flow */
+  --tcg-arrow-2:     #fde047;   /* amber body */
+  --tcg-arrow-3:     #f59e0b;   /* deep amber root */
 }
 
 /* ── PAGE ─────────────────────────────────────────────────── */
@@ -766,16 +785,176 @@ section.tcg-page,
 .tcg-board-card .tcg-board-tag {
   z-index: 3;
 }
+/* MTG-Arena attack arrow — full-viewport SVG that draws a glowing
+   curve from the selected attacker to the player's pointer. Lives
+   above the battlefield and the hand so the player always sees
+   exactly what they're aiming at, but `pointer-events: none` keeps
+   clicks passing through to the target underneath. */
+.tcg-attack-arrow {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 80;
+  pointer-events: none;
+  overflow: visible;
+  /* The amber arrow against a dark battlefield reads instantly;
+     a soft pulse keeps the eye on the aim while targeting. */
+  filter: drop-shadow(0 0 12px rgba(253, 224, 71, 0.55));
+  animation: tcg-attack-arrow-pulse 0.9s var(--tcg-ease) infinite;
+}
+@keyframes tcg-attack-arrow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(253, 224, 71, 0.5)); }
+  50%      { filter: drop-shadow(0 0 20px rgba(253, 224, 71, 0.95)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcg-attack-arrow { animation: none; }
+}
+
+/* ── Fancy targeting beam: layered glow + gradient core + flowing
+      energy dashes + pulsing origin/tip. Colours come from the
+      central --tcg-arrow-* tokens (no hardcoded values in JSX). ── */
+.tcg-arrow-glow,
+.tcg-arrow-core,
+.tcg-arrow-flow {
+  fill: none;
+  stroke-linecap: round;
+}
+.tcg-arrow-glow {
+  stroke: var(--tcg-arrow-2);
+  stroke-opacity: 0.30;
+  stroke-width: 20;
+}
+.tcg-arrow-core {
+  stroke-width: 6;
+}
+.tcg-arrow-flow {
+  stroke: var(--tcg-arrow-1);
+  stroke-width: 3.5;
+  stroke-dasharray: 1 17;
+  stroke-opacity: 0.95;
+  animation: tcg-arrow-flow 0.5s linear infinite;
+}
+@keyframes tcg-arrow-flow {
+  to { stroke-dashoffset: -36; }
+}
+/* gradient stops (defined as <stop class> in the SVG) */
+.tcg-arrow-grad-a { stop-color: var(--tcg-arrow-3); }
+.tcg-arrow-grad-b { stop-color: var(--tcg-arrow-2); }
+.tcg-arrow-grad-c { stop-color: var(--tcg-arrow-1); }
+.tcg-arrow-head {
+  fill: var(--tcg-arrow-1);
+  stroke: #1c1410;
+  stroke-width: 1.1;
+}
+.tcg-arrow-origin {
+  fill: none;
+  stroke: var(--tcg-arrow-2);
+  stroke-width: 3;
+  animation: tcg-arrow-origin 1.1s var(--tcg-ease) infinite;
+}
+.tcg-arrow-tip {
+  fill: var(--tcg-arrow-2);
+  animation: tcg-arrow-tip 0.9s var(--tcg-ease) infinite;
+}
+@keyframes tcg-arrow-origin {
+  0%, 100% { r: 7;  stroke-opacity: 0.55; }
+  50%      { r: 12; stroke-opacity: 0.95; }
+}
+@keyframes tcg-arrow-tip {
+  0%, 100% { r: 6; fill-opacity: 0.55; }
+  50%      { r: 9; fill-opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcg-arrow-flow,
+  .tcg-arrow-origin,
+  .tcg-arrow-tip { animation: none; }
+}
+
+/* ── Transient attack-strike arrow: snaps in, holds, fades out
+      over ~1s. Static endpoints (attacker→target). Same beam
+      style as the targeting line for consistency. ── */
+.tcg-attack-arrow--strike {
+  animation: tcg-strike-life 1.1s var(--tcg-ease) forwards;
+}
+@keyframes tcg-strike-life {
+  0%   { opacity: 0; transform: scale(1.015); }
+  14%  { opacity: 1; transform: scale(1); }
+  68%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* The strike's energy flows faster — reads as a launched bolt. */
+.tcg-attack-arrow--strike .tcg-arrow-flow {
+  animation-duration: 0.32s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcg-attack-arrow--strike { animation: tcg-strike-life-fade 1.1s linear forwards; }
+  @keyframes tcg-strike-life-fade {
+    0%, 70% { opacity: 1; }
+    100%    { opacity: 0; }
+  }
+}
+
+/* Ready to attack — pulsing green halo, MTG-Arena style. The
+   player's eye lands on which of their creatures can swing
+   without reading status text. */
 .tcg-board-card--ready {
-  outline: 3px dashed #15803d;
+  outline: 3px solid #22c55e;
   outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.35), 0 0 18px rgba(34, 197, 94, 0.75);
+  animation: tcg-ready-pulse 1.8s ease-in-out infinite;
+}
+@keyframes tcg-ready-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.35), 0 0 14px rgba(34, 197, 94, 0.55); }
+  50%      { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.55), 0 0 26px rgba(34, 197, 94, 1.00); }
 }
 .tcg-board-card--sick {
-  filter: saturate(0.5) brightness(0.85);
+  filter: saturate(0.45) brightness(0.78);
 }
+/* Tapped creature — full 90° rotation + dim, exactly like a
+   physical M:tG card laid sideways after it attacks. Slowed to
+   0.7s so the rotation reads as a deliberate "this just happened"
+   beat instead of an instant snap. */
 .tcg-board-card--tapped {
-  transform: rotate(4deg);
-  filter: brightness(0.85);
+  transform: rotate(90deg);
+  transform-origin: center;
+  filter: brightness(0.72) saturate(0.7);
+  transition: transform 0.7s cubic-bezier(0.34, 1.42, 0.5, 1.0),
+              filter 0.45s ease;
+}
+
+/* Just-played / summoned — a 0.95s zoom-and-glow entrance so the
+   "evocazione" is a beat the player actually sees instead of an
+   instant pop. Triggered by the `bc.justPlayed` engine flag on the
+   first turn the creature is on the board; the flag clears at the
+   start of the next turn so the animation only plays once. */
+.tcg-board-card--just-played {
+  animation: tcg-summon-in 0.95s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+@keyframes tcg-summon-in {
+  0% {
+    /* Flies UP from the hand area: starts low, small and tilted,
+       as if the card was just thrown from the player's hand onto
+       the field (CSS-only proxy for a true hand→field FLIP). */
+    transform: translateY(70%) scale(0.5) rotate(-6deg);
+    opacity: 0;
+    filter:
+      drop-shadow(0 0 24px rgba(253, 224, 71, 0.95))
+      drop-shadow(0 0 48px rgba(253, 224, 71, 0.7))
+      brightness(1.35);
+  }
+  45% {
+    transform: translateY(-6%) scale(1.12) rotate(1.5deg);
+    opacity: 1;
+    filter:
+      drop-shadow(0 0 18px rgba(253, 224, 71, 0.85))
+      brightness(1.18);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0);
+    opacity: 1;
+    filter: none;
+  }
 }
 .tcg-board-tag {
   position: absolute;
@@ -2828,17 +3007,17 @@ section.tcg-page,
    Plays for ~450ms; the JSX restarts it via key= remount.
    ============================================================ */
 .tcg-board-card--anim-attacker-up {
-  animation: tcg-lunge-up 0.45s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
+  animation: tcg-lunge-up 0.75s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
   z-index: 5;
   filter: drop-shadow(0 4px 10px rgba(251, 191, 36, 0.55));
 }
 .tcg-board-card--anim-attacker-down {
-  animation: tcg-lunge-down 0.45s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
+  animation: tcg-lunge-down 0.75s cubic-bezier(0.5, -0.4, 0.4, 1.4) forwards;
   z-index: 5;
   filter: drop-shadow(0 -4px 10px rgba(239, 68, 68, 0.55));
 }
 .tcg-board-card--anim-target {
-  animation: tcg-target-shake 0.45s ease-in-out;
+  animation: tcg-target-shake 0.75s ease-in-out;
   z-index: 4;
 }
 .tcg-board-card--anim-target::after {
@@ -2848,7 +3027,7 @@ section.tcg-page,
   inset: -2px;
   background: radial-gradient(circle at center, rgba(239, 68, 68, 0.55) 0%, transparent 70%);
   pointer-events: none;
-  animation: tcg-hit-flash 0.45s ease-out forwards;
+  animation: tcg-hit-flash 0.75s ease-out forwards;
   z-index: 3;
 }
 @keyframes tcg-lunge-up {
@@ -2879,11 +3058,11 @@ section.tcg-page,
 }
 /* Flying attackers lift higher and tilt more aggressively */
 .tcg-board-card--flying.tcg-board-card--anim-attacker-up {
-  animation: tcg-lunge-up-flying 0.5s cubic-bezier(0.4, -0.5, 0.4, 1.4) forwards;
+  animation: tcg-lunge-up-flying 0.85s cubic-bezier(0.4, -0.5, 0.4, 1.4) forwards;
   filter: drop-shadow(0 6px 14px rgba(167, 139, 250, 0.7));
 }
 .tcg-board-card--flying.tcg-board-card--anim-attacker-down {
-  animation: tcg-lunge-down-flying 0.5s cubic-bezier(0.4, -0.5, 0.4, 1.4) forwards;
+  animation: tcg-lunge-down-flying 0.85s cubic-bezier(0.4, -0.5, 0.4, 1.4) forwards;
   filter: drop-shadow(0 -6px 14px rgba(167, 139, 250, 0.7));
 }
 @keyframes tcg-lunge-up-flying {
@@ -2910,7 +3089,7 @@ section.tcg-page,
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: tcg-splash-bg 1.1s ease-out forwards;
+  animation: tcg-splash-bg 1.8s ease-out forwards;
 }
 @keyframes tcg-splash-bg {
   0%   { background: radial-gradient(circle at center, rgba(15, 23, 42, 0.0), transparent 70%); }
@@ -3933,10 +4112,11 @@ section.tcg-page,
   paint-order: stroke fill;
 }
 .tcg-float--damage {
-  color: #ffeb3b;
+  color: #ff4d4d;
   text-shadow:
     0 0 10px #ef4444,
-    0 0 22px rgba(239, 68, 68, 0.85),
+    0 0 22px rgba(239, 68, 68, 0.9),
+    0 0 34px rgba(239, 68, 68, 0.6),
     3px 3px 0 #1f1f1f;
 }
 .tcg-float--heal {
@@ -4173,12 +4353,14 @@ section.tcg-page,
 .tcg-match--arcane .tcg-divider-hint {
   color: #e9d5ff;
   text-shadow: 0 0 6px rgba(139, 92, 246, 0.6);
+  animation: tcg-awaiting-pulse 1.5s var(--tcg-ease) infinite;
 }
 .tcg-match--arcane .tcg-spell-banner {
   background: rgba(30, 15, 60, 0.92);
   border: 1px solid rgba(167, 139, 250, 0.6);
   color: #f8f4ff;
   box-shadow: 0 0 12px rgba(139, 92, 246, 0.45);
+  animation: tcg-awaiting-glow-violet 1.5s var(--tcg-ease) infinite;
 }
 .tcg-match--arcane .tcg-face-attack {
   background: linear-gradient(135deg, #b91c1c, #ef4444);
@@ -4186,11 +4368,31 @@ section.tcg-page,
   border: 1px solid #fbbf24;
   box-shadow: 0 4px 14px rgba(185, 28, 28, 0.55), 0 0 0 1px rgba(255, 215, 130, 0.4) inset;
   font-weight: 800;
+  animation: tcg-awaiting-glow-amber 1.4s var(--tcg-ease) infinite;
 }
 .tcg-match--arcane .tcg-face-attack--spell {
   background: linear-gradient(135deg, #4338ca, #7c3aed);
   border-color: #c4b5fd;
   box-shadow: 0 4px 14px rgba(67, 56, 202, 0.55), 0 0 0 1px rgba(199, 210, 254, 0.4) inset;
+}
+/* "Your move" cues gently pulse so the next required action is
+   always the brightest thing on the battlefield. */
+@keyframes tcg-awaiting-pulse {
+  0%, 100% { opacity: 0.72; }
+  50%      { opacity: 1; }
+}
+@keyframes tcg-awaiting-glow-violet {
+  0%, 100% { box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); }
+  50%      { box-shadow: 0 0 22px rgba(139, 92, 246, 0.85); }
+}
+@keyframes tcg-awaiting-glow-amber {
+  0%, 100% { box-shadow: 0 4px 14px rgba(185, 28, 28, 0.55), 0 0 0 1px rgba(255, 215, 130, 0.4) inset; }
+  50%      { box-shadow: 0 4px 14px rgba(185, 28, 28, 0.6), 0 0 20px rgba(251, 191, 36, 0.85), 0 0 0 1px rgba(255, 215, 130, 0.6) inset; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcg-match--arcane .tcg-divider-hint,
+  .tcg-match--arcane .tcg-spell-banner,
+  .tcg-match--arcane .tcg-face-attack { animation: none; }
 }
 
 /* Hand — obsidian tray with violet trim */
@@ -4260,6 +4462,170 @@ section.tcg-page,
   box-shadow: 0 0 0 3px #c4b5fd, 0 0 22px rgba(167, 139, 250, 0.8);
 }
 
+/* ════════════════════════════════════════════════════════════
+   STEP A — Single card, MTG-Arena identity.
+   Scoped to the HAND only (.tcg-match--arcane .tcg-hand .tcg-card)
+   so board cards / collection / shop are left for later steps.
+   ════════════════════════════════════════════════════════════ */
+.tcg-match--arcane .tcg-hand .tcg-card {
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--tcg-card-bg-2) 0%, var(--tcg-card-bg) 62%);
+  color: var(--tcg-ink-soft);
+  border: 1px solid var(--el-color);
+  border-radius: var(--tcg-card-radius);
+  padding: 0 0 6px;
+  gap: 0;
+  overflow: hidden;
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.65),
+    0 0 0 1px var(--tcg-card-frame) inset,
+    0 0 0 3px rgba(0, 0, 0, 0.55);
+  transition:
+    transform var(--tcg-motion) var(--tcg-ease),
+    box-shadow var(--tcg-motion) var(--tcg-ease),
+    filter var(--tcg-motion) var(--tcg-ease);
+}
+/* glossy top sheen */
+.tcg-match--arcane .tcg-hand .tcg-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0));
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* name banner */
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-header {
+  background: linear-gradient(180deg, var(--el-color), rgba(0,0,0,0.35));
+  border: 0;
+  border-bottom: 1px solid var(--tcg-card-frame);
+  padding: 7px 9px;
+  color: #fff;
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-name {
+  font-size: 0.84rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-cost {
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--tcg-glow-gold));
+  border: 1px solid rgba(0,0,0,0.5);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.65);
+  border-radius: 50%;
+}
+
+/* framed central art */
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-art {
+  height: clamp(96px, 12vw, 140px);
+  margin: 6px 6px 4px;
+  width: auto;
+  border: 1px solid var(--tcg-card-frame);
+  border-radius: calc(var(--tcg-card-radius) - 4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.55) inset;
+}
+
+/* translucent ability / mechanics box */
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mechs,
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-effect,
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-flavor {
+  background: rgba(8, 6, 18, 0.55);
+  color: var(--tcg-ink-soft);
+  margin: 0 6px 4px;
+  padding: 5px 7px;
+  border: 1px solid var(--tcg-card-frame);
+  border-radius: calc(var(--tcg-card-radius) - 6px);
+  backdrop-filter: blur(2px);
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-flavor {
+  font-style: italic;
+  color: rgba(236, 231, 255, 0.7);
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mech {
+  background: rgba(255,255,255,0.08);
+  color: var(--tcg-ink-soft);
+  border-color: var(--tcg-card-frame);
+}
+
+/* stats as corner badges (ATK bottom-left · HP bottom-right) */
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-stats--mtg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  padding: 0 8px;
+  background: transparent;
+  border: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mtg-pt {
+  width: 100%;
+  justify-content: space-between;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  margin: 0;
+  font-size: 1.1rem;
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mtg-atk,
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mtg-hp {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 2px solid rgba(0,0,0,0.65);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mtg-atk {
+  background: radial-gradient(circle at 35% 30%, #ff7a7a, var(--tcg-fire));
+  color: #fff;
+}
+.tcg-match--arcane .tcg-hand .tcg-card .tcg-card-mtg-hp {
+  background: radial-gradient(circle at 35% 30%, #6ee7a8, var(--tcg-earth));
+  color: #fff;
+}
+
+/* ── states ─────────────────────────────────────────────── */
+/* playable: pulsing gold border */
+.tcg-match--arcane .tcg-hand .tcg-card--clickable:not(.tcg-card--disabled):not(.tcg-card--selected) {
+  border-color: var(--tcg-glow-gold);
+  animation: tcgPlayablePulse 1.5s var(--tcg-ease) infinite;
+}
+@keyframes tcgPlayablePulse {
+  0%, 100% { box-shadow: 0 10px 22px rgba(0,0,0,0.65), 0 0 0 1px var(--tcg-card-frame) inset, 0 0 0 2px rgba(251,191,36,0.55); }
+  50%      { box-shadow: 0 10px 24px rgba(0,0,0,0.65), 0 0 0 1px var(--tcg-card-frame) inset, 0 0 16px 3px rgba(251,191,36,0.85); }
+}
+/* hover / focus: subtle lift + scale */
+.tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(.tcg-card--disabled),
+.tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(.tcg-card--disabled) {
+  transform: translateY(-8px) scale(1.05);
+  box-shadow: 0 18px 30px rgba(0,0,0,0.7), 0 0 0 1px var(--tcg-card-frame) inset;
+  z-index: 5;
+}
+/* selected: lifts + purple glow */
+.tcg-match--arcane .tcg-hand .tcg-card--selected {
+  transform: translateY(-10px) scale(1.04);
+  border-color: var(--tcg-glow-purple);
+  outline: 0;
+  box-shadow:
+    0 18px 32px rgba(0,0,0,0.7),
+    0 0 0 2px var(--tcg-glow-purple),
+    0 0 26px 4px rgba(167,139,250,0.8);
+  animation: none;
+}
+/* disabled: dim & desaturate, no pulse */
+.tcg-match--arcane .tcg-hand .tcg-card--disabled {
+  opacity: 0.5;
+  filter: grayscale(0.55) brightness(0.85);
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcg-match--arcane .tcg-hand .tcg-card--clickable:not(.tcg-card--disabled):not(.tcg-card--selected) {
+    animation: none;
+  }
+}
+
 /* Magnifier button — violet */
 .tcg-match--arcane .tcg-card-inspect-btn {
   background: rgba(167, 139, 250, 0.92);
@@ -4314,46 +4680,59 @@ section.tcg-page,
   align-items: center;
   flex-wrap: wrap;
 }
+/* ── Life as a circular node (MTG-Arena style) ─────────────────
+   The HP block becomes a gold-ringed disc with the life total
+   centred. The old proportional bar is dropped (a life TOTAL,
+   not a gauge — like MTG Arena). Markup unchanged. */
 .tcg-match--arcane .tcg-pstrip-hp {
-  min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  width: var(--tcg-life-size);
+  height: var(--tcg-life-size);
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(124, 45, 18, 0.55), rgba(8, 6, 18, 0.92) 70%);
+  border: 3px solid var(--tcg-glow-gold);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 0 14px rgba(251, 191, 36, 0.45);
+  transition: box-shadow var(--tcg-motion) var(--tcg-ease),
+              transform var(--tcg-motion) var(--tcg-ease);
 }
-/* HP number sits inline; the actual bar is pinned to the bottom
-   edge of the strip via absolute positioning so it lines up with
-   the player zone's border. */
 .tcg-match--arcane .tcg-pstrip-hp-label {
-  color: #fecaca;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
-  font-size: 0.8rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+  font-family: var(--font-title, serif);
+  font-size: clamp(1.05rem, 2.4vw, 1.6rem);
   font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
 }
-.tcg-match--arcane .tcg-pstrip-hp-track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 4px;
-  background: rgba(2, 1, 10, 0.6);
-  border: 0;
-  border-radius: 0;
-  overflow: hidden;
-}
+/* The old linear gauge is folded into the disc — hidden. */
+.tcg-match--arcane .tcg-pstrip-hp-track,
 .tcg-match--arcane .tcg-pstrip-hp-fill {
-  height: 100%;
-  background: linear-gradient(to right, #b91c1c, #ef4444);
-  transition: width 0.25s ease;
+  display: none;
 }
-/* Active player — HP bar glows and gets a tiny bit taller so
-   it's obvious who's playing without the whole panel changing. */
-.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp-track {
-  height: 6px;
-  box-shadow: 0 0 12px rgba(167, 139, 250, 0.7);
+/* Active player — the life disc pulses gold so it's obvious whose
+   turn it is without reading text. */
+.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp {
+  border-color: #fff3c4;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.55) inset,
+    0 0 22px rgba(251, 191, 36, 0.85);
+  animation: tcgLifePulse 1.6s var(--tcg-ease) infinite;
 }
-.tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp-fill {
-  background: linear-gradient(to right, #b91c1c, #ef4444, #fbbf24);
+@keyframes tcgLifePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tcg-match--arcane .tcg-pstrip--active .tcg-pstrip-hp { animation: none; }
 }
 /* Deck / hand counter chips — tiny dark glass pills, just enough
    to read the number without eating real estate. */
@@ -4531,33 +4910,30 @@ section.tcg-page,
   position: relative;
   width: 100%;
 }
+/* ── True vertical layout (MTG-Arena restyle) ──────────────────
+   The forced-landscape 90° rotation is removed: the match now
+   stacks vertically (opponent top → divider → you → hand → bar)
+   and scrolls naturally. Single component tree, same on phone
+   and desktop — only the layout reflows. */
 .tcg-match--portrait {
-  /* Keep the root pinned so the rotated stage has a stable containing block */
-  position: fixed;
-  inset: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  overflow: hidden;
+  position: relative;
+  inset: auto;
+  overflow: visible;
 }
 .tcg-match--portrait .tcg-match-stage {
-  position: fixed;
-  top: 0;
-  left: 100vw;
-  width: 100vh;
-  height: 100vw;
-  transform-origin: top left;
-  transform: rotate(90deg);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 10px;
-  gap: 10px;
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 100%;
+  height: auto;
+  transform: none;
+  overflow: visible;
+  padding: 0;
+  gap: 8px;
 }
-/* The ghost lives outside the stage (in viewport coords) so we don't have
-   to undo the rotation in JS. In portrait mode rotate the ghost the same
-   90deg so it appears upright from the user's landscape viewpoint. */
+/* No rotation → the drag ghost stays upright. */
 .tcg-match--portrait .tcg-drag-ghost {
-  transform: translate(-50%, -50%) rotate(86deg);
+  transform: translate(-50%, -50%);
 }
 /* Hand becomes shorter in portrait so the action bar still fits */
 .tcg-match--portrait .tcg-card--md,
@@ -4586,15 +4962,44 @@ section.tcg-page,
   cursor: grab;
 }
 .tcg-match--arcane .tcg-card[data-tcg-draggable]:active { cursor: grabbing; }
-/* Source card disappears during a drag — the ghost (which is the
-   same visual size as the hand card) takes over. Without this, the
-   player sees TWO cards: the original sitting in the hand AND the
-   ghost following the pointer, which reads as "another small one
-   came out". One card, one drag. */
+/* Legacy --dragging class (still applied by hand JSX for state
+   tracking). With the new "move-the-source-card" drag model we
+   don't want it to do anything visually — the new
+   `.tcg-card--being-dragged` class takes over. Keeping the rule
+   here as a no-op so external CSS that hides --dragging still
+   compiles. */
 .tcg-match--arcane .tcg-card--dragging {
-  opacity: 0 !important;
-  pointer-events: none;
+  /* intentionally empty */
+}
+
+/* The grabbed card itself is moved with the pointer — no ghost,
+   no second element. CSS variables `--drag-x` / `--drag-y` are
+   set on the live DOM by the drag handler each pointermove. */
+.tcg-card--being-dragged {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  /* `--drag-x` / `--drag-y` are the pointer's current viewport
+     coords plus the press-time offset, so the card stays where the
+     finger grabbed it (no snap to cursor). The translate(-50%, -50%)
+     centers the card on that point. */
+  transform: translate(
+      calc(var(--drag-x, 50vw) - 50%),
+      calc(var(--drag-y, 50vh) - 50%)
+    ) rotate(-3deg) scale(1.04) !important;
+  transform-origin: center center !important;
+  z-index: 9000 !important;
+  pointer-events: none !important;
+  /* Suppress whatever transition the source had (the hover lift
+     curve, the fan animation, the tap rotation) — drag is direct
+     and one-to-one with the pointer. */
   transition: none !important;
+  animation: none !important;
+  /* A hefty drop shadow so the floating card reads as picked-up
+     no matter what's underneath. */
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.75))
+          drop-shadow(0 0 18px rgba(255, 213, 74, 0.55));
+  opacity: 1 !important;
 }
 .tcg-match--arcane [data-tcg-drop] { transition: box-shadow 0.15s, background-color 0.15s; }
 .tcg-match--arcane [data-tcg-drop].tcg-drop-hover {
@@ -4727,14 +5132,16 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
    bottom of my-zone reserves this much padding so creatures don't
    slip behind the overlay. */
 .tcg-battle-shell .tcg-match.tcg-match--arcane {
-  --tcg-card-w: clamp(58px, 10.5vmin, 104px);
-  --tcg-hand-card-w: clamp(150px, 22vmin, 240px);
-  --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.45);
-  /* By default the hand cards expose only ~1/5 of their height
-     above the screen edge — just enough to read the top band
-     (cost + name + element). The rest is below the viewport;
-     hover lifts the whole card into view. */
-  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.2);
+  /* ONE adaptive UI: card size scales with viewport WIDTH via
+     clamp() (small on phones, large on desktop), height follows
+     the card aspect ratio (× 1.4). No vmin/vh — those made cards
+     huge on tall phones and tiny on wide desktops. */
+  --tcg-card-w: clamp(76px, 9vw, 140px);
+  --tcg-hand-card-w: clamp(96px, 11.5vw, 178px);
+  --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.4);
+  /* Hand cards peek ~1/3 of their height above the screen edge;
+     hover/tap lifts the whole card into view. */
+  --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.34);
 }
 /* Unified battlefield — strip the colored backgrounds and
    chunky borders off the two zones and the central divider so
@@ -4862,22 +5269,28 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--opp { grid-column: 1; grid-row: 2; min-height: 0; }
 .tcg-battle-shell .tcg-match--arcane .tcg-divider   { grid-column: 1; grid-row: 3; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-column: 1; grid-row: 4; min-height: 0; }
-/* Action bar — vertical stack of card-styled chip buttons pinned
-   to the right edge of the battlefield. Sits well above the hand
-   peek so it never gets covered by a lifted card. */
+/* Action bar — MTG-Arena style:
+   - The PRIMARY "Fine Turno" button is huge, anchored to the
+     bottom-right corner like Arena's COMBAT / END TURN button.
+     Pulses green when it's the player's turn.
+   - Secondary chips (Annulla / Scarta / Log) stack vertically
+     ABOVE it, smaller, color-coded.
+   The bar fans out from a single bottom-right corner so a thumb
+   on a phone naturally lands on the primary action.            */
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar {
   position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 10px;
+  bottom: calc(var(--tcg-hand-peek) + 10px + env(safe-area-inset-bottom, 0px));
+  top: auto;
+  transform: none;
   z-index: 50;
   width: auto;
   display: flex;
   flex-direction: column;
   flex-wrap: nowrap;
-  align-items: stretch;
-  justify-content: center;
-  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 6px;
   padding: 0;
   max-height: none;
   min-height: 0;
@@ -4885,70 +5298,115 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   border: 0;
   box-shadow: none;
 }
-/* Card-style buttons: thick border, hard drop-shadow, colored fill
-   per action — same vocabulary as the cards in hand so the action
-   strip reads as part of the game UI, not a system toolbar. */
+
+/* Shared base look: card-style chip with thick black border + hard
+   offset shadow + uppercase title font. Per-button color & sizing
+   override below. */
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-btn--undo,
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn,
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 84px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 3px solid #1c1410;
-  box-shadow: 3px 3px 0 0 #1c1410;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   font-family: var(--font-title, serif);
   font-weight: 900;
-  font-size: 0.74rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.1s, filter 0.15s;
+  transition: transform var(--tcg-motion) var(--tcg-ease),
+              box-shadow var(--tcg-motion) var(--tcg-ease),
+              filter var(--tcg-motion) var(--tcg-ease);
 }
+
+/* Secondary pills — compact, but keep a ≥44px touch target. */
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-btn--undo,
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn {
+  min-width: 88px;
+  min-height: 44px;
+  font-size: 0.7rem;
+}
+
+/* PRIMARY action — Fine Turno. Much larger, bottom-most chip in the
+   stack so it sits at the screen corner under the thumb. */
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn {
+  min-width: 150px;
+  min-height: 64px;
+  padding: 12px 22px;
+  font-size: 1.02rem;
+  border-width: 2px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  margin-top: 2px;
+}
+
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-btn--undo {
-  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
-  color: #fff;
-  border-color: #082f49;
-  box-shadow: 3px 3px 0 0 #082f49;
+  background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+  color: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn--discard {
   background: linear-gradient(180deg, #f87171 0%, #b91c1c 100%);
   color: #fff;
-  border-color: #450a0a;
-  box-shadow: 3px 3px 0 0 #450a0a;
+  border-color: rgba(69, 10, 10, 0.7);
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.14) inset;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-log-btn--log {
-  background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
-  color: #fff7d6;
-  border-color: #451a03;
-  box-shadow: 3px 3px 0 0 #451a03;
+  background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+  color: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.7);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
 }
-.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn {
+/* My turn: vivid pulsing green so it's unmissable. */
+.tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn--my {
   background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
   color: #f0fdf4;
-  border-color: #052e16;
-  box-shadow: 3px 3px 0 0 #052e16;
+  border-color: rgba(5, 46, 22, 0.7);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.5),
+    0 0 0 3px rgba(74, 222, 128, 0.45),
+    0 0 30px rgba(34, 197, 94, 0.7);
+  animation: tcg-end-turn-pulse 1.5s ease-in-out infinite;
 }
+@keyframes tcg-end-turn-pulse {
+  0%, 100% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.5),
+      0 0 0 3px rgba(74, 222, 128, 0.4),
+      0 0 24px rgba(34, 197, 94, 0.6);
+    transform: none;
+  }
+  50% {
+    box-shadow:
+      0 6px 18px rgba(0, 0, 0, 0.5),
+      0 0 0 5px rgba(134, 239, 172, 0.6),
+      0 0 38px rgba(34, 197, 94, 1.0);
+    transform: scale(1.03);
+  }
+}
+/* Opponent's turn: dim violet, calm, no pulse. */
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn:not(.tcg-action-turn-btn--my) {
   background: linear-gradient(180deg, #a78bfa 0%, #6d28d9 100%);
-  border-color: #2e1065;
-  box-shadow: 3px 3px 0 0 #2e1065;
+  border-color: rgba(46, 16, 101, 0.7);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  color: #ede9fe;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar > *:hover:not(:disabled) {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 0 currentColor;
+  transform: translateY(-2px) scale(1.03);
   filter: brightness(1.08);
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar > *:disabled {
   filter: grayscale(0.6) brightness(0.7);
   cursor: not-allowed;
-  box-shadow: 1px 1px 0 0 #1c1410;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   transform: none;
+  animation: none;
 }
 /* Wrapper around Annulla — must NOT inherit the legacy
    `.tcg-action-bar-buttons { flex: 1 1 100% }` rule from
@@ -5323,6 +5781,20 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-board-slot { flex-shrink: 0; }
 
+/* Kill the big empty centre: creatures hug the central seam.
+   The generic .tcg-board--opp/--mine push rows to the outer
+   edges (huge gap in the middle); in the battle shell the two
+   fields meet at the centre, so opponent creatures sit at the
+   BOTTOM of their zone and yours at the TOP of yours. */
+.tcg-battle-shell .tcg-match--arcane .tcg-board--opp {
+  align-items: flex-end;
+  align-content: flex-end;
+}
+.tcg-battle-shell .tcg-match--arcane .tcg-board--mine {
+  align-items: flex-start;
+  align-content: flex-start;
+}
+
 /* Header: a single thin strip with tiny buttons */
 .tcg-battle-shell .tcg-match--arcane .tcg-match-head {
   padding: 4px 8px;
@@ -5461,6 +5933,73 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   margin-left: calc(var(--tcg-hand-card-w) * -0.45);
 }
 
+/* ════════════════════════════════════════════════════════════
+   STEP C — true MTG-Arena FAN (ventaglio).
+   Cards pivot from their bottom-centre (transform-origin set on
+   .tcg-hand .tcg-card) so a per-position rotate() bows the row
+   into an arc: centre cards upright, edges tilted out & dropped
+   slightly. Pure CSS via :nth-child / :nth-last-child for every
+   hand size 1..7 (MAX_HAND). The arc is suppressed on the
+   hovered / focused / selected / dragged card so the existing
+   "lift straight up" transform wins (no specificity fight, no
+   !important). ~240ms ease-out so re-fanning feels fluid. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand
+  .tcg-card:not(:hover):not(:focus-visible):not(.tcg-card--selected):not(.tcg-card--pending-spell):not(.tcg-card--discard-target):not(.tcg-card--dragging) {
+  --fan-rot: 0deg;
+  --fan-y: 0px;
+  transform: rotate(var(--fan-rot)) translateY(var(--fan-y));
+  transition:
+    transform var(--tcg-motion) var(--tcg-ease),
+    box-shadow 0.45s ease,
+    filter 0.45s ease;
+}
+/* S=2 */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(1):nth-last-child(2) { --fan-rot:-3deg;  --fan-y:4px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(2):nth-last-child(1) { --fan-rot: 3deg;  --fan-y:4px; }
+/* S=3 */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(1):nth-last-child(3) { --fan-rot:-6deg;  --fan-y:5px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(2):nth-last-child(2) { --fan-rot: 0deg;  --fan-y:0px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(3):nth-last-child(1) { --fan-rot: 6deg;  --fan-y:5px; }
+/* S=4 */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(1):nth-last-child(4) { --fan-rot:-8deg;  --fan-y:7px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(2):nth-last-child(3) { --fan-rot:-3deg;  --fan-y:2px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(3):nth-last-child(2) { --fan-rot: 3deg;  --fan-y:2px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(4):nth-last-child(1) { --fan-rot: 8deg;  --fan-y:7px; }
+/* S=5 */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(1):nth-last-child(5) { --fan-rot:-10deg; --fan-y:10px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(2):nth-last-child(4) { --fan-rot:-5deg;  --fan-y:4px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(3):nth-last-child(3) { --fan-rot: 0deg;  --fan-y:0px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(4):nth-last-child(2) { --fan-rot: 5deg;  --fan-y:4px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(5):nth-last-child(1) { --fan-rot: 10deg; --fan-y:10px; }
+/* S=6 */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(1):nth-last-child(6) { --fan-rot:-11deg; --fan-y:12px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(2):nth-last-child(5) { --fan-rot:-7deg;  --fan-y:6px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(3):nth-last-child(4) { --fan-rot:-2.5deg;--fan-y:2px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(4):nth-last-child(3) { --fan-rot: 2.5deg;--fan-y:2px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(5):nth-last-child(2) { --fan-rot: 7deg;  --fan-y:6px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(6):nth-last-child(1) { --fan-rot: 11deg; --fan-y:12px; }
+/* S=7 (= MAX_HAND) */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(1):nth-last-child(7) { --fan-rot:-13deg; --fan-y:14px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(2):nth-last-child(6) { --fan-rot:-9deg;  --fan-y:8px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(3):nth-last-child(5) { --fan-rot:-4.5deg;--fan-y:3px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(4):nth-last-child(4) { --fan-rot: 0deg;  --fan-y:0px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(5):nth-last-child(3) { --fan-rot: 4.5deg;--fan-y:3px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(6):nth-last-child(2) { --fan-rot: 9deg;  --fan-y:8px; }
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:nth-child(7):nth-last-child(1) { --fan-rot: 13deg; --fan-y:14px; }
+
+/* Narrow screens — the fan STRINGS (tighter overlap + gentler
+   angles) instead of overflowing or scrolling, so it behaves
+   identically just smaller. Verified down to 375px. */
+@media (max-width: 560px) {
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand > * + * {
+    margin-left: calc(var(--tcg-hand-card-w) * -0.62);
+  }
+  .tcg-battle-shell .tcg-match--arcane .tcg-hand
+    .tcg-card:not(:hover):not(:focus-visible):not(.tcg-card--selected):not(.tcg-card--pending-spell):not(.tcg-card--discard-target):not(.tcg-card--dragging) {
+    transform: rotate(calc(var(--fan-rot) * 0.6)) translateY(calc(var(--fan-y) * 0.6));
+  }
+}
+
 /* Hand cards: full --tcg-hand-card-w wide, no shrinking. The art
    takes ~62% of the width so it's genuinely visible. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card {
@@ -5472,11 +6011,12 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   overflow: hidden;
   transform-origin: center bottom;
   /* Slower transitions so the lift / drop / fan-shift feels weighty
-     when scrolling between cards or grabbing one to drag. */
+     when scrolling between cards or grabbing one to drag. ~0.55s
+     reads as deliberate without feeling sluggish. */
   transition:
-    transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
-    box-shadow 0.28s ease,
-    filter 0.28s ease;
+    transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.45s ease,
+    filter 0.45s ease;
   will-change: transform;
   /* Solid + vivid: hand cards stay fully opaque even when the
      player can't currently afford them. The generic disabled rule
@@ -5488,17 +6028,35 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 }
 /* Playable cards (the player has enough mana / can act on them) —
    the cards NOT marked --disabled. Lift them out of the fan with a
-   subtle warm glow so the player's eye lands on what they can
-   actually cast. */
+   pulsing gold glow so the player's eye lands on what they can
+   actually cast, MTG-Arena style. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card:not(.tcg-card--disabled) {
   filter:
     saturate(1.15)
     brightness(1.06)
-    drop-shadow(0 0 6px rgba(255, 213, 74, 0.55));
+    drop-shadow(0 0 8px rgba(255, 213, 74, 0.65));
+  animation: tcg-hand-playable-pulse 2.4s ease-in-out infinite;
+}
+@keyframes tcg-hand-playable-pulse {
+  0%, 100% {
+    filter: saturate(1.10) brightness(1.04) drop-shadow(0 0 6px rgba(255, 213, 74, 0.45));
+  }
+  50% {
+    filter: saturate(1.22) brightness(1.10) drop-shadow(0 0 14px rgba(255, 213, 74, 0.85));
+  }
+}
+/* When the user is hovering / dragging a playable card, kill the
+   ambient pulse so the per-card hover/active glow takes over
+   cleanly — otherwise the two filters fight. */
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
+.tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
+  animation: none;
 }
 /* Unplayable cards — heavy dim so they fade into the background. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card.tcg-card--disabled {
   filter: saturate(0.25) brightness(0.55) contrast(0.95);
+  animation: none;
 }
 /* Board cards keep their previous size cap (board cards stay
    small thumbnails so the field stays readable). */
@@ -5704,14 +6262,13 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      the board cards on landscape phones — where height is the
      limiting axis — actually grow large enough to read stats. */
   .tcg-battle-shell .tcg-match.tcg-match--arcane {
-    --tcg-card-w: clamp(72px, 20vh, 120px);
-    /* Phone hand cards are big and don't shrink — the row scrolls
-       horizontally when there are too many to fit. Peek = 1/5 of
-       the card height so the battlefield keeps virtually all the
-       vertical room; hover lifts the whole card into view. */
-    --tcg-hand-card-w: clamp(160px, 38vh, 240px);
-    --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.45);
-    --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.2);
+    /* Phone/tablet: same vw-based scale as desktop (one adaptive
+       UI). Slightly higher floor so a landscape phone stays
+       readable; height still follows × 1.4. */
+    --tcg-card-w: clamp(72px, 10vw, 132px);
+    --tcg-hand-card-w: clamp(92px, 13vw, 168px);
+    --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.4);
+    --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * 0.34);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-match-stage {
     grid-template-columns: minmax(0, 1fr);
@@ -5782,7 +6339,7 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
      the entire zone. */
   .tcg-battle-shell .tcg-match--arcane .tcg-board .tcg-card {
     height: 100%;
-    max-height: clamp(110px, 30vh, 220px);
+    max-height: clamp(96px, 24vh, 172px);
     /* Shrink-friendly min so creatures don't overflow vertically
        when the bigger hand peek eats into my-zone height. */
     min-height: 70px;
