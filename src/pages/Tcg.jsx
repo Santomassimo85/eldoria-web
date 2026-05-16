@@ -1572,8 +1572,9 @@ function ElementWheelLegend() {
    bundle of event handlers a card can spread, plus a `guardClick`
    wrapper that suppresses the synthetic click if a long-press
    already fired (so an inspect doesn't also play the card). The
-   fire delay (500ms) is tuned to feel intentional but not slow. */
-function useLongPress(onInspect, ms = 500) {
+   fire delay (2s) is a deliberate press-and-hold: short taps,
+   drags and scrolls never trip it. */
+function useLongPress(onInspect, ms = 2000) {
   const timerRef = useRef(null);
   const firedRef = useRef(false);
   const startPosRef = useRef(null);
@@ -1660,7 +1661,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
     ? mechs.map(k => `${TCG_MECHANICS[k].icon} ${getMechLabel(def, k)}: ${TCG_MECHANICS[k].rules}`).join("\n")
     : `${describeEffect(def)}`;
   const tip = showTooltip
-    ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto, clic destro o 🔍 per ingrandire)" : ""}`
+    ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto 2s, clic destro o 🔍 per ingrandire)" : ""}`
     : undefined;
   const lp = useLongPress(onInspect);
   /* Always render a <div> — using a real <button> element for the
@@ -1795,7 +1796,8 @@ function CardArt({ def }) {
 /* ============================================================
    BOARD CARD — Card variant showing live HP & status
    ============================================================ */
-function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [], dataDraggable, dataDrop, dataCardId }) {
+function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, attackAnim, onInspect, floats = [], dataDraggable, dataDrop, dataCardId, extraClass = "", hpShow = null, dying = false }) {
+  const shownHp = hpShow != null ? hpShow : bc.hp;
   const baseMechs = def.mechanics || [];
   const granted = bc.grants || [];
   const tempBuffKeywords = (bc.tempBuffs || []).map(t => t.keyword);
@@ -1814,7 +1816,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
   };
   const tip = `${def.name}\nPF ${bc.hp}/${bc.maxHp} · ⚔ ${bc.atk}\n` +
     mechs.map(k => `${TCG_MECHANICS[k].icon} ${labelFor(k)}`).join(" · ") +
-    (onInspect ? `\n\n(Tieni premuto, clic destro o 🔍 per ingrandire)` : "");
+    (onInspect ? `\n\n(Tieni premuto 2s, clic destro o 🔍 per ingrandire)` : "");
   const lp = useLongPress(onInspect);
   /* Always a <div> — same nested-button reason as Card. */
   const handleKey = onClick && !disabled
@@ -1845,6 +1847,8 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
         (status === "ready" ? " tcg-board-card--ready" : "") +
         (isFlying ? " tcg-board-card--flying" : "") +
         (bc.justPlayed ? " tcg-board-card--just-played" : "") +
+        (dying ? " tcg-board-card--dying" : "") +
+        (extraClass ? " " + extraClass : "") +
         animCls
       }
       onClick={onClick && !disabled ? lp.guardClick(onClick) : undefined}
@@ -1906,13 +1910,13 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
         </div>
       )}
       <div className="tcg-card-stats tcg-card-stats--mtg">
-        <span className="tcg-card-mtg-pt" title={`${bc.atk} attacco / ${bc.hp} su ${bc.maxHp} PF`}>
+        <span className="tcg-card-mtg-pt" title={`${bc.atk} attacco / ${shownHp} su ${bc.maxHp} PF`}>
           <span className="tcg-card-mtg-atk">{bc.atk}</span>
           <span className="tcg-card-mtg-sep">/</span>
-          <span className={`tcg-card-mtg-hp ${bc.hp < bc.maxHp ? "tcg-card-mtg-hp--wounded" : ""}`}>
-            {bc.hp}
+          <span className={`tcg-card-mtg-hp ${shownHp < bc.maxHp ? "tcg-card-mtg-hp--wounded" : ""}`}>
+            {shownHp}
           </span>
-          {bc.hp !== bc.maxHp && (
+          {shownHp !== bc.maxHp && (
             <span className="tcg-card-mtg-hp-max" aria-label="su massimo">/{bc.maxHp}</span>
           )}
         </span>
@@ -2246,6 +2250,12 @@ function LiveMatch({ match, uid, onExit }) {
   const [attackAnim, setAttackAnim] = useState(null);     // { attackerId, targetId, side, ts }
   const [attackBeam, setAttackBeam] = useState(null);     // transient strike arrow { attackerId, targetId, side, ts }
   const [floats, setFloats] = useState([]);               // [{ id, kind, target, side, instId?, amount }]
+  /* Combat replay overlays (presentation only — authoritative state
+     is unchanged). `hpFx` shows HP ticking down live on a creature as
+     its damage floats play; `dyingCards` keeps a destroyed creature on
+     the field with a death animation until the replay/pile finishes. */
+  const [hpFx, setHpFx] = useState({});                   // { [instId]: shownHp }
+  const [dyingCards, setDyingCards] = useState([]);       // [{ instId, side, bc, def }]
   const [muted, setMuted] = useState(isSfxMuted());
   const isPortrait = useIsPortrait();
   /* End-of-match summary: how many ✦ Punti Bestiario the player just earned
@@ -2256,6 +2266,9 @@ function LiveMatch({ match, uid, onExit }) {
      playing. Lets the player free a slot when the hand is full, instead
      of silently burning newly-drawn cards. */
   const [discardMode, setDiscardMode] = useState(false);
+  /* While in discard mode the player toggles 1+ hand cards into this
+     selection, then confirms with the visible 🗑 pill (no popup). */
+  const [discardSel, setDiscardSel] = useState([]);
   /* Hand collapse: when it isn't your turn, the hand auto-collapses so
      the field gets the spotlight. The user can tap the hand strip to
      peek without ending the collapse — and as soon as the turn comes
@@ -2406,13 +2419,18 @@ function LiveMatch({ match, uid, onExit }) {
   /* Float pipeline — watch state.events length and queue new ones for paced
      playback. Each event spawns a floating number; we run them sequentially
      with FLOAT_GAP_MS between starts so the player can read each hit. */
-  const FLOAT_GAP_MS = 350;
-  const FLOAT_LIFE_MS = 1900;
+  /* Paced noticeably slower than before so the player can actually
+     watch each blow land, the HP drain, and the kill. */
+  const FLOAT_GAP_MS = 620;
+  const FLOAT_LIFE_MS = 2300;
   useEffect(() => {
     const events = state.events || [];
     if (events.length < lastEventIdxRef.current) {
-      // Undo/restore: rewind cursor without re-animating.
+      // Undo/restore: rewind cursor without re-animating and drop any
+      // transient combat overlays.
       lastEventIdxRef.current = events.length;
+      setHpFx({});
+      setDyingCards([]);
       return;
     }
     const newOnes = events.slice(lastEventIdxRef.current);
@@ -2420,13 +2438,77 @@ function LiveMatch({ match, uid, onExit }) {
     if (newOnes.length === 0) return;
     floatQueueRef.current.push(...newOnes);
     if (floatPumpRef.current) return; // already running
+
+    const findLive = (instId) =>
+      (state.board.challenger || []).find(c => c.instId === instId) ||
+      (state.board.challenged || []).find(c => c.instId === instId);
+    const findPrev = (instId, side) =>
+      match.prevState?.board?.[side]?.find(c => c.instId === instId);
+
     const tick = () => {
       const evt = floatQueueRef.current.shift();
-      if (!evt) { floatPumpRef.current = null; return; }
+      if (!evt) {
+        floatPumpRef.current = null;
+        // Replay finished — snap HP back to the authoritative state.
+        setHpFx({});
+        return;
+      }
       const id = Math.random().toString(36).slice(2, 9);
+
+      if (evt.kind === "death" && evt.target === "creature") {
+        // Keep the destroyed creature on the field with a death
+        // animation until the rest of the pile finishes resolving.
+        const live = findLive(evt.instId);
+        const prev = findPrev(evt.instId, evt.side);
+        const ghost = live || prev;
+        if (ghost) {
+          setDyingCards(d =>
+            d.some(x => x.instId === evt.instId)
+              ? d
+              : [...d, { instId: evt.instId, side: evt.side,
+                         bc: { ...ghost, hp: 0 },
+                         def: TCG_CARDS[evt.cardId || ghost.cardId] }]);
+          setHpFx(h => ({ ...h, [evt.instId]: 0 }));
+          setTimeout(
+            () => setDyingCards(d => d.filter(x => x.instId !== evt.instId)),
+            FLOAT_LIFE_MS,
+          );
+        }
+        floatPumpRef.current = setTimeout(tick, FLOAT_GAP_MS);
+        return;
+      }
+
       setFloats(f => [...f, { id, ...evt }]);
       // Auto-remove after the CSS animation ends.
       setTimeout(() => setFloats(f => f.filter(x => x.id !== id)), FLOAT_LIFE_MS);
+
+      // Tick the creature's HP down/up live as the number flies off it.
+      if (evt.target === "creature" && (evt.kind === "damage" || evt.kind === "heal")) {
+        setHpFx(h => {
+          let cur = h[evt.instId];
+          if (cur == null) {
+            // Seed from the AUTHORITATIVE final HP plus every hit on
+            // this creature still queued (incl. this one), so the
+            // number visibly counts down from its pre-combat value.
+            const live = findLive(evt.instId);
+            let pending = 0;
+            for (const q of [evt, ...floatQueueRef.current]) {
+              if (q.target === "creature" && q.instId === evt.instId) {
+                if (q.kind === "damage") pending += q.amount || 0;
+                else if (q.kind === "heal") pending -= q.amount || 0;
+              }
+            }
+            cur = Math.max(0, (live ? live.hp : 0) + pending);
+          }
+          const meta = findLive(evt.instId) || findPrev(evt.instId, evt.side);
+          const cap = meta?.maxHp ?? Infinity;
+          const nextHp = evt.kind === "damage"
+            ? Math.max(0, cur - (evt.amount || 0))
+            : Math.min(cap, cur + (evt.amount || 0));
+          return { ...h, [evt.instId]: nextHp };
+        });
+      }
+
       floatPumpRef.current = setTimeout(tick, FLOAT_GAP_MS);
     };
     tick();
@@ -2654,21 +2736,38 @@ function LiveMatch({ match, uid, onExit }) {
     setFocusBlockAtk(null);
   }, [state.phase, state.combat?.ts]);
 
-  const handleDiscardCard = async (instId) => {
+  /* In discard mode a hand-card click just TOGGLES it in/out of the
+     selection — no popup, no immediate effect. */
+  const handleToggleDiscard = (instId) => {
     if (!myTurn || state.winner) return;
-    const card = state.hand[mySide].find(c => c.instId === instId);
-    if (!card) return;
-    const def = TCG_CARDS[card.cardId];
-    if (!window.confirm(`Scartare "${def?.name || card.cardId}"? Andrà al cimitero.`)) return;
-    const next = discardCard(state, mySide, instId);
-    await updateState(next, { snapshotForUndo: true });
+    if (!state.hand[mySide].some(c => c.instId === instId)) return;
+    setDiscardSel(sel =>
+      sel.includes(instId) ? sel.filter(x => x !== instId) : [...sel, instId]);
+  };
+
+  /* Confirm: send every selected card to the graveyard in one go,
+     then leave discard mode. */
+  const handleConfirmDiscard = async () => {
+    if (!myTurn || state.winner || discardSel.length === 0) return;
+    let s = state;
+    for (const id of discardSel) {
+      const n = discardCard(s, mySide, id);
+      if (n !== s) s = n;
+    }
+    if (s !== state) await updateState(s, { snapshotForUndo: true });
+    setDiscardSel([]);
+    setDiscardMode(false);
+  };
+
+  const exitDiscardMode = () => {
+    setDiscardSel([]);
     setDiscardMode(false);
   };
 
   const handlePlayCard = async (instId) => {
-    // In discard mode any hand-card click discards instead of plays.
+    // In discard mode a hand-card click toggles it in the selection.
     if (discardMode) {
-      await handleDiscardCard(instId);
+      handleToggleDiscard(instId);
       return;
     }
     // Stage 3: holding stack priority → a counter card is cast as a
@@ -2773,6 +2872,8 @@ function LiveMatch({ match, uid, onExit }) {
     if (!canUndo) return;
     setAttackSel([]);
     setAttackAnim(null);
+    setHpFx({});
+    setDyingCards([]);
     // Suppress re-animating an older attack that the restored state carries.
     lastAttackTsRef.current = match.prevState?.lastAttack?.ts || 0;
     await updateState(match.prevState, { snapshotForUndo: false });
@@ -3334,11 +3435,13 @@ function LiveMatch({ match, uid, onExit }) {
                   def={def}
                   onClick={onClick}
                   disabled={!onClick}
-                  selected={isSpellLegal || isFocused}
+                  selected={isSpellLegal}
+                  extraClass={isAtkToFocus ? (isFocused ? "tcg-card--attacker tcg-card--attacker-focus" : "tcg-card--attacker") : ""}
                   status={bc.tapped ? "tapped" : null}
                   attackAnim={getCardAnim(bc.instId)}
-                  onInspect={() => setFocusedCardId(bc.cardId)}
+                  onInspect={() => setViewingCard({ cardId: bc.cardId })}
                   floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
+                  hpShow={hpFx[bc.instId] ?? null}
                   dataCardId={bc.cardId}
                 />
                 {isAtkToFocus && (
@@ -3349,6 +3452,14 @@ function LiveMatch({ match, uid, onExit }) {
               </div>
             );
           })}
+          {/* Destroyed creatures linger here (death animation) until
+              the combat/pile replay finishes. */}
+          {dyingCards.filter(d => d.side === oSide).map(d => (
+            <div key={`dying-${d.instId}`} className="tcg-board-slot tcg-board-slot--dying">
+              <BoardCard bc={d.bc} def={d.def} disabled hpShow={0} dying
+                floats={floats.filter(f => f.target === "creature" && f.instId === d.instId)} />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -3413,11 +3524,18 @@ function LiveMatch({ match, uid, onExit }) {
                 def={def}
                 onClick={onClick}
                 disabled={!onClick}
-                selected={isSpellLegal || isInAtkSel || assignedToFocus || assignedAny}
+                selected={isSpellLegal}
+                extraClass={
+                  isInAtkSel ? "tcg-card--attacker"
+                  : (assignedToFocus || assignedAny) ? "tcg-card--blocker"
+                  : canBlockFocus ? "tcg-card--blocker tcg-card--blocker-elig"
+                  : ""
+                }
                 status={status}
                 attackAnim={getCardAnim(bc.instId)}
-                onInspect={() => setFocusedCardId(bc.cardId)}
+                onInspect={() => setViewingCard({ cardId: bc.cardId })}
                 floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
+                hpShow={hpFx[bc.instId] ?? null}
                 dataDraggable={myTurn && state.phase === "main" && ready ? `board:${bc.instId}` : undefined}
                 dataDrop={`creature:${mySide}:${bc.instId}`}
                 dataCardId={bc.cardId}
@@ -3434,6 +3552,12 @@ function LiveMatch({ match, uid, onExit }) {
               </div>
             ) : card;
           })}
+          {dyingCards.filter(d => d.side === mySide).map(d => (
+            <div key={`dying-${d.instId}`} className="tcg-board-slot tcg-board-slot--dying">
+              <BoardCard bc={d.bc} def={d.def} disabled hpShow={0} dying
+                floats={floats.filter(f => f.target === "creature" && f.instId === d.instId)} />
+            </div>
+          ))}
         </div>
         <div data-tcg-drop={`champion:${mySide}`} className="tcg-drop-target tcg-drop-target--champion">
         <PlayerStrip
@@ -3456,139 +3580,120 @@ function LiveMatch({ match, uid, onExit }) {
         </div>
       </div>
 
-      {/* Floating HUD — status line, pile and combat/priority
-          controls live in ONE absolute overlay so they NEVER
-          reflow or shrink the battlefield (MTG-Arena style:
-          everything floats, the field stays full-size). */}
-      <div className="tcg-float-hud">
+      {/* MTG-Arena combat caption — a single centred floating line
+          over the battlefield (no panel, no reflow). */}
       {(() => {
-        let blockMsg = null;
+        let msg = null, tone = "";
         if (inBlockPhase) {
-          const nAtk = combat.attackers.length;
           if (iAmDefender) {
             const focusName = focusBlockAtk
               ? (TCG_CARDS[state.board[combat.side]?.find(c => c.instId === focusBlockAtk)?.cardId]?.name || "attaccante")
               : null;
-            blockMsg = focusBlockAtk
-              ? <>🛡 Blocchi per <strong>{focusName}</strong> — tocca le tue creature, poi <strong>Conferma</strong>{blockMandatory ? <> · <strong>blocco Baluardo obbligatorio</strong></> : null}</>
-              : <>🛡 L'avversario attacca con <strong>{nAtk}</strong> creatur{nAtk === 1 ? "a" : "e"} — tocca un attaccante per assegnargli i bloccanti, poi <strong>Conferma</strong></>;
+            msg = focusBlockAtk
+              ? <>Assegna bloccanti a <strong>{focusName}</strong></>
+              : <>Scegli i bloccanti</>;
+            tone = " tcg-combat-caption--block";
           } else {
-            blockMsg = <>⏳ Hai dichiarato <strong>{nAtk}</strong> attaccant{nAtk === 1 ? "e" : "i"} — l'avversario assegna i blocchi…</>;
+            msg = <>L'avversario assegna i blocchi…</>;
+            tone = " tcg-combat-caption--wait";
           }
         } else if (inStackPhase) {
-          blockMsg = iHavePriority
-            ? <>📜 <strong>{stackTopName}</strong> sulla pila — rispondi con una Contromagia oppure premi <strong>Passa</strong></>
-            : <>⏳ <strong>{stackTopName}</strong> sulla pila — in attesa della risposta dell'avversario…</>;
+          msg = iHavePriority
+            ? <>Rispondi a <strong>{stackTopName}</strong> o passa</>
+            : <>In attesa di risposta…</>;
+          tone = iHavePriority ? " tcg-combat-caption--block" : " tcg-combat-caption--wait";
+        } else if (pendingSpell) {
+          msg = <>Scegli un bersaglio per <strong>{pendingSpell.def.name}</strong></>;
+          tone = " tcg-combat-caption--spell";
+        } else if (discardMode) {
+          msg = discardSel.length > 0
+            ? <>{discardSel.length} selezionate — premi <strong>🗑 Scarta</strong></>
+            : <>Seleziona le carte da scartare</>;
+          tone = " tcg-combat-caption--warn";
+        } else if (myHand.length >= MAX_HAND) {
+          msg = <>Mano piena — scarta una carta</>;
+          tone = " tcg-combat-caption--warn";
+        } else if (!myTurn) {
+          msg = <>Turno dell'avversario</>;
+          tone = " tcg-combat-caption--wait";
         }
+        if (!msg) return null;
         return (
-          <div
-            className={
-              "tcg-status-line" +
-              (inBlockPhase || inStackPhase ? " tcg-status-line--block" : "") +
-              (!inBlockPhase && !inStackPhase && !myTurn ? " tcg-status-line--wait" : "") +
-              (!inBlockPhase && !inStackPhase && pendingSpell ? " tcg-status-line--spell" : "") +
-              (!inBlockPhase && !inStackPhase && (discardMode || (myHand.length >= MAX_HAND && !discardMode)) ? " tcg-status-line--warn" : "")
-            }
-            role="status"
-            aria-live="polite"
-          >
-            {blockMsg ? blockMsg
-              : pendingSpell ? (
-              <>📜 Castando <strong>{pendingSpell.def.name}</strong> · scegli un bersaglio</>
-            ) : discardMode ? (
-              <>🗑 <strong>Tocca una carta</strong> per scartarla</>
-            ) : (myHand.length >= MAX_HAND) ? (
-              <>⚠ <strong>Mano piena</strong> — le carte pescate verranno bruciate: premi 🗑 Scarta</>
-            ) : !myTurn ? (
-              <>⏳ <strong>Turno dell'avversario</strong></>
-            ) : (
-              <>🟢 <strong>È il tuo turno</strong></>
-            )}
+          <div className={"tcg-combat-caption" + tone} role="status" aria-live="polite">
+            {msg}
           </div>
         );
       })()}
 
-      {/* Attacker: declare the selected creatures. */}
-      {myTurn && state.phase === "main" && attackSel.length > 0 && (
-        <div className="tcg-block-bar">
-          <button
-            type="button"
-            className="tcg-block-pass tcg-block-confirm"
-            onClick={handleDeclareAttack}
-          >
-            🗡 Dichiara attacco ({attackSel.length})
-          </button>
-          <button
-            type="button"
-            className="tcg-block-pass"
-            onClick={() => setAttackSel([])}
-          >
-            ✕ Annulla
-          </button>
-        </div>
-      )}
-
-      {/* Defender: confirm the block assignment (or no blocks). */}
-      {iAmDefender && (
-        <div className="tcg-block-bar">
-          <button
-            type="button"
-            className="tcg-block-pass tcg-block-confirm"
-            disabled={blockMandatory}
-            title={blockMandatory ? "Un Baluardo deve bloccare" : ""}
-            onClick={handleConfirmBlocks}
-          >
-            ✅ Conferma blocchi
-          </button>
-        </div>
-      )}
-
-      {/* Visible PILE — the effect stack, shown to BOTH players.
-          Bottom→top; the topmost (next to resolve) is highlighted. */}
+      {/* Visible PILE — compact floating chips, centred under the
+          caption; bottom→top, top highlighted. */}
       {inStackPhase && (
         <div className="tcg-pile" aria-label="Pila degli effetti">
-          <div className="tcg-pile-title">📚 Pila — si risolve dall'alto</div>
-          <div className="tcg-pile-items">
-            {state.stack.map((obj, i) => {
-              const od = TCG_CARDS[obj.cardId];
-              const isTop = i === state.stack.length - 1;
-              const mine = obj.controller === mySide;
-              return (
-                <div
-                  key={obj.id || `${obj.ts}-${i}`}
-                  className={
-                    "tcg-pile-item" +
-                    (isTop ? " tcg-pile-item--top" : "") +
-                    (obj.kind === "response" ? " tcg-pile-item--response" : "") +
-                    (mine ? " tcg-pile-item--mine" : " tcg-pile-item--opp")
-                  }
-                  title={od?.flavor || od?.name || ""}
-                >
-                  <span className="tcg-pile-item-kind">
-                    {obj.kind === "response" ? "🛡" : "📜"}
-                  </span>
-                  <span className="tcg-pile-item-name">{od?.name || "Effetto"}</span>
-                  <span className="tcg-pile-item-who">{mine ? "tu" : "avv."}</span>
-                </div>
-              );
-            })}
-          </div>
+          {state.stack.map((obj, i) => {
+            const od = TCG_CARDS[obj.cardId];
+            const isTop = i === state.stack.length - 1;
+            const mine = obj.controller === mySide;
+            return (
+              <div
+                key={obj.id || `${obj.ts}-${i}`}
+                className={
+                  "tcg-pile-item" +
+                  (isTop ? " tcg-pile-item--top" : "") +
+                  (obj.kind === "response" ? " tcg-pile-item--response" : "") +
+                  (mine ? " tcg-pile-item--mine" : " tcg-pile-item--opp")
+                }
+                title={od?.flavor || od?.name || ""}
+              >
+                <span className="tcg-pile-item-kind">{obj.kind === "response" ? "🛡" : "📜"}</span>
+                <span className="tcg-pile-item-name">{od?.name || "Effetto"}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Stack priority — the responder passes (Stage 2: pass-only). */}
-      {iHavePriority && (
-        <div className="tcg-block-bar">
-          <button
-            type="button"
-            className="tcg-block-pass"
-            onClick={handlePassPriority}
-          >
-            ⏭ Passa
-          </button>
-        </div>
-      )}
-      </div>{/* /tcg-float-hud */}
+      {/* MTG-Arena context action — ONE pill (+ secondary) anchored
+          bottom-right above the turn controls. Nothing else floats. */}
+      {(() => {
+        const anyAssigned = inBlockPhase && iAmDefender
+          && Object.values(combatBlocks).some(l => l.length > 0);
+        return (
+          <div className="tcg-combat-actions">
+            {discardMode && (
+              <>
+                <button type="button" className="tcg-ctx-pill tcg-ctx-pill--ghost"
+                  onClick={exitDiscardMode}>✕ Annulla</button>
+                <button type="button" className="tcg-ctx-pill tcg-ctx-pill--attack"
+                  disabled={discardSel.length === 0}
+                  onClick={handleConfirmDiscard}>🗑 Scarta · {discardSel.length}</button>
+              </>
+            )}
+            {myTurn && state.phase === "main" && attackSel.length > 0 && (
+              <>
+                <button type="button" className="tcg-ctx-pill tcg-ctx-pill--ghost"
+                  onClick={() => setAttackSel([])}>✕ Annulla</button>
+                <button type="button" className="tcg-ctx-pill tcg-ctx-pill--attack"
+                  onClick={handleDeclareAttack}>🗡 Attacca · {attackSel.length}</button>
+              </>
+            )}
+            {iAmDefender && (
+              <button
+                type="button"
+                className={"tcg-ctx-pill " + (anyAssigned ? "tcg-ctx-pill--confirm" : "tcg-ctx-pill--noblock")}
+                disabled={blockMandatory && !anyAssigned}
+                title={blockMandatory && !anyAssigned ? "Un Baluardo deve bloccare" : ""}
+                onClick={handleConfirmBlocks}
+              >
+                {anyAssigned ? "🛡 Conferma blocchi" : "🚫 Nessun blocco"}
+              </button>
+            )}
+            {iHavePriority && (
+              <button type="button" className="tcg-ctx-pill tcg-ctx-pill--confirm"
+                onClick={handlePassPriority}>⏭ Passa</button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Hand */}
       <div className={`tcg-hand-wrap${handCollapsed ? " tcg-hand-wrap--collapsed" : ""}`}>
@@ -3618,13 +3723,14 @@ function LiveMatch({ match, uid, onExit }) {
                 size="md"
                 onClick={() => handlePlayCard(c.instId)}
                 disabled={discardMode ? false : (!playable && !isPending)}
-                selected={isPending || discardMode || respondable}
+                selected={discardMode ? discardSel.includes(c.instId) : (isPending || respondable)}
                 className={
                   (isPending ? "tcg-card--pending-spell" : "") +
                   (discardMode ? " tcg-card--discard-target" : "") +
+                  (discardMode && discardSel.includes(c.instId) ? " tcg-card--discard-picked" : "") +
                   (isDragging ? " tcg-card--dragging" : "")
                 }
-                onInspect={() => setFocusedCardId(c.cardId)}
+                onInspect={() => setViewingCard({ cardId: c.cardId })}
                 dataDraggable={myTurn && playable && !discardMode ? `hand:${c.instId}` : undefined}
                 dataCardId={c.cardId}
               />
@@ -3651,20 +3757,22 @@ function LiveMatch({ match, uid, onExit }) {
         <div className="tcg-action-bar-buttons">
           <button
             type="button"
-            className="tcg-btn tcg-btn--undo"
+            className="tcg-btn tcg-btn--undo tcg-icon-btn tcg-icon-btn--undo"
             onClick={handleUndo}
             disabled={!canUndo}
+            aria-label="Annulla l'ultima azione"
             title={canUndo ? "Annulla l'ultima azione" : "Niente da annullare"}
           >
-            ↩ Annulla
+            <span aria-hidden="true">↩</span>
           </button>
         </div>
         <button
           type="button"
-          className={`tcg-action-log-btn tcg-action-log-btn--discard${discardMode ? " tcg-action-log-btn--active" : ""}`}
-          onClick={() => setDiscardMode(m => !m)}
+          className={`tcg-action-log-btn tcg-action-log-btn--discard tcg-icon-btn tcg-icon-btn--discard${discardMode ? " tcg-action-log-btn--active tcg-icon-btn--active" : ""}`}
+          onClick={() => (discardMode ? exitDiscardMode() : setDiscardMode(true))}
           disabled={!myTurn || myHand.length === 0}
           aria-pressed={discardMode}
+          aria-label={discardMode ? "Annulla scarto" : "Scarta carte dalla mano"}
           title={
             !myTurn
               ? "Solo durante il tuo turno"
@@ -3672,28 +3780,32 @@ function LiveMatch({ match, uid, onExit }) {
                 ? "Annulla scarto"
                 : myHand.length >= MAX_HAND
                   ? "Mano piena! Scarta una carta"
-                  : "Scarta una carta dalla mano"
+                  : "Scarta una o più carte dalla mano"
           }
         >
-          🗑 {discardMode ? "Annulla" : "Scarta"}{myHand.length >= MAX_HAND ? " ⚠" : ""}
+          <span aria-hidden="true">🗑</span>
+          {myHand.length >= MAX_HAND && !discardMode && (
+            <span className="tcg-icon-btn-dot" aria-hidden="true">!</span>
+          )}
         </button>
         <button
           type="button"
-          className="tcg-action-log-btn tcg-action-log-btn--log"
+          className="tcg-action-log-btn tcg-action-log-btn--log tcg-icon-btn tcg-icon-btn--log"
           onClick={() => setShowLog(true)}
           aria-label="Apri il registro della partita"
           title="Mostra cronologia mosse"
         >
-          📜 Log
+          <span aria-hidden="true">📜</span>
         </button>
         <button
           type="button"
-          className={`tcg-action-turn-btn${myTurn ? " tcg-action-turn-btn--my" : ""}`}
+          className={`tcg-action-turn-btn tcg-icon-btn tcg-icon-btn--turn${myTurn ? " tcg-action-turn-btn--my tcg-icon-btn--turn-my" : ""}`}
           onClick={handleEndTurn}
           disabled={!myTurn}
           aria-label={myTurn ? "Termina il tuo turno" : "Sta giocando l'avversario"}
+          title={myTurn ? "Fine turno" : "Turno dell'avversario"}
         >
-          {myTurn ? "⏭ FINE TURNO" : "⏳ FINE TURNO"}
+          <span aria-hidden="true">{myTurn ? "⏭" : "⏳"}</span>
         </button>
       </div>
 
@@ -3843,8 +3955,8 @@ function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTu
         )}
       </div>
       <div className="tcg-pstrip-row">
-        <div className="tcg-pstrip-hp">
-          <div className="tcg-pstrip-hp-label">❤ {hp}/{STARTING_HP}</div>
+        <div className="tcg-pstrip-hp" title={`${hp}/${STARTING_HP} PF`}>
+          <div className="tcg-pstrip-hp-label">{hp}</div>
           <div className="tcg-pstrip-hp-track">
             <div className="tcg-pstrip-hp-fill" style={{ width: `${hpPct}%` }} />
           </div>

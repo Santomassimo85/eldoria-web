@@ -1750,6 +1750,13 @@ function resolveDeaths(state) {
         });
       }
       state.graveyard[s] = [...state.graveyard[s], bc.cardId];
+      // Cosmetic only: tells the UI which creature died and when so it
+      // can keep the card on the field (death animation) until the
+      // combat/effect replay finishes. Does not affect game outcome.
+      pushFloat(state, {
+        kind: "death", target: "creature", side: s,
+        instId: bc.instId, cardId: bc.cardId,
+      });
       state.log = [...state.log, {
         side: s,
         text: `💀 ${def.name} viene distrutto.`,
