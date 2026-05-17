@@ -1720,7 +1720,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
     ? mechs.map(k => `${TCG_MECHANICS[k].icon} ${getMechLabel(def, k)}: ${TCG_MECHANICS[k].rules}`).join("\n")
     : `${describeEffect(def)}`;
   const tip = showTooltip
-    ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto 2s, clic destro o 🔍 per ingrandire)" : ""}`
+    ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto 2s per ingrandire)" : ""}`
     : undefined;
   const lp = useLongPress(onInspect);
   /* Always render a <div> — using a real <button> element for the
@@ -1783,17 +1783,8 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
         <span className={`tcg-card-type-badge tcg-card-type-badge--${cardType}`} title={TYPE_LABEL[cardType]}>
           {TYPE_ICON[cardType]} {TYPE_LABEL[cardType]}
         </span>
-        {onInspect && (
-          <button
-            type="button"
-            className="tcg-card-inspect-btn"
-            onClick={(e) => { e.stopPropagation(); onInspect(); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            title="Ingrandisci e vedi i dettagli"
-            aria-label="Ingrandisci"
-          >🔍</button>
-        )}
+        {/* No magnifier button — hold 2s (or right-click) enlarges
+            the card; explained in the manual. */}
       </div>
 
       {isCreature ? (
@@ -1908,12 +1899,16 @@ function dominantElement(cardIds) {
 
 /* Visible deck stack on the battlefield — a few layered element
    backs with the remaining-count badge. Presentation only. */
-function DeckPile({ cardIds, label }) {
+function DeckPile({ cardIds, label, handCount = 0 }) {
   const count = cardIds?.length || 0;
   const el = dominantElement(cardIds);
   const layers = Math.min(4, Math.max(1, count));
   return (
-    <div className="tcg-deck-pile" title={`${label}: ${count} carte`} aria-label={`${label}: ${count} carte`}>
+    <div
+      className="tcg-deck-pile"
+      title={`${label}: ${count} carte · Mano: ${handCount} carte`}
+      aria-label={`${label}: ${count} carte, mano ${handCount} carte`}
+    >
       <div className="tcg-deck-pile-stack">
         {Array.from({ length: layers }).map((_, i) => (
           <img
@@ -1927,7 +1922,13 @@ function DeckPile({ cardIds, label }) {
           />
         ))}
         {count === 0 && <div className="tcg-deck-pile-empty">∅</div>}
-        <span className="tcg-deck-pile-count">{count}</span>
+      </div>
+      {/* Compact, responsive counts attached to the deck (deck +
+          hand). These replace the duplicated counters that used to
+          live in the player strip. */}
+      <div className="tcg-deck-pile-meta">
+        <span className="tcg-deck-pile-meta-item" title="Carte nel mazzo">📚 {count}</span>
+        <span className="tcg-deck-pile-meta-item" title="Carte in mano">🃏 {handCount}</span>
       </div>
     </div>
   );
@@ -1956,7 +1957,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
   };
   const tip = `${def.name}\nPF ${bc.hp}/${bc.maxHp} · ⚔ ${bc.atk}\n` +
     mechs.map(k => `${TCG_MECHANICS[k].icon} ${labelFor(k)}`).join(" · ") +
-    (onInspect ? `\n\n(Tieni premuto 2s, clic destro o 🔍 per ingrandire)` : "");
+    (onInspect ? `\n\n(Tieni premuto 2s per ingrandire)` : "");
   const lp = useLongPress(onInspect);
   /* Always a <div> — same nested-button reason as Card. */
   const handleKey = onClick && !disabled
@@ -2029,17 +2030,8 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
       </div>
       <div className="tcg-card-art tcg-card-art--small">
         <CardArt def={def} />
-        {onInspect && (
-          <button
-            type="button"
-            className="tcg-card-inspect-btn tcg-card-inspect-btn--board"
-            onClick={(e) => { e.stopPropagation(); onInspect(); }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            title="Ingrandisci e vedi i dettagli"
-            aria-label="Ingrandisci"
-          >🔍</button>
-        )}
+        {/* No magnifier button — hold 2s (or right-click) enlarges
+            the card; explained in the manual. */}
       </div>
       {mechs.length > 0 && (
         <div className="tcg-card-mechs tcg-card-mechs--mini">
@@ -3601,7 +3593,7 @@ function LiveMatch({ match, uid, onExit }) {
             </div>
           ))}
         </div>
-        <DeckPile cardIds={state.deck[oSide]} label={`Mazzo di ${match[oSide].name}`} />
+        <DeckPile cardIds={state.deck[oSide]} label={`Mazzo di ${match[oSide].name}`} handCount={oppHand.length} />
       </div>
 
       {/* Center divider with face-attack / spell-face target */}
@@ -3700,7 +3692,7 @@ function LiveMatch({ match, uid, onExit }) {
             </div>
           ))}
         </div>
-        <DeckPile cardIds={state.deck[mySide]} label="Il tuo mazzo" />
+        <DeckPile cardIds={state.deck[mySide]} label="Il tuo mazzo" handCount={myHand.length} />
         <div data-tcg-drop={`champion:${mySide}`} className="tcg-drop-target tcg-drop-target--champion">
         <PlayerStrip
           side={mySide}
@@ -4056,7 +4048,7 @@ function LiveMatch({ match, uid, onExit }) {
 /* ============================================================
    PLAYER STRIP — HP, mana, deck, hand counts
    ============================================================ */
-function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTurn = 0, deckCount, handCount, opponent, isActive, burn = 0, secretCount = 0, shield = 0, regen = 0, ownSecrets = null, floats = [] }) {
+function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTurn = 0, opponent, isActive, burn = 0, secretCount = 0, shield = 0, regen = 0, ownSecrets = null, floats = [] }) {
   const hpPct = Math.max(0, Math.min(100, (hp / STARTING_HP) * 100));
   const secretsTip = ownSecrets && ownSecrets.length
     ? "Le tue Contromagie segrete:\n" + ownSecrets.map(s => `  • ${TCG_CARDS[s.cardId]?.name || s.cardId}`).join("\n")
@@ -4104,8 +4096,8 @@ function PlayerStrip({ side, name, hp, mana, crystals = [], crystalsPlayedThisTu
           </div>
         </div>
         <ElementalMana mana={mana} crystals={crystals} active={isActive} crystalPlayed={crystalsPlayedThisTurn > 0} isMine={!opponent} />
-        <div className="tcg-pstrip-pile" title="Carte nel mazzo">📚 {deckCount}</div>
-        <div className="tcg-pstrip-pile" title="Carte in mano">🃏 {handCount}</div>
+        {/* Deck / hand counts moved next to the deck pile (DeckPile)
+            so they sit by the deck, compact and responsive. */}
       </div>
     </div>
   );
@@ -4258,6 +4250,8 @@ function Rules() {
               <li><strong>Cacciatore</strong> permette a un attaccante a terra di colpire i volatili nemici, ma non sblocca il campione.</li>
             </ul>
           </li>
+          <li><strong>Giocare una carta</strong> — trascinala (o toccala) dalla mano al campo: le creature restano in campo, gli incantesimi e le aure si risolvono subito, le contromagie restano nascoste fino al turno avversario.</li>
+          <li><strong>Vedere una carta in grande</strong> — sul campo e in mano le carte sono <strong>compatte</strong> (arte, costo, ATK/PF e le icone delle abilità). <strong>Tieni premuto 2 secondi</strong> (o clic destro) su una carta: si ingrandisce e accanto compare un riquadro che spiega tutte le abilità per esteso. Chiudi con <kbd>Esc</kbd> o toccando fuori. Vale per le carte in mano e per le creature di entrambi.</li>
           <li>Vince chi porta a 0 i PF dell'avversario. Se finisci il mazzo, subisci 2 danni da affaticamento ad ogni pesca.</li>
         </ul>
       </div>
@@ -4303,7 +4297,7 @@ function Rules() {
         </p>
         <ul className="tcg-rules-list">
           <li>
-            <strong>Stat sulla carta</strong> — il riquadro in basso a destra è diviso in due metà: a sinistra l'<span style={{ background:"#dc2626",color:"#fff",padding:"1px 7px",fontWeight:900 }}>ATK</span> in rosso, a destra i <span style={{ background:"#15803d",color:"#fff",padding:"1px 7px",fontWeight:900 }}>PF</span> in verde. Quando la creatura è ferita la metà PF diventa <span style={{ background:"#ea580c",color:"#fff",padding:"1px 7px",fontWeight:900 }}>arancione</span> con un piccolo pulse, e accanto compare il massimo (es. <code>4/8</code>).
+            <strong>Stat sulla carta</strong> — sulla carta compatta i numeri sono badge agli angoli in basso: <span style={{ background:"#dc2626",color:"#fff",padding:"1px 7px",fontWeight:900 }}>⚔ ATK</span> rosso a sinistra, <span style={{ background:"#15803d",color:"#fff",padding:"1px 7px",fontWeight:900 }}>❤ PF</span> verde a destra. Quando la creatura è ferita il badge PF diventa <span style={{ background:"#ea580c",color:"#fff",padding:"1px 7px",fontWeight:900 }}>arancione</span> e mostra anche il massimo (es. <code>4/8</code>). Le <strong>abilità</strong> sono le icone in alto a destra: tieni premuto la carta per leggerne il testo completo.
           </li>
           <li>
             <strong>Numeri volanti</strong> — ogni colpo o cura fa salire un numero sopra la carta o sul campione: <span style={{ color:"#dc2626", fontWeight:900 }}>−5</span> in rosso quando si subiscono danni, <span style={{ color:"#15803d", fontWeight:900 }}>+3</span> in verde quando si recuperano PF. I numeri si susseguono uno alla volta, così ogni hit è leggibile.
@@ -4318,9 +4312,6 @@ function Rules() {
               <li>👻 <strong>NON UCCIDE</strong> — viola: Rinato salva il bersaglio a 1 PF</li>
             </ul>
             Il primo numero nella pillola è il danno inflitto, il secondo (dopo <code>/</code>) la rappresaglia subita. Sul pulsante "Colpisci il campione" vedi anche i PF prima → dopo dell'avversario.
-          </li>
-          <li>
-            <strong>Ingrandire una carta</strong> — durante la partita puoi sempre vedere descrizioni complete delle abilità tenendo premuto sulla carta, facendo clic destro, oppure cliccando l'icona <strong>🔍</strong> in alto a sinistra. Funziona sulle carte in mano e sulle creature di entrambi gli schieramenti.
           </li>
           <li>
             <strong>Indicatori sul campione</strong> — nella barra del nome:
@@ -4428,7 +4419,7 @@ function Rules() {
           <li><strong>🛡 Contromagia</strong> — trappola segreta: la prepari sul tuo turno e si attiva automaticamente quando il suo innesco scatta nel turno dell'avversario (subisci Bruciatura, l'avversario lancia magia, il campione sta per essere colpito, o l'avversario evoca una creatura).</li>
         </ul>
         <p className="tcg-panel-sub" style={{ marginTop: 12 }}>
-          <strong>💡 Suggerimento</strong> — tieni premuto su una carta (o clic destro, o tocca <strong>🔍</strong>) per vedere descrizioni complete delle abilità in qualsiasi momento, anche durante la partita.
+          <strong>💡 Suggerimento</strong> — tieni premuto 2 secondi su una carta (o clic destro) per ingrandirla e leggere le abilità complete, in qualsiasi momento.
         </p>
       </div>
 

@@ -607,7 +607,10 @@ section.tcg-page,
   height: 100%;
   object-fit: cover;
   display: block;
-  image-rendering: pixelated;
+  /* Card art is now photographic PNG (assets/tgc_card, card_cover).
+     `pixelated` made it blocky when scaled; `auto` keeps it smooth
+     at every --card-w from 375px to 1920px. */
+  image-rendering: auto;
   /* Stop the browser's native image-drag on desktop — it would
      fire pointercancel and kill the custom card drag (mouse then
      felt "undraggable" while touch worked). */
@@ -766,12 +769,13 @@ section.tcg-page,
 .tcg-board-card .tcg-card-art--small .tcg-card-art-img {
   width: 100%;
   height: 100%;
-  /* `contain` keeps the artwork at its real aspect ratio while
-     scaling to fill the available area; the card's element color
-     shows through any letterboxed margin so the background reads
-     as part of the card, not white space. */
-  object-fit: contain;
-  object-position: center;
+  /* Full-bleed: the art covers the whole card body (no letterbox
+     bars). The enforced rule below (.tcg-card .tcg-card-art-img)
+     also sets `cover !important`; this stays consistent with it so
+     there is no contradiction. Focal point biased upward so the
+     crop favours the creature's face, not its feet. */
+  object-fit: cover;
+  object-position: center 28%;
 }
 .tcg-board-card .tcg-card-art--small .tcg-card-art-emoji {
   font-size: 3.2rem;
@@ -2257,6 +2261,32 @@ section.tcg-page,
   padding: 0.18em 0.6em;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
   pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Compact deck + hand counts attached directly under the deck
+   stack (replaces the duplicated counters that lived in the
+   player strip). Tiny, responsive, scales with the card width. */
+.tcg-deck-pile-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.tcg-deck-pile-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-title, serif);
+  font-weight: 900;
+  font-size: clamp(0.52rem, calc(var(--card-w) * 0.115), 0.8rem);
+  line-height: 1;
+  color: #fff;
+  background: rgba(8, 4, 24, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 0.2em 0.5em;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
 }
 
@@ -5454,12 +5484,14 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   --hand-scale: 1;
   --tcg-hand-card-w: calc(var(--card-w) * var(--hand-scale));
   --tcg-hand-card-h: calc(var(--tcg-hand-card-w) * 1.4);
-  /* FIX 3 — hand cards peek ~62% of their height at rest (was 34%):
-     most of each card is a useful, readable preview. Hover/tap
-     still lifts the whole card fully into view. The stage padding
-     and action bar already track this var, so the field stays
-     clear of the higher hand automatically. */
-  --hand-peek-f: 0.62;
+  /* Hand cards peek ~86% of their height at rest. 0.62 left the
+     bottom of each card (the ⚔/❤ stat badges) below the viewport
+     edge on desktop, so the hand wasn't readable — the brief wants
+     hand cards small but legible. 0.86 reveals art + stats at rest
+     (matches the phone value). Hover/tap still lifts the whole card
+     fully; the stage padding + action bar track this var so the
+     field stays clear of the higher hand automatically. */
+  --hand-peek-f: 0.86;
   --tcg-hand-peek:   calc(var(--tcg-hand-card-h) * var(--hand-peek-f));
 }
 /* Smartphones: hand cards ~30% bigger and peeking much higher so
@@ -5522,6 +5554,31 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine { grid-row: 3; }
 .tcg-battle-shell .tcg-match--arcane .tcg-zone--mine {
   padding-bottom: var(--tcg-hand-peek);
+}
+
+/* ── Deck pile stays in its original corner (bottom-left, mine).
+   The HP/champion strip is the thing that adapts: it always sits
+   ABOVE the deck (z-index) and its content is inset by the deck
+   stack's width so the HP/name never end up hidden behind the
+   pile. The inset scales with --card-w (same variable the deck
+   pile uses) so it stays correct from 375px to ultra-wide. ───── */
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine .tcg-drop-target--champion,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine .tcg-pstrip,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp .tcg-drop-target--champion,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp .tcg-pstrip {
+  position: relative;
+  z-index: 12; /* always above the deck pile (z-index 2) */
+}
+/* Reserve the deck-pile's footprint on the left so HP / name /
+   mana flow to the RIGHT of the pile, never under it — for BOTH
+   players (mine bottom-left pile, opponent top-left pile). Deck
+   pile width = var(--card-w) * 0.62 (+ its 6px left offset + gap),
+   so the inset scales with the viewport and stays correct. */
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine .tcg-pstrip-name,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--mine .tcg-pstrip-row,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp .tcg-pstrip-name,
+.tcg-battle-shell .tcg-match--arcane .tcg-zone--opp .tcg-pstrip-row {
+  padding-left: calc(var(--card-w) * 0.62 + 14px);
 }
 .tcg-battle-shell .tcg-card--sm,
 .tcg-battle-shell .tcg-card--md {
@@ -5778,11 +5835,14 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   position: relative;
   min-width: 0;
   min-height: 0;
-  width: 34px;
-  height: 34px;
+  /* Smaller glyph chips — the old 34/42px column overlapped the
+     deck/hand counters and the hand peek. clamp() keeps them tiny
+     on phones and modest on desktop, never covering other UI. */
+  width: clamp(26px, 5.6vw, 30px);
+  height: clamp(26px, 5.6vw, 30px);
   padding: 0;
   gap: 0;
-  font-size: 1.02rem;
+  font-size: clamp(0.8rem, 2.4vw, 0.95rem);
   line-height: 1;
   border-width: 1.5px;
   /* shiny: outer glow + glassy inner top highlight */
@@ -5793,9 +5853,9 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
     inset 0 -3px 6px rgba(0, 0, 0, 0.4);
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-action-bar .tcg-action-turn-btn.tcg-icon-btn {
-  width: 42px;
-  height: 42px;
-  font-size: 1.28rem;
+  width: clamp(34px, 7vw, 38px);
+  height: clamp(34px, 7vw, 38px);
+  font-size: clamp(1rem, 3vw, 1.18rem);
   margin-top: 2px;
 }
 /* Glossy sweep across the top half of every icon chip. */
@@ -6484,29 +6544,34 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   transform: none;
 }
 
+/* Minimal, low toggle chip. Centred along the bottom so it never
+   overlaps the bottom-left deck pile (which now carries the
+   deck/hand counts) nor the bottom-right action buttons. Sits
+   just above the peeking hand, low and out of the way. */
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
   pointer-events: auto;
   position: absolute;
-  left: 10px;
-  bottom: calc(var(--tcg-hand-peek) + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tcg-hand-peek) - 4px);
   z-index: 1;
   width: fit-content;
-  background: rgba(10, 5, 25, 0.82);
+  background: rgba(10, 5, 25, 0.7);
   color: var(--tcg-cream);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: 4px;
-  padding: 3px 10px;
+  border: 1px solid rgba(212, 175, 55, 0.32);
+  border-radius: 999px;
+  padding: 2px 8px;
   margin: 0;
-  font-size: 0.68rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   letter-spacing: inherit;
-  text-align: left;
+  text-align: center;
+  opacity: 0.9;
 }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand-label:hover {
   color: #ffd58b;
@@ -6715,7 +6780,11 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
-  transform: translateY(calc(var(--tcg-hand-card-h) * -0.85)) scale(1.18);
+  /* Lift just enough to clear the screen edge and show the whole
+     card. The hand now peeks ~86% at rest, so a small rise is all
+     that's needed — the old -0.85 (tuned for the old 0.62 peek)
+     moved the card out from under the cursor/finger. */
+  transform: translateY(calc(var(--tcg-hand-card-h) * -0.24)) scale(1.08);
   z-index: 200;
   outline: 3px solid #ffd54a;
   outline-offset: 2px;
@@ -6732,7 +6801,7 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
 .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
-  transform: translateY(calc(var(--tcg-hand-card-h) * -0.7)) scale(1.1);
+  transform: translateY(calc(var(--tcg-hand-card-h) * -0.2)) scale(1.05);
   z-index: 150;
   outline: 2px solid #fbbf24;
   outline-offset: 2px;
@@ -7015,12 +7084,12 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:hover:not(:disabled),
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--clickable:focus-visible:not(:disabled),
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card[data-tcg-draggable]:active:not(:disabled) {
-    transform: translateY(calc(var(--tcg-hand-card-h) * -0.85)) scale(1.18);
+    transform: translateY(calc(var(--tcg-hand-card-h) * -0.24)) scale(1.08);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--selected,
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--pending-spell,
   .tcg-battle-shell .tcg-match--arcane .tcg-hand .tcg-card--discard-target {
-    transform: translateY(calc(var(--tcg-hand-card-h) * -0.7)) scale(1.1);
+    transform: translateY(calc(var(--tcg-hand-card-h) * -0.2)) scale(1.05);
   }
   .tcg-battle-shell .tcg-match--arcane .tcg-hand-label {
     /* Subtle chip on phone — keeps the toggle reachable but doesn't
@@ -7372,6 +7441,9 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  /* Bias the crop upward so faces aren't cut off (matches the
+     board-card rule — single consistent behaviour everywhere). */
+  object-position: center 28% !important;
 }
 .tcg-card > .tcg-card-header { position: relative; z-index: 3; }
 .tcg-card > .tcg-card-mechs  { position: relative; z-index: 3; }
@@ -7427,11 +7499,17 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(0.55rem, calc(var(--card-w) * 0.13), 0.95rem);
-  background: rgba(8, 4, 24, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  font-size: clamp(0.62rem, calc(var(--card-w) * 0.15), 1.05rem);
+  /* Icon only — no background plate / border / pill. A strong
+     dual drop-shadow keeps the glyph readable directly over the
+     card art. */
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  filter:
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))
+    drop-shadow(0 0 3px rgba(0, 0, 0, 0.85));
   cursor: help;
 }
 
@@ -7511,7 +7589,11 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
 /* Stat badges must stay readable even when cards overlap on the
    board — gentler overlap so the right-edge ❤ is never buried. */
 .tcg-battle-shell .tcg-match--arcane .tcg-board > * + * {
-  margin-left: clamp(-16px, -1.1vw, -5px);
+  /* Gentle overlap only. The ❤ HP badge sits in the card's
+     bottom-right ~40px; the previous max overlap (16px) clipped it
+     when the field was full. Cap the overlap well under that zone
+     so stats are NEVER hidden (brief requirement), still compact. */
+  margin-left: clamp(-9px, -0.7vw, -3px);
 }
 
 /* ════════════════════════════════════════════════════════════════
