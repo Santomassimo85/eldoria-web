@@ -595,6 +595,7 @@ function TcgGame() {
         <CardDetailModal
           cardId={viewingCard.cardId}
           foil={viewingCard.foil}
+          bc={viewingCard.bc}
           onClose={() => setViewingCard(null)}
         />
       )}
@@ -849,7 +850,14 @@ function PackRevealModal({ packDef, cards, onClose, onView }) {
    CARD DETAIL MODAL — enlarged card view with full info.
    Triggered from Codex, Collection, and Pack reveal.
    ============================================================ */
-function CardDetailModal({ cardId, foil = false, onClose }) {
+/* Enlarged card view. The card is the SAME frame the player sees on
+   the battlefield / in hand — just big (MTGA-style zoom, D&D framing).
+   When `bc` (a live board creature) is passed it renders the real
+   BoardCard with its CURRENT hp / atk / auras / status, so the zoom
+   is a true 1:1 of what's on the field. Otherwise it's the printed
+   card (hand / collection / codex). A parchment side panel carries
+   the full ability rules + flavor. */
+function CardDetailModal({ cardId, foil = false, bc = null, onClose }) {
   // ESC closes the enlarged view (in addition to click-outside / ✕).
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
@@ -860,161 +868,78 @@ function CardDetailModal({ cardId, foil = false, onClose }) {
   if (!c) return null;
   const cardType = getCardType(c);
   const isCreature = cardType === "creature";
-  const isSpell = !isCreature;
-  const mechs = c.mechanics || [];
-  // Extended "what it does" text shown in the floating side panel.
+
+  // Live keyword set when inspecting a board creature (innate + granted
+  // + temporary aura buffs) — mirrors what BoardCard shows on its face.
+  const liveMechs = bc
+    ? Array.from(new Set([
+        ...(c.mechanics || []),
+        ...(bc.grants || []),
+        ...((bc.tempBuffs || []).map(t => t.keyword)),
+      ]))
+    : (c.mechanics || []);
+
+  // Extended "what it does" text shown in the parchment side panel.
   const abilityBlocks = isCreature
-    ? mechs.map(k => ({
+    ? liveMechs.filter(k => TCG_MECHANICS[k]).map(k => ({
         key: k,
         icon: TCG_MECHANICS[k]?.icon || "⚡",
         name: getMechLabel(c, k),
         rules: TCG_MECHANICS[k]?.rules || "",
       }))
     : [{ key: "effect", icon: TYPE_ICON[cardType], name: TYPE_LABEL[cardType], rules: describeEffect(c) }];
+
   return (
     <div className="tcg-overlay" onClick={onClose}>
       <div className="tcg-detail-stage" onClick={e => e.stopPropagation()}>
-      <div
-        className={
-          `tcg-modal tcg-detail tcg-detail--r-${c.rarity} tcg-detail--el-${c.element}` +
-          ` tcg-detail--type-${cardType}` +
-          (foil ? " tcg-detail--foil" : "")
-        }
-      >
-        <button
-          type="button"
-          className="tcg-detail-close"
-          onClick={onClose}
-          title="Chiudi"
-        >✕</button>
-
-        <div className="tcg-detail-art">
-          <CardArt def={c} />
-          {foil && <span className="tcg-card-foil-shine" aria-hidden="true" />}
-          <div className="tcg-detail-badges">
-            <span className={`tcg-rarity-chip tcg-rarity-chip--${c.rarity}`}>
-              ★ {RARITY_LABEL[c.rarity]}
-            </span>
-            <span className={`tcg-element-chip tcg-element-chip--${c.element}`}>
-              {ELEMENT_ICON[c.element]} {ELEMENT_LABEL[c.element]}
-            </span>
-            <span className={`tcg-type-chip tcg-type-chip--${cardType}`}>
-              {TYPE_ICON[cardType]} {TYPE_LABEL[cardType]}
-            </span>
-            {foil && (
-              <span className="tcg-detail-foil-chip" title="Edizione brillante">
-                ✨ BRILLANTE
-              </span>
-            )}
+        <div className={`tcg-cardzoom tcg-cardzoom--el-${c.element} tcg-cardzoom--r-${c.rarity}`}>
+          <button
+            type="button"
+            className="tcg-detail-close"
+            onClick={onClose}
+            title="Chiudi"
+            aria-label="Chiudi"
+          >✕</button>
+          <div className="tcg-cardzoom-card">
+            {bc
+              ? <BoardCard bc={bc} def={c} size="lg" />
+              : <Card card={c} size="lg" foil={foil} showTooltip={false} />}
           </div>
         </div>
 
-        <h2 className="tcg-detail-name">{c.name}</h2>
-
-        {isSpell ? (
-          <>
-            <div className="tcg-detail-stats">
-              <div className="tcg-detail-stat tcg-detail-stat--mana">
-                <span className="tcg-detail-stat-icon">🔮</span>
-                <span className="tcg-detail-stat-val tcg-detail-stat-val--pips">
-                  <CostPips def={c} size="lg" />
-                </span>
-                <span className="tcg-detail-stat-label">Costo</span>
-              </div>
-              <div className="tcg-detail-stat tcg-detail-stat--spell">
-                <span className="tcg-detail-stat-icon">📜</span>
-                <span className="tcg-detail-stat-val">{TYPE_LABEL[cardType]}</span>
-                <span className="tcg-detail-stat-label">Tipo</span>
-              </div>
+        {/* Parchment-dark rules panel beside the card (below it on
+            narrow / portrait screens). Same elegant tooltip styling. */}
+        <aside className="tcg-detail-aside" onClick={e => e.stopPropagation()}>
+          <div className="tcg-detail-aside-title">
+            {c.name}
+            <span className="tcg-detail-aside-sub">
+              {ELEMENT_ICON[c.element]} {ELEMENT_LABEL[c.element]} · {TYPE_LABEL[cardType]} · ★ {RARITY_LABEL[c.rarity]}
+            </span>
+          </div>
+          {isCreature && (
+            <div className="tcg-detail-aside-stats">
+              <span className="tcg-detail-aside-stat" title="Costo">🔮 <CostPips def={c} size="sm" /></span>
+              <span className="tcg-detail-aside-stat" title="Attacco">⚔ {bc ? bc.atk : c.atk}</span>
+              <span className="tcg-detail-aside-stat" title="Punti Ferita">
+                ❤ {bc ? `${bc.hp}/${bc.maxHp}` : c.hp}
+              </span>
             </div>
-
-            <div className="tcg-detail-effect">
-              <h4 className="tcg-detail-section">{TYPE_ICON[cardType]} Effetto · {TYPE_LABEL[cardType]}</h4>
-              <p className="tcg-detail-effect-text">{describeEffect(c)}</p>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="tcg-detail-stats">
-              <div className="tcg-detail-stat tcg-detail-stat--mana">
-                <span className="tcg-detail-stat-icon">🔮</span>
-                <span className="tcg-detail-stat-val tcg-detail-stat-val--pips">
-                  <CostPips def={c} size="lg" />
-                </span>
-                <span className="tcg-detail-stat-label">Costo</span>
+          )}
+          {abilityBlocks.length === 0 ? (
+            <p className="tcg-detail-aside-empty">Nessuna abilità speciale.</p>
+          ) : (
+            abilityBlocks.map(b => (
+              <div key={b.key} className="tcg-detail-aside-block">
+                <div className="tcg-detail-aside-head">
+                  <span className="tcg-detail-aside-icon">{b.icon}</span>
+                  <strong>{b.name}</strong>
+                </div>
+                {b.rules && <p className="tcg-detail-aside-rules">{b.rules}</p>}
               </div>
-              <div className="tcg-detail-stat tcg-detail-stat--atk">
-                <span className="tcg-detail-stat-icon">⚔</span>
-                <span className="tcg-detail-stat-val">{c.atk}</span>
-                <span className="tcg-detail-stat-label">Attacco</span>
-              </div>
-              <div className="tcg-detail-stat tcg-detail-stat--hp">
-                <span className="tcg-detail-stat-icon">❤</span>
-                <span className="tcg-detail-stat-val">{c.hp}</span>
-                <span className="tcg-detail-stat-label">Punti Ferita</span>
-              </div>
-            </div>
-
-            {mechs.length > 0 && (
-              <div className="tcg-detail-mechs">
-                <h4 className="tcg-detail-section">⚡ Abilità</h4>
-                {mechs.map(k => {
-                  const m = TCG_MECHANICS[k];
-                  return (
-                    <div key={k} className={`tcg-detail-mech tcg-detail-mech--${k}`}>
-                      <div className="tcg-detail-mech-head">
-                        <span
-                          className="tcg-detail-mech-icon"
-                          style={{ background: m.color }}
-                        >
-                          {m.icon}
-                        </span>
-                        <strong className="tcg-detail-mech-name">{getMechLabel(c, k)}</strong>
-                      </div>
-                      <div className="tcg-detail-mech-rules">{m.rules}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
-        <div className="tcg-detail-flavor">
-          <span className="tcg-detail-flavor-quote">"</span>
-          {c.flavor}
-          <span className="tcg-detail-flavor-quote">"</span>
-        </div>
-
-        <button
-          type="button"
-          className="tcg-btn tcg-btn--hero tcg-detail-done"
-          onClick={onClose}
-        >
-          Chiudi
-        </button>
-      </div>
-
-      {/* Floating, tooltip-like description panel — sits beside the
-          enlarged card (below it on narrow screens). Light, no heavy
-          borders, semi-transparent dark. */}
-      <aside className="tcg-detail-aside" onClick={e => e.stopPropagation()}>
-        <div className="tcg-detail-aside-title">{c.name}</div>
-        {abilityBlocks.length === 0 ? (
-          <p className="tcg-detail-aside-empty">Nessuna abilità speciale.</p>
-        ) : (
-          abilityBlocks.map(b => (
-            <div key={b.key} className="tcg-detail-aside-block">
-              <div className="tcg-detail-aside-head">
-                <span className="tcg-detail-aside-icon">{b.icon}</span>
-                <strong>{b.name}</strong>
-              </div>
-              {b.rules && <p className="tcg-detail-aside-rules">{b.rules}</p>}
-            </div>
-          ))
-        )}
-        {c.flavor && <p className="tcg-detail-aside-flavor">“{c.flavor}”</p>}
-      </aside>
+            ))
+          )}
+          {c.flavor && <p className="tcg-detail-aside-flavor">“{c.flavor}”</p>}
+        </aside>
       </div>
     </div>
   );
@@ -1633,35 +1558,77 @@ function ElementWheelLegend() {
    already fired (so an inspect doesn't also play the card). The
    fire delay (2s) is a deliberate press-and-hold: short taps,
    drags and scrolls never trip it. */
-function useLongPress(onInspect, ms = 2000) {
+/* Long-press to inspect (2s hold / right-click) + RELIABLE TAP.
+   On phones the browser only sometimes synthesises a `click` after
+   `touchend` — micro finger movement, the 300ms tap delay, or a
+   React re-render mid-tap all swallow it, which is why "tap a card
+   to defend" felt dead. We therefore fire the tap ourselves from
+   `touchend` when the touch was short and roughly stationary, and
+   swallow the (possibly) synthesised click so it can't double-fire.
+   `onTap` is the same disabled-aware click handler the component
+   would pass to onClick. */
+function useLongPress(onInspect, { ms = 2000, onTap } = {}) {
   const timerRef = useRef(null);
-  const firedRef = useRef(false);
+  const firedRef = useRef(false);       // long-press already fired
   const startPosRef = useRef(null);
-  if (!onInspect) {
-    return { start: undefined, cancel: undefined, guardClick: (h) => h, onContext: undefined, onMove: undefined };
-  }
+  const startTimeRef = useRef(0);
+  const movedRef = useRef(false);       // finger travelled too far → not a tap
+  const touchRef = useRef(false);       // current gesture started from touch
+  const swallowClickRef = useRef(false); // we handled the tap; eat the synthetic click
+  // 8px keeps a tap forgiving while staying under the 10px drag
+  // threshold, so a card you start to drag never also fires a tap.
+  const TAP_SLOP = 8;
+  const TAP_MS = 700;                   // longer hold = not a tap
+
   const start = (e) => {
-    // Ignore middle/right clicks here — right-click is handled by onContextMenu
+    // Ignore middle/right clicks — right-click is handled by onContextMenu.
     if (e.type === "mousedown" && e.button !== 0) return;
+    touchRef.current = e.type === "touchstart";
     firedRef.current = false;
+    movedRef.current = false;
+    startTimeRef.current = Date.now();
     const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
     startPosRef.current = { x, y };
-    timerRef.current = setTimeout(() => {
-      firedRef.current = true;
-      onInspect();
-    }, ms);
+    if (onInspect) {
+      timerRef.current = setTimeout(() => {
+        firedRef.current = true;
+        onInspect();
+      }, ms);
+    }
   };
-  const cancel = () => {
+  const clearTimer = () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   };
   const onMove = (e) => {
-    if (!startPosRef.current || !timerRef.current) return;
+    if (!startPosRef.current) return;
     const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
-    const dx = x - startPosRef.current.x;
-    const dy = y - startPosRef.current.y;
-    if (Math.hypot(dx, dy) > 8) cancel();
+    const dist = Math.hypot(x - startPosRef.current.x, y - startPosRef.current.y);
+    if (dist > TAP_SLOP) {
+      clearTimer();              // too much travel → cancel inspect…
+      movedRef.current = true;   // …and it's a scroll/drag, not a tap
+    }
+  };
+  // touchend / mouseup / leave all route here.
+  const cancel = (e) => {
+    clearTimer();
+    // Only synthesise the tap for touch — mouse/keyboard get a real
+    // click event already. Skip if the long-press fired, the finger
+    // moved away (scroll/drag), or the hold was too long.
+    if (
+      e?.type === "touchend" &&
+      touchRef.current &&
+      !firedRef.current &&
+      !movedRef.current &&
+      Date.now() - startTimeRef.current < TAP_MS &&
+      onTap
+    ) {
+      swallowClickRef.current = true;
+      // Reset after the synthetic click would have arrived.
+      setTimeout(() => { swallowClickRef.current = false; }, 700);
+      onTap(e);
+    }
   };
   const guardClick = (handler) => (e) => {
     if (firedRef.current) {
@@ -1670,9 +1637,17 @@ function useLongPress(onInspect, ms = 2000) {
       e.stopPropagation();
       return;
     }
+    if (swallowClickRef.current) {
+      // We already fired this tap from touchend — drop the synthetic
+      // click so the action doesn't run twice.
+      swallowClickRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     handler?.(e);
   };
-  const onContext = (e) => { e.preventDefault(); onInspect(); };
+  const onContext = (e) => { if (!onInspect) return; e.preventDefault(); onInspect(); };
   return { start, cancel, guardClick, onContext, onMove };
 }
 
@@ -1722,7 +1697,7 @@ function Card({ card, size = "md", onClick, disabled, selected, className = "", 
   const tip = showTooltip
     ? `${def.name} · ${TYPE_LABEL[cardType]} · ${RARITY_LABEL[def.rarity]} ${ELEMENT_ICON[def.element]}${foil ? " · ✨ Brillante" : ""}\n${def.flavor}\n${tipBody}${onInspect ? "\n\n(Tieni premuto 2s per ingrandire)" : ""}`
     : undefined;
-  const lp = useLongPress(onInspect);
+  const lp = useLongPress(onInspect, { onTap: onClick && !disabled ? onClick : undefined });
   /* Always render a <div> — using a real <button> element for the
      card breaks the DOM nesting rule because the inspect (🔍) child
      is itself a <button>. role="button" + tabIndex preserve a11y
@@ -1958,7 +1933,7 @@ function BoardCard({ bc, def, size = "sm", onClick, disabled, selected, status, 
   const tip = `${def.name}\nPF ${bc.hp}/${bc.maxHp} · ⚔ ${bc.atk}\n` +
     mechs.map(k => `${TCG_MECHANICS[k].icon} ${labelFor(k)}`).join(" · ") +
     (onInspect ? `\n\n(Tieni premuto 2s per ingrandire)` : "");
-  const lp = useLongPress(onInspect);
+  const lp = useLongPress(onInspect, { onTap: onClick && !disabled ? onClick : undefined });
   /* Always a <div> — same nested-button reason as Card. */
   const handleKey = onClick && !disabled
     ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); lp.guardClick(onClick)(e); } }
@@ -3571,7 +3546,7 @@ function LiveMatch({ match, uid, onExit }) {
                   extraClass={isAtkToFocus ? (isFocused ? "tcg-card--attacker tcg-card--attacker-focus" : "tcg-card--attacker") : ""}
                   status={bc.tapped ? "tapped" : null}
                   attackAnim={getCardAnim(bc.instId)}
-                  onInspect={() => setViewingCard({ cardId: bc.cardId })}
+                  onInspect={() => setViewingCard({ cardId: bc.cardId, bc })}
                   floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
                   hpShow={hpFx[bc.instId] ?? null}
                   dataCardId={bc.cardId}
@@ -3666,7 +3641,7 @@ function LiveMatch({ match, uid, onExit }) {
                 }
                 status={status}
                 attackAnim={getCardAnim(bc.instId)}
-                onInspect={() => setViewingCard({ cardId: bc.cardId })}
+                onInspect={() => setViewingCard({ cardId: bc.cardId, bc })}
                 floats={floats.filter(f => f.target === "creature" && f.instId === bc.instId)}
                 hpShow={hpFx[bc.instId] ?? null}
                 dataDraggable={myTurn && state.phase === "main" && ready ? `board:${bc.instId}` : undefined}
@@ -3982,6 +3957,7 @@ function LiveMatch({ match, uid, onExit }) {
       {viewingCard && (
         <CardDetailModal
           cardId={viewingCard.cardId}
+          bc={viewingCard.bc}
           onClose={() => setViewingCard(null)}
         />
       )}

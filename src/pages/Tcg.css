@@ -5257,6 +5257,14 @@ section.tcg-page,
   touch-action: none;
   cursor: grab;
 }
+/* Tappable cards that are NOT draggable (blockers during defence,
+   attacker selection, spell targets): kill the mobile 300ms tap
+   delay and double-tap-zoom so a single tap registers instantly.
+   Draggable cards keep `touch-action: none` (rule above) — their
+   tap is still handled reliably via the touchend path in JS. */
+.tcg-match--arcane .tcg-card.tcg-card--clickable:not([data-tcg-draggable]) {
+  touch-action: manipulation;
+}
 .tcg-match--arcane .tcg-card[data-tcg-draggable]:active { cursor: grabbing; }
 /* Legacy --dragging class (still applied by hand JSX for state
    tracking). With the new "move-the-source-card" drag model we
@@ -7695,5 +7703,107 @@ body.tcg-battle-active .global-chat-window { display: none !important; }
   .tcg-battle-shell .tcg-overlay .tcg-detail {
     height: auto;
     max-height: 60vh;
+  }
+}
+
+/* ============================================================
+   CARD ZOOM — the enlarged card IS the field card, just big.
+   We render the real <Card>/<BoardCard> frame at a viewport-
+   driven size (MTGA-style zoom, D&D framing) instead of the old
+   bespoke info panel. Appended last so these win source-order
+   over the battle-shell board-card art caps.
+   ============================================================ */
+.tcg-cardzoom {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 22px 50px rgba(0, 0, 0, 0.65));
+  animation: tcg-pop .3s cubic-bezier(.34,1.56,.64,1);
+}
+.tcg-cardzoom-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Same frame, just big. Width follows the viewport height so the
+   card fills the screen like a real card zoom; the 5/7 aspect and
+   the card's own internals keep every proportion identical to the
+   field card. */
+.tcg-cardzoom .tcg-card {
+  width: clamp(248px, 50vh, 420px) !important;
+  height: auto !important;
+  aspect-ratio: 5 / 7 !important;
+  padding: clamp(8px, 1.4vh, 14px) !important;
+  gap: 5px !important;
+  cursor: default;
+  transform: none !important;
+  animation: none !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 24px 64px rgba(0, 0, 0, 0.6) !important;
+  /* Always show the card at full clarity here, even if it carries
+     a status class (tapped / sick / disabled) from the field. */
+  opacity: 1 !important;
+  filter: none !important;
+}
+/* The field card uses a compact thumbnail (`--small`) and the
+   battle-shell caps its height. In the zoom we want the FULL
+   artwork like the printed card, so undo those caps here. */
+.tcg-cardzoom .tcg-card .tcg-card-art,
+.tcg-cardzoom .tcg-board-card .tcg-card-art--small {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+.tcg-cardzoom .tcg-card-art-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+.tcg-cardzoom .tcg-card-art-emoji { font-size: clamp(3.4rem, 9vh, 6.5rem) !important; }
+/* Scale the type up with the bigger frame so it reads cleanly. */
+.tcg-cardzoom .tcg-card-name { font-size: clamp(.9rem, 2.3vh, 1.2rem) !important; }
+.tcg-cardzoom .tcg-card-mtg-pt { font-size: clamp(1.1rem, 2.8vh, 1.6rem) !important; }
+.tcg-cardzoom .tcg-card-mech-mini { font-size: clamp(.9rem, 2vh, 1.25rem) !important; }
+.tcg-cardzoom .tcg-card-element { font-size: clamp(1rem, 2.4vh, 1.4rem) !important; }
+/* Close ✕ rides the top-right of the enlarged card. */
+.tcg-cardzoom .tcg-detail-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 3;
+}
+
+/* Aside: a compact live stat row beneath the title. */
+.tcg-detail-aside-sub {
+  display: block;
+  margin-top: 3px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  color: #c9c3e4;
+}
+.tcg-detail-aside-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #fff;
+}
+.tcg-detail-aside-stat { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Portrait / narrow: shrink the card a touch so the rules panel
+   still fits on screen under it. */
+@media (max-width: 640px), (orientation: portrait) {
+  .tcg-cardzoom .tcg-card {
+    width: clamp(200px, 58vw, 320px) !important;
   }
 }
