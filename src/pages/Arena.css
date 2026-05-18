@@ -1329,24 +1329,49 @@
 .hp-bar-wrap { margin-bottom: 4px; }
 
 .hp-bar-bg {
-  height: 7px;
-  background: #eee;
-  border-radius: 4px;
+  height: 10px;
+  /* The empty part = HP already lost. A muted crimson reads clearly
+     on the near-white fighter card (the old #eee was invisible) and
+     intuitively says "missing health". */
+  background: #e0a3a3;
+  border-radius: 5px;
   overflow: hidden;
   margin-bottom: 4px;
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1.5px solid rgba(120, 22, 22, 0.6);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .hp-bar-fill {
+  position: relative;
   height: 100%;
   border-radius: 4px;
+  /* Vividness: a touch more saturation + a soft glow in the fill's
+     own colour so a full bar reads bright green at a glance. */
+  filter: saturate(1.2);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s;
+}
+/* Glossy highlight on top, subtle shade at the bottom — colour-
+   agnostic, so it looks good whatever the inline HP colour is. */
+.hp-bar-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0) 55%,
+    rgba(0, 0, 0, 0.2)
+  );
+  pointer-events: none;
 }
 
 .hp-label {
   font-family: var(--font-text);
   font-size: 0.7rem;
-  color: #aaa;
+  font-weight: 600;
+  color: #6b7280;
 }
 
 /* ---- INIT BUTTON ----------------------------------------- */

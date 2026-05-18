@@ -6499,7 +6499,7 @@ export default function Arena() {
                     const isDead   = p.hp <= 0;
                     const isActive = m.turn === p.id;
                     const hpPct    = Math.max(0, (p.hp / (char.stats?.maxHp ?? 70)) * 100);
-                    const hpColor  = hpPct > 60 ? "#27ae60" : hpPct > 30 ? "#e67e22" : "#c0392b";
+                    const hpColor  = hpPct > 60 ? "#22c55e" : hpPct > 30 ? "#f59e0b" : "#ef4444";
 
                     return (
                       <React.Fragment key={p.id}>
