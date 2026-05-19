@@ -23,7 +23,7 @@
 import { getCard, buildDeck, ELEMENTS } from "./cards.js";
 
 export const START_HP = 20;
-export const OPENING_HAND = 7;
+export const OPENING_HAND = 6;
 export const HAND_CAP = 7;
 export const SIDES = ["p0", "p1"];
 
@@ -521,15 +521,20 @@ export function legalBlockers(s, attackerInstId) {
   const atkSide = s.combat.attackerSide;
   const atk = s.players[atkSide].battlefield.find((c) => c.instId === attackerInstId);
   if (!atk) return [];
-  const used = new Set(Object.values(s.combat.blocks).filter(Boolean));
+  // a creature can only be assigned to ONE attacker — collect every
+  // creature already used across all blocker lists
+  const used = new Set();
+  for (const arr of Object.values(s.combat.blocks || {}))
+    for (const id of arr || []) used.add(id);
   return s.players[defSide].battlefield
     .filter((c) => !c.tapped && !used.has(c.instId))
-    .filter((c) => s.combat.blocks[attackerInstId] !== c.instId)
     .filter((c) => canBlock(s, atkSide, atk, c))
     .map((c) => c.instId);
 }
 
-/* blocksMap: { [attackerInstId]: blockerInstId }  (omit / null = unblocked) */
+/* blocksMap: { [attackerInstId]: blockerInstId | [blockerInstId, …] }
+   One creature may block only one attacker; one attacker may be blocked
+   by MANY creatures (gang block). Menace needs 2+ blockers. */
 export function confirmBlocks(state, defenderSide, blocksMap = {}) {
   if (!state.combat || state.phase !== "block") return state;
   if (defenderSide !== opp(state.combat.attackerSide)) return state;
@@ -538,16 +543,25 @@ export function confirmBlocks(state, defenderSide, blocksMap = {}) {
   const used = new Set();
   const blocks = {};
   for (const atkId of s.combat.attackers) {
-    const blkId = blocksMap[atkId];
-    if (!blkId) continue;
-    if (used.has(blkId)) continue;
+    const raw = blocksMap[atkId];
+    const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
     const atk = s.players[atkSide].battlefield.find((c) => c.instId === atkId);
-    const blk = s.players[defenderSide].battlefield.find((c) => c.instId === blkId);
-    if (!atk || !blk || blk.tapped) continue;
-    if (!canBlock(s, atkSide, atk, blk)) continue; // Volare / Inafferrabile
-    if (kw(atk.cardId, "menace")) continue; // serve 2+ bloccanti → resta non bloccata
-    blocks[atkId] = blkId;
-    used.add(blkId);
+    if (!atk) continue;
+    const assigned = [];
+    for (const blkId of list) {
+      if (used.has(blkId)) continue;
+      const blk = s.players[defenderSide].battlefield.find((c) => c.instId === blkId);
+      if (!blk || blk.tapped) continue;
+      if (!canBlock(s, atkSide, atk, blk)) continue; // Volare / Inafferrabile
+      assigned.push(blkId);
+      used.add(blkId);
+    }
+    // Minaccia: needs at least 2 blockers, else it goes through
+    if (kw(atk.cardId, "menace") && assigned.length < 2) {
+      for (const b of assigned) used.delete(b);
+      continue;
+    }
+    if (assigned.length) blocks[atkId] = assigned;
   }
   s.combat.blocks = blocks;
   return resolveCombatInternal(s);
@@ -587,46 +601,71 @@ function resolveCombatInternal(s) {
   const aliveA = (id) => s.players[atkSide].battlefield.find((c) => c.instId === id);
   const aliveD = (id) => s.players[defSide].battlefield.find((c) => c.instId === id);
 
-  // engagement list (+ visual fx for arrows)
+  // engagement list (+ visual fx for arrows). blkIds = every creature
+  // gang-blocking this attacker (may be 0 → hits the hero).
   const pairs = [];
   for (const atkId of s.combat.attackers) {
     const a = aliveA(atkId);
     if (!a) continue;
-    const blkId = blocks[atkId] || null;
-    pairs.push({ atkId, blkId });
-    fx(s, {
-      kind: "attack",
-      side: atkSide,
-      attackerInstId: atkId,
-      targetKind: blkId ? "creature" : "hero",
-      targetInstId: blkId,
-    });
+    const blkIds = Array.isArray(blocks[atkId]) ? blocks[atkId].slice() : [];
+    pairs.push({ atkId, blkIds });
+    if (blkIds.length) {
+      for (const bId of blkIds)
+        fx(s, {
+          kind: "attack",
+          side: atkSide,
+          attackerInstId: atkId,
+          targetKind: "creature",
+          targetInstId: bId,
+        });
+    } else {
+      fx(s, {
+        kind: "attack",
+        side: atkSide,
+        attackerInstId: atkId,
+        targetKind: "hero",
+        targetInstId: null,
+      });
+    }
   }
 
   // two ordered passes: First Strike, then the rest
   const runPass = (firstStrike) => {
-    for (const { atkId, blkId } of pairs) {
+    for (const { atkId, blkIds } of pairs) {
       const a = aliveA(atkId);
       if (!a) continue;
       const aPow = effStats(s, atkSide, a).power;
       const aFS = kw(a.cardId, "firststrike");
-      const b = blkId ? aliveD(blkId) : null;
+      const dt = kw(a.cardId, "deathtouch");
+      const blockers = blkIds.map((id) => aliveD(id)).filter(Boolean);
+      const wasBlocked = blkIds.length > 0;
 
-      if (b) {
-        const bPow = effStats(s, defSide, b).power;
-        const bFS = kw(b.cardId, "firststrike");
+      if (blockers.length) {
+        // attacker spreads its power across the blockers in order,
+        // dealing each just enough to kill before moving on; the rest
+        // tramples to the hero if it has Travolgere.
         if (aFS === firstStrike) {
-          // attacker hits blocker; Travolgere spills over to the hero
-          strikeCreature(s, atkSide, a, defSide, b, aPow);
-          if (kw(a.cardId, "trample")) {
+          let pow = aPow;
+          for (const b of blockers) {
+            if (pow <= 0) break;
             const bt = effStats(s, defSide, b).toughness;
-            const spill = Math.max(0, aPow - Math.max(0, bt - (b.damage - aPow)));
-            if (spill > 0) strikeHero(s, atkSide, a, defSide, Math.min(aPow, spill));
+            const lethal = dt ? 1 : Math.max(1, bt - b.damage);
+            const deal = Math.min(pow, lethal);
+            strikeCreature(s, atkSide, a, defSide, b, deal);
+            pow -= deal;
           }
+          if (kw(a.cardId, "trample") && pow > 0)
+            strikeHero(s, atkSide, a, defSide, Math.min(aPow, pow));
         }
-        if (bFS === firstStrike && aliveD(blkId)) {
-          strikeCreature(s, defSide, b, atkSide, a, bPow);
+        // every blocker strikes back at the attacker
+        for (const b of blockers) {
+          if (kw(b.cardId, "firststrike") === firstStrike && aliveA(atkId))
+            strikeCreature(s, defSide, b, atkSide, a, effStats(s, defSide, b).power);
         }
+      } else if (wasBlocked) {
+        // all blockers died first — only Travolgere gets through
+        if (kw(a.cardId, "trample") && aFS === firstStrike)
+          strikeHero(s, atkSide, a, defSide, aPow);
       } else if (aFS === firstStrike) {
         strikeHero(s, atkSide, a, defSide, aPow);
       }
@@ -634,10 +673,13 @@ function resolveCombatInternal(s) {
     resolveDeaths(s);
   };
 
-  const anyFS = pairs.some(({ atkId, blkId }) => {
+  const anyFS = pairs.some(({ atkId, blkIds }) => {
     const a = aliveA(atkId);
-    const b = blkId ? aliveD(blkId) : null;
-    return (a && kw(a.cardId, "firststrike")) || (b && kw(b.cardId, "firststrike"));
+    if (a && kw(a.cardId, "firststrike")) return true;
+    return blkIds.some((id) => {
+      const b = aliveD(id);
+      return b && kw(b.cardId, "firststrike");
+    });
   });
   if (anyFS) runPass(true);
   runPass(false);
@@ -648,18 +690,34 @@ function resolveCombatInternal(s) {
   return s;
 }
 
+/* how many cards over the hand cap this side is holding (0 = none) */
+export function mustDiscardCount(s, side) {
+  return Math.max(0, s.players[side].hand.length - HAND_CAP);
+}
+
+/* manually discard one chosen card (used to get back under the cap) */
+export function discardCard(state, side, instId) {
+  if (state.winner || state.active !== side || state.phase !== "main")
+    return state;
+  const p0 = state.players[side];
+  const idx = p0.hand.findIndex((h) => h.instId === instId);
+  if (idx < 0) return state;
+  const s = clone(state);
+  const p = s.players[side];
+  const [hc] = p.hand.splice(idx, 1);
+  p.graveyard.push(hc.cardId);
+  fx(s, { kind: "discard", side, cardId: hc.cardId });
+  logMsg(s, side, `${p.name} scarta ${getCard(hc.cardId).name}.`);
+  return s;
+}
+
 /* ---- end turn ---- */
 export function endTurn(state, side) {
   if (state.winner || state.active !== side || state.phase !== "main") return state;
+  // must get down to the hand cap by discarding manually first
+  if (state.players[side].hand.length > HAND_CAP) return state;
   const s = clone(state);
   const p = s.players[side];
-
-  while (p.hand.length > HAND_CAP) {
-    const dropped = p.hand.shift();
-    p.graveyard.push(dropped.cardId);
-    logMsg(s, side, `${p.name} scarta ${getCard(dropped.cardId).name} (mano piena).`);
-    fx(s, { kind: "discard", side, cardId: dropped.cardId });
-  }
 
   for (const sd of SIDES)
     for (const cr of s.players[sd].battlefield) cr.damage = 0;
@@ -722,6 +780,15 @@ export function reviveState(raw) {
       if (typeof cr.shield !== "boolean") cr.shield = kw(cr.cardId, "shield");
       if (typeof cr.regenUsed !== "boolean") cr.regenUsed = false;
     }
+  }
+  // migrate old single-blocker combat ({atk: blkId}) → arrays
+  if (s.combat && s.combat.blocks && typeof s.combat.blocks === "object") {
+    const mig = {};
+    for (const [aid, v] of Object.entries(s.combat.blocks)) {
+      if (Array.isArray(v)) mig[aid] = v.filter(Boolean);
+      else if (v) mig[aid] = [v];
+    }
+    s.combat.blocks = mig;
   }
   return s;
 }

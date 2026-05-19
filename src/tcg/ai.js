@@ -5,14 +5,16 @@
      { type: "land",   instId }
      { type: "play",   instId, target }
      { type: "attack", attackerIds: [...] }
+     { type: "discard", instId }
      { type: "end" }
 
-   chooseBlocks(state, side) -> { [attackerInstId]: blockerInstId }
+   chooseBlocks(state, side) -> { [attackerInstId]: [blockerInstId, …] }
    ============================================================ */
 
 import { getCard, ELEMENTS } from "./cards.js";
 import {
   effStats, canPlay, canPlayLand, spellTargets, legalAttackers, opp,
+  HAND_CAP,
 } from "./engine.js";
 
 const creatureValue = (s, side, cr) => {
@@ -180,6 +182,22 @@ export function nextAction(s, side) {
     }
   }
 
+  // nothing left to do — trim down to the hand cap before ending
+  const hand = s.players[side].hand;
+  if (hand.length > HAND_CAP) {
+    // drop the least useful: surplus lands first, else highest cmc
+    const haveLands = s.players[side].lands.length;
+    let worst = null;
+    for (const h of hand) {
+      const c = getCard(h.cardId);
+      const isLand = c.type === "land";
+      const score =
+        (isLand ? (haveLands >= 5 ? 100 : 20) : 0) + (c.cmc || 0);
+      if (!worst || score > worst.score) worst = { instId: h.instId, score };
+    }
+    return { type: "discard", instId: worst.instId };
+  }
+
   return { type: "end" };
 }
 
@@ -200,7 +218,7 @@ export function chooseBlocks(s, side) {
     .map((c) => ({ id: c.instId, ...effStats(s, side, c) }))
     .sort((a, b) => a.power + a.toughness - (b.power + b.toughness));
 
-  const blocks = {};
+  const blocks = {}; // { atkId: [blockerId, …] }
   const usedB = new Set();
   const totalDmg = attackers.reduce((a, b) => a + b.power, 0);
   const lethal = totalDmg >= s.players[side].hp;
@@ -215,7 +233,7 @@ export function chooseBlocks(s, side) {
       if (kills && !pick) pick = b;
     }
     if (pick) {
-      blocks[atk.id] = pick.id;
+      blocks[atk.id] = [pick.id];
       usedB.add(pick.id);
     }
   }
@@ -227,10 +245,19 @@ export function chooseBlocks(s, side) {
     for (const atk of attackers) {
       if (incoming < s.players[side].hp) break;
       if (blocks[atk.id]) continue;
-      const free = blockers.find((b) => !usedB.has(b.id));
-      if (!free) break;
-      blocks[atk.id] = free.id;
-      usedB.add(free.id);
+      // chump, or gang up to actually kill it if cheap blockers are free
+      const free = blockers.filter((b) => !usedB.has(b.id));
+      if (!free.length) break;
+      const gang = [];
+      let sum = 0;
+      for (const b of free) {
+        gang.push(b.id);
+        sum += b.power;
+        if (sum >= atk.toughness) break; // enough to kill it
+      }
+      const chosen = gang.length ? gang : [free[0].id];
+      blocks[atk.id] = chosen;
+      for (const id of chosen) usedB.add(id);
       incoming -= atk.power;
     }
   }

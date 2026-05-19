@@ -226,6 +226,11 @@
   padding: 4px 0; flex-wrap: wrap;
   align-items: center; z-index: 9;
 }
+/* my mana sits on the LEFT (the hand floats right & would cover it) */
+.tcg-field--me .tcg-zone--lands {
+  justify-content: flex-start;
+  align-self: flex-start;
+}
 .tcg-mtoken {
   width: clamp(26px, 3.4vw, 44px); aspect-ratio: 1;
   display: grid; place-items: center; padding: 0;
@@ -403,6 +408,16 @@
 }
 .tcg-bigbtn--atk { background: radial-gradient(circle at 38% 32%, #f0926f, #b23a23 70%); color:#fff; border-color:#f3b29a; }
 .tcg-bigbtn--go  { background: radial-gradient(circle at 38% 32%, #8fe08f, #2f8f3a 70%); color:#0c2410; border-color:#bff0bf; }
+.tcg-bigbtn--discard {
+  background: radial-gradient(circle at 38% 32%, #ff6a5a, #a01d12 70%);
+  color: #fff; border-color: #ff9c8c;
+  box-shadow: 0 0 14px rgba(226,72,58,.7), 0 0 4px rgba(226,72,58,.6) inset;
+  animation: tcg-discard-pulse 1.1s ease-in-out infinite;
+}
+@keyframes tcg-discard-pulse {
+  0%,100% { box-shadow: 0 0 10px rgba(226,72,58,.55); }
+  50% { box-shadow: 0 0 22px rgba(226,72,58,.95); }
+}
 .tcg-railbtn {
   width: 84px; padding: 8px 4px; border-radius: 10px; cursor: pointer;
   font-size: 11px; font-weight: 700; line-height: 1.2; white-space: pre-line;
@@ -543,11 +558,21 @@
   animation: tcg-pulse 1s ease-in-out infinite;
 }
 @keyframes tcg-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+/* discard mode: every hand card glows red and is tappable to throw away */
+.tcg-card.is-discard {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--bad), 0 0 20px rgba(226,72,58,.85);
+  animation: tcg-discard-card 1s ease-in-out infinite;
+}
+@keyframes tcg-discard-card {
+  0%,100% { box-shadow: 0 0 0 2px var(--bad), 0 0 12px rgba(226,72,58,.6); }
+  50% { box-shadow: 0 0 0 2px #ff6a5a, 0 0 26px rgba(226,72,58,1); }
+}
 .tcg-card.is-attacking {
   box-shadow: 0 0 22px var(--bad); z-index: 36;
-  animation: tcg-lunge-me 1.1s ease;
+  animation: tcg-lunge-me 1.7s ease;
 }
-.tcg-field--foe .tcg-card.is-attacking { animation: tcg-lunge-foe 1.1s ease; }
+.tcg-field--foe .tcg-card.is-attacking { animation: tcg-lunge-foe 1.7s ease; }
 @keyframes tcg-lunge-me {
   0% { transform: translateY(0) scale(1); }
   35% { transform: translateY(-46px) scale(1.12); }

@@ -21,6 +21,7 @@ import {
 import {
   playCard, declareAttackers, confirmBlocks, endTurn, forfeit,
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
+  discardCard, HAND_CAP,
 } from "../../tcg/engine.js";
 import { nextAction as aiNext, chooseBlocks as aiBlocks } from "../../tcg/ai.js";
 import {
@@ -130,6 +131,8 @@ export default function GameTable({
   const [inspect, setInspect] = useState(null);
   // hand starts grouped/closed on the right; first tap fans it open
   const [handOpen, setHandOpen] = useState(false);
+  // discard mode (hand over the cap → must throw cards away)
+  const [discarding, setDiscarding] = useState(false);
 
   const [floats, setFloats] = useState([]);
   const [burst, setBurst] = useState(null);
@@ -165,7 +168,7 @@ export default function GameTable({
     }[zone] || { x: 50, y: 50 };
     const id = ++floatSeq.current;
     setFloats((f) => [...f, { id, text, tone, ...pos }]);
-    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1150);
+    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1600);
   };
 
   // draw an attack arrow (and a blue defense arrow if blocked) so
@@ -197,7 +200,7 @@ export default function GameTable({
       }
       setTimeout(
         () => setArrows((a) => a.filter((x) => x.id !== id && x.id !== id + 0.5)),
-        2000
+        2800
       );
     });
   };
@@ -239,7 +242,7 @@ export default function GameTable({
             setGhosts((g) => [...g, { gid, card }]);
             setTimeout(
               () => setGhosts((g) => g.filter((x) => x.gid !== gid)),
-              950
+              1400
             );
           }
           break;
@@ -252,7 +255,7 @@ export default function GameTable({
           );
           setTimeout(
             () => setBurst((b) => (b && b.id === bid ? null : b)),
-            850
+            1200
           );
           break;
         }
@@ -265,7 +268,7 @@ export default function GameTable({
           playSfx("turn");
           setTimeout(
             () => setBanner((b) => (b && b.key === k ? null : b)),
-            1100
+            1700
           );
           break;
         }
@@ -280,7 +283,7 @@ export default function GameTable({
     });
     if (shakeBump) {
       setHitShake((n) => n + 1);
-      setTimeout(() => setHitShake((n) => Math.max(0, n - 1)), 360);
+      setTimeout(() => setHitShake((n) => Math.max(0, n - 1)), 480);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state && state.fx]);
@@ -298,8 +301,10 @@ export default function GameTable({
           applyState(playCard(s, "p1", act.instId, act.target));
         else if (act.type === "attack")
           applyState(declareAttackers(s, "p1", act.attackerIds));
+        else if (act.type === "discard")
+          applyState(discardCard(s, "p1", act.instId));
         else applyState(endTurn(s, "p1"));
-      }, 950);
+      }, 1500);
     } else if (
       state.phase === "block" &&
       state.combat &&
@@ -309,7 +314,7 @@ export default function GameTable({
         const s = stateRef.current;
         if (!s || s.phase !== "block") return;
         applyState(confirmBlocks(s, "p1", aiBlocks(s, "p1")));
-      }, 1300);
+      }, 1900);
     }
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -373,6 +378,12 @@ export default function GameTable({
 
   const onHandCard = (hc) => {
     if (!canMainAct) return;
+    // discard mode: tapping a card throws it away until under the cap
+    if (discarding || me.hand.length > HAND_CAP) {
+      applyState(discardCard(state, mySide, hc.instId));
+      if (me.hand.length - 1 <= HAND_CAP) setDiscarding(false);
+      return;
+    }
     const card = getCard(hc.cardId);
     if (!canPlay(state, mySide, hc.instId)) {
       reject(hc.instId);
@@ -425,12 +436,19 @@ export default function GameTable({
     }
     if (canBlockNow && blkAtk) {
       setBlocks((b) => {
-        const nb = { ...b };
-        for (const k of Object.keys(nb)) if (nb[k] === cr.instId) delete nb[k];
-        nb[blkAtk] = cr.instId;
+        const nb = {};
+        // a creature can only block one attacker → drop it elsewhere
+        for (const k of Object.keys(b))
+          nb[k] = (b[k] || []).filter((x) => x !== cr.instId);
+        const cur = nb[blkAtk] || [];
+        nb[blkAtk] = cur.includes(cr.instId)
+          ? cur.filter((x) => x !== cr.instId) // tap again = unassign
+          : [...cur, cr.instId];               // add another blocker
+        for (const k of Object.keys(nb))
+          if (!nb[k] || !nb[k].length) delete nb[k];
         return nb;
       });
-      setBlkAtk(null);
+      // keep the attacker selected so more blockers can be added
       return;
     }
     if (canMainAct && canAttack(state, mySide, cr.instId)) {
@@ -473,9 +491,15 @@ export default function GameTable({
 
   const doEndTurn = () => {
     if (!canMainAct) return;
+    if (me.hand.length > HAND_CAP) {
+      setDiscarding(true);
+      setHandOpen(true);
+      return;
+    }
     applyState(endTurn(state, mySide));
     setSel(null);
     setAttackers([]);
+    setDiscarding(false);
   };
 
   const doForfeit = () => {
@@ -513,9 +537,11 @@ export default function GameTable({
   const statusLine = winner
     ? "Partita conclusa"
     : canBlockNow
-    ? "Dichiara i tuoi bloccanti"
+    ? "Dichiara i bloccanti (anche più di uno)"
     : iAmAttackerWaiting
     ? "Attendi i bloccanti avversari…"
+    : canMainAct && me.hand.length > HAND_CAP
+    ? `Scarta ${me.hand.length - HAND_CAP} carta/e`
     : canMainAct
     ? "È il tuo turno"
     : isAi
@@ -566,8 +592,23 @@ export default function GameTable({
     );
   };
 
+  const overCap = canMainAct ? me.hand.length - HAND_CAP : 0;
+
   const RailAction = () => {
     if (winner) return null;
+    if (overCap > 0) {
+      return (
+        <button
+          className="tcg-bigbtn tcg-bigbtn--discard"
+          onClick={() => {
+            setDiscarding(true);
+            setHandOpen(true);
+          }}
+        >
+          🗑️ SCARTA{"\n"}({overCap})
+        </button>
+      );
+    }
     if (canBlockNow) {
       return (
         <>
@@ -706,7 +747,9 @@ export default function GameTable({
                 creature={ls}
                 selected={attackers.includes(cr.instId)}
                 playable={canAtk}
-                blocking={Object.values(blocks).includes(cr.instId)}
+                blocking={Object.values(blocks).some((arr) =>
+                  (arr || []).includes(cr.instId)
+                )}
                 targetable={
                   sel &&
                   selCard?.type === "spell" &&
@@ -737,27 +780,33 @@ export default function GameTable({
       </div>
 
       {/* my hand — grouped on the right; first tap fans it open */}
-      <div className={`tcg-fan tcg-fan--me${handOpen ? " is-open" : ""}`}>
+      {(() => {
+        const discardMode = discarding || overCap > 0;
+        const fanOpen = handOpen || discardMode;
+        return (
+      <div className={`tcg-fan tcg-fan--me${fanOpen ? " is-open" : ""}`}>
         {me.hand.length === 0 && (
           <span className="tcg-fan__empty">Mano vuota</span>
         )}
         {me.hand.map((h, i) => {
           const card = getCard(h.cardId);
-          const playable = canMainAct && canPlay(state, mySide, h.instId);
+          const playable = canMainAct && !discardMode &&
+            canPlay(state, mySide, h.instId);
           return (
             <div
               key={h.instId}
               className="tcg-fan__slot"
-              style={fanStyle(i, me.hand.length, handOpen)}
+              style={fanStyle(i, me.hand.length, fanOpen)}
             >
               <CardView
                 card={card}
                 variant="hand"
                 selected={sel === h.instId}
                 playable={playable}
+                discard={discardMode}
                 shake={shake === h.instId}
                 onClick={() =>
-                  handOpen ? onHandCard(h) : setHandOpen(true)
+                  fanOpen ? onHandCard(h) : setHandOpen(true)
                 }
                 onInspect={setInspect}
               />
@@ -765,6 +814,8 @@ export default function GameTable({
           );
         })}
       </div>
+        );
+      })()}
 
       {/* floating pods */}
       <div className="tcg-pod-slot tcg-pod-slot--foe">
