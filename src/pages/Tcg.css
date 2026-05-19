@@ -1093,20 +1093,28 @@
 /* a thin rarity frame on the card */
 .tcg-card { box-shadow: 0 5px 12px rgba(0,0,0,.55), inset 0 0 0 1px var(--rar, transparent); }
 
-/* enlarged: card on the left, ability floating to the side */
+/* enlarged: card and ability ALWAYS side-by-side (never stacked under
+   the card) so the full card always fits the visible height — in real
+   landscape AND in the forced-landscape (rotated phone) view. */
 .tcg-detailwrap {
-  display: flex; align-items: center; justify-content: center;
-  gap: clamp(14px, 3vw, 40px); max-width: 96vw; flex-wrap: wrap;
+  display: flex; flex-direction: row; flex-wrap: nowrap;
+  align-items: center; justify-content: center;
+  gap: clamp(12px, 2.4vw, 36px); max-width: 96vw; width: 100%;
 }
 .tcg-card--detail {
-  width: clamp(240px, 34vh, 460px);
   flex: 0 0 auto;
+  width: auto;
+  /* cap by BOTH axes so it fits whichever is the short visible side
+     (vw is the short side after the landscape rotation, vh otherwise) */
+  height: min(74vw, 82vh, 540px);
+  aspect-ratio: 63 / 88;
 }
 .tcg-aside {
-  flex: 0 1 380px; max-width: 440px; align-self: center;
+  flex: 1 1 340px; min-width: 0; max-width: 440px; align-self: center;
+  max-height: min(74vw, 82vh, 540px); overflow-y: auto;
   background: rgba(14,10,6,.66); backdrop-filter: blur(2px);
   border: 1px solid var(--line); border-radius: 14px;
-  padding: 18px 22px; color: var(--ink);
+  padding: 16px 18px; color: var(--ink);
   box-shadow: 0 10px 30px rgba(0,0,0,.6);
   animation: tcg-asidein .25s ease;
 }
@@ -1137,10 +1145,11 @@
   font-size: clamp(12px, 1.3vw, 15px); margin: 6px 0 0;
 }
 @media (max-width: 720px) {
-  .tcg-detailwrap { flex-direction: column; gap: 12px; }
-  .tcg-card--detail { width: min(54vw, 240px); }
-  .tcg-aside { flex-basis: auto; max-width: 90vw; padding: 12px 14px; }
-  .tcg-aside__rule { font-size: 15px; }
+  /* stay side-by-side — just tighten spacing/sizes on small screens */
+  .tcg-detailwrap { gap: 10px; }
+  .tcg-aside { flex-basis: 230px; padding: 10px 12px; }
+  .tcg-aside__rule { font-size: 14px; }
+  .tcg-aside__name { font-size: clamp(16px, 4.5vw, 22px); }
 }
 
 /* a zoom (enlarge) affordance on collection / deck grid cells */
