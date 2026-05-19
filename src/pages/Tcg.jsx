@@ -31,14 +31,17 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 const AI_COINS = { win: 30, lose: 10, draw: 15 };
 const PVP_COINS = { win: 60, lose: 20, draw: 25 };
 
-function useNeedsRotate() {
+// True when the physical device is held in portrait on a phone-sized
+// screen. We don't ask the user to rotate — instead the whole board is
+// rotated 90° via CSS so the game is ALWAYS played in landscape.
+function useIsPortrait() {
   const get = () =>
     typeof window !== "undefined" &&
     window.innerHeight > window.innerWidth &&
     window.innerWidth < 820;
-  const [need, setNeed] = useState(get);
+  const [portrait, setPortrait] = useState(get);
   useEffect(() => {
-    const on = () => setNeed(get());
+    const on = () => setPortrait(get());
     window.addEventListener("resize", on);
     window.addEventListener("orientationchange", on);
     return () => {
@@ -46,12 +49,12 @@ function useNeedsRotate() {
       window.removeEventListener("orientationchange", on);
     };
   }, []);
-  return need;
+  return portrait;
 }
 
 export default function Tcg() {
   const { currentUser } = useAuth();
-  const needsRotate = useNeedsRotate();
+  const isPortrait = useIsPortrait();
 
   const [pName, setPName] = useState(currentUser?.displayName || "Sfidante");
   const [profile, setProfile] = useState(null);
@@ -174,15 +177,13 @@ export default function Tcg() {
     );
   }
 
+  // During the game (anything but the menu) we FORCE landscape: if the
+  // device is physically in portrait, the board is rotated 90° by CSS
+  // so the player never has to rotate the phone themselves.
+  const forceLandscape = isPortrait && screen !== "menu";
+
   return (
-    <div className="tcg-page">
-      {needsRotate && screen !== "menu" && (
-        <div className="tcg-rotate" role="alertdialog" aria-label="Ruota il dispositivo">
-          <div className="tcg-rotate__icon">📱↻</div>
-          <h2>Ruota il dispositivo</h2>
-          <p>Questo gioco si gioca in orizzontale.</p>
-        </div>
-      )}
+    <div className={`tcg-page${forceLandscape ? " tcg-page--force-landscape" : ""}`}>
 
       {screen === "menu" && (
         <ModeSelect

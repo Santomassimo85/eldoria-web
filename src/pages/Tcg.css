@@ -72,15 +72,24 @@
 }
 .tcg-btn--ghost { background: transparent; opacity: 0.8; }
 
-/* ---------- rotate / locked / loading ---------- */
-.tcg-rotate {
-  position: fixed; inset: 0; z-index: 9000;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 14px; text-align: center; background: #0c0a07;
+/* ---------- forced landscape / locked / loading ---------- */
+/* When the device is in portrait during a game we don't prompt the
+   player to rotate — we rotate the whole board for them so it is
+   ALWAYS displayed in landscape. The page is sized to the *swapped*
+   viewport (width = 100vh, height = 100vw) then rotated -90°. */
+.tcg-page--force-landscape {
+  width: 100vh;
+  height: 100vw;
+  /* override the `inset: 0` from .tcg-page so right/bottom don't fight
+     the explicit size after the rotation */
+  right: auto;
+  bottom: auto;
+  transform-origin: top left;
+  transform: rotate(-90deg) translate(-100vh, 0);
+  /* viewport vw/vh are swapped once rotated, so swap them back here
+     to keep the card width scaled to the *effective* landscape space */
+  --cw: clamp(68px, min(9.4vh, 19vw), 200px);
 }
-.tcg-rotate__icon { font-size: 64px; animation: tcg-rot 2s ease-in-out infinite; }
-@keyframes tcg-rot { 0%,40% { transform: rotate(0); } 60%,100% { transform: rotate(-90deg); } }
 .tcg-locked {
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
