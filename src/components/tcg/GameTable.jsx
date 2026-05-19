@@ -147,11 +147,13 @@ export default function GameTable({
   const [ghosts, setGhosts] = useState([]);
   const [emoteBubble, setEmoteBubble] = useState(null);
   const [arrows, setArrows] = useState([]);
+  // exact pixel size of the table → SVG viewBox, so arrow coords
+  // (computed in table-px) map 1:1 and never "wrap" off-canvas
+  const [svgBox, setSvgBox] = useState({ w: 0, h: 0 });
   // combat cinematic: creatures crumbling + cards being struck
   const [dyingIds, setDyingIds] = useState([]);
   const [combatShake, setCombatShake] = useState([]);
   const tableRef = useRef(null);
-  const arrowSeq = useRef(0);
   const lastFx = useRef(0);
   const fxReady = useRef(isAi);
   const floatSeq = useRef(0);
@@ -323,6 +325,12 @@ export default function GameTable({
       return;
     }
     const rect = root.getBoundingClientRect();
+    setSvgBox((b) =>
+      Math.round(b.w) === Math.round(rect.width) &&
+      Math.round(b.h) === Math.round(rect.height)
+        ? b
+        : { w: rect.width, h: rect.height }
+    );
     const C = (sel) => centerOf(sel, rect);
     const out = [];
 
@@ -1130,8 +1138,15 @@ export default function GameTable({
         ))}
       </div>
 
-      {arrows.length > 0 && (
-        <svg className="tcg-arrows" aria-hidden="true">
+      {arrows.length > 0 && svgBox.w > 0 && (
+        <svg
+          className="tcg-arrows"
+          aria-hidden="true"
+          width={svgBox.w}
+          height={svgBox.h}
+          viewBox={`0 0 ${svgBox.w} ${svgBox.h}`}
+          preserveAspectRatio="none"
+        >
           <defs>
             <marker id="ah-atk" markerWidth="26" markerHeight="26"
               refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
