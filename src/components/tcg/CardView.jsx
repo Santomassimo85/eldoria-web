@@ -79,6 +79,7 @@ export default function CardView({
   playable = false,
   targetable = false,
   discard = false,
+  foil = false,
   faceDown = false,
   cover = null,
   attacking = false,
@@ -144,6 +145,7 @@ export default function CardView({
     playable && "is-playable",
     targetable && "is-targetable",
     discard && "is-discard",
+    foil && "is-foil",
     attacking && "is-attacking",
     blocking && "is-blocking",
     dying && "is-dying",
@@ -217,6 +219,7 @@ export default function CardView({
           </div>
         )}
       </div>
+      {foil && <span className="tcg-card__foil" aria-hidden="true" />}
     </div>
   );
 

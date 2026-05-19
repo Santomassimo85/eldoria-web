@@ -97,10 +97,22 @@ export const RARITY_COLOR = {
   epic: "#b061e0",
   legendary: "#eaa83a",
 };
-/* pack pull weights (higher tier = rarer) */
+/* pack pull weights (higher tier = rarer) — kept for any legacy use */
 export const RARITY_WEIGHT = {
   common: 46, uncommon: 27, rare: 16, epic: 8, legendary: 3,
 };
+
+/* FIXED pack odds — identical for every element so the displayed
+   percentages are exact. Premium packs (light / darkness) have a
+   LOWER legendary chance (rolled into epic). Each table sums to 1. */
+export const RARITY_ODDS = {
+  common: 0.42, uncommon: 0.30, rare: 0.17, epic: 0.08, legendary: 0.03,
+};
+export const RARITY_ODDS_PREMIUM = {
+  common: 0.42, uncommon: 0.30, rare: 0.17, epic: 0.105, legendary: 0.005,
+};
+/* every drawn card has this tiny independent chance to be FOIL */
+export const FOIL_CHANCE = 0.02;
 
 const LEGENDARY_IDS = new Set([
   "reddragon", "lich", "balor", "kraken", "solar", "mummylord",
@@ -116,17 +128,61 @@ const RARITY_BY_ARTIFACT = {
   a_blade: "uncommon", a_amulet: "uncommon", a_ring: "uncommon",
 };
 
-function rarityFor(card) {
-  if (card.type === "land") return "common";
-  if (LEGENDARY_IDS.has(card.id)) return "legendary";
-  if (card.type === "spell") return RARITY_BY_SPELL[card.id] || "common";
-  if (card.type === "artifact") return RARITY_BY_ARTIFACT[card.id] || "uncommon";
-  // creatures: by cmc + body
-  const body = (card.power || 0) + (card.toughness || 0);
-  if (card.cmc >= 5 || body >= 13) return "epic";
-  if (card.cmc >= 4 || body >= 10) return "rare";
-  if (card.cmc >= 2) return "uncommon";
-  return "common";
+/* a rough "power level" used only to ORDER cards inside an element so
+   the strongest ones land in the higher rarity tiers. */
+const RAR_TIER_NUM = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+function strengthScore(card) {
+  if (LEGENDARY_IDS.has(card.id)) return 1000;
+  if (card.type === "spell")
+    return 8 + RAR_TIER_NUM[RARITY_BY_SPELL[card.id] || "common"] * 6 + card.cmc;
+  if (card.type === "artifact")
+    return 8 + RAR_TIER_NUM[RARITY_BY_ARTIFACT[card.id] || "uncommon"] * 6 + card.cmc;
+  // creatures: mana value weighs most, body adds a little
+  return card.cmc * 6 + ((card.power || 0) + (card.toughness || 0));
+}
+
+/* Assign rarities PER ELEMENT so every colour owns at least one card of
+   every tier (common → legendary). Cards are sorted weakest→strongest
+   inside their element and split into the five tiers. */
+function computeRarities(raw) {
+  const out = {};
+  const byEl = {};
+  for (const c of raw) {
+    if (c.type === "land") { out[c.id] = "common"; continue; }
+    (byEl[c.element] ||= []).push(c);
+  }
+  // target share of each tier (must keep ≥1 of each per element)
+  const SHARE = { common: 0.34, uncommon: 0.30, rare: 0.20, epic: 0.11, legendary: 0.05 };
+  for (const el of Object.keys(byEl)) {
+    const list = byEl[el].slice().sort(
+      (a, b) => strengthScore(a) - strengthScore(b) || a.cmc - b.cmc
+    );
+    const n = list.length;
+    // base count per tier, at least 1
+    const counts = {};
+    let used = 0;
+    for (const r of RARITY_ORDER) {
+      counts[r] = Math.max(1, Math.round(n * SHARE[r]));
+      used += counts[r];
+    }
+    // reconcile rounding so the counts sum to exactly n
+    let diff = n - used;
+    const adjOrder = ["common", "uncommon", "rare", "epic", "legendary"];
+    while (diff !== 0) {
+      for (const r of adjOrder) {
+        if (diff === 0) break;
+        if (diff > 0) { counts[r] += 1; diff -= 1; }
+        else if (counts[r] > 1) { counts[r] -= 1; diff += 1; }
+      }
+    }
+    // walk weakest→strongest filling common…legendary
+    let i = 0;
+    for (const r of RARITY_ORDER)
+      for (let k = 0; k < counts[r] && i < n; k++, i++) out[list[i].id] = r;
+    // force the canonical legendaries to legendary regardless
+    for (const c of list) if (LEGENDARY_IDS.has(c.id)) out[c.id] = "legendary";
+  }
+  return out;
 }
 
 /* ---- cost derivation ----
@@ -494,10 +550,13 @@ const KEYWORDS_BY_ID = {
   manacrystal: ["defender"],
 };
 
+/* element-aware rarity table (every colour gets all 5 tiers) */
+const RARITY_BY_ID = computeRarities(RAW);
+
 /* attach rarity + keywords to every card */
 function finalize(card) {
   const c = { ...card };
-  c.rarity = card.rarity || rarityFor(card);
+  c.rarity = card.rarity || RARITY_BY_ID[card.id] || "common";
   if (c.type === "creature")
     c.keywords = card.keywords || KEYWORDS_BY_ID[card.id] || [];
   else c.keywords = [];

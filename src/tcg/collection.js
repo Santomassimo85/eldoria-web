@@ -21,7 +21,7 @@ import {
 import { db } from "../firebase.js";
 import {
   POOL, LANDS, ELEMENTS, ELEMENT_LABEL, getCard, DECK_SIZE, buildDeck, isLand,
-  RARITY_WEIGHT,
+  RARITY_ORDER, RARITY_ODDS, RARITY_ODDS_PREMIUM, FOIL_CHANCE,
 } from "./cards.js";
 
 export const STARTER_ELEMENTS = ["fire", "water", "air", "nature"];
@@ -52,6 +52,8 @@ export function profileFromDoc(data) {
       d.tcgCollection && typeof d.tcgCollection === "object"
         ? { ...d.tcgCollection }
         : {},
+    foils:
+      d.tcgFoil && typeof d.tcgFoil === "object" ? { ...d.tcgFoil } : {},
     deck: Array.isArray(d.tcgDeck) ? d.tcgDeck.slice() : null,
     starterClaimed: !!d.tcgStarterClaimed,
     starterElement: typeof d.tcgStarterElement === "string" ? d.tcgStarterElement : null,
@@ -213,6 +215,27 @@ export function getPack(packId) {
   return PACKS.find((p) => p.id === packId) || null;
 }
 
+/* FIXED pull odds for a pack — identical for every element so the
+   shown percentages are exact. Premium packs lower the legendary
+   chance. `foil` is the independent per-card foil chance. */
+export function packRarityOdds(packId) {
+  const pack = getPack(packId);
+  if (!pack) return {};
+  const base = pack.premium ? RARITY_ODDS_PREMIUM : RARITY_ODDS;
+  return { ...base, foil: FOIL_CHANCE };
+}
+
+/* pick a rarity from a {rarity: prob} table */
+function rollRarity(odds) {
+  const r = Math.random();
+  let acc = 0;
+  for (const tier of RARITY_ORDER) {
+    acc += odds[tier] || 0;
+    if (r < acc) return tier;
+  }
+  return "common";
+}
+
 export async function openPack(uid, packId) {
   if (!uid) return { ok: false, reason: "auth" };
   const pack = getPack(packId);
@@ -222,23 +245,44 @@ export async function openPack(uid, packId) {
   const p = profileFromDoc(snap.exists() ? snap.data() : {});
   if (p.coins < pack.cost) return { ok: false, reason: "coins" };
 
-  // ONLY this element's cards, weighted by rarity (rarer = lower odds)
+  // this element's cards, grouped by rarity
   const inEl = POOL.filter((id) => getCard(id).element === pack.element);
   const pool = inEl.length ? inEl : POOL;
-  const weighted = [];
-  for (const id of pool) {
-    const w = RARITY_WEIGHT[getCard(id).rarity] || 1;
-    for (let k = 0; k < w; k++) weighted.push(id);
+  const byRar = {};
+  for (const id of pool) (byRar[getCard(id).rarity] ||= []).push(id);
+  const odds = pack.premium ? RARITY_ODDS_PREMIUM : RARITY_ODDS;
+
+  const cards = []; // [{ id, foil }]
+  for (let i = 0; i < pack.size; i++) {
+    // roll a rarity, then a random card of that rarity (fall back to
+    // the nearest non-empty tier if this element lacks it)
+    let tier = rollRarity(odds);
+    if (!byRar[tier] || !byRar[tier].length) {
+      const order = RARITY_ORDER.slice().sort(
+        (a, b) =>
+          Math.abs(RARITY_ORDER.indexOf(a) - RARITY_ORDER.indexOf(tier)) -
+          Math.abs(RARITY_ORDER.indexOf(b) - RARITY_ORDER.indexOf(tier))
+      );
+      tier = order.find((t) => byRar[t] && byRar[t].length) || "common";
+    }
+    const bucket = byRar[tier] || pool;
+    const id = bucket[Math.floor(Math.random() * bucket.length)];
+    cards.push({ id, foil: Math.random() < FOIL_CHANCE });
   }
-  const cards = [];
-  for (let i = 0; i < pack.size; i++)
-    cards.push(weighted[Math.floor(Math.random() * weighted.length)]);
 
   const collection = { ...p.collection };
-  for (const id of cards) collection[id] = (collection[id] || 0) + 1;
+  const foils = { ...(p.foils || {}) };
+  for (const c of cards) {
+    collection[c.id] = (collection[c.id] || 0) + 1;
+    if (c.foil) foils[c.id] = (foils[c.id] || 0) + 1;
+  }
   const coins = p.coins - pack.cost;
 
-  await patch(uid, { tcgCoins: coins, tcgCollection: collection });
+  await patch(uid, {
+    tcgCoins: coins,
+    tcgCollection: collection,
+    tcgFoil: foils,
+  });
   return { ok: true, cards, coins };
 }
 
@@ -272,6 +316,7 @@ export async function resetAllTcg() {
   // cards/deck and re-opens the one-time starter choice.
   const fields = {
     tcgCollection: deleteField(),
+    tcgFoil: deleteField(),
     tcgDeck: deleteField(),
     tcgStarterClaimed: deleteField(),
     tcgStarterElement: deleteField(),

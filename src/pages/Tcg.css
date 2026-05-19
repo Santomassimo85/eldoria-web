@@ -446,11 +446,14 @@
    ============================================================ */
 .tcg-card {
   --type-col: var(--c-creature);
+  --rar: var(--gold); /* fallback; CardView sets the real rarity colour */
   position: relative; aspect-ratio: 63 / 88;
   border-radius: 9px;
-  background: linear-gradient(150deg, var(--type-col), #14100b 78%);
-  border: 1px solid rgba(0,0,0,.6);
-  box-shadow: 0 5px 12px rgba(0,0,0,.55);
+  /* the card frame is tinted by RARITY, not card type */
+  background: linear-gradient(150deg, var(--rar), #14100b 80%);
+  border: 1px solid color-mix(in srgb, var(--rar) 60%, #000);
+  box-shadow: 0 5px 12px rgba(0,0,0,.55),
+              0 0 0 1px color-mix(in srgb, var(--rar) 40%, transparent) inset;
   z-index: 20; cursor: pointer; flex: 0 0 auto;
   transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
 }
@@ -485,7 +488,10 @@
 .tcg-card__top {
   display: flex; align-items: center; justify-content: space-between; gap: 4px;
   padding: 3px 5px; color: #fff;
-  background: linear-gradient(var(--type-col), rgba(0,0,0,.18));
+  /* rarity-tinted header (darkened so the white name stays readable) */
+  background: linear-gradient(
+    color-mix(in srgb, var(--rar) 70%, #000),
+    rgba(0,0,0,.25));
 }
 .tcg-card__name {
   font-size: clamp(9px, 1.12vw, 15px); font-weight: 700;
@@ -568,6 +574,44 @@
   0%,100% { box-shadow: 0 0 0 2px var(--bad), 0 0 12px rgba(226,72,58,.6); }
   50% { box-shadow: 0 0 0 2px #ff6a5a, 0 0 26px rgba(226,72,58,1); }
 }
+/* ---- FOIL: rare holographic finish ---- */
+.tcg-card.is-foil {
+  box-shadow: 0 5px 12px rgba(0,0,0,.55),
+              0 0 14px rgba(255,255,255,.45),
+              0 0 0 2px rgba(255,255,255,.55);
+}
+.tcg-card__foil {
+  position: absolute; inset: 0; border-radius: 9px;
+  pointer-events: none; z-index: 25;
+  mix-blend-mode: color-dodge; opacity: .55;
+  background: linear-gradient(115deg,
+    transparent 20%,
+    rgba(255,0,128,.55) 35%, rgba(80,200,255,.55) 45%,
+    rgba(120,255,160,.55) 55%, rgba(255,210,90,.55) 65%,
+    transparent 80%);
+  background-size: 280% 280%;
+  animation: tcg-foil-shift 3.4s linear infinite;
+}
+@keyframes tcg-foil-shift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 280% 280%; }
+}
+.tcg-flip__foil {
+  position: absolute; top: 6px; left: 6px; z-index: 6;
+  font-size: 10px; font-weight: 800; letter-spacing: .5px;
+  padding: 2px 7px; border-radius: 999px; color: #1a1206;
+  background: linear-gradient(90deg,#ffe7a0,#a0e7ff,#e7a0ff,#ffe7a0);
+  background-size: 300% 100%;
+  animation: tcg-foil-tag 2.4s linear infinite;
+}
+@keyframes tcg-foil-tag { to { background-position: 300% 0; } }
+.tcg-packcard__odot--foil {
+  background: linear-gradient(90deg,#ffe7a0,#a0e7ff,#e7a0ff,#ffe7a0);
+  background-size: 300% 100%;
+  animation: tcg-foil-tag 2.4s linear infinite;
+}
+.tcg-packcard__ofoil { margin-top: 2px; padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,.12); }
 .tcg-card.is-attacking {
   box-shadow: 0 0 22px var(--bad); z-index: 36;
   animation: tcg-lunge-me 1.7s ease;
@@ -1078,6 +1122,20 @@
   color: #1c1405; background: var(--pip);
   border-radius: 999px; padding: 2px 8px;
 }
+.tcg-packcard__odds {
+  list-style: none; margin: 0; padding: 6px 0 2px;
+  width: 100%; display: flex; flex-direction: column; gap: 3px;
+  font-size: 11px;
+}
+.tcg-packcard__odds li {
+  display: flex; align-items: center; gap: 6px;
+}
+.tcg-packcard__odot {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
+  box-shadow: 0 0 4px currentColor;
+}
+.tcg-packcard__olabel { flex: 1 1 auto; opacity: .85; }
+.tcg-packcard__opct { font-weight: 700; font-variant-numeric: tabular-nums; }
 .tcg-packcard__buy { width: 100%; }
 
 .tcg-master {

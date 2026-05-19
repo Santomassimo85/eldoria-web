@@ -4,8 +4,11 @@
 import React, { useState } from "react";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
-import { getCard, ELEMENT_ICON, ELEMENT_PIP, RARITY_COLOR, RARITY_LABEL } from "../../tcg/cards.js";
-import { PACKS } from "../../tcg/collection.js";
+import {
+  getCard, ELEMENT_ICON, ELEMENT_PIP, RARITY_COLOR, RARITY_LABEL,
+  RARITY_ORDER,
+} from "../../tcg/cards.js";
+import { PACKS, packRarityOdds } from "../../tcg/collection.js";
 
 export default function Shop({ profile, onOpenPack, onBack }) {
   const [busy, setBusy] = useState(false);
@@ -69,9 +72,9 @@ export default function Shop({ profile, onOpenPack, onBack }) {
             </div>
           </div>
           <div className="tcg-reveal__grid">
-            {revealed.cards.map((id, i) => {
+            {revealed.cards.map((cd, i) => {
               const open = flipped.has(i);
-              const c = getCard(id);
+              const c = getCard(cd.id);
               return (
                 <div
                   key={i}
@@ -84,7 +87,8 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                       <CardView variant="back" cover={cover} />
                     </div>
                     <div className="tcg-flip__front">
-                      <CardView card={c} variant="board" />
+                      <CardView card={c} variant="board" foil={cd.foil} />
+                      {cd.foil && <span className="tcg-flip__foil">✨ FOIL</span>}
                       <span
                         className="tcg-flip__rar"
                         style={{ background: RARITY_COLOR[c.rarity] }}
@@ -117,8 +121,11 @@ export default function Shop({ profile, onOpenPack, onBack }) {
         {msg && <p className="tcg-shop__msg">{msg}</p>}
         <p className="tcg-shop__intro">
           Ogni pacchetto contiene <b>{PACKS[0].size} carte</b> di un{" "}
-          <b>solo elemento</b>, con rarità casuale (più alta è la rarità, più
-          è difficile). Le monete si guadagnano in battaglia.
+          <b>solo elemento</b>. Le probabilità di rarità sono <b>uguali per
+          tutti i pacchetti</b> (i Premium hanno una chance di Leggendaria più
+          bassa) e sono indicate su ogni pacchetto. Ogni carta ha una piccola
+          probabilità di essere <b>✨ Foil</b>. Le monete si guadagnano in
+          battaglia.
         </p>
 
         <div className="tcg-shop__grid">
@@ -133,6 +140,34 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                 <div className="tcg-packcard__art">{ELEMENT_ICON[pk.element]}</div>
                 <div className="tcg-packcard__name">{pk.name}</div>
                 {pk.premium && <div className="tcg-packcard__tag">Premium</div>}
+                {(() => {
+                  const odds = packRarityOdds(pk.id);
+                  return (
+                    <ul className="tcg-packcard__odds">
+                      {RARITY_ORDER.filter((r) => odds[r] > 0).map((r) => (
+                        <li key={r}>
+                          <span
+                            className="tcg-packcard__odot"
+                            style={{ background: RARITY_COLOR[r] }}
+                          />
+                          <span className="tcg-packcard__olabel">
+                            {RARITY_LABEL[r]}
+                          </span>
+                          <span className="tcg-packcard__opct">
+                            {(odds[r] * 100).toFixed(1)}%
+                          </span>
+                        </li>
+                      ))}
+                      <li className="tcg-packcard__ofoil">
+                        <span className="tcg-packcard__odot tcg-packcard__odot--foil" />
+                        <span className="tcg-packcard__olabel">✨ Foil</span>
+                        <span className="tcg-packcard__opct">
+                          {(odds.foil * 100).toFixed(1)}%
+                        </span>
+                      </li>
+                    </ul>
+                  );
+                })()}
                 <button
                   className="tcg-btn tcg-btn--primary tcg-packcard__buy"
                   disabled={!afford}

@@ -9,6 +9,7 @@ import { deckCounts } from "../../tcg/collection.js";
 
 export default function Collection({ profile, onBack }) {
   const collection = useMemo(() => profile?.collection || {}, [profile]);
+  const foils = useMemo(() => profile?.foils || {}, [profile]);
   const deck = useMemo(() => profile?.deck || [], [profile]);
   const [filter, setFilter] = useState("all"); // all | <element>
   const [zoom, setZoom] = useState(null);
@@ -114,11 +115,13 @@ export default function Collection({ profile, onBack }) {
             <CardView
               card={getCard(id)}
               variant="board"
+              foil={(foils[id] || 0) > 0}
               onInspect={setZoom}
               onClick={() => setZoom(getCard(id))}
             />
             <span className="tcg-grid__count">
               ×{collection[id]}{dc[id] ? ` · mazzo ${dc[id]}` : ""}
+              {foils[id] ? ` · ✨${foils[id]}` : ""}
             </span>
           </div>
         ))}
