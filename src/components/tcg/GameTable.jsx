@@ -128,6 +128,8 @@ export default function GameTable({
   const [blocks, setBlocks] = useState({});
   const [shake, setShake] = useState(null);
   const [inspect, setInspect] = useState(null);
+  // hand starts grouped/closed on the right; first tap fans it open
+  const [handOpen, setHandOpen] = useState(false);
 
   const [floats, setFloats] = useState([]);
   const [burst, setBurst] = useState(null);
@@ -379,6 +381,7 @@ export default function GameTable({
     if (card.type === "land") {
       applyState(playCard(state, mySide, hc.instId));
       setSel(null);
+      setHandOpen(false);
       return;
     }
     const needsTarget =
@@ -392,6 +395,7 @@ export default function GameTable({
     if (sel === hc.instId) {
       applyState(playCard(state, mySide, hc.instId, null));
       setSel(null);
+      setHandOpen(false);
     } else {
       setSel(hc.instId);
       setAttackers([]);
@@ -410,6 +414,7 @@ export default function GameTable({
     }
     applyState(playCard(state, mySide, sel, target));
     setSel(null);
+    setHandOpen(false);
     return true;
   };
 
@@ -522,10 +527,20 @@ export default function GameTable({
   const targetableMeHero =
     sel && selCard?.type === "spell" && tg.heroes.includes(mySide);
 
-  const fanStyle = (i, n) => {
+  const fanStyle = (i, n, open = true) => {
     if (n <= 1) return {};
     const mid = (n - 1) / 2;
     const off = i - mid;
+    if (!open) {
+      // closed: a tight, almost-square stack tilted slightly right
+      return {
+        transform: `rotate(${off * 1.4}deg) translateY(${
+          -Math.abs(off) * 1.2
+        }px)`,
+        transformOrigin: "bottom center",
+        zIndex: 30 + i,
+      };
+    }
     const spread = Math.min(4, 16 / n);
     return {
       transform: `rotate(${off * spread}deg) translateY(${
@@ -721,8 +736,8 @@ export default function GameTable({
         </div>
       </div>
 
-      {/* my hand */}
-      <div className="tcg-fan tcg-fan--me">
+      {/* my hand — grouped on the right; first tap fans it open */}
+      <div className={`tcg-fan tcg-fan--me${handOpen ? " is-open" : ""}`}>
         {me.hand.length === 0 && (
           <span className="tcg-fan__empty">Mano vuota</span>
         )}
@@ -733,7 +748,7 @@ export default function GameTable({
             <div
               key={h.instId}
               className="tcg-fan__slot"
-              style={fanStyle(i, me.hand.length)}
+              style={fanStyle(i, me.hand.length, handOpen)}
             >
               <CardView
                 card={card}
@@ -741,7 +756,9 @@ export default function GameTable({
                 selected={sel === h.instId}
                 playable={playable}
                 shake={shake === h.instId}
-                onClick={() => onHandCard(h)}
+                onClick={() =>
+                  handOpen ? onHandCard(h) : setHandOpen(true)
+                }
                 onInspect={setInspect}
               />
             </div>

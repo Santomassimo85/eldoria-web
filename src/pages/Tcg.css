@@ -257,17 +257,25 @@
 /* ---- MY HAND — floats on the RIGHT, OVER the battlefield ---- */
 .tcg-fan--me {
   position: absolute;
-  right: clamp(108px, 8vw, 128px); /* clears the action rail */
+  right: clamp(96px, 7vw, 116px); /* clears the action rail */
   bottom: 6px; left: auto;
   align-items: flex-end; justify-content: flex-end;
-  max-width: 68vw; overflow: visible;
+  max-width: 78vw; overflow: visible;
   z-index: 46; /* above field cards, never disturbs the layout */
 }
 .tcg-fan__slot {
   margin: 0 -8px;
   display: flex; align-items: flex-end;
-  transition: transform .16s ease;
+  transition: transform .2s ease, margin .2s ease;
 }
+/* CLOSED (default): cards grouped tight, hugging the right edge so they
+   stay clear of the battlefield. First tap opens the fan. */
+.tcg-fan--me:not(.is-open) .tcg-fan__slot {
+  margin: 0 calc(var(--cw) * -0.42);
+}
+.tcg-fan--me:not(.is-open) { cursor: pointer; }
+/* OPEN: full horizontal spread (the readable view). */
+.tcg-fan--me.is-open .tcg-fan__slot { margin: 0 -6px; }
 .tcg-fan--me .tcg-fan__slot:hover,
 .tcg-fan--me .tcg-fan__slot:focus-within { z-index: 60 !important; }
 .tcg-fan__empty { opacity: .4; font-style: italic; align-self: center; pointer-events: none; }
