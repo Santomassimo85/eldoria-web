@@ -2,7 +2,7 @@
    TCG — GAME ENGINE  (pure, deterministic, JSON-serializable)
    ------------------------------------------------------------
    Magic-style rules, D&D themed:
-     • 20 starting HP, 7-card opening hand, 60-card deck.
+     • 25 starting HP, 7-card opening hand, 60-card deck.
      • MANA = LANDS. You may play at most ONE land per turn from
        hand; lands stay on the battlefield and untap at the start
        of your turn. Each land taps for 1 mana of its element.
@@ -22,7 +22,7 @@
 
 import { getCard, buildDeck, ELEMENTS } from "./cards.js";
 
-export const START_HP = 20;
+export const START_HP = 25;
 export const OPENING_HAND = 6;
 export const HAND_CAP = 7;
 export const SIDES = ["p0", "p1"];

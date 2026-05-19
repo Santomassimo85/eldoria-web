@@ -687,21 +687,34 @@
 
 /* combat arrows: red = attack, blue = defense (who blocks whom) */
 .tcg-arrows {
-  position: absolute; inset: 0; z-index: 39;
+  position: absolute; inset: 0; z-index: 49; /* over hand/rail/pods */
   width: 100%; height: 100%; pointer-events: none; overflow: visible;
 }
 .tcg-arrow {
-  stroke-width: 4; fill: none; stroke-linecap: round;
-  animation: tcg-arrowin .25s ease both;
+  fill: none; stroke-linecap: round;
+  animation: tcg-arrowin .22s ease both;
 }
-/* red = attack going through to the enemy hero (unblocked) */
-.tcg-arrow--atk { stroke: #ff4d3d; filter: drop-shadow(0 0 5px rgba(255,77,61,.9)); }
-/* blue = attack stopped on a defending creature (blocked) */
+/* red = a menacing attack aimed at the enemy (unblocked / declaring) */
+.tcg-arrow--atk {
+  stroke: #ff3a28; stroke-width: 7;
+  filter: drop-shadow(0 0 8px rgba(255,58,40,.95))
+          drop-shadow(0 0 3px rgba(0,0,0,.7));
+  animation: tcg-arrowin .22s ease both, tcg-menace 1s ease-in-out infinite;
+}
+/* blue = attack stopped on a defending creature (who blocks whom) */
 .tcg-arrow--blocked {
-  stroke: #5db4ff;
-  filter: drop-shadow(0 0 5px rgba(93,180,255,.9));
+  stroke: #59b6ff; stroke-width: 5;
+  stroke-dasharray: 10 7;
+  filter: drop-shadow(0 0 6px rgba(89,182,255,.9))
+          drop-shadow(0 0 3px rgba(0,0,0,.6));
+  animation: tcg-arrowin .22s ease both, tcg-dashflow .7s linear infinite;
 }
 @keyframes tcg-arrowin { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tcg-menace {
+  0%,100% { stroke-width: 7; }
+  50%     { stroke-width: 10; }
+}
+@keyframes tcg-dashflow { to { stroke-dashoffset: -34; } }
 .tcg-card.is-blocking { box-shadow: 0 0 0 2px #6db7ff, 0 0 14px #6db7ff; }
 .tcg-card.is-tapped { transform: rotate(90deg) scale(.9); }
 .tcg-card.is-sick { filter: grayscale(.6) brightness(.78); }
@@ -733,7 +746,7 @@
 /* ============================================================
    FX OVERLAYS
    ============================================================ */
-.tcg-floats { position: absolute; inset: 0; pointer-events: none; z-index: 40; }
+.tcg-floats { position: absolute; inset: 0; pointer-events: none; z-index: 52; }
 .tcg-float {
   position: absolute; transform: translate(-50%,-50%);
   font-size: clamp(22px, 3vw, 40px); font-weight: 900;
@@ -741,10 +754,22 @@
 }
 .tcg-float--dmg { color: #ff5a44; }
 .tcg-float--heal { color: #5ee06a; }
+/* combat damage on a card: bigger, slower, lingers so the trade is clear */
+.tcg-float--big {
+  font-size: clamp(30px, 4.4vw, 60px);
+  -webkit-text-stroke: 2px #000;
+  animation: tcg-floatbig 1.8s ease-out forwards;
+}
 @keyframes tcg-floatup {
   0% { opacity: 0; transform: translate(-50%,-30%) scale(.6); }
   20% { opacity: 1; transform: translate(-50%,-55%) scale(1.1); }
   100% { opacity: 0; transform: translate(-50%,-150%) scale(1); }
+}
+@keyframes tcg-floatbig {
+  0%  { opacity: 0; transform: translate(-50%,-30%) scale(.5); }
+  14% { opacity: 1; transform: translate(-50%,-58%) scale(1.25); }
+  78% { opacity: 1; transform: translate(-50%,-78%) scale(1.05); }
+  100%{ opacity: 0; transform: translate(-50%,-118%) scale(.95); }
 }
 
 .tcg-turnbanner {

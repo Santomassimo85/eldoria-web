@@ -11,7 +11,9 @@ export function FloatingLayer({ floats }) {
       {floats.map((f) => (
         <span
           key={f.id}
-          className={`tcg-float tcg-float--${f.tone}`}
+          className={`tcg-float tcg-float--${f.tone}${
+            f.big ? " tcg-float--big" : ""
+          }`}
           style={{ left: f.x + "%", top: f.y + "%" }}
         >
           {f.text}

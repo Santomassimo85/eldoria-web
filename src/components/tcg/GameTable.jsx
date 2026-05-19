@@ -21,7 +21,7 @@ import {
 import {
   playCard, declareAttackers, confirmBlocks, endTurn, forfeit,
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
-  discardCard, HAND_CAP, passPriority,
+  discardCard, HAND_CAP, passPriority, START_HP,
 } from "../../tcg/engine.js";
 import {
   nextAction as aiNext, chooseBlocks as aiBlocks, respondToStack,
@@ -54,7 +54,7 @@ function ManaRow({ lands }) {
    Name, HP bar with the number ON it, mana, and a visible deck
    pile (the player's chosen cover) + hand/graveyard counts. */
 function AvatarPod({ p, top, cover, side, targetable, onClick }) {
-  const pct = Math.max(0, Math.min(100, (p.hp / 20) * 100));
+  const pct = Math.max(0, Math.min(100, (p.hp / START_HP) * 100));
   return (
     <div
       className={`tcg-pod ${top ? "tcg-pod--foe" : "tcg-pod--me"} ${
@@ -147,6 +147,9 @@ export default function GameTable({
   const [ghosts, setGhosts] = useState([]);
   const [emoteBubble, setEmoteBubble] = useState(null);
   const [arrows, setArrows] = useState([]);
+  // combat cinematic: creatures crumbling + cards being struck
+  const [dyingIds, setDyingIds] = useState([]);
+  const [combatShake, setCombatShake] = useState([]);
   const tableRef = useRef(null);
   const arrowSeq = useRef(0);
   const lastFx = useRef(0);
@@ -154,6 +157,8 @@ export default function GameTable({
   const floatSeq = useRef(0);
   const emoteTs = useRef(0);
   const endedRef = useRef(false);
+  const cineRef = useRef(false);
+  const cineTimers = useRef([]);
 
   // award coins / notify exactly once when the game ends
   useEffect(() => {
@@ -183,6 +188,122 @@ export default function GameTable({
     const r = el.getBoundingClientRect();
     return { x: r.left - rect.left + r.width / 2, y: r.top - rect.top + r.height / 2 };
   };
+
+  // damage/heal number pinned to a specific card or hero pod
+  const anchorFloat = (sel, text, tone, big) => {
+    const root = tableRef.current;
+    if (!root) return;
+    const rect = root.getBoundingClientRect();
+    const el = root.querySelector(sel);
+    if (!el || !rect.width) return;
+    const r = el.getBoundingClientRect();
+    const x = ((r.left - rect.left + r.width / 2) / rect.width) * 100;
+    const y = ((r.top - rect.top + r.height / 2) / rect.height) * 100;
+    const id = ++floatSeq.current;
+    setFloats((f) => [...f, { id, text, tone, x, y, big }]);
+    cineTimers.current.push(
+      setTimeout(
+        () => setFloats((f) => f.filter((z) => z.id !== id)),
+        big ? 1900 : 1500
+      )
+    );
+  };
+
+  // Staged combat resolution. The engine resolves a fight atomically,
+  // so we DON'T apply the result immediately: we keep the pre-combat
+  // board on screen and play it out beat by beat, anchoring every
+  // damage number to the card/hero that took it, so the player can
+  // read exactly why one creature died and the other survived.
+  const runCombat = (pre, side, blocksArg) => {
+    if (cineRef.current) return;
+    const next = confirmBlocks(pre, side, blocksArg);
+    const baseId = lastFx.current;
+    const fresh = next.fx.filter((e) => e.id > baseId);
+    if (!fresh.some((e) => e.kind === "attack")) {
+      // no real combat (e.g. Nebbia cancelled the damage)
+      applyState(next);
+      return;
+    }
+    cineRef.current = true;
+    const T = (fn, ms) => cineTimers.current.push(setTimeout(fn, ms));
+    const dmg = fresh.filter((e) =>
+      ["damageCreature", "damageHero", "shield", "healHero", "regen"].includes(
+        e.kind
+      )
+    );
+    const deaths = fresh.filter((e) => e.kind === "death");
+    const win = fresh.find((e) => e.kind === "win");
+
+    // beat 1 — the clash
+    playSfx("attack");
+    setHitShake((n) => n + 1);
+    T(() => setHitShake((n) => Math.max(0, n - 1)), 480);
+
+    // beat 2 — damage numbers land on each combatant (held & readable)
+    T(() => {
+      const hit = [];
+      dmg.forEach((e) => {
+        if (e.kind === "damageCreature") {
+          anchorFloat(`[data-inst="${e.instId}"]`, `-${e.amount}`, "dmg", true);
+          hit.push(e.instId);
+        } else if (e.kind === "damageHero") {
+          anchorFloat(`[data-hero="${e.side}"]`, `-${e.amount}`, "dmg", true);
+          setHitShake((n) => n + 1);
+          T(() => setHitShake((n) => Math.max(0, n - 1)), 480);
+        } else if (e.kind === "healHero") {
+          anchorFloat(`[data-hero="${e.side}"]`, `+${e.amount}`, "heal", false);
+        } else if (e.kind === "shield") {
+          anchorFloat(`[data-inst="${e.instId}"]`, "🛡", "heal", true);
+        } else if (e.kind === "regen") {
+          anchorFloat(`[data-inst="${e.instId}"]`, "↻", "heal", true);
+        }
+      });
+      if (hit.length) {
+        playSfx("attack");
+        setCombatShake(hit);
+        T(() => setCombatShake([]), 460);
+      }
+    }, 720);
+
+    // beat 3 — lethal creatures crumble in place (still the old board)
+    T(() => {
+      if (deaths.length) {
+        setDyingIds(deaths.map((e) => e.instId));
+        playSfx("death");
+      }
+    }, 2050);
+
+    // beat 4 — commit the resolved board
+    T(() => {
+      lastFx.current = next.fx.length
+        ? next.fx[next.fx.length - 1].id
+        : baseId;
+      if (win)
+        playSfx(
+          win.winner === "draw"
+            ? "lose"
+            : win.winner === mySide
+            ? "win"
+            : "lose"
+        );
+      setDyingIds([]);
+      setCombatShake([]);
+      setPreviewBlocks(null);
+      setBlocks({});
+      setBlkAtk(null);
+      cineRef.current = false;
+      applyState(next);
+    }, 3150);
+  };
+
+  // drop pending cinematic timers if we leave the table
+  useEffect(
+    () => () => {
+      cineTimers.current.forEach(clearTimeout);
+      cineTimers.current = [];
+    },
+    []
+  );
 
   // recompute combat arrows on resize
   useEffect(() => {
@@ -375,14 +496,14 @@ export default function GameTable({
         const s = stateRef.current;
         if (!s || s.phase !== "block") return;
         const b = aiBlocks(s, "p1");
+        // show the defenders' trajectory, then play out the fight
         setPreviewBlocks(b);
         t = setTimeout(() => {
           const s2 = stateRef.current;
-          setPreviewBlocks(null);
           if (!s2 || s2.phase !== "block") return;
-          applyState(confirmBlocks(s2, "p1", b));
-        }, 1500);
-      }, 1400);
+          runCombat(s2, "p1", b);
+        }, 1200);
+      }, 1300);
     }
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -572,9 +693,8 @@ export default function GameTable({
   };
 
   const doConfirmBlocks = (skip) => {
-    applyState(confirmBlocks(state, mySide, skip ? {} : blocks));
-    setBlocks({});
-    setBlkAtk(null);
+    // runCombat plays the fight out and clears blocks at the end
+    runCombat(state, mySide, skip ? {} : blocks);
   };
 
   const myPriority = !winner && state.priority === mySide;
@@ -824,6 +944,8 @@ export default function GameTable({
                 creature={ls}
                 attacking={isAttacker}
                 blocking={canBlockNow && blkAtk === cr.instId}
+                dying={dyingIds.includes(cr.instId)}
+                shake={combatShake.includes(cr.instId)}
                 targetable={
                   (sel &&
                     selCard?.type === "spell" &&
@@ -865,7 +987,8 @@ export default function GameTable({
                   selCard?.type === "spell" &&
                   tg.creatures.some((c) => c.instId === cr.instId)
                 }
-                shake={shake === cr.instId}
+                dying={dyingIds.includes(cr.instId)}
+                shake={shake === cr.instId || combatShake.includes(cr.instId)}
                 onClick={() => onMyCreature(cr)}
                 onInspect={setInspect}
               />
@@ -1010,13 +1133,13 @@ export default function GameTable({
       {arrows.length > 0 && (
         <svg className="tcg-arrows" aria-hidden="true">
           <defs>
-            <marker id="ah-atk" markerWidth="9" markerHeight="9" refX="6" refY="3"
-              orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L7,3 L0,6 Z" fill="#ff4d3d" />
+            <marker id="ah-atk" markerWidth="26" markerHeight="26"
+              refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L20,9 L0,18 L5,9 Z" fill="#ff3a28" />
             </marker>
-            <marker id="ah-blocked" markerWidth="9" markerHeight="9" refX="6" refY="3"
-              orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L7,3 L0,6 Z" fill="#5db4ff" />
+            <marker id="ah-blocked" markerWidth="22" markerHeight="22"
+              refX="14" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L16,8 L0,16 L4,8 Z" fill="#59b6ff" />
             </marker>
           </defs>
           {arrows.map((a) => (
