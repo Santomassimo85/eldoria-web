@@ -36,7 +36,8 @@ export default function StarterSelect({ onPick }) {
         <h1 className="tcg-title">Scegli il tuo elemento</h1>
         <p className="tcg-subtitle">
           Una scelta sola, per sempre. Riceverai un mazzo iniziale e delle
-          monete. (Tenebra e Luce si sbloccano nel Negozio.)
+          monete. ({ELEMENT_LABEL.darkness} e {ELEMENT_LABEL.light} si
+          sbloccano nel Negozio.)
         </p>
       </div>
 

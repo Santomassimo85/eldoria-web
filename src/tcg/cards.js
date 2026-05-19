@@ -33,13 +33,14 @@
 
 export const ELEMENTS = ["fire", "water", "light", "darkness", "air", "nature"];
 
+/* "mana" colours = D&D damage types */
 export const ELEMENT_LABEL = {
-  fire: "Fuoco",
-  water: "Acqua",
-  light: "Luce",
-  darkness: "Tenebra",
-  air: "Aria",
-  nature: "Natura",
+  fire: "Fuoco",      // fire
+  water: "Gelo",      // cold
+  light: "Radioso",   // radiant
+  darkness: "Necrotico", // necrotic
+  air: "Fulmine",     // lightning
+  nature: "Veleno",   // poison
 };
 
 export const ELEMENT_ICON = {
@@ -503,21 +504,22 @@ const RAW = [
 /* ============================================================
    KEYWORD / PASSIVE ABILITIES (D&D-inspired) — 14
    ============================================================ */
+/* keyword abilities — D&D-flavoured names (mechanics unchanged) */
 export const KEYWORDS = {
-  defender:    { label: "Difensore",        desc: "Non può attaccare." },
-  haste:       { label: "Furia",            desc: "Può attaccare e tappare appena evocata (niente fiacca)." },
-  flying:      { label: "Volare",           desc: "Può essere bloccata solo da creature con Volare o Portata." },
-  reach:       { label: "Portata",          desc: "Può bloccare creature con Volare." },
-  deathtouch:  { label: "Tocco Letale",     desc: "Qualsiasi danno che infligge a una creatura la distrugge." },
-  lifelink:    { label: "Legame Vitale",    desc: "I danni che infligge curano il tuo eroe della stessa quantità." },
-  trample:     { label: "Travolgere",       desc: "Il danno da combattimento in eccesso colpisce l'eroe avversario." },
-  firststrike: { label: "Attacco Improvviso", desc: "Infligge il danno da combattimento per primo." },
-  vigilance:   { label: "Vigilanza",        desc: "Non si tappa quando attacca." },
-  menace:      { label: "Minaccia",         desc: "Può essere bloccata solo da due o più creature." },
-  shield:      { label: "Scudo Divino",     desc: "Previene la prima istanza di danno che subirebbe." },
-  regen:       { label: "Rigenerazione",    desc: "La prima volta che morirebbe in un turno, sopravvive (danni azzerati)." },
-  unblockable: { label: "Inafferrabile",    desc: "Non può essere bloccata." },
-  hexproof:    { label: "Elusione",         desc: "Non può essere bersaglio di incantesimi avversari." },
+  defender:    { label: "Sentinella",        desc: "Non può attaccare: monta la guardia." },
+  haste:       { label: "Fretta",            desc: "Può attaccare e tappare appena evocata (niente fiacca)." },
+  flying:      { label: "Volare",            desc: "Può essere bloccata solo da creature con Volare o Portata." },
+  reach:       { label: "Portata",           desc: "Può bloccare creature con Volare." },
+  deathtouch:  { label: "Tocco Necrotico",   desc: "Qualsiasi danno che infligge a una creatura la distrugge." },
+  lifelink:    { label: "Suzione Vitale",    desc: "I danni che infligge curano il tuo eroe della stessa quantità." },
+  trample:     { label: "Travolgere",        desc: "Il danno da combattimento in eccesso colpisce l'eroe avversario." },
+  firststrike: { label: "Iniziativa",        desc: "Infligge il danno da combattimento per primo." },
+  vigilance:   { label: "Vigile",            desc: "Non si tappa quando attacca: resta in guardia." },
+  menace:      { label: "Terrore",           desc: "Presenza terrificante: può essere bloccata solo da due o più creature." },
+  shield:      { label: "Scudo Arcano",      desc: "Previene la prima istanza di danno che subirebbe." },
+  regen:       { label: "Rigenerazione",     desc: "La prima volta che morirebbe in un turno, sopravvive (danni azzerati)." },
+  unblockable: { label: "Forma Eterea",      desc: "Eterea: non può essere bloccata." },
+  hexproof:    { label: "Resistenza Magica", desc: "Non può essere bersaglio di incantesimi avversari." },
 };
 export const KEYWORD_IDS = Object.keys(KEYWORDS);
 

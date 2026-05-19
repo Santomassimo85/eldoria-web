@@ -9,12 +9,17 @@ import {
   ELEMENT_PIP, ELEMENT_LABEL, RARITY_COLOR, RARITY_LABEL, KEYWORDS,
 } from "../../tcg/cards.js";
 
-const TYPE_LINE = {
-  creature: "Creatura",
-  spell: "Incantesimo",
-  artifact: "Manufatto",
-  land: "Terra",
-};
+/* small icon + label per card type (instants split out from sorceries) */
+function typeMeta(card) {
+  if (card.type === "creature") return { icon: "🐾", label: "Creatura" };
+  if (card.type === "artifact") return { icon: "💠", label: "Manufatto" };
+  if (card.type === "land") return { icon: "⛰️", label: "Terra" };
+  if (card.type === "spell")
+    return card.speed === "instant"
+      ? { icon: "⚡", label: "Istantaneo" }
+      : { icon: "📜", label: "Magia" };
+  return { icon: "✦", label: card.type };
+}
 /* one-letter rarity tag shown on every card */
 const RARITY_LETTER = {
   common: "C",
@@ -201,7 +206,10 @@ export default function CardView({
             style={{ background: RARITY_COLOR[rarity] }}
             title={RARITY_LABEL[rarity]}
           />
-          {TYPE_LINE[card.type]} — {elLabel}
+          <span className="tcg-card__tico" title={typeMeta(card).label}>
+            {typeMeta(card).icon}
+          </span>
+          {elLabel}
         </div>
 
         {keywords.length > 0 && (
@@ -254,7 +262,8 @@ export default function CardView({
             className="tcg-card__rar"
             style={{ background: RARITY_COLOR[rarity] }}
           />
-          {RARITY_LABEL[rarity]} · {TYPE_LINE[card.type]} — {elLabel}
+          {RARITY_LABEL[rarity]} · {typeMeta(card).icon}{" "}
+          {typeMeta(card).label} — {elLabel}
           {isCreature ? ` · ${power}/${toughness}` : ""}
         </div>
         {keywords.length > 0 && (
