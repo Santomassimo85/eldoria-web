@@ -18,7 +18,7 @@
   /* one responsive card width for the whole game — scales with the
      screen (vw) but is also capped by height (vh) so the hand row
      never clips, and by px so it stays sane on extremes */
-  --cw: clamp(68px, min(9.4vw, 19vh), 200px);
+  --cw: clamp(82px, min(10.5vw, 20vh), 200px);
 
   /* Non-fight (menu/shop/deck/collection/manual/lobby): sit BELOW the
      global app navbar so it stays visible & clickable. The battle adds
@@ -112,7 +112,7 @@
   transform: rotate(-90deg) translate(-100vh, 0);
   /* viewport vw/vh are swapped once rotated, so swap them back here
      to keep the card width scaled to the *effective* landscape space */
-  --cw: clamp(68px, min(9.4vh, 19vw), 200px);
+  --cw: clamp(82px, min(10.5vh, 20vw), 200px);
 }
 .tcg-locked {
   height: 100%; display: flex; flex-direction: column;
@@ -205,6 +205,8 @@
    ============================================================ */
 .tcg-table {
   position: absolute; inset: 0; z-index: 0;
+  /* battlefield backdrop */
+  background: #0c0a06 url("/bf_tgc.png") center / cover no-repeat;
   display: grid;
   grid-template-rows:
     clamp(40px, 9vh, 130px)   /* opponent face-down fan   */
@@ -247,7 +249,9 @@
   padding: 6px 110px 6px 200px;  /* clear the left pods + right rail */
   z-index: 10; min-height: 0; gap: 4px;
 }
-.tcg-field--foe { grid-area: foefield; justify-content: flex-end; }   /* creatures hug divider */
+/* foe field paints ABOVE my field so the floating stat plate under
+   each foe creature (which dips toward the divider) is never covered */
+.tcg-field--foe { grid-area: foefield; justify-content: flex-end; z-index: 13; }
 .tcg-field--me  { grid-area: mefield; justify-content: flex-start; }
 .tcg-zone {
   display: flex; align-items: center; justify-content: center;
@@ -588,7 +592,8 @@
     rgba(0,0,0,.55));
 }
 .tcg-card__name {
-  font-size: clamp(11px, 1.35vw, 18px); font-weight: 800;
+  /* scales with the CARD, not the screen → never giant on phones */
+  font-size: clamp(8px, calc(var(--cw) * 0.118), 18px); font-weight: 800;
   letter-spacing: .2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: #fff;
@@ -622,7 +627,7 @@
 .tcg-card__ph-icon { font-size: clamp(24px, 4vw, 58px); }
 .tcg-card--land .tcg-card__img { flex: 1 1 66%; }
 .tcg-card__type {
-  font-size: clamp(8px, .92vw, 12px); font-weight: 600;
+  font-size: clamp(6px, calc(var(--cw) * 0.08), 12px); font-weight: 600;
   padding: 2px 5px; background: rgba(0,0,0,.1);
   text-transform: capitalize;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -633,22 +638,39 @@
 }
 .tcg-card__text {
   flex: 0 1 auto; padding: 3px 5px;
-  font-size: clamp(8px, .9vw, 12px); line-height: 1.3; overflow: hidden;
+  font-size: clamp(6px, calc(var(--cw) * 0.076), 12px);
+  line-height: 1.25; overflow: hidden;
 }
 .tcg-card--land .tcg-card__text,
 .tcg-card--land .tcg-card__flavor { display: none; }
 .tcg-card__rule { display: block; font-weight: 600; }
 .tcg-card__flavor { display: block; font-style: italic; opacity: .68; margin-top: 2px; }
 .tcg-card__pt {
-  position: absolute; right: 4px; bottom: 4px;
-  min-width: 38px; padding: 2px 9px; text-align: center;
-  font-size: clamp(16px, 1.9vw, 24px); font-weight: 900;
-  line-height: 1.05; border-radius: 7px;
+  position: absolute; right: 3px; bottom: 3px;
+  min-width: calc(var(--cw) * 0.3);
+  padding: 1px calc(var(--cw) * 0.05); text-align: center;
+  /* much smaller, and scales with the card so it never overflows */
+  font-size: clamp(8px, calc(var(--cw) * 0.14), 18px); font-weight: 900;
+  line-height: 1.05; border-radius: 6px; white-space: nowrap;
   color: #fff7df;
   background: linear-gradient(#4a3415, #140d04);
-  border: 2px solid var(--gold);
+  border: 1px solid var(--gold);
   text-shadow: 0 1px 0 #000, 0 0 4px rgba(0,0,0,.9);
-  box-shadow: 0 2px 6px rgba(0,0,0,.7), 0 0 0 1px rgba(0,0,0,.6);
+  box-shadow: 0 2px 5px rgba(0,0,0,.7), 0 0 0 1px rgba(0,0,0,.6);
+}
+/* on the battlefield: the stat plate is pulled DOWN so it floats at
+   the bottom edge of the card (mostly below it) — frees the frame for
+   art + text while staying visible & fully responsive (--cw scaled) */
+.tcg-card--board .tcg-card__pt {
+  right: auto; left: 50%;
+  top: 100%; bottom: auto;         /* fully OUTSIDE, just under the card */
+  margin-top: 2px;                 /* tiny 2px gap below the card edge */
+  transform: translateX(-50%);
+  z-index: 30;                     /* sit above neighbouring zones */
+  pointer-events: none;            /* never block clicks on the card */
+  font-size: clamp(9px, calc(var(--cw) * 0.165), 20px);
+  padding: 2px calc(var(--cw) * 0.08);
+  box-shadow: 0 5px 11px rgba(0,0,0,.78), 0 0 0 1px rgba(0,0,0,.6);
 }
 .tcg-card__pt.is-hurt {
   color: #fff;
@@ -849,14 +871,17 @@
   40%,80% { transform: translateX(7px); }
 }
 
-/* battlefield relic (artifact token) */
+/* battlefield relic (artifact token) — shows the card art */
 .tcg-relic {
-  width: clamp(52px, 5vw, 74px); aspect-ratio: 1;
-  display: grid; place-items: center; font-size: 28px;
-  border-radius: 12px; cursor: pointer;
+  width: clamp(40px, 4vw, 60px); aspect-ratio: 3 / 4;
+  display: grid; place-items: center; font-size: 22px;
+  border-radius: 7px; cursor: pointer; overflow: hidden;
   background: radial-gradient(circle at 40% 30%, #5a4a22, #211808);
   border: 1px solid var(--gold);
-  box-shadow: 0 0 12px rgba(154,117,22,.5);
+  box-shadow: 0 0 10px rgba(154,117,22,.5);
+}
+.tcg-relic__img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 
 /* ============================================================
@@ -995,7 +1020,28 @@
 .tcg-end--win .tcg-end__title { color: #ffd76b; text-shadow: 0 0 26px rgba(255,215,100,.8); }
 .tcg-end--lose .tcg-end__title { color: #c75; }
 .tcg-end--draw .tcg-end__title { color: #bbb; }
-.tcg-end__sub { opacity: .8; margin: 8px 0 22px; }
+.tcg-end__sub { opacity: .8; margin: 8px 0 18px; }
+.tcg-end__icon {
+  font-size: clamp(40px, 8vw, 72px); line-height: 1; margin-bottom: 4px;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.7));
+}
+.tcg-end__recap {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 0 auto 20px; max-width: 340px;
+  padding: 12px 16px; border-radius: 12px;
+  background: rgba(0,0,0,.45); border: 1px solid var(--line);
+}
+.tcg-end__row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; font-size: 14px;
+}
+.tcg-end__row span { opacity: .7; }
+.tcg-end__row b { color: var(--ink); font-weight: 800; }
+.tcg-end__row--coins {
+  margin-top: 4px; padding-top: 8px;
+  border-top: 1px dashed rgba(216,177,90,.35); font-size: 16px;
+}
+.tcg-end__row--coins b { color: var(--gold); }
 .tcg-end__btns { display: flex; gap: 12px; justify-content: center; }
 
 /* ============================================================
@@ -1019,6 +1065,36 @@
   .tcg-fan__slot { margin: 0 -10px; }
   .tcg-field--foe .tcg-zone--creatures { padding-bottom: 6px; }
   .tcg-field--me  .tcg-zone--creatures { padding-top: 6px; }
+
+  /* ── phone card/pod tuning ── */
+  /* mana ABOVE the HP bar (the counts row carries the mana) */
+  .tcg-pod { flex-direction: column; }
+  .tcg-pod__name  { order: 0; }
+  .tcg-pod__row   { order: 1; }
+  .tcg-pod__hpbar { order: 2; }
+  /* phone: artifacts leave the field and become a small stack pinned
+     to the LEFT, just below the turn pill (clear of the player pod) */
+  .tcg-field--me .tcg-zone--lands {
+    position: absolute;
+    left: 8px;
+    top: calc(50% + 42px);          /* below the centred turn pill */
+    bottom: auto; right: auto;
+    width: clamp(28px, 9vw, 38px);
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    align-self: flex-start;
+    flex-wrap: nowrap;
+    gap: 4px; padding: 0;
+    max-height: calc(50% - 90px);   /* never reach the bottom pod */
+    overflow: visible;
+    z-index: 14;
+  }
+  .tcg-field--me .tcg-zone--lands .tcg-relic {
+    width: clamp(26px, 8vw, 36px);
+  }
+  /* foe artifacts (still on the field) just shrink */
+  .tcg-field--foe .tcg-relic { width: clamp(30px, 9vw, 42px); }
 }
 /* landscape phones / very short screens — keep hand off the field */
 @media (max-height: 540px) {
@@ -1040,6 +1116,18 @@
   .tcg-turnpill { max-width: 84px; font-size: 10px; padding: 4px 6px; }
   .tcg-turnpill__txt { font-size: 10px; }
   .tcg-emotes { display: none; }
+  /* very short screens: tiny artifacts in a wrapping row tucked right
+     under the (shorter) turn pill, hard-bounded above the pod */
+  .tcg-field--me .tcg-zone--lands {
+    top: calc(50% + 30px);
+    width: clamp(70px, 22vw, 96px);
+    flex-direction: row; flex-wrap: wrap;
+    gap: 3px;
+    max-height: calc(50% - 70px);
+  }
+  .tcg-field--me .tcg-zone--lands .tcg-relic {
+    width: clamp(22px, 6vw, 30px);
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1532,7 +1620,7 @@
   padding: 2px 5px 0;
 }
 .tcg-card__kwchip {
-  font-size: clamp(7px, .72vw, 10px); font-weight: 700;
+  font-size: clamp(6px, calc(var(--cw) * 0.062), 10px); font-weight: 700;
   line-height: 1.1; padding: 1px 5px; border-radius: 999px;
   color: #1c140a; background: var(--rar, #d8b15a);
   white-space: nowrap;

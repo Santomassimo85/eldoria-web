@@ -133,7 +133,7 @@ export default function ModeSelect({
       {isMaster && <MasterReset onMasterReset={onMasterReset} />}
 
       <p className="tcg-menu__foot">
-        20 PV · mazzo da 60 · mano max 7 · mana di colore (terre)
+        30 PV · mazzo da 60 · mano max 7 · mana di colore (terre)
       </p>
     </div>
   );

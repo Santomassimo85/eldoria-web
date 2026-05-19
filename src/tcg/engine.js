@@ -26,7 +26,7 @@ import {
   DICE_STATS, statDice,
 } from "./cards.js";
 
-export const START_HP = 25;
+export const START_HP = 30;
 export const OPENING_HAND = 6;
 export const HAND_CAP = 7;
 export const SIDES = ["p0", "p1"];
@@ -196,7 +196,17 @@ function payCost(s, side, cost) {
   for (const el of ELEMENTS) {
     for (let i = 0; i < (cost[el] || 0); i++) tapOne((x) => x.element === el);
   }
-  for (let i = 0; i < (cost.generic || 0); i++) tapOne(() => true);
+  // generic: tap from the element with the MOST untapped lands left,
+  // so we never waste a scarce colour on a generic pip — this keeps
+  // mana behaving predictably across several plays in a turn.
+  for (let i = 0; i < (cost.generic || 0); i++) {
+    const free = {};
+    for (const l of lands) if (!l.tapped) free[l.element] = (free[l.element] || 0) + 1;
+    let best = null;
+    for (const el in free) if (best == null || free[el] > free[best]) best = el;
+    if (best) tapOne((x) => x.element === best);
+    else tapOne(() => true);
+  }
 }
 
 /* ---- creation ---- */
@@ -1086,6 +1096,8 @@ export function reviveState(raw) {
     p.artifacts ||= [];
     p.graveyard ||= [];
     if (typeof p.playedLand !== "boolean") p.playedLand = false;
+    if (typeof p.charges !== "number") p.charges = 0;
+    if (!p.attuned || typeof p.attuned !== "object") p.attuned = {};
     for (const cr of p.battlefield) {
       if (typeof cr.shield !== "boolean") cr.shield = kw(cr.cardId, "shield");
       if (typeof cr.regenUsed !== "boolean") cr.regenUsed = false;

@@ -283,7 +283,7 @@ const RAW = [
     "", "La morte non ha spento la sua sete di potere."),
   C("satyr", "Satiro", 2, "satyr", "🐐", "nature", 2, 3,
     "", "Suona, ride, e ti pugnala a tempo di musica."),
-  C("dwarfpaladin", "Drider Paladino", 2, "dwarfpaladin", "🛡️", "light", 2, 4,
+  C("dwarfpaladin", "Paladino Nano", 2, "dwarfpaladin", "🛡️", "light", 2, 4,
     "", "Fede d'acciaio, barba di ferro."),
   C("frostarcher", "Arciere del Gelo", 2, "frostarcher", "🏹", "water", 3, 2,
     "", "Le sue frecce mordono prima ancora di colpire."),

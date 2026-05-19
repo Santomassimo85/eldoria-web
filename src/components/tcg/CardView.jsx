@@ -241,13 +241,22 @@ export default function CardView({
           </div>
         )}
 
-        {isCreature && (
+        {/* non-board: stat plate stays inside the frame (bottom corner) */}
+        {isCreature && variant !== "board" && (
           <div className={`tcg-card__pt ${hurt ? "is-hurt" : ""}`}>
             {ptText}
             {hurt ? <span className="tcg-card__pt-dmg"> (-{dmg})</span> : null}
           </div>
         )}
       </div>
+      {/* board: stat plate lives OUTSIDE the (overflow:hidden) frame so it
+          can float just below the card without being clipped */}
+      {isCreature && variant === "board" && (
+        <div className={`tcg-card__pt tcg-card__pt--board ${hurt ? "is-hurt" : ""}`}>
+          {ptText}
+          {hurt ? <span className="tcg-card__pt-dmg"> (-{dmg})</span> : null}
+        </div>
+      )}
       <span
         className={`tcg-card__rarc is-${rarity}`}
         style={{ "--rc": RARITY_COLOR[rarity] }}

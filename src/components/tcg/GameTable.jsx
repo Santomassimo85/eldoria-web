@@ -11,19 +11,20 @@
    Avatar pods float on the LEFT edge; the big action button is
    on the RIGHT rail. Lands auto-tap to pay costs (like MTGA).
    ============================================================ */
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import { FloatingLayer, TurnBanner, SpellBurst, EndOverlay } from "./Fx.jsx";
 import {
-  getCard, ELEMENT_PIP, ELEMENT_LABEL, ELEMENT_ICON, coverUrl,
-  ELEMENT_POWERS,
+  getCard, ELEMENT_PIP, ELEMENT_LABEL, coverUrl,
+  ELEMENT_POWERS, cardArtUrl,
 } from "../../tcg/cards.js";
 import {
   playCard, declareAttackers, confirmBlocks, endTurn, forfeit,
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
   attunedPowers, canUsePower, powerTargets, castElementPower,
+  legalBlockers,
 } from "../../tcg/engine.js";
 import {
   nextAction as aiNext, chooseBlocks as aiBlocks, respondToStack,
@@ -121,7 +122,15 @@ export default function GameTable({
     : (match?.covers && match.covers[foeSide]) || foeCover || "darkness";
 
   const [local, setLocal] = useState(initialState);
-  const state = isAi ? local : reviveState(match?.state);
+  // PvP: reviveState() builds a NEW object every call. Memoise it on the
+  // raw match.state reference so `state` is stable between renders and
+  // doesn't retrigger every [state]-dep effect (→ infinite render loop).
+  const rawState = match?.state;
+  const state = useMemo(
+    () => (isAi ? local : reviveState(rawState)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isAi, local, rawState]
+  );
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -382,7 +391,28 @@ export default function GameTable({
         }
       }
     }
-    setArrows(out);
+    // bail the state update when the arrows are unchanged, so a churning
+    // `state` reference can never drive an infinite render loop
+    setArrows((prev) => {
+      if (
+        prev.length === out.length &&
+        prev.every((a, i) => {
+          const b = out[i];
+          return (
+            b &&
+            a.id === b.id &&
+            a.kind === b.kind &&
+            a.from?.x === b.from?.x &&
+            a.from?.y === b.from?.y &&
+            a.to?.x === b.to?.x &&
+            a.to?.y === b.to?.y
+          );
+        })
+      ) {
+        return prev;
+      }
+      return out;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, attackers, blocks, previewBlocks, mySide, foeSide, arrowTick]);
 
@@ -587,6 +617,11 @@ export default function GameTable({
     state.phase === "block" &&
     state.combat &&
     state.combat.attackerSide === foeSide;
+  // which of my creatures may legally block the selected attacker
+  // (engine enforces Volare → only Volare/Portata, tapped, gang use…)
+  const legalBlkIds =
+    canBlockNow && blkAtk ? legalBlockers(state, blkAtk) : [];
+  const canBlockSel = (instId) => legalBlkIds.includes(instId);
   const iAmAttackerWaiting =
     state.phase === "block" &&
     state.combat &&
@@ -794,6 +829,12 @@ export default function GameTable({
       return;
     }
     if (canBlockNow && blkAtk) {
+      // a creature with neither Volare nor Portata cannot block a
+      // flier — refuse it visibly instead of silently dropping it
+      if (!canBlockSel(cr.instId)) {
+        reject(cr.instId);
+        return;
+      }
       setBlocks((b) => {
         const nb = {};
         // a creature can only block one attacker → drop it elsewhere
@@ -905,6 +946,16 @@ export default function GameTable({
       : "lose"
     : null;
 
+  // end-of-match recap data
+  const COIN_TABLE = isAi
+    ? { win: 30, lose: 10, draw: 15 }
+    : { win: 60, lose: 20, draw: 25 };
+  const endCoins = result ? COIN_TABLE[result] ?? 0 : null;
+  const winnerName =
+    !winner || winner === "draw"
+      ? null
+      : state.players[winner]?.name || (winner === mySide ? "Tu" : "Avversario");
+
   const statusLine = winner
     ? "Partita conclusa"
     : myPriority
@@ -956,20 +1007,6 @@ export default function GameTable({
     };
   };
 
-  /* mana = a small glowing element token (taps/untaps) */
-  const LandCard = ({ land }) => {
-    const c = getCard(land.cardId);
-    return (
-      <button
-        className={`tcg-mtoken ${land.tapped ? "is-tapped" : ""}`}
-        style={{ "--pip": ELEMENT_PIP[land.element] }}
-        title={`${c.name}${land.tapped ? " — tappata" : ""}`}
-        onClick={() => setInspect(c)}
-      >
-        <span className="tcg-mtoken__icon">{ELEMENT_ICON[land.element]}</span>
-      </button>
-    );
-  };
 
   const overCap = canMainAct ? me.hand.length - HAND_CAP : 0;
 
@@ -1073,9 +1110,8 @@ export default function GameTable({
       {/* opponent field: lands (far) then creatures (near divider) */}
       <div className="tcg-field tcg-field--foe">
         <div className="tcg-zone tcg-zone--lands">
-          {foe.lands.map((l) => (
-            <LandCard key={l.instId} land={l} side={foeSide} />
-          ))}
+          {/* land tokens removed — mana is shown by the rhombus
+              gems in the avatar pod (bottom-left) */}
           {foe.artifacts.map((a) => (
             <div
               key={a.instId}
@@ -1083,7 +1119,19 @@ export default function GameTable({
               title={getCard(a.cardId).name}
               onClick={() => setInspect(getCard(a.cardId))}
             >
-              <span>{getCard(a.cardId).icon}</span>
+              {cardArtUrl(getCard(a.cardId)) ? (
+                <img
+                  className="tcg-relic__img"
+                  src={cardArtUrl(getCard(a.cardId))}
+                  alt={getCard(a.cardId).name}
+                  draggable={false}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span>{getCard(a.cardId).icon}</span>
+              )}
             </div>
           ))}
         </div>
@@ -1157,7 +1205,8 @@ export default function GameTable({
                     selCard?.type === "spell" &&
                     tg.creatures.some((c) => c.instId === cr.instId)) ||
                   (powerSel &&
-                    powerTg.creatures.some((c) => c.instId === cr.instId))
+                    powerTg.creatures.some((c) => c.instId === cr.instId)) ||
+                  (canBlockNow && !!blkAtk && canBlockSel(cr.instId))
                 }
                 dying={dyingIds.includes(cr.instId)}
                 shake={shake === cr.instId || combatShake.includes(cr.instId)}
@@ -1174,9 +1223,7 @@ export default function GameTable({
           })}
         </div>
         <div className="tcg-zone tcg-zone--lands">
-          {me.lands.map((l) => (
-            <LandCard key={l.instId} land={l} side={mySide} />
-          ))}
+          {/* land tokens removed — mana = the rhombus gems in the pod */}
           {me.artifacts.map((a) => (
             <div
               key={a.instId}
@@ -1184,7 +1231,19 @@ export default function GameTable({
               title={getCard(a.cardId).name}
               onClick={() => setInspect(getCard(a.cardId))}
             >
-              <span>{getCard(a.cardId).icon}</span>
+              {cardArtUrl(getCard(a.cardId)) ? (
+                <img
+                  className="tcg-relic__img"
+                  src={cardArtUrl(getCard(a.cardId))}
+                  alt={getCard(a.cardId).name}
+                  draggable={false}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span>{getCard(a.cardId).icon}</span>
+              )}
             </div>
           ))}
         </div>
@@ -1420,6 +1479,12 @@ export default function GameTable({
         result={result}
         onExit={handleExit}
         onRematch={isAi ? onRematch : null}
+        turns={state.turn}
+        coins={endCoins}
+        mode={mode}
+        myName={me.name}
+        foeName={foe.name}
+        winnerName={winnerName}
       />
     </div>
   );

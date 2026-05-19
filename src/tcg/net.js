@@ -60,13 +60,26 @@ export function watchLobby(uid, cb) {
           now - tsMillis(m.createdAt) < CHALLENGE_TTL_MS
       );
 
-      // a match the current user is already part of (active or just ended)
+      // a match the current user is already part of — but ONLY a usable
+      // one, so stale/broken docs (half-accepted `active` with no state,
+      // or long-finished `ended` ones) never trap a player on the
+      // "Connessione alla partita…" spinner. The master account, having
+      // done all the testing, accumulates many of these.
+      const RECENT_END_MS = 3 * 60 * 1000;
       const mine =
-        all.find(
-          (m) =>
-            (m.status === "active" || m.status === "ended") &&
-            sideForUid(m, uid) !== null
-        ) || null;
+        all
+          .filter(
+            (m) =>
+              sideForUid(m, uid) !== null &&
+              ((m.status === "active" && m.state) ||
+                (m.status === "ended" &&
+                  now - tsMillis(m.updatedAt || m.createdAt) < RECENT_END_MS))
+          )
+          .sort(
+            (a, b) =>
+              tsMillis(b.updatedAt || b.createdAt) -
+              tsMillis(a.updatedAt || a.createdAt)
+          )[0] || null;
 
       // approximate "online": distinct users seen in fresh docs (last 2 min)
       const onlineSet = new Set();

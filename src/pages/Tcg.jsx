@@ -31,6 +31,49 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 const AI_COINS = { win: 30, lose: 10, draw: 15 };
 const PVP_COINS = { win: 60, lose: 20, draw: 25 };
 
+/* keeps a render crash inside the game from blanking the whole page —
+   shows the error (so it can be reported) + a way back to the menu */
+class GameBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { err: null };
+  }
+  static getDerivedStateFromError(err) {
+    return { err };
+  }
+  componentDidCatch(err, info) {
+    console.error("[TCG] render error:", err, info);
+  }
+  render() {
+    if (this.state.err) {
+      return (
+        <div className="tcg-locked">
+          <h1>⚠️ Errore nella partita</h1>
+          <p>Qualcosa è andato storto durante il caricamento del duello.</p>
+          <pre
+            style={{
+              maxWidth: "90vw", overflow: "auto", fontSize: 12,
+              opacity: 0.7, whiteSpace: "pre-wrap",
+            }}
+          >
+            {String(this.state.err && this.state.err.message)}
+          </pre>
+          <button
+            className="tcg-btn tcg-btn--primary"
+            onClick={() => {
+              this.setState({ err: null });
+              this.props.onExit && this.props.onExit();
+            }}
+          >
+            ‹ Torna al menu
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // True when the physical device is held in portrait on a phone-sized
 // screen. We don't ask the user to rotate — instead the whole board is
 // rotated 90° via CSS so the game is ALWAYS played in landscape.
@@ -233,15 +276,18 @@ export default function Tcg() {
       )}
 
       {screen === "ai" && aiState && (
-        <GameTable
-          mode="ai"
-          initialState={aiState}
-          myCover={profile?.cover || "air"}
-          foeCover="darkness"
-          onExit={goMenu}
-          onRematch={() => setAiSeed((n) => n + 1)}
-          onGameEnd={(r) => awardFor("ai", r)}
-        />
+        <GameBoundary onExit={goMenu}>
+          <GameTable
+            key={`ai-${aiSeed}`}
+            mode="ai"
+            initialState={aiState}
+            myCover={profile?.cover || "air"}
+            foeCover="darkness"
+            onExit={goMenu}
+            onRematch={() => setAiSeed((n) => n + 1)}
+            onGameEnd={(r) => awardFor("ai", r)}
+          />
+        </GameBoundary>
       )}
 
       {screen === "lobby" && loggedIn && (
@@ -264,14 +310,16 @@ export default function Tcg() {
       )}
 
       {screen === "pvp" && match && mySide && (
-        <GameTable
-          mode="pvp"
-          match={match}
-          matchId={matchId}
-          mySide={mySide}
-          onExit={goMenu}
-          onGameEnd={(r) => awardFor("pvp", r)}
-        />
+        <GameBoundary onExit={goMenu}>
+          <GameTable
+            mode="pvp"
+            match={match}
+            matchId={matchId}
+            mySide={mySide}
+            onExit={goMenu}
+            onGameEnd={(r) => awardFor("pvp", r)}
+          />
+        </GameBoundary>
       )}
 
       {screen === "pvp" && (!match || !mySide) && (

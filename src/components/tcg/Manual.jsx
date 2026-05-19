@@ -22,7 +22,7 @@ export default function Manual({ onBack }) {
         <section>
           <h2>Obiettivo</h2>
           <p>
-            Ogni giocatore parte con <b>25 Punti Vita</b>. Vinci portando i
+            Ogni giocatore parte con <b>30 Punti Vita</b>. Vinci portando i
             Punti Vita dell'avversario a <b>0</b>.
           </p>
         </section>

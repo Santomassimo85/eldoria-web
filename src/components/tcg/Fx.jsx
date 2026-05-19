@@ -58,20 +58,54 @@ export function SpellBurst({ burst }) {
   );
 }
 
-/* win / lose / draw cinematic */
-export function EndOverlay({ result, onExit, onRematch }) {
+/* win / lose / draw cinematic + match recap panel */
+export function EndOverlay({
+  result, onExit, onRematch,
+  turns = null, coins = null, mode = null,
+  myName = null, foeName = null, winnerName = null,
+}) {
   if (!result) return null;
   const map = {
-    win: { t: "VITTORIA", s: "Gli dèi cantano il tuo nome.", c: "win" },
-    lose: { t: "SCONFITTA", s: "Le ombre reclamano il campo.", c: "lose" },
-    draw: { t: "PAREGGIO", s: "Entrambi gli eroi cadono insieme.", c: "draw" },
+    win: { t: "VITTORIA", s: "Gli dèi cantano il tuo nome.", c: "win", icon: "🏆" },
+    lose: { t: "SCONFITTA", s: "Le ombre reclamano il campo.", c: "lose", icon: "💀" },
+    draw: { t: "PAREGGIO", s: "Entrambi gli eroi cadono insieme.", c: "draw", icon: "⚖️" },
   };
   const r = map[result] || map.draw;
   return (
     <div className={`tcg-end tcg-end--${r.c}`}>
       <div className="tcg-end__card">
+        <div className="tcg-end__icon" aria-hidden="true">{r.icon}</div>
         <h2 className="tcg-end__title">{r.t}</h2>
         <p className="tcg-end__sub">{r.s}</p>
+
+        <div className="tcg-end__recap">
+          {winnerName && (
+            <div className="tcg-end__row">
+              <span>Vincitore</span><b>{winnerName}</b>
+            </div>
+          )}
+          {turns != null && (
+            <div className="tcg-end__row">
+              <span>Durata</span><b>{turns} turni</b>
+            </div>
+          )}
+          {(myName || foeName) && (
+            <div className="tcg-end__row">
+              <span>Sfida</span><b>{myName} vs {foeName}</b>
+            </div>
+          )}
+          {mode && (
+            <div className="tcg-end__row">
+              <span>Modalità</span><b>{mode === "ai" ? "Contro l'IA" : "Online"}</b>
+            </div>
+          )}
+          {coins != null && (
+            <div className="tcg-end__row tcg-end__row--coins">
+              <span>Monete</span><b>🪙 +{coins}</b>
+            </div>
+          )}
+        </div>
+
         <div className="tcg-end__btns">
           {onRematch && (
             <button className="tcg-btn tcg-btn--primary" onClick={onRematch}>
