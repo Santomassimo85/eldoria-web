@@ -15,6 +15,14 @@ const TYPE_LINE = {
   artifact: "Manufatto",
   land: "Terra",
 };
+/* one-letter rarity tag shown on every card */
+const RARITY_LETTER = {
+  common: "C",
+  uncommon: "N",
+  rare: "R",
+  epic: "E",
+  legendary: "L",
+};
 
 function ManaCost({ card }) {
   if (card.type === "land")
@@ -162,7 +170,11 @@ export default function CardView({
     <div
       className={cls}
       data-inst={instId || undefined}
-      style={{ "--type-col": TYPE_COLOR[card.type], "--rar": RARITY_COLOR[rarity] }}
+      style={{
+        "--type-col": TYPE_COLOR[card.type],
+        "--rar": RARITY_COLOR[rarity],
+        "--el-col": ELEMENT_PIP[card.element] || "#8a6a23",
+      }}
       onClick={handleClick}
       onPointerDown={startPress}
       onPointerUp={endPress}
@@ -219,6 +231,13 @@ export default function CardView({
           </div>
         )}
       </div>
+      <span
+        className={`tcg-card__rarL is-${rarity}`}
+        style={{ "--rc": RARITY_COLOR[rarity] }}
+        title={RARITY_LABEL[rarity]}
+      >
+        {RARITY_LETTER[rarity] || "?"}
+      </span>
       {foil && <span className="tcg-card__foil" aria-hidden="true" />}
     </div>
   );

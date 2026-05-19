@@ -95,7 +95,7 @@ export const RARITY_COLOR = {
   uncommon: "#54c45a",
   rare: "#4a9fe6",
   epic: "#b061e0",
-  legendary: "#eaa83a",
+  legendary: "#ff5a1f", /* rosso/arancio */
 };
 /* pack pull weights (higher tier = rarer) — kept for any legacy use */
 export const RARITY_WEIGHT = {

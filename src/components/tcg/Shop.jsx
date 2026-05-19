@@ -48,6 +48,9 @@ export default function Shop({ profile, onOpenPack, onBack }) {
 
   if (revealed) {
     const allOpen = flipped.size >= revealed.cards.length;
+    // pack cards show the BACK of the pack's own element
+    const packEl =
+      PACKS.find((p) => p.id === revealed.packId)?.element || cover;
     return (
       <div className="tcg-shop">
         <div className="tcg-doc__head">
@@ -75,6 +78,16 @@ export default function Shop({ profile, onOpenPack, onBack }) {
             {revealed.cards.map((cd, i) => {
               const open = flipped.has(i);
               const c = getCard(cd.id);
+              // a special pull → fun reveal effect (one per card)
+              const fx = cd.foil
+                ? "foil"
+                : c.rarity === "legendary"
+                ? "legendary"
+                : c.rarity === "epic"
+                ? "epic"
+                : null;
+              const fxIcon =
+                fx === "foil" ? "✨" : fx === "legendary" ? "★" : "✦";
               return (
                 <div
                   key={i}
@@ -84,7 +97,7 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                 >
                   <div className="tcg-flip__inner">
                     <div className="tcg-flip__back">
-                      <CardView variant="back" cover={cover} />
+                      <CardView variant="back" cover={packEl} />
                     </div>
                     <div className="tcg-flip__front">
                       <CardView card={c} variant="board" foil={cd.foil} />
@@ -95,6 +108,31 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                       >
                         {RARITY_LABEL[c.rarity]}
                       </span>
+                      {open && fx && (
+                        <div
+                          className={`tcg-revfx tcg-revfx--${fx}`}
+                          aria-hidden="true"
+                        >
+                          <span className="tcg-revfx__ring" />
+                          <span className="tcg-revfx__ring tcg-revfx__ring--2" />
+                          {[...Array(8)].map((_, k) => (
+                            <span
+                              key={k}
+                              className="tcg-revfx__spark"
+                              style={{ "--k": k }}
+                            >
+                              {fxIcon}
+                            </span>
+                          ))}
+                          <span className="tcg-revfx__label">
+                            {fx === "foil"
+                              ? "✨ FOIL!"
+                              : fx === "legendary"
+                              ? "★ LEGGENDARIA!"
+                              : "✦ EPICA!"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
