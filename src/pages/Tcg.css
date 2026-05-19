@@ -31,12 +31,27 @@
   font-family: var(--font-text, system-ui, sans-serif);
   overflow: hidden;
   user-select: none;
+  -webkit-user-select: none;
+  /* behave like a native app: no long-press copy/paste or image callout */
+  -webkit-touch-callout: none;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
 .tcg-page *,
 .tcg-page *::before,
-.tcg-page *::after { box-sizing: border-box; }
+.tcg-page *::after {
+  box-sizing: border-box;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* images must not be draggable / saveable / long-press-callout */
+.tcg-page img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  pointer-events: none;
+}
 .tcg-page :focus,
 .tcg-page :focus-visible { outline: none; }
 /* neutralise the global index.css <button> chrome WITHOUT clobbering
@@ -418,6 +433,41 @@
   0%,100% { box-shadow: 0 0 10px rgba(226,72,58,.55); }
   50% { box-shadow: 0 0 22px rgba(226,72,58,.95); }
 }
+.tcg-bigbtn--pass {
+  background: radial-gradient(circle at 38% 32%, #7fb8ff, #2b5fae 70%);
+  color: #fff; border-color: #aacdff;
+  box-shadow: 0 0 14px rgba(90,150,255,.65);
+  animation: tcg-discard-pulse 1.2s ease-in-out infinite;
+}
+
+/* ---- THE STACK (pila) ---- */
+.tcg-stack {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 41; display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; min-width: 150px; max-width: 60vw;
+  background: rgba(10,7,3,.82); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 8px 26px rgba(0,0,0,.6);
+  pointer-events: auto; animation: tcg-fade .2s ease;
+}
+.tcg-stack__title {
+  font-size: 10px; font-weight: 800; letter-spacing: 2px;
+  text-align: center; color: var(--gold); opacity: .85;
+}
+.tcg-stack__item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 9px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.12);
+  background: linear-gradient(#3a2f1d, #221a0f);
+  font-size: 13px; font-weight: 600;
+}
+.tcg-stack__item.is-me   { border-left: 3px solid var(--good); }
+.tcg-stack__item.is-foe  { border-left: 3px solid var(--bad); }
+.tcg-stack__item.is-top  {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 12px rgba(216,177,90,.5);
+}
+.tcg-stack__ico { font-size: 16px; }
+.tcg-stack__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tcg-railbtn {
   width: 84px; padding: 8px 4px; border-radius: 10px; cursor: pointer;
   font-size: 11px; font-weight: 700; line-height: 1.2; white-space: pre-line;
@@ -640,10 +690,12 @@
   stroke-width: 4; fill: none; stroke-linecap: round;
   animation: tcg-arrowin .25s ease both;
 }
-.tcg-arrow--atk { stroke: #ff4d3d; filter: drop-shadow(0 0 4px rgba(255,77,61,.8)); }
-.tcg-arrow--def {
-  stroke: #5db4ff; stroke-dasharray: 7 6;
-  filter: drop-shadow(0 0 4px rgba(93,180,255,.8));
+/* red = attack going through to the enemy hero (unblocked) */
+.tcg-arrow--atk { stroke: #ff4d3d; filter: drop-shadow(0 0 5px rgba(255,77,61,.9)); }
+/* blue = attack stopped on a defending creature (blocked) */
+.tcg-arrow--blocked {
+  stroke: #5db4ff;
+  filter: drop-shadow(0 0 5px rgba(93,180,255,.9));
 }
 @keyframes tcg-arrowin { from { opacity: 0; } to { opacity: 1; } }
 .tcg-card.is-blocking { box-shadow: 0 0 0 2px #6db7ff, 0 0 14px #6db7ff; }

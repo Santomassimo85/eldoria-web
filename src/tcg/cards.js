@@ -122,7 +122,15 @@ const RARITY_BY_SPELL = {
   s_fireball: "rare", s_shockwave: "rare", s_bless: "uncommon",
   s_vision: "uncommon", s_bolt: "common", s_missile: "common",
   s_heal: "common",
+  // instants
+  s_shock: "common", s_counter: "rare", s_fog: "uncommon",
+  s_growth: "uncommon", s_rescue: "common",
 };
+/* spells that can be cast at INSTANT speed (responses / combat tricks) */
+const INSTANT_IDS = new Set([
+  "s_bolt", "s_missile", "s_heal",     // existing → now instants
+  "s_shock", "s_counter", "s_fog", "s_growth", "s_rescue",
+]);
 const RARITY_BY_ARTIFACT = {
   a_tome: "rare", a_valor: "rare", a_staff: "uncommon",
   a_blade: "uncommon", a_amulet: "uncommon", a_ring: "uncommon",
@@ -385,6 +393,28 @@ const RAW = [
     "Infliggi 6 danni a un bersaglio qualsiasi.",
     "Il cielo presenta il conto."),
 
+  /* ---------- INSTANT SPELLS (5) — giocabili a velocità istantanea ---------- */
+  S("s_shock", "Scossa", 2, "⚡", "fire",
+    { kind: "damage", amount: 3, target: "any" },
+    "Istantaneo. Infliggi 3 danni a un bersaglio qualsiasi.",
+    "Un crepitio, e l'aria sa di temporale."),
+  S("s_counter", "Contromagia", 2, "🌀", "air",
+    { kind: "counter" },
+    "Istantaneo. Controbatti un incantesimo bersaglio nella pila.",
+    "La parola muore prima di nascere."),
+  S("s_fog", "Nebbia", 1, "🌫️", "nature",
+    { kind: "fog" },
+    "Istantaneo. Previeni TUTTI i danni da combattimento di questo turno.",
+    "Tra la bruma, le lame non trovano la carne."),
+  S("s_growth", "Crescita Improvvisa", 2, "🌱", "nature",
+    { kind: "pump", p: 3, t: 3, target: "friendly_creature" },
+    "Istantaneo. Una tua creatura ottiene +3/+3 fino a fine turno.",
+    "La linfa esplode, e il piccolo diventa colosso."),
+  S("s_rescue", "Soccorso Divino", 2, "🛡️", "light",
+    { kind: "heal", amount: 6 },
+    "Istantaneo. Recuperi 6 Punti Vita.",
+    "All'ultimo istante, una mano di luce."),
+
   /* ---------- ARTIFACTS (6) ---------- */
   A("a_valor", "Stendardo di Valore", 3, "🚩", "light",
     { kind: "anthem", p: 1, t: 1 },
@@ -560,6 +590,8 @@ function finalize(card) {
   if (c.type === "creature")
     c.keywords = card.keywords || KEYWORDS_BY_ID[card.id] || [];
   else c.keywords = [];
+  if (c.type === "spell")
+    c.speed = INSTANT_IDS.has(card.id) ? "instant" : "sorcery";
   return c;
 }
 

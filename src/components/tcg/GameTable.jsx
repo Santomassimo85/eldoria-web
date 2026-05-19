@@ -11,7 +11,7 @@
    Avatar pods float on the LEFT edge; the big action button is
    on the RIGHT rail. Lands auto-tap to pay costs (like MTGA).
    ============================================================ */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import { FloatingLayer, TurnBanner, SpellBurst, EndOverlay } from "./Fx.jsx";
@@ -21,9 +21,11 @@ import {
 import {
   playCard, declareAttackers, confirmBlocks, endTurn, forfeit,
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
-  discardCard, HAND_CAP,
+  discardCard, HAND_CAP, passPriority,
 } from "../../tcg/engine.js";
-import { nextAction as aiNext, chooseBlocks as aiBlocks } from "../../tcg/ai.js";
+import {
+  nextAction as aiNext, chooseBlocks as aiBlocks, respondToStack,
+} from "../../tcg/ai.js";
 import {
   pushState, heartbeat, opponentGone, sendEmote, deleteMatch,
 } from "../../tcg/net.js";
@@ -127,6 +129,10 @@ export default function GameTable({
   const [attackers, setAttackers] = useState([]);
   const [blkAtk, setBlkAtk] = useState(null);
   const [blocks, setBlocks] = useState({});
+  // foe (AI) blocks shown briefly before damage so arrows are visible
+  const [previewBlocks, setPreviewBlocks] = useState(null);
+  // bumped on resize so combat arrows recompute their coordinates
+  const [arrowTick, setArrowTick] = useState(0);
   const [shake, setShake] = useState(null);
   const [inspect, setInspect] = useState(null);
   // hand starts grouped/closed on the right; first tap fans it open
@@ -171,39 +177,74 @@ export default function GameTable({
     setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1600);
   };
 
-  // draw an attack arrow (and a blue defense arrow if blocked) so
-  // it's clear who is hitting whom — kept on screen ~2s
   const centerOf = (sel, rect) => {
     const el = tableRef.current && tableRef.current.querySelector(sel);
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return { x: r.left - rect.left + r.width / 2, y: r.top - rect.top + r.height / 2 };
   };
-  const addCombatArrow = (atkInst, targetKind, tgtInst, atkSide) => {
-    requestAnimationFrame(() => {
-      const root = tableRef.current;
-      if (!root) return;
-      const rect = root.getBoundingClientRect();
-      const from = centerOf(`[data-inst="${atkInst}"]`, rect);
-      const to =
-        targetKind === "creature"
-          ? centerOf(`[data-inst="${tgtInst}"]`, rect)
-          : centerOf(`[data-hero="${opp(atkSide)}"]`, rect);
-      if (!from || !to) return;
-      const id = ++arrowSeq.current;
-      setArrows((a) => [...a, { id, from, to, kind: "atk" }]);
-      if (targetKind === "creature") {
-        setArrows((a) => [
-          ...a,
-          { id: id + 0.5, from: to, to: from, kind: "def" },
-        ]);
+
+  // recompute combat arrows on resize
+  useEffect(() => {
+    const on = () => setArrowTick((n) => n + 1);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+
+  // LIVE combat arrows, drawn from the declared combat — never from
+  // already-resolved state, so the trajectory is always correct:
+  //   • red  = an attack going through to the enemy hero (unblocked)
+  //   • blue = an attack stopped by a defending creature (blocked)
+  useLayoutEffect(() => {
+    const root = tableRef.current;
+    if (!state || !root) {
+      setArrows([]);
+      return;
+    }
+    const rect = root.getBoundingClientRect();
+    const C = (sel) => centerOf(sel, rect);
+    const out = [];
+
+    // 1) while I'm choosing attackers → arrows toward the enemy hero
+    if (
+      state.active === mySide &&
+      state.phase === "main" &&
+      attackers.length
+    ) {
+      const to = C(`[data-hero="${foeSide}"]`);
+      for (const id of attackers) {
+        const from = C(`[data-inst="${id}"]`);
+        if (from && to) out.push({ id: `sel-${id}`, from, to, kind: "atk" });
       }
-      setTimeout(
-        () => setArrows((a) => a.filter((x) => x.id !== id && x.id !== id + 0.5)),
-        2800
-      );
-    });
-  };
+    }
+
+    // 2) combat declared → show every attacker's real trajectory
+    if (state.phase === "block" && state.combat) {
+      const aSide = state.combat.attackerSide;
+      const dSide = opp(aSide);
+      // who blocks: my live picks if I defend, else the AI preview
+      const src =
+        aSide === foeSide
+          ? blocks
+          : previewBlocks || state.combat.blocks || {};
+      const heroPt = C(`[data-hero="${dSide}"]`);
+      for (const atkId of state.combat.attackers) {
+        const from = C(`[data-inst="${atkId}"]`);
+        if (!from) continue;
+        const bl = src[atkId] || [];
+        if (bl.length) {
+          for (const bId of bl) {
+            const to = C(`[data-inst="${bId}"]`);
+            if (to) out.push({ id: `b-${atkId}-${bId}`, from, to, kind: "blocked" });
+          }
+        } else if (heroPt) {
+          out.push({ id: `h-${atkId}`, from, to: heroPt, kind: "atk" });
+        }
+      }
+    }
+    setArrows(out);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, attackers, blocks, previewBlocks, mySide, foeSide, arrowTick]);
 
   useEffect(() => {
     if (!state || !state.fx.length) return;
@@ -221,7 +262,6 @@ export default function GameTable({
         case "attack":
           playSfx("attack");
           shakeBump = true;
-          addCombatArrow(e.attackerInstId, e.targetKind, e.targetInstId, e.side);
           break;
         case "damageHero":
           pushFloat(e.side === mySide ? "me-hero" : "foe-hero", `-${e.amount}`, "dmg");
@@ -292,10 +332,27 @@ export default function GameTable({
   useEffect(() => {
     if (!isAi || !state || state.winner) return;
     let t;
-    if (state.active === "p1" && state.phase === "main") {
+    if (state.priority === "p1") {
+      // AI holds priority on the stack → respond with an instant or pass
+      t = setTimeout(() => {
+        const s = stateRef.current;
+        if (!s || s.winner || s.priority !== "p1") return;
+        const r = respondToStack(s, "p1");
+        if (r.type === "instant")
+          applyState(playCard(s, "p1", r.instId, r.target));
+        else applyState(passPriority(s, "p1"));
+      }, 950);
+    } else if (state.priority === "p0") {
+      // the player's response window — the player's UI handles it
+    } else if (
+      state.active === "p1" &&
+      state.phase === "main" &&
+      !state.stack.length
+    ) {
       t = setTimeout(() => {
         const s = stateRef.current;
         if (!s || s.winner || s.active !== "p1" || s.phase !== "main") return;
+        if (s.stack.length || s.priority) return;
         const act = aiNext(s, "p1");
         if (act.type === "land" || act.type === "play")
           applyState(playCard(s, "p1", act.instId, act.target));
@@ -308,17 +365,48 @@ export default function GameTable({
     } else if (
       state.phase === "block" &&
       state.combat &&
-      state.combat.attackerSide === "p0"
+      state.combat.attackerSide === "p0" &&
+      !state.stack.length &&
+      !state.priority
     ) {
+      // 1) AI decides its blocks and we SHOW them (arrows) for a beat,
+      // 2) then damage resolves — so the player sees who blocked whom.
       t = setTimeout(() => {
         const s = stateRef.current;
         if (!s || s.phase !== "block") return;
-        applyState(confirmBlocks(s, "p1", aiBlocks(s, "p1")));
-      }, 1900);
+        const b = aiBlocks(s, "p1");
+        setPreviewBlocks(b);
+        t = setTimeout(() => {
+          const s2 = stateRef.current;
+          setPreviewBlocks(null);
+          if (!s2 || s2.phase !== "block") return;
+          applyState(confirmBlocks(s2, "p1", b));
+        }, 1500);
+      }, 1400);
     }
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, isAi]);
+
+  // human auto-pass: if I hold priority but have no instant I could
+  // cast in response, pass automatically so normal games never stall.
+  useEffect(() => {
+    const s = state;
+    if (!s || !s.players || s.winner || s.priority !== mySide) return;
+    const hand = s.players[mySide]?.hand || [];
+    const canRespond = hand.some((h) => {
+      const c = getCard(h.cardId);
+      return c && c.type === "spell" && canPlay(s, mySide, h.instId);
+    });
+    if (canRespond) return; // let the player decide
+    const t = setTimeout(() => {
+      const cur = stateRef.current;
+      if (cur && !cur.winner && cur.priority === mySide)
+        applyState(passPriority(cur, mySide));
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, mySide]);
 
   useEffect(() => {
     if (isAi || !matchId) return;
@@ -377,14 +465,14 @@ export default function GameTable({
   };
 
   const onHandCard = (hc) => {
-    if (!canMainAct) return;
-    // discard mode: tapping a card throws it away until under the cap
-    if (discarding || me.hand.length > HAND_CAP) {
+    // discard mode (only on your own main turn)
+    if (canMainAct && (discarding || me.hand.length > HAND_CAP)) {
       applyState(discardCard(state, mySide, hc.instId));
       if (me.hand.length - 1 <= HAND_CAP) setDiscarding(false);
       return;
     }
     const card = getCard(hc.cardId);
+    // canPlay already enforces sorcery vs instant timing (incl. windows)
     if (!canPlay(state, mySide, hc.instId)) {
       reject(hc.instId);
       return;
@@ -489,6 +577,14 @@ export default function GameTable({
     setBlkAtk(null);
   };
 
+  const myPriority = !winner && state.priority === mySide;
+  const stackOpen = (state.stack && state.stack.length > 0) || !!state.priority;
+  const doPass = () => {
+    if (!myPriority) return;
+    applyState(passPriority(state, mySide));
+    setSel(null);
+  };
+
   const doEndTurn = () => {
     if (!canMainAct) return;
     if (me.hand.length > HAND_CAP) {
@@ -536,14 +632,20 @@ export default function GameTable({
 
   const statusLine = winner
     ? "Partita conclusa"
+    : myPriority
+    ? "Pila aperta — rispondi con un istante o passa"
+    : stackOpen
+    ? "Risoluzione della pila…"
     : canBlockNow
     ? "Dichiara i bloccanti (anche più di uno)"
     : iAmAttackerWaiting
     ? "Attendi i bloccanti avversari…"
     : canMainAct && me.hand.length > HAND_CAP
     ? `Scarta ${me.hand.length - HAND_CAP} carta/e`
+    : canMainAct && state.attackedThisTurn
+    ? "Fase principale 2 — gioca, poi Fine turno"
     : canMainAct
-    ? "È il tuo turno"
+    ? "Fase principale 1 — gioca o attacca"
     : isAi
     ? "L'IA sta pensando…"
     : "Turno dell'avversario…";
@@ -596,6 +698,13 @@ export default function GameTable({
 
   const RailAction = () => {
     if (winner) return null;
+    if (myPriority) {
+      return (
+        <button className="tcg-bigbtn tcg-bigbtn--pass" onClick={doPass}>
+          ⏭️ PASSA
+        </button>
+      );
+    }
     if (overCap > 0) {
       return (
         <button
@@ -656,6 +765,7 @@ export default function GameTable({
     <div
       ref={tableRef}
       className={`tcg-table ${hitShake ? "is-shaking" : ""}`}
+      onContextMenu={(e) => e.preventDefault()}
       onClick={(e) => {
         if (e.target.classList.contains("tcg-table")) {
           setSel(null);
@@ -790,8 +900,10 @@ export default function GameTable({
         )}
         {me.hand.map((h, i) => {
           const card = getCard(h.cardId);
-          const playable = canMainAct && !discardMode &&
-            canPlay(state, mySide, h.instId);
+          // canPlay already covers instant timing → instants glow in
+          // response windows / combat, not only on your main turn
+          const playable =
+            !discardMode && canPlay(state, mySide, h.instId);
           return (
             <div
               key={h.instId}
@@ -838,6 +950,27 @@ export default function GameTable({
         />
       </div>
 
+      {state.stack && state.stack.length > 0 && (
+        <div className="tcg-stack" aria-label="Pila">
+          <div className="tcg-stack__title">PILA</div>
+          {state.stack.map((it, i) => {
+            const c = getCard(it.cardId);
+            return (
+              <div
+                key={it.uid}
+                className={`tcg-stack__item ${
+                  it.side === mySide ? "is-me" : "is-foe"
+                } ${i === state.stack.length - 1 ? "is-top" : ""}`}
+                onClick={() => setInspect(c)}
+              >
+                <span className="tcg-stack__ico">{c.icon || "✦"}</span>
+                <span className="tcg-stack__name">{c.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="tcg-turnpill">
         <span className="tcg-turnpill__txt">{statusLine}</span>
         <span className="tcg-turnpill__n">Turno {state.turn}</span>
@@ -881,7 +1014,7 @@ export default function GameTable({
               orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L7,3 L0,6 Z" fill="#ff4d3d" />
             </marker>
-            <marker id="ah-def" markerWidth="9" markerHeight="9" refX="6" refY="3"
+            <marker id="ah-blocked" markerWidth="9" markerHeight="9" refX="6" refY="3"
               orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L7,3 L0,6 Z" fill="#5db4ff" />
             </marker>

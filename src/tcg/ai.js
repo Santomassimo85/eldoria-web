@@ -263,3 +263,78 @@ export function chooseBlocks(s, side) {
   }
   return blocks;
 }
+
+/* AI holds priority on the stack → cast an instant in response or pass.
+   Returns { type:"instant", instId, target } | { type:"pass" } */
+export function respondToStack(s, side) {
+  const me = s.players[side];
+  const foe = opp(side);
+  const castable = me.hand.filter(
+    (h) => getCard(h.cardId).type === "spell" && canPlay(s, side, h.instId)
+  );
+  if (!castable.length) return { type: "pass" };
+
+  const find = (kind) =>
+    castable.find((h) => getCard(h.cardId).effect.kind === kind);
+
+  // 1) counter a dangerous enemy spell on the stack
+  const enemyTop = [...s.stack].reverse().find((it) => it.side !== side);
+  if (enemyTop) {
+    const ec = getCard(enemyTop.cardId);
+    const dangerous =
+      ["destroy", "aoe_enemy", "raise", "counter"].includes(ec.effect.kind) ||
+      (ec.effect.kind === "damage") ||
+      (ec.effect.kind === "buff") ||
+      (ec.effect.kind === "draw" && (ec.effect.amount || 0) >= 2);
+    const ctr = find("counter");
+    if (ctr && dangerous)
+      return { type: "instant", instId: ctr.instId, target: { uid: enemyTop.uid } };
+  }
+
+  // 2) defending in combat and about to take a lot → Fog
+  if (
+    s.phase === "block" &&
+    s.combat &&
+    s.combat.attackerSide === foe
+  ) {
+    const incoming = s.combat.attackers.reduce((n, id) => {
+      const cr = s.players[foe].battlefield.find((c) => c.instId === id);
+      return n + (cr ? effStats(s, foe, cr).power : 0);
+    }, 0);
+    const fog = find("fog");
+    if (fog && incoming >= Math.min(7, s.players[side].hp)) {
+      return { type: "instant", instId: fog.instId, target: null };
+    }
+    // burn a small attacker with a damage instant
+    const dmg = castable.find((h) => {
+      const c = getCard(h.cardId);
+      return c.effect.kind === "damage";
+    });
+    if (dmg) {
+      const amount = getCard(dmg.cardId).effect.amount;
+      for (const id of s.combat.attackers) {
+        const cr = s.players[foe].battlefield.find((c) => c.instId === id);
+        if (cr && effStats(s, foe, cr).toughness <= amount)
+          return {
+            type: "instant",
+            instId: dmg.instId,
+            target: { type: "creature", instId: id },
+          };
+      }
+    }
+  }
+
+  // 3) finisher: a damage instant that kills the enemy hero
+  const dmgAny = castable.find((h) => {
+    const c = getCard(h.cardId);
+    return c.effect.kind === "damage" && c.effect.target === "any";
+  });
+  if (dmgAny && s.players[foe].hp <= getCard(dmgAny.cardId).effect.amount)
+    return {
+      type: "instant",
+      instId: dmgAny.instId,
+      target: { type: "hero", side: foe },
+    };
+
+  return { type: "pass" };
+}

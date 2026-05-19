@@ -180,10 +180,9 @@ export default function CardView({
       onPointerUp={endPress}
       onPointerLeave={endPress}
       onContextMenu={(e) => {
-        if (onInspect) {
-          e.preventDefault();
-          onInspect(card);
-        }
+        // never let the OS/browser copy-paste / image callout appear
+        e.preventDefault();
+        if (onInspect) onInspect(card);
       }}
       role="button"
       tabIndex={0}

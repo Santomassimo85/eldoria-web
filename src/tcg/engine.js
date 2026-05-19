@@ -101,8 +101,8 @@ export function effStats(s, side, creature) {
   const card = getCard(creature.cardId) || { power: 0, toughness: 0 };
   const ab = anthemBonus(s, side);
   return {
-    power: Math.max(0, card.power + creature.plusP + ab.p),
-    toughness: Math.max(1, card.toughness + creature.plusT + ab.t),
+    power: Math.max(0, card.power + creature.plusP + (creature.tempP || 0) + ab.p),
+    toughness: Math.max(1, card.toughness + creature.plusT + (creature.tempT || 0) + ab.t),
   };
 }
 
@@ -160,6 +160,10 @@ export function createGame({ p0Name, p1Name, deck0, deck1, starter } = {}) {
     phase: "main", // "main" | "block" | "ended"
     combat: null,
     attackedThisTurn: false,
+    stack: [],          // spells waiting to resolve (LIFO; end = top)
+    priority: null,     // side that may currently respond / must pass
+    passes: 0,          // consecutive passes since the stack last changed
+    combatFog: false,   // a Fog prevented this combat's damage
     winner: null,
     log: [],
     fx: [],
@@ -231,6 +235,7 @@ function startTurn(s, side, isGameStart) {
    ============================================================ */
 export function canPlayLand(s, side, instId) {
   if (s.winner || s.active !== side || s.phase !== "main") return false;
+  if (s.stack.length || s.priority) return false; // sorcery speed only
   const p = s.players[side];
   if (p.playedLand) return false;
   const hc = handCard(s, side, instId);
@@ -239,21 +244,45 @@ export function canPlayLand(s, side, instId) {
   return !!card && card.type === "land";
 }
 
+/* may `side` cast an INSTANT right now? (holds priority, or an open
+   sorcery-timing / combat window) */
+export function canCastInstant(s, side) {
+  if (s.winner) return false;
+  if (s.priority === side) return true; // responding in an open window
+  if (!s.stack.length && !s.priority) {
+    if (s.active === side && s.phase === "main") return true; // own turn
+    if (s.phase === "block") return true;                     // combat trick
+  }
+  return false;
+}
+
 export function canPlay(s, side, instId) {
-  if (s.winner || s.active !== side || s.phase !== "main") return false;
+  if (s.winner) return false;
   const hc = handCard(s, side, instId);
   if (!hc) return false;
   const card = getCard(hc.cardId);
   if (!card) return false;
   if (card.type === "land") return canPlayLand(s, side, instId);
   if (!canAfford(s, side, card.cost)) return false;
+
+  const isInstant = card.type === "spell" && card.speed === "instant";
+  if (isInstant) {
+    if (!canCastInstant(s, side)) return false;
+  } else {
+    // sorcery speed: your turn, main phase, nothing on the stack
+    if (s.active !== side || s.phase !== "main") return false;
+    if (s.stack.length || s.priority) return false;
+  }
+
   // target availability
   if (card.type === "spell") {
     const need = card.effect.kind;
     if (need === "destroy") return creatureExists(s);
-    if (need === "buff") return s.players[side].battlefield.length > 0;
+    if (need === "buff" || need === "pump")
+      return s.players[side].battlefield.length > 0;
     if (need === "raise") return s.players[side].graveyard.some((id) => isCreature(id));
     if (need === "damage" && card.effect.target === "creature") return creatureExists(s);
+    if (need === "counter") return s.stack.some((it) => it.side !== side);
   }
   return true;
 }
@@ -287,7 +316,7 @@ export function spellTargets(s, side, instId) {
     return { kind: "creature", creatures: allCreatures, heroes: [] };
   if (e.kind === "destroy")
     return { kind: "creature", creatures: allCreatures, heroes: [] };
-  if (e.kind === "buff")
+  if (e.kind === "buff" || e.kind === "pump")
     return {
       kind: "friendly_creature",
       creatures: s.players[side].battlefield.map((c) => ({ side, instId: c.instId })),
@@ -341,24 +370,86 @@ export function playCard(state, side, instId, target = null) {
       sick: !kw(card.id, "haste"),
       plusP: 0,
       plusT: 0,
+      tempP: 0,
+      tempT: 0,
       shield: kw(card.id, "shield"),
     };
     p.battlefield.push(cr);
     fx(s, { kind: "play", side, cardId: card.id, into: "battlefield", instId: cr.instId });
     logMsg(s, side, `${p.name} evoca ${card.name}.`);
+    resolveDeaths(s);
+    checkWin(s);
   } else if (card.type === "artifact") {
     p.artifacts.push({ instId: newInst(s), cardId: card.id });
     fx(s, { kind: "play", side, cardId: card.id, into: "artifacts" });
     logMsg(s, side, `${p.name} attiva ${card.name}.`);
   } else {
-    fx(s, { kind: "spell", side, cardId: card.id, element: card.element });
-    logMsg(s, side, `${p.name} lancia ${card.name}.`);
-    applySpell(s, side, card, target);
-    p.graveyard.push(card.id);
+    // SPELL → goes on the stack; the opponent gets a chance to respond
+    s.stack.push({ uid: newInst(s), side, cardId: card.id, target });
+    s.priority = opp(side);
+    s.passes = 0;
+    fx(s, { kind: "stack", side, cardId: card.id });
+    logMsg(s, side, `${p.name} lancia ${card.name} (in pila).`);
   }
+  return s;
+}
 
+/* ============================================================
+   THE STACK — priority passing & LIFO resolution
+   ============================================================ */
+export function stackTop(s) {
+  return s.stack && s.stack.length ? s.stack[s.stack.length - 1] : null;
+}
+
+function resolveTop(s) {
+  const item = s.stack.pop();
+  if (!item) return;
+  const card = getCard(item.cardId);
+  const ctrl = s.players[item.side];
+  if (card.effect.kind === "counter") {
+    // counter a targeted (or the most recent enemy) spell still on the stack
+    let idx = -1;
+    if (item.target && item.target.uid != null)
+      idx = s.stack.findIndex((x) => x.uid === item.target.uid);
+    if (idx < 0)
+      for (let i = s.stack.length - 1; i >= 0; i--)
+        if (s.stack[i].side !== item.side) { idx = i; break; }
+    if (idx >= 0) {
+      const cd = s.stack.splice(idx, 1)[0];
+      const cc = getCard(cd.cardId);
+      s.players[cd.side].graveyard.push(cc.id);
+      fx(s, { kind: "counter", side: item.side, cardId: cc.id });
+      logMsg(s, item.side, `${ctrl.name} controbatte ${cc.name}.`);
+    } else {
+      logMsg(s, item.side, `${card.name} svanisce: nessun bersaglio.`);
+    }
+  } else {
+    fx(s, { kind: "spell", side: item.side, cardId: card.id, element: card.element });
+    logMsg(s, item.side, `Si risolve ${card.name}.`);
+    applySpell(s, item.side, card, item.target);
+  }
+  ctrl.graveyard.push(card.id);
   resolveDeaths(s);
   checkWin(s);
+}
+
+/* a player passes priority. When BOTH pass in a row the top of the
+   stack resolves; an empty stack + both pass closes the window. */
+export function passPriority(state, side) {
+  if (state.winner || state.priority !== side) return state;
+  const s = clone(state);
+  s.passes = (s.passes || 0) + 1;
+  if (s.passes >= 2) {
+    if (s.stack.length) {
+      resolveTop(s);
+      s.passes = 0;
+      s.priority = s.winner ? null : s.stack.length ? s.active : null;
+    } else {
+      s.priority = null; // nothing to resolve — window closes
+    }
+  } else {
+    s.priority = opp(side); // let the other player respond
+  }
   return s;
 }
 
@@ -398,6 +489,22 @@ function applySpell(s, side, card, target) {
         logMsg(s, side, `${getCard(f.creature.cardId).name} ottiene +${e.p}/+${e.t}.`);
       }
     }
+  } else if (e.kind === "pump") {
+    // temporary buff — wears off at end of turn
+    if (target && target.type === "creature") {
+      const f = findCreature(s, target.instId);
+      if (f && f.side === side) {
+        f.creature.tempP = (f.creature.tempP || 0) + e.p;
+        f.creature.tempT = (f.creature.tempT || 0) + e.t;
+        fx(s, { kind: "buff", side, instId: f.creature.instId });
+        logMsg(s, side,
+          `${getCard(f.creature.cardId).name} ottiene +${e.p}/+${e.t} fino a fine turno.`);
+      }
+    }
+  } else if (e.kind === "fog") {
+    s.combatFog = true;
+    fx(s, { kind: "fog", side });
+    logMsg(s, side, `${me.name}: i danni da combattimento sono prevenuti questo turno.`);
   } else if (e.kind === "draw") {
     for (let i = 0; i < e.amount; i++) drawOne(s, side, false);
     logMsg(s, side, `${me.name} pesca ${e.amount} carte.`);
@@ -413,6 +520,8 @@ function applySpell(s, side, card, target) {
         sick: !kw(cardId, "haste"),
         plusP: 0,
         plusT: 0,
+        tempP: 0,
+        tempT: 0,
         shield: kw(cardId, "shield"),
       };
       me.battlefield.push(cr);
@@ -486,6 +595,7 @@ export function legalAttackers(s, side) {
 export function declareAttackers(state, side, attackerIds) {
   if (state.winner || state.active !== side || state.phase !== "main" || state.attackedThisTurn)
     return state;
+  if (state.stack.length || state.priority) return state; // resolve stack first
   const valid = attackerIds.filter((id) => canAttack(state, side, id));
   if (valid.length === 0) return state;
   const s = clone(state);
@@ -538,6 +648,7 @@ export function legalBlockers(s, attackerInstId) {
 export function confirmBlocks(state, defenderSide, blocksMap = {}) {
   if (!state.combat || state.phase !== "block") return state;
   if (defenderSide !== opp(state.combat.attackerSide)) return state;
+  if (state.stack.length || state.priority) return state; // resolve tricks first
   const s = clone(state);
   const atkSide = s.combat.attackerSide;
   const used = new Set();
@@ -595,6 +706,13 @@ function strikeHero(s, srcSide, src, tgtSide, amount) {
 }
 
 function resolveCombatInternal(s) {
+  // a Fog cancels ALL combat damage this turn
+  if (s.combatFog) {
+    logMsg(s, null, "I danni da combattimento sono prevenuti (Nebbia).");
+    s.combat = null;
+    s.phase = s.winner ? "ended" : "main";
+    return s;
+  }
   const atkSide = s.combat.attackerSide;
   const defSide = opp(atkSide);
   const blocks = s.combat.blocks || {};
@@ -714,13 +832,19 @@ export function discardCard(state, side, instId) {
 /* ---- end turn ---- */
 export function endTurn(state, side) {
   if (state.winner || state.active !== side || state.phase !== "main") return state;
+  if (state.stack.length || state.priority) return state; // resolve stack first
   // must get down to the hand cap by discarding manually first
   if (state.players[side].hand.length > HAND_CAP) return state;
   const s = clone(state);
   const p = s.players[side];
 
+  s.combatFog = false;
   for (const sd of SIDES)
-    for (const cr of s.players[sd].battlefield) cr.damage = 0;
+    for (const cr of s.players[sd].battlefield) {
+      cr.damage = 0;
+      cr.tempP = 0; // temporary pumps wear off
+      cr.tempT = 0;
+    }
 
   const next = opp(side);
   fx(s, { kind: "turn", side: next });
@@ -766,6 +890,10 @@ export function reviveState(raw) {
   if (!s._seq) s._seq = { inst: 9000, fx: 9000, log: 9000 };
   if (!Array.isArray(s.fx)) s.fx = [];
   if (!Array.isArray(s.log)) s.log = [];
+  if (!Array.isArray(s.stack)) s.stack = [];
+  if (typeof s.priority === "undefined") s.priority = null;
+  if (typeof s.passes !== "number") s.passes = 0;
+  if (typeof s.combatFog !== "boolean") s.combatFog = false;
   for (const sd of SIDES) {
     const p = s.players?.[sd];
     if (!p) continue;
@@ -779,6 +907,8 @@ export function reviveState(raw) {
     for (const cr of p.battlefield) {
       if (typeof cr.shield !== "boolean") cr.shield = kw(cr.cardId, "shield");
       if (typeof cr.regenUsed !== "boolean") cr.regenUsed = false;
+      if (typeof cr.tempP !== "number") cr.tempP = 0;
+      if (typeof cr.tempT !== "number") cr.tempT = 0;
     }
   }
   // migrate old single-blocker combat ({atk: blkId}) → arrays
