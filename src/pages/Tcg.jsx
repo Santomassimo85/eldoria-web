@@ -177,10 +177,11 @@ export default function Tcg() {
     );
   }
 
-  // During the game (anything but the menu) we FORCE landscape: if the
-  // device is physically in portrait, the board is rotated 90° by CSS
-  // so the player never has to rotate the phone themselves.
-  const forceLandscape = isPortrait && screen !== "menu";
+  // FORCE landscape ONLY during an actual battle (vs AI or PvP). Every
+  // other screen (menu, deck, collection, shop, manual, lobby) stays in
+  // normal vertical orientation.
+  const forceLandscape =
+    isPortrait && (screen === "ai" || screen === "pvp");
 
   return (
     <div className={`tcg-page${forceLandscape ? " tcg-page--force-landscape" : ""}`}>
