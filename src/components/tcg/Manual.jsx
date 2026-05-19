@@ -3,6 +3,8 @@ import React from "react";
 import {
   ELEMENTS, ELEMENT_LABEL, ELEMENT_ICON,
   RARITY_ORDER, RARITY_LABEL, RARITY_COLOR, KEYWORDS, KEYWORD_IDS,
+  ELEMENT_POWERS, ATTUNE_RATIO, POWER_MANA, POWER_CHARGE_CAP,
+  DICE_STATS,
 } from "../../tcg/cards.js";
 
 export default function Manual({ onBack }) {
@@ -90,7 +92,9 @@ export default function Manual({ onBack }) {
             <li>Pesca 1 carta (chi muove per primo salta la prima pescata).</li>
             <li>
               <b>Fase principale 1</b>: gioca 1 Terra e tutte le carte che
-              puoi pagare.
+              puoi pagare. Giochi una carta <b>trascinandola</b> dalla mano
+              sul campo (o toccandola); per le magie con bersaglio,
+              trascinala direttamente sulla creatura/eroe.
             </li>
             <li>Dichiara gli attaccanti (toccano le creature che attaccano).</li>
             <li>
@@ -108,6 +112,29 @@ export default function Manual({ onBack }) {
             </li>
           </ol>
         </section>
+
+        {DICE_STATS && (
+          <section>
+            <h2>🎲 Forza e Costituzione a dadi</h2>
+            <p>
+              Le creature <b>non</b> hanno valori fissi: sulla carta in mano
+              vedi un <b>dado</b> (es. <b>3+1d6</b>). Quando{" "}
+              <b>evochi</b> la creatura, il gioco <b>tira i dadi una sola
+              volta</b>: quei numeri diventano la sua Forza/Costituzione per
+              il resto della partita (li vedi scritti sulla carta in campo,
+              e nel log compare <b>🎲 Nome: F/C</b>).
+            </p>
+            <p>
+              Ogni dado è <b>base + 1dN</b>: c'è sempre un{" "}
+              <b>minimo garantito</b> (mai un bidone), più una parte casuale.
+              La media equivale ai vecchi valori, quindi l'equilibrio resta.
+              I dadi sono più grandi sulle creature <b>costose</b> (più
+              imprevedibili) e piccoli su quelle <b>economiche</b>: le
+              creature deboli restano deboli. Potenziamenti, danni e abilità
+              funzionano come prima, partendo dai numeri tirati.
+            </p>
+          </section>
+        )}
 
         <section>
           <h2>Combattimento</h2>
@@ -148,10 +175,44 @@ export default function Manual({ onBack }) {
         </section>
 
         <section>
+          <h2>Affinità Elementale (Poteri Elementali)</h2>
+          <p>
+            Ogni elemento ha un <b>Potere</b> esclusivo. Puoi usarlo solo se
+            il tuo mazzo è <b>in sintonia</b> con quell'elemento: almeno il{" "}
+            <b>{Math.round(ATTUNE_RATIO * 100)}%</b> delle carte{" "}
+            <b>non-Terra</b> deve essere di quel colore. Così un mazzo{" "}
+            <b>mono</b> ha 1 Potere, un buon mazzo a <b>2 colori</b> li
+            sblocca <b>entrambi</b>, mentre un mazzo arcobaleno non ne
+            sblocca nessuno (la scelta di consistenza vale il sacrificio).
+          </p>
+          <p>
+            All'inizio di ogni tuo turno guadagni <b>1 Carica</b> (massimo{" "}
+            <b>{POWER_CHARGE_CAP}</b>). Attivare un Potere costa{" "}
+            <b>1 Carica + {POWER_MANA} mana</b> di quel colore, solo nella
+            tua <b>Fase principale</b> a Pila vuota. Il Potere va{" "}
+            <b>nella Pila</b> come un incantesimo: l'avversario può
+            rispondere o <b>controbatterlo</b>.
+          </p>
+          <p>
+            La barra dei Poteri è in <b>basso a sinistra</b>: mostra le
+            Cariche e i Poteri in sintonia. Un Potere illuminato è{" "}
+            pronto — toccalo e (se serve) scegli il bersaglio.
+          </p>
+          <ul>
+            {ELEMENTS.filter((el) => ELEMENT_POWERS[el]).map((el) => (
+              <li key={el}>
+                {ELEMENT_ICON[el]} <b>{ELEMENT_POWERS[el].name}</b>{" "}
+                <small>({ELEMENT_LABEL[el]})</small> — {ELEMENT_POWERS[el].text}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section>
           <h2>Rarità</h2>
           <p>
-            Ogni carta ha una <b>rarità</b>, indicata da un pallino colorato
-            sulla carta:
+            Ogni carta ha una <b>rarità</b>, indicata da un piccolo{" "}
+            <b>angolo colorato</b> in alto a destra della carta:
           </p>
           <p className="tcg-doc__els">
             {RARITY_ORDER.map((r) => (

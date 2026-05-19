@@ -2793,3 +2793,88 @@
   .rpg-screen .rpg-player-panel { padding: 12px 12px 14px; }
   .rpg-screen .rpg-panel-title  { font-size: 9px; padding: 6px 10px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MASTER PLAYER LIST — compact, colour-coded, readable.
+   Defined last so it wins over the earlier .rpg-screen rules.
+   Goal: fit every player in a tight grid (no full-page scroll)
+   and use colour to tell states/HP apart at a glance.
+   ════════════════════════════════════════════════════════════ */
+.rpg-screen .rpg-player-adj-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 6px;
+  padding: 8px;
+  background: #fbf3df;
+}
+
+/* one tight 2-line card per player; left edge = colour-coded state */
+.rpg-screen .rpg-master-row {
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  padding: 4px 8px 5px;
+  border-width: 2px;
+  border-left: 7px solid var(--rpg-gold);
+  box-shadow: 1px 1px 0 0 var(--rpg-ink);
+  align-content: center;
+}
+.rpg-screen .rpg-master-row:hover { transform: none; background: var(--rpg-amber-soft); }
+.rpg-screen .rpg-master-row.targeted { border-left-color: #c03020; background: #ffe1da; }
+.rpg-screen .rpg-master-row.acted    { border-left-color: #2a9040; background: #e2f3dd; }
+.rpg-screen .rpg-master-row.dead     { border-left-color: #6a6258; background: #e4e0d6; }
+
+/* head: name + HP on line 1, the bar spans full width under them */
+.rpg-screen .rpg-master-row-head {
+  flex: 1 1 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name hp" "bar bar";
+  gap: 3px 8px;
+}
+.rpg-screen .rpg-master-row-name {
+  grid-area: name;
+  font-size: 16px;
+  max-width: 100%;
+}
+.rpg-screen .rpg-master-row-hp {
+  grid-area: hp;
+  font-family: var(--rpg-font-vt);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0 7px;
+  border-width: 2px;
+  background: #eef7ea;
+  color: #1a5a20;
+}
+.rpg-screen .rpg-master-row-hp.low  { background: #fff0d2; color: #9a5800; border-color: #c87800; }
+.rpg-screen .rpg-master-row-hp.crit { background: #ffdcd5; color: #a01408; border-color: #c03020; }
+.rpg-screen .rpg-master-row-head .rpg-bar-track {
+  grid-area: bar;
+  height: 9px;
+  border-width: 2px;
+}
+
+/* controls: wrap compactly on line 2, separated by a hairline */
+.rpg-screen .rpg-master-row-btns {
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(42, 32, 16, 0.25);
+}
+.rpg-screen .rpg-master-row-btns .rpg-sm-btn {
+  font-size: 9px;          /* up from 7px so it's actually readable */
+  padding: 3px 6px;
+  min-width: 26px;
+}
+.rpg-screen .rpg-attack-counter { font-size: 8px; padding: 1px 5px; }
+
+/* section labels colour-coded by purpose, so the panel reads fast */
+.rpg-screen .rpg-section-label--turn    { border-left-color: var(--rpg-gold); }
+.rpg-screen .rpg-section-label--boss    { border-left-color: #c03020; background: #ffe1da; }
+.rpg-screen .rpg-section-label--players { border-left-color: #1a6090; background: #dceaf6; }
+
+/* on narrow screens fall back to a single column */
+@media (max-width: 760px) {
+  .rpg-screen .rpg-player-adj-list { grid-template-columns: 1fr; }
+}

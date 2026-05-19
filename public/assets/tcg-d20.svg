@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" fill="none">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="42%" r="62%">
+      <stop offset="0%" stop-color="#f6e3a8"/>
+      <stop offset="55%" stop-color="#d8b15a"/>
+      <stop offset="100%" stop-color="#8a6a23"/>
+    </radialGradient>
+  </defs>
+  <g stroke="url(#g)" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" opacity="0.95">
+    <!-- arcane ring + rune ticks -->
+    <circle cx="240" cy="240" r="232" stroke-width="2" opacity="0.5"/>
+    <circle cx="240" cy="240" r="214" stroke-width="1.2" stroke-dasharray="3 13" opacity="0.6"/>
+    <!-- d20 outer hexagon silhouette -->
+    <polygon points="240,40 410,138 410,342 240,440 70,342 70,138"/>
+    <!-- top crown of triangles -->
+    <polyline points="240,40 156,196 324,196 240,40"/>
+    <path d="M70,138 156,196 M410,138 324,196"/>
+    <!-- equator band -->
+    <path d="M70,138 156,196 110,300 M410,138 324,196 370,300"/>
+    <path d="M156,196 240,260 324,196"/>
+    <path d="M110,300 240,260 370,300"/>
+    <!-- bottom face -->
+    <path d="M110,300 240,440 370,300"/>
+    <path d="M240,260 240,440"/>
+    <path d="M70,342 110,300 M410,342 370,300"/>
+  </g>
+  <text x="240" y="252" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="92" font-weight="700" fill="url(#g)" opacity="0.96">20</text>
+</svg>

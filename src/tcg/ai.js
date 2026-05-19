@@ -11,10 +11,10 @@
    chooseBlocks(state, side) -> { [attackerInstId]: [blockerInstId, …] }
    ============================================================ */
 
-import { getCard, ELEMENTS } from "./cards.js";
+import { getCard, ELEMENTS, ELEMENT_POWERS } from "./cards.js";
 import {
   effStats, canPlay, canPlayLand, spellTargets, legalAttackers, opp,
-  HAND_CAP,
+  HAND_CAP, attunedPowers, canUsePower,
 } from "./engine.js";
 
 const creatureValue = (s, side, cr) => {
@@ -123,6 +123,52 @@ function pickLand(s, side) {
   return best ? best.instId : lands[0].instId;
 }
 
+/* pick a worthwhile Element Power, or null */
+function aiPickPower(s, side) {
+  const foe = opp(side);
+  for (const { el } of attunedPowers(s, side)) {
+    if (!canUsePower(s, side, el)) continue;
+    const e = ELEMENT_POWERS[el].effect;
+    if (e.kind === "damage") {
+      // finish off a creature, then go face if it's lethal/close
+      const k = s.players[foe].battlefield.find((c) => {
+        const t = effStats(s, foe, c).toughness;
+        return t - (c.damage || 0) <= e.amount;
+      });
+      if (k) return { el, target: { type: "creature", side: foe, instId: k.instId } };
+      if (s.players[foe].hp <= e.amount || s.players[foe].hp <= 10)
+        return { el, target: { type: "hero", side: foe } };
+    } else if (e.kind === "aoe_enemy") {
+      const hits = s.players[foe].battlefield.filter(
+        (c) => effStats(s, foe, c).toughness - (c.damage || 0) <= e.amount
+      ).length;
+      if (hits >= 2) return { el, target: null };
+    } else if (e.kind === "freeze") {
+      const t = biggestThreat(s, foe);
+      if (t && t.p >= 3) return { el, target: { type: "creature", side: foe, instId: t.instId } };
+    } else if (e.kind === "weaken") {
+      const small = s.players[foe].battlefield.find((c) => {
+        const b = getCard(c.cardId);
+        return b && b.toughness + (c.plusT || 0) <= e.t;
+      });
+      if (small) return { el, target: { type: "creature", side: foe, instId: small.instId } };
+      const t = biggestThreat(s, foe);
+      if (t && t.p >= 4) return { el, target: { type: "creature", side: foe, instId: t.instId } };
+    } else if (e.kind === "heal") {
+      if (s.players[side].hp <= 16) return { el, target: null };
+    } else if (e.kind === "buff") {
+      const mine = s.players[side].battlefield;
+      if (mine.length) {
+        let b = mine[0];
+        for (const c of mine)
+          if (effStats(s, side, c).power > effStats(s, side, b).power) b = c;
+        return { el, target: { type: "creature", side, instId: b.instId } };
+      }
+    }
+  }
+  return null;
+}
+
 export function nextAction(s, side) {
   if (s.winner || s.active !== side || s.phase !== "main") return { type: "end" };
 
@@ -150,6 +196,10 @@ export function nextAction(s, side) {
     }
     return { type: "play", instId: best.instId, target };
   }
+
+  // 2b) spend leftover colour + a Carica on an Element Power
+  const pw = aiPickPower(s, side);
+  if (pw) return { type: "power", el: pw.el, target: pw.target };
 
   // 3) attacks
   if (!s.attackedThisTurn) {

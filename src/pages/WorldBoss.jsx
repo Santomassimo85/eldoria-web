@@ -1257,7 +1257,7 @@ export default function WorldBoss() {
                 <div className="rpg-panel-title">♛ Master</div>
 
                 {/* ── Turno ── */}
-                <div className="rpg-section-label">Turno · Azioni {turnState.actedPlayers?.length ?? 0}/{players.length}</div>
+                <div className="rpg-section-label rpg-section-label--turn">Turno · Azioni {turnState.actedPlayers?.length ?? 0}/{players.length}</div>
                 <div className="rpg-btn-row">
                   <button className="rpg-btn rpg-btn--hero" onClick={() => handleManualTurnChange("players")}>⚔ Eroi</button>
                   <button className="rpg-btn rpg-btn--boss" onClick={() => handleManualTurnChange("boss")}>🔥 Boss</button>
@@ -1266,7 +1266,7 @@ export default function WorldBoss() {
                 {/* ── Boss ── */}
                 {boss && (
                   <>
-                    <div className="rpg-section-label">Boss</div>
+                    <div className="rpg-section-label rpg-section-label--boss">Boss</div>
                     {(Array.isArray(boss.actions) && boss.actions.length > 0
                       ? boss.actions
                       : [boss.action1, boss.action2, boss.action3, boss.action4, boss.action5]
@@ -1290,7 +1290,7 @@ export default function WorldBoss() {
                 )}
 
                 {/* ── Giocatori (unificato: target + HP + controlli) ── */}
-                <div className="rpg-section-label rpg-section-label--toggle" onClick={() => setPlayersOpen(o => !o)}>
+                <div className="rpg-section-label rpg-section-label--toggle rpg-section-label--players" onClick={() => setPlayersOpen(o => !o)}>
                   <span>{playersOpen ? "▼" : "▶"} Giocatori <span className="rpg-section-count">({players.length})</span></span>
                   <span className="rpg-section-tools" onClick={(e) => e.stopPropagation()}>
                     <button className="rpg-sm-btn" onClick={toggleSelectAll}>
@@ -1321,7 +1321,7 @@ export default function WorldBoss() {
                             {acted && <span className="rpg-check-mark">✓</span>}
                             {isDead && <span className="rpg-dead-mark">💀</span>}
                           </span>
-                          <span className="rpg-master-row-hp">
+                          <span className={`rpg-master-row-hp ${hpCls}`}>
                             {hp}/{maxHp}{(p.stats?.shield ?? 0) > 0 ? ` 🛡${p.stats.shield}` : ""}
                             {(p.selfAcBonus ?? 0) > 0 && (
                               <span title={p.selfAcSource || "Buff CA attivo"} style={{ marginLeft: 6, fontSize: "0.78em", color: "#1f5532", background: "rgba(58,122,74,0.16)", padding: "1px 6px", borderRadius: 999 }}>

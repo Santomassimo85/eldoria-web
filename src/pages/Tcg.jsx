@@ -180,11 +180,17 @@ export default function Tcg() {
   // FORCE landscape ONLY during an actual battle (vs AI or PvP). Every
   // other screen (menu, deck, collection, shop, manual, lobby) stays in
   // normal vertical orientation.
-  const forceLandscape =
-    isPortrait && (screen === "ai" || screen === "pvp");
+  // the actual battle goes full-bleed (covers the app menu); every
+  // other screen keeps the global navbar visible on top.
+  const inFight = screen === "ai" || screen === "pvp";
+  const forceLandscape = isPortrait && inFight;
 
   return (
-    <div className={`tcg-page${forceLandscape ? " tcg-page--force-landscape" : ""}`}>
+    <div
+      className={`tcg-page${inFight ? " tcg-page--fight" : ""}${
+        forceLandscape ? " tcg-page--force-landscape" : ""
+      }`}
+    >
 
       {screen === "menu" && (
         <ModeSelect

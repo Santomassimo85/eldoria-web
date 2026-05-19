@@ -17,11 +17,13 @@ import CardZoom from "./CardZoom.jsx";
 import { FloatingLayer, TurnBanner, SpellBurst, EndOverlay } from "./Fx.jsx";
 import {
   getCard, ELEMENT_PIP, ELEMENT_LABEL, ELEMENT_ICON, coverUrl,
+  ELEMENT_POWERS,
 } from "../../tcg/cards.js";
 import {
   playCard, declareAttackers, confirmBlocks, endTurn, forfeit,
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
+  attunedPowers, canUsePower, powerTargets, castElementPower,
 } from "../../tcg/engine.js";
 import {
   nextAction as aiNext, chooseBlocks as aiBlocks, respondToStack,
@@ -53,7 +55,9 @@ function ManaRow({ lands }) {
 /* Floating player panel — NO background, doesn't block the field.
    Name, HP bar with the number ON it, mana, and a visible deck
    pile (the player's chosen cover) + hand/graveyard counts. */
-function AvatarPod({ p, top, cover, side, targetable, onClick }) {
+function AvatarPod({
+  p, top, cover, side, targetable, onClick, onDragOver, onDrop,
+}) {
   const pct = Math.max(0, Math.min(100, (p.hp / START_HP) * 100));
   return (
     <div
@@ -62,6 +66,8 @@ function AvatarPod({ p, top, cover, side, targetable, onClick }) {
       }`}
       data-hero={side}
       onClick={onClick}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       <span className="tcg-pod__name">{p.name}</span>
       <div className="tcg-pod__hpbar" title={`${p.hp} PV`}>
@@ -126,6 +132,8 @@ export default function GameTable({
   };
 
   const [sel, setSel] = useState(null);
+  // element power awaiting a target (the selected element key, or null)
+  const [powerSel, setPowerSel] = useState(null);
   const [attackers, setAttackers] = useState([]);
   const [blkAtk, setBlkAtk] = useState(null);
   const [blocks, setBlocks] = useState({});
@@ -153,6 +161,9 @@ export default function GameTable({
   // combat cinematic: creatures crumbling + cards being struck
   const [dyingIds, setDyingIds] = useState([]);
   const [combatShake, setCombatShake] = useState([]);
+  // drag&drop from hand: instId being dragged + a flag for styling
+  const [dragging, setDragging] = useState(false);
+  const dragInst = useRef(null);
   const tableRef = useRef(null);
   const lastFx = useRef(0);
   const fxReady = useRef(isAi);
@@ -485,6 +496,8 @@ export default function GameTable({
         const act = aiNext(s, "p1");
         if (act.type === "land" || act.type === "play")
           applyState(playCard(s, "p1", act.instId, act.target));
+        else if (act.type === "power")
+          applyState(castElementPower(s, "p1", act.el, act.target));
         else if (act.type === "attack")
           applyState(declareAttackers(s, "p1", act.attackerIds));
         else if (act.type === "discard")
@@ -593,6 +606,41 @@ export default function GameTable({
     setTimeout(() => setShake((x) => (x === id ? null : x)), 420);
   };
 
+  /* ---- Element Powers ---- */
+  const myPowers = attunedPowers(state, mySide);
+  const powerTg = powerSel
+    ? powerTargets(state, mySide, powerSel)
+    : { kind: "none", creatures: [], heroes: [] };
+
+  const tryPowerOn = (target) => {
+    if (!powerSel) return false;
+    const ok =
+      (target.type === "creature" &&
+        powerTg.creatures.some((c) => c.instId === target.instId)) ||
+      (target.type === "hero" && powerTg.heroes.includes(target.side));
+    if (!ok) {
+      reject(target.instId || target.side);
+      return false;
+    }
+    applyState(castElementPower(state, mySide, powerSel, target));
+    setPowerSel(null);
+    return true;
+  };
+
+  const activatePower = (el) => {
+    if (powerSel === el) { setPowerSel(null); return; }
+    if (!canUsePower(state, mySide, el)) { reject("pw-" + el); return; }
+    const ptg = powerTargets(state, mySide, el);
+    if (ptg.kind === "none") {
+      applyState(castElementPower(state, mySide, el, null));
+      setPowerSel(null);
+      return;
+    }
+    setSel(null);
+    setAttackers([]);
+    setPowerSel(el);
+  };
+
   const onHandCard = (hc) => {
     // discard mode (only on your own main turn)
     if (canMainAct && (discarding || me.hand.length > HAND_CAP)) {
@@ -646,7 +694,101 @@ export default function GameTable({
     return true;
   };
 
+  /* ---------- drag & drop from hand ---------- */
+  const beginDrag = (hc) => (e) => {
+    dragInst.current = hc.instId;
+    setDragging(true);
+    setSel(null);
+    try {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", String(hc.instId));
+    } catch {
+      /* some browsers throw on setData — drag still works via the ref */
+    }
+  };
+  const endDrag = () => {
+    dragInst.current = null;
+    setDragging(false);
+  };
+  const allowDrop = (e) => {
+    if (dragInst.current == null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  // dropped on the table / my field → play it straight away
+  // (lands, creatures, no-target spells). Targeted spells get selected
+  // so the next tap/drop picks the target.
+  const dropToPlay = (e) => {
+    if (dragInst.current == null) return;
+    e.preventDefault();
+    const id = dragInst.current;
+    endDrag();
+    const hc = me.hand.find((h) => h.instId === id);
+    if (!hc) return;
+    if (canMainAct && (discarding || me.hand.length > HAND_CAP)) {
+      applyState(discardCard(state, mySide, hc.instId));
+      if (me.hand.length - 1 <= HAND_CAP) setDiscarding(false);
+      return;
+    }
+    const card = getCard(hc.cardId);
+    if (!canPlay(state, mySide, hc.instId)) {
+      reject(hc.instId);
+      return;
+    }
+    if (card.type === "land") {
+      applyState(playCard(state, mySide, hc.instId));
+      setSel(null);
+      setHandOpen(false);
+      return;
+    }
+    const needsTarget =
+      card.type === "spell" &&
+      spellTargets(state, mySide, hc.instId).kind !== "none";
+    if (needsTarget) {
+      setSel(hc.instId);
+      setAttackers([]);
+      setHandOpen(true);
+      return;
+    }
+    applyState(playCard(state, mySide, hc.instId, null));
+    setSel(null);
+    setHandOpen(false);
+  };
+
+  // dropped directly on a creature / hero → cast a targeted spell on it
+  const dropOnTarget = (target) => (e) => {
+    if (dragInst.current == null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = dragInst.current;
+    endDrag();
+    const hc = me.hand.find((h) => h.instId === id);
+    if (!hc) return;
+    const card = getCard(hc.cardId);
+    if (card.type !== "spell" || !canPlay(state, mySide, hc.instId)) {
+      reject(hc.instId);
+      return;
+    }
+    const t = spellTargets(state, mySide, hc.instId);
+    const ok =
+      (target.type === "creature" &&
+        t.creatures.some((c) => c.instId === target.instId)) ||
+      (target.type === "hero" && t.heroes.includes(target.side));
+    if (!ok) {
+      reject(target.instId || target.side);
+      return;
+    }
+    applyState(playCard(state, mySide, hc.instId, target));
+    setSel(null);
+    setHandOpen(false);
+  };
+
   const onMyCreature = (cr) => {
+    if (powerSel) {
+      tryPowerOn({ type: "creature", side: mySide, instId: cr.instId });
+      return;
+    }
     if (sel && selCard?.type === "spell") {
       tryCastOn({ type: "creature", side: mySide, instId: cr.instId });
       return;
@@ -680,6 +822,10 @@ export default function GameTable({
   };
 
   const onFoeCreature = (cr) => {
+    if (powerSel) {
+      tryPowerOn({ type: "creature", side: foeSide, instId: cr.instId });
+      return;
+    }
     if (sel && selCard?.type === "spell") {
       tryCastOn({ type: "creature", side: foeSide, instId: cr.instId });
       return;
@@ -690,6 +836,7 @@ export default function GameTable({
   };
 
   const onHero = (side) => {
+    if (powerSel) { tryPowerOn({ type: "hero", side }); return; }
     if (sel && selCard?.type === "spell") tryCastOn({ type: "hero", side });
   };
 
@@ -779,9 +926,11 @@ export default function GameTable({
     : "Turno dell'avversario…";
 
   const targetableFoeHero =
-    sel && selCard?.type === "spell" && tg.heroes.includes(foeSide);
+    (sel && selCard?.type === "spell" && tg.heroes.includes(foeSide)) ||
+    (powerSel && powerTg.heroes.includes(foeSide));
   const targetableMeHero =
-    sel && selCard?.type === "spell" && tg.heroes.includes(mySide);
+    (sel && selCard?.type === "spell" && tg.heroes.includes(mySide)) ||
+    (powerSel && powerTg.heroes.includes(mySide));
 
   const fanStyle = (i, n, open = true) => {
     if (n <= 1) return {};
@@ -892,11 +1041,16 @@ export default function GameTable({
   return (
     <div
       ref={tableRef}
-      className={`tcg-table ${hitShake ? "is-shaking" : ""}`}
+      className={`tcg-table ${hitShake ? "is-shaking" : ""} ${
+        dragging ? "is-dragging" : ""
+      }`}
+      onDragOver={allowDrop}
+      onDrop={dropToPlay}
       onContextMenu={(e) => e.preventDefault()}
       onClick={(e) => {
         if (e.target.classList.contains("tcg-table")) {
           setSel(null);
+          setPowerSel(null);
           setAttackers([]);
         }
       }}
@@ -958,11 +1112,19 @@ export default function GameTable({
                   (sel &&
                     selCard?.type === "spell" &&
                     tg.creatures.some((c) => c.instId === cr.instId)) ||
+                  (powerSel &&
+                    powerTg.creatures.some((c) => c.instId === cr.instId)) ||
                   (canBlockNow &&
                     state.combat.attackers.includes(cr.instId))
                 }
                 onClick={() => onFoeCreature(cr)}
                 onInspect={setInspect}
+                onDragOver={allowDrop}
+                onDrop={dropOnTarget({
+                  type: "creature",
+                  side: foeSide,
+                  instId: cr.instId,
+                })}
               />
             );
           })}
@@ -991,14 +1153,22 @@ export default function GameTable({
                   (arr || []).includes(cr.instId)
                 )}
                 targetable={
-                  sel &&
-                  selCard?.type === "spell" &&
-                  tg.creatures.some((c) => c.instId === cr.instId)
+                  (sel &&
+                    selCard?.type === "spell" &&
+                    tg.creatures.some((c) => c.instId === cr.instId)) ||
+                  (powerSel &&
+                    powerTg.creatures.some((c) => c.instId === cr.instId))
                 }
                 dying={dyingIds.includes(cr.instId)}
                 shake={shake === cr.instId || combatShake.includes(cr.instId)}
                 onClick={() => onMyCreature(cr)}
                 onInspect={setInspect}
+                onDragOver={allowDrop}
+                onDrop={dropOnTarget({
+                  type: "creature",
+                  side: mySide,
+                  instId: cr.instId,
+                })}
               />
             );
           })}
@@ -1048,6 +1218,9 @@ export default function GameTable({
                 playable={playable}
                 discard={discardMode}
                 shake={shake === h.instId}
+                draggable={fanOpen && (playable || discardMode)}
+                onDragStart={beginDrag(h)}
+                onDragEnd={endDrag}
                 onClick={() =>
                   fanOpen ? onHandCard(h) : setHandOpen(true)
                 }
@@ -1069,6 +1242,8 @@ export default function GameTable({
           side={foeSide}
           targetable={targetableFoeHero}
           onClick={() => onHero(foeSide)}
+          onDragOver={allowDrop}
+          onDrop={dropOnTarget({ type: "hero", side: foeSide })}
         />
       </div>
       <div className="tcg-pod-slot tcg-pod-slot--me">
@@ -1078,24 +1253,62 @@ export default function GameTable({
           side={mySide}
           targetable={targetableMeHero}
           onClick={() => onHero(mySide)}
+          onDragOver={allowDrop}
+          onDrop={dropOnTarget({ type: "hero", side: mySide })}
         />
       </div>
+
+      {myPowers.length > 0 && (
+        <div className="tcg-powers" aria-label="Poteri Elementali">
+          <div className="tcg-powers__charges" title="Cariche Elementali">
+            {[0, 1].map((i) => (
+              <span
+                key={i}
+                className={`tcg-charge ${i < (me.charges || 0) ? "on" : ""}`}
+              />
+            ))}
+          </div>
+          {myPowers.map((pw) => {
+            const usable = canUsePower(state, mySide, pw.el);
+            return (
+              <button
+                key={pw.el}
+                type="button"
+                className={`tcg-power ${powerSel === pw.el ? "is-sel" : ""} ${
+                  usable ? "is-on" : ""
+                }`}
+                style={{ "--pwc": ELEMENT_PIP[pw.el] }}
+                title={`${pw.name} — ${pw.text}\nCosto: 3 ${ELEMENT_LABEL[pw.el]} + 1 Carica`}
+                onClick={() => activatePower(pw.el)}
+              >
+                <span className="tcg-power__ico">{pw.icon}</span>
+                <span className="tcg-power__name">{pw.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {state.stack && state.stack.length > 0 && (
         <div className="tcg-stack" aria-label="Pila">
           <div className="tcg-stack__title">PILA</div>
           {state.stack.map((it, i) => {
-            const c = getCard(it.cardId);
+            const pw = it.power ? ELEMENT_POWERS[it.power] : null;
+            const c = pw ? null : getCard(it.cardId);
+            const ico = pw ? pw.icon : c?.icon || "✦";
+            const nm = pw ? pw.name : c?.name || "—";
             return (
               <div
                 key={it.uid}
                 className={`tcg-stack__item ${
                   it.side === mySide ? "is-me" : "is-foe"
-                } ${i === state.stack.length - 1 ? "is-top" : ""}`}
-                onClick={() => setInspect(c)}
+                } ${pw ? "is-power" : ""} ${
+                  i === state.stack.length - 1 ? "is-top" : ""
+                }`}
+                onClick={() => c && setInspect(c)}
               >
-                <span className="tcg-stack__ico">{c.icon || "✦"}</span>
-                <span className="tcg-stack__name">{c.name}</span>
+                <span className="tcg-stack__ico">{ico}</span>
+                <span className="tcg-stack__name">{nm}</span>
               </div>
             );
           })}

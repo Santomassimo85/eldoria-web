@@ -7,6 +7,7 @@ import React, { useState, useRef } from "react";
 import {
   cardArtUrl, cardBackUrl, costPips, TYPE_COLOR,
   ELEMENT_PIP, ELEMENT_LABEL, RARITY_COLOR, RARITY_LABEL, KEYWORDS,
+  DICE_STATS, statDiceLabel,
 } from "../../tcg/cards.js";
 
 /* small icon + label per card type (instants split out from sorceries) */
@@ -20,14 +21,6 @@ function typeMeta(card) {
       : { icon: "📜", label: "Magia" };
   return { icon: "✦", label: card.type };
 }
-/* one-letter rarity tag shown on every card */
-const RARITY_LETTER = {
-  common: "C",
-  uncommon: "N",
-  rare: "R",
-  epic: "E",
-  legendary: "L",
-};
 
 function ManaCost({ card }) {
   if (card.type === "land")
@@ -102,6 +95,11 @@ export default function CardView({
   instId = null,
   onClick,
   onInspect,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }) {
   const pressTimer = useRef(null);
   const longFired = useRef(false);
@@ -122,6 +120,14 @@ export default function CardView({
   const isCreature = card.type === "creature";
   const power = creature ? creature.power : card.power;
   const toughness = creature ? creature.toughness : card.toughness;
+  // in play → rolled numbers; not in play → the dice notation
+  const ptText =
+    creature || !DICE_STATS || !isCreature
+      ? `${power}/${toughness}`
+      : `${statDiceLabel(card.power, card.cmc)}/${statDiceLabel(
+          card.toughness,
+          card.cmc
+        )}`;
   const dmg = creature ? creature.damage : 0;
   const hurt = dmg > 0;
   const keywords = kwList(card);
@@ -141,6 +147,10 @@ export default function CardView({
       clearTimeout(pressTimer.current);
       pressTimer.current = null;
     }
+  };
+  const handleDragStart = (e) => {
+    endPress(); // a drag must never fire the long-press inspect
+    if (onDragStart) onDragStart(e);
   };
   const handleClick = (e) => {
     if (longFired.current) {
@@ -180,6 +190,11 @@ export default function CardView({
         "--rar": RARITY_COLOR[rarity],
         "--el-col": ELEMENT_PIP[card.element] || "#8a6a23",
       }}
+      draggable={draggable}
+      onDragStart={handleDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       onClick={handleClick}
       onPointerDown={startPress}
       onPointerUp={endPress}
@@ -201,11 +216,6 @@ export default function CardView({
         <Art card={card} />
 
         <div className="tcg-card__type">
-          <span
-            className="tcg-card__rar"
-            style={{ background: RARITY_COLOR[rarity] }}
-            title={RARITY_LABEL[rarity]}
-          />
           <span className="tcg-card__tico" title={typeMeta(card).label}>
             {typeMeta(card).icon}
           </span>
@@ -233,18 +243,17 @@ export default function CardView({
 
         {isCreature && (
           <div className={`tcg-card__pt ${hurt ? "is-hurt" : ""}`}>
-            {power}/{toughness}
+            {ptText}
             {hurt ? <span className="tcg-card__pt-dmg"> (-{dmg})</span> : null}
           </div>
         )}
       </div>
       <span
-        className={`tcg-card__rarL is-${rarity}`}
+        className={`tcg-card__rarc is-${rarity}`}
         style={{ "--rc": RARITY_COLOR[rarity] }}
         title={RARITY_LABEL[rarity]}
-      >
-        {RARITY_LETTER[rarity] || "?"}
-      </span>
+        aria-hidden="true"
+      />
       {foil && <span className="tcg-card__foil" aria-hidden="true" />}
     </div>
   );
@@ -264,7 +273,7 @@ export default function CardView({
           />
           {RARITY_LABEL[rarity]} · {typeMeta(card).icon}{" "}
           {typeMeta(card).label} — {elLabel}
-          {isCreature ? ` · ${power}/${toughness}` : ""}
+          {isCreature ? ` · ${ptText}` : ""}
         </div>
         {keywords.length > 0 && (
           <div className="tcg-aside__kw">

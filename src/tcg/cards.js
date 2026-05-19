@@ -223,15 +223,15 @@ const C = (id, name, cmc, art, icon, element, power, toughness, text, flavor) =>
   cost: deriveCost(cmc, element), cmc,
   art, icon, power, toughness, text, flavor,
 });
-const S = (id, name, cmc, icon, element, effect, text, flavor) => ({
+const S = (id, name, cmc, icon, element, effect, text, flavor, art = null) => ({
   id, name, type: "spell", element,
   cost: deriveCost(cmc, element), cmc,
-  art: null, icon, effect, text, flavor,
+  art, icon, effect, text, flavor,
 });
-const A = (id, name, cmc, icon, element, passive, text, flavor) => ({
+const A = (id, name, cmc, icon, element, passive, text, flavor, art = null) => ({
   id, name, type: "artifact", element,
   cost: deriveCost(cmc, element), cmc,
-  art: null, icon, passive, text, flavor,
+  art, icon, passive, text, flavor,
 });
 /* a basic land — taps for 1 mana of its element, free to play */
 const L = (element) => ({
@@ -283,7 +283,7 @@ const RAW = [
     "", "La morte non ha spento la sua sete di potere."),
   C("satyr", "Satiro", 2, "satyr", "🐐", "nature", 2, 3,
     "", "Suona, ride, e ti pugnala a tempo di musica."),
-  C("dwarfpaladin", "Paladino Nano", 2, "dwarfpaladin", "🛡️", "light", 2, 4,
+  C("dwarfpaladin", "Drider Paladino", 2, "dwarfpaladin", "🛡️", "light", 2, 4,
     "", "Fede d'acciaio, barba di ferro."),
   C("frostarcher", "Arciere del Gelo", 2, "frostarcher", "🏹", "water", 3, 2,
     "", "Le sue frecce mordono prima ancora di colpire."),
@@ -356,91 +356,91 @@ const RAW = [
   S("s_bolt", "Saetta", 1, "⚡", "air",
     { kind: "damage", amount: 3, target: "any" },
     "Infliggi 3 danni a una creatura o all'eroe nemico.",
-    "Tre parole, un dito puntato, e il tuono."),
+    "Tre parole, un dito puntato, e il tuono.", "lightning-avatar"),
   S("s_missile", "Dardo Incantato", 1, "✨", "air",
     { kind: "damage", amount: 2, target: "any" },
     "Infliggi 2 danni a un bersaglio qualsiasi.",
-    "Non manca mai. Mai."),
+    "Non manca mai. Mai.", "arcane-engine"),
   S("s_heal", "Parola Curativa", 1, "💚", "light",
     { kind: "heal", amount: 5 },
     "Recuperi 5 Punti Vita.",
-    "Una sillaba sussurrata, una ferita che si chiude."),
+    "Una sillaba sussurrata, una ferita che si chiude.", "arcane-sigil"),
   S("s_fireball", "Palla di Fuoco", 3, "🔥", "fire",
     { kind: "damage", amount: 4, target: "any" },
     "Infliggi 4 danni a un bersaglio qualsiasi.",
-    "La soluzione classica a problemi complicati."),
+    "La soluzione classica a problemi complicati.", "fire-vortex"),
   S("s_shockwave", "Onda d'Urto", 3, "💥", "air",
     { kind: "aoe_enemy", amount: 3 },
     "Infliggi 3 danni a TUTTE le creature nemiche.",
-    "Il terreno trema e l'orizzonte si piega."),
+    "Il terreno trema e l'orizzonte si piega.", "violet-tempest"),
   S("s_disintegrate", "Disintegrazione", 3, "🟣", "darkness",
     { kind: "destroy", target: "creature" },
     "Distruggi una creatura bersaglio.",
-    "Un lampo verde, e resta solo polvere."),
+    "Un lampo verde, e resta solo polvere.", "dark-singularity"),
   S("s_bless", "Benedizione", 2, "🌟", "light",
     { kind: "buff", p: 2, t: 2, target: "friendly_creature" },
     "Una tua creatura ottiene +2/+2 in modo permanente.",
-    "Gli dèi guardano, e per un istante sorridono."),
+    "Gli dèi guardano, e per un istante sorridono.", "gilded-champion"),
   S("s_vision", "Visione Arcana", 2, "🔮", "air",
     { kind: "draw", amount: 2 },
     "Peschi 2 carte.",
-    "Il velo del futuro si apre, per chi sa leggere."),
+    "Il velo del futuro si apre, per chi sa leggere.", "arcane-scroll"),
   S("s_raise", "Rianima i Morti", 4, "🪬", "darkness",
     { kind: "raise" },
     "Rievoca una creatura a caso dal tuo cimitero.",
-    "La morte è solo una pausa fra due battaglie."),
+    "La morte è solo una pausa fra due battaglie.", "skull-curse"),
   S("s_meteor", "Meteora", 5, "☄️", "fire",
     { kind: "damage", amount: 6, target: "any" },
     "Infliggi 6 danni a un bersaglio qualsiasi.",
-    "Il cielo presenta il conto."),
+    "Il cielo presenta il conto.", "ember-vortex"),
 
   /* ---------- INSTANT SPELLS (5) — giocabili a velocità istantanea ---------- */
   S("s_shock", "Scossa", 2, "⚡", "fire",
     { kind: "damage", amount: 3, target: "any" },
     "Istantaneo. Infliggi 3 danni a un bersaglio qualsiasi.",
-    "Un crepitio, e l'aria sa di temporale."),
+    "Un crepitio, e l'aria sa di temporale.", "flame-blades"),
   S("s_counter", "Contromagia", 2, "🌀", "air",
     { kind: "counter" },
     "Istantaneo. Controbatti un incantesimo bersaglio nella pila.",
-    "La parola muore prima di nascere."),
+    "La parola muore prima di nascere.", "psionic-duel"),
   S("s_fog", "Nebbia", 1, "🌫️", "nature",
     { kind: "fog" },
     "Istantaneo. Previeni TUTTI i danni da combattimento di questo turno.",
-    "Tra la bruma, le lame non trovano la carne."),
+    "Tra la bruma, le lame non trovano la carne.", "blighted-moor"),
   S("s_growth", "Crescita Improvvisa", 2, "🌱", "nature",
     { kind: "pump", p: 3, t: 3, target: "friendly_creature" },
     "Istantaneo. Una tua creatura ottiene +3/+3 fino a fine turno.",
-    "La linfa esplode, e il piccolo diventa colosso."),
+    "La linfa esplode, e il piccolo diventa colosso.", "venom-circle"),
   S("s_rescue", "Soccorso Divino", 2, "🛡️", "light",
     { kind: "heal", amount: 6 },
     "Istantaneo. Recuperi 6 Punti Vita.",
-    "All'ultimo istante, una mano di luce."),
+    "All'ultimo istante, una mano di luce.", "radiant-avatar"),
 
   /* ---------- ARTIFACTS (6) ---------- */
   A("a_valor", "Stendardo di Valore", 3, "🚩", "light",
     { kind: "anthem", p: 1, t: 1 },
     "Le tue creature hanno +1/+1.",
-    "Dove sventola, nessun cuore vacilla."),
+    "Dove sventola, nessun cuore vacilla.", "flame-mantle"),
   A("a_blade", "Lama Runica", 2, "🗡️", "air",
     { kind: "anthem", p: 1, t: 0 },
     "Le tue creature hanno +1/+0.",
-    "Le rune cantano a ogni fendente."),
+    "Le rune cantano a ogni fendente.", "crimson-sword"),
   A("a_amulet", "Amuleto della Salute", 2, "📿", "light",
     { kind: "startHeal", amount: 2 },
     "All'inizio del tuo turno, recuperi 2 PV.",
-    "Pulsa piano, come un secondo cuore."),
+    "Pulsa piano, come un secondo cuore.", "healing-herb"),
   A("a_ring", "Anello di Rigenerazione", 3, "💍", "nature",
     { kind: "startHeal", amount: 3 },
     "All'inizio del tuo turno, recuperi 3 PV.",
-    "Le ferite si chiudono come se non fossero mai esistite."),
+    "Le ferite si chiudono come se non fossero mai esistite.", "amethyst-ring"),
   A("a_staff", "Bastone del Mago", 2, "🪄", "air",
     { kind: "startDraw", amount: 1 },
     "All'inizio del tuo turno, peschi 1 carta extra.",
-    "Concentra il flusso del Weave in un solo punto."),
+    "Concentra il flusso del Weave in un solo punto.", "time-gear"),
   A("a_tome", "Tomo Antico", 4, "📖", "air",
     { kind: "startDraw", amount: 1 },
     "All'inizio del tuo turno, peschi 1 carta extra.",
-    "Ogni pagina sa qualcosa che tu non sai."),
+    "Ogni pagina sa qualcosa che tu non sai.", "ancient-urn"),
 
   /* ---------- ILLUSTRATED CREATURES (from card art) ---------- */
   C("tideweaver", "Tessitrice delle Maree", 3, "tideweaver", "🌊", "water", 3, 3,
@@ -499,6 +499,222 @@ const RAW = [
     "", "Ricorda quando la foresta era un seme."),
   C("manacrystal", "Cristallo di Mana", 2, "manacrystal", "🔷", "water", 0, 5,
     "", "Pulsa piano, come un cuore di vetro."),
+
+  /* ---------- NEW ILLUSTRATED CREATURES (2026-05-19 art batch) ---------- */
+  // — Fire —
+  C("lionheart-blaze", "Leonide Infuocato", 3, "lionheart-blaze", "🦁", "fire", 4, 3,
+    "", "Ruggisce, e la savana diventa cenere."),
+  C("magma-brute", "Bruto di Magma", 4, "magma-brute", "🌋", "fire", 5, 4,
+    "", "Cammina dove la roccia ancora cola."),
+  C("obsidian-golem", "Golem di Ossidiana", 4, "obsidian-golem", "🪨", "fire", 4, 6,
+    "", "Forgiato dal cuore di un vulcano spento."),
+  C("ember-phoenix", "Fenice di Brace", 4, "ember-phoenix", "🔥", "fire", 4, 3,
+    "", "Muore in cenere, rinasce in fiamma."),
+  C("lava-drake", "Draco di Lava", 5, "lava-drake", "🐉", "fire", 6, 5,
+    "", "Il suo respiro fonde gli scudi."),
+  C("infernal-demon", "Demone Infernale", 5, "infernal-demon", "😈", "fire", 7, 5,
+    "", "L'Abisso gli ha dato ali e fame."),
+  // — Water —
+  C("water-serpent", "Serpe d'Acqua", 2, "water-serpent", "🐍", "water", 3, 2,
+    "", "Scivola dove l'occhio non arriva."),
+  C("frost-wolf", "Lupo del Gelo", 2, "frost-wolf", "🐺", "water", 3, 2,
+    "", "Caccia in branco, sotto la bufera."),
+  C("rime-elemental", "Elementale di Brina", 3, "rime-elemental", "❄️", "water", 3, 4,
+    "", "Dove posa lo sguardo, tutto si ghiaccia."),
+  C("water-sorceress", "Incantatrice d'Acqua", 3, "water-sorceress", "🌊", "water", 3, 3,
+    "", "Le maree obbediscono al suo canto."),
+  C("frost-tusk-boar", "Cinghiale Zanna-Gelo", 3, "frost-tusk-boar", "🐗", "water", 4, 3,
+    "", "Carica come una valanga affamata."),
+  C("tidal-colossus", "Colosso Mareale", 4, "tidal-colossus", "🌀", "water", 4, 5,
+    "", "Si erge dove l'onda non si ritira."),
+  C("abyssal-terror", "Terrore Abissale", 4, "abyssal-terror", "🦈", "water", 5, 3,
+    "", "Le fauci del fondo che nessuno vede."),
+  C("glacial-wyrm", "Viverna Glaciale", 5, "glacial-wyrm", "🐲", "water", 6, 6,
+    "", "Le sue ali portano l'inverno."),
+  C("water-colossus", "Colosso d'Acqua", 5, "water-colossus", "💧", "water", 5, 7,
+    "", "Un oceano che ha imparato a camminare."),
+  // — Air —
+  C("storm-beast", "Bestia della Tempesta", 3, "storm-beast", "🌩️", "air", 4, 3,
+    "", "Cavalca i venti come fossero prede."),
+  C("wasp-knight", "Cavaliere Vespa", 3, "wasp-knight", "🐝", "air", 3, 2,
+    "", "Colpisce una volta sola. Basta."),
+  C("gilded-magus", "Magus Aureo", 3, "gilded-magus", "✨", "air", 3, 3,
+    "", "Tesse il fulmine come fosse seta."),
+  C("storm-titan", "Titano della Tempesta", 5, "storm-titan", "⚡", "air", 6, 5,
+    "", "Ogni passo è un tuono che cade."),
+  C("astral-titan", "Titano Astrale", 5, "astral-titan", "🌌", "air", 5, 6,
+    "", "Porta il cielo notturno sulle spalle."),
+  // — Light —
+  C("spirit-stag", "Cervo Spettrale", 3, "spirit-stag", "🦌", "light", 3, 3,
+    "", "Guida i perduti fuori dal bosco."),
+  C("crystal-guardian", "Guardiano di Cristallo", 3, "crystal-guardian", "💎", "light", 2, 5,
+    "", "La luce, fatta sentinella."),
+  C("prismatic-rhino", "Rinoceronte Prismatico", 4, "prismatic-rhino", "🦏", "light", 4, 5,
+    "", "Il suo corno spezza ogni incantesimo."),
+  // — Darkness —
+  C("vampire-noble", "Nobile Vampiro", 3, "vampire-noble", "🦇", "darkness", 3, 3,
+    "", "Brinda al tuo sangue con eleganza."),
+  C("spectral-witch", "Strega Spettrale", 3, "spectral-witch", "🔮", "darkness", 3, 3,
+    "", "Ruba la vita e la indossa come un velo."),
+  C("shadow-horror", "Orrore Tenebroso", 4, "shadow-horror", "🌑", "darkness", 4, 4,
+    "", "Ha mille occhi e nessuna pietà."),
+  C("void-golem", "Golem del Vuoto", 4, "void-golem", "🪨", "darkness", 4, 5,
+    "", "Plasmato dall'assenza di tutto."),
+  C("lunar-spirit", "Spirito Lunare", 4, "lunar-spirit", "🌙", "darkness", 3, 4,
+    "", "Danza fra le maree della notte."),
+  C("illithid-warlord", "Signore Illithid", 4, "illithid-warlord", "🐙", "darkness", 5, 4,
+    "", "Comanda eserciti con un solo pensiero."),
+  C("crimson-lich", "Lich Cremisi", 5, "crimson-lich", "☠️", "darkness", 5, 6,
+    "", "La sua corona è fatta di promesse infrante."),
+  // — Nature —
+  C("wild-ranger", "Ranger Selvaggio", 2, "wild-ranger", "🏹", "nature", 2, 2,
+    "", "Conosce ogni sentiero, e ogni agguato."),
+  C("venom-knight", "Cavaliere del Veleno", 3, "venom-knight", "🛡️", "nature", 3, 3,
+    "", "La sua lama non perdona neppure un graffio."),
+  C("thorn-beast", "Bestia Spinosa", 3, "thorn-beast", "🌵", "nature", 4, 3,
+    "", "Abbracciarla è l'ultimo errore."),
+  C("frond-elemental", "Elementale di Fronda", 3, "frond-elemental", "🍃", "nature", 3, 4,
+    "", "La foresta che ha deciso di muoversi."),
+  C("autumn-drake", "Draco Autunnale", 4, "autumn-drake", "🍂", "nature", 4, 4,
+    "", "Le sue ali spargono foglie e rovina."),
+  C("jade-knight", "Cavaliere di Giada", 4, "jade-knight", "🗡️", "nature", 4, 4,
+    "", "Armatura di pietra viva, cuore di quercia."),
+  C("sylvan-demon", "Demone Silvano", 4, "sylvan-demon", "🌳", "nature", 5, 3,
+    "", "Quando la foresta odia, prende questa forma."),
+
+  /* ---------- _unused ART BATCH → mixed card types (2026-05-19b) ---------- */
+  // — Spells —
+  S("s_necrotouch", "Tocco Necrotico", 4, "🟣", "darkness",
+    { kind: "destroy", target: "creature" },
+    "Distruggi una creatura bersaglio.",
+    "Un dito sfiora, e la carne ricorda di essere polvere.", "necrotic-touch"),
+  S("s_bloodrite", "Rito di Sangue", 3, "🩸", "darkness",
+    { kind: "damage", amount: 4, target: "any" },
+    "Infliggi 4 danni a un bersaglio qualsiasi.",
+    "Ogni patto si firma con la stessa inchiostro.", "blood-rite"),
+  S("s_frostburst", "Esplosione Gelida", 3, "❄️", "water",
+    { kind: "aoe_enemy", amount: 2 },
+    "Infliggi 2 danni a TUTTE le creature nemiche.",
+    "L'inverno arriva tutto in una volta.", "frost-burst"),
+  S("s_spectralflame", "Fiamma Spettrale", 4, "🔵", "darkness",
+    { kind: "damage", amount: 4, target: "any" },
+    "Infliggi 4 danni a un bersaglio qualsiasi.",
+    "Brucia l'anima, non la carne.", "spectral-flame"),
+  S("s_sylvanflame", "Fiamma Silvana", 2, "🌿", "nature",
+    { kind: "buff", p: 2, t: 2, target: "friendly_creature" },
+    "Una tua creatura ottiene +2/+2 in modo permanente.",
+    "La linfa che arde fa crescere più in fretta.", "sylvan-flame"),
+  // — Artifacts —
+  A("a_frostaegis", "Egida di Gelo", 3, "🛡️", "water",
+    { kind: "anthem", p: 0, t: 2 },
+    "Le tue creature hanno +0/+2.",
+    "Una parete di brina fra te e il colpo.", "frost-aegis"),
+  A("a_frostblade", "Lama di Gelo", 3, "🗡️", "water",
+    { kind: "anthem", p: 2, t: 0 },
+    "Le tue creature hanno +2/+0.",
+    "Taglia, e la ferita non scalda mai.", "frost-blade"),
+  A("a_runedarms", "Armi Runiche", 4, "⚒️", "darkness",
+    { kind: "anthem", p: 1, t: 1 },
+    "Le tue creature hanno +1/+1.",
+    "Forgiate per mani che non esistono più.", "runed-arms"),
+  // — Creatures: Fire —
+  C("ember-revenant", "Spettro di Brace", 3, "ember-revenant", "🔥", "fire", 4, 2,
+    "", "La rabbia non si spegne con la morte."),
+  C("ember-warden", "Guardiano di Brace", 4, "ember-warden", "🔥", "fire", 4, 5,
+    "", "Sorveglia ciò che il fuoco non deve toccare."),
+  C("amber-elemental", "Elementale d'Ambra", 4, "amber-elemental", "🟠", "fire", 5, 4,
+    "", "Sangue di resina, cuore di brace."),
+  // — Creatures: Water —
+  C("water-genasi", "Genasi d'Acqua", 2, "water-genasi", "💧", "water", 2, 3,
+    "", "Il mare gli scorre al posto del sangue."),
+  C("water-nymph", "Ninfa delle Acque", 2, "water-nymph", "🌸", "water", 2, 2,
+    "", "Dove ride lei, fioriscono le rive."),
+  C("frost-shade", "Spettro Gelido", 3, "frost-shade", "🧊", "water", 3, 3,
+    "", "Il freddo che cammina da solo."),
+  C("frost-spirit", "Spirito del Gelo", 3, "frost-spirit", "❄️", "water", 3, 4,
+    "", "Porta corna di ghiaccio e silenzio."),
+  C("mist-revenant", "Spettro Nebbioso", 3, "mist-revenant", "🌫️", "water", 4, 2,
+    "", "Lo trafiggi, e resta solo bruma."),
+  C("grinning-fiend", "Demone Ghignante", 3, "grinning-fiend", "😈", "water", 4, 3,
+    "", "Ride sempre. Soprattutto quando perdi."),
+  C("glacial-knight", "Cavaliere Glaciale", 4, "glacial-knight", "⚔️", "water", 4, 4,
+    "", "Il suo giuramento è freddo come la sua lama."),
+  C("maelstrom-fury", "Furia del Maelstrom", 4, "maelstrom-fury", "🌀", "water", 5, 3,
+    "", "L'oceano quando smette di avere pazienza."),
+  C("fang-shaman", "Sciamano Zanna", 4, "fang-shaman", "🦷", "water", 4, 4,
+    "", "Parla con gli spiriti del ghiaccio, e loro ascoltano."),
+  C("rune-drake", "Draco Runico", 5, "rune-drake", "🐲", "water", 5, 5,
+    "", "Le sue scaglie recitano incantesimi dimenticati."),
+  C("rune-golem", "Golem Runico", 4, "rune-golem", "🪨", "water", 3, 6,
+    "", "Le rune lo tengono insieme. Per ora."),
+  C("tidal-golem", "Golem di Marea", 5, "tidal-golem", "🌊", "water", 5, 6,
+    "", "Si dissolve e si ricompone con l'onda."),
+  C("conch-warden", "Guardiano Conchiglia", 4, "conch-warden", "🐚", "water", 3, 6,
+    "", "Antico come la prima risacca."),
+  C("tide-monk", "Monaco delle Maree", 3, "tide-monk", "👊", "water", 3, 3,
+    "", "Ogni colpo segue il ritmo del mare."),
+  // — Creatures: Air —
+  C("wind-shade", "Spettro del Vento", 2, "wind-shade", "🌬️", "air", 2, 2,
+    "", "Lo senti passare, non lo vedi mai."),
+  C("smoke-shade", "Spettro di Fumo", 3, "smoke-shade", "💨", "air", 3, 2,
+    "", "Afferralo: ti resterà solo cenere in mano."),
+  C("tempest-beast", "Bestia della Tempesta", 3, "tempest-beast", "⛈️", "air", 4, 3,
+    "", "Corre più veloce del tuono che la annuncia."),
+  C("rune-summoner", "Evocatore Runico", 3, "rune-summoner", "🔷", "air", 3, 3,
+    "", "Disegna nell'aria porte che non dovrebbero aprirsi."),
+  C("azure-magus", "Magus d'Azzurro", 4, "azure-magus", "✨", "air", 4, 4,
+    "", "Tiene una tempesta addomesticata nel palmo."),
+  C("storm-elemental", "Elementale Tempesta", 5, "storm-elemental", "🌩️", "air", 5, 5,
+    "", "Una nuvola che ha imparato a stringere il pugno."),
+  // — Creatures: Light —
+  C("blossom-unicorn", "Unicorno Fiorito", 3, "blossom-unicorn", "🦄", "light", 3, 3,
+    "", "Dove poggia lo zoccolo, sboccia primavera."),
+  C("gilded-spider", "Ragno Aureo", 3, "gilded-spider", "🕷️", "light", 3, 2,
+    "", "Tesse trappole che valgono un tesoro."),
+  C("rime-seraph", "Serafino di Gelo", 4, "rime-seraph", "👼", "light", 4, 4,
+    "", "Ali di cristallo, sguardo d'inverno."),
+  // — Creatures: Darkness —
+  C("pale-shade", "Volto Pallido", 2, "pale-shade", "👻", "darkness", 2, 2,
+    "", "L'ultima faccia che hanno visto i perduti."),
+  C("clawed-wraith", "Spettro Artigliato", 3, "clawed-wraith", "🖐️", "darkness", 4, 2,
+    "", "Graffia il velo fra i vivi e i morti."),
+  C("void-stalker", "Predatore del Vuoto", 3, "void-stalker", "👁️", "darkness", 3, 3,
+    "", "Ti guarda con occhi che non dovrebbe avere."),
+  C("aberrant-thrall", "Schiavo Aberrante", 2, "aberrant-thrall", "🧠", "darkness", 2, 3,
+    "", "La sua mente non gli appartiene più."),
+  C("skull-warden", "Custode del Teschio", 3, "skull-warden", "💀", "darkness", 3, 3,
+    "", "Custodisce un nome che nessuno deve pronunciare."),
+  C("rune-beast", "Bestia Runica", 4, "rune-beast", "🐗", "darkness", 5, 3,
+    "", "Le rune incise nella carne urlano a ogni passo."),
+  C("emerald-necromancer", "Negromante Smeraldo", 4, "emerald-necromancer", "🪬", "darkness", 3, 5,
+    "", "La morte è solo un'altra forma di servitù."),
+  // — Creatures: Nature —
+  C("crystal-toad", "Rospo di Cristallo", 2, "crystal-toad", "🐸", "nature", 2, 3,
+    "", "Gracida, e i cristalli rispondono."),
+  C("autumn-sprite", "Spirito Autunnale", 2, "autumn-sprite", "🍁", "nature", 3, 2,
+    "", "Ride come foglie che cadono."),
+  C("sylvan-stag", "Cervo Silvano", 3, "sylvan-stag", "🦌", "nature", 3, 4,
+    "", "Le sue corna sono rami di una quercia antica."),
+  C("timber-spirit", "Spirito Arboreo", 3, "timber-spirit", "🌲", "nature", 3, 4,
+    "", "Quando il bosco sogna, lui cammina."),
+  C("verdant-wraith", "Spettro Verdeggiante", 3, "verdant-wraith", "🌿", "nature", 4, 3,
+    "", "La rovina che profuma di muschio."),
+  C("rune-weaver", "Tessitore di Rune", 4, "rune-weaver", "🧵", "nature", 3, 5,
+    "", "Cuce gli incantesimi come fossero radici."),
+  C("bloom-elemental", "Elementale in Fiore", 3, "bloom-elemental", "🌼", "nature", 3, 4,
+    "", "Il giardino che ha scelto di combattere."),
+  C("blossom-warden", "Guardiano Fiorito", 4, "blossom-warden", "🌸", "nature", 4, 5,
+    "", "Sotto i petali, una corteccia che non cede."),
+  C("thornspine-horror", "Orrore Spinato", 4, "thornspine-horror", "🌵", "nature", 5, 4,
+    "", "Ogni spina conosce il sapore del coraggio."),
+  C("sylvan-horror", "Orrore Silvano", 4, "sylvan-horror", "🌳", "nature", 4, 5,
+    "", "La foresta che ha smesso di proteggere."),
+  C("marsh-brute", "Bruto della Palude", 4, "marsh-brute", "🪨", "nature", 4, 6,
+    "", "La palude provvede ai suoi figli più grossi."),
+  C("totem-giant", "Gigante Totem", 5, "totem-giant", "🗿", "nature", 5, 7,
+    "", "Porta sulle spalle gli dèi della sua tribù."),
+  C("earth-golem", "Golem di Pietra", 4, "earth-golem", "🪨", "nature", 4, 6,
+    "", "Un cuore di smeraldo lo tiene in piedi."),
 ];
 
 /* ============================================================
@@ -580,6 +796,61 @@ const KEYWORDS_BY_ID = {
   verdantflame: ["regen"],
   elderwood: ["reach"],
   manacrystal: ["defender"],
+  // 2026-05-19 art batch
+  "lionheart-blaze": ["haste"],
+  "obsidian-golem": ["defender"],
+  "ember-phoenix": ["flying", "regen"],
+  "lava-drake": ["flying"],
+  "infernal-demon": ["flying", "trample"],
+  "frost-wolf": ["haste"],
+  "rime-elemental": ["shield"],
+  "water-sorceress": ["hexproof"],
+  "frost-tusk-boar": ["trample"],
+  "abyssal-terror": ["menace"],
+  "glacial-wyrm": ["flying"],
+  "storm-beast": ["flying"],
+  "wasp-knight": ["flying", "firststrike"],
+  "storm-titan": ["trample"],
+  "astral-titan": ["vigilance"],
+  "spirit-stag": ["vigilance"],
+  "crystal-guardian": ["defender", "shield"],
+  "vampire-noble": ["lifelink"],
+  "spectral-witch": ["lifelink"],
+  "shadow-horror": ["menace"],
+  "lunar-spirit": ["flying"],
+  "illithid-warlord": ["hexproof"],
+  "crimson-lich": ["deathtouch"],
+  "wild-ranger": ["reach"],
+  "venom-knight": ["deathtouch"],
+  "autumn-drake": ["flying"],
+  "jade-knight": ["vigilance"],
+  "sylvan-demon": ["trample"],
+  // 2026-05-19b _unused batch
+  "ember-revenant": ["haste"],
+  "ember-warden": ["defender"],
+  "mist-revenant": ["unblockable"],
+  "rime-seraph": ["flying"],
+  "rune-drake": ["flying"],
+  "tidal-golem": ["regen"],
+  "conch-warden": ["defender"],
+  "smoke-shade": ["flying"],
+  "wind-shade": ["flying"],
+  "tempest-beast": ["haste"],
+  "gilded-spider": ["reach"],
+  "clawed-wraith": ["deathtouch"],
+  "void-stalker": ["menace"],
+  "pale-shade": ["lifelink"],
+  "rune-beast": ["trample"],
+  "emerald-necromancer": ["deathtouch"],
+  "sylvan-stag": ["vigilance"],
+  "thornspine-horror": ["reach"],
+  "marsh-brute": ["trample"],
+  "totem-giant": ["vigilance"],
+  "maelstrom-fury": ["menace"],
+  "glacial-knight": ["firststrike"],
+  "tide-monk": ["firststrike"],
+  "rune-golem": ["defender"],
+  "earth-golem": ["defender"],
 };
 
 /* element-aware rarity table (every colour gets all 5 tiers) */
@@ -634,6 +905,108 @@ export function cardArtUrl(card) {
 /* card back = the OWNER's chosen cover (deck pile + hidden hand) */
 export function cardBackUrl(cover) {
   return coverUrl(cover);
+}
+
+/* ============================================================
+   DICE STATS — creature Forza/Costituzione become "base + 1dN",
+   rolled ONCE when the creature enters play (very D&D).
+   ------------------------------------------------------------
+   • Derived from the card's fixed power/toughness: that value is
+     kept as the AVERAGE, so the existing balance & rarity tiers
+     are preserved and the ~155 cards need no hand-editing.
+   • Die size is capped by mana cost (cmc1–2 ≤ d4, 3–4 ≤ d6,
+     5+ ≤ d8). Tiny stats (≤2) stay FIXED — small creatures
+     must stay small.
+   • Flip DICE_STATS to false to instantly restore the classic
+     fixed stats (the original numbers live untouched on every
+     card, so the old settings are always recoverable).
+   ============================================================ */
+export const DICE_STATS = true;
+
+/* value V on a creature of mana cost C → { base, die }.
+   Final stat = base + 1dN (die = N; die 0 means a fixed value). */
+export function statDice(value, cmc) {
+  const V = Math.max(0, value | 0);
+  if (V <= 2) return { base: V, die: 0 };          // low stays low (fixed)
+  const cap = cmc <= 2 ? 4 : cmc <= 4 ? 6 : 8;     // mana-scaled ceiling
+  let N = V <= 4 ? 4 : V <= 6 ? 6 : 8;             // bigger body → bigger die
+  N = Math.min(N, cap);
+  const avgDie = (N + 1) / 2;                       // mean of 1dN
+  const base = Math.max(0, Math.round(V - avgDie)); // keep V as the average
+  return { base, die: N };
+}
+
+/* short label for cards NOT in play (hand/shop/deck/collection) */
+export function statDiceLabel(value, cmc) {
+  if (!DICE_STATS) return String(value);
+  const { base, die } = statDice(value, cmc);
+  if (!die) return String(base);
+  return base > 0 ? `${base}+1d${die}` : `1d${die}`;
+}
+
+/* ============================================================
+   ELEMENT POWERS (Affinità Elementale)
+   ------------------------------------------------------------
+   One signature power per element. A player may use an element's
+   power only if their deck is ATTUNED to it (≥30% of the non-land
+   cards are that element). Activating costs 1 Carica + 3 mana of
+   that element; the power goes on the stack like a spell, so it
+   can be answered/countered. Tuned to ≈ a 3-mana spell so any
+   mono / 2-colour / 3-colour deck stays balanced.
+   ============================================================ */
+export const POWER_MANA = 3;        // coloured pips paid to fire a power
+export const POWER_CHARGE_CAP = 2;  // stored Cariche cap
+export const ATTUNE_RATIO = 0.30;   // share of non-land cards needed
+
+export const ELEMENT_POWERS = {
+  fire: {
+    name: "Furia Ignea", icon: "🔥",
+    effect: { kind: "damage", amount: 3, target: "any" },
+    text: "Infliggi 3 danni a un bersaglio qualsiasi.",
+  },
+  water: {
+    name: "Morsa Glaciale", icon: "💧",
+    effect: { kind: "freeze" },
+    text: "Tappa una creatura nemica: non si STappa al suo prossimo turno.",
+  },
+  light: {
+    name: "Grazia Radiosa", icon: "✨",
+    effect: { kind: "heal", amount: 6 },
+    text: "Recuperi 6 Punti Vita.",
+  },
+  darkness: {
+    name: "Tributo Necrotico", icon: "🌑",
+    effect: { kind: "weaken", p: 2, t: 2 },
+    text: "Una creatura nemica subisce -2/-2 permanente.",
+  },
+  air: {
+    name: "Scarica", icon: "🌪️",
+    effect: { kind: "aoe_enemy", amount: 2 },
+    text: "Infliggi 2 danni a TUTTE le creature nemiche.",
+  },
+  nature: {
+    name: "Linfa Tossica", icon: "🍃",
+    effect: { kind: "buff", p: 2, t: 2, target: "friendly_creature" },
+    text: "Una tua creatura ottiene +2/+2 in modo permanente.",
+  },
+};
+
+/* Which elements a deck (array of cardIds, lands included) is attuned
+   to. Multicolour-friendly: a clean 2-colour deck attunes both, a
+   5-colour soup attunes none (the deliberate consistency trade-off). */
+export function attunedElements(deck) {
+  const out = {};
+  for (const el of ELEMENTS) out[el] = false;
+  if (!Array.isArray(deck) || !deck.length) return out;
+  const nonLand = deck
+    .map((id) => getCard(id))
+    .filter((c) => c && c.type !== "land");
+  const total = nonLand.length || 1;
+  const cnt = {};
+  for (const el of ELEMENTS) cnt[el] = 0;
+  for (const c of nonLand) cnt[c.element] = (cnt[c.element] || 0) + 1;
+  for (const el of ELEMENTS) out[el] = cnt[el] / total >= ATTUNE_RATIO;
+  return out;
 }
 
 /* Mulberry32 — small deterministic PRNG (seed optional). */

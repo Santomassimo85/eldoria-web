@@ -20,7 +20,11 @@
    Sides are "p0" and "p1".
    ============================================================ */
 
-import { getCard, buildDeck, ELEMENTS } from "./cards.js";
+import {
+  getCard, buildDeck, shuffle, ELEMENTS,
+  ELEMENT_POWERS, attunedElements, POWER_MANA, POWER_CHARGE_CAP,
+  DICE_STATS, statDice,
+} from "./cards.js";
 
 export const START_HP = 25;
 export const OPENING_HAND = 6;
@@ -52,6 +56,8 @@ function mkPlayer(name, deck) {
     artifacts: [],
     graveyard: [],   // cardIds
     playedLand: false, // a land already played this turn?
+    charges: 0,        // Cariche for Element Powers (gain 1/turn, cap 2)
+    attuned: {},       // { fire:bool, … } — set in createGame from the deck
   };
 }
 
@@ -69,6 +75,41 @@ function logMsg(s, side, text) {
 function newInst(s) {
   s._seq.inst += 1;
   return "i" + s._seq.inst;
+}
+
+/* roll "base + 1dN" for one stat (die 0 → fixed base) */
+function rollStat(value, cmc) {
+  const { base, die } = statDice(value, cmc);
+  return die ? base + 1 + Math.floor(Math.random() * die) : base;
+}
+
+/* build a fresh creature instance, rolling its Forza/Costituzione
+   at summon when DICE_STATS is on. Logs the roll for flavour. */
+function mkCreature(s, side, cardId) {
+  const card = getCard(cardId);
+  const cr = {
+    instId: newInst(s),
+    cardId,
+    damage: 0,
+    tapped: false,
+    sick: !kw(cardId, "haste"),
+    plusP: 0,
+    plusT: 0,
+    tempP: 0,
+    tempT: 0,
+    shield: kw(cardId, "shield"),
+  };
+  if (DICE_STATS && card) {
+    cr.basePower = rollStat(card.power, card.cmc);
+    cr.baseToughness = Math.max(1, rollStat(card.toughness, card.cmc));
+    fx(s, {
+      kind: "summonRoll", side, instId: cr.instId,
+      power: cr.basePower, toughness: cr.baseToughness,
+    });
+    logMsg(s, side,
+      `🎲 ${card.name}: ${cr.basePower}/${cr.baseToughness}.`);
+  }
+  return cr;
 }
 
 /* ---- lookups ---- */
@@ -96,13 +137,24 @@ export function anthemBonus(s, side) {
   return { p, t };
 }
 
+/* base Forza/Costituzione of a creature instance — the dice are
+   rolled at summon (rollStats) and stored on the instance; if the
+   dice feature is off (or an old instance) we fall back to the
+   card's fixed numbers. */
+function baseStats(creature) {
+  const card = getCard(creature.cardId) || { power: 0, toughness: 0 };
+  if (DICE_STATS && creature.basePower != null)
+    return { power: creature.basePower, toughness: creature.baseToughness };
+  return { power: card.power, toughness: card.toughness };
+}
+
 /* effective P/T of a creature including permanent buffs + anthems */
 export function effStats(s, side, creature) {
-  const card = getCard(creature.cardId) || { power: 0, toughness: 0 };
+  const b = baseStats(creature);
   const ab = anthemBonus(s, side);
   return {
-    power: Math.max(0, card.power + creature.plusP + (creature.tempP || 0) + ab.p),
-    toughness: Math.max(1, card.toughness + creature.plusT + (creature.tempT || 0) + ab.t),
+    power: Math.max(0, b.power + creature.plusP + (creature.tempP || 0) + ab.p),
+    toughness: Math.max(1, b.toughness + creature.plusT + (creature.tempT || 0) + ab.t),
   };
 }
 
@@ -149,11 +201,16 @@ function payCost(s, side, cost) {
 
 /* ---- creation ---- */
 export function createGame({ p0Name, p1Name, deck0, deck1, starter } = {}) {
+  // ALWAYS shuffle the library at game start — a player-built deck is
+  // saved grouped (copies/lands together), so without this the opening
+  // hand and draws come out in order (e.g. all lands first).
+  const d0 = shuffle(deck0 || buildDeck());
+  const d1 = shuffle(deck1 || buildDeck());
   const s = {
     v: 2,
     players: {
-      p0: mkPlayer(p0Name, deck0 || buildDeck()),
-      p1: mkPlayer(p1Name, deck1 || buildDeck()),
+      p0: mkPlayer(p0Name, d0),
+      p1: mkPlayer(p1Name, d1),
     },
     turn: 0,
     active: starter === "p1" ? "p1" : starter === "p0" ? "p0" : Math.random() < 0.5 ? "p0" : "p1",
@@ -169,6 +226,8 @@ export function createGame({ p0Name, p1Name, deck0, deck1, starter } = {}) {
     fx: [],
     _seq: { inst: 0, fx: 0, log: 0 },
   };
+  s.players.p0.attuned = attunedElements(d0);
+  s.players.p1.attuned = attunedElements(d1);
   for (const side of SIDES) {
     for (let i = 0; i < OPENING_HAND; i++) drawOne(s, side, true);
   }
@@ -200,10 +259,18 @@ function startTurn(s, side, isGameStart) {
   s.attackedThisTurn = false;
   p.playedLand = false;
 
+  // gain 1 Carica for Element Powers (capped)
+  p.charges = Math.min(POWER_CHARGE_CAP, (p.charges || 0) + 1);
+
   // untap lands + creatures, clear summoning sickness
   for (const l of p.lands) l.tapped = false;
   for (const cr of p.battlefield) {
-    cr.tapped = false;
+    if (cr.frozen) {
+      // Morsa Glaciale: stays tapped this turn, thaws afterwards
+      cr.frozen = false;
+    } else {
+      cr.tapped = false;
+    }
     cr.sick = false;
     cr.regenUsed = false; // Rigenerazione: one save per turn
   }
@@ -325,6 +392,95 @@ export function spellTargets(s, side, instId) {
   return { kind: "none", creatures: [], heroes: [] };
 }
 
+/* ============================================================
+   ELEMENT POWERS — Affinità Elementale
+   ============================================================ */
+const POWER_COST = (el) => ({ [el]: POWER_MANA });
+
+/* the elements this side may actually wield (deck-attuned) */
+export function attunedPowers(s, side) {
+  const at = s.players[side].attuned || {};
+  return ELEMENTS.filter((el) => at[el]).map((el) => ({
+    el, ...ELEMENT_POWERS[el],
+  }));
+}
+
+/* may `side` fire `el`'s power right now? (sorcery speed, on the
+   stack, deck-attuned, has a Carica and 3 mana of that colour) */
+export function canUsePower(s, side, el) {
+  if (s.winner || !ELEMENT_POWERS[el]) return false;
+  const p = s.players[side];
+  if (!p.attuned || !p.attuned[el]) return false;
+  if ((p.charges || 0) < 1) return false;
+  if (s.active !== side || s.phase !== "main") return false;
+  if (s.stack.length || s.priority) return false;     // sorcery speed
+  if (!canAfford(s, side, POWER_COST(el))) return false;
+  // a targeted power needs a legal target to exist
+  const tg = powerTargets(s, side, el);
+  if (tg.kind === "creature" && tg.creatures.length === 0) return false;
+  return true;
+}
+
+/* legal targets for an element power (mirrors spellTargets) */
+export function powerTargets(s, side, el) {
+  const P = ELEMENT_POWERS[el];
+  if (!P) return { kind: "none", creatures: [], heroes: [] };
+  const e = P.effect;
+  const foe = opp(side);
+  if (e.kind === "damage" && e.target === "any") {
+    const cr = [];
+    for (const sd of SIDES)
+      for (const c of s.players[sd].battlefield) {
+        if (sd === foe && kw(c.cardId, "hexproof")) continue;
+        cr.push({ side: sd, instId: c.instId });
+      }
+    return { kind: "any", creatures: cr, heroes: ["p0", "p1"] };
+  }
+  if (e.kind === "freeze" || e.kind === "weaken") {
+    const cr = s.players[foe].battlefield
+      .filter((c) => !kw(c.cardId, "hexproof"))
+      .map((c) => ({ side: foe, instId: c.instId }));
+    return { kind: "creature", creatures: cr, heroes: [] };
+  }
+  if (e.kind === "buff")
+    return {
+      kind: "friendly_creature",
+      creatures: s.players[side].battlefield.map((c) => ({ side, instId: c.instId })),
+      heroes: [],
+    };
+  return { kind: "none", creatures: [], heroes: [] };
+}
+
+/* activate an element power → it goes on the stack like a spell */
+export function castElementPower(state, side, el, target = null) {
+  if (!canUsePower(state, side, el)) return state;
+  const P = ELEMENT_POWERS[el];
+  const tg = powerTargets(state, side, el);
+  if (tg.kind === "creature" || tg.kind === "any") {
+    // needs a target — must be one of the legal ones
+    const ok =
+      target &&
+      ((target.type === "creature" &&
+        tg.creatures.some((c) => c.instId === target.instId)) ||
+        (target.type === "hero" && tg.heroes.includes(target.side)));
+    if (!ok) return state;
+  } else if (tg.kind === "friendly_creature") {
+    if (!target || target.type !== "creature" ||
+        !tg.creatures.some((c) => c.instId === target.instId))
+      return state;
+  }
+  const s = clone(state);
+  const p = s.players[side];
+  payCost(s, side, POWER_COST(el));
+  p.charges -= 1;
+  s.stack.push({ uid: newInst(s), side, power: el, target });
+  s.priority = opp(side);
+  s.passes = 0;
+  fx(s, { kind: "stack", side, cardId: null, element: el });
+  logMsg(s, side, `${p.name} invoca ${P.name} (in pila).`);
+  return s;
+}
+
 /* ---- play a land ---- */
 export function playLand(state, side, instId) {
   if (!canPlayLand(state, side, instId)) return state;
@@ -362,18 +518,7 @@ export function playCard(state, side, instId, target = null) {
   p.hand.splice(idx, 1);
 
   if (card.type === "creature") {
-    const cr = {
-      instId: newInst(s),
-      cardId: card.id,
-      damage: 0,
-      tapped: false,
-      sick: !kw(card.id, "haste"),
-      plusP: 0,
-      plusT: 0,
-      tempP: 0,
-      tempT: 0,
-      shield: kw(card.id, "shield"),
-    };
+    const cr = mkCreature(s, side, card.id);
     p.battlefield.push(cr);
     fx(s, { kind: "play", side, cardId: card.id, into: "battlefield", instId: cr.instId });
     logMsg(s, side, `${p.name} evoca ${card.name}.`);
@@ -401,13 +546,27 @@ export function stackTop(s) {
   return s.stack && s.stack.length ? s.stack[s.stack.length - 1] : null;
 }
 
+/* a stack item is either a spell card or an Element Power.
+   This returns a uniform { effect, element, name } view. */
+function stackSpell(item) {
+  if (item.power) {
+    const P = ELEMENT_POWERS[item.power];
+    return P
+      ? { effect: P.effect, element: item.power, name: P.name, isPower: true }
+      : null;
+  }
+  const c = getCard(item.cardId);
+  return c ? { effect: c.effect, element: c.element, name: c.name } : null;
+}
+
 function resolveTop(s) {
   const item = s.stack.pop();
   if (!item) return;
-  const card = getCard(item.cardId);
+  const sp = stackSpell(item);
+  if (!sp) { resolveDeaths(s); checkWin(s); return; }
   const ctrl = s.players[item.side];
-  if (card.effect.kind === "counter") {
-    // counter a targeted (or the most recent enemy) spell still on the stack
+  if (sp.effect.kind === "counter") {
+    // counter a targeted (or the most recent enemy) spell/power on the stack
     let idx = -1;
     if (item.target && item.target.uid != null)
       idx = s.stack.findIndex((x) => x.uid === item.target.uid);
@@ -416,19 +575,29 @@ function resolveTop(s) {
         if (s.stack[i].side !== item.side) { idx = i; break; }
     if (idx >= 0) {
       const cd = s.stack.splice(idx, 1)[0];
-      const cc = getCard(cd.cardId);
-      s.players[cd.side].graveyard.push(cc.id);
-      fx(s, { kind: "counter", side: item.side, cardId: cc.id });
-      logMsg(s, item.side, `${ctrl.name} controbatte ${cc.name}.`);
+      const csp = stackSpell(cd);
+      if (cd.power) {
+        fx(s, { kind: "counter", side: item.side, cardId: null });
+        logMsg(s, item.side, `${ctrl.name} controbatte ${csp ? csp.name : "il potere"}.`);
+      } else {
+        const cc = getCard(cd.cardId);
+        s.players[cd.side].graveyard.push(cc.id);
+        fx(s, { kind: "counter", side: item.side, cardId: cc.id });
+        logMsg(s, item.side, `${ctrl.name} controbatte ${cc.name}.`);
+      }
     } else {
-      logMsg(s, item.side, `${card.name} svanisce: nessun bersaglio.`);
+      logMsg(s, item.side, `${sp.name} svanisce: nessun bersaglio.`);
     }
   } else {
-    fx(s, { kind: "spell", side: item.side, cardId: card.id, element: card.element });
-    logMsg(s, item.side, `Si risolve ${card.name}.`);
-    applySpell(s, item.side, card, item.target);
+    fx(s, {
+      kind: "spell", side: item.side,
+      cardId: item.power ? null : item.cardId, element: sp.element,
+    });
+    logMsg(s, item.side, `Si risolve ${sp.name}.`);
+    applySpell(s, item.side, sp, item.target);
   }
-  ctrl.graveyard.push(card.id);
+  // spell cards go to the graveyard; powers just expire
+  if (!item.power) ctrl.graveyard.push(item.cardId);
   resolveDeaths(s);
   checkWin(s);
 }
@@ -501,6 +670,31 @@ function applySpell(s, side, card, target) {
           `${getCard(f.creature.cardId).name} ottiene +${e.p}/+${e.t} fino a fine turno.`);
       }
     }
+  } else if (e.kind === "freeze") {
+    // Morsa Glaciale — tap an enemy creature; it skips its next untap
+    if (target && target.type === "creature") {
+      const f = findCreature(s, target.instId);
+      if (f && f.side !== side) {
+        f.creature.tapped = true;
+        f.creature.frozen = true;
+        fx(s, { kind: "freeze", side: f.side, instId: f.creature.instId });
+        logMsg(s, side, `${getCard(f.creature.cardId).name} è congelata.`);
+      }
+    }
+  } else if (e.kind === "weaken") {
+    // Tributo Necrotico — permanent -p/-t on an enemy creature
+    if (target && target.type === "creature") {
+      const f = findCreature(s, target.instId);
+      if (f && f.side !== side) {
+        f.creature.plusP -= e.p;
+        f.creature.plusT -= e.t;
+        const base = getCard(f.creature.cardId) || { toughness: 0 };
+        const rawT = base.toughness + (f.creature.plusT || 0);
+        fx(s, { kind: "damageCreature", side: f.side, instId: f.creature.instId, amount: e.t, element: "darkness" });
+        logMsg(s, side, `${base.name} subisce -${e.p}/-${e.t}.`);
+        if (rawT <= 0) f.creature.damage = 9999; // withered away
+      }
+    }
   } else if (e.kind === "fog") {
     s.combatFog = true;
     fx(s, { kind: "fog", side });
@@ -512,18 +706,7 @@ function applySpell(s, side, card, target) {
     const gi = me.graveyard.findIndex((id) => isCreature(id));
     if (gi >= 0) {
       const cardId = me.graveyard.splice(gi, 1)[0];
-      const cr = {
-        instId: newInst(s),
-        cardId,
-        damage: 0,
-        tapped: false,
-        sick: !kw(cardId, "haste"),
-        plusP: 0,
-        plusT: 0,
-        tempP: 0,
-        tempT: 0,
-        shield: kw(cardId, "shield"),
-      };
+      const cr = mkCreature(s, side, cardId);
       me.battlefield.push(cr);
       fx(s, { kind: "play", side, cardId, into: "battlefield", instId: cr.instId });
       logMsg(s, side, `${me.name} rievoca ${getCard(cardId).name} dal cimitero.`);
@@ -836,7 +1019,6 @@ export function endTurn(state, side) {
   // must get down to the hand cap by discarding manually first
   if (state.players[side].hand.length > HAND_CAP) return state;
   const s = clone(state);
-  const p = s.players[side];
 
   s.combatFog = false;
   for (const sd of SIDES)
