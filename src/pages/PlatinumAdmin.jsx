@@ -14,6 +14,7 @@ export default function PlatinumAdmin() {
   const [status, setStatus] = useState('');
   const [tempBalances, setTempBalances] = useState({});
   const [tempPetPoints, setTempPetPoints] = useState({});
+  const [tempCoins, setTempCoins] = useState({});
 
   useEffect(() => {
     if (!currentUser) return;
@@ -31,6 +32,13 @@ export default function PlatinumAdmin() {
         const next = { ...prev };
         charList.forEach(char => {
           if (!(char.id in next)) next[char.id] = char.petPoints || 0;
+        });
+        return next;
+      });
+      setTempCoins(prev => {
+        const next = { ...prev };
+        charList.forEach(char => {
+          if (!(char.id in next)) next[char.id] = char.tcgCoins || 0;
         });
         return next;
       });
@@ -87,6 +95,45 @@ export default function PlatinumAdmin() {
     }
   };
 
+  const handleCoinsChange = (uid, value) => {
+    const v = value === '' ? '' : parseInt(value);
+    setTempCoins(prev => ({ ...prev, [uid]: v }));
+  };
+
+  const handleSaveCoins = async (charId) => {
+    const v = tempCoins[charId];
+    if (v === '' || isNaN(v)) return;
+    setStatus('Salvataggio Monete TCG...');
+    try {
+      await updateDoc(doc(db, 'characters', charId), {
+        tcgCoins: Math.max(0, Number(v)),
+        lastUpdated: new Date().toISOString()
+      });
+      setStatus('✅ Monete TCG aggiornate!');
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      setStatus(`❌ Errore: ${error.message}`);
+    }
+  };
+
+  const adjustCoins = async (charId, delta) => {
+    const char = characters.find(c => c.id === charId);
+    if (!char) return;
+    const current = Number(char.tcgCoins || 0);
+    const next = Math.max(0, current + delta);
+    try {
+      await updateDoc(doc(db, 'characters', charId), {
+        tcgCoins: next,
+        lastUpdated: new Date().toISOString()
+      });
+      setTempCoins(prev => ({ ...prev, [charId]: next }));
+      setStatus(`✅ Monete TCG: ${current} → ${next}`);
+      setTimeout(() => setStatus(''), 3000);
+    } catch (error) {
+      setStatus(`❌ Errore: ${error.message}`);
+    }
+  };
+
   const adjustPetPoints = async (charId, delta) => {
     const char = characters.find(c => c.id === charId);
     if (!char) return;
@@ -110,7 +157,7 @@ export default function PlatinumAdmin() {
     <section className="admin-platinum-page">
       <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
 
-      <h1 className="admin-page-title">Monete Platino (MP) e Punti Bestiario (TCG)</h1>
+      <h1 className="admin-page-title">Monete Platino (MP) · Punti Bestiario · Monete TCG 🪙</h1>
       <div className="admin-divider"><span className="admin-divider-icon">🪙</span></div>
 
       {status && (
@@ -187,6 +234,21 @@ export default function PlatinumAdmin() {
                   className="btn-admin-save"
                   title="Imposta il totale dei Punti Bestiario al valore mostrato"
                 >Salva</button>
+              </div>
+              <div className="platinum-input-group" style={{ marginTop: 6 }}>
+                <button type="button" onClick={() => adjustCoins(char.id, -100)} className="btn-admin-save" style={{ minWidth: 48 }} title="-100 Monete TCG">−100</button>
+                <button type="button" onClick={() => adjustCoins(char.id, -10)} className="btn-admin-save" style={{ minWidth: 44 }} title="-10 Monete TCG">−10</button>
+                <input
+                  type="number"
+                  className="platinum-input"
+                  value={tempCoins[char.id] ?? ''}
+                  onChange={(e) => handleCoinsChange(char.id, e.target.value)}
+                  title="Monete TCG totali"
+                />
+                <span className="platinum-unit">🪙</span>
+                <button type="button" onClick={() => adjustCoins(char.id, +10)} className="btn-admin-save" style={{ minWidth: 44 }} title="+10 Monete TCG">+10</button>
+                <button type="button" onClick={() => adjustCoins(char.id, +100)} className="btn-admin-save" style={{ minWidth: 48 }} title="+100 Monete TCG">+100</button>
+                <button type="button" onClick={() => handleSaveCoins(char.id)} className="btn-admin-save" title="Imposta il totale delle Monete TCG">Salva</button>
               </div>
             </div>
           ))

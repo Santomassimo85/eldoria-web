@@ -35,9 +35,9 @@ const PARTIES = [
     color: "#8e44ad",
     motto: "Nel buio si forgiano i nomi più luminosi",
     members: [
-      { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg",          hidden: true },
+      // { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg",          hidden: true },
       { name: "Dante",                  race: "Umano V.",              class: "Ladro",    image: "/assets/player/Dante.png" },
-      { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png",           hidden: true },
+      // { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png",           hidden: true },
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
       { name: "Alaric Voltasorte",      race: "Halfling",                   class: "Warlock",      image: "/assets/player/alaric.png" },
@@ -64,8 +64,8 @@ const PARTIES = [
     motto: "Ogni colpo riecheggia nella storia",
     members: [
       { name: "Aksel",            race: "Umano", class: "Arcane Sniper", image: "/assets/player/Aksel.png" },
-      { name: "Dago",             race: "Umano", class: "Artefice",      image: "/assets/player/dago.jpeg" },
-      { name: "Ismael Van Dyke",  race: "Umano", class: "Artefice",      image: "/assets/player/ismael.jpeg" },
+      { name: "Dago",             race: "Umano", class: "Ladro",      image: "/assets/player/dago.jpeg" },
+      { name: "Ismael Van Dyke",  race: "Umano", class: "Artefic",      image: "/assets/player/ismael.jpeg" },
     ],
   },
 ];

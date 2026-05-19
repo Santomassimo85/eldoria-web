@@ -1330,15 +1330,14 @@
 
 .hp-bar-bg {
   height: 10px;
-  /* The empty part = HP already lost. A muted crimson reads clearly
-     on the near-white fighter card (the old #eee was invisible) and
-     intuitively says "missing health". */
-  background: #e0a3a3;
+  /* The empty part = HP already lost. A dark track makes the light
+     green fill pop and clearly shows how much HP is missing. */
+  background: #1f2430;
   border-radius: 5px;
   overflow: hidden;
   margin-bottom: 4px;
-  border: 1.5px solid rgba(120, 22, 22, 0.6);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .hp-bar-fill {

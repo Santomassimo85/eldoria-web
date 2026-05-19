@@ -45,7 +45,8 @@ import ArenaMarket from "./pages/ArenaMarket";
 // imports and the matching nav link / routes below.
 // import PetArena from "./pages/PetArena";
 // import PetHub from "./pages/PetHub";
-import Tcg, { isTcgUnlockedFor } from "./pages/Tcg";
+import Tcg from "./pages/Tcg";
+import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
