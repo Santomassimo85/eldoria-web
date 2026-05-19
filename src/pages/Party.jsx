@@ -41,6 +41,7 @@ const PARTIES = [
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
       { name: "Alaric Voltasorte",      race: "Halfling",                   class: "Warlock",      image: "/assets/player/alaric.png" },
+      { name: "Daga",                   race: "Satiro",                class: "???",      image: "/assets/player/daga.jpeg" },
     ],
   },
   {
@@ -50,22 +51,11 @@ const PARTIES = [
     color: "#27ae60",
     motto: "Dove cade la foglia, nasce la rotta",
     members: [
-      { name: "Makenna",          race: "Changeling", class: "Ladro",    image: "/assets/player/Makenna.jpeg" },
       // { name: "Taaras Stormrage", race: "Mezz'Elfo",  class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
       { name: "Soran",            race: "Umano",      class: "Bardo",    image: "/assets/player/Soran.png" },
       { name: "Zethir",           race: "Shadar-Kai", class: "Paladino", image: "/assets/player/Zethir.jpeg" },
-    ],
-  },
-  {
-    id: "ECO",
-    name: "Compagnia di Eco",
-    code: "C",
-    color: "#0f766e",
-    motto: "Ogni colpo riecheggia nella storia",
-    members: [
-      { name: "Aksel",            race: "Umano", class: "Arcane Sniper", image: "/assets/player/Aksel.png" },
-      { name: "Dago",             race: "Umano", class: "Ladro",      image: "/assets/player/dago.jpeg" },
-      { name: "Ismael Van Dyke",  race: "Umano", class: "Artefic",      image: "/assets/player/ismael.jpeg" },
+      { name: "Aksel",            race: "Umano",      class: "Arcane Sniper", image: "/assets/player/Aksel.png" },
+      { name: "Dago",             race: "Umano",      class: "Ladro",    image: "/assets/player/dago.jpeg" },
     ],
   },
 ];
