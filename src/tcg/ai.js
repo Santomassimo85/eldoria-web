@@ -22,6 +22,10 @@ const creatureValue = (s, side, cr) => {
   return e.power + e.toughness;
 };
 
+/* effective HP — temporary HP (ward) soaks damage before real HP, so
+   include it whenever the AI is reasoning about lethal */
+const effHp = (p) => (p?.hp || 0) + (p?.tempHp || 0);
+
 function biggestThreat(s, foe) {
   let best = null;
   for (const cr of s.players[foe].battlefield) {
@@ -58,11 +62,11 @@ function scorePlay(s, side, hc) {
     return { score: 6 + t.p + t.t, target: { type: "creature", instId: t.instId } };
   }
   if (e.kind === "damage" && e.target === "any") {
-    if (s.players[foe].hp <= e.amount) return { score: 999, target: { type: "hero", side: foe } };
+    if (effHp(s.players[foe]) <= e.amount) return { score: 999, target: { type: "hero", side: foe } };
     const t = biggestThreat(s, foe);
     if (t && t.t <= e.amount && t.p >= 4)
       return { score: 6 + t.p, target: { type: "creature", instId: t.instId } };
-    if (s.players[foe].hp <= 8) return { score: 5, target: { type: "hero", side: foe } };
+    if (effHp(s.players[foe]) <= 8) return { score: 5, target: { type: "hero", side: foe } };
     if (t && t.t <= e.amount) return { score: 4 + t.p, target: { type: "creature", instId: t.instId } };
     return { score: 3, target: { type: "hero", side: foe } };
   }
@@ -75,6 +79,13 @@ function scorePlay(s, side, hc) {
   if (e.kind === "heal") {
     const missing = Math.max(0, 20 - me.hp);
     return { score: me.hp <= 8 ? 7 + Math.min(missing, e.amount) : -2, target: null };
+  }
+  if (e.kind === "wardHeal") {
+    // valuable both when low (heals) and when full (banks tempHp);
+    // mild bonus if we're about to take incoming combat damage
+    const missing = Math.max(0, 25 - me.hp);
+    const base = 3 + Math.min(missing, e.amount);
+    return { score: me.hp <= 10 ? base + 4 : base, target: null };
   }
   if (e.kind === "draw") {
     return { score: me.hand.length <= 3 ? 6 : 3, target: null };
@@ -136,7 +147,7 @@ function aiPickPower(s, side) {
         return t - (c.damage || 0) <= e.amount;
       });
       if (k) return { el, target: { type: "creature", side: foe, instId: k.instId } };
-      if (s.players[foe].hp <= e.amount || s.players[foe].hp <= 10)
+      if (effHp(s.players[foe]) <= e.amount || effHp(s.players[foe]) <= 10)
         return { el, target: { type: "hero", side: foe } };
     } else if (e.kind === "aoe_enemy") {
       const hits = s.players[foe].battlefield.filter(
@@ -156,6 +167,12 @@ function aiPickPower(s, side) {
       if (t && t.p >= 4) return { el, target: { type: "creature", side: foe, instId: t.instId } };
     } else if (e.kind === "heal") {
       if (s.players[side].hp <= 16) return { el, target: null };
+    } else if (e.kind === "wardHeal") {
+      // ward heals are useful even at full HP — fire whenever the
+      // Carica/mana would otherwise rot (worst case: bank tempHp)
+      if (s.players[side].hp <= 22) return { el, target: null };
+      const p = s.players[side];
+      if ((p.tempHp || 0) < 6) return { el, target: null };
     } else if (e.kind === "buff") {
       const mine = s.players[side].battlefield;
       if (mine.length) {
@@ -213,7 +230,7 @@ export function nextAction(s, side) {
       });
       const totalPow = myAtt.reduce((a, b) => a + b.power, 0);
 
-      if (totalPow >= s.players[foe].hp && foeBlockers.length < myAtt.length) {
+      if (totalPow >= effHp(s.players[foe]) && foeBlockers.length < myAtt.length) {
         return { type: "attack", attackerIds: ids };
       }
 
@@ -271,7 +288,7 @@ export function chooseBlocks(s, side) {
   const blocks = {}; // { atkId: [blockerId, …] }
   const usedB = new Set();
   const totalDmg = attackers.reduce((a, b) => a + b.power, 0);
-  const lethal = totalDmg >= s.players[side].hp;
+  const lethal = totalDmg >= effHp(s.players[side]);
 
   for (const atk of attackers) {
     let pick = null;
@@ -293,7 +310,7 @@ export function chooseBlocks(s, side) {
       .filter((a) => !blocks[a.id])
       .reduce((acc, a) => acc + a.power, 0);
     for (const atk of attackers) {
-      if (incoming < s.players[side].hp) break;
+      if (incoming < effHp(s.players[side])) break;
       if (blocks[atk.id]) continue;
       // chump, or gang up to actually kill it if cheap blockers are free
       const free = blockers.filter((b) => !usedB.has(b.id));
@@ -352,7 +369,7 @@ export function respondToStack(s, side) {
       return n + (cr ? effStats(s, foe, cr).power : 0);
     }, 0);
     const fog = find("fog");
-    if (fog && incoming >= Math.min(7, s.players[side].hp)) {
+    if (fog && incoming >= Math.min(7, effHp(s.players[side]))) {
       return { type: "instant", instId: fog.instId, target: null };
     }
     // burn a small attacker with a damage instant
@@ -379,7 +396,7 @@ export function respondToStack(s, side) {
     const c = getCard(h.cardId);
     return c.effect.kind === "damage" && c.effect.target === "any";
   });
-  if (dmgAny && s.players[foe].hp <= getCard(dmgAny.cardId).effect.amount)
+  if (dmgAny && effHp(s.players[foe]) <= getCard(dmgAny.cardId).effect.amount)
     return {
       type: "instant",
       instId: dmgAny.instId,

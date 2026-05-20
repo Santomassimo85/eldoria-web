@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { isTcgUnlockedFor } from "../tcg/access.js";
 import { createGame } from "../tcg/engine.js";
+import { buildClassDeck } from "../tcg/cards.js";
 import { watchMatch, sideForUid } from "../tcg/net.js";
 import {
   watchProfile, grantStarter, needsStarter, openPack, saveDeck,
@@ -25,11 +26,13 @@ import Shop from "../components/tcg/Shop.jsx";
 import DeckBuilder from "../components/tcg/DeckBuilder.jsx";
 import Collection from "../components/tcg/Collection.jsx";
 import Manual from "../components/tcg/Manual.jsx";
+import ClassPicker from "../components/tcg/ClassPicker.jsx";
+import { CLASS_VIE, CLASSES, classColors } from "../tcg/classes.js";
 import "./Tcg.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const AI_COINS = { win: 30, lose: 10, draw: 15 };
-const PVP_COINS = { win: 60, lose: 20, draw: 25 };
+const AI_COINS = { win: 5, lose: 1, draw: 3 };
+const PVP_COINS = { win: 15, lose: 5, draw: 8 };
 
 /* keeps a render crash inside the game from blanking the whole page —
    shows the error (so it can be reported) + a way back to the menu */
@@ -124,6 +127,10 @@ export default function Tcg() {
 
   const [screen, setScreen] = useState("menu");
   const [aiSeed, setAiSeed] = useState(0);
+  // class + via the player picked for the upcoming / current AI match
+  const [aiClass, setAiClass] = useState(null);
+  // class + via the AI plays (randomised when the match starts)
+  const [aiFoeClass, setAiFoeClass] = useState(null);
 
   const [matchId, setMatchId] = useState(null);
   const [match, setMatch] = useState(null);
@@ -139,20 +146,46 @@ export default function Tcg() {
 
   const aiState = useMemo(() => {
     if (screen !== "ai") return null;
+    if (!aiClass) return null; // waiting on the picker
+    // Player's saved deck is the source of truth — they may mix any
+    // colours they bought (no class restriction on the deck). Only the
+    // AI opponent gets an auto-built class deck so the match is themed.
+    const foeColors = classColors(aiFoeClass.klass);
     return createGame({
       p0Name: pName,
       p1Name: "Arconte (IA)",
       deck0: playableDeck(profile),
-      deck1: undefined, // engine builds a default for the AI
+      deck1: buildClassDeck(foeColors),
+      p0Class: aiClass,
+      p1Class: aiFoeClass,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, aiSeed]);
+  }, [screen, aiSeed, aiClass, aiFoeClass]);
 
   const goMenu = () => {
     stopWatch();
     setMatch(null);
     setMatchId(null);
+    setAiClass(null);
+    setAiFoeClass(null);
     setScreen("menu");
+  };
+
+  /* pick a random class+via for the AI opponent — different from the
+     player's class so the match isn't a mirror. */
+  const rollAiFoe = (mineKlass) => {
+    const others = CLASSES.filter((k) => k !== mineKlass);
+    const k = others[Math.floor(Math.random() * others.length)];
+    const vie = Object.keys(CLASS_VIE[k]);
+    const v = vie[Math.floor(Math.random() * vie.length)];
+    return { klass: k, via: v };
+  };
+
+  const confirmAiClass = (pick) => {
+    primeSfx();
+    setAiClass(pick);
+    setAiFoeClass(rollAiFoe(pick.klass));
+    setScreen("ai");
   };
 
   const awardFor = (mode, result) => {
@@ -161,7 +194,7 @@ export default function Tcg() {
     awardCoins(currentUser.uid, table[result] ?? 0).catch(() => {});
   };
 
-  const pickAi = () => { primeSfx(); setScreen("ai"); };
+  const pickAi = () => { primeSfx(); setScreen("ai-pick"); };
   const pickPvp = () => { primeSfx(); setScreen("lobby"); };
 
   const enterMatch = (id) => {
@@ -214,7 +247,7 @@ export default function Tcg() {
     return (
       <div className="tcg-page">
         <StarterSelect
-          onPick={(el) => grantStarter(currentUser.uid, el)}
+          onPick={(klass) => grantStarter(currentUser.uid, klass)}
         />
       </div>
     );
@@ -275,13 +308,21 @@ export default function Tcg() {
         <Collection profile={profile} onBack={goMenu} />
       )}
 
+      {screen === "ai-pick" && (
+        <ClassPicker
+          onConfirm={confirmAiClass}
+          onBack={goMenu}
+          lockedClass={profile?.starterClass || null}
+        />
+      )}
+
       {screen === "ai" && aiState && (
         <GameBoundary onExit={goMenu}>
           <GameTable
             key={`ai-${aiSeed}`}
             mode="ai"
             initialState={aiState}
-            myCover={profile?.cover || "air"}
+            myCover={profile?.cover || "nature"}
             foeCover="darkness"
             onExit={goMenu}
             onRematch={() => setAiSeed((n) => n + 1)}
@@ -295,7 +336,7 @@ export default function Tcg() {
           user={currentUser}
           name={pName}
           deck={playableDeck(profile)}
-          cover={profile?.cover || "air"}
+          cover={profile?.cover || "nature"}
           onEnterMatch={enterMatch}
           onBack={goMenu}
         />

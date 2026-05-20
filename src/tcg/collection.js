@@ -20,32 +20,68 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import {
-  POOL, LANDS, ELEMENTS, ELEMENT_LABEL, getCard, DECK_SIZE, buildDeck, isLand,
+  POOL, LANDS, ELEMENTS, ELEMENT_LABEL, getCard, DECK_SIZE, buildDeck, buildClassDeck,
+  isLand,
   RARITY_ORDER, RARITY_ODDS, RARITY_ODDS_PREMIUM, FOIL_CHANCE,
 } from "./cards.js";
+import {
+  CLASSES, CLASS_LABEL, CLASS_ICON, classColors,
+} from "./classes.js";
 
-export const STARTER_ELEMENTS = ["fire", "water", "air", "nature"];
+/* Legacy starter element list — will be replaced by class-based
+   starters in Fase 3+. Kept here so existing players who never picked
+   a starter still see a working screen. */
+export const STARTER_ELEMENTS = ["fire", "water", "light", "nature"];
 export const STARTER_COINS = 120;
 export const PACK_SIZE = 15; // 15 cards per pack (rarity-weighted)
 export const MAX_COPIES = 4;
 export const MIN_LANDS = 16;
 export const LAND_IDS = LANDS.map((l) => l.id);
 
-/* shop catalogue — one pack per element, only that element's cards.
-   Prices balanced to battle income (AI win 30 / PvP win 60).
-   Light & darkness are premium (cost more). */
-export const PACKS = ELEMENTS.map((el) => ({
+/* Shop catalogue — two flavours of pack:
+     • element packs (legacy): one per element, only that colour's cards
+     • class packs (new):       one per class, drawing from the 2 colours
+                                that class owns
+
+   A pack defines `colors: [el, …]`. Element packs have a single colour;
+   class packs have two. openPack() pulls from the union. */
+const elementPacks = ELEMENTS.map((el) => ({
   id: "pack_" + el,
-  element: el,
+  kind: "element",
+  colors: [el],
   name: "Pacchetto " + ELEMENT_LABEL[el],
   cost: el === "light" || el === "darkness" ? 220 : 110,
   size: PACK_SIZE,
   premium: el === "light" || el === "darkness",
 }));
 
+const classPacks = CLASSES.map((k) => {
+  const colors = classColors(k);
+  return {
+    id: "pack_class_" + k,
+    kind: "class",
+    klass: k,
+    colors,
+    name: `Pacchetto ${CLASS_LABEL[k]}`,
+    icon: CLASS_ICON[k],
+    cost: 180, // a touch more than a standard element pack (2 colours)
+    size: PACK_SIZE,
+    premium: false,
+  };
+});
+
+export const PACKS = [...classPacks, ...elementPacks];
+
 /* ---- normalisation ---- */
 export function profileFromDoc(data) {
   const d = data || {};
+  // Migrate legacy element starter → class. Old saves stored
+  // tcgStarterElement; new saves store tcgStarterClass. We expose
+  // BOTH so UI components don't have to know about the migration.
+  const legacyEl = typeof d.tcgStarterElement === "string" ? d.tcgStarterElement : null;
+  const klass = typeof d.tcgStarterClass === "string"
+    ? d.tcgStarterClass
+    : (legacyEl && LEGACY_ELEMENT_TO_CLASS[legacyEl]) || null;
   return {
     coins: typeof d.tcgCoins === "number" ? d.tcgCoins : 0,
     collection:
@@ -56,13 +92,12 @@ export function profileFromDoc(data) {
       d.tcgFoil && typeof d.tcgFoil === "object" ? { ...d.tcgFoil } : {},
     deck: Array.isArray(d.tcgDeck) ? d.tcgDeck.slice() : null,
     starterClaimed: !!d.tcgStarterClaimed,
-    starterElement: typeof d.tcgStarterElement === "string" ? d.tcgStarterElement : null,
+    starterElement: legacyEl,                       // legacy, kept for old UI
+    starterClass: klass,                             // new — class identity
     cover:
       typeof d.tcgCover === "string"
         ? d.tcgCover
-        : typeof d.tcgStarterElement === "string"
-        ? d.tcgStarterElement
-        : "air",
+        : legacyEl || "nature",
     loaded: true,
   };
 }
@@ -152,7 +187,7 @@ export function autoDeck(collection, focus = null) {
     for (const el of ELEMENTS) if (c.cost[el]) weight[el] += c.cost[el];
   }
   let used = ELEMENTS.filter((el) => weight[el] > 0);
-  if (!used.length) used = focus && ELEMENTS.includes(focus) ? [focus] : ["air"];
+  if (!used.length) used = focus && ELEMENTS.includes(focus) ? [focus] : ["nature"];
   const totalW = used.reduce((s, el) => s + weight[el], 0) || used.length;
 
   const lands = [];
@@ -169,34 +204,52 @@ export function autoDeck(collection, focus = null) {
 
 /* ============================================================
    STARTER  (choose once — never re-asked, survives reload)
+   ------------------------------------------------------------
+   2026-05-20: starter migrated from element → class. The grantStarter
+   call now takes a class key ("mago", "guerriero", …). The legacy
+   element argument still works (mapped to the matching class) so any
+   in-flight session that picked an element before the swap doesn't
+   crash; new players always see the class picker.
    ============================================================ */
-function starterCollection(el) {
+const LEGACY_ELEMENT_TO_CLASS = {
+  fire:     "guerriero",
+  water:    "ladro",
+  light:    "chierico",
+  darkness: "chierico",
+  nature:   "druido",
+};
+
+function starterCollection(klass) {
   const c = {};
-  // 3 copies of every card of the chosen element …
-  for (const id of POOL) if (getCard(id).element === el) c[id] = 3;
-  // … plus 2 copies of every "air" utility card (removal / draw /
-  //    buffs) so any starter has answers — unless air IS the choice.
-  if (el !== "air")
-    for (const id of POOL) if (getCard(id).element === "air") c[id] = (c[id] || 0) + 2;
+  const cols = new Set(classColors(klass));
+  // 3 copies of every card of the chosen class' 2 colours
+  for (const id of POOL) if (cols.has(getCard(id).element)) c[id] = 3;
   return c;
 }
 
-export async function grantStarter(uid, el) {
-  if (!uid || !STARTER_ELEMENTS.includes(el)) return { ok: false };
+export async function grantStarter(uid, choice) {
+  if (!uid || !choice) return { ok: false };
+  // accept either a class key or a legacy element key (back-compat)
+  const klass = CLASSES.includes(choice)
+    ? choice
+    : LEGACY_ELEMENT_TO_CLASS[choice];
+  if (!klass) return { ok: false, reason: "unknown" };
+
   // re-read to respect a claim that may already exist (anti double-grant)
   const snap = await getDoc(doc(db, "characters", uid));
   if (snap.exists() && snap.data().tcgStarterClaimed)
     return { ok: false, reason: "claimed" };
 
-  const collection = starterCollection(el);
-  const deck = autoDeck(collection, el);
+  const collection = starterCollection(klass);
+  const deck = buildClassDeck(classColors(klass));
+  const coverEl = classColors(klass)[0];
   await patch(uid, {
     tcgCoins: STARTER_COINS,
     tcgCollection: collection,
     tcgDeck: deck,
     tcgStarterClaimed: true,
-    tcgStarterElement: el,
-    tcgCover: el,
+    tcgStarterClass: klass,
+    tcgCover: coverEl,
   });
   return { ok: true };
 }
@@ -245,8 +298,10 @@ export async function openPack(uid, packId) {
   const p = profileFromDoc(snap.exists() ? snap.data() : {});
   if (p.coins < pack.cost) return { ok: false, reason: "coins" };
 
-  // this element's cards, grouped by rarity
-  const inEl = POOL.filter((id) => getCard(id).element === pack.element);
+  // pack's eligible cards (one or more colours), grouped by rarity
+  const colors = pack.colors || (pack.element ? [pack.element] : ELEMENTS);
+  const allowed = new Set(colors);
+  const inEl = POOL.filter((id) => allowed.has(getCard(id).element));
   const pool = inEl.length ? inEl : POOL;
   const byRar = {};
   for (const id of pool) (byRar[getCard(id).rarity] ||= []).push(id);

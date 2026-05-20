@@ -2,7 +2,7 @@
    TCG — CARD DATA  (Italian, D&D themed)  — MAGIC-STYLE MANA
    ------------------------------------------------------------
    Six elements, matching the art in /public/card_cover:
-     fire · water · light · darkness · air · nature
+     fire · water · light · darkness · nature
 
    Mana works like Magic:
    • Land cards (one "Fonte" per element) tap for 1 mana of
@@ -20,7 +20,7 @@
      id, name,
      type: "creature" | "spell" | "artifact" | "land",
      element,                    // one of the 6 elements
-     cost: { generic, fire, water, light, darkness, air, nature },
+     cost: { generic, fire, water, light, darkness, nature },
      cmc,                        // converted cost = sum of all pips
      art, icon,
      power, toughness,           // creatures only
@@ -31,35 +31,36 @@
    }
    ============================================================ */
 
-export const ELEMENTS = ["fire", "water", "light", "darkness", "air", "nature"];
+/* 5 elements (Fuoco / Acqua / Natura / Luce / Ombra). The legacy 6th
+   "air" was distributed thematically across the other five in 2026-05-20
+   (storm/lightning → Fuoco, arcane/runic → Luce, wind/control → Acqua,
+   spirits → Ombra, beasts → Natura). */
+export const ELEMENTS = ["fire", "water", "light", "darkness", "nature"];
 
-/* "mana" colours = D&D damage types */
+/* Display names — Italian, matching the class-system elements. */
 export const ELEMENT_LABEL = {
-  fire: "Fuoco",      // fire
-  water: "Gelo",      // cold
-  light: "Radioso",   // radiant
-  darkness: "Necrotico", // necrotic
-  air: "Fulmine",     // lightning
-  nature: "Veleno",   // poison
+  fire:     "Fuoco",
+  water:    "Acqua",
+  light:    "Luce",
+  darkness: "Ombra",
+  nature:   "Natura",
 };
 
 export const ELEMENT_ICON = {
-  fire: "🔥",
-  water: "💧",
-  light: "✨",
+  fire:     "🔥",
+  water:    "💧",
+  light:    "✨",
   darkness: "🌑",
-  air: "🌪️",
-  nature: "🍃",
+  nature:   "🍃",
 };
 
 /* pip / mana-gem colour per element */
 export const ELEMENT_PIP = {
-  fire: "#e0552f",
-  water: "#2b8fe0",
-  light: "#e9c75a",
+  fire:     "#e0552f",
+  water:    "#2b8fe0",
+  light:    "#e9c75a",
   darkness: "#8a5cff",
-  air: "#38c6c6",
-  nature: "#5fbf4c",
+  nature:   "#5fbf4c",
 };
 
 export const TYPE_COLOR = {
@@ -75,7 +76,6 @@ export const ELEMENT_FX = {
   water:    { glow: "#4fb8ff", spark: "#bfe9ff" },
   light:    { glow: "#ffe9a8", spark: "#ffffff" },
   darkness: { glow: "#9b5cff", spark: "#d9b8ff" },
-  air:      { glow: "#48e0d4", spark: "#bff7f2" },
   nature:   { glow: "#5fd16a", spark: "#c8f5cc" },
 };
 
@@ -267,7 +267,7 @@ const RAW = [
     "", "Carne dell'Abisso, modellata in forma urlante."),
   C("quasit", "Quasit", 1, "quasit", "🦇", "darkness", 1, 2,
     "", "Un famiglio infernale dalla lingua biforcuta."),
-  C("kenku", "Kenku Ladro", 1, "kenku", "🐦‍⬛", "air", 2, 1,
+  C("kenku", "Kenku Ladro", 1, "kenku", "🐦‍⬛", "water", 2, 1,
     "", "Ruba la tua voce prima ancora della borsa."),
   C("goblin", "Goblin", 1, "goblin", "👹", "nature", 1, 2,
     "", "Cattivo per natura, codardo per scelta."),
@@ -313,7 +313,7 @@ const RAW = [
     "", "Il suo fiato sa di cenere e dannazione."),
   C("medusa", "Medusa", 3, "medusa", "🐍", "darkness", 3, 5,
     "", "Incrocia il suo sguardo una volta sola."),
-  C("peryton", "Peritone", 3, "peryton", "🦌", "air", 4, 3,
+  C("peryton", "Peritone", 3, "peryton", "🦌", "nature", 4, 3,
     "", "Proietta l'ombra di un uomo, il cuore di una bestia."),
 
   /* ---------- CREATURES — cmc 4 (10) ---------- */
@@ -329,7 +329,7 @@ const RAW = [
     "", "Ti ama fino all'ultimo respiro. Il tuo."),
   C("copperdragon", "Drago di Rame", 4, "copperdragon", "🐉", "fire", 5, 5,
     "", "Scherza, poi incenerisce. In quest'ordine."),
-  C("stormmage", "Mago della Tempesta", 4, "stormmage", "🌩️", "air", 5, 4,
+  C("stormmage", "Mago della Tempesta", 4, "stormmage", "🌩️", "fire", 5, 4,
     "", "Parla, e i cieli rispondono col fulmine."),
   C("irongolem", "Golem di Ferro", 4, "irongolem", "🤖", "nature", 4, 7,
     "", "Non dorme, non teme, non si arrende."),
@@ -353,11 +353,11 @@ const RAW = [
     "", "Maledice chi disturba il suo sonno millenario."),
 
   /* ---------- SPELLS (10) ---------- */
-  S("s_bolt", "Saetta", 1, "⚡", "air",
+  S("s_bolt", "Saetta", 1, "⚡", "fire",
     { kind: "damage", amount: 3, target: "any" },
     "Infliggi 3 danni a una creatura o all'eroe nemico.",
     "Tre parole, un dito puntato, e il tuono.", "lightning-avatar"),
-  S("s_missile", "Dardo Incantato", 1, "✨", "air",
+  S("s_missile", "Dardo Incantato", 1, "✨", "light",
     { kind: "damage", amount: 2, target: "any" },
     "Infliggi 2 danni a un bersaglio qualsiasi.",
     "Non manca mai. Mai.", "arcane-engine"),
@@ -369,7 +369,7 @@ const RAW = [
     { kind: "damage", amount: 4, target: "any" },
     "Infliggi 4 danni a un bersaglio qualsiasi.",
     "La soluzione classica a problemi complicati.", "fire-vortex"),
-  S("s_shockwave", "Onda d'Urto", 3, "💥", "air",
+  S("s_shockwave", "Onda d'Urto", 3, "💥", "fire",
     { kind: "aoe_enemy", amount: 3 },
     "Infliggi 3 danni a TUTTE le creature nemiche.",
     "Il terreno trema e l'orizzonte si piega.", "violet-tempest"),
@@ -381,7 +381,7 @@ const RAW = [
     { kind: "buff", p: 2, t: 2, target: "friendly_creature" },
     "Una tua creatura ottiene +2/+2 in modo permanente.",
     "Gli dèi guardano, e per un istante sorridono.", "gilded-champion"),
-  S("s_vision", "Visione Arcana", 2, "🔮", "air",
+  S("s_vision", "Visione Arcana", 2, "🔮", "light",
     { kind: "draw", amount: 2 },
     "Peschi 2 carte.",
     "Il velo del futuro si apre, per chi sa leggere.", "arcane-scroll"),
@@ -399,7 +399,7 @@ const RAW = [
     { kind: "damage", amount: 3, target: "any" },
     "Istantaneo. Infliggi 3 danni a un bersaglio qualsiasi.",
     "Un crepitio, e l'aria sa di temporale.", "flame-blades"),
-  S("s_counter", "Contromagia", 2, "🌀", "air",
+  S("s_counter", "Contromagia", 2, "🌀", "water",
     { kind: "counter" },
     "Istantaneo. Controbatti un incantesimo bersaglio nella pila.",
     "La parola muore prima di nascere.", "psionic-duel"),
@@ -412,8 +412,8 @@ const RAW = [
     "Istantaneo. Una tua creatura ottiene +3/+3 fino a fine turno.",
     "La linfa esplode, e il piccolo diventa colosso.", "venom-circle"),
   S("s_rescue", "Soccorso Divino", 2, "🛡️", "light",
-    { kind: "heal", amount: 6 },
-    "Istantaneo. Recuperi 6 Punti Vita.",
+    { kind: "wardHeal", amount: 6 },
+    "Istantaneo. Recuperi 6 PV. Ogni PV oltre il massimo diventa PV temporaneo (assorbe danni prima dei PV).",
     "All'ultimo istante, una mano di luce.", "radiant-avatar"),
 
   /* ---------- ARTIFACTS (6) ---------- */
@@ -421,7 +421,7 @@ const RAW = [
     { kind: "anthem", p: 1, t: 1 },
     "Le tue creature hanno +1/+1.",
     "Dove sventola, nessun cuore vacilla.", "flame-mantle"),
-  A("a_blade", "Lama Runica", 2, "🗡️", "air",
+  A("a_blade", "Lama Runica", 2, "🗡️", "light",
     { kind: "anthem", p: 1, t: 0 },
     "Le tue creature hanno +1/+0.",
     "Le rune cantano a ogni fendente.", "crimson-sword"),
@@ -433,11 +433,11 @@ const RAW = [
     { kind: "startHeal", amount: 3 },
     "All'inizio del tuo turno, recuperi 3 PV.",
     "Le ferite si chiudono come se non fossero mai esistite.", "amethyst-ring"),
-  A("a_staff", "Bastone del Mago", 2, "🪄", "air",
+  A("a_staff", "Bastone del Mago", 2, "🪄", "light",
     { kind: "startDraw", amount: 1 },
     "All'inizio del tuo turno, peschi 1 carta extra.",
     "Concentra il flusso del Weave in un solo punto.", "time-gear"),
-  A("a_tome", "Tomo Antico", 4, "📖", "air",
+  A("a_tome", "Tomo Antico", 4, "📖", "light",
     { kind: "startDraw", amount: 1 },
     "All'inizio del tuo turno, peschi 1 carta extra.",
     "Ogni pagina sa qualcosa che tu non sai.", "ancient-urn"),
@@ -447,15 +447,15 @@ const RAW = [
     "", "Le correnti danzano al ritmo delle sue dita."),
   C("geomancer", "Geomante", 4, "geomancer", "🪨", "nature", 3, 5,
     "", "La pietra obbedisce a chi sa ascoltarla."),
-  C("arcanenova", "Nova Arcana", 4, "arcanenova", "💠", "air", 4, 3,
+  C("arcanenova", "Nova Arcana", 4, "arcanenova", "💠", "light", 4, 3,
     "", "Un istante di pura magia, poi il silenzio."),
-  C("graspingspirit", "Mano Spettrale", 3, "graspingspirit", "✋", "air", 2, 4,
+  C("graspingspirit", "Mano Spettrale", 3, "graspingspirit", "✋", "darkness", 2, 4,
     "", "Afferra ciò che i vivi non possono trattenere."),
-  C("arcanecube", "Cubo Arcano", 2, "arcanecube", "🧊", "air", 1, 4,
+  C("arcanecube", "Cubo Arcano", 2, "arcanecube", "🧊", "light", 1, 4,
     "", "Tutto ciò che tocca, lo conserva per sempre."),
   C("runicrevenant", "Spettro Runico", 4, "runicrevenant", "⚔️", "darkness", 5, 4,
     "", "Le rune lo legano al mondo dei vivi, suo malgrado."),
-  C("runefist", "Pugno Runico", 2, "runefist", "👊", "air", 3, 2,
+  C("runefist", "Pugno Runico", 2, "runefist", "👊", "light", 3, 2,
     "", "Colpisce prima che tu finisca di pensarci."),
   C("runebladespirit", "Spirito della Lama", 3, "runebladespirit", "🗡️", "nature", 4, 2,
     "", "La lama ricorda ogni mano che l'ha brandita."),
@@ -479,7 +479,7 @@ const RAW = [
     "", "Striscia tra i sogni e li avvelena."),
   C("voidwraith", "Spettro del Vuoto", 4, "voidwraith", "🌑", "darkness", 4, 4,
     "", "Dove passa, resta solo l'assenza."),
-  C("soulcomet", "Cometa d'Anime", 4, "soulcomet", "☄️", "air", 5, 3,
+  C("soulcomet", "Cometa d'Anime", 4, "soulcomet", "☄️", "fire", 5, 3,
     "", "Cade portando con sé chi non vuole lasciarla."),
   C("emberlion", "Leone di Brace", 4, "emberlion", "🦁", "fire", 5, 4,
     "", "Ruggisce e la savana brucia."),
@@ -534,15 +534,15 @@ const RAW = [
   C("water-colossus", "Colosso d'Acqua", 5, "water-colossus", "💧", "water", 5, 7,
     "", "Un oceano che ha imparato a camminare."),
   // — Air —
-  C("storm-beast", "Bestia della Tempesta", 3, "storm-beast", "🌩️", "air", 4, 3,
+  C("storm-beast", "Bestia della Tempesta", 3, "storm-beast", "🌩️", "fire", 4, 3,
     "", "Cavalca i venti come fossero prede."),
-  C("wasp-knight", "Cavaliere Vespa", 3, "wasp-knight", "🐝", "air", 3, 2,
+  C("wasp-knight", "Cavaliere Vespa", 3, "wasp-knight", "🐝", "water", 3, 2,
     "", "Colpisce una volta sola. Basta."),
-  C("gilded-magus", "Magus Aureo", 3, "gilded-magus", "✨", "air", 3, 3,
+  C("gilded-magus", "Magus Aureo", 3, "gilded-magus", "✨", "light", 3, 3,
     "", "Tesse il fulmine come fosse seta."),
-  C("storm-titan", "Titano della Tempesta", 5, "storm-titan", "⚡", "air", 6, 5,
+  C("storm-titan", "Titano della Tempesta", 5, "storm-titan", "⚡", "fire", 6, 5,
     "", "Ogni passo è un tuono che cade."),
-  C("astral-titan", "Titano Astrale", 5, "astral-titan", "🌌", "air", 5, 6,
+  C("astral-titan", "Titano Astrale", 5, "astral-titan", "🌌", "light", 5, 6,
     "", "Porta il cielo notturno sulle spalle."),
   // — Light —
   C("spirit-stag", "Cervo Spettrale", 3, "spirit-stag", "🦌", "light", 3, 3,
@@ -654,17 +654,17 @@ const RAW = [
   C("tide-monk", "Monaco delle Maree", 3, "tide-monk", "👊", "water", 3, 3,
     "", "Ogni colpo segue il ritmo del mare."),
   // — Creatures: Air —
-  C("wind-shade", "Spettro del Vento", 2, "wind-shade", "🌬️", "air", 2, 2,
+  C("wind-shade", "Spettro del Vento", 2, "wind-shade", "🌬️", "water", 2, 2,
     "", "Lo senti passare, non lo vedi mai."),
-  C("smoke-shade", "Spettro di Fumo", 3, "smoke-shade", "💨", "air", 3, 2,
+  C("smoke-shade", "Spettro di Fumo", 3, "smoke-shade", "💨", "water", 3, 2,
     "", "Afferralo: ti resterà solo cenere in mano."),
-  C("tempest-beast", "Bestia della Tempesta", 3, "tempest-beast", "⛈️", "air", 4, 3,
+  C("tempest-beast", "Bestia della Tempesta", 3, "tempest-beast", "⛈️", "fire", 4, 3,
     "", "Corre più veloce del tuono che la annuncia."),
-  C("rune-summoner", "Evocatore Runico", 3, "rune-summoner", "🔷", "air", 3, 3,
+  C("rune-summoner", "Evocatore Runico", 3, "rune-summoner", "🔷", "light", 3, 3,
     "", "Disegna nell'aria porte che non dovrebbero aprirsi."),
-  C("azure-magus", "Magus d'Azzurro", 4, "azure-magus", "✨", "air", 4, 4,
+  C("azure-magus", "Magus d'Azzurro", 4, "azure-magus", "✨", "water", 4, 4,
     "", "Tiene una tempesta addomesticata nel palmo."),
-  C("storm-elemental", "Elementale Tempesta", 5, "storm-elemental", "🌩️", "air", 5, 5,
+  C("storm-elemental", "Elementale Tempesta", 5, "storm-elemental", "🌩️", "fire", 5, 5,
     "", "Una nuvola che ha imparato a stringere il pugno."),
   // — Creatures: Light —
   C("blossom-unicorn", "Unicorno Fiorito", 3, "blossom-unicorn", "🦄", "light", 3, 3,
@@ -891,7 +891,8 @@ export function isLand(id) {
 /* the 6 selectable cover images (live in /public/assets/card_cover) */
 export const COVERS = ELEMENTS.slice();
 export function coverUrl(name) {
-  const n = ELEMENTS.includes(name) ? name : "air";
+  // legacy collections may still store cover="air" → fall back to nature
+  const n = ELEMENTS.includes(name) ? name : "nature";
   return `/assets/card_cover/${n}.png`;
 }
 
@@ -971,18 +972,13 @@ export const ELEMENT_POWERS = {
   },
   light: {
     name: "Grazia Radiosa", icon: "✨",
-    effect: { kind: "heal", amount: 6 },
-    text: "Recuperi 6 Punti Vita.",
+    effect: { kind: "wardHeal", amount: 6 },
+    text: "Recuperi 6 PV. Ogni PV oltre il massimo diventa PV temporaneo (assorbe danni prima dei PV).",
   },
   darkness: {
     name: "Tributo Necrotico", icon: "🌑",
     effect: { kind: "weaken", p: 2, t: 2 },
     text: "Una creatura nemica subisce -2/-2 permanente.",
-  },
-  air: {
-    name: "Scarica", icon: "🌪️",
-    effect: { kind: "aoe_enemy", amount: 2 },
-    text: "Infliggi 2 danni a TUTTE le creature nemiche.",
   },
   nature: {
     name: "Linfa Tossica", icon: "🍃",
@@ -1062,6 +1058,97 @@ export function buildDeck(seed) {
     lands.push("l_" + el);
     remaining--;
   }
+
+  return shuffle([...spells, ...lands], seed);
+}
+
+/* Build a 60-card deck constrained to a specific element pair (the
+   2 colours owned by a class). Used by AI mode + as a fallback when
+   the player has no class-appropriate saved deck yet.
+
+   Composition target:
+     • 22 lands, distributed ~evenly between the two colours
+     • 38 non-land cards drawn from the two colours' pool, max 4 copies
+       each, weighted toward lower CMC so the curve is playable.
+   Falls back to buildDeck() if the colours produce too few options. */
+export function buildClassDeck(colors, seed) {
+  if (!Array.isArray(colors) || colors.length === 0) return buildDeck(seed);
+  const rnd = seed == null ? Math.random : mulberry32(seed ^ 0x12345678);
+  const allowed = new Set(colors);
+  // candidate non-land cards (only those whose printed element is one
+  // of the class colours — colourless/neutral cards would belong here
+  // too once they exist; today there are none, so the filter is purely
+  // by element).
+  const pool = POOL.filter((id) => allowed.has(getCard(id).element));
+  if (pool.length < 12) return buildDeck(seed);
+
+  // Sort by ascending CMC, then small shuffle inside each cmc bucket
+  // so we don't always pull the exact same low-cost set.
+  const byCmc = {};
+  for (const id of pool) {
+    const c = getCard(id);
+    (byCmc[c.cmc] ||= []).push(id);
+  }
+  const ordered = [];
+  for (const k of Object.keys(byCmc).sort((a, b) => +a - +b)) {
+    ordered.push(...shuffle(byCmc[k], seed ? seed + +k : undefined));
+  }
+
+  // Fill 38 non-land slots with up to 4 copies each, biased toward
+  // lower CMC by walking the ordered list and pushing copies.
+  const NON_LAND = DECK_SIZE - 22; // 38
+  const copies = {};
+  const spells = [];
+  // first pass: 2 copies of the best low-cost staples
+  for (const id of ordered) {
+    if (spells.length >= 22) break;
+    copies[id] = (copies[id] || 0) + 1;
+    spells.push(id);
+    if (copies[id] < 2) {
+      copies[id] += 1;
+      spells.push(id);
+    }
+  }
+  // second pass: top up to 4 of anything, then fill with whatever's left
+  while (spells.length < NON_LAND) {
+    let added = false;
+    for (const id of ordered) {
+      if (spells.length >= NON_LAND) break;
+      if ((copies[id] || 0) >= 4) continue;
+      copies[id] = (copies[id] || 0) + 1;
+      spells.push(id);
+      added = true;
+    }
+    if (!added) break; // pool exhausted
+  }
+  // if still short, pad with a generic shuffle (shouldn't happen in
+  // practice for any of the 5 classes given current card density)
+  while (spells.length < NON_LAND) {
+    const id = pool[Math.floor(rnd() * pool.length)];
+    spells.push(id);
+  }
+
+  // 22 lands split between the two colours; an odd split favours the
+  // colour with the heavier coloured-pip demand in the picked spells.
+  const demand = {};
+  for (const el of colors) demand[el] = 0;
+  for (const id of spells) {
+    const c = getCard(id);
+    for (const el of colors) demand[el] += c.cost[el] || 0;
+  }
+  const total = Math.max(1, colors.reduce((s, el) => s + demand[el], 0));
+  const lands = [];
+  let left = 22;
+  for (const el of colors) {
+    const share = colors.length === 1
+      ? 22
+      : Math.max(8, Math.round((demand[el] / total) * 22));
+    const n = Math.min(left, share);
+    for (let i = 0; i < n; i++) lands.push("l_" + el);
+    left -= n;
+  }
+  // top up any remainder (rounding gap) on the first colour
+  while (left > 0) { lands.push("l_" + colors[0]); left--; }
 
   return shuffle([...spells, ...lands], seed);
 }

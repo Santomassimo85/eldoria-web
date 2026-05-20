@@ -102,7 +102,7 @@ export async function createChallenge(uid, name, deck, cover) {
     status: "open",
     challenger: { uid, name: name || "Sfidante" },
     challenged: null,
-    covers: { p0: cover || "air" },
+    covers: { p0: cover || "nature" },
     challengerDeck: Array.isArray(deck) ? deck : null,
     state: null,
     winnerUid: null,
@@ -139,7 +139,7 @@ export async function acceptChallenge(match, uid, name, deck, cover) {
   await updateDoc(ref, {
     status: "active",
     challenged: { uid, name: name || "Ospite" },
-    covers: { p0: data.covers?.p0 || "air", p1: cover || "air" },
+    covers: { p0: data.covers?.p0 || "nature", p1: cover || "nature" },
     state,
     updatedAt: serverTimestamp(),
     seen: { p0: serverTimestamp(), p1: serverTimestamp() },

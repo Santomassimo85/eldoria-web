@@ -1,28 +1,36 @@
-/* StarterSelect — first-login one-time choice of a starter element.
-   Shown ONLY when the persisted profile has no starter claimed, so
-   reloading / reopening never re-asks. */
+/* StarterSelect — first-login one-time choice of a starter CLASS.
+   Replaces the old element starter: you now pick a class, which
+   determines your 2-colour identity. Shown ONLY when the persisted
+   profile has no starter claimed, so reloading never re-asks. */
 import React, { useState } from "react";
 import {
-  ELEMENT_LABEL, ELEMENT_ICON, ELEMENT_PIP,
-} from "../../tcg/cards.js";
-import { STARTER_ELEMENTS } from "../../tcg/collection.js";
+  CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE, CLASS_CASTER_TIER, classColors,
+} from "../../tcg/classes.js";
+import { ELEMENT_LABEL, ELEMENT_ICON, ELEMENT_PIP } from "../../tcg/cards.js";
 
 const BLURB = {
-  fire: "Aggressivo: creature rapide e danni diretti.",
-  water: "Controllo: creature resistenti e gelo.",
-  air: "Versatile: rimozione, pescata e potenziamenti.",
-  nature: "Schiere: tante creature e corpo a corpo.",
+  mago:      "Caster pieno: spell, slot e controllo arcano.",
+  guerriero: "Marziale: aggro fisico e creature pesanti.",
+  chierico:  "Semi-caster: cure, ward, drain e sostegno.",
+  ladro:     "Marziale veloce: burst, evasione, tempo.",
+  druido:    "Semi-caster: natura, ramp e trasformazione.",
+};
+
+const TIER_LABEL = {
+  full: "Caster pieno", semi: "Semi-caster", martial: "Marziale",
 };
 
 export default function StarterSelect({ onPick }) {
   const [busy, setBusy] = useState(false);
   const [chosen, setChosen] = useState(null);
 
-  const pick = async (el) => {
+  const pick = async (k) => {
     if (busy) return;
     setBusy(true);
-    setChosen(el);
-    const res = await onPick(el);
+    setChosen(k);
+    // onPick is wired to grantStarter(uid, classKey); a result of ok:false
+    // bails out and lets the player try again.
+    const res = await onPick(k);
     if (!res || res.ok === false) {
       setBusy(false);
       setChosen(null);
@@ -33,31 +41,48 @@ export default function StarterSelect({ onPick }) {
   return (
     <div className="tcg-starter">
       <div className="tcg-starter__head">
-        <h1 className="tcg-title">Scegli il tuo elemento</h1>
+        <h1 className="tcg-title">Scegli la tua classe</h1>
         <p className="tcg-subtitle">
-          Una scelta sola, per sempre. Riceverai un mazzo iniziale e delle
-          monete. ({ELEMENT_LABEL.darkness} e {ELEMENT_LABEL.light} si
-          sbloccano nel Negozio.)
+          Una scelta sola, per sempre. La classe definisce i tuoi due colori
+          (es. Mago = 🔥 Fuoco + 🍃 Natura). Riceverai un mazzo iniziale di
+          classe e delle monete. Le sottoclassi si scelgono a inizio partita.
         </p>
       </div>
 
       <div className="tcg-starter__grid">
-        {STARTER_ELEMENTS.map((el) => (
-          <button
-            key={el}
-            className={`tcg-starter__card ${chosen === el ? "is-chosen" : ""}`}
-            style={{ "--pip": ELEMENT_PIP[el] }}
-            disabled={busy}
-            onClick={() => pick(el)}
-          >
-            <span className="tcg-starter__icon">{ELEMENT_ICON[el]}</span>
-            <span className="tcg-starter__name">{ELEMENT_LABEL[el]}</span>
-            <span className="tcg-starter__blurb">{BLURB[el]}</span>
-            <span className="tcg-starter__cta">
-              {busy && chosen === el ? "Assegnazione…" : "Scegli"}
-            </span>
-          </button>
-        ))}
+        {CLASSES.map((k) => {
+          const colors = classColors(k);
+          const primary = colors[0];
+          return (
+            <button
+              key={k}
+              className={`tcg-starter__card ${chosen === k ? "is-chosen" : ""}`}
+              style={{ "--pip": ELEMENT_PIP[primary] }}
+              disabled={busy}
+              onClick={() => pick(k)}
+            >
+              <span className="tcg-starter__icon">{CLASS_ICON[k]}</span>
+              <span className="tcg-starter__name">{CLASS_LABEL[k]}</span>
+              <span className="tcg-starter__blurb">{BLURB[k]}</span>
+              <span className="tcg-starter__tier">{TIER_LABEL[CLASS_CASTER_TIER[k]]}</span>
+              <span className="tcg-starter__colors">
+                {colors.map((el) => (
+                  <span
+                    key={el}
+                    className="tcg-starter__cdot"
+                    style={{ background: ELEMENT_PIP[el] }}
+                    title={ELEMENT_LABEL[el]}
+                  >
+                    {ELEMENT_ICON[el]}
+                  </span>
+                ))}
+              </span>
+              <span className="tcg-starter__cta">
+                {busy && chosen === k ? "Assegnazione…" : "Scegli"}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -692,6 +692,31 @@ const AI_HARD_PRESETS = [
     hp: 90,
     items: { pozione_cura: 2 },
   },
+  {
+    // Pure arcane caster — opens with a control or save-buff, then leans on
+    // damage spells (TS-based). Carries a dagger as a fallback when slots
+    // run dry. CD-mod uses INT (=4).
+    archetype: "wizard-fire",
+    name: "🤖 Arconte Pyrios",
+    class: "Wizard",
+    stats: { str: -1, dex: 2, con: 3, int: 5, wis: 1, cha: 0 },
+    armor: { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "🪶", info: "Senza armatura · 10+DES" },
+    hasShield: null,
+    weapons: [{ name: "Pugnale", hitBonus: 3, damage: "1d4", statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false }],
+    spells: [
+      // Trucchetti — usabili a oltranza (4 cariche)
+      { name: "Dardo di Fuoco", level: 0, hitBonus: 3, damage: "1d10", statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
+      { name: "Tocco Gelido",   level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Necrotico", maxUses: 4 },
+      // Lv1 — controllo + danno
+      { name: "Sonno",          level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
+      { name: "Mani Brucianti", level: 1, hitBonus: 3, damage: "3d6",  statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
+      { name: "Scudo",          level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
+      // Lv2 — danno grosso
+      { name: "Raggio Rovente", level: 2, hitBonus: 3, damage: "6d6",  statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 2 },
+    ],
+    hp: 60,
+    items: { pozione_cura: 2 },
+  },
 ];
 
 function makeAiSnapshotAndPlayer(matchSeed) {
@@ -715,7 +740,10 @@ function makeAiSnapshotAndPlayer(matchSeed) {
     image:           null,
     class:           preset.class,
     stats:           { ...preset.stats, maxHp: preset.hp, ac: finalAc },
-    selectedActions: preset.weapons.map(w => ({ ...w })),
+    selectedActions: [
+      ...preset.weapons.map(w => ({ ...w })),
+      ...((preset.spells || []).map(s => ({ ...s }))),
+    ],
     hasWildShape:    false,
     hasShield:       preset.hasShield,
     selectedArmor:   { ...preset.armor },
@@ -2735,6 +2763,191 @@ export default function Arena() {
     const targetSnap = meta.characterSnapshots?.[target.id];
     if (!targetSnap) return;
 
+    const aiName = aiSnap.name || "Avversario";
+
+    // ── PHASE 0 — Resolve any pending TS the AI owes BEFORE acting ──────────
+    // The AI is a fully-fledged player: when the human lands a control
+    // spell, save-vs-poison, etc., the AI must roll its own TS (visible
+    // d20 popup, same flow the human goes through). Pass → clear and act
+    // normally. Fail → apply the consequence and end the AI's turn.
+    if (aiPlayer.pendingControlSave) {
+      const isCorona = aiPlayer.pendingControlSave === "corona_pazzia";
+      const ctrlAbility = aiPlayer.pendingControlSaveAbility || "wis";
+      const ctrlDC      = aiPlayer.pendingControlDC || 13;
+      const ctrlMod     = aiSnap.stats?.[ctrlAbility] ?? 0;
+      const saveBuffActive = (aiPlayer.saveBuffAttacks ?? 0) > 0;
+      const saveBuffBonus  = saveBuffActive ? (aiPlayer.saveBuffBonus ?? 0) : 0;
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      const lbl = SAVE_LABEL[ctrlAbility] || ctrlAbility.toUpperCase();
+      await showD20Roll(d20, { label: `TS · ${lbl} · ${aiName}` });
+      const total = d20 + ctrlMod + saveBuffBonus;
+      const pass  = total >= ctrlDC;
+      const sign  = ctrlMod >= 0 ? "+" : "";
+      const buffTag = saveBuffBonus > 0 ? `+${saveBuffBonus}🛡` : "";
+      const tsLabel = isCorona ? "Corona della Pazzia" : "Controllo";
+      const expiry  = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+
+      let resultLog;
+      const passTurnAfter = !pass; // fail → end AI turn (skip / corona)
+
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const players = x.players.map(p => {
+          if (p.id !== aiId) return p;
+          const up = { ...p };
+          // Decrement save-buff counter if it contributed.
+          if (saveBuffActive) {
+            const newAtk = Math.max(0, (p.saveBuffAttacks ?? 0) - 1);
+            up.saveBuffAttacks = newAtk;
+            if (newAtk === 0) up.saveBuffBonus = 0;
+          }
+          if (pass) {
+            delete up.pendingControlSave;
+            delete up.pendingControlDC;
+            delete up.pendingControlSaveAbility;
+            up.controlLostTurns = 0;
+            resultLog = `🌀 ${aiName} TS ${lbl} ${tsLabel}: ${d20}${sign}${ctrlMod}${buffTag}=${total} vs CD ${ctrlDC} → ✅ PASSA — si libera e agisce.`;
+          } else if (isCorona) {
+            // Corona: self-damage with equipped weapon, no recurring TS.
+            const equipped = p.equippedWeaponNames?.[0];
+            const weapon = (aiSnap.selectedActions || []).find(a => a.name === equipped && a.type === "weapon");
+            const { total: selfDmg, rolls: selfRolls } = rollDmg(weapon?.damage || "1d6");
+            up.hp = Math.max(0, (up.hp ?? 0) - selfDmg);
+            delete up.pendingControlSave;
+            delete up.pendingControlDC;
+            delete up.pendingControlSaveAbility;
+            resultLog = `🌀 ${aiName} TS ${lbl} ${tsLabel}: ${d20}${sign}${ctrlMod}${buffTag}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — attacca sé stesso con ${weapon?.icon || "⚔"} ${equipped || "arma"}: ${selfDmg} danni [🎲${selfRolls}].`;
+          } else {
+            // Regular control fail: burn one budget turn, keep TS armed if budget remains.
+            const remaining = Math.max(0, (p.controlLostTurns ?? 2) - 1);
+            up.controlLostTurns = remaining;
+            up.multiActionsUsed = 0;
+            up.turnWeaponsUsed = [];
+            up.turnSkillUsed = false;
+            up.bonusActionUsed = false;
+            if (remaining > 0) {
+              resultLog = `🌀 ${aiName} TS ${lbl} ${tsLabel}: ${d20}${sign}${ctrlMod}${buffTag}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — turno saltato (${remaining} rimanenti).`;
+            } else {
+              delete up.pendingControlSave;
+              delete up.pendingControlDC;
+              delete up.pendingControlSaveAbility;
+              resultLog = `🌀 ${aiName} TS ${lbl} ${tsLabel}: ${d20}${sign}${ctrlMod}${buffTag}=${total} vs CD ${ctrlDC} → ❌ FALLISCE — turno saltato, effetto esaurito.`;
+            }
+          }
+          return up;
+        });
+        const next = passTurnAfter
+          ? { turn: target.id, turnExpiry: expiry }
+          : {};
+        return { ...x, players, logs: [...x.logs, resultLog], ...next };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return; // on pass, the watcher re-fires with pendingControlSave cleared
+    }
+
+    if (aiPlayer.pendingSaveDot) {
+      const dot     = aiPlayer.pendingSaveDot;
+      const ability = dot.ability || "con";
+      const dc      = dot.dc || 13;
+      const mod     = aiSnap.stats?.[ability] ?? 0;
+      const saveBuffActive = (aiPlayer.saveBuffAttacks ?? 0) > 0;
+      const saveBuffBonus  = saveBuffActive ? (aiPlayer.saveBuffBonus ?? 0) : 0;
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      const lbl = SAVE_LABEL[ability] || ability.toUpperCase();
+      await showD20Roll(d20, { label: `TS · ${lbl} · ${aiName}` });
+      const total = d20 + mod + saveBuffBonus;
+      const pass  = total >= dc;
+      const sign  = mod >= 0 ? "+" : "";
+      const buffTag = saveBuffBonus > 0 ? `+${saveBuffBonus}🛡` : "";
+      const dotName = dot.name || "Veleno";
+      const dotIcon = dot.icon || "🤢";
+
+      const resultLog = pass
+        ? `${dotIcon} ${aiName} TS ${lbl} (${dotName}): ${d20}${sign}${mod}${buffTag}=${total} vs CD ${dc} → ✅ PASSA — resiste!`
+        : `${dotIcon} ${aiName} TS ${lbl} (${dotName}): ${d20}${sign}${mod}${buffTag}=${total} vs CD ${dc} → ❌ FALLISCE — Avvelenato! ${dot.dice || "2d6"} a inizio turno per ${dot.turns ?? 3} turni.`;
+
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const players = x.players.map(p => {
+          if (p.id !== aiId) return p;
+          const up = { ...p };
+          delete up.pendingSaveDot;
+          if (saveBuffActive) {
+            const newAtk = Math.max(0, (p.saveBuffAttacks ?? 0) - 1);
+            up.saveBuffAttacks = newAtk;
+            if (newAtk === 0) up.saveBuffBonus = 0;
+          }
+          if (!pass) {
+            up.poisonDoT = true;
+            up.poisonDoTTurns = dot.turns ?? 3;
+            up.poisonDoTDice  = dot.dice  ?? "2d6";
+            up.poisonDoTSourceLabel = dotName;
+            up.poisonDoTIcon = dotIcon;
+          }
+          return up;
+        });
+        return { ...x, players, logs: [...x.logs, resultLog] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return; // watcher will re-fire; AI then acts (or ticks poison) next time
+    }
+
+    // Apply a pending poisonDoT tick at the very start of the AI's turn —
+    // mirrors the human flow where the poison hits on turn entry.
+    if (aiPlayer.poisonDoT && (aiPlayer.poisonResolvedTurnToken || "") !== (m.turnExpiry || "")) {
+      const dice = aiPlayer.poisonDoTDice || "1d6";
+      const { total: poisonDmg, rolls: poisonRolls } = rollDmg(dice);
+      const sourceLabel = aiPlayer.poisonDoTSourceLabel || "veleno";
+      const icon = aiPlayer.poisonDoTIcon || "☠";
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const rawPlayers = x.players.map(p => {
+          if (p.id !== aiId) return p;
+          const remaining = Math.max(0, (p.poisonDoTTurns ?? 1) - 1);
+          const stillAfflicted = remaining > 0;
+          return {
+            ...p,
+            hp: Math.max(0, (p.hp ?? 0) - poisonDmg),
+            poisonDoT: stillAfflicted,
+            poisonDoTTurns: remaining,
+            poisonResolvedTurnToken: x.turnExpiry || "",
+            ...(stillAfflicted ? {} : {
+              poisonDoTDice: null, poisonDoTSourceLabel: null, poisonDoTIcon: null,
+            }),
+          };
+        });
+        const log = `${icon} ${aiName} subisce il ${sourceLabel}: ${poisonDmg} danni [🎲${dice}=${poisonRolls}]!`;
+        // If poison kills the AI, end the match.
+        const meAfter = rawPlayers.find(p => p.id === aiId);
+        if ((meAfter?.hp ?? 0) <= 0) {
+          const alive = rawPlayers.filter(p => p.hp > 0);
+          if (alive.length === 1) {
+            return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs: [...x.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+          }
+        }
+        return { ...x, players: rawPlayers, logs: [...x.logs, log] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return; // watcher re-fires; AI then takes its action
+    }
+
+    // ── Control budget burning down without a pending save (rare edge case) ──
+    if ((aiPlayer.controlLostTurns ?? 0) > 0 && !aiPlayer.pendingControlSave) {
+      const remaining = Math.max(0, (aiPlayer.controlLostTurns ?? 0) - 1);
+      const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const players = x.players.map(p =>
+          p.id === aiId
+            ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false }
+            : p
+        );
+        return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, `🌀 ${aiName} è sotto controllo: turno saltato (${remaining} rimanenti).`] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return;
+    }
+
     const cls    = (aiSnap.class || "").toLowerCase();
     const maxHp  = aiSnap.stats?.maxHp ?? aiPlayer.maxHp ?? 70;
     const hpPct  = aiPlayer.hp / maxHp;
@@ -2791,6 +3004,229 @@ export default function Arena() {
       } else if (cls.includes("fighter")) {
         // Fighter doesn't buff turn 1 — saves Action Surge for later.
         buffPatch.aiBuffActivated = true;
+      }
+    }
+
+    // ── SPELL PHASE — cast a spell if it scores higher than the best weapon ──
+    // Mirrors how a competent caster plays: trucchetti for chip damage,
+    // lv1+ slots for control/burst, self-buffs early. We score every
+    // available spell and the best weapon swing, then commit to the
+    // highest. Spells that target the human (control/save_dot/damage)
+    // produce the same pendingSave bookkeeping as the human casting them.
+    const _ALL_ACTIONS = aiSnap.selectedActions || [];
+    const _allSpells = _ALL_ACTIONS.filter(a => a.type === "spell");
+    if (_allSpells.length > 0) {
+      const _usesLeftMap = aiPlayer.actionUsesLeft || {};
+      const _hasUses = (a) => (_usesLeftMap[a.name] ?? a.maxUses ?? 999) > 0;
+      const _avg = (formula) => {
+        const mtx = /^(\d+)d(\d+)/.exec(formula || "");
+        if (!mtx) return 0;
+        return parseInt(mtx[1], 10) * (parseInt(mtx[2], 10) + 1) / 2;
+      };
+
+      const _castAbility = getSpellcastingAbility(cls);
+      const _spellMod    = aiSnap.stats?.[_castAbility] ?? 0;
+      const _spellDC     = 10 + 3 + _spellMod;
+      const _tgtMP       = m.players.find(p => p.id === target.id);
+      const _tgtCtrl     = !!_tgtMP?.pendingControlSave || (_tgtMP?.controlLostTurns ?? 0) > 0;
+      const _tgtPoison   = !!_tgtMP?.pendingSaveDot || !!_tgtMP?.poisonDoT;
+      // Heuristic fail-chance: assumes the target's TS mod ≈ 0 (good enough
+      // for scoring; the real roll happens at resolution time).
+      const _failChance  = Math.max(0.15, Math.min(0.9, (_spellDC - 10) / 20));
+
+      const _candidates = [];
+      for (const sp of _allSpells) {
+        if (!_hasUses(sp)) continue;
+        if (sp.special === "shield_buff") {
+          if ((aiPlayer.shieldSkillTurns ?? 0) === 0 && hpPct < 0.85) {
+            _candidates.push({ kind: "shield_buff", spell: sp, score: 7 });
+          }
+        } else if (sp.special === "save_buff") {
+          if ((aiPlayer.saveBuffAttacks ?? 0) === 0) {
+            _candidates.push({ kind: "save_buff", spell: sp, score: 6 });
+          }
+        } else if (sp.special === "heal" || ((sp.info || "").toLowerCase().includes("cura") && (sp.damage || "—") !== "—")) {
+          if (hpPct < 0.55) _candidates.push({ kind: "heal", spell: sp, score: 12 });
+        } else if (sp.special === "control") {
+          if (!_tgtCtrl) _candidates.push({ kind: "control", spell: sp, score: 14 * _failChance + 4 });
+        } else if (sp.special === "save_dot") {
+          if (!_tgtPoison) {
+            const dotAvg = _avg(sp.saveDotDamage || "2d6") * (sp.saveDotTurns ?? 3);
+            _candidates.push({ kind: "save_dot", spell: sp, score: dotAvg * _failChance });
+          }
+        } else if (isSaveDamageSpell(sp)) {
+          // TS-based damage — expected damage on fail
+          const dmgAvg = _avg(sp.damage) + _spellMod;
+          _candidates.push({ kind: "save_damage", spell: sp, score: dmgAvg * _failChance });
+        }
+      }
+
+      // Weapon baseline (best avg damage + stat mod)
+      const _weaponsList = _ALL_ACTIONS.filter(a => a.type === "weapon");
+      const _bestWpn = _weaponsList.slice().sort((a, b) => _avg(b.damage) - _avg(a.damage))[0];
+      const _weaponBaseline = _bestWpn ? _avg(_bestWpn.damage) + (aiSnap.stats?.[_bestWpn.statKey || "str"] ?? 0) : 0;
+      // Caster bias — a wizard/cleric/etc. should lean on spells.
+      const _isCaster = (
+        cls.includes("mago") || cls.includes("wizard") ||
+        cls.includes("strego") || cls.includes("sorcerer") ||
+        cls.includes("warlock") ||
+        cls.includes("cleric") || cls.includes("chierico") ||
+        cls.includes("druid") || cls.includes("druido") ||
+        cls.includes("bard") || cls.includes("bardo")
+      );
+      const _casterBias = _isCaster ? 3 : 0;
+
+      const _picked = _candidates.sort((a, b) => b.score - a.score)[0];
+
+      if (_picked && (_picked.score + _casterBias) > _weaponBaseline) {
+        const sp = _picked.spell;
+        const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+
+        let logMsg;
+        let dmgToTarget = 0;
+        let aiPatch = {};
+        const targetPatch = {};
+
+        if (_picked.kind === "shield_buff") {
+          const turns = sp.shieldBuffTurns ?? 3;
+          const bonus = sp.shieldBuffBonus ?? 1;
+          aiPatch = { shieldSkillTurns: turns, shieldSkillBonus: bonus };
+          logMsg = `${sp.icon || "🛡"} ${aiName} lancia ${sp.name} — +${bonus} CA per ${turns} turni.`;
+        } else if (_picked.kind === "save_buff") {
+          const atk = sp.tsAttacks ?? 3;
+          const bonus = sp.tsBonus ?? 3;
+          aiPatch = { saveBuffAttacks: atk, saveBuffBonus: bonus };
+          logMsg = `${sp.icon || "🔰"} ${aiName} lancia ${sp.name} — +${bonus} ai prossimi ${atk} TS.`;
+        } else if (_picked.kind === "heal") {
+          const { total: hDice, rolls: hRolls } = rollDmg(sp.damage || "2d8");
+          const healAmt = Math.max(1, hDice + _spellMod);
+          const newHp = Math.min(maxHp, aiPlayer.hp + healAmt);
+          aiPatch = { hp: newHp };
+          const modPart = _spellMod !== 0 ? `${_spellMod >= 0 ? "+" : ""}${_spellMod}` : "";
+          logMsg = `${sp.icon || "💚"} ${aiName} lancia ${sp.name} — cura sé stesso di ${healAmt} HP [🎲${hRolls}${modPart}].`;
+        } else if (_picked.kind === "control") {
+          const saveAbility = parseSpellSaveAbility(sp);
+          targetPatch.pendingControlSave = true;
+          targetPatch.pendingControlDC = _spellDC;
+          targetPatch.pendingControlSaveAbility = saveAbility;
+          targetPatch.controlLostTurns = 2;
+          logMsg = `${sp.icon || "🌀"} ${aiName} lancia ${sp.name} su ${target.name} → TS ${SAVE_LABEL[saveAbility]} (CD ${_spellDC}) richiesto!`;
+        } else if (_picked.kind === "save_dot") {
+          const saveAbility = sp.saveDotAbility || "con";
+          const dotDC = sp.saveDotDC ?? _spellDC;
+          targetPatch.pendingSaveDot = {
+            ability: saveAbility,
+            dc: dotDC,
+            dice: sp.saveDotDamage || "2d6",
+            turns: sp.saveDotTurns ?? 3,
+            name: sp.name,
+            icon: sp.icon,
+          };
+          logMsg = `${sp.icon || "🤢"} ${aiName} lancia ${sp.name} su ${target.name} → TS ${SAVE_LABEL[saveAbility]} (CD ${dotDC}) richiesto!`;
+        } else if (_picked.kind === "save_damage") {
+          // Resolve the human's TS now with a visible d20 popup, mirroring
+          // the reverse direction (handleSpellSave shows a d20 too).
+          const ability = _castAbility;
+          const defMod  = targetSnap.stats?.[ability] ?? 0;
+          const tgtSaveBuff = (_tgtMP?.saveBuffAttacks ?? 0) > 0 ? (_tgtMP?.saveBuffBonus ?? 0) : 0;
+          const d20 = Math.floor(Math.random() * 20) + 1;
+          await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${sp.name}` });
+          const tsTotal = d20 + defMod + tgtSaveBuff;
+          const saves   = tsTotal >= _spellDC;
+          const { total: dmg, rolls: dmgRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(sp.damage);
+          dmgToTarget = saves ? 0 : Math.max(0, dmg + _spellMod);
+          const modSign = _spellMod >= 0 ? "+" : "";
+          const buffTag = tgtSaveBuff > 0 ? ` +${tgtSaveBuff}🛡` : "";
+          logMsg = saves
+            ? `✨ ${target.name} resiste a ${sp.name} di ${aiName} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} ≥ CD ${_spellDC}) — nessun danno.`
+            : `✨ ${aiName} colpisce ${target.name} con ${sp.icon || "✨"} ${sp.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} < CD ${_spellDC}) — 🎲${dmgRolls}${modSign}${_spellMod} = ${dmgToTarget} danni.`;
+          if (tgtSaveBuff > 0) {
+            const newAtk = Math.max(0, (_tgtMP?.saveBuffAttacks ?? 0) - 1);
+            targetPatch.saveBuffAttacks = newAtk;
+            if (newAtk === 0) targetPatch.saveBuffBonus = 0;
+          }
+        }
+
+        // Multi-action logic — only damage spells get the multi-action
+        // privilege (rogue/monk triple-tap). Control/save_dot/heal/buff
+        // always end the AI's turn, matching the human handlers.
+        const baseMax = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 3 : 1;
+        const effectiveMax = baseMax + ((aiPlayer.actionSurgeActive ? 1 : 0));
+        const isDamageSpell = _picked.kind === "save_damage";
+        const stayingThisTurn = isDamageSpell && (usedSoFar + 1) < effectiveMax;
+        const newMultiUsed = stayingThisTurn ? (usedSoFar + 1) : 0;
+        const passTurnAfterSpell = !stayingThisTurn;
+
+        let spellAbsorbedLog = null;
+        const updatedMatches = meta.matches.map(x => {
+          if (x.matchId !== matchId) return x;
+          const rawPlayers = x.players.map(p => {
+            if (p.id === target.id) {
+              // Monk's "Assorbire Danni" also catches save-based damage spells.
+              if (p.absorbDamageNext && dmgToTarget > 0) {
+                const tgtMaxHp = targetSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
+                const heal = Math.floor(dmgToTarget / 2);
+                spellAbsorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
+                return {
+                  ...p,
+                  hp: Math.min(tgtMaxHp, (p.hp ?? 0) + heal),
+                  absorbDamageNext: false,
+                  ...targetPatch,
+                  ...consumeInvisibility(p),
+                  stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
+                };
+              }
+              const newHp = Math.max(0, (p.hp ?? 0) - dmgToTarget);
+              return {
+                ...p,
+                hp: newHp,
+                ...targetPatch,
+                ...consumeInvisibility(p),
+                stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
+              };
+            }
+            if (p.id === aiId) {
+              const newUses = {
+                ...(p.actionUsesLeft || {}),
+                [sp.name]: Math.max(0, ((p.actionUsesLeft?.[sp.name]) ?? sp.maxUses ?? 1) - 1),
+              };
+              const turnEndPatch = stayingThisTurn ? {} : {
+                rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1),
+                hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
+                aidBuff: false,
+                bonusActionUsed: false,
+                actionSurgeActive: false,
+                multiActionsUsed: 0,
+              };
+              return {
+                ...p,
+                ...aiPatch,
+                actionUsesLeft: newUses,
+                multiActionsUsed: newMultiUsed,
+                aiAttacksMade: (p.aiAttacksMade ?? 0) + 1,
+                aiBuffActivated: true,
+                ...turnEndPatch,
+              };
+            }
+            return p;
+          });
+
+          const alive = rawPlayers.filter(pp => pp.hp > 0);
+          const logs = [...x.logs, logMsg];
+          if (spellAbsorbedLog) logs.push(spellAbsorbedLog);
+          if (alive.length === 1) {
+            logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
+            return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs };
+          }
+          if (passTurnAfterSpell) {
+            const human = rawPlayers.find(pp => pp.id !== aiId);
+            return { ...x, players: rawPlayers, turn: human.id, turnExpiry: expiry, logs };
+          }
+          return { ...x, players: rawPlayers, logs };
+        });
+
+        await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+        return; // spell consumed the action; watcher re-fires if multi-action
       }
     }
 
@@ -2884,10 +3320,24 @@ export default function Arena() {
     const effectiveMaxActions = baseMaxActions + (surgePatch.actionSurgeActive ? 1 : 0) + (aiPlayer.actionSurgeActive ? 1 : 0);
     const stayingThisTurn = (usedSoFar + 1) < effectiveMaxActions;
 
+    let absorbedLog = null;
     const updatedMatches = meta.matches.map(x => {
       if (x.matchId !== matchId) return x;
       const rawPlayers = x.players.map(p => {
         if (p.id === target.id) {
+          // Monk's "Assorbire Danni": next damage taken is converted into a 50% heal.
+          if (p.absorbDamageNext && damage > 0) {
+            const tgtMaxHp = targetSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
+            const heal = Math.floor(damage / 2);
+            absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
+            return {
+              ...p,
+              hp: Math.min(tgtMaxHp, (p.hp ?? 0) + heal),
+              absorbDamageNext: false,
+              ...consumeInvisibility(p),
+              stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
+            };
+          }
           return {
             ...p,
             hp: Math.max(0, (p.hp ?? 0) - damage),
@@ -2924,6 +3374,7 @@ export default function Arena() {
       const logs  = [...x.logs];
       if (preLog) logs.push(preLog);
       logs.push(attackLog);
+      if (absorbedLog) logs.push(absorbedLog);
       if (alive.length === 1) {
         logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
         return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs };
@@ -4715,6 +5166,7 @@ export default function Arena() {
     };
 
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    let spellAbsorbedLog = null;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const rawPlayers = m.players.map(p => {
@@ -4728,6 +5180,7 @@ export default function Arena() {
           if (p.absorbDamageNext && damage > 0) {
             const tgtMaxHp = defenderSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
             const heal = Math.floor(damage / 2);
+            spellAbsorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
             return { ...p, hp: Math.min(tgtMaxHp, p.hp + heal), absorbDamageNext: false, ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1), ...baseSavePatch };
           }
           return { ...p, hp: Math.max(0, p.hp - damage), ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1), ...baseSavePatch };
@@ -4745,7 +5198,8 @@ export default function Arena() {
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
       const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
       const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      const absorbLogArr = spellAbsorbedLog ? [spellAbsorbedLog] : [];
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       // Multi-azione: Monaco x3, Ladro x3, +1 se Passo Spedito attivo.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
@@ -4768,7 +5222,7 @@ export default function Arena() {
           : p
       );
       const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
-      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr] };
     });
 
     await awardRoundCoins(updatedMatches);

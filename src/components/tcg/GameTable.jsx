@@ -25,8 +25,9 @@ import {
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
   attunedPowers, canUsePower, powerTargets, castElementPower,
-  legalBlockers,
+  legalBlockers, activateUltimate, canActivateUltimate,
 } from "../../tcg/engine.js";
+import ClassPanel from "./ClassPanel.jsx";
 import {
   nextAction as aiNext, chooseBlocks as aiBlocks, respondToStack,
 } from "../../tcg/ai.js";
@@ -61,6 +62,7 @@ function AvatarPod({
   p, top, cover, side, targetable, onClick, onDragOver, onDrop,
 }) {
   const pct = Math.max(0, Math.min(100, (p.hp / START_HP) * 100));
+  const temp = p.tempHp || 0;
   return (
     <div
       className={`tcg-pod ${top ? "tcg-pod--foe" : "tcg-pod--me"} ${
@@ -72,9 +74,19 @@ function AvatarPod({
       onDrop={onDrop}
     >
       <span className="tcg-pod__name">{p.name}</span>
-      <div className="tcg-pod__hpbar" title={`${p.hp} PV`}>
+      <div
+        className="tcg-pod__hpbar"
+        title={temp > 0 ? `${p.hp} PV (+${temp} temporanei)` : `${p.hp} PV`}
+      >
         <span className="tcg-pod__hpfill" style={{ width: pct + "%" }} />
-        <span className="tcg-pod__hpnum">{p.hp}</span>
+        <span className="tcg-pod__hpnum">
+          {p.hp}
+          {temp > 0 && (
+            <span className="tcg-pod__hptemp" title={`${temp} PV temporanei`}>
+              {" "}+{temp}
+            </span>
+          )}
+        </span>
       </div>
       <div className="tcg-pod__row">
         <span className="tcg-pod__deck" title="Carte nel mazzo">
@@ -107,7 +119,7 @@ export default function GameTable({
   onExit,
   onRematch,
   onGameEnd,
-  myCover = "air",
+  myCover = "nature",
   foeCover = "darkness",
 }) {
   const isAi = mode === "ai";
@@ -117,7 +129,7 @@ export default function GameTable({
   // chosen card-back covers (PvP: from the match doc; AI: props)
   const coverMe = isAi
     ? myCover
-    : (match?.covers && match.covers[mySide]) || myCover || "air";
+    : (match?.covers && match.covers[mySide]) || myCover || "nature";
   const coverFoe = isAi
     ? foeCover
     : (match?.covers && match.covers[foeSide]) || foeCover || "darkness";
@@ -161,6 +173,8 @@ export default function GameTable({
   const [floats, setFloats] = useState([]);
   const [burst, setBurst] = useState(null);
   const [banner, setBanner] = useState(null);
+  // class system: animated toast that fires when somebody levels up
+  const [levelToast, setLevelToast] = useState(null);
   const [hitShake, setHitShake] = useState(0);
   const [ghosts, setGhosts] = useState([]);
   const [emoteBubble, setEmoteBubble] = useState(null);
@@ -509,6 +523,42 @@ export default function GameTable({
             e.winner === "draw" ? "lose" : e.winner === mySide ? "win" : "lose"
           );
           break;
+        case "xpGain":
+          // tiny floating "+N XP" near the affected hero — feedback that
+          // the class meter ticked. Skipped for the silent upkeep tick.
+          if (e.reason !== "upkeep") {
+            pushFloat(
+              e.side === mySide ? "me-hero" : "foe-hero",
+              `+${e.amount} XP`, "xp"
+            );
+          }
+          break;
+        case "levelUp": {
+          const tid = e.id;
+          setLevelToast({
+            id: tid,
+            mine: e.side === mySide,
+            level: e.level,
+            name: e.name,
+          });
+          playSfx("win"); // celebratory cue
+          setTimeout(
+            () => setLevelToast((t) => (t && t.id === tid ? null : t)),
+            2600
+          );
+          break;
+        }
+        case "ultimate": {
+          // brief flash + sfx; the perk-driven effect itself is logged by engine
+          const bid = e.id;
+          setBurst({ id: bid, element: "luce" });
+          playSfx("win");
+          setTimeout(
+            () => setBurst((b) => (b && b.id === bid ? null : b)),
+            1400
+          );
+          break;
+        }
         default:
           break;
       }
@@ -1326,6 +1376,7 @@ export default function GameTable({
           onDragOver={allowDrop}
           onDrop={dropOnTarget({ type: "hero", side: foeSide })}
         />
+        <ClassPanel player={foe} isMe={false} />
       </div>
       <div className="tcg-pod-slot tcg-pod-slot--me">
         <AvatarPod
@@ -1337,7 +1388,24 @@ export default function GameTable({
           onDragOver={allowDrop}
           onDrop={dropOnTarget({ type: "hero", side: mySide })}
         />
+        <ClassPanel
+          player={me}
+          isMe={true}
+          canUseUlt={canActivateUltimate(state, mySide)}
+          onActivateUltimate={() => applyState(activateUltimate(state, mySide))}
+        />
       </div>
+
+      {/* Level-up celebration toast (auto-hides via setTimeout) */}
+      {levelToast && (
+        <div
+          className={`tcg-lvl-toast ${levelToast.mine ? "is-me" : "is-foe"}`}
+          role="status"
+        >
+          <div className="tcg-lvl-toast__lvl">LV {levelToast.level}</div>
+          <div className="tcg-lvl-toast__name">⭐ {levelToast.name}</div>
+        </div>
+      )}
 
       {myPowers.length > 0 && (
         <div className="tcg-powers" aria-label="Poteri Elementali">

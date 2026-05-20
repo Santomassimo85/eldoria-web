@@ -383,6 +383,10 @@
   font-size: 12px; font-weight: 900; color: #fff;
   text-shadow: 0 1px 2px #000, 0 0 3px #000;
 }
+.tcg-pod__hptemp {
+  color: #ffe49a; font-weight: 900;
+  text-shadow: 0 0 4px rgba(255,228,154,.6), 0 1px 2px #000;
+}
 .tcg-pod__row {
   display: flex; align-items: center; gap: 8px;
   font-size: 12px; font-weight: 700;
@@ -1071,6 +1075,37 @@
 }
 .tcg-end__row--coins b { color: var(--gold); }
 .tcg-end__btns { display: flex; gap: 12px; justify-content: center; }
+
+/* phone-in-portrait (board rotated to landscape): the visible vertical
+   space is only the device's *width*. Shrink the result card so the
+   whole panel fits on screen without scrolling/clipping. */
+.tcg-page--force-landscape .tcg-end__card {
+  padding: 14px 22px;
+  border-radius: 14px;
+  max-height: 96%;
+  max-width: 92%;
+  overflow-y: auto;
+}
+.tcg-page--force-landscape .tcg-end__icon {
+  font-size: clamp(22px, 5.5vw, 40px);
+  margin-bottom: 0;
+}
+.tcg-page--force-landscape .tcg-end__title {
+  font-size: clamp(20px, 5.2vw, 36px);
+  letter-spacing: 2px;
+}
+.tcg-page--force-landscape .tcg-end__sub {
+  font-size: 11px; margin: 4px 0 10px;
+}
+.tcg-page--force-landscape .tcg-end__recap {
+  max-width: 280px; padding: 8px 12px; gap: 4px; margin: 0 auto 12px;
+}
+.tcg-page--force-landscape .tcg-end__row { font-size: 11px; gap: 10px; }
+.tcg-page--force-landscape .tcg-end__row--coins { font-size: 13px; padding-top: 6px; }
+.tcg-page--force-landscape .tcg-end__btns { gap: 8px; }
+.tcg-page--force-landscape .tcg-end__btns .tcg-btn {
+  padding: 7px 14px; font-size: 13px;
+}
 
 /* ============================================================
    RESPONSIVE — hand always visible down to 667px
@@ -1918,4 +1953,308 @@
   .tcg-power { width: 52px; padding: 5px 3px; }
   .tcg-power__ico { font-size: 17px; }
   .tcg-power__name { font-size: 8px; max-width: 48px; }
+}
+
+/* ============================================================
+   CLASS PANEL — XP bar, level badge, slot indicator, ultimate
+   ------------------------------------------------------------
+   Lives inside the floating pod slot, just under the AvatarPod.
+   Coloured edge takes the via's element via the --el var.
+   ============================================================ */
+.tcg-class {
+  margin-top: 6px;
+  width: 220px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(20,18,30,.86), rgba(10,8,18,.88));
+  border: 1.5px solid var(--el, #888);
+  box-shadow: 0 0 12px rgba(0,0,0,.45), inset 0 0 8px rgba(0,0,0,.4);
+  color: #ece4d2;
+  font-size: 11px;
+  user-select: none;
+  pointer-events: auto;
+}
+.tcg-class--foe { opacity: .92; }
+
+.tcg-class__head {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 5px;
+}
+.tcg-class__ico { font-size: 18px; line-height: 1; }
+.tcg-class__txt { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.15; }
+.tcg-class__klass { font-size: 12px; letter-spacing: .3px; }
+.tcg-class__via   { font-size: 10px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tcg-class__lvl   {
+  font-weight: 700; font-size: 11px;
+  padding: 2px 6px; border-radius: 999px;
+  background: var(--el, #888); color: #0a0a0f;
+  text-shadow: none;
+}
+
+/* ── XP bar (HP-bar style, much thinner) ── */
+.tcg-xp {
+  position: relative;
+  height: 10px; border-radius: 5px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.tcg-xp__fill {
+  position: absolute; inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--el, #888) 0%, #ffd66b 100%);
+  transition: width .35s ease-out;
+}
+.tcg-xp__num {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 9px; font-weight: 700;
+  color: #fff; text-shadow: 0 1px 1px #000, 0 0 3px #000;
+  letter-spacing: .3px;
+}
+
+/* ── Slot indicator: three capsules, one per tier ── */
+.tcg-slots {
+  display: flex; gap: 4px;
+  margin-bottom: 4px;
+}
+.tcg-slots__tier {
+  display: flex; align-items: center; gap: 3px;
+  flex: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 9px;
+}
+.tcg-slots__tier.is-locked { opacity: .45; }
+.tcg-slots__lvl { font-weight: 700; opacity: .8; }
+.tcg-slots__pips { display: inline-flex; gap: 2px; }
+.tcg-slots__pip {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.25);
+}
+.tcg-slots__pip.is-full {
+  background: var(--el, #ffd66b);
+  border-color: #fff;
+  box-shadow: 0 0 4px var(--el, #ffd66b);
+}
+.tcg-slots__lock { font-size: 9px; }
+
+/* ── Ultimate button ── */
+.tcg-ult {
+  margin-top: 2px;
+  width: 100%;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #4a2a86, #2a164a);
+  color: #ffe9a8;
+  font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  border: 1.5px solid #b58cff;
+  box-shadow: 0 0 10px rgba(176,140,255,.4);
+  cursor: pointer;
+  transition: filter .15s, transform .1s;
+}
+.tcg-ult:hover:not(:disabled) { filter: brightness(1.15); }
+.tcg-ult:active:not(:disabled) { transform: translateY(1px); }
+.tcg-ult:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.tcg-ult.is-active {
+  animation: tcg-pulse 0.9s ease-in-out infinite;
+  background: linear-gradient(180deg, #ff9, #ffd66b);
+  color: #1a0a0a;
+  border-color: #fff;
+}
+.tcg-ult.is-used { opacity: .35; pointer-events: none; }
+
+/* ── Level-up toast ── */
+.tcg-lvl-toast {
+  position: absolute;
+  left: 50%; top: 35%;
+  transform: translate(-50%, -50%);
+  z-index: 90;
+  pointer-events: none;
+  padding: 18px 32px;
+  border-radius: 16px;
+  text-align: center;
+  background: radial-gradient(ellipse at center, rgba(80,40,160,.95), rgba(20,8,40,.92));
+  border: 2px solid #ffd66b;
+  box-shadow: 0 0 40px rgba(255,214,107,.6), 0 0 80px rgba(176,140,255,.4);
+  color: #fff;
+  animation: tcg-lvl-pop 2.6s ease-out forwards;
+}
+.tcg-lvl-toast.is-foe {
+  top: 18%;
+  background: radial-gradient(ellipse at center, rgba(120,30,30,.95), rgba(40,8,8,.92));
+  border-color: #ff7a7a;
+  box-shadow: 0 0 40px rgba(255,122,122,.6);
+}
+.tcg-lvl-toast__lvl {
+  font-size: 32px; font-weight: 900; letter-spacing: 2px;
+  color: #ffd66b; text-shadow: 0 0 12px #ffd66b;
+}
+.tcg-lvl-toast.is-foe .tcg-lvl-toast__lvl { color: #ffb3b3; text-shadow: 0 0 12px #ff7a7a; }
+.tcg-lvl-toast__name {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .5px;
+}
+@keyframes tcg-lvl-pop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  18%  { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  30%  { transform: translate(-50%, -50%) scale(1); }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
+}
+
+/* Float "+N XP" reuses the float layer's tone="xp" */
+.tcg-float--xp { color: #ffd66b; text-shadow: 0 0 6px #ffaa00; font-weight: 700; }
+
+/* ============================================================
+   CLASS PICKER — pre-match class & via selection screen
+   ============================================================ */
+.tcg-picker {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 22px;
+  color: #ece4d2;
+}
+.tcg-picker__head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.tcg-picker__head h2 {
+  margin: 0; font-size: 24px; letter-spacing: 1px;
+}
+
+/* class grid (stage 1) */
+.tcg-picker__classes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+.tcg-picker__class {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 18px 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30,24,46,.85), rgba(14,10,24,.92));
+  border: 2px solid rgba(255,255,255,.14);
+  color: #ece4d2;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.tcg-picker__class:hover {
+  transform: translateY(-3px);
+  border-color: #ffd66b;
+  box-shadow: 0 0 14px rgba(255,214,107,.35);
+}
+.tcg-picker__class-ico { font-size: 38px; line-height: 1; }
+.tcg-picker__class-name { font-size: 16px; font-weight: 700; letter-spacing: .5px; }
+.tcg-picker__class-tier { font-size: 10px; opacity: .7; letter-spacing: .3px; }
+.tcg-picker__class-colors { display: flex; gap: 4px; margin-top: 4px; }
+.tcg-picker__color {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px;
+  border: 1.5px solid rgba(255,255,255,.6);
+  text-shadow: 0 1px 1px #000;
+}
+
+/* selected class summary + via picker (stage 2) */
+.tcg-picker__class-summary {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.04);
+  border-radius: 10px;
+  font-size: 14px;
+}
+.tcg-picker__class-summary .tcg-picker__class-ico { font-size: 22px; }
+.tcg-picker__class-summary .tcg-picker__class-tier { opacity: .65; }
+.tcg-picker__retry { margin-left: auto; font-size: 11px; padding: 4px 10px; }
+.tcg-picker__locked {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  color: #ffd66b;
+  letter-spacing: .3px;
+}
+
+.tcg-picker__vie {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.tcg-picker__via {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(30,24,46,.85), rgba(14,10,24,.92));
+  border: 2px solid var(--el, rgba(255,255,255,.16));
+  color: #ece4d2;
+  cursor: pointer;
+  text-align: left;
+  transition: transform .15s, box-shadow .15s, background .15s;
+}
+.tcg-picker__via:hover { transform: translateY(-2px); box-shadow: 0 0 16px var(--el, #ffd66b); }
+.tcg-picker__via.is-sel {
+  background: linear-gradient(180deg, rgba(70,55,120,.95), rgba(30,20,55,.95));
+  box-shadow: 0 0 20px var(--el, #ffd66b);
+}
+.tcg-picker__via-el {
+  font-size: 13px;
+  color: var(--el, #ffd66b);
+  font-weight: 700;
+  letter-spacing: .4px;
+}
+.tcg-picker__via-label { font-size: 18px; font-weight: 700; }
+.tcg-picker__via-dnd { font-size: 11px; opacity: .55; font-style: italic; }
+
+.tcg-picker__actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .tcg-picker__vie { grid-template-columns: 1fr; }
+  .tcg-picker__class-ico { font-size: 30px; }
+}
+
+/* ── Shop: class-pack dual-colour dots ── */
+.tcg-packcard.is-class {
+  border-style: dashed;
+  border-width: 2px;
+}
+.tcg-packcard__colors {
+  display: flex; justify-content: center; gap: 4px;
+  margin-top: -2px; margin-bottom: 6px;
+}
+.tcg-packcard__cdot {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 12px;
+  border: 1.5px solid rgba(255,255,255,.6);
+  text-shadow: 0 1px 1px #000;
+}
+
+/* ── Starter Select: tier + colour dots on each class card ── */
+.tcg-starter__tier {
+  display: block;
+  font-size: 11px; opacity: .7;
+  margin: 4px 0;
+  letter-spacing: .3px;
+}
+.tcg-starter__colors {
+  display: flex; justify-content: center; gap: 6px;
+  margin: 4px 0 6px;
+}
+.tcg-starter__cdot {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 14px;
+  border: 1.5px solid rgba(255,255,255,.65);
+  text-shadow: 0 1px 1px #000;
 }

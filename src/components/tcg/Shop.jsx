@@ -18,7 +18,7 @@ export default function Shop({ profile, onOpenPack, onBack }) {
   const [msg, setMsg] = useState("");
 
   const coins = profile?.coins ?? 0;
-  const cover = profile?.cover || "air";
+  const cover = profile?.cover || "nature";
 
   const buy = async (packId) => {
     if (busy) return;
@@ -48,9 +48,10 @@ export default function Shop({ profile, onOpenPack, onBack }) {
 
   if (revealed) {
     const allOpen = flipped.size >= revealed.cards.length;
-    // pack cards show the BACK of the pack's own element
-    const packEl =
-      PACKS.find((p) => p.id === revealed.packId)?.element || cover;
+    // pack cards show the BACK of the pack's primary colour (class
+    // packs are dual-colour but the first colour drives the card-back)
+    const pk = PACKS.find((p) => p.id === revealed.packId);
+    const packEl = (pk?.colors && pk.colors[0]) || pk?.element || cover;
     return (
       <div className="tcg-shop">
         <div className="tcg-doc__head">
@@ -158,25 +159,45 @@ export default function Shop({ profile, onOpenPack, onBack }) {
       <div className="tcg-shop__body">
         {msg && <p className="tcg-shop__msg">{msg}</p>}
         <p className="tcg-shop__intro">
-          Ogni pacchetto contiene <b>{PACKS[0].size} carte</b> di un{" "}
-          <b>solo elemento</b>. Le probabilità di rarità sono <b>uguali per
-          tutti i pacchetti</b> (i Premium hanno una chance di Leggendaria più
-          bassa) e sono indicate su ogni pacchetto. Ogni carta ha una piccola
-          probabilità di essere <b>✨ Foil</b>. Le monete si guadagnano in
-          battaglia.
+          I <b>Pacchetti di Classe</b> contengono carte dei <b>due colori</b>{" "}
+          della classe scelta (es. Mago = Fuoco + Natura). I <b>Pacchetti
+          Elemento</b> (in fondo) restano mono-colore e i Premium (Luce/Ombra)
+          hanno una probabilità di Leggendaria leggermente più bassa. Ogni
+          carta ha una piccola chance di essere <b>✨ Foil</b>.
         </p>
 
         <div className="tcg-shop__grid">
           {PACKS.map((pk) => {
             const afford = coins >= pk.cost && !busy;
+            const cols = pk.colors || (pk.element ? [pk.element] : []);
+            const primary = cols[0];
+            const isClass = pk.kind === "class";
             return (
               <div
                 key={pk.id}
-                className={`tcg-packcard ${pk.premium ? "is-premium" : ""}`}
-                style={{ "--pip": ELEMENT_PIP[pk.element] }}
+                className={`tcg-packcard ${pk.premium ? "is-premium" : ""} ${
+                  isClass ? "is-class" : ""
+                }`}
+                style={{ "--pip": ELEMENT_PIP[primary] || "#888" }}
               >
-                <div className="tcg-packcard__art">{ELEMENT_ICON[pk.element]}</div>
+                <div className="tcg-packcard__art">
+                  {isClass ? pk.icon : ELEMENT_ICON[primary]}
+                </div>
                 <div className="tcg-packcard__name">{pk.name}</div>
+                {isClass && (
+                  <div className="tcg-packcard__colors">
+                    {cols.map((el) => (
+                      <span
+                        key={el}
+                        className="tcg-packcard__cdot"
+                        style={{ background: ELEMENT_PIP[el] }}
+                        title={el}
+                      >
+                        {ELEMENT_ICON[el]}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {pk.premium && <div className="tcg-packcard__tag">Premium</div>}
                 {(() => {
                   const odds = packRarityOdds(pk.id);

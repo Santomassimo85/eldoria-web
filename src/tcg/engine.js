@@ -25,6 +25,10 @@ import {
   ELEMENT_POWERS, attunedElements, POWER_MANA, POWER_CHARGE_CAP,
   DICE_STATS, statDice,
 } from "./cards.js";
+import {
+  initClassState, rewardAt, levelForXp, spellSlotTier,
+  SLOT_TIER_UNLOCK_LEVEL, MAX_LEVEL,
+} from "./classes.js";
 
 export const START_HP = 30;
 export const OPENING_HAND = 6;
@@ -45,10 +49,11 @@ export function creatureKeywords(cardId) {
   return c && Array.isArray(c.keywords) ? c.keywords : [];
 }
 
-function mkPlayer(name, deck) {
-  return {
+function mkPlayer(name, deck, classOpt) {
+  const base = {
     name: name || "Giocatore",
     hp: START_HP,
+    tempHp: 0,         // ward / temporary HP, soaks damage before hp
     deck: deck.slice(),
     hand: [],
     battlefield: [], // creatures
@@ -58,7 +63,46 @@ function mkPlayer(name, deck) {
     playedLand: false, // a land already played this turn?
     charges: 0,        // Cariche for Element Powers (gain 1/turn, cap 2)
     attuned: {},       // { fire:bool, … } — set in createGame from the deck
+    /* Class system (Fase 1). When classOpt is null the player is a
+       "neutral" hero with no class — XP/levels/slots stay inert and
+       the engine falls back to pre-class behaviour (backward compat). */
+    klass: null,
+    via: null,
+    xp: 0,
+    level: 1,
+    slots: null,           // { 1, 2, 3 } or null when classless
+    slotsUnlocked: null,
+    slotCap: null,
+    casterTier: null,
+    perks: null,
+    turnFlags: null,
+    levelHistory: [],      // [{level, name}, …] — for UI history
   };
+  if (classOpt && classOpt.klass && classOpt.via) {
+    Object.assign(base, initClassState(classOpt.klass, classOpt.via));
+  }
+  return base;
+}
+
+/* Heal helper — regular heals are capped at START_HP. Ward heals
+   (opts.ward) also cap hp but route the overflow into tempHp, which
+   soaks damage before hp. Returns the amount actually applied (heal
+   + ward) so callers can decide whether to log. */
+function gainHp(s, side, amount, opts = {}) {
+  if (amount <= 0) return 0;
+  const p = s.players[side];
+  const room = Math.max(0, START_HP - p.hp);
+  const heal = Math.min(room, amount);
+  const overflow = amount - heal;
+  p.hp += heal;
+  let wardGain = 0;
+  if (opts.ward && overflow > 0) {
+    p.tempHp = (p.tempHp || 0) + overflow;
+    wardGain = overflow;
+  }
+  const shown = heal + wardGain;
+  if (shown > 0) fx(s, { kind: "healHero", side, amount: shown });
+  return shown;
 }
 
 /* ---- fx / log helpers (operate on a draft state) ---- */
@@ -111,6 +155,238 @@ function mkCreature(s, side, cardId) {
   }
   return cr;
 }
+
+/* ============================================================
+   CLASS · XP · LEVEL-UP · SLOTS
+   ============================================================ */
+
+/* true when this player has a class (so the XP/slot machinery
+   should run). Backward-compat shortcut used everywhere. */
+function hasClass(p) {
+  return !!(p && p.klass && p.via && p.perks);
+}
+
+/* Slot tier required for a card. Creatures/artifacts/lands → 0
+   (no slot needed). Spells (sorceries + instants) use spellSlotTier. */
+function slotTierForCard(card) {
+  if (!card) return 0;
+  if (card.type !== "spell") return 0;
+  return spellSlotTier(card.cmc || 0);
+}
+
+/* Effective cost after class perks (mana side only — slots are gated
+   separately). Always returns a fresh object, leaving the card's own
+   cost untouched. Discounts only reduce GENERIC pips; colored pips
+   stay sacred so an "Evocazione" Mago can't free-cast Verde 🟢. */
+function effectiveCost(s, side, card) {
+  const baseCost = card.cost || {};
+  const p = s.players[side];
+  if (!hasClass(p)) return baseCost;
+  let gen = baseCost.generic || 0;
+  // Mago (caster pieno): -1 generic on every spell (incl. reactions)
+  if (p.casterTier === "full" && card.type === "spell") gen = Math.max(0, gen - 1);
+  // +N from explicit casterDiscountBonus perk
+  if (card.type === "spell" && p.perks && p.perks.casterDiscountBonus)
+    gen = Math.max(0, gen - p.perks.casterDiscountBonus);
+  // First creature this turn: Mago-Evocazione lv2 grants -N on generic
+  if (
+    card.type === "creature" &&
+    p.perks && p.perks.firstCreatureDiscount &&
+    p.turnFlags && !p.turnFlags.firstCreaturePlayed
+  ) {
+    gen = Math.max(0, gen - p.perks.firstCreatureDiscount);
+  }
+  // Aether Surge (Mago-Invocazione lv5 ult): spells cost 0 mana this turn
+  if (
+    card.type === "spell" &&
+    p.perks && p.perks.ultimateActive &&
+    p.perks.ultimateId === "aether_surge"
+  ) {
+    // wipe ALL mana cost (generic + colored) for the turn the ult is up
+    const free = { generic: 0 };
+    for (const el of ELEMENTS) free[el] = 0;
+    return free;
+  }
+  if (gen === (baseCost.generic || 0)) return baseCost; // unchanged
+  return { ...baseCost, generic: gen };
+}
+
+/* Can `side` afford to consume one slot of the given tier? */
+function canAffordSlot(s, side, tier) {
+  if (tier <= 0) return true;
+  const p = s.players[side];
+  if (!hasClass(p)) return true; // no class = no slot system
+  if (!p.slotsUnlocked || !p.slotsUnlocked[tier]) return false;
+  return (p.slots[tier] || 0) > 0;
+}
+
+/* Pay one slot of the given tier. No-op when classless or tier == 0. */
+function consumeSlot(s, side, tier) {
+  if (tier <= 0) return;
+  const p = s.players[side];
+  if (!hasClass(p)) return;
+  p.slots[tier] = Math.max(0, (p.slots[tier] || 0) - 1);
+}
+
+/* Apply a single level-up reward patch onto the player's perks +
+   open any newly unlocked slot tiers. Idempotent per (level). */
+function applyReward(s, side, reward) {
+  if (!reward) return;
+  const p = s.players[side];
+  const patch = reward.patch || {};
+  for (const k of [
+    "extraSlot1PerTurn", "extraSlot2PerTurn", "extraSlot3PerTurn",
+    "firstCreatureDiscount",
+    "firstCreatureBuffP", "firstCreatureBuffT",
+    "creatureBuffP", "creatureBuffT",
+    "onCreaturePlayPing", "onCreaturePlayHeal", "aoeBonus",
+    "heroDmgBonus",
+    "extraHealPerTurn", "healBonus",
+    "onKillHeal", "onEnemyDeathPing", "creatureLifelink",
+    "extraDrawPerTurn", "casterDiscountBonus",
+  ]) {
+    if (patch[k] != null) p.perks[k] = (p.perks[k] || 0) + patch[k];
+  }
+  if (patch.ultimate) {
+    p.perks.ultimateId = patch.ultimate;
+    p.perks.ultimateUsed = false;
+    p.perks.ultimateActive = false;
+  }
+  p.levelHistory.push({ level: reward.level, name: reward.name, icon: reward.icon });
+  fx(s, { kind: "levelUp", side, level: reward.level, name: reward.name });
+  logMsg(s, side, `⭐ ${p.name} sale al livello ${reward.level} — ${reward.icon} ${reward.name}.`);
+}
+
+/* Process pending level-ups for `side`. Each level-up triggered by
+   the current XP total fires once. Newly unlocked slot tiers also
+   grant 1 slot of that tier on the spot. */
+function applyLevelUps(s, side) {
+  const p = s.players[side];
+  if (!hasClass(p)) return;
+  const target = Math.min(MAX_LEVEL, levelForXp(p.xp));
+  while (p.level < target) {
+    const newLevel = p.level + 1;
+    p.level = newLevel;
+    // slot-tier unlocks (driven by level, not by class)
+    for (const tier of [2, 3]) {
+      if (SLOT_TIER_UNLOCK_LEVEL[tier] === newLevel && !p.slotsUnlocked[tier]) {
+        p.slotsUnlocked[tier] = true;
+        p.slots[tier] = Math.min(p.slotCap[tier], (p.slots[tier] || 0) + 1);
+        logMsg(s, side, `🔓 ${p.name} sblocca gli spell slot di tier ${tier}.`);
+      }
+    }
+    // subclass-specific reward (may be missing for stubbed classes)
+    const reward = rewardAt(p.klass, p.via, newLevel);
+    applyReward(s, side, reward);
+  }
+}
+
+/* True when `side`'s ultimate is unlocked, not yet used, and the
+   game state allows a sorcery-speed activation. */
+export function canActivateUltimate(s, side) {
+  if (s.winner) return false;
+  if (s.active !== side || s.phase !== "main") return false;
+  if (s.stack.length || s.priority) return false;
+  const p = s.players[side];
+  if (!hasClass(p)) return false;
+  if (!p.perks.ultimateId) return false;
+  if (p.perks.ultimateUsed) return false;
+  return true;
+}
+
+/* Fire the lv-5 ultimate. Each class+via has its own resolution. */
+export function activateUltimate(state, side) {
+  if (!canActivateUltimate(state, side)) return state;
+  const s = clone(state);
+  const p = s.players[side];
+  const id = p.perks.ultimateId;
+  p.perks.ultimateUsed = true;
+  fx(s, { kind: "ultimate", side, id });
+  if (id === "aether_surge") {
+    p.perks.ultimateActive = true;
+    logMsg(s, side, `🌌 ${p.name} scatena Aether Surge: questo turno i tuoi spell costano 0 mana!`);
+  } else if (id === "risveglio_ancestrale") {
+    // pick the strongest creature in the graveyard (by cmc, then power+toughness)
+    let bestId = null, bestScore = -1;
+    for (const cardId of p.graveyard) {
+      const c = getCard(cardId);
+      if (!c || c.type !== "creature") continue;
+      const score = (c.cmc || 0) * 100 + (c.power || 0) + (c.toughness || 0);
+      if (score > bestScore) { bestScore = score; bestId = cardId; }
+    }
+    if (bestId) {
+      const cr = mkCreature(s, side, bestId);
+      cr.sick = false; // haste-like burst on the revived copy
+      p.battlefield.push(cr);
+      fx(s, { kind: "play", side, cardId: bestId, into: "battlefield", instId: cr.instId });
+      logMsg(s, side, `🌟 Risveglio Ancestrale evoca una copia di ${getCard(bestId).name}!`);
+    } else {
+      logMsg(s, side, `🌟 Risveglio Ancestrale fallisce: nessuna creatura nel cimitero.`);
+    }
+  } else if (id === "esplosione_vulcanica") {
+    // Guerriero-Campione lv5: 5 to all enemy creatures, 3 to enemy hero.
+    const foe = opp(side);
+    const foeCrs = s.players[foe].battlefield.slice();
+    for (const cr of foeCrs) damageCreature(s, foe, cr, 5, "fire");
+    damageHero(s, foe, 3, "fire");
+    logMsg(s, side, `🌋 Esplosione Vulcanica devasta il campo nemico!`);
+    resolveDeaths(s);
+    checkWin(s);
+  } else if (id === "unisono_acciaio") {
+    // Guerriero-Battaglia lv5: untap all your creatures + haste +
+    // +2 damage for the duration of this turn (one-shot). We re-use
+    // the per-creature plusP and clear it at end of turn (the engine
+    // already wipes tempP on endTurn so we lean on tempP here).
+    for (const cr of p.battlefield) {
+      cr.tapped = false;
+      cr.sick = false;
+      cr.tempP = (cr.tempP || 0) + 2;
+    }
+    p.perks.ultimateActive = true;
+    logMsg(s, side, `🗡️🛡️ Unisono d'Acciaio: le tue creature ruggiscono e attaccano insieme!`);
+  } else if (id === "resurrezione_divina") {
+    // Chierico-Vita lv5: heal 15 PV; overflow → temporary HP (ward).
+    const got = gainHp(s, side, 15, { ward: true });
+    logMsg(s, side, `🌟 Resurrezione Divina: ${p.name} risorge — +${got} PV (eccedenza → PV temporanei).`);
+  } else if (id === "apocalisse") {
+    // Chierico-Morte lv5: 4 to all enemy creatures; heal 2 for each
+    // creature that DIES from this effect (snapshot before/after).
+    const foe = opp(side);
+    const before = s.players[foe].battlefield.length;
+    for (const cr of s.players[foe].battlefield.slice()) {
+      damageCreature(s, foe, cr, 4, "darkness");
+    }
+    resolveDeaths(s);
+    const killed = before - s.players[foe].battlefield.length;
+    const healed = killed * 2;
+    if (healed > 0) {
+      const got = gainHp(s, side, healed);
+      logMsg(s, side, `☠️ Apocalisse: ${killed} creature dissolte, ${p.name} recupera ${got} PV.`);
+    } else {
+      logMsg(s, side, `☠️ Apocalisse: nessuna creatura nemica è caduta.`);
+    }
+    checkWin(s);
+  } else {
+    logMsg(s, side, `${p.name} prepara la sua ultimate.`);
+  }
+  return s;
+}
+
+/* Grant XP and resolve any level-ups it triggers. Sources:
+     "damage"  — to enemy hero
+     "kill"    — killed an enemy creature
+     "reaction"— cast an instant-speed spell
+     "upkeep"  — survived another turn                              */
+function gainXp(s, side, amount, reason) {
+  if (amount <= 0) return;
+  const p = s.players[side];
+  if (!hasClass(p)) return;
+  if (p.level >= MAX_LEVEL && p.xp >= LAST_THRESHOLD) return; // capped
+  p.xp += amount;
+  fx(s, { kind: "xpGain", side, amount, reason, total: p.xp });
+  applyLevelUps(s, side);
+}
+const LAST_THRESHOLD = 36; // mirrors LEVEL_THRESHOLDS[MAX_LEVEL]
 
 /* ---- lookups ---- */
 export function findCreature(s, instId) {
@@ -210,17 +486,20 @@ function payCost(s, side, cost) {
 }
 
 /* ---- creation ---- */
-export function createGame({ p0Name, p1Name, deck0, deck1, starter } = {}) {
+export function createGame({
+  p0Name, p1Name, deck0, deck1, starter,
+  p0Class, p1Class, // { klass, via } each — optional (classless = backward compat)
+} = {}) {
   // ALWAYS shuffle the library at game start — a player-built deck is
   // saved grouped (copies/lands together), so without this the opening
   // hand and draws come out in order (e.g. all lands first).
   const d0 = shuffle(deck0 || buildDeck());
   const d1 = shuffle(deck1 || buildDeck());
   const s = {
-    v: 2,
+    v: 3, // bumped: class system added
     players: {
-      p0: mkPlayer(p0Name, d0),
-      p1: mkPlayer(p1Name, d1),
+      p0: mkPlayer(p0Name, d0, p0Class),
+      p1: mkPlayer(p1Name, d1, p1Class),
     },
     turn: 0,
     active: starter === "p1" ? "p1" : starter === "p0" ? "p0" : Math.random() < 0.5 ? "p0" : "p1",
@@ -269,8 +548,38 @@ function startTurn(s, side, isGameStart) {
   s.attackedThisTurn = false;
   p.playedLand = false;
 
-  // gain 1 Carica for Element Powers (capped)
+  // gain 1 Carica for Element Powers (capped) — kept for the legacy
+  // power system while the class system is still bedding in.
   p.charges = Math.min(POWER_CHARGE_CAP, (p.charges || 0) + 1);
+
+  // ── CLASS SYSTEM: upkeep XP tick, slot generation, perk hooks ──
+  if (hasClass(p)) {
+    // reset per-turn flags from the previous round
+    p.turnFlags = { firstCreaturePlayed: false };
+    // gain tier-1 slots (1 base + perk extra), capped by class
+    const grant1 = 1 + (p.perks.extraSlot1PerTurn || 0);
+    p.slots[1] = Math.min(p.slotCap[1], (p.slots[1] || 0) + grant1);
+    // if higher tiers are unlocked we also drip 1 of each (capped)
+    if (p.slotsUnlocked[2]) {
+      const grant2 = 1 + (p.perks.extraSlot2PerTurn || 0);
+      p.slots[2] = Math.min(p.slotCap[2], (p.slots[2] || 0) + grant2);
+    }
+    if (p.slotsUnlocked[3]) {
+      const grant3 = 1 + (p.perks.extraSlot3PerTurn || 0);
+      p.slots[3] = Math.min(p.slotCap[3], (p.slots[3] || 0) + grant3);
+    }
+    // expire ultimate-active flag at the start of YOUR next turn (the
+    // ult is one-turn only). We do this BEFORE granting XP so the
+    // visual fx of the survival tick can't be misread.
+    if (p.perks.ultimateActive) p.perks.ultimateActive = false;
+    // Chierico-Vita lv2 "Benedizione": upkeep heal
+    if (p.perks.extraHealPerTurn > 0) {
+      const got = gainHp(s, side, p.perks.extraHealPerTurn);
+      if (got > 0) logMsg(s, side, `✨ ${p.name} recupera ${got} PV (Benedizione).`);
+    }
+    // +1 XP for surviving into another turn — symmetric pacing nudge
+    gainXp(s, side, 1, "upkeep");
+  }
 
   // untap lands + creatures, clear summoning sickness
   for (const l of p.lands) l.tapped = false;
@@ -294,14 +603,19 @@ function startTurn(s, side, isGameStart) {
     if (c.passive.kind === "startDraw") drawExtra += c.passive.amount || 0;
   }
   if (healSum > 0) {
-    p.hp += healSum;
-    fx(s, { kind: "healHero", side, amount: healSum });
-    logMsg(s, side, `${p.name} recupera ${healSum} PV (manufatto).`);
+    const got = gainHp(s, side, healSum);
+    if (got > 0)
+      logMsg(s, side, `${p.name} recupera ${got} PV (manufatto).`);
   }
 
   const skipDraw = isGameStart && s.turn === 1;
   if (!skipDraw) drawOne(s, side, false);
   for (let i = 0; i < drawExtra; i++) drawOne(s, side, false);
+  // class perk: Mago-Invocazione lv3 draws +1 each turn
+  if (hasClass(p)) {
+    const perkDraw = p.perks.extraDrawPerTurn || 0;
+    for (let i = 0; i < perkDraw; i++) drawOne(s, side, false);
+  }
 
   logMsg(s, side, `Turno di ${p.name} (turno ${s.turn}).`);
   checkWin(s);
@@ -340,7 +654,15 @@ export function canPlay(s, side, instId) {
   const card = getCard(hc.cardId);
   if (!card) return false;
   if (card.type === "land") return canPlayLand(s, side, instId);
-  if (!canAfford(s, side, card.cost)) return false;
+  // EFFECTIVE COST: caster discount + ultimate-active free-spells +
+  // first-creature discount (Mago-Evocazione lv2). Computed once here
+  // and passed to canAfford so the slot/mana check stays in sync with
+  // what payCost will actually consume in playCard.
+  const eff = effectiveCost(s, side, card);
+  if (!canAfford(s, side, eff)) return false;
+  // SPELL SLOT GATE — only spells (sorceries + instants) need slots.
+  const tier = slotTierForCard(card);
+  if (tier > 0 && !canAffordSlot(s, side, tier)) return false;
 
   const isInstant = card.type === "spell" && card.speed === "instant";
   if (isInstant) {
@@ -524,14 +846,42 @@ export function playCard(state, side, instId, target = null) {
   const hc = p.hand[idx];
   const card = getCard(hc.cardId);
 
-  payCost(s, side, card.cost);
+  // pay mana cost using the perk-adjusted cost we'd validated in canPlay
+  const eff = effectiveCost(s, side, card);
+  payCost(s, side, eff);
+  // pay the slot (sorceries + reactions only — creatures/artifacts skip)
+  const tier = slotTierForCard(card);
+  if (tier > 0) consumeSlot(s, side, tier);
   p.hand.splice(idx, 1);
 
   if (card.type === "creature") {
     const cr = mkCreature(s, side, card.id);
+    // class perks: aura/firstCreature buffs baked in at summon. The
+    // first-creature-this-turn slot fires its bonuses BEFORE we flip
+    // the flag (else the discount would re-fire on a follow-up cast).
+    if (hasClass(p)) {
+      cr.plusP = (cr.plusP || 0) + (p.perks.creatureBuffP || 0);
+      cr.plusT = (cr.plusT || 0) + (p.perks.creatureBuffT || 0);
+      if (!p.turnFlags.firstCreaturePlayed) {
+        cr.plusP += (p.perks.firstCreatureBuffP || 0);
+        cr.plusT += (p.perks.firstCreatureBuffT || 0);
+        p.turnFlags.firstCreaturePlayed = true;
+      }
+    }
     p.battlefield.push(cr);
     fx(s, { kind: "play", side, cardId: card.id, into: "battlefield", instId: cr.instId });
     logMsg(s, side, `${p.name} evoca ${card.name}.`);
+    // Mago-Evocazione lv4: each creature you play pings the foe for N
+    if (hasClass(p) && p.perks.onCreaturePlayPing > 0) {
+      const ping = p.perks.onCreaturePlayPing;
+      logMsg(s, side, `✨ Convocazione Continua infligge ${ping} all'eroe avversario.`);
+      damageHero(s, opp(side), ping, card.element || "natura");
+    }
+    // Chierico-Vita lv4 "Aura della Vita": heal N each summon
+    if (hasClass(p) && p.perks.onCreaturePlayHeal > 0) {
+      const got = gainHp(s, side, p.perks.onCreaturePlayHeal);
+      if (got > 0) logMsg(s, side, `💗 Aura della Vita: ${p.name} recupera ${got} PV.`);
+    }
     resolveDeaths(s);
     checkWin(s);
   } else if (card.type === "artifact") {
@@ -545,6 +895,8 @@ export function playCard(state, side, instId, target = null) {
     s.passes = 0;
     fx(s, { kind: "stack", side, cardId: card.id });
     logMsg(s, side, `${p.name} lancia ${card.name} (in pila).`);
+    // XP: every spell at INSTANT speed (a "reazione") feeds the meter
+    if (card.speed === "instant") gainXp(s, side, 1, "reaction");
   }
   return s;
 }
@@ -644,12 +996,35 @@ function applySpell(s, side, card, target) {
     }
   } else if (e.kind === "aoe_enemy") {
     const foe = opp(side);
+    // Mago-Invocazione lv4 "Detonazione": +N to every AoE damage spell
+    const aoeBonus = hasClass(me) ? (me.perks.aoeBonus || 0) : 0;
+    const dmg = e.amount + aoeBonus;
     for (const cr of s.players[foe].battlefield.slice())
-      damageCreature(s, foe, cr, e.amount, card.element);
+      damageCreature(s, foe, cr, dmg, card.element);
   } else if (e.kind === "heal") {
-    me.hp += e.amount;
-    fx(s, { kind: "healHero", side, amount: e.amount });
-    logMsg(s, side, `${me.name} recupera ${e.amount} PV.`);
+    // Chierico-Vita lv3 "Protezione Sacra": healBonus +N on every heal
+    const bonus = hasClass(me) ? (me.perks.healBonus || 0) : 0;
+    const got = gainHp(s, side, e.amount + bonus);
+    logMsg(s, side,
+      got > 0
+        ? `${me.name} recupera ${got} PV.`
+        : `${me.name} è già al massimo dei PV.`);
+  } else if (e.kind === "wardHeal") {
+    // heals up to max HP; any excess becomes temporary HP (a buffer
+    // that absorbs damage before real HP — persists until consumed)
+    const bonus = hasClass(me) ? (me.perks.healBonus || 0) : 0;
+    const before = me.hp;
+    const beforeTemp = me.tempHp || 0;
+    gainHp(s, side, e.amount + bonus, { ward: true });
+    const healed = me.hp - before;
+    const warded = (me.tempHp || 0) - beforeTemp;
+    const parts = [];
+    if (healed > 0) parts.push(`recupera ${healed} PV`);
+    if (warded > 0) parts.push(`ottiene ${warded} PV temporanei`);
+    logMsg(s, side,
+      parts.length
+        ? `${me.name} ${parts.join(" e ")}.`
+        : `${me.name} è già al massimo dei PV.`);
   } else if (e.kind === "destroy") {
     if (target && target.type === "creature") {
       const f = findCreature(s, target.instId);
@@ -726,8 +1101,25 @@ function applySpell(s, side, card, target) {
 
 /* ---- damage primitives ---- */
 function damageHero(s, side, amount, element) {
-  s.players[side].hp -= amount;
+  if (amount <= 0) return;
+  // Guerriero-Campione lv3 "Furia di Battaglia": +N to any damage you
+  // deal to the enemy hero (spells + combat both pass through here or
+  // strikeHero — both check this perk). Source is opp(side).
+  const attacker = s.players[opp(side)];
+  if (hasClass(attacker) && attacker.perks.heroDmgBonus) {
+    amount += attacker.perks.heroDmgBonus;
+  }
+  const p = s.players[side];
+  let remaining = amount;
+  if (p.tempHp && p.tempHp > 0) {
+    const soaked = Math.min(p.tempHp, remaining);
+    p.tempHp -= soaked;
+    remaining -= soaked;
+  }
+  p.hp -= remaining;
   fx(s, { kind: "damageHero", side, amount, element });
+  // XP: the attacker (the OPPONENT of `side`) gains 1 XP per damage point
+  gainXp(s, opp(side), amount, "damage");
 }
 function damageCreature(s, side, creature, amount, element) {
   creature.damage += amount;
@@ -753,10 +1145,31 @@ function resolveDeaths(s) {
             logMsg(s, side, `${getCard(cr.cardId).name} si rigenera.`);
             continue;
           }
+          const dyingCard = getCard(cr.cardId);
           bf.splice(i, 1);
           s.players[side].graveyard.push(cr.cardId);
           fx(s, { kind: "death", side, instId: cr.instId, cardId: cr.cardId });
-          logMsg(s, side, `${getCard(cr.cardId).name} muore.`);
+          logMsg(s, side, `${dyingCard.name} muore.`);
+          // XP: the OPPONENT of the dying creature's owner gets cmc XP.
+          // (Self-sacrifice cases are rare and we accept the simplification.)
+          if (dyingCard && dyingCard.cmc != null) {
+            gainXp(s, opp(side), dyingCard.cmc, "kill");
+          }
+          // Chierico-Morte perks on the killer (= opp(side)):
+          //   lv2 onKillHeal       → killer recovers N PV
+          //   lv4 onEnemyDeathPing → enemy hero (= side) takes N damage
+          const killer = s.players[opp(side)];
+          if (hasClass(killer)) {
+            if (killer.perks.onKillHeal > 0) {
+              const got = gainHp(s, opp(side), killer.perks.onKillHeal);
+              if (got > 0) logMsg(s, opp(side), `🌑 Tocco Necrotico: ${killer.name} recupera ${got} PV.`);
+            }
+            if (killer.perks.onEnemyDeathPing > 0) {
+              const ping = killer.perks.onEnemyDeathPing;
+              logMsg(s, opp(side), `💀 Maledizione infligge ${ping} a ${s.players[side].name}.`);
+              damageHero(s, side, ping, "darkness");
+            }
+          }
           changed = true;
         }
       }
@@ -883,19 +1296,34 @@ function strikeCreature(s, srcSide, src, tgtSide, tgt, amount) {
   tgt.damage += amount;
   if (kw(src.cardId, "deathtouch")) tgt.damage = 9999;
   fx(s, { kind: "damageCreature", side: tgtSide, instId: tgt.instId, amount });
-  if (kw(src.cardId, "lifelink")) {
-    s.players[srcSide].hp += amount;
-    fx(s, { kind: "healHero", side: srcSide, amount });
-  }
+  // Lifelink: from the source's keywords OR from a class-wide aura
+  // (Chierico-Morte lv3 "Vampirismo" gives lifelink to ALL your creatures).
+  const srcP = s.players[srcSide];
+  const auraLifelink = hasClass(srcP) && srcP.perks.creatureLifelink > 0;
+  if (kw(src.cardId, "lifelink") || auraLifelink) gainHp(s, srcSide, amount);
 }
 function strikeHero(s, srcSide, src, tgtSide, amount) {
   if (amount <= 0) return;
-  s.players[tgtSide].hp -= amount;
-  fx(s, { kind: "damageHero", side: tgtSide, amount });
-  if (src && kw(src.cardId, "lifelink")) {
-    s.players[srcSide].hp += amount;
-    fx(s, { kind: "healHero", side: srcSide, amount });
+  // heroDmgBonus also applies to direct combat strikes (mirrors the
+  // damageHero branch). Source is srcSide (the attacker).
+  const attacker = s.players[srcSide];
+  if (hasClass(attacker) && attacker.perks.heroDmgBonus) {
+    amount += attacker.perks.heroDmgBonus;
   }
+  const p = s.players[tgtSide];
+  let remaining = amount;
+  if (p.tempHp && p.tempHp > 0) {
+    const soaked = Math.min(p.tempHp, remaining);
+    p.tempHp -= soaked;
+    remaining -= soaked;
+  }
+  p.hp -= remaining;
+  fx(s, { kind: "damageHero", side: tgtSide, amount });
+  const srcP = s.players[srcSide];
+  const auraLifelink = hasClass(srcP) && srcP.perks.creatureLifelink > 0;
+  if (src && (kw(src.cardId, "lifelink") || auraLifelink)) gainHp(s, srcSide, amount);
+  // combat damage also feeds XP — same +1 per point as spell damage
+  gainXp(s, srcSide, amount, "damage");
 }
 
 function resolveCombatInternal(s) {
@@ -1097,6 +1525,7 @@ export function reviveState(raw) {
     p.graveyard ||= [];
     if (typeof p.playedLand !== "boolean") p.playedLand = false;
     if (typeof p.charges !== "number") p.charges = 0;
+    if (typeof p.tempHp !== "number") p.tempHp = 0;
     if (!p.attuned || typeof p.attuned !== "object") p.attuned = {};
     for (const cr of p.battlefield) {
       if (typeof cr.shield !== "boolean") cr.shield = kw(cr.cardId, "shield");

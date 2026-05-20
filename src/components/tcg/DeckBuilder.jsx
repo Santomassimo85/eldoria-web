@@ -13,7 +13,7 @@ import {
 
 export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const collection = useMemo(() => profile?.collection || {}, [profile]);
-  const [cover, setCoverLocal] = useState(profile?.cover || "air");
+  const [cover, setCoverLocal] = useState(profile?.cover || "nature");
   const pickCover = (c) => { setCoverLocal(c); onSetCover && onSetCover(c); };
   const initial =
     profile?.deck && validateDeck(profile.deck, collection).ok
