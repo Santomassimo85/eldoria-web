@@ -1442,13 +1442,13 @@ export default function GameTable({
           preserveAspectRatio="none"
         >
           <defs>
-            <marker id="ah-atk" markerWidth="26" markerHeight="26"
-              refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0,0 L20,9 L0,18 L5,9 Z" fill="#ff3a28" />
+            <marker id="ah-atk" markerWidth="14" markerHeight="14"
+              refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L11,5 L0,10 L2.6,5 Z" fill="#ff3a28" />
             </marker>
-            <marker id="ah-blocked" markerWidth="22" markerHeight="22"
-              refX="14" refY="8" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0,0 L16,8 L0,16 L4,8 Z" fill="#59b6ff" />
+            <marker id="ah-blocked" markerWidth="11" markerHeight="11"
+              refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L9,4 L0,8 L2,4 Z" fill="#59b6ff" />
             </marker>
           </defs>
           {arrows.map((a) => (

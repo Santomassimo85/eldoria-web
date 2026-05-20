@@ -210,7 +210,9 @@ export default function CardView({
       <div className="tcg-card__frame">
         <div className="tcg-card__top">
           <span className="tcg-card__name">{card.name}</span>
-          <ManaCost card={card} />
+          {/* on the battlefield the cost floats ABOVE the card (see below),
+              so the header is freed for the full card name */}
+          {variant !== "board" && <ManaCost card={card} />}
         </div>
 
         <Art card={card} />
@@ -255,6 +257,13 @@ export default function CardView({
         <div className={`tcg-card__pt tcg-card__pt--board ${hurt ? "is-hurt" : ""}`}>
           {ptText}
           {hurt ? <span className="tcg-card__pt-dmg"> (-{dmg})</span> : null}
+        </div>
+      )}
+      {/* board: mana cost floats ABOVE the card (mirrors the P/T plate),
+          so the in-frame header has the whole width for the card name */}
+      {variant === "board" && (
+        <div className="tcg-card__manaplate" aria-hidden="true">
+          <ManaCost card={card} />
         </div>
       )}
       <span

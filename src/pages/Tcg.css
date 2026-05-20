@@ -672,6 +672,32 @@
   padding: 2px calc(var(--cw) * 0.08);
   box-shadow: 0 5px 11px rgba(0,0,0,.78), 0 0 0 1px rgba(0,0,0,.6);
 }
+/* mana cost floats ABOVE the board card — mirrors the P/T plate so
+   the in-frame header has its full width for the card name */
+.tcg-card__manaplate {
+  position: absolute; left: 50%; bottom: 100%;
+  margin-bottom: 2px;              /* 2px gap above the card edge */
+  transform: translateX(-50%);
+  z-index: 30; pointer-events: none;
+  display: flex; align-items: center; gap: 2px;
+  padding: 2px 5px; border-radius: 999px;
+  background: linear-gradient(#3a2914, #160f06);
+  border: 1px solid var(--gold);
+  box-shadow: 0 4px 9px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.55);
+  white-space: nowrap;
+}
+/* shrink the pips just inside the floating plate so the badge stays
+   tidy at any --cw and never overhangs the card */
+.tcg-card__manaplate .tcg-pip {
+  width: clamp(9px, calc(var(--cw) * 0.115), 15px);
+  height: clamp(9px, calc(var(--cw) * 0.115), 15px);
+  font-size: clamp(7px, calc(var(--cw) * 0.085), 11px);
+}
+.tcg-card__manaplate .tcg-card__cost--land {
+  width: clamp(11px, calc(var(--cw) * 0.13), 17px);
+  height: clamp(11px, calc(var(--cw) * 0.13), 17px);
+  font-size: clamp(8px, calc(var(--cw) * 0.1), 12px);
+}
 .tcg-card__pt.is-hurt {
   color: #fff;
   background: linear-gradient(#b3261a, #5c0f08);
@@ -836,25 +862,25 @@
 }
 /* red = a menacing attack aimed at the enemy (unblocked / declaring) */
 .tcg-arrow--atk {
-  stroke: #ff3a28; stroke-width: 7;
-  filter: drop-shadow(0 0 8px rgba(255,58,40,.95))
-          drop-shadow(0 0 3px rgba(0,0,0,.7));
-  animation: tcg-arrowin .22s ease both, tcg-menace 1s ease-in-out infinite;
+  stroke: #ff3a28; stroke-width: 3;
+  filter: drop-shadow(0 0 4px rgba(255,58,40,.85))
+          drop-shadow(0 0 1.5px rgba(0,0,0,.55));
+  animation: tcg-arrowin .22s ease both, tcg-menace 1.1s ease-in-out infinite;
 }
 /* blue = attack stopped on a defending creature (who blocks whom) */
 .tcg-arrow--blocked {
-  stroke: #59b6ff; stroke-width: 5;
-  stroke-dasharray: 10 7;
-  filter: drop-shadow(0 0 6px rgba(89,182,255,.9))
-          drop-shadow(0 0 3px rgba(0,0,0,.6));
+  stroke: #59b6ff; stroke-width: 2.2;
+  stroke-dasharray: 7 5;
+  filter: drop-shadow(0 0 3px rgba(89,182,255,.85))
+          drop-shadow(0 0 1.5px rgba(0,0,0,.5));
   animation: tcg-arrowin .22s ease both, tcg-dashflow .7s linear infinite;
 }
 @keyframes tcg-arrowin { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tcg-menace {
-  0%,100% { stroke-width: 7; }
-  50%     { stroke-width: 10; }
+  0%,100% { stroke-width: 3; }
+  50%     { stroke-width: 4.2; }
 }
-@keyframes tcg-dashflow { to { stroke-dashoffset: -34; } }
+@keyframes tcg-dashflow { to { stroke-dashoffset: -24; } }
 .tcg-card.is-blocking { box-shadow: 0 0 0 2px #6db7ff, 0 0 14px #6db7ff; }
 .tcg-card.is-tapped { transform: rotate(90deg) scale(.9); }
 .tcg-card.is-sick { filter: grayscale(.6) brightness(.78); }
