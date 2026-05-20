@@ -821,11 +821,13 @@
   100% { transform: translateY(22px) scale(1.06); }
 }
 
-/* combat arrows: red = attack, blue = defense (who blocks whom) */
+/* combat arrows: red = attack, blue = defense (who blocks whom).
+   Rendered via React portal to <body> so the SVG lives OUTSIDE the
+   force-landscape −90° rotation. Its coord system is the visual
+   viewport (matches getBoundingClientRect), so endpoints line up on
+   the cards regardless of any parent transform on the board. */
 .tcg-arrows {
-  position: absolute; left: 0; top: 0; z-index: 49; /* over hand/rail/pods */
-  /* width/height come from the measured viewBox attributes so the SVG
-     user space is 1:1 with table pixels — never stretched, never wraps */
+  position: fixed; left: 0; top: 0; z-index: 4050; /* over .tcg-page (4000) */
   pointer-events: none; overflow: visible;
 }
 .tcg-arrow {

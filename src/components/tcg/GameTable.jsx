@@ -12,6 +12,7 @@
    on the RIGHT rail. Lands auto-tap to pay costs (like MTGA).
    ============================================================ */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import { FloatingLayer, TurnBanner, SpellBurst, EndOverlay } from "./Fx.jsx";
@@ -204,11 +205,15 @@ export default function GameTable({
     setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1600);
   };
 
-  const centerOf = (sel, rect) => {
+  // Screen-space (viewport-relative) center. The arrow SVG is portaled to
+  // <body> so its coord system IS the viewport — no rotation/parent
+  // transform can skew the math (force-landscape rotates the board −90°
+  // on portrait phones, which used to mis-map these coordinates).
+  const centerOf = (sel) => {
     const el = tableRef.current && tableRef.current.querySelector(sel);
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    return { x: r.left - rect.left + r.width / 2, y: r.top - rect.top + r.height / 2 };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   };
 
   // damage/heal number pinned to a specific card or hero pod
@@ -327,11 +332,25 @@ export default function GameTable({
     []
   );
 
-  // recompute combat arrows on resize
+  // recompute combat arrows on resize / orientation flip / mobile-browser
+  // chrome shifts (iOS address bar collapsing changes innerHeight)
   useEffect(() => {
     const on = () => setArrowTick((n) => n + 1);
     window.addEventListener("resize", on);
-    return () => window.removeEventListener("resize", on);
+    window.addEventListener("orientationchange", on);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", on);
+      vv.addEventListener("scroll", on);
+    }
+    return () => {
+      window.removeEventListener("resize", on);
+      window.removeEventListener("orientationchange", on);
+      if (vv) {
+        vv.removeEventListener("resize", on);
+        vv.removeEventListener("scroll", on);
+      }
+    };
   }, []);
 
   // LIVE combat arrows, drawn from the declared combat — never from
@@ -344,14 +363,17 @@ export default function GameTable({
       setArrows([]);
       return;
     }
-    const rect = root.getBoundingClientRect();
+    // SVG is portaled to <body> — viewport-sized so its viewBox is in
+    // screen pixels (matches what getBoundingClientRect returns).
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
     setSvgBox((b) =>
-      Math.round(b.w) === Math.round(rect.width) &&
-      Math.round(b.h) === Math.round(rect.height)
+      Math.round(b.w) === Math.round(vw) &&
+      Math.round(b.h) === Math.round(vh)
         ? b
-        : { w: rect.width, h: rect.height }
+        : { w: vw, h: vh }
     );
-    const C = (sel) => centerOf(sel, rect);
+    const C = centerOf;
     const out = [];
 
     // 1) while I'm choosing attackers → arrows toward the enemy hero
@@ -1410,7 +1432,7 @@ export default function GameTable({
         ))}
       </div>
 
-      {arrows.length > 0 && svgBox.w > 0 && (
+      {arrows.length > 0 && svgBox.w > 0 && createPortal(
         <svg
           className="tcg-arrows"
           aria-hidden="true"
@@ -1437,7 +1459,8 @@ export default function GameTable({
               markerEnd={`url(#ah-${a.kind})`}
             />
           ))}
-        </svg>
+        </svg>,
+        document.body
       )}
 
       <FloatingLayer floats={floats} />
