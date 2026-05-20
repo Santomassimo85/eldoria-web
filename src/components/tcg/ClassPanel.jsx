@@ -7,7 +7,7 @@
 import React from "react";
 import {
   CLASS_LABEL, CLASS_ICON, CLASS_VIE,
-  LEVEL_THRESHOLDS, MAX_LEVEL,
+  LEVEL_THRESHOLDS, MAX_LEVEL, rewardAt,
 } from "../../tcg/classes.js";
 import { ELEMENT_PIP, ELEMENT_LABEL } from "../../tcg/cards.js";
 
@@ -59,7 +59,9 @@ function SlotBar({ slots, slotsUnlocked, slotCap }) {
   );
 }
 
-export default function ClassPanel({ player, isMe, onActivateUltimate, canUseUlt }) {
+export default function ClassPanel({
+  player, isMe, onActivateUltimate, canUseUlt, ultBlockedReason,
+}) {
   if (!player || !player.klass || !player.via) return null;
   const vieMap = CLASS_VIE[player.klass] || {};
   const viaDef = vieMap[player.via];
@@ -70,6 +72,9 @@ export default function ClassPanel({ player, isMe, onActivateUltimate, canUseUlt
   const hasUlt = !!(player.perks && player.perks.ultimateId);
   const ultUsed = !!(player.perks && player.perks.ultimateUsed);
   const ultActive = !!(player.perks && player.perks.ultimateActive);
+  // Pull the lv5 reward to surface its NAME on the button (instead of
+  // just "ULTIMATE" — players were clicking blind).
+  const ultReward = hasUlt ? rewardAt(player.klass, player.via, 5) : null;
 
   return (
     <div
@@ -103,25 +108,39 @@ export default function ClassPanel({ player, isMe, onActivateUltimate, canUseUlt
       />
 
       {/* Ultimate button — visible only at lv5 (when the perk is granted).
-          Disabled once used; pulses while active (one-turn effects). */}
+          Now shows the actual name + a "perché non posso" sub-label when
+          disabled, so the click never leaves the player guessing. */}
       {isMe && hasUlt && (
-        <button
-          type="button"
-          className={`tcg-ult ${ultActive ? "is-active" : ""} ${
-            ultUsed && !ultActive ? "is-used" : ""
-          }`}
-          disabled={!canUseUlt}
-          onClick={onActivateUltimate}
-          title={
-            ultUsed
-              ? "Ultimate già usata"
-              : canUseUlt
-              ? "Attiva la tua ULTIMATE (1 sola volta per partita)"
-              : "Ultimate non disponibile adesso"
-          }
-        >
-          ⭐ ULTIMATE
-        </button>
+        <div className="tcg-ult-wrap">
+          <button
+            type="button"
+            className={`tcg-ult ${ultActive ? "is-active" : ""} ${
+              ultUsed && !ultActive ? "is-used" : ""
+            }`}
+            disabled={!canUseUlt}
+            onClick={onActivateUltimate}
+            title={
+              ultUsed
+                ? "Hai già usato la tua ultimate in questa partita."
+                : !canUseUlt
+                ? (ultBlockedReason || "Non puoi usare l'ultimate adesso.")
+                : ultReward
+                  ? `${ultReward.name} — ${ultReward.description}`
+                  : "Attiva la tua ULTIMATE (1 sola volta per partita)"
+            }
+          >
+            <span className="tcg-ult__lbl">
+              {ultReward
+                ? `${ultReward.icon || "⭐"} ${ultReward.name}`
+                : "⭐ ULTIMATE"}
+            </span>
+            {ultUsed && <span className="tcg-ult__sub">già usata</span>}
+            {!ultUsed && !canUseUlt && (
+              <span className="tcg-ult__sub">{ultBlockedReason || "non disponibile"}</span>
+            )}
+            {ultActive && <span className="tcg-ult__sub">attiva!</span>}
+          </button>
+        </div>
       )}
     </div>
   );

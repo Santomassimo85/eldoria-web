@@ -97,13 +97,16 @@ export function watchLobby(uid, cb) {
   );
 }
 
-export async function createChallenge(uid, name, deck, cover) {
+export async function createChallenge(uid, name, deck, cover, classChoice) {
   const ref = await addDoc(collection(db, COL), {
     status: "open",
     challenger: { uid, name: name || "Sfidante" },
     challenged: null,
     covers: { p0: cover || "nature" },
     challengerDeck: Array.isArray(deck) ? deck : null,
+    // class identity (fixed) + chosen via for this match. Persisted in
+    // the doc so the responder & engine can build a proper game.
+    classes: classChoice ? { p0: classChoice } : null,
     state: null,
     winnerUid: null,
     createdAt: serverTimestamp(),
@@ -121,25 +124,30 @@ export async function cancelChallenge(matchId) {
   }
 }
 
-export async function acceptChallenge(match, uid, name, deck, cover) {
+export async function acceptChallenge(match, uid, name, deck, cover, classChoice) {
   const ref = doc(db, COL, match.id);
   const fresh = await getDoc(ref);
   if (!fresh.exists() || fresh.data().status !== "open") return null;
   const data = fresh.data();
 
   const starter = Math.random() < 0.5 ? "p0" : "p1";
+  const p0Class = data.classes?.p0 || null;
+  const p1Class = classChoice || null;
   const state = createGame({
     p0Name: match.challenger.name,
     p1Name: name || "Ospite",
     deck0: Array.isArray(data.challengerDeck) ? data.challengerDeck : buildDeck(),
     deck1: Array.isArray(deck) ? deck : buildDeck(),
     starter,
+    p0Class,
+    p1Class,
   });
 
   await updateDoc(ref, {
     status: "active",
     challenged: { uid, name: name || "Ospite" },
     covers: { p0: data.covers?.p0 || "nature", p1: cover || "nature" },
+    classes: { p0: p0Class, p1: p1Class },
     state,
     updatedAt: serverTimestamp(),
     seen: { p0: serverTimestamp(), p1: serverTimestamp() },

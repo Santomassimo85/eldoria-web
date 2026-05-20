@@ -4,8 +4,12 @@ import {
   ELEMENTS, ELEMENT_LABEL, ELEMENT_ICON,
   RARITY_ORDER, RARITY_LABEL, RARITY_COLOR, KEYWORDS, KEYWORD_IDS,
   ELEMENT_POWERS, ATTUNE_RATIO, POWER_MANA, POWER_CHARGE_CAP,
-  DICE_STATS,
+  DICE_STATS, ELEMENT_PIP,
 } from "../../tcg/cards.js";
+import {
+  CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE, CLASS_CASTER_TIER,
+  LEVEL_THRESHOLDS, MAX_LEVEL,
+} from "../../tcg/classes.js";
 
 export default function Manual({ onBack }) {
   return (
@@ -28,16 +32,127 @@ export default function Manual({ onBack }) {
         </section>
 
         <section>
+          <h2>Classi e Sottoclassi (Vie)</h2>
+          <p>
+            Al primo accesso scegli una <b>classe</b> — è la tua identità
+            per sempre (solo un reset master può cambiarla). Ogni classe
+            possiede <b>due elementi</b> (i suoi colori) e due{" "}
+            <b>sottoclassi (vie)</b>; la via si sceglie <b>a ogni inizio
+            partita</b> e determina il tuo percorso di livellamento.
+          </p>
+          <ul className="tcg-doc__classes">
+            {CLASSES.map((k) => {
+              const vie = CLASS_VIE[k];
+              return (
+                <li key={k} className="tcg-doc__class">
+                  <span className="tcg-doc__class-ico">{CLASS_ICON[k]}</span>
+                  <span className="tcg-doc__class-name">
+                    <b>{CLASS_LABEL[k]}</b>
+                    {" — "}
+                    {Object.entries(vie).map(([vk, v], i, a) => (
+                      <React.Fragment key={vk}>
+                        <span
+                          className="tcg-doc__via"
+                          style={{ color: ELEMENT_PIP[v.element] }}
+                        >
+                          {v.label} ({ELEMENT_LABEL[v.element]})
+                        </span>
+                        {i < a.length - 1 ? " · " : ""}
+                      </React.Fragment>
+                    ))}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p>
+            <b>Il deck è libero</b>: una volta scelta la classe puoi metterci
+            qualsiasi carta della tua collezione (anche di altri colori),
+            basta avere le terre giuste per pagarne il mana. Le ricompense
+            del livellamento però restano sempre quelle della <b>tua</b>{" "}
+            classe e via — la classe è identità, non restrizione di mazzo.
+          </p>
+        </section>
+
+        <section>
+          <h2>Esperienza (XP) e Livelli</h2>
+          <p>
+            Durante la partita guadagni XP che ti fa salire di livello{" "}
+            <b>fino al 5</b>. Sali sblocchi spell slot superiori e ricompense
+            specifiche della tua via. Tutto si resetta a fine match.
+          </p>
+          <ul>
+            <li>Danno inflitto all'eroe avversario: <b>+1 XP per danno</b></li>
+            <li>Uccisione di una creatura nemica: <b>+CMC XP</b></li>
+            <li>Reazione (instant) lanciata: <b>+1 XP</b></li>
+            <li>Inizio turno (sopravvivenza): <b>+1 XP</b></li>
+          </ul>
+          <p>
+            Soglie cumulative:{" "}
+            {LEVEL_THRESHOLDS.slice(2).map((th, i) => (
+              <span key={i}>
+                <b>Lv {i + 2}</b> = {th} XP
+                {i < LEVEL_THRESHOLDS.length - 3 ? " · " : ""}
+              </span>
+            ))}.
+          </p>
+        </section>
+
+        <section>
+          <h2>Spell Slot</h2>
+          <p>
+            Spell e reazioni costano <b>mana</b> come prima ma anche uno{" "}
+            <b>spell slot</b> del tier corrispondente:{" "}
+            <b>CMC 1-2 → S1</b>, <b>CMC 3-4 → S2</b>, <b>CMC 5+ → S3</b>.
+            Le creature e i manufatti <b>NON</b> usano slot.
+          </p>
+          <ul>
+            <li>
+              Lo slot <b>S1</b> è sempre disponibile: a inizio turno guadagni
+              1 slot S1 (cap <b>2</b> per le classi marziali Guerriero/Ladro,
+              cap <b>3</b> per i caster Mago/Chierico/Druido).
+            </li>
+            <li>
+              Lo slot <b>S2</b> si sblocca raggiungendo <b>livello 3</b>.
+            </li>
+            <li>
+              Lo slot <b>S3</b> si sblocca raggiungendo <b>livello 5</b>.
+            </li>
+            <li>
+              Il <b>Mago</b> (caster pieno) ottiene <b>−1 mana generico</b>{" "}
+              su ogni spell.
+            </li>
+          </ul>
+          <p>
+            Sulla carta vedi un piccolo badge <b>S1 / S2 / S3</b> che ti
+            dice quale tier ti serve. Sul tuo pannello classe vedi quanti
+            slot di ciascun tier hai disponibili (pallini pieni = pronti,
+            vuoti = già consumati, 🔒 = non sbloccati).
+          </p>
+        </section>
+
+        <section>
+          <h2>Ultimate</h2>
+          <p>
+            Al <b>livello 5</b> ogni via ottiene la sua <b>ULTIMATE</b>: un
+            potente effetto attivabile <b>una volta sola per partita</b>.
+            Appare un bottone sotto il tuo pannello classe (con il nome
+            dell'ult). Si attiva solo nel tuo turno, in fase principale e
+            con la pila vuota.
+          </p>
+        </section>
+
+        <section>
           <h2>Il mana e le Terre</h2>
           <p>
-            Il mana è di <b>colore</b>: ogni colore è un{" "}
-            <b>tipo di danno di D&amp;D</b> (Fuoco, Gelo, Radioso, Necrotico,
-            Fulmine, Veleno). Per produrlo giochi le{" "}
+            Il mana è di <b>colore</b>: i cinque elementi sono{" "}
+            <b>Fuoco, Acqua, Luce, Ombra, Natura</b>. Per produrlo giochi le{" "}
             <b>Terre</b> ("Fonte di …"): puoi giocare{" "}
-            <b>al massimo 1 Terra per turno</b>. Ogni Terra resta in campo e
-            fornisce <b>1 mana del suo elemento</b>. Le Terre si ricaricano
-            (si "stappano") all'inizio del tuo turno; il mana non speso{" "}
-            <b>non si accumula</b>.
+            <b>al massimo 1 Terra per turno</b> (eccezione: il <i>Druido — Circolo
+            della Terra</i> al livello 2 ottiene <b>+1 Terra extra a turno</b>).
+            Ogni Terra resta in campo e fornisce <b>1 mana del suo elemento</b>.
+            Le Terre si ricaricano (si "stappano") all'inizio del tuo turno; il
+            mana non speso <b>non si accumula</b>.
           </p>
           <p className="tcg-doc__els">
             {ELEMENTS.map((el) => (

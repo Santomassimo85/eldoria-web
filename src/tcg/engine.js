@@ -44,6 +44,25 @@ function kw(cardId, name) {
   const c = getCard(cardId);
   return !!c && Array.isArray(c.keywords) && c.keywords.includes(name);
 }
+
+/* keyword check for a creature INSTANCE — looks at the card's printed
+   keywords PLUS any granted ones living on the instance (cr.extraKw) or
+   coming from a class-wide aura on the owning side. Use this anywhere we
+   need to know "does this specific creature have <kw> right now". */
+function crKw(s, side, cr, name) {
+  if (!cr) return false;
+  if (kw(cr.cardId, name)) return true;
+  if (Array.isArray(cr.extraKw) && cr.extraKw.includes(name)) return true;
+  // tempKw is wiped at endTurn — used by one-turn ultimates (e.g. Druido
+  // "Risveglio della Foresta" grants Trample for the turn).
+  if (Array.isArray(cr.tempKw) && cr.tempKw.includes(name)) return true;
+  const p = s && s.players && s.players[side];
+  // hasClass is a function declaration — hoisted, so safe to call here.
+  if (!p || !hasClass(p)) return false;
+  if (name === "trample"  && p.perks.creatureTrample  > 0) return true;
+  if (name === "lifelink" && p.perks.creatureLifelink > 0) return true;
+  return false;
+}
 export function creatureKeywords(cardId) {
   const c = getCard(cardId);
   return c && Array.isArray(c.keywords) ? c.keywords : [];
@@ -196,6 +215,14 @@ function effectiveCost(s, side, card) {
   ) {
     gen = Math.max(0, gen - p.perks.firstCreatureDiscount);
   }
+  // Druido-Terra lv3 "Foresta Antica": creatures with cmc ≥ 4 cost -N
+  if (
+    card.type === "creature" &&
+    (card.cmc || 0) >= 4 &&
+    p.perks && p.perks.bigCreatureDiscount
+  ) {
+    gen = Math.max(0, gen - p.perks.bigCreatureDiscount);
+  }
   // Aether Surge (Mago-Invocazione lv5 ult): spells cost 0 mana this turn
   if (
     card.type === "spell" &&
@@ -243,6 +270,10 @@ function applyReward(s, side, reward) {
     "heroDmgBonus",
     "extraHealPerTurn", "healBonus",
     "onKillHeal", "onEnemyDeathPing", "creatureLifelink",
+    "creatureTrample", "creatureCombatBonus",
+    "firstReactionDmgBonus", "singleTargetDmgBonus",
+    "onReactionDraw", "firstCreatureFlying",
+    "extraLandPerTurn", "bigCreatureDiscount",
     "extraDrawPerTurn", "casterDiscountBonus",
   ]) {
     if (patch[k] != null) p.perks[k] = (p.perks[k] || 0) + patch[k];
@@ -284,14 +315,25 @@ function applyLevelUps(s, side) {
 /* True when `side`'s ultimate is unlocked, not yet used, and the
    game state allows a sorcery-speed activation. */
 export function canActivateUltimate(s, side) {
-  if (s.winner) return false;
-  if (s.active !== side || s.phase !== "main") return false;
-  if (s.stack.length || s.priority) return false;
+  return ultimateBlockReason(s, side) === null;
+}
+
+/* When an ultimate cannot be fired, return a short Italian message
+   explaining WHY (used by the UI to spell it out on the button —
+   players were clicking and seeing nothing happen). Returns null when
+   the ult is ready to go. */
+export function ultimateBlockReason(s, side) {
+  if (!s) return "Partita non pronta.";
+  if (s.winner) return "Partita conclusa.";
   const p = s.players[side];
-  if (!hasClass(p)) return false;
-  if (!p.perks.ultimateId) return false;
-  if (p.perks.ultimateUsed) return false;
-  return true;
+  if (!hasClass(p))      return "Nessuna classe attiva.";
+  if (!p.perks.ultimateId) return "Sblocca al livello 5.";
+  if (p.perks.ultimateUsed) return "Già usata.";
+  if (s.active !== side) return "Solo nel tuo turno.";
+  if (s.phase !== "main") return "Solo in fase principale.";
+  if (s.stack.length)    return "Aspetta che la pila si risolva.";
+  if (s.priority)        return "Risolvi prima la pila.";
+  return null;
 }
 
 /* Fire the lv-5 ultimate. Each class+via has its own resolution. */
@@ -366,6 +408,49 @@ export function activateUltimate(state, side) {
       logMsg(s, side, `☠️ Apocalisse: nessuna creatura nemica è caduta.`);
     }
     checkWin(s);
+  } else if (id === "assassinio") {
+    // Ladro-Assassino lv5: outright destroy the foe's strongest creature.
+    // Hexproof/shield cannot save it (this is a direct removal effect).
+    const foe = opp(side);
+    let best = null, bestScore = -1;
+    for (const cr of s.players[foe].battlefield) {
+      const st = effStats(s, foe, cr);
+      const score = st.power * 100 + st.toughness;
+      if (score > bestScore) { bestScore = score; best = cr; }
+    }
+    if (best) {
+      best.damage = 9999;
+      best.shield = false;
+      const card = getCard(best.cardId);
+      logMsg(s, side, `🗡️ Assassinio: ${card.name} viene eliminato silenziosamente.`);
+      resolveDeaths(s);
+      checkWin(s);
+    } else {
+      logMsg(s, side, `🗡️ Assassinio: nessuna creatura da colpire.`);
+    }
+  } else if (id === "furto_perfetto") {
+    // Ladro-Thief lv5: draw 3 cards.
+    let drew = 0;
+    for (let i = 0; i < 3; i++) { if (drawOne(s, side, true)) drew++; }
+    logMsg(s, side, `🎴 Furto Perfetto: ${p.name} pesca ${drew} carte.`);
+  } else if (id === "risveglio_foresta") {
+    // Druido-Terra lv5: all your creatures +2/+2 and Trample until EOT.
+    for (const cr of p.battlefield) {
+      cr.tempP = (cr.tempP || 0) + 2;
+      cr.tempT = (cr.tempT || 0) + 2;
+      cr.tempKw = [...(cr.tempKw || []), "trample"];
+    }
+    p.perks.ultimateActive = true;
+    logMsg(s, side, `🌲 Risveglio della Foresta: i tuoi alleati ruggiscono!`);
+  } else if (id === "forma_predatore") {
+    // Druido-Luna lv5: all your creatures +3/+3 and Trample until EOT.
+    for (const cr of p.battlefield) {
+      cr.tempP = (cr.tempP || 0) + 3;
+      cr.tempT = (cr.tempT || 0) + 3;
+      cr.tempKw = [...(cr.tempKw || []), "trample"];
+    }
+    p.perks.ultimateActive = true;
+    logMsg(s, side, `🐅 Forma del Predatore: le tue creature diventano belve!`);
   } else {
     logMsg(s, side, `${p.name} prepara la sua ultimate.`);
   }
@@ -555,7 +640,11 @@ function startTurn(s, side, isGameStart) {
   // ── CLASS SYSTEM: upkeep XP tick, slot generation, perk hooks ──
   if (hasClass(p)) {
     // reset per-turn flags from the previous round
-    p.turnFlags = { firstCreaturePlayed: false };
+    p.turnFlags = {
+      firstCreaturePlayed: false,
+      firstReactionPlayed: false,
+      landsPlayedThisTurn: 0,
+    };
     // gain tier-1 slots (1 base + perk extra), capped by class
     const grant1 = 1 + (p.perks.extraSlot1PerTurn || 0);
     p.slots[1] = Math.min(p.slotCap[1], (p.slots[1] || 0) + grant1);
@@ -628,7 +717,11 @@ export function canPlayLand(s, side, instId) {
   if (s.winner || s.active !== side || s.phase !== "main") return false;
   if (s.stack.length || s.priority) return false; // sorcery speed only
   const p = s.players[side];
-  if (p.playedLand) return false;
+  // Druido-Terra lv2 "Crescita Naturale" allows +N extra lands/turn.
+  // Without the perk we keep the classic 1-land-per-turn rule.
+  const cap = 1 + (hasClass(p) ? (p.perks.extraLandPerTurn || 0) : 0);
+  const played = hasClass(p) ? (p.turnFlags.landsPlayedThisTurn || 0) : (p.playedLand ? 1 : 0);
+  if (played >= cap) return false;
   const hc = handCard(s, side, instId);
   if (!hc) return false;
   const card = getCard(hc.cardId);
@@ -829,6 +922,9 @@ export function playLand(state, side, instId) {
     tapped: false,
   });
   p.playedLand = true;
+  if (hasClass(p)) {
+    p.turnFlags.landsPlayedThisTurn = (p.turnFlags.landsPlayedThisTurn || 0) + 1;
+  }
   fx(s, { kind: "play", side, cardId: card.id, into: "lands" });
   logMsg(s, side, `${p.name} gioca ${card.name}.`);
   return s;
@@ -865,6 +961,11 @@ export function playCard(state, side, instId, target = null) {
       if (!p.turnFlags.firstCreaturePlayed) {
         cr.plusP += (p.perks.firstCreatureBuffP || 0);
         cr.plusT += (p.perks.firstCreatureBuffT || 0);
+        // Ladro-Thief lv3 "Eclissi": first creature each turn gains Flying.
+        // Stored on the instance (extraKw) so combat checks see it.
+        if (p.perks.firstCreatureFlying > 0) {
+          cr.extraKw = [...(cr.extraKw || []), "flying"];
+        }
         p.turnFlags.firstCreaturePlayed = true;
       }
     }
@@ -890,13 +991,25 @@ export function playCard(state, side, instId, target = null) {
     logMsg(s, side, `${p.name} attiva ${card.name}.`);
   } else {
     // SPELL → goes on the stack; the opponent gets a chance to respond
-    s.stack.push({ uid: newInst(s), side, cardId: card.id, target });
+    // Track "first reaction this turn" so Ladro-Assassino lv2 can boost
+    // the FIRST instant only. The tag rides along on the stack item.
+    let firstReaction = false;
+    if (hasClass(p) && card.speed === "instant" && !p.turnFlags.firstReactionPlayed) {
+      firstReaction = true;
+      p.turnFlags.firstReactionPlayed = true;
+    }
+    s.stack.push({ uid: newInst(s), side, cardId: card.id, target, firstReaction });
     s.priority = opp(side);
     s.passes = 0;
     fx(s, { kind: "stack", side, cardId: card.id });
     logMsg(s, side, `${p.name} lancia ${card.name} (in pila).`);
     // XP: every spell at INSTANT speed (a "reazione") feeds the meter
     if (card.speed === "instant") gainXp(s, side, 1, "reaction");
+    // Ladro-Thief lv4 "Furto": each reaction you cast also draws a card
+    if (hasClass(p) && card.speed === "instant" && p.perks.onReactionDraw > 0) {
+      for (let i = 0; i < p.perks.onReactionDraw; i++) drawOne(s, side, false);
+      logMsg(s, side, `💎 Furto: ${p.name} pesca ${p.perks.onReactionDraw} carta.`);
+    }
   }
   return s;
 }
@@ -909,7 +1022,9 @@ export function stackTop(s) {
 }
 
 /* a stack item is either a spell card or an Element Power.
-   This returns a uniform { effect, element, name } view. */
+   This returns a uniform { effect, element, name, … } view. The
+   `firstReaction` flag propagates from the stack item so the resolver
+   can apply Ladro-Assassino lv2 to ONLY the first instant of the turn. */
 function stackSpell(item) {
   if (item.power) {
     const P = ELEMENT_POWERS[item.power];
@@ -918,7 +1033,11 @@ function stackSpell(item) {
       : null;
   }
   const c = getCard(item.cardId);
-  return c ? { effect: c.effect, element: c.element, name: c.name } : null;
+  return c ? {
+    effect: c.effect, element: c.element, name: c.name,
+    speed: c.speed || "sorcery",
+    firstReaction: !!item.firstReaction,
+  } : null;
 }
 
 function resolveTop(s) {
@@ -988,11 +1107,22 @@ function applySpell(s, side, card, target) {
   const e = card.effect;
   const me = s.players[side];
   if (e.kind === "damage") {
+    // Bonuses to single-target damage spells:
+    //   • Ladro-Assassino lv3 "Veleno Sottile": every single-target dmg +N
+    //   • Ladro-Assassino lv2 "Affondo Letale": FIRST reaction this turn +N
+    let extra = 0;
+    if (hasClass(me)) {
+      extra += me.perks.singleTargetDmgBonus || 0;
+      if (card.firstReaction && card.speed === "instant") {
+        extra += me.perks.firstReactionDmgBonus || 0;
+      }
+    }
+    const dmg = e.amount + extra;
     if (target && target.type === "hero") {
-      damageHero(s, target.side, e.amount, card.element);
+      damageHero(s, target.side, dmg, card.element);
     } else if (target && target.type === "creature") {
       const f = findCreature(s, target.instId);
-      if (f) damageCreature(s, f.side, f.creature, e.amount, card.element);
+      if (f) damageCreature(s, f.side, f.creature, dmg, card.element);
     }
   } else if (e.kind === "aoe_enemy") {
     const foe = opp(side);
@@ -1219,13 +1349,16 @@ export function declareAttackers(state, side, attackerIds) {
   return s;
 }
 
-/* can `blk` legally block `atk` (evasion keywords)? */
+/* can `blk` legally block `atk` (evasion keywords)? Uses crKw so that
+   granted keywords (e.g. Ladro-Thief's "first creature gains Flying")
+   are honoured alongside intrinsic ones. */
 function canBlock(s, atkSide, atk, blk) {
+  const defSide = opp(atkSide);
   if (kw(atk.cardId, "unblockable")) return false;
   if (
-    kw(atk.cardId, "flying") &&
-    !kw(blk.cardId, "flying") &&
-    !kw(blk.cardId, "reach")
+    crKw(s, atkSide, atk, "flying") &&
+    !crKw(s, defSide, blk, "flying") &&
+    !crKw(s, defSide, blk, "reach")
   )
     return false;
   return true;
@@ -1369,11 +1502,16 @@ function resolveCombatInternal(s) {
   }
 
   // two ordered passes: First Strike, then the rest
+  const atkP = s.players[atkSide];
+  // Ladro-Assassino lv4 "Colpo nel Buio": ALL your creatures hit harder
+  // in combat. Folded into aPow up front so the trample / blocker math
+  // stays consistent.
+  const combatBonus = hasClass(atkP) ? (atkP.perks.creatureCombatBonus || 0) : 0;
   const runPass = (firstStrike) => {
     for (const { atkId, blkIds } of pairs) {
       const a = aliveA(atkId);
       if (!a) continue;
-      const aPow = effStats(s, atkSide, a).power;
+      const aPow = effStats(s, atkSide, a).power + combatBonus;
       const aFS = kw(a.cardId, "firststrike");
       const dt = kw(a.cardId, "deathtouch");
       const blockers = blkIds.map((id) => aliveD(id)).filter(Boolean);
@@ -1393,7 +1531,7 @@ function resolveCombatInternal(s) {
             strikeCreature(s, atkSide, a, defSide, b, deal);
             pow -= deal;
           }
-          if (kw(a.cardId, "trample") && pow > 0)
+          if (crKw(s, atkSide, a, "trample") && pow > 0)
             strikeHero(s, atkSide, a, defSide, Math.min(aPow, pow));
         }
         // every blocker strikes back at the attacker
@@ -1403,7 +1541,7 @@ function resolveCombatInternal(s) {
         }
       } else if (wasBlocked) {
         // all blockers died first — only Travolgere gets through
-        if (kw(a.cardId, "trample") && aFS === firstStrike)
+        if (crKw(s, atkSide, a, "trample") && aFS === firstStrike)
           strikeHero(s, atkSide, a, defSide, aPow);
       } else if (aFS === firstStrike) {
         strikeHero(s, atkSide, a, defSide, aPow);
@@ -1464,6 +1602,7 @@ export function endTurn(state, side) {
       cr.damage = 0;
       cr.tempP = 0; // temporary pumps wear off
       cr.tempT = 0;
+      cr.tempKw = []; // one-turn granted keywords (Druido ultimates etc.)
     }
 
   const next = opp(side);

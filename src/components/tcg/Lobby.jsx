@@ -1,11 +1,14 @@
 /* ============================================================
    Lobby — PvP matchmaking. Live challenge list, create / accept,
    "waiting for opponent" with cancel, online count.
+   Before a challenge is created or accepted we open ClassPicker
+   for the player to pick a VIA (the class is fixed by starter).
    ============================================================ */
 import React, { useEffect, useState, useRef } from "react";
 import {
   watchLobby, createChallenge, cancelChallenge, acceptChallenge,
 } from "../../tcg/net.js";
+import ClassPicker from "./ClassPicker.jsx";
 
 function timeAgo(ts) {
   const ms = ts && ts.toMillis ? Date.now() - ts.toMillis() : 0;
@@ -14,12 +17,16 @@ function timeAgo(ts) {
   return `${Math.floor(s / 60)}m fa`;
 }
 
-export default function Lobby({ user, name, deck, cover, onEnterMatch, onBack }) {
+export default function Lobby({
+  user, name, deck, cover, klass, onEnterMatch, onBack,
+}) {
   const [open, setOpen] = useState([]);
   const [online, setOnline] = useState(0);
   const [myChallengeId, setMyChallengeId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // class+via picker state — { mode: "create" | "accept", target?: m }
+  const [picking, setPicking] = useState(null);
   const myIdRef = useRef(null);
 
   useEffect(() => {
@@ -39,15 +46,32 @@ export default function Lobby({ user, name, deck, cover, onEnterMatch, onBack })
     return unsub;
   }, [user.uid, onEnterMatch]);
 
-  const handleCreate = async () => {
+  /* Two-step flows: open the picker first, then commit the actual
+     network action with the chosen via. */
+  const handleCreate = () => setPicking({ mode: "create" });
+  const handleAccept = (m) => setPicking({ mode: "accept", target: m });
+
+  const confirmPick = async (classChoice) => {
+    if (!picking) return;
+    const mode = picking.mode;
+    const target = picking.target;
+    setPicking(null);
     setBusy(true);
     setErr("");
     try {
-      const id = await createChallenge(user.uid, name, deck, cover);
-      myIdRef.current = id;
-      setMyChallengeId(id);
+      if (mode === "create") {
+        const id = await createChallenge(user.uid, name, deck, cover, classChoice);
+        myIdRef.current = id;
+        setMyChallengeId(id);
+      } else {
+        const id = await acceptChallenge(target, user.uid, name, deck, cover, classChoice);
+        if (id) onEnterMatch(id);
+        else setErr("Sfida non più disponibile.");
+      }
     } catch {
-      setErr("Impossibile creare la sfida.");
+      setErr(mode === "create"
+        ? "Impossibile creare la sfida."
+        : "Impossibile accettare la sfida.");
     }
     setBusy(false);
   };
@@ -58,18 +82,15 @@ export default function Lobby({ user, name, deck, cover, onEnterMatch, onBack })
     setMyChallengeId(null);
   };
 
-  const handleAccept = async (m) => {
-    setBusy(true);
-    setErr("");
-    try {
-      const id = await acceptChallenge(m, user.uid, name, deck, cover);
-      if (id) onEnterMatch(id);
-      else setErr("Sfida non più disponibile.");
-    } catch {
-      setErr("Impossibile accettare la sfida.");
-    }
-    setBusy(false);
-  };
+  if (picking) {
+    return (
+      <ClassPicker
+        lockedClass={klass || null}
+        onConfirm={confirmPick}
+        onBack={() => setPicking(null)}
+      />
+    );
+  }
 
   if (myChallengeId) {
     return (

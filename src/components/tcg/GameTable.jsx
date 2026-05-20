@@ -25,7 +25,7 @@ import {
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
   attunedPowers, canUsePower, powerTargets, castElementPower,
-  legalBlockers, activateUltimate, canActivateUltimate,
+  legalBlockers, activateUltimate, canActivateUltimate, ultimateBlockReason,
 } from "../../tcg/engine.js";
 import ClassPanel from "./ClassPanel.jsx";
 import {
@@ -600,6 +600,8 @@ export default function GameTable({
           applyState(playCard(s, "p1", act.instId, act.target));
         else if (act.type === "power")
           applyState(castElementPower(s, "p1", act.el, act.target));
+        else if (act.type === "ultimate")
+          applyState(activateUltimate(s, "p1"));
         else if (act.type === "attack")
           applyState(declareAttackers(s, "p1", act.attackerIds));
         else if (act.type === "discard")
@@ -1392,6 +1394,7 @@ export default function GameTable({
           player={me}
           isMe={true}
           canUseUlt={canActivateUltimate(state, mySide)}
+          ultBlockedReason={ultimateBlockReason(state, mySide)}
           onActivateUltimate={() => applyState(activateUltimate(state, mySide))}
         />
       </div>

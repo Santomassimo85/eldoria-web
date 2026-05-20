@@ -14,7 +14,7 @@
 import { getCard, ELEMENTS, ELEMENT_POWERS } from "./cards.js";
 import {
   effStats, canPlay, canPlayLand, spellTargets, legalAttackers, opp,
-  HAND_CAP, attunedPowers, canUsePower,
+  HAND_CAP, attunedPowers, canUsePower, canActivateUltimate,
 } from "./engine.js";
 
 const creatureValue = (s, side, cr) => {
@@ -186,6 +186,95 @@ function aiPickPower(s, side) {
   return null;
 }
 
+/* Decide whether the AI should fire its ultimate THIS turn. Each ult
+   has a different "good time" — we score them all and only commit when
+   the score crosses a threshold. Returns true to fire, false to skip.
+
+   Heuristics, per ult:
+     aether_surge        — fire when you have ≥2 castable spells in hand
+     risveglio_ancestrale— fire when graveyard has a creature ≥cmc 4
+     esplosione_vulcanica— fire when 3+ enemy creatures OR 3 dmg = lethal
+     unisono_acciaio     — fire when ≥2 untapped/usable attackers and
+                            total power ≥ foe_hp/2
+     resurrezione_divina — fire when own hp ≤ 14
+     apocalisse          — fire when ≥3 enemy creatures of toughness ≤ 4
+     assassinio          — fire when foe has a creature with power ≥ 4
+                            or toughness ≥ 5
+     furto_perfetto      — fire when hand size ≤ 3
+     risveglio_foresta   — fire when ≥3 own creatures and not in lethal
+     forma_predatore     — same as above (slightly higher buff)         */
+function shouldFireUltimate(s, side) {
+  if (!canActivateUltimate(s, side)) return false;
+  const p = s.players[side];
+  const id = p.perks.ultimateId;
+  if (!id) return false;
+  const foe = opp(side);
+  const me = p;
+  const foeP = s.players[foe];
+  const myCrs = me.battlefield;
+  const foeCrs = foeP.battlefield;
+  const myHp = effHp(me);
+  const foeHp = effHp(foeP);
+
+  if (id === "aether_surge") {
+    // count playable spells in hand
+    const spells = me.hand.filter((h) => {
+      const c = getCard(h.cardId);
+      return c && c.type === "spell";
+    });
+    return spells.length >= 2;
+  }
+  if (id === "risveglio_ancestrale") {
+    return me.graveyard.some((cid) => {
+      const c = getCard(cid);
+      return c && c.type === "creature" && (c.cmc || 0) >= 4;
+    });
+  }
+  if (id === "esplosione_vulcanica") {
+    if (foeHp <= 3) return true; // lethal hero ping
+    let killable = 0;
+    for (const cr of foeCrs)
+      if (effStats(s, foe, cr).toughness <= 5) killable += 1;
+    return killable >= 3 || (killable >= 2 && foeHp <= 8);
+  }
+  if (id === "unisono_acciaio") {
+    const usable = myCrs.filter((c) => !c.tapped || c.sick);
+    if (usable.length < 2) return false;
+    const totalPow = usable.reduce(
+      (a, c) => a + effStats(s, side, c).power + 2, 0
+    );
+    return totalPow >= foeHp / 2 + 4;
+  }
+  if (id === "resurrezione_divina") {
+    return myHp <= 14;
+  }
+  if (id === "apocalisse") {
+    let killable = 0;
+    for (const cr of foeCrs)
+      if (effStats(s, foe, cr).toughness <= 4) killable += 1;
+    return killable >= 3;
+  }
+  if (id === "assassinio") {
+    for (const cr of foeCrs) {
+      const st = effStats(s, foe, cr);
+      if (st.power >= 4 || st.toughness >= 5) return true;
+    }
+    return false;
+  }
+  if (id === "furto_perfetto") {
+    return me.hand.length <= 3;
+  }
+  if (id === "risveglio_foresta" || id === "forma_predatore") {
+    if (myCrs.length < 3) return false;
+    // skip if board is already a stomp (don't waste it)
+    const totalPow = myCrs.reduce(
+      (a, c) => a + effStats(s, side, c).power, 0
+    );
+    return totalPow >= 4 && foeHp > 8;
+  }
+  return false;
+}
+
 export function nextAction(s, side) {
   if (s.winner || s.active !== side || s.phase !== "main") return { type: "end" };
 
@@ -195,6 +284,11 @@ export function nextAction(s, side) {
     if (landInst && canPlayLand(s, side, landInst))
       return { type: "land", instId: landInst };
   }
+
+  // 1.5) ultimate? Fired BEFORE plays/attacks so the buff/wipe effects
+  // can shape the rest of the turn (e.g. Esplosione Vulcanica clears
+  // blockers before the swing, Aether Surge frees up the next casts).
+  if (shouldFireUltimate(s, side)) return { type: "ultimate" };
 
   // 2) best beneficial, affordable play
   let best = null;

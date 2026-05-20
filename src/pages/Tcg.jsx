@@ -337,6 +337,7 @@ export default function Tcg() {
           name={pName}
           deck={playableDeck(profile)}
           cover={profile?.cover || "nature"}
+          klass={profile?.starterClass || null}
           onEnterMatch={enterMatch}
           onBack={goMenu}
         />

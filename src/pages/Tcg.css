@@ -2042,29 +2042,51 @@
 .tcg-slots__lock { font-size: 9px; }
 
 /* ── Ultimate button ── */
+.tcg-ult-wrap { margin-top: 4px; }
 .tcg-ult {
-  margin-top: 2px;
   width: 100%;
-  padding: 5px 6px;
+  padding: 7px 8px;
   border-radius: 8px;
   background: linear-gradient(180deg, #4a2a86, #2a164a);
   color: #ffe9a8;
-  font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  font-weight: 700; letter-spacing: .3px;
   border: 1.5px solid #b58cff;
   box-shadow: 0 0 10px rgba(176,140,255,.4);
   cursor: pointer;
   transition: filter .15s, transform .1s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  text-align: center;
+}
+.tcg-ult__lbl  { font-size: 12px; line-height: 1.1; }
+.tcg-ult__sub  {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: .75;
+  letter-spacing: .3px;
+  font-style: italic;
 }
 .tcg-ult:hover:not(:disabled) { filter: brightness(1.15); }
 .tcg-ult:active:not(:disabled) { transform: translateY(1px); }
-.tcg-ult:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.tcg-ult:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  background: linear-gradient(180deg, #2a2436, #1a1422);
+  border-color: rgba(176,140,255,.35);
+  color: #b6a8c8;
+  box-shadow: none;
+}
 .tcg-ult.is-active {
   animation: tcg-pulse 0.9s ease-in-out infinite;
   background: linear-gradient(180deg, #ff9, #ffd66b);
   color: #1a0a0a;
   border-color: #fff;
 }
-.tcg-ult.is-used { opacity: .35; pointer-events: none; }
+.tcg-ult.is-used {
+  opacity: .35;
+  pointer-events: none;
+  background: linear-gradient(180deg, #353044, #1a1422);
+  text-decoration: line-through;
+}
 
 /* ── Level-up toast ── */
 .tcg-lvl-toast {
@@ -2239,6 +2261,43 @@
   border: 1.5px solid rgba(255,255,255,.6);
   text-shadow: 0 1px 1px #000;
 }
+
+/* ── Manual: class list ── */
+.tcg-doc__classes {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 12px;
+}
+.tcg-doc__class {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255,255,255,.1);
+}
+.tcg-doc__class:last-child { border-bottom: none; }
+.tcg-doc__class-ico { font-size: 22px; line-height: 1; }
+.tcg-doc__class-name { font-size: 14px; }
+.tcg-doc__via {
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ── Spell slot tier badge on cards (S1/S2/S3) ── */
+.tcg-card__slot {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  vertical-align: middle;
+}
+.tcg-card__slot--lv1 { color: #9ecf6a; }
+.tcg-card__slot--lv2 { color: #6ab8e0; }
+.tcg-card__slot--lv3 { color: #e07ab8; }
 
 /* ── Starter Select: tier + colour dots on each class card ── */
 .tcg-starter__tier {

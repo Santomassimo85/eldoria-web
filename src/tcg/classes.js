@@ -247,9 +247,102 @@ export const CLASS_PROGRESSION = {
             { ultimate: "unisono_acciaio" }),
     },
   },
-  chierico:   { vita: {}, morte: {} },
-  ladro:      { assassino: {}, thief: {} },
-  druido:     { terra: {}, luna: {} },
+  chierico: {
+    /* ⚪ Luce — Dominio della Vita: cure, ward, sostegno */
+    vita: {
+      2: lv(2, "Benedizione", "✨",
+            "Recuperi 2 PV a ogni inizio turno.",
+            { extraHealPerTurn: 2 }),
+      3: lv(3, "Protezione Sacra", "🛡️",
+            "I tuoi spell di cura recuperano +2 PV.",
+            { healBonus: 2 }),
+      4: lv(4, "Aura della Vita", "💗",
+            "Ogni volta che giochi una creatura, recuperi 2 PV.",
+            { onCreaturePlayHeal: 2 }),
+      5: lv(5, "Resurrezione Divina", "🌟",
+            "ULTIMATE — Recuperi 15 PV; l'eccedenza diventa PV temporanei (ward).",
+            { ultimate: "resurrezione_divina" }),
+    },
+    /* ⚫ Ombra — Dominio della Morte: drain, vampirismo */
+    morte: {
+      2: lv(2, "Tocco Necrotico", "🌑",
+            "Quando una creatura nemica muore, recuperi 1 PV.",
+            { onKillHeal: 1 }),
+      3: lv(3, "Vampirismo", "🩸",
+            "Tutte le tue creature ottengono Legame Vitale.",
+            { creatureLifelink: 1 }),
+      4: lv(4, "Maledizione", "💀",
+            "Quando una creatura nemica muore, l'eroe avversario subisce 1 danno.",
+            { onEnemyDeathPing: 1 }),
+      5: lv(5, "Apocalisse", "☠️",
+            "ULTIMATE — Infliggi 4 danni a tutte le creature nemiche e recuperi 2 PV per ciascuna distrutta dall'effetto.",
+            { ultimate: "apocalisse" }),
+    },
+  },
+  ladro: {
+    /* ⚫ Ombra — Assassino: burst single-target, evasione */
+    assassino: {
+      2: lv(2, "Affondo Letale", "🗡️",
+            "La prima reazione (instant) lanciata ogni turno infligge +1 danno.",
+            { firstReactionDmgBonus: 1 }),
+      3: lv(3, "Veleno Sottile", "🐍",
+            "I tuoi spell di danno a bersaglio singolo infliggono +1 danno.",
+            { singleTargetDmgBonus: 1 }),
+      4: lv(4, "Colpo nel Buio", "🌑",
+            "Le tue creature infliggono +1 danno in combattimento.",
+            { creatureCombatBonus: 1 }),
+      5: lv(5, "Assassinio", "🗡",
+            "ULTIMATE — Distruggi la creatura nemica più potente (ignora scudi).",
+            { ultimate: "assassinio" }),
+    },
+    /* 🔵 Acqua — Thief: tempo, swarm, draw */
+    thief: {
+      2: lv(2, "Mani Veloci", "🤲",
+            "Pesca +1 carta a inizio turno.",
+            { extraDrawPerTurn: 1 }),
+      3: lv(3, "Eclissi", "🌊",
+            "La prima creatura giocata ogni turno entra con Volare.",
+            { firstCreatureFlying: 1 }),
+      4: lv(4, "Furto", "💎",
+            "Ogni volta che lanci una reazione, peschi 1 carta.",
+            { onReactionDraw: 1 }),
+      5: lv(5, "Furto Perfetto", "🎴",
+            "ULTIMATE — Peschi 3 carte all'istante.",
+            { ultimate: "furto_perfetto" }),
+    },
+  },
+  druido: {
+    /* 🟢 Natura — Circolo della Terra: ramp e creature massicce */
+    terra: {
+      2: lv(2, "Crescita Naturale", "🌱",
+            "Puoi giocare 1 terra extra ogni turno.",
+            { extraLandPerTurn: 1 }),
+      3: lv(3, "Foresta Antica", "🌳",
+            "Le tue creature con CMC ≥ 4 costano −1 mana generico.",
+            { bigCreatureDiscount: 1 }),
+      4: lv(4, "Spirito della Terra", "🍃",
+            "Tutte le tue creature ottengono +1/+1 permanente.",
+            { creatureBuffP: 1, creatureBuffT: 1 }),
+      5: lv(5, "Risveglio della Foresta", "🌲",
+            "ULTIMATE — Tutte le tue creature ottengono +2/+2 e Travolgere fino a fine turno.",
+            { ultimate: "risveglio_foresta" }),
+    },
+    /* 🔵 Acqua — Circolo della Luna: trasformazione e fluidità */
+    luna: {
+      2: lv(2, "Forma Animale", "🐺",
+            "La prima creatura giocata ogni turno entra con +1/+1.",
+            { firstCreatureBuffP: 1, firstCreatureBuffT: 1 }),
+      3: lv(3, "Marea Crescente", "🌙",
+            "Recuperi 1 PV a ogni inizio turno.",
+            { extraHealPerTurn: 1 }),
+      4: lv(4, "Furia Selvaggia", "🐻",
+            "Tutte le tue creature ottengono Travolgere.",
+            { creatureTrample: 1 }),
+      5: lv(5, "Forma del Predatore", "🐅",
+            "ULTIMATE — Tutte le tue creature ottengono +3/+3 e Travolgere fino a fine turno.",
+            { ultimate: "forma_predatore" }),
+    },
+  },
 };
 
 /* Look up a single level's reward. Returns null if no reward exists
@@ -290,6 +383,14 @@ export function initClassState(klass, via) {
       onKillHeal: 0,             // when an enemy creature dies, heal N
       onEnemyDeathPing: 0,       // when an enemy creature dies, ping foe hero
       creatureLifelink: 0,       // your creatures gain Lifelink (treated as ≥1)
+      creatureTrample: 0,        // your creatures gain Trample (passive aura)
+      creatureCombatBonus: 0,    // your creatures' combat damage +N
+      firstReactionDmgBonus: 0,  // first instant damage spell each turn +N
+      singleTargetDmgBonus: 0,   // single-target damage spells +N (any speed)
+      onReactionDraw: 0,         // draw N when you cast an instant
+      firstCreatureFlying: 0,    // first creature each turn enters with Flying
+      extraLandPerTurn: 0,       // play +N extra lands per turn
+      bigCreatureDiscount: 0,    // creatures with cmc ≥ 4 cost −N generic
       extraDrawPerTurn: 0,
       casterDiscountBonus: 0,
       ultimateId: null,          // set when lv5 reached
@@ -299,6 +400,8 @@ export function initClassState(klass, via) {
     /* per-turn flags that the engine reads then resets at end of turn */
     turnFlags: {
       firstCreaturePlayed: false,
+      firstReactionPlayed: false,
+      landsPlayedThisTurn: 0,
     },
   };
 }

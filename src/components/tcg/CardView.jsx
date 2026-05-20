@@ -9,6 +9,7 @@ import {
   ELEMENT_PIP, ELEMENT_LABEL, RARITY_COLOR, RARITY_LABEL, KEYWORDS,
   DICE_STATS, statDiceLabel,
 } from "../../tcg/cards.js";
+import { spellSlotTier } from "../../tcg/classes.js";
 
 /* small icon + label per card type (instants split out from sorceries) */
 function typeMeta(card) {
@@ -222,6 +223,17 @@ export default function CardView({
             {typeMeta(card).icon}
           </span>
           {elLabel}
+          {/* Spell slot tier badge — only on spells (creatures/artifacts/
+              lands don't use slots). Helps the player understand WHY a
+              card may be unplayable even when mana is available. */}
+          {card.type === "spell" && (
+            <span
+              className={`tcg-card__slot tcg-card__slot--lv${spellSlotTier(card.cmc || 0)}`}
+              title={`Richiede uno spell slot di tier ${spellSlotTier(card.cmc || 0)}`}
+            >
+              S{spellSlotTier(card.cmc || 0)}
+            </span>
+          )}
         </div>
 
         {keywords.length > 0 && (
