@@ -40,7 +40,7 @@ export default function Crafting() {
         <div className="cr-hero-eyebrow">Manuale dell'Artigiano · Edizione del Maestro</div>
         <h1 className="cr-hero-title">
           <span className="cr-hero-icon">🔨</span>
-          Crafting di Eldoria
+          Crafting di Exanthia
           <span className="cr-hero-icon">⚗</span>
         </h1>
         <p className="cr-hero-tag">Sistema di Artigianato per D&D 5e</p>
@@ -236,7 +236,7 @@ export default function Crafting() {
       </section>
 
       <footer className="cr-footer">
-        <em>Buon crafting, artigiani di Eldoria.</em>
+        <em>Buon crafting, artigiani di Exanthia.</em>
       </footer>
     </section>
   );

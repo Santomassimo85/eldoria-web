@@ -277,7 +277,7 @@ function BestiariaShop({ uid }) {
 
       {/* How to earn points */}
       <h3 className="ph-shop-title">💰 Come guadagnare punti</h3>
-      <p className="ph-shop-sub">Tutti i modi per ottenere ✦ Punti Bestiario nel regno di Eldoria.</p>
+      <p className="ph-shop-sub">Tutti i modi per ottenere ✦ Punti Bestiario nel regno di Exanthia.</p>
       <div className="ph-earnings-grid">
         {POINT_SOURCE_ORDER.map(key => {
           const def = PET_POINT_SOURCES[key];

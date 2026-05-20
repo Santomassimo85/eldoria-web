@@ -58,7 +58,7 @@ export default function ModeSelect({
     <div className="tcg-menu">
       <div className="tcg-menu__head">
         <div>
-          <h1 className="tcg-title">Cronache di Eldoria</h1>
+          <h1 className="tcg-title">Cronache di Exanthia</h1>
           <p className="tcg-subtitle">Il gioco di carte dei Regni</p>
         </div>
         {loggedIn && (

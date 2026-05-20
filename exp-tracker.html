@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eldoria · Tabella EXP</title>
+  <title>Exanthia · Tabella EXP</title>
   <style>
     /* ==================================================
-       Eldoria — EXP Tracker (homebrew GDR companion)
+       Exanthia — EXP Tracker (homebrew GDR companion)
        Standalone HTML/CSS/JS · localStorage persistence
        ================================================== */
 
@@ -763,7 +763,7 @@
 <body>
 
   <header class="app-head">
-    <h1>⚔ Eldoria · Tabella EXP</h1>
+    <h1>⚔ Exanthia · Tabella EXP</h1>
     <p>Strumento homebrew per assegnare e tracciare l'esperienza dei giocatori</p>
   </header>
 
@@ -1047,7 +1047,7 @@
       { id: "m-surv",    group: "meta", icon: "🛡", name: "Sopravvivenza dura", xp: 100 },
     ];
 
-    const DEFAULT_INFO = `🏰 ELDORIA — FILOSOFIA EXP
+    const DEFAULT_INFO = `🏰 EXANTHIA — FILOSOFIA EXP
 
 Questa campagna è homebrew: nemici più forti, oggetti più generosi, e l'XP non viene solo dal combattimento. Il GDR conta tanto quanto i mostri uccisi.
 
@@ -1480,7 +1480,7 @@ Modifica questo testo come vuoi — viene salvato automaticamente.`;
        FOUNDRY EXPORT MACRO + IMPORT
        ============================================================ */
 
-    const FOUNDRY_MACRO_SRC = `// Foundry VTT macro · Eldoria EXP exporter
+    const FOUNDRY_MACRO_SRC = `// Foundry VTT macro · Exanthia EXP exporter
 // Crea una macro "Script" in Foundry e incolla questo codice.
 
 const players = game.actors
@@ -1505,7 +1505,7 @@ const players = game.actors
   });
 
 const json = JSON.stringify(players, null, 2);
-console.log("=== Eldoria EXP — Player Export ===\\n" + json);
+console.log("=== Exanthia EXP — Player Export ===\\n" + json);
 
 try {
   await navigator.clipboard.writeText(json);
@@ -1518,7 +1518,7 @@ ChatMessage.create({
   whisper: [game.user.id],
   content:
     \`<details open>
-       <summary><strong>📥 Eldoria EXP — \${players.length} giocator\${players.length === 1 ? "e" : "i"}</strong></summary>
+       <summary><strong>📥 Exanthia EXP — \${players.length} giocator\${players.length === 1 ? "e" : "i"}</strong></summary>
        <pre style="white-space:pre-wrap;font-size:0.78em;background:#fffaf0;border:1px solid #c9a961;border-radius:6px;padding:8px;">\${json.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>
      </details>\`,
 });`;

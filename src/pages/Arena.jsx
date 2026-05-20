@@ -623,6 +623,131 @@ const FONTE_DI_MAGIA_ACTION = {
 
 const CASTER_SKILLS = [];
 
+// ── AI OPPONENT (hard mode) ───────────────────────────────────────────────────
+// Players can spawn a 1v1 Sfida Libera against an AI bot when no human is
+// available. The AI rolls initiative and attacks the player each turn using a
+// fixed archetype. Combat logic lives in aiRollInitiative / aiPerformAttack
+// inside the Arena component (driven by a useEffect on the match owner's
+// client). The AI uses only basic weapon attacks — no spells, items, buffs.
+const AI_BOT_PREFIX = "AI_BOT_";
+
+const AI_HARD_PRESETS = [
+  {
+    archetype: "fighter-plate",
+    name: "🤖 Veterano d'Acciaio",
+    class: "Fighter",
+    // High STR, modest DEX, very high CON. Plate armour for max AC.
+    stats: { str: 5, dex: 1, con: 5, int: -1, wis: 1, cha: 0 },
+    armor: { name: "Piastre Intere", baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES" },
+    hasShield: null,
+    weapons: [{ name: "Spadone", hitBonus: 3, damage: "2d6", statKey: "str", type: "weapon", icon: "⚔", twoHanded: true }],
+    hp: 95,
+    items: { pozione_cura: 2 },
+  },
+  {
+    archetype: "barbarian-axe",
+    name: "🤖 Vargash il Sanguinario",
+    class: "Barbarian",
+    stats: { str: 5, dex: 3, con: 5, int: -1, wis: 0, cha: -1 },
+    armor: { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "💪", info: "Senza armatura · 10+DES+COS", unarmoredDefense: true },
+    hasShield: null,
+    weapons: [{ name: "Ascia Bipenne", hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🪓", twoHanded: true }],
+    hp: 105,
+    items: { pozione_cura: 1, bomba: 1 },
+  },
+  {
+    archetype: "ranger-longbow",
+    name: "🤖 Liriel Occhio d'Aquila",
+    class: "Ranger",
+    stats: { str: 1, dex: 5, con: 4, int: 0, wis: 4, cha: 0 },
+    armor: { name: "Cuoio Borchiato", baseAc: 14, maxDex: 2, hitPenalty: 0, icon: "⚙", info: "Borchiata · +DES max 2" },
+    hasShield: null,
+    weapons: [{ name: "Arco Lungo", hitBonus: 3, damage: "1d8", statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true }],
+    hp: 78,
+    items: { pozione_cura: 2 },
+  },
+  {
+    archetype: "rogue-twin",
+    name: "🤖 Vyra la Cuspide",
+    class: "Rogue",
+    stats: { str: 0, dex: 5, con: 4, int: 2, wis: 1, cha: 1 },
+    armor: { name: "Armatura di cuoio borchiato", baseAc: 12, maxDex: 99, hitPenalty: 0, icon: "👘", info: "Leggera · +DES pieno" },
+    hasShield: null,
+    // Rogue gets 3 attacks/turn — gets to swing both blades + one more.
+    weapons: [
+      { name: "Spada Corta", hitBonus: 3, damage: "1d6", statKey: "dex", type: "weapon", icon: "⚔", twoHanded: false },
+      { name: "Stocco",      hitBonus: 3, damage: "1d8", statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
+    ],
+    hp: 74,
+    items: { pozione_cura: 1, pozione_veleno: 1 },
+  },
+  {
+    archetype: "paladin-sword-shield",
+    name: "🤖 Sir Caedric il Giudice",
+    class: "Paladin",
+    stats: { str: 5, dex: 1, con: 4, int: 0, wis: 1, cha: 4 },
+    armor: { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante" },
+    hasShield: "metallo", // +2 AC
+    weapons: [{ name: "Spada Lunga", hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔", twoHanded: false }],
+    hp: 90,
+    items: { pozione_cura: 2 },
+  },
+];
+
+function makeAiSnapshotAndPlayer(matchSeed) {
+  const preset = AI_HARD_PRESETS[Math.floor(Math.random() * AI_HARD_PRESETS.length)];
+  const aiUid  = `${AI_BOT_PREFIX}${matchSeed}`;
+  const dexMod = preset.stats.dex;
+  const conMod = preset.stats.con;
+  const shieldAcBonus = preset.hasShield ? 2 : 0;
+  const finalAc = preset.armor.unarmoredDefense
+    ? 10 + dexMod + conMod + shieldAcBonus
+    : preset.armor.baseAc + Math.min(Math.max(dexMod, 0), preset.armor.maxDex) + shieldAcBonus;
+
+  // Item keys (for snapshot.selectedItemKeys) and itemUsesLeft map.
+  const itemEntries = Object.entries(preset.items || {}).filter(([, n]) => n > 0);
+  const selectedItemKeys = itemEntries.flatMap(([k, n]) => Array(n).fill(k));
+  const itemUsesLeft = Object.fromEntries(itemEntries);
+  const isPaladin = preset.class.toLowerCase().includes("paladin");
+
+  const snapshot = {
+    name:            preset.name,
+    image:           null,
+    class:           preset.class,
+    stats:           { ...preset.stats, maxHp: preset.hp, ac: finalAc },
+    selectedActions: preset.weapons.map(w => ({ ...w })),
+    hasWildShape:    false,
+    hasShield:       preset.hasShield,
+    selectedArmor:   { ...preset.armor },
+    selectedItemKeys,
+    arenaBuffs:      {},
+    titles:          [],
+    selectedPet:     null,
+    selectedDemon:   null,
+    selectedConstruct: null,
+    isAi:            true,
+    aiArchetype:    preset.archetype,
+  };
+  const playerObj = {
+    id:    aiUid,
+    name:  preset.name,
+    class: preset.class.toLowerCase(),
+    hp:    preset.hp,
+    maxHp: preset.hp,
+    init:  0,
+    itemUsesLeft,
+    // Paladins start with Lay of Hands pool = maxHp / 3, capped at 30.
+    layOfHandsPool: isPaladin ? Math.min(30, Math.floor(preset.hp / 3)) : 0,
+    equippedWeaponNames: preset.weapons.map(w => w.name),
+    // AI-specific tracking
+    aiAttacksMade: 0,
+    aiSecondWindUsed: false,
+    aiSurgeUsed: false,
+    isAi: true,
+  };
+  return { aiUid, snapshot, playerObj, archetype: preset.archetype };
+}
+
 // ── ITEMS ─────────────────────────────────────────────────────────────────────
 const ARENA_ITEMS = [
   { key: "pozione_cura",        name: "Pozione di Cura",        icon: "🧪", info: "Cura 2d12 · Passa il turno",                 damage: "2d12" },
@@ -1368,6 +1493,63 @@ export default function Arena() {
     return () => clearInterval(t);
   }, []);
 
+  // ── Active-fight UX: detect the user's current match so we can hoist it
+  // to the top, auto-scroll into it, and float a "your turn" pulse when
+  // the user scrolls away from the fight. ─────────────────────────────────
+  const myActiveMatchId = useMemo(() => {
+    if (!currentUser || !arenaMeta?.matches?.length) return null;
+    const phaseInCombat = arenaMeta.phase === "combat";
+    const m = arenaMeta.matches.find(mm =>
+      ((mm.kind === "fun") || phaseInCombat) &&
+      mm.players?.some(p => p.id === currentUser.uid) &&
+      mm.status !== "open" &&
+      mm.status !== "finished"
+    );
+    return m?.matchId || null;
+  }, [arenaMeta, currentUser]);
+
+  const isMyTurnInActive = useMemo(() => {
+    if (!myActiveMatchId || !currentUser) return false;
+    const m = arenaMeta?.matches?.find(mm => mm.matchId === myActiveMatchId);
+    return !!(m && m.turn === currentUser.uid);
+  }, [arenaMeta, myActiveMatchId, currentUser]);
+
+  // Auto-scroll into the fight the first time a new active match appears.
+  const lastScrolledMatchRef = useRef(null);
+  useEffect(() => {
+    if (!myActiveMatchId) { lastScrolledMatchRef.current = null; return; }
+    if (lastScrolledMatchRef.current === myActiveMatchId) return;
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById("arena-my-match");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        lastScrolledMatchRef.current = myActiveMatchId;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [myActiveMatchId]);
+
+  // Hide the floating pulse when the match is comfortably in view.
+  const [matchInView, setMatchInView] = useState(false);
+  useEffect(() => {
+    if (!myActiveMatchId) { setMatchInView(false); return; }
+    if (typeof IntersectionObserver === "undefined") return;
+    let cancelled = false;
+    let observer = null;
+    const trySetup = () => {
+      if (cancelled) return;
+      const el = document.getElementById("arena-my-match");
+      if (!el) { requestAnimationFrame(trySetup); return; }
+      observer = new IntersectionObserver(
+        ([entry]) => setMatchInView(entry.isIntersecting),
+        { rootMargin: "-20% 0px -55% 0px" }
+      );
+      observer.observe(el);
+    };
+    trySetup();
+    return () => { cancelled = true; observer?.disconnect(); };
+  }, [myActiveMatchId]);
+
   // Guardia anti–doppio click: impedisce che due attacchi/skill partano sulla stessa
   // istantanea di arenaMeta prima che updateDoc sia stato confermato da Firestore.
   // Senza, online (latenza > local) si possono accumulare clic che partono da uno
@@ -1383,8 +1565,10 @@ export default function Arena() {
   // ── Arena Libera (Fun) ────────────────────────────────────────────────────
   // Loadout context: "tournament" (default) o "fun" (sfida libera).
   // funAcceptMatchId: null se sto creando una sfida, matchId se sto accettando.
+  // aiMatchPending: true se il loadout sta preparando una sfida contro l'IA.
   const [loadoutContext, setLoadoutContext] = useState("tournament");
   const [funAcceptMatchId, setFunAcceptMatchId] = useState(null);
+  const [aiMatchPending, setAiMatchPending] = useState(false);
 
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
 
@@ -1870,6 +2054,41 @@ export default function Arena() {
         layOfHandsPool,
       };
 
+      if (aiMatchPending) {
+        // ── SFIDA L'IA: crea un match già pronto al lancio (initiative).
+        const matchId = `FUN_AI_${Date.now()}_${currentUser.uid}`;
+        const { aiUid, snapshot: aiSnap, playerObj: aiPlayerObj, archetype } = makeAiSnapshotAndPlayer(matchId);
+        const newMatch = {
+          matchId,
+          kind: "fun",
+          ai: true,
+          aiOwnerId: currentUser.uid,
+          aiId: aiUid,
+          aiArchetype: archetype,
+          challengerId: currentUser.uid,
+          opponentId: aiUid,
+          players: [playerObj, aiPlayerObj],
+          status: "initiative",
+          turn: null,
+          turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
+          logs: [
+            `🛡 ${snapshot.name || "?"} sfida ${aiSnap.name} — Hard Mode AI.`,
+            `⚡ Tirate iniziativa.`,
+          ],
+          winner: null,
+          participantsAwarded: [],
+          isFFA: false,
+          createdAt: new Date().toISOString(),
+        };
+        await updateDoc(doc(db, "arena_meta", "global"), {
+          matches: [...(arenaMeta.matches || []), newMatch],
+          [`characterSnapshots.${currentUser.uid}`]: snapshot,
+          [`characterSnapshots.${aiUid}`]: aiSnap,
+        });
+        cancelLoadout();
+        return;
+      }
+
       if (funAcceptMatchId) {
         // ACCETTA sfida esistente: aggiungo come secondo giocatore + parte iniziativa.
         const targetMatch = (arenaMeta.matches || []).find(m => m.matchId === funAcceptMatchId);
@@ -1950,6 +2169,7 @@ export default function Arena() {
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
     setLoadoutContext("tournament");
     setFunAcceptMatchId(null);
+    setAiMatchPending(false);
   };
 
   // ── ARENA LIBERA: open/cancel/abandon ─────────────────────────────────────
@@ -1959,6 +2179,17 @@ export default function Arena() {
     // Sovrascrivo il default "tournament" impostato da openLoadoutPicker.
     setLoadoutContext("fun");
     setFunAcceptMatchId(null);
+    setAiMatchPending(false);
+  };
+
+  // Solo-vs-AI: stesso loadout della Sfida Libera, ma genera un avversario
+  // gestito dal client. L'IA prende decisioni di combattimento sul tuo
+  // browser quando è il suo turno.
+  const openAiCreate = async () => {
+    await openLoadoutPicker();
+    setLoadoutContext("fun");
+    setFunAcceptMatchId(null);
+    setAiMatchPending(true);
   };
 
   const openFunAccept = async (matchId) => {
@@ -2441,6 +2672,328 @@ export default function Arena() {
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
+
+  // ── AI auto-actor ────────────────────────────────────────────────────────
+  // Drives an AI opponent (Sfida l'IA): rolls initiative + takes a weapon
+  // attack on its turn. Runs only on the AI match owner's client so a single
+  // browser controls the bot. Reads latest arenaMeta via a ref to avoid
+  // acting on stale state captured by setTimeout closures.
+  const arenaMetaRef = useRef(null);
+  useEffect(() => { arenaMetaRef.current = arenaMeta; }, [arenaMeta]);
+  const aiInFlightRef = useRef({});
+
+  const aiRollInitiative = async (matchId) => {
+    const meta = arenaMetaRef.current;
+    if (!meta) return;
+    const m = meta.matches?.find(mm => mm.matchId === matchId);
+    if (!m || m.status !== "initiative") return;
+    const aiId = m.aiId;
+    const aiSnap = meta.characterSnapshots?.[aiId];
+    if (!aiSnap || !aiId) return;
+    const aiPlayer = m.players?.find(p => p.id === aiId);
+    if (!aiPlayer || aiPlayer.init > 0) return;
+    const dex = aiSnap.stats?.dex ?? 0;
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    const roll = d20 + dex;
+    const updatedMatches = meta.matches.map(x => {
+      if (x.matchId !== matchId) return x;
+      const updatedPlayers = x.players.map(p =>
+        p.id === aiId ? { ...p, init: roll } : p
+      );
+      const allRolled = updatedPlayers.every(p => p.init > 0);
+      const sorted    = [...updatedPlayers].sort((a, b) => b.init - a.init);
+      return {
+        ...x,
+        players:     updatedPlayers,
+        status:      allRolled ? "active" : "initiative",
+        turn:        allRolled ? sorted[0].id : null,
+        turnExpiry:  allRolled
+          ? new Date(Date.now() + ARENA_TURN_DURATION).toISOString()
+          : (x.turnExpiry || new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString()),
+        fightStartAt: allRolled ? new Date().toISOString() : (x.fightStartAt || null),
+        logs: [...x.logs, `🎲 ${aiSnap.name} tira iniziativa: ${roll}`],
+      };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // Master AI turn handler — chains heal → first-turn buff → attack → Action
+  // Surge. Returns control to the human only when the AI exhausts all its
+  // action economy for the turn. Driven by the useEffect, which re-fires this
+  // each time the AI still has actions left and the match state changed.
+  const aiTakeAction = async (matchId) => {
+    const meta = arenaMetaRef.current;
+    if (!meta) return;
+    const m = meta.matches?.find(mm => mm.matchId === matchId);
+    if (!m || m.status !== "active") return;
+    const aiId = m.aiId;
+    if (!aiId || m.turn !== aiId) return;
+    const aiSnap = meta.characterSnapshots?.[aiId];
+    const aiPlayer = m.players.find(p => p.id === aiId);
+    const target = m.players.find(p => p.id !== aiId && p.hp > 0);
+    if (!aiSnap || !aiPlayer || aiPlayer.hp <= 0 || !target) return;
+    const targetSnap = meta.characterSnapshots?.[target.id];
+    if (!targetSnap) return;
+
+    const cls    = (aiSnap.class || "").toLowerCase();
+    const maxHp  = aiSnap.stats?.maxHp ?? aiPlayer.maxHp ?? 70;
+    const hpPct  = aiPlayer.hp / maxHp;
+    const usedSoFar = aiPlayer.multiActionsUsed ?? 0;
+    const isFirstAttackThisTurn = usedSoFar === 0;
+    const tsNow  = new Date().toISOString();
+
+    // ── BONUS-ACTION PHASE: heal when hurting (uses a Pozione di Cura), then
+    //    keep going with an attack. Bonus actions don't end the turn. ──
+    if (
+      isFirstAttackThisTurn &&
+      hpPct < 0.35 &&
+      (aiPlayer.itemUsesLeft?.pozione_cura ?? 0) > 0 &&
+      !aiPlayer.bonusActionUsed
+    ) {
+      const { total: heal, rolls: healRolls } = rollDmg("2d12");
+      const newHp = Math.min(maxHp, aiPlayer.hp + heal);
+      const healLog = {
+        pub: `🧪 ${aiSnap.name} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · bonus action`,
+        ts: tsNow,
+      };
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const players = x.players.map(p => {
+          if (p.id !== aiId) return p;
+          const newUses = { ...(p.itemUsesLeft || {}), pozione_cura: Math.max(0, (p.itemUsesLeft?.pozione_cura ?? 0) - 1) };
+          return { ...p, hp: newHp, itemUsesLeft: newUses, bonusActionUsed: true };
+        });
+        return { ...x, players, logs: [...x.logs, healLog] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return; // next tick of the useEffect will trigger the attack
+    }
+
+    // Pre-attack buff state to set on the AI's own player object (rage,
+    // hunter's mark, smite-style flags). Triggered on the first attack of
+    // the fight to mirror how human players burn their bonus action.
+    const buffPatch = {};
+    let preLog = null;
+    if (isFirstAttackThisTurn && (aiPlayer.aiBuffActivated !== true)) {
+      if (cls.includes("barbar") && !aiPlayer.rageTurns) {
+        buffPatch.rageTurns = 5;
+        buffPatch.aiBuffActivated = true;
+        preLog = { pub: `🔥 ${aiSnap.name} entra in Furia! (+2 danni e dimezza i danni fisici subiti per 5 turni)`, ts: tsNow };
+      } else if ((cls.includes("ranger") || cls.includes("cacciat")) && !aiPlayer.hunterMarkTurns) {
+        buffPatch.hunterMarkTurns = 5;
+        buffPatch.aiBuffActivated = true;
+        preLog = { pub: `🎯 ${aiSnap.name} marca ${target.name}! (+3 danni per 5 turni)`, ts: tsNow };
+      } else if (cls.includes("paladin")) {
+        // Paladin opens with Magic Detect/Aid bonus prep (+aid bonus on first hits).
+        buffPatch.aidBuff = 4;
+        buffPatch.aiBuffActivated = true;
+        preLog = { pub: `🙏 ${aiSnap.name} invoca un'aura di guida divina (+4 al prossimo colpo)`, ts: tsNow };
+      } else if (cls.includes("fighter")) {
+        // Fighter doesn't buff turn 1 — saves Action Surge for later.
+        buffPatch.aiBuffActivated = true;
+      }
+    }
+
+    // ── ATTACK PHASE ──
+    const weapons = (aiSnap.selectedActions || []).filter(a => a.type === "weapon");
+    if (weapons.length === 0) return;
+    const avgDmg = (formula) => {
+      const mtx = /^(\d+)d(\d+)/.exec(formula || "");
+      if (!mtx) return 0;
+      return parseInt(mtx[1], 10) * (parseInt(mtx[2], 10) + 1) / 2;
+    };
+    const sortedWeapons = weapons.slice().sort((a, b) => avgDmg(b.damage) - avgDmg(a.damage));
+    // Rogue/Monk multi-action: rotate through weapons. Single-weapon classes
+    // just always use the best.
+    const chosen = (weapons.length > 1 && (cls.includes("rogue") || cls.includes("ladr") || cls.includes("monk") || cls.includes("monaco")))
+      ? weapons[usedSoFar % weapons.length]
+      : sortedWeapons[0];
+
+    const armorPenalty   = aiSnap.selectedArmor?.hitPenalty ?? 0;
+    const statKey        = chosen.statKey || "str";
+    const statMod        = aiSnap.stats?.[statKey] ?? 0;
+    // Apply pre-buffs to the bonus picture too.
+    const effRageTurns       = (buffPatch.rageTurns ?? aiPlayer.rageTurns ?? 0) > 0;
+    const effHunterMark      = (buffPatch.hunterMarkTurns ?? aiPlayer.hunterMarkTurns ?? 0) > 0;
+    const effAidBonus        = readActiveBonus(buffPatch.aidBuff ?? aiPlayer.aidBuff, 4);
+    const rageDmgBonus       = effRageTurns ? 2 : 0;
+    const barbarianDmgBonus  = cls.includes("barbar") ? 2 : 0;
+    const hunterMarkDmgBonus = effHunterMark ? 3 : 0;
+    // Fighter: crit on 19+ (Critico Migliorato).
+    const isFighter   = cls.includes("fighter") || cls.includes("guerr");
+    const critThresh  = isFighter ? 19 : 20;
+
+    // Roll attack — fighter rerolls 1s (Presenza Possente).
+    let d20 = Math.floor(Math.random() * 20) + 1;
+    if (d20 === 1 && isFighter) d20 = Math.floor(Math.random() * 20) + 1;
+    const tgtMatchPlayer  = m.players.find(p => p.id === target.id);
+    const shieldSkillBonus = (tgtMatchPlayer?.shieldSkillTurns ?? 0) > 0
+      ? (tgtMatchPlayer?.shieldSkillBonus ?? 3) : 0;
+    const defensiveBonus   = tgtMatchPlayer?.defensiveBonus ?? 0;
+    const targetAc = getEffectiveAc(tgtMatchPlayer, targetSnap) + shieldSkillBonus + defensiveBonus;
+
+    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus;
+    const isCrit   = d20 >= critThresh;
+    const isHit    = hitTotal >= targetAc || isCrit;
+
+    let damage = 0;
+    let damageRolls = "0";
+    if (isHit) {
+      const { total, rolls } = rollDmg(chosen.damage);
+      const critMult = isCrit ? 2 : 1;
+      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + hunterMarkDmgBonus) * critMult;
+      damage = applyBarbarianRageReduction(raw, targetSnap, tgtMatchPlayer, false);
+      damageRolls = rolls;
+    }
+
+    const critTag = isCrit ? " ★CRITICO★" : "";
+    const aidPart = effAidBonus ? ` +${effAidBonus} aiuto` : "";
+    const ragePart= rageDmgBonus ? ` +${rageDmgBonus} furia` : "";
+    const barbPart= barbarianDmgBonus ? ` +${barbarianDmgBonus} barb` : "";
+    const hmPart  = hunterMarkDmgBonus ? ` +${hunterMarkDmgBonus} 🎯marchio` : "";
+    const breakdown = `d20=${d20}+hit${chosen.hitBonus || 0}${statMod >= 0 ? "+" : ""}${statMod} ${statKey.toUpperCase()}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""}${aidPart}=${hitTotal} vs CA ${targetAc}`;
+    const attackLog = {
+      pub: isHit
+        ? `💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${critTag} — ${damage} danni`
+        : `🛡️ ${aiSnap.name} manca ${target.name} con ${chosen.name} (${hitTotal} vs CA ${targetAc})`,
+      att: isHit
+        ? `💥 Colpisci ${target.name} con ${chosen.name} [${breakdown}]${critTag} → 🎲${damageRolls}${statMod !== 0 ? `${statMod >= 0 ? "+" : ""}${statMod}` : ""}${ragePart}${barbPart}${hmPart}${isCrit ? " ×2" : ""} = ${damage} danni`
+        : `🛡️ Manchi ${target.name} con ${chosen.name} [${breakdown}]`,
+      def: isHit
+        ? `⚔️ ${aiSnap.name} ti colpisce con ${chosen.name}${critTag} — ${damage} danni`
+        : `🛡️ ${aiSnap.name} ti ha mancato con ${chosen.name}`,
+      ts: tsNow, attId: aiId, defId: target.id,
+    };
+
+    // ── ACTION SURGE decision (Fighter only) — fires once per match, on the
+    //    first attack of any turn while bloodied (<70%) or whenever the AI
+    //    has missed badly. Gives +1 action this turn. ──
+    const wantsSurge =
+      isFighter &&
+      !aiPlayer.aiSurgeUsed &&
+      isFirstAttackThisTurn &&
+      (hpPct < 0.70 || (!isHit && Math.random() < 0.5));
+    const surgePatch = wantsSurge ? { actionSurgeActive: true, aiSurgeUsed: true } : {};
+    if (wantsSurge) {
+      preLog = { pub: `⚡ ${aiSnap.name} attiva Scatto d'Azione! (azione extra questo turno)`, ts: tsNow };
+    }
+
+    // Multi-action arithmetic mirrors the existing player flow at line ~3070:
+    // staying-this-turn iff (used+1) < maxActions. Action Surge bumps cap.
+    const baseMaxActions = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 3 : 1;
+    const effectiveMaxActions = baseMaxActions + (surgePatch.actionSurgeActive ? 1 : 0) + (aiPlayer.actionSurgeActive ? 1 : 0);
+    const stayingThisTurn = (usedSoFar + 1) < effectiveMaxActions;
+
+    const updatedMatches = meta.matches.map(x => {
+      if (x.matchId !== matchId) return x;
+      const rawPlayers = x.players.map(p => {
+        if (p.id === target.id) {
+          return {
+            ...p,
+            hp: Math.max(0, (p.hp ?? 0) - damage),
+            ...consumeInvisibility(p),
+            stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
+          };
+        }
+        if (p.id === aiId) {
+          const newMultiUsed = stayingThisTurn ? (usedSoFar + 1) : 0;
+          // End-of-turn buff decays mirror the human flow.
+          const turnEndPatch = stayingThisTurn ? {} : {
+            rageTurns:       Math.max(0, (p.rageTurns ?? 0) - 1),
+            hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
+            aidBuff:         false,
+            bonusActionUsed: false,
+            actionSurgeActive: false,
+            multiActionsUsed: 0,
+          };
+          // Use up aidBuff after the swing it powered.
+          const consumedAid = effAidBonus ? { aidBuff: false } : {};
+          return {
+            ...p,
+            ...buffPatch,
+            ...surgePatch,
+            ...consumedAid,
+            multiActionsUsed: newMultiUsed,
+            aiAttacksMade: (p.aiAttacksMade ?? 0) + 1,
+            ...turnEndPatch,
+          };
+        }
+        return p;
+      });
+      const alive = rawPlayers.filter(pp => pp.hp > 0);
+      const logs  = [...x.logs];
+      if (preLog) logs.push(preLog);
+      logs.push(attackLog);
+      if (alive.length === 1) {
+        logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
+        return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs };
+      }
+      if (stayingThisTurn) {
+        return { ...x, players: rawPlayers, logs };
+      }
+      const human = rawPlayers.find(pp => pp.id !== aiId);
+      return {
+        ...x,
+        players: rawPlayers,
+        turn: human.id,
+        turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(),
+        logs,
+      };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // Watcher: schedules AI moves with a small dramatic delay. Only the match's
+  // aiOwnerId runs this so two open browsers don't double-act.
+  useEffect(() => {
+    if (!arenaMeta?.matches || !currentUser) return;
+    const myAiMatches = arenaMeta.matches.filter(m =>
+      m.ai === true &&
+      m.aiOwnerId === currentUser.uid &&
+      (m.status === "initiative" || m.status === "active")
+    );
+    if (myAiMatches.length === 0) return;
+    const timers = [];
+    for (const m of myAiMatches) {
+      const aiId = m.aiId;
+      const aiPlayer = m.players?.find(p => p.id === aiId);
+      if (!aiPlayer) continue;
+      // Initiative: roll once for the AI when needed.
+      if (m.status === "initiative" && aiPlayer.init === 0) {
+        const key = `${m.matchId}:init`;
+        if (aiInFlightRef.current[key]) continue;
+        aiInFlightRef.current[key] = true;
+        const t = setTimeout(() => {
+          aiRollInitiative(m.matchId).finally(() => {
+            delete aiInFlightRef.current[key];
+          });
+        }, 900 + Math.random() * 700);
+        timers.push(t);
+        continue;
+      }
+      // Active turn: AI takes its decision (heal / buff / attack / surge).
+      // The useEffect re-fires after each Firestore write, so multi-action
+      // turns chain naturally — each tick handles ONE action and either
+      // stays (multiActionsUsed bumps) or passes the turn to the human.
+      if (m.status === "active" && m.turn === aiId && aiPlayer.hp > 0) {
+        const human = m.players.find(p => p.id !== aiId);
+        const key = `${m.matchId}:turn:${m.turnExpiry || ""}:${aiPlayer.hp}:${aiPlayer.multiActionsUsed ?? 0}:${aiPlayer.bonusActionUsed ? 1 : 0}:${human?.hp ?? "0"}`;
+        if (aiInFlightRef.current[key]) continue;
+        aiInFlightRef.current[key] = true;
+        const delay = (aiPlayer.multiActionsUsed ?? 0) === 0
+          ? 1400 + Math.random() * 1100   // first action: dramatic delay
+          : 700  + Math.random() * 500;   // subsequent attacks (rogue/monk/surge): snappier
+        const t = setTimeout(() => {
+          aiTakeAction(m.matchId).finally(() => {
+            delete aiInFlightRef.current[key];
+          });
+        }, delay);
+        timers.push(t);
+      }
+    }
+    return () => { timers.forEach(t => clearTimeout(t)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arenaMeta, currentUser]);
 
   // Helper: il match è bloccato dal pulsante Pausa? Le sfide libere (kind="fun") restano libere.
   const isMatchPausedForAction = (matchId) => {
@@ -4945,7 +5498,39 @@ export default function Arena() {
   })();
 
   return (
-    <div className="arena-page">
+    <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}`}>
+
+      {/* ── Floating fight indicator — appears when the user has an active
+            match and has scrolled away from it. Pulses red on their turn. ── */}
+      {myActiveMatchId && !matchInView && (() => {
+        const m = arenaMeta?.matches?.find(mm => mm.matchId === myActiveMatchId);
+        if (!m) return null;
+        const opp = m.players?.find(p => p.id !== currentUser.uid);
+        const oppFirst = (opp?.name || "").split(" ")[0] || "avversario";
+        const subLabel = isMyTurnInActive
+          ? "Tocca per agire"
+          : m.status === "initiative"
+            ? "Tira iniziativa"
+            : `Turno di ${oppFirst}`;
+        return (
+          <button
+            type="button"
+            className={`arena-fight-pulse${isMyTurnInActive ? " arena-fight-pulse--your-turn" : ""}`}
+            onClick={() => {
+              const el = document.getElementById("arena-my-match");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            aria-label="Vai alla tua sfida"
+          >
+            <span className="arena-fight-pulse-icon">{isMyTurnInActive ? "⚔" : "🛡"}</span>
+            <span className="arena-fight-pulse-text">
+              {isMyTurnInActive ? "È il tuo turno" : "Sfida in corso"}
+            </span>
+            <span className="arena-fight-pulse-sub">· {subLabel}</span>
+            <span className="arena-fight-pulse-glow" aria-hidden="true" />
+          </button>
+        );
+      })()}
 
       {/* HEADER */}
       <div className="arena-header">
@@ -5042,9 +5627,15 @@ export default function Arena() {
           <nav className="arena-quicknav" aria-label="Navigazione rapida Arena">
             <span className="arena-quicknav-deco" aria-hidden="true">⚜</span>
             {hasMyActive && (
-              <button type="button" className="arena-quicknav-chip arena-quicknav-chip--active" onClick={() => goTo("arena-my-match")}>
-                <span className="arena-quicknav-chip-icon">🛡</span>
-                <span className="arena-quicknav-chip-label">La Tua Sfida</span>
+              <button
+                type="button"
+                className={`arena-quicknav-chip arena-quicknav-chip--active${isMyTurnInActive ? " arena-quicknav-chip--your-turn" : ""}`}
+                onClick={() => goTo("arena-my-match")}
+              >
+                <span className="arena-quicknav-chip-icon">{isMyTurnInActive ? "⚔" : "🛡"}</span>
+                <span className="arena-quicknav-chip-label">
+                  {isMyTurnInActive ? "È il tuo turno" : "La Tua Sfida"}
+                </span>
                 <span className="arena-quicknav-chip-pulse" aria-hidden="true" />
               </button>
             )}
@@ -5415,9 +6006,12 @@ export default function Arena() {
         <div id="arena-loadout" className={`join-zone ${loadoutContext === "fun" ? "join-zone-fun" : ""}`}>
 
           {loadoutContext === "fun" && (
-            <div className="fun-loadout-banner">
-              🛡 {funAcceptMatchId ? "Stai accettando una Sfida Libera" : "Stai creando una Sfida Libera"} —
-              nessuna ricompensa, solo per il gusto del combattimento
+            <div className={`fun-loadout-banner${aiMatchPending ? " fun-loadout-banner-ai" : ""}`}>
+              {aiMatchPending
+                ? "🤖 Stai preparando una Sfida contro l'IA — Hard Mode. L'avversario sarà generato al lancio."
+                : (funAcceptMatchId
+                    ? "🛡 Stai accettando una Sfida Libera — nessuna ricompensa, solo per il gusto del combattimento"
+                    : "🛡 Stai creando una Sfida Libera — nessuna ricompensa, solo per il gusto del combattimento")}
             </div>
           )}
 
@@ -6002,10 +6596,11 @@ export default function Arena() {
 
       {/* ── ARENA LIBERA (Fun) — sempre disponibile, separata dal torneo ── */}
       {currentUser && (() => {
-        const openChallenges = funMatches.filter(m => m.status === "open");
+        const openChallenges = funMatches.filter(m => m.status === "open" && !m.ai);
         const ongoingFun = funMatches.filter(m => m.status === "initiative" || m.status === "active");
         const myActiveFun = ongoingFun.find(m => m.players?.some(p => p.id === currentUser.uid));
-        const otherActiveFun = ongoingFun.filter(m => !m.players?.some(p => p.id === currentUser.uid));
+        // AI matches are private to the owner — hide them from other players' lobby.
+        const otherActiveFun = ongoingFun.filter(m => !m.players?.some(p => p.id === currentUser.uid) && !m.ai);
         const myFinishedFun = funMatches
           .filter(m => m.status === "finished" && m.players?.some(p => p.id === currentUser.uid))
           .slice(-3);
@@ -6025,9 +6620,19 @@ export default function Arena() {
                 </span>
               )}
               {!myActiveFun && (
-                <button className="btn-fun-create" onClick={openFunCreate}>
-                  ⚔ Crea Sfida
-                </button>
+                <div className="fun-arena-create-row">
+                  <button className="btn-fun-create" onClick={openFunCreate}>
+                    ⚔ Crea Sfida
+                  </button>
+                  <button
+                    className="btn-fun-create btn-fun-ai"
+                    onClick={openAiCreate}
+                    title="Combatti contro un avversario IA in modalità difficile"
+                  >
+                    🤖 Sfida l'IA
+                    <span className="btn-fun-ai-tag">Hard</span>
+                  </button>
+                </div>
               )}
             </div>
 

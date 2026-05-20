@@ -5235,13 +5235,134 @@
   display: flex;
   flex-direction: column;
 }
-/* Section ordering: header → champions banner → phase → quick-nav
-   → active match → everything else (default order: 0). */
-.arena-page > .arena-header           { order: -100; }
-.arena-page > .champions-arena-banner { order:  -90; }
-.arena-page > .arena-phase-banner     { order:  -80; }
-.arena-page > .arena-quicknav         { order:  -70; }
-.arena-page > .matches-container      { order:  -60; }
+/* Section ordering (fight-first):
+   header → YOUR FIGHT (matches-container / loadout) → sticky quick-nav
+   → champions banner → phase → reward → fun arena / bracket
+   → info (collapsed by default) → master tools row. */
+.arena-page > .arena-header             { order: -100; }
+.arena-page > .matches-container        { order:  -98; }
+.arena-page > .join-zone                { order:  -97; }
+.arena-page > .arena-quicknav           { order:  -95; }
+.arena-page > .champions-arena-banner   { order:  -90; }
+.arena-page > .arena-phase-banner       { order:  -85; }
+.arena-page > .arena-reward-panel       { order:  -80; }
+.arena-page > .fun-arena-section        { order:    0; }
+.arena-page > .bracket-open-row         { order:    1; }
+.arena-page > .bracket-summary-grid     { order:    2; }
+.arena-page > .arena-info-section       { order:   10; }
+.arena-page > .arena-modal-trigger-row  { order:   20; }
+
+/* ── Focus mode: when the user has an active fight, demote chrome
+   so the match is the visual anchor. Reward/info panels shrink. ── */
+.arena-page--focus > .arena-reward-panel {
+  margin: 0 auto 14px;
+  padding: 8px 14px;
+  opacity: 0.78;
+  transform: scale(0.96);
+  transform-origin: center top;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.arena-page--focus > .arena-reward-panel:hover {
+  opacity: 1;
+  transform: scale(1);
+}
+.arena-page--focus > .arena-phase-banner {
+  margin: 0 auto 8px;
+}
+.arena-page--focus > .arena-info-section {
+  opacity: 0.85;
+}
+.arena-page--focus > .arena-info-section:hover { opacity: 1; }
+
+/* ── Floating fight indicator: sticks to top-right of the viewport
+   when the user has an active match and has scrolled away. ── */
+.arena-fight-pulse {
+  position: fixed;
+  top: calc(var(--navbar-h) + 10px);
+  right: 16px;
+  z-index: 220;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--ar-burgundy) 0%, var(--ar-burgundy-deep, #5a1f1f) 100%);
+  color: #fff5d6;
+  border: 2px solid var(--ar-gold);
+  border-radius: 999px;
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(80, 20, 20, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;
+  animation: ar-fight-pulse-in 0.35s ease-out both;
+}
+.arena-fight-pulse:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(80, 20, 20, 0.38);
+}
+.arena-fight-pulse-icon { font-size: 1rem; line-height: 1; }
+.arena-fight-pulse-text { white-space: nowrap; }
+.arena-fight-pulse-sub {
+  margin-left: 4px;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  opacity: 0.88;
+  font-weight: 600;
+}
+.arena-fight-pulse-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 2px solid rgba(212, 175, 55, 0.55);
+  pointer-events: none;
+  animation: ar-pulse 2.1s ease-out infinite;
+}
+@keyframes ar-fight-pulse-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.arena-fight-pulse--your-turn {
+  background: linear-gradient(135deg, #c8252b 0%, #8c181c 100%);
+  color: #fff;
+  border-color: #ffd966;
+  animation:
+    ar-fight-pulse-in 0.35s ease-out both,
+    ar-your-turn-glow 1.4s ease-in-out infinite 0.4s;
+}
+@keyframes ar-your-turn-glow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(200, 37, 43, 0.45), 0 0 0 0 rgba(200, 37, 43, 0.55); }
+  50%      { box-shadow: 0 8px 24px rgba(200, 37, 43, 0.65), 0 0 0 14px rgba(200, 37, 43, 0); }
+}
+@media (max-width: 768px) {
+  .arena-fight-pulse {
+    top: calc(var(--navbar-h) + 6px);
+    right: 8px;
+    padding: 8px 14px;
+    font-size: 0.7rem;
+    gap: 8px;
+  }
+  .arena-fight-pulse-sub { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-fight-pulse,
+  .arena-fight-pulse--your-turn,
+  .arena-fight-pulse-glow {
+    animation: none;
+  }
+}
+
+/* ── Your-turn highlight on the quick-nav chip ── */
+.arena-quicknav-chip--your-turn {
+  background: linear-gradient(135deg, #c8252b 0%, #8c181c 100%);
+  color: #fff5d6;
+  border-color: #ffd966;
+}
+.arena-quicknav-chip--your-turn .arena-quicknav-chip-pulse {
+  border-color: rgba(255, 217, 102, 0.7);
+}
 
 /* ---- HEADER ------------------------------------------------ */
 .arena-header {
@@ -6044,6 +6165,46 @@
   box-shadow: var(--ar-shadow-md);
 }
 .btn-fun-create:active { transform: translateY(0); }
+
+/* ── Sfida l'IA (solo vs AI bot) ─────────────────────────────────────── */
+.fun-arena-create-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.btn-fun-ai {
+  background: linear-gradient(135deg, #2b4a6b 0%, #1a2f4a 100%);
+  border-color: #0f1f33;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-fun-ai:hover {
+  background: linear-gradient(135deg, #1a2f4a 0%, #0f1f33 100%);
+}
+.btn-fun-ai-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #c8252b;
+  color: #fff5d6;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid #ffd966;
+}
+.fun-loadout-banner-ai {
+  background: linear-gradient(135deg, #2b4a6b 0%, #1a2f4a 100%);
+  color: #fff5d6;
+  border-color: #0f1f33;
+}
+@media (max-width: 768px) {
+  .fun-arena-create-row { width: 100%; flex-direction: column; align-items: stretch; }
+  .btn-fun-ai { width: 100%; justify-content: center; }
+}
 
 .fun-arena-lobby {
   background: rgba(255, 248, 220, 0.5);

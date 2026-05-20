@@ -7,7 +7,7 @@
    ============================================================ */
 
 export const HERO_QUOTE =
-  "In Eldoria, la magia non si trova solo negli incantesimi. Si forgia col martello, " +
+  "In Exanthia, la magia non si trova solo negli incantesimi. Si forgia col martello, " +
   "si distilla in alambicco, si tesse al telaio, si cuoce nei forni e si incide nelle rune.";
 
 export const PREGIATURE = [

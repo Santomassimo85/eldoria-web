@@ -14,7 +14,7 @@ export default function Manual({ onBack }) {
         <button className="tcg-btn tcg-btn--ghost" onClick={onBack}>
           ‹ Indietro
         </button>
-        <h1 className="tcg-doc__title">📖 Manuale</h1>
+        <h1 className="tcg-doc__title">Manuale</h1>
         <span />
       </div>
 
