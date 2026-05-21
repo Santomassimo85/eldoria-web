@@ -172,56 +172,64 @@ export default function PlatinumAdmin() {
             const displayName = char.name || char.email?.split('@')[0] || char.id;
             const mp = char.platinum || 0;
             const coins = char.tcgCoins || 0;
+            const initial = (displayName || '?').trim().charAt(0).toUpperCase();
             return (
               <li key={char.id} className="pa-card">
                 <header className="pa-card__head">
+                  <span className="pa-avatar" aria-hidden="true">{initial}</span>
                   <div className="pa-card__id">
                     <strong>{displayName}</strong>
                     {char.email && <small>{char.email}</small>}
                   </div>
                   <div className="pa-card__totals">
                     <span className="pa-pill pa-pill--mp" title="Monete Platino attuali">
-                      <b>{mp}</b> MP
+                      <b>{mp}</b><span>MP</span>
                     </span>
                     <span className="pa-pill pa-pill--tcg" title="Monete TCG attuali">
-                      <b>{coins}</b> 🪙
+                      <b>{coins}</b><span>🪙</span>
                     </span>
                   </div>
                 </header>
 
-                <div className="pa-field">
-                  <label className="pa-field__label">Monete Platino (MP)</label>
+                <div className="pa-field pa-field--mp">
+                  <div className="pa-field__label">
+                    <span className="pa-field__dot" />
+                    Monete Platino (MP)
+                  </div>
                   <div className="pa-field__row">
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, -10)} title="-10 MP">−10</button>
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, -1)} title="-1 MP">−1</button>
+                    <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustPlatinum(char.id, -10)} title="-10 MP">−10</button>
+                    <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustPlatinum(char.id, -1)} title="-1 MP">−1</button>
                     <input
                       type="number"
-                      className="pa-input"
+                      className="pa-input pa-input--mp"
                       value={tempBalances[char.id] ?? ''}
                       onChange={(e) => handleBalanceChange(char.id, e.target.value)}
                       aria-label="Saldo MP"
                     />
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, +1)} title="+1 MP">+1</button>
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, +10)} title="+10 MP">+10</button>
-                    <button type="button" className="pa-btn pa-btn--save" onClick={() => handleSaveBalance(char.id)}>Salva</button>
+                    <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustPlatinum(char.id, +1)} title="+1 MP">+1</button>
+                    <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustPlatinum(char.id, +10)} title="+10 MP">+10</button>
+                    <button type="button" className="pa-btn pa-btn--save pa-btn--save-mp" onClick={() => handleSaveBalance(char.id)}>Salva MP</button>
                   </div>
                 </div>
 
-                <div className="pa-field">
-                  <label className="pa-field__label">Monete TCG 🪙</label>
+                <div className="pa-field pa-field--tcg">
+                  <div className="pa-field__label">
+                    <span className="pa-field__dot" />
+                    Monete TCG 🪙
+                  </div>
                   <div className="pa-field__row">
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, -100)} title="-100">−100</button>
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, -10)} title="-10">−10</button>
+                    <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustCoins(char.id, -100)} title="-100">−100</button>
+                    <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustCoins(char.id, -10)} title="-10">−10</button>
                     <input
                       type="number"
-                      className="pa-input"
+                      className="pa-input pa-input--tcg"
                       value={tempCoins[char.id] ?? ''}
                       onChange={(e) => handleCoinsChange(char.id, e.target.value)}
                       aria-label="Monete TCG"
                     />
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, +10)} title="+10">+10</button>
-                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, +100)} title="+100">+100</button>
-                    <button type="button" className="pa-btn pa-btn--save" onClick={() => handleSaveCoins(char.id)}>Salva</button>
+                    <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustCoins(char.id, +10)} title="+10">+10</button>
+                    <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustCoins(char.id, +100)} title="+100">+100</button>
+                    <button type="button" className="pa-btn pa-btn--save pa-btn--save-tcg" onClick={() => handleSaveCoins(char.id)}>Salva 🪙</button>
                   </div>
                 </div>
               </li>
