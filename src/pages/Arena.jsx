@@ -7230,7 +7230,7 @@ export default function Arena() {
                 const char = snapshots[p.id] || { stats: { maxHp: 70 } };
                 const maxHp = char.stats?.maxHp ?? 70;
                 const hpPct = Math.max(0, Math.min(100, (p.hp / maxHp) * 100));
-                const hpColor = hpPct > 60 ? "#27ae60" : hpPct > 30 ? "#e67e22" : "#c0392b";
+                // Badge HP: rosso scuro fisso (override CSS in Arena.css); bar fill: verde chiaro fisso, track dietro rosso scuro.
                 const isActive = m.turn === p.id && m.status === "active";
                 return (
                   <React.Fragment key={p.id}>
@@ -7249,11 +7249,11 @@ export default function Arena() {
                         </div>
                         {isActive
                           ? <span className="bracket-active-dot" title="Turno in corso">●</span>
-                          : <span className="bracket-hp-badge" style={{ background: hpColor }}>{p.hp}</span>
+                          : <span className="bracket-hp-badge">{p.hp}</span>
                         }
                       </div>
                       <div className="bracket-hp-track">
-                        <div className="bracket-hp-bar" style={{ width: `${hpPct}%`, background: hpColor }} />
+                        <div className="bracket-hp-bar" style={{ width: `${hpPct}%` }} />
                       </div>
                     </div>
                   </React.Fragment>

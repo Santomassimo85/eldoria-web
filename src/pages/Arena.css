@@ -8035,17 +8035,27 @@
   box-shadow: 8px 8px 0 0 #fbbf24 !important;
 }
 
-/* barre HP nel tabellone — track (PF mancanti) rosso scuro, fill (PF attuali) verde chiaro */
+/* barre HP nel tabellone — track (PF mancanti) rosso scuro, fill (PF attuali) verde chiaro.
+   Selettori multipli per battere qualsiasi regola precedente (compresi gli `!important` antichi). */
+.arena-page .bracket-card .bracket-hp-track,
 .arena-page .bracket-hp-track,
+.arena-modal-body .bracket-card .bracket-hp-track,
 .arena-modal-body .bracket-hp-track {
   background: #6b0f0f !important;
   border: 2px solid #1f1f1f !important;
   border-radius: 0 !important;
+  height: 10px !important;
+  overflow: hidden !important;
 }
+.arena-page .bracket-card .bracket-hp-bar,
 .arena-page .bracket-hp-bar,
+.arena-modal-body .bracket-card .bracket-hp-bar,
 .arena-modal-body .bracket-hp-bar {
   background: #86efac !important;
+  background-color: #86efac !important;
+  background-image: none !important;
   border-radius: 0 !important;
+  height: 100% !important;
 }
 .arena-page .bracket-hp-badge,
 .arena-modal-body .bracket-hp-badge {
