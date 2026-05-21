@@ -41,11 +41,12 @@ export default function StarterSelect({ onPick }) {
   return (
     <div className="tcg-starter">
       <div className="tcg-starter__head">
-        <h1 className="tcg-title">Scegli la tua classe</h1>
+        <h1 className="tcg-title">Scegli il tuo mazzo iniziale</h1>
         <p className="tcg-subtitle">
-          Una scelta sola, per sempre. La classe definisce i tuoi due colori
-          (es. Mago = 🔥 Fuoco + 🍃 Natura). Riceverai un mazzo iniziale di
-          classe e delle monete. Le sottoclassi si scelgono a inizio partita.
+          Ti diamo un mazzo a tema della classe scelta e qualche moneta.
+          La classe <b>non è fissa per sempre</b>: a ogni partita verrà
+          rilevata dai <b>colori del tuo mazzo</b>, e potrai cambiarla
+          modificando le carte (o costruendone uno tutto tuo).
         </p>
       </div>
 

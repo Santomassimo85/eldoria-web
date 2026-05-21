@@ -123,11 +123,204 @@ export const CLASS_VIE = {
   },
 };
 
-/* The two elements ("colours") a class may include in its deck. */
+/* The two elements ("colours") a class may include in its deck.
+   For multiclasses, returns the 3 colours of the combo (see below). */
 export function classColors(klass) {
+  if (MULTICLASS_DEF[klass]) return MULTICLASS_DEF[klass].elements.slice();
   const vie = CLASS_VIE[klass];
   if (!vie) return [];
   return Object.values(vie).map((v) => v.element);
+}
+
+/* ============================================================
+   MULTICLASSES  (2026-05-21)
+   ------------------------------------------------------------
+   The 5 base classes form a colour-pentagram in which every
+   neighbouring pair shares ONE colour, producing five natural
+   3-colour combos. Each combo is a MULTICLASS with its own
+   identity, vie (inherited from both source classes — 4 in
+   total) and its own dedicated Ultimate that REPLACES the via
+   lv-5 reward when picked.
+
+     Multiclasse    Parti                     Colori
+     ────────────────────────────────────────────────────────
+     Lamamagica     Mago + Guerriero          Fuoco + Natura + Luce
+     Templare       Guerriero + Chierico      Fuoco + Luce + Ombra
+     Inquisitore    Chierico + Ladro          Luce + Ombra + Acqua
+     Predone        Ladro + Druido            Ombra + Acqua + Natura
+     Sciamano       Druido + Mago             Natura + Acqua + Fuoco
+
+   To unlock a multiclasse the deck must contain ALL three of
+   its colours; to unlock a base class it's enough to have at
+   least ONE of its two colours (deliberately permissive — the
+   player can always opt-out by picking a different eligible
+   class).
+   ============================================================ */
+
+export const MULTICLASSES = [
+  "lamamagica", "templare", "inquisitore", "predone", "sciamano",
+];
+
+export const MULTICLASS_DEF = {
+  lamamagica: {
+    label:    "Lamamagica",
+    icon:     "🗡️🔥",
+    parts:    ["mago", "guerriero"],
+    elements: ["fire", "nature", "light"],
+    desc:     "Guerriero che incanta la lama con la magia arcana.",
+    ultimate: {
+      id:   "lama_arcana",
+      name: "Lama Arcana",
+      icon: "🗡️✨",
+      desc: "Le tue creature ottengono +2/+2 e Travolgere fino a fine turno.",
+    },
+  },
+  templare: {
+    label:    "Templare",
+    icon:     "⚔️✝️",
+    parts:    ["guerriero", "chierico"],
+    elements: ["fire", "light", "darkness"],
+    desc:     "Ordine militante guidato da fede, disciplina e giudizio.",
+    ultimate: {
+      id:   "giudizio_sacro",
+      name: "Giudizio Sacro",
+      icon: "⚖️",
+      desc: "Infliggi 3 danni a ogni creatura nemica e recuperi 5 PV.",
+    },
+  },
+  inquisitore: {
+    label:    "Inquisitore",
+    icon:     "✨🗡️",
+    parts:    ["chierico", "ladro"],
+    elements: ["light", "darkness", "water"],
+    desc:     "Giudice tra luce e ombra: nessun colpevole sfugge.",
+    ultimate: {
+      id:   "sentenza_finale",
+      name: "Sentenza Finale",
+      icon: "📜",
+      desc: "Distruggi la creatura nemica più potente e pesca 2 carte.",
+    },
+  },
+  predone: {
+    label:    "Predone",
+    icon:     "🗡️🌿",
+    parts:    ["ladro", "druido"],
+    elements: ["darkness", "water", "nature"],
+    desc:     "Fuorilegge della selva: usa le ombre del bosco come arma.",
+    ultimate: {
+      id:   "imboscata_silvana",
+      name: "Imboscata Silvana",
+      icon: "🌑🌿",
+      desc: "Le tue creature si stappano, perdono fiacca e ottengono +1/+1 fino a fine turno; pesca 2 carte.",
+    },
+  },
+  sciamano: {
+    label:    "Sciamano",
+    icon:     "🌿💧",
+    parts:    ["druido", "mago"],
+    elements: ["nature", "water", "fire"],
+    desc:     "Natura e magia primordiale convergono nel suo rito.",
+    ultimate: {
+      id:   "convergenza_elementale",
+      name: "Convergenza Elementale",
+      icon: "🌪️",
+      desc: "Infliggi 4 danni a ogni creatura nemica, 2 all'eroe avversario e recuperi 4 PV.",
+    },
+  },
+};
+
+export const MULTICLASS_LABEL = Object.fromEntries(
+  MULTICLASSES.map((k) => [k, MULTICLASS_DEF[k].label])
+);
+export const MULTICLASS_ICON = Object.fromEntries(
+  MULTICLASSES.map((k) => [k, MULTICLASS_DEF[k].icon])
+);
+
+/* True when the key refers to one of the 5 multiclassi. */
+export function isMulticlass(klass) {
+  return !!MULTICLASS_DEF[klass];
+}
+
+/* Vie available for a class or multiclass. Multiclasses expose the
+   union of the vie of their two parent classes (4 vie). */
+export function vieFor(klass) {
+  if (MULTICLASS_DEF[klass]) {
+    const out = {};
+    for (const p of MULTICLASS_DEF[klass].parts) {
+      Object.assign(out, CLASS_VIE[p] || {});
+    }
+    return out;
+  }
+  return CLASS_VIE[klass] || {};
+}
+
+/* Casting tier for a (klass, via) pair. For a multiclasse, the tier
+   is inherited from the parent class that owns the chosen via. */
+export function casterTierFor(klass, via) {
+  if (MULTICLASS_DEF[klass]) {
+    for (const p of MULTICLASS_DEF[klass].parts) {
+      if (CLASS_VIE[p] && CLASS_VIE[p][via]) return CLASS_CASTER_TIER[p];
+    }
+    return "martial";
+  }
+  return CLASS_CASTER_TIER[klass] || "martial";
+}
+
+/* Pretty label / icon that works for both classi base e multiclassi. */
+export function classLabelOf(klass) {
+  return CLASS_LABEL[klass] || MULTICLASS_LABEL[klass] || klass;
+}
+export function classIconOf(klass) {
+  return CLASS_ICON[klass] || MULTICLASS_ICON[klass] || "✦";
+}
+
+/* ── DECK COLOR DETECTION ────────────────────────────────────
+   Compute the set of colours present in a deck (excluding basic
+   lands — only the colours of the cards you'll actually CAST
+   count as identity, otherwise a 24-land deck would "qualify"
+   as everything). `lookup` is the getCard function from cards.js;
+   passing it in keeps this module zero-dep on cards. */
+export function computeDeckColors(deck, lookup) {
+  const set = new Set();
+  if (!Array.isArray(deck) || typeof lookup !== "function") return set;
+  for (const id of deck) {
+    const c = lookup(id);
+    if (!c) continue;
+    if (c.type === "land") continue;
+    if (c.element) set.add(c.element);
+    if (c.cost) {
+      for (const el of Object.keys(c.cost)) {
+        if (el === "generic") continue;
+        if ((c.cost[el] || 0) > 0) set.add(el);
+      }
+    }
+  }
+  return set;
+}
+
+/* Compute eligibility:
+     • base class is eligible if the deck has at least ONE of its colours
+     • multiclasse is eligible if the deck has ALL its 3 colours
+   Returns { classes, multiclasses, anyEligible }. */
+export function computeEligibleClasses(deckColorsLike) {
+  const cols = deckColorsLike instanceof Set
+    ? deckColorsLike
+    : new Set(deckColorsLike || []);
+  const classes = [];
+  for (const k of CLASSES) {
+    const need = classColors(k);
+    if (need.some((el) => cols.has(el))) classes.push(k);
+  }
+  const multi = [];
+  for (const k of MULTICLASSES) {
+    const need = MULTICLASS_DEF[k].elements;
+    if (need.every((el) => cols.has(el))) multi.push(k);
+  }
+  return {
+    classes,
+    multiclasses: multi,
+    anyEligible: classes.length > 0 || multi.length > 0,
+  };
 }
 
 /* ── XP CURVE ────────────────────────────────────────────────
@@ -346,15 +539,36 @@ export const CLASS_PROGRESSION = {
 };
 
 /* Look up a single level's reward. Returns null if no reward exists
-   for that (klass, via, level) combination (e.g. stubbed classes). */
+   for that (klass, via, level) combination (e.g. stubbed classes).
+
+   Multiclassi: lv 2-4 use the parent class's via progression; lv 5
+   is REPLACED by the multiclasse's dedicated ultimate (the via's own
+   lv-5 ultimate is discarded — you can't double-dip). */
 export function rewardAt(klass, via, level) {
+  if (MULTICLASS_DEF[klass]) {
+    if (level === 5) {
+      const u = MULTICLASS_DEF[klass].ultimate;
+      return {
+        level: 5,
+        name: u.name,
+        icon: u.icon,
+        description: u.desc,
+        patch: { ultimate: u.id },
+      };
+    }
+    for (const p of MULTICLASS_DEF[klass].parts) {
+      const row = CLASS_PROGRESSION[p]?.[via]?.[level];
+      if (row) return row;
+    }
+    return null;
+  }
   return CLASS_PROGRESSION[klass]?.[via]?.[level] || null;
 }
 
 /* Default initial state slice for a freshly created player whose
    class/via has been chosen. Spread into mkPlayer(). */
 export function initClassState(klass, via) {
-  const tier = CLASS_CASTER_TIER[klass] || "martial";
+  const tier = casterTierFor(klass, via);
   return {
     klass,
     via,

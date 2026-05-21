@@ -146,7 +146,7 @@ export default function Tcg() {
 
   const aiState = useMemo(() => {
     if (screen !== "ai") return null;
-    if (!aiClass) return null; // waiting on the picker
+    if (!aiFoeClass) return null; // waiting on the picker (aiClass may be null = no class)
     // Player's saved deck is the source of truth — they may mix any
     // colours they bought (no class restriction on the deck). Only the
     // AI opponent gets an auto-built class deck so the match is themed.
@@ -156,7 +156,7 @@ export default function Tcg() {
       p1Name: "Arconte (IA)",
       deck0: playableDeck(profile),
       deck1: buildClassDeck(foeColors),
-      p0Class: aiClass,
+      p0Class: aiClass,           // può essere null: gioca senza bonus
       p1Class: aiFoeClass,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,7 +172,8 @@ export default function Tcg() {
   };
 
   /* pick a random class+via for the AI opponent — different from the
-     player's class so the match isn't a mirror. */
+     player's class so the match isn't a mirror. If the player went
+     classless, the AI rolls any of the 5 base classes. */
   const rollAiFoe = (mineKlass) => {
     const others = CLASSES.filter((k) => k !== mineKlass);
     const k = others[Math.floor(Math.random() * others.length)];
@@ -183,8 +184,9 @@ export default function Tcg() {
 
   const confirmAiClass = (pick) => {
     primeSfx();
+    // `pick` may be null when the player opts out (no class → no bonus)
     setAiClass(pick);
-    setAiFoeClass(rollAiFoe(pick.klass));
+    setAiFoeClass(rollAiFoe(pick?.klass));
     setScreen("ai");
   };
 
@@ -312,7 +314,7 @@ export default function Tcg() {
         <ClassPicker
           onConfirm={confirmAiClass}
           onBack={goMenu}
-          lockedClass={profile?.starterClass || null}
+          deck={playableDeck(profile)}
         />
       )}
 
@@ -337,7 +339,6 @@ export default function Tcg() {
           name={pName}
           deck={playableDeck(profile)}
           cover={profile?.cover || "nature"}
-          klass={profile?.starterClass || null}
           onEnterMatch={enterMatch}
           onBack={goMenu}
         />

@@ -274,6 +274,54 @@ function shouldFireUltimate(s, side) {
     );
     return totalPow >= 4 && foeHp > 8;
   }
+
+  /* ── Multiclassi ─────────────────────────────────────────── */
+  if (id === "lama_arcana") {
+    // Lamamagica: +2/+2 + trample. Vale come buff totale: serve massa.
+    if (myCrs.length < 2) return false;
+    const totalPow = myCrs.reduce(
+      (a, c) => a + effStats(s, side, c).power + 2, 0
+    );
+    return totalPow >= foeHp / 2 + 3;
+  }
+  if (id === "giudizio_sacro") {
+    // Templare: 3 dmg AoE + heal 5. Fire se aoe spazza ≥2 creature
+    // o se siamo low + il board è scomodo.
+    let killable = 0;
+    for (const cr of foeCrs)
+      if (effStats(s, foe, cr).toughness <= 3) killable += 1;
+    if (killable >= 2) return true;
+    return myHp <= 14 && foeCrs.length >= 1;
+  }
+  if (id === "sentenza_finale") {
+    // Inquisitore: kill best + draw 2. Fire se c'è un bersaglio
+    // grosso o se la mano è scarna.
+    for (const cr of foeCrs) {
+      const st = effStats(s, foe, cr);
+      if (st.power >= 4 || st.toughness >= 5) return true;
+    }
+    return me.hand.length <= 3 && foeCrs.length >= 1;
+  }
+  if (id === "imboscata_silvana") {
+    // Predone: untap + no-sickness + +1/+1 + draw 2.
+    // Vale come trick offensivo: massa + qualcuno tapped/sick.
+    if (myCrs.length < 2) return false;
+    const idle = myCrs.filter((c) => c.tapped || c.sick).length;
+    if (idle >= 2) return true;
+    const totalPow = myCrs.reduce(
+      (a, c) => a + effStats(s, side, c).power + 1, 0
+    );
+    return totalPow >= foeHp;
+  }
+  if (id === "convergenza_elementale") {
+    // Sciamano: 4 AoE creature + 2 hero + heal 4. Fire se aoe
+    // pulisce ≥2 creature o se 2 dmg = letale all'eroe.
+    if (foeHp <= 2) return true;
+    let killable = 0;
+    for (const cr of foeCrs)
+      if (effStats(s, foe, cr).toughness <= 4) killable += 1;
+    return killable >= 2;
+  }
   return false;
 }
 

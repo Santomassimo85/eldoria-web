@@ -448,6 +448,75 @@ export function activateUltimate(state, side) {
     }
     p.perks.ultimateActive = true;
     logMsg(s, side, `🐅 Forma del Predatore: le tue creature diventano belve!`);
+  } else if (id === "lama_arcana") {
+    // Lamamagica (Mago + Guerriero) lv5: tutte le tue creature
+    // +2/+2 e Travolgere fino a fine turno.
+    for (const cr of p.battlefield) {
+      cr.tempP = (cr.tempP || 0) + 2;
+      cr.tempT = (cr.tempT || 0) + 2;
+      cr.tempKw = [...(cr.tempKw || []), "trample"];
+    }
+    p.perks.ultimateActive = true;
+    logMsg(s, side, `🗡️✨ Lama Arcana: l'acciaio si infiamma di magia!`);
+  } else if (id === "giudizio_sacro") {
+    // Templare (Guerriero + Chierico) lv5: 3 danni a ogni creatura
+    // nemica + 5 PV all'eroe.
+    const foe = opp(side);
+    for (const cr of s.players[foe].battlefield.slice()) {
+      damageCreature(s, foe, cr, 3, "light");
+    }
+    resolveDeaths(s);
+    const got = gainHp(s, side, 5);
+    logMsg(s, side, `⚖️ Giudizio Sacro: la luce condanna i nemici e ti restituisce ${got} PV.`);
+    checkWin(s);
+  } else if (id === "sentenza_finale") {
+    // Inquisitore (Chierico + Ladro) lv5: distruggi la creatura
+    // nemica più potente e pesca 2 carte.
+    const foe = opp(side);
+    let best = null, bestScore = -1;
+    for (const cr of s.players[foe].battlefield) {
+      const st = effStats(s, foe, cr);
+      const score = st.power * 100 + st.toughness;
+      if (score > bestScore) { bestScore = score; best = cr; }
+    }
+    if (best) {
+      best.damage = 9999;
+      best.shield = false;
+      const card = getCard(best.cardId);
+      logMsg(s, side, `📜 Sentenza Finale: ${card.name} viene condannata.`);
+      resolveDeaths(s);
+    } else {
+      logMsg(s, side, `📜 Sentenza Finale: nessun bersaglio da colpire.`);
+    }
+    let drew = 0;
+    for (let i = 0; i < 2; i++) { if (drawOne(s, side, true)) drew++; }
+    if (drew > 0) logMsg(s, side, `📜 ${p.name} pesca ${drew} carte.`);
+    checkWin(s);
+  } else if (id === "imboscata_silvana") {
+    // Predone (Ladro + Druido) lv5: untap + no-sickness + +1/+1 EOT;
+    // pesca 2 carte.
+    for (const cr of p.battlefield) {
+      cr.tapped = false;
+      cr.sick = false;
+      cr.tempP = (cr.tempP || 0) + 1;
+      cr.tempT = (cr.tempT || 0) + 1;
+    }
+    let drew = 0;
+    for (let i = 0; i < 2; i++) { if (drawOne(s, side, true)) drew++; }
+    p.perks.ultimateActive = true;
+    logMsg(s, side, `🌑🌿 Imboscata Silvana: le tue creature sbucano dal bosco${drew ? ` (+${drew} carte)` : ""}!`);
+  } else if (id === "convergenza_elementale") {
+    // Sciamano (Druido + Mago) lv5: 4 danni a ogni creatura nemica,
+    // 2 all'eroe avversario, recuperi 4 PV.
+    const foe = opp(side);
+    for (const cr of s.players[foe].battlefield.slice()) {
+      damageCreature(s, foe, cr, 4, "nature");
+    }
+    damageHero(s, foe, 2, "nature");
+    resolveDeaths(s);
+    const got = gainHp(s, side, 4);
+    logMsg(s, side, `🌪️ Convergenza Elementale: la tempesta primordiale rovescia il campo (+${got} PV).`);
+    checkWin(s);
   } else {
     logMsg(s, side, `${p.name} prepara la sua ultimate.`);
   }

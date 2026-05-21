@@ -2,7 +2,8 @@
    Lobby — PvP matchmaking. Live challenge list, create / accept,
    "waiting for opponent" with cancel, online count.
    Before a challenge is created or accepted we open ClassPicker
-   for the player to pick a VIA (the class is fixed by starter).
+   so the player picks a klass + via in base ai colori del proprio
+   mazzo (2026-05-21: niente più starter lockedClass).
    ============================================================ */
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -18,7 +19,7 @@ function timeAgo(ts) {
 }
 
 export default function Lobby({
-  user, name, deck, cover, klass, onEnterMatch, onBack,
+  user, name, deck, cover, onEnterMatch, onBack,
 }) {
   const [open, setOpen] = useState([]);
   const [online, setOnline] = useState(0);
@@ -85,7 +86,7 @@ export default function Lobby({
   if (picking) {
     return (
       <ClassPicker
-        lockedClass={klass || null}
+        deck={deck}
         onConfirm={confirmPick}
         onBack={() => setPicking(null)}
       />

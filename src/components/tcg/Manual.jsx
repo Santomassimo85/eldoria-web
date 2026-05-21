@@ -13,6 +13,7 @@ import {
 } from "../../tcg/cards.js";
 import {
   CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE,
+  MULTICLASSES, MULTICLASS_DEF,
   LEVEL_THRESHOLDS,
 } from "../../tcg/classes.js";
 
@@ -78,8 +79,8 @@ export default function Manual({ onBack }) {
             </div>
             <div className="tcg-doc__hero-card" style={{ "--acc": ACCENT.klass }}>
               <span className="tcg-doc__hero-ico">🎓</span>
-              <b>Classe + Via</b>
-              <small>Classe fissa per sempre · Via scelta a ogni match</small>
+              <b>Classe dal mazzo</b>
+              <small>Classe e via si scelgono a ogni partita in base ai <i>colori del tuo mazzo</i></small>
             </div>
             <div className="tcg-doc__hero-card" style={{ "--acc": ACCENT.xp }}>
               <span className="tcg-doc__hero-ico">⚡</span>
@@ -103,16 +104,21 @@ export default function Manual({ onBack }) {
           </p>
         </Section>
 
-        {/* ─── 2. Classi e Vie ─── */}
-        <Section icon="🎓" title="Classi &amp; Sottoclassi (Vie)" accent={ACCENT.klass}>
+        {/* ─── 2. Classi, Multiclassi e Vie ─── */}
+        <Section icon="🎓" title="Classi, Multiclassi &amp; Vie" accent={ACCENT.klass}>
           <p>
-            Al primo accesso scegli una <Tag tone="purple">Classe</Tag>: è la
-            tua identità <b>per sempre</b> (solo un reset master può cambiarla).
-            Ogni classe ha <b>due elementi</b> e <b>due vie</b> (sottoclassi D&amp;D);
-            la <Tag tone="purple">Via</Tag> si sceglie <b>a inizio match</b> e
-            determina il tuo percorso di livellamento.
+            La <Tag tone="purple">Classe</Tag> non è più fissa: a ogni partita
+            il gioco rileva i <b>colori del tuo mazzo</b> e ti mostra le classi
+            (e multiclassi) che puoi giocare. Scegli quella che preferisci e poi
+            la <Tag tone="purple">Via</Tag> (sottoclasse D&amp;D), che determina
+            il percorso di livellamento.
           </p>
 
+          <h3>Le 5 classi base</h3>
+          <p style={{ opacity: .8, fontSize: 13, marginTop: -4 }}>
+            Basta avere <b>almeno un colore</b> della classe nel mazzo per
+            poterla selezionare.
+          </p>
           <ul className="tcg-doc__classes">
             {CLASSES.map((k) => {
               const vie = CLASS_VIE[k];
@@ -139,11 +145,52 @@ export default function Manual({ onBack }) {
             })}
           </ul>
 
+          <h3>Le 5 multiclassi</h3>
+          <p style={{ opacity: .8, fontSize: 13, marginTop: -4 }}>
+            Si sbloccano quando il mazzo contiene <b>tutti e tre</b> i colori
+            della combo. Eredite le 4 vie delle classi sorgenti e ottieni
+            un'<b>ultimate dedicata</b> al livello 5.
+          </p>
+          <ul className="tcg-doc__classes">
+            {MULTICLASSES.map((k) => {
+              const m = MULTICLASS_DEF[k];
+              return (
+                <li key={k} className="tcg-doc__class">
+                  <span className="tcg-doc__class-ico">{m.icon}</span>
+                  <span className="tcg-doc__class-name">
+                    <b>{m.label}</b>
+                    {" — "}
+                    {m.elements.map((el, i, a) => (
+                      <React.Fragment key={el}>
+                        <span style={{ color: ELEMENT_PIP[el] }}>
+                          {ELEMENT_ICON[el]} {ELEMENT_LABEL[el]}
+                        </span>
+                        {i < a.length - 1 ? " · " : ""}
+                      </React.Fragment>
+                    ))}
+                    <br />
+                    <small style={{ opacity: .65, fontStyle: "italic" }}>
+                      {m.desc}{" "}
+                      <b style={{ color: "#ff7ad4" }}>
+                        Ultimate: {m.ultimate.icon} {m.ultimate.name}.
+                      </b>
+                    </small>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+
           <Note tone="info">
-            <b>Il deck è libero!</b> Puoi metterci carte di qualunque colore
-            (basta avere le terre giuste per il mana). Le ricompense del
-            livellamento restano però sempre quelle della <b>tua</b> classe e
-            via: la classe è <b>identità</b>, non vincolo di mazzo.
+            <b>Il deck è libero!</b> Puoi mescolare carte di qualunque colore
+            (basta avere le terre giuste per il mana). I bonus di livellamento
+            seguono la classe + via che scegli a inizio match.
+          </Note>
+          <Note tone="warn">
+            ⚠️ <b>Mazzo senza copertura.</b> Se non hai abbastanza carte
+            colorate per sbloccare nessuna classe, puoi comunque giocare ma{" "}
+            <b>NON otterrai XP, spell slot né ultimate</b>. Il picker te lo
+            segnala prima della partita.
           </Note>
         </Section>
 
@@ -236,6 +283,11 @@ export default function Manual({ onBack }) {
               Il <Tag tone="gold">Mago</Tag> (caster pieno) ottiene anche{" "}
               <b>−1 mana generico</b> su ogni spell.
             </li>
+            <li>
+              <Tag tone="pink">Multiclassi</Tag>: cap e bonus seguono la{" "}
+              <b>via</b> scelta (es. via di Mago → cap 3 + sconto; via di
+              Guerriero → cap 2).
+            </li>
           </ul>
 
           <Note tone="info">
@@ -258,6 +310,11 @@ export default function Manual({ onBack }) {
             la <b>pila vuota</b>. Se il bottone è grigio leggi la sotto-scritta
             che ti dice perché.
           </p>
+          <Note tone="info">
+            <b>Multiclassi:</b> al lv5 NON ottieni l'ultimate della via, ma
+            quella dedicata della multiclasse (es. Templare → ⚖️ Giudizio
+            Sacro, indipendentemente da quale via hai scelto).
+          </Note>
         </Section>
 
         {/* ─── 6. Mana e Terre ─── */}
@@ -434,6 +491,11 @@ export default function Manual({ onBack }) {
               costano di più.
             </li>
           </ul>
+          <Note tone="info">
+            Le <b>multiclassi</b> non hanno pacchetti dedicati: si sbloccano
+            mescolando carte dei <b>3 colori</b> della combo (es. Templare =
+            🔥 + ☀️ + 🌑 → unisci un pack Guerriero a un pack Chierico).
+          </Note>
           <p>
             In <b>Mazzo</b> puoi costruire a mano, usare i filtri/ordinamento,
             l'<b>auto-build di classe</b>, scegliere il <b>dorso</b> delle
@@ -447,10 +509,11 @@ export default function Manual({ onBack }) {
           <ul>
             <li>🎯 Gioca una Terra ogni turno: senza mana non fai nulla.</li>
             <li>📏 Tieni 22–24 Terre nei colori che usi davvero.</li>
-            <li>🌈 Due elementi sono già un bel mix: il tri-colore è duro.</li>
+            <li>🌈 Due elementi sono già un bel mix; il tri-colore apre alle <b>multiclassi</b>, ma serve mana stabile.</li>
             <li>📈 Cura la curva: tante carte da 1–3 mana, poche grosse.</li>
             <li>⚡ Conserva una reazione per il turno avversario quando puoi.</li>
             <li>⭐ Pianifica l'ultimate: aspetta il momento giusto, è una sola.</li>
+            <li>🎓 Vuoi una classe specifica? Controlla che il mazzo abbia i suoi colori — il picker mostra subito quali classi/multiclassi sono sbloccate.</li>
           </ul>
         </Section>
 

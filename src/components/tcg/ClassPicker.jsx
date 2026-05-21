@@ -1,18 +1,28 @@
 /* ============================================================
-   ClassPicker — pre-match SUBCLASS selection.
-   Class identity is fixed by the player's starter (chosen once,
-   for life). At match start you only pick which of your class' 2
-   vie (subclasses) you want to follow — that drives the level-up
-   path. If `lockedClass` is omitted (e.g. a brand-new dev profile
-   without a starter yet) we fall back to the old two-stage flow
-   so the screen is never a dead end.
-   Calls onConfirm({ klass, via }).
+   ClassPicker — pre-match CLASS + VIA selection.
+   2026-05-21: l'identità di classe non è più fissa allo starter.
+   Si rileva da SOLO il deck del giocatore (i colori delle carte
+   non-terra). Mostra:
+     • le classi BASE compatibili (almeno 1 colore nel mazzo)
+     • le MULTICLASSI compatibili (tutti i 3 colori nel mazzo)
+     • un avviso se il mazzo non copre NESSUNA classe (niente XP,
+       slot, ultimate — la partita si gioca "in incolore").
+   Il giocatore può anche scegliere di non avere classe (modalità
+   senza bonus). Le vie disponibili dipendono dalla classe scelta
+   (multiclasse → unione delle 4 vie delle classi sorgenti).
+   Chiama onConfirm({ klass, via }) o onConfirm(null) per giocare
+   senza classe.
    ============================================================ */
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE, CLASS_CASTER_TIER,
+  MULTICLASSES, MULTICLASS_DEF, MULTICLASS_LABEL, MULTICLASS_ICON,
+  isMulticlass, vieFor, casterTierFor,
+  computeDeckColors, computeEligibleClasses,
 } from "../../tcg/classes.js";
-import { ELEMENT_PIP, ELEMENT_LABEL, ELEMENT_ICON } from "../../tcg/cards.js";
+import {
+  ELEMENT_PIP, ELEMENT_LABEL, ELEMENT_ICON, getCard,
+} from "../../tcg/cards.js";
 
 const TIER_LABEL = {
   full:    "Caster pieno",
@@ -20,20 +30,80 @@ const TIER_LABEL = {
   martial: "Marziale",
 };
 
-export default function ClassPicker({ onConfirm, onBack, lockedClass = null }) {
-  // When the player already has a class (starter), skip stage 1 and
-  // jump straight to via selection. They cannot change class here.
-  const [klass, setKlass] = useState(lockedClass || null);
+function ColorPip({ el }) {
+  return (
+    <span
+      className="tcg-picker__color"
+      style={{ background: ELEMENT_PIP[el] }}
+      title={ELEMENT_LABEL[el]}
+    >
+      {ELEMENT_ICON[el]}
+    </span>
+  );
+}
+
+function classMeta(k) {
+  if (isMulticlass(k)) {
+    const m = MULTICLASS_DEF[k];
+    return {
+      label: MULTICLASS_LABEL[k],
+      icon:  MULTICLASS_ICON[k],
+      tier:  "mix",                // multi: tier varia con la via
+      colors: m.elements,
+      desc:  m.desc,
+      isMulti: true,
+    };
+  }
+  return {
+    label: CLASS_LABEL[k],
+    icon:  CLASS_ICON[k],
+    tier:  CLASS_CASTER_TIER[k],
+    colors: Object.values(CLASS_VIE[k]).map((v) => v.element),
+    desc:  null,
+    isMulti: false,
+  };
+}
+
+export default function ClassPicker({ onConfirm, onBack, deck = null }) {
+  const [klass, setKlass] = useState(null);
   const [via, setVia] = useState(null);
 
-  const vie = klass ? CLASS_VIE[klass] : null;
-  const tier = klass ? CLASS_CASTER_TIER[klass] : null;
-  const classLocked = !!lockedClass;
+  /* Rileva i colori del mazzo e calcola le classi/multiclassi sbloccate. */
+  const { colors, eligible } = useMemo(() => {
+    const cols = computeDeckColors(deck, getCard);
+    const elig = computeEligibleClasses(cols);
+    return { colors: Array.from(cols), eligible: elig };
+  }, [deck]);
 
-  const reset = () => {
-    if (classLocked) return;
-    setKlass(null);
-    setVia(null);
+  const noneEligible = !eligible.anyEligible;
+
+  const vie = klass ? vieFor(klass) : null;
+  const tier = klass && via ? casterTierFor(klass, via) : null;
+
+  const reset = () => { setKlass(null); setVia(null); };
+
+  const renderClassButton = (k) => {
+    const meta = classMeta(k);
+    return (
+      <button
+        key={k}
+        type="button"
+        className={`tcg-picker__class ${meta.isMulti ? "is-multi" : ""}`}
+        onClick={() => { setKlass(k); setVia(null); }}
+      >
+        <div className="tcg-picker__class-ico">{meta.icon}</div>
+        <div className="tcg-picker__class-name">{meta.label}</div>
+        <div className="tcg-picker__class-tier">
+          {meta.isMulti ? "Multiclasse" : TIER_LABEL[meta.tier]}
+        </div>
+        <div className="tcg-picker__class-colors">
+          {meta.colors.map((el) => <ColorPip key={el} el={el} />)}
+        </div>
+        {meta.desc && (
+          <div className="tcg-picker__class-desc">{meta.desc}</div>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -41,10 +111,8 @@ export default function ClassPicker({ onConfirm, onBack, lockedClass = null }) {
       <div className="tcg-picker__head">
         <h2>
           {klass
-            ? (classLocked
-                ? `Scegli la via — ${CLASS_LABEL[klass]}`
-                : "Scegli la tua via")
-            : "Scegli la tua classe"}
+            ? `Scegli la via — ${classMeta(klass).label}`
+            : "Scegli la classe in base al tuo mazzo"}
         </h2>
         {onBack && (
           <button className="tcg-btn" type="button" onClick={onBack}>
@@ -53,62 +121,90 @@ export default function ClassPicker({ onConfirm, onBack, lockedClass = null }) {
         )}
       </div>
 
-      {!klass && !classLocked && (
-        <div className="tcg-picker__classes">
-          {CLASSES.map((k) => {
-            const v = CLASS_VIE[k];
-            const colors = Object.values(v).map((x) => x.element);
-            return (
+      {!klass && (
+        <>
+          {/* Riassunto colori rilevati nel mazzo */}
+          <div className="tcg-picker__deckcolors">
+            <span className="tcg-picker__deckcolors-lbl">
+              Colori del tuo mazzo:
+            </span>
+            {colors.length === 0 ? (
+              <span className="tcg-picker__deckcolors-empty">— nessuno —</span>
+            ) : (
+              colors.map((el) => <ColorPip key={el} el={el} />)
+            )}
+          </div>
+
+          {noneEligible ? (
+            <div className="tcg-picker__warn">
+              <h3>⚠️ Mazzo senza copertura di classe</h3>
+              <p>
+                Il tuo mazzo non contiene carte colorate sufficienti per
+                sbloccare una classe. Puoi giocare comunque, ma{" "}
+                <b>non avrai XP, spell slot né ultimate</b>.
+              </p>
               <button
-                key={k}
                 type="button"
-                className="tcg-picker__class"
-                onClick={() => setKlass(k)}
+                className="tcg-btn tcg-btn--primary"
+                onClick={() => onConfirm(null)}
               >
-                <div className="tcg-picker__class-ico">{CLASS_ICON[k]}</div>
-                <div className="tcg-picker__class-name">{CLASS_LABEL[k]}</div>
-                <div className="tcg-picker__class-tier">
-                  {TIER_LABEL[CLASS_CASTER_TIER[k]]}
-                </div>
-                <div className="tcg-picker__class-colors">
-                  {colors.map((el) => (
-                    <span
-                      key={el}
-                      className="tcg-picker__color"
-                      style={{ background: ELEMENT_PIP[el] }}
-                      title={ELEMENT_LABEL[el]}
-                    >
-                      {ELEMENT_ICON[el]}
-                    </span>
-                  ))}
-                </div>
+                Gioca senza classe
               </button>
-            );
-          })}
-        </div>
+            </div>
+          ) : (
+            <>
+              {eligible.classes.length > 0 && (
+                <>
+                  <h3 className="tcg-picker__sect">Classi base</h3>
+                  <div className="tcg-picker__classes">
+                    {eligible.classes.map(renderClassButton)}
+                  </div>
+                </>
+              )}
+
+              {eligible.multiclasses.length > 0 && (
+                <>
+                  <h3 className="tcg-picker__sect">
+                    Multiclassi <small>(richiedono tutti i 3 colori)</small>
+                  </h3>
+                  <div className="tcg-picker__classes">
+                    {eligible.multiclasses.map(renderClassButton)}
+                  </div>
+                </>
+              )}
+
+              <div className="tcg-picker__skip">
+                <button
+                  type="button"
+                  className="tcg-btn tcg-btn--ghost"
+                  onClick={() => onConfirm(null)}
+                  title="Niente XP, slot né ultimate"
+                >
+                  Gioca senza classe
+                </button>
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {klass && (
         <>
           <div className="tcg-picker__class-summary">
-            <span className="tcg-picker__class-ico">{CLASS_ICON[klass]}</span>
-            <b>{CLASS_LABEL[klass]}</b>
-            <span className="tcg-picker__class-tier">
-              ({TIER_LABEL[tier]})
-            </span>
-            {classLocked ? (
-              <span className="tcg-picker__locked" title="La classe è fissata dallo starter">
-                🔒 Classe fissata
+            <span className="tcg-picker__class-ico">{classMeta(klass).icon}</span>
+            <b>{classMeta(klass).label}</b>
+            {tier && (
+              <span className="tcg-picker__class-tier">
+                ({TIER_LABEL[tier]})
               </span>
-            ) : (
-              <button
-                className="tcg-btn tcg-picker__retry"
-                type="button"
-                onClick={reset}
-              >
-                cambia
-              </button>
             )}
+            <button
+              className="tcg-btn tcg-picker__retry"
+              type="button"
+              onClick={reset}
+            >
+              cambia
+            </button>
           </div>
 
           <div className="tcg-picker__vie">

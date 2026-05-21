@@ -36,19 +36,49 @@ import { playSfx } from "../../utils/tcgSfx.js";
 
 const EMOTES = ["Ben giocato!", "Per gli dèi!", "Tornerò!", "Tira iniziativa!"];
 
-/* coloured mana gems built from the player's lands (dim = tapped) */
+/* Mana gems — one gem per ELEMENT instead of one per land (saves room
+   on phones). Each gem shows the count overlaid on the diamond. Spent
+   mana (tapped lands) gets a separate half-coloured / half-grey gem so
+   you can tell at a glance "X available, Y already used" without the
+   panel growing with every extra land.
+   Element order is stable for a calm UI. */
+const MANA_ELEMENT_ORDER = ["fire", "water", "nature", "light", "darkness"];
 function ManaRow({ lands }) {
   if (!lands.length) return <span className="tcg-mana__none">nessuna terra</span>;
+  const groups = {};
+  for (const l of lands) {
+    const g = groups[l.element] || (groups[l.element] = { avail: 0, spent: 0 });
+    if (l.tapped) g.spent += 1; else g.avail += 1;
+  }
+  const ordered = MANA_ELEMENT_ORDER.filter((el) => groups[el]);
+  for (const el of Object.keys(groups)) if (!ordered.includes(el)) ordered.push(el);
   return (
-    <div className="tcg-mana" title="Mana disponibile (terre)">
-      {lands.map((l) => (
-        <span
-          key={l.instId}
-          className={`tcg-mana__gem ${l.tapped ? "is-tapped" : ""}`}
-          style={{ "--pip": ELEMENT_PIP[l.element] }}
-          title={ELEMENT_LABEL[l.element]}
-        />
-      ))}
+    <div className="tcg-mana" title="Mana disponibile · speso">
+      {ordered.map((el) => {
+        const g = groups[el];
+        return (
+          <React.Fragment key={el}>
+            {g.avail > 0 && (
+              <span
+                className="tcg-mana__gem"
+                style={{ "--pip": ELEMENT_PIP[el] }}
+                title={`${ELEMENT_LABEL[el]} · ${g.avail} disponibili`}
+              >
+                <span className="tcg-mana__num">{g.avail}</span>
+              </span>
+            )}
+            {g.spent > 0 && (
+              <span
+                className="tcg-mana__gem is-spent"
+                style={{ "--pip": ELEMENT_PIP[el] }}
+                title={`${ELEMENT_LABEL[el]} · ${g.spent} usati`}
+              >
+                <span className="tcg-mana__num">{g.spent}</span>
+              </span>
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
