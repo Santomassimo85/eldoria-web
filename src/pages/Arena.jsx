@@ -486,10 +486,10 @@ const RANGER_PETS = {
   },
   spider: {
     key: "spider", name: "Ragno", icon: "🕷",
-    info: "Il ragno intrappola il nemico · TS FOR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
+    info: "Morde e intrappola · veleno 1d4/2t + TS FOR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
     action: {
-      name: "Tela del Ragno", hitBonus: 0, damage: "—", statKey: null,
-      type: "skill", icon: "🕷", info: "TS FOR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
+      name: "Morso del Ragno", hitBonus: 0, damage: "—", statKey: null,
+      type: "skill", icon: "🕷", info: "Veleno 1d4 per 2 turni + TS FOR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
       special: "pet_spider", saveAbility: "str", saveDC: 13, maxUses: 2,
     },
   },
@@ -3260,9 +3260,18 @@ export default function Arena() {
     const critThresh  = isFighter ? 19 : 20;
 
     // Roll attack — fighter rerolls 1s (Presenza Possente).
-    let d20 = Math.floor(Math.random() * 20) + 1;
-    if (d20 === 1 && isFighter) d20 = Math.floor(Math.random() * 20) + 1;
+    // Vantaggio/svantaggio: stessa regola del giocatore. Si annullano se entrambi presenti.
     const tgtMatchPlayer  = m.players.find(p => p.id === target.id);
+    const aiEagleActive   = (aiPlayer.eagleDebuffTurns ?? 0) > 0;
+    const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0;
+    const aiHasDisadvantage = readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0;
+    let d20a = Math.floor(Math.random() * 20) + 1;
+    if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1;
+    let d20b = (aiHasAdvantage || aiHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
+    if (d20b === 1 && isFighter && (aiHasAdvantage || aiHasDisadvantage)) d20b = Math.floor(Math.random() * 20) + 1;
+    const d20 = aiHasAdvantage && !aiHasDisadvantage ? Math.max(d20a, d20b)
+              : aiHasDisadvantage && !aiHasAdvantage ? Math.min(d20a, d20b)
+              : d20a;
     const shieldSkillBonus = (tgtMatchPlayer?.shieldSkillTurns ?? 0) > 0
       ? (tgtMatchPlayer?.shieldSkillBonus ?? 3) : 0;
     const defensiveBonus   = tgtMatchPlayer?.defensiveBonus ?? 0;
@@ -3287,7 +3296,10 @@ export default function Arena() {
     const ragePart= rageDmgBonus ? ` +${rageDmgBonus} furia` : "";
     const barbPart= barbarianDmgBonus ? ` +${barbarianDmgBonus} barb` : "";
     const hmPart  = hunterMarkDmgBonus ? ` +${hunterMarkDmgBonus} 🎯marchio` : "";
-    const breakdown = `d20=${d20}+hit${chosen.hitBonus || 0}${statMod >= 0 ? "+" : ""}${statMod} ${statKey.toUpperCase()}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""}${aidPart}=${hitTotal} vs CA ${targetAc}`;
+    const aiAdvTag = aiHasAdvantage && !aiHasDisadvantage ? ` 🌟vant.[${d20a},${d20b}]`
+                   : aiHasDisadvantage && !aiHasAdvantage ? ` 🌑svant.[${d20a},${d20b}]`
+                   : (aiHasAdvantage && aiHasDisadvantage) ? ` ⚖️ vant.+svant. annullati` : "";
+    const breakdown = `d20=${d20}${aiAdvTag}+hit${chosen.hitBonus || 0}${statMod >= 0 ? "+" : ""}${statMod} ${statKey.toUpperCase()}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""}${aidPart}=${hitTotal} vs CA ${targetAc}`;
     const attackLog = {
       pub: isHit
         ? `💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${critTag} — ${damage} danni`
@@ -3588,8 +3600,10 @@ export default function Arena() {
         ? readActiveBonus(myMatchPlayer?.magicDetectActive, 0)
         : readActiveBonus(myMatchPlayer?.aidBuff, 4);
       // Furtività dà vantaggio su TUTTI gli attacchi del Ladro (Attacco Furtivo incluso).
+      // Svantaggio: stealth del bersaglio, accecato dall'aquila, o svantaggio agli attacchi (Triboli/Oscurità).
+      const sneakEagleActive     = (myMatchPlayer?.eagleDebuffTurns ?? 0) > 0;
       const sneakHasAdvantage    = readStealthAdvTurns(myMatchPlayer) > 0 || (myMatchPlayer?.selfAdvTurns ?? 0) > 0;
-      const sneakHasDisadvantage = readStealthDisadvTurns(defMatchPlayer) > 0;
+      const sneakHasDisadvantage = readStealthDisadvTurns(defMatchPlayer) > 0 || sneakEagleActive || (myMatchPlayer?.attackDisadvantageTurns ?? 0) > 0;
       const sneakD20a = Math.floor(Math.random() * 20) + 1;
       const sneakD20b = (sneakHasAdvantage || sneakHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
       // Vantaggio + svantaggio si annullano (regola D&D 5e).
@@ -4363,10 +4377,15 @@ export default function Arena() {
           pendingControlDC: saveDC,
           pendingControlSaveAbility: saveAbility,
           controlLostTurns: 2,
+          poisonDoT: true,
+          poisonDoTTurns: Math.max(p.poisonDoTTurns ?? 0, 2),
+          poisonDoTDice: "1d4",
+          poisonDoTSourceLabel: "veleno del ragno",
+          poisonDoTIcon: "🕷",
         };
         return p;
       });
-      const log = `🕷 Il ragno di ${myName} intrappola ${targetName} — TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi.`;
+      const log = `🕷 Il ragno di ${myName} morde e intrappola ${targetName} — veleno 🕷 1d4 a inizio turno per 2 turni · TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });

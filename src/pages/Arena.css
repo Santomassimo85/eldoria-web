@@ -7660,7 +7660,6 @@
 .arena-page .arena-quicknav-chip--active { background: var(--amber) !important; }
 
 /* ── Badge / barre HP ────────────────────────────────────── */
-.arena-page .bracket-hp-badge,
 .arena-page .bracket-round-badge,
 .arena-page .class-stats-rank,
 .arena-page .arena-bet-fab-badge {
@@ -7668,6 +7667,14 @@
   color: var(--paper) !important;
   border-radius: 0 !important;
   font-weight: 800;
+}
+.arena-page .bracket-hp-badge {
+  background: #6b0f0f !important;            /* rosso scuro */
+  color: #86efac !important;                  /* verde chiaro */
+  border: 2px solid #1f1f1f !important;
+  border-radius: 0 !important;
+  font-weight: 800;
+  text-shadow: none !important;
 }
 .arena-page .bracket-hp-track,
 .arena-page .class-stats-bar-track {
@@ -7900,9 +7907,9 @@
   background: #ffffff !important;
   border: 4px solid #1f1f1f !important;
   border-radius: 0 !important;
-  box-shadow: 6px 6px 0 0 #0d9488 !important;
+  box-shadow: 6px 6px 0 0 #7f1d1d !important;
 }
-.arena-page .bracket-open-row { box-shadow: 5px 5px 0 0 #0d9488 !important; }
+.arena-page .bracket-open-row { box-shadow: 5px 5px 0 0 #7f1d1d !important; }
 
 .arena-page .bracket-open-row-title,
 .arena-page .bracket-summary-card-title,
@@ -7911,11 +7918,11 @@
   font-weight: 900 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
-  color: #134e4a !important;
+  color: #7f1d1d !important;
 }
 .arena-modal-body .bracket-final-header {
-  background: #134e4a !important;
-  color: #fff8e1 !important;
+  background: #7f1d1d !important;
+  color: #fde68a !important;
   border: 3px solid #1f1f1f !important;
   box-shadow: 4px 4px 0 0 #1f1f1f !important;
   border-radius: 0 !important;
@@ -7924,7 +7931,7 @@
 
 /* intestazione girone */
 .arena-modal-body .bracket-group-header {
-  background: #134e4a !important;
+  background: #7f1d1d !important;
   border: 3px solid #1f1f1f !important;
   border-radius: 0 !important;
   box-shadow: 3px 3px 0 0 #1f1f1f !important;
@@ -7933,11 +7940,11 @@
   font-weight: 900 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
-  color: #fff8e1 !important;
+  color: #fde68a !important;
 }
 .arena-modal-body .bracket-group-count {
-  background: #0d9488 !important;
-  color: #fff !important;
+  background: #b45309 !important;
+  color: #fff8e1 !important;
   border: 2px solid #1f1f1f !important;
   border-radius: 0 !important;
   font-weight: 800 !important;
@@ -7949,8 +7956,8 @@
 /* badge round / finale (inline + modal) */
 .arena-page .bracket-round-badge,
 .arena-modal-body .bracket-round-badge {
-  background: #0d9488 !important;
-  color: #fff !important;
+  background: #7f1d1d !important;
+  color: #fde68a !important;
   border: 2px solid #1f1f1f !important;
   border-radius: 0 !important;
   box-shadow: 2px 2px 0 0 #1f1f1f !important;
@@ -7974,8 +7981,8 @@
 }
 .arena-page .bracket-standings th,
 .arena-modal-body .bracket-standings th {
-  background: #134e4a !important;
-  color: #fff8e1 !important;
+  background: #7f1d1d !important;
+  color: #fde68a !important;
   font-weight: 900 !important;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -7989,7 +7996,7 @@
 }
 .arena-page .bracket-standings tr.leader td,
 .arena-modal-body .bracket-standings tr.leader td {
-  background: #ccfbf1 !important;
+  background: #fde68a !important;
   font-weight: 800 !important;
 }
 .arena-page .bracket-standings .standings-avatar,
@@ -8000,14 +8007,14 @@
 
 /* colonne round + match (modal) */
 .arena-modal-body .bracket-round-col {
-  background: #ccfbf1 !important;
+  background: #fff8e1 !important;
   border: 3px solid #1f1f1f !important;
   border-radius: 0 !important;
-  box-shadow: 4px 4px 0 0 #0d9488 !important;
+  box-shadow: 4px 4px 0 0 #7f1d1d !important;
 }
 .arena-modal-body .bracket-round-header {
-  background: #0d9488 !important;
-  color: #fff !important;
+  background: #7f1d1d !important;
+  color: #fde68a !important;
   border: 2px solid #1f1f1f !important;
   border-radius: 0 !important;
   font-weight: 900 !important;
@@ -8017,8 +8024,8 @@
 .arena-modal-body .bracket-rounds-empty {
   border: 3px dashed #1f1f1f !important;
   border-radius: 0 !important;
-  background: #ccfbf1 !important;
-  color: #134e4a !important;
+  background: #fff8e1 !important;
+  color: #7f1d1d !important;
   font-weight: 700;
 }
 .arena-modal-body .bracket-final-wrap {
@@ -8028,7 +8035,8 @@
   box-shadow: 8px 8px 0 0 #fbbf24 !important;
 }
 
-/* barre HP nel tabellone — riempimento teal */
+/* barre HP nel tabellone — il colore di riempimento è dinamico (verde/arancio/rosso)
+   ed è impostato inline a runtime in base alla % HP; qui solo struttura. */
 .arena-page .bracket-hp-track,
 .arena-modal-body .bracket-hp-track {
   background: #ffffff !important;
@@ -8036,19 +8044,21 @@
   border-radius: 0 !important;
 }
 .arena-page .bracket-hp-bar,
-.arena-modal-body .bracket-hp-bar { background: #0d9488 !important; border-radius: 0 !important; }
+.arena-modal-body .bracket-hp-bar { border-radius: 0 !important; }
 .arena-page .bracket-hp-badge,
 .arena-modal-body .bracket-hp-badge {
-  background: #1f1f1f !important;
-  color: #fff8e1 !important;
+  background: #6b0f0f !important;            /* rosso scuro */
+  color: #86efac !important;                  /* verde chiaro */
+  border: 2px solid #1f1f1f !important;
   border-radius: 0 !important;
   font-weight: 800;
+  text-shadow: none !important;
 }
 
 /* pulsante apri tabellone (inline) */
 .arena-page .btn-bracket-open {
-  background: #0d9488 !important;
-  color: #fff !important;
+  background: #7f1d1d !important;
+  color: #fde68a !important;
   border: 3px solid #1f1f1f !important;
   border-radius: 0 !important;
   box-shadow: 4px 4px 0 0 #1f1f1f !important;
