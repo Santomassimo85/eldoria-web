@@ -1940,6 +1940,43 @@
   font-size: 13px; opacity: .9;
 }
 .tcg-reveal__bar > div { display: flex; gap: 8px; }
+
+/* Floating "Identifica tutte" button — anchored to the viewport so it's
+   always reachable while scrolling through the pack reveal grid (phones
+   especially: the top bar scrolls off and the action used to disappear). */
+.tcg-reveal__fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800; font-size: 13px;
+  color: #1a120a;
+  background: linear-gradient(180deg, #f0c25c, #b4862e);
+  border: 1px solid rgba(0,0,0,.45);
+  box-shadow:
+    0 6px 16px rgba(0,0,0,.55),
+    0 0 0 2px rgba(255,255,255,.08) inset;
+  animation: tcg-revealfab-in .35s ease both;
+  transition: transform .15s ease, filter .15s ease;
+}
+.tcg-reveal__fab:hover { filter: brightness(1.08); }
+.tcg-reveal__fab:active { transform: translateY(1px); }
+.tcg-reveal__fab-ico { font-size: 16px; line-height: 1; }
+@keyframes tcg-revealfab-in {
+  from { transform: translateY(20px) scale(.85); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+@media (max-width: 520px) {
+  /* On narrow phones drop the text — the sparkle + position make the
+     intent obvious, and a circular FAB doesn't eat scroll space. */
+  .tcg-reveal__fab { padding: 14px; }
+  .tcg-reveal__fab-txt { display: none; }
+  .tcg-reveal__fab-ico { font-size: 20px; }
+}
 .tcg-reveal__grid {
   display: grid; gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));

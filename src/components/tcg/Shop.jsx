@@ -1,6 +1,7 @@
 /* Shop — one single-element pack per element (light/darkness pricier).
    Opening a pack shows 15 face-down cards; click each to flip it
-   (nice 3D effect) or "Scopri tutte". */
+   (nice 3D effect) or "Identifica tutte" (also a floating FAB so the
+   action stays reachable on phones where the bar scrolls off). */
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import CardView from "./CardView.jsx";
@@ -30,7 +31,7 @@ export default function Shop({ profile, onOpenPack, onBack }) {
   const [zoom, setZoom] = useState(null);
   const [msg, setMsg] = useState("");
   // Big centred reveal popup for the juicy pulls (epic+/legendary/foil).
-  // Queued so multiple specials don't overlap when "Scopri tutte" is used.
+  // Queued so multiple specials don't overlap when "Identifica tutte" is used.
   // Dismissed by tapping the card; no auto-dismiss.
   const [bigQueue, setBigQueue] = useState([]);
 
@@ -114,7 +115,7 @@ export default function Shop({ profile, onOpenPack, onBack }) {
             <div>
               {!allOpen && (
                 <button className="tcg-btn tcg-btn--primary" onClick={flipAll}>
-                  Scopri tutte
+                  Identifica tutte
                 </button>
               )}
               <button className="tcg-btn" onClick={() => setRevealed(null)}>
@@ -122,6 +123,17 @@ export default function Shop({ profile, onOpenPack, onBack }) {
               </button>
             </div>
           </div>
+          {!allOpen && (
+            <button
+              className="tcg-reveal__fab"
+              onClick={flipAll}
+              aria-label="Identifica tutte le carte"
+              title="Identifica tutte"
+            >
+              <span className="tcg-reveal__fab-ico" aria-hidden="true">✨</span>
+              <span className="tcg-reveal__fab-txt">Identifica tutte</span>
+            </button>
+          )}
           <div className="tcg-reveal__grid">
             {revealed.cards.map((cd, i) => {
               const open = flipped.has(i);
