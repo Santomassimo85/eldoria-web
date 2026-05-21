@@ -1085,18 +1085,46 @@
 }
 .tcg-ghost { width: clamp(78px, 8vw, 112px); }
 
+/* Emote bubbles — quick in-match phrases. Lives on a fixed overlay
+   that sits ABOVE everything else in the table (cards, hand, rail,
+   arrows, modals), so it can't get hidden by a fanned hand or a
+   creature in the centre. Shown for 2s total (animation duration ==
+   the auto-dismiss timer in GameTable). */
 .tcg-emotebubble {
-  position: absolute; left: 50%; transform: translateX(-50%); z-index: 50;
-  padding: 8px 16px; border-radius: 999px;
-  background: rgba(0,0,0,.8); border: 1px solid var(--gold);
-  font-weight: 600; animation: tcg-bub 2.8s ease forwards;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4200;                /* > arrows (4050) and modals */
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: clamp(15px, 1.8vw, 22px);
+  font-weight: 800;
+  letter-spacing: .5px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(26,18,8,.95), rgba(10,6,2,.95));
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.7) inset,
+    0 0 28px rgba(216,177,90,.55),
+    0 8px 22px rgba(0,0,0,.7);
+  text-shadow: 0 2px 4px #000, 0 0 6px rgba(0,0,0,.9);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: tcg-bub 2s ease forwards;
 }
-.tcg-emotebubble.is-me  { bottom: 160px; }
-.tcg-emotebubble.is-foe { top: 120px; }
+/* "is-me" stays at the bottom (above the hand fan), "is-foe" at the
+   top (well clear of the opponent's face-down hand). The vw clamps
+   keep it readable on phones in forced landscape. */
+.tcg-emotebubble.is-me  { bottom: clamp(170px, 24vh, 240px); }
+.tcg-emotebubble.is-foe { top: clamp(110px, 18vh, 180px); }
+.tcg-emotebubble.is-me  { border-color: #9ef0a0; box-shadow: 0 0 0 1px rgba(0,0,0,.7) inset, 0 0 24px rgba(110,240,150,.55), 0 8px 22px rgba(0,0,0,.7); }
+.tcg-emotebubble.is-foe { border-color: #ff8a7a; box-shadow: 0 0 0 1px rgba(0,0,0,.7) inset, 0 0 24px rgba(255,138,122,.55), 0 8px 22px rgba(0,0,0,.7); }
 @keyframes tcg-bub {
-  0% { opacity: 0; transform: translateX(-50%) scale(.7); }
-  12%,80% { opacity: 1; transform: translateX(-50%) scale(1); }
-  100% { opacity: 0; }
+  0%   { opacity: 0; transform: translateX(-50%) scale(.7) translateY(8px); }
+  12%  { opacity: 1; transform: translateX(-50%) scale(1.1) translateY(0); }
+  20%  { transform: translateX(-50%) scale(1) translateY(0); }
+  80%  { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) scale(.95) translateY(-6px); }
 }
 
 .tcg-disconnect {
@@ -1598,6 +1626,31 @@
 .tcg-chipbtn--danger { border-color: #a4433a; color: #ff9a8a; }
 .tcg-chipbtn:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(.4); }
 .tcg-chipbtn:disabled:hover { filter: grayscale(.4); }
+/* foil filter chip — rainbow shimmer border so it looks distinctly
+   "premium". The same gradient (background-size 300%) is reused in
+   .tcg-flip__foil / .tcg-packcard__odot--foil for visual continuity. */
+.tcg-chipbtn--foil:not(:disabled) {
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)) padding-box,
+    linear-gradient(90deg, #ffe7a0, #a0e7ff, #e7a0ff, #ffe7a0) border-box;
+  background-size: auto, 300% 100%;
+  animation: tcg-foil-tag 3.2s linear infinite;
+  color: #ffe9a8;
+}
+.tcg-chipbtn--foil.is-on {
+  background:
+    linear-gradient(90deg, #ffe7a0, #a0e7ff, #e7a0ff, #ffe7a0) padding-box,
+    linear-gradient(90deg, #ffe7a0, #a0e7ff, #e7a0ff, #ffe7a0) border-box;
+  background-size: 300% 100%, 300% 100%;
+  color: #1a1206;
+  text-shadow: 0 1px 0 rgba(255,255,255,.5);
+}
+.tcg-grid__foilmark {
+  color: #ffe7a0;
+  font-weight: 800;
+  text-shadow: 0 0 6px rgba(255,231,160,.7);
+}
 
 .tcg-grid {
   display: grid; gap: 12px;

@@ -745,7 +745,7 @@ export default function GameTable({
     if (match.emote.ts && match.emote.ts !== emoteTs.current) {
       emoteTs.current = match.emote.ts;
       setEmoteBubble({ ...match.emote });
-      const t = setTimeout(() => setEmoteBubble(null), 2800);
+      const t = setTimeout(() => setEmoteBubble(null), 2000);
       return () => clearTimeout(t);
     }
   }, [isAi, match]);

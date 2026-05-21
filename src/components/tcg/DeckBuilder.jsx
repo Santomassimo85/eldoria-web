@@ -206,6 +206,7 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   /* filtered + sorted card list shown in the collection grid */
   const owned = useMemo(() => {
     let list = POOL.filter((id) => (collection[id] || 0) > 0);
+    if (foilOnly) list = list.filter((id) => (foils[id] || 0) > 0);
     if (klassFilter.size > 0) {
       const allowed = new Set();
       for (const k of klassFilter) for (const el of classColors(k)) allowed.add(el);
@@ -221,7 +222,7 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
       return (ca.cmc - cb.cmc) || ca.name.localeCompare(cb.name);
     };
     return list.sort(cmp);
-  }, [collection, klassFilter, typeFilter, rarFilter, sortBy]);
+  }, [collection, foils, foilOnly, klassFilter, typeFilter, rarFilter, sortBy]);
 
   // deck list grouped, lands last, by cmc
   const grouped = useMemo(() => {
@@ -326,6 +327,23 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
               {r === "all" ? "Tutte" : RARITY_LABEL[r]}
             </button>
           ))}
+          {/* Foil toggle — only meaningful when the player actually has
+              foils; disable & explain when they don't. The chip shows
+              the foil-shimmer styling when active. */}
+          <button
+            className={`tcg-chipbtn tcg-chipbtn--foil ${foilOnly ? "is-on" : ""}`}
+            onClick={() => setFoilOnly((v) => !v)}
+            disabled={totalFoils === 0}
+            title={
+              totalFoils === 0
+                ? "Non possiedi ancora carte foil. Aprine qualche pacchetto!"
+                : foilOnly
+                ? "Mostra di nuovo tutta la collezione"
+                : `Mostra solo le carte di cui possiedi una versione foil (${totalFoils})`
+            }
+          >
+            ✨ Foil{totalFoils > 0 ? ` (${totalFoils})` : ""}
+          </button>
           <span className="tcg-deck__autosep" aria-hidden="true">·</span>
           <label className="tcg-deck__sortlbl">
             Ordina:
@@ -404,10 +422,16 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
                   <CardView
                     card={getCard(id)}
                     variant="board"
+                    foil={(foils[id] || 0) > 0}
                     onInspect={setZoom}
                   />
                   <span className="tcg-grid__count">
                     {inDeck}/{Math.min(cap, collection[id])} · hai {collection[id]}
+                    {(foils[id] || 0) > 0 && (
+                      <span className="tcg-grid__foilmark" title={`${foils[id]} foil`}>
+                        {" "}✨{foils[id]}
+                      </span>
+                    )}
                   </span>
                 </div>
               );
