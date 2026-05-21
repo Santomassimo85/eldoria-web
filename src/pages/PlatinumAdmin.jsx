@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
@@ -13,25 +13,21 @@ export default function PlatinumAdmin() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [tempBalances, setTempBalances] = useState({});
-  const [tempPetPoints, setTempPetPoints] = useState({});
   const [tempCoins, setTempCoins] = useState({});
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!currentUser) return;
     const unsub = onSnapshot(collection(db, 'characters'), (snap) => {
-      const charList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const charList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      charList.sort((a, b) =>
+        (a.name || a.email || a.id).localeCompare(b.name || b.email || b.id)
+      );
       setCharacters(charList);
       setTempBalances(prev => {
         const next = { ...prev };
         charList.forEach(char => {
           if (!(char.id in next)) next[char.id] = char.platinum || 0;
-        });
-        return next;
-      });
-      setTempPetPoints(prev => {
-        const next = { ...prev };
-        charList.forEach(char => {
-          if (!(char.id in next)) next[char.id] = char.petPoints || 0;
         });
         return next;
       });
@@ -49,9 +45,24 @@ export default function PlatinumAdmin() {
     return () => unsub();
   }, [currentUser]);
 
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return characters;
+    return characters.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q)
+    );
+  }, [characters, query]);
+
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
   }
+
+  const flashStatus = (text) => {
+    setStatus(text);
+    setTimeout(() => setStatus(s => (s === text ? '' : s)), 2500);
+  };
 
   const handleBalanceChange = (uid, value) => {
     const numericValue = value === '' ? '' : parseInt(value);
@@ -61,37 +72,15 @@ export default function PlatinumAdmin() {
   const handleSaveBalance = async (charId) => {
     const newBalance = tempBalances[charId];
     if (newBalance === '' || isNaN(newBalance)) return;
-    setStatus('Salvataggio...');
+    setStatus('Salvataggio…');
     try {
       await updateDoc(doc(db, 'characters', charId), {
         platinum: Number(newBalance),
         lastUpdated: new Date().toISOString()
       });
-      setStatus('✅ Saldo aggiornato!');
-      setTimeout(() => setStatus(''), 3000);
+      flashStatus('✅ MP aggiornati');
     } catch (error) {
-      setStatus(`❌ Errore: ${error.message}`);
-    }
-  };
-
-  const handlePetPointsChange = (uid, value) => {
-    const numericValue = value === '' ? '' : parseInt(value);
-    setTempPetPoints(prev => ({ ...prev, [uid]: numericValue }));
-  };
-
-  const handleSavePetPoints = async (charId) => {
-    const newPoints = tempPetPoints[charId];
-    if (newPoints === '' || isNaN(newPoints)) return;
-    setStatus('Salvataggio Punti Bestiario...');
-    try {
-      await updateDoc(doc(db, 'characters', charId), {
-        petPoints: Math.max(0, Number(newPoints)),
-        lastUpdated: new Date().toISOString()
-      });
-      setStatus('✅ Punti Bestiario aggiornati!');
-      setTimeout(() => setStatus(''), 3000);
-    } catch (error) {
-      setStatus(`❌ Errore: ${error.message}`);
+      flashStatus(`❌ Errore: ${error.message}`);
     }
   };
 
@@ -103,16 +92,15 @@ export default function PlatinumAdmin() {
   const handleSaveCoins = async (charId) => {
     const v = tempCoins[charId];
     if (v === '' || isNaN(v)) return;
-    setStatus('Salvataggio Monete TCG...');
+    setStatus('Salvataggio…');
     try {
       await updateDoc(doc(db, 'characters', charId), {
         tcgCoins: Math.max(0, Number(v)),
         lastUpdated: new Date().toISOString()
       });
-      setStatus('✅ Monete TCG aggiornate!');
-      setTimeout(() => setStatus(''), 3000);
+      flashStatus('✅ Monete TCG aggiornate');
     } catch (error) {
-      setStatus(`❌ Errore: ${error.message}`);
+      flashStatus(`❌ Errore: ${error.message}`);
     }
   };
 
@@ -127,133 +115,120 @@ export default function PlatinumAdmin() {
         lastUpdated: new Date().toISOString()
       });
       setTempCoins(prev => ({ ...prev, [charId]: next }));
-      setStatus(`✅ Monete TCG: ${current} → ${next}`);
-      setTimeout(() => setStatus(''), 3000);
+      flashStatus(`✅ 🪙 ${current} → ${next}`);
     } catch (error) {
-      setStatus(`❌ Errore: ${error.message}`);
+      flashStatus(`❌ Errore: ${error.message}`);
     }
   };
 
-  const adjustPetPoints = async (charId, delta) => {
+  const adjustPlatinum = async (charId, delta) => {
     const char = characters.find(c => c.id === charId);
     if (!char) return;
-    const current = Number(char.petPoints || 0);
-    const next = Math.max(0, current + delta);
-    setStatus(`${delta >= 0 ? '+' : ''}${delta} Punti Bestiario...`);
+    const current = Number(char.platinum || 0);
+    const next = current + delta;
     try {
       await updateDoc(doc(db, 'characters', charId), {
-        petPoints: next,
+        platinum: next,
         lastUpdated: new Date().toISOString()
       });
-      setTempPetPoints(prev => ({ ...prev, [charId]: next }));
-      setStatus(`✅ Punti Bestiario: ${current} → ${next}`);
-      setTimeout(() => setStatus(''), 3000);
+      setTempBalances(prev => ({ ...prev, [charId]: next }));
+      flashStatus(`✅ MP ${current} → ${next}`);
     } catch (error) {
-      setStatus(`❌ Errore: ${error.message}`);
+      flashStatus(`❌ Errore: ${error.message}`);
     }
   };
 
   return (
-    <section className="admin-platinum-page">
+    <section className="admin-platinum-page pa-page">
       <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
 
-      <h1 className="admin-page-title">Monete Platino (MP) · Punti Bestiario · Monete TCG 🪙</h1>
+      <h1 className="admin-page-title">Monete Platino &amp; Monete TCG</h1>
       <div className="admin-divider"><span className="admin-divider-icon">🪙</span></div>
 
+      <div className="pa-toolbar">
+        <input
+          type="search"
+          className="pa-search"
+          placeholder="Cerca personaggio, email o ID…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <span className="pa-count">{visible.length} / {characters.length}</span>
+      </div>
+
       {status && (
-        <div className={status.includes('✅') ? 'admin-status-ok' : 'admin-status-err'}>
+        <div className={`pa-status ${status.includes('✅') ? 'is-ok' : status.includes('❌') ? 'is-err' : 'is-info'}`}>
           {status}
         </div>
       )}
 
-      <div className="admin-item-list-card">
-        {loading ? (
-          <p style={{ padding: "20px 18px", color: "#aaa", fontStyle: "italic" }}>Caricamento...</p>
-        ) : (
-          characters.map(char => (
-            <div key={char.id} className="platinum-char-row">
-              <div className="platinum-char-info">
-                <strong>{char.name || char.email?.split('@')[0]}</strong>
-                <small>{char.id}</small>
-              </div>
-              <div className="platinum-input-group">
-                <input
-                  type="number"
-                  className="platinum-input"
-                  value={tempBalances[char.id] ?? ''}
-                  onChange={(e) => handleBalanceChange(char.id, e.target.value)}
-                />
-                <span className="platinum-unit">MP</span>
-                <button
-                  onClick={() => handleSaveBalance(char.id)}
-                  className="btn-admin-save"
-                >
-                  Salva
-                </button>
-              </div>
-              <div className="platinum-input-group" style={{ marginTop: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => adjustPetPoints(char.id, -10)}
-                  className="btn-admin-save"
-                  style={{ minWidth: 44 }}
-                  title="-10 Punti Bestiario"
-                >−10</button>
-                <button
-                  type="button"
-                  onClick={() => adjustPetPoints(char.id, -1)}
-                  className="btn-admin-save"
-                  style={{ minWidth: 40 }}
-                  title="-1 Punto Bestiario"
-                >−1</button>
-                <input
-                  type="number"
-                  className="platinum-input"
-                  value={tempPetPoints[char.id] ?? ''}
-                  onChange={(e) => handlePetPointsChange(char.id, e.target.value)}
-                  title="Punti Bestiario totali"
-                />
-                <span className="platinum-unit">✦</span>
-                <button
-                  type="button"
-                  onClick={() => adjustPetPoints(char.id, +1)}
-                  className="btn-admin-save"
-                  style={{ minWidth: 40 }}
-                  title="+1 Punto Bestiario"
-                >+1</button>
-                <button
-                  type="button"
-                  onClick={() => adjustPetPoints(char.id, +10)}
-                  className="btn-admin-save"
-                  style={{ minWidth: 44 }}
-                  title="+10 Punti Bestiario"
-                >+10</button>
-                <button
-                  type="button"
-                  onClick={() => handleSavePetPoints(char.id)}
-                  className="btn-admin-save"
-                  title="Imposta il totale dei Punti Bestiario al valore mostrato"
-                >Salva</button>
-              </div>
-              <div className="platinum-input-group" style={{ marginTop: 6 }}>
-                <button type="button" onClick={() => adjustCoins(char.id, -100)} className="btn-admin-save" style={{ minWidth: 48 }} title="-100 Monete TCG">−100</button>
-                <button type="button" onClick={() => adjustCoins(char.id, -10)} className="btn-admin-save" style={{ minWidth: 44 }} title="-10 Monete TCG">−10</button>
-                <input
-                  type="number"
-                  className="platinum-input"
-                  value={tempCoins[char.id] ?? ''}
-                  onChange={(e) => handleCoinsChange(char.id, e.target.value)}
-                  title="Monete TCG totali"
-                />
-                <span className="platinum-unit">🪙</span>
-                <button type="button" onClick={() => adjustCoins(char.id, +10)} className="btn-admin-save" style={{ minWidth: 44 }} title="+10 Monete TCG">+10</button>
-                <button type="button" onClick={() => adjustCoins(char.id, +100)} className="btn-admin-save" style={{ minWidth: 48 }} title="+100 Monete TCG">+100</button>
-                <button type="button" onClick={() => handleSaveCoins(char.id)} className="btn-admin-save" title="Imposta il totale delle Monete TCG">Salva</button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {loading ? (
+        <p className="pa-loading">Caricamento…</p>
+      ) : visible.length === 0 ? (
+        <p className="pa-loading">Nessun personaggio trovato.</p>
+      ) : (
+        <ul className="pa-list">
+          {visible.map(char => {
+            const displayName = char.name || char.email?.split('@')[0] || char.id;
+            const mp = char.platinum || 0;
+            const coins = char.tcgCoins || 0;
+            return (
+              <li key={char.id} className="pa-card">
+                <header className="pa-card__head">
+                  <div className="pa-card__id">
+                    <strong>{displayName}</strong>
+                    {char.email && <small>{char.email}</small>}
+                  </div>
+                  <div className="pa-card__totals">
+                    <span className="pa-pill pa-pill--mp" title="Monete Platino attuali">
+                      <b>{mp}</b> MP
+                    </span>
+                    <span className="pa-pill pa-pill--tcg" title="Monete TCG attuali">
+                      <b>{coins}</b> 🪙
+                    </span>
+                  </div>
+                </header>
+
+                <div className="pa-field">
+                  <label className="pa-field__label">Monete Platino (MP)</label>
+                  <div className="pa-field__row">
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, -10)} title="-10 MP">−10</button>
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, -1)} title="-1 MP">−1</button>
+                    <input
+                      type="number"
+                      className="pa-input"
+                      value={tempBalances[char.id] ?? ''}
+                      onChange={(e) => handleBalanceChange(char.id, e.target.value)}
+                      aria-label="Saldo MP"
+                    />
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, +1)} title="+1 MP">+1</button>
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustPlatinum(char.id, +10)} title="+10 MP">+10</button>
+                    <button type="button" className="pa-btn pa-btn--save" onClick={() => handleSaveBalance(char.id)}>Salva</button>
+                  </div>
+                </div>
+
+                <div className="pa-field">
+                  <label className="pa-field__label">Monete TCG 🪙</label>
+                  <div className="pa-field__row">
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, -100)} title="-100">−100</button>
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, -10)} title="-10">−10</button>
+                    <input
+                      type="number"
+                      className="pa-input"
+                      value={tempCoins[char.id] ?? ''}
+                      onChange={(e) => handleCoinsChange(char.id, e.target.value)}
+                      aria-label="Monete TCG"
+                    />
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, +10)} title="+10">+10</button>
+                    <button type="button" className="pa-btn pa-btn--ghost" onClick={() => adjustCoins(char.id, +100)} title="+100">+100</button>
+                    <button type="button" className="pa-btn pa-btn--save" onClick={() => handleSaveCoins(char.id)}>Salva</button>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
