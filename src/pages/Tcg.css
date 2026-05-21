@@ -1575,6 +1575,45 @@
   display: inline-block; margin: 0 2px;
   color: rgba(216,177,90,.5); font-weight: 800;
 }
+
+/* unified toolbar — single visual block grouping classes/auto-build and
+   the secondary filters (type / rarity / sort / cover). Each row wraps. */
+.tcg-deck__bar {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.18));
+  box-shadow: 0 2px 6px rgba(0,0,0,.35) inset;
+}
+.tcg-deck__bar-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  align-items: center;
+}
+.tcg-deck__bar-row + .tcg-deck__bar-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(216,177,90,.18);
+}
+.tcg-deck__barlbl {
+  font-size: 11px; opacity: .75; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  margin-right: 4px;
+}
+.tcg-deck__sortlbl {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; opacity: .85;
+}
+.tcg-deck__sortlbl select {
+  background: rgba(0,0,0,.45); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 3px 6px; font-size: 12px; cursor: pointer;
+}
+/* compact inline cover picker (was a big standalone strip) */
+.tcg-cover--inline { gap: 4px; margin: 0; flex-wrap: nowrap; }
+.tcg-cover--inline .tcg-cover__opt {
+  width: 28px; height: 40px; border-width: 1px;
+}
 .tcg-deck__msg { font-size: 13px; margin: 4px 0; color: var(--good); }
 .tcg-deck__msg--warn { color: #e8b54a; }
 .tcg-deck__main {

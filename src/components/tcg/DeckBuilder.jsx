@@ -1,8 +1,9 @@
 /* DeckBuilder — build/save a 60-card deck from the collection.
    Basic lands are free & unlimited; other cards up to 4 / owned.
 
-   2026-05-20 — Added: type/rarity filters, sort options, mana-curve
-   chart, colour/type distribution, "auto class deck" shortcut. */
+   2026-05-21 — Unified class selection: the same multi-select drives
+   the grid filter AND the auto-build (1 = single-class, 2+ = mix).
+   Toolbar consolidated into one strip; lands moved next to the grid. */
 import React, { useMemo, useState } from "react";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
@@ -22,9 +23,9 @@ import {
 const CURVE_BUCKETS = [0, 1, 2, 3, 4, 5, 6];
 
 const TYPE_OPTIONS = [
-  { id: "all",       label: "Tipi tutti" },
+  { id: "all",       label: "Tutti", icon: "✦" },
   { id: "creature",  label: "Creatura", icon: "🐾" },
-  { id: "sorcery",   label: "Magia",    icon: "📜" }, // spell, non instant
+  { id: "sorcery",   label: "Magia",    icon: "📜" },
   { id: "instant",   label: "Reazione", icon: "⚡" },
   { id: "artifact",  label: "Manufatto", icon: "💠" },
 ];
@@ -66,12 +67,10 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
 
   const [deck, setDeck] = useState(initial);
   const [msg, setMsg] = useState("");
-  // class filter: a Set of selected class keys. Empty = show all.
-  // Multi-select so the player can browse cards across 2+ classes
-  // when building a multi-class deck by hand.
+  // ONE class selector — empty Set means "all classes". It drives BOTH
+  // the grid filter and the auto-build: 0 selected = random, 1 = single
+  // class deck, 2+ = mix. No more split between filter and mix state.
   const [klassFilter, setKlassFilter] = useState(() => new Set());
-  // class mix for auto-build: independent from the grid filter.
-  const [mixSel, setMixSel] = useState(() => new Set());
   const [typeFilter, setTypeFilter] = useState("all");
   const [rarFilter, setRarFilter] = useState("all");
   const [sortBy, setSortBy] = useState("cmc");
@@ -129,42 +128,49 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
     });
   };
 
-  /* Build a deck tailored for ANY class from the player's owned cards.
-     The smart builder (autoClassDeck) prefers higher rarity, peaks at
-     CMC 2-3 and balances creature/spell/artifact ratios. Lands are
-     split between the class' 2 colours proportional to the chosen
-     cards' coloured-mana demand. */
-  const buildForClass = (k) => {
+  const toggleKlass = (k) => {
     setMsg("");
-    if (!k) return;
-    const next = autoClassDeck(collection, k);
-    setDeck(next);
-    const owned = next.filter((id) => {
-      const c = getCard(id);
-      return c && c.type !== "land";
-    }).length;
-    if (owned < 30) {
-      setMsg(`ℹ️ Hai poche carte ${CLASS_LABEL[k]} nel collezionato: il builder ha completato col fallback. Apri pacchetti ${CLASS_LABEL[k]} nel Negozio.`);
-    }
-  };
-
-  const toggleMix = (k) => {
-    setMsg("");
-    setMixSel((s) => {
+    setKlassFilter((s) => {
       const n = new Set(s);
       n.has(k) ? n.delete(k) : n.add(k);
       return n;
     });
   };
-  const buildMix = () => {
+  const clearKlass = () => { setMsg(""); setKlassFilter(new Set()); };
+
+  /* "Costruisci" — smart auto-build based on how many classes are selected:
+       0 → random deck across the whole collection
+       1 → single-class deck (autoClassDeck — rarity-weighted, curve 2-3)
+       2+ → mix deck (autoMixDeck — merges the colours, ramps lands)        */
+  const buildAuto = () => {
     setMsg("");
-    const list = [...mixSel];
-    if (list.length < 2) { setMsg("Seleziona almeno 2 classi per il mix."); return; }
+    const list = [...klassFilter];
+    if (list.length === 0) {
+      setDeck(autoDeck(collection, "random"));
+      setMsg("🎲 Mazzo casuale costruito.");
+      return;
+    }
+    if (list.length === 1) {
+      const k = list[0];
+      const next = autoClassDeck(collection, k);
+      setDeck(next);
+      const owned = next.filter((id) => {
+        const c = getCard(id);
+        return c && c.type !== "land";
+      }).length;
+      if (owned < 30) {
+        setMsg(`ℹ️ Poche carte ${CLASS_LABEL[k]} nel collezionato: completato col fallback. Apri pacchetti ${CLASS_LABEL[k]} nel Negozio.`);
+      } else {
+        setMsg(`✓ Mazzo ${CLASS_LABEL[k]} costruito.`);
+      }
+      return;
+    }
     setDeck(autoMixDeck(collection, list));
+    setMsg(`🛠 Mix costruito: ${list.map((k) => CLASS_LABEL[k]).join(" + ")}.`);
   };
+
   const buildRandomMix = () => {
     setMsg("");
-    // pick 2-3 random classes (60% chance 2, 40% chance 3)
     const n = Math.random() < 0.6 ? 2 : 3;
     const pool = CLASSES.slice();
     for (let i = pool.length - 1; i > 0; i--) {
@@ -172,20 +178,12 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     const pick = pool.slice(0, n);
-    setMixSel(new Set(pick));
+    setKlassFilter(new Set(pick));
     setDeck(autoMixDeck(collection, pick));
-    setMsg(`🎲 Mix casuale: ${pick.map((k) => CLASS_LABEL[k]).join(" + ")}`);
+    setMsg(`🎲 Mix casuale: ${pick.map((k) => CLASS_LABEL[k]).join(" + ")}.`);
   };
 
   const clearDeck = () => { setMsg(""); setDeck([]); };
-  const toggleKlassFilter = (k) => {
-    setKlassFilter((s) => {
-      const n = new Set(s);
-      n.has(k) ? n.delete(k) : n.add(k);
-      return n;
-    });
-  };
-  const clearKlassFilter = () => setKlassFilter(new Set());
 
   const save = async () => {
     const res = await onSave(deck);
@@ -208,7 +206,6 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
       if (sortBy === "name")   return ca.name.localeCompare(cb.name);
       if (sortBy === "rarity") return RARITY_ORDER.indexOf(ca.rarity) - RARITY_ORDER.indexOf(cb.rarity);
       if (sortBy === "cmcDesc") return (cb.cmc - ca.cmc) || ca.name.localeCompare(cb.name);
-      // default cmc asc
       return (ca.cmc - cb.cmc) || ca.name.localeCompare(cb.name);
     };
     return list.sort(cmp);
@@ -224,6 +221,13 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
       return ca.cmc - cb.cmc || ca.name.localeCompare(cb.name);
     });
   }, [deck]);
+
+  const buildLabel =
+    klassFilter.size === 0
+      ? "🎲 Costruisci casuale"
+      : klassFilter.size === 1
+      ? `🛠 Costruisci ${CLASS_LABEL[[...klassFilter][0]]}`
+      : `🛠 Costruisci mix (${klassFilter.size})`;
 
   return (
     <div className="tcg-deck">
@@ -241,76 +245,99 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
         </button>
       </div>
 
-      {klass && (
-        <div className="tcg-deck__klass">
-          <span className="tcg-deck__klass-ico">{CLASS_ICON[klass]}</span>
-          <span className="tcg-deck__klass-name">
-            <b>Classe: {CLASS_LABEL[klass]}</b>
+      {/* ── unified toolbar: classes drive BOTH filter AND auto-build ── */}
+      <div className="tcg-deck__bar">
+        <div className="tcg-deck__bar-row">
+          <span className="tcg-deck__barlbl">
+            Classi{klass ? ` · la tua: ${CLASS_ICON[klass]} ${CLASS_LABEL[klass]}` : ""}
           </span>
+          <button
+            className={`tcg-chipbtn ${klassFilter.size === 0 ? "is-on" : ""}`}
+            onClick={clearKlass}
+            title="Mostra carte di tutte le classi"
+          >Tutte</button>
+          {CLASSES.map((k) => {
+            const isMine = k === klass;
+            return (
+              <button
+                key={k}
+                className={`tcg-chipbtn ${klassFilter.has(k) ? "is-on" : ""} ${isMine ? "tcg-chipbtn--accent" : ""}`}
+                onClick={() => toggleKlass(k)}
+                title={`${CLASS_LABEL[k]} — clicca per filtrare e impostare l'auto-build (puoi selezionarne più di una per il mix)`}
+              >
+                {isMine ? "⭐ " : ""}{CLASS_ICON[k]} {CLASS_LABEL[k]}
+              </button>
+            );
+          })}
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <button
+            className="tcg-chipbtn tcg-chipbtn--accent"
+            onClick={buildAuto}
+            title="Costruisci automaticamente in base alle classi selezionate"
+          >
+            {buildLabel}
+          </button>
+          <button
+            className="tcg-chipbtn"
+            onClick={buildRandomMix}
+            title="Scegli 2-3 classi a caso e costruisci il mix"
+          >
+            🎲 Mix casuale
+          </button>
+          <button className="tcg-chipbtn tcg-chipbtn--danger" onClick={clearDeck}>
+            🗑 Svuota
+          </button>
         </div>
-      )}
 
-      <div className="tcg-deck__tools">
-        <span className="tcg-deck__autolbl">Auto-crea (1 classe):</span>
-        {CLASSES.map((k) => {
-          const isMine = k === klass;
-          return (
+        <div className="tcg-deck__bar-row">
+          <span className="tcg-deck__barlbl">Tipo</span>
+          {TYPE_OPTIONS.map((t) => (
             <button
-              key={k}
-              className={`tcg-chipbtn ${isMine ? "tcg-chipbtn--accent" : ""}`}
-              onClick={() => buildForClass(k)}
-              title={`Costruisci un mazzo ${CLASS_LABEL[k]}`}
+              key={t.id}
+              className={`tcg-chipbtn ${typeFilter === t.id ? "is-on" : ""}`}
+              onClick={() => setTypeFilter(t.id)}
+              title={t.label}
             >
-              {isMine ? "⭐ " : ""}{CLASS_ICON[k]} {CLASS_LABEL[k]}
+              {t.icon} {t.label}
             </button>
-          );
-        })}
-        <span className="tcg-deck__autosep" aria-hidden="true">·</span>
-        <button className="tcg-chipbtn tcg-chipbtn--danger" onClick={clearDeck}>🗑 Svuota</button>
-      </div>
-
-      <div className="tcg-deck__tools">
-        <span className="tcg-deck__autolbl">Mix di classi (manuale):</span>
-        {CLASSES.map((k) => (
-          <button
-            key={k}
-            className={`tcg-chipbtn ${mixSel.has(k) ? "is-on" : ""}`}
-            onClick={() => toggleMix(k)}
-            title={`Includi ${CLASS_LABEL[k]} nel mix`}
-          >
-            {CLASS_ICON[k]} {CLASS_LABEL[k]}
-          </button>
-        ))}
-        <button
-          className="tcg-chipbtn tcg-chipbtn--accent"
-          onClick={buildMix}
-          disabled={mixSel.size < 2}
-          title="Costruisci un mazzo combinando le classi selezionate"
-        >
-          🛠 Costruisci mix ({mixSel.size})
-        </button>
-        <span className="tcg-deck__autosep" aria-hidden="true">·</span>
-        <button
-          className="tcg-chipbtn"
-          onClick={buildRandomMix}
-          title="Scegli 2-3 classi a caso e costruisci il mix"
-        >
-          🎲 Mix casuale
-        </button>
-      </div>
-
-      <div className="tcg-cover">
-        <span className="tcg-deck__autolbl">Dorso del mazzo:</span>
-        {COVERS.map((c) => (
-          <button
-            key={c}
-            className={`tcg-cover__opt ${cover === c ? "is-on" : ""}`}
-            title={ELEMENT_LABEL[c]}
-            onClick={() => pickCover(c)}
-          >
-            <img src={coverUrl(c)} alt={ELEMENT_LABEL[c]} draggable={false} />
-          </button>
-        ))}
+          ))}
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <span className="tcg-deck__barlbl">Rarità</span>
+          {RARITY_OPTIONS.map((r) => (
+            <button
+              key={r}
+              className={`tcg-chipbtn ${rarFilter === r ? "is-on" : ""}`}
+              onClick={() => setRarFilter(r)}
+              style={r !== "all" ? { borderColor: RARITY_COLOR[r] } : undefined}
+              title={r === "all" ? "Tutte le rarità" : RARITY_LABEL[r]}
+            >
+              {r === "all" ? "Tutte" : RARITY_LABEL[r]}
+            </button>
+          ))}
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <label className="tcg-deck__sortlbl">
+            Ordina:
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <span className="tcg-deck__barlbl">Dorso</span>
+          <div className="tcg-cover tcg-cover--inline">
+            {COVERS.map((c) => (
+              <button
+                key={c}
+                className={`tcg-cover__opt ${cover === c ? "is-on" : ""}`}
+                title={ELEMENT_LABEL[c]}
+                onClick={() => pickCover(c)}
+              >
+                <img src={coverUrl(c)} alt={ELEMENT_LABEL[c]} draggable={false} />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {msg && <p className="tcg-deck__msg">{msg}</p>}
@@ -322,7 +349,7 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
         {/* ---- collection (click to add) ---- */}
         <div className="tcg-deck__col">
           <div className="tcg-deck__lands-strip">
-            <span className="tcg-deck__sub">Terre base (illimitate)</span>
+            <span className="tcg-deck__sub">Terre base (illimitate) — click per aggiungere</span>
             <div className="tcg-deck__landrow">
               {LANDS.map((l) => (
                 <button
@@ -335,62 +362,6 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
                   <span className="tcg-landbtn__n">{counts[l.id] || 0}</span>
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* ── Filters ── */}
-          <div className="tcg-deck__filters">
-            <div className="tcg-coll__filters tcg-coll__filters--mini">
-              <button
-                className={`tcg-chipbtn ${klassFilter.size === 0 ? "is-on" : ""}`}
-                onClick={clearKlassFilter}
-                title="Mostra carte di tutte le classi"
-              >Tutte</button>
-              {CLASSES.map((k) => (
-                <button
-                  key={k}
-                  className={`tcg-chipbtn ${klassFilter.has(k) ? "is-on" : ""}`}
-                  onClick={() => toggleKlassFilter(k)}
-                  title={`Filtra per ${CLASS_LABEL[k]} (puoi selezionarne più di una per il mix)`}
-                >
-                  {CLASS_ICON[k]} {CLASS_LABEL[k]}
-                </button>
-              ))}
-            </div>
-            <div className="tcg-coll__filters tcg-coll__filters--mini">
-              {TYPE_OPTIONS.map((t) => (
-                <button
-                  key={t.id}
-                  className={`tcg-chipbtn ${typeFilter === t.id ? "is-on" : ""}`}
-                  onClick={() => setTypeFilter(t.id)}
-                  title={t.label}
-                >
-                  {t.icon ? t.icon + " " : ""}{t.label}
-                </button>
-              ))}
-            </div>
-            <div className="tcg-coll__filters tcg-coll__filters--mini">
-              {RARITY_OPTIONS.map((r) => (
-                <button
-                  key={r}
-                  className={`tcg-chipbtn ${rarFilter === r ? "is-on" : ""}`}
-                  onClick={() => setRarFilter(r)}
-                  style={r !== "all" ? { borderColor: RARITY_COLOR[r] } : undefined}
-                  title={r === "all" ? "Tutte le rarità" : RARITY_LABEL[r]}
-                >
-                  {r === "all" ? "Rarità" : RARITY_LABEL[r]}
-                </button>
-              ))}
-            </div>
-            <div className="tcg-deck__sort">
-              <label>
-                Ordina:
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
             </div>
           </div>
 
@@ -439,7 +410,6 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
           {/* ── Stats panel ── */}
           {deck.length > 0 && (
             <div className="tcg-deck__stats">
-              {/* Mana curve bar chart */}
               <div className="tcg-curve">
                 <div className="tcg-curve__title">Curva di mana</div>
                 <div className="tcg-curve__row">
@@ -461,7 +431,6 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
                 </div>
               </div>
 
-              {/* Colour distribution */}
               <div className="tcg-dist">
                 <div className="tcg-dist__title">Colori (con terre)</div>
                 <div className="tcg-dist__row">
@@ -477,7 +446,6 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
                 </div>
               </div>
 
-              {/* Type distribution */}
               <div className="tcg-dist">
                 <div className="tcg-dist__title">Tipi</div>
                 <div className="tcg-dist__row">
@@ -492,7 +460,7 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
           )}
 
           {grouped.length === 0 && (
-            <p className="tcg-grid__empty">Mazzo vuoto. Usa "Auto-crea" o aggiungi carte.</p>
+            <p className="tcg-grid__empty">Mazzo vuoto. Scegli classi e premi "Costruisci", oppure aggiungi carte.</p>
           )}
           {grouped.map((id) => {
             const c = getCard(id);

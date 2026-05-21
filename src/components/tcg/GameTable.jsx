@@ -1135,7 +1135,6 @@ export default function GameTable({
       onClick={(e) => {
         if (e.target.classList.contains("tcg-table")) {
           setSel(null);
-          setPowerSel(null);
           setAttackers([]);
         }
       }}
