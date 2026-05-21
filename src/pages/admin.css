@@ -1105,38 +1105,68 @@
   background: linear-gradient(180deg, #94b8e8 0%, #3a6cba 50%, #18305a 100%);
 }
 
-/* ---- mobile tweaks ---- */
+/* ---- mobile: MP + TCG affiancati nella stessa riga ---- */
 @media (max-width: 640px) {
   .pa-card { box-shadow: 4px 4px 0 0 #1a1303; }
   .pa-card:hover { box-shadow: 5px 5px 0 0 #1a1303; }
   .pa-card:focus-within { box-shadow: 4px 4px 0 0 #8b1a1a; }
 
-  /* stack the two columns on phone */
-  .pa-cols { grid-template-columns: 1fr; }
-  .pa-col--mp {
-    border-right: 0;
-    border-bottom: 3px solid #1a1303;
+  .pa-card__head { padding: 8px 10px; gap: 8px; }
+  .pa-avatar { width: 36px; height: 36px; font-size: 1rem; border-width: 2px; box-shadow: 2px 2px 0 0 #1a1303; }
+  .pa-card__id strong { font-size: 0.95rem; }
+  .pa-card__id small { font-size: 0.66rem; }
+
+  /* keep the 2 columns SIDE-BY-SIDE, just shrunk */
+  .pa-cols { grid-template-columns: 1fr 1fr; }
+  .pa-col { padding: 8px 7px; gap: 6px; }
+
+  /* compact header: icon + current value only, no text label */
+  .pa-col__head { padding: 3px 6px; gap: 5px; box-shadow: 2px 2px 0 0 #1a1303; }
+  .pa-col__icon { font-size: 1.05rem; }
+  .pa-col__label { display: none; }
+  .pa-col__now { font-size: 0.95rem; padding: 0 6px; margin-left: auto; }
+
+  /* tighter button grid */
+  .pa-col__row { gap: 4px; }
+  .pa-btn {
+    font-size: 0.78rem;
+    padding: 6px 2px;
+    border-width: 2px;
+    border-radius: 7px;
+    box-shadow: 2px 2px 0 0 #1a1303;
+    letter-spacing: 0;
   }
-
-  .pa-card__head { padding: 10px 12px; }
-  .pa-avatar { width: 42px; height: 42px; font-size: 1.2rem; box-shadow: 2px 2px 0 0 #1a1303; }
-  .pa-card__id strong { font-size: 1.05rem; }
-
-  .pa-col { padding: 12px; gap: 9px; }
-  .pa-col__head { padding: 5px 9px; box-shadow: 2px 2px 0 0 #1a1303; }
-  .pa-col__icon { font-size: 1.25rem; }
-  .pa-col__label { font-size: 0.72rem; }
-  .pa-col__now { font-size: 1.15rem; padding: 1px 7px; }
-
-  .pa-btn { font-size: 0.92rem; padding: 9px 8px; box-shadow: 2px 2px 0 0 #1a1303; }
   .pa-btn:hover { box-shadow: 3px 3px 0 0 #1a1303; }
   .pa-input {
-    font-size: 1.2rem;
-    padding: 10px;
+    font-size: 0.95rem;
+    padding: 6px 4px;
+    border-width: 2px;
+    border-radius: 7px;
     box-shadow: 2px 2px 0 0 #1a1303;
   }
   .pa-input:focus { box-shadow: 3px 3px 0 0 #8b1a1a; }
-  .pa-btn--save { padding: 11px 10px; font-size: 0.95rem; }
+  .pa-btn--save {
+    padding: 7px 4px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ---- very narrow phones: drop ±10, keep ±5 ---- */
+@media (max-width: 380px) {
+  .pa-col__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  /* hide the ±10 buttons (the 1st and 5th items in each row) */
+  .pa-col__row > .pa-btn:nth-child(1),
+  .pa-col__row > .pa-btn:nth-child(5) { display: none; }
+  .pa-input {
+    flex: 1 1 100%;
+    order: -1;
+    font-size: 0.9rem;
+  }
+  .pa-btn { flex: 1 1 0; min-width: 0; font-size: 0.74rem; }
 }
 
 /* ---- GEO ADMIN MAP PICKER --------------------------------- */
