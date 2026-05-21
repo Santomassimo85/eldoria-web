@@ -115,8 +115,34 @@ export const RARITY_ODDS_PREMIUM = {
 /* every drawn card has this tiny independent chance to be FOIL */
 export const FOIL_CHANCE = 0.02;
 
+/* Canonical legendaries — one (or more) per element. Forced to the
+   "legendary" tier no matter what computeRarities would assign by
+   strength. Each one has a PROPER NAME (not just a species), so
+   players recognise it as a marquee card the moment it hits the table. */
 const LEGENDARY_IDS = new Set([
-  "reddragon", "lich", "balor", "kraken", "solar", "mummylord",
+  "reddragon",   // fire    — Ignaroth il Vorace
+  "balor",       // fire    — Korghul, Frusta dell'Abisso
+  "kraken",      // water   — Mortheryx delle Profondità
+  "solar",       // light   — Astariel, Voce del Sole
+  "lich",        // dark    — Vermilach Cuoredicenere
+  "mummylord",   // dark    — Khar-Mut il Risvegliato
+  "sylvandrake", // nature  — Verdannil, Drago dei Boschi Antichi
+]);
+
+/* Epics with proper names — explicit per-element shortlist so the tier
+   isn't just "whatever computeRarities promoted by raw strength". Same
+   forcing pass as LEGENDARY_IDS but at the epic tier. */
+const EPIC_IDS = new Set([
+  // fire
+  "lava-drake", "infernal-demon", "storm-titan", "emberlion",
+  // water
+  "frostgiant", "glacial-wyrm", "water-colossus", "tidal-colossus",
+  // light
+  "aurumdrake", "astral-titan", "arcanenova", "prismatic-rhino",
+  // darkness
+  "deathknight", "mindflayer", "crimson-lich", "duskfiend", "illithid-warlord",
+  // nature
+  "totem-giant", "stonegiant", "elderwood", "owlbear", "marsh-brute",
 ]);
 const RARITY_BY_SPELL = {
   s_meteor: "epic", s_disintegrate: "rare", s_raise: "rare",
@@ -142,6 +168,7 @@ const RARITY_BY_ARTIFACT = {
 const RAR_TIER_NUM = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
 function strengthScore(card) {
   if (LEGENDARY_IDS.has(card.id)) return 1000;
+  if (EPIC_IDS.has(card.id)) return 700;
   if (card.type === "spell")
     return 8 + RAR_TIER_NUM[RARITY_BY_SPELL[card.id] || "common"] * 6 + card.cmc;
   if (card.type === "artifact")
@@ -151,8 +178,10 @@ function strengthScore(card) {
 }
 
 /* Assign rarities PER ELEMENT so every colour owns at least one card of
-   every tier (common → legendary). Cards are sorted weakest→strongest
-   inside their element and split into the five tiers. */
+   every tier (common → legendary). Forced cards (LEGENDARY_IDS /
+   EPIC_IDS) are pinned to their tier; the rest fill the remaining
+   slots weakest→strongest, so the highest tiers still feel scarce
+   even with explicit marquee picks. */
 function computeRarities(raw) {
   const out = {};
   const byEl = {};
@@ -163,10 +192,17 @@ function computeRarities(raw) {
   // target share of each tier (must keep ≥1 of each per element)
   const SHARE = { common: 0.34, uncommon: 0.30, rare: 0.20, epic: 0.11, legendary: 0.05 };
   for (const el of Object.keys(byEl)) {
-    const list = byEl[el].slice().sort(
-      (a, b) => strengthScore(a) - strengthScore(b) || a.cmc - b.cmc
-    );
-    const n = list.length;
+    const all = byEl[el];
+    const n = all.length;
+    // pull forced cards out of the auto-assignment
+    const forced = {};
+    for (const c of all) {
+      if (LEGENDARY_IDS.has(c.id)) forced[c.id] = "legendary";
+      else if (EPIC_IDS.has(c.id)) forced[c.id] = "epic";
+    }
+    const free = all
+      .filter((c) => !forced[c.id])
+      .sort((a, b) => strengthScore(a) - strengthScore(b) || a.cmc - b.cmc);
     // base count per tier, at least 1
     const counts = {};
     let used = 0;
@@ -184,12 +220,18 @@ function computeRarities(raw) {
         else if (counts[r] > 1) { counts[r] -= 1; diff += 1; }
       }
     }
-    // walk weakest→strongest filling common…legendary
+    // subtract the forced cards from the per-tier counts so free cards
+    // are distributed only into the remaining slots
+    for (const cid of Object.keys(forced)) counts[forced[cid]] -= 1;
+    for (const r of RARITY_ORDER) counts[r] = Math.max(0, counts[r]);
+    // walk weakest→strongest filling common…legendary with free cards
     let i = 0;
     for (const r of RARITY_ORDER)
-      for (let k = 0; k < counts[r] && i < n; k++, i++) out[list[i].id] = r;
-    // force the canonical legendaries to legendary regardless
-    for (const c of list) if (LEGENDARY_IDS.has(c.id)) out[c.id] = "legendary";
+      for (let k = 0; k < counts[r] && i < free.length; k++, i++)
+        out[free[i].id] = r;
+    while (i < free.length) { out[free[i].id] = "common"; i++; }
+    // apply forced tiers last so they always stick
+    for (const cid of Object.keys(forced)) out[cid] = forced[cid];
   }
   return out;
 }
@@ -295,8 +337,8 @@ const RAW = [
     "", "La palude provvede ai suoi figli."),
 
   /* ---------- CREATURES — cmc 3 (10) ---------- */
-  C("owlbear", "Orsogufo", 3, "owlbear", "🦉", "nature", 4, 4,
-    "", "L'abbraccio peggiore della foresta."),
+  C("owlbear", "Sgrintzo, Orsogufo Reale", 3, "owlbear", "🦉", "nature", 4, 4,
+    "", "Re indiscusso degli abbracci che fanno crac."),
   C("centaur", "Centauro", 3, "centaur", "🐎", "nature", 4, 3,
     "", "Galoppa dove l'uomo non oserebbe camminare."),
   C("troll", "Troll", 3, "troll", "🧌", "nature", 3, 5,
@@ -317,14 +359,14 @@ const RAW = [
     "", "Proietta l'ombra di un uomo, il cuore di una bestia."),
 
   /* ---------- CREATURES — cmc 4 (10) ---------- */
-  C("frostgiant", "Gigante del Gelo", 4, "frostgiant", "🧊", "water", 6, 5,
-    "", "Cammina e l'inverno lo segue."),
-  C("stonegiant", "Gigante di Pietra", 4, "stonegiant", "🗿", "nature", 4, 7,
-    "", "Lancia massi come fossero ciottoli."),
-  C("deathknight", "Cavaliere della Morte", 4, "deathknight", "⚔️", "darkness", 5, 5,
-    "", "Il suo giuramento è sopravvissuto alla sua anima."),
-  C("mindflayer", "Flagello Mentale", 4, "mindflayer", "🐙", "darkness", 4, 5,
-    "", "Cena con i pensieri di chi osa pensare."),
+  C("frostgiant", "Jormun il Gigante del Gelo", 4, "frostgiant", "🧊", "water", 6, 5,
+    "", "Quando muove un passo, l'inverno gli cammina dietro."),
+  C("stonegiant", "Brokmar Pietrabarba", 4, "stonegiant", "🗿", "nature", 4, 7,
+    "", "Lancia montagne come fossero ciottoli, e ride."),
+  C("deathknight", "Velgarn il Cavaliere della Morte", 4, "deathknight", "⚔️", "darkness", 5, 5,
+    "", "Il suo giuramento è sopravvissuto a tutto, perfino alla sua anima."),
+  C("mindflayer", "Z'thalik, Flagello Mentale", 4, "mindflayer", "🐙", "darkness", 4, 5,
+    "", "Cena con i pensieri di chi osa pensargli vicino."),
   C("succubus", "Succube", 4, "succubus", "💋", "darkness", 4, 4,
     "", "Ti ama fino all'ultimo respiro. Il tuo."),
   C("copperdragon", "Drago di Rame", 4, "copperdragon", "🐉", "fire", 5, 5,
@@ -339,18 +381,18 @@ const RAW = [
     "", "Vanità demoniaca incarnata in tonnellate di furia."),
 
   /* ---------- CREATURES — cmc 5 (6) ---------- */
-  C("reddragon", "Drago Rosso", 5, "reddragon", "🐲", "fire", 7, 7,
-    "", "L'avidità con le ali e un mare di fuoco."),
-  C("lich", "Lich", 5, "lich", "☠️", "darkness", 6, 7,
-    "", "Ha barattato l'anima per un'eternità di rancore."),
-  C("balor", "Balor", 5, "balor", "🔥", "fire", 8, 5,
-    "", "Frusta di fiamme, signore dell'Abisso."),
-  C("kraken", "Kraken", 5, "kraken", "🐙", "water", 7, 8,
-    "", "Le profondità hanno un nome, e ha otto braccia."),
-  C("solar", "Solàr", 5, "solar", "😇", "light", 7, 7,
-    "", "L'ira del Paradiso, vestita di luce."),
-  C("mummylord", "Signore Mummia", 5, "mummylord", "🪦", "darkness", 5, 8,
-    "", "Maledice chi disturba il suo sonno millenario."),
+  C("reddragon", "Ignaroth il Vorace", 5, "reddragon", "🐲", "fire", 7, 7,
+    "", "Tre regni cenere, e la sua fame appena svegliata."),
+  C("lich", "Vermilach Cuoredicenere", 5, "lich", "☠️", "darkness", 6, 7,
+    "", "Bruciò il proprio cuore per non morire mai."),
+  C("balor", "Korghul, Frusta dell'Abisso", 5, "balor", "🔥", "fire", 8, 5,
+    "", "La sua frusta è il primo suono che gli Inferi insegnano."),
+  C("kraken", "Mortheryx delle Profondità", 5, "kraken", "🐙", "water", 7, 8,
+    "", "Otto braccia, una sentenza. L'abisso ha un nome."),
+  C("solar", "Astariel, Voce del Sole", 5, "solar", "😇", "light", 7, 7,
+    "", "Quando parla, anche gli dèi minori si inchinano."),
+  C("mummylord", "Khar-Mut il Risvegliato", 5, "mummylord", "🪦", "darkness", 5, 8,
+    "", "Dormì per mille inverni. Si è svegliato di umore pessimo."),
 
   /* ---------- SPELLS (10) ---------- */
   S("s_bolt", "Saetta", 1, "⚡", "fire",
@@ -447,8 +489,8 @@ const RAW = [
     "", "Le correnti danzano al ritmo delle sue dita."),
   C("geomancer", "Geomante", 4, "geomancer", "🪨", "nature", 3, 5,
     "", "La pietra obbedisce a chi sa ascoltarla."),
-  C("arcanenova", "Nova Arcana", 4, "arcanenova", "💠", "light", 4, 3,
-    "", "Un istante di pura magia, poi il silenzio."),
+  C("arcanenova", "Lumeris, Nova Arcana", 4, "arcanenova", "💠", "light", 4, 3,
+    "", "Un istante di pura magia. Poi un silenzio che pesa cento anni."),
   C("graspingspirit", "Mano Spettrale", 3, "graspingspirit", "✋", "darkness", 2, 4,
     "", "Afferra ciò che i vivi non possono trattenere."),
   C("arcanecube", "Cubo Arcano", 2, "arcanecube", "🧊", "light", 1, 4,
@@ -471,8 +513,8 @@ const RAW = [
     "", "Sorveglia la soglia da cui nulla ritorna."),
   C("crystalbeast", "Bestia di Cristallo", 3, "crystalbeast", "💎", "light", 3, 4,
     "", "Nata dove la luce si è fatta solida."),
-  C("aurumdrake", "Drago Aureo", 5, "aurumdrake", "🐉", "light", 6, 6,
-    "", "Il suo respiro è alba che incenerisce."),
+  C("aurumdrake", "Auralion, Signore dei Cieli Aurei", 5, "aurumdrake", "🐉", "light", 6, 6,
+    "", "Il suo respiro è alba che incenerisce — e che salva."),
   C("prismheart", "Cuore di Prisma", 4, "prismheart", "🔆", "water", 3, 5,
     "", "Spezzalo e si ricompone in mille schegge."),
   C("wraithserpent", "Serpe Spettrale", 3, "wraithserpent", "🐍", "darkness", 4, 2,
@@ -481,22 +523,22 @@ const RAW = [
     "", "Dove passa, resta solo l'assenza."),
   C("soulcomet", "Cometa d'Anime", 4, "soulcomet", "☄️", "fire", 5, 3,
     "", "Cade portando con sé chi non vuole lasciarla."),
-  C("emberlion", "Leone di Brace", 4, "emberlion", "🦁", "fire", 5, 4,
-    "", "Ruggisce e la savana brucia."),
-  C("duskfiend", "Demone del Crepuscolo", 5, "duskfiend", "😈", "darkness", 6, 5,
-    "", "Nasce quando l'ultima luce si spegne."),
+  C("emberlion", "Solarus, Leone di Brace", 4, "emberlion", "🦁", "fire", 5, 4,
+    "", "Il suo ruggito fa cadere la pioggia di cenere."),
+  C("duskfiend", "Nyxar, Demone del Crepuscolo", 5, "duskfiend", "😈", "darkness", 6, 5,
+    "", "Nasce ogni sera quando l'ultima luce esita."),
   C("tideelemental", "Elementale di Marea", 2, "tideelemental", "💧", "water", 2, 3,
     "", "L'oceano gli ha prestato una forma."),
   C("frostflamewarden", "Guardiano Gelofiamma", 4, "frostflamewarden", "❄️", "water", 4, 4,
     "", "Gelo e fuoco si tengono in equilibrio nel suo cuore."),
-  C("sylvandrake", "Drago Silvano", 5, "sylvandrake", "🐲", "nature", 6, 6,
-    "", "La foresta intera trattiene il respiro al suo passaggio."),
+  C("sylvandrake", "Verdannil, Drago dei Boschi Antichi", 5, "sylvandrake", "🐲", "nature", 6, 6,
+    "", "Quando spiega le ali, mille foreste ricordano il suo vero nome."),
   C("emberspirit", "Spirito di Brace", 2, "emberspirit", "🔥", "fire", 3, 2,
     "", "Una scintilla che ha imparato a volere."),
   C("verdantflame", "Fiamma Verdeggiante", 3, "verdantflame", "🍃", "nature", 3, 4,
     "", "Brucia e fa germogliare nello stesso istante."),
-  C("elderwood", "Antico Silvano", 4, "elderwood", "🌳", "nature", 4, 6,
-    "", "Ricorda quando la foresta era un seme."),
+  C("elderwood", "Quercion l'Antico", 4, "elderwood", "🌳", "nature", 4, 6,
+    "", "Ricorda quando la foresta entrava in un solo seme."),
   C("manacrystal", "Cristallo di Mana", 2, "manacrystal", "🔷", "water", 0, 5,
     "", "Pulsa piano, come un cuore di vetro."),
 
@@ -510,10 +552,10 @@ const RAW = [
     "", "Forgiato dal cuore di un vulcano spento."),
   C("ember-phoenix", "Fenice di Brace", 4, "ember-phoenix", "🔥", "fire", 4, 3,
     "", "Muore in cenere, rinasce in fiamma."),
-  C("lava-drake", "Draco di Lava", 5, "lava-drake", "🐉", "fire", 6, 5,
-    "", "Il suo respiro fonde gli scudi."),
-  C("infernal-demon", "Demone Infernale", 5, "infernal-demon", "😈", "fire", 7, 5,
-    "", "L'Abisso gli ha dato ali e fame."),
+  C("lava-drake", "Pyranth, Draco di Lava", 5, "lava-drake", "🐉", "fire", 6, 5,
+    "", "Vola tre volte, e tre città bruciano. Sempre tre."),
+  C("infernal-demon", "Vurloth, Demone Infernale", 5, "infernal-demon", "😈", "fire", 7, 5,
+    "", "L'Abisso gli concesse ali. La fame se l'è coltivata da solo."),
   // — Water —
   C("water-serpent", "Serpe d'Acqua", 2, "water-serpent", "🐍", "water", 3, 2,
     "", "Scivola dove l'occhio non arriva."),
@@ -525,14 +567,14 @@ const RAW = [
     "", "Le maree obbediscono al suo canto."),
   C("frost-tusk-boar", "Cinghiale Zanna-Gelo", 3, "frost-tusk-boar", "🐗", "water", 4, 3,
     "", "Carica come una valanga affamata."),
-  C("tidal-colossus", "Colosso Mareale", 4, "tidal-colossus", "🌀", "water", 4, 5,
-    "", "Si erge dove l'onda non si ritira."),
+  C("tidal-colossus", "Tholazar, Colosso Mareale", 4, "tidal-colossus", "🌀", "water", 4, 5,
+    "", "Si erge dove l'onda dimentica di ritirarsi."),
   C("abyssal-terror", "Terrore Abissale", 4, "abyssal-terror", "🦈", "water", 5, 3,
     "", "Le fauci del fondo che nessuno vede."),
-  C("glacial-wyrm", "Viverna Glaciale", 5, "glacial-wyrm", "🐲", "water", 6, 6,
-    "", "Le sue ali portano l'inverno."),
-  C("water-colossus", "Colosso d'Acqua", 5, "water-colossus", "💧", "water", 5, 7,
-    "", "Un oceano che ha imparato a camminare."),
+  C("glacial-wyrm", "Cryolanth, Viverna Glaciale", 5, "glacial-wyrm", "🐲", "water", 6, 6,
+    "", "Dove batte l'ala, gli stagni ricordano di essere ghiaccio."),
+  C("water-colossus", "Maredorn, Colosso d'Acqua", 5, "water-colossus", "💧", "water", 5, 7,
+    "", "Un oceano che ha scelto la forma di un pugno."),
   // — Air —
   C("storm-beast", "Bestia della Tempesta", 3, "storm-beast", "🌩️", "fire", 4, 3,
     "", "Cavalca i venti come fossero prede."),
@@ -540,17 +582,17 @@ const RAW = [
     "", "Colpisce una volta sola. Basta."),
   C("gilded-magus", "Magus Aureo", 3, "gilded-magus", "✨", "light", 3, 3,
     "", "Tesse il fulmine come fosse seta."),
-  C("storm-titan", "Titano della Tempesta", 5, "storm-titan", "⚡", "fire", 6, 5,
-    "", "Ogni passo è un tuono che cade."),
-  C("astral-titan", "Titano Astrale", 5, "astral-titan", "🌌", "light", 5, 6,
-    "", "Porta il cielo notturno sulle spalle."),
+  C("storm-titan", "Tharokar, Titano della Tempesta", 5, "storm-titan", "⚡", "fire", 6, 5,
+    "", "I suoi passi anticipano i tuoni di una stagione."),
+  C("astral-titan", "Caelyon, Titano Astrale", 5, "astral-titan", "🌌", "light", 5, 6,
+    "", "Porta il cielo notturno come fosse un mantello."),
   // — Light —
   C("spirit-stag", "Cervo Spettrale", 3, "spirit-stag", "🦌", "light", 3, 3,
     "", "Guida i perduti fuori dal bosco."),
   C("crystal-guardian", "Guardiano di Cristallo", 3, "crystal-guardian", "💎", "light", 2, 5,
     "", "La luce, fatta sentinella."),
-  C("prismatic-rhino", "Rinoceronte Prismatico", 4, "prismatic-rhino", "🦏", "light", 4, 5,
-    "", "Il suo corno spezza ogni incantesimo."),
+  C("prismatic-rhino", "Heliodor, Rinoceronte Prismatico", 4, "prismatic-rhino", "🦏", "light", 4, 5,
+    "", "Il suo corno spezza ogni incantesimo… e qualche giuramento."),
   // — Darkness —
   C("vampire-noble", "Nobile Vampiro", 3, "vampire-noble", "🦇", "darkness", 3, 3,
     "", "Brinda al tuo sangue con eleganza."),
@@ -562,10 +604,10 @@ const RAW = [
     "", "Plasmato dall'assenza di tutto."),
   C("lunar-spirit", "Spirito Lunare", 4, "lunar-spirit", "🌙", "darkness", 3, 4,
     "", "Danza fra le maree della notte."),
-  C("illithid-warlord", "Signore Illithid", 4, "illithid-warlord", "🐙", "darkness", 5, 4,
-    "", "Comanda eserciti con un solo pensiero."),
-  C("crimson-lich", "Lich Cremisi", 5, "crimson-lich", "☠️", "darkness", 5, 6,
-    "", "La sua corona è fatta di promesse infrante."),
+  C("illithid-warlord", "Maerz'thul, Signore Illithid", 4, "illithid-warlord", "🐙", "darkness", 5, 4,
+    "", "Comanda eserciti senza alzare un tentacolo."),
+  C("crimson-lich", "Sanguinor, Lich Cremisi", 5, "crimson-lich", "☠️", "darkness", 5, 6,
+    "", "La sua corona è fusa con promesse mai mantenute."),
   // — Nature —
   C("wild-ranger", "Ranger Selvaggio", 2, "wild-ranger", "🏹", "nature", 2, 2,
     "", "Conosce ogni sentiero, e ogni agguato."),
@@ -709,10 +751,10 @@ const RAW = [
     "", "Ogni spina conosce il sapore del coraggio."),
   C("sylvan-horror", "Orrore Silvano", 4, "sylvan-horror", "🌳", "nature", 4, 5,
     "", "La foresta che ha smesso di proteggere."),
-  C("marsh-brute", "Bruto della Palude", 4, "marsh-brute", "🪨", "nature", 4, 6,
-    "", "La palude provvede ai suoi figli più grossi."),
-  C("totem-giant", "Gigante Totem", 5, "totem-giant", "🗿", "nature", 5, 7,
-    "", "Porta sulle spalle gli dèi della sua tribù."),
+  C("marsh-brute", "Mokrun della Palude", 4, "marsh-brute", "🪨", "nature", 4, 6,
+    "", "La palude provvede ai suoi figli più grossi. Mokrun è il più grosso."),
+  C("totem-giant", "Vargmar, Gigante Totem", 5, "totem-giant", "🗿", "nature", 5, 7,
+    "", "Porta sulle spalle gli dèi della sua tribù, e qualche debito."),
   C("earth-golem", "Golem di Pietra", 4, "earth-golem", "🪨", "nature", 4, 6,
     "", "Un cuore di smeraldo lo tiene in piedi."),
 ];

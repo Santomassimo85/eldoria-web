@@ -1057,7 +1057,8 @@ function resolveTop(s) {
 }
 
 /* a player passes priority. When BOTH pass in a row the top of the
-   stack resolves; an empty stack + both pass closes the window. */
+   stack resolves; an empty stack + both pass closes the window — and
+   may advance a combat sub-step (after_attackers → declare_blocks). */
 export function passPriority(state, side) {
   if (state.winner || state.priority !== side) return state;
   const s = clone(state);
@@ -1066,9 +1067,41 @@ export function passPriority(state, side) {
     if (s.stack.length) {
       resolveTop(s);
       s.passes = 0;
-      s.priority = s.winner ? null : s.stack.length ? s.active : null;
+      if (s.winner) {
+        s.priority = null;
+      } else if (s.stack.length) {
+        s.priority = s.active;
+      } else if (s.combat) {
+        /* During combat, after a spell resolves with an empty stack the
+           priority window RE-OPENS for both players (active first), so
+           you can keep stacking pump/removal/fog responses. Without this
+           a single instant would auto-close the window and skip damage
+           response. */
+        s.priority = s.active;
+      } else {
+        s.priority = null;
+      }
     } else {
-      s.priority = null; // nothing to resolve — window closes
+      // window closes
+      s.priority = null;
+      s.passes = 0;
+      /* Combat sub-step advance. The after_blocks → damage transition
+         is intentionally NOT done here: the UI needs to play its
+         cinematic before applying damage, so it calls resolveCombatPending
+         explicitly once it detects the closed window. */
+      if (s.combat && s.combat.step === "after_attackers") {
+        const defSide = opp(s.combat.attackerSide);
+        if (s.players[defSide].battlefield.length === 0) {
+          // No creatures to block with → skip declare_blocks entirely
+          // and open the post-blocks window so instants are still legal
+          // (e.g. Fog) before damage hits the hero.
+          s.combat.step = "after_blocks";
+          s.priority = s.combat.attackerSide;
+        } else {
+          s.combat.step = "declare_blocks";
+          // No priority here — defender's UI takes over for block picks.
+        }
+      }
     }
   } else {
     s.priority = opp(side); // let the other player respond
@@ -1312,13 +1345,31 @@ export function declareAttackers(state, side, attackerIds) {
     const cr = s.players[side].battlefield.find((c) => c.instId === id);
     if (!kw(cr.cardId, "vigilance")) cr.tapped = true; // Vigilanza: non si tappa
   }
-  s.combat = { attackerSide: side, attackers: valid, blocks: {} };
+  s.combat = {
+    attackerSide: side,
+    attackers: valid,
+    blocks: {},
+    /* combat sub-steps (Magic-style priority windows):
+         "after_attackers" → defender first (instants pre-blocchi: kill,
+                              fog, …); both pass → "declare_blocks"
+         "declare_blocks"  → defender picks blockers via UI; on confirm →
+                              "after_blocks"
+         "after_blocks"    → attacker first (pump/save/kill blocker, …);
+                              both pass → cinematic + dealCombatDamage
+                              + back to main phase 2                       */
+    step: "after_attackers",
+  };
   s.phase = "block";
   s.attackedThisTurn = true;
   logMsg(s, side, `${s.players[side].name} attacca con ${valid.length} creatura/e.`);
-  if (s.players[opp(side)].battlefield.length === 0) {
-    return resolveCombatInternal(s);
-  }
+  /* Open priority for the DEFENDER first. In strict MTG the active
+     player (attacker) would get priority first, but the attacker has
+     just declared and almost never needs to react to their own swing,
+     while the defender has the meaningful decision (remove an attacker
+     before blocks, fog the combat, …). Starting on the defender saves
+     one auto-pass cycle per combat. */
+  s.priority = opp(side);
+  s.passes = 0;
   return s;
 }
 
@@ -1356,11 +1407,17 @@ export function legalBlockers(s, attackerInstId) {
 
 /* blocksMap: { [attackerInstId]: blockerInstId | [blockerInstId, …] }
    One creature may block only one attacker; one attacker may be blocked
-   by MANY creatures (gang block). Menace needs 2+ blockers. */
+   by MANY creatures (gang block). Menace needs 2+ blockers.
+   Now: storing blocks ONLY ADVANCES THE STEP. Damage is dealt later via
+   resolveCombatPending once the post-blocks priority window closes — so
+   the attacker can pump/save/kill blockers with instants before dying. */
 export function confirmBlocks(state, defenderSide, blocksMap = {}) {
   if (!state.combat || state.phase !== "block") return state;
   if (defenderSide !== opp(state.combat.attackerSide)) return state;
-  if (state.stack.length || state.priority) return state; // resolve tricks first
+  // Only legal at the dedicated block step (after the post-attackers
+  // priority window has closed) and only with a quiet stack/priority.
+  if (state.combat.step !== "declare_blocks") return state;
+  if (state.stack.length || state.priority) return state;
   const s = clone(state);
   const atkSide = s.combat.attackerSide;
   const used = new Set();
@@ -1387,7 +1444,13 @@ export function confirmBlocks(state, defenderSide, blocksMap = {}) {
     if (assigned.length) blocks[atkId] = assigned;
   }
   s.combat.blocks = blocks;
-  return resolveCombatInternal(s);
+  s.combat.step = "after_blocks";
+  /* Open priority for the ATTACKER first — they're the one who usually
+     wants to react (pump to dodge lethal blocks, fog the combat, finish
+     off a wounded blocker, …). Defender still gets a window after. */
+  s.priority = atkSide;
+  s.passes = 0;
+  return s;
 }
 
 /* one combatant deals `amount` to a creature, honouring Scudo
@@ -1432,13 +1495,14 @@ function strikeHero(s, srcSide, src, tgtSide, amount) {
   gainXp(s, srcSide, amount, "damage");
 }
 
-function resolveCombatInternal(s) {
+/* Internal: applies combat damage to the current s.combat. Does NOT
+   clean up s.combat or change phase — the caller (resolveCombatPending)
+   owns the transition back to main phase. Returns nothing; mutates s. */
+function dealCombatDamage(s) {
   // a Fog cancels ALL combat damage this turn
   if (s.combatFog) {
     logMsg(s, null, "I danni da combattimento sono prevenuti (Nebbia).");
-    s.combat = null;
-    s.phase = s.winner ? "ended" : "main";
-    return s;
+    return;
   }
   const atkSide = s.combat.attackerSide;
   const defSide = opp(atkSide);
@@ -1533,10 +1597,22 @@ function resolveCombatInternal(s) {
   });
   if (anyFS) runPass(true);
   runPass(false);
+}
 
+/* Public: deal combat damage and exit combat back to main phase.
+   The UI calls this AFTER playing its cinematic, once the post-blocks
+   priority window has closed (both pass + empty stack). Until this is
+   invoked, combat sits at step="after_blocks" with blocks visible — so
+   players can fire instants on wounded blockers / attackers / pump etc. */
+export function resolveCombatPending(state) {
+  if (!state || !state.combat) return state;
+  if (state.combat.step !== "after_blocks") return state;
+  if (state.priority || state.stack.length) return state;
+  const s = clone(state);
+  dealCombatDamage(s);
+  checkWin(s);
   s.combat = null;
   s.phase = s.winner ? "ended" : "main";
-  checkWin(s);
   return s;
 }
 

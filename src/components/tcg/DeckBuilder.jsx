@@ -55,6 +55,10 @@ function matchRarity(card, rarFilter) {
 
 export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const collection = useMemo(() => profile?.collection || {}, [profile]);
+  // foils[id] = how many foil copies the player owns of that card. The
+  // total in `collection` includes the foils — owning 4 copies with 1
+  // foil shows up as collection[id]=4 + foils[id]=1.
+  const foils = useMemo(() => profile?.foils || {}, [profile]);
   const klass = profile?.starterClass || null;
   const myColors = klass ? classColors(klass) : [];
 
@@ -73,6 +77,14 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const [klassFilter, setKlassFilter] = useState(() => new Set());
   const [typeFilter, setTypeFilter] = useState("all");
   const [rarFilter, setRarFilter] = useState("all");
+  // when on, the grid shows ONLY cards the player owns at least one foil
+  // copy of — useful for showing off / building a "premium" deck even
+  // though the engine treats foil & regular copies as identical.
+  const [foilOnly, setFoilOnly] = useState(false);
+  const totalFoils = useMemo(
+    () => Object.values(foils).reduce((n, x) => n + (x || 0), 0),
+    [foils]
+  );
   const [sortBy, setSortBy] = useState("cmc");
   const [zoom, setZoom] = useState(null);
 

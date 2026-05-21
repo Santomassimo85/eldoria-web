@@ -24,6 +24,7 @@ import {
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
   legalBlockers, activateUltimate, canActivateUltimate, ultimateBlockReason,
+  resolveCombatPending,
 } from "../../tcg/engine.js";
 import ClassPanel from "./ClassPanel.jsx";
 import {
@@ -286,9 +287,13 @@ export default function GameTable({
   // board on screen and play it out beat by beat, anchoring every
   // damage number to the card/hero that took it, so the player can
   // read exactly why one creature died and the other survived.
-  const runCombat = (pre, side, blocksArg) => {
+  // Pre-state here is already at step="after_blocks" (blocks declared,
+  // post-blocks priority window closed). We compute resolveCombatPending
+  // to find out what WILL happen, then animate it before committing.
+  const runCombatCinematic = (pre) => {
     if (cineRef.current) return;
-    const next = confirmBlocks(pre, side, blocksArg);
+    const next = resolveCombatPending(pre);
+    if (next === pre) return; // engine refused → nothing to animate
     const baseId = lastFx.current;
     const fresh = next.fx.filter((e) => e.id > baseId);
     if (!fresh.some((e) => e.kind === "attack")) {
@@ -393,6 +398,23 @@ export default function GameTable({
     },
     []
   );
+
+  // === COMBAT DAMAGE TRIGGER ==================================
+  // When the engine sits at combat.step="after_blocks" with the stack
+  // empty and no priority holder, both players have finished firing
+  // instants/pumps — time to resolve damage. We play the cinematic on
+  // the pre-damage state, then commit the resolved state.
+  // PvP guard: in network play only ONE client should push the resolved
+  // state (the attacker's), otherwise we'd race and double-commit.
+  useEffect(() => {
+    if (!state || !state.combat) return;
+    if (state.combat.step !== "after_blocks") return;
+    if (state.priority || state.stack.length) return;
+    if (cineRef.current) return;
+    if (!isAi && mySide !== state.combat.attackerSide) return;
+    runCombatCinematic(state);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, isAi, mySide]);
 
   // recompute combat arrows on resize / orientation flip / mobile-browser
   // chrome shifts (iOS address bar collapsing changes innerHeight)
@@ -662,21 +684,24 @@ export default function GameTable({
       state.phase === "block" &&
       state.combat &&
       state.combat.attackerSide === "p0" &&
+      state.combat.step === "declare_blocks" &&
       !state.stack.length &&
       !state.priority
     ) {
-      // 1) AI decides its blocks and we SHOW them (arrows) for a beat,
-      // 2) then damage resolves — so the player sees who blocked whom.
+      // AI is defender at the dedicated block step. Pick blocks, flash
+      // them as arrows for ~1.2s so the player sees who's defending,
+      // then call confirmBlocks — the engine moves to "after_blocks"
+      // and the post-blocks priority window opens. Damage resolves later,
+      // via the cinematic useEffect, once both sides pass priority.
       t = setTimeout(() => {
         const s = stateRef.current;
-        if (!s || s.phase !== "block") return;
+        if (!s || s.phase !== "block" || s.combat?.step !== "declare_blocks") return;
         const b = aiBlocks(s, "p1");
-        // show the defenders' trajectory, then play out the fight
         setPreviewBlocks(b);
         t = setTimeout(() => {
           const s2 = stateRef.current;
-          if (!s2 || s2.phase !== "block") return;
-          runCombat(s2, "p1", b);
+          if (!s2 || s2.combat?.step !== "declare_blocks") return;
+          applyState(confirmBlocks(s2, "p1", b));
         }, 1200);
       }, 1300);
     }
@@ -686,6 +711,10 @@ export default function GameTable({
 
   // human auto-pass: if I hold priority but have no instant I could
   // cast in response, pass automatically so normal games never stall.
+  // Combat now opens up to 2 priority windows per fight, so each window
+  // is short (250ms) when there's nothing to cast — keeps the rhythm
+  // brisk while still leaving time to react in the rare case the player
+  // actually has a relevant instant.
   useEffect(() => {
     const s = state;
     if (!s || !s.players || s.winner || s.priority !== mySide) return;
@@ -699,7 +728,7 @@ export default function GameTable({
       const cur = stateRef.current;
       if (cur && !cur.winner && cur.priority === mySide)
         applyState(passPriority(cur, mySide));
-    }, 700);
+    }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, mySide]);
@@ -736,11 +765,16 @@ export default function GameTable({
 
   const canMainAct =
     !winner && state.phase === "main" && state.active === mySide;
+  // Only enable the block UI during the dedicated block step. While the
+  // engine sits in "after_attackers" or "after_blocks" priority windows
+  // the defender's role is "react with instants or pass", not click on
+  // creatures to assign blockers — confirmBlocks would refuse anyway.
   const canBlockNow =
     !winner &&
     state.phase === "block" &&
     state.combat &&
-    state.combat.attackerSide === foeSide;
+    state.combat.attackerSide === foeSide &&
+    state.combat.step === "declare_blocks";
   // which of my creatures may legally block the selected attacker
   // (engine enforces Volare → only Volare/Portata, tapped, gang use…)
   const legalBlkIds =
@@ -969,8 +1003,12 @@ export default function GameTable({
   };
 
   const doConfirmBlocks = (skip) => {
-    // runCombat plays the fight out and clears blocks at the end
-    runCombat(state, mySide, skip ? {} : blocks);
+    // Just commit the blocks; the engine transitions to step="after_blocks"
+    // and opens the attacker's priority window. The cinematic will fire
+    // later (via the after_blocks useEffect) once both pass with an
+    // empty stack — giving both players the chance to fire instants.
+    applyState(confirmBlocks(state, mySide, skip ? {} : blocks));
+    setBlkAtk(null);
   };
 
   const myPriority = !winner && state.priority === mySide;
@@ -1041,13 +1079,19 @@ export default function GameTable({
   const statusLine = winner
     ? "Partita conclusa"
     : myPriority
-    ? "Pila aperta — rispondi con un istante o passa"
+    ? state.combat
+      ? "Combatti — lancia un istantaneo o passa"
+      : "Pila aperta — rispondi con un istante o passa"
     : stackOpen
     ? "Risoluzione della pila…"
     : canBlockNow
     ? "Dichiara i bloccanti (anche più di uno)"
     : iAmAttackerWaiting
-    ? "Attendi i bloccanti avversari…"
+    ? state.combat?.step === "after_attackers"
+      ? "L'avversario può rispondere…"
+      : state.combat?.step === "after_blocks"
+      ? "Bloccanti dichiarati — pila aperta…"
+      : "Attendi i bloccanti avversari…"
     : canMainAct && me.hand.length > HAND_CAP
     ? `Scarta ${me.hand.length - HAND_CAP} carta/e`
     : canMainAct && state.attackedThisTurn
