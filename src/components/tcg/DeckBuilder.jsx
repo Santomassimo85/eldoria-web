@@ -19,6 +19,16 @@ import {
   CLASSES, CLASS_LABEL, CLASS_ICON, classColors,
 } from "../../tcg/classes.js";
 
+/* one-liner playstyle hint per class — shown on the auto-build buttons'
+   tooltip so the player understands what kind of deck they'll get. */
+const CLASS_BLURB = {
+  mago:      "Caster pieno: 46% creature, 46% spell, 23 terre, curva 2-4.",
+  guerriero: "Aggro marziale: 72% creature di basso costo, 22 terre.",
+  chierico:  "Semi-caster sostegno: 56% creature, 36% spell di cura, 24 terre.",
+  ladro:     "Tempo: 58% creature evasive, 34% reazioni, 22 terre.",
+  druido:    "Ramp: 62% creature massicce, 26 terre, curva 3-5.",
+};
+
 /* CMC buckets for the curve chart (0 / 1 / 2 / 3 / 4 / 5 / 6+) */
 const CURVE_BUCKETS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -181,6 +191,26 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
     setMsg(`🛠 Mix costruito: ${list.map((k) => CLASS_LABEL[k]).join(" + ")}.`);
   };
 
+  /* Dedicated "create deck for class X" — independent of klassFilter.
+     Always uses autoClassDeck (which reads CLASS_BUILD_PROFILE for
+     type ratios / lands / curve), and also flips the filter to that
+     class so the grid below highlights what's in the new deck. */
+  const buildForClass = (k) => {
+    setMsg("");
+    const next = autoClassDeck(collection, k);
+    setDeck(next);
+    setKlassFilter(new Set([k]));
+    const owned = next.filter((id) => {
+      const c = getCard(id);
+      return c && c.type !== "land";
+    }).length;
+    if (owned < 30) {
+      setMsg(`ℹ️ Mazzo ${CLASS_LABEL[k]} costruito col fallback (poche carte di quei colori). Apri pacchetti ${CLASS_LABEL[k]} nel Negozio.`);
+    } else {
+      setMsg(`✓ Mazzo ${CLASS_LABEL[k]} ottimizzato (${CLASS_BLURB[k]}).`);
+    }
+  };
+
   const buildRandomMix = () => {
     setMsg("");
     const n = Math.random() < 0.6 ? 2 : 3;
@@ -300,6 +330,31 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
           <button className="tcg-chipbtn tcg-chipbtn--danger" onClick={clearDeck}>
             🗑 Svuota
           </button>
+        </div>
+
+        {/* ── Dedicated auto-build row: pick a class, get an optimised
+            deck instantly. Uses the class build profiles in collection.js
+            (CLASS_BUILD_PROFILE) so each class plays its own way. ── */}
+        <div className="tcg-deck__bar-row tcg-deck__bar-row--build">
+          <span className="tcg-deck__barlbl">🛠 Crea mazzo per</span>
+          {CLASSES.map((k) => {
+            const isMine = k === klass;
+            return (
+              <button
+                key={`build-${k}`}
+                className={`tcg-chipbtn tcg-chipbtn--build ${isMine ? "tcg-chipbtn--accent" : ""}`}
+                onClick={() => buildForClass(k)}
+                title={`${CLASS_LABEL[k]} — ${CLASS_BLURB[k]}`}
+              >
+                {isMine ? "⭐ " : ""}{CLASS_ICON[k]} {CLASS_LABEL[k]}
+              </button>
+            );
+          })}
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <span className="tcg-deck__buildhint">
+            Costruzione ottimizzata: curva, ratio creature/spell e numero di
+            terre tarati allo stile della classe.
+          </span>
         </div>
 
         <div className="tcg-deck__bar-row">

@@ -164,33 +164,76 @@ export function validateDeck(deck, collection) {
 }
 
 /* ============================================================
+   CLASS BUILD PROFILES
+   ------------------------------------------------------------
+   Each class plays a different game, so a "good" deck isn't just
+   60 cards of the right colours — it's tuned to that class' core
+   game plan. These profiles drive autoClassDeck:
+
+     • types     — ratio of creature / spell / artifact in the
+                   non-land slice (sums to 1)
+     • lands     — how many lands out of 60 (more for ramp classes)
+     • curve     — relative weight per CMC bucket; the builder
+                   prefers cards near the class' "sweet spot"
+                   (Guerriero aggro = low curve, Druido ramp = high)
+
+   Numbers are tuned for variety, not pinpoint balance — small
+   tweaks here change the feel of class-built decks across the
+   board. Multiclasses fall back to autoMixDeck's defaults. */
+export const CLASS_BUILD_PROFILE = {
+  // Mago — caster pieno: tanti spell, creature evocate via magia
+  mago:      { types: { creature: 0.46, spell: 0.46, artifact: 0.08 },
+               lands: 23,
+               curve: [0, 2, 3, 4, 3, 2, 1] },
+  // Guerriero — marziale aggro: creature di basso costo, pochi spell
+  guerriero: { types: { creature: 0.72, spell: 0.20, artifact: 0.08 },
+               lands: 22,
+               curve: [0, 4, 5, 3, 2, 1, 0] },
+  // Chierico — semi-caster: creature + cure / drain
+  chierico:  { types: { creature: 0.56, spell: 0.36, artifact: 0.08 },
+               lands: 24,
+               curve: [0, 2, 4, 4, 3, 2, 1] },
+  // Ladro — marziale veloce: creature evasive + reazioni (instant)
+  ladro:     { types: { creature: 0.58, spell: 0.34, artifact: 0.08 },
+               lands: 22,
+               curve: [0, 3, 5, 4, 2, 1, 0] },
+  // Druido — semi-caster ramp: piú terre, creature massicce
+  druido:    { types: { creature: 0.62, spell: 0.26, artifact: 0.12 },
+               lands: 26,
+               curve: [0, 2, 3, 4, 4, 3, 2] },
+};
+const DEFAULT_PROFILE = {
+  types: { creature: 0.60, spell: 0.32, artifact: 0.08 },
+  lands: 24,
+  curve: [0, 2, 4, 4, 3, 2, 1],
+};
+
+/* ============================================================
    AUTO-BUILD — CLASS DECK
    ------------------------------------------------------------
    Build a 60-card deck for a target class from what the player
-   currently owns. The algorithm:
-     1) Filter the pool to the class' two colours (e.g. Mago →
-        Fuoco + Natura).
-     2) Score each owned card by rarity × 10 + a soft curve
-        preference peaking at CMC 2-3 + tiny random.
-     3) Pick 36 non-land cards while keeping a type balance
-        target (~60% creature, ~32% spell, ~8% artifact). Epic
-        and Leggendaria bypass the soft caps so the best cards
-        always make it in.
-     4) Fill 24 lands split proportionally between the two
-        colours based on the picked cards' coloured-mana cost,
-        with a floor per colour to avoid colour-screw.
-     5) Light shuffle for variety (the engine reshuffles anyway).
+   currently owns, using CLASS_BUILD_PROFILE for the type ratios,
+   land count and curve preference. Algorithm:
+     1) Filter the pool to the class' two colours.
+     2) Score each owned card by rarity × 10 + class-specific
+        curve bonus + tiny random.
+     3) Pick non-land cards respecting class-tuned type targets
+        (e.g. Guerriero ~72% creature, Mago ~46%). Epics/legends
+        bypass soft caps so marquee picks always slot in.
+     4) Fill lands (class-specific count) split proportionally
+        between colours based on the picked cards' coloured-mana
+        demand, with a per-colour floor.
+     5) Light shuffle.
 
-   Falls back to `autoDeck(collection, cols[0])` if the player
-   doesn't own enough cards of the class colours yet (e.g. just
-   started and hasn't bought packs for that class).
-   ============================================================ */
+   Falls back to autoDeck(collection, primaryColor) if the player
+   doesn't own enough class-coloured cards yet. */
 export function autoClassDeck(collection, klass) {
   if (!klass || !CLASSES.includes(klass)) {
     return autoDeck(collection, null);
   }
   const cols = classColors(klass);
   const allowed = new Set(cols);
+  const profile = CLASS_BUILD_PROFILE[klass] || DEFAULT_PROFILE;
 
   // owned non-land cards in the class colours, respecting copy caps
   const owned = [];
@@ -207,26 +250,25 @@ export function autoClassDeck(collection, klass) {
   // return a complete 60-card deck instead of a stub.
   if (owned.length < 20) return autoDeck(collection, cols[0]);
 
+  /* Score: rarity weight × 10 + class-specific curve bonus + jitter.
+     The curve bonus comes from profile.curve so e.g. Guerriero leans
+     low-cost and Druido leans high-cost without us hard-coding it. */
   const RAR_W = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+  const curveBonusFor = (cmc) => profile.curve[Math.min(cmc, 6)] || 0;
   const score = (id) => {
     const c = getCard(id);
     const rw = RAR_W[c.rarity] || 1;
-    const cmc = c.cmc || 0;
-    // soft curve preference: peak at 2-3, decent at 1/4, low at 0/5+
-    const curveBonus =
-      cmc === 2 || cmc === 3 ? 3 :
-      cmc === 1 || cmc === 4 ? 2 :
-      cmc === 0 || cmc === 5 ? 1 : 0;
-    return rw * 10 + curveBonus + Math.random() * 1.5;
+    return rw * 10 + curveBonusFor(c.cmc || 0) + Math.random() * 1.5;
   };
   owned.sort((a, b) => score(b) - score(a));
 
-  // ----- pick non-land cards with a soft type balance -----
-  const NONLAND = DECK_SIZE - 24; // 36 non-land, 24 lands
+  /* Pick non-land cards respecting the class' type ratio. Epics/
+     legendaries bypass the cap so marquee cards always slot in. */
+  const NONLAND = DECK_SIZE - profile.lands;
   const TARGET = {
-    creature: Math.round(NONLAND * 0.60), // ≈22
-    spell:    Math.round(NONLAND * 0.32), // ≈12
-    artifact: Math.round(NONLAND * 0.08), // ≈3
+    creature: Math.round(NONLAND * profile.types.creature),
+    spell:    Math.round(NONLAND * profile.types.spell),
+    artifact: Math.round(NONLAND * profile.types.artifact),
   };
   const kindOf = (c) =>
     c.type === "creature" ? "creature" :
@@ -242,7 +284,6 @@ export function autoClassDeck(collection, klass) {
     const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
     if ((pickedCount[id] || 0) >= cap) continue;
     const k = kindOf(c);
-    // soft cap by type — but always let epics/legendaries through
     const bypass = c.rarity === "legendary" || c.rarity === "epic";
     if (!bypass && typeCount[k] >= TARGET[k]) continue;
     picked.push(id);
