@@ -1,7 +1,8 @@
 /* Shop — one single-element pack per element (light/darkness pricier).
    Opening a pack shows 15 face-down cards; click each to flip it
    (nice 3D effect) or "Scopri tutte". */
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import {
@@ -10,12 +11,28 @@ import {
 } from "../../tcg/cards.js";
 import { PACKS, packRarityOdds } from "../../tcg/collection.js";
 
+/* Returns the kind of celebration ("foil" / "legendary" / "epic") for
+   a flipped pack card, or null if nothing special. Mirrors the inline
+   per-card flash logic so the centred popup uses the same priorities. */
+function bigKind(cd, card) {
+  if (!card) return null;
+  if (cd.foil) return "foil";
+  if (card.rarity === "legendary") return "legendary";
+  if (card.rarity === "epic") return "epic";
+  return null;
+}
+const KIND_LABEL = { foil: "✨ FOIL!", legendary: "★ LEGGENDARIA!", epic: "✦ EPICA!" };
+
 export default function Shop({ profile, onOpenPack, onBack }) {
   const [busy, setBusy] = useState(false);
   const [revealed, setRevealed] = useState(null); // {cards:[id], packId}
   const [flipped, setFlipped] = useState(() => new Set());
   const [zoom, setZoom] = useState(null);
   const [msg, setMsg] = useState("");
+  // Big centred reveal popup for the juicy pulls (epic+/legendary/foil).
+  // Queued so multiple specials don't overlap when "Scopri tutte" is used.
+  const [bigQueue, setBigQueue] = useState([]);
+  const bigTimer = useRef(null);
 
   const coins = profile?.coins ?? 0;
   const cover = profile?.cover || "nature";
@@ -33,18 +50,56 @@ export default function Shop({ profile, onOpenPack, onBack }) {
     setBusy(false);
   };
 
+  /* Queue a centred popup if this flip uncovers something special. */
+  const maybeQueueBig = (cd) => {
+    const card = getCard(cd.id);
+    const kind = bigKind(cd, card);
+    if (!kind) return;
+    setBigQueue((q) => [...q, { card, kind, foil: cd.foil }]);
+  };
+
   const flip = (i) =>
     setFlipped((s) => {
       if (s.has(i)) return s;
       const n = new Set(s);
       n.add(i);
+      // queue the big popup outside the state-setter (avoid React warning)
+      setTimeout(() => {
+        if (revealed && revealed.cards && revealed.cards[i]) {
+          maybeQueueBig(revealed.cards[i]);
+        }
+      }, 0);
       return n;
     });
   const flipAll = () =>
     setRevealed((r) => {
+      if (!r) return r;
       setFlipped(new Set(r.cards.map((_, i) => i)));
+      // chain the big popups for each special card in display order
+      setTimeout(() => {
+        const specials = r.cards
+          .map((cd) => ({ cd, card: getCard(cd.id) }))
+          .filter(({ cd, card }) => !!bigKind(cd, card))
+          .map(({ cd, card }) => ({ card, kind: bigKind(cd, card), foil: cd.foil }));
+        if (specials.length) setBigQueue((q) => [...q, ...specials]);
+      }, 0);
       return r;
     });
+
+  /* Auto-dismiss the head of the popup queue after a fixed dwell. */
+  useEffect(() => {
+    if (!bigQueue.length) return;
+    if (bigTimer.current) clearTimeout(bigTimer.current);
+    bigTimer.current = setTimeout(() => {
+      setBigQueue((q) => q.slice(1));
+    }, 2400);
+    return () => { if (bigTimer.current) clearTimeout(bigTimer.current); };
+  }, [bigQueue]);
+
+  const dismissBig = () => {
+    if (bigTimer.current) { clearTimeout(bigTimer.current); bigTimer.current = null; }
+    setBigQueue((q) => q.slice(1));
+  };
 
   if (revealed) {
     const allOpen = flipped.size >= revealed.cards.length;
@@ -142,6 +197,14 @@ export default function Shop({ profile, onOpenPack, onBack }) {
           </div>
         </div>
         <CardZoom card={zoom} onClose={() => setZoom(null)} />
+        {/* Big centred celebration popup — fires when a flipped card is
+            epic+/legendary/foil. Portals out of the shop tree so it
+            sits above everything (incl. CardZoom). Click anywhere on
+            the overlay to dismiss; auto-dismisses after ~2.4s. */}
+        {bigQueue.length > 0 && createPortal(
+          <BigReveal entry={bigQueue[0]} onDismiss={dismissBig} />,
+          document.body
+        )}
       </div>
     );
   }
@@ -239,6 +302,44 @@ export default function Shop({ profile, onOpenPack, onBack }) {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   BigReveal — centred celebration popup for a juicy pull.
+   Mounts with a "kind" class (foil/legendary/epic) so CSS can
+   theme the glow + label. Click to dismiss early.
+   ============================================================ */
+function BigReveal({ entry, onDismiss }) {
+  if (!entry) return null;
+  const { card, kind, foil } = entry;
+  return (
+    <div
+      className={`tcg-bigrev tcg-bigrev--${kind}`}
+      onClick={onDismiss}
+      role="button"
+    >
+      {/* 12 orbiting sparkles around the card */}
+      {Array.from({ length: 12 }).map((_, k) => (
+        <span
+          key={k}
+          className="tcg-bigrev__spark"
+          style={{ "--k": k }}
+          aria-hidden="true"
+        >
+          {kind === "foil" ? "✨" : kind === "legendary" ? "★" : "✦"}
+        </span>
+      ))}
+      <span className="tcg-bigrev__ring" aria-hidden="true" />
+      <span className="tcg-bigrev__ring tcg-bigrev__ring--2" aria-hidden="true" />
+
+      <div className="tcg-bigrev__card">
+        <CardView card={card} variant="board" foil={foil} />
+      </div>
+
+      <div className="tcg-bigrev__label">{KIND_LABEL[kind]}</div>
+      <div className="tcg-bigrev__sub">{card.name}</div>
     </div>
   );
 }

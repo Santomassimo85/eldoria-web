@@ -951,6 +951,17 @@ export function playCard(state, side, instId, target = null) {
   p.hand.splice(idx, 1);
 
   if (card.type === "creature") {
+    // ── Legend rule ──────────────────────────────────────────────
+    // A legendary creature is UNIQUE on your battlefield: casting a
+    // second copy auto-destroys the previous one ("regola della
+    // leggenda"). The new copy enters fresh — no shared HP/buffs.
+    if (card.rarity === "legendary") {
+      for (const existing of p.battlefield) {
+        if (existing.cardId === card.id) {
+          existing.damage = 9999;
+        }
+      }
+    }
     const cr = mkCreature(s, side, card.id);
     // class perks: aura/firstCreature buffs baked in at summon. The
     // first-creature-this-turn slot fires its bonuses BEFORE we flip
@@ -971,7 +982,12 @@ export function playCard(state, side, instId, target = null) {
     }
     p.battlefield.push(cr);
     fx(s, { kind: "play", side, cardId: card.id, into: "battlefield", instId: cr.instId });
-    logMsg(s, side, `${p.name} evoca ${card.name}.`);
+    if (card.rarity === "legendary"
+        && p.battlefield.some((x) => x !== cr && x.cardId === card.id && x.damage >= 9999)) {
+      logMsg(s, side, `⚖️ Regola della Leggenda: ${card.name} sostituisce la versione precedente.`);
+    } else {
+      logMsg(s, side, `${p.name} evoca ${card.name}.`);
+    }
     // Mago-Evocazione lv4: each creature you play pings the foe for N
     if (hasClass(p) && p.perks.onCreaturePlayPing > 0) {
       const ping = p.perks.onCreaturePlayPing;

@@ -1097,24 +1097,28 @@ export function buildClassDeck(colors, seed) {
   // Fill 38 non-land slots with up to 4 copies each, biased toward
   // lower CMC by walking the ordered list and pushing copies.
   const NON_LAND = DECK_SIZE - 22; // 38
+  // Per-card deck cap — legendaries get 2, anything else 4. Auto-built
+  // decks must respect this so they're legal under validateDeck.
+  const capOf = (id) => (getCard(id)?.rarity === "legendary" ? 2 : 4);
   const copies = {};
   const spells = [];
-  // first pass: 2 copies of the best low-cost staples
+  // first pass: 2 copies of the best low-cost staples (or 1 if legendary's cap forbids the second)
   for (const id of ordered) {
     if (spells.length >= 22) break;
+    if ((copies[id] || 0) >= capOf(id)) continue;
     copies[id] = (copies[id] || 0) + 1;
     spells.push(id);
-    if (copies[id] < 2) {
+    if (copies[id] < 2 && copies[id] < capOf(id)) {
       copies[id] += 1;
       spells.push(id);
     }
   }
-  // second pass: top up to 4 of anything, then fill with whatever's left
+  // second pass: top up to the per-card cap, then fill with whatever's left
   while (spells.length < NON_LAND) {
     let added = false;
     for (const id of ordered) {
       if (spells.length >= NON_LAND) break;
-      if ((copies[id] || 0) >= 4) continue;
+      if ((copies[id] || 0) >= capOf(id)) continue;
       copies[id] = (copies[id] || 0) + 1;
       spells.push(id);
       added = true;

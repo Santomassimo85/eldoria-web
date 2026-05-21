@@ -35,8 +35,17 @@ export const STARTER_ELEMENTS = ["fire", "water", "light", "nature"];
 export const STARTER_COINS = 120;
 export const PACK_SIZE = 15; // 15 cards per pack (rarity-weighted)
 export const MAX_COPIES = 4;
+export const MAX_COPIES_LEGENDARY = 2; // legendaries are scarcer in deckbuilding
 export const MIN_LANDS = 16;
 export const LAND_IDS = LANDS.map((l) => l.id);
+
+/* Per-card deck cap: legendaries are limited to 2 copies, everything
+   else uses MAX_COPIES (4). Lands are unlimited (handled elsewhere). */
+export function maxCopiesFor(id) {
+  const card = getCard(id);
+  if (!card) return MAX_COPIES;
+  return card.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+}
 
 /* Shop catalogue — two flavours of pack:
      • element packs (legacy): one per element, only that colour's cards
@@ -131,7 +140,7 @@ export function deckCounts(deck) {
 }
 export function maxAllowed(collection, id) {
   if (isLand(id)) return Infinity;
-  return Math.min(MAX_COPIES, ownedCount(collection, id));
+  return Math.min(maxCopiesFor(id), ownedCount(collection, id));
 }
 
 /* ---- deck validation ---- */
@@ -146,8 +155,10 @@ export function validateDeck(deck, collection) {
     const card = getCard(id);
     if (!card) { errors.push(`Carta sconosciuta: ${id}.`); continue; }
     if (card.type === "land") { lands += counts[id]; continue; }
-    if (counts[id] > MAX_COPIES)
-      errors.push(`Troppe copie di ${card.name} (max ${MAX_COPIES}).`);
+    // Legendary cards have a tighter deck cap (2) than other cards (4).
+    const allowed = maxCopiesFor(id);
+    if (counts[id] > allowed)
+      errors.push(`Troppe copie di ${card.name} (max ${allowed}${card.rarity === "legendary" ? " — leggendaria" : ""}).`);
     if (counts[id] > ownedCount(collection, id))
       errors.push(`Non possiedi abbastanza copie di ${card.name}.`);
   }

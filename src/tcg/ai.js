@@ -14,8 +14,12 @@
 import { getCard, ELEMENTS, ELEMENT_POWERS } from "./cards.js";
 import {
   effStats, canPlay, canPlayLand, spellTargets, legalAttackers, opp,
-  HAND_CAP, attunedPowers, canUsePower, canActivateUltimate,
+  HAND_CAP, attunedPowers, canUsePower, canActivateUltimate, START_HP,
 } from "./engine.js";
+
+/* True when a player has class identity active (so perks are read). */
+const hasPerks = (p) => !!(p && p.klass && p.via && p.perks);
+const perk = (p, key) => (hasPerks(p) ? (p.perks[key] || 0) : 0);
 
 const creatureValue = (s, side, cr) => {
   const e = effStats(s, side, cr);
@@ -36,14 +40,39 @@ function biggestThreat(s, foe) {
   return best;
 }
 
-/* score a single playable hand card; also resolve its best target */
+/* score a single playable hand card; also resolve its best target.
+   Returns { score, target } — the higher the score, the more the AI
+   wants to play this card NOW. Negative scores mean "skip".
+
+   Key heuristics:
+     • Creature scoring boosted when own board is thin and discounted
+       when crowded (going wide vs going tall trade-off)
+     • Heals are urgent only when actually low — thresholds use the
+       real START_HP (30), not the stale 20 it used pre-class rework
+     • Damage spells avoid overkill on tiny targets; AoE values the
+       caster's aoeBonus perk; single-target reaction values the
+       firstReactionDmgBonus perk on the first instant of the turn   */
 function scorePlay(s, side, hc) {
   const card = getCard(hc.cardId);
   const foe = opp(side);
   const me = s.players[side];
 
   if (card.type === "creature") {
-    return { score: card.power + card.toughness + card.cmc * 0.5, target: null };
+    const baseStat = card.power + card.toughness;
+    const boardN = me.battlefield.length;
+    // wider board = each new creature less critical; thin board boosts
+    const widthBonus = boardN === 0 ? 4 : (boardN >= 4 ? -2 : 0);
+    // perk-aware: Druido-Terra/Mago-Evocazione/Guerriero auras buff creatures
+    const auraBonus = (perk(me, "creatureBuffP") + perk(me, "creatureBuffT")) * 0.5;
+    // first-creature perks reward putting SOMETHING down each turn
+    const firstBonus = (me.turnFlags && !me.turnFlags.firstCreaturePlayed)
+      ? (perk(me, "firstCreatureBuffP") + perk(me, "firstCreatureBuffT")
+         + perk(me, "firstCreatureDiscount") + perk(me, "firstCreatureFlying")) * 0.6
+      : 0;
+    return {
+      score: baseStat + card.cmc * 0.5 + widthBonus + auraBonus + firstBonus,
+      target: null,
+    };
   }
   if (card.type === "artifact") {
     const boardN = me.battlefield.length;
@@ -54,38 +83,63 @@ function scorePlay(s, side, hc) {
 
   // spells
   const e = card.effect;
+  const isInstant = card.speed === "instant";
+  // first-reaction bonus only applies to the very FIRST instant we cast
+  const firstReactionBonus =
+    (isInstant && me.turnFlags && !me.turnFlags.firstReactionPlayed)
+      ? perk(me, "firstReactionDmgBonus")
+      : 0;
+
   if (e.kind === "destroy" || (e.kind === "damage" && e.target === "creature")) {
     const t = biggestThreat(s, foe);
     if (!t) return { score: -1, target: null };
-    if (e.kind === "damage" && e.amount < t.t)
+    const eff = e.amount + perk(me, "singleTargetDmgBonus") + firstReactionBonus;
+    if (e.kind === "damage" && eff < t.t) {
+      // not lethal on the best target — only worth it if the threat is huge
       return { score: t.p * 0.6, target: { type: "creature", instId: t.instId } };
+    }
     return { score: 6 + t.p + t.t, target: { type: "creature", instId: t.instId } };
   }
   if (e.kind === "damage" && e.target === "any") {
-    if (effHp(s.players[foe]) <= e.amount) return { score: 999, target: { type: "hero", side: foe } };
+    const eff = e.amount + perk(me, "singleTargetDmgBonus") + firstReactionBonus;
+    const foeHp = effHp(s.players[foe]);
+    // lethal? fire immediately
+    if (foeHp <= eff) return { score: 999, target: { type: "hero", side: foe } };
     const t = biggestThreat(s, foe);
-    if (t && t.t <= e.amount && t.p >= 4)
+    // kill a big threat if we can
+    if (t && t.t <= eff && t.p >= 4)
       return { score: 6 + t.p, target: { type: "creature", instId: t.instId } };
-    if (effHp(s.players[foe]) <= 8) return { score: 5, target: { type: "hero", side: foe } };
-    if (t && t.t <= e.amount) return { score: 4 + t.p, target: { type: "creature", instId: t.instId } };
+    // pressure the hero if it's getting close to lethal range
+    if (foeHp <= 10) return { score: 5, target: { type: "hero", side: foe } };
+    // mop up small blockers
+    if (t && t.t <= eff) return { score: 4 + t.p, target: { type: "creature", instId: t.instId } };
+    // otherwise chip away
     return { score: 3, target: { type: "hero", side: foe } };
   }
   if (e.kind === "aoe_enemy") {
+    const eff = e.amount + perk(me, "aoeBonus");
     let kills = 0;
     for (const cr of s.players[foe].battlefield)
-      if (effStats(s, foe, cr).toughness <= e.amount) kills += 1;
+      if (effStats(s, foe, cr).toughness <= eff) kills += 1;
+    // 5 score per kill, but big penalty if zero kills (don't waste the spell)
     return { score: kills * 5 - (kills === 0 ? 10 : 0), target: null };
   }
   if (e.kind === "heal") {
-    const missing = Math.max(0, 20 - me.hp);
-    return { score: me.hp <= 8 ? 7 + Math.min(missing, e.amount) : -2, target: null };
+    const myHp = me.hp;
+    const missing = Math.max(0, START_HP - myHp);
+    const eff = e.amount + perk(me, "healBonus");
+    // urgent if we're at ≤ 1/3 HP, low priority otherwise
+    if (myHp <= START_HP / 3) return { score: 7 + Math.min(missing, eff), target: null };
+    if (myHp <= START_HP * 0.55) return { score: 3 + Math.min(missing, eff) * 0.5, target: null };
+    return { score: -2, target: null };
   }
   if (e.kind === "wardHeal") {
-    // valuable both when low (heals) and when full (banks tempHp);
-    // mild bonus if we're about to take incoming combat damage
-    const missing = Math.max(0, 25 - me.hp);
-    const base = 3 + Math.min(missing, e.amount);
-    return { score: me.hp <= 10 ? base + 4 : base, target: null };
+    const missing = Math.max(0, START_HP - me.hp);
+    const eff = e.amount + perk(me, "healBonus");
+    const base = 3 + Math.min(missing, eff);
+    // very urgent below 1/3 HP
+    if (me.hp <= START_HP / 3) return { score: base + 5, target: null };
+    return { score: base, target: null };
   }
   if (e.kind === "draw") {
     return { score: me.hand.length <= 3 ? 6 : 3, target: null };
@@ -312,18 +366,25 @@ export function nextAction(s, side) {
   const pw = aiPickPower(s, side);
   if (pw) return { type: "power", el: pw.el, target: pw.target };
 
-  // 3) attacks
+  // 3) attacks — perk-aware (creatureCombatBonus from Ladro-Assassino
+  //    boosts our combat power; lifelink from Chierico-Morte makes
+  //    risky attacks worth more because of the heal-back).
   if (!s.attackedThisTurn) {
     const ids = legalAttackers(s, side);
     if (ids.length) {
       const foe = opp(side);
+      const me = s.players[side];
+      const combatBonus = perk(me, "creatureCombatBonus");
+      const lifelinkAura = perk(me, "creatureLifelink") > 0;
       const foeBlockers = s.players[foe].battlefield.filter((c) => !c.tapped);
       const myAtt = ids.map((id) => {
-        const cr = s.players[side].battlefield.find((c) => c.instId === id);
-        return { id, ...effStats(s, side, cr) };
+        const cr = me.battlefield.find((c) => c.instId === id);
+        const st = effStats(s, side, cr);
+        return { id, power: st.power + combatBonus, toughness: st.toughness };
       });
       const totalPow = myAtt.reduce((a, b) => a + b.power, 0);
 
+      // commit all-in if it kills the foe and there aren't enough blockers
       if (totalPow >= effHp(s.players[foe]) && foeBlockers.length < myAtt.length) {
         return { type: "attack", attackerIds: ids };
       }
@@ -337,7 +398,9 @@ export function nextAction(s, side) {
           if (be.power >= a.toughness) dies = true;
           if (a.power >= be.toughness) kills = true;
         }
-        if (!dies || kills) chosen.push(a.id);
+        // attack if we don't die OR if we kill something (good trade)
+        // OR if we have a lifelink aura that softens the loss
+        if (!dies || kills || lifelinkAura) chosen.push(a.id);
       }
       if (chosen.length) return { type: "attack", attackerIds: chosen };
     }
@@ -485,17 +548,28 @@ export function respondToStack(s, side) {
     }
   }
 
-  // 3) finisher: a damage instant that kills the enemy hero
+  // 3) finisher: a damage instant that kills the enemy hero. We factor
+  // in single-target + first-reaction perk bonuses so a Ladro's burn
+  // gets credit for its lethal range.
   const dmgAny = castable.find((h) => {
     const c = getCard(h.cardId);
     return c.effect.kind === "damage" && c.effect.target === "any";
   });
-  if (dmgAny && effHp(s.players[foe]) <= getCard(dmgAny.cardId).effect.amount)
-    return {
-      type: "instant",
-      instId: dmgAny.instId,
-      target: { type: "hero", side: foe },
-    };
+  if (dmgAny) {
+    const c = getCard(dmgAny.cardId);
+    const firstRx = (me.turnFlags && !me.turnFlags.firstReactionPlayed)
+      ? perk(me, "firstReactionDmgBonus") : 0;
+    const lethalAmt = (c.effect.amount || 0)
+      + perk(me, "singleTargetDmgBonus")
+      + firstRx;
+    if (effHp(s.players[foe]) <= lethalAmt) {
+      return {
+        type: "instant",
+        instId: dmgAny.instId,
+        target: { type: "hero", side: foe },
+      };
+    }
+  }
 
   return { type: "pass" };
 }

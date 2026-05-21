@@ -1,15 +1,58 @@
-/* Manual — detailed but simple rules (Italian) */
+/* ============================================================
+   Manual — colour-coded, player-friendly rules.
+   2026-05-20 rewrite: each section gets a distinct accent colour
+   and an icon banner so it scans like a guide, not a wall of text.
+   Legacy Element-Powers section dropped — the class system now
+   does that job.
+   ============================================================ */
 import React from "react";
 import {
-  ELEMENTS, ELEMENT_LABEL, ELEMENT_ICON,
+  ELEMENTS, ELEMENT_LABEL, ELEMENT_ICON, ELEMENT_PIP,
   RARITY_ORDER, RARITY_LABEL, RARITY_COLOR, KEYWORDS, KEYWORD_IDS,
-  ELEMENT_POWERS, ATTUNE_RATIO, POWER_MANA, POWER_CHARGE_CAP,
-  DICE_STATS, ELEMENT_PIP,
+  DICE_STATS,
 } from "../../tcg/cards.js";
 import {
-  CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE, CLASS_CASTER_TIER,
-  LEVEL_THRESHOLDS, MAX_LEVEL,
+  CLASSES, CLASS_LABEL, CLASS_ICON, CLASS_VIE,
+  LEVEL_THRESHOLDS,
 } from "../../tcg/classes.js";
+
+/* Coloured section wrapper — accent drives the title bar + border. */
+function Section({ icon, title, accent, children }) {
+  return (
+    <section className="tcg-doc__sec" style={{ "--acc": accent }}>
+      <header className="tcg-doc__sec-head">
+        <span className="tcg-doc__sec-ico">{icon}</span>
+        <h2 className="tcg-doc__sec-title">{title}</h2>
+      </header>
+      <div className="tcg-doc__sec-body">{children}</div>
+    </section>
+  );
+}
+
+/* Pill — small coloured highlight for inline key terms. */
+function Tag({ tone = "gold", children }) {
+  return <span className={`tcg-doc__tag tcg-doc__tag--${tone}`}>{children}</span>;
+}
+
+/* Callout — boxed important note */
+function Note({ tone = "info", children }) {
+  return <div className={`tcg-doc__note tcg-doc__note--${tone}`}>{children}</div>;
+}
+
+const ACCENT = {
+  goal:    "#ffd66b", // gold
+  klass:   "#b58cff", // purple
+  xp:      "#ffaa3a", // orange
+  slot:    "#4fb8ff", // cyan
+  ult:     "#ff7ad4", // magenta
+  mana:    "#5fd16a", // green
+  combat:  "#ff7a6a", // red
+  cards:   "#9ecf6a", // lime
+  pila:    "#7a9fff", // azure
+  rarity:  "#e0b15a", // amber
+  shop:    "#ffcd5a", // gold-2
+  tips:    "#c8c8c8", // grey
+};
 
 export default function Manual({ onBack }) {
   return (
@@ -18,28 +61,58 @@ export default function Manual({ onBack }) {
         <button className="tcg-btn tcg-btn--ghost" onClick={onBack}>
           ‹ Indietro
         </button>
-        <h1 className="tcg-doc__title">Manuale</h1>
+        <h1 className="tcg-doc__title">📖 Manuale del TCG</h1>
         <span />
       </div>
 
       <div className="tcg-doc__body">
-        <section>
-          <h2>Obiettivo</h2>
-          <p>
-            Ogni giocatore parte con <b>30 Punti Vita</b>. Vinci portando i
-            Punti Vita dell'avversario a <b>0</b>.
-          </p>
-        </section>
 
-        <section>
-          <h2>Classi e Sottoclassi (Vie)</h2>
+        {/* ─── Quick-start hero card ─── */}
+        <div className="tcg-doc__hero">
+          <h2>In 30 secondi</h2>
+          <div className="tcg-doc__hero-grid">
+            <div className="tcg-doc__hero-card" style={{ "--acc": ACCENT.goal }}>
+              <span className="tcg-doc__hero-ico">🎯</span>
+              <b>Obiettivo</b>
+              <small>Riduci l'avversario da <b>30</b> a <b>0</b> PV</small>
+            </div>
+            <div className="tcg-doc__hero-card" style={{ "--acc": ACCENT.klass }}>
+              <span className="tcg-doc__hero-ico">🎓</span>
+              <b>Classe + Via</b>
+              <small>Classe fissa per sempre · Via scelta a ogni match</small>
+            </div>
+            <div className="tcg-doc__hero-card" style={{ "--acc": ACCENT.xp }}>
+              <span className="tcg-doc__hero-ico">⚡</span>
+              <b>XP &amp; Livelli</b>
+              <small>Sali livello giocando · al lv5 sblocchi l'ultimate</small>
+            </div>
+            <div className="tcg-doc__hero-card" style={{ "--acc": ACCENT.slot }}>
+              <span className="tcg-doc__hero-ico">🔮</span>
+              <b>Spell Slot</b>
+              <small>Spell e reazioni costano mana <i>e</i> uno slot</small>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── 1. Obiettivo ─── */}
+        <Section icon="🎯" title="Obiettivo" accent={ACCENT.goal}>
           <p>
-            Al primo accesso scegli una <b>classe</b> — è la tua identità
-            per sempre (solo un reset master può cambiarla). Ogni classe
-            possiede <b>due elementi</b> (i suoi colori) e due{" "}
-            <b>sottoclassi (vie)</b>; la via si sceglie <b>a ogni inizio
-            partita</b> e determina il tuo percorso di livellamento.
+            Ogni giocatore parte con <Tag tone="gold">30 Punti Vita</Tag>.
+            Vinci portando i PV dell'avversario a <Tag tone="red">0</Tag>.
+            Se entrambi cadono nello stesso turno: <b>pareggio</b>.
           </p>
+        </Section>
+
+        {/* ─── 2. Classi e Vie ─── */}
+        <Section icon="🎓" title="Classi &amp; Sottoclassi (Vie)" accent={ACCENT.klass}>
+          <p>
+            Al primo accesso scegli una <Tag tone="purple">Classe</Tag>: è la
+            tua identità <b>per sempre</b> (solo un reset master può cambiarla).
+            Ogni classe ha <b>due elementi</b> e <b>due vie</b> (sottoclassi D&amp;D);
+            la <Tag tone="purple">Via</Tag> si sceglie <b>a inizio match</b> e
+            determina il tuo percorso di livellamento.
+          </p>
+
           <ul className="tcg-doc__classes">
             {CLASSES.map((k) => {
               const vie = CLASS_VIE[k];
@@ -55,7 +128,7 @@ export default function Manual({ onBack }) {
                           className="tcg-doc__via"
                           style={{ color: ELEMENT_PIP[v.element] }}
                         >
-                          {v.label} ({ELEMENT_LABEL[v.element]})
+                          {ELEMENT_ICON[v.element]} {v.label}
                         </span>
                         {i < a.length - 1 ? " · " : ""}
                       </React.Fragment>
@@ -65,335 +138,322 @@ export default function Manual({ onBack }) {
               );
             })}
           </ul>
-          <p>
-            <b>Il deck è libero</b>: una volta scelta la classe puoi metterci
-            qualsiasi carta della tua collezione (anche di altri colori),
-            basta avere le terre giuste per pagarne il mana. Le ricompense
-            del livellamento però restano sempre quelle della <b>tua</b>{" "}
-            classe e via — la classe è identità, non restrizione di mazzo.
-          </p>
-        </section>
 
-        <section>
-          <h2>Esperienza (XP) e Livelli</h2>
+          <Note tone="info">
+            <b>Il deck è libero!</b> Puoi metterci carte di qualunque colore
+            (basta avere le terre giuste per il mana). Le ricompense del
+            livellamento restano però sempre quelle della <b>tua</b> classe e
+            via: la classe è <b>identità</b>, non vincolo di mazzo.
+          </Note>
+        </Section>
+
+        {/* ─── 3. XP e Livelli ─── */}
+        <Section icon="⚡" title="Esperienza (XP) &amp; Livelli" accent={ACCENT.xp}>
           <p>
             Durante la partita guadagni XP che ti fa salire di livello{" "}
-            <b>fino al 5</b>. Sali sblocchi spell slot superiori e ricompense
-            specifiche della tua via. Tutto si resetta a fine match.
+            <Tag tone="orange">fino al 5</Tag>. Tutto si resetta a fine match.
           </p>
-          <ul>
-            <li>Danno inflitto all'eroe avversario: <b>+1 XP per danno</b></li>
-            <li>Uccisione di una creatura nemica: <b>+CMC XP</b></li>
-            <li>Reazione (instant) lanciata: <b>+1 XP</b></li>
-            <li>Inizio turno (sopravvivenza): <b>+1 XP</b></li>
-          </ul>
-          <p>
-            Soglie cumulative:{" "}
+
+          <div className="tcg-doc__xpgrid">
+            <div className="tcg-doc__xpcard">
+              <span className="tcg-doc__xpico">⚔️</span>
+              <b>+1 XP</b>
+              <small>per ogni punto di danno all'eroe avversario</small>
+            </div>
+            <div className="tcg-doc__xpcard">
+              <span className="tcg-doc__xpico">💀</span>
+              <b>+CMC XP</b>
+              <small>quando uccidi una creatura nemica</small>
+            </div>
+            <div className="tcg-doc__xpcard">
+              <span className="tcg-doc__xpico">⚡</span>
+              <b>+1 XP</b>
+              <small>per ogni reazione (instant) lanciata</small>
+            </div>
+            <div className="tcg-doc__xpcard">
+              <span className="tcg-doc__xpico">🌅</span>
+              <b>+1 XP</b>
+              <small>a ogni inizio del tuo turno (sopravvivenza)</small>
+            </div>
+          </div>
+
+          <div className="tcg-doc__lvline">
             {LEVEL_THRESHOLDS.slice(2).map((th, i) => (
-              <span key={i}>
-                <b>Lv {i + 2}</b> = {th} XP
-                {i < LEVEL_THRESHOLDS.length - 3 ? " · " : ""}
+              <span key={i} className="tcg-doc__lvpip">
+                <b>Lv {i + 2}</b>
+                <small>{th} XP</small>
               </span>
-            ))}.
-          </p>
-        </section>
+            ))}
+          </div>
 
-        <section>
-          <h2>Spell Slot</h2>
+          <Note tone="warn">
+            Ai livelli <b>3</b> e <b>5</b> sblocchi rispettivamente gli{" "}
+            <b>spell slot tier 2</b> e <b>tier 3</b>, oltre a una ricompensa
+            di via. Al <b>livello 5</b> ottieni anche l'<b>Ultimate</b>.
+          </Note>
+        </Section>
+
+        {/* ─── 4. Spell Slot ─── */}
+        <Section icon="🔮" title="Spell Slot" accent={ACCENT.slot}>
           <p>
-            Spell e reazioni costano <b>mana</b> come prima ma anche uno{" "}
-            <b>spell slot</b> del tier corrispondente:{" "}
-            <b>CMC 1-2 → S1</b>, <b>CMC 3-4 → S2</b>, <b>CMC 5+ → S3</b>.
-            Le creature e i manufatti <b>NON</b> usano slot.
+            Spell e reazioni costano <b>mana</b> come prima, ma anche uno{" "}
+            <Tag tone="cyan">spell slot</Tag> del tier corrispondente. Le{" "}
+            <Tag tone="lime">creature</Tag>, i <Tag tone="lime">manufatti</Tag>{" "}
+            e le <Tag tone="lime">terre</Tag> <b>NON</b> usano slot.
+          </p>
+
+          <div className="tcg-doc__slotgrid">
+            <div className="tcg-doc__slotcard" style={{ "--acc": "#9ecf6a" }}>
+              <span className="tcg-doc__slotn">S1</span>
+              <b>Tier 1</b>
+              <small>CMC 1–2 · sempre disponibile</small>
+            </div>
+            <div className="tcg-doc__slotcard" style={{ "--acc": "#6ab8e0" }}>
+              <span className="tcg-doc__slotn">S2</span>
+              <b>Tier 2</b>
+              <small>CMC 3–4 · si sblocca al livello 3</small>
+            </div>
+            <div className="tcg-doc__slotcard" style={{ "--acc": "#e07ab8" }}>
+              <span className="tcg-doc__slotn">S3</span>
+              <b>Tier 3</b>
+              <small>CMC 5+ · si sblocca al livello 5</small>
+            </div>
+          </div>
+
+          <p>
+            Ogni inizio turno guadagni <b>1 slot S1</b> (e 1 di ciascun tier
+            sbloccato). Il <b>cap</b> dipende dalla tua classe:
           </p>
           <ul>
             <li>
-              Lo slot <b>S1</b> è sempre disponibile: a inizio turno guadagni
-              1 slot S1 (cap <b>2</b> per le classi marziali Guerriero/Ladro,
-              cap <b>3</b> per i caster Mago/Chierico/Druido).
+              <Tag tone="red">Marziali</Tag> (Guerriero, Ladro): cap <b>2</b>
             </li>
             <li>
-              Lo slot <b>S2</b> si sblocca raggiungendo <b>livello 3</b>.
+              <Tag tone="purple">Caster &amp; semi-caster</Tag> (Mago, Chierico,
+              Druido): cap <b>3</b>
             </li>
             <li>
-              Lo slot <b>S3</b> si sblocca raggiungendo <b>livello 5</b>.
-            </li>
-            <li>
-              Il <b>Mago</b> (caster pieno) ottiene <b>−1 mana generico</b>{" "}
-              su ogni spell.
+              Il <Tag tone="gold">Mago</Tag> (caster pieno) ottiene anche{" "}
+              <b>−1 mana generico</b> su ogni spell.
             </li>
           </ul>
-          <p>
-            Sulla carta vedi un piccolo badge <b>S1 / S2 / S3</b> che ti
-            dice quale tier ti serve. Sul tuo pannello classe vedi quanti
-            slot di ciascun tier hai disponibili (pallini pieni = pronti,
-            vuoti = già consumati, 🔒 = non sbloccati).
-          </p>
-        </section>
 
-        <section>
-          <h2>Ultimate</h2>
-          <p>
-            Al <b>livello 5</b> ogni via ottiene la sua <b>ULTIMATE</b>: un
-            potente effetto attivabile <b>una volta sola per partita</b>.
-            Appare un bottone sotto il tuo pannello classe (con il nome
-            dell'ult). Si attiva solo nel tuo turno, in fase principale e
-            con la pila vuota.
-          </p>
-        </section>
+          <Note tone="info">
+            Sulla carta in mano vedi un piccolo badge <b>S1 / S2 / S3</b>: ti
+            dice quale tier serve. Sul <b>pannello classe</b> vedi quanti slot
+            hai (pallini pieni = pronti, vuoti = consumati, 🔒 = non sbloccati).
+          </Note>
+        </Section>
 
-        <section>
-          <h2>Il mana e le Terre</h2>
+        {/* ─── 5. Ultimate ─── */}
+        <Section icon="⭐" title="Ultimate" accent={ACCENT.ult}>
           <p>
-            Il mana è di <b>colore</b>: i cinque elementi sono{" "}
-            <b>Fuoco, Acqua, Luce, Ombra, Natura</b>. Per produrlo giochi le{" "}
-            <b>Terre</b> ("Fonte di …"): puoi giocare{" "}
-            <b>al massimo 1 Terra per turno</b> (eccezione: il <i>Druido — Circolo
-            della Terra</i> al livello 2 ottiene <b>+1 Terra extra a turno</b>).
-            Ogni Terra resta in campo e fornisce <b>1 mana del suo elemento</b>.
-            Le Terre si ricaricano (si "stappano") all'inizio del tuo turno; il
-            mana non speso <b>non si accumula</b>.
+            Al <Tag tone="pink">livello 5</Tag> ogni via riceve la sua{" "}
+            <Tag tone="pink">ULTIMATE</Tag>: un effetto potente, attivabile{" "}
+            <b>una sola volta per partita</b>. Appare un bottone sotto il tuo
+            pannello classe con il nome (es. "🌋 Esplosione Vulcanica").
+          </p>
+          <p>
+            Si attiva <b>solo nel tuo turno</b>, in <b>fase principale</b>, con
+            la <b>pila vuota</b>. Se il bottone è grigio leggi la sotto-scritta
+            che ti dice perché.
+          </p>
+        </Section>
+
+        {/* ─── 6. Mana e Terre ─── */}
+        <Section icon="💎" title="Mana &amp; Terre" accent={ACCENT.mana}>
+          <p>
+            Il mana è di <b>colore</b>: i cinque elementi sono:
           </p>
           <p className="tcg-doc__els">
             {ELEMENTS.map((el) => (
-              <span key={el} className="tcg-doc__el">
+              <span
+                key={el}
+                className="tcg-doc__el tcg-doc__el--big"
+                style={{ "--pip": ELEMENT_PIP[el] }}
+              >
                 {ELEMENT_ICON[el]} {ELEMENT_LABEL[el]}
               </span>
             ))}
           </p>
-        </section>
-
-        <section>
-          <h2>Costo delle carte</h2>
           <p>
-            Ogni carta ha un costo fatto di <b>simboli colorati</b> e di un
-            eventuale numero <b>generico</b>. I simboli colorati vanno pagati
-            con mana di <b>quell'elemento</b>; il numero generico con mana di{" "}
-            <b>qualsiasi</b> elemento. Le Terre si "toccano" da sole per pagare
-            (come in MTG Arena).
+            Per produrlo giochi le <Tag tone="green">Terre</Tag> ("Fonte
+            di …"): <b>al massimo 1 per turno</b> (eccezione: Druido — Circolo
+            della Terra al lv2 ne ottiene <b>+1 extra</b>). Ogni Terra resta in
+            campo e fornisce <b>1 mana</b> del suo elemento. Si ricaricano
+            all'inizio del tuo turno; il mana non speso <b>non si accumula</b>.
           </p>
-        </section>
+          <Note tone="info">
+            <b>Costo delle carte:</b> i simboli colorati vanno pagati con mana
+            di <i>quell'</i>elemento, il numero generico con mana di{" "}
+            <i>qualsiasi</i> colore. Le Terre si toccano da sole (come in
+            MTGA).
+          </Note>
+        </Section>
 
-        <section>
-          <h2>Tipi di carta</h2>
+        {/* ─── 7. Tipi di carta ─── */}
+        <Section icon="🎴" title="Tipi di carta" accent={ACCENT.cards}>
+          <ul className="tcg-doc__types">
+            <li>
+              <span className="tcg-doc__t-ico">🐾</span>
+              <b>Creatura</b> — entra in campo con F/C (Forza/Costituzione).
+            </li>
+            <li>
+              <span className="tcg-doc__t-ico">📜</span>
+              <b>Magia</b> — effetto immediato, solo nel tuo turno, poi va al
+              cimitero.
+            </li>
+            <li>
+              <span className="tcg-doc__t-ico">⚡</span>
+              <b>Istantaneo / Reazione</b> — giocabile{" "}
+              <b>in qualunque momento</b> (turno avversario, risposta, combat).
+            </li>
+            <li>
+              <span className="tcg-doc__t-ico">💠</span>
+              <b>Manufatto</b> — resta in campo, effetto continuo.
+            </li>
+            <li>
+              <span className="tcg-doc__t-ico">⛰️</span>
+              <b>Terra</b> — fonte di mana, gratis, 1 per turno (di norma).
+            </li>
+          </ul>
+        </Section>
+
+        {/* ─── 8. Combattimento ─── */}
+        <Section icon="⚔️" title="Combattimento" accent={ACCENT.combat}>
           <p>
-            Sulla carta, accanto all'elemento, una <b>iconcina</b> indica il
-            tipo (la parola "Creatura/Magia…" non è più scritta):
+            Le creature appena evocate hanno la <Tag tone="red">fiacca da
+            evocazione</Tag> (non possono attaccare per un turno).
           </p>
           <ul>
             <li>
-              <b>🐾 Creatura</b> — entra in campo, ha Forza/Costituzione (F/C).
+              Una creatura <b>non bloccata</b> infligge la sua Forza ai PV
+              avversari.
             </li>
             <li>
-              <b>📜 Magia</b> — effetto immediato a velocità normale (solo nel
-              tuo turno), poi va nel cimitero.
+              Se <b>bloccata</b>, attaccante e bloccante si infliggono danni a
+              vicenda (uno o <b>più bloccanti</b> sullo stesso attaccante!).
             </li>
             <li>
-              <b>⚡ Istantaneo</b> — come la Magia, ma puoi giocarlo{" "}
-              <b>in qualsiasi momento</b>: nel turno avversario, in risposta
-              a un'altra carta o durante il combattimento (vedi “La Pila”).
+              Una creatura muore se i danni accumulati nel turno raggiungono
+              la sua Costituzione.
             </li>
-            <li>
-              <b>💠 Manufatto</b> — resta in campo con un effetto continuo.
-            </li>
-            <li><b>⛰️ Terra</b> — fonte di mana, gratis, 1 per turno.</li>
           </ul>
-        </section>
 
-        <section>
-          <h2>Turno</h2>
-          <ol>
-            <li>Stappa Terre e creature, cura/effetti d'inizio turno.</li>
-            <li>Pesca 1 carta (chi muove per primo salta la prima pescata).</li>
-            <li>
-              <b>Fase principale 1</b>: gioca 1 Terra e tutte le carte che
-              puoi pagare. Giochi una carta <b>trascinandola</b> dalla mano
-              sul campo (o toccandola); per le magie con bersaglio,
-              trascinala direttamente sulla creatura/eroe.
-            </li>
-            <li>Dichiara gli attaccanti (toccano le creature che attaccano).</li>
-            <li>
-              L'avversario dichiara i bloccanti (anche <b>più di uno</b> sullo
-              stesso attaccante). Qui si possono giocare <b>⚡ Istantanei</b>.
-            </li>
-            <li>I danni si risolvono simultaneamente.</li>
-            <li>
-              <b>Fase principale 2</b>: se non avevi giocato, puoi farlo ora
-              (dopo il combattimento).
-            </li>
-            <li>
-              Scarta fino a un massimo di <b>7 carte</b> in mano, poi premi{" "}
-              <b>Fine Turno</b>.
-            </li>
-          </ol>
-        </section>
+          {DICE_STATS && (
+            <>
+              <h3>🎲 Forza e Costituzione a dadi</h3>
+              <p>
+                Le creature in mano mostrano <b>base + 1dN</b> (es. 3+1d6).
+                Quando le <b>evochi</b>, il gioco tira i dadi <b>una volta
+                sola</b>: quei numeri restano fissi per il resto della partita.
+                La media equivale ai vecchi valori, l'equilibrio è preservato.
+              </p>
+            </>
+          )}
+        </Section>
 
-        {DICE_STATS && (
-          <section>
-            <h2>🎲 Forza e Costituzione a dadi</h2>
-            <p>
-              Le creature <b>non</b> hanno valori fissi: sulla carta in mano
-              vedi un <b>dado</b> (es. <b>3+1d6</b>). Quando{" "}
-              <b>evochi</b> la creatura, il gioco <b>tira i dadi una sola
-              volta</b>: quei numeri diventano la sua Forza/Costituzione per
-              il resto della partita (li vedi scritti sulla carta in campo,
-              e nel log compare <b>🎲 Nome: F/C</b>).
-            </p>
-            <p>
-              Ogni dado è <b>base + 1dN</b>: c'è sempre un{" "}
-              <b>minimo garantito</b> (mai un bidone), più una parte casuale.
-              La media equivale ai vecchi valori, quindi l'equilibrio resta.
-              I dadi sono più grandi sulle creature <b>costose</b> (più
-              imprevedibili) e piccoli su quelle <b>economiche</b>: le
-              creature deboli restano deboli. Potenziamenti, danni e abilità
-              funzionano come prima, partendo dai numeri tirati.
-            </p>
-          </section>
-        )}
-
-        <section>
-          <h2>Combattimento</h2>
+        {/* ─── 9. Pila e reazioni ─── */}
+        <Section icon="🌀" title="La Pila (priorità e risposte)" accent={ACCENT.pila}>
           <p>
-            Le creature appena evocate hanno la <b>fiacca da evocazione</b> e
-            non possono attaccare per un turno. Una creatura non bloccata
-            infligge la sua <b>Forza</b> ai Punti Vita avversari; se bloccata,
-            attaccante e bloccante si infliggono danni a vicenda. Una creatura
-            muore se i danni accumulati nel turno raggiungono la sua{" "}
-            <b>Costituzione</b>.
-          </p>
-        </section>
-
-        <section>
-          <h2>La Pila (istantanei e risposte)</h2>
-          <p>
-            Quando qualcuno lancia un <b>incantesimo</b> (Magia o Istantaneo)
-            questo non si risolve subito: va nella <b>Pila</b> (il riquadro
-            al centro) e l'avversario può <b>rispondere</b> con un proprio{" "}
-            <b>⚡ Istantaneo</b>. Quando entrambi <b>passano</b>, si risolve
-            prima la carta <b>in cima</b> alla Pila (ultima entrata, prima
-            uscita).
+            Quando lanci un incantesimo (Magia o Istantaneo) <b>non si risolve
+            subito</b>: va nella <Tag tone="azure">Pila</Tag>. L'avversario
+            può rispondere con un proprio <b>⚡ Istantaneo</b>. Quando entrambi
+            <b> passano</b>, si risolve la carta in <b>cima</b> alla Pila
+            (LIFO: ultima entrata, prima uscita).
           </p>
           <ul>
-            <li>
-              Se hai priorità appare il pulsante <b>PASSA</b>; se non hai
-              istantanei giocabili passi <b>in automatico</b>.
-            </li>
-            <li>
-              <b>Contromagia</b> annulla un incantesimo ancora nella Pila.
-            </li>
-            <li>
-              Gli istantanei sono ottimi come <b>trucchi di combattimento</b>
-              {" "}(es. <b>Nebbia</b>, <b>Crescita Improvvisa</b>) giocati dopo
-              gli attaccanti/bloccanti.
-            </li>
+            <li>Se hai priorità appare <Tag tone="azure">PASSA</Tag>; se non hai istantanei giocabili, il gioco passa <b>in automatico</b>.</li>
+            <li><b>Contromagia</b> annulla un incantesimo ancora nella Pila.</li>
+            <li>Gli istantanei brillano come <b>trucchi di combattimento</b> dopo bloccanti/attaccanti.</li>
           </ul>
-        </section>
+        </Section>
 
-        <section>
-          <h2>Affinità Elementale (Poteri Elementali)</h2>
+        {/* ─── 10. Rarità ─── */}
+        <Section icon="💎" title="Rarità" accent={ACCENT.rarity}>
           <p>
-            Ogni elemento ha un <b>Potere</b> esclusivo. Puoi usarlo solo se
-            il tuo mazzo è <b>in sintonia</b> con quell'elemento: almeno il{" "}
-            <b>{Math.round(ATTUNE_RATIO * 100)}%</b> delle carte{" "}
-            <b>non-Terra</b> deve essere di quel colore. Così un mazzo{" "}
-            <b>mono</b> ha 1 Potere, un buon mazzo a <b>2 colori</b> li
-            sblocca <b>entrambi</b>, mentre un mazzo arcobaleno non ne
-            sblocca nessuno (la scelta di consistenza vale il sacrificio).
-          </p>
-          <p>
-            All'inizio di ogni tuo turno guadagni <b>1 Carica</b> (massimo{" "}
-            <b>{POWER_CHARGE_CAP}</b>). Attivare un Potere costa{" "}
-            <b>1 Carica + {POWER_MANA} mana</b> di quel colore, solo nella
-            tua <b>Fase principale</b> a Pila vuota. Il Potere va{" "}
-            <b>nella Pila</b> come un incantesimo: l'avversario può
-            rispondere o <b>controbatterlo</b>.
-          </p>
-          <p>
-            La barra dei Poteri è in <b>basso a sinistra</b>: mostra le
-            Cariche e i Poteri in sintonia. Un Potere illuminato è{" "}
-            pronto — toccalo e (se serve) scegli il bersaglio.
-          </p>
-          <ul>
-            {ELEMENTS.filter((el) => ELEMENT_POWERS[el]).map((el) => (
-              <li key={el}>
-                {ELEMENT_ICON[el]} <b>{ELEMENT_POWERS[el].name}</b>{" "}
-                <small>({ELEMENT_LABEL[el]})</small> — {ELEMENT_POWERS[el].text}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section>
-          <h2>Rarità</h2>
-          <p>
-            Ogni carta ha una <b>rarità</b>, indicata da un piccolo{" "}
-            <b>angolo colorato</b> in alto a destra della carta:
+            Indicata da un angolo colorato in alto a destra della carta:
           </p>
           <p className="tcg-doc__els">
             {RARITY_ORDER.map((r) => (
               <span key={r} className="tcg-doc__el">
                 <span
                   style={{
-                    display: "inline-block", width: 10, height: 10,
+                    display: "inline-block", width: 12, height: 12,
                     borderRadius: "50%", background: RARITY_COLOR[r],
                     marginRight: 6, verticalAlign: "middle",
+                    boxShadow: `0 0 6px ${RARITY_COLOR[r]}`,
                   }}
                 />
-                {RARITY_LABEL[r]}
+                <b>{RARITY_LABEL[r]}</b>
               </span>
             ))}
           </p>
-          <p>
-            Più alta è la rarità, più la carta è <b>rara</b> e potente — e meno
-            probabile da trovare nei pacchetti.
-          </p>
-        </section>
+          <small>
+            Più alta è la rarità, più la carta è potente e meno frequente nei
+            pacchetti.
+          </small>
+        </Section>
 
-        <section>
-          <h2>Abilità passive (parole chiave)</h2>
+        {/* ─── 11. Abilità chiave ─── */}
+        <Section icon="📚" title="Abilità (parole chiave D&amp;D)" accent={ACCENT.cards}>
           <p>
-            Molte creature hanno abilità permanenti, con nomi ispirati a{" "}
+            Molte creature hanno abilità permanenti con nomi ispirati a{" "}
             <b>Dungeons &amp; Dragons</b>:
           </p>
-          <ul>
+          <ul className="tcg-doc__kw">
             {KEYWORD_IDS.map((k) => (
               <li key={k}>
-                <b>{KEYWORDS[k].label}</b> — {KEYWORDS[k].desc}
+                <Tag tone="lime">{KEYWORDS[k].label}</Tag> {KEYWORDS[k].desc}
               </li>
             ))}
           </ul>
-          <p>
-            Tieni premuto (o tasto destro / 🔍) su una carta per{" "}
-            <b>ingrandirla</b> e leggere tutte le abilità in chiaro.
-          </p>
-        </section>
+          <Note tone="info">
+            Tieni premuto (o tasto destro / 🔍) su una carta per ingrandirla.
+          </Note>
+        </Section>
 
-        <section>
-          <h2>Mazzo, Negozio e Collezione</h2>
+        {/* ─── 12. Mazzo, Negozio, Collezione ─── */}
+        <Section icon="🛒" title="Mazzo, Negozio &amp; Collezione" accent={ACCENT.shop}>
           <p>
-            Il mazzo è di <b>60 carte</b>. Le Terre base sono{" "}
-            <b>illimitate e gratuite</b>; delle altre carte puoi mettere fino a{" "}
-            <b>4 copie</b> (se le possiedi). Nel <b>Negozio</b> ogni{" "}
-            <b>pacchetto</b> contiene <b>15 carte di un solo elemento</b>, con
-            rarità casuale (le rarità alte sono molto più rare); i pacchetti di{" "}
-            <b>{ELEMENT_LABEL.light}</b> e <b>{ELEMENT_LABEL.darkness}</b>{" "}
-            costano di più. Le carte escono{" "}
-            <b>coperte</b>: toccale una per una per scoprirle, o usa{" "}
-            “Scopri tutte”. Le <b>monete</b> si guadagnano in battaglia. In{" "}
-            <b>Mazzo</b> puoi costruire a mano, usare la{" "}
-            <b>creazione automatica</b> e scegliere il <b>dorso</b> delle carte.
+            Il mazzo è di <Tag tone="gold">60 carte</Tag>. Terre base{" "}
+            <b>illimitate e gratuite</b>; massimo <b>4 copie</b> per ogni altra
+            carta posseduta.
           </p>
-        </section>
-
-        <section>
-          <h2>Consigli</h2>
+          <p>
+            Nel <b>Negozio</b> trovi due tipi di pacchetto:
+          </p>
           <ul>
-            <li>Gioca una Terra ogni turno: senza mana non fai nulla.</li>
-            <li>Tieni circa 22–24 Terre nei colori che usi davvero.</li>
-            <li>Non scendere sotto pochi colori: due elementi sono già tanti.</li>
-            <li>Cura la curva: tante carte da 1–3 mana, poche grosse.</li>
+            <li>
+              <Tag tone="gold">Pacchetti di Classe</Tag> — 15 carte dei{" "}
+              <b>2 colori</b> della classe scelta (es. Mago = Fuoco + Natura).
+            </li>
+            <li>
+              <Tag tone="orange">Pacchetti Elemento</Tag> — 15 carte di un{" "}
+              <b>solo</b> elemento; <i>Luce</i> e <i>Ombra</i> sono Premium e
+              costano di più.
+            </li>
           </ul>
-        </section>
+          <p>
+            In <b>Mazzo</b> puoi costruire a mano, usare i filtri/ordinamento,
+            l'<b>auto-build di classe</b>, scegliere il <b>dorso</b> delle
+            carte e vedere la <b>curva di mana</b>, i colori e i tipi del tuo
+            mazzo. Le monete si guadagnano in battaglia.
+          </p>
+        </Section>
+
+        {/* ─── 13. Consigli ─── */}
+        <Section icon="💡" title="Consigli" accent={ACCENT.tips}>
+          <ul>
+            <li>🎯 Gioca una Terra ogni turno: senza mana non fai nulla.</li>
+            <li>📏 Tieni 22–24 Terre nei colori che usi davvero.</li>
+            <li>🌈 Due elementi sono già un bel mix: il tri-colore è duro.</li>
+            <li>📈 Cura la curva: tante carte da 1–3 mana, poche grosse.</li>
+            <li>⚡ Conserva una reazione per il turno avversario quando puoi.</li>
+            <li>⭐ Pianifica l'ultimate: aspetta il momento giusto, è una sola.</li>
+          </ul>
+        </Section>
+
       </div>
     </div>
   );
