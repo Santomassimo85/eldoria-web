@@ -1090,6 +1090,28 @@ export default function GameTable({
 
   const overCap = canMainAct ? me.hand.length - HAND_CAP : 0;
 
+  // All creatures of mine that may legally attack right now (live engine
+  // check — summoning sickness, tap state, "defender", combat phase, etc).
+  // Empty when it's not my main phase or I've already attacked this turn.
+  // Note: `myCreatures` alias is declared further down; reach into
+  // me.battlefield directly so we stay above the TDZ.
+  const eligibleAttackerIds =
+    canMainAct && !state.attackedThisTurn
+      ? me.battlefield
+          .filter((cr) => canAttack(state, mySide, cr.instId))
+          .map((cr) => cr.instId)
+      : [];
+
+  // One-click "attack with every eligible creature". Builds a fresh
+  // attacker list straight from the engine's canAttack so the player
+  // doesn't have to tap-select each one.
+  const doAttackAll = () => {
+    if (!eligibleAttackerIds.length) return;
+    applyState(declareAttackers(state, mySide, eligibleAttackerIds));
+    setAttackers([]);
+    setSel(null);
+  };
+
   const RailAction = () => {
     if (winner) return null;
     if (myPriority) {
@@ -1128,10 +1150,24 @@ export default function GameTable({
       );
     }
     if (attackers.length) {
+      // also expose "tutte" so the player can promote a partial pick to
+      // a full charge without having to deselect/reselect every creature
+      const canPromote = eligibleAttackerIds.length > attackers.length;
       return (
-        <button className="tcg-bigbtn tcg-bigbtn--atk" onClick={doAttack}>
-          ⚔️ Attacca{"\n"}({attackers.length})
-        </button>
+        <>
+          <button className="tcg-bigbtn tcg-bigbtn--atk" onClick={doAttack}>
+            ⚔️ Attacca{"\n"}({attackers.length})
+          </button>
+          {canPromote && (
+            <button
+              className="tcg-railbtn"
+              onClick={doAttackAll}
+              title="Attacca con tutte le creature pronte"
+            >
+              ⚔️ TUTTE{"\n"}({eligibleAttackerIds.length})
+            </button>
+          )}
+        </>
       );
     }
     if (sel && selCard?.type === "spell" && tg.kind !== "none") {
@@ -1142,13 +1178,28 @@ export default function GameTable({
       );
     }
     return (
-      <button
-        className={`tcg-bigbtn tcg-bigbtn--end ${canMainAct ? "is-live" : ""}`}
-        disabled={!canMainAct}
-        onClick={doEndTurn}
-      >
-        {canMainAct ? "FINE\nTURNO" : statusLine}
-      </button>
+      <>
+        <button
+          className={`tcg-bigbtn tcg-bigbtn--end ${canMainAct ? "is-live" : ""}`}
+          disabled={!canMainAct}
+          onClick={doEndTurn}
+        >
+          {canMainAct ? "FINE\nTURNO" : statusLine}
+        </button>
+        {/* one-click charge: present whenever any of my creatures could
+            attack right now, so the player doesn't have to tap-select
+            them individually. Hidden once combat has been declared this
+            turn (eligibleAttackerIds becomes empty). */}
+        {eligibleAttackerIds.length > 0 && (
+          <button
+            className="tcg-railbtn tcg-railbtn--atkall"
+            onClick={doAttackAll}
+            title="Attacca con tutte le creature pronte"
+          >
+            ⚔️ ATTACCA{"\n"}TUTTE ({eligibleAttackerIds.length})
+          </button>
+        )}
+      </>
     );
   };
 

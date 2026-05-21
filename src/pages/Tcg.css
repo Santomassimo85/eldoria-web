@@ -569,6 +569,19 @@
 }
 .tcg-railbtn:hover { filter: brightness(1.25); }
 .tcg-railbtn--ghost { opacity: .8; }
+/* "ATTACCA TUTTE" — secondary one-click charge button. Tinted red so
+   it reads as offensive without stealing focus from the FINE TURNO
+   primary; a soft pulse hints at its action. */
+.tcg-railbtn--atkall {
+  background: linear-gradient(180deg, #6e1d12, #3a0c08);
+  border-color: #d4584a;
+  color: #ffe1d6;
+  box-shadow: 0 0 8px rgba(226,72,58,.45);
+}
+.tcg-railbtn--atkall:hover {
+  filter: brightness(1.3);
+  box-shadow: 0 0 14px rgba(226,72,58,.7);
+}
 .tcg-rail .tcg-emotes { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
 .tcg-emote {
   width: 36px; height: 28px; border-radius: 7px; cursor: pointer;

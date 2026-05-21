@@ -77,7 +77,25 @@ export default function ClassPicker({ onConfirm, onBack, deck = null }) {
 
   const noneEligible = !eligible.anyEligible;
 
-  const vie = klass ? vieFor(klass) : null;
+  // The vie picker must ALSO honour the deck's colours: for a base class
+  // a player may have only ONE of the two elements in their deck, so the
+  // wrong via (e.g. Chierico-Morte on a fire+light deck) would tie XP /
+  // perks to a colour they can't actually cast. Filter the via map to
+  // the elements that are present. Multiclassi already require all 3
+  // colours so their 4 vie all pass through unchanged.
+  const colorSet = useMemo(() => new Set(colors), [colors]);
+  const vie = useMemo(() => {
+    if (!klass) return null;
+    const all = vieFor(klass);
+    const filtered = {};
+    for (const [key, def] of Object.entries(all)) {
+      if (colorSet.has(def.element)) filtered[key] = def;
+    }
+    // Safety net: if filtering left nothing (shouldn't happen — the class
+    // is only selectable when at least one of its colours is in the deck),
+    // fall back to the full map so the player isn't stuck.
+    return Object.keys(filtered).length ? filtered : all;
+  }, [klass, colorSet]);
   const tier = klass && via ? casterTierFor(klass, via) : null;
 
   const reset = () => { setKlass(null); setVia(null); };
