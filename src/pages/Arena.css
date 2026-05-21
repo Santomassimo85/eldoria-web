@@ -8035,16 +8035,18 @@
   box-shadow: 8px 8px 0 0 #fbbf24 !important;
 }
 
-/* barre HP nel tabellone — il colore di riempimento è dinamico (verde/arancio/rosso)
-   ed è impostato inline a runtime in base alla % HP; qui solo struttura. */
+/* barre HP nel tabellone — track (PF mancanti) rosso scuro, fill (PF attuali) verde chiaro */
 .arena-page .bracket-hp-track,
 .arena-modal-body .bracket-hp-track {
-  background: #ffffff !important;
+  background: #6b0f0f !important;
   border: 2px solid #1f1f1f !important;
   border-radius: 0 !important;
 }
 .arena-page .bracket-hp-bar,
-.arena-modal-body .bracket-hp-bar { border-radius: 0 !important; }
+.arena-modal-body .bracket-hp-bar {
+  background: #86efac !important;
+  border-radius: 0 !important;
+}
 .arena-page .bracket-hp-badge,
 .arena-modal-body .bracket-hp-badge {
   background: #6b0f0f !important;            /* rosso scuro */
