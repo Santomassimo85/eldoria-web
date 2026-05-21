@@ -32,6 +32,7 @@ import {
 import {
   pushState, heartbeat, opponentGone, sendEmote, deleteMatch,
 } from "../../tcg/net.js";
+import { TCG_COINS } from "../../tcg/collection.js";
 import { playSfx } from "../../utils/tcgSfx.js";
 
 const EMOTES = ["Ben giocato!", "Per gli dèi!", "Tornerò!", "Tira iniziativa!"];
@@ -1026,10 +1027,11 @@ export default function GameTable({
       : "lose"
     : null;
 
-  // end-of-match recap data
-  const COIN_TABLE = isAi
-    ? { win: 30, lose: 10, draw: 15 }
-    : { win: 60, lose: 20, draw: 25 };
+  // end-of-match recap data — reads from the SAME constant as
+  // `awardFor` in Tcg.jsx so the displayed number matches what
+  // actually lands on the player's tcgCoins. (Previously the panel
+  // showed 30/60 while only 5/15 were granted → user-visible bug.)
+  const COIN_TABLE = isAi ? TCG_COINS.ai : TCG_COINS.pvp;
   const endCoins = result ? COIN_TABLE[result] ?? 0 : null;
   const winnerName =
     !winner || winner === "draw"

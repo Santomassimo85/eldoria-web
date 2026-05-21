@@ -15,7 +15,7 @@ import { buildClassDeck } from "../tcg/cards.js";
 import { watchMatch, sideForUid } from "../tcg/net.js";
 import {
   watchProfile, grantStarter, needsStarter, openPack, saveDeck,
-  awardCoins, playableDeck, resetAllTcg, setCover,
+  awardCoins, playableDeck, resetAllTcg, setCover, TCG_COINS,
 } from "../tcg/collection.js";
 import { primeSfx } from "../utils/tcgSfx.js";
 import ModeSelect from "../components/tcg/ModeSelect.jsx";
@@ -27,12 +27,13 @@ import DeckBuilder from "../components/tcg/DeckBuilder.jsx";
 import Collection from "../components/tcg/Collection.jsx";
 import Manual from "../components/tcg/Manual.jsx";
 import ClassPicker from "../components/tcg/ClassPicker.jsx";
+import MulliganOverlay from "../components/tcg/MulliganOverlay.jsx";
 import { CLASS_VIE, CLASSES, classColors } from "../tcg/classes.js";
 import "./Tcg.css";
 
+const MAX_MULLIGANS = 2;
+
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const AI_COINS = { win: 5, lose: 1, draw: 3 };
-const PVP_COINS = { win: 15, lose: 5, draw: 8 };
 
 /* keeps a render crash inside the game from blanking the whole page —
    shows the error (so it can be reported) + a way back to the menu */
@@ -131,6 +132,10 @@ export default function Tcg() {
   const [aiClass, setAiClass] = useState(null);
   // class + via the AI plays (randomised when the match starts)
   const [aiFoeClass, setAiFoeClass] = useState(null);
+  // pre-match mulligan: player sees opening hand and may reshuffle up
+  // to MAX_MULLIGANS times before committing (AI mode only)
+  const [mulligansLeft, setMulligansLeft] = useState(MAX_MULLIGANS);
+  const [mulliganDone, setMulliganDone] = useState(false);
 
   const [matchId, setMatchId] = useState(null);
   const [match, setMatch] = useState(null);
@@ -168,8 +173,18 @@ export default function Tcg() {
     setMatchId(null);
     setAiClass(null);
     setAiFoeClass(null);
+    setMulligansLeft(MAX_MULLIGANS);
+    setMulliganDone(false);
     setScreen("menu");
   };
+
+  /* Reshuffle the AI opening hand: bumping aiSeed rebuilds aiState via
+     the useMemo above (re-shuffles deck0/deck1 → re-draws 6 cards). */
+  const reshuffleAi = () => {
+    setMulligansLeft((n) => Math.max(0, n - 1));
+    setAiSeed((n) => n + 1);
+  };
+  const keepHand = () => setMulliganDone(true);
 
   /* pick a random class+via for the AI opponent — different from the
      player's class so the match isn't a mirror. If the player went
@@ -187,12 +202,15 @@ export default function Tcg() {
     // `pick` may be null when the player opts out (no class → no bonus)
     setAiClass(pick);
     setAiFoeClass(rollAiFoe(pick?.klass));
+    // reset mulligan state at the start of every fresh AI match
+    setMulligansLeft(MAX_MULLIGANS);
+    setMulliganDone(false);
     setScreen("ai");
   };
 
   const awardFor = (mode, result) => {
     if (!currentUser?.uid) return;
-    const table = mode === "ai" ? AI_COINS : PVP_COINS;
+    const table = TCG_COINS[mode] || TCG_COINS.ai;
     awardCoins(currentUser.uid, table[result] ?? 0).catch(() => {});
   };
 
@@ -318,7 +336,16 @@ export default function Tcg() {
         />
       )}
 
-      {screen === "ai" && aiState && (
+      {screen === "ai" && aiState && !mulliganDone && (
+        <MulliganOverlay
+          hand={aiState.players.p0.hand}
+          mulligansLeft={mulligansLeft}
+          onReshuffle={reshuffleAi}
+          onKeep={keepHand}
+        />
+      )}
+
+      {screen === "ai" && aiState && mulliganDone && (
         <GameBoundary onExit={goMenu}>
           <GameTable
             key={`ai-${aiSeed}`}
@@ -327,7 +354,11 @@ export default function Tcg() {
             myCover={profile?.cover || "nature"}
             foeCover="darkness"
             onExit={goMenu}
-            onRematch={() => setAiSeed((n) => n + 1)}
+            onRematch={() => {
+              setMulligansLeft(MAX_MULLIGANS);
+              setMulliganDone(false);
+              setAiSeed((n) => n + 1);
+            }}
             onGameEnd={(r) => awardFor("ai", r)}
           />
         </GameBoundary>

@@ -28,6 +28,17 @@ import {
   CLASSES, CLASS_LABEL, CLASS_ICON, classColors,
 } from "./classes.js";
 
+/* Single source of truth for end-of-match coin payouts. Both the
+   GameTable end-of-match panel and the `awardCoins` call in Tcg.jsx
+   read this — so the number the panel shows is exactly what gets
+   written to characters/{uid}.tcgCoins.
+   (Previously the two were out of sync — panel claimed 30/60, actual
+   grant was 5/15 — which is what the user was reporting.) */
+export const TCG_COINS = {
+  ai:  { win: 5,  lose: 1, draw: 3 },
+  pvp: { win: 15, lose: 5, draw: 8 },
+};
+
 /* Legacy starter element list — will be replaced by class-based
    starters in Fase 3+. Kept here so existing players who never picked
    a starter still see a working screen. */

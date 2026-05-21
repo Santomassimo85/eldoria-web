@@ -4,7 +4,7 @@
    Renders NOTHING when the player has no class (PvP backward
    compat). One panel per player.
    ============================================================ */
-import React from "react";
+import React, { useState } from "react";
 import {
   CLASS_LABEL, CLASS_ICON, CLASS_VIE,
   LEVEL_THRESHOLDS, MAX_LEVEL, rewardAt,
@@ -62,6 +62,10 @@ function SlotBar({ slots, slotsUnlocked, slotCap }) {
 export default function ClassPanel({
   player, isMe, onActivateUltimate, canUseUlt, ultBlockedReason,
 }) {
+  // Player-controlled flag to expand the rewards drawer. Toggled with a
+  // click or long-press on a level badge so the player can re-read what
+  // each level unlocked at any point during the match.
+  const [perksOpen, setPerksOpen] = useState(false);
   if (!player || !player.klass || !player.via) return null;
   const vieMap = CLASS_VIE[player.klass] || {};
   const viaDef = vieMap[player.via];
@@ -75,6 +79,19 @@ export default function ClassPanel({
   // Pull the lv5 reward to surface its NAME on the button (instead of
   // just "ULTIMATE" — players were clicking blind).
   const ultReward = hasUlt ? rewardAt(player.klass, player.via, 5) : null;
+  // Concrete list of perks already earned: levelHistory is appended by
+  // the engine every time applyReward fires, so we always know which
+  // bonuses are LIVE on the board. Each row also carries the full
+  // description (looked up via rewardAt) — players were missing this.
+  const earnedPerks = (player.levelHistory || []).map((h) => {
+    const r = rewardAt(player.klass, player.via, h.level);
+    return {
+      level: h.level,
+      name:  r?.name        || h.name,
+      icon:  r?.icon        || h.icon || "⭐",
+      desc:  r?.description || "",
+    };
+  });
 
   return (
     <div
@@ -91,9 +108,27 @@ export default function ClassPanel({
             {viaDef?.label || player.via}
           </span>
         </span>
-        <span className="tcg-class__lvl" title={`Livello ${player.level}`}>
+        {/* Clicking the level badge toggles the "perks earned" drawer
+            (player side only). Hover/long-press shows a quick summary. */}
+        <button
+          type="button"
+          className={`tcg-class__lvl ${isMe ? "is-clickable" : ""} ${
+            perksOpen ? "is-open" : ""
+          }`}
+          title={
+            isMe
+              ? `Livello ${player.level} — tocca per vedere i perk ottenuti`
+              : `Livello ${player.level}`
+          }
+          onClick={() => isMe && setPerksOpen((v) => !v)}
+        >
           Lv {player.level}
-        </span>
+          {isMe && earnedPerks.length > 0 && (
+            <span className="tcg-class__lvl-chev" aria-hidden="true">
+              {perksOpen ? "▴" : "▾"}
+            </span>
+          )}
+        </button>
       </div>
 
       <div className="tcg-xp" title={label}>
@@ -106,6 +141,58 @@ export default function ClassPanel({
         slotsUnlocked={player.slotsUnlocked}
         slotCap={player.slotCap}
       />
+
+      {/* Always-visible row of "earned perk" chips for the player. Each
+          chip shows the level badge + icon + name, with the full rule
+          description in the title attribute. The drawer below expands
+          into a readable list on click — replaces the disappearing
+          level-up toast that players were missing. */}
+      {isMe && earnedPerks.length > 0 && (
+        <div className="tcg-class__perks">
+          <div className="tcg-class__chips">
+            {earnedPerks.map((p) => (
+              <button
+                key={p.level}
+                type="button"
+                className="tcg-class__chip"
+                title={`Lv ${p.level} — ${p.name}\n${p.desc}`}
+                onClick={() => setPerksOpen(true)}
+              >
+                <span className="tcg-class__chip-lvl">L{p.level}</span>
+                <span className="tcg-class__chip-ico">{p.icon}</span>
+                <span className="tcg-class__chip-name">{p.name}</span>
+              </button>
+            ))}
+          </div>
+          {perksOpen && (
+            <div className="tcg-class__drawer">
+              <div className="tcg-class__drawer-head">
+                <b>Perk attivi</b>
+                <button
+                  type="button"
+                  className="tcg-class__drawer-x"
+                  onClick={() => setPerksOpen(false)}
+                  aria-label="Chiudi"
+                >
+                  ✕
+                </button>
+              </div>
+              {earnedPerks.map((p) => (
+                <div key={p.level} className="tcg-class__perk">
+                  <div className="tcg-class__perk-head">
+                    <span className="tcg-class__perk-lvl">Lv {p.level}</span>
+                    <span className="tcg-class__perk-ico">{p.icon}</span>
+                    <b className="tcg-class__perk-name">{p.name}</b>
+                  </div>
+                  {p.desc && (
+                    <div className="tcg-class__perk-desc">{p.desc}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Ultimate button — visible only at lv5 (when the perk is granted).
           Now shows the actual name + a "perché non posso" sub-label when
