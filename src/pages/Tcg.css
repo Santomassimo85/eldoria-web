@@ -2453,22 +2453,42 @@
   to   { opacity: 1; }
 }
 
-/* the card itself: scaled up + slides in with a flourish */
+/* the card itself: scaled up + slides in with a flourish.
+   STAYS visible at the end of the entrance animation — the popup is
+   dismissed by a click (preferably on the card), not by auto-fade,
+   so it never "rimane vuoto ma aperto". */
 .tcg-bigrev__card {
+  /* reset native button chrome since this is now a <button> */
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  /* sizing & animation */
   width: clamp(180px, 32vw, 320px);
   --cw: clamp(180px, 32vw, 320px);
-  animation: tcg-bigrev-card 2.4s cubic-bezier(.34,1.56,.64,1) forwards;
+  animation: tcg-bigrev-card 0.9s cubic-bezier(.34,1.56,.64,1) forwards;
   filter: drop-shadow(0 0 32px var(--acc, #ffd66b));
+  cursor: pointer;
+  /* a subtle resting pulse so the card invites a tap */
+  transition: transform .15s ease;
+}
+.tcg-bigrev__card:hover,
+.tcg-bigrev__card:active { transform: scale(1.04); }
+.tcg-bigrev__card:focus { outline: none; }
+.tcg-bigrev__card:focus-visible {
+  outline: 3px solid var(--acc, #ffd66b);
+  outline-offset: 6px;
+  border-radius: 12px;
 }
 @keyframes tcg-bigrev-card {
   0%   { opacity: 0; transform: scale(.3) rotate(-12deg); }
-  18%  { opacity: 1; transform: scale(1.1) rotate(2deg); }
-  30%  { transform: scale(1) rotate(0deg); }
-  85%  { opacity: 1; transform: scale(1) rotate(0deg); }
-  100% { opacity: 0; transform: scale(.95) translateY(20px); }
+  60%  { opacity: 1; transform: scale(1.1) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
 }
 
-/* big label below the card */
+/* big label below the card — settles in place, then stays put */
 .tcg-bigrev__label {
   position: absolute;
   bottom: clamp(60px, 14vh, 140px);
@@ -2477,13 +2497,12 @@
   letter-spacing: 3px;
   color: var(--acc, #ffd66b);
   text-shadow: 0 0 18px var(--acc, #ffd66b), 0 2px 6px rgba(0,0,0,.8);
-  animation: tcg-bigrev-label 2.4s ease-out forwards;
+  animation: tcg-bigrev-label 0.8s ease-out forwards;
+  pointer-events: none;
 }
 @keyframes tcg-bigrev-label {
   0%   { opacity: 0; transform: translateY(20px); }
-  25%  { opacity: 1; transform: translateY(0); }
-  85%  { opacity: 1; }
-  100% { opacity: 0; }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* card name below the label */
@@ -2494,8 +2513,29 @@
   font-weight: 600;
   color: #f3e9d2;
   text-shadow: 0 1px 4px rgba(0,0,0,.9);
-  animation: tcg-bigrev-label 2.4s ease-out forwards;
+  animation: tcg-bigrev-label 0.8s ease-out forwards;
   animation-delay: .15s;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* "tap per continuare" hint — pulses gently at the top of the overlay */
+.tcg-bigrev__hint {
+  position: absolute;
+  top: clamp(24px, 6vh, 60px);
+  font-family: var(--font-text, system-ui, sans-serif);
+  font-size: clamp(11px, 1.6vw, 14px);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  animation: tcg-bigrev-hint 2s ease-in-out infinite;
+  animation-delay: 1s;
+  pointer-events: none;
+}
+@keyframes tcg-bigrev-hint {
+  0%, 100% { opacity: .35; }
+  50%      { opacity: .85; }
 }
 
 /* expanding rings around the card */

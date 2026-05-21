@@ -1,7 +1,7 @@
 /* Shop — one single-element pack per element (light/darkness pricier).
    Opening a pack shows 15 face-down cards; click each to flip it
    (nice 3D effect) or "Scopri tutte". */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
@@ -31,8 +31,8 @@ export default function Shop({ profile, onOpenPack, onBack }) {
   const [msg, setMsg] = useState("");
   // Big centred reveal popup for the juicy pulls (epic+/legendary/foil).
   // Queued so multiple specials don't overlap when "Scopri tutte" is used.
+  // Dismissed by tapping the card; no auto-dismiss.
   const [bigQueue, setBigQueue] = useState([]);
-  const bigTimer = useRef(null);
 
   const coins = profile?.coins ?? 0;
   const cover = profile?.cover || "nature";
@@ -86,18 +86,10 @@ export default function Shop({ profile, onOpenPack, onBack }) {
       return r;
     });
 
-  /* Auto-dismiss the head of the popup queue after a fixed dwell. */
-  useEffect(() => {
-    if (!bigQueue.length) return;
-    if (bigTimer.current) clearTimeout(bigTimer.current);
-    bigTimer.current = setTimeout(() => {
-      setBigQueue((q) => q.slice(1));
-    }, 2400);
-    return () => { if (bigTimer.current) clearTimeout(bigTimer.current); };
-  }, [bigQueue]);
-
+  /* No auto-dismiss: the popup stays open with the card fully visible
+     until the user taps it. Multiple specials queue up and are dismissed
+     one at a time. */
   const dismissBig = () => {
-    if (bigTimer.current) { clearTimeout(bigTimer.current); bigTimer.current = null; }
     setBigQueue((q) => q.slice(1));
   };
 
@@ -223,10 +215,10 @@ export default function Shop({ profile, onOpenPack, onBack }) {
         {msg && <p className="tcg-shop__msg">{msg}</p>}
         <p className="tcg-shop__intro">
           I <b>Pacchetti di Classe</b> contengono carte dei <b>due colori</b>{" "}
-          della classe scelta (es. Mago = Fuoco + Natura). I <b>Pacchetti
-          Elemento</b> (in fondo) restano mono-colore e i Premium (Luce/Ombra)
-          hanno una probabilità di Leggendaria leggermente più bassa. Ogni
-          carta ha una piccola chance di essere <b>✨ Foil</b>.
+          della classe scelta (es. Mago = Fuoco + Natura, Guerriero = Fuoco +
+          Luce, Chierico = Luce + Tenebre, Ladro = Tenebre + Acqua, Druido =
+          Natura + Acqua). Ogni carta ha una piccola chance di essere{" "}
+          <b>✨ Foil</b>.
         </p>
 
         <div className="tcg-shop__grid">
@@ -318,7 +310,7 @@ function BigReveal({ entry, onDismiss }) {
     <div
       className={`tcg-bigrev tcg-bigrev--${kind}`}
       onClick={onDismiss}
-      role="button"
+      role="presentation"
     >
       {/* 12 orbiting sparkles around the card */}
       {Array.from({ length: 12 }).map((_, k) => (
@@ -334,9 +326,20 @@ function BigReveal({ entry, onDismiss }) {
       <span className="tcg-bigrev__ring" aria-hidden="true" />
       <span className="tcg-bigrev__ring tcg-bigrev__ring--2" aria-hidden="true" />
 
-      <div className="tcg-bigrev__card">
+      <div className="tcg-bigrev__hint">tocca la carta per continuare</div>
+
+      {/* Tap target is the CARD itself — the surrounding backdrop also
+          dismisses (so a misclick still works), but the card stops the
+          ripple to feel like an intentional gesture, not "I clicked
+          outside". */}
+      <button
+        type="button"
+        className="tcg-bigrev__card"
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+        aria-label={`Chiudi: ${card.name}`}
+      >
         <CardView card={card} variant="board" foil={foil} />
-      </div>
+      </button>
 
       <div className="tcg-bigrev__label">{KIND_LABEL[kind]}</div>
       <div className="tcg-bigrev__sub">{card.name}</div>

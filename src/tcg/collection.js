@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import {
-  POOL, LANDS, ELEMENTS, ELEMENT_LABEL, getCard, DECK_SIZE, buildDeck, buildClassDeck,
+  POOL, LANDS, ELEMENTS, getCard, DECK_SIZE, buildDeck, buildClassDeck,
   isLand,
   RARITY_ORDER, RARITY_ODDS, RARITY_ODDS_PREMIUM, FOIL_CHANCE,
 } from "./cards.js";
@@ -47,23 +47,10 @@ export function maxCopiesFor(id) {
   return card.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
 }
 
-/* Shop catalogue — two flavours of pack:
-     • element packs (legacy): one per element, only that colour's cards
-     • class packs (new):       one per class, drawing from the 2 colours
-                                that class owns
-
-   A pack defines `colors: [el, …]`. Element packs have a single colour;
-   class packs have two. openPack() pulls from the union. */
-const elementPacks = ELEMENTS.map((el) => ({
-  id: "pack_" + el,
-  kind: "element",
-  colors: [el],
-  name: "Pacchetto " + ELEMENT_LABEL[el],
-  cost: el === "light" || el === "darkness" ? 220 : 110,
-  size: PACK_SIZE,
-  premium: el === "light" || el === "darkness",
-}));
-
+/* Shop catalogue — one pack per class, drawing from the 2 colours
+   that class owns. A pack defines `colors: [el, …]`. openPack() pulls
+   from the union. Legacy element packs were removed: every class pack
+   already covers two colours, so they were redundant. */
 const classPacks = CLASSES.map((k) => {
   const colors = classColors(k);
   return {
@@ -73,13 +60,13 @@ const classPacks = CLASSES.map((k) => {
     colors,
     name: `Pacchetto ${CLASS_LABEL[k]}`,
     icon: CLASS_ICON[k],
-    cost: 180, // a touch more than a standard element pack (2 colours)
+    cost: 180,
     size: PACK_SIZE,
     premium: false,
   };
 });
 
-export const PACKS = [...classPacks, ...elementPacks];
+export const PACKS = [...classPacks];
 
 /* ---- normalisation ---- */
 export function profileFromDoc(data) {
