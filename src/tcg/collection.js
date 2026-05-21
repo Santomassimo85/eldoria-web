@@ -153,6 +153,243 @@ export function validateDeck(deck, collection) {
 }
 
 /* ============================================================
+   AUTO-BUILD — CLASS DECK
+   ------------------------------------------------------------
+   Build a 60-card deck for a target class from what the player
+   currently owns. The algorithm:
+     1) Filter the pool to the class' two colours (e.g. Mago →
+        Fuoco + Natura).
+     2) Score each owned card by rarity × 10 + a soft curve
+        preference peaking at CMC 2-3 + tiny random.
+     3) Pick 36 non-land cards while keeping a type balance
+        target (~60% creature, ~32% spell, ~8% artifact). Epic
+        and Leggendaria bypass the soft caps so the best cards
+        always make it in.
+     4) Fill 24 lands split proportionally between the two
+        colours based on the picked cards' coloured-mana cost,
+        with a floor per colour to avoid colour-screw.
+     5) Light shuffle for variety (the engine reshuffles anyway).
+
+   Falls back to `autoDeck(collection, cols[0])` if the player
+   doesn't own enough cards of the class colours yet (e.g. just
+   started and hasn't bought packs for that class).
+   ============================================================ */
+export function autoClassDeck(collection, klass) {
+  if (!klass || !CLASSES.includes(klass)) {
+    return autoDeck(collection, null);
+  }
+  const cols = classColors(klass);
+  const allowed = new Set(cols);
+
+  // owned non-land cards in the class colours, respecting copy caps
+  const owned = [];
+  for (const id of POOL) {
+    const c = getCard(id);
+    if (!c || c.type === "land") continue;
+    if (!allowed.has(c.element)) continue;
+    const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+    const have = Math.min(cap, collection[id] || 0);
+    for (let i = 0; i < have; i++) owned.push(id);
+  }
+
+  // Too few cards to make a real class deck → fall back so we always
+  // return a complete 60-card deck instead of a stub.
+  if (owned.length < 20) return autoDeck(collection, cols[0]);
+
+  const RAR_W = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+  const score = (id) => {
+    const c = getCard(id);
+    const rw = RAR_W[c.rarity] || 1;
+    const cmc = c.cmc || 0;
+    // soft curve preference: peak at 2-3, decent at 1/4, low at 0/5+
+    const curveBonus =
+      cmc === 2 || cmc === 3 ? 3 :
+      cmc === 1 || cmc === 4 ? 2 :
+      cmc === 0 || cmc === 5 ? 1 : 0;
+    return rw * 10 + curveBonus + Math.random() * 1.5;
+  };
+  owned.sort((a, b) => score(b) - score(a));
+
+  // ----- pick non-land cards with a soft type balance -----
+  const NONLAND = DECK_SIZE - 24; // 36 non-land, 24 lands
+  const TARGET = {
+    creature: Math.round(NONLAND * 0.60), // ≈22
+    spell:    Math.round(NONLAND * 0.32), // ≈12
+    artifact: Math.round(NONLAND * 0.08), // ≈3
+  };
+  const kindOf = (c) =>
+    c.type === "creature" ? "creature" :
+    c.type === "artifact" ? "artifact" : "spell";
+
+  const picked = [];
+  const pickedCount = {};
+  const typeCount = { creature: 0, spell: 0, artifact: 0 };
+
+  for (const id of owned) {
+    if (picked.length >= NONLAND) break;
+    const c = getCard(id);
+    const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+    if ((pickedCount[id] || 0) >= cap) continue;
+    const k = kindOf(c);
+    // soft cap by type — but always let epics/legendaries through
+    const bypass = c.rarity === "legendary" || c.rarity === "epic";
+    if (!bypass && typeCount[k] >= TARGET[k]) continue;
+    picked.push(id);
+    pickedCount[id] = (pickedCount[id] || 0) + 1;
+    typeCount[k] += 1;
+  }
+  // 2nd pass: relax the type cap to fill up to NONLAND
+  if (picked.length < NONLAND) {
+    for (const id of owned) {
+      if (picked.length >= NONLAND) break;
+      const c = getCard(id);
+      const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+      if ((pickedCount[id] || 0) >= cap) continue;
+      picked.push(id);
+      pickedCount[id] = (pickedCount[id] || 0) + 1;
+    }
+  }
+
+  // ----- land split proportional to coloured-mana demand -----
+  const colWeight = {};
+  for (const el of cols) colWeight[el] = 0;
+  for (const id of picked) {
+    const c = getCard(id);
+    if (c.element && allowed.has(c.element)) colWeight[c.element] += 1;
+    if (c.cost) {
+      for (const el of cols) if (c.cost[el]) colWeight[el] += c.cost[el] * 1.5;
+    }
+  }
+  const totalW = cols.reduce((s, el) => s + (colWeight[el] || 0), 0) || cols.length;
+  const LAND_N = DECK_SIZE - picked.length;
+  const FLOOR  = Math.min(6, Math.floor(LAND_N / cols.length)); // never less than ~6 per colour
+  const lands = [];
+  let left = LAND_N;
+  for (const el of cols) {
+    const want = Math.round(((colWeight[el] || 0) / totalW) * LAND_N);
+    const n = Math.max(FLOOR, want);
+    for (let i = 0; i < n && left > 0; i++) { lands.push("l_" + el); left--; }
+  }
+  // top up any rounding remainder with the primary colour
+  while (left > 0) { lands.push("l_" + cols[0]); left--; }
+
+  // light shuffle (engine re-shuffles at game start anyway)
+  const out = [...picked, ...lands];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out.slice(0, DECK_SIZE);
+}
+
+/* ============================================================
+   AUTO-BUILD — MIX (multiple classes combined)
+   ------------------------------------------------------------
+   Same scoring/balance as autoClassDeck, but the colour pool is
+   the UNION of every selected class' 2 colours. With 3+ colours
+   we bump lands to 26 (mana fixing). With 0 or 1 class it falls
+   back to the single-class builder.
+   ============================================================ */
+export function autoMixDeck(collection, classes) {
+  const klasses = (classes || []).filter((k) => CLASSES.includes(k));
+  if (klasses.length === 0) return autoDeck(collection, null);
+  if (klasses.length === 1) return autoClassDeck(collection, klasses[0]);
+
+  const colSet = new Set();
+  for (const k of klasses) for (const el of classColors(k)) colSet.add(el);
+  const cols = [...colSet];
+
+  const owned = [];
+  for (const id of POOL) {
+    const c = getCard(id);
+    if (!c || c.type === "land") continue;
+    if (!colSet.has(c.element)) continue;
+    const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+    const have = Math.min(cap, collection[id] || 0);
+    for (let i = 0; i < have; i++) owned.push(id);
+  }
+  if (owned.length < 20) return autoClassDeck(collection, klasses[0]);
+
+  const RAR_W = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+  const score = (id) => {
+    const c = getCard(id);
+    const rw = RAR_W[c.rarity] || 1;
+    const cmc = c.cmc || 0;
+    const curveBonus =
+      cmc === 2 || cmc === 3 ? 3 :
+      cmc === 1 || cmc === 4 ? 2 :
+      cmc === 0 || cmc === 5 ? 1 : 0;
+    return rw * 10 + curveBonus + Math.random() * 1.5;
+  };
+  owned.sort((a, b) => score(b) - score(a));
+
+  const LAND_TARGET = cols.length >= 3 ? 26 : 24;
+  const NONLAND = DECK_SIZE - LAND_TARGET;
+  const TARGET = {
+    creature: Math.round(NONLAND * 0.60),
+    spell:    Math.round(NONLAND * 0.32),
+    artifact: Math.round(NONLAND * 0.08),
+  };
+  const kindOf = (c) =>
+    c.type === "creature" ? "creature" :
+    c.type === "artifact" ? "artifact" : "spell";
+
+  const picked = [];
+  const pickedCount = {};
+  const typeCount = { creature: 0, spell: 0, artifact: 0 };
+  for (const id of owned) {
+    if (picked.length >= NONLAND) break;
+    const c = getCard(id);
+    const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+    if ((pickedCount[id] || 0) >= cap) continue;
+    const k = kindOf(c);
+    const bypass = c.rarity === "legendary" || c.rarity === "epic";
+    if (!bypass && typeCount[k] >= TARGET[k]) continue;
+    picked.push(id);
+    pickedCount[id] = (pickedCount[id] || 0) + 1;
+    typeCount[k] += 1;
+  }
+  if (picked.length < NONLAND) {
+    for (const id of owned) {
+      if (picked.length >= NONLAND) break;
+      const c = getCard(id);
+      const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
+      if ((pickedCount[id] || 0) >= cap) continue;
+      picked.push(id);
+      pickedCount[id] = (pickedCount[id] || 0) + 1;
+    }
+  }
+
+  const colWeight = {};
+  for (const el of cols) colWeight[el] = 0;
+  for (const id of picked) {
+    const c = getCard(id);
+    if (c.element && colSet.has(c.element)) colWeight[c.element] += 1;
+    if (c.cost) {
+      for (const el of cols) if (c.cost[el]) colWeight[el] += c.cost[el] * 1.5;
+    }
+  }
+  const totalW = cols.reduce((s, el) => s + (colWeight[el] || 0), 0) || cols.length;
+  const LAND_N = DECK_SIZE - picked.length;
+  const FLOOR = Math.max(3, Math.floor(LAND_N / (cols.length + 1)));
+  const lands = [];
+  let left = LAND_N;
+  for (const el of cols) {
+    const want = Math.round(((colWeight[el] || 0) / totalW) * LAND_N);
+    const n = Math.max(FLOOR, want);
+    for (let i = 0; i < n && left > 0; i++) { lands.push("l_" + el); left--; }
+  }
+  while (left > 0) { lands.push("l_" + cols[0]); left--; }
+
+  const out = [...picked, ...lands];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out.slice(0, DECK_SIZE);
+}
+
+/* ============================================================
    AUTO-BUILD
    ============================================================ */
 export function autoDeck(collection, focus = null) {

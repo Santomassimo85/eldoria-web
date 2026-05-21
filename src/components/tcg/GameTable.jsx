@@ -17,14 +17,12 @@ import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import { FloatingLayer, TurnBanner, SpellBurst, EndOverlay } from "./Fx.jsx";
 import {
-  getCard, ELEMENT_PIP, ELEMENT_LABEL, coverUrl,
-  ELEMENT_POWERS, cardArtUrl,
+  getCard, ELEMENT_PIP, ELEMENT_LABEL, coverUrl, cardArtUrl,
 } from "../../tcg/cards.js";
 import {
   playCard, declareAttackers, confirmBlocks, endTurn, forfeit,
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
-  attunedPowers, canUsePower, powerTargets, castElementPower,
   legalBlockers, activateUltimate, canActivateUltimate, ultimateBlockReason,
 } from "../../tcg/engine.js";
 import ClassPanel from "./ClassPanel.jsx";
@@ -154,8 +152,6 @@ export default function GameTable({
   };
 
   const [sel, setSel] = useState(null);
-  // element power awaiting a target (the selected element key, or null)
-  const [powerSel, setPowerSel] = useState(null);
   const [attackers, setAttackers] = useState([]);
   const [blkAtk, setBlkAtk] = useState(null);
   const [blocks, setBlocks] = useState({});
@@ -185,6 +181,10 @@ export default function GameTable({
   // combat cinematic: creatures crumbling + cards being struck
   const [dyingIds, setDyingIds] = useState([]);
   const [combatShake, setCombatShake] = useState([]);
+  // staged damage overlay: { [instId]: newDamageTotal }. Set as soon as
+  // the damage float lands so the card's HP visibly drops in lockstep
+  // with the floating number, then cleared when applyState commits.
+  const [dmgOverlay, setDmgOverlay] = useState({});
   // drag&drop from hand: instId being dragged + a flag for styling
   const [dragging, setDragging] = useState(false);
   const dragInst = useRef(null);
@@ -275,22 +275,37 @@ export default function GameTable({
     const deaths = fresh.filter((e) => e.kind === "death");
     const win = fresh.find((e) => e.kind === "win");
 
+    // look up a creature by instId in the PRE-combat state (so we can
+    // add the incoming damage on top of the damage it already had)
+    const findCr = (instId) => {
+      for (const sd of ["p0", "p1"]) {
+        const c = pre.players[sd].battlefield.find((x) => x.instId === instId);
+        if (c) return c;
+      }
+      return null;
+    };
+
     // beat 1 — the clash
     playSfx("attack");
     setHitShake((n) => n + 1);
-    T(() => setHitShake((n) => Math.max(0, n - 1)), 480);
+    T(() => setHitShake((n) => Math.max(0, n - 1)), 420);
 
-    // beat 2 — damage numbers land on each combatant (held & readable)
+    // beat 2 — damage numbers AND HP drop together (≈0.55s after clash)
     T(() => {
       const hit = [];
+      const overlay = {};
       dmg.forEach((e) => {
         if (e.kind === "damageCreature") {
           anchorFloat(`[data-inst="${e.instId}"]`, `-${e.amount}`, "dmg", true);
+          const cur = findCr(e.instId);
+          overlay[e.instId] =
+            (overlay[e.instId] != null ? overlay[e.instId] : (cur?.damage || 0))
+            + e.amount;
           hit.push(e.instId);
         } else if (e.kind === "damageHero") {
           anchorFloat(`[data-hero="${e.side}"]`, `-${e.amount}`, "dmg", true);
           setHitShake((n) => n + 1);
-          T(() => setHitShake((n) => Math.max(0, n - 1)), 480);
+          T(() => setHitShake((n) => Math.max(0, n - 1)), 420);
         } else if (e.kind === "healHero") {
           anchorFloat(`[data-hero="${e.side}"]`, `+${e.amount}`, "heal", false);
         } else if (e.kind === "shield") {
@@ -299,22 +314,23 @@ export default function GameTable({
           anchorFloat(`[data-inst="${e.instId}"]`, "↻", "heal", true);
         }
       });
+      if (Object.keys(overlay).length) setDmgOverlay(overlay);
       if (hit.length) {
         playSfx("attack");
         setCombatShake(hit);
-        T(() => setCombatShake([]), 460);
+        T(() => setCombatShake([]), 380);
       }
-    }, 720);
+    }, 550);
 
-    // beat 3 — lethal creatures crumble in place (still the old board)
+    // beat 3 — lethal creatures crumble in place
     T(() => {
       if (deaths.length) {
         setDyingIds(deaths.map((e) => e.instId));
         playSfx("death");
       }
-    }, 2050);
+    }, 1350);
 
-    // beat 4 — commit the resolved board
+    // beat 4 — commit the resolved board (2s total → snappy but readable)
     T(() => {
       lastFx.current = next.fx.length
         ? next.fx[next.fx.length - 1].id
@@ -329,12 +345,13 @@ export default function GameTable({
         );
       setDyingIds([]);
       setCombatShake([]);
+      setDmgOverlay({});
       setPreviewBlocks(null);
       setBlocks({});
       setBlkAtk(null);
       cineRef.current = false;
       applyState(next);
-    }, 3150);
+    }, 2000);
   };
 
   // drop pending cinematic timers if we leave the table
@@ -470,15 +487,19 @@ export default function GameTable({
           shakeBump = true;
           break;
         case "damageHero":
-          pushFloat(e.side === mySide ? "me-hero" : "foe-hero", `-${e.amount}`, "dmg");
+          anchorFloat(`[data-hero="${e.side}"]`, `-${e.amount}`, "dmg", true);
           shakeBump = true;
           break;
         case "healHero":
-          pushFloat(e.side === mySide ? "me-hero" : "foe-hero", `+${e.amount}`, "heal");
+          anchorFloat(`[data-hero="${e.side}"]`, `+${e.amount}`, "heal", false);
           playSfx("heal");
           break;
         case "damageCreature":
-          pushFloat(e.side === mySide ? "me-board" : "foe-board", `-${e.amount}`, "dmg");
+          // pin the damage number to the SPECIFIC card that was hit, so
+          // the player can read which creature took how much (instead of
+          // a generic board-anchored float). The card's HP plate already
+          // shows the new value because state has been applied here.
+          anchorFloat(`[data-inst="${e.instId}"]`, `-${e.amount}`, "dmg", true);
           break;
         case "death": {
           const card = getCard(e.cardId);
@@ -598,8 +619,6 @@ export default function GameTable({
         const act = aiNext(s, "p1");
         if (act.type === "land" || act.type === "play")
           applyState(playCard(s, "p1", act.instId, act.target));
-        else if (act.type === "power")
-          applyState(castElementPower(s, "p1", act.el, act.target));
         else if (act.type === "ultimate")
           applyState(activateUltimate(s, "p1"));
         else if (act.type === "attack")
@@ -713,41 +732,6 @@ export default function GameTable({
   const reject = (id) => {
     setShake(id);
     setTimeout(() => setShake((x) => (x === id ? null : x)), 420);
-  };
-
-  /* ---- Element Powers ---- */
-  const myPowers = attunedPowers(state, mySide);
-  const powerTg = powerSel
-    ? powerTargets(state, mySide, powerSel)
-    : { kind: "none", creatures: [], heroes: [] };
-
-  const tryPowerOn = (target) => {
-    if (!powerSel) return false;
-    const ok =
-      (target.type === "creature" &&
-        powerTg.creatures.some((c) => c.instId === target.instId)) ||
-      (target.type === "hero" && powerTg.heroes.includes(target.side));
-    if (!ok) {
-      reject(target.instId || target.side);
-      return false;
-    }
-    applyState(castElementPower(state, mySide, powerSel, target));
-    setPowerSel(null);
-    return true;
-  };
-
-  const activatePower = (el) => {
-    if (powerSel === el) { setPowerSel(null); return; }
-    if (!canUsePower(state, mySide, el)) { reject("pw-" + el); return; }
-    const ptg = powerTargets(state, mySide, el);
-    if (ptg.kind === "none") {
-      applyState(castElementPower(state, mySide, el, null));
-      setPowerSel(null);
-      return;
-    }
-    setSel(null);
-    setAttackers([]);
-    setPowerSel(el);
   };
 
   const onHandCard = (hc) => {
@@ -894,10 +878,6 @@ export default function GameTable({
   };
 
   const onMyCreature = (cr) => {
-    if (powerSel) {
-      tryPowerOn({ type: "creature", side: mySide, instId: cr.instId });
-      return;
-    }
     if (sel && selCard?.type === "spell") {
       tryCastOn({ type: "creature", side: mySide, instId: cr.instId });
       return;
@@ -937,10 +917,6 @@ export default function GameTable({
   };
 
   const onFoeCreature = (cr) => {
-    if (powerSel) {
-      tryPowerOn({ type: "creature", side: foeSide, instId: cr.instId });
-      return;
-    }
     if (sel && selCard?.type === "spell") {
       tryCastOn({ type: "creature", side: foeSide, instId: cr.instId });
       return;
@@ -951,7 +927,6 @@ export default function GameTable({
   };
 
   const onHero = (side) => {
-    if (powerSel) { tryPowerOn({ type: "hero", side }); return; }
     if (sel && selCard?.type === "spell") tryCastOn({ type: "hero", side });
   };
 
@@ -1003,10 +978,11 @@ export default function GameTable({
 
   const liveStats = (side, cr) => {
     const e = effStats(state, side, cr);
+    const ov = dmgOverlay[cr.instId];
     return {
       power: e.power,
       toughness: e.toughness,
-      damage: cr.damage,
+      damage: ov != null ? ov : (cr.damage || 0),
       tapped: cr.tapped,
       sick: cr.sick,
     };
@@ -1051,11 +1027,9 @@ export default function GameTable({
     : "Turno dell'avversario…";
 
   const targetableFoeHero =
-    (sel && selCard?.type === "spell" && tg.heroes.includes(foeSide)) ||
-    (powerSel && powerTg.heroes.includes(foeSide));
+    sel && selCard?.type === "spell" && tg.heroes.includes(foeSide);
   const targetableMeHero =
-    (sel && selCard?.type === "spell" && tg.heroes.includes(mySide)) ||
-    (powerSel && powerTg.heroes.includes(mySide));
+    sel && selCard?.type === "spell" && tg.heroes.includes(mySide);
 
   const fanStyle = (i, n, open = true) => {
     if (n <= 1) return {};
@@ -1234,8 +1208,6 @@ export default function GameTable({
                   (sel &&
                     selCard?.type === "spell" &&
                     tg.creatures.some((c) => c.instId === cr.instId)) ||
-                  (powerSel &&
-                    powerTg.creatures.some((c) => c.instId === cr.instId)) ||
                   (canBlockNow &&
                     state.combat.attackers.includes(cr.instId))
                 }
@@ -1278,8 +1250,6 @@ export default function GameTable({
                   (sel &&
                     selCard?.type === "spell" &&
                     tg.creatures.some((c) => c.instId === cr.instId)) ||
-                  (powerSel &&
-                    powerTg.creatures.some((c) => c.instId === cr.instId)) ||
                   (canBlockNow && !!blkAtk && canBlockSel(cr.instId))
                 }
                 dying={dyingIds.includes(cr.instId)}
@@ -1410,53 +1380,19 @@ export default function GameTable({
         </div>
       )}
 
-      {myPowers.length > 0 && (
-        <div className="tcg-powers" aria-label="Poteri Elementali">
-          <div className="tcg-powers__charges" title="Cariche Elementali">
-            {[0, 1].map((i) => (
-              <span
-                key={i}
-                className={`tcg-charge ${i < (me.charges || 0) ? "on" : ""}`}
-              />
-            ))}
-          </div>
-          {myPowers.map((pw) => {
-            const usable = canUsePower(state, mySide, pw.el);
-            return (
-              <button
-                key={pw.el}
-                type="button"
-                className={`tcg-power ${powerSel === pw.el ? "is-sel" : ""} ${
-                  usable ? "is-on" : ""
-                }`}
-                style={{ "--pwc": ELEMENT_PIP[pw.el] }}
-                title={`${pw.name} — ${pw.text}\nCosto: 3 ${ELEMENT_LABEL[pw.el]} + 1 Carica`}
-                onClick={() => activatePower(pw.el)}
-              >
-                <span className="tcg-power__ico">{pw.icon}</span>
-                <span className="tcg-power__name">{pw.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {state.stack && state.stack.length > 0 && (
         <div className="tcg-stack" aria-label="Pila">
           <div className="tcg-stack__title">PILA</div>
           {state.stack.map((it, i) => {
-            const pw = it.power ? ELEMENT_POWERS[it.power] : null;
-            const c = pw ? null : getCard(it.cardId);
-            const ico = pw ? pw.icon : c?.icon || "✦";
-            const nm = pw ? pw.name : c?.name || "—";
+            const c = getCard(it.cardId);
+            const ico = c?.icon || "✦";
+            const nm = c?.name || "—";
             return (
               <div
                 key={it.uid}
                 className={`tcg-stack__item ${
                   it.side === mySide ? "is-me" : "is-foe"
-                } ${pw ? "is-power" : ""} ${
-                  i === state.stack.length - 1 ? "is-top" : ""
-                }`}
+                } ${i === state.stack.length - 1 ? "is-top" : ""}`}
                 onClick={() => c && setInspect(c)}
               >
                 <span className="tcg-stack__ico">{ico}</span>
@@ -1513,23 +1449,40 @@ export default function GameTable({
           preserveAspectRatio="none"
         >
           <defs>
-            <marker id="ah-atk" markerWidth="14" markerHeight="14"
-              refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0,0 L11,5 L0,10 L2.6,5 Z" fill="#ff3a28" />
+            <marker id="ah-atk" markerWidth="18" markerHeight="18"
+              refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,1 L13,7 L0,13 L4,7 Z" fill="#ff7a4a" />
             </marker>
-            <marker id="ah-blocked" markerWidth="11" markerHeight="11"
-              refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0,0 L9,4 L0,8 L2,4 Z" fill="#59b6ff" />
+            <marker id="ah-blocked" markerWidth="15" markerHeight="15"
+              refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,1 L11,6 L0,11 L3,6 Z" fill="#86cdff" />
             </marker>
           </defs>
-          {arrows.map((a) => (
-            <line
-              key={a.id}
-              className={`tcg-arrow tcg-arrow--${a.kind}`}
-              x1={a.from.x} y1={a.from.y} x2={a.to.x} y2={a.to.y}
-              markerEnd={`url(#ah-${a.kind})`}
-            />
-          ))}
+          {arrows.map((a) => {
+            const dx = a.to.x - a.from.x;
+            const dy = a.to.y - a.from.y;
+            const len = Math.hypot(dx, dy) || 1;
+            // perpendicular bend for a gentle arc; always curve "upward"
+            // on screen (toward smaller y) for visual consistency
+            const off = Math.min(140, len * 0.22);
+            const nx = -dy / len;
+            const ny = dx / len;
+            const sign = ny <= 0 ? 1 : -1;
+            const mx = (a.from.x + a.to.x) / 2 + nx * off * sign;
+            const my = (a.from.y + a.to.y) / 2 + ny * off * sign;
+            const d = `M ${a.from.x} ${a.from.y} Q ${mx} ${my} ${a.to.x} ${a.to.y}`;
+            return (
+              <g key={a.id} className={`tcg-arrow-g tcg-arrow-g--${a.kind}`}>
+                <path className="tcg-arrow tcg-arrow--halo" d={d} fill="none" />
+                <path
+                  className={`tcg-arrow tcg-arrow--${a.kind}`}
+                  d={d}
+                  fill="none"
+                  markerEnd={`url(#ah-${a.kind})`}
+                />
+              </g>
+            );
+          })}
         </svg>,
         document.body
       )}

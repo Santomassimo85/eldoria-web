@@ -121,16 +121,18 @@ export default function CardView({
   const isCreature = card.type === "creature";
   const power = creature ? creature.power : card.power;
   const toughness = creature ? creature.toughness : card.toughness;
-  // in play → rolled numbers; not in play → the dice notation
+  const dmg = creature ? creature.damage : 0;
+  const hurt = dmg > 0;
+  // in play → show LIVE HP (toughness - damage), not the formula.
+  // not in play → show the dice notation, since stats aren't rolled yet.
+  const liveT = creature && isCreature ? Math.max(0, toughness - dmg) : toughness;
   const ptText =
     creature || !DICE_STATS || !isCreature
-      ? `${power}/${toughness}`
+      ? `${power}/${liveT}`
       : `${statDiceLabel(card.power, card.cmc)}/${statDiceLabel(
           card.toughness,
           card.cmc
         )}`;
-  const dmg = creature ? creature.damage : 0;
-  const hurt = dmg > 0;
   const keywords = kwList(card);
   const rarity = card.rarity || "common";
 
@@ -259,16 +261,17 @@ export default function CardView({
         {isCreature && variant !== "board" && (
           <div className={`tcg-card__pt ${hurt ? "is-hurt" : ""}`}>
             {ptText}
-            {hurt ? <span className="tcg-card__pt-dmg"> (-{dmg})</span> : null}
           </div>
         )}
       </div>
       {/* board: stat plate lives OUTSIDE the (overflow:hidden) frame so it
           can float just below the card without being clipped */}
       {isCreature && variant === "board" && (
-        <div className={`tcg-card__pt tcg-card__pt--board ${hurt ? "is-hurt" : ""}`}>
+        <div
+          key={`pt-${liveT}`}
+          className={`tcg-card__pt tcg-card__pt--board ${hurt ? "is-hurt" : ""}`}
+        >
           {ptText}
-          {hurt ? <span className="tcg-card__pt-dmg"> (-{dmg})</span> : null}
         </div>
       )}
       {/* board: mana cost floats ABOVE the card (mirrors the P/T plate),

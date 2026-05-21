@@ -22,7 +22,6 @@
 
 import {
   getCard, buildDeck, shuffle, ELEMENTS,
-  ELEMENT_POWERS, attunedElements, POWER_MANA, POWER_CHARGE_CAP,
   DICE_STATS, statDice,
 } from "./cards.js";
 import {
@@ -80,8 +79,6 @@ function mkPlayer(name, deck, classOpt) {
     artifacts: [],
     graveyard: [],   // cardIds
     playedLand: false, // a land already played this turn?
-    charges: 0,        // Cariche for Element Powers (gain 1/turn, cap 2)
-    attuned: {},       // { fire:bool, … } — set in createGame from the deck
     /* Class system (Fase 1). When classOpt is null the player is a
        "neutral" hero with no class — XP/levels/slots stay inert and
        the engine falls back to pre-class behaviour (backward compat). */
@@ -600,8 +597,6 @@ export function createGame({
     fx: [],
     _seq: { inst: 0, fx: 0, log: 0 },
   };
-  s.players.p0.attuned = attunedElements(d0);
-  s.players.p1.attuned = attunedElements(d1);
   for (const side of SIDES) {
     for (let i = 0; i < OPENING_HAND; i++) drawOne(s, side, true);
   }
@@ -632,10 +627,6 @@ function startTurn(s, side, isGameStart) {
   s.combat = null;
   s.attackedThisTurn = false;
   p.playedLand = false;
-
-  // gain 1 Carica for Element Powers (capped) — kept for the legacy
-  // power system while the class system is still bedding in.
-  p.charges = Math.min(POWER_CHARGE_CAP, (p.charges || 0) + 1);
 
   // ── CLASS SYSTEM: upkeep XP tick, slot generation, perk hooks ──
   if (hasClass(p)) {
@@ -817,95 +808,6 @@ export function spellTargets(s, side, instId) {
   return { kind: "none", creatures: [], heroes: [] };
 }
 
-/* ============================================================
-   ELEMENT POWERS — Affinità Elementale
-   ============================================================ */
-const POWER_COST = (el) => ({ [el]: POWER_MANA });
-
-/* the elements this side may actually wield (deck-attuned) */
-export function attunedPowers(s, side) {
-  const at = s.players[side].attuned || {};
-  return ELEMENTS.filter((el) => at[el]).map((el) => ({
-    el, ...ELEMENT_POWERS[el],
-  }));
-}
-
-/* may `side` fire `el`'s power right now? (sorcery speed, on the
-   stack, deck-attuned, has a Carica and 3 mana of that colour) */
-export function canUsePower(s, side, el) {
-  if (s.winner || !ELEMENT_POWERS[el]) return false;
-  const p = s.players[side];
-  if (!p.attuned || !p.attuned[el]) return false;
-  if ((p.charges || 0) < 1) return false;
-  if (s.active !== side || s.phase !== "main") return false;
-  if (s.stack.length || s.priority) return false;     // sorcery speed
-  if (!canAfford(s, side, POWER_COST(el))) return false;
-  // a targeted power needs a legal target to exist
-  const tg = powerTargets(s, side, el);
-  if (tg.kind === "creature" && tg.creatures.length === 0) return false;
-  return true;
-}
-
-/* legal targets for an element power (mirrors spellTargets) */
-export function powerTargets(s, side, el) {
-  const P = ELEMENT_POWERS[el];
-  if (!P) return { kind: "none", creatures: [], heroes: [] };
-  const e = P.effect;
-  const foe = opp(side);
-  if (e.kind === "damage" && e.target === "any") {
-    const cr = [];
-    for (const sd of SIDES)
-      for (const c of s.players[sd].battlefield) {
-        if (sd === foe && kw(c.cardId, "hexproof")) continue;
-        cr.push({ side: sd, instId: c.instId });
-      }
-    return { kind: "any", creatures: cr, heroes: ["p0", "p1"] };
-  }
-  if (e.kind === "freeze" || e.kind === "weaken") {
-    const cr = s.players[foe].battlefield
-      .filter((c) => !kw(c.cardId, "hexproof"))
-      .map((c) => ({ side: foe, instId: c.instId }));
-    return { kind: "creature", creatures: cr, heroes: [] };
-  }
-  if (e.kind === "buff")
-    return {
-      kind: "friendly_creature",
-      creatures: s.players[side].battlefield.map((c) => ({ side, instId: c.instId })),
-      heroes: [],
-    };
-  return { kind: "none", creatures: [], heroes: [] };
-}
-
-/* activate an element power → it goes on the stack like a spell */
-export function castElementPower(state, side, el, target = null) {
-  if (!canUsePower(state, side, el)) return state;
-  const P = ELEMENT_POWERS[el];
-  const tg = powerTargets(state, side, el);
-  if (tg.kind === "creature" || tg.kind === "any") {
-    // needs a target — must be one of the legal ones
-    const ok =
-      target &&
-      ((target.type === "creature" &&
-        tg.creatures.some((c) => c.instId === target.instId)) ||
-        (target.type === "hero" && tg.heroes.includes(target.side)));
-    if (!ok) return state;
-  } else if (tg.kind === "friendly_creature") {
-    if (!target || target.type !== "creature" ||
-        !tg.creatures.some((c) => c.instId === target.instId))
-      return state;
-  }
-  const s = clone(state);
-  const p = s.players[side];
-  payCost(s, side, POWER_COST(el));
-  p.charges -= 1;
-  s.stack.push({ uid: newInst(s), side, power: el, target });
-  s.priority = opp(side);
-  s.passes = 0;
-  fx(s, { kind: "stack", side, cardId: null, element: el });
-  logMsg(s, side, `${p.name} invoca ${P.name} (in pila).`);
-  return s;
-}
-
 /* ---- play a land ---- */
 export function playLand(state, side, instId) {
   if (!canPlayLand(state, side, instId)) return state;
@@ -1037,17 +939,10 @@ export function stackTop(s) {
   return s.stack && s.stack.length ? s.stack[s.stack.length - 1] : null;
 }
 
-/* a stack item is either a spell card or an Element Power.
-   This returns a uniform { effect, element, name, … } view. The
-   `firstReaction` flag propagates from the stack item so the resolver
-   can apply Ladro-Assassino lv2 to ONLY the first instant of the turn. */
+/* a stack item is a spell card. The `firstReaction` flag propagates
+   from the stack item so the resolver can apply Ladro-Assassino lv2
+   to ONLY the first instant of the turn. */
 function stackSpell(item) {
-  if (item.power) {
-    const P = ELEMENT_POWERS[item.power];
-    return P
-      ? { effect: P.effect, element: item.power, name: P.name, isPower: true }
-      : null;
-  }
   const c = getCard(item.cardId);
   return c ? {
     effect: c.effect, element: c.element, name: c.name,
@@ -1072,29 +967,22 @@ function resolveTop(s) {
         if (s.stack[i].side !== item.side) { idx = i; break; }
     if (idx >= 0) {
       const cd = s.stack.splice(idx, 1)[0];
-      const csp = stackSpell(cd);
-      if (cd.power) {
-        fx(s, { kind: "counter", side: item.side, cardId: null });
-        logMsg(s, item.side, `${ctrl.name} controbatte ${csp ? csp.name : "il potere"}.`);
-      } else {
-        const cc = getCard(cd.cardId);
-        s.players[cd.side].graveyard.push(cc.id);
-        fx(s, { kind: "counter", side: item.side, cardId: cc.id });
-        logMsg(s, item.side, `${ctrl.name} controbatte ${cc.name}.`);
-      }
+      const cc = getCard(cd.cardId);
+      s.players[cd.side].graveyard.push(cc.id);
+      fx(s, { kind: "counter", side: item.side, cardId: cc.id });
+      logMsg(s, item.side, `${ctrl.name} controbatte ${cc.name}.`);
     } else {
       logMsg(s, item.side, `${sp.name} svanisce: nessun bersaglio.`);
     }
   } else {
     fx(s, {
       kind: "spell", side: item.side,
-      cardId: item.power ? null : item.cardId, element: sp.element,
+      cardId: item.cardId, element: sp.element,
     });
     logMsg(s, item.side, `Si risolve ${sp.name}.`);
     applySpell(s, item.side, sp, item.target);
   }
-  // spell cards go to the graveyard; powers just expire
-  if (!item.power) ctrl.graveyard.push(item.cardId);
+  ctrl.graveyard.push(item.cardId);
   resolveDeaths(s);
   checkWin(s);
 }
@@ -1679,9 +1567,7 @@ export function reviveState(raw) {
     p.artifacts ||= [];
     p.graveyard ||= [];
     if (typeof p.playedLand !== "boolean") p.playedLand = false;
-    if (typeof p.charges !== "number") p.charges = 0;
     if (typeof p.tempHp !== "number") p.tempHp = 0;
-    if (!p.attuned || typeof p.attuned !== "object") p.attuned = {};
     for (const cr of p.battlefield) {
       if (typeof cr.shield !== "boolean") cr.shield = kw(cr.cardId, "shield");
       if (typeof cr.regenUsed !== "boolean") cr.regenUsed = false;

@@ -945,66 +945,6 @@ export function statDiceLabel(value, cmc) {
   return base > 0 ? `${base}+1d${die}` : `1d${die}`;
 }
 
-/* ============================================================
-   ELEMENT POWERS (Affinità Elementale)
-   ------------------------------------------------------------
-   One signature power per element. A player may use an element's
-   power only if their deck is ATTUNED to it (≥30% of the non-land
-   cards are that element). Activating costs 1 Carica + 3 mana of
-   that element; the power goes on the stack like a spell, so it
-   can be answered/countered. Tuned to ≈ a 3-mana spell so any
-   mono / 2-colour / 3-colour deck stays balanced.
-   ============================================================ */
-export const POWER_MANA = 3;        // coloured pips paid to fire a power
-export const POWER_CHARGE_CAP = 2;  // stored Cariche cap
-export const ATTUNE_RATIO = 0.30;   // share of non-land cards needed
-
-export const ELEMENT_POWERS = {
-  fire: {
-    name: "Furia Ignea", icon: "🔥",
-    effect: { kind: "damage", amount: 3, target: "any" },
-    text: "Infliggi 3 danni a un bersaglio qualsiasi.",
-  },
-  water: {
-    name: "Morsa Glaciale", icon: "💧",
-    effect: { kind: "freeze" },
-    text: "Tappa una creatura nemica: non si STappa al suo prossimo turno.",
-  },
-  light: {
-    name: "Grazia Radiosa", icon: "✨",
-    effect: { kind: "wardHeal", amount: 6 },
-    text: "Recuperi 6 PV. Ogni PV oltre il massimo diventa PV temporaneo (assorbe danni prima dei PV).",
-  },
-  darkness: {
-    name: "Tributo Necrotico", icon: "🌑",
-    effect: { kind: "weaken", p: 2, t: 2 },
-    text: "Una creatura nemica subisce -2/-2 permanente.",
-  },
-  nature: {
-    name: "Linfa Tossica", icon: "🍃",
-    effect: { kind: "buff", p: 2, t: 2, target: "friendly_creature" },
-    text: "Una tua creatura ottiene +2/+2 in modo permanente.",
-  },
-};
-
-/* Which elements a deck (array of cardIds, lands included) is attuned
-   to. Multicolour-friendly: a clean 2-colour deck attunes both, a
-   5-colour soup attunes none (the deliberate consistency trade-off). */
-export function attunedElements(deck) {
-  const out = {};
-  for (const el of ELEMENTS) out[el] = false;
-  if (!Array.isArray(deck) || !deck.length) return out;
-  const nonLand = deck
-    .map((id) => getCard(id))
-    .filter((c) => c && c.type !== "land");
-  const total = nonLand.length || 1;
-  const cnt = {};
-  for (const el of ELEMENTS) cnt[el] = 0;
-  for (const c of nonLand) cnt[c.element] = (cnt[c.element] || 0) + 1;
-  for (const el of ELEMENTS) out[el] = cnt[el] / total >= ATTUNE_RATIO;
-  return out;
-}
-
 /* Mulberry32 — small deterministic PRNG (seed optional). */
 function mulberry32(seed) {
   let a = seed >>> 0;
