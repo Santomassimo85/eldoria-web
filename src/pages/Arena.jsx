@@ -202,42 +202,43 @@ const RANGER_SPELLS = [
 ];
 
 // ── ARMI SEMPLICI ──────────────────────────────────────────────────────
+// damageType: "contundente" | "perforante" | "tagliente" (D&D 5e)
 const SIMPLE_WEAPONS = [
-  { name: "Daga",             hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
-  { name: "Randello",         hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false },
-  { name: "Ascetta",          hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🪓", twoHanded: false },
-  { name: "Giavellotto",      hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🎯", twoHanded: false },
-  { name: "Martello Leggero", hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: false },
-  { name: "Mazza",            hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false },
-  { name: "Bastone Ferrato",  hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🪄", twoHanded: true  },
-  { name: "Falcetto",         hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Lancia",           hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false },
-  { name: "Arco Corto",       hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Balestra Leggera", hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Dardo",            hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "🎯", twoHanded: false },
-  { name: "Fionda",           hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "⭕",  twoHanded: false },
+  { name: "Daga",             hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false, damageType: "perforante" },
+  { name: "Randello",         hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false, damageType: "contundente" },
+  { name: "Ascetta",          hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🪓", twoHanded: false, damageType: "tagliente" },
+  { name: "Giavellotto",      hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🎯", twoHanded: false, damageType: "perforante" },
+  { name: "Martello Leggero", hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: false, damageType: "contundente" },
+  { name: "Mazza",            hitBonus: 3, damage: "1d6",  statKey: "str", type: "weapon", icon: "🏏", twoHanded: false, damageType: "contundente" },
+  { name: "Bastone Ferrato",  hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🪄", twoHanded: true,  damageType: "contundente" },
+  { name: "Falcetto",         hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false, damageType: "tagliente" },
+  { name: "Lancia",           hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false, damageType: "perforante" },
+  { name: "Arco Corto",       hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true,  damageType: "perforante" },
+  { name: "Balestra Leggera", hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true,  damageType: "perforante" },
+  { name: "Dardo",            hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "🎯", twoHanded: false, damageType: "perforante" },
+  { name: "Fionda",           hitBonus: 3, damage: "1d4",  statKey: "str", type: "weapon", icon: "⭕",  twoHanded: false, damageType: "contundente" },
 ];
 
 // ── ARMI MARZIALI ─────────────────────────────────────────────────────
 const MARTIAL_WEAPONS = [
-  { name: "Ascia da Battaglia",  hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "🪓", twoHanded: false },
-  { name: "Flagello",            hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Alabarda",            hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true  },
-  { name: "Spadone",             hitBonus: 3, damage: "2d6",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true  },
-  { name: "Maglio",              hitBonus: 3, damage: "2d6",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: true  },
-  { name: "Ascia Bipenne",       hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🪓", twoHanded: true  },
-  { name: "Lancia da Cavaliere", hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🏇", twoHanded: true  },
-  { name: "Spada Lunga",         hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Martello da Guerra",  hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "🔨", twoHanded: false },
-  { name: "Morgenstern",         hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "⚙",  twoHanded: false },
-  { name: "Stocco",              hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
-  { name: "Scimitarra",          hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Spada Corta",         hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false },
-  { name: "Tridente",            hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false },
-  { name: "Frusta",              hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "⛓",  twoHanded: false },
-  { name: "Arco Lungo",          hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Balestra Pesante",    hitBonus: 3, damage: "1d10", statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true  },
-  { name: "Balestra a Mano",     hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: false },
+  { name: "Ascia da Battaglia",  hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "🪓", twoHanded: false, damageType: "tagliente" },
+  { name: "Flagello",            hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false, damageType: "contundente" },
+  { name: "Alabarda",            hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true,  damageType: "tagliente" },
+  { name: "Spadone",             hitBonus: 3, damage: "2d6",  statKey: "str", type: "weapon", icon: "⚔",  twoHanded: true,  damageType: "tagliente" },
+  { name: "Maglio",              hitBonus: 3, damage: "2d6",  statKey: "str", type: "weapon", icon: "🔨", twoHanded: true,  damageType: "contundente" },
+  { name: "Ascia Bipenne",       hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🪓", twoHanded: true,  damageType: "tagliente" },
+  { name: "Lancia da Cavaliere", hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🏇", twoHanded: true,  damageType: "perforante" },
+  { name: "Spada Lunga",         hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔",  twoHanded: false, damageType: "tagliente" },
+  { name: "Martello da Guerra",  hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "🔨", twoHanded: false, damageType: "contundente" },
+  { name: "Morgenstern",         hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "⚙",  twoHanded: false, damageType: "perforante" },
+  { name: "Stocco",              hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false, damageType: "perforante" },
+  { name: "Scimitarra",          hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false, damageType: "tagliente" },
+  { name: "Spada Corta",         hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "⚔",  twoHanded: false, damageType: "perforante" },
+  { name: "Tridente",            hitBonus: 3, damage: "1d8",  statKey: "str", type: "weapon", icon: "🔱", twoHanded: false, damageType: "perforante" },
+  { name: "Frusta",              hitBonus: 3, damage: "1d4",  statKey: "dex", type: "weapon", icon: "⛓",  twoHanded: false, damageType: "tagliente" },
+  { name: "Arco Lungo",          hitBonus: 3, damage: "1d8",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true,  damageType: "perforante" },
+  { name: "Balestra Pesante",    hitBonus: 3, damage: "1d10", statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true,  damageType: "perforante" },
+  { name: "Balestra a Mano",     hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: false, damageType: "perforante" },
 ];
 
 // ── Set armi per classe (derivati dagli array base) ───────────────────────────────
@@ -438,12 +439,12 @@ const MIGHTY_STRIKE_ACTION = {
 // Pugno (Monk) — attacco a mani nude, 1d6+DES, sempre disponibile
 const PUGNO_ACTION = {
   name: "Pugno", hitBonus: 3, damage: "1d6", statKey: "dex",
-  type: "skill", icon: "👊", info: "Colpo a mani nude · 1d6+DES",
+  type: "skill", icon: "👊", info: "Colpo a mani nude · 1d6+DES", damageType: "contundente",
 };
 // Carica di Pugni (Monk) — 2 pugni consecutivi, 2d6+DES, 2 usi
 const CARICA_PUGNI_ACTION = {
   name: "Carica di Pugni", hitBonus: 3, damage: "2d6", statKey: "dex",
-  type: "skill", icon: "💥", info: "2 colpi a mani nude · 2d6+DES · 2 usi", maxUses: 2,
+  type: "skill", icon: "💥", info: "2 colpi a mani nude · 2d6+DES · 2 usi", maxUses: 2, damageType: "contundente",
 };
 
 // Concentrazione (Monk) — Bonus Action: +4 danni per 2 turni, 2 cariche
@@ -826,14 +827,18 @@ const ARENA_TITLES = {
   myrhal:     { key: "myrhal",     name: "Campione di Myrhal",   icon: "✨", short: "+1 hit spell (Mago/Stregone)" },
   vulkaros:   { key: "vulkaros",   name: "Campione di Vulkaros", icon: "⚔",  short: "+1 hit arma (Guerriero)" },
   gufoBianco: { key: "gufoBianco", name: "Gufo Bianco",          icon: "🦉", short: "+1 hit Druido (forma selvatica)" },
+  spazzaossa: { key: "spazzaossa", name: "Spazzaossa",           icon: "🦴", short: "+1 hit senz'armi o con armi contundenti" },
 };
 
 // Restituisce +1 se il titolo deve attivarsi su questo tiro per colpire, altrimenti 0.
-function getTitleHitBonus({ titleKey, classLower, isSpellAction, wildShapeForm }) {
+// "Spazzaossa" si attiva su qualsiasi azione non-spell con damageType "contundente"
+// (include Pugno/Carica di Pugni del Monaco, che sono unarmed-bludgeoning).
+function getTitleHitBonus({ titleKey, classLower, isSpellAction, wildShapeForm, actionDamageType }) {
   if (!titleKey) return 0;
   if (titleKey === "myrhal"     && isSpellAction && (isWizardClass(classLower) || isSorcererClass(classLower))) return 1;
   if (titleKey === "vulkaros"   && !isSpellAction && isFighterClass(classLower)) return 1;
   if (titleKey === "gufoBianco" && isDruidClass(classLower) && !!wildShapeForm) return 1;
+  if (titleKey === "spazzaossa" && !isSpellAction && actionDamageType === "contundente") return 1;
   return 0;
 }
 
@@ -3893,7 +3898,7 @@ export default function Arena() {
     const blindDebuffPenalty = (attackerMatchPlayer?.blindDebuff || eagleActive) ? -3 : 0;
     const isBlindDebuff      = action.special === "blind_debuff";
     const attackerTitles     = getSnapTitles(attackerSnap);
-    const titleHitCtx        = { classLower: attackerClassLower, isSpellAction, wildShapeForm: attackerMatchPlayer?.wildShape || null };
+    const titleHitCtx        = { classLower: attackerClassLower, isSpellAction, wildShapeForm: attackerMatchPlayer?.wildShape || null, actionDamageType: action?.damageType || null };
     const titleHitBonus      = attackerTitles.reduce((sum, k) => sum + getTitleHitBonus({ titleKey: k, ...titleHitCtx }), 0);
     const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0;
@@ -6696,6 +6701,7 @@ export default function Arena() {
                         <span className="loadout-item-damage">
                           {item.damage}{item.statKey ? ` +${item.statKey.toUpperCase()}` : ""}
                         </span>
+                        {item.damageType && <span className={`loadout-item-dmgtype dt-${item.damageType}`}>{item.damageType}</span>}
                         {item.twoHanded && <span className="loadout-item-info">2 mani</span>}
                         {item.info && !item.twoHanded && <span className="loadout-item-info">{item.info}</span>}
                         {isSelected && <span className="loadout-check">✓</span>}

@@ -2600,6 +2600,20 @@
   font-style: italic;
 }
 
+.loadout-item-dmgtype {
+  font-family: var(--font-text);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+.loadout-item-dmgtype.dt-contundente { color: #8a6a3a; }
+.loadout-item-dmgtype.dt-perforante  { color: #6a3a8a; }
+.loadout-item-dmgtype.dt-tagliente   { color: #8a3a3a; }
+
 .armor-no-dex {
   color: #999;
   font-size: 0.9em;
@@ -3274,6 +3288,11 @@
     font-size: 0.55rem;
   }
 
+  .loadout-item-dmgtype {
+    font-size: 0.5rem;
+    padding: 0 4px;
+  }
+
   .spell-level-count {
     font-size: 0.65rem;
   }
@@ -3350,6 +3369,11 @@
 
   .loadout-item-info {
     font-size: 0.48rem;
+  }
+
+  .loadout-item-dmgtype {
+    font-size: 0.44rem;
+    padding: 0 3px;
   }
 
   .loadout-auto-block {
