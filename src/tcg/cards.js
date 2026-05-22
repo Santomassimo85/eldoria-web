@@ -35,6 +35,12 @@
    "air" was distributed thematically across the other five in 2026-05-20
    (storm/lightning → Fuoco, arcane/runic → Luce, wind/control → Acqua,
    spirits → Ombra, beasts → Natura). */
+
+// Class build-profile drives buildClassDeck. Defined in classes.js so
+// collection.js (autoClassDeck) and cards.js (buildClassDeck = starter)
+// share the same numbers.
+import { buildProfileFor } from "./classes.js";
+
 export const ELEMENTS = ["fire", "water", "light", "darkness", "nature"];
 
 /* Display names — Italian, matching the class-system elements. */
@@ -152,15 +158,32 @@ const RARITY_BY_SPELL = {
   // instants
   s_shock: "common", s_counter: "rare", s_fog: "uncommon",
   s_growth: "uncommon", s_rescue: "common",
+  // 2026-05-19b batch
+  s_necrotouch: "rare", s_bloodrite: "uncommon", s_frostburst: "uncommon",
+  s_spectralflame: "rare", s_sylvanflame: "uncommon",
+  // 2026-05-22 expansion
+  s_thunderclap: "rare", s_radiantbeam: "rare", s_smite: "rare",
+  s_soulrip: "uncommon", s_shadowveil: "uncommon",
+  s_tidewave: "rare", s_glacialprison: "uncommon", s_tidalrush: "common",
+  s_lifebloom: "common", s_thornlash: "common",
 };
 /* spells that can be cast at INSTANT speed (responses / combat tricks) */
 const INSTANT_IDS = new Set([
   "s_bolt", "s_missile", "s_heal",     // existing → now instants
   "s_shock", "s_counter", "s_fog", "s_growth", "s_rescue",
+  // 2026-05-22 expansion — every new combat-trick spell is instant
+  "s_thunderclap", "s_smite", "s_soulrip",
+  "s_glacialprison", "s_tidalrush",
+  "s_lifebloom", "s_thornlash",
 ]);
 const RARITY_BY_ARTIFACT = {
   a_tome: "rare", a_valor: "rare", a_staff: "uncommon",
   a_blade: "uncommon", a_amulet: "uncommon", a_ring: "uncommon",
+  // 2026-05-19b batch
+  a_frostaegis: "uncommon", a_frostblade: "uncommon", a_runedarms: "rare",
+  // 2026-05-22 expansion
+  a_forge: "rare", a_furnace: "uncommon",
+  a_chalice: "rare", a_grove: "rare", a_idol: "rare",
 };
 
 /* a rough "power level" used only to ORDER cards inside an element so
@@ -757,6 +780,88 @@ const RAW = [
     "", "Porta sulle spalle gli dèi della sua tribù, e qualche debito."),
   C("earth-golem", "Golem di Pietra", 4, "earth-golem", "🪨", "nature", 4, 6,
     "", "Un cuore di smeraldo lo tiene in piedi."),
+
+  /* ---------- EXPANSION BATCH 2026-05-22 — +10 SPELLS / +5 ARTIFACTS ----------
+     Spell pool was under-served for water & nature (only 2 and 3 spells
+     each). Artifacts had zero fire entries. This batch fills both gaps. */
+
+  // — Spells: Fire —
+  S("s_thunderclap", "Schianto del Tuono", 4, "🌩️", "fire",
+    { kind: "damage", amount: 5, target: "any" },
+    "Istantaneo. Infliggi 5 danni a un bersaglio qualsiasi.",
+    "Tre miglia di lampo, un istante di silenzio.", "lava-drake"),
+
+  // — Spells: Light —
+  S("s_radiantbeam", "Raggio Radioso", 4, "🌞", "light",
+    { kind: "damage", amount: 5, target: "any" },
+    "Infliggi 5 danni a un bersaglio qualsiasi.",
+    "La luce non chiede il permesso di colpire.", "radiantspirit"),
+  S("s_smite", "Punizione Divina", 3, "⚖️", "light",
+    { kind: "destroy", target: "creature" },
+    "Istantaneo. Distruggi una creatura bersaglio.",
+    "Pronunciata la condanna, la sentenza è immediata.", "sunmage"),
+
+  // — Spells: Darkness —
+  S("s_soulrip", "Strappo dell'Anima", 3, "👻", "darkness",
+    { kind: "weaken", p: 2, t: 2, target: "creature" },
+    "Una creatura bersaglio ottiene -2/-2 in modo permanente.",
+    "Quel che strappa l'ombra, non ricresce.", "soulwraith"),
+  S("s_shadowveil", "Velo d'Ombra", 2, "🕸️", "darkness",
+    { kind: "draw", amount: 2 },
+    "Peschi 2 carte.",
+    "Sotto il velo, tutto si ricorda meglio.", "shadowfiend"),
+
+  // — Spells: Water —
+  S("s_tidewave", "Onda di Marea", 4, "🌊", "water",
+    { kind: "aoe_enemy", amount: 3 },
+    "Infliggi 3 danni a TUTTE le creature nemiche.",
+    "Quando il mare alza la voce, ogni costa china il capo.", "tempestdragon"),
+  S("s_glacialprison", "Prigione Glaciale", 2, "🧊", "water",
+    { kind: "freeze", target: "creature" },
+    "Istantaneo. Congela una creatura nemica: tappata e salta il prossimo untap.",
+    "Il tempo si ferma a un grado sotto zero.", "icetomb"),
+  S("s_tidalrush", "Impeto Mareale", 1, "💦", "water",
+    { kind: "damage", amount: 2, target: "creature" },
+    "Istantaneo. Infliggi 2 danni a una creatura.",
+    "L'acqua ricorda, e travolge chi ha dimenticato.", "marid"),
+
+  // — Spells: Nature —
+  S("s_lifebloom", "Fioritura Vitale", 1, "🌷", "nature",
+    { kind: "heal", amount: 4 },
+    "Istantaneo. Recuperi 4 PV.",
+    "Dove cade una goccia di linfa, la ferita scorda di esistere.", "dryad"),
+  S("s_thornlash", "Frustata Spinosa", 2, "🌵", "nature",
+    { kind: "damage", amount: 3, target: "creature" },
+    "Istantaneo. Infliggi 3 danni a una creatura.",
+    "Sembra solo un ramo. Lo è, fino al colpo.", "mossreaver"),
+
+  // — Artifacts: Fire —
+  A("a_forge", "Forgia di Brace", 4, "🔥", "fire",
+    { kind: "anthem", p: 2, t: 0 },
+    "Le tue creature hanno +2/+0.",
+    "Mai si spegne. Mai si stanca. Mai si sazia.", "fireforger"),
+  A("a_furnace", "Fornace Tellurica", 3, "♨️", "fire",
+    { kind: "startHeal", amount: 2 },
+    "All'inizio del tuo turno, recuperi 2 PV.",
+    "La sua brace è memoria di vulcani dimenticati.", "emberguardian"),
+
+  // — Artifacts: Darkness —
+  A("a_chalice", "Calice della Notte", 3, "🍷", "darkness",
+    { kind: "startDraw", amount: 1 },
+    "All'inizio del tuo turno, peschi 1 carta extra.",
+    "Beve chi non teme di vedere troppo.", "bonelord"),
+
+  // — Artifacts: Nature —
+  A("a_grove", "Bosco Antico", 4, "🌳", "nature",
+    { kind: "startHeal", amount: 3 },
+    "All'inizio del tuo turno, recuperi 3 PV.",
+    "Le sue radici bevono ai pozzi delle origini.", "autumntreant"),
+
+  // — Artifacts: Water —
+  A("a_idol", "Idolo del Gelo", 4, "🗿", "water",
+    { kind: "anthem", p: 1, t: 1 },
+    "Le tue creature hanno +1/+1.",
+    "Lo sguardo del Gelo nessuno sa dove guardi.", "frostchieftain"),
 ];
 
 /* ============================================================
@@ -1045,77 +1150,108 @@ export function buildDeck(seed) {
 }
 
 /* Build a 60-card deck constrained to a specific element pair (the
-   2 colours owned by a class). Used by AI mode + as a fallback when
-   the player has no class-appropriate saved deck yet.
+   2 colours owned by a class). Used by AI mode + as the starter
+   deck when the player picks a class.
 
-   Composition target:
-     • 22 lands, distributed ~evenly between the two colours
-     • 38 non-land cards drawn from the two colours' pool, max 4 copies
-       each, weighted toward lower CMC so the curve is playable.
+   Now class-aware: when `klass` is given the deck respects
+   CLASS_BUILD_PROFILE (creature/spell/artifact ratio, land count,
+   curve bias) so non-casters (Guerriero/Ladro) get few spells and
+   full casters (Mago) get many — fixing the previous "all 5 starter
+   decks felt the same" issue. Without `klass` it falls back to a
+   neutral profile.
+
    Falls back to buildDeck() if the colours produce too few options. */
-export function buildClassDeck(colors, seed) {
+export function buildClassDeck(colors, klass, seed) {
   if (!Array.isArray(colors) || colors.length === 0) return buildDeck(seed);
   const rnd = seed == null ? Math.random : mulberry32(seed ^ 0x12345678);
   const allowed = new Set(colors);
-  // candidate non-land cards (only those whose printed element is one
-  // of the class colours — colourless/neutral cards would belong here
-  // too once they exist; today there are none, so the filter is purely
-  // by element).
   const pool = POOL.filter((id) => allowed.has(getCard(id).element));
   if (pool.length < 12) return buildDeck(seed);
 
-  // Sort by ascending CMC, then small shuffle inside each cmc bucket
-  // so we don't always pull the exact same low-cost set.
-  const byCmc = {};
-  for (const id of pool) {
-    const c = getCard(id);
-    (byCmc[c.cmc] ||= []).push(id);
-  }
-  const ordered = [];
-  for (const k of Object.keys(byCmc).sort((a, b) => +a - +b)) {
-    ordered.push(...shuffle(byCmc[k], seed ? seed + +k : undefined));
-  }
+  const profile = buildProfileFor(klass);
+  const LAND_TARGET_CLASS = profile.lands || 22;
+  const NON_LAND = DECK_SIZE - LAND_TARGET_CLASS;
+  const TYPE_TARGET = {
+    creature: Math.round(NON_LAND * profile.types.creature),
+    spell:    Math.round(NON_LAND * profile.types.spell),
+    artifact: Math.round(NON_LAND * profile.types.artifact),
+  };
+  const curveBonus = (cmc) => profile.curve[Math.min(cmc, 6)] || 0;
 
-  // Fill 38 non-land slots with up to 4 copies each, biased toward
-  // lower CMC by walking the ordered list and pushing copies.
-  const NON_LAND = DECK_SIZE - 22; // 38
-  // Per-card deck cap — legendaries get 2, anything else 4. Auto-built
-  // decks must respect this so they're legal under validateDeck.
+  // Sort candidates by (curve fit, rarity tier, jitter). This biases
+  // each class toward its own curve sweet-spot without hard-capping.
+  const RAR_W = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+  const score = (id) => {
+    const c = getCard(id);
+    return curveBonus(c.cmc || 0) * 4 + (RAR_W[c.rarity] || 1) + ((seed ? mulberry32(seed + (c.id.length || 1))() : Math.random()) * 1.2);
+  };
+  const ordered = [...pool].sort((a, b) => score(b) - score(a));
+
   const capOf = (id) => (getCard(id)?.rarity === "legendary" ? 2 : 4);
+  const kindOf = (c) =>
+    c.type === "creature" ? "creature" :
+    c.type === "artifact" ? "artifact" : "spell";
+
+  /* Pass 1: walk `ordered` repeatedly, adding ONE copy per loop until
+     each type bucket hits its target or copies-per-card cap out. This
+     lets a small pool (e.g. 5 unique spells for the Druido) still fill
+     a 10-spell target via 2-3 copies each, instead of stopping at 5. */
   const copies = {};
   const spells = [];
-  // first pass: 2 copies of the best low-cost staples (or 1 if legendary's cap forbids the second)
-  for (const id of ordered) {
-    if (spells.length >= 22) break;
-    if ((copies[id] || 0) >= capOf(id)) continue;
-    copies[id] = (copies[id] || 0) + 1;
-    spells.push(id);
-    if (copies[id] < 2 && copies[id] < capOf(id)) {
-      copies[id] += 1;
-      spells.push(id);
-    }
-  }
-  // second pass: top up to the per-card cap, then fill with whatever's left
-  while (spells.length < NON_LAND) {
-    let added = false;
+  const typeCount = { creature: 0, spell: 0, artifact: 0 };
+  const typeFull = () =>
+    typeCount.creature >= TYPE_TARGET.creature &&
+    typeCount.spell    >= TYPE_TARGET.spell &&
+    typeCount.artifact >= TYPE_TARGET.artifact;
+
+  /* No type-bypass here: starter decks must respect the class ratio,
+     otherwise epic/legendary creatures swallow every slot before any
+     spell gets a second copy (Mago ended up with just 8 spells before
+     this was tightened). */
+  while (!typeFull() && spells.length < NON_LAND) {
+    let progress = false;
     for (const id of ordered) {
       if (spells.length >= NON_LAND) break;
+      const c = getCard(id);
       if ((copies[id] || 0) >= capOf(id)) continue;
+      const k = kindOf(c);
+      if (typeCount[k] >= TYPE_TARGET[k]) continue;
       copies[id] = (copies[id] || 0) + 1;
       spells.push(id);
-      added = true;
+      typeCount[k] += 1;
+      progress = true;
     }
-    if (!added) break; // pool exhausted
+    if (!progress) break;
   }
-  // if still short, pad with a generic shuffle (shouldn't happen in
-  // practice for any of the 5 classes given current card density)
+  /* Pass 2: relax type ratio to fill remaining slots. Creatures first
+     so non-casters whose unique-spell pool is tiny still finish at 60. */
+  if (spells.length < NON_LAND) {
+    const rank = { creature: 0, artifact: 1, spell: 2 };
+    const fillOrder = ordered.slice().sort((a, b) => {
+      const ka = kindOf(getCard(a));
+      const kb = kindOf(getCard(b));
+      return rank[ka] - rank[kb];
+    });
+    while (spells.length < NON_LAND) {
+      let progress = false;
+      for (const id of fillOrder) {
+        if (spells.length >= NON_LAND) break;
+        if ((copies[id] || 0) >= capOf(id)) continue;
+        copies[id] = (copies[id] || 0) + 1;
+        spells.push(id);
+        progress = true;
+      }
+      if (!progress) break;
+    }
+  }
+  // Pad with a generic random pull if the pool is somehow too thin.
   while (spells.length < NON_LAND) {
     const id = pool[Math.floor(rnd() * pool.length)];
     spells.push(id);
   }
 
-  // 22 lands split between the two colours; an odd split favours the
-  // colour with the heavier coloured-pip demand in the picked spells.
+  // Lands split between colours, weighted by the picked spells'
+  // coloured-pip demand. Each colour gets a floor of 8.
   const demand = {};
   for (const el of colors) demand[el] = 0;
   for (const id of spells) {
@@ -1124,16 +1260,15 @@ export function buildClassDeck(colors, seed) {
   }
   const total = Math.max(1, colors.reduce((s, el) => s + demand[el], 0));
   const lands = [];
-  let left = 22;
+  let left = LAND_TARGET_CLASS;
   for (const el of colors) {
     const share = colors.length === 1
-      ? 22
-      : Math.max(8, Math.round((demand[el] / total) * 22));
+      ? LAND_TARGET_CLASS
+      : Math.max(8, Math.round((demand[el] / total) * LAND_TARGET_CLASS));
     const n = Math.min(left, share);
     for (let i = 0; i < n; i++) lands.push("l_" + el);
     left -= n;
   }
-  // top up any remainder (rounding gap) on the first colour
   while (left > 0) { lands.push("l_" + colors[0]); left--; }
 
   return shuffle([...spells, ...lands], seed);

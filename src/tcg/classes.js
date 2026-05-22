@@ -97,6 +97,69 @@ export const SLOT_CAP_BY_TIER = {
   martial: { 1: 2, 2: 2, 3: 2 },
 };
 
+/* ============================================================
+   CLASS BUILD PROFILE
+   ------------------------------------------------------------
+   Drives BOTH the starter deck (cards.js → buildClassDeck) and
+   auto-builds from owned collection (collection.js → autoClassDeck).
+   Tuning rules (2026-05-22, after the user reported Guerriero/Ladro
+   feeling slow and weak, and some decks feeling too fast):
+
+     • types     — share of creature / spell / artifact in the
+                   non-land slice (must sum to 1). NON-CASTERS get
+                   VERY FEW spells (Guerriero 12% / Ladro 14%) per
+                   the user's instruction; full caster (Mago) sits
+                   at 50% spells; semi-casters in between.
+     • lands     — Druido gets +2 lands for the ramp game.
+     • curve     — relative weight per CMC bucket (0..6). Aggro
+                   leans low, control leans medium-high. Used as a
+                   tie-breaker / bias when picking cards; not a hard
+                   cap. Guerriero/Ladro are still creature-aggro but
+                   centred on CMC 2-3 (not turn-1 nat). Mago/Chierico
+                   are pushed higher to stop them being "too fast".
+   ============================================================ */
+export const CLASS_BUILD_PROFILE = {
+  // Mago — caster pieno: tante spell, controllo, curva media-alta
+  mago: {
+    types: { creature: 0.42, spell: 0.50, artifact: 0.08 },
+    lands: 22,
+    curve: [0, 1, 2, 3, 4, 4, 3],
+  },
+  // Guerriero — marziale aggro: tantissime creature, pochissime spell
+  guerriero: {
+    types: { creature: 0.80, spell: 0.12, artifact: 0.08 },
+    lands: 22,
+    curve: [0, 5, 6, 4, 3, 1, 0],
+  },
+  // Chierico — semi-caster: creature + cure / drain, curva media
+  chierico: {
+    types: { creature: 0.60, spell: 0.32, artifact: 0.08 },
+    lands: 22,
+    curve: [0, 2, 3, 4, 4, 3, 1],
+  },
+  // Ladro — marziale tempo: creature evasive + qualche reazione
+  ladro: {
+    types: { creature: 0.78, spell: 0.14, artifact: 0.08 },
+    lands: 22,
+    curve: [0, 3, 6, 5, 3, 1, 0],
+  },
+  // Druido — semi-caster ramp: piú terre, creature massicce
+  druido: {
+    types: { creature: 0.62, spell: 0.28, artifact: 0.10 },
+    lands: 24,
+    curve: [0, 2, 3, 4, 4, 3, 2],
+  },
+};
+export const DEFAULT_BUILD_PROFILE = {
+  types: { creature: 0.60, spell: 0.32, artifact: 0.08 },
+  lands: 22,
+  curve: [0, 2, 4, 4, 3, 2, 1],
+};
+
+export function buildProfileFor(klass) {
+  return CLASS_BUILD_PROFILE[klass] || DEFAULT_BUILD_PROFILE;
+}
+
 /* The two subclasses of each class, each tied to one element.
    Element keys MUST match cards.js (English: fire/water/light/darkness/
    nature). Italian display names live in cards.js → ELEMENT_LABEL. */

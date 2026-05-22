@@ -160,7 +160,7 @@ export default function Tcg() {
       p0Name: pName,
       p1Name: "Arconte (IA)",
       deck0: playableDeck(profile),
-      deck1: buildClassDeck(foeColors),
+      deck1: buildClassDeck(foeColors, aiFoeClass.klass),
       p0Class: aiClass,           // può essere null: gioca senza bonus
       p1Class: aiFoeClass,
     });

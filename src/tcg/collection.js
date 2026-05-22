@@ -26,6 +26,7 @@ import {
 } from "./cards.js";
 import {
   CLASSES, CLASS_LABEL, CLASS_ICON, classColors,
+  CLASS_BUILD_PROFILE, DEFAULT_BUILD_PROFILE,
 } from "./classes.js";
 
 /* Single source of truth for end-of-match coin payouts. Both the
@@ -35,8 +36,10 @@ import {
    (Previously the two were out of sync — panel claimed 30/60, actual
    grant was 5/15 — which is what the user was reporting.) */
 export const TCG_COINS = {
-  ai:  { win: 5,  lose: 1, draw: 3 },
-  pvp: { win: 15, lose: 5, draw: 8 },
+  // +10 / +7 / +7 vs. the old rates (user request 2026-05-22: bump
+  // every payout by 5-10 coins so packs are more reachable).
+  ai:  { win: 15, lose: 8,  draw: 10 },
+  pvp: { win: 25, lose: 12, draw: 15 },
 };
 
 /* Legacy starter element list — will be replaced by class-based
@@ -163,50 +166,11 @@ export function validateDeck(deck, collection) {
   return { ok: errors.length === 0, errors, lands };
 }
 
-/* ============================================================
-   CLASS BUILD PROFILES
-   ------------------------------------------------------------
-   Each class plays a different game, so a "good" deck isn't just
-   60 cards of the right colours — it's tuned to that class' core
-   game plan. These profiles drive autoClassDeck:
-
-     • types     — ratio of creature / spell / artifact in the
-                   non-land slice (sums to 1)
-     • lands     — how many lands out of 60 (more for ramp classes)
-     • curve     — relative weight per CMC bucket; the builder
-                   prefers cards near the class' "sweet spot"
-                   (Guerriero aggro = low curve, Druido ramp = high)
-
-   Numbers are tuned for variety, not pinpoint balance — small
-   tweaks here change the feel of class-built decks across the
-   board. Multiclasses fall back to autoMixDeck's defaults. */
-export const CLASS_BUILD_PROFILE = {
-  // Mago — caster pieno: tanti spell, creature evocate via magia
-  mago:      { types: { creature: 0.46, spell: 0.46, artifact: 0.08 },
-               lands: 23,
-               curve: [0, 2, 3, 4, 3, 2, 1] },
-  // Guerriero — marziale aggro: creature di basso costo, pochi spell
-  guerriero: { types: { creature: 0.72, spell: 0.20, artifact: 0.08 },
-               lands: 22,
-               curve: [0, 4, 5, 3, 2, 1, 0] },
-  // Chierico — semi-caster: creature + cure / drain
-  chierico:  { types: { creature: 0.56, spell: 0.36, artifact: 0.08 },
-               lands: 24,
-               curve: [0, 2, 4, 4, 3, 2, 1] },
-  // Ladro — marziale veloce: creature evasive + reazioni (instant)
-  ladro:     { types: { creature: 0.58, spell: 0.34, artifact: 0.08 },
-               lands: 22,
-               curve: [0, 3, 5, 4, 2, 1, 0] },
-  // Druido — semi-caster ramp: piú terre, creature massicce
-  druido:    { types: { creature: 0.62, spell: 0.26, artifact: 0.12 },
-               lands: 26,
-               curve: [0, 2, 3, 4, 4, 3, 2] },
-};
-const DEFAULT_PROFILE = {
-  types: { creature: 0.60, spell: 0.32, artifact: 0.08 },
-  lands: 24,
-  curve: [0, 2, 4, 4, 3, 2, 1],
-};
+/* CLASS_BUILD_PROFILE / DEFAULT_BUILD_PROFILE moved to classes.js so the
+   same numbers drive both the starter deck (cards.js → buildClassDeck)
+   and the in-deckbuilder auto-build (this file → autoClassDeck). Local
+   alias kept for the existing references below. */
+const DEFAULT_PROFILE = DEFAULT_BUILD_PROFILE;
 
 /* ============================================================
    AUTO-BUILD — CLASS DECK
@@ -528,7 +492,7 @@ export async function grantStarter(uid, choice) {
     return { ok: false, reason: "claimed" };
 
   const collection = starterCollection(klass);
-  const deck = buildClassDeck(classColors(klass));
+  const deck = buildClassDeck(classColors(klass), klass);
   const coverEl = classColors(klass)[0];
   await patch(uid, {
     tcgCoins: STARTER_COINS,

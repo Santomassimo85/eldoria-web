@@ -77,7 +77,7 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const initial =
     profile?.deck && validateDeck(profile.deck, collection).ok
       ? profile.deck.slice()
-      : (klass ? buildClassDeck(myColors) : autoDeck(collection, null));
+      : (klass ? buildClassDeck(myColors, klass) : autoDeck(collection, null));
 
   const [deck, setDeck] = useState(initial);
   const [msg, setMsg] = useState("");
