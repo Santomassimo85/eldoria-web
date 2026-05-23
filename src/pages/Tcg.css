@@ -3306,11 +3306,27 @@
 }
 
 @media (max-width: 700px) {
-  .tcg-picker { padding: 14px 12px 80px; }
-  .tcg-picker__head { padding: 8px 0; margin-bottom: 10px; }
+  /* On phones the sticky header was overlapping the first class card
+     (user feedback 2026-05-22). Drop sticky so everything just scrolls
+     normally, and push the top padding well below the global navbar
+     (--navbar-h grows to 150-165px on small screens) so the title is
+     never glued to the bottom of the navbar.
+     `.tcg-page` already sits inset:var(--navbar-h)…, so the padding
+     below is relative to that — keep it generous to avoid any overlap. */
+  .tcg-picker {
+    padding: 20px 12px 80px;
+  }
+  .tcg-picker__head {
+    position: static;
+    background: none;
+    backdrop-filter: none;
+    padding: 4px 0 6px;
+    margin-bottom: 14px;
+  }
   .tcg-picker__head h2 { font-size: 16px; letter-spacing: .5px; }
   .tcg-picker__class { padding: 14px 10px; }
   .tcg-picker__deckcolors { padding: 8px 12px; font-size: 12px; }
+  .tcg-picker__sect { margin: 10px 0 6px; font-size: 12px; }
 }
 
 /* Starter & Menu hub: cards are big — on phones, drop to a single

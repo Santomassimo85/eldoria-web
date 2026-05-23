@@ -1590,6 +1590,44 @@
 }
 .mkadm-preview-desc p { margin: 0 0 6px; }
 
+.mkadm-preview-set {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.06);
+  border-radius: 10px;
+}
+.mkadm-preview-set-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6d28d9;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+.mkadm-preview-set-head small { color: #7c3aed; opacity: 0.85; }
+.mkadm-preview-set-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.82rem;
+  color: #444;
+}
+.mkadm-preview-set-list li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+.mkadm-preview-set-frac {
+  font-weight: 700;
+  color: #7c3aed;
+  text-align: right;
+}
+
 /* ─── INVENTORY ─── */
 .mkadm-inventory {
   background: #fff;
@@ -1622,6 +1660,62 @@
   font-weight: normal;
   margin-left: 6px;
 }
+/* ── Ricerca per nome ── */
+.mkadm-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 260px;
+  min-width: 220px;
+  max-width: 380px;
+}
+.mkadm-search-icon {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+.mkadm-search-input {
+  width: 100%;
+  padding: 7px 32px 7px 32px;
+  border: 1.5px solid rgba(130, 10, 10, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 0.88rem;
+  transition: all 0.15s;
+}
+.mkadm-search-input::-webkit-search-cancel-button { display: none; }
+.mkadm-search-input:hover { border-color: rgba(130, 10, 10, 0.4); }
+.mkadm-search-input:focus {
+  outline: none;
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px rgba(130, 10, 10, 0.15);
+}
+.mkadm-search-clear {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  line-height: 1;
+}
+.mkadm-search-clear:hover { color: var(--red); background: rgba(130, 10, 10, 0.06); }
+.mkadm-search-hint {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 12px;
+  font-size: 0.72rem;
+  color: #d97706;
+  font-style: italic;
+}
+
 .mkadm-filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .mkadm-filter {
   background: transparent;
@@ -1639,6 +1733,117 @@
   background: var(--red);
   color: #fff;
   border-color: var(--red);
+}
+/* ── Set tematico ── */
+.mkadm-set-toggle-field { margin-top: 4px; }
+.mkadm-set-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 14px;
+  border: 1.5px dashed rgba(124, 58, 237, 0.45);
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.05);
+  color: #6d28d9;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+.mkadm-set-toggle:hover { background: rgba(124, 58, 237, 0.1); }
+.mkadm-set-toggle input { accent-color: #7c3aed; width: 16px; height: 16px; cursor: pointer; }
+.mkadm-set-box {
+  border: 1.5px solid rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.04);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+.mkadm-set-empty {
+  color: #888;
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 0 0 6px;
+}
+.mkadm-set-bonus-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 36px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.mkadm-set-bonus-pieces {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mkadm-set-bonus-pieces input {
+  width: 60px;
+  text-align: center;
+}
+.mkadm-set-bonus-frac {
+  color: #6d28d9;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.mkadm-set-bonus-effect { width: 100%; }
+.mkadm-set-bonus-remove {
+  background: transparent;
+  border: 1.5px solid rgba(180, 30, 30, 0.4);
+  color: #b41e1e;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+.mkadm-set-bonus-remove:hover {
+  background: #b41e1e;
+  color: #fff;
+}
+.mkadm-set-bonus-add {
+  align-self: flex-start;
+  background: transparent;
+  border: 1.5px dashed rgba(124, 58, 237, 0.55);
+  color: #6d28d9;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+.mkadm-set-bonus-add:hover {
+  background: rgba(124, 58, 237, 0.1);
+}
+@media (max-width: 540px) {
+  .mkadm-set-bonus-row {
+    grid-template-columns: 100px 1fr 32px;
+  }
+}
+
+.mkadm-filter-select {
+  background: #fff;
+  color: var(--red);
+  font-weight: 600;
+  padding-right: 28px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--red) 50%),
+                    linear-gradient(135deg, var(--red) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.mkadm-filter-select:hover { background-color: rgba(130, 10, 10, 0.06); }
+.mkadm-filter-select:focus {
+  outline: none;
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px rgba(130, 10, 10, 0.15);
 }
 .mkadm-filter--danger {
   margin-left: auto;
@@ -1814,6 +2019,21 @@
   box-shadow: 0 0 0 2px rgba(176, 48, 48, 0.18);
 }
 .mkadm-inv-price-input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Variante Ratto: stesso layout, colori distinti (verde-blu) per non confonderlo col prezzo */
+.mkadm-inv-ratto-edit .mkadm-inv-price-prefix { color: #0d9488; }
+.mkadm-inv-ratto-input {
+  width: 48px !important;
+  color: #0d9488 !important;
+  background: #f0fdfa !important;
+  border-color: rgba(94, 234, 212, 0.6) !important;
+}
+.mkadm-inv-ratto-input:hover { border-color: #0d9488 !important; }
+.mkadm-inv-ratto-input:focus {
+  border-color: #0d9488 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2) !important;
+}
 
 .mkadm-inv-price-edit-wrap {
   display: inline-flex;

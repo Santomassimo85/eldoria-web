@@ -85,6 +85,12 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids, onDeliver }) =>
           {item.class || "Comune"}
         </p>
         <p className="item-name"><strong>{item.name}</strong></p>
+        {item.setPayload?.name && (
+          <p className="item-set-badge" title={`Set: ${item.setPayload.name} (${item.setPayload.size || "?"} pezzi)`}>
+            ⛓ {item.setPayload.name}
+            {item.setPayload.size ? <small> · {item.setPayload.size}p</small> : null}
+          </p>
+        )}
         <p className="item-price">
           {isSold ? "VENDUTO" : item.saleType === "fixed" ? `${item.price} MP` : `Base: ${item.startingBid} MP`}
         </p>

@@ -17,6 +17,38 @@ import {
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+// Riquadro che mostra le info del set tematico dell'oggetto.
+// Render solo se setPayload è valorizzato con almeno un bonus.
+const SetBonusBlock = ({ setPayload }) => {
+  if (!setPayload || !setPayload.name) return null;
+  const bonuses = Array.isArray(setPayload.bonuses) ? setPayload.bonuses : [];
+  const sorted = [...bonuses]
+    .filter(b => b && b.effect && Number(b.pieces) > 0)
+    .sort((a, b) => Number(a.pieces) - Number(b.pieces));
+  const size = Number(setPayload.size) || 0;
+  return (
+    <div className="ps-set-block">
+      <div className="ps-set-head">
+        <span className="ps-set-icon">⛓</span>
+        <div>
+          <strong className="ps-set-name">{setPayload.name}</strong>
+          {size > 0 && <small className="ps-set-size"> · {size} pezzi</small>}
+        </div>
+      </div>
+      {sorted.length > 0 && (
+        <ul className="ps-set-bonus-list">
+          {sorted.map((b, i) => (
+            <li key={i} className="ps-set-bonus-item">
+              <span className="ps-set-bonus-frac">{b.pieces}/{size || "?"}</span>
+              <span className="ps-set-bonus-effect">{b.effect}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const Countdown = ({ endDate }) => {
   const [timeLeft, setTimeLeft] = useState("");
 
@@ -290,6 +322,8 @@ export default function ItemDetail() {
             </details>
           )}
 
+          <SetBonusBlock setPayload={item.setPayload} />
+
           {item.saleType === "auction" && (
             <>
               <div className="mc-stats">
@@ -406,6 +440,8 @@ export default function ItemDetail() {
             )}
 
             <div className="ps-description" dangerouslySetInnerHTML={{ __html: item.description }} />
+
+            <SetBonusBlock setPayload={item.setPayload} />
 
             {!item.isSold && currentUser && (
               item.saleType === "fixed" ? (

@@ -46,6 +46,15 @@ export const createMarketItem = (data) => {
        hand out: { kind: "egg", rarity } or { kind: "petItem", itemKey }. */
     petPayload: data.petPayload || null,
 
+    /* TCG payload — { kind: "cardPack", rarity, element } o { kind: "tcgCard", cardId }. */
+    tcgPayload: data.tcgPayload || null,
+
+    /* SET payload — l'oggetto fa parte di un set tematico. La consegna
+       e la scheda del giocatore usano questo per applicare i bonus quando
+       il giocatore possiede N pezzi.
+       Shape: { name: string, size: number, bonuses: [{ pieces:number, effect:string }] } */
+    setPayload: data.setPayload || null,
+
     // Logica di Mercato e Stato
     isSold: false,
     isRefunded: false,

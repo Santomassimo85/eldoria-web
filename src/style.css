@@ -1426,6 +1426,77 @@ input {
 .ps-description p { margin: 0 0 8px; }
 .ps-description p:last-child { margin: 0; }
 
+/* ── Set bonus block (mostrato a giocatore e master nel dettaglio item) ── */
+.ps-set-block {
+     margin: 0 0 22px;
+     padding: 14px 16px;
+     border: 1.5px solid rgba(124, 58, 237, 0.4);
+     background: linear-gradient(180deg, rgba(124, 58, 237, 0.08), rgba(124, 58, 237, 0.02));
+     border-radius: 12px;
+}
+.ps-set-head {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+     margin-bottom: 10px;
+}
+.ps-set-icon {
+     font-size: 1.4rem;
+     color: #7c3aed;
+     line-height: 1;
+}
+.ps-set-name {
+     font-family: var(--font-title);
+     color: #6d28d9;
+     font-size: 1.05rem;
+     letter-spacing: 0.02em;
+}
+.ps-set-size {
+     color: #7c3aed;
+     opacity: 0.85;
+     font-weight: 600;
+}
+.ps-set-bonus-list {
+     list-style: none;
+     padding: 0;
+     margin: 0;
+     display: flex;
+     flex-direction: column;
+     gap: 4px;
+}
+.ps-set-bonus-item {
+     display: grid;
+     grid-template-columns: 48px 1fr;
+     gap: 10px;
+     align-items: baseline;
+     font-size: 0.93rem;
+     color: #444;
+}
+.ps-set-bonus-frac {
+     font-weight: 700;
+     color: #7c3aed;
+     font-family: var(--font-text);
+     text-align: right;
+}
+.ps-set-bonus-effect { color: #2a2a2a; }
+
+/* Versione compatta per la lista del mercato */
+.item-set-badge {
+     display: inline-flex;
+     align-items: center;
+     gap: 4px;
+     margin: 4px 0 6px;
+     padding: 2px 8px;
+     border-radius: 999px;
+     background: rgba(124, 58, 237, 0.12);
+     color: #6d28d9;
+     font-size: 0.72rem;
+     font-weight: 600;
+     line-height: 1.4;
+     letter-spacing: 0.02em;
+}
+.item-set-badge small { opacity: 0.8; font-weight: 500; }
+
 .ps-buy-btn,
 .ps-bid-btn {
      width: 100%;

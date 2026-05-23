@@ -14,6 +14,24 @@ import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
+// Livelli Ratto (allineati a Mercato.jsx)
+const RATTO_LEVELS_ADMIN = [
+  { lv: 0, name: "Estraneo" },
+  { lv: 1, name: "Simpatizzante" },
+  { lv: 2, name: "Informatore" },
+  { lv: 3, name: "Ricettatore" },
+  { lv: 4, name: "Veterano" },
+  { lv: 5, name: "Ombra di Obia" },
+];
+// Rank usato per ordinare (canonico + legacy). Più basso = più comune.
+const RARITY_RANK = {
+  "Comune": 0,
+  "Non comune": 1,
+  "Rara": 2,        "Raro": 2,
+  "Molto rara": 3,  "Magico": 3, "Epico": 3,
+  "Leggendaria": 4, "Leggendario": 4,
+  "Artefatto": 5,
+};
 const ITEM_TYPES = [
   "Arma", "Armatura", "Accessori", "Artefatto Magico",
   "Pozioni", "Pergamene", "Reagenti", "Varie",
@@ -121,6 +139,11 @@ const initialFormData = {
   tcgPackRarity: "epic",
   tcgPackElement: "fire",
   tcgCardId: "",
+  // SET-payload fields — l'oggetto può far parte di un set tematico
+  inSet: false,
+  setName: "",
+  setSize: 5,
+  setBonuses: [], // [{ pieces: 2, effect: "STR +1" }, ...]
 };
 
 const formatEndDate = (iso) => {
@@ -213,6 +236,61 @@ function QuickPriceEdit({ item, disabled }) {
   );
 }
 
+// Edit inline del livello Ratto richiesto (0-5). Stesso pattern di QuickPriceEdit.
+function QuickRattoEdit({ item, disabled }) {
+  const initial = String(item.minLevel ?? 0);
+  const [val, setVal] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(0);
+
+  useEffect(() => { setVal(initial); /* eslint-disable-next-line */ }, [initial]);
+
+  const commit = async () => {
+    if (saving || disabled) return;
+    const next = Number(val);
+    if (!Number.isFinite(next) || next < 0 || next > 5) { setVal(initial); return; }
+    if (next === Number(initial)) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "items", item.id), { minLevel: next });
+      setSavedAt(Date.now());
+    } catch (err) {
+      console.error("Quick minLevel save failed:", err);
+      setVal(initial);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const justSaved = savedAt && (Date.now() - savedAt < 1500);
+  const lvName = RATTO_LEVELS_ADMIN.find(l => l.lv === Number(val))?.name || "—";
+
+  return (
+    <span className="mkadm-inv-price-edit-wrap" onClick={(e) => e.stopPropagation()}>
+      <span className="mkadm-inv-price-edit mkadm-inv-ratto-edit">
+        <span className="mkadm-inv-price-prefix">🐀 Lv</span>
+        <input
+          type="number"
+          min="0"
+          max="5"
+          step="1"
+          value={val}
+          disabled={disabled || saving}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setVal(initial); e.target.blur(); } }}
+          className="mkadm-inv-price-input mkadm-inv-ratto-input"
+          aria-label="Livello Ratto minimo"
+          title="Livello Ratto richiesto (0–5)"
+        />
+        <span className="mkadm-inv-price-suffix">
+          {lvName}{saving ? " …" : justSaved ? " ✓" : ""}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export default function MarketAdmin() {
   const { currentUser } = useAuth();
   const [items, setItems] = useState([]);
@@ -222,6 +300,10 @@ export default function MarketAdmin() {
   const [globalCountdown, setGlobalCountdown] = useState("");
   const [marketIsOpen, setMarketIsOpen] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [rarityFilter, setRarityFilter] = useState("all");
+  const [rattoFilter, setRattoFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("none");
+  const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const descRef = useRef(null);
@@ -355,6 +437,13 @@ export default function MarketAdmin() {
       tcgPackRarity: item.tcgPayload?.kind === "cardPack" ? item.tcgPayload.rarity : "epic",
       tcgPackElement: item.tcgPayload?.kind === "cardPack" ? item.tcgPayload.element : "fire",
       tcgCardId: item.tcgPayload?.kind === "tcgCard" ? item.tcgPayload.cardId : "",
+      // Set payload: riapro i campi se l'item è già parte di un set
+      inSet: !!item.setPayload,
+      setName: item.setPayload?.name || "",
+      setSize: item.setPayload?.size || 5,
+      setBonuses: Array.isArray(item.setPayload?.bonuses)
+        ? item.setPayload.bonuses.map(b => ({ pieces: Number(b.pieces) || 1, effect: String(b.effect || "") }))
+        : [],
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -479,6 +568,43 @@ export default function MarketAdmin() {
     }));
   };
 
+  // ── Helpers per il set tematico ──
+  const handleToggleSet = (checked) => {
+    setFormData(prev => ({
+      ...prev,
+      inSet: checked,
+      // alla prima attivazione semino una soglia 2/N vuota così l'admin vede subito la struttura
+      setBonuses: checked && prev.setBonuses.length === 0
+        ? [{ pieces: 2, effect: "" }]
+        : prev.setBonuses,
+    }));
+  };
+
+  const handleSetBonusChange = (index, field, value) => {
+    setFormData(prev => {
+      const next = prev.setBonuses.map((b, i) =>
+        i === index ? { ...b, [field]: field === "pieces" ? Number(value) || 0 : value } : b
+      );
+      return { ...prev, setBonuses: next };
+    });
+  };
+
+  const handleAddSetBonus = () => {
+    setFormData(prev => {
+      // suggerisco "pieces" del nuovo bonus = max+1, limitato dalla setSize
+      const used = prev.setBonuses.map(b => Number(b.pieces) || 0);
+      const next = Math.min(prev.setSize || 5, (used.length ? Math.max(...used) : 1) + 1);
+      return { ...prev, setBonuses: [...prev.setBonuses, { pieces: next, effect: "" }] };
+    });
+  };
+
+  const handleRemoveSetBonus = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      setBonuses: prev.setBonuses.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (uploading) return;
@@ -524,12 +650,35 @@ export default function MarketAdmin() {
       dataToSubmit.tcgPayload = null;
     }
 
+    // Set payload — costruito solo se l'oggetto è marcato come parte di un set
+    if (formData.inSet && formData.setName.trim()) {
+      const size = Math.max(2, Number(formData.setSize) || 0);
+      const bonuses = (formData.setBonuses || [])
+        .map(b => ({
+          pieces: Math.max(1, Math.min(size, Number(b.pieces) || 0)),
+          effect: String(b.effect || "").trim(),
+        }))
+        .filter(b => b.effect && b.pieces >= 1)
+        .sort((a, b) => a.pieces - b.pieces);
+      dataToSubmit.setPayload = {
+        name: formData.setName.trim(),
+        size,
+        bonuses,
+      };
+    } else {
+      dataToSubmit.setPayload = null;
+    }
+
     // Strip transient form-only fields
     delete dataToSubmit.petRarity;
     delete dataToSubmit.petItemKey;
     delete dataToSubmit.tcgPackRarity;
     delete dataToSubmit.tcgPackElement;
     delete dataToSubmit.tcgCardId;
+    delete dataToSubmit.inSet;
+    delete dataToSubmit.setName;
+    delete dataToSubmit.setSize;
+    delete dataToSubmit.setBonuses;
 
     if (editId) {
       await updateDoc(doc(db, "items", editId), dataToSubmit);
@@ -551,14 +700,46 @@ export default function MarketAdmin() {
   }, [items]);
 
   const visibleItems = useMemo(() => {
-    return items.filter(i => {
-      if (filter === "all") return true;
-      if (filter === "active") return !i.isSold && (!i.endDate || new Date(i.endDate) > new Date());
-      if (filter === "sold") return i.isSold;
-      if (filter === "expired") return !i.isSold && i.endDate && new Date(i.endDate) <= new Date();
+    const q = searchQuery.trim().toLowerCase();
+    const searchActive = q.length >= 3;
+    const filtered = items.filter(i => {
+      // filtro stato
+      if (filter === "active" && !(!i.isSold && (!i.endDate || new Date(i.endDate) > new Date()))) return false;
+      if (filter === "sold" && !i.isSold) return false;
+      if (filter === "expired" && !(!i.isSold && i.endDate && new Date(i.endDate) <= new Date())) return false;
+      // filtro rarità
+      if (rarityFilter !== "all") {
+        const rank = RARITY_RANK[i.class];
+        if (rank !== RARITY_RANK[rarityFilter]) return false;
+      }
+      // filtro livello Ratto
+      if (rattoFilter !== "all") {
+        const lvl = Number(i.minLevel) || 0;
+        if (lvl !== Number(rattoFilter)) return false;
+      }
+      // ricerca per nome (attiva solo da 3+ caratteri)
+      if (searchActive && !String(i.name || "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, filter]);
+
+    if (sortBy === "none") return filtered;
+    const priceOf = (i) => Number(i.startingBid ?? i.price ?? 0);
+    const rankOf = (i) => RARITY_RANK[i.class] ?? -1;
+    const rattoOf = (i) => Number(i.minLevel) || 0;
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case "rarity-desc": return rankOf(b) - rankOf(a);
+        case "rarity-asc":  return rankOf(a) - rankOf(b);
+        case "price-desc":  return priceOf(b) - priceOf(a);
+        case "price-asc":   return priceOf(a) - priceOf(b);
+        case "ratto-desc":  return rattoOf(b) - rattoOf(a);
+        case "ratto-asc":   return rattoOf(a) - rattoOf(b);
+        default: return 0;
+      }
+    });
+    return sorted;
+  }, [items, filter, rarityFilter, rattoFilter, sortBy, searchQuery]);
 
   const previewRarityKey = (formData.class || "Comune").replace(/\s/g, "");
 
@@ -791,6 +972,104 @@ export default function MarketAdmin() {
               </div>
             )}
 
+            {/* ── SET tematico ── */}
+            <div className="mkadm-field mkadm-set-toggle-field">
+              <label className="mkadm-set-toggle">
+                <input
+                  type="checkbox"
+                  checked={!!formData.inSet}
+                  onChange={(e) => handleToggleSet(e.target.checked)}
+                />
+                <span>⛓ Questo oggetto fa parte di un set</span>
+              </label>
+            </div>
+
+            {formData.inSet && (
+              <div className="mkadm-set-box">
+                <div className="mkadm-field-row">
+                  <div className="mkadm-field">
+                    <label>Nome del set</label>
+                    <input
+                      className="admin-field-input"
+                      placeholder="Es. Set del Drago d'Oro"
+                      value={formData.setName}
+                      onChange={(e) => setFormData({ ...formData, setName: e.target.value })}
+                    />
+                  </div>
+                  <div className="mkadm-field">
+                    <label>Pezzi totali</label>
+                    <input
+                      className="admin-field-input"
+                      type="number"
+                      min="2"
+                      max="20"
+                      value={formData.setSize}
+                      onChange={(e) => setFormData({ ...formData, setSize: Math.max(2, Number(e.target.value) || 0) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="mkadm-field">
+                  <label>Bonus per soglia</label>
+                  {formData.setBonuses.length === 0 && (
+                    <p className="mkadm-set-empty">Nessun bonus. Aggiungine uno con il pulsante qui sotto.</p>
+                  )}
+                  {formData.setBonuses.map((b, idx) => (
+                    <div key={idx} className="mkadm-set-bonus-row">
+                      <div className="mkadm-set-bonus-pieces">
+                        <input
+                          className="admin-field-input"
+                          type="number"
+                          min="1"
+                          max={formData.setSize || 20}
+                          value={b.pieces}
+                          onChange={(e) => handleSetBonusChange(idx, "pieces", e.target.value)}
+                          aria-label="Pezzi necessari"
+                        />
+                        <span className="mkadm-set-bonus-frac">/ {formData.setSize}</span>
+                      </div>
+                      <input
+                        className="admin-field-input mkadm-set-bonus-effect"
+                        type="text"
+                        placeholder="Es. STR +1, Resistenza al fuoco, Immortalità…"
+                        value={b.effect}
+                        onChange={(e) => handleSetBonusChange(idx, "effect", e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="mkadm-set-bonus-remove"
+                        onClick={() => handleRemoveSetBonus(idx)}
+                        title="Rimuovi bonus"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="mkadm-set-bonus-add"
+                    onClick={handleAddSetBonus}
+                  >
+                    ＋ Aggiungi bonus
+                  </button>
+                </div>
+
+                {formData.setName && formData.setBonuses.some(b => b.effect.trim()) && (
+                  <p className="mkadm-price-hint" style={{ color: "#7c3aed", borderColor: "#a78bfa55" }}>
+                    <span className="mkadm-price-hint-icon">⛓</span>
+                    <span>
+                      <strong>{formData.setName}</strong> ({formData.setSize} pezzi) ·{" "}
+                      {[...formData.setBonuses]
+                        .filter(b => b.effect.trim())
+                        .sort((a, b) => a.pieces - b.pieces)
+                        .map(b => `${b.pieces}/${formData.setSize} ${b.effect.trim()}`)
+                        .join(" · ")}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="mkadm-field-row">
               <div className="mkadm-field">
                 <label>Base d'asta (MP)</label>
@@ -953,6 +1232,25 @@ export default function MarketAdmin() {
                   dangerouslySetInnerHTML={{ __html: formData.description }}
                 />
               )}
+              {formData.inSet && formData.setName.trim() && (
+                <div className="mkadm-preview-set">
+                  <div className="mkadm-preview-set-head">
+                    ⛓ <strong>{formData.setName}</strong>
+                    <small> · {formData.setSize} pezzi</small>
+                  </div>
+                  <ul className="mkadm-preview-set-list">
+                    {[...formData.setBonuses]
+                      .filter(b => b.effect.trim())
+                      .sort((a, b) => a.pieces - b.pieces)
+                      .map((b, i) => (
+                        <li key={i}>
+                          <span className="mkadm-preview-set-frac">{b.pieces}/{formData.setSize}</span>
+                          <span>{b.effect}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -962,6 +1260,31 @@ export default function MarketAdmin() {
       <div className="mkadm-inventory">
         <div className="mkadm-inv-head">
           <h2>📦 Magazzino <small>({visibleItems.length}/{items.length})</small></h2>
+          <div className="mkadm-search-wrap">
+            <span className="mkadm-search-icon">🔍</span>
+            <input
+              type="search"
+              className="mkadm-search-input"
+              placeholder="Cerca per nome (min 3 caratteri)…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Cerca oggetto per nome"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="mkadm-search-clear"
+                onClick={() => setSearchQuery("")}
+                title="Pulisci ricerca"
+                aria-label="Pulisci ricerca"
+              >
+                ✕
+              </button>
+            )}
+            {searchQuery.trim().length > 0 && searchQuery.trim().length < 3 && (
+              <span className="mkadm-search-hint">Servono ancora {3 - searchQuery.trim().length} caratteri</span>
+            )}
+          </div>
           <div className="mkadm-filter-tabs">
             {[
               { k: "all", label: "Tutti" },
@@ -977,6 +1300,40 @@ export default function MarketAdmin() {
                 {t.label}
               </button>
             ))}
+            <select
+              className="mkadm-filter mkadm-filter-select"
+              value={rarityFilter}
+              onChange={(e) => setRarityFilter(e.target.value)}
+              title="Filtra per rarità"
+            >
+              <option value="all">Rarità: tutte</option>
+              {RARITIES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <select
+              className="mkadm-filter mkadm-filter-select"
+              value={rattoFilter}
+              onChange={(e) => setRattoFilter(e.target.value)}
+              title="Filtra per livello Ratto minimo"
+            >
+              <option value="all">Lv Ratto: tutti</option>
+              {RATTO_LEVELS_ADMIN.map(l => (
+                <option key={l.lv} value={l.lv}>Lv {l.lv} · {l.name}</option>
+              ))}
+            </select>
+            <select
+              className="mkadm-filter mkadm-filter-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              title="Ordina"
+            >
+              <option value="none">Ordina: predefinito</option>
+              <option value="rarity-desc">Rarità ↓ (alta → bassa)</option>
+              <option value="rarity-asc">Rarità ↑ (bassa → alta)</option>
+              <option value="price-desc">Prezzo ↓ (alto → basso)</option>
+              <option value="price-asc">Prezzo ↑ (basso → alto)</option>
+              <option value="ratto-desc">Lv Ratto ↓ (alto → basso)</option>
+              <option value="ratto-asc">Lv Ratto ↑ (basso → alto)</option>
+            </select>
             <button
               type="button"
               className="mkadm-filter mkadm-filter--danger"
@@ -1016,6 +1373,9 @@ export default function MarketAdmin() {
                     <div className="mkadm-inv-row">
                       <QuickPriceEdit item={item} disabled={item.isSold} />
                       {bidCount > 0 && <span className="mkadm-inv-bids">📢 {bidCount}</span>}
+                    </div>
+                    <div className="mkadm-inv-row">
+                      <QuickRattoEdit item={item} disabled={item.isSold} />
                     </div>
                     {tl && !item.isSold && (
                       <p className={`mkadm-inv-timer ${tl.expired ? "expired" : ""}`}>
