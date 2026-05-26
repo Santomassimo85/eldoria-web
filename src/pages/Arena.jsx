@@ -2981,7 +2981,7 @@ export default function Arena() {
         if (x.matchId !== matchId) return x;
         const players = x.players.map(p =>
           p.id === aiId
-            ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false }
+            ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
             : p
         );
         return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, `🌀 ${aiName} è sotto controllo: turno saltato (${remaining} rimanenti).`] };
@@ -2997,18 +2997,19 @@ export default function Arena() {
     const isFirstAttackThisTurn = usedSoFar === 0;
     const tsNow  = new Date().toISOString();
 
-    // ── BONUS-ACTION PHASE: heal when hurting (uses a Pozione di Cura), then
-    //    keep going with an attack. Bonus actions don't end the turn. ──
+    // ── FREE-ITEM PHASE: heal when hurting (uses a Pozione di Cura), then
+    //    keep going with an attack. Gli oggetti sono azione gratuita: non
+    //    consumano azione né bonus action, ma uno solo per turno. ──
     if (
       isFirstAttackThisTurn &&
       hpPct < 0.35 &&
       (aiPlayer.itemUsesLeft?.pozione_cura ?? 0) > 0 &&
-      !aiPlayer.bonusActionUsed
+      !aiPlayer.itemUsedThisTurn
     ) {
       const { total: heal, rolls: healRolls } = rollDmg("2d12");
       const newHp = Math.min(maxHp, aiPlayer.hp + heal);
       const healLog = {
-        pub: `🧪 ${aiSnap.name} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · bonus action`,
+        pub: `🧪 ${aiSnap.name} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · azione gratuita`,
         ts: tsNow,
       };
       const updatedMatches = meta.matches.map(x => {
@@ -3016,7 +3017,7 @@ export default function Arena() {
         const players = x.players.map(p => {
           if (p.id !== aiId) return p;
           const newUses = { ...(p.itemUsesLeft || {}), pozione_cura: Math.max(0, (p.itemUsesLeft?.pozione_cura ?? 0) - 1) };
-          return { ...p, hp: newHp, itemUsesLeft: newUses, bonusActionUsed: true };
+          return { ...p, hp: newHp, itemUsesLeft: newUses, itemUsedThisTurn: true };
         });
         return { ...x, players, logs: [...x.logs, healLog] };
       });
@@ -3235,8 +3236,14 @@ export default function Arena() {
               const turnEndPatch = stayingThisTurn ? {} : {
                 rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1),
                 hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
+                shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1),
+                concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1),
+                pattoTurns: Math.max(0, (p.pattoTurns ?? 0) - 1),
+                armorForgeTurns: Math.max(0, (p.armorForgeTurns ?? 0) - 1),
+                selfAdvTurns: Math.max(0, (p.selfAdvTurns ?? 0) - 1),
+                ...tickEagleEnd(p),
                 aidBuff: false,
-                bonusActionUsed: false,
+                bonusActionUsed: false, itemUsedThisTurn: false,
                 actionSurgeActive: false,
                 multiActionsUsed: 0,
               };
@@ -3405,8 +3412,14 @@ export default function Arena() {
           const turnEndPatch = stayingThisTurn ? {} : {
             rageTurns:       Math.max(0, (p.rageTurns ?? 0) - 1),
             hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
+            shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1),
+            concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1),
+            pattoTurns: Math.max(0, (p.pattoTurns ?? 0) - 1),
+            armorForgeTurns: Math.max(0, (p.armorForgeTurns ?? 0) - 1),
+            selfAdvTurns: Math.max(0, (p.selfAdvTurns ?? 0) - 1),
+            ...tickEagleEnd(p),
             aidBuff:         false,
-            bonusActionUsed: false,
+            bonusActionUsed: false, itemUsedThisTurn: false,
             actionSurgeActive: false,
             multiActionsUsed: 0,
           };
@@ -3611,7 +3624,7 @@ export default function Arena() {
             const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
             const newMdAtk  = Math.max(0, prevMdAtk - 1);
             const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, actionUsesLeft: newUses };
+            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, actionUsesLeft: newUses };
           }
           return p;
         });
@@ -3697,7 +3710,8 @@ export default function Arena() {
             const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
             const newMdAtk  = Math.max(0, prevMdAtk - 1);
             const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), selfAdvTurns: Math.max(0, (p.selfAdvTurns ?? 0) - 1), actionUsesLeft: newUses };
+            // Timer turn-based: NON decrementati qui — solo a fine turno (turnEndDecays).
+            return { ...p, defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
           }
           return p;
         });
@@ -3707,16 +3721,25 @@ export default function Arena() {
         if (alive.length === 1) {
           return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
-        // Multi-azione (Monaco x3, Ladro x3): non avanza il turno finché restano azioni.
+        // Multi-azione (Monaco x2, Ladro x2): non avanza il turno finché restano azioni.
         const me = m.players.find(p => p.id === currentUser.uid);
         const maxActions = getMaxActionsPerTurn(attackerSnap, me);
         const usedSoFar = me?.multiActionsUsed ?? 0;
         const multiWillStay = (usedSoFar + 1) < maxActions;
         const newMultiUsed = multiWillStay ? usedSoFar + 1 : 0;
         const preservedBonusUsed = !!me?.bonusActionUsed;
+        const preservedItemUsed  = !!me?.itemUsedThisTurn;
         const turnEndDecaysSneak = multiWillStay ? {} : {
           attackDisadvantageTurns: Math.max(0, (me?.attackDisadvantageTurns ?? 0) - 1),
           weaponLockTurns: Math.max(0, (me?.weaponLockTurns ?? 0) - 1),
+          shieldSkillTurns: Math.max(0, (me?.shieldSkillTurns ?? 0) - 1),
+          rageTurns: Math.max(0, (me?.rageTurns ?? 0) - 1),
+          hunterMarkTurns: Math.max(0, (me?.hunterMarkTurns ?? 0) - 1),
+          concentrationTurns: Math.max(0, (me?.concentrationTurns ?? 0) - 1),
+          pattoTurns: Math.max(0, (me?.pattoTurns ?? 0) - 1),
+          armorForgeTurns: Math.max(0, (me?.armorForgeTurns ?? 0) - 1),
+          selfAdvTurns: Math.max(0, (me?.selfAdvTurns ?? 0) - 1),
+          ...tickEagleEnd(me || {}),
         };
         const playersWithMultiState = players.map(p =>
           p.id === currentUser.uid
@@ -3725,6 +3748,7 @@ export default function Arena() {
                 turnSkillUsed:     multiWillStay ? true : false,
                 turnWeaponsUsed:   multiWillStay ? (me?.turnWeaponsUsed || []) : [],
                 bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
+                itemUsedThisTurn:  multiWillStay ? !!preservedItemUsed    : false,
                 extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
                 actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false,
                 ...turnEndDecaysSneak }
@@ -3797,7 +3821,8 @@ export default function Arena() {
             const newUses = action.maxUses !== undefined
               ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) }
               : uses;
-            return { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, actionUsesLeft: newUses };
+            // Timer turn-based gestiti in turnEndDecaysTriboli (sotto), non qui.
+            return { ...p, defensiveBonus: 0, actionUsesLeft: newUses };
           }
           return p;
         });
@@ -3810,6 +3835,19 @@ export default function Arena() {
         const multiWillStay = (usedSoFar + 1) < maxActions;
         const newMultiUsed = multiWillStay ? usedSoFar + 1 : 0;
         const preservedBonusUsed = !!me?.bonusActionUsed;
+        const preservedItemUsed  = !!me?.itemUsedThisTurn;
+        const turnEndDecaysTriboli = multiWillStay ? {} : {
+          attackDisadvantageTurns: Math.max(0, (me?.attackDisadvantageTurns ?? 0) - 1),
+          weaponLockTurns: Math.max(0, (me?.weaponLockTurns ?? 0) - 1),
+          shieldSkillTurns: Math.max(0, (me?.shieldSkillTurns ?? 0) - 1),
+          rageTurns: Math.max(0, (me?.rageTurns ?? 0) - 1),
+          hunterMarkTurns: Math.max(0, (me?.hunterMarkTurns ?? 0) - 1),
+          concentrationTurns: Math.max(0, (me?.concentrationTurns ?? 0) - 1),
+          pattoTurns: Math.max(0, (me?.pattoTurns ?? 0) - 1),
+          armorForgeTurns: Math.max(0, (me?.armorForgeTurns ?? 0) - 1),
+          selfAdvTurns: Math.max(0, (me?.selfAdvTurns ?? 0) - 1),
+          ...tickEagleEnd(me || {}),
+        };
         const playersWithMultiState = updatedPlayers.map(p =>
           p.id === currentUser.uid
             ? { ...p,
@@ -3817,8 +3855,10 @@ export default function Arena() {
                 turnSkillUsed:     multiWillStay ? true : false,
                 turnWeaponsUsed:   multiWillStay ? (me?.turnWeaponsUsed || []) : [],
                 bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
+                itemUsedThisTurn:  multiWillStay ? !!preservedItemUsed    : false,
                 extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
-                actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false }
+                actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false,
+                ...turnEndDecaysTriboli }
             : p
         );
         const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
@@ -4041,15 +4081,16 @@ export default function Arena() {
           return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
         }
         if (p.id === currentUser.uid) {
-          const newArmorForge = Math.max(0, (p.armorForgeTurns ?? 0) - 1);
           // Magic-detect counter: scala 1 per attacco. Si svuota (spegne il buff) solo a contatore=0.
           const prevMdAtk = p.magicDetectAttacks ?? (p.magicDetectActive ? 1 : 0);
           const newMdAtk  = Math.max(0, prevMdAtk - 1);
           const newMd     = newMdAtk > 0 ? p.magicDetectActive : false;
-          const newSelfAdv = action.grantsAdvTurns
-            ? action.grantsAdvTurns
-            : Math.max(0, (p.selfAdvTurns ?? 0) - 1);
-          const up = { ...p, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), pattoTurns: Math.max(0, (p.pattoTurns ?? 0) - 1), ...tickEagleEnd(p), armorForgeTurns: newArmorForge, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), selfAdvTurns: newSelfAdv };
+          // Attacco Poderoso: SET di selfAdvTurns (buff appena attivato).
+          // Il tick "−1 per turno" è gestito in turnEndDecays.
+          const selfAdvPatch = action.grantsAdvTurns ? { selfAdvTurns: action.grantsAdvTurns } : {};
+          // Timer turn-based (Furia/Hunter Mark/Scudo/Patto/Forgia/Concentr/Aquila):
+          // NON decrementati qui — si decrementano a fine turno (turnEndDecays).
+          const up = { ...p, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...selfAdvPatch };
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -4069,17 +4110,28 @@ export default function Arena() {
           participantsAwarded: newParticipantsAwarded,
           logs: [...allLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
-      // Multi-azione (Monaco x3, Ladro x3, Scatto d'Azione +1): non avanza il turno finché restano azioni.
+      // Multi-azione (Monaco x2, Ladro x2, Scatto d'Azione +1): non avanza il turno finché restano azioni.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
       const usedSoFar = meBefore?.multiActionsUsed ?? 0;
       const stayingThisTurn = (usedSoFar + 1) < maxActions;
       const newMultiUsed = stayingThisTurn ? usedSoFar + 1 : 0;
-      // bonusActionUsed deve persistere per l'intero turno del giocatore: si resetta solo quando il turno avanza davvero.
+      // bonusActionUsed / itemUsedThisTurn devono persistere per l'intero turno del giocatore:
+      // si resettano solo quando il turno avanza davvero.
       const preservedBonusUsed = !!meBefore?.bonusActionUsed;
+      const preservedItemUsed  = !!meBefore?.itemUsedThisTurn;
+      // Timer "per N turni": decrementati SOLO a fine turno (non per ogni multi-azione).
       const turnEndDecays = stayingThisTurn ? {} : {
         attackDisadvantageTurns: Math.max(0, (meBefore?.attackDisadvantageTurns ?? 0) - 1),
         weaponLockTurns: Math.max(0, (meBefore?.weaponLockTurns ?? 0) - 1),
+        shieldSkillTurns: Math.max(0, (meBefore?.shieldSkillTurns ?? 0) - 1),
+        rageTurns: Math.max(0, (meBefore?.rageTurns ?? 0) - 1),
+        hunterMarkTurns: Math.max(0, (meBefore?.hunterMarkTurns ?? 0) - 1),
+        concentrationTurns: Math.max(0, (meBefore?.concentrationTurns ?? 0) - 1),
+        pattoTurns: Math.max(0, (meBefore?.pattoTurns ?? 0) - 1),
+        armorForgeTurns: Math.max(0, (meBefore?.armorForgeTurns ?? 0) - 1),
+        selfAdvTurns: action.grantsAdvTurns ? action.grantsAdvTurns : Math.max(0, (meBefore?.selfAdvTurns ?? 0) - 1),
+        ...tickEagleEnd(meBefore || {}),
       };
       // 🗡 Ladro: traccia le armi usate nel turno (ogni mano una sola volta).
       const _rogueAtt = isRogueClass((attackerSnap?.class || "").toLowerCase());
@@ -4093,6 +4145,7 @@ export default function Arena() {
               turnWeaponsUsed:   stayingThisTurn ? _accWeaponsUsed : [],
               turnSkillUsed:     stayingThisTurn ? !!meBefore?.turnSkillUsed : false,
               bonusActionUsed:   stayingThisTurn ? !!preservedBonusUsed   : false,
+              itemUsedThisTurn:  stayingThisTurn ? !!preservedItemUsed    : false,
               extraTurnActive:   stayingThisTurn ? !!p.extraTurnActive    : false,
               actionSurgeActive: stayingThisTurn ? !!p.actionSurgeActive  : false,
               ...turnEndDecays }
@@ -4154,7 +4207,7 @@ export default function Arena() {
         const maxHp = mySnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, actionUsesLeft: newUses };
+        return { ...p, hp: Math.min(maxHp, p.hp + totalHeal), shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, actionUsesLeft: newUses };
       });
       const log = { pub: `💨 ${myName} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
@@ -5051,7 +5104,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) } : p
       );
       const log = reason === "invisible"
         ? `👻 ${myName} non riesce a colpire un bersaglio invisibile e salta il turno.`
@@ -5071,7 +5124,7 @@ export default function Arena() {
       const remaining = Math.max(0, (meBefore?.controlLostTurns ?? 0) - 1);
       const players = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) }
+          ? { ...p, controlLostTurns: remaining, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) }
           : p
       );
       const log = `🌀 ${myName} è sotto controllo e perde il turno (${remaining} turni rimanenti).`;
@@ -5086,7 +5139,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const players = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) } : p
+        p.id === currentUser.uid ? { ...p, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) } : p
       );
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} termina il turno volontariamente.`] };
@@ -5109,7 +5162,7 @@ export default function Arena() {
           multiActionsUsed: 0,
           turnWeaponsUsed: [],
           turnSkillUsed: false,
-          bonusActionUsed: false,
+          bonusActionUsed: false, itemUsedThisTurn: false,
           defensiveBonus: 0,
           actionSurgeActive: false,
           bardicInspirationActive: false,
@@ -5172,7 +5225,7 @@ export default function Arena() {
       const restoredMaxHp = myPData?.preWildShapeMaxHp ?? myPData?.maxHp ?? restoredHp;
       const updatedPlayers = m.players.map(p =>
         p.id === currentUser.uid
-          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, ...tickEagleEnd(p) }
+          ? { ...p, hp: restoredHp, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null, multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false, ...tickEagleEnd(p) }
           : p
       );
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
@@ -5304,7 +5357,8 @@ export default function Arena() {
           // Tocco Vampirico: cura il caster.
           const myMaxHp = attackerSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
           const healedHp = vampHeal > 0 ? Math.min(myMaxHp, (p.hp ?? 0) + vampHeal) : (p.hp ?? 0);
-          return { ...p, hp: healedHp, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), ...tickEagleEnd(p), defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, bardicInspirationActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+          // Timer turn-based gestiti in turnEndDecaysSpell (sotto), non qui.
+          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
         }
         return { ...p, ...consumeInvisibility(p) };
       });
@@ -5313,22 +5367,32 @@ export default function Arena() {
       const alive = players.filter(p => p.hp > 0);
       const absorbLogArr = spellAbsorbedLog ? [spellAbsorbedLog] : [];
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      // Multi-azione: Monaco x3, Ladro x3, +1 se Passo Spedito attivo.
+      // Multi-azione: Monaco x2, Ladro x2, +1 se Passo Spedito attivo.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
       const usedSoFar = meBefore?.multiActionsUsed ?? 0;
       const multiWillStay = (usedSoFar + 1) < maxActions;
       const newMultiUsed = multiWillStay ? usedSoFar + 1 : 0;
       const preservedBonusUsed = !!meBefore?.bonusActionUsed;
+      const preservedItemUsed  = !!meBefore?.itemUsedThisTurn;
       const turnEndDecaysSpell = multiWillStay ? {} : {
         attackDisadvantageTurns: Math.max(0, (meBefore?.attackDisadvantageTurns ?? 0) - 1),
         weaponLockTurns: Math.max(0, (meBefore?.weaponLockTurns ?? 0) - 1),
+        shieldSkillTurns: Math.max(0, (meBefore?.shieldSkillTurns ?? 0) - 1),
+        rageTurns: Math.max(0, (meBefore?.rageTurns ?? 0) - 1),
+        hunterMarkTurns: Math.max(0, (meBefore?.hunterMarkTurns ?? 0) - 1),
+        concentrationTurns: Math.max(0, (meBefore?.concentrationTurns ?? 0) - 1),
+        pattoTurns: Math.max(0, (meBefore?.pattoTurns ?? 0) - 1),
+        armorForgeTurns: Math.max(0, (meBefore?.armorForgeTurns ?? 0) - 1),
+        selfAdvTurns: Math.max(0, (meBefore?.selfAdvTurns ?? 0) - 1),
+        ...tickEagleEnd(meBefore || {}),
       };
       const playersWithMultiState = players.map(p =>
         p.id === currentUser.uid
           ? { ...p,
               multiActionsUsed: newMultiUsed,
               bonusActionUsed:   multiWillStay ? !!preservedBonusUsed   : false,
+              itemUsedThisTurn:  multiWillStay ? !!preservedItemUsed    : false,
               extraTurnActive:   multiWillStay ? !!p.extraTurnActive    : false,
               actionSurgeActive: multiWillStay ? !!p.actionSurgeActive  : false,
               ...turnEndDecaysSpell }
@@ -5560,14 +5624,14 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
-  // ── ITEMS ──────────────────────────────────────────────────────────────────
+  // ── ITEMS — azione gratuita: non consuma azione né bonus action, ma 1 sola per turno ──
   const useItem = async (matchId, itemKey, targetId) => {
     const myName  = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
     const item    = ARENA_ITEMS.find(i => i.key === itemKey);
     if (!item) return;
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
-    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    if (me?.itemUsedThisTurn) { alert("⚠ Hai già usato un oggetto questo turno."); return; }
 
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -5586,21 +5650,21 @@ export default function Arena() {
             const { total: heal, rolls: healRolls } = rollDmg("2d12");
             const maxHp = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? 70;
             const newHp = Math.min(maxHp, (p.hp || 0) + heal);
-            log = { pub: `🧪 ${myName} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · bonus action`, ts: _itemTs };
-            return { ...p, hp: newHp, itemUsesLeft: newUses, bonusActionUsed: true };
+            log = { pub: `🧪 ${myName} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · azione gratuita`, ts: _itemTs };
+            return { ...p, hp: newHp, itemUsesLeft: newUses, itemUsedThisTurn: true };
           }
           if (itemKey === "pozione_veleno") {
-            return { ...p, itemUsesLeft: newUses, bonusActionUsed: true };
+            return { ...p, itemUsesLeft: newUses, itemUsedThisTurn: true };
           }
-          return { ...p, itemUsesLeft: newUses, bonusActionUsed: true };
+          return { ...p, itemUsesLeft: newUses, itemUsedThisTurn: true };
         }
         if (itemKey === "bomba" && p.id === targetId) {
           const { total: dmg, rolls: bombRolls } = rollDmg("2d6");
-          log = { pub: `💣 ${myName} lancia una Bomba su ${p.name} [🎲${bombRolls}=${dmg}] — ${dmg} danni! · bonus action`, ts: _itemTs };
+          log = { pub: `💣 ${myName} lancia una Bomba su ${p.name} [🎲${bombRolls}=${dmg}] — ${dmg} danni! · azione gratuita`, ts: _itemTs };
           return { ...p, hp: Math.max(0, p.hp - dmg) };
         }
         if (itemKey === "pozione_veleno" && p.id === targetId) {
-          log = { pub: `☠ ${myName} lancia Pozione di Veleno su ${p.name} — subirà 1d6 veleno al prossimo turno! · bonus action`, ts: _itemTs };
+          log = { pub: `☠ ${myName} lancia Pozione di Veleno su ${p.name} — subirà 1d6 veleno al prossimo turno! · azione gratuita`, ts: _itemTs };
           return { ...p, poisonDoT: true };
         }
         return p;
@@ -5611,7 +5675,7 @@ export default function Arena() {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
           logs: [...m.logs, ...(log ? [log] : []), `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
-      // Bonus action: il turno NON avanza.
+      // Azione gratuita: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, ...(log ? [log] : [])] };
     });
 
@@ -5714,8 +5778,8 @@ export default function Arena() {
           // Sotto controllo: il timer scade → decrementa il contatore invece di applicare la posizione difensiva.
           const wasControlled = (p.controlLostTurns ?? 0) > 0;
           let up = wasControlled
-            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false }
-            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false };
+            ? { ...p, controlLostTurns: Math.max(0, (p.controlLostTurns ?? 0) - 1), actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false }
+            : { ...p, defensiveBonus: 0, actionSurgeActive: false, bardicInspirationActive: false, extraTurnActive: false, ...tickEagleEnd(p), ...consumeInvisibility(p), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1), weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1), multiActionsUsed: 0, turnWeaponsUsed: [], turnSkillUsed: false, bonusActionUsed: false, itemUsedThisTurn: false };
           if (wasControlled && !hasPendingCtrl) newLogs2.push(`🌀 ${p.name} è sotto controllo: turno saltato (${up.controlLostTurns} rimanenti).`);
           if (hasPendingDex) {
             const d20 = Math.floor(Math.random() * 20) + 1;
@@ -8984,14 +9048,14 @@ export default function Arena() {
                       </div>
                     )}
 
-                    {/* ── Oggetti (Bonus Action) ── */}
+                    {/* ── Oggetti (Azione Gratuita · 1/turno) ── */}
                     {!hasPendingSave && (() => {
                       const myItemKeys = arenaMeta.characterSnapshots?.[currentUser?.uid]?.selectedItemKeys || [];
                       if (myItemKeys.length === 0) return null;
                       const myItemUsesLeft = myPlayer?.itemUsesLeft || {};
                       const itemCountsInSnap = {};
                       myItemKeys.forEach(k => { itemCountsInSnap[k] = (itemCountsInSnap[k] || 0) + 1; });
-                      const baUsed = !!myPlayer?.bonusActionUsed;
+                      const itemUsed = !!myPlayer?.itemUsedThisTurn;
                       return (
                         <div className="items-row">
                           {Object.entries(itemCountsInSnap).map(([key]) => {
@@ -9000,18 +9064,18 @@ export default function Arena() {
                             const uses   = myItemUsesLeft[key] ?? 0;
                             const total  = itemCountsInSnap[key];
                             const needsTarget = key === "bomba" || key === "pozione_veleno";
-                            const disabled    = uses <= 0 || (needsTarget && !chosenTargetId) || baUsed;
-                            const titleStr = baUsed ? "Bonus action già usata questo turno" : `${item.info} · bonus action`;
+                            const disabled    = uses <= 0 || (needsTarget && !chosenTargetId) || itemUsed;
+                            const titleStr = itemUsed ? "Oggetto già usato questo turno" : `${item.info} · azione gratuita (1/turno)`;
                             return (
                               <button key={key}
-                                className={`btn-item bonus-action ${uses <= 0 || baUsed ? "no-uses" : ""}`}
+                                className={`btn-item bonus-action ${uses <= 0 || itemUsed ? "no-uses" : ""}`}
                                 disabled={disabled}
                                 title={titleStr}
                                 onClick={() => useItem(m.matchId, key, needsTarget ? chosenTargetId : null)}>
-                                <span className="bonus-action-tag">⚡ Bonus</span>
+                                <span className="bonus-action-tag">🆓 Gratis</span>
                                 <span className="item-icon">{item.icon}</span>
                                 <span className="item-name">{item.name}</span>
-                                <span className="item-uses">{baUsed ? "⚡" : `${uses}/${total}`}</span>
+                                <span className="item-uses">{itemUsed ? "⏳" : `${uses}/${total}`}</span>
                               </button>
                             );
                           })}
