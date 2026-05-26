@@ -487,30 +487,30 @@ const RANGER_PETS = {
   },
   spider: {
     key: "spider", name: "Ragno", icon: "🕷",
-    info: "Morde e intrappola · veleno 1d4/2t + TS FOR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
+    info: "Bonus action · morde e intrappola · veleno 1d4/2t + TS FOR (CD 13) · fallisce 2t · supera 1t · 2 cariche",
     action: {
       name: "Morso del Ragno", hitBonus: 0, damage: "—", statKey: null,
-      type: "skill", icon: "🕷", info: "Veleno 1d4 per 2 turni + TS FOR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
-      special: "pet_spider", saveAbility: "str", saveDC: 13, maxUses: 2,
+      type: "skill", icon: "🕷", info: "Bonus Action · veleno 1d4 per 2 turni + TS FOR (CD 13) · fallisce: salta 2 turni · supera: salta 1 turno · 2 cariche",
+      special: "pet_spider", saveAbility: "str", saveDC: 13, maxUses: 2, bonusAction: true,
     },
   },
   eagle: {
     key: "eagle", name: "Aquila", icon: "🦅",
-    info: "Picchiata · 1d4 danni + accecato + svantaggio per 3 turni · 2 cariche",
+    info: "Bonus action · picchiata · 1d4 danni + accecato + svantaggio per 3 turni · 2 cariche",
     action: {
       name: "Picchiata dell'Aquila", hitBonus: 0, damage: "1d4", statKey: null,
-      type: "skill", icon: "🦅", info: "1d4 danni + accecato + svantaggio per 3 turni · 2 cariche",
-      special: "pet_eagle", maxUses: 2,
+      type: "skill", icon: "🦅", info: "Bonus Action · 1d4 danni + accecato + svantaggio per 3 turni · 2 cariche",
+      special: "pet_eagle", maxUses: 2, bonusAction: true,
     },
   },
   drago: {
     key: "drago", name: "Drago di Smeraldo", icon: "🐉",
-    info: "Unico (Bottega) · 3d6+3 danni auto-hit + cura 1d6 · 2 cariche",
+    info: "Unico (Bottega) · bonus action · 3d6+3 danni auto-hit + cura 1d6 · 2 cariche",
     requiresBuff: "rangerUniquePet",
     action: {
       name: "Soffio del Drago", hitBonus: 0, damage: "3d6+3", statKey: null,
-      type: "skill", icon: "🐉", info: "3d6+3 danni auto-hit + cura 1d6 PF · 2 cariche",
-      special: "pet_drago", maxUses: 2,
+      type: "skill", icon: "🐉", info: "Bonus Action · 3d6+3 danni auto-hit + cura 1d6 PF · 2 cariche",
+      special: "pet_drago", maxUses: 2, bonusAction: true,
     },
   },
 };
@@ -797,7 +797,7 @@ const SMITE_ACTION = {
 // Lay of Hands — aggiunto automaticamente al Paladino (pool = 1/3 HP)
 const LAY_OF_HANDS_ACTION = {
   name: "Lay of Hands", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🙏", info: "Cura dalla pozza (1/3 HP max) · scegli l'importo", special: "lay_of_hands",
+  type: "skill", icon: "🙏", info: "Bonus Action · cura dalla pozza (1/3 HP max) · scegli l'importo", special: "lay_of_hands", bonusAction: true,
 };
 
 // Recupero Arcano (Wizard) — ripristina 2 slot lv1 e 1 slot lv2, 1 uso
@@ -942,15 +942,15 @@ function readStealthAdvTurns(p)    { return p?.stealthAdvTurns    ?? p?.stealthT
 function readStealthDisadvTurns(p) { return p?.stealthDisadvTurns ?? p?.stealthTurns ?? 0; }
 function readStealthAnyTurns(p)    { return Math.max(readStealthAdvTurns(p), readStealthDisadvTurns(p)); }
 
-// Numero massimo di azioni per turno: Monaco = 3, Ladro = 3, altrimenti 1.
+// Numero massimo di azioni per turno: Monaco = 2, Ladro = 2, altrimenti 1.
 // +1 se il giocatore ha extraTurnActive (Passo Spedito).
 // +1 se Scatto d'Azione è attivo (Guerriero) — concede un'azione extra per questo turno.
 function getMaxActionsPerTurn(snap, matchPlayer) {
   if (!snap) return 1;
   const cls = (snap.class || "").toLowerCase();
   let base = 1;
-  if (isMonkClass(cls)) base = 3;
-  else if (isRogueClass(cls)) base = 3;
+  if (isMonkClass(cls)) base = 2;
+  else if (isRogueClass(cls)) base = 2;
   if (matchPlayer?.extraTurnActive) base += 1;
   if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
@@ -2936,6 +2936,43 @@ export default function Arena() {
       return; // watcher re-fires; AI then takes its action
     }
 
+    // Apply pending bleedDoT tick (sanguinamento da Triboli) — stack indipendente dal veleno.
+    if (aiPlayer.bleedDoT && (aiPlayer.bleedResolvedTurnToken || "") !== (m.turnExpiry || "")) {
+      const dice = aiPlayer.bleedDoTDice || "1d6";
+      const { total: bleedDmg, rolls: bleedRolls } = rollDmg(dice);
+      const sourceLabel = aiPlayer.bleedDoTSourceLabel || "sanguinamento";
+      const icon = aiPlayer.bleedDoTIcon || "🩸";
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const rawPlayers = x.players.map(p => {
+          if (p.id !== aiId) return p;
+          const remaining = Math.max(0, (p.bleedDoTTurns ?? 1) - 1);
+          const stillAfflicted = remaining > 0;
+          return {
+            ...p,
+            hp: Math.max(0, (p.hp ?? 0) - bleedDmg),
+            bleedDoT: stillAfflicted,
+            bleedDoTTurns: remaining,
+            bleedResolvedTurnToken: x.turnExpiry || "",
+            ...(stillAfflicted ? {} : {
+              bleedDoTDice: null, bleedDoTSourceLabel: null, bleedDoTIcon: null,
+            }),
+          };
+        });
+        const log = `${icon} ${aiName} subisce il ${sourceLabel}: ${bleedDmg} danni [🎲${dice}=${bleedRolls}]!`;
+        const meAfter = rawPlayers.find(p => p.id === aiId);
+        if ((meAfter?.hp ?? 0) <= 0) {
+          const alive = rawPlayers.filter(p => p.hp > 0);
+          if (alive.length === 1) {
+            return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs: [...x.logs, log, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+          }
+        }
+        return { ...x, players: rawPlayers, logs: [...x.logs, log] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return;
+    }
+
     // ── Control budget burning down without a pending save (rare edge case) ──
     if ((aiPlayer.controlLostTurns ?? 0) > 0 && !aiPlayer.pendingControlSave) {
       const remaining = Math.max(0, (aiPlayer.controlLostTurns ?? 0) - 1);
@@ -3153,9 +3190,9 @@ export default function Arena() {
         }
 
         // Multi-action logic — only damage spells get the multi-action
-        // privilege (rogue/monk triple-tap). Control/save_dot/heal/buff
+        // privilege (rogue/monk double-tap). Control/save_dot/heal/buff
         // always end the AI's turn, matching the human handlers.
-        const baseMax = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 3 : 1;
+        const baseMax = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 2 : 1;
         const effectiveMax = baseMax + ((aiPlayer.actionSurgeActive ? 1 : 0));
         const isDamageSpell = _picked.kind === "save_damage";
         const stayingThisTurn = isDamageSpell && (usedSoFar + 1) < effectiveMax;
@@ -3333,7 +3370,7 @@ export default function Arena() {
 
     // Multi-action arithmetic mirrors the existing player flow at line ~3070:
     // staying-this-turn iff (used+1) < maxActions. Action Surge bumps cap.
-    const baseMaxActions = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 3 : 1;
+    const baseMaxActions = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 2 : 1;
     const effectiveMaxActions = baseMaxActions + (surgePatch.actionSurgeActive ? 1 : 0) + (aiPlayer.actionSurgeActive ? 1 : 0);
     const stayingThisTurn = (usedSoFar + 1) < effectiveMaxActions;
 
@@ -3748,12 +3785,12 @@ export default function Arena() {
           if (p.id === targetId) return {
             ...p,
             attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, turns),
-            poisonDoT: true,
-            poisonDoTTurns: Math.max(p.poisonDoTTurns ?? 0, bleedTurns),
-            poisonDoTDice: bleedDice,
-            poisonDoTSourceLabel: "sanguinamento",
-            poisonDoTNoun: "sanguinante",
-            poisonDoTIcon: "🩸",
+            bleedDoT: true,
+            bleedDoTTurns: Math.max(p.bleedDoTTurns ?? 0, bleedTurns),
+            bleedDoTDice: bleedDice,
+            bleedDoTSourceLabel: "sanguinamento",
+            bleedDoTNoun: "sanguinante",
+            bleedDoTIcon: "🩸",
           };
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
@@ -4364,6 +4401,9 @@ export default function Arena() {
 
   const handlePetSpider = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
+    const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = myMatch?.players.find(p => p.id === currentUser.uid);
+    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     const targetSnap = arenaMeta.characterSnapshots?.[targetId];
     const targetName = targetSnap?.name || "?";
     const saveAbility = action.saveAbility || "str";
@@ -4374,7 +4414,7 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
+          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
         }
         if (p.id === targetId) return {
           ...p,
@@ -4390,16 +4430,19 @@ export default function Arena() {
         };
         return p;
       });
-      const log = `🕷 Il ragno di ${myName} morde e intrappola ${targetName} — veleno 🕷 1d4 a inizio turno per 2 turni · TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi.`;
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
+      const log = `🕷 Il ragno di ${myName} morde e intrappola ${targetName} — veleno 🕷 1d4 a inizio turno per 2 turni · TS ${SAVE_LABEL[saveAbility]} (CD ${saveDC}) ogni turno per liberarsi. · bonus action`;
+      // Bonus action: il turno NON avanza.
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
   const handlePetEagle = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
-    const { total: rawDmg, rolls } = rollDmg(action.damage);
     const _eagleMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = _eagleMatch?.players.find(p => p.id === currentUser.uid);
+    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
     const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _eagleMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -4409,16 +4452,17 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
+          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg), blindDebuff: true, eagleDebuffTurns: 3 };
         return p;
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🦅 L'aquila di ${myName} si avventa su ${targetName}! 🎲(${rolls})=${dmg} danni · accecato + svantaggio per 3 turni.`;
+      const log = `🦅 L'aquila di ${myName} si avventa su ${targetName}! 🎲(${rolls})=${dmg} danni · accecato + svantaggio per 3 turni. · bonus action`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      // Bonus action: il turno NON avanza.
+      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -4426,8 +4470,10 @@ export default function Arena() {
   // ── DRAGO DI SMERALDO (Ranger unique) — auto-hit + cura caster ──────────
   const handlePetDrago = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
-    const { total: rawDmg, rolls } = rollDmg(action.damage);
     const _dragoMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = _dragoMatch?.players.find(p => p.id === currentUser.uid);
+    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    const { total: rawDmg, rolls } = rollDmg(action.damage);
     const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _dragoMatch?.players.find(p => p.id === targetId), false);
     const { total: heal, rolls: healRolls } = rollDmg("1d6");
     const updatedMatches = arenaMeta.matches.map(m => {
@@ -4439,16 +4485,17 @@ export default function Arena() {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           const maxHp = p.maxHp || p.hp;
-          return { ...p, hp: Math.min(maxHp, p.hp + heal), ...tickEagleEnd(p), actionUsesLeft: newUses };
+          return { ...p, hp: Math.min(maxHp, p.hp + heal), bonusActionUsed: true, actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
         return p;
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🐉 Il Drago di Smeraldo di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni e cura il padrone 🎲(${healRolls})=${heal} PF!`;
+      const log = `🐉 Il Drago di Smeraldo di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni e cura il padrone 🎲(${healRolls})=${heal} PF! · bonus action`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      // Bonus action: il turno NON avanza.
+      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -4773,10 +4820,51 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
-  // ── LAY OF HANDS ───────────────────────────────────────────────────────────
+  // ── BLEED DOT — sanguinamento (Triboli del Ladro). Stack indipendente dal veleno. ──
+  const handleResolveBleedDoT = async (matchId) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
+    const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = myMatch?.players.find(p => p.id === currentUser.uid);
+    const turnTokenAtClick = myMatch?.turnExpiry || "";
+    if (me?.bleedResolvedTurnToken && me.bleedResolvedTurnToken === turnTokenAtClick) return;
+    const dice = me?.bleedDoTDice || "1d6";
+    const sourceLabel = me?.bleedDoTSourceLabel || "sanguinamento";
+    const icon = me?.bleedDoTIcon || "🩸";
+    const { total: bleedDmg, rolls: bleedRolls } = rollDmg(dice);
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const rawPlayers = m.players.map(p => {
+        if (p.id !== currentUser.uid) return p;
+        const remaining = Math.max(0, (p.bleedDoTTurns ?? 1) - 1);
+        const stillAfflicted = remaining > 0;
+        const patch = {
+          ...p,
+          hp: Math.max(0, (p.hp ?? 0) - bleedDmg),
+          bleedDoT: stillAfflicted,
+          bleedDoTTurns: remaining,
+          bleedResolvedTurnToken: m.turnExpiry || "",
+        };
+        if (!stillAfflicted) {
+          patch.bleedDoTDice = null;
+          patch.bleedDoTNoun = null;
+          patch.bleedDoTSourceLabel = null;
+          patch.bleedDoTIcon = null;
+        }
+        return patch;
+      });
+      const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
+      const log = `${icon} ${myName} subisce il ${sourceLabel}: ${bleedDmg} danni [🎲${dice}=${bleedRolls}]!`;
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+  };
+
+  // ── LAY OF HANDS — Bonus Action: cura senza terminare il turno ─────────────
   const handleLayOfHands = async (matchId, healAmt) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Paladino";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+    const me = myMatch?.players.find(p => p.id === currentUser.uid);
+    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
@@ -4784,10 +4872,11 @@ export default function Arena() {
         const maxHp = p.maxHp || p.hp;
         const newHp = Math.min(maxHp, (p.hp || 0) + healAmt);
         const newPool = Math.max(0, (p.layOfHandsPool ?? 0) - healAmt);
-        return { ...p, hp: newHp, layOfHandsPool: newPool, ...tickEagleEnd(p) };
+        return { ...p, hp: newHp, layOfHandsPool: newPool, bonusActionUsed: true };
       });
-      const log = `🙏 ${myName} usa Lay of Hands → cura sé stesso di ${healAmt} HP`;
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
+      const log = `🙏 ${myName} usa Lay of Hands → cura sé stesso di ${healAmt} HP · bonus action`;
+      // Bonus action: il turno NON avanza.
+      return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     setShowLayOfHandsPicker(false);
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -5658,6 +5747,18 @@ export default function Arena() {
             up.poisonResolvedTurnToken = match.turnExpiry || "";
             if (remaining === 0) up.poisonDoTDice = null;
             newLogs2.push(`☠ ${p.name} subisce il veleno automaticamente: ${poisonDmgAuto} danni [${dice}]!`);
+            autoRolledSave = true;
+          }
+          if (p.bleedDoT && (p.bleedResolvedTurnToken || "") !== (match.turnExpiry || "")) {
+            const dice = p.bleedDoTDice || "1d6";
+            const { total: bleedDmgAuto } = rollDmg(dice);
+            up.hp = Math.max(0, (up.hp ?? 0) - bleedDmgAuto);
+            const remaining = Math.max(0, (p.bleedDoTTurns ?? 1) - 1);
+            up.bleedDoT = remaining > 0;
+            up.bleedDoTTurns = remaining;
+            up.bleedResolvedTurnToken = match.turnExpiry || "";
+            if (remaining === 0) up.bleedDoTDice = null;
+            newLogs2.push(`🩸 ${p.name} subisce il sanguinamento automaticamente: ${bleedDmgAuto} danni [${dice}]!`);
             autoRolledSave = true;
           }
           if (hasPendingCtrl) {
@@ -7496,9 +7597,10 @@ export default function Arena() {
             const pendingConSave = !!myPlayer?.pendingConSave;
             const pendingControlSave = !!myPlayer?.pendingControlSave;
             const pendingPoisonDoT = !!myPlayer?.poisonDoT && (myPlayer?.poisonResolvedTurnToken || "") !== (m.turnExpiry || "");
+            const pendingBleedDoT  = !!myPlayer?.bleedDoT && (myPlayer?.bleedResolvedTurnToken || "") !== (m.turnExpiry || "");
             const pendingSaveDot = !!myPlayer?.pendingSaveDot;
             const isControlLost  = (myPlayer?.controlLostTurns ?? 0) > 0;
-            const hasPendingSave = pendingDexSave || pendingConSave || pendingControlSave || pendingPoisonDoT || pendingSaveDot || isControlLost;
+            const hasPendingSave = pendingDexSave || pendingConSave || pendingControlSave || pendingPoisonDoT || pendingBleedDoT || pendingSaveDot || isControlLost;
             const currentActions = wildShapeForm
               ? (WILD_SHAPES[wildShapeForm]?.actions || [])
               : myActions;
@@ -7775,10 +7877,12 @@ export default function Arena() {
                       if (pool <= 0) {
                         return <div className="btn-wild-shape exhausted">🙏 Lay of Hands — Pozza esaurita</div>;
                       }
+                      const bonusBlocked = !!myPlayer?.bonusActionUsed;
                       return (
                         <button className="btn-wild-shape" onClick={() => { setLayOfHandsAmt(Math.min(1, maxHeal)); setShowLayOfHandsPicker(true); }}
-                          disabled={maxHeal <= 0}>
-                          🙏 Lay of Hands <span className="ws-uses-tag">Pozza: {pool} HP</span>
+                          disabled={maxHeal <= 0 || bonusBlocked}
+                          title={bonusBlocked ? "Bonus action già usata questo turno" : "Bonus action · cura dalla pozza"}>
+                          🙏 Lay of Hands <span className="ws-uses-tag">Bonus · Pozza: {pool} HP{bonusBlocked ? " · ⏳" : ""}</span>
                         </button>
                       );
                     })()}
@@ -8043,6 +8147,21 @@ export default function Arena() {
                         <div className="save-block con">
                           <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.poisonDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.poisonDoTTurns ?? 1} turno/i rimanenti) — poi puoi agire.</p>
                           <button className="btn-saving-throw" onClick={() => handleResolvePoisonDoT(m.matchId)}>
+                            🎲 Subisci danno da {dotSource}
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── Bleed DoT (Triboli del Ladro) — stack indipendente dal veleno ── */}
+                    {!pendingDexSave && !pendingConSave && !pendingControlSave && !pendingSaveDot && !pendingPoisonDoT && pendingBleedDoT && (() => {
+                      const dotIcon   = myPlayer?.bleedDoTIcon || "🩸";
+                      const dotNoun   = myPlayer?.bleedDoTNoun || "sanguinante";
+                      const dotSource = myPlayer?.bleedDoTSourceLabel || "sanguinamento";
+                      return (
+                        <div className="save-block con">
+                          <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.bleedDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.bleedDoTTurns ?? 1} turno/i rimanenti) — poi puoi agire.</p>
+                          <button className="btn-saving-throw" onClick={() => handleResolveBleedDoT(m.matchId)}>
                             🎲 Subisci danno da {dotSource}
                           </button>
                         </div>

@@ -302,8 +302,10 @@ export default function MarketAdmin() {
   const [filter, setFilter] = useState("all");
   const [rarityFilter, setRarityFilter] = useState("all");
   const [rattoFilter, setRattoFilter] = useState("all");
+  const [setNameFilter, setSetNameFilter] = useState("all"); // "all" | "any" | "none" | "<setName>"
   const [sortBy, setSortBy] = useState("none");
   const [searchQuery, setSearchQuery] = useState("");
+  const [descSearchQuery, setDescSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const descRef = useRef(null);
@@ -702,6 +704,15 @@ export default function MarketAdmin() {
   const visibleItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const searchActive = q.length >= 3;
+    const dq = descSearchQuery.trim().toLowerCase();
+    const descSearchActive = dq.length >= 3;
+    // Strip HTML tags ed entità basilari prima del match testuale sulla descrizione.
+    const stripHtml = (s) => String(s || "")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&[a-z]+;/gi, " ")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
     const filtered = items.filter(i => {
       // filtro stato
       if (filter === "active" && !(!i.isSold && (!i.endDate || new Date(i.endDate) > new Date()))) return false;
@@ -717,8 +728,17 @@ export default function MarketAdmin() {
         const lvl = Number(i.minLevel) || 0;
         if (lvl !== Number(rattoFilter)) return false;
       }
+      // filtro set tematico
+      if (setNameFilter !== "all") {
+        const sName = String(i.setPayload?.name || "").trim();
+        if (setNameFilter === "any" && !sName) return false;
+        else if (setNameFilter === "none" && sName) return false;
+        else if (setNameFilter !== "any" && setNameFilter !== "none" && sName !== setNameFilter) return false;
+      }
       // ricerca per nome (attiva solo da 3+ caratteri)
       if (searchActive && !String(i.name || "").toLowerCase().includes(q)) return false;
+      // ricerca nel testo della descrizione (attiva solo da 3+ caratteri, HTML strippato)
+      if (descSearchActive && !stripHtml(i.description).includes(dq)) return false;
       return true;
     });
 
@@ -739,7 +759,17 @@ export default function MarketAdmin() {
       }
     });
     return sorted;
-  }, [items, filter, rarityFilter, rattoFilter, sortBy, searchQuery]);
+  }, [items, filter, rarityFilter, rattoFilter, setNameFilter, sortBy, searchQuery, descSearchQuery]);
+
+  // Elenco dei set distinti presenti nel magazzino (ordinato alfabeticamente)
+  const knownSets = useMemo(() => {
+    const names = new Set();
+    items.forEach(i => {
+      const n = String(i.setPayload?.name || "").trim();
+      if (n) names.add(n);
+    });
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [items]);
 
   const previewRarityKey = (formData.class || "Comune").replace(/\s/g, "");
 
@@ -1285,6 +1315,32 @@ export default function MarketAdmin() {
               <span className="mkadm-search-hint">Servono ancora {3 - searchQuery.trim().length} caratteri</span>
             )}
           </div>
+
+          <div className="mkadm-search-wrap mkadm-search-desc-wrap">
+            <span className="mkadm-search-icon">📝</span>
+            <input
+              type="search"
+              className="mkadm-search-input"
+              placeholder="Cerca nella descrizione (min 3 caratteri)…"
+              value={descSearchQuery}
+              onChange={(e) => setDescSearchQuery(e.target.value)}
+              aria-label="Cerca testo nella descrizione"
+            />
+            {descSearchQuery && (
+              <button
+                type="button"
+                className="mkadm-search-clear"
+                onClick={() => setDescSearchQuery("")}
+                title="Pulisci ricerca descrizione"
+                aria-label="Pulisci ricerca descrizione"
+              >
+                ✕
+              </button>
+            )}
+            {descSearchQuery.trim().length > 0 && descSearchQuery.trim().length < 3 && (
+              <span className="mkadm-search-hint">Servono ancora {3 - descSearchQuery.trim().length} caratteri</span>
+            )}
+          </div>
           <div className="mkadm-filter-tabs">
             {[
               { k: "all", label: "Tutti" },
@@ -1319,6 +1375,23 @@ export default function MarketAdmin() {
               {RATTO_LEVELS_ADMIN.map(l => (
                 <option key={l.lv} value={l.lv}>Lv {l.lv} · {l.name}</option>
               ))}
+            </select>
+            <select
+              className="mkadm-filter mkadm-filter-select"
+              value={setNameFilter}
+              onChange={(e) => setSetNameFilter(e.target.value)}
+              title="Filtra per set tematico"
+            >
+              <option value="all">Set: tutti</option>
+              <option value="any">⛓ Solo oggetti in un set</option>
+              <option value="none">Senza set</option>
+              {knownSets.length > 0 && (
+                <optgroup label="Set esistenti">
+                  {knownSets.map(name => (
+                    <option key={name} value={name}>⛓ {name}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <select
               className="mkadm-filter mkadm-filter-select"
