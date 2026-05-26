@@ -10,7 +10,7 @@ import {
   getCard, ELEMENT_ICON, ELEMENT_PIP, RARITY_COLOR, RARITY_LABEL,
   RARITY_ORDER,
 } from "../../tcg/cards.js";
-import { PACKS, packRarityOdds } from "../../tcg/collection.js";
+import { PACKS } from "../../tcg/collection.js";
 
 /* Returns the kind of celebration ("foil" / "legendary" / "epic") for
    a flipped pack card, or null if nothing special. Mirrors the inline
@@ -267,10 +267,23 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                 )}
                 {pk.premium && <div className="tcg-packcard__tag">Premium</div>}
                 {(() => {
-                  const odds = packRarityOdds(pk.id);
+                  // Qualitative drop hints — we no longer expose raw
+                  // probabilities to players. Each rarity gets a short
+                  // "possibilità di trovare …" descriptor that pairs
+                  // with the coloured rarity dot.
+                  const ODDS_HINT = {
+                    common:    "ne trovi sempre",
+                    uncommon:  "spesso presenti",
+                    rare:      "occasionali",
+                    epic:      "rare",
+                    legendary: "se sei fortunato",
+                  };
                   return (
                     <ul className="tcg-packcard__odds">
-                      {RARITY_ORDER.filter((r) => odds[r] > 0).map((r) => (
+                      <li className="tcg-packcard__oheader">
+                        Possibilità di trovare:
+                      </li>
+                      {RARITY_ORDER.map((r) => (
                         <li key={r}>
                           <span
                             className="tcg-packcard__odot"
@@ -279,16 +292,16 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                           <span className="tcg-packcard__olabel">
                             {RARITY_LABEL[r]}
                           </span>
-                          <span className="tcg-packcard__opct">
-                            {(odds[r] * 100).toFixed(1)}%
+                          <span className="tcg-packcard__ohint">
+                            {ODDS_HINT[r]}
                           </span>
                         </li>
                       ))}
                       <li className="tcg-packcard__ofoil">
                         <span className="tcg-packcard__odot tcg-packcard__odot--foil" />
                         <span className="tcg-packcard__olabel">✨ Foil</span>
-                        <span className="tcg-packcard__opct">
-                          {(odds.foil * 100).toFixed(1)}%
+                        <span className="tcg-packcard__ohint">
+                          tocco di fortuna
                         </span>
                       </li>
                     </ul>

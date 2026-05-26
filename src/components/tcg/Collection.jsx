@@ -98,6 +98,22 @@ export default function Collection({ profile, onBack }) {
     return out;
   }, [collection]);
 
+  // per-rarity ownership — owned uniques / total uniques per tier.
+  // Lets the player see progress on the harder-to-pull rarities.
+  const rarStats = useMemo(() => {
+    const out = {};
+    for (const r of RARITY_ORDER) out[r] = { owned: 0, total: 0 };
+    for (const id of POOL) {
+      const c = getCard(id);
+      const r = c.rarity;
+      const s = out[r];
+      if (!s) continue;
+      s.total += 1;
+      if ((collection[id] || 0) > 0) s.owned += 1;
+    }
+    return out;
+  }, [collection]);
+
   // grand totals (unfiltered)
   const totals = useMemo(() => {
     let copies = 0, uniques = 0;
@@ -145,6 +161,27 @@ export default function Collection({ profile, onBack }) {
                 {ELEMENT_ICON[el]} {s.owned}/{s.total}
               </b>
               <span>{ELEMENT_LABEL[el]}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── per-rarity progress (uniques owned per tier) ──────────── */}
+      <div className="tcg-coll__rarbar">
+        <span className="tcg-coll__rarbar-lbl">Per rarità:</span>
+        {RARITY_ORDER.map((r) => {
+          const s = rarStats[r];
+          const complete = s.total > 0 && s.owned === s.total;
+          return (
+            <div
+              key={r}
+              className={`tcg-coll__rarpip ${complete ? "is-complete" : ""}`}
+              style={{ "--rar": RARITY_COLOR[r] }}
+              title={`${RARITY_LABEL[r]} — ${s.owned} possedute su ${s.total}`}
+            >
+              <span className="tcg-coll__rardot" />
+              <b>{s.owned}/{s.total}</b>
+              <small>{RARITY_LABEL[r]}</small>
             </div>
           );
         })}

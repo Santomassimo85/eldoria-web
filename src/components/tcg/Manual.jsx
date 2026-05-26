@@ -475,32 +475,51 @@ export default function Manual({ onBack }) {
           <p>
             Il mazzo è di <Tag tone="gold">60 carte</Tag>. Terre base{" "}
             <b>illimitate e gratuite</b>; massimo <b>4 copie</b> per ogni altra
-            carta posseduta.
+            carta posseduta (<b>2</b> per le leggendarie).
           </p>
+
+          <h3>🎁 Starter Deck</h3>
           <p>
-            Nel <b>Negozio</b> trovi due tipi di pacchetto:
+            Al primo accesso scegli una classe e ricevi il suo{" "}
+            <Tag tone="gold">Starter Deck</Tag>: un mazzo da 60 carte già
+            costruito, <b>identico per ogni giocatore</b> della stessa classe.
+            Insieme al mazzo ottieni anche una <b>collezione iniziale</b> con
+            copie di tutte le carte dei due colori della classe — così puoi
+            ricostruire il deck come preferisci dal <b>Mazzo</b>.
           </p>
-          <ul>
-            <li>
-              <Tag tone="gold">Pacchetti di Classe</Tag> — 15 carte dei{" "}
-              <b>2 colori</b> della classe scelta (es. Mago = Fuoco + Natura).
-            </li>
-            <li>
-              <Tag tone="orange">Pacchetti Elemento</Tag> — 15 carte di un{" "}
-              <b>solo</b> elemento; <i>Luce</i> e <i>Ombra</i> sono Premium e
-              costano di più.
-            </li>
-          </ul>
+          <Note tone="info">
+            Ogni Starter Deck contiene <b>una sola leggendaria</b> e una
+            distribuzione di rarità bilanciata tra tutte le classi.
+          </Note>
+
+          <h3>🛒 Negozio</h3>
+          <p>
+            Trovi un <Tag tone="gold">Pacchetto di Classe</Tag> per ognuna delle
+            5 classi: 15 carte estratte dai <b>2 colori</b> della classe scelta
+            (es. Mago = Fuoco + Natura). Si compra con monete guadagnate in
+            battaglia.
+          </p>
+          <Note tone="warn">
+            <b>Possibilità di trovare:</b> ogni pacchetto contiene un mix di
+            rarità. Comuni e non comuni sono praticamente garantite; rare ed
+            epiche compaiono occasionalmente; le <b>leggendarie</b> sono{" "}
+            <b>colpi di fortuna</b> rari. Niente percentuali esposte: il
+            piacere di aprire il pack è anche scoprire cosa esce. ✨
+          </Note>
           <Note tone="info">
             Le <b>multiclassi</b> non hanno pacchetti dedicati: si sbloccano
             mescolando carte dei <b>3 colori</b> della combo (es. Templare =
             🔥 + ☀️ + 🌑 → unisci un pack Guerriero a un pack Chierico).
           </Note>
+
+          <h3>🛠️ Mazzo &amp; Collezione</h3>
           <p>
             In <b>Mazzo</b> puoi costruire a mano, usare i filtri/ordinamento,
             l'<b>auto-build di classe</b>, scegliere il <b>dorso</b> delle
             carte e vedere la <b>curva di mana</b>, i colori e i tipi del tuo
-            mazzo. Le monete si guadagnano in battaglia.
+            mazzo. La <b>Collezione</b> mostra tutte le carte esistenti
+            raggruppate per elemento, con il conteggio per rarità e quante ne
+            possiedi.
           </p>
         </Section>
 

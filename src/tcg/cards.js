@@ -111,12 +111,15 @@ export const RARITY_WEIGHT = {
 
 /* FIXED pack odds — identical for every element so the displayed
    percentages are exact. Premium packs (light / darkness) have a
-   LOWER legendary chance (rolled into epic). Each table sums to 1. */
+   LOWER legendary chance (rolled into epic). Each table sums to 1.
+   2026-05-26: legendary chance lowered from 3.0% → 1.0% on standard
+   packs (and 0.5% → 0.3% on premium) so leggendarie feel genuinely
+   rare. The freed share moves into rare/common. */
 export const RARITY_ODDS = {
-  common: 0.42, uncommon: 0.30, rare: 0.17, epic: 0.08, legendary: 0.03,
+  common: 0.43, uncommon: 0.30, rare: 0.18, epic: 0.08, legendary: 0.01,
 };
 export const RARITY_ODDS_PREMIUM = {
-  common: 0.42, uncommon: 0.30, rare: 0.17, epic: 0.105, legendary: 0.005,
+  common: 0.42, uncommon: 0.30, rare: 0.18, epic: 0.097, legendary: 0.003,
 };
 /* every drawn card has this tiny independent chance to be FOIL */
 export const FOIL_CHANCE = 0.02;
@@ -133,6 +136,17 @@ const LEGENDARY_IDS = new Set([
   "lich",        // dark    — Vermilach Cuoredicenere
   "mummylord",   // dark    — Khar-Mut il Risvegliato
   "sylvandrake", // nature  — Verdannil, Drago dei Boschi Antichi
+  // 2026-05-26 — pin previously auto-promoted legendaries (anonymous
+  // names were renamed below) so they don't slip out of the tier
+  // when new cards shift the per-element strength ranking.
+  "irongolem",       // nature  — Lokrim, Sentinella di Ferro
+  "tidal-golem",     // water   — Brionak, Colosso delle Maree
+  // 2026-05-26 — new marquee legendaries (light × 2, water × 1,
+  // nature × 1) so every class lands at ≥5 leggendarie eligible.
+  "featheredseraph", // light   — Selindra, Serafina dei Cieli
+  "archmage",        // light   — Theron, Arcimago Sereno
+  "dragonturtle",    // water   — Thalassyr, Drago-Tartaruga
+  "greendragon",     // nature  — Verdania, Drago Smeraldo
 ]);
 
 /* Epics with proper names — explicit per-element shortlist so the tier
@@ -149,6 +163,10 @@ const EPIC_IDS = new Set([
   "deathknight", "mindflayer", "crimson-lich", "duskfiend", "illithid-warlord",
   // nature
   "totem-giant", "stonegiant", "elderwood", "owlbear", "marsh-brute",
+  // 2026-05-26 expansion — one epic per element using previously
+  // unused art (forces them to stick at the epic tier regardless
+  // of where computeRarities would otherwise place them).
+  "firelord", "yeti", "lightpaladin", "eldritchhorror", "greentreant",
 ]);
 const RARITY_BY_SPELL = {
   s_meteor: "epic", s_disintegrate: "rare", s_raise: "rare",
@@ -396,8 +414,8 @@ const RAW = [
     "", "Scherza, poi incenerisce. In quest'ordine."),
   C("stormmage", "Mago della Tempesta", 4, "stormmage", "🌩️", "fire", 5, 4,
     "", "Parla, e i cieli rispondono col fulmine."),
-  C("irongolem", "Golem di Ferro", 4, "irongolem", "🤖", "nature", 4, 7,
-    "", "Non dorme, non teme, non si arrende."),
+  C("irongolem", "Lokrim, Sentinella di Ferro", 4, "irongolem", "🤖", "nature", 4, 7,
+    "", "Non dorme, non teme, non si arrende. La foresta lo forgiò una sola volta."),
   C("wraithpriest", "Sacerdote Spettrale", 4, "wraithpriest", "🕯️", "darkness", 5, 4,
     "", "Officia messe per dèi dimenticati."),
   C("nalfeshnee", "Nalfeshnee", 4, "nalfeshnee", "🐗", "darkness", 6, 4,
@@ -712,8 +730,8 @@ const RAW = [
     "", "Le sue scaglie recitano incantesimi dimenticati."),
   C("rune-golem", "Golem Runico", 4, "rune-golem", "🪨", "water", 3, 6,
     "", "Le rune lo tengono insieme. Per ora."),
-  C("tidal-golem", "Golem di Marea", 5, "tidal-golem", "🌊", "water", 5, 6,
-    "", "Si dissolve e si ricompone con l'onda."),
+  C("tidal-golem", "Brionak, Colosso delle Maree", 5, "tidal-golem", "🌊", "water", 5, 6,
+    "", "Si dissolve e si ricompone con l'onda. Nessun colpo lo trova due volte."),
   C("conch-warden", "Guardiano Conchiglia", 4, "conch-warden", "🐚", "water", 3, 6,
     "", "Antico come la prima risacca."),
   C("tide-monk", "Monaco delle Maree", 3, "tide-monk", "👊", "water", 3, 3,
@@ -862,6 +880,75 @@ const RAW = [
     { kind: "anthem", p: 1, t: 1 },
     "Le tue creature hanno +1/+1.",
     "Lo sguardo del Gelo nessuno sa dove guardi.", "frostchieftain"),
+
+  /* ============================================================
+     EXPANSION BATCH 2026-05-26 — class-balance pass
+     ------------------------------------------------------------
+     Goal: ogni classe deve avere ≥5 leggendarie eligibili. Si
+     aggiungono 4 nuove leggendarie (Luce ×2, Acqua, Natura), 5
+     nuove epiche e 16 carte minori che attingono dalle ~110
+     illustrazioni rimaste inutilizzate in /public/assets/tgc_card.
+     ============================================================ */
+
+  // — LEGENDARIES (4) —
+  C("featheredseraph", "Selindra, Serafina dei Cieli", 5, "featheredseraph", "👼", "light", 5, 6,
+    "", "Le sue ali aurate disperdono le ombre con un solo battito."),
+  C("archmage", "Theron, Arcimago Sereno", 5, "archmage", "🧙", "light", 4, 6,
+    "", "Studia da mille anni, e ricorda ogni sillaba."),
+  C("dragonturtle", "Thalassyr, Drago-Tartaruga", 6, "dragonturtle", "🐢", "water", 5, 8,
+    "", "Le sue scaglie sono le coste di un continente sommerso."),
+  C("greendragon", "Verdania, Drago Smeraldo", 5, "greendragon", "🐉", "nature", 6, 5,
+    "", "Quando passa nei cieli, sotto le sue ali la foresta ringiovanisce."),
+
+  // — EPICS (5) —
+  C("firelord", "Vulkar, Signore del Fuoco", 5, "firelord", "🔥", "fire", 6, 4,
+    "", "Comanda le fiamme come un re comanda i sudditi: senza chiederlo."),
+  C("yeti", "Yeti dei Ghiacci Eterni", 4, "yeti", "❄️", "water", 4, 5,
+    "", "La neve gli appartiene, e lo segue ovunque vada."),
+  C("lightpaladin", "Paladino della Luce", 4, "lightpaladin", "🛡️", "light", 4, 5,
+    "", "Il suo giuramento è più antico dell'alba che lo illumina."),
+  C("eldritchhorror", "Orrore Eldritch", 5, "eldritchhorror", "👁️", "darkness", 5, 4,
+    "", "Non ha forma, perché ne ha avute troppe."),
+  C("greentreant", "Antico Treant Smeraldo", 5, "greentreant", "🌳", "nature", 4, 7,
+    "", "Le sue radici hanno visto cadere imperi."),
+
+  // — RARES (6) — uno per elemento + un'extra Ombra utility —
+  C("emberbrute", "Bruto di Brace", 3, "emberbrute", "🔥", "fire", 4, 3,
+    "", "Una furnace ambulante con pugni come incudini."),
+  C("goldenfiend", "Demone d'Oro", 4, "goldenfiend", "💰", "fire", 4, 4,
+    "", "Vende le anime e ne prende sempre due in cambio."),
+  C("iceberserker", "Berserker del Gelo", 3, "iceberserker", "🪓", "water", 4, 3,
+    "", "Più fa freddo, più ride. Più ride, più colpisce."),
+  C("angelicwarrior", "Guerriero Angelico", 3, "angelicwarrior", "⚔️", "light", 3, 4,
+    "", "Il suo scudo riflette ciò che il nemico è davvero."),
+  C("lunarwolf", "Lupo Lunare", 3, "lunarwolf", "🐺", "darkness", 4, 3,
+    "", "Caccia con la luna, e con la luna scompare."),
+  C("wildhunter", "Cacciatore Selvaggio", 3, "wildhunter", "🏹", "nature", 3, 4,
+    "", "Le frecce conoscono il bersaglio prima ancora di lui."),
+
+  // — UNCOMMONS (6) —
+  C("flametiefling", "Tiefling delle Fiamme", 2, "flametiefling", "😈", "fire", 3, 2,
+    "", "Nato in una fucina, cresciuto in una rivolta."),
+  C("frostwizard", "Stregone del Gelo", 3, "frostwizard", "🧊", "water", 3, 3,
+    "", "Pratica un'arte che ha smesso di scaldargli le mani."),
+  C("horneddiviner", "Veggente Cornuto", 3, "horneddiviner", "🔮", "light", 2, 4,
+    "", "Vede i prossimi tre passi del tuo destino. Sceglie il peggiore."),
+  C("boneconjurer", "Negromante d'Ossa", 3, "boneconjurer", "💀", "darkness", 3, 3,
+    "", "Le sue evocazioni si reggono in piedi per gentilezza."),
+  C("lanternwraith", "Spettro della Lanterna", 2, "lanternwraith", "🏮", "darkness", 3, 2,
+    "", "La sua luce è l'unica cosa peggiore del buio."),
+  C("leafwarden", "Custode delle Foglie", 3, "leafwarden", "🍃", "nature", 3, 4,
+    "", "Conta ogni foglia caduta, e sa chi l'ha fatta cadere."),
+
+  // — COMMONS (4) —
+  C("bluegenasi", "Genasi Azzurro", 2, "bluegenasi", "💠", "water", 2, 3,
+    "", "Cammina con il rumore della pioggia."),
+  C("harengonknight", "Cavaliere Harengon", 2, "harengonknight", "🐇", "light", 2, 2,
+    "", "Salta in avanti tre volte, poi colpisce due."),
+  C("myconid", "Miconide", 2, "myconid", "🍄", "nature", 2, 3,
+    "", "Le sue spore parlano sotto voce, ma in coro."),
+  C("ogrezombie", "Ogre Zombi", 4, "ogrezombie", "🧟", "darkness", 5, 4,
+    "", "Lento, immondo, instancabile. Soprattutto immondo."),
 ];
 
 /* ============================================================
@@ -998,6 +1085,27 @@ const KEYWORDS_BY_ID = {
   "tide-monk": ["firststrike"],
   "rune-golem": ["defender"],
   "earth-golem": ["defender"],
+  // 2026-05-26 expansion — keywords for the new batch
+  featheredseraph: ["flying", "lifelink", "vigilance"],
+  archmage: ["hexproof", "firststrike"],
+  dragonturtle: ["trample", "vigilance"],
+  greendragon: ["flying", "deathtouch"],
+  firelord: ["haste"],
+  yeti: ["trample"],
+  lightpaladin: ["vigilance", "lifelink"],
+  eldritchhorror: ["hexproof", "menace"],
+  greentreant: ["vigilance", "reach"],
+  emberbrute: ["trample"],
+  goldenfiend: ["lifelink"],
+  iceberserker: ["haste"],
+  angelicwarrior: ["firststrike", "vigilance"],
+  lunarwolf: ["haste", "lifelink"],
+  wildhunter: ["reach", "deathtouch"],
+  flametiefling: ["firststrike"],
+  horneddiviner: ["defender"],
+  lanternwraith: ["flying"],
+  harengonknight: ["haste"],
+  ogrezombie: ["menace"],
 };
 
 /* element-aware rarity table (every colour gets all 5 tiers) */

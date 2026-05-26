@@ -1683,6 +1683,34 @@
   color: var(--gold);
   text-shadow: 0 0 6px rgba(216,177,90,.45);
 }
+
+/* per-rarity progress strip (above the filter bar). Each pip shows
+   how many uniques of that rarity the player owns out of the total. */
+.tcg-coll__rarbar {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  align-items: center; margin: -8px auto 16px; max-width: 1200px;
+}
+.tcg-coll__rarbar-lbl {
+  font-size: 11px; letter-spacing: .4px; text-transform: uppercase;
+  opacity: .65; margin-right: 4px;
+}
+.tcg-coll__rarpip {
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 12px; background: rgba(0,0,0,.3);
+  font-size: 11px; line-height: 1.2;
+}
+.tcg-coll__rarpip b { color: var(--rar); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tcg-coll__rarpip small { opacity: .8; }
+.tcg-coll__rardot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--rar); box-shadow: 0 0 5px var(--rar);
+  flex: 0 0 auto;
+}
+.tcg-coll__rarpip.is-complete {
+  border-color: var(--rar);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--rar) 45%, transparent);
+}
 .tcg-coll__filterbar {
   display: flex; flex-direction: column; gap: 8px;
   max-width: 1200px; margin: 0 auto 18px;
@@ -1933,8 +1961,17 @@
   width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
   box-shadow: 0 0 4px currentColor;
 }
-.tcg-packcard__olabel { flex: 1 1 auto; opacity: .85; }
+.tcg-packcard__olabel { flex: 0 0 auto; opacity: .92; min-width: 84px; }
 .tcg-packcard__opct { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tcg-packcard__oheader {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .3px;
+  color: #ffd76b; text-transform: uppercase; opacity: .85;
+  padding-bottom: 2px;
+}
+.tcg-packcard__ohint {
+  flex: 1 1 auto; text-align: right;
+  font-style: italic; opacity: .72; font-size: 10.5px;
+}
 .tcg-packcard__buy { width: 100%; }
 
 .tcg-master {
