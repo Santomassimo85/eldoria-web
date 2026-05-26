@@ -611,7 +611,8 @@ const processWsKnockouts = (players) => {
   const updated = players.map(p => {
     if (!p.wildShape || p.hp > 0) return p;
     const restoredMaxHp = p.preWildShapeMaxHp ?? p.maxHp ?? 1;
-    const restored = Math.max(1, Math.floor((p.preWildShapeHp ?? restoredMaxHp ?? 1) * 0.3));
+    // Morte in forma selvatica: torna umano con il 60% degli HP totali della forma umana.
+    const restored = Math.max(1, Math.floor(restoredMaxHp * 0.6));
     const formName = WILD_SHAPES[p.wildShape]?.name || p.wildShape;
     extraLogs.push(`🐾 ${p.name} viene abbattuto in forma ${formName} e ritorna alla forma originale (${restored}/${restoredMaxHp} HP)!`);
     return { ...p, hp: restored, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null };

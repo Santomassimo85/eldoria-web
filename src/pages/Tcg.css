@@ -1667,6 +1667,72 @@
 .tcg-grid__cell.is-maxed { opacity: .42; }
 .tcg-grid__count { font-size: 11px; opacity: .8; text-align: center; }
 
+/* missing-from-collection card: greyed-out art + dim count */
+.tcg-grid__cell.is-missing .tcg-card {
+  filter: grayscale(1) brightness(.55);
+  opacity: .55;
+}
+.tcg-grid__cell.is-missing .tcg-grid__count {
+  color: #c87575;
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* ---- collection: catalogue layout ---- */
+.tcg-stat--el.is-complete b {
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(216,177,90,.45);
+}
+.tcg-coll__filterbar {
+  display: flex; flex-direction: column; gap: 8px;
+  max-width: 1200px; margin: 0 auto 18px;
+}
+.tcg-coll__search {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0,0,0,.35);
+  color: var(--ink);
+  font-size: 13px;
+}
+.tcg-coll__search:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.tcg-coll__filtgroup {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.tcg-coll__filtlbl {
+  font-size: 11px;
+  opacity: .65;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  min-width: 88px;
+  padding-right: 6px;
+}
+.tcg-coll__section {
+  max-width: 1200px;
+  margin: 0 auto 22px;
+}
+.tcg-coll__sectionhead {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0 10px;
+  padding: 6px 10px;
+  font-size: 16px;
+  font-weight: 700;
+  border-left: 4px solid currentColor;
+  background: rgba(0,0,0,.25);
+  border-radius: 0 6px 6px 0;
+}
+.tcg-coll__sectioncnt {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: .8;
+  color: var(--ink);
+}
+
 /* ---- deck builder ---- */
 .tcg-deck__tools {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
