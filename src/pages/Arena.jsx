@@ -300,11 +300,12 @@ const ARENA_ARMORS = {
 };
 
 // ── WILD SHAPE FORMS ──────────────────────────────────────────────────────────
+// HP della forma = tiro vero del dado (vedi handleWildShape), non massimo teorico.
 const WILD_SHAPES = {
   wolf: {
     name: "Lupo", icon: "🐺",
     ac: 14,
-    hpDice: { count: 4, sides: 12 },
+    hpDice: { count: 3, sides: 12 },
     actions: [
       { name: "Artiglio", damage: "1d6"  , statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
       { name: "Morso",    damage: "1d6"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
@@ -313,7 +314,7 @@ const WILD_SHAPES = {
   bear: {
     name: "Orso", icon: "🐻",
     ac: 16,
-    hpDice: { count: 6, sides: 12 },
+    hpDice: { count: 5, sides: 12 },
     actions: [
       { name: "Artiglio", damage: "1d6"  , statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
       { name: "Morso",    damage: "1d4"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
@@ -322,7 +323,7 @@ const WILD_SHAPES = {
   spider: {
     name: "Ragno", icon: "🕷",
     ac: 12,
-    hpDice: { count: 4, sides: 12 },
+    hpDice: { count: 3, sides: 12 },
     actions: [
       { name: "Morso",     level: 0, damage: "1d4"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
       { name: "Veleno",    level: 0, damage: "—",     statKey: null,  type: "spell",  icon: "☠",  hitBonus: 0, special: "save_dot", saveDotAbility: "con", saveDotDamage: "1d8", saveDotTurns: 3, saveDotDC: 12, maxUses: 3 },
@@ -609,10 +610,11 @@ const processWsKnockouts = (players) => {
   const extraLogs = [];
   const updated = players.map(p => {
     if (!p.wildShape || p.hp > 0) return p;
-    const restored = Math.max(1, Math.floor((p.preWildShapeHp ?? p.maxHp ?? 1) * 0.3));
+    const restoredMaxHp = p.preWildShapeMaxHp ?? p.maxHp ?? 1;
+    const restored = Math.max(1, Math.floor((p.preWildShapeHp ?? restoredMaxHp ?? 1) * 0.3));
     const formName = WILD_SHAPES[p.wildShape]?.name || p.wildShape;
-    extraLogs.push(`🐾 ${p.name} viene abbattuto in forma ${formName} e ritorna alla forma originale (${restored} HP)!`);
-    return { ...p, hp: restored, wildShape: null, preWildShapeHp: null };
+    extraLogs.push(`🐾 ${p.name} viene abbattuto in forma ${formName} e ritorna alla forma originale (${restored}/${restoredMaxHp} HP)!`);
+    return { ...p, hp: restored, maxHp: restoredMaxHp, wildShape: null, preWildShapeHp: null, preWildShapeMaxHp: null };
   });
   return { players: updated, extraLogs };
 };
@@ -5186,19 +5188,19 @@ export default function Arena() {
   };
 
   // ── WILD SHAPE ─────────────────────────────────────────────────────────────
-  // Trasformarsi è l'azione del turno: dopo la trasformazione il turno passa.
+  // La trasformazione NON consuma il turno: il druido può trasformarsi e poi
+  // attaccare nello stesso turno. Il ritorno volontario invece passa il turno.
   const handleWildShape = async (matchId, formKey) => {
     const myMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     const wsUsesLeft = myMatchPlayer?.wildShapeUsesLeft ?? 1;
     if (wsUsesLeft <= 0) return;
     const form = WILD_SHAPES[formKey];
     const { count, sides } = form.hpDice;
-    // Trasformazione = HP al 100% del massimo della forma scelta.
-    const newHp = count * sides;
+    // HP della forma = tiro vero del dado (countdsides), non massimo teorico.
+    const { total: rolledHp, rolls: hpRolls } = rollDmg(`${count}d${sides}`);
+    const newHp = Math.max(1, rolledHp);
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Druido";
     const newUsesLeft = wsUsesLeft - 1;
-    // La trasformazione NON consuma il turno: il druido può ancora attaccare.
-    // Manteniamo turn e turnExpiry invariati.
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const me = m.players.find(p => p.id === currentUser.uid);
@@ -5208,7 +5210,7 @@ export default function Arena() {
         p.id === currentUser.uid ? { ...p, hp: newHp, maxHp: newHp, wildShape: formKey, preWildShapeHp: preHp, preWildShapeMaxHp: preMaxHp, wildShapeUsesLeft: newUsesLeft, ...tickEagleEnd(p) } : p
       );
       return { ...m, players: updatedPlayers,
-        logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! (${newHp} HP) [Usi rimasti: ${newUsesLeft}/1]`] };
+        logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! [🎲${count}d${sides}=${hpRolls}] → ${newHp} HP [Usi rimasti: ${newUsesLeft}/1]`] };
     });
     setShowWildPicker(false);
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
