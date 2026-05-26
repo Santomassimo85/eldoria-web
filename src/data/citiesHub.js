@@ -21,4 +21,5 @@ export const CITIES_HUB = [
   { name: "Nølborg",                   x: 19.56, y: 38.55 },
   { name: "Plia",                      x: 25.42, y: 50.47 },
   { name: "Altocolle",                 x: 31.88, y: 33.66 },
+  { name: "Thelén Dhir",                x: 71.22, y: 43.77 },
 ];
