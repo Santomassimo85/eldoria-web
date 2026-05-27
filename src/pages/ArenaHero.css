@@ -2434,11 +2434,13 @@
 }
 
 /* ── FLOATING FIGHT ICON — solo icona pura, nessun sfondo ── */
+/* Posizionata in alto a destra sotto la navbar, lontano dal chat-widget bottom-right */
 .arena-page .arena-fight-icon {
   position: fixed !important;
-  z-index: 100;
-  bottom: 24px;
-  right: 24px;
+  z-index: 9999;
+  top: calc(var(--navbar-h, 60px) + 18px);
+  right: 22px;
+  bottom: auto;
   width: 56px;
   height: 56px;
   display: inline-flex;
@@ -2498,8 +2500,8 @@
 /* MOBILE: icona compatta */
 @media (max-width: 640px) {
   .arena-page .arena-fight-icon {
-    bottom: 18px;
-    right: 18px;
+    top: calc(var(--navbar-h, 60px) + 12px);
+    right: 14px;
     width: 48px;
     height: 48px;
     font-size: 1.7rem;

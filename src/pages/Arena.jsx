@@ -1794,19 +1794,34 @@ export default function Arena() {
   };
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "arena_meta", "global"), (snap) => {
+    const ref = doc(db, "arena_meta", "global");
+    const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         setArenaMeta(data);
         if (isMaster) setPrizeText(data.prizes || "");
       } else {
-        setDoc(doc(db, "arena_meta", "global"), {
-          phase: "registration", prizes: "",
-          waitingList: [], participants: [],
-          characterSnapshots: {}, matches: [],
-          currentRound: 1, tournamentWinner: null,
-          groupA: [], groupB: [],
-        });
+        /* IMPORTANTE: NON facciamo setDoc qui per evitare reset accidentali
+           dovuti a snapshot temporanei da cache (offline/race condition).
+           Verifichiamo con getDoc forzato (source: server) prima di creare
+           ex novo. Solo il primo Master/loaded della history potrebbe
+           crearne uno se davvero non esiste. */
+        getDoc(ref).then((freshSnap) => {
+          if (freshSnap.exists()) {
+            // race condition risolta: il doc esisteva, lo carichiamo
+            setArenaMeta(freshSnap.data());
+            if (isMaster) setPrizeText(freshSnap.data().prizes || "");
+          } else if (isMaster) {
+            // Solo il Master inizializza il documento se davvero mancante
+            setDoc(ref, {
+              phase: "registration", prizes: "",
+              waitingList: [], participants: [],
+              characterSnapshots: {}, matches: [],
+              currentRound: 1, tournamentWinner: null,
+              groupA: [], groupB: [],
+            });
+          }
+        }).catch(e => console.error("arena_meta getDoc fallback failed:", e));
       }
     });
     return () => unsub();
