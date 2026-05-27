@@ -149,10 +149,41 @@ export async function acceptChallenge(match, uid, name, deck, cover, classChoice
     covers: { p0: data.covers?.p0 || "nature", p1: cover || "nature" },
     classes: { p0: p0Class, p1: p1Class },
     state,
+    // Mulligan: ciascun giocatore può rimescolare fino a 2 volte e poi
+    // commit. Il GameTable resta gated finché entrambi hanno committato.
+    mulligan: {
+      p0: { used: 0, committed: false },
+      p1: { used: 0, committed: false },
+    },
     updatedAt: serverTimestamp(),
     seen: { p0: serverTimestamp(), p1: serverTimestamp() },
   });
   return match.id;
+}
+
+/* MULLIGAN — aggiorna SOLO i campi del side rimescolato (hand + deck +
+   instance seq) e l'used count. Usa dot-notation così un reshuffle
+   contemporaneo dell'avversario sull'altro side non si sovrascrive. */
+export async function pushMulliganReshuffle(matchId, side, newState, newUsed) {
+  const newHand = newState?.players?.[side]?.hand ?? [];
+  const newDeck = newState?.players?.[side]?.deck ?? [];
+  const newSeqInst = newState?._seq?.inst ?? 0;
+  await updateDoc(doc(db, COL, matchId), {
+    [`state.players.${side}.hand`]: newHand,
+    [`state.players.${side}.deck`]: newDeck,
+    [`state._seq.inst`]: newSeqInst,
+    [`mulligan.${side}.used`]: newUsed,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/* MULLIGAN — il giocatore commit-a la mano attuale. Quando entrambi
+   p0 e p1 sono committed, il GameTable si sblocca. */
+export async function pushMulliganCommit(matchId, side) {
+  await updateDoc(doc(db, COL, matchId), {
+    [`mulligan.${side}.committed`]: true,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export function watchMatch(matchId, cb) {

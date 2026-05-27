@@ -19,6 +19,8 @@ import {
   watchTournament, openRegistration, closeRegistration, startTournament,
   advanceRound, resetTournament, ensureTournamentDoc,
   registerPlayer, withdrawPlayer,
+  addAiParticipant, removeAiParticipant, isAiUid,
+  forceFinishMatch, forceFinishAllPending,
   currentRoundOf, myCurrentMatch, isRegistered,
   totalRoundsFor, roundLabel,
 } from "../../tcg/tournament.js";
@@ -38,7 +40,7 @@ const STATUS_ICON = {
 };
 
 export default function Tournament({
-  user, name, deck, cover, isMaster, onBack, onEnterMatch,
+  user, name, deck, cover, isMaster, onBack, onEnterMatch, onEnterAiMatch,
 }) {
   // undefined = first render (no snapshot ricevuto), null = doc inesistente,
   // object = doc presente. Distingue caricamento da "torneo da creare".
@@ -219,23 +221,62 @@ export default function Tournament({
         </section>
       )}
 
-      {t.status === "running" && (
-        <section className="tcg-tourn__hero tcg-tourn__hero--running">
-          <h2>{roundLabel(t.currentRound, total)} in corso</h2>
-          {myMatch ? (
-            <MyMatchCard
-              tournament={t}
-              myUid={user?.uid}
-              match={myMatch}
-              onEnter={() => onEnterMatch(myMatch.matchId)}
-            />
-          ) : isRegistered(t, user?.uid) ? (
-            <p>In attesa che il tuo prossimo avversario sia pronto…</p>
-          ) : (
-            <p>Sei spettatore: assisti agli scontri nel bracket qui sotto.</p>
-          )}
-        </section>
-      )}
+      {t.status === "running" && (() => {
+        const cur = currentRoundOf(t);
+        const allMatches = cur?.matches || [];
+        const pending = allMatches.filter((m) => !m.winnerUid);
+        const done = allMatches.filter((m) => m.winnerUid);
+        return (
+          <section className="tcg-tourn__hero tcg-tourn__hero--running">
+            <h2>{roundLabel(t.currentRound, total)} in corso</h2>
+            <div className="tcg-tourn__round-progress">
+              <span className="tcg-tourn__round-progress-num">
+                {done.length} / {allMatches.length}
+              </span>
+              <span className="tcg-tourn__round-progress-label">
+                partite concluse
+              </span>
+            </div>
+
+            {myMatch ? (
+              <MyMatchCard
+                tournament={t}
+                myUid={user?.uid}
+                match={myMatch}
+                onEnter={() => {
+                  if (myMatch.vsAi) {
+                    onEnterAiMatch?.(myMatch);
+                  } else {
+                    onEnterMatch(myMatch.matchId);
+                  }
+                }}
+              />
+            ) : isRegistered(t, user?.uid) ? (
+              <p className="tcg-tourn__hero-note">
+                Hai concluso il tuo match: in attesa che gli altri finiscano.
+              </p>
+            ) : (
+              <p className="tcg-tourn__hero-note">
+                Sei spettatore: i match sono in corso in parallelo, segui il
+                bracket qui sotto.
+              </p>
+            )}
+
+            {/* ── Master view: tutti i match del round corrente con controlli ── */}
+            {isMaster && pending.length > 0 && (
+              <RoundLiveBoard
+                tournament={t}
+                pending={pending}
+                busy={busy}
+                onForce={(entryId, winnerUid) =>
+                  run(() => forceFinishMatch(entryId, winnerUid))()
+                }
+                onForceAll={run(() => forceFinishAllPending())}
+              />
+            )}
+          </section>
+        );
+      })()}
 
       {/* ───── Bracket ───── */}
       {(t.status === "running" || t.status === "ended") &&
@@ -247,28 +288,64 @@ export default function Tournament({
       )}
 
       {/* ───── Lista iscritti ───── */}
-      {t.status === "open" && (
-        <section className="tcg-tourn__roster">
-          <h3 className="tcg-tourn__h">
-            Iscritti · {Object.keys(t.participants || {}).length}
-          </h3>
-          <div className="tcg-tourn__roster-grid">
-            {Object.values(t.participants || {}).length === 0 && (
-              <p className="tcg-tourn__empty">Nessun iscritto, sii il primo!</p>
-            )}
-            {Object.values(t.participants || {}).map((p) => (
-              <div key={p.uid} className="tcg-tourn__player">
-                <span className="tcg-tourn__player-name">{p.name}</span>
-                {p.classChoice && (
-                  <span className="tcg-tourn__player-class">
-                    {p.classChoice.klass}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {t.status === "open" && (() => {
+        const partsArr = Object.values(t.participants || {});
+        const count = partsArr.length;
+        const odd = count > 0 && count % 2 !== 0;
+        return (
+          <section className="tcg-tourn__roster">
+            <h3 className="tcg-tourn__h">
+              Iscritti · {count}
+              {odd && (
+                <span
+                  className="tcg-tourn__parity tcg-tourn__parity--odd"
+                  title="Numero dispari: un AI bot riempirà il vuoto all'avvio"
+                >
+                  · DISPARI
+                </span>
+              )}
+              {!odd && count >= 2 && (
+                <span className="tcg-tourn__parity tcg-tourn__parity--even">
+                  · PARI ✓
+                </span>
+              )}
+            </h3>
+            <div className="tcg-tourn__roster-grid">
+              {partsArr.length === 0 && (
+                <p className="tcg-tourn__empty">Nessun iscritto, sii il primo!</p>
+              )}
+              {partsArr.map((p) => {
+                const ai = !!p.isAi || isAiUid(p.uid);
+                return (
+                  <div
+                    key={p.uid}
+                    className={`tcg-tourn__player${ai ? " tcg-tourn__player--ai" : ""}`}
+                  >
+                    <span className="tcg-tourn__player-name">
+                      {ai ? "🤖 " : ""}{p.name}
+                    </span>
+                    {p.classChoice && (
+                      <span className="tcg-tourn__player-class">
+                        {p.classChoice.klass}
+                      </span>
+                    )}
+                    {ai && isMaster && (
+                      <button
+                        className="tcg-tourn__player-remove"
+                        disabled={busy}
+                        title="Rimuovi questo AI"
+                        onClick={run(() => removeAiParticipant(p.uid))}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ───── Master panel ───── */}
       {isMaster && (
@@ -282,6 +359,7 @@ export default function Tournament({
           onClose={run(() => closeRegistration())}
           onStart={run(() => startTournament())}
           onAdvance={run(() => advanceRound())}
+          onAddAi={run(() => addAiParticipant())}
           onReset={run(async () => {
             await resetTournament();
             setConfirmReset(false);
@@ -300,6 +378,7 @@ function MyMatchCard({ tournament, myUid, match, onEnter }) {
   const a = tournament.participants[match.a];
   const b = tournament.participants[match.b];
   const opp = match.a === myUid ? b : a;
+  const oppAi = !!(opp?.isAi || isAiUid(match.vsAi ? match.aiUid : (match.a === myUid ? match.b : match.a)));
   return (
     <div className="tcg-tourn__mymatch">
       <div className="tcg-tourn__mymatch-vs">
@@ -308,7 +387,9 @@ function MyMatchCard({ tournament, myUid, match, onEnter }) {
         </div>
         <span className="tcg-tourn__vs">VS</span>
         <div className="tcg-tourn__mymatch-side tcg-tourn__mymatch-side--foe">
-          <span className="tcg-tourn__mymatch-name">{opp?.name || "?"}</span>
+          <span className="tcg-tourn__mymatch-name">
+            {oppAi ? "🤖 " : ""}{opp?.name || "?"}
+          </span>
           {opp?.classChoice && (
             <span className="tcg-tourn__mymatch-class">{opp.classChoice.klass}</span>
           )}
@@ -318,7 +399,7 @@ function MyMatchCard({ tournament, myUid, match, onEnter }) {
         className="tcg-btn tcg-btn--primary tcg-tourn__fight"
         onClick={onEnter}
       >
-        ⚔ Combatti
+        ⚔ {match.vsAi ? "Combatti l'AI" : "Combatti"}
       </button>
     </div>
   );
@@ -366,15 +447,19 @@ function BracketMatch({ tournament, match, myUid }) {
   const winB = match.winnerUid && match.winnerUid === match.b;
   const mine = match.a === myUid || match.b === myUid;
   const isBye = !!match.byeFor && !match.b;
+  const aAi = !!(a?.isAi || isAiUid(match.a));
+  const bAi = !!(b?.isAi || isAiUid(match.b));
   return (
-    <div className={`tcg-tourn__bm${mine ? " is-mine" : ""}${isBye ? " is-bye" : ""}`}>
+    <div className={`tcg-tourn__bm${mine ? " is-mine" : ""}${isBye ? " is-bye" : ""}${match.vsAi ? " is-vs-ai" : ""}`}>
       <div className={`tcg-tourn__bm-row${winA ? " tcg-tourn__bm-row--winner" : ""}${!match.winnerUid ? "" : (winA ? "" : " is-loser")}`}>
-        <span className="tcg-tourn__bm-name">{a?.name || "—"}</span>
+        <span className="tcg-tourn__bm-name">
+          {aAi ? "🤖 " : ""}{a?.name || "—"}
+        </span>
         {winA && <span className="tcg-tourn__bm-w">✓</span>}
       </div>
       <div className={`tcg-tourn__bm-row${winB ? " tcg-tourn__bm-row--winner" : ""}${!match.winnerUid ? "" : (winB ? "" : " is-loser")}`}>
         <span className="tcg-tourn__bm-name">
-          {isBye ? <em>passa il turno</em> : (b?.name || "—")}
+          {isBye ? <em>passa il turno</em> : <>{bAi ? "🤖 " : ""}{b?.name || "—"}</>}
         </span>
         {winB && <span className="tcg-tourn__bm-w">✓</span>}
       </div>
@@ -382,13 +467,71 @@ function BracketMatch({ tournament, match, myUid }) {
   );
 }
 
+/* Pannello master visibile durante il round in corso: lista live
+   dei match pendenti + bottoni per forzare un vincitore o risolvere
+   tutto. Risolve il caso "un giocatore non si presenta e il bracket
+   resta bloccato". */
+function RoundLiveBoard({ tournament, pending, busy, onForce, onForceAll }) {
+  return (
+    <div className="tcg-tourn__live-board">
+      <div className="tcg-tourn__live-board-head">
+        <span className="tcg-tourn__live-board-title">
+          🛡 Master · Match pendenti ({pending.length})
+        </span>
+        <button
+          className="tcg-btn tcg-btn--danger"
+          disabled={busy}
+          onClick={onForceAll}
+          title="Sorteggia un vincitore per tutti i match pendenti"
+        >
+          🎲 Sorteggia tutti
+        </button>
+      </div>
+      <div className="tcg-tourn__live-board-list">
+        {pending.map((m) => {
+          const a = tournament.participants[m.a];
+          const b = tournament.participants[m.b];
+          const aLabel = `${a?.isAi ? "🤖 " : ""}${a?.name || "—"}`;
+          const bLabel = `${b?.isAi ? "🤖 " : ""}${b?.name || "—"}`;
+          return (
+            <div key={m.id} className="tcg-tourn__live-row">
+              <span className="tcg-tourn__live-row-id">{m.id}</span>
+              <button
+                className="tcg-tourn__live-row-side"
+                disabled={busy}
+                onClick={() => onForce(m.id, m.a)}
+                title={`Dichiara ${aLabel} vincitore`}
+              >
+                {aLabel}
+              </button>
+              <span className="tcg-tourn__live-row-vs">vs</span>
+              <button
+                className="tcg-tourn__live-row-side"
+                disabled={busy}
+                onClick={() => onForce(m.id, m.b)}
+                title={`Dichiara ${bLabel} vincitore`}
+              >
+                {bLabel}
+              </button>
+              <span className="tcg-tourn__live-row-tag">
+                {m.vsAi ? "vs AI (locale)" : "PvP"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MasterPanel({
   t, total, busy, confirmReset, setConfirmReset,
-  onOpen, onClose, onStart, onAdvance, onReset,
+  onOpen, onClose, onStart, onAdvance, onReset, onAddAi,
 }) {
   const cur = currentRoundOf(t);
   const allDone = cur ? cur.matches.every((m) => !!m.winnerUid) : false;
   const numPlayers = Object.keys(t.participants || {}).length;
+  const odd = numPlayers > 0 && numPlayers % 2 !== 0;
 
   return (
     <section className="tcg-tourn__master">
@@ -403,6 +546,19 @@ function MasterPanel({
 
         {t.status === "open" && (
           <>
+            <div className="tcg-tourn__master-info">
+              Iscritti: <strong>{numPlayers}</strong>
+              {odd && <span className="tcg-tourn__parity tcg-tourn__parity--odd"> · DISPARI</span>}
+              {!odd && numPlayers >= 2 && <span className="tcg-tourn__parity tcg-tourn__parity--even"> · PARI ✓</span>}
+            </div>
+            <button
+              className="tcg-btn"
+              disabled={busy}
+              onClick={onAddAi}
+              title="Aggiunge un AI bot con nome e classe random per riempire un vuoto"
+            >
+              🤖 Aggiungi AI bot
+            </button>
             <button className="tcg-btn" disabled={busy} onClick={onClose}>
               🛑 Chiudi torneo (cancella iscritti)
             </button>
@@ -410,7 +566,7 @@ function MasterPanel({
               className="tcg-btn tcg-btn--primary"
               disabled={busy || numPlayers < 2}
               onClick={onStart}
-              title={numPlayers < 2 ? "Servono almeno 2 iscritti" : ""}
+              title={numPlayers < 2 ? "Servono almeno 2 iscritti" : (odd ? "Un AI verrà aggiunto automaticamente" : "")}
             >
               ⚔ Avvia torneo · {numPlayers} iscritti
             </button>

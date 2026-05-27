@@ -36,7 +36,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { createGame } from "./engine.js";
-import { buildDeck } from "./cards.js";
+import { buildDeck, buildClassDeck } from "./cards.js";
+import { CLASSES, CLASS_VIE } from "./classes.js";
 
 const TCOL = "tcg_tournament";
 const TDOC = "global";
@@ -53,6 +54,107 @@ const shuffle = (arr) => {
   }
   return a;
 };
+
+/* ---------- AI participants (filler per numeri dispari) ----------
+   L'AI è un participant "sintetico" con uid prefisso "ai_". Quando
+   viene accoppiato a un umano, il match non viene creato su Firestore:
+   la bracket-entry ha matchId=null e vsAi=true. Il giocatore umano
+   apre una partita LOCALE in mode="ai" e il risultato viene poi
+   propagato al bracket via reportMatchResult (la match key è
+   l'id della bracket entry, prefisso "br_"). */
+
+const AI_NAMES = [
+  "Stivalone d'Ottone", "Brivido di Granito", "Sussurro del Vento",
+  "Sir Pidocchio", "Tordo Ridens", "Granduca delle Galline",
+  "Pugnoduro", "Magus Pettegolo", "Schianta-Sassi",
+  "Bibitona Magica", "Drago Pasticcione", "Nano Brillante",
+  "Ranocchio Magico", "Plasmaombre", "Ciaccia del Bosco",
+  "Forgia-Spiriti", "Spadante Goffo", "Strappazampe",
+  "Vento Ululante", "Tom Bombadillo", "Boldo lo Sgualcito",
+  "Pupazzone di Burro", "Capitan Tarallo", "Lord Polpetta",
+  "Madama Sgrafignosa", "Bardo Stonato", "Cavallone Spelacchiato",
+  "Rospo del Mago", "Conte di Cipolla", "Padron Salsiccia",
+];
+
+export function randomAiName() {
+  return AI_NAMES[Math.floor(Math.random() * AI_NAMES.length)];
+}
+
+function randomClassChoice() {
+  const klass = CLASSES[Math.floor(Math.random() * CLASSES.length)];
+  const vie = Object.keys(CLASS_VIE[klass] || {});
+  const via = vie.length > 0 ? vie[Math.floor(Math.random() * vie.length)] : null;
+  return { klass, via };
+}
+
+function classColorsFor(klass) {
+  // mapping minimo classe→colori, coerente con buildClassDeck. Se
+  // l'AI gioca classless va comunque bene (deck random colori vari).
+  const COLOR_MAP = {
+    mago:       ["U", "R"],
+    guerriero:  ["W", "R"],
+    chierico:   ["W", "G"],
+    ladro:      ["B", "U"],
+    druido:     ["G", "W"],
+  };
+  return COLOR_MAP[klass] || ["G", "R"];
+}
+
+/* Genera un participant AI completo (deck class-themed, cover, classe). */
+export function buildAiParticipant(opts = {}) {
+  const cls = opts.classChoice || randomClassChoice();
+  const name = opts.name || randomAiName();
+  const colors = classColorsFor(cls.klass);
+  let deck;
+  try {
+    deck = buildClassDeck(colors, cls.klass);
+  } catch {
+    deck = buildDeck();
+  }
+  const uid = `ai_${Math.random().toString(36).slice(2, 10)}`;
+  return {
+    uid,
+    name,
+    deck: Array.isArray(deck) ? deck : null,
+    cover: opts.cover || "darkness",
+    classChoice: cls,
+    isAi: true,
+    joinedAt: Date.now(),
+  };
+}
+
+/* Aggiunge un AI participant al torneo (utilizzabile dal master in
+   stato "open"). Restituisce il participant creato. */
+export async function addAiParticipant(opts = {}) {
+  const t = await getTournamentOnce();
+  if (!t) throw new Error("Torneo non disponibile");
+  if (t.status !== "open") throw new Error("Le iscrizioni non sono aperte");
+  const p = buildAiParticipant(opts);
+  await updateDoc(tref(), {
+    [`participants.${p.uid}`]: p,
+    updatedAt: serverTimestamp(),
+  });
+  return p;
+}
+
+/* Rimuove un AI participant (solo master, solo in open). */
+export async function removeAiParticipant(aiUid) {
+  const t = await getTournamentOnce();
+  if (!t) return;
+  if (t.status !== "open") throw new Error("Non puoi rimuovere AI: torneo già avviato");
+  if (!aiUid || !aiUid.startsWith("ai_")) throw new Error("UID non AI");
+  const next = { ...(t.participants || {}) };
+  delete next[aiUid];
+  await updateDoc(tref(), {
+    participants: next,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/* True se un participant è un AI bot. */
+export function isAiUid(uid) {
+  return typeof uid === "string" && uid.startsWith("ai_");
+}
 
 export function defaultTournamentDoc() {
   return {
@@ -126,40 +228,92 @@ export async function closeRegistration() {
   });
 }
 
+/* Se il numero di fighter è dispari aggiunge un AI participant
+   in coda così le coppie sono sempre pari. Ritorna il nuovo array
+   di uid (eventualmente con un uid AI in fondo) + il participants
+   map aggiornato. */
+async function ensureEvenWithAi(t, ids) {
+  if (ids.length % 2 === 0) return { ids, participants: t.participants };
+  const ai = buildAiParticipant();
+  const newParts = { ...(t.participants || {}), [ai.uid]: ai };
+  await updateDoc(tref(), {
+    [`participants.${ai.uid}`]: ai,
+    updatedAt: serverTimestamp(),
+  });
+  return { ids: [...ids, ai.uid], participants: newParts };
+}
+
+/* Costruisce una bracket-entry per una coppia. Se uno dei due è AI,
+   NON crea un documento su tcg_matches: il match si gioca in locale
+   sul client umano (mode="ai") e il risultato viene riportato al
+   bracket via reportMatchResult con la entry-id. */
+async function buildBracketEntry(roundNo, idx, partsMap, a, b) {
+  const baseId = `R${roundNo}M${idx}`;
+  if (b == null) {
+    return { id: baseId, a, b: null, winnerUid: a, matchId: null, byeFor: a, vsAi: false };
+  }
+  const aIsAi = isAiUid(a);
+  const bIsAi = isAiUid(b);
+  // edge case: AI vs AI → nessun umano può giocare, sorteggia subito
+  // un vincitore così il bracket non si blocca.
+  if (aIsAi && bIsAi) {
+    const winnerUid = Math.random() < 0.5 ? a : b;
+    return {
+      id: baseId,
+      a, b,
+      winnerUid,
+      matchId: null,
+      byeFor: null,
+      vsAi: true,
+      aiOnly: true,
+    };
+  }
+  if (aIsAi || bIsAi) {
+    // partita umano vs AI: solo locale, niente doc su tcg_matches
+    return {
+      id: baseId,
+      a, b,
+      winnerUid: null,
+      matchId: null,
+      byeFor: null,
+      vsAi: true,
+      aiUid: aIsAi ? a : b,
+      humanUid: aIsAi ? b : a,
+    };
+  }
+  const matchId = await createTournamentMatchDoc(partsMap[a], partsMap[b], roundNo);
+  return {
+    id: baseId,
+    a, b,
+    winnerUid: null,
+    matchId,
+    byeFor: null,
+    vsAi: false,
+  };
+}
+
 /* Genera bracket round 1 e crea le partite tcg_matches per ogni
-   coppia non-bye. Avviabile solo se ci sono ≥ 2 iscritti. */
+   coppia umano-vs-umano. Avviabile solo se ci sono ≥ 2 iscritti.
+   Se gli iscritti sono dispari, aggiunge automaticamente un AI bot. */
 export async function startTournament() {
   const t = await getTournamentOnce();
   if (!t) throw new Error("Torneo non inizializzato");
   if (t.status !== "open") throw new Error("Le iscrizioni non sono aperte");
-  const ids = Object.keys(t.participants || {});
+  let ids = Object.keys(t.participants || {});
   if (ids.length < 2) throw new Error("Servono almeno 2 iscritti");
+
+  // dispari → aggiungi AI prima di accoppiare
+  const evened = await ensureEvenWithAi(t, ids);
+  ids = evened.ids;
+  const partsMap = evened.participants;
 
   const shuffled = shuffle(ids);
   const matches = [];
   for (let i = 0; i < shuffled.length; i += 2) {
     const a = shuffled[i];
     const b = shuffled[i + 1] || null;
-    if (b == null) {
-      matches.push({
-        id: `R1M${matches.length}`,
-        a, b: null,
-        winnerUid: a,                // bye → passa il turno
-        matchId: null,
-        byeFor: a,
-      });
-    } else {
-      const matchId = await createTournamentMatchDoc(
-        t.participants[a], t.participants[b], 1
-      );
-      matches.push({
-        id: `R1M${matches.length}`,
-        a, b,
-        winnerUid: null,
-        matchId,
-        byeFor: null,
-      });
-    }
+    const entry = await buildBracketEntry(1, matches.length, partsMap, a, b);
+    matches.push(entry);
   }
 
   await updateDoc(tref(), {
@@ -174,7 +328,8 @@ export async function startTournament() {
 /* Genera il round successivo a partire dai vincitori del round
    corrente. Richiede che TUTTE le match del round corrente abbiano
    un vincitore (o siano bye). Se rimane un solo vincitore →
-   chiusura torneo. */
+   chiusura torneo. Se il numero di vincitori è dispari aggiunge
+   un nuovo AI participant come filler. */
 export async function advanceRound() {
   const t = await getTournamentOnce();
   if (!t) throw new Error("Torneo non trovato");
@@ -184,7 +339,7 @@ export async function advanceRound() {
   const allDone = cur.matches.every((m) => !!m.winnerUid);
   if (!allDone) throw new Error("Ci sono ancora partite da concludere");
 
-  const winners = cur.matches.map((m) => m.winnerUid);
+  let winners = cur.matches.map((m) => m.winnerUid);
 
   if (winners.length === 1) {
     const champUid = winners[0];
@@ -197,32 +352,26 @@ export async function advanceRound() {
     return;
   }
 
+  // dispari → aggiungi AI come filler così le coppie sono sempre pari
+  let partsMap = t.participants;
+  if (winners.length % 2 !== 0) {
+    const ai = buildAiParticipant();
+    partsMap = { ...partsMap, [ai.uid]: ai };
+    await updateDoc(tref(), {
+      [`participants.${ai.uid}`]: ai,
+      updatedAt: serverTimestamp(),
+    });
+    winners = [...winners, ai.uid];
+  }
+
   const nextRoundNo = t.currentRound + 1;
   const ordered = shuffle(winners);
   const matches = [];
   for (let i = 0; i < ordered.length; i += 2) {
     const a = ordered[i];
     const b = ordered[i + 1] || null;
-    if (b == null) {
-      matches.push({
-        id: `R${nextRoundNo}M${matches.length}`,
-        a, b: null,
-        winnerUid: a,
-        matchId: null,
-        byeFor: a,
-      });
-    } else {
-      const matchId = await createTournamentMatchDoc(
-        t.participants[a], t.participants[b], nextRoundNo
-      );
-      matches.push({
-        id: `R${nextRoundNo}M${matches.length}`,
-        a, b,
-        winnerUid: null,
-        matchId,
-        byeFor: null,
-      });
-    }
+    const entry = await buildBracketEntry(nextRoundNo, matches.length, partsMap, a, b);
+    matches.push(entry);
   }
 
   const rounds = t.rounds.slice();
@@ -301,6 +450,12 @@ async function createTournamentMatchDoc(a, b, roundNo) {
     classes: { p0: aClass, p1: bClass },
     challengerDeck: Array.isArray(a.deck) ? a.deck : null,
     state,
+    // Mulligan: ciascuno fino a 2 reshuffle, poi commit. GameTable
+    // gated finché entrambi committano.
+    mulligan: {
+      p0: { used: 0, committed: false },
+      p1: { used: 0, committed: false },
+    },
     tournament: { id: TDOC, round: roundNo },
     winnerUid: null,
     createdAt: serverTimestamp(),
@@ -310,19 +465,99 @@ async function createTournamentMatchDoc(a, b, roundNo) {
   return ref.id;
 }
 
-/* Chiamato dal GameTable al termine di una partita-torneo: marca il
-   vincitore nel bracket. Idempotente. */
-export async function reportMatchResult(matchId, winnerUid) {
-  if (!matchId || !winnerUid) return;
+/* Chiamato al termine di una partita-torneo: marca il vincitore nel
+   bracket. Idempotente.
+   - Per match PvP: matchOrEntryId è il doc id su tcg_matches.
+   - Per match vs AI (locale): matchOrEntryId è l'entry.id del bracket
+     (es: "R1M2"), perché non esiste un doc su Firestore. */
+export async function reportMatchResult(matchOrEntryId, winnerUid) {
+  if (!matchOrEntryId || !winnerUid) return;
   const t = await getTournamentOnce();
   if (!t || t.status !== "running") return;
   const rounds = t.rounds.map((r) => ({
     ...r,
-    matches: r.matches.map((m) =>
-      m.matchId === matchId && !m.winnerUid ? { ...m, winnerUid } : m
-    ),
+    matches: r.matches.map((m) => {
+      if (m.winnerUid) return m;
+      // PvP match: match by Firestore matchId
+      if (m.matchId && m.matchId === matchOrEntryId) return { ...m, winnerUid };
+      // AI match: match by bracket entry id (no Firestore doc)
+      if (!m.matchId && m.vsAi && m.id === matchOrEntryId) return { ...m, winnerUid };
+      return m;
+    }),
   }));
   await updateDoc(tref(), { rounds, updatedAt: serverTimestamp() });
+}
+
+/* MASTER ONLY: forza un vincitore su un match del round corrente.
+   Utile quando un giocatore non si presenta o il client si pianta:
+   il torneo non si blocca aspettando un risultato che non arriva.
+   - bracketEntryId: l'id dell'entry (es. "R1M2")
+   - winnerUid: chi vince fra m.a e m.b
+   - se la entry ha matchId, anche il doc tcg_matches viene marcato
+     come "finished" così il giocatore vede uscire il match. */
+export async function forceFinishMatch(bracketEntryId, winnerUid) {
+  if (!bracketEntryId || !winnerUid) throw new Error("Parametri mancanti");
+  const t = await getTournamentOnce();
+  if (!t || t.status !== "running") throw new Error("Torneo non in corso");
+
+  let touched = false;
+  let firestoreMatchId = null;
+  const rounds = t.rounds.map((r) => ({
+    ...r,
+    matches: r.matches.map((m) => {
+      if (m.id !== bracketEntryId) return m;
+      if (m.winnerUid) return m;
+      if (winnerUid !== m.a && winnerUid !== m.b) {
+        throw new Error("Il vincitore deve essere uno dei due partecipanti");
+      }
+      touched = true;
+      firestoreMatchId = m.matchId || null;
+      return { ...m, winnerUid, forcedByMaster: true };
+    }),
+  }));
+  if (!touched) throw new Error("Match non trovato o già concluso");
+
+  await updateDoc(tref(), { rounds, updatedAt: serverTimestamp() });
+
+  // Se la entry aveva un doc su tcg_matches, chiudilo così l'avversario
+  // viene buttato fuori dalla partita e non resta in limbo.
+  if (firestoreMatchId) {
+    try {
+      const mref = doc(db, MCOL, firestoreMatchId);
+      await updateDoc(mref, {
+        status: "finished",
+        winnerUid,
+        forcedByMaster: true,
+        updatedAt: serverTimestamp(),
+      });
+    } catch {
+      // se la rule non lo permette o il doc non esiste pace, il bracket è
+      // già stato aggiornato e basta per progredire il torneo.
+    }
+  }
+}
+
+/* MASTER ONLY: risolve tutti i match pendenti del round corrente
+   sorteggiando un vincitore. Utile quando metà player ha mollato. */
+export async function forceFinishAllPending() {
+  const t = await getTournamentOnce();
+  if (!t || t.status !== "running") throw new Error("Torneo non in corso");
+  const cur = t.rounds[t.currentRound - 1];
+  if (!cur) throw new Error("Round corrente mancante");
+
+  const pending = cur.matches.filter((m) => !m.winnerUid);
+  if (pending.length === 0) return 0;
+
+  for (const m of pending) {
+    if (!m.a || !m.b) continue;
+    const winnerUid = Math.random() < 0.5 ? m.a : m.b;
+    try {
+      await forceFinishMatch(m.id, winnerUid);
+    } catch {
+      // continua con gli altri se uno fallisce
+    }
+  }
+  return pending.length;
 }
 
 /* ---------- utility per la UI ---------- */
@@ -335,11 +570,17 @@ export function currentRoundOf(t) {
   return t.rounds[t.currentRound - 1] || null;
 }
 
-/* Trova il match (nel round corrente) in cui gioca uid; null se nessuno. */
+/* Trova il match (nel round corrente) in cui gioca uid; null se nessuno.
+   Include sia i match PvP (con matchId Firestore) che quelli vs AI
+   (vsAi=true, matchId=null, si gioca localmente). */
 export function myCurrentMatch(t, uid) {
   const r = currentRoundOf(t);
   if (!r) return null;
-  return r.matches.find((m) => (m.a === uid || m.b === uid) && !m.winnerUid && m.matchId) || null;
+  return r.matches.find((m) =>
+    (m.a === uid || m.b === uid) &&
+    !m.winnerUid &&
+    (m.matchId || m.vsAi)
+  ) || null;
 }
 
 /* Tutte le partite passate (vinte/perse) dell'utente. */

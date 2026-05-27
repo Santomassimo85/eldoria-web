@@ -687,6 +687,24 @@ function drawOne(s, side, silent) {
   return true;
 }
 
+/* MULLIGAN: rimette la mano nel mazzo, mescola e pesca 6 nuove carte.
+   Modifica SOLO la porzione `players[side]` dello stato — l'avversario
+   non viene toccato. Ritorna lo stato modificato (in-place).  */
+export function reshuffleSideForMulligan(state, side) {
+  const p = state.players[side];
+  if (!p) return state;
+  const handIds = (p.hand || []).map((h) => h.cardId);
+  const allCards = [...handIds, ...(p.deck || [])];
+  p.deck = shuffle(allCards);
+  p.hand = [];
+  for (let i = 0; i < OPENING_HAND; i++) {
+    if (p.deck.length === 0) break;
+    const cardId = p.deck.shift();
+    p.hand.push({ instId: newInst(state), cardId });
+  }
+  return state;
+}
+
 /* ---- turn flow ---- */
 function startTurn(s, side, isGameStart) {
   const p = s.players[side];

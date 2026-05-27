@@ -36,7 +36,15 @@ import {
 import { TCG_COINS } from "../../tcg/collection.js";
 import { playSfx } from "../../utils/tcgSfx.js";
 
-const EMOTES = ["Ben giocato!", "Per gli dèi!", "Tornerò!", "Tira iniziativa!"];
+const EMOTES = [
+  "Ben giocato!",
+  "Per gli dèi!",
+  "Tornerò!",
+  "Tira iniziativa!",
+  "Per la corona di Eldoria!",
+  "Hai pescato bene, eh?",
+];
+const EMOTE_COOLDOWN_MS = 60 * 1000; // 1 minuto fra un emote e l'altro
 
 /* Mana gems — one gem per ELEMENT instead of one per land (saves room
    on phones). Each gem shows the count overlaid on the diamond. Spent
@@ -93,6 +101,12 @@ function AvatarPod({
 }) {
   const pct = Math.max(0, Math.min(100, (p.hp / START_HP) * 100));
   const temp = p.tempHp || 0;
+  // Striscia blu degli HP temporanei: parte da dove finisce la barra rossa.
+  // Scala come gli HP normali (1 punto = 1/START_HP della barra). Cappata
+  // così la somma non eccede mai il 100% visivo; l'eventuale eccedenza
+  // resta visibile come testo "+N".
+  const tempPctRaw = (temp / START_HP) * 100;
+  const tempPctVisible = Math.max(0, Math.min(100 - pct, tempPctRaw));
   return (
     <div
       className={`tcg-pod ${top ? "tcg-pod--foe" : "tcg-pod--me"} ${
@@ -109,6 +123,13 @@ function AvatarPod({
         title={temp > 0 ? `${p.hp} PV (+${temp} temporanei)` : `${p.hp} PV`}
       >
         <span className="tcg-pod__hpfill" style={{ width: pct + "%" }} />
+        {temp > 0 && tempPctVisible > 0 && (
+          <span
+            className="tcg-pod__hpfill-temp"
+            style={{ left: pct + "%", width: tempPctVisible + "%" }}
+            aria-hidden="true"
+          />
+        )}
         <span className="tcg-pod__hpnum">
           {p.hp}
           {temp > 0 && (
@@ -206,6 +227,11 @@ export default function GameTable({
   const [hitShake, setHitShake] = useState(0);
   const [ghosts, setGhosts] = useState([]);
   const [emoteBubble, setEmoteBubble] = useState(null);
+  // Cooldown locale per gli emote: dopo un click i bottoni si disabilitano
+  // per EMOTE_COOLDOWN_MS, ma il sistema resta SEMPRE riutilizzabile (non
+  // si "rompe" come prima). emoteCdEnd è il timestamp di fine cooldown.
+  const [emoteCdEnd, setEmoteCdEnd] = useState(0);
+  const [emoteNowTick, setEmoteNowTick] = useState(0);
   const [arrows, setArrows] = useState([]);
   // exact pixel size of the table → SVG viewBox, so arrow coords
   // (computed in table-px) map 1:1 and never "wrap" off-canvas
@@ -749,6 +775,15 @@ export default function GameTable({
       return () => clearTimeout(t);
     }
   }, [isAi, match]);
+
+  // Tick 1s mentre c'è cooldown emote attivo: aggiorna emoteNowTick così
+  // il countdown sui bottoni si re-renderizza e si auto-riabilita allo
+  // scadere senza un secondo click.
+  useEffect(() => {
+    if (emoteCdEnd <= Date.now()) return;
+    const iv = setInterval(() => setEmoteNowTick(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [emoteCdEnd]);
 
   if (!state || !state.players) {
     return (
@@ -1541,20 +1576,35 @@ export default function GameTable({
             Resa
           </button>
         )}
-        {!isAi && (
-          <div className="tcg-emotes">
-            {EMOTES.map((t) => (
-              <button
-                key={t}
-                className="tcg-emote"
-                title={t}
-                onClick={() => sendEmote(matchId, mySide, t)}
-              >
-                {t.slice(0, 2)}
-              </button>
-            ))}
-          </div>
-        )}
+        {!isAi && (() => {
+          const now = Date.now();
+          // emoteNowTick è letto per forzare il re-render mentre il timer
+          // gira; non serve direttamente nel calcolo.
+          // eslint-disable-next-line no-unused-expressions
+          emoteNowTick;
+          const remaining = Math.max(0, emoteCdEnd - now);
+          const onCooldown = remaining > 0;
+          const secs = Math.ceil(remaining / 1000);
+          return (
+            <div className="tcg-emotes">
+              {EMOTES.map((t) => (
+                <button
+                  key={t}
+                  className={`tcg-emote${onCooldown ? " is-cooldown" : ""}`}
+                  title={onCooldown ? `Aspetta ${secs}s` : t}
+                  disabled={onCooldown}
+                  onClick={() => {
+                    if (Date.now() < emoteCdEnd) return; // safety
+                    sendEmote(matchId, mySide, t);
+                    setEmoteCdEnd(Date.now() + EMOTE_COOLDOWN_MS);
+                  }}
+                >
+                  {onCooldown ? `${secs}s` : t.slice(0, 2)}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="tcg-log">

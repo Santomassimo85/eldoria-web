@@ -10,9 +10,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthContext";
 import { isTcgUnlockedFor } from "../tcg/access.js";
-import { createGame } from "../tcg/engine.js";
+import { createGame, reshuffleSideForMulligan } from "../tcg/engine.js";
 import { buildClassDeck } from "../tcg/cards.js";
-import { watchMatch, sideForUid } from "../tcg/net.js";
+import {
+  watchMatch, sideForUid,
+  pushMulliganReshuffle, pushMulliganCommit,
+} from "../tcg/net.js";
 import {
   watchProfile, grantStarter, needsStarter, openPack, saveDeck,
   awardCoins, playableDeck, resetAllTcg, setCover, TCG_COINS,
@@ -145,6 +148,10 @@ export default function Tcg() {
   const [match, setMatch] = useState(null);
   const unsubRef = useRef(null);
 
+  // Tournament AI match: bracket entry vs un AI bot, gioco locale
+  const [tournAiEntry, setTournAiEntry] = useState(null);
+  const [tournAiSeed, setTournAiSeed] = useState(0);
+
   // global tournament state (live) — used to hide / show the menu tile
   // and to report match results from the pvp screen.
   const [tournament, setTournament] = useState(null);
@@ -176,12 +183,44 @@ export default function Tcg() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, aiSeed, aiClass, aiFoeClass]);
 
+  /* Stato di un match torneo vs AI (locale). Costruito UNA VOLTA al
+     momento dell'ingresso (e ogni reshuffle), poi cached in state così
+     un update di Firestore al doc del torneo NON rimescola la mano del
+     mulligan sotto al naso del giocatore. */
+  const [tournAiState, setTournAiState] = useState(null);
+  useEffect(() => {
+    if (screen !== "tournament-ai") {
+      setTournAiState(null);
+      return;
+    }
+    if (!tournAiEntry || !tournament) return;
+    const aiUid = tournAiEntry.aiUid;
+    const humanUid = tournAiEntry.humanUid;
+    const aiPart = tournament.participants?.[aiUid];
+    const humanPart = tournament.participants?.[humanUid];
+    if (!aiPart || !humanPart) return;
+    setTournAiState(createGame({
+      p0Name: humanPart.name || pName,
+      p1Name: aiPart.name,
+      deck0: Array.isArray(humanPart.deck) && humanPart.deck.length >= 30
+        ? humanPart.deck
+        : playableDeck(profile),
+      deck1: Array.isArray(aiPart.deck) ? aiPart.deck : null,
+      p0Class: humanPart.classChoice || null,
+      p1Class: aiPart.classChoice || null,
+    }));
+    // NB: deliberatamente NON dipende da `tournament` per evitare reshuffle
+    // ad ogni snapshot Firestore. Dipende solo da seed/entry/screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, tournAiEntry, tournAiSeed]);
+
   const goMenu = () => {
     stopWatch();
     setMatch(null);
     setMatchId(null);
     setAiClass(null);
     setAiFoeClass(null);
+    setTournAiEntry(null);
     setMulligansLeft(MAX_MULLIGANS);
     setMulliganDone(false);
     setScreen("menu");
@@ -257,6 +296,35 @@ export default function Tcg() {
       }
       setMatch(m);
     });
+  };
+
+  /* Entra in un match torneo vs AI: gioco interamente locale (mode=ai).
+     Quando finisce, scriviamo il vincitore nel bracket usando l'entry.id
+     (non c'è un doc su tcg_matches per questi match). */
+  const enterTournamentAiMatch = (entry) => {
+    if (!entry || !entry.vsAi) return;
+    primeSfx();
+    setTournAiEntry(entry);
+    setTournAiSeed((n) => n + 1);
+    setMulligansLeft(MAX_MULLIGANS);
+    setMulliganDone(false);
+    setScreen("tournament-ai");
+  };
+
+  /* Hook di fine partita per i match torneo vs AI. Riporta il risultato
+     al bracket usando l'entry id come chiave. */
+  const tournAiEndHook = (result) => {
+    awardFor("ai", result);
+    if (!tournAiEntry) return;
+    const winnerUid = result === "win" ? tournAiEntry.humanUid : tournAiEntry.aiUid;
+    reportMatchResult(tournAiEntry.id, winnerUid).catch(() => {});
+  };
+
+  const goBackToTournament = () => {
+    setTournAiEntry(null);
+    setMulligansLeft(MAX_MULLIGANS);
+    setMulliganDone(false);
+    setScreen("tournament");
   };
 
   if (!isTcgUnlockedFor(currentUser?.email)) {
@@ -343,7 +411,35 @@ export default function Tcg() {
           isMaster={isMaster}
           onBack={goMenu}
           onEnterMatch={(id) => enterMatch(id)}
+          onEnterAiMatch={enterTournamentAiMatch}
         />
+      )}
+
+      {/* Match torneo vs AI bot (locale): mulligan + GameTable mode="ai" */}
+      {screen === "tournament-ai" && tournAiState && !mulliganDone && (
+        <MulliganOverlay
+          hand={tournAiState.players.p0.hand}
+          mulligansLeft={mulligansLeft}
+          onReshuffle={() => {
+            setMulligansLeft((n) => Math.max(0, n - 1));
+            setTournAiSeed((n) => n + 1);
+          }}
+          onKeep={() => setMulliganDone(true)}
+        />
+      )}
+
+      {screen === "tournament-ai" && tournAiState && mulliganDone && (
+        <GameBoundary onExit={goBackToTournament}>
+          <GameTable
+            key={`tourn-ai-${tournAiEntry?.id}-${tournAiSeed}`}
+            mode="ai"
+            initialState={tournAiState}
+            myCover={profile?.cover || "nature"}
+            foeCover="darkness"
+            onExit={goBackToTournament}
+            onGameEnd={tournAiEndHook}
+          />
+        </GameBoundary>
       )}
 
       {screen === "manual" && <Manual onBack={goMenu} />}
@@ -426,18 +522,86 @@ export default function Tcg() {
         </div>
       )}
 
-      {screen === "pvp" && match && mySide && (
-        <GameBoundary onExit={goMenu}>
-          <GameTable
-            mode="pvp"
-            match={match}
-            matchId={matchId}
-            mySide={mySide}
-            onExit={goMenu}
-            onGameEnd={pvpEndHook}
-          />
-        </GameBoundary>
-      )}
+      {screen === "pvp" && match && mySide && (() => {
+        // ── PvP Mulligan gate ─────────────────────────────────
+        // Match nuovi vengono creati con `mulligan: {p0:{...}, p1:{...}}`.
+        // Se manca (match legacy) trattiamo come "entrambi committed" =
+        // skip mulligan e si gioca direttamente.
+        const mul = match.mulligan;
+        const myMul = mul?.[mySide];
+        const foeSide = mySide === "p0" ? "p1" : "p0";
+        const foeMul = mul?.[foeSide];
+        const myCommitted = !mul || !myMul || myMul.committed;
+        const foeCommitted = !mul || !foeMul || foeMul.committed;
+        const bothCommitted = myCommitted && foeCommitted;
+
+        // Stato locale del game per il mulligan (letto da Firestore)
+        const stateNow = match.state;
+        const myHand = stateNow?.players?.[mySide]?.hand || [];
+        const usedNow = myMul?.used ?? 0;
+        const maxMul = 2;
+        const canReshuffle = usedNow < maxMul;
+
+        // Stato in costruzione (match appena aperto, in attesa accept)
+        if (!stateNow) {
+          return (
+            <div className="tcg-table tcg-table--loading">
+              <div className="tcg-waiting__spinner" />
+              <p>In attesa dell'avversario…</p>
+            </div>
+          );
+        }
+
+        if (!myCommitted) {
+          return (
+            <MulliganOverlay
+              hand={myHand}
+              mulligansLeft={maxMul - usedNow}
+              onReshuffle={async () => {
+                if (!canReshuffle) return;
+                // Clona lo stato e rimescola SOLO il mio side
+                const cloned = JSON.parse(JSON.stringify(stateNow));
+                reshuffleSideForMulligan(cloned, mySide);
+                try {
+                  await pushMulliganReshuffle(matchId, mySide, cloned, usedNow + 1);
+                } catch (e) {
+                  console.error("Mulligan reshuffle failed", e);
+                }
+              }}
+              onKeep={async () => {
+                try {
+                  await pushMulliganCommit(matchId, mySide);
+                } catch (e) {
+                  console.error("Mulligan commit failed", e);
+                }
+              }}
+            />
+          );
+        }
+
+        if (myCommitted && !foeCommitted) {
+          return (
+            <div className="tcg-table tcg-table--loading">
+              <div className="tcg-waiting__spinner" />
+              <p>Mano confermata. In attesa che l'avversario decida la sua…</p>
+            </div>
+          );
+        }
+
+        // bothCommitted → si gioca
+        return (
+          <GameBoundary onExit={goMenu}>
+            <GameTable
+              mode="pvp"
+              match={match}
+              matchId={matchId}
+              mySide={mySide}
+              onExit={goMenu}
+              onGameEnd={pvpEndHook}
+            />
+          </GameBoundary>
+        );
+      })()}
 
       {screen === "pvp" && (!match || !mySide) && (
         <div className="tcg-table tcg-table--loading">
