@@ -17,7 +17,7 @@ import React, { useEffect, useState } from "react";
 import ClassPicker from "./ClassPicker.jsx";
 import {
   watchTournament, openRegistration, closeRegistration, startTournament,
-  advanceRound, resetTournament,
+  advanceRound, resetTournament, ensureTournamentDoc,
   registerPlayer, withdrawPlayer,
   currentRoundOf, myCurrentMatch, isRegistered,
   totalRoundsFor, roundLabel,
@@ -40,7 +40,9 @@ const STATUS_ICON = {
 export default function Tournament({
   user, name, deck, cover, isMaster, onBack, onEnterMatch,
 }) {
-  const [t, setT] = useState(null);
+  // undefined = first render (no snapshot ricevuto), null = doc inesistente,
+  // object = doc presente. Distingue caricamento da "torneo da creare".
+  const [t, setT] = useState(undefined);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -105,11 +107,49 @@ export default function Tournament({
     </div>
   );
 
-  if (!t) {
+  // Caricamento iniziale: nessun snapshot ricevuto ancora
+  if (t === undefined) {
     return (
       <div className="tcg-tourn">
         <Header />
         <div className="tcg-tourn__loading">Caricamento del torneo…</div>
+      </div>
+    );
+  }
+
+  // Snapshot arrivato ma il doc non esiste su Firestore.
+  // Master → può crearlo. Player → vede messaggio "non disponibile".
+  if (t === null) {
+    return (
+      <div className="tcg-tourn">
+        <Header />
+        {err && <div className="tcg-tourn__err">⚠️ {err}</div>}
+        {isMaster ? (
+          <section className="tcg-tourn__hero tcg-tourn__hero--closed">
+            <h2>Torneo non ancora inizializzato</h2>
+            <p>
+              Crea il documento del torneo per poter aprire le iscrizioni,
+              avviare i match e gestire bracket / reset.
+            </p>
+            <div className="tcg-tourn__cta">
+              <button
+                className="tcg-btn tcg-btn--primary tcg-tourn__cta-btn"
+                disabled={busy}
+                onClick={run(() => ensureTournamentDoc())}
+              >
+                ⚙ Crea torneo
+              </button>
+            </div>
+          </section>
+        ) : (
+          <section className="tcg-tourn__hero tcg-tourn__hero--closed">
+            <h2>Torneo non disponibile</h2>
+            <p>
+              Il Master non ha ancora aperto un torneo. Torna più tardi:
+              le iscrizioni saranno annunciate qui.
+            </p>
+          </section>
+        )}
       </div>
     );
   }

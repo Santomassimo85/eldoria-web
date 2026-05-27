@@ -2431,8 +2431,10 @@
   transform: translateY(-50%) translateX(0);
 }
 
-/* MOBILE: side nav diventa bottom-bar orizzontale */
-@media (max-width: 760px) {
+/* Sotto i 1280px la side-nav verticale finisce per sovrapporsi al
+   contenuto centrato (max-width 1040px + ~120px richiesti per stare
+   a lato senza toccare). Su questi schermi la riportiamo in basso. */
+@media (max-width: 1280px) {
   .arena-side-nav {
     top: auto;
     bottom: 14px;
@@ -2443,14 +2445,28 @@
     gap: 4px;
   }
   .arena-side-nav-btn {
-    width: 38px;
-    height: 38px;
-    font-size: 1.05rem;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
   }
   .arena-side-nav-btn::after { display: none; }
   @keyframes arena-side-nav-fade {
     from { opacity: 0; transform: translateX(-50%) translateY(10px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+}
+
+/* Mobile small: bottom bar più compatta + non blocca la fight icon FAB */
+@media (max-width: 480px) {
+  .arena-side-nav {
+    bottom: 10px;
+    padding: 4px 6px;
+    gap: 2px;
+  }
+  .arena-side-nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
   }
 }
 
@@ -3354,4 +3370,830 @@
   .arena-page .hp-roll-panel { padding: 14px 14px; }
   .arena-page .fight-log,
   .arena-page .match-logs { font-size: 0.8rem; padding: 12px 14px; }
+}
+
+/* ============================================================
+   LAYER 4 — RESPONSIVE LAYOUT CONSTRAINT (apply at all sizes)
+   Tutti i pannelli "content" restano centrati e mai più larghi di
+   1040px. Le sezioni cinematografiche full-bleed (hero,
+   sticky-nav, scrollytell, section-divider, side-nav) sono
+   esplicitamente esentate via selettori dedicati.
+
+   Aggiungiamo anche padding orizzontale alla pagina così su
+   tablet/desktop medi (700-1080px) c'è respiro ai bordi.
+   ============================================================ */
+.arena-page {
+  padding-left: clamp(14px, 3vw, 32px) !important;
+  padding-right: clamp(14px, 3vw, 32px) !important;
+  padding-bottom: 80px !important;
+  /* il padding-top è gestito dall'hero (full-bleed) */
+}
+
+/* Anchor scroll offset: ora basta clearare la sola navbar globale del sito
+   (la sticky-nav arena è stata rimossa). */
+html {
+  scroll-padding-top: calc(var(--navbar-h, 60px) + 16px);
+}
+
+.arena-page .arena-reward-panel,
+.arena-page .champions-arena-banner,
+.arena-page .champion-banner,
+.arena-page .master-panel,
+.arena-page .arena-info-section,
+.arena-page .matches-container,
+.arena-page .arena-modal-trigger-row,
+.arena-page .fun-arena-section,
+.arena-page .hall-of-champions,
+.arena-page .arena-tournament-history,
+.arena-page .arena-champions-roster,
+.arena-page .arena-stats,
+.arena-page .betting-panel,
+.arena-page .betting-section,
+.arena-page .bracket-section,
+.arena-page .arena-phase-banner,
+.arena-page .arena-quicknav,
+.arena-page .arena-quick-nav,
+.arena-page .join-zone,
+.arena-page .join-zone-fun,
+.arena-page .hp-roll-panel,
+.arena-page .loadout-panel,
+.arena-page .my-arena-banner {
+  max-width: 1040px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box;
+  /* scroll-margin: quando si scrolla a un anchor, lascia respiro sotto la navbar */
+  scroll-margin-top: calc(var(--navbar-h, 60px) + 16px);
+}
+
+/* La sticky-nav arena resta full-bleed sopra ai pannelli centrati */
+.arena-page .arena-sticky-nav,
+.arena-page .arena-hero,
+.arena-page .arena-scrollytell,
+.arena-page .arena-section-divider {
+  max-width: 100vw !important;
+}
+
+/* Il match-container nel modal di combat deve restare a tutta larghezza */
+.arena-combat-dialog .matches-container {
+  max-width: none !important;
+}
+
+/* Reward panel: ora primo pannello dopo l'hero. Spaziatura pulita. */
+.arena-page .arena-reward-panel {
+  margin-top: 36px !important;
+  margin-bottom: 36px !important;
+  padding-top: 24px !important;
+  padding-bottom: 22px !important;
+}
+
+/* Sticky mini-nav rimossa via JSX — la nascondo anche via CSS per sicurezza
+   nel caso resti del markup vecchio in cache. */
+.arena-page .arena-sticky-nav { display: none !important; }
+
+/* ============================================================
+   LAYER 5 — TEXT CONTRAST FIX
+   Sostituisci ogni rosso scuro (var(--arena-blood)) finito su
+   sfondo scuro con dorato/cream per leggibilità.
+   ============================================================ */
+
+/* MODAL TRIGGER cards: titolo + sub erano #8a0e0e su dark glass — ora gold/cream */
+.arena-page .arena-modal-trigger-title {
+  color: #ffd97a !important;
+}
+.arena-page .arena-modal-trigger-sub {
+  color: rgba(245, 230, 200, 0.72) !important;
+}
+
+/* MASTER PANEL (dark) — tutto il testo blood-color al suo interno → gold */
+.arena-page .master-panel .turn-tracker strong,
+.arena-page .master-panel .equip-panel-title,
+.arena-page .master-panel .save-block-label,
+.arena-page .master-panel .dual-action-label,
+.arena-page .master-panel .stat-budget-badge,
+.arena-page .master-panel .stat-assign-label,
+.arena-page .master-panel .stat-adj-btn,
+.arena-page .master-panel .action-tab.active,
+.arena-page .master-panel .action-tab:hover,
+.arena-page .master-panel .hp-roll-title,
+.arena-page .master-panel .hp-roll-buttons button,
+.arena-page .master-panel .bet-amount-btn,
+.arena-page .master-panel .fun-challenge-vs,
+.arena-page .master-panel .loadout-char-class,
+.arena-page .master-panel .arena-info-title,
+.arena-page .master-panel .equip-panel-sub,
+.arena-page .master-panel .bet-fighter-name {
+  color: #ffd97a !important;
+}
+
+/* ARENA INFO SECTION (dark glass) — titoli/contenuto in gold/cream */
+.arena-page .arena-info-section .arena-info-title,
+.arena-page .arena-info-section .arena-info-list,
+.arena-page .arena-info-section .arena-info-list li,
+.arena-page .arena-info-section .arena-info-example,
+.arena-page .arena-info-section p {
+  color: #ebe3d2 !important;
+}
+.arena-page .arena-info-section .arena-info-title {
+  color: #ffd97a !important;
+}
+
+/* TOURNAMENT HISTORY / HALL / CHAMPIONS ROSTER (dark) — gold for headers */
+.arena-page .arena-tournament-history [class*="-title"],
+.arena-page .arena-champions-roster [class*="-title"],
+.arena-page .arena-stats [class*="-title"] {
+  color: #ffd97a !important;
+}
+
+/* REWARD PANEL textarea placeholder: dorato semitrasparente */
+.arena-page .arena-reward-textarea::placeholder {
+  color: rgba(245, 230, 200, 0.55) !important;
+  font-style: italic;
+}
+.arena-page .arena-reward-current,
+.arena-page .arena-reward-current strong {
+  color: #ffd97a !important;
+}
+
+/* CHAMPIONS-ONLY toggle dentro pannello scuro */
+.arena-page .master-panel .champions-only-toggle,
+.arena-page .master-panel .champions-only-toggle label {
+  color: #f5e6c8 !important;
+}
+.arena-page .champions-only-badge {
+  color: #ffd97a !important;
+  background: rgba(212, 175, 55, 0.12) !important;
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+}
+
+/* BRACKET fighter name su dark glass → bianco caldo */
+.arena-page .bracket-fighter-name {
+  color: #fff7e6 !important;
+}
+
+/* FUN-ARENA section (dark blue glass) — VS divider e class chip in dorato chiaro,
+   non rosso scuro */
+.arena-page .fun-arena-section .fun-challenge-vs {
+  color: #ffd97a !important;
+}
+.arena-page .fun-arena-section .fun-challenge-class {
+  color: #fff7e6 !important;
+}
+
+/* ============================================================
+   LAYER 7 — MODAL TABELLONE: responsive + colori armoniosi
+   - Modal full-responsive: mobile 100%, tablet 92%, PC 80%,
+     XL 60% del viewport (con cap a 1080px).
+   - Tema scuro armonioso (no più crema/white outer + dark inner),
+     accenti gold.
+   - Bracket interno: round headers, group headers, fighter rows
+     in palette coerente caldo-scuro + gold.
+   ============================================================ */
+body .arena-modal-overlay {
+  padding: 16px !important;
+}
+
+/* Dialog responsive — modal più largo, contenuto deve starci tutto senza scroll-x */
+body .arena-modal-dialog {
+  /* Default mobile-first */
+  max-width: 100% !important;
+  width: 100% !important;
+  max-height: 92vh !important;
+  /* Dark theme harmony */
+  background: linear-gradient(180deg, #2a1410 0%, #1a0808 100%) !important;
+  border: 1.5px solid #ffd97a !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.25) inset,
+    0 30px 80px rgba(0, 0, 0, 0.7),
+    0 0 30px rgba(255, 217, 122, 0.18) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  color: #f5e6c8 !important;
+}
+@media (min-width: 640px) {
+  body .arena-modal-dialog {
+    max-width: 900px !important;
+    width: 95% !important;
+  }
+}
+@media (min-width: 1024px) {
+  body .arena-modal-dialog {
+    max-width: 1100px !important;
+    width: 92% !important;
+  }
+}
+@media (min-width: 1440px) {
+  body .arena-modal-dialog {
+    max-width: 1280px !important;
+    width: 80% !important;
+  }
+}
+
+/* Header del modal: dark, titolo gold */
+body .arena-modal-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 18px 22px !important;
+  background: linear-gradient(135deg, #3a1c14 0%, #25100a 100%) !important;
+  border-bottom: 1.5px solid #ffd97a !important;
+}
+body .arena-modal-title {
+  margin: 0 !important;
+  font-family: var(--font-title, serif) !important;
+  font-size: clamp(1rem, 1.8vw, 1.3rem) !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
+  color: #ffe8a0 !important;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 14px rgba(255, 217, 122, 0.45) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap;
+}
+/* Bracket-section dentro il modal: trasparente (eredita dark dal dialog) */
+body .arena-modal-body .bracket-section {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Bracket round bar (Round X badge sotto il titolo del modal) */
+body .arena-modal-body .bracket-section-round-bar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+body .arena-modal-body .bracket-round-badge--inline {
+  font-size: 0.72rem !important;
+  padding: 6px 16px !important;
+}
+
+/* Body del modal: trasparente, eredita lo sfondo dal dialog.
+   overflow-x: hidden per evitare scroll laterale indesiderato. */
+body .arena-modal-body {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 22px !important;
+  overflow-y: auto;
+  overflow-x: hidden !important;
+  max-height: calc(92vh - 80px);
+  color: #f5e6c8 !important;
+}
+
+/* Close button: red+gold border, coerente coi altri bottoni */
+body .arena-modal-close {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
+  color: #fff !important;
+  border: 2px solid #ffd97a !important;
+  border-radius: 50% !important;
+  box-shadow:
+    0 4px 14px rgba(220, 38, 38, 0.55),
+    0 0 16px rgba(255, 217, 122, 0.3) !important;
+  font-weight: 800 !important;
+  width: 38px !important;
+  height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+body .arena-modal-close:hover {
+  transform: rotate(90deg) scale(1.05);
+  box-shadow:
+    0 6px 18px rgba(239, 68, 68, 0.7),
+    0 0 22px rgba(255, 217, 122, 0.45) !important;
+}
+
+/* ── BRACKET MODAL INTERNO: palette armoniosa ───────────────── */
+
+/* Wrapper dei gironi: sempre 1 colonna (gironi impilati verticalmente) */
+body .arena-modal-body .bracket-groups-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+/* Bracket-group: sovrascrive grid-template-columns che mandava
+   standings+rounds in colonne side-by-side. Ora è un flex VERTICALE:
+   standings sopra, rounds sotto. */
+body .arena-modal-body .bracket-group {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  grid-template-areas: none !important;
+  background: linear-gradient(135deg, #3a1d10 0%, #20100a 100%) !important;
+  border: 1.5px solid rgba(255, 217, 122, 0.6) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.2) inset,
+    0 8px 20px rgba(0, 0, 0, 0.4) !important;
+  padding: 16px !important;
+  gap: 14px !important;
+  color: #f5e6c8 !important;
+  backdrop-filter: none !important;
+}
+/* Annulla anche grid-area sui children così il flex-column li impila */
+body .arena-modal-body .bracket-group > .bracket-group-header,
+body .arena-modal-body .bracket-group > .bracket-standings,
+body .arena-modal-body .bracket-group > .bracket-rounds-list,
+body .arena-modal-body .bracket-group > .bracket-rounds-empty {
+  grid-area: auto !important;
+  width: 100% !important;
+}
+
+/* Group header (GIRONE A / B title bar): rosso più sobrio */
+body .arena-modal-body .bracket-group-header {
+  background: linear-gradient(135deg, #7a2424 0%, #4a1010 100%) !important;
+  border: 1px solid #ffd97a !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 12px rgba(180, 30, 30, 0.35) !important;
+  padding: 8px 14px !important;
+  margin-bottom: 12px !important;
+}
+body .arena-modal-body .bracket-group-title {
+  color: #ffe8a0 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.12em !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+body .arena-modal-body .bracket-group-count {
+  background: linear-gradient(135deg, #ffd97a 0%, #b08820 100%) !important;
+  color: #2a1500 !important;
+  border: 1.5px solid #fff !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  font-size: 0.66rem !important;
+  padding: 3px 10px !important;
+}
+
+/* Round col (ROUND 1, ROUND 2 colonne): warm sobrio */
+body .arena-modal-body .bracket-round-col {
+  background: linear-gradient(135deg, #2e1810 0%, #1a0a08 100%) !important;
+  border: 1px solid rgba(255, 217, 122, 0.45) !important;
+  border-radius: 12px !important;
+  padding: 10px !important;
+  margin-bottom: 10px;
+}
+
+/* Round header (ROUND 1, ROUND 2 label): gold-on-dark, NON rosso bright */
+body .arena-modal-body .bracket-round-header {
+  background: linear-gradient(135deg, #5a3a14 0%, #3a2510 100%) !important;
+  color: #ffe8a0 !important;
+  border: 1px solid #ffd97a !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  text-align: center !important;
+  font-family: var(--font-title, serif);
+  font-weight: 800 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  margin-bottom: 8px !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Bracket card-mini (match finiti — riga compatta nel modal) */
+body .arena-modal-body .bracket-card-mini {
+  background: rgba(255, 244, 215, 0.06) !important;
+  border: 1px solid rgba(255, 217, 122, 0.28) !important;
+  color: #f5e6c8 !important;
+  border-radius: 8px !important;
+}
+body .arena-modal-body .bracket-card-mini.mine-win {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 163, 74, 0.10)) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  color: #bbf7d0 !important;
+}
+body .arena-modal-body .bracket-card-mini.mine-loss {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.25), rgba(153, 27, 27, 0.10)) !important;
+  border-color: rgba(220, 38, 38, 0.6) !important;
+  color: #fecaca !important;
+}
+body .arena-modal-body .bracket-mini-winner { color: #fff7e6 !important; }
+body .arena-modal-body .bracket-card-mini.mine-win .bracket-mini-winner { color: #bbf7d0 !important; }
+body .arena-modal-body .bracket-card-mini.mine-loss .bracket-mini-winner { color: #fecaca !important; }
+body .arena-modal-body .bracket-mini-losers { color: rgba(245, 230, 200, 0.65) !important; }
+body .arena-modal-body .bracket-mini-vs { color: #ffd97a !important; }
+body .arena-modal-body .bracket-mini-badge.neutral {
+  background: linear-gradient(135deg, #5a3a14, #3a2510) !important;
+  color: #ffd97a !important;
+}
+
+/* Bracket fighter (riga match nel modal): bg trasparente scuro */
+body .arena-modal-body .bracket-fighter {
+  background: rgba(255, 244, 215, 0.06) !important;
+  border: 1px solid rgba(255, 217, 122, 0.28) !important;
+  border-radius: 8px !important;
+  padding: 7px 10px !important;
+  margin-bottom: 6px;
+  color: #f5e6c8 !important;
+}
+body .arena-modal-body .bracket-fighter:last-child {
+  margin-bottom: 0;
+}
+body .arena-modal-body .bracket-fighter-name { color: #fff7e6 !important; font-weight: 600; }
+body .arena-modal-body .bracket-fighter-class { color: #ffd97a !important; }
+body .arena-modal-body .bracket-fighter.win {
+  background: linear-gradient(135deg, rgba(255, 217, 122, 0.30), rgba(255, 217, 122, 0.10)) !important;
+  border-color: #ffd97a !important;
+  color: #fff !important;
+}
+body .arena-modal-body .bracket-fighter.active-turn {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.30), rgba(138, 14, 14, 0.12)) !important;
+  border-color: #ef4444 !important;
+}
+
+/* Standings dentro il modal: stesso stile del summary */
+body .arena-modal-body .bracket-standings {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 217, 122, 0.35) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+body .arena-modal-body .bracket-standings th {
+  background: linear-gradient(135deg, #ffd97a 0%, #b08820 100%) !important;
+  color: #2a1500 !important;
+}
+body .arena-modal-body .bracket-standings td {
+  color: #fff7e6 !important;
+}
+
+/* Bracket final (header "Finale di Campionato"): gradient gold */
+body .arena-modal-body .bracket-final-header {
+  background: linear-gradient(135deg, #ffd97a 0%, #b08820 100%) !important;
+  color: #4a0a0a !important;
+  border: 2px solid #fff !important;
+  border-radius: 12px !important;
+  padding: 10px 18px !important;
+  font-weight: 900 !important;
+  text-align: center;
+  letter-spacing: 0.14em !important;
+  box-shadow: 0 8px 22px rgba(255, 217, 122, 0.45) !important;
+  margin-bottom: 16px !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Hide bracket-title h3 se rimasto in altri contesti */
+body .arena-modal-body .bracket-title {
+  display: none !important;
+}
+
+/* ============================================================
+   LAYER 6 — FIX SU RICHIESTA UTENTE
+   - Master panel: niente più "wine on wine", inversione su crema
+     scuro caldo che contrasta col resto dark della pagina.
+   - Modal-trigger icons (Titoli, Statistiche): icone più grandi,
+     gold-on-dark, bordo dorato luminoso così sono leggibili.
+   - Bracket summary card: alza l'opacità e il contrasto del testo
+     così non sembra disabilitato.
+   ============================================================ */
+
+/* --- MASTER PANEL: "bianco scambiato" = crema scuro caldo --- */
+.arena-page .master-panel,
+.arena-page.arena-page .master-panel {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(212, 175, 55, 0.16), transparent 55%),
+    linear-gradient(135deg, #2a1f10 0%, #1e1408 60%, #2a1f10 100%) !important;
+  border: 1px solid rgba(212, 175, 55, 0.45) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.08) inset,
+    0 18px 42px rgba(0, 0, 0, 0.5) !important;
+  color: #f5e6c8 !important;
+}
+.arena-page .master-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--arena-gold, #d4af37), var(--arena-blood, #8a0e0e), var(--arena-gold, #d4af37), transparent);
+  opacity: 0.9;
+}
+.arena-page .master-panel .master-col {
+  background: rgba(255, 244, 215, 0.06) !important;
+  border: 1px solid rgba(212, 175, 55, 0.25) !important;
+  color: #f5e6c8 !important;
+}
+.arena-page .master-panel .col-label {
+  color: rgba(255, 217, 122, 0.85) !important;
+}
+.arena-page .master-panel .empty-note {
+  color: rgba(245, 230, 200, 0.5) !important;
+}
+.arena-page .master-panel .participant-tag,
+.arena-page .master-panel .approval-row {
+  color: #f5e6c8 !important;
+  border-bottom-color: rgba(212, 175, 55, 0.12) !important;
+}
+.arena-page .master-panel .p-name {
+  color: #f5e6c8 !important;
+}
+
+/* --- MODAL TRIGGERS: icone gold-on-dark, più presenti --- */
+.arena-page .arena-modal-trigger {
+  background: linear-gradient(135deg, rgba(50, 22, 14, 0.92), rgba(28, 12, 8, 0.95)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.45) !important;
+}
+.arena-page .arena-modal-trigger:hover {
+  border-color: var(--arena-gold, #d4af37) !important;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.4) inset !important;
+}
+.arena-page .arena-modal-trigger-icon {
+  font-size: 1.6rem !important;
+  width: 52px !important;
+  height: 52px !important;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.32), rgba(180, 130, 30, 0.12)) !important;
+  border: 1.5px solid rgba(212, 175, 55, 0.6) !important;
+  border-radius: 14px !important;
+  color: #ffd97a !important;
+  /* Per emoji come ♛📊⚔ il color non si applica; uso un drop-shadow dorato
+     che le fa risaltare anche se restano nel loro colore nativo. */
+  filter: drop-shadow(0 0 6px rgba(255, 217, 122, 0.45)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 217, 122, 0.18) inset,
+    0 6px 14px rgba(180, 130, 30, 0.18) !important;
+}
+
+/* --- BRACKET / SCOMMESSE / TORNEO: colori accesi, niente blur/opacity ---
+   Specificità rinforzata col prefisso "body" per battere QUALSIASI altra
+   regola con !important nel progetto (alcune sono in Arena.css con la
+   stessa specificità — il prefisso body ci dà uno scalino in più). */
+.arena-page .bracket-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin: 22px auto;
+  max-width: 1040px;
+}
+
+/* TABELLONE — RIEPILOGO header bar: rosso-bordeaux acceso + ORO */
+body .arena-page .bracket-open-row {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px !important;
+  margin-top: 28px !important;
+  margin-bottom: 16px !important;
+  background: linear-gradient(135deg, #a02828 0%, #6b1212 50%, #4a0a0a 100%) !important;
+  border: 2px solid #ffd97a !important;
+  border-radius: 16px !important;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.32) inset,
+    0 12px 30px rgba(220, 38, 38, 0.55),
+    0 0 28px rgba(255, 217, 122, 0.35) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  position: relative;
+  z-index: 1;
+}
+body .arena-page .bracket-open-row-title {
+  color: #ffe8a0 !important;
+  margin: 0;
+  font-family: var(--font-title, serif);
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(255, 217, 122, 0.55);
+}
+
+/* "ROUND X" badge ORO PIENO che spicca */
+body .arena-page .bracket-round-badge,
+body .arena-modal-body .bracket-round-badge {
+  background: linear-gradient(135deg, #ffd97a 0%, #d4af37 50%, #b08820 100%) !important;
+  color: #2a1500 !important;
+  border: 2px solid #fff !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.14em !important;
+  padding: 5px 14px !important;
+  box-shadow: 0 4px 16px rgba(255, 217, 122, 0.55), 0 0 18px rgba(255, 217, 122, 0.4) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  opacity: 1 !important;
+  filter: none !important;
+}
+body .arena-page .bracket-round-badge.final-badge,
+body .arena-modal-body .bracket-round-badge.final-badge {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 50%, #7f1d1d 100%) !important;
+  color: #fff !important;
+  border-color: #ffd97a !important;
+}
+
+/* APRI TABELLONE button SOLID red+gold border, contrasto max */
+body .arena-page .btn-bracket-open {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
+  color: #fff !important;
+  border: 2px solid #ffd97a !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  padding: 10px 18px !important;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.3) inset,
+    0 8px 22px rgba(220, 38, 38, 0.65),
+    0 0 18px rgba(255, 217, 122, 0.3) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  opacity: 1 !important;
+  filter: none !important;
+}
+body .arena-page .btn-bracket-open:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(239, 68, 68, 0.7) !important;
+}
+
+/* GIRONE A / GIRONE B summary cards: rosso acceso + oro pieno */
+body .arena-page .bracket-summary-card {
+  background: linear-gradient(135deg, #a02828 0%, #6b1212 55%, #4a0a0a 100%) !important;
+  border: 2px solid #ffd97a !important;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.30) inset,
+    0 14px 32px rgba(220, 38, 38, 0.50),
+    0 0 32px rgba(255, 217, 122, 0.28) !important;
+  padding: 18px 20px !important;
+  color: #fff7e6 !important;
+  border-radius: 16px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  position: relative;
+  z-index: 1;
+}
+body .arena-page .bracket-summary-card-title {
+  font-family: var(--font-title, serif);
+  font-size: 1.05rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffe8a0 !important;
+  margin: 0 0 14px !important;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid #ffd97a;
+  font-weight: 800;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(255, 217, 122, 0.55);
+}
+
+/* Standings table: SOLID rows + bright gold headers */
+body .arena-page .bracket-summary-card .bracket-standings,
+body .arena-modal-body .bracket-standings {
+  background: transparent !important;
+  border: none !important;
+  color: #fff7e6 !important;
+  width: 100%;
+  font-size: 0.92rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  opacity: 1 !important;
+  filter: none !important;
+}
+body .arena-page .bracket-summary-card .bracket-standings th,
+body .arena-modal-body .bracket-standings th {
+  background: linear-gradient(135deg, #d4af37 0%, #b08820 100%) !important;
+  color: #2a1500 !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 9px 10px;
+  text-align: left;
+  border-bottom: 2px solid #ffd97a !important;
+  font-size: 0.78rem;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+body .arena-page .bracket-summary-card .bracket-standings td,
+body .arena-modal-body .bracket-standings td {
+  color: #fff7e6 !important;
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255, 217, 122, 0.32) !important;
+  font-weight: 500;
+}
+body .arena-page .bracket-summary-card .bracket-standings tr.leader td,
+body .arena-modal-body .bracket-standings tr.leader td {
+  background: linear-gradient(135deg, rgba(255, 217, 122, 0.40), rgba(255, 217, 122, 0.18)) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+.arena-page .bracket-summary-card .standings-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #d4af37;
+  margin-right: 8px;
+  vertical-align: middle;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* SCOMMETTI floating button: rosso saturo SOLIDO, glow oro */
+body .arena-page .arena-bet-fab,
+body .arena-bet-fab {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
+  color: #fff !important;
+  border: 2px solid #ffd97a !important;
+  border-radius: 999px !important;
+  font-weight: 800 !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  padding: 10px 16px 10px 14px !important;
+  box-shadow:
+    0 1px 0 rgba(255, 240, 200, 0.3) inset,
+    0 10px 28px rgba(220, 38, 38, 0.65),
+    0 0 22px rgba(255, 217, 122, 0.35) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  opacity: 1 !important;
+  filter: none !important;
+}
+body .arena-page .arena-bet-fab:hover,
+body .arena-bet-fab:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(239, 68, 68, 0.75) !important;
+}
+.arena-page .arena-bet-fab-badge,
+.arena-bet-fab-badge {
+  background: #ffd97a !important;
+  color: #2a1500 !important;
+  border: 2px solid #fff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* BETTING PANEL (dentro drawer) — SOLID, niente trasparenza */
+.arena-page .betting-panel,
+.arena-drawer-dialog .betting-panel {
+  background: linear-gradient(135deg, #2e1d10 0%, #1c1108 100%) !important;
+  border: 1.5px solid #d4af37 !important;
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.15) inset,
+    0 14px 32px rgba(0, 0, 0, 0.55) !important;
+  color: #f5e6c8 !important;
+}
+.arena-page .betting-section,
+.arena-drawer-dialog .betting-section {
+  background: rgba(255, 244, 215, 0.04) !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 14px !important;
+}
+.arena-page .betting-section-label,
+.arena-drawer-dialog .betting-section-label {
+  color: #ffd97a !important;
+  font-weight: 700 !important;
+}
+.arena-page .betting-title,
+.arena-drawer-dialog .betting-title {
+  color: #ffd97a !important;
+  font-weight: 800 !important;
+  text-shadow: 0 1px 6px rgba(255, 217, 122, 0.3);
+}
+.arena-page .betting-balance,
+.arena-drawer-dialog .betting-balance {
+  color: #ffd97a !important;
+  font-weight: 800 !important;
+}
+
+/* BRACKET MODAL group panels — opacità piena */
+.arena-modal-body .bracket-group,
+.arena-modal-body .bracket-round-col,
+.arena-modal-body .bracket-card {
+  background: linear-gradient(135deg, #2e1d10 0%, #1c1108 100%) !important;
+  border: 1.5px solid #d4af37 !important;
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.15) inset,
+    0 12px 28px rgba(0, 0, 0, 0.5) !important;
+  color: #f5e6c8 !important;
+}
+.arena-modal-body .bracket-fighter {
+  background: rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  color: #f5e6c8 !important;
+}
+.arena-modal-body .bracket-fighter-name { color: #fff !important; font-weight: 600; }
+.arena-modal-body .bracket-fighter-class { color: #ffd97a !important; }
+.arena-modal-body .bracket-fighter.win {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.32), rgba(212, 175, 55, 0.12)) !important;
+  border-color: #d4af37 !important;
 }

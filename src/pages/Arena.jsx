@@ -6217,19 +6217,9 @@ export default function Arena() {
         </div>
       </section>
 
-      {/* ── STICKY MINI-NAV ── */}
-      <nav className="arena-sticky-nav" aria-label="Navigazione Arena">
-        <div className="arena-sticky-nav-inner">
-          <span className="arena-sticky-nav-title">⚔ Arena</span>
-          <div className="arena-sticky-nav-links">
-            <a href="#arena-bracket-anchor">Bracket</a>
-            <a href="#arena-info-anchor">Regole</a>
-            <a href="#arena-training">Arena Libera</a>
-          </div>
-        </div>
-      </nav>
-
-      {/* ── SIDE NAV: icone piccole laterali per saltare alle sezioni ── */}
+      {/* ── SIDE NAV: icone piccole laterali per saltare alle sezioni
+            (sostituisce la vecchia sticky mini-nav: c'è già il side-nav
+            verticale a sinistra su desktop e in basso su mobile) ── */}
       <nav className="arena-side-nav" aria-label="Navigazione rapida sezioni">
         <a href="#arena-hero-top" className="arena-side-nav-btn" title="Inizio" aria-label="Vai all'inizio">
           <span aria-hidden="true">🏰</span>
@@ -6746,7 +6736,7 @@ export default function Arena() {
             className="arena-modal-trigger"
             onClick={() => setTitlesModalOpen(true)}
           >
-            <span className="arena-modal-trigger-icon">♛</span>
+            <span className="arena-modal-trigger-icon">✦</span>
             <span className="arena-modal-trigger-text">
               <span className="arena-modal-trigger-title">Titoli d'Arena</span>
               <span className="arena-modal-trigger-sub">Permanenti — gestisci titoli</span>
@@ -6757,7 +6747,7 @@ export default function Arena() {
             className="arena-modal-trigger"
             onClick={() => setStatsTournModalOpen(true)}
           >
-            <span className="arena-modal-trigger-icon">📊</span>
+            <span className="arena-modal-trigger-icon">★</span>
             <span className="arena-modal-trigger-text">
               <span className="arena-modal-trigger-title">Statistiche Torneo</span>
               <span className="arena-modal-trigger-sub">Classi · Tornei archiviati</span>
@@ -6768,7 +6758,7 @@ export default function Arena() {
             className="arena-modal-trigger"
             onClick={() => setStatsFunModalOpen(true)}
           >
-            <span className="arena-modal-trigger-icon">⚔</span>
+            <span className="arena-modal-trigger-icon">⚜</span>
             <span className="arena-modal-trigger-text">
               <span className="arena-modal-trigger-title">Statistiche Arena Libera</span>
               <span className="arena-modal-trigger-sub">Sfide concluse</span>
@@ -7797,10 +7787,10 @@ export default function Arena() {
               title="⚔ Tabellone del Campionato"
             >
               <div className="bracket-section">
-                <h3 className="bracket-title">⚔ Tabellone del Campionato
-                  {arenaMeta.phase === "combat" && !finalM && <span className="bracket-round-badge">Round {arenaMeta.currentRound}</span>}
-                  {finalM && <span className="bracket-round-badge final-badge">Finale</span>}
-                </h3>
+                <div className="bracket-section-round-bar">
+                  {arenaMeta.phase === "combat" && !finalM && <span className="bracket-round-badge bracket-round-badge--inline">Round {arenaMeta.currentRound}</span>}
+                  {finalM && <span className="bracket-round-badge final-badge bracket-round-badge--inline">Finale</span>}
+                </div>
                 <div className="bracket-groups-wrap">
                   {renderGroupColumn("A")}
                   {renderGroupColumn("B")}

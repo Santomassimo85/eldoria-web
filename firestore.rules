@@ -154,6 +154,17 @@ service cloud.firestore {
       );
     }
 
+    // ── TCG Tournament (single-elimination) ──────────────────────────────────
+    // Single global doc `tcg_tournament/global` for status, participants and
+    // bracket. Read open to any logged-in user; update open so players can
+    // register/withdraw and match results can update the bracket;
+    // create/delete restricted to Master.
+    match /tcg_tournament/{docId} {
+      allow read: if isLoggedIn();
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn();
+    }
+
     // ── Player sprites ───────────────────────────────────────────────────────
     match /player_sprites/{docId} {
       allow read:  if isAuth();
