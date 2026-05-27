@@ -2094,45 +2094,142 @@
   to   { transform: translateX(0);     opacity: 1; }
 }
 
-/* ── FLOATING FIGHT PULSE (your turn / scroll-to-match) ──── */
+/* ── FLOATING FIGHT BUTTON — always visible during active match ── */
 .arena-page .arena-fight-pulse {
   position: fixed !important;
-  z-index: 50;
-  bottom: 22px;
-  right: 22px;
+  z-index: 100;
+  bottom: 28px;
+  right: 28px;
   display: inline-flex !important;
   align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
-  border-radius: 999px;
-  border: 1.5px solid rgba(180, 140, 80, 0.4);
-  background: linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(245, 235, 215, 0.92));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: var(--text);
-  font-family: var(--font-title);
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
+  gap: 12px;
+  padding: 14px 22px 14px 18px;
+  border-radius: 18px;
+  border: 1.5px solid rgba(212, 175, 55, 0.55);
+  background:
+    linear-gradient(135deg, rgba(40, 12, 12, 0.95), rgba(22, 6, 6, 0.95));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #ffd97a;
+  font-family: var(--font-title, sans-serif);
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 14px 32px rgba(40, 8, 8, 0.18);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.1) inset,
+    0 18px 42px rgba(40, 8, 8, 0.5),
+    0 0 0 1px rgba(212, 175, 55, 0.18) inset;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+  text-align: left;
+  animation: arena-fight-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  font-weight: 700;
+}
+@keyframes arena-fight-appear {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .arena-page .arena-fight-pulse:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 40px rgba(40, 8, 8, 0.25);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.15) inset,
+    0 24px 56px rgba(40, 8, 8, 0.6),
+    0 0 0 1px rgba(212, 175, 55, 0.3) inset;
 }
+.arena-page .arena-fight-pulse-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(180, 130, 30, 0.25);
+}
+.arena-page .arena-fight-pulse-text {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  color: #ffd97a;
+  display: block;
+  line-height: 1.1;
+}
+.arena-page .arena-fight-pulse-sub {
+  display: block;
+  font-family: var(--font-text, sans-serif);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: rgba(255, 217, 122, 0.7);
+  text-transform: none;
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+/* MIE TURN: pulsa rosso aggressivo */
 .arena-page .arena-fight-pulse--your-turn {
-  background: linear-gradient(135deg, #8a0e0e, #b91c1c) !important;
+  background:
+    linear-gradient(135deg, #b91c1c, #8a0e0e 60%, #5a0808) !important;
+  border-color: rgba(255, 217, 122, 0.55) !important;
   color: #fff !important;
-  border-color: rgba(255, 200, 200, 0.4) !important;
-  animation: arena-pulse-yt 1.4s ease-in-out infinite;
+  animation: arena-fight-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both,
+             arena-fight-pulse-yt 1.5s ease-in-out 0.4s infinite;
 }
-@keyframes arena-pulse-yt {
-  0%, 100% { box-shadow: 0 14px 32px rgba(138, 14, 14, 0.35), 0 0 0 0 rgba(220, 38, 38, 0.6); }
-  50%       { box-shadow: 0 14px 32px rgba(138, 14, 14, 0.35), 0 0 0 14px rgba(220, 38, 38, 0); }
+.arena-page .arena-fight-pulse--your-turn .arena-fight-pulse-icon {
+  background: linear-gradient(135deg, rgba(255, 217, 122, 0.35), rgba(255, 217, 122, 0.12));
+  border-color: rgba(255, 217, 122, 0.55);
+  color: #fff;
 }
+.arena-page .arena-fight-pulse--your-turn .arena-fight-pulse-text { color: #fff; }
+.arena-page .arena-fight-pulse--your-turn .arena-fight-pulse-sub  { color: rgba(255, 240, 220, 0.85); }
+@keyframes arena-fight-pulse-yt {
+  0%, 100% {
+    box-shadow:
+      0 1px 0 rgba(255, 230, 180, 0.15) inset,
+      0 20px 48px rgba(138, 14, 14, 0.55),
+      0 0 0 0 rgba(220, 38, 38, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 1px 0 rgba(255, 230, 180, 0.15) inset,
+      0 20px 48px rgba(138, 14, 14, 0.65),
+      0 0 0 18px rgba(220, 38, 38, 0);
+  }
+}
+
+/* IN-VIEW: il match è visibile in viewport, il button si fa discreto */
+.arena-page .arena-fight-pulse--in-view {
+  opacity: 0.45;
+  transform: scale(0.92);
+}
+.arena-page .arena-fight-pulse--in-view:hover {
+  opacity: 1;
+  transform: scale(1);
+}
+.arena-page .arena-fight-pulse--in-view.arena-fight-pulse--your-turn {
+  opacity: 0.85;
+}
+
 .arena-page .arena-fight-pulse-glow { display: none; }
+
+/* MOBILE: compatto */
+@media (max-width: 640px) {
+  .arena-page .arena-fight-pulse {
+    bottom: 18px;
+    right: 18px;
+    padding: 12px 16px 12px 12px;
+    gap: 10px;
+  }
+  .arena-page .arena-fight-pulse-icon {
+    width: 34px; height: 34px;
+    font-size: 1.1rem;
+  }
+  .arena-page .arena-fight-pulse-text { font-size: 0.78rem; }
+  .arena-page .arena-fight-pulse-sub  { font-size: 0.6rem; }
+}
 
 /* ── TURN TRACKER (timer del turno) ───────────────────────── */
 .arena-page .turn-tracker {

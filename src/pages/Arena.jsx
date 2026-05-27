@@ -6147,9 +6147,9 @@ export default function Arena() {
   return (
     <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}`}>
 
-      {/* ── Floating fight indicator — appears when the user has an active
-            match and has scrolled away from it. Pulses red on their turn. ── */}
-      {myActiveMatchId && !matchInView && (() => {
+      {/* ── Floating Fight Button — sempre visibile durante un match attivo.
+            Più epico quando è il tuo turno (pulsa rosso). ── */}
+      {myActiveMatchId && (() => {
         const m = arenaMeta?.matches?.find(mm => mm.matchId === myActiveMatchId);
         if (!m) return null;
         const opp = m.players?.find(p => p.id !== currentUser.uid);
@@ -6162,7 +6162,7 @@ export default function Arena() {
         return (
           <button
             type="button"
-            className={`arena-fight-pulse${isMyTurnInActive ? " arena-fight-pulse--your-turn" : ""}`}
+            className={`arena-fight-pulse${isMyTurnInActive ? " arena-fight-pulse--your-turn" : ""}${matchInView ? " arena-fight-pulse--in-view" : ""}`}
             onClick={() => {
               const el = document.getElementById("arena-my-match");
               if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -6173,7 +6173,7 @@ export default function Arena() {
             <span className="arena-fight-pulse-text">
               {isMyTurnInActive ? "È il tuo turno" : "Sfida in corso"}
             </span>
-            <span className="arena-fight-pulse-sub">· {subLabel}</span>
+            <span className="arena-fight-pulse-sub">{subLabel}</span>
             <span className="arena-fight-pulse-glow" aria-hidden="true" />
           </button>
         );
@@ -6509,6 +6509,38 @@ export default function Arena() {
             }
           }}
         />
+      )}
+
+      {/* ── SCROLLYTELLING: Custode dell'Arena (visibile al Master) ── */}
+      {isMaster && (
+        <section className="arena-scrollytell" aria-label="Il Custode dell'Arena">
+          <div className="arena-scrollytell-media" aria-hidden="true">
+            <img
+              src="/assets/Helmvil.jpg"
+              alt=""
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          </div>
+          <div className="arena-scrollytell-content">
+            <div className="arena-scrollytell-frame">
+              <span className="arena-scrollytell-eyebrow">♛ Il Custode</span>
+              <h2 className="arena-scrollytell-title">Sangue, Onore, Decisioni</h2>
+              <p className="arena-scrollytell-text">
+                Il Master apre le iscrizioni, approva i campioni, dichiara i vincitori e custodisce
+                le regole. Da qui sotto comandi ogni respiro dell'Arena: chi entra, chi attende,
+                chi resta in piedi.
+              </p>
+            </div>
+            <div className="arena-scrollytell-frame">
+              <span className="arena-scrollytell-eyebrow">Strumenti del Trono</span>
+              <h2 className="arena-scrollytell-title">Il Tuo Pannello</h2>
+              <p className="arena-scrollytell-text">
+                Pausa il tempo. Forza vincitori. Resetta. Modifica monete. L'Arena risponde
+                alla tua mano — usa il potere con saggezza, l'occhio dei campioni è su di te.
+              </p>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* ── PANNELLO MASTER ── */}
@@ -7379,11 +7411,42 @@ export default function Arena() {
           .filter(m => m.status === "finished" && m.players?.some(p => p.id === currentUser.uid))
           .slice(-3);
         return (
-          <div className="fun-arena-section" id="arena-training">
-            <div className="fun-arena-header">
-              <span className="fun-arena-icon">⚔</span>
-              <div className="fun-arena-title-block">
-                <h3 className="fun-arena-title">Arena Libera <span className="fun-arena-title-tag">Allenamento</span></h3>
+          <>
+            {/* ── SCROLLYTELLING: Allenamento Libero ── */}
+            <section className="arena-scrollytell" aria-label="Arena Libera">
+              <div className="arena-scrollytell-media" aria-hidden="true">
+                <img
+                  src="/assets/PhotoStory/GruppoMEAA/locanda3.jpg"
+                  alt=""
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              </div>
+              <div className="arena-scrollytell-content">
+                <div className="arena-scrollytell-frame">
+                  <span className="arena-scrollytell-eyebrow">⚔ Sfide Libere</span>
+                  <h2 className="arena-scrollytell-title">Allenamento Senza Tempo</h2>
+                  <p className="arena-scrollytell-text">
+                    Nessuna ricompensa, nessuna corona. Solo il piacere puro del ferro contro ferro.
+                    Sfida un compagno, addestra il tuo personaggio o misurati contro l'IA — qui
+                    impari senza perdere onore.
+                  </p>
+                </div>
+                <div className="arena-scrollytell-frame">
+                  <span className="arena-scrollytell-eyebrow">Regole del Torneo</span>
+                  <h2 className="arena-scrollytell-title">Stesse Regole, Zero Stakes</h2>
+                  <p className="arena-scrollytell-text">
+                    Iniziativa, turni di 1 ora, classi, incantesimi: identici al torneo ufficiale.
+                    Sfida l'IA in modalità Hard per allenare la tua build, o invita un amico per
+                    un duello cortese.
+                  </p>
+                </div>
+              </div>
+            </section>
+            <div className="fun-arena-section" id="arena-training">
+              <div className="fun-arena-header">
+                <span className="fun-arena-icon">⚔</span>
+                <div className="fun-arena-title-block">
+                  <h3 className="fun-arena-title">Arena Libera <span className="fun-arena-title-tag">Allenamento</span></h3>
                 <p className="fun-arena-subtitle">
                   Sfide 1v1 senza ricompense. Stesso regolamento del torneo, solo per il gusto di combattere.
                 </p>
@@ -7490,7 +7553,8 @@ export default function Arena() {
             {openChallenges.length === 0 && !myActiveFun && otherActiveFun.length === 0 && myFinishedFun.length === 0 && (
               <div className="fun-arena-empty">Nessuna sfida aperta. Sii il primo a lanciarne una!</div>
             )}
-          </div>
+            </div>
+          </>
         );
       })()}
 
@@ -7793,6 +7857,37 @@ export default function Arena() {
         m.players?.some(p => p.id === currentUser?.uid) &&
         m.status !== "open"
       ) && (
+        <>
+          {/* ── SCROLLYTELLING: Il Tuo Combattimento ── */}
+          <section className="arena-scrollytell arena-scrollytell--combat" aria-label="Il Tuo Combattimento">
+            <div className="arena-scrollytell-media" aria-hidden="true">
+              <img
+                src="/assets/PhotoStory/GruppoLAC/horn_spider.jpg"
+                alt=""
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            </div>
+            <div className="arena-scrollytell-content">
+              <div className="arena-scrollytell-frame">
+                <span className="arena-scrollytell-eyebrow">⚔ L'Arena Vive</span>
+                <h2 className="arena-scrollytell-title">Il Tuo Campo di Battaglia</h2>
+                <p className="arena-scrollytell-text">
+                  Il pubblico trattiene il fiato. La sabbia è ancora calda del sangue degli sfidanti
+                  precedenti. Ora tocca a te: leggi il nemico, scegli la tua azione, e che la fortuna
+                  dei dadi sia con te.
+                </p>
+              </div>
+              <div className="arena-scrollytell-frame">
+                <span className="arena-scrollytell-eyebrow">Combatti</span>
+                <h2 className="arena-scrollytell-title">Sotto Trovi la Tua Sfida</h2>
+                <p className="arena-scrollytell-text">
+                  Iniziativa, attacchi, incantesimi, abilità. Tutto qui sotto. Quando è il tuo
+                  turno il pulsante fluttuante ti riporta in arena con un click — non perdere
+                  un secondo.
+                </p>
+              </div>
+            </div>
+          </section>
         <div className="matches-container" id="arena-my-match">
           <div className="my-arena-banner">
             <span className="my-arena-banner-deco">⚔</span>
@@ -9288,6 +9383,7 @@ export default function Arena() {
             );
           })}
         </div>
+        </>
       )}
 
     </div>
