@@ -6169,16 +6169,12 @@ export default function Arena() {
         return (
           <button
             type="button"
-            className={`arena-fight-pulse${isMyTurnInActive ? " arena-fight-pulse--your-turn" : ""}`}
+            className={`arena-fight-icon${isMyTurnInActive ? " arena-fight-icon--your-turn" : ""}`}
             onClick={() => setCombatModalOpen(true)}
-            aria-label="Apri il combat"
+            aria-label={isMyTurnInActive ? "È il tuo turno — apri il combat" : "Sfida in corso — apri il combat"}
+            title={isMyTurnInActive ? `È il tuo turno · ${subLabel}` : `Sfida in corso · ${subLabel}`}
           >
-            <span className="arena-fight-pulse-icon">{isMyTurnInActive ? "⚔" : "🛡"}</span>
-            <span className="arena-fight-pulse-text">
-              {isMyTurnInActive ? "È il tuo turno" : "Sfida in corso"}
-            </span>
-            <span className="arena-fight-pulse-sub">{subLabel}</span>
-            <span className="arena-fight-pulse-glow" aria-hidden="true" />
+            ⚔
           </button>
         );
       })()}

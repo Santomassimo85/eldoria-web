@@ -117,16 +117,20 @@
    ============================================================ */
 .arena-page .arena-reward-panel {
   background:
-    linear-gradient(135deg, rgba(255, 250, 235, 0.96), rgba(252, 240, 215, 0.92)) !important;
-  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+    radial-gradient(circle at 0% 0%, rgba(212, 175, 55, 0.18), transparent 50%),
+    linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
   border-radius: 22px !important;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 12px 32px rgba(120, 80, 20, 0.12) !important;
+    0 1px 0 rgba(255, 230, 180, 0.08) inset,
+    0 16px 38px rgba(0, 0, 0, 0.45) !important;
   padding: 22px 26px !important;
-  margin: 0 0 28px !important;
+  margin: 20px 0 28px !important;
   position: relative !important;
   overflow: hidden !important;
+  color: #f5e6c8 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .arena-page .arena-reward-panel::before {
   content: "";
@@ -139,13 +143,16 @@
 }
 .arena-page .arena-reward-text,
 .arena-page .arena-reward-textarea {
-  background: rgba(255, 255, 255, 0.7) !important;
-  color: var(--text, #2a1a14) !important;
-  border: 1px solid rgba(180, 140, 80, 0.3) !important;
+  background: rgba(20, 8, 8, 0.5) !important;
+  color: #f5e6c8 !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
   border-radius: 12px !important;
-  box-shadow: 0 2px 6px rgba(120, 80, 20, 0.05) inset !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) inset !important;
   font-weight: 600;
   padding: 10px 14px !important;
+}
+.arena-page .arena-reward-label {
+  color: rgba(255, 217, 122, 0.85) !important;
 }
 .arena-page .arena-reward-save {
   background: linear-gradient(135deg, #166534, #15803d) !important;
@@ -166,16 +173,46 @@
 /* ── FUN ARENA section (sfide libere): glass blu coerente ── */
 .arena-page .fun-arena-section {
   background:
-    linear-gradient(135deg, rgba(240, 248, 255, 0.96), rgba(220, 235, 250, 0.88)) !important;
-  border: 1px solid rgba(78, 122, 180, 0.4) !important;
+    radial-gradient(circle at 0% 0%, rgba(78, 122, 180, 0.18), transparent 50%),
+    linear-gradient(135deg, rgba(20, 30, 60, 0.85), rgba(10, 15, 30, 0.92)) !important;
+  border: 1px solid rgba(78, 122, 180, 0.45) !important;
   border-radius: 20px !important;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 10px 28px rgba(30, 70, 130, 0.12) !important;
+    0 1px 0 rgba(150, 200, 255, 0.08) inset,
+    0 14px 32px rgba(0, 0, 0, 0.45) !important;
   padding: 22px 24px !important;
   margin: 28px 0 !important;
   position: relative !important;
   overflow: hidden !important;
+  color: #d8e6ff !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.arena-page .fun-arena-title { color: #fff !important; }
+.arena-page .fun-arena-subtitle { color: rgba(216, 230, 255, 0.7) !important; }
+.arena-page .fun-arena-lobby,
+.arena-page .fun-arena-history {
+  background: rgba(15, 20, 35, 0.6) !important;
+  border: 1px solid rgba(78, 122, 180, 0.3) !important;
+  color: #d8e6ff !important;
+}
+.arena-page .fun-challenge-row {
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.6), rgba(20, 7, 7, 0.7)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.25) !important;
+  color: #f5e6c8 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+.arena-page .fun-challenge-row--live {
+  background: linear-gradient(135deg, rgba(40, 60, 120, 0.6), rgba(20, 30, 60, 0.7)) !important;
+  border-color: rgba(78, 122, 180, 0.55) !important;
+}
+.arena-page .fun-challenge-name { color: #fff !important; }
+.arena-page .fun-challenge-hp { color: rgba(255, 240, 215, 0.75) !important; }
+.arena-page .fun-arena-empty {
+  background: rgba(15, 20, 35, 0.5) !important;
+  border: 1px dashed rgba(78, 122, 180, 0.4) !important;
+  color: rgba(216, 230, 255, 0.6) !important;
+  border-radius: 14px !important;
 }
 .arena-page .fun-arena-section::before,
 .arena-page .fun-arena-section::after {
@@ -371,17 +408,39 @@
   box-shadow: 0 3px 8px rgba(180, 130, 30, 0.12) !important;
 }
 
-/* ── BRACKET overrides (TCG burgundy → modern) ── */
+/* ── BRACKET overrides — dark cinematic ── */
 .arena-page .bracket-open-row,
 .arena-page .bracket-summary-card,
 .arena-page .bracket-card,
 .arena-page .bracket-round-col,
 .arena-modal-body .bracket-group {
-  background: linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(248, 240, 224, 0.88)) !important;
-  border: 1px solid rgba(180, 140, 80, 0.28) !important;
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
   border-radius: 16px !important;
-  box-shadow: 0 8px 22px rgba(120, 80, 20, 0.1) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45) !important;
+  color: #f5e6c8 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
+.arena-page .bracket-fighter,
+.arena-modal-body .bracket-fighter {
+  color: #f5e6c8 !important;
+  background: rgba(15, 7, 7, 0.5) !important;
+  border: 1px solid rgba(212, 175, 55, 0.18) !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+}
+.arena-page .bracket-fighter-name { color: #fff !important; }
+.arena-page .bracket-fighter-class { color: rgba(255, 217, 122, 0.65) !important; }
+.arena-page .bracket-fighter.win {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.08)) !important;
+  border-color: rgba(212, 175, 55, 0.5) !important;
+}
+.arena-page .bracket-fighter.active-turn {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.18), rgba(138, 14, 14, 0.08)) !important;
+  border-color: rgba(220, 38, 38, 0.5) !important;
+}
+.arena-page .bracket-last-log { color: rgba(255, 217, 122, 0.7) !important; }
 .arena-page .bracket-round-badge,
 .arena-modal-body .bracket-round-badge {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.08)) !important;
@@ -529,22 +588,54 @@
 /* ── MASTER PANEL acccent line + betting accent ── */
 .arena-page .master-panel {
   background:
-    linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(248, 240, 224, 0.88)) !important;
-  border: 1px solid rgba(180, 140, 80, 0.28) !important;
+    radial-gradient(circle at 100% 0%, rgba(212, 175, 55, 0.12), transparent 50%),
+    linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
   border-radius: 22px !important;
-  box-shadow: 0 12px 36px rgba(120, 80, 20, 0.1) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.06) inset,
+    0 16px 38px rgba(0, 0, 0, 0.5) !important;
   padding: 26px 28px !important;
+  color: #f5e6c8 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.arena-page .master-panel-title { color: var(--arena-blood, #8a0e0e) !important; }
+.arena-page .master-panel-title {
+  color: #ffd97a !important;
+  background: linear-gradient(180deg, #fff, #ffd97a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.arena-page .master-panel .col-label,
+.arena-page .master-panel label {
+  color: rgba(255, 217, 122, 0.85) !important;
+}
+.arena-page .prize-editor {
+  background: rgba(15, 7, 7, 0.5) !important;
+  border: 1px solid rgba(212, 175, 55, 0.25) !important;
+}
 .arena-page .betting-panel {
   background:
-    linear-gradient(135deg, rgba(255, 250, 235, 0.94), rgba(252, 244, 220, 0.86)) !important;
+    linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
   border: 1px solid rgba(212, 175, 55, 0.4) !important;
   border-radius: 18px !important;
-  box-shadow: 0 8px 22px rgba(120, 80, 20, 0.1) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45) !important;
   padding: 18px 22px !important;
+  color: #f5e6c8 !important;
 }
-.arena-page .betting-title { color: var(--arena-blood, #8a0e0e) !important; }
+.arena-page .betting-title { color: #ffd97a !important; }
+.arena-page .betting-balance { color: #ffd97a !important; }
+/* righe partecipanti dentro pannello master */
+.arena-page .master-panel .approved-list,
+.arena-page .master-panel .waiting-list,
+.arena-page .master-panel [class*="-row"] {
+  color: #ebe3d2 !important;
+}
+.arena-page .master-panel [class*="-class"],
+.arena-page .master-panel small {
+  color: rgba(255, 217, 122, 0.6) !important;
+}
 
 /* ── INPUT/SELECT/TEXTAREA: rimuovi border 3px ink ── */
 .arena-page input[type="text"],
@@ -571,15 +662,20 @@
     0 0 0 3px rgba(212, 175, 55, 0.2) !important;
 }
 
-/* ── ARENA QUICKNAV CHIPS (the small "Bracket/Match/Regole" pills near top) ── */
+/* ── ARENA QUICKNAV CHIPS — dark glass ── */
+.arena-page .arena-quicknav {
+  background: rgba(20, 7, 7, 0.7) !important;
+  border: 1px solid rgba(212, 175, 55, 0.25) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
 .arena-page .arena-quicknav-chip,
-.arena-page .arena-modal-trigger,
 .arena-page .arena-info-toggle {
-  background: linear-gradient(135deg, rgba(255, 252, 245, 0.92), rgba(248, 240, 224, 0.84)) !important;
-  color: var(--text, #2a1a14) !important;
-  border: 1px solid rgba(180, 140, 80, 0.3) !important;
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.7), rgba(20, 7, 7, 0.8)) !important;
+  color: #f5e6c8 !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
   border-radius: 10px !important;
-  box-shadow: 0 3px 8px rgba(120, 80, 20, 0.08) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3) !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.12em !important;
@@ -587,15 +683,15 @@
 }
 .arena-page .arena-quicknav-chip:hover,
 .arena-page .arena-info-toggle:hover {
-  background: linear-gradient(135deg, rgba(138, 14, 14, 0.08), rgba(138, 14, 14, 0.03)) !important;
-  color: var(--arena-blood, #8a0e0e) !important;
-  border-color: rgba(138, 14, 14, 0.3) !important;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.08)) !important;
+  color: #ffd97a !important;
+  border-color: rgba(212, 175, 55, 0.5) !important;
   transform: translateY(-1px);
 }
 .arena-page .arena-quicknav-chip--active {
   background: linear-gradient(135deg, var(--arena-blood, #8a0e0e), #5a0808) !important;
   color: #ffd97a !important;
-  border-color: rgba(212, 175, 55, 0.4) !important;
+  border-color: rgba(212, 175, 55, 0.5) !important;
 }
 
 /* ── ACTION BUTTONS (combat: btn-action.weapon/spell/skill) ── */
@@ -704,11 +800,11 @@
   align-items: center !important;
   gap: 14px !important;
   text-align: left !important;
-  background: linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(248, 240, 224, 0.88)) !important;
-  color: var(--text, #2a1a14) !important;
-  border: 1px solid rgba(180, 140, 80, 0.28) !important;
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  color: #f5e6c8 !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
   border-radius: 18px !important;
-  box-shadow: 0 8px 22px rgba(120, 80, 20, 0.08) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4) !important;
   padding: 18px 20px !important;
   font-family: var(--font-text, sans-serif) !important;
   text-transform: none !important;
@@ -717,6 +813,8 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .arena-page .arena-modal-trigger::before {
   content: "";
@@ -728,8 +826,10 @@
 .arena-page .arena-modal-trigger:hover {
   transform: translateY(-3px);
   border-color: var(--arena-gold, #d4af37) !important;
-  box-shadow: 0 14px 32px rgba(180, 130, 30, 0.18) !important;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.3) inset !important;
 }
+.arena-page .arena-modal-trigger-title { color: #ffd97a !important; }
+.arena-page .arena-modal-trigger-sub { color: rgba(245, 230, 200, 0.65) !important; }
 .arena-page .arena-modal-trigger-icon {
   font-size: 1.8rem !important;
   width: 48px;
@@ -1020,12 +1120,12 @@
   margin-bottom: 28px;
   width: 100vw;
   max-width: 100vw;
-  background: rgba(248, 245, 240, 0.88);
+  background: rgba(15, 7, 7, 0.86);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border-top: 1px solid rgba(180, 140, 80, 0.25);
-  border-bottom: 1px solid rgba(180, 140, 80, 0.18);
-  box-shadow: 0 4px 18px rgba(40, 10, 10, 0.06);
+  border-top: 1px solid rgba(212, 175, 55, 0.25);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
 }
 .arena-sticky-nav-inner {
   max-width: 1100px;
@@ -1039,7 +1139,7 @@
   font-family: var(--font-title, sans-serif);
   font-weight: 700;
   letter-spacing: 0.18em;
-  color: var(--arena-blood);
+  color: #ffd97a;
   font-size: 0.88rem;
   text-transform: uppercase;
 }
@@ -1055,7 +1155,7 @@
   font-size: 0.74rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text, #2a1a14);
+  color: #ebe3d2;
   text-decoration: none;
   padding: 7px 13px;
   border-radius: 8px;
@@ -1064,9 +1164,9 @@
   font-weight: 600;
 }
 .arena-sticky-nav-links a:hover {
-  background: rgba(138, 14, 14, 0.08);
-  color: var(--arena-blood);
-  border-color: rgba(138, 14, 14, 0.18);
+  background: rgba(212, 175, 55, 0.12);
+  color: #ffd97a;
+  border-color: rgba(212, 175, 55, 0.3);
 }
 
 @media (max-width: 640px) {
@@ -1174,12 +1274,12 @@
     radial-gradient(circle at 30% 30%, rgba(212, 175, 55, 0.18), transparent 55%),
     linear-gradient(135deg, #1a0808 0%, #3a1212 50%, #220606 100%);
 }
-/* fade-out gradient sul fondo dell'immagine: si fonde col cream del contenuto sotto */
+/* fade-out gradient sul fondo dell'immagine: si fonde col dark della pagina */
 .arena-scrollytell-media .arena-scrollytell-bottom-fade {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 20vh;
-  background: linear-gradient(180deg, transparent 0%, rgba(20, 5, 5, 0.4) 30%, rgba(40, 12, 12, 0.85) 65%, #faf7f1 100%);
+  height: 22vh;
+  background: linear-gradient(180deg, transparent 0%, rgba(20, 5, 5, 0.6) 40%, #14070a 100%);
   pointer-events: none;
   z-index: 3;
 }
@@ -1325,12 +1425,26 @@
    match, fun-challenge, regole, master-panel.
    ============================================================ */
 
-/* ── PAGINA: sfondo continuo (cream/cream→warm) ── */
+/* ── PAGINA: sfondo CINEMATOGRAFICO DARK continuo ── */
 .arena-page {
   background:
-    radial-gradient(circle at 8% 12%, rgba(212, 175, 55, 0.06), transparent 35%),
-    radial-gradient(circle at 92% 88%, rgba(138, 14, 14, 0.05), transparent 38%),
-    linear-gradient(180deg, #faf7f1 0%, #f4ede1 100%) !important;
+    radial-gradient(circle at 10% 12%, rgba(212, 175, 55, 0.10), transparent 35%),
+    radial-gradient(circle at 90% 88%, rgba(138, 14, 14, 0.18), transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(40, 12, 12, 0.4), transparent 60%),
+    linear-gradient(180deg, #14070a 0%, #1d0a0a 35%, #150707 70%, #100404 100%) !important;
+  color: #ebe3d2 !important;
+}
+/* Texture overlay sottile per tutta la pagina */
+.arena-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(212, 175, 55, 0.04) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  opacity: 0.5;
+  mix-blend-mode: screen;
 }
 
 /* effetto "blocco unico": le sezioni si fondono morbide, niente bordi divisori marcati */
@@ -1666,16 +1780,41 @@
   box-shadow: 0 8px 18px rgba(120, 80, 20, 0.12);
 }
 
-/* ── INFO SECTION (regole): toggle e contenuto modernizzati ── */
+/* ── INFO SECTION (regole) — dark glass ── */
 .arena-page .arena-info-section {
   margin: 36px 0;
   border-radius: 22px;
-  border: 1px solid rgba(180, 140, 80, 0.22);
+  border: 1px solid rgba(212, 175, 55, 0.3);
   background:
-    linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(248, 240, 224, 0.88));
-  box-shadow: 0 10px 30px rgba(120, 80, 20, 0.08);
+    radial-gradient(circle at 0% 0%, rgba(212, 175, 55, 0.10), transparent 50%),
+    linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92));
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
   overflow: hidden;
   position: relative;
+  color: #ebe3d2;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.arena-page .arena-info-toggle {
+  color: #ffd97a !important;
+}
+.arena-page .arena-info-toggle:hover {
+  background: rgba(212, 175, 55, 0.10) !important;
+}
+.arena-page .arena-info-body {
+  border-top: 1px solid rgba(212, 175, 55, 0.18) !important;
+  background: transparent !important;
+  color: #ebe3d2 !important;
+}
+.arena-page .arena-info-title {
+  color: #ffd97a !important;
+  border-bottom-color: rgba(212, 175, 55, 0.3) !important;
+}
+.arena-page .arena-info-list li::before { color: #ffd97a !important; }
+.arena-page .arena-info-example {
+  background: rgba(212, 175, 55, 0.08) !important;
+  border-left-color: #ffd97a !important;
+  color: #ebe3d2 !important;
 }
 .arena-page .arena-info-section::before {
   content: "";
@@ -1893,19 +2032,51 @@
   box-shadow: 0 2px 6px rgba(120, 80, 20, 0.2);
 }
 
-/* ── TOURNAMENT HISTORY ── */
+/* ── TOURNAMENT HISTORY — dark glass ── */
 .arena-page .arena-tournament-history,
 .arena-page .arena-champions-roster,
-.arena-page .arena-stats {
-  margin: 30px 0;
-  border-radius: 22px;
-  border: 1px solid rgba(180, 140, 80, 0.22);
-  background: linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(248, 240, 224, 0.88));
-  box-shadow: 0 10px 28px rgba(120, 80, 20, 0.08);
-  padding: 24px 26px;
-  overflow: hidden;
-  position: relative;
+.arena-page .arena-stats,
+.arena-page .hall-of-champions,
+.arena-page.arena-page .hall-of-champions {
+  margin: 24px 0 !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(212, 175, 55, 0.28) !important;
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  color: #f5e6c8 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
+.arena-page .hall-toggle {
+  background: transparent !important;
+  color: #ffd97a !important;
+  border: none !important;
+  padding: 16px 24px !important;
+  width: 100%;
+  text-align: left;
+  font-weight: 700 !important;
+  letter-spacing: 0.14em !important;
+}
+.arena-page .hall-toggle:hover { background: rgba(212, 175, 55, 0.08) !important; }
+.arena-page .hall-body {
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+  padding: 14px 18px 20px;
+}
+.arena-page .hall-row,
+.arena-page.arena-page .hall-row {
+  background: rgba(15, 7, 7, 0.55) !important;
+  border: 1px solid rgba(212, 175, 55, 0.18) !important;
+  color: #ebe3d2 !important;
+  border-radius: 12px !important;
+  margin-bottom: 8px;
+}
+.arena-page .hall-count { color: rgba(255, 217, 122, 0.65) !important; }
+.arena-page .hall-name { color: #fff !important; }
+.arena-page .hall-class { color: rgba(255, 217, 122, 0.65) !important; }
+.arena-page .hall-empty { color: rgba(245, 230, 200, 0.55) !important; font-style: italic; }
 .arena-page .arena-tournament-history::before,
 .arena-page .arena-champions-roster::before,
 .arena-page .arena-stats::before {
@@ -2262,142 +2433,81 @@
   }
 }
 
-/* ── FLOATING FIGHT BUTTON — always visible during active match ── */
-.arena-page .arena-fight-pulse {
+/* ── FLOATING FIGHT ICON — solo icona pura, nessun sfondo ── */
+.arena-page .arena-fight-icon {
   position: fixed !important;
   z-index: 100;
-  bottom: 28px;
-  right: 28px;
-  display: inline-flex !important;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 22px 14px 18px;
-  border-radius: 18px;
-  border: 1.5px solid rgba(212, 175, 55, 0.55);
-  background:
-    linear-gradient(135deg, rgba(40, 12, 12, 0.95), rgba(22, 6, 6, 0.95));
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  color: #ffd97a;
-  font-family: var(--font-title, sans-serif);
-  font-size: 0.85rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow:
-    0 1px 0 rgba(255, 230, 180, 0.1) inset,
-    0 18px 42px rgba(40, 8, 8, 0.5),
-    0 0 0 1px rgba(212, 175, 55, 0.18) inset;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
-  text-align: left;
-  animation: arena-fight-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  font-weight: 700;
-}
-@keyframes arena-fight-appear {
-  from { opacity: 0; transform: translateY(20px) scale(0.9); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-.arena-page .arena-fight-pulse:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow:
-    0 1px 0 rgba(255, 230, 180, 0.15) inset,
-    0 24px 56px rgba(40, 8, 8, 0.6),
-    0 0 0 1px rgba(212, 175, 55, 0.3) inset;
-}
-.arena-page .arena-fight-pulse-icon {
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.08));
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  font-size: 1.3rem;
-  flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(180, 130, 30, 0.25);
-}
-.arena-page .arena-fight-pulse-text {
-  font-family: var(--font-title);
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 2rem;
   color: #ffd97a;
-  display: block;
-  line-height: 1.1;
+  cursor: pointer;
+  /* drop-shadow per leggibilità su qualsiasi sfondo */
+  filter:
+    drop-shadow(0 0 4px rgba(212, 175, 55, 0.6))
+    drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+  transition: transform 0.2s ease, filter 0.2s ease;
+  animation: arena-fight-icon-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  line-height: 1;
 }
-.arena-page .arena-fight-pulse-sub {
-  display: block;
-  font-family: var(--font-text, sans-serif);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-  color: rgba(255, 217, 122, 0.7);
-  text-transform: none;
-  margin-top: 3px;
-  font-weight: 500;
+@keyframes arena-fight-icon-appear {
+  from { opacity: 0; transform: scale(0.6) rotate(-20deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
 }
-
-/* MIE TURN: pulsa rosso aggressivo */
-.arena-page .arena-fight-pulse--your-turn {
-  background:
-    linear-gradient(135deg, #b91c1c, #8a0e0e 60%, #5a0808) !important;
-  border-color: rgba(255, 217, 122, 0.55) !important;
-  color: #fff !important;
-  animation: arena-fight-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both,
-             arena-fight-pulse-yt 1.5s ease-in-out 0.4s infinite;
+.arena-page .arena-fight-icon:hover {
+  transform: scale(1.18);
+  filter:
+    drop-shadow(0 0 8px rgba(255, 217, 122, 0.9))
+    drop-shadow(0 6px 14px rgba(0, 0, 0, 0.7));
 }
-.arena-page .arena-fight-pulse--your-turn .arena-fight-pulse-icon {
-  background: linear-gradient(135deg, rgba(255, 217, 122, 0.35), rgba(255, 217, 122, 0.12));
-  border-color: rgba(255, 217, 122, 0.55);
-  color: #fff;
+.arena-page .arena-fight-icon:active {
+  transform: scale(0.94);
 }
-.arena-page .arena-fight-pulse--your-turn .arena-fight-pulse-text { color: #fff; }
-.arena-page .arena-fight-pulse--your-turn .arena-fight-pulse-sub  { color: rgba(255, 240, 220, 0.85); }
-@keyframes arena-fight-pulse-yt {
+.arena-page .arena-fight-icon--your-turn {
+  color: #ff5050;
+  filter:
+    drop-shadow(0 0 6px rgba(255, 80, 80, 0.85))
+    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
+  animation:
+    arena-fight-icon-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1) both,
+    arena-fight-icon-pulse 1.4s ease-in-out 0.4s infinite;
+}
+@keyframes arena-fight-icon-pulse {
   0%, 100% {
-    box-shadow:
-      0 1px 0 rgba(255, 230, 180, 0.15) inset,
-      0 20px 48px rgba(138, 14, 14, 0.55),
-      0 0 0 0 rgba(220, 38, 38, 0.7);
+    transform: scale(1);
+    filter:
+      drop-shadow(0 0 4px rgba(255, 80, 80, 0.7))
+      drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
   }
   50% {
-    box-shadow:
-      0 1px 0 rgba(255, 230, 180, 0.15) inset,
-      0 20px 48px rgba(138, 14, 14, 0.65),
-      0 0 0 18px rgba(220, 38, 38, 0);
+    transform: scale(1.12);
+    filter:
+      drop-shadow(0 0 14px rgba(255, 80, 80, 1))
+      drop-shadow(0 4px 14px rgba(0, 0, 0, 0.7));
   }
 }
 
-/* IN-VIEW: il match è visibile in viewport, il button si fa discreto */
-.arena-page .arena-fight-pulse--in-view {
-  opacity: 0.45;
-  transform: scale(0.92);
-}
-.arena-page .arena-fight-pulse--in-view:hover {
-  opacity: 1;
-  transform: scale(1);
-}
-.arena-page .arena-fight-pulse--in-view.arena-fight-pulse--your-turn {
-  opacity: 0.85;
-}
-
-.arena-page .arena-fight-pulse-glow { display: none; }
-
-/* MOBILE: compatto */
+/* MOBILE: icona compatta */
 @media (max-width: 640px) {
-  .arena-page .arena-fight-pulse {
+  .arena-page .arena-fight-icon {
     bottom: 18px;
     right: 18px;
-    padding: 12px 16px 12px 12px;
-    gap: 10px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.7rem;
   }
-  .arena-page .arena-fight-pulse-icon {
-    width: 34px; height: 34px;
-    font-size: 1.1rem;
-  }
-  .arena-page .arena-fight-pulse-text { font-size: 0.78rem; }
-  .arena-page .arena-fight-pulse-sub  { font-size: 0.6rem; }
 }
+
+/* Legacy fallback (se qualcosa usa ancora .arena-fight-pulse): la nascondiamo */
+.arena-page .arena-fight-pulse { display: none !important; }
 
 /* ── TURN TRACKER (timer del turno) ───────────────────────── */
 .arena-page .turn-tracker {
