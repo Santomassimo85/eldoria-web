@@ -6720,6 +6720,15 @@ export default function Arena() {
               </select>
               <div className="master-join-setup-actions">
                 <button className="btn-cancel-loadout" onClick={() => setMasterJoinSetup(false)}>Annulla</button>
+                <button className="btn-auto-generate" onClick={() => {
+                  const RANDOM_NAMES = ["Caelus", "Selene Vale", "Thorin Vex", "Lyra Sangueforte", "Argus Nera-Lama", "Kael Ombravento", "Mira Spaccaossa", "Borin Hammerstein", "Vesper Ombracorvo", "Auron Ferrosaldo", "Nyx Velocelama", "Roric Cuoredrago", "Sylas Forgiatuono", "Elara Ventoluce", "Garrick Pugnoreale"];
+                  const randName = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+                  const randClass = MASTER_JOIN_CLASSES[Math.floor(Math.random() * MASTER_JOIN_CLASSES.length)];
+                  setMasterJoinName(randName);
+                  setMasterJoinClass(randClass);
+                }} title="Riempie nome e classe casuali">
+                  🎲 Genera
+                </button>
                 <button className="btn-join" onClick={startMasterLoadout} disabled={!masterJoinName.trim() || !masterJoinClass}>
                   Continua →
                 </button>
@@ -6883,6 +6892,20 @@ export default function Arena() {
                 </div>
                 <div className="hp-roll-buttons">
                   <button className="btn-cancel-loadout" onClick={() => setLoadoutPhase("class-select")}>← Classe</button>
+                  <button className="btn-auto-generate" onClick={() => {
+                    /* distribuisci 10 punti random tra 6 stat, cap a 3 per stat */
+                    const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                    let remaining = 10;
+                    const keys = Object.keys(stats);
+                    while (remaining > 0) {
+                      const k = keys[Math.floor(Math.random() * keys.length)];
+                      if (stats[k] < 3) { stats[k]++; remaining--; }
+                      else if (keys.every(kk => stats[kk] >= 3)) break;
+                    }
+                    setPendingStats(stats);
+                  }} title="Distribuisce 10 punti casuali">
+                    🎲 Random
+                  </button>
                   <button
                     className="btn-join"
                     disabled={remaining !== 0}

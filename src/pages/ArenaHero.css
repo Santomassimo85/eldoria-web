@@ -2277,6 +2277,83 @@
   to   { transform: translateX(0);     opacity: 1; }
 }
 
+/* ── LOADOUT: full width, niente max-width restrittivo ──────────── */
+.arena-page .join-zone {
+  padding: 12px 0 40px !important;
+  width: 100% !important;
+}
+.arena-page .join-zone-inner {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 32px 28px !important;
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  border-top: 3px solid var(--arena-gold, #d4af37) !important;
+  color: #f5e6c8 !important;
+}
+.arena-page .loadout-panel {
+  max-width: none !important;
+  width: 100% !important;
+  background: linear-gradient(135deg, rgba(40, 14, 14, 0.85), rgba(20, 7, 7, 0.92)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  border-top: 3px solid var(--arena-gold, #d4af37) !important;
+  color: #f5e6c8 !important;
+}
+.arena-page .hp-roll-panel {
+  max-width: none !important;
+  width: 100% !important;
+}
+/* Banner descrittivo: full width, in alto */
+.arena-page .fun-loadout-banner {
+  width: 100% !important;
+  margin: 0 0 20px !important;
+  border-radius: 12px !important;
+  padding: 12px 18px !important;
+  background: linear-gradient(135deg, rgba(78, 122, 180, 0.85), rgba(40, 60, 100, 0.92)) !important;
+  color: #fff !important;
+  border: 1px solid rgba(78, 122, 180, 0.5) !important;
+  font-weight: 600;
+  text-align: center;
+}
+.arena-page .master-join-setup {
+  background: rgba(15, 7, 7, 0.6) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+  color: #f5e6c8 !important;
+}
+.arena-page .master-join-setup-title {
+  color: #ffd97a !important;
+}
+.arena-page .master-join-input,
+.arena-page .master-join-select {
+  background: rgba(20, 8, 8, 0.65) !important;
+  color: #f5e6c8 !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  border-radius: 10px !important;
+}
+
+/* Button "Genera automaticamente" / Random */
+.arena-page .btn-auto-generate {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.08)) !important;
+  color: #ffd97a !important;
+  border: 1px solid rgba(212, 175, 55, 0.5) !important;
+  border-radius: 10px !important;
+  padding: 9px 16px !important;
+  font-family: var(--font-title, sans-serif);
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 3px 10px rgba(180, 130, 30, 0.18);
+}
+.arena-page .btn-auto-generate:hover {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.4), rgba(212, 175, 55, 0.18)) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(180, 130, 30, 0.3);
+}
+.arena-page .btn-auto-generate:active { transform: translateY(0); }
+
 /* ── SIDE NAV: icone piccole laterali (visibili a tutti) ────────── */
 .arena-side-nav {
   position: fixed;
