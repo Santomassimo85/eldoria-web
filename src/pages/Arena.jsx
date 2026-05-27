@@ -6179,11 +6179,11 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── HERO SECTION (full-bleed, parallax, placeholder image) ── */}
+      {/* ── HERO SECTION (full-vh, parallax, immagine epica) ── */}
       <section className="arena-hero" aria-label="Arena dei Campioni">
         <div className="arena-hero-media" aria-hidden="true">
           <img
-            src="/arena/hero-placeholder.jpg"
+            src="/assets/PhotoStory/GruppoMEAA/partyfun.jpg"
             alt=""
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
@@ -6347,21 +6347,42 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── SECTION DIVIDER (placeholder image) ── */}
-      <div className="arena-section-divider" aria-hidden="true">
-        <div className="arena-section-divider-media">
+      {/* ── SCROLLYTELLING: Lex Arenae (immagine sticky + frames che si rivelano) ── */}
+      <section className="arena-scrollytell" aria-label="Lex Arenae">
+        <div className="arena-scrollytell-media" aria-hidden="true">
           <img
-            src="/arena/divider-rules.jpg"
+            src="/assets/PhotoStory/GruppoLAC/woods_war.jpg"
             alt=""
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
         </div>
-        <div className="arena-section-divider-content">
-          <div className="arena-section-divider-eyebrow">Lex Arenae</div>
-          <h2 className="arena-section-divider-title">Regole, Classi & Glorie</h2>
-          <p className="arena-section-divider-sub">Tutto ciò che ti serve per scendere in campo da campione.</p>
+        <div className="arena-scrollytell-content">
+          <div className="arena-scrollytell-frame">
+            <span className="arena-scrollytell-eyebrow">Lex Arenae</span>
+            <h2 className="arena-scrollytell-title">Regole, Classi &amp; Glorie</h2>
+            <p className="arena-scrollytell-text">
+              Dodici classi, dodici scuole. Ogni campione porta in arena la propria via — dai colpi marziali
+              del Guerriero alle invocazioni del Druido. Conosci le regole prima di scendere in campo.
+            </p>
+          </div>
+          <div className="arena-scrollytell-frame">
+            <span className="arena-scrollytell-eyebrow">Iniziativa &amp; Turni</span>
+            <h2 className="arena-scrollytell-title">Tempo è Strategia</h2>
+            <p className="arena-scrollytell-text">
+              10 minuti per tirare iniziativa, 1 ora per agire. Se non rispondi, l'arena risponde per te:
+              attacco automatico con l'arma equipaggiata. Non sprecare il tuo turno.
+            </p>
+          </div>
+          <div className="arena-scrollytell-frame">
+            <span className="arena-scrollytell-eyebrow">Monete d'Arena</span>
+            <h2 className="arena-scrollytell-title">Gloria &amp; Ricompensa</h2>
+            <p className="arena-scrollytell-text">
+              +5 MA per ogni match giocato. +7 MA per ogni round vinto. +30 MA per chi conquista la corona.
+              Spendile alla Bottega per livelli di classe, pozioni e oggetti leggendari.
+            </p>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* ── SEZIONE SPIEGAZIONE ── */}
       <div id="arena-info-anchor" className="arena-info-section">
@@ -7473,22 +7494,35 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── SECTION DIVIDER (Tabellone) ── */}
+      {/* ── SCROLLYTELLING: Tabellone (visibile in combat/finished) ── */}
       {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (
-        <div className="arena-section-divider" aria-hidden="true">
-          <div className="arena-section-divider-media">
+        <section className="arena-scrollytell" aria-label="Tabellone del Campionato">
+          <div className="arena-scrollytell-media" aria-hidden="true">
             <img
-              src="/arena/divider-bracket.jpg"
+              src="/assets/PhotoStory/GruppoMEAA/run.jpg"
               alt=""
               onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
           </div>
-          <div className="arena-section-divider-content">
-            <div className="arena-section-divider-eyebrow">Bracket</div>
-            <h2 className="arena-section-divider-title">Tabellone del Campionato</h2>
-            <p className="arena-section-divider-sub">Ogni colpo, ogni round. La strada verso la corona.</p>
+          <div className="arena-scrollytell-content">
+            <div className="arena-scrollytell-frame">
+              <span className="arena-scrollytell-eyebrow">Bracket</span>
+              <h2 className="arena-scrollytell-title">Tabellone del Campionato</h2>
+              <p className="arena-scrollytell-text">
+                Ogni colpo conta. Ogni round avvicina alla finale. Solo chi resiste a fame, ferro
+                e fortuna scriverà il proprio nome tra i campioni di Exanthia.
+              </p>
+            </div>
+            <div className="arena-scrollytell-frame">
+              <span className="arena-scrollytell-eyebrow">La Strada</span>
+              <h2 className="arena-scrollytell-title">Verso la Corona</h2>
+              <p className="arena-scrollytell-text">
+                Gironi, scontri diretti, finale. Il tabellone vivo qui sotto racconta in tempo reale
+                chi è ancora in piedi e chi è caduto. Segui la tua sfida — o quella sulla quale hai scommesso.
+              </p>
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* ── TABELLONE DEL CAMPIONATO (visibile a tutti gli utenti loggati) ── */}

@@ -784,9 +784,9 @@
 /* re-enable our own borders/radii/shadows below */
 
 :root {
-  --arena-hero-h-desktop: 72vh;
-  --arena-hero-h-tablet:  60vh;
-  --arena-hero-h-mobile:  56vh;
+  --arena-hero-h-desktop: 100vh;
+  --arena-hero-h-tablet:  90vh;
+  --arena-hero-h-mobile:  85vh;
   --arena-radius:        18px;
   --arena-shadow-soft:   0 8px 24px rgba(40, 8, 8, 0.08);
   --arena-shadow-hard:   0 24px 56px rgba(40, 8, 8, 0.22);
@@ -1083,10 +1083,11 @@
 /* ── SECTION DIVIDER full-bleed (placeholder per immagini di sezione) ── */
 .arena-section-divider {
   position: relative;
-  margin: 64px calc(50% - 50vw) 64px;
+  margin: 80px calc(50% - 50vw) 80px;
   width: 100vw;
   max-width: 100vw;
-  height: 260px;
+  height: 70vh;
+  min-height: 420px;
   overflow: hidden;
   isolation: isolate;
   background:
@@ -1147,6 +1148,147 @@
   font-size: 0.95rem;
   color: rgba(255, 240, 220, 0.78);
   max-width: 560px;
+}
+
+/* ============================================================
+   SCROLLYTELLING — immagine sticky + contenuto che scorre sopra
+   Apple/Stripe style: la foto resta in viewport mentre il testo
+   scorre per ~150vh dando l'effetto "rivela".
+   ============================================================ */
+.arena-scrollytell {
+  position: relative;
+  margin: 60px calc(50% - 50vw);
+  width: 100vw;
+  max-width: 100vw;
+  min-height: 180vh;          /* triple-viewport scroll */
+  overflow: visible;
+}
+.arena-scrollytell-media {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  z-index: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(212, 175, 55, 0.18), transparent 55%),
+    linear-gradient(135deg, #1a0808 0%, #3a1212 50%, #220606 100%);
+}
+.arena-scrollytell-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  opacity: 0.55;
+  filter: saturate(1.05) contrast(1.05);
+  will-change: transform;
+  transform: scale(1.05) translate3d(0, calc(var(--arena-scroll, 0) * 0.06px), 0);
+}
+.arena-scrollytell-media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 30%, rgba(15, 5, 5, 0.55) 75%, rgba(15, 5, 5, 0.95) 100%);
+  z-index: 1;
+}
+.arena-scrollytell-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(212, 175, 55, 0.06) 1px, transparent 1.4px);
+  background-size: 22px 22px;
+  opacity: 0.5;
+  mix-blend-mode: screen;
+  z-index: 2;
+}
+.arena-scrollytell-content {
+  position: relative;
+  z-index: 3;
+  margin-top: -100vh;          /* overlay on top of sticky media */
+  padding: 28vh 24px 22vh;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30vh;                   /* spaces frames for scroll reveal */
+  pointer-events: none;
+}
+.arena-scrollytell-frame {
+  max-width: 720px;
+  width: 100%;
+  text-align: center;
+  pointer-events: auto;
+  background: rgba(20, 10, 8, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 22px;
+  padding: 32px 28px;
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.08) inset,
+    0 24px 60px rgba(0, 0, 0, 0.45);
+  animation: arena-scrollytell-rise 0.7s ease both;
+  animation-timeline: view();
+  animation-range: cover 0% cover 35%;
+}
+@keyframes arena-scrollytell-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@supports not (animation-timeline: view()) {
+  .arena-scrollytell-frame { animation: none; }
+}
+.arena-scrollytell-eyebrow {
+  display: inline-block;
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--arena-gold-soft, #ffe1a8);
+  padding: 6px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 16px;
+}
+.arena-scrollytell-title {
+  font-family: var(--font-title, serif);
+  font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+  font-weight: 700;
+  margin: 0 0 14px;
+  line-height: 1.1;
+  background: linear-gradient(180deg, #fff 0%, #ffe6c2 55%, var(--arena-gold, #d4af37) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  text-shadow: 0 4px 22px rgba(0, 0, 0, 0.55);
+}
+.arena-scrollytell-text {
+  font-family: var(--font-text, sans-serif);
+  font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+  line-height: 1.65;
+  color: rgba(255, 250, 240, 0.88);
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* responsive scrollytell */
+@media (max-width: 760px) {
+  .arena-scrollytell { min-height: 220vh; }
+  .arena-scrollytell-content {
+    padding: 24vh 16px 24vh;
+    gap: 35vh;
+  }
+  .arena-scrollytell-frame { padding: 24px 20px; border-radius: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-scrollytell-media img { transform: none !important; }
+  .arena-scrollytell-frame { animation: none !important; }
 }
 
 /* ── RICOMPENSA & CHAMPIONS BANNER: modernizzazione delicata ── */
