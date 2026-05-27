@@ -1638,7 +1638,7 @@ export default function Arena() {
         continue; // Arena Libera: nessuna ricompensa MA
       }
       if (justFinished && m.winner) {
-        await awardArenaCoins(m.winner, 2);
+        await awardArenaCoins(m.winner, 7);
         // 🐣 pet system: +3 points to the winner of a tournament round
         awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
       }
@@ -2656,7 +2656,7 @@ export default function Arena() {
       message: `${winnerName}, hai trionfato nell'Arena dei Campioni! ${prizeMsg}`,
       read: false, timestamp: serverTimestamp(),
     });
-    await awardArenaCoins(winnerId, 5);
+    await awardArenaCoins(winnerId, 30);
     await resolveTournamentBets(winnerId, winnerName);
     await archiveTournament(winnerId, undefined, undefined, matchesOverride);
     const winnerSnap = (arenaMeta?.characterSnapshots || {})[winnerId] || {};
@@ -3570,7 +3570,7 @@ export default function Arena() {
     // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
-    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 1);
+    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 5);
 
     // Penalità ai tiri per colpire basata sull'armatura dell'attaccante
     const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
@@ -5288,7 +5288,7 @@ export default function Arena() {
     // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
-    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 1);
+    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 5);
 
     const ability = getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
     const dc      = getSpellSaveDC(attackerSnap);
@@ -5989,11 +5989,11 @@ export default function Arena() {
   }, [arenaMeta, handleArenaAutoPass]);
 
   // ── Pause/Resume timers (Master only) ──────────────────────────────────────
-  const pauseArenaTimers = async (opts = {}) => {
+  const pauseArenaTimers = async () => {
     await updateDoc(doc(db, "arena_meta", "global"), {
       timerPaused: true,
       pausedAt: new Date().toISOString(),
-      nightAutoPaused: !!opts.night,
+      nightAutoPaused: false,
     });
   };
 
@@ -6022,27 +6022,7 @@ export default function Arena() {
     });
   };
 
-  // ── Auto-pausa notturna (00:00 → 06:00) per torneo/campionato ──────────────
-  // Solo i match torneo (kind !== "fun") sono congelati. Le sfide libere restano libere.
-  // Il loop gira solo nei tab del Master per evitare scritture concorrenti.
-  useEffect(() => {
-    if (!isMaster || !arenaMeta) return;
-    if (arenaMeta.phase !== "combat") return;
-    const tick = async () => {
-      const now = new Date();
-      const hour = now.getHours();
-      const inNightWindow = hour >= 0 && hour < 6;
-      if (inNightWindow && !arenaMeta.timerPaused) {
-        try { await pauseArenaTimers({ night: true }); } catch (e) { console.error("auto night pause:", e); }
-      } else if (!inNightWindow && arenaMeta.timerPaused && arenaMeta.nightAutoPaused) {
-        try { await resumeArenaTimers(); } catch (e) { console.error("auto night resume:", e); }
-      }
-    };
-    tick();
-    const interval = setInterval(tick, 60000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMaster, arenaMeta]);
+  // Pausa/ripresa timer torneo: gestione manuale via pulsante Master (no auto-night).
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
   if (!arenaMeta) return <div className="arena-loading">Ingresso nell'Arena...</div>;
@@ -6312,33 +6292,66 @@ export default function Arena() {
             <ul className="arena-info-list">
               <li>Il Master apre le iscrizioni e approva i partecipanti uno per uno.</li>
               <li>Ogni combattente <strong>crea un personaggio da zero</strong> solo per l'Arena: sceglie classe, distribuisce i punti caratteristica, sceglie armi, armatura, oggetti e tira i propri HP.</li>
-              <li>I fight durano al massimo <strong>10 ore</strong>. Ogni giocatore ha <strong>1 ora</strong> per compiere la propria azione; per tirare iniziativa ci sono <strong>10 minuti</strong>. Allo scadere del tempo globale, vince chi ha più HP rimasti.</li>
-              <li>Il vincitore di ogni match avanza al turno successivo fino al campione finale.</li>
+              <li>I match si giocano in modalità asincrona a turni. Il vincitore di ogni match avanza al round successivo fino al campione finale.</li>
+              <li>Oltre al torneo è sempre attiva la <strong>Sfida Libera</strong>: 1v1 amichevoli senza ricompense, utili per allenarti.</li>
             </ul>
+
+            <h3 className="arena-info-title">⏱ Timer e turni</h3>
+            <div className="arena-info-example">
+              <p><strong>Iniziativa:</strong> ogni giocatore ha <strong>10 minuti</strong> per tirare la propria iniziativa (d20 + DES; il Ladro tira con vantaggio). Allo scadere il sistema tira automaticamente al posto tuo.</p>
+              <p><strong>Turno di azione:</strong> ogni giocatore ha <strong>1 ora</strong> per agire nel proprio turno. Se non agisci, parte un <strong>attacco automatico</strong> con l'arma equipaggiata sul primo bersaglio vivo (oppure posizione difensiva se non hai armi).</p>
+              <p><strong>Pausa:</strong> solo il Master può sospendere i timer con il pulsante "⏸ Pausa Timer". Alla ripresa i turn-expiry vengono shiftati in avanti del tempo trascorso, così nessuno viene penalizzato.</p>
+            </div>
 
             <h3 className="arena-info-title">🧙 Creazione del Personaggio</h3>
             <div className="arena-info-example">
-              <p><strong>1. Classe:</strong> scegli tra tutte le classi disponibili (Fighter, Rogue, Wizard, Druid…). Ogni classe ha un dado HP, abilità caratteristiche e un set di equipaggiamenti dedicato.</p>
-              <p><strong>2. Caratteristiche:</strong> distribuisci i punti stat (FOR, DES, COS, INT, SAG, CAR) liberamente nel limite consentito. Le stat determinano modificatori usati in ogni tiro.</p>
-              <p><strong>3. Equipaggiamento:</strong> scegli armi, armatura e oggetti consumabili dal catalogo Arena. Ogni classe ha restrizioni su cosa può equipaggiare.</p>
-              <p><strong>4. HP:</strong> tira i tuoi dadi vita — <strong>tutte le classi usano 7d10</strong> (+ modificatore COS per dado). Ogni livello di classe acquistato alla Bottega aggiunge +1d10 al tiro. Hai un numero limitato di reroll.</p>
+              <p><strong>1. Classe:</strong> scegli tra le 12 classi (vedi elenco sotto). Ogni classe ha le proprie armi consentite, abilità di classe automatiche, eventuali slot magia e armatura permessa.</p>
+              <p><strong>2. Caratteristiche:</strong> distribuisci i punti stat (FOR, DES, COS, INT, SAG, CAR). I modificatori si applicano a tiri per colpire, danni, salvezze e CA delle armature leggere/medie.</p>
+              <p><strong>3. Equipaggiamento:</strong> scegli armi, armatura, scudo (se la classe lo permette) e oggetti consumabili. Le restrizioni dipendono dalla classe.</p>
+              <p><strong>4. HP:</strong> tutte le classi tirano <strong>7d10 + COS×7</strong>. Ogni livello di classe acquistato alla Bottega aggiunge +1d10 al tiro. Hai un numero limitato di reroll.</p>
               <p><strong>Nota:</strong> il personaggio Arena è separato dalla tua scheda principale e non influenza la campagna.</p>
             </div>
 
             <h3 className="arena-info-title">🎲 Come si combatte</h3>
             <div className="arena-info-example">
-              <p><strong>Attacco con arma:</strong> d20 + 3 (competenza) + FOR o DES → se supera la CA avversaria, tiro danno dell'arma + FOR o DES.</p>
-              <p><strong>Attacco con incantesimo:</strong> d20 + 3 (competenza) + INT/SAG/CAR (in base alla classe) → se colpisce, danno dell'incantesimo senza modificatore aggiuntivo.</p>
-              <p><strong>Esempio:</strong> Fighter (FOR +3) con Spada Lunga (1d8). d20=14 → 14+3+3=20 vs CA 16 → <em>colpo!</em> Danno: 1d8=5+3=<strong>8</strong>.</p>
-              <p><strong>Armature:</strong> le armature pesanti danno più CA ma applicano una penalità ai tiri per colpire. Le armature leggere/medie sommano il modificatore DES alla CA base.</p>
+              <p><strong>Attacco con arma:</strong> d20 + bonus arma + FOR (mischia) o DES (distanza/finezza) vs CA. Se colpisce: danno dell'arma + modificatore. <em>Critico</em> su 20: danno ×2.</p>
+              <p><strong>Attacco con incantesimo:</strong> d20 + bonus incantesimo + INT/SAG/CAR (a seconda della classe) vs CA, oppure il bersaglio tira un Tiro Salvezza. Alcune spell infliggono effetti continuati (veleno, sanguinamento, controllo).</p>
+              <p><strong>Azione bonus:</strong> molte abilità di classe (Furia, Marchio, Lay of Hands, Cura Ki, Ispirazione Bardica…) sono <strong>bonus action</strong> — puoi farle nello stesso turno di un attacco.</p>
+              <p><strong>Armature:</strong> le pesanti hanno CA fissa alta ma penalità ai tiri. Le leggere/medie sommano DES (cap variabile) alla CA base. Lo scudo, se ammesso, dà +2 CA.</p>
+              <p><strong>Esempio:</strong> Fighter (FOR +3) con Spada Lunga (1d8). d20=14 → 14+3+3=20 vs CA 16 → <em>colpo!</em> Danno: 1d8=5 → 5+3 = <strong>8</strong>.</p>
             </div>
+
+            <h3 className="arena-info-title">🛡 Le 12 Classi</h3>
+            <div className="arena-info-example">
+              <p><strong>Guerriero (Fighter)</strong> — Armi semplici e marziali, 2 armi equipaggiabili, armatura pesante + scudo. <em>Skill:</em> Secondo Respiro (cura), Scatto d'Azione (azione extra), Carica (2d6+FOR), Disarmare (blocca armi 3T), Presenza Possente + Critico Migliorato (passive).</p>
+              <p><strong>Barbaro (Barbarian)</strong> — Armi semplici e marziali, 2 armi, armatura leggera/media o nessuna + scudo. <em>Skill:</em> Furia (+2 danni e riduzione danni 3T), Turbine di Lame (2 attacchi 2d10+FOR), Attacco Poderoso (2d8+FOR + vantaggio 3T).</p>
+              <p><strong>Paladino (Paladin)</strong> — Armi marziali, 2 armi, armatura pesante + scudo. Spell paladino. <em>Skill:</em> Smite Divino (arma +2d8, 2 cariche), Imposizione delle Mani (pozza di cura = HP/3, scegli quanti curare).</p>
+              <p><strong>Cacciatore (Ranger)</strong> — Armi ranger, 2 armi, armatura leggera/media + scudo. Spell ranger. <em>Skill:</em> Marchio del Cacciatore (+3 ai TPC per 3 turni, bonus action).</p>
+              <p><strong>Monaco (Monk)</strong> — Armi monaco, 1 arma, nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Pugno (1d6+DES), Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+4 danno 2T), Assorbire Danni (50% del prossimo danno si converte in cura), Cura Ki (1d8+SAG).</p>
+              <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 3 attacchi), Triboli (svantaggio + 1d6 sanguinamento/turno per 3T).</p>
+              <p><strong>Mago (Wizard)</strong> — Armi semplici, 1 arma, abito da mago (no armatura, no scudo). Slot magia ampi. <em>Skill:</em> Recupero Arcano (ripristina 2 slot lv1 + 1 slot lv2).</p>
+              <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <em>Skill:</em> Magia Innata (passiva), Fonte di Magia (ripristina 2 slot magia a scelta).</p>
+              <p><strong>Warlock</strong> — Armi semplici, 1 arma, armatura leggera, no scudo. <em>Skill:</em> Magical Cunning (salta turno → +1 carica a ogni slot, 2 cariche), Patto Demoniaco (sacrifica 1d4 HP → +1d12 alle spell per 3T).</p>
+              <p><strong>Druido (Druid)</strong> — Armi druido, 1 arma, armatura druidica + scudo di legno. Spell druido. <em>Skill:</em> Forma Selvaggia (Wild Shape, trasformazione con HP propri).</p>
+              <p><strong>Chierico (Cleric)</strong> — Armi cleric, 1 arma, armatura leggera/media + scudo. Slot magia (cura, buff, danni divini).</p>
+              <p><strong>Bardo (Bard)</strong> — Armi bardo, 1 arma, armatura leggera, no scudo. Spell bardo. <em>Skill:</em> Ispirazione Bardica (+1d6 al prossimo TPC alleato, cariche = CAR, bonus action).</p>
+            </div>
+
+            <h3 className="arena-info-title">🧪 Oggetti Consumabili</h3>
+            <ul className="arena-info-list">
+              <li><strong>🧪 Pozione di Cura</strong> — 2d12 HP, consuma il turno.</li>
+              <li><strong>💚 Pozione di Cura Media</strong> — 2d8 HP (acquistabile in Bottega), consuma il turno.</li>
+              <li><strong>💣 Bomba</strong> — 2d6 danni al bersaglio, consuma il turno.</li>
+              <li><strong>☠ Pozione di Veleno</strong> — applica 1d6 veleno al bersaglio per il turno successivo.</li>
+              <li>Gli oggetti acquistati in Bottega vengono aggiunti al loadout per il torneo successivo.</li>
+            </ul>
 
             <h3 className="arena-info-title">🪙 Monete Arena (MA)</h3>
             <ul className="arena-info-list">
-              <li><strong>+1 MA</strong> per aver partecipato all'Arena.</li>
-              <li><strong>+2 MA</strong> per ogni round vinto.</li>
-              <li><strong>+5 MA</strong> se vinci il torneo.</li>
-              <li>Spendile alla <strong>Bottega dell'Arena</strong> per pozioni, armi e armature speciali da usare nei prossimi tornei.</li>
+              <li><strong>+5 MA</strong> per aver partecipato a un match dell'Arena (al primo turno giocato).</li>
+              <li><strong>+7 MA</strong> per ogni round vinto.</li>
+              <li><strong>+30 MA</strong> se vinci il torneo (in aggiunta ai +7 della finale).</li>
+              <li>Spendile alla <strong>Bottega dell'Arena</strong> per pozioni, livelli di classe extra e oggetti speciali da usare nei prossimi tornei.</li>
             </ul>
 
             <h3 className="arena-info-title">💰 Sistema Scommesse</h3>
@@ -6524,6 +6537,16 @@ export default function Arena() {
               </button>
             )}
             <button className="btn-reset" onClick={async () => {
+              const inCombat = arenaMeta.phase === "combat";
+              const inFinished = arenaMeta.phase === "finished";
+              const partCount = (arenaMeta.participants?.length || 0);
+              const warn = inCombat
+                ? `Sei sicuro di voler resettare? Il torneo è IN CORSO con ${partCount} partecipanti. Tutto andrà perso (match, bracket, scommesse rimborsate).`
+                : inFinished
+                ? "Sei sicuro di voler resettare? Il torneo è concluso ma azzererai bracket, partecipanti e storico match dell'arena meta."
+                : `Sei sicuro di voler resettare l'arena? (${partCount} iscritti verranno rimossi)`;
+              if (!window.confirm(warn)) return;
+              if (inCombat && !window.confirm("CONFERMA FINALE: stai per cancellare un torneo in corso. Procedere?")) return;
               await refundAllBets();
               const preservedFun = (arenaMeta.matches || []).filter(m => m.kind === "fun");
               // Conserva gli snapshot dei giocatori in fun match attive E quelli ancora in lista d'attesa,
@@ -7691,9 +7714,7 @@ export default function Arena() {
                     <div className="match-pause-text">
                       <div className="match-pause-title">ARENA IN PAUSA</div>
                       <div className="match-pause-sub">
-                        {arenaMeta.nightAutoPaused
-                          ? "Pausa notturna automatica · 00:00 → 06:00"
-                          : "Il Master ha messo in pausa il match. Nessuna azione disponibile fino alla ripresa."}
+                        Il Master ha messo in pausa il match. Nessuna azione disponibile fino alla ripresa.
                       </div>
                     </div>
                     <span className="match-pause-flag">⛔</span>
