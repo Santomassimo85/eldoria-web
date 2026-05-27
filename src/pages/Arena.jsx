@@ -6355,30 +6355,15 @@ export default function Arena() {
             alt=""
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
+          <div className="arena-scrollytell-bottom-fade" aria-hidden="true" />
         </div>
         <div className="arena-scrollytell-content">
           <div className="arena-scrollytell-frame">
             <span className="arena-scrollytell-eyebrow">Lex Arenae</span>
             <h2 className="arena-scrollytell-title">Regole, Classi &amp; Glorie</h2>
             <p className="arena-scrollytell-text">
-              Dodici classi, dodici scuole. Ogni campione porta in arena la propria via — dai colpi marziali
-              del Guerriero alle invocazioni del Druido. Conosci le regole prima di scendere in campo.
-            </p>
-          </div>
-          <div className="arena-scrollytell-frame">
-            <span className="arena-scrollytell-eyebrow">Iniziativa &amp; Turni</span>
-            <h2 className="arena-scrollytell-title">Tempo è Strategia</h2>
-            <p className="arena-scrollytell-text">
-              10 minuti per tirare iniziativa, 1 ora per agire. Se non rispondi, l'arena risponde per te:
-              attacco automatico con l'arma equipaggiata. Non sprecare il tuo turno.
-            </p>
-          </div>
-          <div className="arena-scrollytell-frame">
-            <span className="arena-scrollytell-eyebrow">Monete d'Arena</span>
-            <h2 className="arena-scrollytell-title">Gloria &amp; Ricompensa</h2>
-            <p className="arena-scrollytell-text">
-              +5 MA per ogni match giocato. +7 MA per ogni round vinto. +30 MA per chi conquista la corona.
-              Spendile alla Bottega per livelli di classe, pozioni e oggetti leggendari.
+              Dodici classi, una sola corona. 10 minuti per l'iniziativa, 1 ora per agire.
+              +5 MA per match, +7 per round, +30 per la corona. Scendi in campo da campione.
             </p>
           </div>
         </div>
@@ -6526,17 +6511,8 @@ export default function Arena() {
               <span className="arena-scrollytell-eyebrow">♛ Il Custode</span>
               <h2 className="arena-scrollytell-title">Sangue, Onore, Decisioni</h2>
               <p className="arena-scrollytell-text">
-                Il Master apre le iscrizioni, approva i campioni, dichiara i vincitori e custodisce
-                le regole. Da qui sotto comandi ogni respiro dell'Arena: chi entra, chi attende,
-                chi resta in piedi.
-              </p>
-            </div>
-            <div className="arena-scrollytell-frame">
-              <span className="arena-scrollytell-eyebrow">Strumenti del Trono</span>
-              <h2 className="arena-scrollytell-title">Il Tuo Pannello</h2>
-              <p className="arena-scrollytell-text">
-                Pausa il tempo. Forza vincitori. Resetta. Modifica monete. L'Arena risponde
-                alla tua mano — usa il potere con saggezza, l'occhio dei campioni è su di te.
+                Apri le iscrizioni, approva i campioni, pausa il tempo, dichiara i vincitori.
+                L'Arena risponde alla tua mano — qui sotto trovi il pannello del Master.
               </p>
             </div>
           </div>
@@ -7426,18 +7402,8 @@ export default function Arena() {
                   <span className="arena-scrollytell-eyebrow">⚔ Sfide Libere</span>
                   <h2 className="arena-scrollytell-title">Allenamento Senza Tempo</h2>
                   <p className="arena-scrollytell-text">
-                    Nessuna ricompensa, nessuna corona. Solo il piacere puro del ferro contro ferro.
-                    Sfida un compagno, addestra il tuo personaggio o misurati contro l'IA — qui
-                    impari senza perdere onore.
-                  </p>
-                </div>
-                <div className="arena-scrollytell-frame">
-                  <span className="arena-scrollytell-eyebrow">Regole del Torneo</span>
-                  <h2 className="arena-scrollytell-title">Stesse Regole, Zero Stakes</h2>
-                  <p className="arena-scrollytell-text">
-                    Iniziativa, turni di 1 ora, classi, incantesimi: identici al torneo ufficiale.
-                    Sfida l'IA in modalità Hard per allenare la tua build, o invita un amico per
-                    un duello cortese.
+                    Nessuna ricompensa, solo ferro contro ferro. Sfida un compagno o l'IA con le
+                    stesse regole del torneo — addestra la tua build senza perdere onore.
                   </p>
                 </div>
               </div>
@@ -7573,16 +7539,8 @@ export default function Arena() {
               <span className="arena-scrollytell-eyebrow">Bracket</span>
               <h2 className="arena-scrollytell-title">Tabellone del Campionato</h2>
               <p className="arena-scrollytell-text">
-                Ogni colpo conta. Ogni round avvicina alla finale. Solo chi resiste a fame, ferro
-                e fortuna scriverà il proprio nome tra i campioni di Exanthia.
-              </p>
-            </div>
-            <div className="arena-scrollytell-frame">
-              <span className="arena-scrollytell-eyebrow">La Strada</span>
-              <h2 className="arena-scrollytell-title">Verso la Corona</h2>
-              <p className="arena-scrollytell-text">
                 Gironi, scontri diretti, finale. Il tabellone vivo qui sotto racconta in tempo reale
-                chi è ancora in piedi e chi è caduto. Segui la tua sfida — o quella sulla quale hai scommesso.
+                chi è ancora in piedi — segui la tua sfida verso la corona.
               </p>
             </div>
           </div>
@@ -7872,18 +7830,8 @@ export default function Arena() {
                 <span className="arena-scrollytell-eyebrow">⚔ L'Arena Vive</span>
                 <h2 className="arena-scrollytell-title">Il Tuo Campo di Battaglia</h2>
                 <p className="arena-scrollytell-text">
-                  Il pubblico trattiene il fiato. La sabbia è ancora calda del sangue degli sfidanti
-                  precedenti. Ora tocca a te: leggi il nemico, scegli la tua azione, e che la fortuna
-                  dei dadi sia con te.
-                </p>
-              </div>
-              <div className="arena-scrollytell-frame">
-                <span className="arena-scrollytell-eyebrow">Combatti</span>
-                <h2 className="arena-scrollytell-title">Sotto Trovi la Tua Sfida</h2>
-                <p className="arena-scrollytell-text">
-                  Iniziativa, attacchi, incantesimi, abilità. Tutto qui sotto. Quando è il tuo
-                  turno il pulsante fluttuante ti riporta in arena con un click — non perdere
-                  un secondo.
+                  La sabbia è ancora calda. Leggi il nemico, scegli l'azione, lascia parlare i dadi.
+                  Quando è il tuo turno, il pulsante fluttuante ti riporta in arena con un click.
                 </p>
               </div>
             </div>
