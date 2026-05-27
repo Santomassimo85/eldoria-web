@@ -31,7 +31,8 @@ import {
   nextAction as aiNext, chooseBlocks as aiBlocks, respondToStack,
 } from "../../tcg/ai.js";
 import {
-  pushState, heartbeat, opponentGone, sendEmote, deleteMatch,
+  pushState, heartbeat, opponentGone, sendEmote, sendCardReaction,
+  deleteMatch,
 } from "../../tcg/net.js";
 import { TCG_COINS } from "../../tcg/collection.js";
 import { playSfx } from "../../utils/tcgSfx.js";
@@ -227,6 +228,11 @@ export default function GameTable({
   const [hitShake, setHitShake] = useState(0);
   const [ghosts, setGhosts] = useState([]);
   const [emoteBubble, setEmoteBubble] = useState(null);
+  // reazioni emoji su carta: spawn locale + animazione (anche per le mie
+  // reazioni, così c'è feedback immediato). Auto-cleanup ~1.8s.
+  const [cardReacts, setCardReacts] = useState([]);
+  const reactSeq = useRef(0);
+  const cardReactTs = useRef(0);
   // Cooldown locale per gli emote: dopo un click i bottoni si disabilitano
   // per EMOTE_COOLDOWN_MS, ma il sistema resta SEMPRE riutilizzabile (non
   // si "rompe" come prima). emoteCdEnd è il timestamp di fine cooldown.
@@ -775,6 +781,48 @@ export default function GameTable({
       return () => clearTimeout(t);
     }
   }, [isAi, match]);
+
+  // Spawn locale di una reazione emoji "appiccicata" a una carta. Posiziona
+  // l'emoji al centro della carta target (in coord % rispetto al tavolo).
+  // Funziona sia per le reazioni mie (eco immediata al click) sia per
+  // quelle che arrivano dall'avversario via Firestore.
+  const spawnCardReact = (instId, emoji) => {
+    const root = tableRef.current;
+    if (!root) return;
+    const el = root.querySelector(`[data-inst="${instId}"]`);
+    const rect = root.getBoundingClientRect();
+    if (!el || !rect.width) return;
+    const r = el.getBoundingClientRect();
+    const x = ((r.left - rect.left + r.width / 2) / rect.width) * 100;
+    const y = ((r.top - rect.top + r.height / 2) / rect.height) * 100;
+    const id = ++reactSeq.current;
+    setCardReacts((arr) => [...arr, { id, emoji, x, y }]);
+    setTimeout(
+      () => setCardReacts((arr) => arr.filter((z) => z.id !== id)),
+      1800
+    );
+  };
+
+  // Reazioni che arrivano dall'avversario (PvP) via Firestore: spawn
+  // locale identico alle mie. Idempotente sul ts.
+  useEffect(() => {
+    if (isAi || !match?.cardReact) return;
+    const r = match.cardReact;
+    if (!r.ts || r.ts === cardReactTs.current) return;
+    cardReactTs.current = r.ts;
+    // skip echo: la mia reazione l'ho già fatta apparire localmente al click
+    if (r.side === mySide) return;
+    spawnCardReact(r.instId, r.emoji);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAi, match, mySide]);
+
+  // Click su un'emoji del picker di una carta. Spawn locale immediato +
+  // (PvP) push su Firestore. In AI mode è puramente locale: niente
+  // backend, ma è comunque carino come feedback in single player.
+  const reactToCard = (instId) => (emoji) => {
+    spawnCardReact(instId, emoji);
+    if (!isAi && matchId) sendCardReaction(matchId, mySide, instId, emoji);
+  };
 
   // Tick 1s mentre c'è cooldown emote attivo: aggiorna emoteNowTick così
   // il countdown sui bottoni si re-renderizza e si auto-riabilita allo
@@ -1374,6 +1422,7 @@ export default function GameTable({
                 }
                 onClick={() => onFoeCreature(cr)}
                 onInspect={setInspect}
+                onReact={reactToCard(cr.instId)}
                 onDragOver={allowDrop}
                 onDrop={dropOnTarget({
                   type: "creature",
@@ -1417,6 +1466,7 @@ export default function GameTable({
                 shake={shake === cr.instId || combatShake.includes(cr.instId)}
                 onClick={() => onMyCreature(cr)}
                 onInspect={setInspect}
+                onReact={reactToCard(cr.instId)}
                 onDragOver={allowDrop}
                 onDrop={dropOnTarget({
                   type: "creature",
@@ -1478,6 +1528,7 @@ export default function GameTable({
               <CardView
                 card={card}
                 variant="hand"
+                instId={h.instId}
                 selected={sel === h.instId}
                 playable={playable}
                 discard={discardMode}
@@ -1489,6 +1540,7 @@ export default function GameTable({
                   fanOpen ? onHandCard(h) : setHandOpen(true)
                 }
                 onInspect={setInspect}
+                onReact={fanOpen ? reactToCard(h.instId) : undefined}
               />
             </div>
           );
@@ -1684,6 +1736,20 @@ export default function GameTable({
           }`}
         >
           {emoteBubble.text}
+        </div>
+      )}
+
+      {cardReacts.length > 0 && (
+        <div className="tcg-card-reacts" aria-hidden="true">
+          {cardReacts.map((r) => (
+            <span
+              key={r.id}
+              className="tcg-card-react"
+              style={{ left: r.x + "%", top: r.y + "%" }}
+            >
+              {r.emoji}
+            </span>
+          ))}
         </div>
       )}
 

@@ -209,6 +209,20 @@ export async function sendEmote(matchId, side, text) {
   }
 }
 
+/* Reazione a una carta: emoji "appiccicato" alla carta {instId} (creatura
+   in campo, manufatto, o carta in mano dell'avversario). Usato il ts per
+   far scattare l'animazione anche se l'utente reagisce due volte alla
+   stessa carta con lo stesso emoji. */
+export async function sendCardReaction(matchId, side, instId, emoji) {
+  try {
+    await updateDoc(doc(db, COL, matchId), {
+      cardReact: { side, instId, emoji, ts: Date.now() },
+    });
+  } catch {
+    /* offline */
+  }
+}
+
 export async function heartbeat(matchId, side) {
   try {
     await updateDoc(doc(db, COL, matchId), {

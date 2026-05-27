@@ -3,7 +3,19 @@
    variant: "hand" | "board" | "detail" | "mini" | "back"
    "detail" renders the big card + a lateral floating ability panel.
    ============================================================ */
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+
+/* Le reazioni che escono dal popover (long-press). Coppia emoji + titolo,
+   così sui desktop in hover si capisce la "vibe" senza essere il giocatore
+   già pratico del gioco. Mantenute brevi per stare comode in landscape. */
+const CARD_REACTIONS = [
+  { e: "😂", t: "Che ridere!" },
+  { e: "🔥", t: "Che mossa!" },
+  { e: "👏", t: "Ben giocato" },
+  { e: "😱", t: "Oh no…" },
+  { e: "💀", t: "Sei morto" },
+  { e: "👑", t: "Rispetto" },
+];
 import {
   cardArtUrl, cardBackUrl, costPips, TYPE_COLOR,
   ELEMENT_PIP, ELEMENT_LABEL, RARITY_COLOR, RARITY_LABEL, KEYWORDS,
@@ -96,6 +108,7 @@ export default function CardView({
   instId = null,
   onClick,
   onInspect,
+  onReact,
   draggable = false,
   onDragStart,
   onDragEnd,
@@ -104,6 +117,22 @@ export default function CardView({
 }) {
   const pressTimer = useRef(null);
   const longFired = useRef(false);
+  // popover di reazioni: se `onReact` è passato, il long-press apre questo
+  // menù invece dell'inspect (l'inspect resta accessibile col bottone 🔍).
+  const [reactOpen, setReactOpen] = useState(false);
+  const cardRef = useRef(null);
+
+  // chiudi il picker se l'utente clicca fuori dalla carta (lo stop
+  // sul carta-click avviene già nel render del popover stesso)
+  useEffect(() => {
+    if (!reactOpen) return;
+    const onDoc = (e) => {
+      if (!cardRef.current) return;
+      if (!cardRef.current.contains(e.target)) setReactOpen(false);
+    };
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
+  }, [reactOpen]);
 
   if (variant === "back" || faceDown) {
     return (
@@ -137,12 +166,15 @@ export default function CardView({
   const rarity = card.rarity || "common";
 
   const startPress = () => {
-    if (!onInspect) return;
+    if (!onInspect && !onReact) return;
     longFired.current = false;
     pressTimer.current = setTimeout(() => {
       pressTimer.current = null;
       longFired.current = true;
-      onInspect(card);
+      // se la carta è "reagibile" (in partita) → reaction picker; altrimenti
+      // il vecchio comportamento: zoom della carta (DeckBuilder, Collection…)
+      if (onReact) setReactOpen(true);
+      else if (onInspect) onInspect(card);
     }, 420);
   };
   const endPress = () => {
@@ -160,7 +192,22 @@ export default function CardView({
       longFired.current = false;
       return;
     }
+    // un tap normale su una carta che ha il picker aperto lo chiude e basta
+    if (reactOpen) {
+      setReactOpen(false);
+      return;
+    }
     if (onClick) onClick(e);
+  };
+  const pickReaction = (emoji) => (e) => {
+    e.stopPropagation();
+    setReactOpen(false);
+    if (onReact) onReact(emoji);
+  };
+  const openInspectFromPicker = (e) => {
+    e.stopPropagation();
+    setReactOpen(false);
+    if (onInspect) onInspect(card);
   };
 
   const cls = [
@@ -186,6 +233,7 @@ export default function CardView({
 
   const cardEl = (
     <div
+      ref={cardRef}
       className={cls}
       data-inst={instId || undefined}
       style={{
@@ -288,6 +336,37 @@ export default function CardView({
         aria-hidden="true"
       />
       {foil && <span className="tcg-card__foil" aria-hidden="true" />}
+      {reactOpen && (
+        <div
+          className="tcg-react-picker"
+          role="menu"
+          aria-label="Reazioni"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {CARD_REACTIONS.map((r) => (
+            <button
+              key={r.e}
+              type="button"
+              className="tcg-react-picker__btn"
+              title={r.t}
+              onClick={pickReaction(r.e)}
+            >
+              <span className="tcg-react-picker__emo">{r.e}</span>
+            </button>
+          ))}
+          {onInspect && (
+            <button
+              type="button"
+              className="tcg-react-picker__btn tcg-react-picker__btn--zoom"
+              title="Ingrandisci"
+              onClick={openInspectFromPicker}
+            >
+              <span className="tcg-react-picker__emo">🔍</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 
