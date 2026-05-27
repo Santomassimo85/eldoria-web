@@ -10,6 +10,7 @@ import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { awardPetPoints } from "../utils/pet";
 import "./Arena.css";
+import "./ArenaHero.css";
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
 function ArenaModal({ open, onClose, title, children, variant = "modal" }) {
@@ -1527,6 +1528,26 @@ export default function Arena() {
   useEffect(() => {
     const t = setInterval(() => setTick(v => v + 1), 1000);
     return () => clearInterval(t);
+  }, []);
+
+  // Parallax hero: aggiorna CSS variable --arena-scroll su scroll, senza re-render.
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      document.documentElement.style.setProperty("--arena-scroll", String(window.scrollY));
+      raf = 0;
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    update();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      document.documentElement.style.removeProperty("--arena-scroll");
+    };
   }, []);
 
   // ── Active-fight UX: detect the user's current match so we can hoist it
@@ -6158,12 +6179,58 @@ export default function Arena() {
         );
       })()}
 
-      {/* HEADER */}
-      <div className="arena-header">
-        <div className="arena-header-deco">⚔</div>
-        <h1 className="arena-title">Arena dei Campioni</h1>
-        <div className="arena-header-deco">⚔</div>
-      </div>
+      {/* ── HERO SECTION (full-bleed, parallax, placeholder image) ── */}
+      <section className="arena-hero" aria-label="Arena dei Campioni">
+        <div className="arena-hero-media" aria-hidden="true">
+          <img
+            src="/arena/hero-placeholder.jpg"
+            alt=""
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+          <div className="arena-hero-vignette" />
+          <div className="arena-hero-gradient" />
+          <div className="arena-hero-pattern" />
+        </div>
+        <div className="arena-hero-content">
+          <span className="arena-hero-eyebrow">Cronache di Exanthia</span>
+          <h1 className="arena-hero-title">Arena dei Campioni</h1>
+          <p className="arena-hero-tagline">
+            Dodici classi, una sola corona. Solo i più forti scriveranno il loro nome nelle leggende.
+          </p>
+          <div className="arena-hero-meta">
+            {arenaMeta.phase === "registration" && (
+              <span className="arena-hero-pill open">● Iscrizioni Aperte</span>
+            )}
+            {arenaMeta.phase === "combat" && (
+              <span className="arena-hero-pill combat">
+                ● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}
+              </span>
+            )}
+            {arenaMeta.phase === "finished" && (
+              <span className="arena-hero-pill finished">● Torneo Concluso</span>
+            )}
+            {arenaMeta.timerPaused && (
+              <span className="arena-hero-pill paused">⏸ Timer in Pausa</span>
+            )}
+          </div>
+        </div>
+        <div className="arena-hero-scroll-hint" aria-hidden="true">
+          <span>Scroll</span>
+          <span className="arena-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      {/* ── STICKY MINI-NAV ── */}
+      <nav className="arena-sticky-nav" aria-label="Navigazione Arena">
+        <div className="arena-sticky-nav-inner">
+          <span className="arena-sticky-nav-title">⚔ Arena</span>
+          <div className="arena-sticky-nav-links">
+            <a href="#arena-bracket-anchor">Bracket</a>
+            <a href="#arena-my-match">Match</a>
+            <a href="#arena-info-anchor">Regole</a>
+          </div>
+        </div>
+      </nav>
 
       {/* ── RICOMPENSA PROSSIMA ARENA (visibile a tutti) ── */}
       {(isMaster || (arenaMeta.prizes && arenaMeta.prizes.trim())) && (
@@ -6280,8 +6347,24 @@ export default function Arena() {
         );
       })()}
 
+      {/* ── SECTION DIVIDER (placeholder image) ── */}
+      <div className="arena-section-divider" aria-hidden="true">
+        <div className="arena-section-divider-media">
+          <img
+            src="/arena/divider-rules.jpg"
+            alt=""
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+        </div>
+        <div className="arena-section-divider-content">
+          <div className="arena-section-divider-eyebrow">Lex Arenae</div>
+          <h2 className="arena-section-divider-title">Regole, Classi & Glorie</h2>
+          <p className="arena-section-divider-sub">Tutto ciò che ti serve per scendere in campo da campione.</p>
+        </div>
+      </div>
+
       {/* ── SEZIONE SPIEGAZIONE ── */}
-      <div className="arena-info-section">
+      <div id="arena-info-anchor" className="arena-info-section">
         <button className="arena-info-toggle" onClick={() => setArenaInfoOpen(v => !v)}>
           {arenaInfoOpen ? "▲" : "▼"} Come funziona l'Arena
         </button>
@@ -7391,6 +7474,7 @@ export default function Arena() {
       })()}
 
       {/* ── TABELLONE DEL CAMPIONATO (visibile a tutti gli utenti loggati) ── */}
+      <span id="arena-bracket-anchor" aria-hidden="true" />
       {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
         const renderMatchCard = (m) => {
           const isMyMatch = m.players.some(p => p.id === currentUser?.uid);
