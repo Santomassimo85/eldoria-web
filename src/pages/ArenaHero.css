@@ -1089,3 +1089,793 @@
   }
   .arena-page .arena-info-title { font-size: 0.95rem; }
 }
+
+/* ============================================================
+   LAYER 3 — COMBAT UI completa
+   Modali, drawer, floating pulse, turn tracker, HP bar,
+   action groups, equip panel, target picker, hp-roll,
+   class-select, stat allocator, save-block, bet UI,
+   wild-shape, dual-action.
+   ============================================================ */
+
+/* ── MODALI ────────────────────────────────────────────────── */
+.arena-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 8, 8, 0.62);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: arena-modal-fade 0.25s ease both;
+}
+@keyframes arena-modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.arena-modal-dialog {
+  position: relative;
+  max-width: 560px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(248, 240, 224, 0.96));
+  border: 1px solid rgba(180, 140, 80, 0.35);
+  border-radius: 22px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 80px rgba(40, 8, 8, 0.45);
+  padding: 28px;
+  animation: arena-modal-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes arena-modal-rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.arena-modal-dialog::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--arena-gold), var(--arena-blood), var(--arena-gold), transparent);
+  border-radius: 22px 22px 0 0;
+}
+
+/* ── DRAWER ───────────────────────────────────────────────── */
+.arena-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 8, 8, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: flex-end;
+  animation: arena-modal-fade 0.25s ease both;
+}
+.arena-drawer-dialog {
+  position: relative;
+  width: min(440px, 100%);
+  height: 100%;
+  background: linear-gradient(180deg, #fffaf2, #f5ead5);
+  border-left: 1px solid rgba(180, 140, 80, 0.35);
+  box-shadow: -24px 0 60px rgba(40, 8, 8, 0.3);
+  padding: 26px;
+  overflow-y: auto;
+  animation: arena-drawer-slide 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes arena-drawer-slide {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* ── FLOATING FIGHT PULSE (your turn / scroll-to-match) ──── */
+.arena-page .arena-fight-pulse {
+  position: fixed !important;
+  z-index: 50;
+  bottom: 22px;
+  right: 22px;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(180, 140, 80, 0.4);
+  background: linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(245, 235, 215, 0.92));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text);
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(40, 8, 8, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.arena-page .arena-fight-pulse:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(40, 8, 8, 0.25);
+}
+.arena-page .arena-fight-pulse--your-turn {
+  background: linear-gradient(135deg, #8a0e0e, #b91c1c) !important;
+  color: #fff !important;
+  border-color: rgba(255, 200, 200, 0.4) !important;
+  animation: arena-pulse-yt 1.4s ease-in-out infinite;
+}
+@keyframes arena-pulse-yt {
+  0%, 100% { box-shadow: 0 14px 32px rgba(138, 14, 14, 0.35), 0 0 0 0 rgba(220, 38, 38, 0.6); }
+  50%       { box-shadow: 0 14px 32px rgba(138, 14, 14, 0.35), 0 0 0 14px rgba(220, 38, 38, 0); }
+}
+.arena-page .arena-fight-pulse-glow { display: none; }
+
+/* ── TURN TRACKER (timer del turno) ───────────────────────── */
+.arena-page .turn-tracker {
+  border-radius: 14px;
+  border: 1px solid rgba(180, 140, 80, 0.3);
+  background: linear-gradient(135deg, rgba(255, 250, 235, 0.95), rgba(252, 244, 220, 0.85));
+  padding: 10px 14px;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(120, 80, 20, 0.08);
+}
+.arena-page .turn-tracker strong { color: var(--arena-blood); font-weight: 700; }
+.arena-page .turn-tracker.initiative-timer {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.08));
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+/* ── HP BAR ───────────────────────────────────────────────── */
+.arena-page .hp-bar-bg {
+  background: linear-gradient(180deg, rgba(120, 80, 20, 0.14), rgba(120, 80, 20, 0.18));
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(120, 80, 20, 0.18);
+}
+.arena-page .hp-bar-fill {
+  background: linear-gradient(90deg, #8a0e0e 0%, #d44a4a 60%, #ff7676 100%);
+  box-shadow: 0 0 12px rgba(220, 60, 60, 0.4) inset;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 999px;
+}
+.arena-page .hp-bar-fill::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+/* ── EQUIP PANEL (combat) ─────────────────────────────────── */
+.arena-page .equip-panel {
+  border-radius: 16px;
+  border: 1px solid rgba(180, 140, 80, 0.22);
+  background: rgba(255, 252, 245, 0.7);
+  padding: 14px 16px;
+  margin: 12px 0;
+  box-shadow: 0 4px 14px rgba(120, 80, 20, 0.06);
+}
+.arena-page .equip-panel-title {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--arena-blood);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.arena-page .equip-panel-sub {
+  font-size: 0.78rem;
+  color: rgba(60, 30, 20, 0.65);
+  margin-bottom: 8px;
+}
+
+/* ── ACTION GROUPS ────────────────────────────────────────── */
+.arena-page .action-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+.arena-page .action-groups > * {
+  border-radius: 14px;
+  background: rgba(255, 252, 245, 0.55);
+  border: 1px solid rgba(180, 140, 80, 0.18);
+  padding: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.arena-page .action-groups > *:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(255, 252, 245, 0.85);
+}
+
+/* ── TARGET PICKER ────────────────────────────────────────── */
+.arena-page .target-picker {
+  border-radius: 16px;
+  border: 1.5px solid rgba(138, 14, 14, 0.35);
+  background: linear-gradient(135deg, rgba(255, 240, 240, 0.95), rgba(250, 220, 220, 0.85));
+  padding: 16px 18px;
+  margin: 14px 0;
+  box-shadow: 0 8px 22px rgba(138, 14, 14, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+.arena-page .target-picker::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--arena-blood), transparent);
+}
+
+/* ── SAVE BLOCK (tiri salvezza) ───────────────────────────── */
+.arena-page .save-block {
+  border-radius: 14px;
+  border: 1.5px solid rgba(180, 140, 80, 0.32);
+  background: linear-gradient(135deg, rgba(255, 250, 235, 0.95), rgba(250, 240, 215, 0.85));
+  padding: 14px 16px;
+  margin: 12px 0;
+  box-shadow: 0 6px 16px rgba(120, 80, 20, 0.08);
+}
+.arena-page .save-block.dex {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: linear-gradient(135deg, rgba(220, 252, 230, 0.92), rgba(200, 245, 220, 0.82));
+}
+.arena-page .save-block.con {
+  border-color: rgba(168, 85, 247, 0.45);
+  background: linear-gradient(135deg, rgba(243, 232, 255, 0.92), rgba(232, 218, 250, 0.82));
+}
+.arena-page .save-block.str {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.92), rgba(252, 234, 175, 0.82));
+}
+.arena-page .save-block.control-lost,
+.arena-page .save-block.control-vivid {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: linear-gradient(135deg, rgba(91, 33, 182, 0.92), rgba(76, 29, 149, 0.95));
+  color: #fff;
+}
+.arena-page .save-block.control-vivid .save-block-label,
+.arena-page .save-block.control-lost .save-block-label {
+  color: rgba(255, 220, 250, 0.95);
+}
+.arena-page .save-block-label {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--arena-blood);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+/* ── WILD SHAPE (druido) ──────────────────────────────────── */
+.arena-page .wild-shape-bar,
+.arena-page .wild-shape-active-bar {
+  border-radius: 14px;
+  border: 1.5px solid rgba(34, 139, 34, 0.45);
+  background: linear-gradient(135deg, rgba(220, 245, 220, 0.95), rgba(195, 235, 200, 0.85));
+  padding: 12px 14px;
+  margin: 12px 0;
+  box-shadow: 0 6px 16px rgba(34, 100, 34, 0.12);
+}
+
+/* ── DUAL ACTION ROW (rogue/monk multi-azione) ────────────── */
+.arena-page .dual-action-row {
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(80, 40, 20, 0.08), rgba(80, 40, 20, 0.03));
+  border: 1px dashed rgba(120, 80, 20, 0.3);
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+.arena-page .dual-action-label {
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--arena-blood);
+  font-weight: 700;
+}
+
+/* ── HP ROLL PANEL (creazione personaggio) ────────────────── */
+.arena-page .hp-roll-panel {
+  border-radius: 18px;
+  border: 1.5px solid rgba(212, 175, 55, 0.45);
+  background: linear-gradient(135deg, rgba(255, 252, 245, 0.96), rgba(250, 240, 215, 0.9));
+  padding: 22px 24px;
+  margin: 18px 0;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 12px 30px rgba(180, 130, 30, 0.18);
+  text-align: center;
+}
+.arena-page .hp-roll-title {
+  font-family: var(--font-title);
+  font-size: 0.92rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--arena-blood);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.arena-page .hp-rolled-result {
+  font-family: var(--font-title);
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 800;
+  background: linear-gradient(180deg, var(--arena-blood), #6a0808);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  text-shadow: 0 4px 14px rgba(138, 14, 14, 0.25);
+  animation: arena-hp-roll-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes arena-hp-roll-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.arena-page .hp-roll-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 14px;
+}
+.arena-page .hp-roll-buttons button {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.05));
+  color: var(--arena-blood);
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.15s ease, background 0.2s;
+}
+.arena-page .hp-roll-buttons button:hover {
+  transform: translateY(-1px);
+  background: rgba(212, 175, 55, 0.3);
+}
+
+/* ── CLASS SELECT GRID ────────────────────────────────────── */
+.arena-page .class-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.arena-page .class-select-btn {
+  border-radius: 14px;
+  border: 1.5px solid rgba(180, 140, 80, 0.3);
+  background: linear-gradient(135deg, rgba(255, 252, 245, 0.95), rgba(248, 240, 224, 0.85));
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  color: var(--text);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.arena-page .class-select-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.18), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.arena-page .class-select-btn:hover {
+  transform: translateY(-3px);
+  border-color: var(--arena-gold);
+  box-shadow: 0 10px 24px rgba(180, 130, 30, 0.2);
+}
+.arena-page .class-select-btn:hover::before { opacity: 1; }
+.arena-page .class-select-btn.selected {
+  border-color: var(--arena-blood);
+  background: linear-gradient(135deg, rgba(138, 14, 14, 0.08), rgba(138, 14, 14, 0.03));
+  box-shadow: 0 0 0 3px rgba(138, 14, 14, 0.12), 0 8px 20px rgba(138, 14, 14, 0.18);
+}
+
+/* ── STAT ALLOCATOR ───────────────────────────────────────── */
+.arena-page .stat-budget-badge {
+  display: inline-block;
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: var(--arena-blood);
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.arena-page .stat-assign-grid {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.arena-page .stat-assign-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 252, 245, 0.7);
+  border: 1px solid rgba(180, 140, 80, 0.2);
+  transition: border-color 0.2s, background 0.2s;
+}
+.arena-page .stat-assign-row:hover {
+  border-color: rgba(212, 175, 55, 0.45);
+  background: rgba(255, 252, 245, 0.92);
+}
+.arena-page .stat-assign-label {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--arena-blood);
+  font-weight: 700;
+  min-width: 60px;
+}
+.arena-page .stat-adj-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(180, 140, 80, 0.4);
+  background: #fff;
+  color: var(--arena-blood);
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s, border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.arena-page .stat-adj-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+  border-color: var(--arena-blood);
+  background: rgba(138, 14, 14, 0.05);
+}
+.arena-page .stat-adj-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.arena-page .stat-assign-val {
+  font-family: var(--font-title);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 40px;
+  text-align: center;
+}
+
+/* ── ARMOR / SKILL / ITEM GRIDS ───────────────────────────── */
+.arena-page .armor-grid,
+.arena-page .skill-grid,
+.arena-page .item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.arena-page .armor-grid > *,
+.arena-page .skill-grid > *,
+.arena-page .item-grid > * {
+  border-radius: 12px;
+  border: 1px solid rgba(180, 140, 80, 0.25);
+  background: rgba(255, 252, 245, 0.85);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.2s, box-shadow 0.2s;
+}
+.arena-page .armor-grid > *:hover,
+.arena-page .skill-grid > *:hover,
+.arena-page .item-grid > *:hover {
+  transform: translateY(-2px);
+  border-color: var(--arena-gold);
+  box-shadow: 0 8px 18px rgba(180, 130, 30, 0.15);
+}
+
+/* ── BETTING UI: match card + fighters + amounts ──────────── */
+.arena-page .bet-match-card {
+  border-radius: 16px;
+  border: 1px solid rgba(180, 140, 80, 0.28);
+  background: linear-gradient(135deg, rgba(255, 250, 235, 0.95), rgba(252, 244, 220, 0.85));
+  padding: 16px 18px;
+  margin: 12px 0;
+  box-shadow: 0 6px 16px rgba(120, 80, 20, 0.1);
+}
+.arena-page .bet-fighters {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.arena-page .bet-fighter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+.arena-page .bet-fighter:hover {
+  background: rgba(212, 175, 55, 0.08);
+}
+.arena-page .bet-fighter--chosen {
+  border-color: var(--arena-gold);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(212, 175, 55, 0.05));
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.12);
+}
+.arena-page .bet-fighter-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--arena-gold);
+  object-fit: cover;
+  box-shadow: 0 3px 10px rgba(120, 80, 20, 0.2);
+}
+.arena-page .bet-fighter-name {
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  font-weight: 700;
+  text-align: center;
+}
+.arena-page .bet-amounts {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.arena-page .bet-amount-btn {
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(212, 175, 55, 0.5);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+  color: var(--arena-blood);
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s;
+}
+.arena-page .bet-amount-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 6px 14px rgba(212, 175, 55, 0.3);
+}
+.arena-page .bet-amount-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.arena-page .bet-form-badge {
+  font-family: var(--font-title);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* ── BET TOURNAMENT ───────────────────────────────────────── */
+.arena-page .bet-tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.arena-page .bet-tournament-fighter {
+  border-radius: 14px;
+  border: 1px solid rgba(180, 140, 80, 0.28);
+  background: linear-gradient(135deg, rgba(255, 252, 245, 0.95), rgba(248, 240, 224, 0.85));
+  padding: 12px;
+  text-align: center;
+  transition: transform 0.18s ease, border-color 0.2s, box-shadow 0.2s;
+}
+.arena-page .bet-tournament-fighter:hover {
+  transform: translateY(-3px);
+  border-color: var(--arena-gold);
+  box-shadow: 0 10px 24px rgba(180, 130, 30, 0.2);
+}
+
+/* ── FIGHT LOGS (match logs) ──────────────────────────────── */
+.arena-page .fight-log,
+.arena-page .match-logs {
+  border-radius: 14px;
+  border: 1px solid rgba(180, 140, 80, 0.2);
+  background: rgba(20, 12, 8, 0.92);
+  color: rgba(255, 240, 215, 0.92);
+  padding: 14px 16px;
+  margin: 14px 0;
+  font-family: var(--font-text, monospace);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.4) transparent;
+  box-shadow: 0 8px 20px rgba(40, 8, 8, 0.25) inset;
+}
+.arena-page .fight-log::-webkit-scrollbar,
+.arena-page .match-logs::-webkit-scrollbar { width: 6px; }
+.arena-page .fight-log::-webkit-scrollbar-thumb,
+.arena-page .match-logs::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.4);
+  border-radius: 999px;
+}
+
+/* ── DICE ROLL ANIMATION (se overlay esiste) ──────────────── */
+.arena-page .dice-roll-result {
+  font-family: var(--font-title);
+  font-weight: 800;
+}
+
+/* ── ACTION TABS (durante combat) ─────────────────────────── */
+.arena-page .action-tabs,
+.arena-page .action-tab-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.25);
+  margin-bottom: 12px;
+}
+.arena-page .action-tab {
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(60, 30, 20, 0.65);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  font-weight: 700;
+}
+.arena-page .action-tab:hover {
+  color: var(--arena-blood);
+  background: rgba(138, 14, 14, 0.04);
+}
+.arena-page .action-tab.active {
+  color: var(--arena-blood);
+  border-bottom-color: var(--arena-blood);
+}
+
+/* ── MATCH HP/LABEL refinements ──────────────────────────── */
+.arena-page .hp-label {
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+/* ── BENCH / WAITING LIST ─────────────────────────────────── */
+.arena-page .btn-bench-one,
+.arena-page .btn-approve,
+.arena-page .btn-reject {
+  font-family: var(--font-title);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 140, 80, 0.3);
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.15s ease, background 0.2s, border-color 0.2s;
+}
+.arena-page .btn-approve {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #166534;
+}
+.arena-page .btn-reject {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.12), rgba(220, 38, 38, 0.04));
+  border-color: rgba(220, 38, 38, 0.4);
+  color: #8a0e0e;
+}
+.arena-page .btn-bench-one:hover,
+.arena-page .btn-approve:hover,
+.arena-page .btn-reject:hover {
+  transform: translateY(-1px);
+}
+
+/* ── INPUTS / TEXTAREA / SELECT generici ─────────────────── */
+.arena-page input[type="text"],
+.arena-page input[type="number"],
+.arena-page textarea,
+.arena-page select,
+.arena-page .arena-reward-textarea,
+.arena-page .master-join-input,
+.arena-page .master-join-select {
+  font-family: var(--font-text);
+  font-size: 0.95rem;
+  border-radius: 10px;
+  border: 1.5px solid rgba(180, 140, 80, 0.3);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 9px 12px;
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+.arena-page input[type="text"]:focus,
+.arena-page input[type="number"]:focus,
+.arena-page textarea:focus,
+.arena-page select:focus,
+.arena-page .arena-reward-textarea:focus,
+.arena-page .master-join-input:focus,
+.arena-page .master-join-select:focus {
+  outline: none;
+  border-color: var(--arena-gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18);
+}
+
+/* ── TOGGLES / SWITCHES (champions-only ecc.) ────────────── */
+.arena-page .champions-only-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  font-family: var(--font-title);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.arena-page .champions-only-toggle:hover {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: var(--arena-gold);
+}
+
+/* ── RESPONSIVE LAYER 3 ──────────────────────────────────── */
+@media (max-width: 760px) {
+  .arena-page .arena-fight-pulse {
+    bottom: 16px;
+    right: 16px;
+    padding: 10px 14px;
+    font-size: 0.7rem;
+  }
+  .arena-page .arena-fight-pulse-sub { display: none; }
+  .arena-modal-dialog { padding: 22px 20px; border-radius: 18px; }
+  .arena-drawer-dialog { padding: 20px; }
+  .arena-page .class-select-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .arena-page .class-select-btn { padding: 12px 8px; font-size: 0.78rem; }
+  .arena-page .bet-fighter-avatar { width: 44px; height: 44px; }
+  .arena-page .hp-rolled-result { font-size: 2.2rem; }
+}
+
+@media (max-width: 480px) {
+  .arena-page .stat-assign-row { padding: 8px 10px; gap: 8px; }
+  .arena-page .stat-adj-btn { width: 28px; height: 28px; font-size: 1rem; }
+  .arena-page .target-picker,
+  .arena-page .save-block,
+  .arena-page .hp-roll-panel { padding: 14px 14px; }
+  .arena-page .fight-log,
+  .arena-page .match-logs { font-size: 0.8rem; padding: 12px 14px; }
+}
