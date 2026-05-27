@@ -3450,3 +3450,446 @@
   .tcg-starter__name { font-size: 17px; }
   .tcg-starter__blurb { font-size: 11px; min-height: 0; }
 }
+
+/* =========================================================
+   TOURNAMENT — Torneo a eliminazione diretta
+   Epic look: castelli e portali come sfondi, oro/sangue come
+   accenti, tabellone a colonne.
+   ========================================================= */
+
+/* Tile del torneo nel menu */
+.tcg-tile--tournament {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(216, 177, 90, 0.55) !important;
+  background:
+    linear-gradient(180deg, rgba(28,16,8,0.78), rgba(10,5,2,0.92)),
+    url("/assets/BlackCastle.png") center/cover no-repeat;
+}
+.tcg-tile--tournament::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(216, 177, 90, 0.32), transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(190, 30, 30, 0.28), transparent 70%);
+  pointer-events: none;
+}
+.tcg-tile--tournament .tcg-tile__title,
+.tcg-tile--tournament .tcg-tile__desc,
+.tcg-tile--tournament .tcg-tile__icon {
+  position: relative; z-index: 1;
+}
+.tcg-tile--tournament .tcg-tile__title {
+  color: #f5dba0;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7), 0 0 16px rgba(216, 177, 90, 0.45);
+}
+.tcg-tile--tourn-open  { box-shadow: 0 0 0 1px rgba(94, 200, 95, 0.5), 0 0 28px rgba(94, 200, 95, 0.25) inset; }
+.tcg-tile--tourn-running { box-shadow: 0 0 0 1px rgba(226, 72, 58, 0.5), 0 0 28px rgba(226, 72, 58, 0.28) inset; }
+.tcg-tile--tourn-ended { box-shadow: 0 0 0 1px rgba(216, 177, 90, 0.7), 0 0 32px rgba(216, 177, 90, 0.32) inset; }
+.tcg-tile--tourn-closed { opacity: 0.86; }
+
+/* root del torneo */
+.tcg-tourn {
+  position: relative;
+  min-height: 100%;
+  width: 100%;
+  padding: 24px 22px 96px;
+  max-width: 1240px;
+  margin: 0 auto;
+  color: var(--ink);
+  overflow-y: auto;
+  /* Layered background: dark gradient + epic castle + parchment grain.
+     Different from Arena (no blood + gold pattern overlay). */
+  background:
+    linear-gradient(180deg, rgba(8, 4, 2, 0.72) 0%, rgba(8, 4, 2, 0.92) 60%, rgba(4,2,1,0.98) 100%),
+    url("/assets/BlackCastle.png") center 12%/cover no-repeat fixed;
+}
+.tcg-tourn::before {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(190, 30, 30, 0.16), transparent 55%),
+    radial-gradient(ellipse at 82% 12%, rgba(216, 177, 90, 0.18), transparent 50%);
+  z-index: 0;
+}
+.tcg-tourn > * { position: relative; z-index: 1; }
+
+.tcg-tourn__loading {
+  text-align: center;
+  margin: 48px auto;
+  opacity: 0.7;
+  font-family: var(--font-title, "Cinzel", serif);
+  letter-spacing: 2px;
+}
+.tcg-tourn__err {
+  background: linear-gradient(90deg, rgba(190,30,30,0.18), rgba(190,30,30,0.05));
+  border: 1px solid rgba(226, 72, 58, 0.55);
+  color: #ffd6d2;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+/* Header */
+.tcg-tourn__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 4px 18px;
+  border-bottom: 1px solid rgba(216,177,90,0.22);
+  margin-bottom: 22px;
+}
+.tcg-tourn__title {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  text-align: center;
+}
+.tcg-tourn__name {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  letter-spacing: 0.08em;
+  background: linear-gradient(180deg, #fff 0%, #ffe6c2 55%, #d8b15a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 4px 24px rgba(0,0,0,0.65);
+}
+.tcg-tourn__status {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.tcg-tourn__status--closed  { color: #b9a78b; border-color: rgba(185,167,139,0.45); background: rgba(0,0,0,0.32); }
+.tcg-tourn__status--open    { color: #b6f0b7; border-color: rgba(94,200,95,0.55); background: rgba(34, 70, 36, 0.32); }
+.tcg-tourn__status--running { color: #ffcec8; border-color: rgba(226,72,58,0.6); background: rgba(70, 24, 22, 0.42); animation: tournPulseRun 2.4s ease-in-out infinite; }
+.tcg-tourn__status--ended   { color: #ffeac0; border-color: rgba(216,177,90,0.7); background: rgba(72, 52, 18, 0.45); }
+@keyframes tournPulseRun {
+  0%, 100% { box-shadow: 0 0 12px rgba(226,72,58,0.25); }
+  50%      { box-shadow: 0 0 24px rgba(226,72,58,0.55); }
+}
+.tcg-tourn__spacer { display: block; min-width: 100px; }
+
+.tcg-tourn__h {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 1.05rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #e8c97a;
+  margin: 28px 0 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(216,177,90,0.18);
+}
+
+/* HERO panels — change background image per status */
+.tcg-tourn__hero {
+  position: relative;
+  border-radius: 16px;
+  padding: 36px 28px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(216,177,90,0.32);
+  box-shadow:
+    0 18px 48px -16px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(0,0,0,0.4) inset;
+  background:
+    linear-gradient(180deg, rgba(10,5,2,0.55) 0%, rgba(10,5,2,0.86) 100%),
+    url("/assets/Yotta_gate.png") center/cover no-repeat;
+}
+.tcg-tourn__hero h2 {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  letter-spacing: 0.06em;
+  margin: 0 0 12px;
+  color: #f5dba0;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+}
+.tcg-tourn__hero p {
+  color: rgba(255, 245, 225, 0.86);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 60ch;
+  margin: 0 0 14px;
+}
+.tcg-tourn__hero--closed {
+  background:
+    linear-gradient(180deg, rgba(8,4,2,0.78), rgba(4,2,1,0.95)),
+    url("/assets/BlackCastle.png") center/cover no-repeat;
+}
+.tcg-tourn__hero--open {
+  background:
+    linear-gradient(180deg, rgba(10,8,3,0.55), rgba(10,8,3,0.82)),
+    url("/assets/Golden_castle.png") center/cover no-repeat;
+}
+.tcg-tourn__hero--running {
+  background:
+    linear-gradient(180deg, rgba(20,4,2,0.62), rgba(20,4,2,0.88)),
+    url("/assets/Yotta_gate.png") center/cover no-repeat;
+}
+
+/* CTA row */
+.tcg-tourn__cta {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 14px;
+}
+.tcg-tourn__cta-btn {
+  padding: 14px 28px;
+  font-size: 1.05rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  border-radius: 10px;
+  box-shadow: 0 0 24px rgba(216,177,90,0.4);
+}
+.tcg-tourn__badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(34, 70, 36, 0.42);
+  border: 1px solid rgba(94,200,95,0.55);
+  color: #d8f3d8;
+  font-size: 14px;
+}
+
+/* Champion banner */
+.tcg-tourn__champion {
+  text-align: center;
+  padding: 26px 20px 22px;
+  margin: 0 0 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(216,177,90,0.6);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(216, 177, 90, 0.45), transparent 70%),
+    linear-gradient(180deg, rgba(60, 40, 12, 0.6), rgba(20, 12, 4, 0.85));
+  box-shadow: 0 0 48px rgba(216,177,90,0.28);
+  animation: tournChampGlow 3.4s ease-in-out infinite;
+}
+@keyframes tournChampGlow {
+  0%, 100% { box-shadow: 0 0 32px rgba(216,177,90,0.22); }
+  50%      { box-shadow: 0 0 64px rgba(216,177,90,0.55); }
+}
+.tcg-tourn__crown {
+  font-size: 64px;
+  filter: drop-shadow(0 4px 16px rgba(255, 220, 120, 0.55));
+}
+.tcg-tourn__chname {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+  background: linear-gradient(180deg, #fff 0%, #ffe6c2 55%, #d8b15a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+.tcg-tourn__chsub {
+  font-size: 12px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #e8c97a;
+  margin-top: 2px;
+}
+
+/* "La tua sfida" card */
+.tcg-tourn__mymatch {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(216,177,90,0.45);
+  box-shadow: 0 0 32px rgba(226,72,58,0.18);
+}
+.tcg-tourn__mymatch-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 480px;
+}
+.tcg-tourn__mymatch-side {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 14px 10px;
+  border-radius: 8px;
+  background: rgba(20,12,4,0.55);
+  border: 1px solid rgba(216,177,90,0.22);
+}
+.tcg-tourn__mymatch-side--me { border-color: rgba(94,200,95,0.55); }
+.tcg-tourn__mymatch-side--foe { border-color: rgba(226,72,58,0.55); }
+.tcg-tourn__mymatch-name {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: #f5dba0;
+}
+.tcg-tourn__mymatch-class {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,245,225,0.6);
+}
+.tcg-tourn__vs {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 1.6rem;
+  letter-spacing: 0.16em;
+  color: #d8b15a;
+  text-shadow: 0 0 18px rgba(216,177,90,0.55);
+}
+.tcg-tourn__fight {
+  padding: 14px 32px;
+  font-size: 1.05rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  border-radius: 10px;
+  box-shadow: 0 0 32px rgba(226,72,58,0.5);
+  animation: tournFightBeat 1.6s ease-in-out infinite;
+}
+@keyframes tournFightBeat {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+
+/* Roster */
+.tcg-tourn__roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.tcg-tourn__empty {
+  color: rgba(255,245,225,0.55);
+  font-style: italic;
+  text-align: center;
+  padding: 18px;
+}
+.tcg-tourn__player {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.42);
+  border: 1px solid rgba(216,177,90,0.18);
+}
+.tcg-tourn__player-name {
+  font-weight: 600;
+  color: #f5dba0;
+  letter-spacing: 0.04em;
+}
+.tcg-tourn__player-class {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,245,225,0.6);
+}
+
+/* Bracket */
+.tcg-tourn__bracket-wrap { overflow-x: auto; padding-bottom: 12px; }
+.tcg-tourn__bracket {
+  display: flex;
+  gap: 28px;
+  align-items: stretch;
+  min-width: max-content;
+  padding: 12px 4px 18px;
+}
+.tcg-tourn__column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 200px;
+}
+.tcg-tourn__column--champ .tcg-tourn__bm--champ {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(216,177,90,0.45), transparent 65%),
+    linear-gradient(180deg, rgba(60,40,12,0.65), rgba(20,12,4,0.85));
+  border: 1px solid rgba(216,177,90,0.75);
+  box-shadow: 0 0 24px rgba(216,177,90,0.45);
+}
+.tcg-tourn__col-h {
+  text-align: center;
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #d8b15a;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(216,177,90,0.32);
+}
+.tcg-tourn__matches {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  justify-content: space-around;
+  flex: 1;
+}
+.tcg-tourn__bm {
+  border-radius: 8px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(216,177,90,0.22);
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.tcg-tourn__bm.is-mine {
+  border-color: rgba(94,200,95,0.7);
+  box-shadow: 0 0 20px rgba(94,200,95,0.35);
+}
+.tcg-tourn__bm.is-bye { opacity: 0.7; }
+.tcg-tourn__bm-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: rgba(255,245,225,0.85);
+}
+.tcg-tourn__bm-row + .tcg-tourn__bm-row {
+  border-top: 1px dashed rgba(216,177,90,0.18);
+}
+.tcg-tourn__bm-row--winner {
+  background: linear-gradient(90deg, rgba(216,177,90,0.28), rgba(216,177,90,0.04));
+  color: #fff5db;
+  font-weight: 600;
+}
+.tcg-tourn__bm-row.is-loser { opacity: 0.45; text-decoration: line-through; }
+.tcg-tourn__bm-name { letter-spacing: 0.04em; }
+.tcg-tourn__bm-w { color: #d8b15a; font-weight: 700; }
+
+/* Master panel */
+.tcg-tourn__master {
+  margin-top: 32px;
+  padding: 22px;
+  border-radius: 14px;
+  border: 1px solid rgba(216,177,90,0.55);
+  background:
+    linear-gradient(180deg, rgba(28,16,8,0.86), rgba(10,5,2,0.95)),
+    url("/assets/Golden_castle.png") center/cover no-repeat;
+  box-shadow: 0 0 32px rgba(216,177,90,0.2);
+}
+.tcg-tourn__master-grid {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  align-items: center;
+}
+.tcg-tourn__master-info {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: rgba(255,245,225,0.7);
+  padding-right: 8px;
+}
+.tcg-btn--danger {
+  background: linear-gradient(#a01818, #5e0a0a) !important;
+  border-color: #ff7a6e !important;
+  color: #fff !important;
+  box-shadow: 0 0 20px rgba(226,72,58,0.55);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .tcg-tourn { padding: 16px 14px 80px; }
+  .tcg-tourn__head { grid-template-columns: auto 1fr; padding-bottom: 12px; }
+  .tcg-tourn__spacer { display: none; }
+  .tcg-tourn__title { align-items: flex-end; }
+  .tcg-tourn__hero { padding: 22px 16px; }
+  .tcg-tourn__mymatch-vs { grid-template-columns: 1fr; gap: 8px; }
+  .tcg-tourn__vs { font-size: 1.2rem; }
+  .tcg-tourn__bracket { gap: 16px; }
+  .tcg-tourn__column { min-width: 160px; }
+  .tcg-tourn__master-grid { flex-direction: column; align-items: stretch; }
+}

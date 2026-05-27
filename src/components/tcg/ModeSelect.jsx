@@ -52,8 +52,18 @@ export default function ModeSelect({
   onDeck,
   onCollection,
   onManual,
+  onTournament,
+  tournamentVisible = false,
+  tournamentStatus = null,
   onMasterReset,
 }) {
+  const TOURN_LABEL = {
+    open:    { sub: "Iscrizioni aperte — entra!", icon: "🟢" },
+    running: { sub: "In corso — guarda il tabellone", icon: "⚔️" },
+    ended:   { sub: "Conclusosi — vedi il campione", icon: "👑" },
+    closed:  { sub: "Master: gestisci il torneo", icon: "🛑" },
+  };
+  const tourn = TOURN_LABEL[tournamentStatus] || TOURN_LABEL.closed;
   return (
     <div className="tcg-menu">
       <div className="tcg-menu__head">
@@ -128,6 +138,20 @@ export default function ModeSelect({
           <span className="tcg-tile__title">Manuale</span>
           <span className="tcg-tile__desc">Come si gioca, passo per passo.</span>
         </button>
+
+        {tournamentVisible && (
+          <button
+            className={`tcg-tile tcg-tile--tournament tcg-tile--tourn-${tournamentStatus || "closed"}`}
+            onClick={onTournament}
+            disabled={!loggedIn && !isMaster}
+          >
+            <span className="tcg-tile__icon">🏆</span>
+            <span className="tcg-tile__title">Torneo</span>
+            <span className="tcg-tile__desc">
+              {tourn.icon} {tourn.sub}
+            </span>
+          </button>
+        )}
       </div>
 
       {isMaster && <MasterReset onMasterReset={onMasterReset} />}

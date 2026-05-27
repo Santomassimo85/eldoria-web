@@ -133,6 +133,17 @@ service cloud.firestore {
       );
     }
 
+    // --- TCG TOURNAMENT (modalità torneo a eliminazione diretta) ---
+    // Singolo doc globale (`tcg_tournament/global`) che contiene stato,
+    // iscritti e bracket. Lettura libera per chi è loggato; update aperto
+    // così i giocatori possono iscriversi/ritirarsi e l'esito delle
+    // partite può aggiornare il bracket. Create/delete solo Master.
+    match /tcg_tournament/{docId} {
+      allow read: if isLoggedIn();
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn();
+    }
+
     // --- FEEDBACK GIOCATORI ---
     // Una sola entry per (giocatore, funzionalità): doc id deterministico
     // `${uid}_${featureKey}` enforced via regola, così un utente non può

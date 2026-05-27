@@ -28,7 +28,11 @@ import Collection from "../components/tcg/Collection.jsx";
 import Manual from "../components/tcg/Manual.jsx";
 import ClassPicker from "../components/tcg/ClassPicker.jsx";
 import MulliganOverlay from "../components/tcg/MulliganOverlay.jsx";
+import Tournament from "../components/tcg/Tournament.jsx";
 import { CLASS_VIE, CLASSES, classColors } from "../tcg/classes.js";
+import {
+  watchTournament, reportMatchResult, isTournamentVisibleFor,
+} from "../tcg/tournament.js";
 import "./Tcg.css";
 
 const MAX_MULLIGANS = 2;
@@ -141,6 +145,11 @@ export default function Tcg() {
   const [match, setMatch] = useState(null);
   const unsubRef = useRef(null);
 
+  // global tournament state (live) — used to hide / show the menu tile
+  // and to report match results from the pvp screen.
+  const [tournament, setTournament] = useState(null);
+  useEffect(() => watchTournament(setTournament), []);
+
   const stopWatch = () => {
     if (unsubRef.current) {
       unsubRef.current();
@@ -212,6 +221,22 @@ export default function Tcg() {
     if (!currentUser?.uid) return;
     const table = TCG_COINS[mode] || TCG_COINS.ai;
     awardCoins(currentUser.uid, table[result] ?? 0).catch(() => {});
+  };
+
+  /* Quando finisce una partita PvP che appartiene al torneo, scrivi
+     il vincitore nel bracket. Idempotente. */
+  const pvpEndHook = (result) => {
+    awardFor("pvp", result);
+    if (!match || !match.tournament) return;
+    if (result === "draw") return; // engine non emette draw, ma per sicurezza
+    const meSide = sideForUid(match, currentUser?.uid);
+    const winnerSide = result === "win" ? meSide : (meSide === "p0" ? "p1" : "p0");
+    const winnerUid = winnerSide === "p0"
+      ? match.challenger?.uid
+      : match.challenged?.uid;
+    if (matchId && winnerUid) {
+      reportMatchResult(matchId, winnerUid).catch(() => {});
+    }
   };
 
   const pickAi = () => { primeSfx(); setScreen("ai-pick"); };
@@ -299,7 +324,25 @@ export default function Tcg() {
           onDeck={() => loggedIn && setScreen("deck")}
           onCollection={() => loggedIn && setScreen("collection")}
           onManual={() => setScreen("manual")}
+          onTournament={() => {
+            primeSfx();
+            setScreen("tournament");
+          }}
+          tournamentVisible={isTournamentVisibleFor(tournament, isMaster)}
+          tournamentStatus={tournament?.status || "closed"}
           onMasterReset={() => resetAllTcg()}
+        />
+      )}
+
+      {screen === "tournament" && (
+        <Tournament
+          user={currentUser}
+          name={pName}
+          deck={playableDeck(profile)}
+          cover={profile?.cover || "nature"}
+          isMaster={isMaster}
+          onBack={goMenu}
+          onEnterMatch={(id) => enterMatch(id)}
         />
       )}
 
@@ -391,7 +434,7 @@ export default function Tcg() {
             matchId={matchId}
             mySide={mySide}
             onExit={goMenu}
-            onGameEnd={(r) => awardFor("pvp", r)}
+            onGameEnd={pvpEndHook}
           />
         </GameBoundary>
       )}
