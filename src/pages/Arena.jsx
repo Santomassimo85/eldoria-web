@@ -27,8 +27,14 @@ function ArenaModal({ open, onClose, title, children, variant = "modal" }) {
   }, [open, onClose]);
 
   if (!open) return null;
-  const overlayClass = variant === "drawer" ? "arena-drawer-overlay" : "arena-modal-overlay";
-  const dialogClass  = variant === "drawer" ? "arena-drawer-dialog"  : "arena-modal-dialog";
+  const overlayClass =
+    variant === "drawer" ? "arena-drawer-overlay"
+    : variant === "combat" ? "arena-combat-overlay"
+    : "arena-modal-overlay";
+  const dialogClass =
+    variant === "drawer" ? "arena-drawer-dialog"
+    : variant === "combat" ? "arena-combat-dialog"
+    : "arena-modal-dialog";
   return createPortal(
     <div className={overlayClass} onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
       <div className={dialogClass} onClick={(e) => e.stopPropagation()}>
@@ -1504,6 +1510,7 @@ export default function Arena() {
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
 
   const [arenaInfoOpen, setArenaInfoOpen] = useState(false);
+  const [combatModalOpen, setCombatModalOpen] = useState(false);
   /* FIX: P5b/P5c/P5d — modal/drawer state */
   const [bracketModalOpen, setBracketModalOpen] = useState(false);
   const [bettingDrawerOpen, setBettingDrawerOpen] = useState(false);
@@ -6162,12 +6169,9 @@ export default function Arena() {
         return (
           <button
             type="button"
-            className={`arena-fight-pulse${isMyTurnInActive ? " arena-fight-pulse--your-turn" : ""}${matchInView ? " arena-fight-pulse--in-view" : ""}`}
-            onClick={() => {
-              const el = document.getElementById("arena-my-match");
-              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            aria-label="Vai alla tua sfida"
+            className={`arena-fight-pulse${isMyTurnInActive ? " arena-fight-pulse--your-turn" : ""}`}
+            onClick={() => setCombatModalOpen(true)}
+            aria-label="Apri il combat"
           >
             <span className="arena-fight-pulse-icon">{isMyTurnInActive ? "⚔" : "🛡"}</span>
             <span className="arena-fight-pulse-text">
@@ -7808,34 +7812,19 @@ export default function Arena() {
         </>
       )}
 
-      {/* ── PANNELLO AZIONI (solo per partecipanti) ──
-          Mostra match in cui sono coinvolto: torneo (in combat) e sempre le sfide libere accettate. */}
+      {/* ── COMBAT MODAL (popup attivato dal floating fight button) ──
+          Match in cui sono coinvolto: torneo (in combat) e sfide libere accettate. */}
       {(arenaMeta.matches || []).some(m =>
         ((m.kind === "fun") || arenaMeta.phase === "combat") &&
         m.players?.some(p => p.id === currentUser?.uid) &&
         m.status !== "open"
       ) && (
-        <>
-          {/* ── SCROLLYTELLING: Il Tuo Combattimento ── */}
-          <section className="arena-scrollytell arena-scrollytell--combat" aria-label="Il Tuo Combattimento">
-            <div className="arena-scrollytell-media" aria-hidden="true">
-              <img
-                src="/assets/PhotoStory/GruppoLAC/horn_spider.jpg"
-                alt=""
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
-              />
-            </div>
-            <div className="arena-scrollytell-content">
-              <div className="arena-scrollytell-frame">
-                <span className="arena-scrollytell-eyebrow">⚔ L'Arena Vive</span>
-                <h2 className="arena-scrollytell-title">Il Tuo Campo di Battaglia</h2>
-                <p className="arena-scrollytell-text">
-                  La sabbia è ancora calda. Leggi il nemico, scegli l'azione, lascia parlare i dadi.
-                  Quando è il tuo turno, il pulsante fluttuante ti riporta in arena con un click.
-                </p>
-              </div>
-            </div>
-          </section>
+        <ArenaModal
+          open={combatModalOpen}
+          onClose={() => setCombatModalOpen(false)}
+          title={isMyTurnInActive ? "⚔ È il tuo turno" : "🛡 Il tuo combattimento"}
+          variant="combat"
+        >
         <div className="matches-container" id="arena-my-match">
           <div className="my-arena-banner">
             <span className="my-arena-banner-deco">⚔</span>
@@ -9331,7 +9320,7 @@ export default function Arena() {
             );
           })}
         </div>
-        </>
+        </ArenaModal>
       )}
 
     </div>

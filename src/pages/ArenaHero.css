@@ -2106,6 +2106,162 @@
   to   { transform: translateX(0);     opacity: 1; }
 }
 
+/* ── COMBAT MODAL (popup attivato dal fight button) ──────────────── */
+.arena-combat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 6, 6, 0.78);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: arena-combat-fade 0.28s ease both;
+}
+@keyframes arena-combat-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.arena-combat-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 1080px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(212, 175, 55, 0.10), transparent 50%),
+    linear-gradient(180deg, #fffaf2 0%, #f4ead5 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 24px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 80px rgba(40, 8, 8, 0.55),
+    0 0 0 1px rgba(212, 175, 55, 0.12) inset;
+  overflow: hidden;
+  animation: arena-combat-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes arena-combat-rise {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.arena-combat-dialog::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--arena-gold, #d4af37), var(--arena-blood, #8a0e0e), var(--arena-gold, #d4af37), transparent);
+  z-index: 2;
+}
+.arena-combat-dialog .arena-modal-header {
+  flex-shrink: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px !important;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.25) !important;
+  background:
+    linear-gradient(135deg, rgba(40, 12, 12, 0.95), rgba(22, 6, 6, 0.95)) !important;
+  position: relative;
+  z-index: 1;
+}
+.arena-combat-dialog .arena-modal-title {
+  margin: 0;
+  font-family: var(--font-title, serif);
+  font-size: clamp(1.05rem, 2vw, 1.4rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800 !important;
+  background: linear-gradient(180deg, #fff 0%, var(--arena-gold, #d4af37) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+}
+.arena-combat-dialog .arena-modal-close {
+  width: 40px; height: 40px;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.05)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.45) !important;
+  color: #ffd97a !important;
+  font-size: 1.1rem;
+  font-weight: 700 !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+.arena-combat-dialog .arena-modal-close:hover {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.5), rgba(138, 14, 14, 0.6)) !important;
+  border-color: rgba(255, 217, 122, 0.7) !important;
+  transform: rotate(90deg) scale(1.05);
+  box-shadow: 0 6px 18px rgba(138, 14, 14, 0.4) !important;
+}
+.arena-combat-dialog .arena-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 24px 28px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 140, 80, 0.4) transparent;
+}
+.arena-combat-dialog .arena-modal-body::-webkit-scrollbar { width: 8px; }
+.arena-combat-dialog .arena-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(180, 140, 80, 0.45);
+  border-radius: 999px;
+}
+.arena-combat-dialog .arena-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 140, 80, 0.7);
+}
+
+/* Reset spacing della matches-container dentro il modal: il padding è del modal */
+.arena-combat-dialog .matches-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.arena-combat-dialog .my-arena-banner {
+  margin-top: 0 !important;
+  margin-bottom: 16px !important;
+}
+
+/* Mobile: il modal occupa quasi tutta la viewport */
+@media (max-width: 760px) {
+  .arena-combat-overlay { padding: 12px; }
+  .arena-combat-dialog {
+    max-height: 96vh;
+    border-radius: 18px;
+  }
+  .arena-combat-dialog .arena-modal-header {
+    padding: 14px 18px !important;
+  }
+  .arena-combat-dialog .arena-modal-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+  }
+  .arena-combat-dialog .arena-modal-close {
+    width: 36px; height: 36px;
+  }
+  .arena-combat-dialog .arena-modal-body {
+    padding: 16px 16px 20px !important;
+  }
+}
+@media (max-width: 480px) {
+  .arena-combat-overlay { padding: 0; }
+  .arena-combat-dialog {
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
 /* ── FLOATING FIGHT BUTTON — always visible during active match ── */
 .arena-page .arena-fight-pulse {
   position: fixed !important;
