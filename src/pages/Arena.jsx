@@ -7473,6 +7473,24 @@ export default function Arena() {
         );
       })()}
 
+      {/* ── SECTION DIVIDER (Tabellone) ── */}
+      {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (
+        <div className="arena-section-divider" aria-hidden="true">
+          <div className="arena-section-divider-media">
+            <img
+              src="/arena/divider-bracket.jpg"
+              alt=""
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          </div>
+          <div className="arena-section-divider-content">
+            <div className="arena-section-divider-eyebrow">Bracket</div>
+            <h2 className="arena-section-divider-title">Tabellone del Campionato</h2>
+            <p className="arena-section-divider-sub">Ogni colpo, ogni round. La strada verso la corona.</p>
+          </div>
+        </div>
+      )}
+
       {/* ── TABELLONE DEL CAMPIONATO (visibile a tutti gli utenti loggati) ── */}
       <span id="arena-bracket-anchor" aria-hidden="true" />
       {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
