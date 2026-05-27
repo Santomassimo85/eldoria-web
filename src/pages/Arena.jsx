@@ -1800,29 +1800,11 @@ export default function Arena() {
         const data = snap.data();
         setArenaMeta(data);
         if (isMaster) setPrizeText(data.prizes || "");
-      } else {
-        /* IMPORTANTE: NON facciamo setDoc qui per evitare reset accidentali
-           dovuti a snapshot temporanei da cache (offline/race condition).
-           Verifichiamo con getDoc forzato (source: server) prima di creare
-           ex novo. Solo il primo Master/loaded della history potrebbe
-           crearne uno se davvero non esiste. */
-        getDoc(ref).then((freshSnap) => {
-          if (freshSnap.exists()) {
-            // race condition risolta: il doc esisteva, lo carichiamo
-            setArenaMeta(freshSnap.data());
-            if (isMaster) setPrizeText(freshSnap.data().prizes || "");
-          } else if (isMaster) {
-            // Solo il Master inizializza il documento se davvero mancante
-            setDoc(ref, {
-              phase: "registration", prizes: "",
-              waitingList: [], participants: [],
-              characterSnapshots: {}, matches: [],
-              currentRound: 1, tournamentWinner: null,
-              groupA: [], groupB: [],
-            });
-          }
-        }).catch(e => console.error("arena_meta getDoc fallback failed:", e));
       }
+      /* Niente auto-setDoc: se il doc è temporaneamente assente (race con
+         cache offline o emulator restart) NON ricreiamo nulla per non
+         sovrascrivere i dati reali. L'inizializzazione avviene solo via
+         pulsante Reset del Master. */
     });
     return () => unsub();
   }, [isMaster]);
@@ -6195,7 +6177,7 @@ export default function Arena() {
       })()}
 
       {/* ── HERO SECTION (full-vh, parallax, immagine epica) ── */}
-      <section className="arena-hero" aria-label="Arena dei Campioni">
+      <section id="arena-hero-top" className="arena-hero" aria-label="Arena dei Campioni">
         <div className="arena-hero-media" aria-hidden="true">
           <img
             src="/assets/PhotoStory/GruppoMEAA/partyfun.jpg"
@@ -6241,10 +6223,31 @@ export default function Arena() {
           <span className="arena-sticky-nav-title">⚔ Arena</span>
           <div className="arena-sticky-nav-links">
             <a href="#arena-bracket-anchor">Bracket</a>
-            <a href="#arena-my-match">Match</a>
             <a href="#arena-info-anchor">Regole</a>
+            <a href="#arena-training">Arena Libera</a>
           </div>
         </div>
+      </nav>
+
+      {/* ── SIDE NAV: icone piccole laterali per saltare alle sezioni ── */}
+      <nav className="arena-side-nav" aria-label="Navigazione rapida sezioni">
+        <a href="#arena-hero-top" className="arena-side-nav-btn" title="Inizio" aria-label="Vai all'inizio">
+          <span aria-hidden="true">🏰</span>
+        </a>
+        <a href="#arena-info-anchor" className="arena-side-nav-btn" title="Regole, classi, glorie" aria-label="Regole">
+          <span aria-hidden="true">📜</span>
+        </a>
+        {isMaster && (
+          <a href="#arena-master-panel" className="arena-side-nav-btn" title="Pannello del Master" aria-label="Master">
+            <span aria-hidden="true">♛</span>
+          </a>
+        )}
+        <a href="#arena-training" className="arena-side-nav-btn" title="Arena Libera (sfide allenamento)" aria-label="Arena Libera">
+          <span aria-hidden="true">⚔</span>
+        </a>
+        <a href="#arena-bracket-anchor" className="arena-side-nav-btn" title="Tabellone del Torneo" aria-label="Bracket">
+          <span aria-hidden="true">🏆</span>
+        </a>
       </nav>
 
       {/* ── RICOMPENSA PROSSIMA ARENA (visibile a tutti) ── */}
@@ -6536,7 +6539,7 @@ export default function Arena() {
 
       {/* ── PANNELLO MASTER ── */}
       {isMaster && (
-        <div className="master-panel">
+        <div id="arena-master-panel" className="master-panel">
           <h3 className="master-panel-title"><span className="master-crown">♛</span> Pannello del Master</h3>
 
           {arenaMeta.phase === "registration" && (

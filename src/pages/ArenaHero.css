@@ -2277,6 +2277,106 @@
   to   { transform: translateX(0);     opacity: 1; }
 }
 
+/* ── SIDE NAV: icone piccole laterali (visibili a tutti) ────────── */
+.arena-side-nav {
+  position: fixed;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 999px;
+  background: rgba(15, 7, 7, 0.75);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 1px 0 rgba(255, 230, 180, 0.08) inset,
+    0 10px 24px rgba(0, 0, 0, 0.45);
+  animation: arena-side-nav-fade 0.5s ease both;
+}
+@keyframes arena-side-nav-fade {
+  from { opacity: 0; transform: translate(-12px, -50%); }
+  to   { opacity: 1; transform: translate(0, -50%); }
+}
+.arena-side-nav-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 217, 122, 0.75);
+  font-size: 1rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.arena-side-nav-btn:hover {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.45);
+  color: #ffd97a;
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(180, 130, 30, 0.25);
+}
+.arena-side-nav-btn:active {
+  transform: scale(0.95);
+}
+/* tooltip inline su hover (extra etichetta) */
+.arena-side-nav-btn::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: rgba(15, 7, 7, 0.95);
+  color: #ffd97a;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  font-family: var(--font-title, sans-serif);
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 1;
+}
+.arena-side-nav-btn:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* MOBILE: side nav diventa bottom-bar orizzontale */
+@media (max-width: 760px) {
+  .arena-side-nav {
+    top: auto;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+  .arena-side-nav-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 1.05rem;
+  }
+  .arena-side-nav-btn::after { display: none; }
+  @keyframes arena-side-nav-fade {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+}
+
 /* ── COMBAT MODAL (popup attivato dal fight button) ──────────────── */
 .arena-combat-overlay {
   position: fixed;
