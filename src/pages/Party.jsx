@@ -183,14 +183,6 @@ export default function Party() {
         </div>
       </section>
 
-      {/* ── SIDE NAV ── */}
-      <nav className="cine-side-nav" aria-label="Navigazione compagnie">
-        <a href="#party-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">⚔</span></a>
-        {PARTIES.map((p) => (
-          <a key={p.id} href={`#party-${p.id}`} className="cine-side-nav-btn" title={p.name}><span aria-hidden="true">❦</span></a>
-        ))}
-      </nav>
-
       {/* ── FACTION TABS ── */}
       <div className="cine-wrap">
         <div className="party-tabs" role="tablist">

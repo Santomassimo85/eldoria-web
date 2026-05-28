@@ -83,16 +83,6 @@ export default function NPC() {
         </div>
       </section>
 
-      {/* ── SIDE NAV ── */}
-      {cityKeys.length > 0 && (
-        <nav className="cine-side-nav" aria-label="Navigazione luoghi">
-          <a href="#npc-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">👤</span></a>
-          {cityKeys.map(city => (
-            <a key={city} href={`#npc-${slugify(city)}`} className="cine-side-nav-btn" title={city}><span aria-hidden="true">🏙</span></a>
-          ))}
-        </nav>
-      )}
-
       {npcs.length === 0 ? (
         <p className="cine-empty">Nessun personaggio censito.</p>
       ) : (

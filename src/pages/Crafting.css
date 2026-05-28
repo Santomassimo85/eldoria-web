@@ -15,6 +15,25 @@
 .cr-page .cr-section-sub { color: rgba(255, 232, 205, 0.72); }
 .cr-page .cr-subtitle { color: #ffd97a; border-bottom-color: color-mix(in srgb, var(--cine-gold) 45%, transparent); }
 .cr-page .cr-footer { color: var(--cine-gold-soft); }
+
+/* I pannelli chiari translucidi diventavano illeggibili sul fondo scuro
+   (testo scuro su sfondo semitrasparente scuro): li rendo opachi/chiari. */
+.cr-page .cr-modifier { background: rgba(255, 250, 235, 0.96); }
+.cr-page .cr-modifier--good { background: #dff0d6; border-left-color: #3f8a2f; }
+.cr-page .cr-modifier--bad  { background: #f7dcd6; border-left-color: #b04030; }
+.cr-page .cr-modifier-cond,
+.cr-page .cr-modifier-eff   { color: #2d2418; }
+.cr-page .cr-cost-row { background: rgba(255, 250, 235, 0.96); border-color: rgba(180, 140, 80, 0.4); }
+.cr-page .cr-cost-cell,
+.cr-page .cr-cost-note { color: #3a2f1c; }
+.cr-page .cr-ingredients-table { background: rgba(255, 250, 235, 0.96); border-color: rgba(180, 140, 80, 0.4); }
+.cr-page .cr-ing-row { color: #3a2f1c; }
+.cr-page .cr-lv-card { background: rgba(255, 250, 235, 0.96); border-color: rgba(180, 140, 80, 0.45); }
+.cr-page .cr-lv-text { color: #3a2f1c; }
+.cr-page .cr-d12-row { background: rgba(255, 250, 235, 0.96); border-color: rgba(180, 140, 80, 0.4); }
+.cr-page .cr-d12-desc { color: #3a2f1c; }
+.cr-page .cr-prof-chip { background: rgba(255, 250, 235, 0.96); }
+.cr-page .cr-prof-chip-name { color: #2d2418; }
  
 /* ── HERO ───────────────────────────────────────────────── */
 .cr-hero {
