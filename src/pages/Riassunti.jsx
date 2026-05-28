@@ -10,6 +10,25 @@ import './Riassunti.css';
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+// Immagine eroica della testata — NON usata in Arena.
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg";
+
+// Immagini di sezione (parallax) per i divisori tra gruppi — NON usate in Arena.
+// Assegnate per indice di gruppo (in ciclo) così ogni gruppo ha la sua.
+const DIVIDER_IMAGES = [
+    "/assets/PhotoStory/GruppoMEAA/portale.png",
+    "/assets/PhotoStory/GruppoLAC/horn_spider.jpg",
+    "/assets/PhotoStory/GruppoENOX/voragine.png",
+    "/assets/PhotoStory/GruppoLEAF/dragonLeaf.png",
+    "/assets/PhotoStory/GruppoMEAA/drago_fiume.png",
+    "/assets/PhotoStory/GruppoMEAA/arcanite_distrutta.jpg",
+    "/assets/PhotoStory/GruppoENOX/muro.png",
+    "/assets/PhotoStory/GruppoMEAA/orso_arcanite.jpg",
+];
+
+const slugify = (s) =>
+    String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 const escapeHtml = (s) =>
     String(s ?? "").replace(/[&<>"']/g, (c) => ({
         "&": "&amp;",
@@ -184,6 +203,26 @@ export default function Riassunti() {
         fetchSummaries();
     }, []);
 
+    // --- Parallax: aggiorna --rs-scroll su scroll, senza re-render (come Arena) ---
+    useEffect(() => {
+        let raf = 0;
+        const update = () => {
+            document.documentElement.style.setProperty("--rs-scroll", String(window.scrollY));
+            raf = 0;
+        };
+        const onScroll = () => {
+            if (raf) return;
+            raf = requestAnimationFrame(update);
+        };
+        window.addEventListener("scroll", onScroll, { passive: true });
+        update();
+        return () => {
+            window.removeEventListener("scroll", onScroll);
+            if (raf) cancelAnimationFrame(raf);
+            document.documentElement.style.removeProperty("--rs-scroll");
+        };
+    }, []);
+
     // --- Raggruppamento per Party ---
     const groupedSummaries = useMemo(() => {
         return allSummaries.reduce((acc, summary) => {
@@ -205,19 +244,66 @@ export default function Riassunti() {
         );
     }
 
+    const groupKeys = Object.keys(groupedSummaries);
+    const totalMemories = allSummaries.length;
+
     return (
         <section className="riassunti-page">
 
-            {/* ---- HEADER ---- */}
-            <div className="riassunti-header">
-                <h1 className="riassunti-title">Memorie del Monaco Errante</h1>
-                <div className="riassunti-divider">
-                    <span className="riassunti-divider-icon">✦</span>
+            {/* ── HERO full-bleed (parallax, immagine epica) ── */}
+            <section id="rs-top" className="rs-hero" aria-label="Memorie del Monaco Errante">
+                <div className="rs-hero-media" aria-hidden="true">
+                    <img
+                        src={HERO_IMAGE}
+                        alt=""
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                    <div className="rs-hero-vignette" />
+                    <div className="rs-hero-gradient" />
+                    <div className="rs-hero-pattern" />
                 </div>
-            </div>
+                <div className="rs-hero-content">
+                    <span className="rs-hero-eyebrow">Cronache di Eldoria</span>
+                    <h1 className="rs-hero-title">Memorie del Monaco Errante</h1>
+                    <p className="rs-hero-tagline">
+                        Le schegge del mondo, raccolte sessione dopo sessione.
+                        Ciò che la forza dimentica, la memoria conserva.
+                    </p>
+                    <div className="rs-hero-meta">
+                        <span className="rs-hero-pill">📜 {totalMemories} memorie</span>
+                        {groupKeys.length > 0 && (
+                            <span className="rs-hero-pill">❦ {groupKeys.length} {groupKeys.length === 1 ? "gruppo" : "gruppi"}</span>
+                        )}
+                    </div>
+                </div>
+                <div className="rs-hero-scroll-hint" aria-hidden="true">
+                    <span>Scorri</span>
+                    <span className="rs-hero-arrow">↓</span>
+                </div>
+            </section>
 
-            {/* ---- INTRO STATICA ---- */}
-            <div className="riassunti-intro">
+            {/* ── SIDE NAV: salta ai gruppi ── */}
+            {groupKeys.length > 0 && (
+                <nav className="rs-side-nav" aria-label="Navigazione gruppi">
+                    <a href="#rs-top" className="rs-side-nav-btn" title="Inizio" aria-label="Vai all'inizio">
+                        <span aria-hidden="true">📜</span>
+                    </a>
+                    {groupKeys.map(partyKey => (
+                        <a
+                            key={partyKey}
+                            href={`#rs-group-${slugify(partyKey)}`}
+                            className="rs-side-nav-btn"
+                            title={`Gruppo ${partyKey}`}
+                            aria-label={`Vai al Gruppo ${partyKey}`}
+                        >
+                            <span aria-hidden="true">❦</span>
+                        </a>
+                    ))}
+                </nav>
+            )}
+
+            {/* ── INTRO manoscritto ── */}
+            <div className="rs-intro">
                 <h3>Le schegge del mondo</h3>
                 <p>
                     <span className="riassunti-drop">A</span>nno 1852 d.C.S.
@@ -229,95 +315,120 @@ export default function Riassunti() {
                 </p>
             </div>
 
-            {/* ---- GRUPPI PARTY ---- */}
-            {Object.keys(groupedSummaries).length === 0 ? (
+            {/* ── GRUPPI PARTY ── */}
+            {groupKeys.length === 0 ? (
                 <p className="riassunti-empty">Nessuna memoria archiviata.</p>
             ) : (
-                Object.keys(groupedSummaries).map(partyKey => (
-                    <div key={partyKey} className="riassunti-party-section">
-                        <div className="riassunti-party-toolbar">
-                            <button
-                                type="button"
-                                className="riassunti-export-btn"
-                                onClick={() => exportPartyAsPdf(partyKey, groupedSummaries[partyKey])}
-                                title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
+                groupKeys.map((partyKey, gi) => {
+                    const summaries = groupedSummaries[partyKey];
+                    return (
+                        <div key={partyKey} className="rs-group" data-accent={gi % 5}>
+
+                            {/* divisore scrollytell con immagine parallax */}
+                            <section
+                                id={`rs-group-${slugify(partyKey)}`}
+                                className="rs-scrollytell"
+                                aria-label={`Gruppo ${partyKey}`}
                             >
-                                📥 Esporta gruppo {partyKey} (PDF)
-                            </button>
-                        </div>
-                        <ToggleSection
-                            title={`Gruppo ${partyKey}`}
-                            defaultOpen={true}
-                        >
-                            <div className="summary-grid">
-                                {groupedSummaries[partyKey].map(summary => (
-                                    <div key={summary.id} className="summary-card-wrapper">
-                                        <ToggleSection
-                                            title={
-                                                <>
-                                                    {summary.coverImage && (
-                                                        <div className="summary-card-cover">
-                                                            <img
-                                                                src={summary.coverImage}
-                                                                alt={summary.title}
-                                                                loading="lazy"
-                                                                onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    <span className="summary-card-title-text">{summary.title}</span>
-                                                    {summary.date && (
-                                                        <span className="summary-card-date-chip">
-                                                            {summary.date}
-                                                        </span>
-                                                    )}
-                                                    {isMaster && (
-                                                        <span className="summary-visit-badge" title="Visite totali">
-                                                            👁 {summary.viewCount || 0}
-                                                        </span>
-                                                    )}
-                                                </>
-                                            }
-                                            titleClass={`summaryTitle ${summary.coverImage ? "has-cover" : ""}`}
-                                            contentClass="summary-content-padding"
-                                            onOpen={() => recordVisit(summary.id)}
+                                <div className="rs-scrollytell-media" aria-hidden="true">
+                                    <img
+                                        src={DIVIDER_IMAGES[gi % DIVIDER_IMAGES.length]}
+                                        alt=""
+                                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                    />
+                                    <div className="rs-scrollytell-bottom-fade" aria-hidden="true" />
+                                </div>
+                                <div className="rs-scrollytell-content">
+                                    <div className="rs-scrollytell-frame">
+                                        <span className="rs-scrollytell-eyebrow">❦ Cronaca</span>
+                                        <h2 className="rs-scrollytell-title">Gruppo {partyKey}</h2>
+                                        <p className="rs-scrollytell-text">
+                                            {summaries.length} {summaries.length === 1 ? "memoria archiviata" : "memorie archiviate"}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="riassunti-export-btn"
+                                            onClick={() => exportPartyAsPdf(partyKey, summaries)}
+                                            title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
                                         >
-                                            {summary.date && (
-                                                <h2 className="summaryDate">{summary.date}</h2>
-                                            )}
-                                            {summary.subTitle && (
-                                                <h4 className="Obia">{summary.subTitle}</h4>
-                                            )}
-                                            <div
-                                                dangerouslySetInnerHTML={{ __html: summary.content }}
-                                            />
-                                            {Array.isArray(summary.images) && summary.images.length > 0 && (
-                                                <div className="summary-gallery">
-                                                    {summary.images.map((url, i) => (
-                                                        <a
-                                                            key={url + i}
-                                                            href={url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="summary-gallery-item"
-                                                        >
-                                                            <img
-                                                                src={url}
-                                                                alt={`${summary.title} — immagine ${i + 1}`}
-                                                                loading="lazy"
-                                                                onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
-                                                            />
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </ToggleSection>
+                                            📥 Esporta gruppo {partyKey} (PDF)
+                                        </button>
                                     </div>
-                                ))}
+                                </div>
+                            </section>
+
+                            {/* card delle memorie */}
+                            <div className="rs-group-body">
+                                <div className="summary-grid">
+                                    {summaries.map(summary => (
+                                        <div key={summary.id} className="summary-card-wrapper">
+                                            <ToggleSection
+                                                title={
+                                                    <>
+                                                        {summary.coverImage && (
+                                                            <div className="summary-card-cover">
+                                                                <img
+                                                                    src={summary.coverImage}
+                                                                    alt={summary.title}
+                                                                    loading="lazy"
+                                                                    onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <span className="summary-card-title-text">{summary.title}</span>
+                                                        {summary.date && (
+                                                            <span className="summary-card-date-chip">
+                                                                {summary.date}
+                                                            </span>
+                                                        )}
+                                                        {isMaster && (
+                                                            <span className="summary-visit-badge" title="Visite totali">
+                                                                👁 {summary.viewCount || 0}
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                }
+                                                titleClass={`summaryTitle ${summary.coverImage ? "has-cover" : ""}`}
+                                                contentClass="summary-content-padding"
+                                                onOpen={() => recordVisit(summary.id)}
+                                            >
+                                                {summary.date && (
+                                                    <h2 className="summaryDate">{summary.date}</h2>
+                                                )}
+                                                {summary.subTitle && (
+                                                    <h4 className="Obia">{summary.subTitle}</h4>
+                                                )}
+                                                <div
+                                                    dangerouslySetInnerHTML={{ __html: summary.content }}
+                                                />
+                                                {Array.isArray(summary.images) && summary.images.length > 0 && (
+                                                    <div className="summary-gallery">
+                                                        {summary.images.map((url, i) => (
+                                                            <a
+                                                                key={url + i}
+                                                                href={url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="summary-gallery-item"
+                                                            >
+                                                                <img
+                                                                    src={url}
+                                                                    alt={`${summary.title} — immagine ${i + 1}`}
+                                                                    loading="lazy"
+                                                                    onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
+                                                                />
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </ToggleSection>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </ToggleSection>
-                    </div>
-                ))
+                        </div>
+                    );
+                })
             )}
         </section>
     );
