@@ -1537,6 +1537,33 @@ export default function Arena() {
     return () => clearInterval(t);
   }, []);
 
+  // ── Reazioni simpatiche in combattimento (cooldown 20s per giocatore) ──
+  const [reactCooldownUntil, setReactCooldownUntil] = useState(0);
+  const [reactPickerMatch, setReactPickerMatch] = useState(null);
+  const REACT_COOLDOWN_MS = 20000;
+  const ARENA_REACTIONS = ["😂", "🔥", "👏", "😱", "💀", "👑", "🤡", "🫡", "😎", "🤝"];
+  const sendArenaReaction = async (matchId, emoji) => {
+    if (!currentUser) return;
+    const now = Date.now();
+    if (now < reactCooldownUntil) return;
+    setReactCooldownUntil(now + REACT_COOLDOWN_MS);
+    setReactPickerMatch(null);
+    const myName =
+      (arenaMetaRef.current?.matches || [])
+        .find(m => m.matchId === matchId)?.players
+        ?.find(p => p.id === currentUser.uid)?.name
+      || arenaMetaRef.current?.characterSnapshots?.[currentUser.uid]?.name
+      || "Sfidante";
+    const entry = { id: `${currentUser.uid}-${now}`, matchId, uid: currentUser.uid, name: myName, emoji, ts: now };
+    try {
+      const prev = (arenaMetaRef.current?.reactions || []).filter(r => now - (r.ts || 0) < 12000);
+      await updateDoc(doc(db, "arena_meta", "global"), { reactions: [...prev, entry] });
+    } catch (e) {
+      console.error("Errore invio reazione arena:", e);
+      setReactCooldownUntil(0); // se fallisce, sblocca subito
+    }
+  };
+
   // Parallax hero: aggiorna CSS variable --arena-scroll su scroll, senza re-render.
   useEffect(() => {
     let raf = 0;
@@ -8083,11 +8110,53 @@ export default function Arena() {
                               🎲 Tira Iniziativa
                             </button>
                           )}
+
+                          {/* reazioni fluttuanti sopra questo combattente */}
+                          {(arenaMeta.reactions || [])
+                            .filter(r => r.matchId === m.matchId && r.uid === p.id && (Date.now() - (r.ts || 0)) < 2400)
+                            .map(r => (
+                              <span key={r.id} className="arena-fight-react" aria-hidden="true">{r.emoji}</span>
+                            ))}
                         </div>
                       </React.Fragment>
                     );
                   })}
                 </div>
+
+                {/* Barra reazioni — i due sfidanti possono inviare emoji (cooldown 20s) */}
+                {isMyMatch && m.status !== "finished" && (() => {
+                  const onCd = Date.now() < reactCooldownUntil;
+                  const cdLeft = Math.max(0, Math.ceil((reactCooldownUntil - Date.now()) / 1000));
+                  const open = reactPickerMatch === m.matchId;
+                  return (
+                    <div className="arena-react-bar">
+                      <button
+                        type="button"
+                        className={`arena-react-toggle${onCd ? " is-cd" : ""}`}
+                        onClick={() => { if (!onCd) setReactPickerMatch(open ? null : m.matchId); }}
+                        disabled={onCd}
+                        title={onCd ? `Aspetta ${cdLeft}s prima di reagire di nuovo` : "Invia una reazione"}
+                      >
+                        {onCd ? `⏳ ${cdLeft}s` : "😄 Reagisci"}
+                      </button>
+                      {open && !onCd && (
+                        <div className="arena-react-row" role="menu" aria-label="Reazioni">
+                          {ARENA_REACTIONS.map(e => (
+                            <button
+                              key={e}
+                              type="button"
+                              className="arena-react-emo"
+                              onClick={() => sendArenaReaction(m.matchId, e)}
+                              aria-label={`Reagisci con ${e}`}
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Action panel */}
                 {isMyMatch && isMyTurn && m.status === "active" && (
