@@ -4197,3 +4197,125 @@ body .arena-bet-fab:hover {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.32), rgba(212, 175, 55, 0.12)) !important;
   border-color: #d4af37 !important;
 }
+
+/* ============================================================
+   LAYER 6 — LOADOUT LEGGIBILE SU PANNELLO SCURO
+   Le card di selezione (armi/incantesimi/armatura) e i testi
+   dell'anteprima erano rosso/blu scuro su fondo scuro: resi chiari.
+   ============================================================ */
+
+/* Anteprima personaggio (selecting): intestazione verticale, centrata, a tutta larghezza */
+.arena-page .loadout-char-preview--top {
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 10px !important;
+}
+.arena-page .loadout-char-preview--top > div { width: 100%; }
+
+.arena-page .loadout-char-name { color: #fff7e6 !important; }
+.arena-page .loadout-char-class { color: #ffd97a !important; opacity: 1 !important; }
+.arena-page .loadout-char-stats { color: rgba(245, 230, 200, 0.85) !important; }
+.arena-page .loadout-char-stats strong { color: #ffd97a !important; }
+
+/* Titoli di sezione (Armi / Incantesimi / Armatura …) */
+.arena-page .loadout-section-title {
+  color: #ffd97a !important;
+  border-bottom-color: rgba(212, 175, 55, 0.28) !important;
+}
+.arena-page .loadout-optional { color: rgba(245, 230, 200, 0.6) !important; }
+
+/* Card opzione: base leggibile */
+.arena-page .loadout-item {
+  color: #f3e6cf !important;
+  background: rgba(255, 250, 240, 0.06) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+}
+.arena-page .loadout-item.weapon {
+  background: rgba(200, 60, 60, 0.18) !important;
+  border-color: rgba(225, 95, 95, 0.5) !important;
+}
+.arena-page .loadout-item.spell {
+  background: rgba(80, 120, 210, 0.20) !important;
+  border-color: rgba(130, 165, 235, 0.55) !important;
+}
+.arena-page .loadout-item.armor,
+.arena-page .loadout-item.item-slot {
+  background: rgba(212, 175, 55, 0.14) !important;
+  border-color: rgba(212, 175, 55, 0.45) !important;
+}
+.arena-page .loadout-item:hover:not(.disabled) {
+  filter: brightness(1.12) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+}
+.arena-page .loadout-item.weapon.selected {
+  background: rgba(220, 80, 80, 0.34) !important;
+  border-color: #ff9a9a !important;
+  box-shadow: 0 0 0 2px rgba(255, 120, 120, 0.4) !important;
+}
+.arena-page .loadout-item.spell.selected {
+  background: rgba(110, 150, 230, 0.36) !important;
+  border-color: #aaccff !important;
+  box-shadow: 0 0 0 2px rgba(150, 185, 255, 0.4) !important;
+}
+.arena-page .loadout-item.armor.selected,
+.arena-page .loadout-item.item-slot.selected {
+  background: rgba(212, 175, 55, 0.32) !important;
+  border-color: #ffe08a !important;
+  box-shadow: 0 0 0 2px rgba(255, 217, 122, 0.45) !important;
+}
+.arena-page .loadout-item-name { color: #fff7e6 !important; }
+.arena-page .loadout-item-damage,
+.arena-page .loadout-item-info,
+.arena-page .armor-dex-cap,
+.arena-page .armor-no-dex { color: rgba(245, 230, 200, 0.78) !important; }
+.arena-page .loadout-item-dmgtype { color: #1a1208 !important; }
+.arena-page .loadout-check { color: #8effb4 !important; }
+.arena-page .spell-uses-tag { color: #ffd97a !important; }
+.arena-page .armor-hit-penalty { color: #ff9a9a !important; }
+
+/* Gruppi incantesimi per livello */
+.arena-page .spell-level-header,
+.arena-page .spell-level-count { color: rgba(245, 230, 200, 0.85) !important; }
+.arena-page .spell-level-locked-note { color: rgba(245, 230, 200, 0.55) !important; }
+.arena-page .loadout-item.spell-locked { opacity: 0.4 !important; }
+
+/* Scudi + contatori oggetti */
+.arena-page .loadout-shield-btn {
+  background: rgba(255, 250, 240, 0.06) !important;
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  color: #f3e6cf !important;
+}
+.arena-page .loadout-shield-btn.selected {
+  background: rgba(212, 175, 55, 0.28) !important;
+  border-color: #ffe08a !important;
+  color: #fff7e6 !important;
+}
+.arena-page .item-counter-val { color: #fff7e6 !important; }
+.arena-page .loadout-wild-note,
+.arena-page .shield-locked-note { color: rgba(245, 230, 200, 0.7) !important; }
+.arena-page .loadout-selected-tag {
+  background: rgba(212, 175, 55, 0.16) !important;
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  color: #fff7e6 !important;
+}
+
+/* Bottone "Genera a caso" (auto-PG) */
+.arena-page .btn-auto-pg {
+  display: block;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 12px 18px !important;
+  background: linear-gradient(135deg, #166534, #15803d) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 12px !important;
+  font-family: var(--font-title) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(22, 101, 52, 0.35) !important;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s;
+}
+.arena-page .btn-auto-pg:hover { transform: translateY(-2px); filter: brightness(1.08); }

@@ -2396,6 +2396,91 @@ export default function Arena() {
     return base;
   })();
 
+  // ── Genera un PG d'Arena completo e casuale (classe, stat, HP, armi,
+  //    incantesimi, armatura, scudo, oggetto, pet/demone/costrutto) e porta
+  //    direttamente alla fase di revisione "selecting". ──
+  const autoGeneratePg = () => {
+    if (!charPreview) return;
+    const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+    const classPool = MASTER_JOIN_CLASSES.length ? MASTER_JOIN_CLASSES : MASTER_JOIN_CLASSES_BASE;
+    const cls = rnd(classPool);
+    const clsLower = (cls || "").toLowerCase();
+    const config = getLoadoutConfig(cls);
+
+    // stat: 10 punti casuali, cap 3 per stat
+    const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+    const keys = Object.keys(stats);
+    let rem = 10, guard = 0;
+    while (rem > 0 && guard++ < 500) {
+      const k = rnd(keys);
+      if (stats[k] < 3) { stats[k]++; rem--; }
+      else if (keys.every(kk => stats[kk] >= 3)) break;
+    }
+
+    // HP
+    const { count, sides } = getHpDice(cls, charPreview.classLevels);
+    let hp = 0;
+    for (let i = 0; i < count; i++) hp += Math.floor(Math.random() * sides) + 1;
+    hp = Math.max(1, hp + (stats.con || 0) * count);
+
+    // armi
+    const weapons = shuffle(config.weaponOptions).slice(0, config.maxWeapons);
+    const has2H = weapons.some(w => w.twoHanded);
+
+    // incantesimi (rispetta i limiti per livello; salta i livelli bloccati ≥3)
+    const spells = [];
+    const limits = config.spellLimits || {};
+    for (const sp of shuffle(config.spellOptions)) {
+      if (spells.length >= config.maxSpells) break;
+      const lvl = sp.level ?? 0;
+      if (lvl >= 3) continue;
+      const atLvl = spells.filter(s => (s.level ?? 0) === lvl).length;
+      if (atLvl >= (limits[lvl] ?? 0)) continue;
+      spells.push(sp);
+    }
+
+    // armatura
+    const armorList = ARENA_ARMORS[config.armorCategory] || [];
+    const armor = armorList.length ? rnd(armorList) : null;
+
+    // scudo (se idoneo e nessuna arma a due mani)
+    let shield = null;
+    if (config.canHaveShield && !has2H) {
+      const opts = config.canHaveShield === "wood" ? ["legno", null] : ["legno", "metallo", null];
+      shield = rnd(opts);
+    }
+
+    // oggetto: 1 a caso (esclusi quelli solo-bottega)
+    const itemCounts = { pozione_cura: 0, bomba: 0, pozione_veleno: 0 };
+    const itemPool = ARENA_ITEMS.filter(i => !i.shopOnly && itemCounts[i.key] !== undefined);
+    if (itemPool.length) itemCounts[rnd(itemPool).key] = 1;
+
+    // pet / demone / costrutto se richiesti dalla classe
+    let pet = null, demon = null, construct = null;
+    if (isRangerClass(clsLower)) {
+      const buffs = charPreview.arenaBuffs || {};
+      const pets = Object.values(RANGER_PETS).filter(p => !p.requiresBuff || (buffs[p.requiresBuff] ?? 0) > 0);
+      pet = pets.length ? rnd(pets).key : null;
+    }
+    if (isWarlockClass(clsLower))   demon = rnd(Object.values(WARLOCK_DEMONS)).key;
+    if (isArtificerClass(clsLower)) construct = rnd(Object.values(ARTIFICER_CONSTRUCTS)).key;
+
+    setCharPreview(prev => ({ ...prev, class: cls, stats, rolledHp: hp, hpRerollCount: 0 }));
+    setPendingStats(stats);
+    setPendingWeapons(weapons);
+    setPendingSpells(spells);
+    setPendingSkills([]);
+    setPendingArmor(armor);
+    setPendingShield(shield);
+    setPendingItemCounts(itemCounts);
+    setPendingPet(pet);
+    setPendingDemon(demon);
+    setPendingConstruct(construct);
+    setLoadoutPhase("selecting");
+  };
+
   const getMasterDefaultStats = (cls) => {
     if (["Fighter","Barbarian","Paladin"].includes(cls))
       return { maxHp: 85, ac: 16, str: 3, dex: 1, con: 2, int: 0, wis: 1, cha: 1 };
@@ -6864,6 +6949,9 @@ export default function Arena() {
                   </button>
                 ))}
               </div>
+              <button className="btn-join btn-auto-pg" onClick={autoGeneratePg} title="Crea un personaggio completo e casuale, pronto da rivedere">
+                ⚡ Genera a caso
+              </button>
               <button className="btn-cancel-loadout" style={{ marginTop: 18 }} onClick={cancelLoadout}>
                 Annulla
               </button>
@@ -7025,8 +7113,8 @@ export default function Arena() {
 
             return (
               <div className="loadout-panel">
-                {/* Anteprima personaggio */}
-                <div className="loadout-char-preview">
+                {/* Anteprima personaggio — intestazione verticale a tutta larghezza */}
+                <div className="loadout-char-preview loadout-char-preview--top">
                   {charPreview.image && (
                     <img src={charPreview.image} alt={charPreview.name} className="loadout-avatar" />
                   )}
