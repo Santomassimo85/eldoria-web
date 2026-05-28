@@ -3,6 +3,11 @@ import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./Cinema.css";
+import "../styles/cinematic.css";
+import useParallaxScroll from "../hooks/useParallaxScroll";
+
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/fantasma.png";
+const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoMEAA/senzaOnore.png";
 
 // Best YouTube thumbnail with HQ fallback baked in via onError.
 const ytThumb = (id) => `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
@@ -40,6 +45,7 @@ const extractSessionNumber = (title) => {
 };
 
 export default function Cinema() {
+  useParallaxScroll();
   const { currentUser } = useAuth();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +97,7 @@ export default function Cinema() {
 
   if (!currentUser) {
     return (
-      <section className="theatrum theatrum--locked">
+      <section className="cine-page theatrum theatrum--locked" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
         <div className="theatrum-locked-card">
           <div className="theatrum-locked-glyph">🎭</div>
           <h2 className="theatrum-locked-title">Sala Chiusa</h2>
@@ -102,35 +108,33 @@ export default function Cinema() {
   }
 
   return (
-    <section className="theatrum">
-      {/* ── MARQUEE HEADER ───────────────────────────────── */}
-      <header className="theatrum-marquee">
-        <div className="theatrum-bulbs theatrum-bulbs--top" aria-hidden="true" />
-
-        <p className="theatrum-eyebrow">▸ Cronache · Crit Happens · Theatrum Mundi ◂</p>
-        <h1 className="theatrum-title">
-          <span className="theatrum-title-word">Teatro</span>
-          <span className="theatrum-title-amp">delle</span>
-          <span className="theatrum-title-word">Cronache</span>
-        </h1>
-        <p className="theatrum-subtitle">L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo.</p>
-
-        <div className="theatrum-bulbs theatrum-bulbs--bottom" aria-hidden="true" />
-
-        <div className="theatrum-stats">
-          <span className="theatrum-stat-pill">
-            <span className="theatrum-stat-icon">📽</span>
-            <span className="theatrum-stat-num">{totalEpisodes}</span>
-            <span className="theatrum-stat-lbl">{totalEpisodes === 1 ? "sessione" : "sessioni"} archiviate</span>
-          </span>
-          {latestDateStr && (
-            <span className="theatrum-stat-pill">
-              <span className="theatrum-stat-icon">🎟</span>
-              <span className="theatrum-stat-lbl">ultima: {latestDateStr}</span>
-            </span>
-          )}
+    <section className="cine-page theatrum" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
+      {/* ── HERO ── */}
+      <section className="cine-hero" aria-label="Teatro delle Cronache">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
         </div>
-      </header>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Theatrum Mundi · Crit Happens</span>
+          <h1 className="cine-hero-title">Teatro delle Cronache</h1>
+          <p className="cine-hero-tagline">
+            L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo.
+          </p>
+          <div className="cine-hero-meta">
+            <span className="cine-pill">📽 {totalEpisodes} {totalEpisodes === 1 ? "sessione" : "sessioni"}</span>
+            {latestDateStr && (
+              <span className="cine-pill cine-pill--accent">🎟 ultima: {latestDateStr}</span>
+            )}
+          </div>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
 
       {/* ── BODY ────────────────────────────────────────── */}
       {loading ? (
@@ -186,13 +190,21 @@ export default function Cinema() {
 
           {/* ── ARCHIVE LIST ───────────────────────────── */}
           {archive.length > 0 && (
-            <section className="theatrum-archive">
-              <div className="theatrum-divider">
-                <span className="theatrum-divider-glyph">❦</span>
-                <h3 className="theatrum-archive-title">Sessioni Precedenti</h3>
-                <span className="theatrum-divider-glyph">❦</span>
+            <>
+            <section className="cine-scrolly cine-scrolly--short" aria-label="Sessioni Precedenti">
+              <div className="cine-scrolly-media" aria-hidden="true">
+                <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
               </div>
-
+              <div className="cine-scrolly-content">
+                <div className="cine-scrolly-frame">
+                  <span className="cine-scrolly-eyebrow">Archivio</span>
+                  <h2 className="cine-scrolly-title">Sessioni Precedenti</h2>
+                  <p className="cine-scrolly-text">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
+                </div>
+              </div>
+            </section>
+            <section className="theatrum-archive">
               <ul className="theatrum-rolls">
                 {archive.map((v, i) => (
                   <li key={v.id}>
@@ -226,6 +238,7 @@ export default function Cinema() {
                 ))}
               </ul>
             </section>
+            </>
           )}
         </>
       )}

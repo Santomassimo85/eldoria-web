@@ -3,12 +3,18 @@
    Parchment-themed, color-coded by pregiatura tier.
    ============================================================ */
 
-.cr-page {
+/* Crafting usa lo scheletro cinematic (tema bronzo). Le card restano
+   pergamena (coerenti sul fondo scuro); titoli/sub su fondo scuro resi chiari. */
+.cr-page.cine-page { color: #ebe3d2; }
+.cr-page .cr-section {
   max-width: 1080px;
-  margin: 0 auto;
-  padding: calc(var(--navbar-h) + 28px) 18px 60px;
-  color: #2d2418;
+  margin: 36px auto;
+  padding: 0 18px;
 }
+.cr-page .cr-section-title { color: #ff9166; }
+.cr-page .cr-section-sub { color: rgba(255, 232, 205, 0.72); }
+.cr-page .cr-subtitle { color: #ffd97a; border-bottom-color: color-mix(in srgb, var(--cine-gold) 45%, transparent); }
+.cr-page .cr-footer { color: var(--cine-gold-soft); }
  
 /* ── HERO ───────────────────────────────────────────────── */
 .cr-hero {

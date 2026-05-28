@@ -3,33 +3,16 @@
    Parchment foyer · gold marquee · sepia poster wall · dark stage
    ============================================================ */
 
-.theatrum {
-  min-height: 100vh;
-  padding: 100px 16px 80px;
+/* Cinema usa lo scheletro cinematic (tema viola). Contenuti centrati. */
+.theatrum.cine-page { color: #ebe3d2; }
+.theatrum .theatrum-feature,
+.theatrum .theatrum-archive {
   max-width: 1240px;
-  margin: 0 auto;
-  font-family: var(--font-text);
-  color: #2a1d05;
-  background:
-    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(212, 175, 55, 0.18), transparent 70%),
-    radial-gradient(ellipse 80% 60% at 50% 110%, rgba(176, 48, 48, 0.10), transparent 70%),
-    #fffaf0;
-  background-attachment: fixed;
-  position: relative;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
 }
-
-/* Subtle parchment texture overlay */
-.theatrum::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    repeating-linear-gradient(0deg, rgba(122, 81, 18, 0.018) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(122, 81, 18, 0.012) 0 1px, transparent 1px 4px);
-  z-index: 0;
-}
-.theatrum > * { position: relative; z-index: 1; }
 
 /* ═══════════════════════════════════════════════════════════
    LOCKED STATE
@@ -715,6 +698,24 @@
 }
 .theatrum-empty-glyph { font-size: 3rem; margin-bottom: 12px; }
 .theatrum-empty small { display: block; margin-top: 8px; opacity: 0.75; font-size: 0.82rem; }
+
+/* ── Override tema scuro (cinematic): testi su fondo scuro ── */
+.theatrum .theatrum-feature-eyebrow { color: var(--cine-gold-soft, #ffe1a8); }
+.theatrum .theatrum-feature-eyebrow-glyph { color: #ff8a6a; }
+.theatrum .theatrum-feature-num {
+  color: #ffd2c0;
+  background: rgba(200, 40, 40, 0.18);
+  border-color: color-mix(in srgb, var(--cine-gold) 45%, transparent);
+}
+.theatrum .theatrum-feature-title { color: #fff; }
+.theatrum .theatrum-feature-date { color: var(--cine-gold-soft, #ffe1a8); }
+.theatrum .theatrum-feature-desc {
+  color: #e6ddc8;
+  border-left-color: var(--cine-gold);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cine-gold) 14%, transparent), transparent 60%);
+}
+.theatrum .theatrum-loading,
+.theatrum .theatrum-empty { color: var(--cine-gold-soft, #ffe1a8); }
 
 .theatrum-reel {
   width: 56px; height: 56px;

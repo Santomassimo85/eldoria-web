@@ -1,268 +1,102 @@
 /* ============================================================
-   ARCHIVIO GEOMANTICO — Flat epic design
-   Mobile-first · Per-continent accent colors
+   GEO — Archivio Geomantico · tema cinematic (emerald/oro)
+   Scheletro da styles/cinematic.css.
    ============================================================ */
 
-.geo-page {
-  min-height: 100vh;
-  padding: 100px 16px 80px;
-  max-width: 1240px;
-  margin: 0 auto;
-  font-family: var(--font-text);
-  color: var(--text);
-  background: #fffaf0;
-}
-
-/* ---- HEADER ----------------------------------------------- */
-.geo-header {
-  text-align: center;
-  margin-bottom: 56px;
-  padding: 12px 16px 0;
-}
-
-.geo-title {
-  font-family: var(--font-title);
-  font-size: clamp(1.7rem, 6vw, 3rem);
-  color: var(--red);
-  letter-spacing: 0.18em;
-  margin: 0 0 16px;
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
-.geo-divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin: 0 auto;
-  max-width: 380px;
-}
-
-.geo-divider::before,
-.geo-divider::after {
-  content: "";
-  flex: 1;
-  height: 2px;
-  background: var(--gold);
-}
-
-.geo-divider-icon {
-  font-size: 1rem;
-  color: var(--gold);
-}
-
-/* ---- LOADING ---------------------------------------------- */
-.geo-loading {
+.geo-page .geo-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 60vh;
-  gap: 16px;
+  min-height: 70vh;
+  gap: 14px;
+  color: #ffd97a;
   font-family: var(--font-title);
-  color: var(--gold);
-  font-size: 0.95rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  animation: geo-pulse 2s ease-in-out infinite;
+  animation: cine-pulse 2s ease-in-out infinite;
 }
+.geo-page .geo-loading-icon { font-size: 2.4rem; }
 
-@keyframes geo-pulse {
-  0%, 100% { opacity: 0.45; }
-  50%       { opacity: 1; }
-}
+.geo-page .continent-wrapper { position: relative; }
 
-.geo-loading-icon { font-size: 2.4rem; }
-
-/* ---- CONTINENT SECTION ------------------------------------ */
-.continent-wrapper {
-  margin-bottom: 56px;
-}
-
-.continent-title {
-  position: relative;
-  font-family: var(--font-title);
-  font-size: clamp(1.05rem, 3.2vw, 1.5rem);
-  color: #fff;
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-  margin: 0 0 24px;
-  padding: 18px 30px;
-  text-align: center;
-  background: var(--red);
-  border-radius: 4px;
-  border-bottom: 3px solid var(--gold);
-}
-
-/* Per-continent accent colors via nth-of-type */
-.continent-wrapper:nth-of-type(5n+1) .continent-title { background: #820a0a; }
-.continent-wrapper:nth-of-type(5n+2) .continent-title { background: #2c5a4a; }
-.continent-wrapper:nth-of-type(5n+3) .continent-title { background: #4a3866; }
-.continent-wrapper:nth-of-type(5n+4) .continent-title { background: #1e4a6e; }
-.continent-wrapper:nth-of-type(5n+5) .continent-title { background: #a04018; }
-
-/* ---- LOCATION GRID ---------------------------------------- */
-.geo-grid {
+/* ── GRID luoghi ── */
+.geo-page .geo-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 18px;
-  padding: 4px 0;
+  padding: 8px 0 0;
 }
+@media (min-width: 640px)  { .geo-page .geo-grid { grid-template-columns: repeat(2, 1fr); gap: 22px; } }
+@media (min-width: 1024px) { .geo-page .geo-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; } }
 
-@media (min-width: 540px) { .geo-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; } }
-@media (min-width: 900px) { .geo-grid { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
-
-/* ---- LOCATION CARD ---------------------------------------- */
-.geo-card-wrapper { position: relative; }
-
-.geo-card-wrapper .toggle-section {
-  background: #fff;
-  border: 1px solid #e6d8a0;
-  border-radius: 6px;
-  overflow: hidden;
-  transition: border-color 0.2s, transform 0.2s;
-  height: 100%;
-}
-
-.geo-card-wrapper .toggle-section:hover {
-  border-color: var(--gold);
-  transform: translateY(-2px);
-}
-
-/* Title bar — atlas entry style */
-.geo-card-wrapper .toggle-title {
-  position: relative;
-  background: #fdf6e3 !important;
-  color: var(--red) !important;
-  font-family: var(--font-title);
-  font-size: clamp(0.95rem, 2.4vw, 1.1rem) !important;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 20px 52px !important;
-  border-top: 4px solid var(--red);
-  border-bottom: 1px solid var(--gold);
-  border-radius: 0;
+/* ── CARD luogo (glass parchment) ── */
+.geo-page .geo-card-wrapper .toggle-section {
   margin: 0;
-  justify-content: center !important;
-  align-items: center !important;
-  flex-direction: row !important;
-  min-height: unset !important;
-  height: auto !important;
-  text-align: center;
-  font-weight: 700;
-}
-
-.geo-card-wrapper .toggle-title::before,
-.geo-card-wrapper .toggle-title::after {
-  content: "◆";
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.6rem;
-  color: var(--gold);
-  letter-spacing: 0;
-}
-
-.geo-card-wrapper .toggle-title::before { left: 22px; }
-.geo-card-wrapper .toggle-title::after  { right: 50px; }
-
-.geo-card-wrapper .toggle-title:hover { background: #fbf0d0 !important; }
-
-.geo-card-wrapper .toggle-title .toggle-icon {
-  position: absolute;
-  right: 20px;
-  color: var(--gold);
-  font-size: 0.85rem;
-  transition: transform 0.2s;
-}
-
-.geo-card-wrapper .toggle-title .toggle-icon.open { transform: rotate(180deg); }
-
-/* Top accent bar follows the continent color */
-.continent-wrapper:nth-of-type(5n+1) .geo-card-wrapper .toggle-title { border-top-color: #820a0a; }
-.continent-wrapper:nth-of-type(5n+2) .geo-card-wrapper .toggle-title { border-top-color: #2c5a4a; }
-.continent-wrapper:nth-of-type(5n+3) .geo-card-wrapper .toggle-title { border-top-color: #4a3866; }
-.continent-wrapper:nth-of-type(5n+4) .geo-card-wrapper .toggle-title { border-top-color: #1e4a6e; }
-.continent-wrapper:nth-of-type(5n+5) .geo-card-wrapper .toggle-title { border-top-color: #a04018; }
-
-.geo-card-wrapper .toggle-content.open { padding: 18px !important; }
-
-/* Always-visible preview thumbnail (between title and collapsible body) */
-.geo-card-wrapper .toggle-static {
-  position: relative;
+  border-radius: var(--cine-radius);
+  border: 1px solid rgba(180, 140, 80, 0.28);
+  border-left: 4px solid var(--cine-accent);
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.97), rgba(252, 246, 235, 0.93));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
   overflow: hidden;
-  background: #fdf6e3;
-  border-bottom: 1px solid var(--gold);
+  height: 100%;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
 }
-.geo-card-wrapper .geo-card-preview {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+.geo-page .geo-card-wrapper .toggle-section:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--cine-gold) 60%, transparent);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
+}
+.geo-page .geo-card-wrapper .toggle-title {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  color: var(--cine-accent) !important;
+  font-family: var(--font-title);
+  font-size: clamp(0.98rem, 2.4vw, 1.15rem) !important;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 16px 20px !important;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.4);
+}
+.geo-page .geo-card-wrapper .toggle-title:hover { background: rgba(31, 138, 106, 0.06) !important; }
+.geo-page .geo-card-wrapper .toggle-icon { color: var(--cine-accent); }
+
+/* anteprima immagine (staticContent) */
+.geo-page .geo-card-preview {
+  width: 100% !important;
+  height: clamp(150px, 24vw, 210px);
   object-fit: cover;
   display: block;
-  transition: transform 0.4s ease, filter 0.3s ease;
-}
-.geo-card-wrapper .toggle-section:hover .geo-card-preview {
-  transform: scale(1.04);
-  filter: saturate(1.1) brightness(1.04);
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.4);
 }
 
-/* ---- CARD CONTENT ----------------------------------------- */
-.geo-description {
-  font-size: clamp(0.88rem, 2vw, 0.98rem);
-  line-height: 1.85;
-  text-align: left;
-  color: #2a2010;
-}
-
-.geo-description p { margin-bottom: 0.95rem; }
-.geo-description strong { color: var(--red); }
-.geo-description em { color: #6b4f10; font-style: italic; }
-
-.geo-description > p:first-of-type::first-letter {
-  font-family: var(--font-title);
-  font-size: 2.6em;
-  line-height: 0.85;
-  float: left;
-  padding: 4px 8px 0 0;
-  color: var(--red);
-}
-
-/* Image — flat framed */
-.geo-card-wrapper img.city-img {
+.geo-page .geo-card-wrapper .toggle-content.open { padding: 18px 20px !important; }
+.geo-page .geo-description { color: #2a2010; line-height: 1.75; }
+.geo-page .geo-description img {
   width: 100% !important;
-  margin: 0 0 14px !important;
-  border-radius: 4px !important;
-  border: 1px solid var(--gold);
-  display: block;
+  height: auto;
+  border-radius: 8px;
+  margin: 14px 0;
+  border: 1px solid rgba(180, 140, 80, 0.5);
 }
 
-/* ---- EDIT BUTTON ------------------------------------------ */
-.geo-edit-btn {
+.geo-page .geo-edit-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--gold);
-  color: #2a1d05;
+  background: linear-gradient(135deg, var(--cine-gold), #b08820);
+  color: #2a1606;
   border: none;
+  border-radius: 8px;
   padding: 7px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 700;
+  font-family: var(--font-title);
   font-size: 0.78rem;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  cursor: pointer;
   margin-bottom: 12px;
-  transition: background 0.15s;
+  box-shadow: 0 4px 12px rgba(180, 130, 30, 0.3);
 }
-
-.geo-edit-btn:hover { background: #e6c248; }
-
-/* ---- MOBILE ----------------------------------------------- */
-@media (max-width: 540px) {
-  .geo-page { padding: 90px 12px 60px; }
-  .continent-title { padding: 14px 18px; letter-spacing: 0.18em; }
-}
-
-@media (min-width: 768px) {
-  .geo-page { padding: 110px 28px 80px; }
-}
+.geo-page .geo-edit-btn:hover { filter: brightness(1.06); }

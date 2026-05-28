@@ -1,0 +1,92 @@
+/* ============================================================
+   NOTIFICATIONS — tema cinematic (steel-blue/oro)
+   Override scoped: card messaggio in glass scura.
+   ============================================================ */
+
+.notifications-page .notif-body { padding: 8px 16px 0; }
+
+.notifications-page .notif-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+.notifications-page .btn-clear-all {
+  background: linear-gradient(135deg, rgba(200, 60, 60, 0.2), rgba(140, 20, 20, 0.18));
+  border: 1px solid rgba(220, 80, 80, 0.5);
+  color: #ffb3b3;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: var(--font-title);
+  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.notifications-page .btn-clear-all:hover { transform: translateY(-1px); background: rgba(200, 60, 60, 0.3); }
+
+.notifications-page .notifications-empty {
+  text-align: center;
+  padding: 50px 20px;
+  color: rgba(255, 230, 200, 0.65);
+  font-style: italic;
+}
+
+/* ── CARD MESSAGGIO (glass scura) ── */
+.notifications-page .notification-card {
+  position: relative;
+  margin: 0 0 14px;
+  padding: 16px 44px 16px 18px;
+  border-radius: var(--cine-radius);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 24%, transparent);
+  border-left: 4px solid var(--cine-accent-2);
+  background: linear-gradient(135deg, rgba(28, 34, 48, 0.88), rgba(16, 20, 30, 0.93));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.notifications-page .notification-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--cine-gold) 50%, transparent);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+.notifications-page .notification-card.unread {
+  border-left-color: var(--cine-gold);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cine-gold) 30%, transparent), 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.notifications-page .notification-card.unread::before {
+  content: "";
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--cine-gold);
+  box-shadow: 0 0 8px var(--cine-gold);
+}
+.notifications-page .notification-card.read { opacity: 0.78; }
+
+.notifications-page .notification-card-title {
+  font-family: var(--font-title);
+  color: #ffd97a;
+  font-size: 1.02rem;
+  letter-spacing: 0.03em;
+  margin: 0 0 6px;
+}
+.notifications-page .notification-card-msg { color: #dfe4ee; line-height: 1.55; margin: 0 0 8px; }
+.notifications-page .notification-card-time { color: rgba(255, 230, 200, 0.5); font-style: italic; font-size: 0.78rem; }
+
+.notifications-page .notification-card-delete {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(220, 80, 80, 0.4);
+  color: #ffb3b3;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.notifications-page .notification-card-delete:hover { background: rgba(220, 80, 80, 0.25); transform: scale(1.1); }

@@ -11,6 +11,12 @@ import {
   ESEMPI_GIOCO,
 } from "../data/crafting";
 import "./Crafting.css";
+import "../styles/cinematic.css";
+import useParallaxScroll from "../hooks/useParallaxScroll";
+
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/helmvil_nani.png";
+const DIVIDER_PROF = "/assets/PhotoStory/GruppoMEAA/tanagar1.png";
+const DIVIDER_EX = "/assets/PhotoStory/GruppoMEAA/Garroth4.png";
 
 const CARATTERISTICHE = ["all", "FOR", "DES", "INT", "SAG", "MAG"];
 const CARATTERISTICA_LABEL = {
@@ -23,6 +29,7 @@ const CARATTERISTICA_LABEL = {
 };
 
 export default function Crafting() {
+  useParallaxScroll();
   const [filter, setFilter] = useState("all");
   const [openProf, setOpenProf] = useState(null);
 
@@ -34,18 +41,29 @@ export default function Crafting() {
   );
 
   return (
-    <section className="cr-page">
-      {/* ── HERO ────────────────────────────────────────── */}
-      <header className="cr-hero">
-        <div className="cr-hero-eyebrow">Manuale dell'Artigiano · Edizione del Maestro</div>
-        <h1 className="cr-hero-title">
-          <span className="cr-hero-icon">🔨</span>
-          Crafting di Exanthia
-          <span className="cr-hero-icon">⚗</span>
-        </h1>
-        <p className="cr-hero-tag">Sistema di Artigianato per D&D 5e</p>
-        <blockquote className="cr-hero-quote">{HERO_QUOTE}</blockquote>
-      </header>
+    <section className="cine-page cr-page" style={{ "--cine-accent": "#b07a1f", "--cine-accent-2": "#d4922a" }}>
+      {/* ── HERO ── */}
+      <section className="cine-hero cine-hero--short" aria-label="Crafting di Exanthia">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
+        </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Manuale dell'Artigiano · Edizione del Maestro</span>
+          <h1 className="cine-hero-title">Crafting di Exanthia</h1>
+          <p className="cine-hero-tagline">{HERO_QUOTE}</p>
+          <div className="cine-hero-meta">
+            <span className="cine-pill">🔨 Artigianato 5e</span>
+            <span className="cine-pill cine-pill--accent">⚗ 10 Professioni</span>
+          </div>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
 
       {/* ── PREGIATURE LADDER ───────────────────────────── */}
       <section className="cr-section">
@@ -183,6 +201,21 @@ export default function Crafting() {
         </div>
       </section>
 
+      {/* ── DIVISORE: Professioni ── */}
+      <section className="cine-scrolly cine-scrolly--short" aria-label="Le Professioni">
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src={DIVIDER_PROF} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+        </div>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame">
+            <span className="cine-scrolly-eyebrow">Vie verso la Maestria</span>
+            <h2 className="cine-scrolly-title">Le 10 Professioni</h2>
+            <p className="cine-scrolly-text">Dieci sentieri, una sola scelta alla creazione del personaggio.</p>
+          </div>
+        </div>
+      </section>
+
       {/* ── 10 PROFESSIONI ──────────────────────────────── */}
       <section className="cr-section">
         <h2 className="cr-section-title">📚 Le 10 Professioni</h2>
@@ -212,6 +245,21 @@ export default function Crafting() {
               onToggle={() => setOpenProf(openProf === p.key ? null : p.key)}
             />
           ))}
+        </div>
+      </section>
+
+      {/* ── DIVISORE: Esempi ── */}
+      <section className="cine-scrolly cine-scrolly--short" aria-label="Esempi di Gioco">
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src={DIVIDER_EX} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+        </div>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame">
+            <span className="cine-scrolly-eyebrow">Dal Tavolo</span>
+            <h2 className="cine-scrolly-title">Esempi di Gioco</h2>
+            <p className="cine-scrolly-text">Tre scene per chiarire come ogni regola si combina.</p>
+          </div>
         </div>
       </section>
 

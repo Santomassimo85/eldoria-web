@@ -1,137 +1,134 @@
 /* ============================================================
-   HOME — design coerente con Riassunti
-   Mobile-first, responsive
+   HOME — tema cinematic (celeste/oro)
+   Lo scheletro (hero, scrollytell, side-nav, pannelli) arriva da
+   styles/cinematic.css. Qui solo gli stili specifici della Home.
    ============================================================ */
 
-.home-container {
-  width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 100px 16px 60px;
-  font-family: var(--font-text);
-  color: var(--text);
-}
-
-/* ---- LORE SECTION ----------------------------------------- */
-.home-lore-section {
-  max-width: 820px;
-  margin: 0 auto 48px;
+/* ---- LORE SECTION (pannello pergamena) -------------------- */
+.home-page .home-lore-section {
+  margin: 0 auto 8px;
   text-align: left;
 }
-
-.home-lore-title {
+.home-page .home-lore-title {
   font-family: var(--font-title);
   font-size: clamp(1.2rem, 4vw, 2rem);
-  color: var(--gold);
+  color: var(--cine-accent);
   text-align: center;
   letter-spacing: 0.06em;
-  margin-bottom: 24px;
+  margin: 8px 0 24px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  border-bottom: 1px solid rgba(180, 140, 80, 0.4);
 }
-
-.home-lore-text {
-  font-size: clamp(0.88rem, 2.2vw, 1rem);
-  line-height: 1.9;
-  color: var(--text);
+.home-page .home-lore-text {
+  font-size: clamp(0.9rem, 2.2vw, 1.02rem);
+  line-height: 1.95;
+  color: #3a2a10;
   text-align: justify;
 }
-
-.home-lore-drop {
+.home-page .home-lore-text i { color: #6b4f10; }
+.home-page .home-lore-drop {
   font-family: var(--font-title);
-  font-size: clamp(2.5rem, 6vw, 3.8rem);
-  line-height: 0.8;
+  font-size: clamp(2.6rem, 6vw, 4rem);
+  line-height: 0.78;
   float: left;
-  margin-right: 6px;
-  padding-top: 6px;
-  color: var(--gold);
-  text-transform: uppercase;
+  margin: 4px 12px 0 0;
+  padding: 6px 10px 4px;
+  color: #fff;
+  background: var(--cine-accent);
+  border-radius: 6px;
 }
 
 /* ---- CREATION IMAGE --------------------------------------- */
-.home-creation-image {
+.home-page .home-creation-image {
   display: block;
   width: min(55%, 380px);
   margin: 0 auto 28px;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(180, 140, 80, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   transition: opacity 0.6s ease, transform 0.6s ease;
   opacity: 1;
   transform: translateY(0);
 }
+.home-page .home-creation-image.hide { opacity: 0; transform: translateY(-40px); pointer-events: none; }
+.home-page .home-creation-image.show { opacity: 1; transform: translateY(0); }
 
-.home-creation-image.hide {
-  opacity: 0;
-  transform: translateY(-40px);
-  pointer-events: none;
+/* ---- DEITY GROUP SECTIONS (toggle dark glass) ------------- */
+.home-page .home-deity-section { margin: 0 auto; padding-top: 4px; }
+
+.home-page .home-deity-section > .toggle-section {
+  margin: 0;
+  border-radius: var(--cine-radius);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--cine-gold) 10%, transparent), transparent 50%),
+    linear-gradient(135deg, rgba(30, 20, 30, 0.85), rgba(15, 10, 18, 0.92));
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-
-.home-creation-image.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ---- DEITY GROUP SECTIONS --------------------------------- */
-.home-deity-section {
-  max-width: 820px;
-  margin: 0 auto;
-  padding-top: 16px;
-}
-
-.home-deity-section > .toggle-section > .toggle-title {
-  background: linear-gradient(90deg, rgba(130, 10, 10, 0.1), transparent) !important;
+.home-page .home-deity-section > .toggle-section > .toggle-title {
+  background: transparent !important;
   background-color: transparent !important;
-  border-left: 4px solid var(--red);
-  border-radius: 0 10px 10px 0;
-  color: var(--red) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: #ffd97a !important;
   font-family: var(--font-title);
-  font-size: clamp(0.85rem, 2.5vw, 1.05rem) !important;
-  letter-spacing: 0.08em;
-  padding: 12px 18px !important;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem) !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 18px 22px !important;
   text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--cine-gold) 22%, transparent) !important;
 }
-
-.home-deity-section > .toggle-section > .toggle-title:hover {
-  background: linear-gradient(90deg, rgba(130, 10, 10, 0.16), transparent) !important;
+.home-page .home-deity-section > .toggle-section > .toggle-title:hover {
+  background: color-mix(in srgb, var(--cine-gold) 8%, transparent) !important;
 }
+.home-page .home-deity-section > .toggle-section > .toggle-title .toggle-icon { color: var(--cine-gold); }
+.home-page .home-deity-section .toggle-content.open { padding: 22px !important; }
 
 /* ---- PANTHEON -------------------------------------------- */
-.pantheon-main-title {
+.home-page .pantheon-main-title {
   font-family: var(--font-title);
   font-size: clamp(0.95rem, 2.8vw, 1.3rem);
-  color: var(--gold);
+  color: var(--cine-gold);
   text-align: center;
   letter-spacing: 0.08em;
   margin-bottom: 20px;
 }
+.home-page .pantheon-list { text-align: left; }
 
-.pantheon-list {
-  text-align: left;
+/* ---- DIVINITÀ (su pannello scuro) ------------------------- */
+.home-page .divinita-entry { color: #ebe3d2; }
+.home-page .divinita-name-red {
+  color: #ff6b6b;
+  font-weight: bold;
+  font-size: clamp(1.3rem, 4vw, 2.2rem);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  font-family: 'Cinzel', serif;
 }
-
-.pantheon-list .deity-card {
-  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
-  padding: 16px 0;
+.home-page .divinita-titolo-gold { color: var(--cine-gold); font-size: clamp(1rem, 2.6vw, 1.2rem); margin-bottom: 20px; }
+.home-page .divinita-main-img {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 45%, transparent);
+  border-radius: 10px;
+  margin: 20px 0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
 }
-
-.pantheon-list .deity-card:last-child {
-  border-bottom: none;
-}
-
-/* ---- GOLD DIVIDER ----------------------------------------- */
-.gold-divider {
+.home-page .divinita-details-box { max-width: 800px; margin: 0 auto; text-align: left; line-height: 1.7; color: #e6ddc8; }
+.home-page .divinita-details-box strong { color: #ffd97a; }
+.home-page .dogma-text { color: var(--cine-gold); margin-top: 15px; text-align: center; font-style: italic; }
+.home-page .gold-divider {
   border: none;
-  border-top: 1px solid rgba(212, 175, 55, 0.2);
-  margin: 16px 0;
+  border-top: 1px solid color-mix(in srgb, var(--cine-gold) 22%, transparent);
+  margin: 22px 0;
 }
 
-/* ---- MOBILE ----------------------------------------------- */
 @media (max-width: 420px) {
-  .home-container { padding: 90px 12px 50px; }
-  .home-lore-text { text-align: left; }
-  .home-creation-image { width: 85%; }
-}
-
-@media (min-width: 768px) {
-  .home-container { padding: 110px 28px 60px; }
+  .home-page .home-lore-text { text-align: left; }
+  .home-page .home-creation-image { width: 85%; }
 }

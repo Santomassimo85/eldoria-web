@@ -50,6 +50,13 @@
   margin: 32px auto;
 }
 
+/* ── Cinematic skin (tema teal): pagina scura, pannelli crema restano ── */
+.fb-page.cine-page { max-width: none; margin: 0; padding: 0 0 80px; color: #ebe3d2; }
+.fb-page .fb-body { max-width: 980px; margin: 0 auto; padding: 8px 16px 0; }
+.fb-page .fb-locked-wrap { padding-top: calc(var(--navbar-h, 80px) + 50px); text-align: center; }
+.fb-page.cine-page > .cine-wrap .fb-title,
+.fb-page .fb-locked-wrap .fb-title { color: var(--cine-gold-soft); }
+
 .fb-panel {
   background: var(--fb-paper);
   border: 4px solid var(--fb-ink);

@@ -3,6 +3,7 @@ import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import "./WorldMap.css";
+import "../styles/cinematic.css";
 import TimerDisplay from "../components/TimerDisplay";
 import { useAuth } from "../AuthContext";
 import { CITIES_HUB } from "../data/citiesHub";
@@ -211,7 +212,7 @@ export default function WorldMap() {
   };
 
   return (
-    <div className="map-page">
+    <div className="cine-page map-page" style={{ "--cine-accent": "#2f6e8a", "--cine-accent-2": "#4a9ac0" }}>
       <h1 className="map-page-title">Mappa di Exanthia</h1>
 
       <div

@@ -1,14 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import ToggleSection from './ToggleSection';
 import { useAuth } from '../AuthContext';
 import { awardPetPoints } from '../utils/pet';
 import './NPC.css';
+import '../styles/cinematic.css';
+import useParallaxScroll from '../hooks/useParallaxScroll';
+
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tavern.png";
+const DIVIDER_IMAGES = [
+  "/assets/PhotoStory/GruppoMEAA/oldman.png",
+  "/assets/PhotoStory/GruppoENOX/meetDuke.png",
+  "/assets/PhotoStory/GruppoENOX/tarbunusMeet.png",
+  "/assets/PhotoStory/GruppoLEAF/meetTaaras.png",
+  "/assets/PhotoStory/GruppoMEAA/silaen.png",
+  "/assets/PhotoStory/GruppoMEAA/getha_nephew.png",
+  "/assets/PhotoStory/GruppoMEAA/jade.png",
+  "/assets/PhotoStory/GruppoMEAA/caius.png",
+];
+const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function NPC() {
   const [npcs, setNpcs] = useState([]);
   const { currentUser } = useAuth();
+  useParallaxScroll();
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "npcs"), (snap) => {
@@ -38,21 +53,69 @@ export default function NPC() {
   });
 
   return (
-    <section className="npc-page">
+    <section className="cine-page npc-page" style={{ "--cine-accent": "#2c8a5a", "--cine-accent-2": "#3fae72" }}>
 
-      <div className="npc-header">
-        <h1 className="npc-title">Gli abitanti del mondo</h1>
-        <div className="npc-divider">
-          <span className="npc-divider-icon">✦</span>
+      {/* ── HERO ── */}
+      <section id="npc-top" className="cine-hero" aria-label="Gli abitanti del mondo">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
         </div>
-      </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Archivio dei Volti</span>
+          <h1 className="cine-hero-title">Gli Abitanti del Mondo</h1>
+          <p className="cine-hero-tagline">
+            Mercanti, nobili, erranti e creature: ogni volto che gli eroi
+            hanno incrociato lungo le strade di Exanthia.
+          </p>
+          <div className="cine-hero-meta">
+            <span className="cine-pill">👤 {npcs.length} personaggi</span>
+            {cityKeys.length > 0 && (
+              <span className="cine-pill cine-pill--accent">🏙 {cityKeys.length} {cityKeys.length === 1 ? "luogo" : "luoghi"}</span>
+            )}
+          </div>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      {/* ── SIDE NAV ── */}
+      {cityKeys.length > 0 && (
+        <nav className="cine-side-nav" aria-label="Navigazione luoghi">
+          <a href="#npc-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">👤</span></a>
+          {cityKeys.map(city => (
+            <a key={city} href={`#npc-${slugify(city)}`} className="cine-side-nav-btn" title={city}><span aria-hidden="true">🏙</span></a>
+          ))}
+        </nav>
+      )}
 
       {npcs.length === 0 ? (
-        <p className="npc-empty">Nessun personaggio censito.</p>
+        <p className="cine-empty">Nessun personaggio censito.</p>
       ) : (
         cityKeys.map((city, idx) => (
-          <div key={city} className="npc-city-section">
-            <ToggleSection title={`${city}  (${grouped[city].length})`} defaultOpen={idx === 0}>
+          <div key={city} className="npc-city" data-accent={idx % 5}>
+            <section id={`npc-${slugify(city)}`} className="cine-scrolly cine-scrolly--short" aria-label={city}>
+              <div className="cine-scrolly-media" aria-hidden="true">
+                <img src={DIVIDER_IMAGES[idx % DIVIDER_IMAGES.length]} alt=""
+                     onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+              </div>
+              <div className="cine-scrolly-content">
+                <div className="cine-scrolly-frame">
+                  <span className="cine-scrolly-eyebrow">{city === "Erranti" ? "Senza dimora" : "Luogo"}</span>
+                  <h2 className="cine-scrolly-title">{city}</h2>
+                  <p className="cine-scrolly-text">
+                    {grouped[city].length} {grouped[city].length === 1 ? "abitante" : "abitanti"}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <div className="cine-wrap cine-wrap--wide">
               <div className="npc-grid">
                 {grouped[city].map((npc) => (
                   <div key={npc.id} className="npc-card">
@@ -75,7 +138,7 @@ export default function NPC() {
                   </div>
                 ))}
               </div>
-            </ToggleSection>
+            </div>
           </div>
         ))
       )}

@@ -1,0 +1,80 @@
+/* ============================================================
+   ITEM DETAIL — tema cinematic (magenta/oro)
+   La vetrina (.player-showcase) resta una card chiara con tinta
+   rarità: leggibile sul fondo scuro. Qui ripristino il layout e
+   rendo scura la console del master + chrome.
+   ============================================================ */
+
+.item-detail-page.cine-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: calc(var(--navbar-h, 80px) + 24px) 20px 80px;
+}
+
+.item-detail-page .loading-text,
+.item-detail-page .error-text {
+  color: var(--cine-gold-soft);
+  font-style: italic;
+  font-family: var(--font-title);
+  letter-spacing: 0.1em;
+  margin-top: 60px;
+}
+
+/* ── BACK BUTTON (ghost dorato) ── */
+.item-detail-page .back-button {
+  align-self: flex-start;
+  background: linear-gradient(135deg, rgba(40, 16, 36, 0.7), rgba(20, 8, 18, 0.8));
+  color: #ffd97a;
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, transparent);
+  border-radius: 12px;
+  padding: 9px 20px;
+  font-family: var(--font-title);
+  letter-spacing: 0.08em;
+  font-size: 0.9rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.item-detail-page .back-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--cine-gold);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ── VETRINA: ombra coerente sul fondo scuro ── */
+.item-detail-page .player-showcase {
+  margin: 0 auto;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+
+/* ── MASTER CONSOLE (glass scura) ── */
+.item-detail-page .master-console {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  border-radius: var(--cine-radius);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 28%, transparent);
+  background: linear-gradient(135deg, rgba(40, 16, 36, 0.88), rgba(20, 8, 18, 0.93));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
+  padding: 22px 24px;
+  color: #ebe3d2;
+}
+.item-detail-page .master-console .mc-title { color: #fff; }
+.item-detail-page .master-console .mc-bids-table { width: 100%; border-collapse: collapse; color: #e6ddc8; }
+.item-detail-page .master-console .mc-bids-table th {
+  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
+  color: #fff; padding: 10px; text-align: left; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.item-detail-page .master-console .mc-bids-table td { padding: 9px 10px; border-bottom: 1px solid rgba(212, 175, 55, 0.14); }
+.item-detail-page .master-console .mc-bids-table tr.top-bid td { background: color-mix(in srgb, var(--cine-gold) 12%, transparent); }
+.item-detail-page .master-console .mc-stat span { color: rgba(255, 230, 200, 0.65); }
+.item-detail-page .master-console .mc-stat strong { color: #ffd97a; }
+.item-detail-page .master-console .mc-empty { color: rgba(255, 230, 200, 0.6); font-style: italic; }
+
+.item-detail-page .status-message {
+  text-align: center;
+  color: var(--cine-gold-soft);
+  margin-top: 14px;
+}

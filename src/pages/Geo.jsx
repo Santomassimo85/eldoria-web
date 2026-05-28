@@ -6,8 +6,19 @@ import { useAuth } from "../AuthContext";
 import GeoAdmin from "./GeoAdmin";
 import { awardPetPoints } from "../utils/pet";
 import './Geo.css';
+import '../styles/cinematic.css';
+import useParallaxScroll from '../hooks/useParallaxScroll';
+
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/aenlor.png";
+const CONTINENT_IMAGES = {
+  Vathriddon: "/assets/PhotoStory/GruppoMEAA/bear.png",
+  Ehkia: "/assets/PhotoStory/GruppoMEAA/hellhound.png",
+  Ohzkie: "/assets/PhotoStory/GruppoLAC/zombie_fungo.png",
+};
+const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function Geo() {
+  useParallaxScroll();
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingLoc, setEditingLoc] = useState(null);
@@ -29,7 +40,7 @@ export default function Geo() {
 
   if (loading) {
     return (
-      <section className="geo-page">
+      <section className="cine-page geo-page" style={{ "--cine-accent": "#1f8a6a", "--cine-accent-2": "#2fb088" }}>
         <div className="geo-loading">
           <span className="geo-loading-icon">🗺️</span>
           Consultando le mappe antiche…
@@ -39,17 +50,47 @@ export default function Geo() {
   }
 
   const continents = ["Vathriddon", "Ehkia", "Ohzkie"];
+  const activeContinents = continents.filter(c =>
+    locations.some(l => l.continent === c || (c === "Vathriddon" && !l.continent))
+  );
 
   return (
-    <section className="geo-page">
+    <section className="cine-page geo-page" style={{ "--cine-accent": "#1f8a6a", "--cine-accent-2": "#2fb088" }}>
 
-      {/* ---- HEADER ---- */}
-      <div className="geo-header">
-        <h1 className="geo-title">Archivio Geomantico</h1>
-        <div className="geo-divider">
-          <span className="geo-divider-icon">✦</span>
+      {/* ── HERO ── */}
+      <section id="geo-top" className="cine-hero" aria-label="Archivio Geomantico">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
         </div>
-      </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Le Terre di Exanthia</span>
+          <h1 className="cine-hero-title">Archivio Geomantico</h1>
+          <p className="cine-hero-tagline">
+            Continenti, regni e rovine: ogni luogo che le cronache hanno cartografato.
+          </p>
+          <div className="cine-hero-meta">
+            <span className="cine-pill">🗺 {locations.length} luoghi</span>
+            <span className="cine-pill cine-pill--accent">🌍 {activeContinents.length} continenti</span>
+          </div>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      {/* ── SIDE NAV ── */}
+      {activeContinents.length > 0 && (
+        <nav className="cine-side-nav" aria-label="Navigazione continenti">
+          <a href="#geo-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">🗺</span></a>
+          {activeContinents.map(c => (
+            <a key={c} href={`#geo-${slugify(c)}`} className="cine-side-nav-btn" title={c}><span aria-hidden="true">🌍</span></a>
+          ))}
+        </nav>
+      )}
 
       {/* ---- MODAL MODIFICA RAPIDA ---- */}
       {editingLoc && (
@@ -91,33 +132,50 @@ export default function Geo() {
 
         return (
           <div key={contName} className="continent-wrapper">
-            <h2 className="continent-title">{contName}</h2>
-
-            <div className="geo-grid">
-              {locationsInContinent.map((loc) => (
-                <div key={loc.id} className="geo-card-wrapper">
-                  <ToggleSection
-                    title={loc.name}
-                    defaultOpen={false}
-                    staticContent={loc.image && (
-                      <img src={loc.image} alt={loc.name} className="geo-card-preview" />
-                    )}
-                  >
-                    {isMaster && (
-                      <button
-                        className="geo-edit-btn"
-                        onClick={() => setEditingLoc(loc)}
-                      >
-                        ⚙️ Modifica Luogo
-                      </button>
-                    )}
-                    <div
-                      className="geo-description"
-                      dangerouslySetInnerHTML={{ __html: loc.description }}
-                    />
-                  </ToggleSection>
+            <section id={`geo-${slugify(contName)}`} className="cine-scrolly cine-scrolly--short" aria-label={contName}>
+              <div className="cine-scrolly-media" aria-hidden="true">
+                <img src={CONTINENT_IMAGES[contName] || HERO_IMAGE} alt=""
+                     onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+              </div>
+              <div className="cine-scrolly-content">
+                <div className="cine-scrolly-frame">
+                  <span className="cine-scrolly-eyebrow">Continente</span>
+                  <h2 className="cine-scrolly-title">{contName}</h2>
+                  <p className="cine-scrolly-text">
+                    {locationsInContinent.length} {locationsInContinent.length === 1 ? "luogo cartografato" : "luoghi cartografati"}
+                  </p>
                 </div>
-              ))}
+              </div>
+            </section>
+
+            <div className="cine-wrap cine-wrap--wide">
+              <div className="geo-grid">
+                {locationsInContinent.map((loc) => (
+                  <div key={loc.id} className="geo-card-wrapper">
+                    <ToggleSection
+                      title={loc.name}
+                      defaultOpen={false}
+                      staticContent={loc.image && (
+                        <img src={loc.image} alt={loc.name} className="geo-card-preview" />
+                      )}
+                    >
+                      {isMaster && (
+                        <button
+                          className="geo-edit-btn"
+                          onClick={() => setEditingLoc(loc)}
+                        >
+                          ⚙️ Modifica Luogo
+                        </button>
+                      )}
+                      <div
+                        className="geo-description"
+                        dangerouslySetInnerHTML={{ __html: loc.description }}
+                      />
+                    </ToggleSection>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );

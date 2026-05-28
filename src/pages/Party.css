@@ -1,449 +1,159 @@
 /* ============================================================
-   PARTY — "Le Compagnie di Exanthia"
-   Flat-design redesign (no gradients, no depth shadows)
+   PARTY — tema cinematic (crimson/oro, accento per-compagnia)
+   Scheletro da styles/cinematic.css.
    ============================================================ */
 
-.party-page {
-  padding: 100px 16px 90px;
-  max-width: 1180px;
-  margin: 0 auto;
-  font-family: var(--font-text);
-  color: var(--text);
-}
-
-/* ─── HERO HEADER ───────────────────────────────────────────── */
-.party-header {
-  text-align: center;
-  margin-bottom: 32px;
-  position: relative;
-}
-
-.party-eyebrow {
-  font-family: var(--font-title);
-  font-size: clamp(0.62rem, 1.6vw, 0.78rem);
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: #9a7a20;
-  margin-bottom: 12px;
-}
-
-.party-title {
-  font-family: var(--font-title);
-  font-size: clamp(1.6rem, 5.8vw, 3rem);
-  color: var(--gold);
-  letter-spacing: 0.06em;
-  line-height: 1.15;
-  margin-bottom: 14px;
-}
-
-.party-divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin: 12px auto 18px;
-  max-width: 360px;
-}
-
-.party-divider::before,
-.party-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--gold);
-  opacity: 0.5;
-}
-
-.party-divider-icon {
-  font-size: 1rem;
-  color: var(--gold);
-}
-
-.party-lore {
-  max-width: 620px;
-  margin: 0 auto;
-  font-style: italic;
-  font-size: clamp(0.88rem, 2.2vw, 1rem);
-  line-height: 1.7;
-  color: #4a3a14;
-}
-
-/* ─── STATS RIBBON ──────────────────────────────────────────── */
-.party-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin: 30px auto 28px;
-  max-width: 720px;
-}
-
-.party-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 8px;
-  background: #fdf6e3;
-  border: 1.5px solid #e0cf9d;
-  border-radius: 12px;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.party-stat:hover {
-  background: #fffaf0;
-  border-color: var(--gold);
-}
-
-.party-stat strong {
-  font-family: var(--font-title);
-  font-size: clamp(1.2rem, 3.6vw, 1.7rem);
-  color: var(--red);
-  line-height: 1;
-}
-
-.party-stat span {
-  font-family: var(--font-title);
-  font-size: 0.65rem;
-  letter-spacing: 0.14em;
-  color: #9a7a20;
-  text-transform: uppercase;
-  margin-top: 6px;
-}
-
-@media (max-width: 480px) {
-  .party-stats { grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .party-stat  { padding: 10px 4px; }
-}
-
-/* ─── FACTION TABS ──────────────────────────────────────────── */
-.party-tabs {
+/* ─── FACTION TABS (glass scuri) ───────────────────────────── */
+.party-page .party-tabs {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 36px;
+  margin: 8px 0 8px;
 }
-
-.party-tab {
-  --tab-color: var(--gold);
+.party-page .party-tab {
+  --tab-color: var(--cine-gold);
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: #fffdf7;
-  border: 1.5px solid #e0cf9d;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, rgba(40, 18, 18, 0.7), rgba(20, 9, 9, 0.8));
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
   border-radius: 22px;
   font-family: var(--font-title);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  color: #6f5520;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e6d6b8;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.15s, color 0.15s, transform 0.15s, background 0.15s;
 }
-
-.party-tab:hover {
-  border-color: var(--tab-color);
-  color: var(--tab-color);
-}
-
-.party-tab-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--tab-color);
-}
-
-.party-tab.on {
-  background: var(--tab-color);
+.party-page .party-tab:hover { border-color: var(--tab-color); color: #fff; transform: translateY(-1px); }
+.party-page .party-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--tab-color); }
+.party-page .party-tab.on {
+  background: linear-gradient(135deg, var(--tab-color), color-mix(in srgb, var(--tab-color) 55%, #000));
   border-color: var(--tab-color);
   color: #fff;
 }
+.party-page .party-tab.on .party-tab-dot { background: #fff; }
 
-.party-tab.on .party-tab-dot {
-  background: #fff;
-}
+/* ─── PARTY LIST ───────────────────────────────────────────── */
+.party-page .party-list { display: flex; flex-direction: column; }
+.party-page .party-faction { position: relative; }
 
-/* ─── PARTY LIST ────────────────────────────────────────────── */
-.party-list {
-  display: flex;
-  flex-direction: column;
-  gap: 56px;
-}
+/* frame divisore in colore compagnia */
+.party-page .party-faction .cine-scrolly-frame { border-top-color: var(--party-color); }
 
-/* ─── FACTION SECTION ──────────────────────────────────────── */
-.party-faction {
-  position: relative;
-  padding-top: 4px;
-}
-
-/* ─── BANNER ───────────────────────────────────────────────── */
-.party-banner {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 20px;
-  padding: 20px 26px 20px 22px;
-  background: color-mix(in srgb, var(--party-color) 14%, #fdf6e3);
-  border: 1.5px solid var(--party-color);
-  border-radius: 16px;
-  margin-bottom: 22px;
-  overflow: hidden;
-}
-
-/* Decorative left edge stripe in party color (flat) */
-.party-banner-edge {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 6px;
-  background: var(--party-color);
-}
-
-/* ── Crest (heraldic shield, flat) ── */
-.party-crest {
-  position: relative;
-  width: 72px;
-  height: 86px;
-  display: flex;
+/* crest tondo dentro al frame */
+.party-page .party-crest {
+  --accent: var(--cine-gold);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  --shield-shape: polygon(
-    50% 0%, 100% 0%, 100% 56%,
-    92% 74%, 72% 90%, 50% 100%,
-    28% 90%, 8% 74%, 0% 56%, 0% 0%
-  );
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+  border: 2px solid rgba(255, 240, 210, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
-
-/* Outer gold rim (flat color) */
-.party-crest::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  clip-path: var(--shield-shape);
-  background: var(--gold);
-}
-
-/* Inner colored field (flat) */
-.party-crest-ring {
-  position: absolute;
-  inset: 3px;
-  clip-path: var(--shield-shape);
-  background: var(--party-color);
-}
-
-.party-crest-letter {
-  position: relative;
-  z-index: 2;
+.party-page .party-crest-letter {
   font-family: var(--font-title);
-  font-size: 2rem;
+  font-size: 1.7rem;
   font-weight: 700;
   color: #fffbea;
-  letter-spacing: 0;
   line-height: 1;
 }
-
-/* ── Title block ── */
-.party-banner-text {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-}
-
-.party-banner-tag {
+.party-page .party-count-chip {
+  display: inline-block;
+  margin: 4px auto 0;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--party-color) 28%, rgba(0,0,0,0.4));
+  border: 1px solid color-mix(in srgb, var(--party-color) 70%, transparent);
   font-family: var(--font-title);
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--party-color);
-  margin-bottom: 4px;
-}
-
-.party-banner-name {
-  font-family: var(--font-title);
-  font-size: clamp(1.05rem, 3.4vw, 1.55rem);
-  color: var(--party-color);
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.party-banner-motto {
-  margin-top: 6px;
-  font-style: italic;
-  font-size: clamp(0.78rem, 2.1vw, 0.92rem);
-  color: #5b461c;
-  line-height: 1.45;
-}
-
-/* ── Member count badge ── */
-.party-banner-count {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 72px;
-  padding: 10px 14px;
-  background: #ffffff;
-  border: 1.5px solid var(--party-color);
-  border-radius: 12px;
-}
-
-.party-banner-count strong {
-  font-family: var(--font-title);
-  font-size: 1.55rem;
-  line-height: 1;
-  color: var(--party-color);
-}
-
-.party-banner-count span {
-  font-family: var(--font-title);
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
-  color: #6f5520;
-  text-transform: uppercase;
-  margin-top: 4px;
-}
-
-/* ── Banner responsive ── */
-@media (max-width: 640px) {
-  .party-banner {
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      "crest text"
-      "count count";
-    padding: 16px 18px 16px 16px;
-    gap: 14px;
-  }
-  .party-crest        { grid-area: crest; width: 56px; height: 68px; }
-  .party-crest-letter { font-size: 1.55rem; }
-  .party-banner-text  { grid-area: text; }
-  .party-banner-count {
-    grid-area: count;
-    flex-direction: row;
-    gap: 8px;
-    padding: 6px 12px;
-    justify-self: start;
-    min-width: 0;
-  }
-  .party-banner-count strong { font-size: 1.05rem; }
-  .party-banner-count span { margin-top: 0; }
+  color: #fff;
 }
 
 /* ─── HERO GRID ────────────────────────────────────────────── */
-.hero-grid {
+.party-page .hero-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 18px;
+  padding: 8px 0 0;
 }
-
 @media (min-width: 720px) {
-  .hero-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 22px;
-  }
+  .party-page .hero-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 22px; }
 }
-
 @media (max-width: 420px) {
-  .hero-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
+  .party-page .hero-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }
 
-/* ─── HERO CARD (flat) ──────────────────────────────────────── */
-.hero-card {
-  --accent: var(--gold);
+/* ─── HERO CARD (glass scuro con accento compagnia) ────────── */
+.party-page .hero-card {
+  --accent: var(--cine-gold);
   position: relative;
   display: flex;
   flex-direction: column;
-  color: inherit;
-  background: #1a1208;
-  border: 2px solid var(--accent);
-  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(28, 18, 12, 0.95), rgba(16, 10, 8, 0.95));
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 16px;
   overflow: hidden;
-  transition: border-color 0.15s, background 0.15s;
   isolation: isolate;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
-
-.hero-card:hover {
-  border-color: #fff;
-  background: #2a1f10;
+.party-page .hero-card:hover {
+  border-color: #ffe6b0;
+  transform: translateY(-3px);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
 }
-
-/* photo */
-.hero-card-photo {
-  position: relative;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
+.party-page .hero-card-photo { position: relative; aspect-ratio: 3 / 4; overflow: hidden; }
+.party-page .hero-card-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center top;
+  transition: transform 0.4s ease;
 }
-
-.hero-card-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-}
-
-/* flat opaque footer behind the nameplate (no gradient) */
-.hero-card-shade { display: none; }
-
-/* nameplate */
-.hero-card-plate {
+.party-page .hero-card:hover .hero-card-photo img { transform: scale(1.05); }
+.party-page .hero-card-shade { display: none; }
+.party-page .hero-card-plate {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 0; right: 0; bottom: 0;
   padding: 12px 14px 14px;
   z-index: 1;
   text-align: left;
-  background: var(--accent);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 92%, #000) 38%);
 }
-
-.hero-card-name {
+.party-page .hero-card-name {
   font-family: var(--font-title);
   font-size: clamp(0.86rem, 2.4vw, 1rem);
   letter-spacing: 0.04em;
-  color: #1a0a0a;
+  color: #fff;
   margin: 0 0 4px;
   line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
-
-.hero-card-meta {
+.party-page .hero-card-meta {
   font-family: var(--font-text);
   font-size: 0.72rem;
-  color: #1a0a0a;
+  color: rgba(255, 245, 230, 0.92);
   margin: 0;
   display: flex;
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
   letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
+.party-page .hero-card-meta .dot { opacity: 0.6; }
 
-.hero-card-meta .dot { opacity: 0.5; }
-
-/* ─── REDUCED MOTION ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .party-faction,
-  .hero-card,
-  .hero-card-photo img,
-  .hero-card-plate,
-  .party-crest-ring {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-  }
-}
-
-/* ─── PAGE-LEVEL RESPONSIVE ─────────────────────────────────── */
-@media (max-width: 420px) {
-  .party-page { padding: 90px 12px 70px; }
-  .party-list { gap: 40px; }
-}
-
-@media (min-width: 768px) {
-  .party-page { padding: 110px 28px 90px; }
+  .party-page .hero-card,
+  .party-page .hero-card-photo img { transition: none !important; transform: none !important; }
 }

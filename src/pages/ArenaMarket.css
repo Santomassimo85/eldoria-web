@@ -1,13 +1,12 @@
-.am-page {
-  min-height: 100vh;
-  padding: calc(var(--navbar-h) + 30px) 24px 80px;
-  background: var(--bg, #fff);
-  font-family: var(--font-text);
-  color: var(--text, #111);
-  max-width: 860px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
+/* ArenaMarket usa lo scheletro cinematic (tema rosso Arena).
+   Le card chiare restano coerenti sul fondo scuro. */
+.am-page.cine-page { color: #ebe3d2; }
+.am-page .am-body { max-width: 900px; margin: 0 auto; padding: 8px 20px 0; box-sizing: border-box; }
+/* titoli/sottotitoli direttamente sul fondo scuro → resi chiari */
+.am-page .am-classes-section > .am-how-title { color: #ffd97a; }
+.am-page .am-classes-sub { color: rgba(255, 232, 205, 0.72); }
+.am-page .am-hp-bonus-tag { color: #8effb4; }
+.am-page .am-login-notice { text-align: center; margin-top: 120px; font-size: 1rem; color: var(--cine-gold-soft); }
 
 /* ── Header ─────────────────────────────────────────── */
 .am-header {

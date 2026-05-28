@@ -14,6 +14,8 @@ import {
   collection,       // AGGIUNTO per notifiche
   serverTimestamp   // AGGIUNTO per notifiche
 } from "firebase/firestore";
+import "../styles/cinematic.css";
+import "./ItemDetail.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
@@ -270,8 +272,8 @@ export default function ItemDetail() {
     }
   };
 
-  if (loading) return <section className="item-detail-page"><p className="loading-text">Caricamento...</p></section>;
-  if (!item) return <section className="item-detail-page"><p className="error-text">Oggetto non trovato.</p></section>;
+  if (loading) return <section className="cine-page item-detail-page"><p className="loading-text">Caricamento...</p></section>;
+  if (!item) return <section className="cine-page item-detail-page"><p className="error-text">Oggetto non trovato.</p></section>;
 
   const rarityKey = (item.class || "Comune").replace(/\s/g, "");
   const bidEntries = item.bids ? Object.entries(item.bids) : [];
@@ -279,7 +281,7 @@ export default function ItemDetail() {
   const bidHighest = bidEntries.reduce((m, [, b]) => Math.max(m, b?.amount ?? b ?? 0), 0);
 
   return (
-    <section className={`item-detail-page ${statusClass} ${isMaster ? "view-master" : "view-player"}`}>
+    <section className={`cine-page item-detail-page ${statusClass} ${isMaster ? "view-master" : "view-player"}`} style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
       <button
         onClick={() => navigate("/mercato")}
         className={`back-button ${isMaster ? "admin-back-button" : ""}`}

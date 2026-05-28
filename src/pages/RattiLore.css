@@ -1,0 +1,74 @@
+/* ============================================================
+   RATTI LORE — tema cinematic (olive/sottosuolo)
+   ============================================================ */
+
+.ratti-page .ratti-lore { line-height: 1.85; font-size: clamp(0.92rem, 2.2vw, 1.04rem); }
+.ratti-page .ratti-lore p { margin: 0 0 16px; }
+.ratti-page .ratti-lore strong { color: var(--cine-accent); }
+.ratti-page .ratti-lore em, .ratti-page .ratti-lore b { color: #6b5410; }
+
+.ratti-page .ratti-quote {
+  margin: 22px 0;
+  padding: 14px 20px;
+  border-left: 4px solid var(--cine-gold);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cine-gold) 14%, transparent), transparent 70%);
+  border-radius: 0 12px 12px 0;
+  color: #5a4a16;
+  font-size: 1.05rem;
+}
+
+.ratti-page .ratti-subtitle {
+  font-family: var(--font-title);
+  color: var(--cine-accent);
+  font-size: clamp(1rem, 2.6vw, 1.25rem);
+  letter-spacing: 0.04em;
+  margin: 28px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.4);
+}
+
+/* ── TABELLA gradi (glass scura) ── */
+.ratti-page .ratti-table-wrap {
+  border-radius: var(--cine-radius);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--cine-gold) 8%, transparent), transparent 50%),
+    linear-gradient(135deg, rgba(34, 34, 18, 0.88), rgba(18, 18, 10, 0.93));
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.ratti-page .ratti-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #e6ddc8;
+}
+.ratti-page .ratti-table thead th {
+  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
+  color: #fff;
+  font-family: var(--font-title);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  text-align: left;
+  padding: 14px 16px;
+}
+.ratti-page .ratti-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+  vertical-align: top;
+  font-size: 0.92rem;
+}
+.ratti-page .ratti-table tbody tr:last-child td { border-bottom: none; }
+.ratti-page .ratti-table tbody tr:nth-child(even) td { background: rgba(212, 175, 55, 0.04); }
+.ratti-page .ratti-table tbody tr:hover td { background: color-mix(in srgb, var(--cine-gold) 9%, transparent); }
+.ratti-page .ratti-table td strong { color: #ffd97a; font-family: var(--font-title); letter-spacing: 0.03em; }
+.ratti-page .ratti-pr { color: var(--cine-gold-soft); white-space: nowrap; font-weight: 600; }
+.ratti-page .ratti-bonus { color: #d8cfb6; }
+
+@media (max-width: 540px) {
+  .ratti-page .ratti-table thead { display: none; }
+  .ratti-page .ratti-table tbody td { display: block; padding: 6px 16px; border: none; }
+  .ratti-page .ratti-table tbody tr { display: block; padding: 10px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.18); }
+}

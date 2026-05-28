@@ -16,9 +16,12 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
+import "../styles/cinematic.css";
 import "./Feedback.css";
+import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+const HERO_IMAGE = "/assets/PhotoStory/GruppoENOX/milo1.png";
 
 /* Canonical list of features the players can review. Keep keys
    stable — they're used as part of the doc id. */
@@ -771,6 +774,7 @@ function MasterDashboard({ masterUser }) {
    PAGE ENTRY
    ============================================================ */
 export default function Feedback() {
+  useParallaxScroll();
   const { currentUser } = useAuth();
   const [characterName, setCharacterName] = useState("");
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -790,23 +794,40 @@ export default function Feedback() {
 
   if (!currentUser) {
     return (
-      <section className="fb-page">
-        <h1 className="fb-title">💬 Feedback</h1>
-        <p className="fb-locked">Accedi per lasciare un feedback.</p>
+      <section className="cine-page fb-page" style={{ "--cine-accent": "#1f7a8a", "--cine-accent-2": "#2fb0c0" }}>
+        <div className="cine-wrap fb-locked-wrap">
+          <h1 className="fb-title">💬 Feedback</h1>
+          <p className="fb-locked">Accedi per lasciare un feedback.</p>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="fb-page">
-      <header className="fb-head">
-        <h1 className="fb-title">💬 Feedback</h1>
-        <p className="fb-sub">
-          Valuta ogni funzionalità da 0 a 5 stelle, scegli pro e contro, e lascia un messaggio.
-          Puoi modificare il tuo feedback in qualsiasi momento.
-        </p>
-      </header>
+    <section className="cine-page fb-page" style={{ "--cine-accent": "#1f7a8a", "--cine-accent-2": "#2fb0c0" }}>
+      {/* ── HERO ── */}
+      <section className="cine-hero cine-hero--short" aria-label="Feedback">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
+        </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">La tua voce conta</span>
+          <h1 className="cine-hero-title">Feedback</h1>
+          <p className="cine-hero-tagline">
+            Valuta ogni funzionalità, scegli pro e contro, lascia un messaggio.
+            Puoi modificare il tuo feedback quando vuoi.
+          </p>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
 
+      <div className="cine-wrap fb-body">
       <div className="fb-panel">
         <h2 className="fb-section-title">📝 Lascia il tuo feedback</h2>
         <PlayerForm currentUser={currentUser} characterName={characterName} />
@@ -822,6 +843,7 @@ export default function Feedback() {
           <MasterDashboard masterUser={currentUser} />
         </div>
       )}
+      </div>
     </section>
   );
 }

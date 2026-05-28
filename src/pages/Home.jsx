@@ -4,11 +4,14 @@ import ToggleSection from "../pages/ToggleSection";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import './Home.css';
+import '../styles/cinematic.css';
+import useParallaxScroll from '../hooks/useParallaxScroll';
 
 export default function Home() {
   const [visible, setVisible] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
+  useParallaxScroll();
 
   const antichiDei = [
     {
@@ -267,7 +270,7 @@ export default function Home() {
     ));
 
   return (
-    <div className="home-container">
+    <div className="cine-page home-page" style={{ "--cine-accent": "#2f5689", "--cine-accent-2": "#4e7ab4" }}>
       <button
         className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -290,15 +293,54 @@ export default function Home() {
         </div>
       </div>
 
-      <section className="home-lore-section">
-        <img
-          src="/assets/creation.png"
-          className={`home-creation-image ${visible ? "show" : "hide"}`}
-          alt="Exanthia"
-          id="creation-img"
-        />
-        <h2 className="home-lore-title">L'inizio del mondo di Exanthia</h2>
-        <p className="home-lore-text"><span className="home-lore-drop">E</span>oni fa esisteva soltanto il buio, l´assenza di vita, e in quella
+      {/* ── HERO ── */}
+      <section id="home-top" className="cine-hero" aria-label="Il Mondo di Exanthia">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src="/assets/PhotoStory/GruppoMEAA/masso_arcanite.png" alt=""
+               onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
+        </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Cronache di Exanthia</span>
+          <h1 className="cine-hero-title">Il Mondo di Exanthia</h1>
+          <p className="cine-hero-tagline">
+            Dalla Caduta delle Stelle al risveglio dei nuovi eroi: il principio,
+            gli dèi e le ombre di un mondo spezzato e ricomposto.
+          </p>
+          <div className="cine-hero-meta">
+            <span className="cine-pill">✦ Antichi Dei</span>
+            <span className="cine-pill">⚜ Nuovi Dei</span>
+            <span className="cine-pill cine-pill--accent">☠ Dei Malvagi</span>
+          </div>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      {/* ── SIDE NAV ── */}
+      <nav className="cine-side-nav" aria-label="Navigazione sezioni">
+        <a href="#home-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">🌍</span></a>
+        <a href="#home-lore" className="cine-side-nav-btn" title="L'inizio del mondo"><span aria-hidden="true">📜</span></a>
+        <a href="#home-antichi" className="cine-side-nav-btn" title="Antichi Dei"><span aria-hidden="true">✦</span></a>
+        <a href="#home-nuovi" className="cine-side-nav-btn" title="Nuovi Dei"><span aria-hidden="true">⚜</span></a>
+        <a href="#home-malvagi" className="cine-side-nav-btn" title="Dei Malvagi"><span aria-hidden="true">☠</span></a>
+      </nav>
+
+      {/* ── LORE: inizio del mondo ── */}
+      <div id="home-lore" className="cine-wrap cine-wrap--narrow">
+        <section className="cine-panel home-lore-section">
+          <img
+            src="/assets/creation.png"
+            className={`home-creation-image ${visible ? "show" : "hide"}`}
+            alt="Exanthia"
+            id="creation-img"
+          />
+          <h2 className="home-lore-title">L'inizio del mondo di Exanthia</h2>
+          <p className="home-lore-text"><span className="home-lore-drop">E</span>oni fa esisteva soltanto il buio, l´assenza di vita, e in quella
           bolla di oscuritá che vivevano due esseri, uno privo di luce e l´altro
           luminoso come una stella. Questi esseri preseró il nome di Ny
           (luce) e Ouh (buio) secondo le antiche scritture, e durante una
@@ -375,36 +417,85 @@ export default function Home() {
           qui che inizia la storia dei nuovi eroi...ma rimarrano tali o
           prenderanno una strada diversa?
         </p>
-      </section>
+        </section>
+      </div>
 
       {/* --- ANTICHI DEI --- */}
-      <div className="home-deity-section">
-        <ToggleSection title="Antichi Dei (I Nati dalle Lacrime)" defaultOpen={false}>
-          <h3 className="pantheon-main-title">I Nati dalle Lacrime</h3>
-          <img
-            src="/assets/pantheon/Antico_pantheon.png"
-            className="home-creation-image show"
-            alt="Antico Pantheon"
-            style={{ marginBottom: "20px" }}
-          />
-          <div className="pantheon-list">{renderPantheon(antichiDei)}</div>
-        </ToggleSection>
+      <section id="home-antichi" className="cine-scrolly cine-scrolly--short" aria-label="Antichi Dei">
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src="/assets/PhotoStory/GruppoMEAA/Aen-Lor.png" alt=""
+               onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+        </div>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame">
+            <span className="cine-scrolly-eyebrow">Pantheon</span>
+            <h2 className="cine-scrolly-title">Antichi Dei</h2>
+            <p className="cine-scrolly-text">I Nati dalle Lacrime — le prime divinità sorte dal pianto dei gemelli primordiali.</p>
+          </div>
+        </div>
+      </section>
+      <div className="cine-wrap cine-wrap--narrow">
+        <div className="home-deity-section">
+          <ToggleSection title="Antichi Dei (I Nati dalle Lacrime)" defaultOpen={false}>
+            <h3 className="pantheon-main-title">I Nati dalle Lacrime</h3>
+            <img
+              src="/assets/pantheon/Antico_pantheon.png"
+              className="home-creation-image show"
+              alt="Antico Pantheon"
+              style={{ marginBottom: "20px" }}
+            />
+            <div className="pantheon-list">{renderPantheon(antichiDei)}</div>
+          </ToggleSection>
+        </div>
       </div>
 
       {/* --- NUOVI DEI --- */}
-      <div className="home-deity-section">
-        <ToggleSection title="Nuovi Dei (Dopo la Grande Guerra)" defaultOpen={false}>
-          <h3 className="pantheon-main-title">I Custodi dell'Era Spezzata</h3>
-          <div className="pantheon-list">{renderPantheon(nuoviDei)}</div>
-        </ToggleSection>
+      <section id="home-nuovi" className="cine-scrolly cine-scrolly--short" aria-label="Nuovi Dei">
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt=""
+               onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+        </div>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame">
+            <span className="cine-scrolly-eyebrow">Pantheon</span>
+            <h2 className="cine-scrolly-title">Nuovi Dei</h2>
+            <p className="cine-scrolly-text">I Custodi dell'Era Spezzata — sorti dopo la Grande Guerra per vegliare sul mondo ricomposto.</p>
+          </div>
+        </div>
+      </section>
+      <div className="cine-wrap cine-wrap--narrow">
+        <div className="home-deity-section">
+          <ToggleSection title="Nuovi Dei (Dopo la Grande Guerra)" defaultOpen={false}>
+            <h3 className="pantheon-main-title">I Custodi dell'Era Spezzata</h3>
+            <div className="pantheon-list">{renderPantheon(nuoviDei)}</div>
+          </ToggleSection>
+        </div>
       </div>
 
       {/* --- DEI MALVAGI --- */}
-      <div className="home-deity-section">
-        <ToggleSection title="Dei Malvagi (Le Ombre del Vuoto)" defaultOpen={false}>
-          <h3 className="pantheon-main-title">Le Piaghe di Exanthia</h3>
-          <div className="pantheon-list">{renderPantheon(deiMalvagi)}</div>
-        </ToggleSection>
+      <section id="home-malvagi" className="cine-scrolly cine-scrolly--short" aria-label="Dei Malvagi">
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src="/assets/PhotoStory/GruppoMEAA/abominio.png" alt=""
+               onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+        </div>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame">
+            <span className="cine-scrolly-eyebrow">Pantheon</span>
+            <h2 className="cine-scrolly-title">Dei Malvagi</h2>
+            <p className="cine-scrolly-text">Le Ombre del Vuoto — le piaghe che bramano la fine di ogni storia di Exanthia.</p>
+          </div>
+        </div>
+      </section>
+      <div className="cine-wrap cine-wrap--narrow">
+        <div className="home-deity-section">
+          <ToggleSection title="Dei Malvagi (Le Ombre del Vuoto)" defaultOpen={false}>
+            <h3 className="pantheon-main-title">Le Piaghe di Exanthia</h3>
+            <div className="pantheon-list">{renderPantheon(deiMalvagi)}</div>
+          </ToggleSection>
+        </div>
       </div>
     </div>
   );

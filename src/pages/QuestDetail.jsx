@@ -4,8 +4,12 @@ import { db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import "./admin.css";
+import "../styles/cinematic.css";
+import "./QuestDetail.css";
+import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/wolf_alpha.png";
 
 // ── Unica fonte di verità per i party ─────────────────────────
 const PARTY_ROSTER = {
@@ -24,6 +28,7 @@ const getPartyByCharName = (name) => {
 };
 
 export default function QuestDetail() {
+  useParallaxScroll();
   const { id }      = useParams();
   const navigate    = useNavigate();
   const { currentUser } = useAuth();
@@ -90,7 +95,7 @@ export default function QuestDetail() {
   // ── Render ─────────────────────────────────────────────────
   if (loading || userCharName === null) {
     return (
-      <section className="quest-detail-page">
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
         <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Leggendo i sigilli...</p>
       </section>
     );
@@ -98,7 +103,7 @@ export default function QuestDetail() {
 
   if (!quest) {
     return (
-      <section className="quest-detail-page">
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
         <p style={{ textAlign: "center", color: "#aaa" }}>Incarico non trovato.</p>
       </section>
     );
@@ -108,7 +113,7 @@ export default function QuestDetail() {
 
   if (access === false) {
     return (
-      <section className="quest-detail-page">
+      <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
         <button onClick={() => navigate("/bacheca")} className="admin-back-link">← Torna alla Bacheca</button>
         <div className="quest-detail-card" style={{ textAlign: "center", padding: "40px 20px" }}>
           <p style={{ fontSize: "2rem", marginBottom: "12px" }}>🔒</p>
@@ -123,12 +128,31 @@ export default function QuestDetail() {
   const isAcceptedByMyParty = quest.acceptedParty === userParty;
 
   return (
-    <section className="quest-detail-page">
+    <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
+      {/* ── HERO ── */}
+      <section className="cine-hero cine-hero--short" aria-label={quest.title}>
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={quest.coverImage || HERO_IMAGE} alt=""
+               onError={(e) => { e.currentTarget.src = HERO_IMAGE; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
+        </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Incarico{quest.zona ? ` · ${quest.zona}` : ""}</span>
+          <h1 className="cine-hero-title">{quest.title}</h1>
+          <p className="cine-hero-tagline">Emesso da {quest.sender || "Mittente Misterioso"}</p>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      <div className="cine-wrap cine-wrap--narrow">
       <button onClick={() => navigate(-1)} className="admin-back-link">← Torna alla Bacheca</button>
 
       <div className="quest-detail-card">
-        <h1 className="quest-detail-title">{quest.title}</h1>
-
         <p className="quest-detail-field">
           <strong>Emesso da:</strong> {quest.sender || "Mittente Misterioso"}
         </p>
@@ -164,6 +188,7 @@ export default function QuestDetail() {
             )}
           </div>
         )}
+      </div>
       </div>
     </section>
   );

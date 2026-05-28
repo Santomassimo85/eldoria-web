@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import "./Bacheca.css";
+import "../styles/cinematic.css";
+import useParallaxScroll from "../hooks/useParallaxScroll";
 import {
   collection, onSnapshot, doc, getDoc,
   updateDoc, query, where, getDocs,
@@ -10,6 +12,8 @@ import {
 import { useAuth } from "../AuthContext";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/treasure.png";
+const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoENOX/incontro.png";
 
 // ── Unica fonte di verità per i party ─────────────────────────
 const PARTY_ROSTER = {
@@ -37,6 +41,7 @@ export default function Bacheca() {
 
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
+  useParallaxScroll();
 
   useEffect(() => {
     if (!currentUser) return;
@@ -134,28 +139,52 @@ export default function Bacheca() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <section className="bacheca-page">
-      <div className="bacheca-header">
-        <h1 className="bacheca-title">Hemile's Board</h1>
-        <div className="bacheca-divider">
-          <span className="bacheca-divider-icon">✦</span>
-        </div>
-        <p className="bacheca-subtitle">
-          Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
-          {userParty && userParty !== "Senza Gruppo" ? ` — Party ${userParty}` : ""}
-        </p>
-      </div>
+    <section className="cine-page bacheca-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
 
-      <div className="bacheca-intro">
-        Il vento porta nuove richieste sulla bacheca di Hemile. Pergamene, sigilli
-        e missive attendono mani coraggiose: scegli con cura, e lascia che il tuo
-        nome resti scolpito nella memoria dei mondani.
-      </div>
+      {/* ── HERO ── */}
+      <section id="bacheca-top" className="cine-hero cine-hero--short" aria-label="Hemile's Board">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
+        </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Bacheca di Hemile</span>
+          <h1 className="cine-hero-title">Hemile's Board</h1>
+          <p className="cine-hero-tagline">
+            Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
+            {userParty && userParty !== "Senza Gruppo" ? ` — Party ${userParty}` : ""}.
+            Pergamene, sigilli e missive attendono mani coraggiose.
+          </p>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      {/* ── DIVISORE: Le Missive ── */}
+      <section className="cine-scrolly cine-scrolly--short" aria-label="Le Missive">
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
+        </div>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame">
+            <span className="cine-scrolly-eyebrow">Incarichi</span>
+            <h2 className="cine-scrolly-title">Le Missive</h2>
+            <p className="cine-scrolly-text">
+              Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {loading ? (
-        <div className="bacheca-loading">📜 Caricamento pergamene…</div>
+        <div className="cine-loading"><span className="cine-loading-icon">📜</span>Caricamento pergamene…</div>
       ) : questEntries.length === 0 ? (
-        <div className="bacheca-empty">Nessuna missiva al momento. Torna più tardi.</div>
+        <div className="cine-empty">Nessuna missiva al momento. Torna più tardi.</div>
       ) : (
         <div className="scrolls-grid">
           {questEntries.map((quest) => {

@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from "react";
 import "./Party.css";
+import "../styles/cinematic.css";
+import useParallaxScroll from "../hooks/useParallaxScroll";
+
+const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png";
 
 /* ── Party data — kept in one structure so we can render statistics ── */
 const PARTIES = [
@@ -8,6 +12,7 @@ const PARTIES = [
     name: "Compagnia di Amea",
     code: "A",
     color: "#c0392b",
+    divider: "/assets/PhotoStory/GruppoMEAA/SylvaBerserk.png",
     motto: "Il fuoco non chiede permesso",
     members: [
       { name: "Caius",   race: "Elfo",       class: "Mago",      image: "/assets/player/Caius.jpg" },
@@ -21,6 +26,7 @@ const PARTIES = [
     name: "Compagnia di Lac",
     code: "L",
     color: "#2980b9",
+    divider: "/assets/PhotoStory/GruppoMEAA/Krag-Dor.jpg",
     motto: "Le acque profonde non temono il vento",
     members: [
       { name: "Horn",    race: "Umano",    class: "Ranger", image: "/assets/player/Horn.jpg" },
@@ -33,6 +39,7 @@ const PARTIES = [
     name: "Compagnia di Enox",
     code: "E",
     color: "#8e44ad",
+    divider: "/assets/PhotoStory/GruppoMEAA/cultista.png",
     motto: "Nel buio si forgiano i nomi più luminosi",
     members: [
       // { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg",          hidden: true },
@@ -49,6 +56,7 @@ const PARTIES = [
     name: "Compagnia di Leaf",
     code: "F",
     color: "#27ae60",
+    divider: "/assets/PhotoStory/GruppoLEAF/soranSong.png",
     motto: "Dove cade la foglia, nasce la rotta",
     members: [
       // { name: "Taaras Stormrage", race: "Mezz'Elfo",  class: "Chierico", image: "/assets/player/TaarasStormrage.png" },
@@ -89,47 +97,44 @@ function HeroCard({ hero, accent }) {
   );
 }
 
-/* ── Party banner + grid ───────────────────────────────────── */
+/* ── Party divider (scrollytell) + grid ────────────────────── */
 function PartySection({ party }) {
   const visibleMembers = party.members.filter((m) => !m.hidden);
   return (
-    <section
-      className="party-faction"
-      style={{ "--party-color": party.color }}
-      data-id={party.id}
-    >
-      <header className="party-banner">
-        <div className="party-banner-edge" aria-hidden="true" />
-
-        <div className="party-crest">
-          <span className="party-crest-letter">{party.code}</span>
-          <span className="party-crest-ring" />
+    <div className="party-faction" style={{ "--party-color": party.color }} data-id={party.id}>
+      <section id={`party-${party.id}`} className="cine-scrolly cine-scrolly--short" aria-label={party.name}>
+        <div className="cine-scrolly-media" aria-hidden="true">
+          <img src={party.divider} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
         </div>
-
-        <div className="party-banner-text">
-          <p className="party-banner-tag">Casata di Exanthia · {party.id}</p>
-          <h2 className="party-banner-name">{party.name}</h2>
-          <p className="party-banner-motto">«{party.motto}»</p>
+        <div className="cine-scrolly-content">
+          <div className="cine-scrolly-frame party-frame">
+            <span className="party-crest" style={{ "--accent": party.color }}>
+              <span className="party-crest-letter">{party.code}</span>
+            </span>
+            <span className="cine-scrolly-eyebrow">Casata di Exanthia · {party.id}</span>
+            <h2 className="cine-scrolly-title">{party.name}</h2>
+            <p className="cine-scrolly-text">«{party.motto}»</p>
+            <p className="party-count-chip">{visibleMembers.length} {visibleMembers.length === 1 ? "Eroe" : "Eroi"}</p>
+          </div>
         </div>
+      </section>
 
-        <div className="party-banner-count" title={`${visibleMembers.length} eroi`}>
-          <strong>{visibleMembers.length}</strong>
-          <span>Eroi</span>
+      <div className="cine-wrap cine-wrap--wide">
+        <div className="hero-grid">
+          {visibleMembers.map((m) => (
+            <HeroCard key={m.name} hero={m} accent={party.color} />
+          ))}
         </div>
-      </header>
-
-      <div className="hero-grid">
-        {visibleMembers.map((m) => (
-          <HeroCard key={m.name} hero={m} accent={party.color} />
-        ))}
       </div>
-    </section>
+    </div>
   );
 }
 
 /* ── Page ──────────────────────────────────────────────────── */
 export default function Party() {
   const [activeParty, setActiveParty] = useState("all");
+  useParallaxScroll();
 
   const allMembers = useMemo(
     () => PARTIES.flatMap((p) => p.members.filter((m) => !m.hidden).map((m) => ({ ...m, party: p.id }))),
@@ -149,49 +154,66 @@ export default function Party() {
   );
 
   return (
-    <section className="party-page">
-      {/* ── HERO HEADER ── */}
-      <div className="party-header">
-        <p className="party-eyebrow">Sangue · Inchiostro · Avventura</p>
-        <h1 className="party-title">Le Compagnie di Exanthia</h1>
-        <div className="party-divider">
-          <span className="party-divider-icon">✦</span>
-        </div>
-        <p className="party-lore">
-          Quattro compagnie. Sedici anime. Una sola leggenda che si scrive,
-          notte dopo notte, sulle pietre di Exanthia.
-        </p>
-      </div>
+    <section className="cine-page party-page" style={{ "--cine-accent": "#a83232", "--cine-accent-2": "#c0392b" }}>
 
-      {/* ── STATS RIBBON ── */}
-      <div className="party-stats">
-        <div className="party-stat"><strong>{stats.parties}</strong><span>Compagnie</span></div>
-        <div className="party-stat"><strong>{stats.heroes}</strong><span>Eroi</span></div>
-        <div className="party-stat"><strong>{stats.races}</strong><span>Razze</span></div>
-        <div className="party-stat"><strong>{stats.classes}</strong><span>Classi</span></div>
-      </div>
+      {/* ── HERO ── */}
+      <section id="party-top" className="cine-hero" aria-label="Le Compagnie di Exanthia">
+        <div className="cine-hero-media" aria-hidden="true">
+          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="cine-hero-vignette" />
+          <div className="cine-hero-gradient" />
+          <div className="cine-hero-pattern" />
+        </div>
+        <div className="cine-hero-content">
+          <span className="cine-eyebrow">Sangue · Inchiostro · Avventura</span>
+          <h1 className="cine-hero-title">Le Compagnie di Exanthia</h1>
+          <p className="cine-hero-tagline">
+            Quattro compagnie. Sedici anime. Una sola leggenda che si scrive,
+            notte dopo notte, sulle pietre di Exanthia.
+          </p>
+          <div className="cine-hero-meta">
+            <span className="cine-pill">⚔ {stats.parties} compagnie</span>
+            <span className="cine-pill">🛡 {stats.heroes} eroi</span>
+            <span className="cine-pill cine-pill--accent">✦ {stats.classes} classi</span>
+          </div>
+        </div>
+        <div className="cine-hero-scroll-hint" aria-hidden="true">
+          <span>Scorri</span>
+          <span className="cine-hero-arrow">↓</span>
+        </div>
+      </section>
+
+      {/* ── SIDE NAV ── */}
+      <nav className="cine-side-nav" aria-label="Navigazione compagnie">
+        <a href="#party-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">⚔</span></a>
+        {PARTIES.map((p) => (
+          <a key={p.id} href={`#party-${p.id}`} className="cine-side-nav-btn" title={p.name}><span aria-hidden="true">❦</span></a>
+        ))}
+      </nav>
 
       {/* ── FACTION TABS ── */}
-      <div className="party-tabs" role="tablist">
-        <button
-          type="button"
-          className={`party-tab ${activeParty === "all" ? "on" : ""}`}
-          onClick={() => setActiveParty("all")}
-        >
-          ✦ Tutte le Compagnie
-        </button>
-        {PARTIES.map((p) => (
+      <div className="cine-wrap">
+        <div className="party-tabs" role="tablist">
           <button
-            key={p.id}
             type="button"
-            className={`party-tab ${activeParty === p.id ? "on" : ""}`}
-            onClick={() => setActiveParty(p.id)}
-            style={{ "--tab-color": p.color }}
+            className={`party-tab ${activeParty === "all" ? "on" : ""}`}
+            onClick={() => setActiveParty("all")}
           >
-            <span className="party-tab-dot" />
-            {p.id}
+            ✦ Tutte le Compagnie
           </button>
-        ))}
+          {PARTIES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`party-tab ${activeParty === p.id ? "on" : ""}`}
+              onClick={() => setActiveParty(p.id)}
+              style={{ "--tab-color": p.color }}
+            >
+              <span className="party-tab-dot" />
+              {p.id}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── PARTY SECTIONS ── */}

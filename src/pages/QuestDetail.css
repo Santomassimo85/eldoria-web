@@ -1,0 +1,92 @@
+/* ============================================================
+   QUEST DETAIL — tema cinematic (sienna/oro)
+   ============================================================ */
+
+.quest-detail-page.cine-page { padding-top: 0; }
+
+/* stati senza hero (loading / not found / sealed): spaziatura sotto navbar */
+.quest-detail-page.cine-page > p { padding-top: calc(var(--navbar-h, 80px) + 70px); text-align: center; }
+.quest-detail-page.cine-page > .admin-back-link { margin-top: calc(var(--navbar-h, 80px) + 24px); }
+
+/* ── BACK LINK (ghost dorato) ── */
+.quest-detail-page .admin-back-link {
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(40, 22, 12, 0.7), rgba(22, 12, 8, 0.8));
+  color: #ffd97a;
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, transparent);
+  border-radius: 12px;
+  padding: 9px 18px;
+  margin-bottom: 16px;
+  font-family: var(--font-title);
+  letter-spacing: 0.06em;
+  font-size: 0.88rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.quest-detail-page .admin-back-link:hover { transform: translateY(-2px); border-color: var(--cine-gold); }
+
+/* ── CARD (pergamena) ── */
+.quest-detail-page .quest-detail-card {
+  max-width: 760px;
+  margin: 0 auto;
+  border-radius: var(--cine-radius);
+  border: 1px solid rgba(180, 140, 80, 0.30);
+  border-left: 4px solid var(--cine-accent);
+  background: linear-gradient(135deg, rgba(255, 250, 235, 0.97), rgba(250, 242, 222, 0.92));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 16px 44px rgba(0, 0, 0, 0.4);
+  padding: 26px 30px;
+  color: #3a2a10;
+}
+.quest-detail-page .quest-detail-field { margin: 0 0 8px; color: #4a3a18; }
+.quest-detail-page .quest-detail-field strong { color: var(--cine-accent); }
+.quest-detail-page .quest-detail-lore {
+  margin: 16px 0;
+  line-height: 1.8;
+  color: #3a2a10;
+  white-space: pre-wrap;
+}
+.quest-detail-page .quest-detail-rewards {
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cine-gold) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, transparent);
+  color: #5a4416;
+}
+.quest-detail-page .quest-detail-rewards strong { color: var(--cine-accent); }
+
+.quest-detail-page .quest-detail-accepted {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px dashed rgba(180, 140, 80, 0.5);
+  color: #4a3a18;
+}
+
+/* ── BOTTONE ACCETTA ── */
+.quest-detail-page .btn-admin-primary,
+.quest-detail-page .questDetailButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 60%, #000));
+  color: #fff7e6;
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 40%, transparent);
+  border-radius: 12px;
+  padding: 11px 24px;
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--cine-accent) 40%, transparent);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+.quest-detail-page .btn-admin-primary:hover,
+.quest-detail-page .questDetailButton:hover { transform: translateY(-2px); filter: brightness(1.06); }
+
+/* sealed card heading override (era var(--red) dark) */
+.quest-detail-page .quest-detail-card h2 { color: var(--cine-accent) !important; }
