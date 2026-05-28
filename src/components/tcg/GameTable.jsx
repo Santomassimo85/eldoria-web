@@ -1466,7 +1466,6 @@ export default function GameTable({
                 shake={shake === cr.instId || combatShake.includes(cr.instId)}
                 onClick={() => onMyCreature(cr)}
                 onInspect={setInspect}
-                onReact={reactToCard(cr.instId)}
                 onDragOver={allowDrop}
                 onDrop={dropOnTarget({
                   type: "creature",
@@ -1540,7 +1539,6 @@ export default function GameTable({
                   fanOpen ? onHandCard(h) : setHandOpen(true)
                 }
                 onInspect={setInspect}
-                onReact={fanOpen ? reactToCard(h.instId) : undefined}
               />
             </div>
           );

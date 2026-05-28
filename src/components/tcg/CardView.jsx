@@ -16,6 +16,12 @@ const CARD_REACTIONS = [
   { e: "💀", t: "Sei morto" },
   { e: "👑", t: "Rispetto" },
 ];
+
+/* Due soglie di press distinte: la reazione emoji esce presto (hold breve),
+   l'ingrandimento della carta più tardi (hold lungo). Così reagire è rapido
+   e aprire la carta richiede di tenere premuto un attimo in più. */
+const REACT_MS = 300;
+const ZOOM_MS = 650;
 import {
   cardArtUrl, cardBackUrl, costPips, TYPE_COLOR,
   ELEMENT_PIP, ELEMENT_LABEL, RARITY_COLOR, RARITY_LABEL, KEYWORDS,
@@ -115,7 +121,8 @@ export default function CardView({
   onDragOver,
   onDrop,
 }) {
-  const pressTimer = useRef(null);
+  const reactTimer = useRef(null);
+  const zoomTimer = useRef(null);
   const longFired = useRef(false);
   // popover di reazioni: se `onReact` è passato, il long-press apre questo
   // menù invece dell'inspect (l'inspect resta accessibile col bottone 🔍).
@@ -168,20 +175,27 @@ export default function CardView({
   const startPress = () => {
     if (!onInspect && !onReact) return;
     longFired.current = false;
-    pressTimer.current = setTimeout(() => {
-      pressTimer.current = null;
-      longFired.current = true;
-      // se la carta è "reagibile" (in partita) → reaction picker; altrimenti
-      // il vecchio comportamento: zoom della carta (DeckBuilder, Collection…)
-      if (onReact) setReactOpen(true);
-      else if (onInspect) onInspect(card);
-    }, 420);
+    // hold breve → anello di reazioni (solo se la carta è "reagibile", es. le
+    // creature del nemico). Tenendo premuto oltre → zoom della carta.
+    if (onReact) {
+      reactTimer.current = setTimeout(() => {
+        reactTimer.current = null;
+        longFired.current = true;
+        setReactOpen(true);
+      }, REACT_MS);
+    }
+    if (onInspect) {
+      zoomTimer.current = setTimeout(() => {
+        zoomTimer.current = null;
+        longFired.current = true;
+        setReactOpen(false);
+        onInspect(card);
+      }, ZOOM_MS);
+    }
   };
   const endPress = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
+    if (reactTimer.current) { clearTimeout(reactTimer.current); reactTimer.current = null; }
+    if (zoomTimer.current) { clearTimeout(zoomTimer.current); zoomTimer.current = null; }
   };
   const handleDragStart = (e) => {
     endPress(); // a drag must never fire the long-press inspect
@@ -338,31 +352,34 @@ export default function CardView({
       {foil && <span className="tcg-card__foil" aria-hidden="true" />}
       {reactOpen && (
         <div
-          className="tcg-react-picker"
+          className="tcg-react-ring"
           role="menu"
           aria-label="Reazioni"
+          style={{ "--n": CARD_REACTIONS.length + (onInspect ? 1 : 0) }}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          {CARD_REACTIONS.map((r) => (
+          {CARD_REACTIONS.map((r, i) => (
             <button
               key={r.e}
               type="button"
-              className="tcg-react-picker__btn"
+              className="tcg-react-ring__btn"
               title={r.t}
+              style={{ "--i": i }}
               onClick={pickReaction(r.e)}
             >
-              <span className="tcg-react-picker__emo">{r.e}</span>
+              <span className="tcg-react-ring__emo">{r.e}</span>
             </button>
           ))}
           {onInspect && (
             <button
               type="button"
-              className="tcg-react-picker__btn tcg-react-picker__btn--zoom"
+              className="tcg-react-ring__btn tcg-react-ring__btn--zoom"
               title="Ingrandisci"
+              style={{ "--i": CARD_REACTIONS.length }}
               onClick={openInspectFromPicker}
             >
-              <span className="tcg-react-picker__emo">🔍</span>
+              <span className="tcg-react-ring__emo">🔍</span>
             </button>
           )}
         </div>
