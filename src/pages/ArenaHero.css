@@ -4319,3 +4319,19 @@ body .arena-bet-fab:hover {
   transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s;
 }
 .arena-page .btn-auto-pg:hover { transform: translateY(-2px); filter: brightness(1.08); }
+
+/* La zona loadout era flex-row: il banner azzurro "Stai preparando una
+   Sfida…" (.fun-loadout-banner) finiva come COLONNA a sinistra, rubando
+   larghezza al pannello di selezione (specie su smartphone). La impilo in
+   colonna così il banner diventa una riga piena in alto. */
+.arena-page .join-zone,
+.arena-page .join-zone-fun {
+  flex-direction: column !important;
+  align-items: center !important;
+}
+.arena-page .fun-loadout-banner {
+  width: 100% !important;
+  max-width: 1040px !important;
+  margin: 0 auto 20px !important;
+  flex: none !important;
+}
