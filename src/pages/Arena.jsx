@@ -1583,6 +1583,9 @@ export default function Arena() {
 
   const [arenaInfoOpen, setArenaInfoOpen] = useState(false);
   const [combatModalOpen, setCombatModalOpen] = useState(false);
+  // Popup di fine combattimento (vittoria/sconfitta). null = nessun popup.
+  const [fightResult, setFightResult] = useState(null);
+  const fightResultSeenRef = useRef(null);
   /* FIX: P5b/P5c/P5d — modal/drawer state */
   const [bracketModalOpen, setBracketModalOpen] = useState(false);
   const [bettingDrawerOpen, setBettingDrawerOpen] = useState(false);
@@ -2106,6 +2109,32 @@ export default function Arena() {
     updateDoc(doc(db, "arena_meta", "global"), { matches: kept })
       .catch(e => console.error("prune fun matches error:", e));
   }, [isMaster, arenaMeta?.matches, arenaMeta?.funMatchHistory]);
+
+  // ── Popup fine combattimento: appena un match a cui partecipo si conclude
+  // con un vincitore, mostra "Hai Vinto!" (in grande) oppure "Hai Perso" con
+  // chi ha vinto. Al primo caricamento i match già finiti sono marcati come
+  // "visti" così il popup non riappare per scontri vecchi dopo un refresh.
+  useEffect(() => {
+    if (!currentUser || !arenaMeta?.matches) return;
+    const mine = arenaMeta.matches.filter(m =>
+      m.status === "finished" && m.winner && m.players?.some(p => p.id === currentUser.uid)
+    );
+    if (fightResultSeenRef.current === null) {
+      fightResultSeenRef.current = new Set(mine.map(m => m.matchId));
+      return;
+    }
+    const fresh = mine.find(m => !fightResultSeenRef.current.has(m.matchId));
+    if (!fresh) return;
+    fightResultSeenRef.current.add(fresh.matchId);
+    const winnerP    = fresh.players.find(p => p.id === fresh.winner);
+    const winnerSnap = snapshots[fresh.winner] || {};
+    setFightResult({
+      won:         fresh.winner === currentUser.uid,
+      winnerName:  winnerP?.name || winnerSnap.name || "Sfidante",
+      winnerImage: winnerSnap.image || null,
+      winnerClass: winnerP?.class || winnerSnap.class || "",
+    });
+  }, [arenaMeta?.matches, currentUser, snapshots]);
 
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
@@ -8069,6 +8098,51 @@ export default function Arena() {
             />
           </ArenaModal>
         </>
+      )}
+
+      {/* ── POPUP FINE COMBATTIMENTO (vittoria / sconfitta) ── */}
+      {fightResult && createPortal(
+        <div
+          className={`fight-result-overlay ${fightResult.won ? "is-win" : "is-lose"}`}
+          onClick={() => setFightResult(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="fight-result-card" onClick={(e) => e.stopPropagation()}>
+            {fightResult.won ? (
+              <>
+                <div className="fight-result-emblem win">🏆</div>
+                <div className="fight-result-title win">HAI VINTO!</div>
+                {fightResult.winnerImage && (
+                  <img className="fight-result-avatar" src={fightResult.winnerImage} alt="" />
+                )}
+                <div className="fight-result-champ-name">{fightResult.winnerName}</div>
+                <div className="fight-result-sub">Gloria nell'Arena di Eldoria</div>
+              </>
+            ) : (
+              <>
+                <div className="fight-result-emblem lose">💀</div>
+                <div className="fight-result-title lose">Hai Perso</div>
+                <div className="fight-result-winner">
+                  {fightResult.winnerImage && (
+                    <img className="fight-result-winner-img" src={fightResult.winnerImage} alt="" />
+                  )}
+                  <div className="fight-result-winner-text">
+                    <span className="fight-result-winner-label">Ha vinto</span>
+                    <span className="fight-result-winner-name">{fightResult.winnerName}</span>
+                    {fightResult.winnerClass && (
+                      <span className="fight-result-winner-class">{fightResult.winnerClass}</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+            <button className="fight-result-close" onClick={() => setFightResult(null)}>
+              Continua
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* ── COMBAT MODAL (popup attivato dal floating fight button) ──
