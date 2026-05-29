@@ -281,21 +281,38 @@ export default function Tcg() {
   const pickAi = () => { primeSfx(); setScreen("ai-pick"); };
   const pickPvp = () => { primeSfx(); setScreen("lobby"); };
 
-  const enterMatch = (id) => {
+  const enterMatch = (id, returnTo = "lobby") => {
     if (matchId === id) return;
     stopWatch();
     setMatchId(id);
     setScreen("pvp");
     unsubRef.current = watchMatch(id, (m) => {
       if (!m) {
+        // doc gone (host deleted it on match end / cancel) → return the
+        // player to where they came from (the tournament for bracket
+        // matches, otherwise the PvP lobby) instead of always the lobby.
         setMatch(null);
-        setScreen("lobby");
+        setScreen(returnTo);
         stopWatch();
         setMatchId(null);
         return;
       }
       setMatch(m);
     });
+  };
+
+  /* Leave a PvP match via the Esci/error button. Tournament matches go
+     back to the bracket; casual matches go to the main menu. */
+  const exitPvp = () => {
+    const back = match?.tournament ? "tournament" : "menu";
+    stopWatch();
+    setMatch(null);
+    setMatchId(null);
+    if (back === "menu") {
+      goMenu();
+    } else {
+      setScreen(back);
+    }
   };
 
   /* Entra in un match torneo vs AI: gioco interamente locale (mode=ai).
@@ -410,7 +427,7 @@ export default function Tcg() {
           cover={profile?.cover || "nature"}
           isMaster={isMaster}
           onBack={goMenu}
-          onEnterMatch={(id) => enterMatch(id)}
+          onEnterMatch={(id) => enterMatch(id, "tournament")}
           onEnterAiMatch={enterTournamentAiMatch}
         />
       )}
@@ -590,13 +607,13 @@ export default function Tcg() {
 
         // bothCommitted → si gioca
         return (
-          <GameBoundary onExit={goMenu}>
+          <GameBoundary onExit={exitPvp}>
             <GameTable
               mode="pvp"
               match={match}
               matchId={matchId}
               mySide={mySide}
-              onExit={goMenu}
+              onExit={exitPvp}
               onGameEnd={pvpEndHook}
             />
           </GameBoundary>

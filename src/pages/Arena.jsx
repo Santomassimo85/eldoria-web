@@ -797,6 +797,7 @@ const ARENA_ITEMS = [
 
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
+const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
 const SMITE_ACTION = {
@@ -979,6 +980,77 @@ function getAidBonusForClass(cls) {
 function readActiveBonus(v, legacyDefault) {
   if (typeof v === "number") return v;
   return v ? legacyDefault : 0;
+}
+
+// ── Stati di combattimento mostrati come badge sulla card del combattente. ──
+// Funzione PURA: deriva tutto dall'oggetto giocatore `p`, così umano e IA
+// mostrano sempre gli stessi badge (prima veleno/sanguinamento/save-DoT non
+// comparivano affatto sulle card → invisibili nelle battaglie IA).
+// Ritorna { key, icon, text, tip, cls }; `cls` sceglie il colore in CSS.
+function getFighterStatuses(p) {
+  if (!p) return [];
+  const out = [];
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+  const push = (key, icon, text, cls, tip) => out.push({ key, icon, text, cls, tip: tip || text });
+
+  // ── Danno nel tempo / debuff (mostrati per primi: sono le minacce attive) ──
+  if (p.poisonDoT) {
+    const icon = p.poisonDoTIcon || "☠";
+    const noun = p.poisonDoTSourceLabel || p.poisonDoTNoun || "Veleno";
+    const t = p.poisonDoTTurns ?? 1;
+    const dice = p.poisonDoTDice || "";
+    const isFire = icon === "🔥";
+    push("poison", icon, `${cap(noun)} ${t}t`, isFire ? "is-fire" : "is-poison",
+      `${cap(noun)} — ${dice ? dice + " danni " : ""}a inizio turno per ${t} turno/i`);
+  }
+  if (p.bleedDoT) {
+    const t = p.bleedDoTTurns ?? 1;
+    const dice = p.bleedDoTDice || "";
+    push("bleed", p.bleedDoTIcon || "🩸", `${cap(p.bleedDoTSourceLabel || "Sanguinamento")} ${t}t`, "is-bleed",
+      `Sanguinamento — ${dice ? dice + " danni " : ""}a inizio turno per ${t} turno/i`);
+  }
+  if (p.pendingSaveDot) {
+    const sd = p.pendingSaveDot;
+    push("savedot", "🤢", `TS ${sd.name || "Veleno"}`, "is-poison",
+      `Deve superare un Tiro Salvezza o subire ${sd.dice || "2d6"} per ${sd.turns ?? 3} turni`);
+  }
+  if (p.entangled)                          push("entangled", "🕸", "Intrappolato", "is-control");
+  if ((p.controlLostTurns ?? 0) > 0)        push("control", "🌀", `Controllo ${p.controlLostTurns}t`, "is-control", "Sotto controllo: salta il turno");
+  if ((p.weaponLockTurns ?? 0) > 0)         push("wlock", "🔩", `Arma Bloccata ${p.weaponLockTurns}t`, "is-control");
+  if ((p.attackDisadvantageTurns ?? 0) > 0) push("disadv", "🌫", `Svantaggio ${p.attackDisadvantageTurns}t`, "is-debuff", "Svantaggio agli attacchi");
+  if (p.blindDebuff)                        push("blind", "🙈", "Accecato −3", "is-debuff");
+
+  // ── Buff difensivi ──
+  if ((p.shieldSkillTurns ?? 0) > 0)        push("shield", "🛡", `Scudo +${p.shieldSkillBonus ?? 3} ${p.shieldSkillTurns}t`, "is-shield", `+${p.shieldSkillBonus ?? 3} CA per ${p.shieldSkillTurns} turni`);
+  if ((p.defensiveBonus ?? 0) > 0)          push("def", "🛡", `Difensivo +${p.defensiveBonus}`, "is-shield", `+${p.defensiveBonus} CA fino al prossimo turno`);
+  if ((p.saveBuffAttacks ?? 0) > 0)         push("savebuff", "🧿", `Difesa Mistica +${p.saveBuffBonus ?? 0}`, "is-shield", `+${p.saveBuffBonus ?? 0} ai TS · ${p.saveBuffAttacks} rimasti`);
+  if (p.absorbDamageNext)                   push("absorb", "✨", "Assorbi danno", "is-shield", "Assorbe il prossimo colpo");
+
+  // ── Buff offensivi / vantaggi ──
+  if ((p.selfAdvTurns ?? 0) > 0)            push("selfadv", "🌟", `Vantaggio ${p.selfAdvTurns}t`, "is-buff");
+  if (!p.invisible && readStealthAdvTurns(p) > 0) push("stealth", "🥷", `Furtività ${readStealthAdvTurns(p)}t`, "is-buff", "Vantaggio dalla furtività");
+  if (p.invisible)                          push("invis", "👻", "Invisibile", "is-buff");
+  if (p.weaponPoisoned)                     push("wpoison", "🧪", "Arma Avvelenata", "is-buff", "Prossimo colpo: +1d12 veleno");
+  if (p.aidBuff)                            push("aid", "🤝", `Aiuto +${readActiveBonus(p.aidBuff, 4)}`, "is-buff", `+${readActiveBonus(p.aidBuff, 4)} al prossimo tiro per colpire`);
+  if ((p.rageTurns ?? 0) > 0)               push("rage", "🔥", `Furia +2 ${p.rageTurns}t`, "is-rage", `+2 danni · riduzione danni subiti · ${p.rageTurns} turni`);
+  if ((p.hunterMarkTurns ?? 0) > 0)         push("mark", "🎯", `Marchio ${p.hunterMarkTurns}t`, "is-rage", `+3 al colpire per ${p.hunterMarkTurns} turni`);
+
+  // ── Energia / azioni extra ──
+  if (p.actionSurgeActive)                  push("surge", "⚡", "Scatto d'Azione", "is-energy", "Azione extra questo turno");
+  if (p.extraTurnActive)                    push("extra", "💨", "Passo Spedito", "is-energy", "+1 azione questo turno");
+
+  // ── Magia / concentrazione ──
+  if (p.bardicInspirationActive)            push("bard", "🎵", "Ispirazione +1d6", "is-magic", "+1d6 al prossimo tiro");
+  if (p.magicDetectActive)                  push("md", "🔮", `Buff Attacco +${readActiveBonus(p.magicDetectActive, 3)}`, "is-magic", `+${readActiveBonus(p.magicDetectActive, 3)} al colpire · ${p.magicDetectAttacks ?? 1} rimasti`);
+  if ((p.concentrationTurns ?? 0) > 0)      push("conc", "🧠", `Concentrazione ${p.concentrationTurns}t`, "is-magic");
+
+  // ── Trasformazione ──
+  if (p.wildShape) {
+    const ws = WILD_SHAPES[p.wildShape];
+    push("wild", ws?.icon || "🐾", ws?.name || "Forma Selvatica", "is-wild");
+  }
+
+  return out;
 }
 
 function getArmorConfig(cls) {
@@ -2010,6 +2082,30 @@ export default function Arena() {
       funMatchHistory: [...(arenaMeta.funMatchHistory || []), ...additions],
     }).catch(e => console.error("funMatchHistory archive error:", e));
   }, [isMaster, arenaMeta?.matches, arenaMeta?.funMatchHistory, arenaMeta?.characterSnapshots]);
+
+  // ── Auto-pulizia: rimuove dalle `matches` live le Sfide Libere finite e già
+  // archiviate da un po' (finestra di grazia), così il doc arena_meta non si
+  // gonfia all'infinito. NB: i vincitori restano in funMatchHistory / matchHistory
+  // / lastChampion / arena_tournament_history — qui non si tocca nulla di quello.
+  useEffect(() => {
+    if (!isMaster || !arenaMeta?.matches) return;
+    const archivedTs = new Map((arenaMeta.funMatchHistory || []).map(e => [e.matchId, e.ts]));
+    const now = Date.now();
+    const staleIds = new Set(
+      arenaMeta.matches
+        .filter(m =>
+          m.kind === "fun" &&
+          m.status === "finished" &&
+          archivedTs.has(m.matchId) &&
+          (now - new Date(archivedTs.get(m.matchId)).getTime()) > FUN_MATCH_PRUNE_GRACE_MS
+        )
+        .map(m => m.matchId)
+    );
+    if (staleIds.size === 0) return;
+    const kept = arenaMeta.matches.filter(m => !staleIds.has(m.matchId));
+    updateDoc(doc(db, "arena_meta", "global"), { matches: kept })
+      .catch(e => console.error("prune fun matches error:", e));
+  }, [isMaster, arenaMeta?.matches, arenaMeta?.funMatchHistory]);
 
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
@@ -6768,6 +6864,27 @@ export default function Arena() {
                 🗑 Svuota attesa
               </button>
             )}
+            {(() => {
+              const archivedIds = new Set((arenaMeta.funMatchHistory || []).map(e => e.matchId));
+              const prunable = (arenaMeta.matches || []).filter(
+                m => m.kind === "fun" && m.status === "finished" && archivedIds.has(m.matchId)
+              );
+              if (prunable.length === 0) return null;
+              return (
+                <button
+                  className="btn-clear-waiting"
+                  title="Rimuove dalle partite live le Sfide Libere finite e già archiviate (i vincitori restano nello storico)"
+                  onClick={async () => {
+                    if (!window.confirm(`Pulire ${prunable.length} sfida/e libera/e finite dall'arena? I vincitori restano nello storico.`)) return;
+                    const prunableIds = new Set(prunable.map(m => m.matchId));
+                    const kept = (arenaMeta.matches || []).filter(m => !prunableIds.has(m.matchId));
+                    await updateDoc(doc(db, "arena_meta", "global"), { matches: kept });
+                  }}
+                >
+                  🧹 Pulisci partite finite ({prunable.length})
+                </button>
+              );
+            })()}
             <button className="btn-reset" onClick={async () => {
               const inCombat = arenaMeta.phase === "combat";
               const inFinished = arenaMeta.phase === "finished";
@@ -8133,65 +8250,20 @@ export default function Arena() {
                             <span className="hp-label">{p.hp} / {char.stats?.maxHp ?? 70} HP</span>
                           </div>
 
-                          {p.wildShape && (
-                            <div className="fighter-wild-badge">
-                              {WILD_SHAPES[p.wildShape]?.icon} {WILD_SHAPES[p.wildShape]?.name}
-                            </div>
-                          )}
-                          {p.entangled && (
-                            <div className="fighter-entangled-badge">🕸 Intrappolato</div>
-                          )}
-                          {(p.shieldSkillTurns ?? 0) > 0 && (
-                            <div className="fighter-shield-skill-badge">🛡 Scudo (+{p.shieldSkillBonus ?? 3} CA · {p.shieldSkillTurns} turni)</div>
-                          )}
-                          {(p.selfAdvTurns ?? 0) > 0 && (
-                            <div className="fighter-bard-badge">🌟 Vantaggio ({p.selfAdvTurns} turni)</div>
-                          )}
-                          {(p.defensiveBonus ?? 0) > 0 && (
-                            <div className="fighter-defensive-badge">🛡 Difensivo (+{p.defensiveBonus} CA)</div>
-                          )}
-                          {p.weaponPoisoned && (
-                            <div className="fighter-poison-badge">☠ Arma Avvelenata (+1d12)</div>
-                          )}
-                          {p.aidBuff && (
-                            <div className="fighter-aid-badge">🤝 Aiuto (+{readActiveBonus(p.aidBuff, 4)} hit)</div>
-                          )}
-                          {(p.rageTurns ?? 0) > 0 && (
-                            <div className="fighter-rage-badge">🔥 Furia (+2 danno · {p.rageTurns} turni)</div>
-                          )}
-                          {(p.hunterMarkTurns ?? 0) > 0 && (
-                            <div className="fighter-rage-badge">🎯 Marchio ({p.hunterMarkTurns} turni · +3 hit)</div>
-                          )}
-                          {p.actionSurgeActive && (
-                            <div className="fighter-surge-badge">⚡ Scatto d'Azione (azione extra!)</div>
-                          )}
-                          {p.bardicInspirationActive && (
-                            <div className="fighter-bard-badge">🎵 Ispirazione (+1d6 hit)</div>
-                          )}
-                          {p.magicDetectActive && (
-                            <div className="fighter-bard-badge">🔮 Buff Attacco (+{readActiveBonus(p.magicDetectActive, 3)} hit · {p.magicDetectAttacks ?? 1} rimasti)</div>
-                          )}
-                          {(p.saveBuffAttacks ?? 0) > 0 && (
-                            <div className="fighter-bard-badge">🛡 Difesa Mistica (+{p.saveBuffBonus ?? 0} TS · {p.saveBuffAttacks} rimasti)</div>
-                          )}
-                          {(p.weaponLockTurns ?? 0) > 0 && (
-                            <div className="fighter-blind-badge">🔩 Arma Bloccata ({p.weaponLockTurns} turni)</div>
-                          )}
-                          {(p.attackDisadvantageTurns ?? 0) > 0 && (
-                            <div className="fighter-blind-badge">🌫 Svantaggio Attacchi ({p.attackDisadvantageTurns} turni)</div>
-                          )}
-                          {p.extraTurnActive && (
-                            <div className="fighter-rage-badge">💨 Passo Spedito (+1 azione)</div>
-                          )}
-                          {(p.controlLostTurns ?? 0) > 0 && (
-                            <div className="fighter-blind-badge">🌀 Sotto Controllo ({p.controlLostTurns} turni)</div>
-                          )}
-                          {p.blindDebuff && (
-                            <div className="fighter-blind-badge">🙈 Accecato (−3 attacco)</div>
-                          )}
-                          {p.invisible && (
-                            <div className="fighter-invisible-badge">👻 Invisibile</div>
-                          )}
+                          {(() => {
+                            const statuses = getFighterStatuses(p);
+                            if (!statuses.length) return null;
+                            return (
+                              <div className="fighter-statuses">
+                                {statuses.map(s => (
+                                  <div key={s.key} className={`fighter-status ${s.cls}`} title={s.tip}>
+                                    <span className="fighter-status-ico">{s.icon}</span>
+                                    <span className="fighter-status-txt">{s.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
 
                           {isMyMatch && m.status === "initiative" && p.id === currentUser?.uid && p.init === 0 && (
                             <button className="btn-init" onClick={() => rollInit(m.matchId)}>

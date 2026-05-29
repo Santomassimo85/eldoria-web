@@ -4225,10 +4225,10 @@ body .arena-bet-fab:hover {
 }
 .arena-page .loadout-optional { color: rgba(245, 230, 200, 0.6) !important; }
 
-/* Card opzione: base leggibile */
+/* Card opzione: base leggibile — niente sfondi biancastri, solo dark translucido */
 .arena-page .loadout-item {
   color: #f3e6cf !important;
-  background: rgba(255, 250, 240, 0.06) !important;
+  background: rgba(12, 8, 8, 0.34) !important;
   border: 1px solid rgba(212, 175, 55, 0.3) !important;
 }
 .arena-page .loadout-item.weapon {
@@ -4269,7 +4269,18 @@ body .arena-bet-fab:hover {
 .arena-page .loadout-item-info,
 .arena-page .armor-dex-cap,
 .arena-page .armor-no-dex { color: rgba(245, 230, 200, 0.78) !important; }
-.arena-page .loadout-item-dmgtype { color: #1a1208 !important; }
+/* Tipo di danno (contundente/tagliente/perforante): testo brillante su chip
+   scuro translucido — niente testo scuro, niente sfondo bianco. */
+.arena-page .loadout-item-dmgtype {
+  color: #fff7e6 !important;
+  background: rgba(0, 0, 0, 0.30) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  opacity: 1 !important;
+  font-weight: 700;
+}
+.arena-page .loadout-item-dmgtype.dt-contundente { color: #ffd27a !important; border-color: rgba(255, 210, 122, 0.6) !important; }
+.arena-page .loadout-item-dmgtype.dt-tagliente   { color: #ff9a9a !important; border-color: rgba(255, 154, 154, 0.6) !important; }
+.arena-page .loadout-item-dmgtype.dt-perforante  { color: #d6b0ff !important; border-color: rgba(214, 176, 255, 0.6) !important; }
 .arena-page .loadout-check { color: #8effb4 !important; }
 .arena-page .spell-uses-tag { color: #ffd97a !important; }
 .arena-page .armor-hit-penalty { color: #ff9a9a !important; }

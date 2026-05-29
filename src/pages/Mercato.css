@@ -157,3 +157,48 @@
 @media (max-width: 540px) {
   .mercato-page .items-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
 }
+
+/* ============================================================
+   FIX CONTRASTO TESTI ITEM-CARD
+   Le card hanno sfondo chiaro (#fcfcfc); senza colore proprio i
+   testi ereditavano il crema della cine-page (chiaro su chiaro).
+   Le card vendute hanno sfondo scuro (#333): qui i testi scuri
+   diventavano scuro su scuro.
+   ============================================================ */
+
+/* ── Card chiare: label rarità leggibile + colore per rarità ── */
+.mercato-page .item-rarity {
+  color: #4a3b2e;
+  font-family: var(--font-title);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.mercato-page .item-rarity-Comune,
+.mercato-page .item-rarity-Comune2  { color: #565656; }
+.mercato-page .item-rarity-Raro,
+.mercato-page .item-rarity-Rara     { color: #1a5d99; }
+.mercato-page .item-rarity-Magico,
+.mercato-page .item-rarity-Moltorara { color: #6d28d9; }
+.mercato-page .item-rarity-Epico    { color: #b45309; }
+.mercato-page .item-rarity-Leggendario,
+.mercato-page .item-rarity-Leggendaria { color: #9a7b1f; }
+.mercato-page .item-rarity-Noncomune { color: #15803d; }
+.mercato-page .item-rarity-Artefatto { color: #b91c1c; }
+
+/* prezzo: oro più scuro per staccare sul bianco */
+.mercato-page .item-price { color: #9a7b1f; }
+
+/* descrizione già scura (#4e4141) → ok su chiaro, ma rafforzo leggibilità */
+.mercato-page .item-card-description { color: #3f3636; }
+
+/* ── Card vendute (sfondo scuro): testi chiari ── */
+.mercato-page .item-card.sold .item-rarity { color: #d8c7a0; }
+.mercato-page .item-card.sold .item-name { color: #ff9a8a; }
+.mercato-page .item-card.sold .item-card-description { color: #cfc6b8; }
+.mercato-page .item-card.sold .item-set-badge { color: #c4b5fd; }
+.mercato-page .item-card.sold .item-price { color: #ffd97a; }
+.mercato-page .item-card.sold .sold-to-info,
+.mercato-page .item-card.sold .sold-to-info small { color: #e2c9b3 !important; }

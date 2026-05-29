@@ -1369,28 +1369,32 @@ export default function GameTable({
         <div className="tcg-zone tcg-zone--lands">
           {/* land tokens removed — mana is shown by the rhombus
               gems in the avatar pod (bottom-left) */}
-          {foe.artifacts.map((a) => (
-            <div
-              key={a.instId}
-              className="tcg-relic"
-              title={getCard(a.cardId).name}
-              onClick={() => setInspect(getCard(a.cardId))}
-            >
-              {cardArtUrl(getCard(a.cardId)) ? (
-                <img
-                  className="tcg-relic__img"
-                  src={cardArtUrl(getCard(a.cardId))}
-                  alt={getCard(a.cardId).name}
-                  draggable={false}
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <span>{getCard(a.cardId).icon}</span>
-              )}
-            </div>
-          ))}
+          {foe.artifacts.map((a) => {
+            const ac = getCard(a.cardId);
+            if (!ac) return null;
+            return (
+              <div
+                key={a.instId}
+                className="tcg-relic"
+                title={ac.name}
+                onClick={() => setInspect(ac)}
+              >
+                {cardArtUrl(ac) ? (
+                  <img
+                    className="tcg-relic__img"
+                    src={cardArtUrl(ac)}
+                    alt={ac.name}
+                    draggable={false}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span>{ac.icon}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="tcg-zone tcg-zone--creatures">
           {foeCreatures.length === 0 && (
@@ -1478,28 +1482,32 @@ export default function GameTable({
         </div>
         <div className="tcg-zone tcg-zone--lands">
           {/* land tokens removed — mana = the rhombus gems in the pod */}
-          {me.artifacts.map((a) => (
-            <div
-              key={a.instId}
-              className="tcg-relic"
-              title={getCard(a.cardId).name}
-              onClick={() => setInspect(getCard(a.cardId))}
-            >
-              {cardArtUrl(getCard(a.cardId)) ? (
-                <img
-                  className="tcg-relic__img"
-                  src={cardArtUrl(getCard(a.cardId))}
-                  alt={getCard(a.cardId).name}
-                  draggable={false}
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <span>{getCard(a.cardId).icon}</span>
-              )}
-            </div>
-          ))}
+          {me.artifacts.map((a) => {
+            const ac = getCard(a.cardId);
+            if (!ac) return null;
+            return (
+              <div
+                key={a.instId}
+                className="tcg-relic"
+                title={ac.name}
+                onClick={() => setInspect(ac)}
+              >
+                {cardArtUrl(ac) ? (
+                  <img
+                    className="tcg-relic__img"
+                    src={cardArtUrl(ac)}
+                    alt={ac.name}
+                    draggable={false}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span>{ac.icon}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

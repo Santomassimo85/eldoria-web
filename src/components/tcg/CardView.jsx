@@ -154,6 +154,26 @@ export default function CardView({
     );
   }
 
+  // A card id that no longer resolves (removed/renamed in a rework, or a
+  // stale saved deck/collection) must NOT crash the whole table — render a
+  // neutral placeholder instead so the match keeps going.
+  if (!card) {
+    return (
+      <div
+        className={`tcg-card tcg-card--${variant} tcg-card--missing`}
+        data-inst={instId || undefined}
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+      >
+        <div className="tcg-card__frame">
+          <span className="tcg-card__name">Carta sconosciuta</span>
+          <span className="tcg-card__ph-icon" aria-hidden="true">❔</span>
+        </div>
+      </div>
+    );
+  }
+
   const isCreature = card.type === "creature";
   const power = creature ? creature.power : card.power;
   const toughness = creature ? creature.toughness : card.toughness;

@@ -2328,6 +2328,57 @@
   padding: 2px 8px;
 }
 
+/* ── Badge di stato unificati sui combattenti (umani e IA) ── */
+.fighter-statuses {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin-top: 6px;
+  width: 100%;
+}
+.fighter-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-title);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 3px 9px;
+  line-height: 1.2;
+  text-align: left;
+  animation: fighter-status-pop 0.22s ease-out;
+}
+.fighter-status-ico {
+  font-size: 0.85rem;
+  line-height: 1;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+}
+.fighter-status-txt { white-space: normal; }
+
+@keyframes fighter-status-pop {
+  from { opacity: 0; transform: scale(0.82) translateY(-2px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Varianti colore */
+.fighter-status.is-poison  { color: #5b1d6b; background: rgba(150, 50, 200, 0.14); border-color: rgba(150, 50, 200, 0.45); }
+.fighter-status.is-bleed   { color: #8a1020; background: rgba(200, 30, 50, 0.14);  border-color: rgba(200, 30, 50, 0.45); }
+.fighter-status.is-fire    { color: #9a3a05; background: rgba(240, 120, 30, 0.16); border-color: rgba(240, 120, 30, 0.5); }
+.fighter-status.is-debuff  { color: #4a4030; background: rgba(120, 110, 90, 0.18); border-color: rgba(120, 110, 90, 0.45); }
+.fighter-status.is-control { color: #3a2a55; background: rgba(110, 80, 200, 0.14); border-color: rgba(110, 80, 200, 0.45); }
+.fighter-status.is-shield  { color: #1a4a6a; background: rgba(60, 150, 220, 0.14); border-color: rgba(60, 150, 220, 0.45); }
+.fighter-status.is-buff    { color: #155a2a; background: rgba(50, 180, 90, 0.14);  border-color: rgba(50, 180, 90, 0.45); }
+.fighter-status.is-rage    { color: #9a3205; background: rgba(240, 100, 30, 0.16); border-color: rgba(240, 100, 30, 0.5); }
+.fighter-status.is-energy  { color: #7a5a05; background: rgba(230, 190, 30, 0.2);  border-color: rgba(230, 190, 30, 0.55); }
+.fighter-status.is-magic   { color: #5a2a7a; background: rgba(170, 90, 220, 0.14); border-color: rgba(170, 90, 220, 0.45); }
+.fighter-status.is-wild    { color: #1a5c28; background: rgba(39, 120, 50, 0.12);  border-color: rgba(39, 120, 50, 0.4); }
+
 /* ── Lay of Hands picker ── */
 .lay-of-hands-picker {
   background: #fffdf5;
