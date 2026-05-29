@@ -8339,16 +8339,16 @@
 
 /* ── Banner "Il Tuo Campo di Battaglia" ── */
 .arena-combat-dialog .my-arena-banner {
-  background: linear-gradient(180deg, rgba(232, 198, 106, 0.14), rgba(192, 57, 43, 0.10));
-  border: 1px solid var(--fc-line);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(58, 40, 30, 0.72), rgba(26, 19, 30, 0.78)) !important;
+  border: 1px solid var(--fc-line-strong) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 3px 12px rgba(0, 0, 0, 0.35) !important;
 }
-.arena-combat-dialog .my-arena-banner-eyebrow { color: var(--fc-gold); }
+.arena-combat-dialog .my-arena-banner-eyebrow { color: var(--fc-gold) !important; }
 .arena-combat-dialog .my-arena-banner-title {
-  color: var(--fc-ink);
-  text-shadow: 0 0 12px rgba(232, 198, 106, 0.25);
+  color: var(--fc-gold-bright) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 12px rgba(232, 198, 106, 0.35);
 }
-.arena-combat-dialog .my-arena-banner-deco { color: var(--fc-ember); }
+.arena-combat-dialog .my-arena-banner-deco { color: var(--fc-ember) !important; }
 
 /* ── Match card (batte il bianco !important del portal) ── */
 .arena-combat-dialog .match-card {
@@ -8370,21 +8370,29 @@
 .arena-combat-dialog .match-vs-label { color: var(--fc-ember); }
 
 /* ── Turn tracker + timer ── */
+/* NB: una regola "nuda" .turn-tracker {…!important} altrove rende la pillola
+   chiara; serve !important + specificità maggiore per scurirla qui. */
 .arena-combat-dialog .turn-tracker {
-  background: rgba(232, 198, 106, 0.08);
-  border-bottom: 1px solid var(--fc-line);
-  color: var(--fc-gold);
+  background: linear-gradient(90deg, rgba(58, 40, 30, 0.72), rgba(30, 22, 34, 0.78)) !important;
+  border: 1px solid var(--fc-line-strong) !important;
+  color: var(--fc-gold) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
 }
-.arena-combat-dialog .turn-tracker strong { color: var(--fc-gold-bright); }
+.arena-combat-dialog .turn-tracker strong { color: var(--fc-gold-bright) !important; }
 .arena-combat-dialog .turn-tracker.initiative-timer {
-  background: rgba(150, 90, 220, 0.14);
-  border-bottom-color: rgba(150, 90, 220, 0.3);
-  color: #caa9ff;
+  background: linear-gradient(90deg, rgba(92, 60, 150, 0.55), rgba(40, 28, 70, 0.6)) !important;
+  border-color: rgba(150, 110, 230, 0.5) !important;
+  color: #cbb0ff !important;
 }
-.arena-combat-dialog .arena-turn-timer {
-  color: var(--fc-gold);
-  background: rgba(232, 198, 106, 0.12);
-  border-color: var(--fc-line);
+.arena-combat-dialog .turn-tracker .arena-turn-timer {
+  color: var(--fc-gold-bright) !important;
+  background: rgba(232, 198, 106, 0.14) !important;
+  border: 1px solid var(--fc-line-strong) !important;
+}
+.arena-combat-dialog .turn-tracker.initiative-timer .arena-turn-timer {
+  color: #cbb0ff !important;
+  background: rgba(150, 110, 230, 0.18) !important;
+  border-color: rgba(150, 110, 230, 0.45) !important;
 }
 .arena-combat-dialog .arena-turn-timer.urgent {
   color: #ff8a78;
@@ -8616,4 +8624,194 @@
     max-height: calc(100vh - var(--navbar-h));
     border-radius: 14px 14px 0 0;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ARENA FIGHT — NUOVO LAYOUT HUD, FULL RESPONSIVE
+   Tutto fluido con clamp() + griglie auto-fit: si adatta da telefono a
+   desktop senza “salti”. Nessuna meccanica toccata, solo struttura visiva.
+   Vale per IA / amichevole / torneo (stesso modale .arena-combat-dialog).
+   ════════════════════════════════════════════════════════════════════════ */
+.arena-combat-dialog .arena-modal-body { padding: clamp(10px, 3vw, 20px) clamp(8px, 3vw, 20px) clamp(14px, 3vw, 22px) !important; }
+.arena-combat-dialog .matches-container { gap: clamp(12px, 3vw, 18px); }
+
+/* Banner “Il Tuo Campo di Battaglia” fluido */
+.arena-combat-dialog .my-arena-banner { padding: clamp(8px, 2.5vw, 14px) clamp(12px, 3vw, 22px); gap: clamp(8px, 2vw, 16px); border-radius: 12px; }
+.arena-combat-dialog .my-arena-banner-title { font-size: clamp(0.92rem, 3.4vw, 1.25rem); }
+.arena-combat-dialog .my-arena-banner-eyebrow { font-size: clamp(0.54rem, 1.8vw, 0.66rem); }
+.arena-combat-dialog .my-arena-banner-deco { font-size: clamp(1.05rem, 3.5vw, 1.5rem); }
+
+/* La match-card diventa una “arena”: stage + HUD + cronaca */
+.arena-combat-dialog .match-card { border-radius: clamp(12px, 2.5vw, 16px) !important; }
+
+/* Ribbon del turno */
+.arena-combat-dialog .turn-tracker {
+  padding: clamp(7px, 2vw, 11px) clamp(12px, 3vw, 18px);
+  font-size: clamp(0.62rem, 2vw, 0.72rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2vw, 12px);
+  flex-wrap: wrap;
+}
+.arena-combat-dialog .arena-turn-timer { font-size: clamp(0.7rem, 2.2vw, 0.82rem); margin-left: 0; }
+
+/* ── STAGE: i contendenti uno di fronte all'altro ───────────────────────── */
+.arena-combat-dialog .fighters-row {
+  padding: clamp(14px, 4vw, 28px) clamp(8px, 3vw, 22px);
+  gap: clamp(4px, 2vw, 16px);
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;                 /* FFA (3+) va a capo su schermi stretti */
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 120%, rgba(192, 57, 43, 0.12), transparent 70%);
+}
+.arena-combat-dialog .fighter-card {
+  flex: 1 1 clamp(132px, 40%, 300px);
+  min-width: clamp(128px, 38%, 190px);
+  max-width: 360px;
+  padding: clamp(12px, 3vw, 20px) clamp(9px, 2.5vw, 16px);
+  border-radius: clamp(12px, 2.5vw, 16px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Avatar grande, tondo, con anello luminoso */
+.arena-combat-dialog .fighter-avatar {
+  width: clamp(58px, 17vw, 104px);
+  height: clamp(58px, 17vw, 104px);
+  border: 3px solid var(--fc-line);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(0, 0, 0, 0.25);
+  margin-bottom: clamp(6px, 1.6vw, 10px);
+}
+.arena-combat-dialog .fighter-card.active-turn .fighter-avatar {
+  border-color: var(--fc-gold);
+  box-shadow: 0 0 18px rgba(232, 198, 106, 0.5), 0 0 0 4px rgba(192, 57, 43, 0.3);
+}
+.arena-combat-dialog .fighter-name { font-size: clamp(0.8rem, 3vw, 1.05rem); white-space: normal; }
+.arena-combat-dialog .fighter-class { font-size: clamp(0.62rem, 2vw, 0.74rem); }
+.arena-combat-dialog .fighter-meta { font-size: clamp(0.64rem, 2vw, 0.74rem); }
+
+/* HP bar grande, arrotondata, con il valore sovrapposto */
+.arena-combat-dialog .hp-bar-wrap { position: relative; margin: clamp(4px, 1.5vw, 8px) 0; }
+.arena-combat-dialog .hp-bar-bg {
+  height: clamp(16px, 3.4vw, 22px);
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6);
+  margin-bottom: 0;
+}
+.arena-combat-dialog .hp-bar-fill { border-radius: 999px; }
+.arena-combat-dialog .hp-label {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: clamp(16px, 3.4vw, 22px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.6rem, 2vw, 0.74rem);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+/* Medaglione “VS” al centro dello scontro (contiene il proprio testo:
+   “VS” nei duelli, “·” nel Tutti-contro-Tutti — niente hack di posizione) */
+.arena-combat-dialog .vs-divider {
+  align-self: center;
+  flex: 0 0 auto;
+  width: clamp(30px, 7vw, 46px);
+  height: clamp(30px, 7vw, 46px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #3a2230, #15101c);
+  border: 1.5px solid var(--fc-line-strong);
+  box-shadow: 0 0 14px rgba(192, 57, 43, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: var(--fc-gold-bright);
+  font-family: var(--font-title);
+  font-size: clamp(0.58rem, 2vw, 0.8rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px rgba(232, 198, 106, 0.5);
+}
+.arena-combat-dialog .vs-divider::before { display: none; }
+
+/* Badge di stato: più compatti e centrati nello stage */
+.arena-combat-dialog .fighter-statuses { gap: clamp(3px, 1vw, 5px); margin-top: clamp(5px, 1.5vw, 8px); }
+.arena-combat-dialog .fighter-status { font-size: clamp(0.52rem, 1.7vw, 0.6rem); padding: clamp(2px, 0.8vw, 4px) clamp(6px, 1.6vw, 9px); }
+
+/* ── HUD AZIONI ─────────────────────────────────────────────────────────── */
+.arena-combat-dialog .action-panel {
+  margin: 0 clamp(8px, 2.5vw, 16px) clamp(10px, 2.5vw, 16px);
+  padding: clamp(10px, 2.6vw, 16px);
+  border-radius: clamp(10px, 2vw, 14px);
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--fc-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.arena-combat-dialog .action-groups { gap: clamp(8px, 2vw, 14px); }
+.arena-combat-dialog .action-group { gap: clamp(5px, 1.4vw, 8px); }
+.arena-combat-dialog .action-group-label {
+  font-size: clamp(0.56rem, 1.9vw, 0.64rem);
+  align-self: stretch;
+  justify-content: center;
+  padding: clamp(3px, 1vw, 5px) 10px;
+}
+/* Griglia bottoni che si riassesta da sola su ogni device */
+.arena-combat-dialog .action-buttons {
+  grid-template-columns: repeat(auto-fill, minmax(clamp(86px, 26vw, 124px), 1fr));
+  gap: clamp(5px, 1.5vw, 8px);
+}
+.arena-combat-dialog .btn-action {
+  min-height: clamp(54px, 13vw, 66px);
+  padding: clamp(6px, 1.8vw, 10px) clamp(4px, 1.4vw, 7px);
+  gap: clamp(2px, 0.8vw, 4px);
+  border-radius: clamp(8px, 1.6vw, 11px);
+}
+.arena-combat-dialog .action-icon { font-size: clamp(1.05rem, 3.6vw, 1.4rem); }
+.arena-combat-dialog .action-name { font-size: clamp(0.58rem, 1.9vw, 0.7rem); }
+.arena-combat-dialog .action-dice { font-size: clamp(0.52rem, 1.7vw, 0.6rem); }
+
+/* Righe ausiliarie (bersaglio FFA / equip / doppia azione) fluide e a capo */
+.arena-combat-dialog .target-selector-row,
+.arena-combat-dialog .dual-action-row { flex-wrap: wrap; gap: clamp(6px, 1.6vw, 10px); }
+.arena-combat-dialog .equip-panel,
+.arena-combat-dialog .wild-shape-active-bar { color: var(--fc-ink); }
+
+/* Blocchi Tiro Salvezza / DoT: a capo elegante su mobile */
+.arena-combat-dialog .save-block {
+  padding: clamp(8px, 2.2vw, 12px) clamp(10px, 2.5vw, 14px);
+  gap: clamp(8px, 2vw, 12px);
+  border-radius: clamp(8px, 1.6vw, 10px);
+}
+.arena-combat-dialog .save-block-label { font-size: clamp(0.72rem, 2.3vw, 0.82rem); }
+
+/* ── CRONACA (log) ──────────────────────────────────────────────────────── */
+.arena-combat-dialog .match-log { border-radius: 0 0 clamp(12px, 2.5vw, 16px) clamp(12px, 2.5vw, 16px); }
+.arena-combat-dialog .match-log-head { padding: clamp(7px, 2vw, 10px) clamp(10px, 2.5vw, 14px); }
+.arena-combat-dialog .match-log-title { font-size: clamp(0.7rem, 2.2vw, 0.8rem); }
+.arena-combat-dialog .match-log-scroll {
+  max-height: clamp(150px, 28vh, 320px);
+  padding: clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 14px) clamp(10px, 2.5vw, 14px);
+}
+.arena-combat-dialog .match-log .log-entry { font-size: clamp(0.76rem, 2.3vw, 0.86rem); }
+
+/* Reazioni: chip a capo */
+.arena-combat-dialog .arena-react-bar { gap: clamp(5px, 1.5vw, 8px); margin: 0 clamp(8px, 2.5vw, 16px) clamp(10px, 2vw, 14px); }
+
+/* ── Telefoni stretti: stage compatto, 1v1 resta affiancato ─────────────── */
+@media (max-width: 460px) {
+  .arena-combat-dialog .fighters-row { padding: 14px 8px; gap: 4px; }
+  .arena-combat-dialog .fighter-card { padding: 11px 8px; min-width: 0; flex-basis: clamp(120px, 42%, 180px); }
+  .arena-combat-dialog .fighter-own-stats { gap: 3px; }
+  .arena-combat-dialog .fighter-stat-pill { font-size: 0.58rem; padding: 1px 4px; }
+  .arena-combat-dialog .action-buttons { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); }
+}
+
+/* ── Desktop ampio: lo stage respira, i bottoni mostrano più colonne ────── */
+@media (min-width: 900px) {
+  .arena-combat-dialog .fighters-row { padding: 30px 28px; gap: 22px; }
+  .arena-combat-dialog .action-buttons { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
 }
