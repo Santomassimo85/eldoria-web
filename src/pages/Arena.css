@@ -8237,3 +8237,363 @@
   box-shadow: none !important;
   border-radius: 0 !important;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ARENA — TEMA "FIGHT" EPICO & DARK (solo modale combattimento)
+   Vale per IA, sfide amichevoli e torneo: tutti usano lo stesso modale
+   (variant="combat" → .arena-combat-overlay / .arena-combat-dialog).
+   Il modale è renderizzato in portal su document.body, quindi FUORI da
+   .arena-page: gli override ".arena-page ..." non lo toccano. Le uniche
+   regole che filtrano qui sono quelle a classe "nuda" con !important
+   (.matches-container/.match-card e .arena-modal-*), che battiamo con
+   specificità .arena-combat-dialog + !important.
+   ════════════════════════════════════════════════════════════════════════ */
+.arena-combat-dialog {
+  --fc-bg-0: #161b27;
+  --fc-bg-1: #20283a;
+  --fc-panel: #232b3d;
+  --fc-line: rgba(232, 198, 106, 0.20);
+  --fc-line-strong: rgba(232, 198, 106, 0.44);
+  --fc-gold: #e8c66a;
+  --fc-gold-bright: #f4da86;
+  --fc-ember: #db6a47;
+  --fc-red: #c0392b;
+  --fc-ink: #e9e0cb;
+  --fc-ink-soft: #a7a895;
+  color: var(--fc-ink);
+}
+
+/* ── Overlay: fondo profondo con bagliore d'ardore in alto ── */
+.arena-combat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--navbar-h) + 12px) 24px 24px;
+  background:
+    radial-gradient(ellipse 60% 42% at 50% 0%, rgba(192, 57, 43, 0.22), transparent 70%),
+    rgba(6, 5, 9, 0.82);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: ar-modal-fade 0.18s ease-out;
+}
+
+/* ── Dialog: pannello dark con cornice oro e bagliore ── */
+.arena-combat-dialog {
+  width: min(980px, 100%);
+  max-height: calc(100vh - var(--navbar-h) - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--fc-line-strong);
+  background:
+    radial-gradient(ellipse 95% 55% at 50% -8%, rgba(192, 57, 43, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--fc-bg-1) 0%, var(--fc-bg-0) 100%);
+  box-shadow:
+    0 26px 70px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: ar-modal-pop 0.22s ease-out;
+}
+
+/* ── Header / titolo / chiudi (battono le regole brutaliste bianche) ── */
+.arena-combat-dialog .arena-modal-header {
+  background: linear-gradient(180deg, #2c2233 0%, #1b1626 100%) !important;
+  border-bottom: 1px solid var(--fc-line-strong) !important;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45) !important;
+}
+.arena-combat-dialog .arena-modal-title {
+  color: var(--fc-gold-bright) !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 0 14px rgba(232, 198, 106, 0.35);
+}
+.arena-combat-dialog .arena-modal-close {
+  background: rgba(192, 57, 43, 0.85) !important;
+  border: 1px solid var(--fc-line-strong) !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+}
+.arena-combat-dialog .arena-modal-close:hover {
+  background: var(--fc-red) !important;
+  border-color: var(--fc-gold) !important;
+}
+
+/* ── Body + container: trasparenti, lasciano vedere il fondo del dialog ── */
+.arena-combat-dialog .arena-modal-body {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 16px 18px 20px !important;
+}
+.arena-combat-dialog .matches-container {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* ── Banner "Il Tuo Campo di Battaglia" ── */
+.arena-combat-dialog .my-arena-banner {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.14), rgba(192, 57, 43, 0.10));
+  border: 1px solid var(--fc-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.arena-combat-dialog .my-arena-banner-eyebrow { color: var(--fc-gold); }
+.arena-combat-dialog .my-arena-banner-title {
+  color: var(--fc-ink);
+  text-shadow: 0 0 12px rgba(232, 198, 106, 0.25);
+}
+.arena-combat-dialog .my-arena-banner-deco { color: var(--fc-ember); }
+
+/* ── Match card (batte il bianco !important del portal) ── */
+.arena-combat-dialog .match-card {
+  background: linear-gradient(180deg, var(--fc-panel) 0%, var(--fc-bg-0) 100%) !important;
+  border: 1px solid var(--fc-line) !important;
+  border-top: 3px solid var(--fc-red) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+.arena-combat-dialog .match-card.match-fun { border-top-color: var(--fc-gold) !important; }
+.arena-combat-dialog .match-card.finished { border-top-color: var(--fc-gold) !important; }
+
+.arena-combat-dialog .match-header {
+  background: rgba(0, 0, 0, 0.26);
+  border-bottom: 1px solid var(--fc-line);
+}
+.arena-combat-dialog .match-round-label { color: var(--fc-gold); }
+.arena-combat-dialog .match-status-label { color: var(--fc-ink-soft); }
+.arena-combat-dialog .match-vs-label { color: var(--fc-ember); }
+
+/* ── Turn tracker + timer ── */
+.arena-combat-dialog .turn-tracker {
+  background: rgba(232, 198, 106, 0.08);
+  border-bottom: 1px solid var(--fc-line);
+  color: var(--fc-gold);
+}
+.arena-combat-dialog .turn-tracker strong { color: var(--fc-gold-bright); }
+.arena-combat-dialog .turn-tracker.initiative-timer {
+  background: rgba(150, 90, 220, 0.14);
+  border-bottom-color: rgba(150, 90, 220, 0.3);
+  color: #caa9ff;
+}
+.arena-combat-dialog .arena-turn-timer {
+  color: var(--fc-gold);
+  background: rgba(232, 198, 106, 0.12);
+  border-color: var(--fc-line);
+}
+.arena-combat-dialog .arena-turn-timer.urgent {
+  color: #ff8a78;
+  background: rgba(192, 57, 43, 0.2);
+  border-color: rgba(192, 57, 43, 0.55);
+}
+.arena-combat-dialog .fight-global-timer {
+  color: var(--fc-gold);
+  background: rgba(232, 198, 106, 0.06);
+  border-bottom-color: var(--fc-line);
+}
+.arena-combat-dialog .fight-global-timer.urgent { color: #ff8a78; background: rgba(192, 57, 43, 0.10); }
+.arena-combat-dialog .fight-timer-note { color: var(--fc-ink-soft); }
+
+/* ── Divisore VS ── */
+.arena-combat-dialog .vs-divider { color: rgba(232, 198, 106, 0.42); }
+.arena-combat-dialog .vs-divider::before {
+  background: linear-gradient(180deg, transparent, var(--fc-line-strong), transparent);
+}
+
+/* ── Fighter card ── */
+.arena-combat-dialog .fighter-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(0, 0, 0, 0.2));
+  border: 1px solid rgba(232, 198, 106, 0.15);
+}
+.arena-combat-dialog .fighter-card.active-turn {
+  background: linear-gradient(180deg, rgba(192, 57, 43, 0.18), rgba(0, 0, 0, 0.22));
+  border-color: var(--fc-line-strong);
+  box-shadow: 0 0 20px rgba(232, 198, 106, 0.18), inset 0 0 14px rgba(192, 57, 43, 0.12);
+}
+.arena-combat-dialog .fighter-name { color: var(--fc-ink); }
+.arena-combat-dialog .fighter-card.active-turn .fighter-name {
+  color: var(--fc-gold-bright);
+  text-shadow: 0 0 10px rgba(232, 198, 106, 0.45);
+}
+.arena-combat-dialog .fighter-class { color: var(--fc-ink-soft); }
+.arena-combat-dialog .fighter-meta { color: var(--fc-ink-soft); }
+.arena-combat-dialog .hp-label { color: var(--fc-ink); }
+.arena-combat-dialog .fighter-avatar {
+  border: 2px solid var(--fc-line);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.arena-combat-dialog .fighter-card.active-turn .fighter-avatar {
+  border-color: var(--fc-line-strong);
+  box-shadow: 0 0 0 3px rgba(232, 198, 106, 0.14), 0 0 14px rgba(192, 57, 43, 0.3);
+}
+.arena-combat-dialog .fighter-stat-pill {
+  background: rgba(150, 110, 220, 0.18);
+  border-color: rgba(170, 130, 230, 0.4);
+  color: #cdb6f5;
+}
+.arena-combat-dialog .turn-indicator {
+  background: var(--fc-red);
+  box-shadow: 0 0 12px rgba(192, 57, 43, 0.6);
+}
+
+/* ── Badge di stato: testo più chiaro per leggerli sul dark ── */
+.arena-combat-dialog .fighter-status.is-poison  { color: #e7b6f4; background: rgba(150, 50, 200, 0.22); border-color: rgba(150, 50, 200, 0.5); }
+.arena-combat-dialog .fighter-status.is-bleed   { color: #f6a6b0; background: rgba(200, 40, 60, 0.22);  border-color: rgba(200, 40, 60, 0.5); }
+.arena-combat-dialog .fighter-status.is-fire    { color: #f8c189; background: rgba(240, 120, 30, 0.22); border-color: rgba(240, 120, 30, 0.55); }
+.arena-combat-dialog .fighter-status.is-debuff  { color: #dad2bd; background: rgba(150, 140, 110, 0.22); border-color: rgba(150, 140, 110, 0.45); }
+.arena-combat-dialog .fighter-status.is-control { color: #c8b2f6; background: rgba(120, 90, 210, 0.22);  border-color: rgba(120, 90, 210, 0.5); }
+.arena-combat-dialog .fighter-status.is-shield  { color: #9ed1f6; background: rgba(70, 150, 225, 0.2);   border-color: rgba(70, 150, 225, 0.5); }
+.arena-combat-dialog .fighter-status.is-buff    { color: #92e6ad; background: rgba(50, 185, 95, 0.2);    border-color: rgba(50, 185, 95, 0.5); }
+.arena-combat-dialog .fighter-status.is-rage    { color: #f8b78c; background: rgba(240, 110, 40, 0.22);  border-color: rgba(240, 110, 40, 0.55); }
+.arena-combat-dialog .fighter-status.is-energy  { color: #f3dd7c; background: rgba(232, 195, 40, 0.22);  border-color: rgba(232, 195, 40, 0.55); }
+.arena-combat-dialog .fighter-status.is-magic   { color: #d7aaf6; background: rgba(175, 95, 225, 0.2);   border-color: rgba(175, 95, 225, 0.5); }
+.arena-combat-dialog .fighter-status.is-wild    { color: #93e1a1; background: rgba(50, 170, 80, 0.18);   border-color: rgba(50, 170, 80, 0.45); }
+
+/* ── HP bar: la traccia è già scura; rinforziamo la cornice ── */
+.arena-combat-dialog .hp-bar-bg {
+  border: 1.5px solid rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Etichette gruppi azione (testo chiaro su dark) ── */
+.arena-combat-dialog .action-group-label.melee    { background: rgba(192, 57, 43, 0.2);  color: #f3a796; border-color: rgba(192, 57, 43, 0.45); }
+.arena-combat-dialog .action-group-label.ranged   { background: rgba(200, 140, 40, 0.18); color: #ecc382; border-color: rgba(200, 140, 40, 0.42); }
+.arena-combat-dialog .action-group-label.spell-lv0 { background: rgba(160, 165, 185, 0.16); color: #d2d6e2; border-color: rgba(160, 165, 185, 0.36); }
+.arena-combat-dialog .action-group-label.spell-lv1 { background: rgba(39, 174, 96, 0.2);  color: #82e3ab; border-color: rgba(39, 174, 96, 0.45); }
+.arena-combat-dialog .action-group-label.spell-lv2 { background: rgba(60, 150, 220, 0.2); color: #92caf6; border-color: rgba(60, 150, 220, 0.45); }
+.arena-combat-dialog .action-group-label.spell-lv3 { background: rgba(170, 90, 220, 0.2); color: #d2a4f3; border-color: rgba(170, 90, 220, 0.45); }
+.arena-combat-dialog .action-group-label.skill     { background: rgba(232, 198, 106, 0.18); color: var(--fc-gold-bright); border-color: var(--fc-line-strong); }
+
+/* ── Bottoni azione (base + varianti). NB: NON usiamo !important sulla base
+      così gli stati speciali con !important — deathblow / smite / stealth /
+      bonus-action — restano vividi. ── */
+.arena-combat-dialog .btn-action {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.28));
+  border: 1px solid rgba(232, 198, 106, 0.18);
+  color: var(--fc-ink);
+}
+.arena-combat-dialog .btn-action.weapon {
+  background: linear-gradient(180deg, rgba(192, 57, 43, 0.22), rgba(90, 16, 16, 0.3));
+  border-color: rgba(192, 57, 43, 0.42);
+  color: #f1bdae;
+}
+.arena-combat-dialog .btn-action.spell {
+  background: linear-gradient(180deg, rgba(70, 110, 210, 0.22), rgba(24, 34, 78, 0.32));
+  border-color: rgba(90, 130, 215, 0.42);
+  color: #bcd2f5;
+}
+.arena-combat-dialog .btn-action.weapon.equipped {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.18), rgba(120, 30, 20, 0.3));
+  border-color: var(--fc-line-strong);
+  color: var(--fc-gold-bright);
+  box-shadow: inset 0 0 0 1px rgba(232, 198, 106, 0.2);
+}
+.arena-combat-dialog .btn-action.weapon.unequipped {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--fc-ink-soft);
+  opacity: 0.7;
+}
+.arena-combat-dialog .btn-action.bonus-action { color: #4fe0c0 !important; }
+.arena-combat-dialog .btn-action:hover {
+  filter: brightness(1.18);
+  border-color: var(--fc-gold);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45), 0 0 10px rgba(232, 198, 106, 0.22);
+}
+.arena-combat-dialog .action-dice { color: var(--fc-ink-soft); }
+
+/* ── Bottoni iniziativa / tiro salvezza / item / target ── */
+.arena-combat-dialog .btn-init,
+.arena-combat-dialog .btn-saving-throw {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.16), rgba(180, 130, 30, 0.12));
+  color: var(--fc-gold-bright);
+  border: 1px solid var(--fc-line-strong);
+}
+.arena-combat-dialog .btn-init:hover,
+.arena-combat-dialog .btn-saving-throw:hover {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.28), rgba(180, 130, 30, 0.2));
+  border-color: var(--fc-gold);
+}
+.arena-combat-dialog .btn-item {
+  background: rgba(232, 198, 106, 0.1);
+  border-color: var(--fc-line);
+  color: var(--fc-ink);
+}
+.arena-combat-dialog .btn-item:hover:not(:disabled) { background: rgba(232, 198, 106, 0.2); }
+.arena-combat-dialog .item-uses { color: var(--fc-gold); background: rgba(232, 198, 106, 0.18); }
+.arena-combat-dialog .btn-target {
+  background: rgba(192, 57, 43, 0.14);
+  border-color: rgba(192, 57, 43, 0.4);
+  color: #f0a999;
+}
+.arena-combat-dialog .btn-target:hover { background: rgba(192, 57, 43, 0.26); border-color: var(--fc-red); }
+.arena-combat-dialog .btn-target.selected { background: var(--fc-red); color: #fff; border-color: var(--fc-red); }
+.arena-combat-dialog .target-selector-label { color: var(--fc-ink-soft); }
+.arena-combat-dialog .target-selector-row { border-bottom-color: var(--fc-line); }
+
+/* ── Blocchi Tiro Salvezza / DoT ── */
+.arena-combat-dialog .save-block.dex { background: rgba(70, 110, 210, 0.12); border-color: rgba(90, 130, 215, 0.4); }
+.arena-combat-dialog .save-block.con { background: rgba(192, 57, 43, 0.12); border-color: rgba(192, 57, 43, 0.42); }
+.arena-combat-dialog .save-block.str { background: rgba(232, 198, 106, 0.1); border-color: var(--fc-line-strong); }
+.arena-combat-dialog .save-block.control-lost,
+.arena-combat-dialog .save-block.control { background: rgba(150, 90, 220, 0.16); border-color: rgba(150, 90, 220, 0.45); }
+.arena-combat-dialog .save-block-label { color: var(--fc-ink); }
+.arena-combat-dialog .save-block.control p,
+.arena-combat-dialog .save-block.control .save-block-label { color: #cbb6fd; }
+
+/* ── Cronaca / log del match ── */
+.arena-combat-dialog .match-log {
+  background: rgba(0, 0, 0, 0.28);
+  border-top: 1px solid var(--fc-line);
+}
+.arena-combat-dialog .match-log-head {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.16), rgba(180, 130, 30, 0.08));
+  border-bottom: 1.5px solid var(--fc-line);
+  color: var(--fc-gold-bright);
+}
+.arena-combat-dialog .match-log-count { background: var(--fc-red); color: #fdeede; }
+.arena-combat-dialog .match-log .log-entry { color: var(--fc-ink); }
+.arena-combat-dialog .match-log .log-entry.latest {
+  background: rgba(232, 198, 106, 0.12);
+  border-left: 3px solid var(--fc-gold);
+}
+.arena-combat-dialog .match-log .log-entry.log-attacker {
+  background: rgba(192, 57, 43, 0.14);
+  border-left: 3px solid var(--fc-red);
+}
+.arena-combat-dialog .match-log .log-entry.log-defender {
+  background: rgba(58, 150, 90, 0.14);
+  border-left: 3px solid #3fa86a;
+}
+.arena-combat-dialog .match-log .log-ts {
+  color: var(--fc-gold);
+  background: rgba(232, 198, 106, 0.1);
+  border-color: var(--fc-line);
+}
+.arena-combat-dialog .match-log-empty { color: var(--fc-ink-soft); }
+.arena-combat-dialog .match-log-scroll { scrollbar-color: var(--fc-line-strong) transparent; }
+.arena-combat-dialog .match-log-scroll::-webkit-scrollbar-thumb { background: var(--fc-line-strong); }
+.arena-combat-dialog .match-log-scroll::-webkit-scrollbar-thumb:hover { background: var(--fc-gold); }
+
+/* ── Reazioni emoji ── */
+.arena-combat-dialog .arena-react-toggle {
+  background: linear-gradient(135deg, rgba(232, 198, 106, 0.22), rgba(232, 198, 106, 0.08));
+  border-color: var(--fc-line-strong);
+  color: var(--fc-gold-bright);
+}
+
+/* ── Mobile: il dialog combattimento riempie il viewport sotto la navbar ── */
+@media (max-width: 640px) {
+  .arena-combat-overlay { padding: var(--navbar-h) 0 0; align-items: stretch; }
+  .arena-combat-dialog {
+    width: 100%;
+    height: 100%;
+    max-height: calc(100vh - var(--navbar-h));
+    border-radius: 14px 14px 0 0;
+  }
+}
