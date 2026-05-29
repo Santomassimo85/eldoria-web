@@ -8473,20 +8473,40 @@
       così gli stati speciali con !important — deathblow / smite / stealth /
       bonus-action — restano vividi. ── */
 .arena-combat-dialog .btn-action {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.28));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.3));
   border: 1px solid rgba(232, 198, 106, 0.18);
-  color: var(--fc-ink);
+  color: #f3ecd8;
 }
 .arena-combat-dialog .btn-action.weapon {
-  background: linear-gradient(180deg, rgba(192, 57, 43, 0.22), rgba(90, 16, 16, 0.3));
-  border-color: rgba(192, 57, 43, 0.42);
-  color: #f1bdae;
+  background: linear-gradient(180deg, rgba(150, 36, 28, 0.42), rgba(60, 12, 12, 0.55));
+  border-color: rgba(220, 90, 75, 0.5);
+  color: #ffd8cc;
 }
 .arena-combat-dialog .btn-action.spell {
-  background: linear-gradient(180deg, rgba(70, 110, 210, 0.22), rgba(24, 34, 78, 0.32));
-  border-color: rgba(90, 130, 215, 0.42);
-  color: #bcd2f5;
+  background: linear-gradient(180deg, rgba(48, 78, 165, 0.42), rgba(12, 18, 48, 0.58));
+  border-color: rgba(120, 158, 235, 0.5);
+  color: #e2ecff;
 }
+.arena-combat-dialog .btn-action.skill {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.18), rgba(58, 44, 14, 0.5));
+  border-color: rgba(232, 198, 106, 0.42);
+  color: #f8ecc4;
+}
+/* Heal / Control: identità verde/viola preservata ma con contrasto forte */
+.arena-combat-dialog .btn-action.spell.heal {
+  background: linear-gradient(180deg, rgba(34, 160, 90, 0.36), rgba(8, 40, 24, 0.55));
+  border-color: rgba(90, 224, 150, 0.55);
+  color: #9bf2bd;
+}
+.arena-combat-dialog .btn-action.spell.control {
+  background: linear-gradient(180deg, rgba(122, 82, 205, 0.38), rgba(28, 16, 54, 0.55));
+  border-color: rgba(180, 145, 250, 0.6);
+  color: #e0cdff;
+}
+/* Testo crisp su qualunque sfondo: ombra netta + dadi leggibili */
+.arena-combat-dialog .btn-action .action-name { color: inherit; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+.arena-combat-dialog .btn-action .action-icon { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65); }
+.arena-combat-dialog .btn-action .action-dice { color: rgba(255, 255, 255, 0.78); opacity: 1; }
 .arena-combat-dialog .btn-action.weapon.equipped {
   background: linear-gradient(180deg, rgba(232, 198, 106, 0.18), rgba(120, 30, 20, 0.3));
   border-color: var(--fc-line-strong);
