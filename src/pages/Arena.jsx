@@ -2127,14 +2127,14 @@ export default function Arena() {
     if (!fresh) return;
     fightResultSeenRef.current.add(fresh.matchId);
     const winnerP    = fresh.players.find(p => p.id === fresh.winner);
-    const winnerSnap = snapshots[fresh.winner] || {};
+    const winnerSnap = (arenaMeta.characterSnapshots || {})[fresh.winner] || {};
     setFightResult({
       won:         fresh.winner === currentUser.uid,
       winnerName:  winnerP?.name || winnerSnap.name || "Sfidante",
       winnerImage: winnerSnap.image || null,
       winnerClass: winnerP?.class || winnerSnap.class || "",
     });
-  }, [arenaMeta?.matches, currentUser, snapshots]);
+  }, [arenaMeta?.matches, arenaMeta?.characterSnapshots, currentUser]);
 
   // ── STEP 1: carica personaggio → class-select ────────────────────────────
   const openLoadoutPicker = async () => {
