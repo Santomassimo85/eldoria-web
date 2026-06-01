@@ -32,6 +32,7 @@ import {
 import "./BossTactics.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+const TURN_MS = 30 * 60 * 1000;   // 30 minutes per turn, then auto-pass
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default function BossTactics() {
@@ -61,6 +62,8 @@ export default function BossTactics() {
   const [busy, setBusy] = useState(false);
   const [animUnit, setAnimUnit] = useState(null); // local walk override {id,x,y}
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
+  const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
+  const autoPassedRef = useRef(null);              // turnDeadline already auto-passed (dedupe)
 
   const viewportRef = useRef(null);
   const dragRef = useRef(null);
@@ -93,20 +96,21 @@ export default function BossTactics() {
     if (!currentUser) return;
     return onSnapshot(doc(db, "characters", currentUser.uid), (snap) => setCharData(snap.data()));
   }, [currentUser]);
+  // Loaded for ALL clients (not just master) so sprites/avatars can be resolved
+  // locally instead of being embedded in the battle doc (which would blow past
+  // Firestore's 1 MB document limit).
   useEffect(() => {
-    if (!isMaster) return;
     return onSnapshot(collection(db, "characters"), (snap) =>
       setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
-  }, [isMaster]);
+  }, []);
   useEffect(() => {
     return onSnapshot(collection(db, "bosses"), (snap) =>
       setBosses(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((b) => b.isActive)));
   }, []);
   useEffect(() => {
-    if (!isMaster) return;
     return onSnapshot(collection(db, "player_sprites"), (snap) =>
       setMinionLib(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
-  }, [isMaster]);
+  }, []);
   useEffect(() => {
     if (!isMaster) return;
     return onSnapshot(collection(db, "battle_meta"), (snap) =>
@@ -115,10 +119,29 @@ export default function BossTactics() {
 
   const map = battle?.map || defaultBattleMap();
   const units = useMemo(() => battle?.units || [], [battle]);
-  // Local walk animation: override the moving unit's rendered position.
+
+  // Resolve a unit's images from the source collections (not stored in the doc).
+  const spriteFor = useCallback((u) => {
+    if (!u) return {};
+    if (u.kind === "player") {
+      const c = players.find((p) => p.id === u.uid);
+      return { sprite: c?.spriteUrl || c?.image || null, deadSprite: c?.deadSpriteUrl || c?.spriteUrl || c?.image || null, avatar: c?.image || c?.spriteUrl || null };
+    }
+    if (u.kind === "boss") {
+      const b = bosses.find((x) => x.id === u.bossId) || bosses[0];
+      return { sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || b?.imageUrl || null, avatar: b?.imageUrl || b?.image || null };
+    }
+    const t = minionLib.find((x) => x.id === u.tplId);
+    return { sprite: t?.spriteUrl || null, deadSprite: t?.deadSpriteUrl || t?.spriteUrl || null, avatar: t?.spriteUrl || null };
+  }, [players, bosses, minionLib]);
+
+  // Rendered units: raw units enriched with images, plus the local walk override.
   const displayUnits = useMemo(
-    () => (animUnit ? units.map((u) => (u.id === animUnit.id ? { ...u, x: animUnit.x, y: animUnit.y } : u)) : units),
-    [units, animUnit]
+    () => units.map((u) => {
+      const e = { ...u, ...spriteFor(u) };
+      return animUnit && u.id === animUnit.id ? { ...e, x: animUnit.x, y: animUnit.y } : e;
+    }),
+    [units, animUnit, spriteFor]
   );
   const fightStarted = battle?.fightStarted === true;
   const phase = battle?.phase || "setup";
@@ -260,6 +283,7 @@ export default function BossTactics() {
     await updateDoc(BATTLE_REF(), {
       fightStarted: true, turnOrder: ord, activeIdx: 0, round: 1,
       phase: first?.side === "hero" ? "players" : "enemies",
+      turnDeadline: Date.now() + TURN_MS,
     });
     await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
       content: "⚔️ La battaglia ha inizio! Ordine: " + ord.map((id) => units.find((u) => u.id === id)?.name).join(" → ") });
@@ -298,9 +322,33 @@ export default function BossTactics() {
       const icon = terr.key === "lava" ? "🔥" : terr.key === "acid" ? "🧪" : "☠";
       await logChat({ type: "narrative", senderName: nu.name, uid: BOSS_SYSTEM_UID, isSystem: true, content: `${icon} ${nu.name} subisce ${dmg} danni da ${terr.label}: −${dmg} HP${hp <= 0 ? " · 💀" : ""}` });
     }
-    await writeUnits(next, { activeIdx: idx, round, phase: (next.find((u) => u.id === order[idx])?.side === "hero") ? "players" : "enemies" });
+    await writeUnits(next, { activeIdx: idx, round, phase: (next.find((u) => u.id === order[idx])?.side === "hero") ? "players" : "enemies", turnDeadline: Date.now() + TURN_MS });
   };
   const endTurn = () => { if (isMyTurn) { setMode("idle"); setSelAction(null); advanceTurn(units); } };
+
+  // ── Per-turn timer (30 min, then auto-pass for everyone) ──────────────────
+  const turnDeadline = battle?.turnDeadline || null;
+  const remainingMs = turnDeadline && fightStarted && !isOver ? Math.max(0, turnDeadline - nowTs) : null;
+  useEffect(() => {
+    if (!fightStarted || isOver) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [fightStarted, isOver]);
+  useEffect(() => {
+    if (!fightStarted || isOver || busy || !turnDeadline || !activeUnit) return;
+    if (autoPassedRef.current === turnDeadline) return;
+    if (nowTs < turnDeadline) return;
+    // The active controller auto-passes; the master is a fallback (+15s grace)
+    // in case that controller's tab is closed — so enemy turns pass too.
+    const controller = isMyTurn;
+    const masterFallback = isMaster && nowTs > turnDeadline + 15000;
+    if (!controller && !masterFallback) return;
+    autoPassedRef.current = turnDeadline;
+    setMode("idle"); setSelAction(null);
+    logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+      content: `⏱️ Tempo scaduto: ${activeUnit.name} passa il turno.` });
+    advanceTurn(units);
+  }, [nowTs, turnDeadline, fightStarted, isOver, busy, isMyTurn, isMaster, activeUnit, units]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
@@ -445,6 +493,11 @@ export default function BossTactics() {
       {isMyTurn && (
         <button className="tac-fab tac-fab-end" onClick={endTurn} title="Fine turno">⏭ Fine</button>
       )}
+      {remainingMs != null && (
+        <div className={`tac-timer ${remainingMs <= 60000 ? "low" : ""}`} title="Tempo rimanente per il turno">
+          ⏱ {String(Math.floor(remainingMs / 60000)).padStart(2, "0")}:{String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}
+        </div>
+      )}
 
       {showBar && (
         <div className="tac-topbar" ref={topbarRef}>
@@ -527,7 +580,7 @@ export default function BossTactics() {
                       onClick={() => setMinions((m) => [...m, {
                         name: t.name, hp: t.hp, ac: t.ac, dex: t.dex,
                         atkName: t.atkName, atkDice: t.atkDice, atkBonus: t.atkBonus, atkRange: t.atkRange,
-                        sprite: t.spriteUrl, deadSprite: t.deadSpriteUrl,
+                        tplId: t.id, sprite: t.spriteUrl, deadSprite: t.deadSpriteUrl,
                       }])}>
                       ＋ {t.name}
                     </button>
@@ -577,9 +630,10 @@ export default function BossTactics() {
         // identity card (reused in both states). Portrait = the Foundry avatar
         // from the character sheet (live charData for the player you control),
         // falling back to the unit's stored avatar, then its pixel sprite.
+        const resolved = spriteFor(activeUnit);
         const avatarSrc =
           (activeUnit.uid === currentUser?.uid ? charData?.image : null) ||
-          activeUnit.avatar || activeUnit.sprite;
+          resolved.avatar || resolved.sprite;
         const card = (
           <div className={`tac-hud-card side-${activeUnit.side}`}>
             {avatarSrc

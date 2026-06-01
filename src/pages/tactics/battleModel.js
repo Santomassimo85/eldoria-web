@@ -69,11 +69,10 @@ function moveFromChar(char) {
 export function makePlayerUnit(char, uid, x, y) {
   const s = char?.stats || {};
   return {
+    // NOTE: no image fields stored here — they are resolved client-side from the
+    // `characters` collection to keep the battle doc under Firestore's 1 MB cap.
     id: uid, uid, side: "hero", kind: "player",
     name: char?.name || "Eroe",
-    sprite: char?.spriteUrl || char?.image || null,
-    deadSprite: char?.deadSpriteUrl || char?.spriteUrl || char?.image || null,
-    avatar: char?.image || char?.avatar || null,   // Foundry portrait (PG sheet)
     x, y,
     hp: s.hp ?? s.maxHp ?? 10, maxHp: s.maxHp ?? s.hp ?? 10,
     ac: s.ac ?? 10, dex: s.dex ?? 0,
@@ -86,9 +85,7 @@ export function makeBossUnit(boss, x, y, dex = 0) {
   return {
     id: "boss", side: "enemy", kind: "boss",
     name: boss?.name || "Boss",
-    sprite: boss?.imageUrl || null,
-    deadSprite: boss?.deadImageUrl || boss?.imageUrl || null,
-    avatar: boss?.imageUrl || boss?.image || null,
+    // images resolved client-side from the `bosses` collection (see makePlayerUnit)
     x, y,
     hp: boss?.hp ?? boss?.maxHp ?? 100, maxHp: boss?.maxHp ?? boss?.hp ?? 100,
     ac: boss?.ac ?? 12, dex,
@@ -102,9 +99,7 @@ export function makeMinionUnit(spec, idx, x, y) {
   return {
     id: `minion-${idx}`, side: "enemy", kind: "minion",
     name: spec?.name || `Nemico ${idx + 1}`,
-    sprite: spec?.sprite || spec?.image || null,
-    deadSprite: spec?.deadSprite || spec?.sprite || spec?.image || null,
-    avatar: spec?.image || spec?.sprite || null,
+    tplId: spec?.tplId || null,   // player_sprites template id → images resolved client-side
     x, y,
     hp: spec?.hp ?? 12, maxHp: spec?.hp ?? 12,
     ac: spec?.ac ?? 11, dex: spec?.dex ?? 0,

@@ -116,6 +116,23 @@
   border-color: #ffd79b;
 }
 
+/* turn timer badge (top-centre) */
+.tac-timer {
+  position: absolute; z-index: 1200;
+  top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  padding: 8px 12px; font-size: 14px; font-weight: 900; letter-spacing: 1px;
+  color: #fff; border: 2px solid #0a1230; border-radius: 0;
+  background: linear-gradient(180deg, rgba(36,64,140,0.96), rgba(12,24,66,0.97));
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.25), inset -2px -2px 0 rgba(0, 0, 0, 0.5);
+}
+.tac-timer.low {
+  background: linear-gradient(180deg, rgba(196,42,42,0.96), rgba(120,20,20,0.97));
+  border-color: #ff9b8a;
+  animation: tac-timer-pulse 1s ease-in-out infinite;
+}
+@keyframes tac-timer-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+
 /* ── Action HUD — Final Fantasy Tactics styled command window ────────────── */
 .tac-hud {
   flex: 0 0 auto;
