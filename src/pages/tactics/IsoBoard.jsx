@@ -16,6 +16,8 @@
 //   onUnitClick   (unit, ev) => void
 // ─────────────────────────────────────────────────────────────────────────
 import React, { useMemo, useState, useEffect } from "react";
+import { db } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import {
   TILE_W, TILE_H, ELEV_STEP,
   TERRAINS, TERRAIN_KEYS, PROPS,
@@ -42,6 +44,17 @@ function useTileTextures() {
   return tex;
 }
 
+// Master-uploaded sprites for props (tree/boulder/column), stored as dataURLs
+// in battle_meta/prop_sprites. When a prop has no sprite we fall back to emoji.
+function usePropSprites() {
+  const [sprites, setSprites] = useState({});
+  useEffect(() => {
+    return onSnapshot(doc(db, "battle_meta", "prop_sprites"), (snap) =>
+      setSprites(snap.exists() ? snap.data() : {}));
+  }, []);
+  return sprites;
+}
+
 export default function IsoBoard({
   map,
   units = [],
@@ -49,6 +62,7 @@ export default function IsoBoard({
   scale = 1,
   rotation = 0,
   onTileClick,
+  onTileHover,
   onUnitClick,
 }) {
   const { boardW, boardH, origin } = useMemo(
@@ -56,6 +70,7 @@ export default function IsoBoard({
     [map, rotation]
   );
   const tex = useTileTextures();
+  const propSprites = usePropSprites();
 
   return (
     <div
@@ -98,10 +113,33 @@ export default function IsoBoard({
               zIndex: depth * 4,
             }}
           >
+            {/* Base procedural cube — ALWAYS drawn (behind the texture). Its
+                shaded side faces fill the FULL elevation height so raised tiles
+                never show transparent gaps, and the top diamond fills behind the
+                texture in case the art has any holes. */}
+            <svg
+              width={TILE_W}
+              height={svgH}
+              viewBox={`0 0 ${TILE_W} ${svgH}`}
+              className="iso-cube"
+            >
+              {EH > 0 && (
+                <>
+                  <polygon className="iso-face" points={leftFace} fill={shade(terr.color, 0.62)} />
+                  <polygon className="iso-face" points={rightFace} fill={shade(terr.color, 0.46)} />
+                </>
+              )}
+              <polygon
+                className="iso-face"
+                points={topFace}
+                fill={terr.color}
+                stroke={shade(terr.color, 1.18)}
+                strokeWidth="1"
+              />
+            </svg>
             {/* user-drawn iso cube tile (square PNG: diamond top + cube body).
-                Scaled ×2 and lifted so the diamond-top vertex lands on the cell;
-                the cube body hangs below. When absent we fall back to procedural
-                polygons in the SVG. */}
+                Lifted so the diamond-top vertex lands on the cell; the cube body
+                hangs below. Overlays the procedural base. */}
             {texSrc && (
               <img
                 className="iso-tile-tex"
@@ -109,29 +147,17 @@ export default function IsoBoard({
                 alt=""
                 draggable={false}
                 style={{ left: 0, top: -TILE_W / 4, width: TILE_W, height: TILE_W }}
+                onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
+                onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)}
               />
             )}
+            {/* Overlay — highlight + click target must sit ABOVE the texture. */}
             <svg
               width={TILE_W}
               height={svgH}
               viewBox={`0 0 ${TILE_W} ${svgH}`}
-              className="iso-cube"
+              className="iso-cube iso-cube-overlay"
             >
-              {!texSrc && EH > 0 && (
-                <>
-                  <polygon className="iso-face" points={leftFace} fill={shade(terr.color, 0.62)} />
-                  <polygon className="iso-face" points={rightFace} fill={shade(terr.color, 0.46)} />
-                </>
-              )}
-              {!texSrc && (
-                <polygon
-                  className="iso-face"
-                  points={topFace}
-                  fill={terr.color}
-                  stroke={shade(terr.color, 1.18)}
-                  strokeWidth="1"
-                />
-              )}
               {/* highlight overlay (non-interactive) */}
               {hl && (
                 <polygon
@@ -139,7 +165,20 @@ export default function IsoBoard({
                   points={topFace}
                 />
               )}
-              {/* transparent hit target */}
+              {/* transparent hit target — spans the WHOLE visible cube (top
+                  diamond + side walls) so a click lands anywhere on the tile,
+                  not only on the small top diamond. Front tiles sit at a higher
+                  z-index, so they still win over the walls behind them. */}
+              {EH > 0 && (
+                <>
+                  <polygon points={leftFace} fill="transparent" className="iso-hit"
+                    onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
+                    onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)} />
+                  <polygon points={rightFace} fill="transparent" className="iso-hit"
+                    onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
+                    onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)} />
+                </>
+              )}
               <polygon
                 points={topFace}
                 fill="transparent"
@@ -148,13 +187,14 @@ export default function IsoBoard({
                   e.stopPropagation();
                   onTileClick?.(tile.x, tile.y, tile);
                 }}
+                onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)}
               />
             </svg>
 
             {prop && (
-              <span className="iso-prop" style={{ top: -TILE_H * 0.55 }}>
-                {prop.emoji}
-              </span>
+              propSprites[tile.prop]
+                ? <img className="iso-prop-img" src={propSprites[tile.prop]} alt={prop.label} draggable={false} />
+                : <span className="iso-prop" style={{ top: -TILE_H * 0.55 }}>{prop.emoji}</span>
             )}
           </div>
         );

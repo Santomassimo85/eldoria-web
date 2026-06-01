@@ -129,7 +129,7 @@ export function computeBoardMetrics(map, rotation = 0) {
 }
 
 // ── Movement / pathfinding ────────────────────────────────────────────────
-export const JUMP = 2; // max elevation difference a unit can step across
+export const JUMP = 1; // max elevation step per tile (climb one level at a time)
 
 /**
  * Dijkstra flood from (sx,sy). Returns { costs, prev } where costs is a Map

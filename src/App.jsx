@@ -339,6 +339,19 @@ export default function App() {
             <span className="line line-2"></span>
             <span className="line line-3"></span>
           </div>
+
+          {/* On fullscreen pages the header is only revealed via ☰ — this X
+              hides it again and returns to the fullscreen view. */}
+          {hideChrome && (
+            <button
+              className="nav-hide-btn"
+              onClick={() => { setForceShowNav(false); setMenuOpen(false); }}
+              aria-label="Nascondi menu"
+              title="Nascondi menu"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <nav className={menuOpen ? "active" : ""}>

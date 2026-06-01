@@ -1,48 +1,89 @@
-/* ── BattleChat — floating toggle + docked panel ────────────────────────── */
+/* ── BattleChat — floating toggle + docked panel (LIGHT THEME) ──────────── */
 .bc-toggle {
   position: fixed;
   right: 10px;
-  bottom: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 5200;
   width: 46px;
   height: 46px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(20, 26, 36, 0.9);
-  color: #fff;
+  border-radius: 0;
+  border: 2px solid #2a2a2a;
+  background: linear-gradient(180deg, #ffffff, #e6e6e6);
+  color: #1d2330;
   font-size: 20px;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55);
+  image-rendering: pixelated;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.9), inset -2px -2px 0 rgba(0, 0, 0, 0.18);
 }
-.bc-toggle.is-open { background: #2b6cb0; }
+.bc-toggle.is-open { background: linear-gradient(180deg, #ffe7b0, #f3c766); border-color: #8a6a20; }
 
 .bc-panel {
   position: fixed;
-  right: 10px;
-  bottom: 66px;
+  right: 64px;            /* just left of the centred toggle button */
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 5100;
-  width: min(380px, 92vw);
+  width: min(380px, 88vw);
   height: min(60vh, 460px);
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border: 2px solid #2a2a2a;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  background: #f5f1e6;     /* light parchment */
+  color: #23282f;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.8), inset -2px -2px 0 rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.35);
 }
-/* The inner .rpg-log-panel comes from WorldBoss.css; make it fill the panel. */
+
+/* The inner .rpg-log-panel comes from WorldBoss.css; outside .rpg-screen it has
+   no background, so we paint it light here and let it fill the panel. */
 .bc-panel .rpg-log-panel {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: #f5f1e6;
+  border: none;
 }
-.bc-panel .rpg-log-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.bc-panel .rpg-log-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  background: #f5f1e6;
+  padding: 8px 10px;
+}
 
 .bc-panel .rpg-log-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #e3d8bd;
+  color: #4a3a18;
+  padding: 8px 10px;
+  font-weight: 800;
+  border-bottom: 2px solid #2a2a2a;
 }
+
+/* readable message text on the light background */
+.bc-panel .rpg-log-msg { color: #23282f; }
+.bc-panel .rpg-log-who { color: #3a2f1a; font-weight: 800; }
+.bc-panel .rpg-log-text { color: #23282f; }
+.bc-panel .rpg-log-time { color: #8a8270; }
+
+/* chat input row */
+.bc-panel .rpg-chat-form { display: flex; gap: 6px; padding: 8px 10px; background: #ece4d2; }
+.bc-panel .rpg-chat-input {
+  flex: 1 1 auto; min-width: 0;
+  background: #ffffff; color: #1d2330;
+  border: 2px solid #2a2a2a; border-radius: 0; padding: 7px 9px; font-size: 13px;
+}
+.bc-panel .rpg-chat-input::placeholder { color: #9a927f; }
+.bc-panel .rpg-chat-send {
+  flex: 0 0 auto; background: linear-gradient(180deg, #ffffff, #e6e6e6);
+  color: #1d2330; border: 2px solid #2a2a2a; border-radius: 0; padding: 7px 12px; cursor: pointer; font-weight: 900;
+}
+
 .bc-close {
   background: transparent;
   border: none;
@@ -52,3 +93,7 @@
   opacity: 0.8;
 }
 .bc-close:hover { opacity: 1; }
+
+@media (max-width: 560px) {
+  .bc-panel { right: 8px; left: 8px; width: auto; }
+}

@@ -186,6 +186,24 @@ section.active {
      flex-shrink: 0;
 }
 
+/* X to hide the header again on fullscreen battle pages */
+.nav-hide-btn {
+     width: 34px;
+     height: 34px;
+     display: grid;
+     place-items: center;
+     border-radius: 8px;
+     border: 2px solid #7a1f1f;
+     background: #b02b2b;
+     color: #fff;
+     font-size: 16px;
+     font-weight: 900;
+     line-height: 1;
+     cursor: pointer;
+     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.nav-hide-btn:hover { background: #c93838; }
+
 .logo {
      display: flex;
      align-items: center;

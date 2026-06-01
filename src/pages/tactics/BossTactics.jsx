@@ -60,12 +60,29 @@ export default function BossTactics() {
   const [selAction, setSelAction] = useState(null);
   const [busy, setBusy] = useState(false);
   const [animUnit, setAnimUnit] = useState(null); // local walk override {id,x,y}
+  const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
 
   const viewportRef = useRef(null);
   const dragRef = useRef(null);
   const movedRef = useRef(false);
   const pointersRef = useRef(new Map());
   const pinchRef = useRef(null);
+  const topbarRef = useRef(null);
+  const menuFabRef = useRef(null);
+
+  // Close the top menu when clicking anywhere outside it (but not on the ☰
+  // button, whose own handler toggles it). Uses a document listener so it
+  // doesn't depend on the board's transformed stacking context.
+  useEffect(() => {
+    if (!showBar) return;
+    const onDown = (e) => {
+      if (topbarRef.current?.contains(e.target)) return;
+      if (menuFabRef.current?.contains(e.target)) return;
+      setShowBar(false);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [showBar]);
 
   // ── Subscriptions ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -157,7 +174,9 @@ export default function BossTactics() {
     }
     const d = dragRef.current; if (!d) return;
     const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
-    if (!d.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) { d.moved = true; try { e.currentTarget.setPointerCapture(d.pointerId); d.captured = true; } catch { /* */ } }
+    // Generous tap slop: only treat it as a pan once the finger/cursor really
+    // moves, otherwise small jitter during a tap was eating tile clicks.
+    if (!d.moved && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) { d.moved = true; try { e.currentTarget.setPointerCapture(d.pointerId); d.captured = true; } catch { /* */ } }
     if (d.moved) setPan({ x: d.panX + dx, y: d.panY + dy });
   };
   const onPointerUp = (e) => {
@@ -286,13 +305,24 @@ export default function BossTactics() {
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
     setBusy(true);
-    // advantage/disadvantage from a buff/debuff on the attacker → roll 2d20
+    // High-ground rule: a higher tile grants advantage vs a lower target,
+    // a lower tile imposes disadvantage vs a higher target (any elevation gap).
+    const aElev = tileAt(map, attacker.x, attacker.y)?.elevation || 0;
+    const tElev = tileAt(map, target.x, target.y)?.elevation || 0;
+    const heightCond = aElev > tElev ? "advantage" : aElev < tElev ? "disadvantage" : null;
+    // Combine the attacker's buff/debuff with the height factor (D&D rule:
+    // any advantage + any disadvantage cancel out to a normal roll).
+    const hasAdv = attacker.cond === "advantage" || heightCond === "advantage";
+    const hasDis = attacker.cond === "disadvantage" || heightCond === "disadvantage";
+    const effCond = hasAdv && hasDis ? null : hasAdv ? "advantage" : hasDis ? "disadvantage" : null;
+    // advantage/disadvantage (from buff/debuff or terrain height) → roll 2d20
     const d1 = rollDie(20);
     let d = d1, rollNote = `d20(${d1})`;
-    if (attacker.cond === "advantage" || attacker.cond === "disadvantage") {
+    if (effCond) {
       const d2 = rollDie(20);
-      d = attacker.cond === "advantage" ? Math.max(d1, d2) : Math.min(d1, d2);
-      rollNote = `${attacker.cond === "advantage" ? "⬆vant" : "⬇svan"}[${d1},${d2}]→${d}`;
+      d = effCond === "advantage" ? Math.max(d1, d2) : Math.min(d1, d2);
+      const src = heightCond ? (effCond === "advantage" ? "⬆vant·alto" : "⬇svan·basso") : (effCond === "advantage" ? "⬆vant" : "⬇svan");
+      rollNote = `${src}[${d1},${d2}]→${d}`;
     }
     await showD20Roll(d, { label: `${attacker.name}: ${action.name}` });
     const bonus = parseInt(String(action.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
@@ -380,6 +410,28 @@ export default function BossTactics() {
     setSelAction(a); setMode("act");
   };
 
+  // Classify an action so the HUD can colour/group it. Weapon attacks (red),
+  // offensive spells (purple), healing (green), buffs (blue).
+  const actionKind = (a) => {
+    const isWeapon = /armi|arma|weapon/.test((a.category || "").toLowerCase());
+    const intent = detectSpellIntent(a);
+    if (isWeapon) return { group: "attack", cls: "k-attack", icon: "⚔" };
+    if (intent === "attack" || intent === "debuff") return { group: "spell", cls: "k-spell", icon: "✨" };
+    if (intent === "heal") return { group: "support", cls: "k-heal", icon: "💚" };
+    return { group: "support", cls: "k-buff", icon: "🛡" }; // buff / self_buff
+  };
+  // Buckets in display order, each with a coloured section header.
+  const ACTION_GROUPS = [
+    { key: "attack", label: "⚔ Attacchi" },
+    { key: "spell", label: "✨ Incantesimi" },
+    { key: "support", label: "✚ Supporto" },
+  ];
+  const groupedActions = useMemo(() => {
+    const g = { attack: [], spell: [], support: [] };
+    for (const a of myActions) g[actionKind(a).group].push(a);
+    return g;
+  }, [myActions]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   if (!currentUser) return <div className="bt-msg">Loggati per entrare nel fight.</div>;
 
@@ -388,22 +440,31 @@ export default function BossTactics() {
 
   return (
     <div className="tac-screen">
-      <div className="tac-topbar">
-        <span className="tac-title">⚔ World Boss — Tactics</span>
-        <span className="tac-turninfo">
-          {!battle?.active && "Nessuna battaglia attiva"}
-          {battle?.active && !fightStarted && "🎲 Fase iniziativa"}
-          {fightStarted && !isOver && activeUnit && `Round ${battle.round} · ${activeUnit.name}${activeUnit.side === "enemy" ? " 👹" : ""}${isMyTurn ? " — tocca a te" : ""}`}
-          {isOver && "🏁 Battaglia conclusa"}
-        </span>
-        <div className="tac-controls">
-          <button onClick={() => zoom(+1)}>＋</button>
-          <button onClick={() => zoom(-1)}>－</button>
-          <button onClick={rotate} title="Ruota vista">⟳</button>
-          <button onClick={fit}>Adatta</button>
-          {isMaster && battle?.active && <button onClick={endBattle}>⛔</button>}
+      {/* floating quick-controls — always above everything */}
+      <button ref={menuFabRef} className="tac-fab tac-fab-menu" onClick={() => setShowBar((v) => !v)} title="Menu">☰</button>
+      {isMyTurn && (
+        <button className="tac-fab tac-fab-end" onClick={endTurn} title="Fine turno">⏭ Fine</button>
+      )}
+
+      {showBar && (
+        <div className="tac-topbar" ref={topbarRef}>
+          <span className="tac-title">⚔ World Boss</span>
+          <span className="tac-turninfo">
+            {!battle?.active && "Nessuna battaglia attiva"}
+            {battle?.active && !fightStarted && "🎲 Fase iniziativa"}
+            {fightStarted && !isOver && activeUnit && `Round ${battle.round} · ${activeUnit.name}${activeUnit.side === "enemy" ? " 👹" : ""}${isMyTurn ? " — tocca a te" : ""}`}
+            {isOver && "🏁 Battaglia conclusa"}
+          </span>
+          <div className="tac-controls">
+            <button onClick={() => zoom(+1)}>＋</button>
+            <button onClick={() => zoom(-1)}>－</button>
+            <button onClick={rotate} title="Ruota vista">⟳</button>
+            <button onClick={fit}>Adatta</button>
+            {isMaster && battle?.active && <button onClick={endBattle}>⛔</button>}
+            <button onClick={() => setShowBar(false)} title="Chiudi">✖</button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         className="tac-viewport" ref={viewportRef}
@@ -505,22 +566,82 @@ export default function BossTactics() {
         </div>
       )}
 
-      {/* ── Action bar (active controller) ── */}
-      {isMyTurn && (
-        <div className="tac-actionbar">
-          <button disabled={activeUnit.hasMoved} className={mode === "move" ? "on" : ""}
-            onClick={() => { setMode(mode === "move" ? "idle" : "move"); setSelAction(null); }}>
-            👟 Muovi {activeUnit.hasMoved ? "✓" : ""}
-          </button>
-          {myActions.map((a, i) => (
-            <button key={i} disabled={activeUnit.hasActed}
-              className={selAction?.name === a.name ? "on" : ""} onClick={() => pickAction(a)}>
-              {detectSpellIntent(a) === "heal" ? "💚" : detectSpellIntent(a) === "self_buff" ? "🛡" : "⚔"} {a.name} {activeUnit.hasActed ? "✓" : ""}
+      {/* ── Action HUD (active controller): avatar + colour-grouped abilities.
+          While moving or aiming an action the HUD collapses to a slim bar so the
+          board stays visible; it re-expands once the move/action resolves. ── */}
+      {isMyTurn && (() => {
+        const aiming = mode === "act" && selAction;
+        const collapsed = mode === "move" || aiming;
+        const cancel = () => { setMode("idle"); setSelAction(null); };
+
+        // identity card (reused in both states). Portrait = the Foundry avatar
+        // from the character sheet (live charData for the player you control),
+        // falling back to the unit's stored avatar, then its pixel sprite.
+        const avatarSrc =
+          (activeUnit.uid === currentUser?.uid ? charData?.image : null) ||
+          activeUnit.avatar || activeUnit.sprite;
+        const card = (
+          <div className={`tac-hud-card side-${activeUnit.side}`}>
+            {avatarSrc
+              ? <img className="tac-hud-avatar" src={avatarSrc} alt={activeUnit.name} draggable={false} />
+              : <div className="tac-hud-avatar placeholder">{(activeUnit.name || "?")[0].toUpperCase()}</div>}
+            <div className="tac-hud-meta">
+              <span className="tac-hud-name">{activeUnit.name}</span>
+              <span className="tac-hud-stats">❤ {activeUnit.hp}/{activeUnit.maxHp} · 🛡 {activeUnit.ac}</span>
+            </div>
+          </div>
+        );
+
+        if (collapsed) {
+          return (
+            <div className="tac-hud collapsed">
+              {card}
+              <span className="tac-hud-prompt">
+                {mode === "move"
+                  ? "👟 Scegli dove spostarti…"
+                  : `${actionKind(selAction).icon} ${selAction.name} — scegli il bersaglio…`}
+              </span>
+              <button className="tac-act tac-cancel" onClick={cancel}>✖ Annulla</button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="tac-hud">
+            {card}
+
+            {/* movement */}
+            <button className="tac-act k-move" disabled={activeUnit.hasMoved}
+              onClick={() => { setMode("move"); setSelAction(null); }}>
+              👟 Muovi {activeUnit.hasMoved ? "✓" : ""}
             </button>
-          ))}
-          <button className="tac-end" onClick={endTurn}>⏭ Fine turno</button>
-        </div>
-      )}
+
+            {/* abilities, split into coloured groups */}
+            <div className="tac-hud-groups">
+              {ACTION_GROUPS.map(({ key, label }) => groupedActions[key].length > 0 && (
+                <div key={key} className={`tac-group g-${key}`}>
+                  <span className="tac-group-label">{label}</span>
+                  <div className="tac-group-btns">
+                    {groupedActions[key].map((a, i) => {
+                      const k = actionKind(a);
+                      return (
+                        <button key={i} disabled={activeUnit.hasActed}
+                          className={`tac-act ${k.cls} ${selAction?.name === a.name ? "on" : ""}`}
+                          title={a.description || a.name}
+                          onClick={() => pickAction(a)}>
+                          <span className="tac-act-icon">{k.icon}</span>
+                          <span className="tac-act-name">{a.name}</span>
+                          {activeUnit.hasActed && <span className="tac-act-done">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <BattleChat currentUser={currentUser} isMaster={isMaster} charData={charData} locked={battle?.active && !fightStarted && !isMaster} />
     </div>

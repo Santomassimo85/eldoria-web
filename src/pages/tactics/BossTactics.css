@@ -52,6 +52,7 @@
   flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
   gap: 8px; padding: 8px 12px 8px 54px;
   background: rgba(0, 0, 0, 0.4); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative; z-index: 50;
 }
 .tac-title { font-weight: 800; font-size: 14px; letter-spacing: 0.5px; }
 .tac-turninfo { font-size: 13px; font-weight: 700; opacity: 0.95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; text-align: center; }
@@ -87,3 +88,165 @@
 .tac-actionbar button.on { background: #2b6cb0; border-color: #9bd0ff; }
 .tac-actionbar button:disabled { opacity: 0.4; cursor: default; }
 .tac-actionbar .tac-end { margin-left: auto; background: rgba(176, 80, 43, 0.6); }
+
+/* ── Action HUD (avatar + colour-grouped abilities) ─────────────────────────
+   VERTICAL panel: everything stacks top→bottom; ability buttons wrap into a
+   responsive grid so they are all visible without horizontal scrolling. The
+   panel itself only scrolls VERTICALLY if it ever gets too tall. */
+/* ── Floating quick-control buttons (always above everything) ───────────── */
+.tac-fab {
+  position: absolute; z-index: 1200;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: linear-gradient(180deg, rgba(36,64,140,0.96), rgba(12,24,66,0.97));
+  color: #fff; border: 2px solid #0a1230; border-radius: 0;
+  font-weight: 900; cursor: pointer; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+  image-rendering: pixelated;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.25), inset -2px -2px 0 rgba(0, 0, 0, 0.5);
+}
+.tac-fab:active { box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.5), inset -2px -2px 0 rgba(255, 255, 255, 0.2); }
+.tac-fab-menu {
+  top: calc(8px + env(safe-area-inset-top, 0px)); left: 8px;
+  width: 40px; height: 40px; justify-content: center; font-size: 18px;
+}
+.tac-fab-end {
+  top: calc(8px + env(safe-area-inset-top, 0px)); right: 8px;
+  padding: 8px 12px; font-size: 13px;
+  background: linear-gradient(180deg, rgba(196,128,42,0.96), rgba(128,72,20,0.96));
+  border-color: #ffd79b;
+}
+
+/* ── Action HUD — Final Fantasy Tactics styled command window ────────────── */
+.tac-hud {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: 8px;
+  width: 100%; box-sizing: border-box;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  max-height: 38vh; overflow-x: hidden; overflow-y: auto;
+  background: linear-gradient(180deg, rgba(36,64,140,0.95), rgba(12,24,66,0.97));
+  border-top: 2px solid #9fc7ff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 -8px 22px rgba(0, 0, 0, 0.55);
+}
+
+/* collapsed: slim single row shown while moving / aiming an action */
+.tac-hud.collapsed {
+  flex-direction: row; align-items: center; gap: 10px;
+  max-height: none; overflow: visible;
+}
+.tac-hud.collapsed .tac-hud-card { padding: 4px 10px 4px 4px; }
+.tac-hud.collapsed .tac-hud-avatar { width: 38px; height: 38px; }
+.tac-hud-prompt {
+  flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 800; color: #ffe9a0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tac-act.tac-cancel {
+  width: auto; flex: 0 0 auto; justify-content: center;
+  background: linear-gradient(180deg, rgba(176,80,43,0.92), rgba(120,52,28,0.92));
+  border-color: #e0a07a;
+}
+
+/* identity portrait (avatar framed + nameplate) — pixel character window */
+.tac-hud-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px 6px 6px; border-radius: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.42));
+  border: 2px solid #0a1230;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.15), inset -2px -2px 0 rgba(0, 0, 0, 0.4);
+}
+.tac-hud-card.side-hero  { border-color: #1b3f7a; }
+.tac-hud-card.side-enemy { border-color: #6e1a16; }
+.tac-hud-avatar {
+  width: 50px; height: 50px; flex: 0 0 auto; border-radius: 0; object-fit: cover;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid #0a1230;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.2), inset -2px -2px 0 rgba(0, 0, 0, 0.55);
+}
+.tac-hud-avatar.placeholder {
+  display: grid; place-items: center; font-size: 22px; font-weight: 900; color: #fff;
+}
+.tac-hud-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tac-hud-name {
+  font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.3;
+  color: #fff; text-shadow: 1px 1px 0 #1a2a5c;
+}
+.tac-hud-stats { font-size: 11px; font-weight: 800; color: #d6e2ff; }
+
+/* ability groups stack vertically */
+.tac-hud-groups { display: flex; flex-direction: column; gap: 6px; }
+.tac-group {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 5px 7px 7px; border-radius: 0;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(159, 199, 255, 0.18);
+}
+.tac-group-label { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.92; }
+.tac-group.g-attack  { border-left: 3px solid #c43a2a; }
+.tac-group.g-spell   { border-left: 3px solid #7a48c4; }
+.tac-group.g-support { border-left: 3px solid #2a9e54; }
+.tac-group.g-attack  .tac-group-label { color: #ff9b8a; }
+.tac-group.g-spell   .tac-group-label { color: #c79bff; }
+.tac-group.g-support .tac-group-label { color: #8af0b4; }
+
+/* buttons fill the row and wrap — never scroll sideways */
+.tac-group-btns {
+  display: grid; gap: 5px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+/* ability / control buttons — rectangular pixel-art command tiles */
+.tac-act {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px; width: 100%; box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.12); color: #fff;
+  border: 2px solid #0a1230; border-radius: 0;
+  padding: 9px 11px 9px 18px; font-size: 13px; font-weight: 800; cursor: pointer; text-align: left;
+  letter-spacing: 0.3px; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55);
+  /* hard pixel bevel: light top-left, dark bottom-right, no anti-aliasing */
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.22), inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+  image-rendering: pixelated;
+  transition: filter 0.1s ease;
+}
+.tac-act:hover:not(:disabled) { filter: brightness(1.14); }
+.tac-act:active:not(:disabled) { box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.45), inset -2px -2px 0 rgba(255, 255, 255, 0.18); }
+.tac-act:disabled { opacity: 0.4; cursor: default; }
+.tac-act-icon { flex: 0 0 auto; font-size: 15px; }
+.tac-act-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tac-act-done { flex: 0 0 auto; color: #8af0b4; font-weight: 900; }
+/* FFT selection cursor */
+.tac-act.on::before {
+  content: "►"; position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+  font-size: 9px; color: #ffe9a0; text-shadow: 0 0 4px #ffcf57;
+}
+
+/* colour by ability type — flat pixel fills + dark tinted outline */
+.tac-act.k-move   { background: linear-gradient(180deg, rgba(90,104,130,0.95), rgba(44,54,78,0.95)); border-color: #11182e; }
+.tac-act.k-attack { background: linear-gradient(180deg, rgba(196,58,42,0.95), rgba(120,28,18,0.95)); border-color: #3a0c06; }
+.tac-act.k-spell  { background: linear-gradient(180deg, rgba(122,72,196,0.95), rgba(66,34,120,0.95)); border-color: #1f0e3c; }
+.tac-act.k-heal   { background: linear-gradient(180deg, rgba(42,158,84,0.95), rgba(20,92,48,0.95)); border-color: #0a2e18; }
+.tac-act.k-buff   { background: linear-gradient(180deg, rgba(42,120,196,0.95), rgba(20,64,120,0.95)); border-color: #0a2240; }
+
+/* selected ability — hard gold pixel frame */
+.tac-act.on {
+  filter: brightness(1.2);
+  box-shadow: inset 0 0 0 2px #ffe9a0, inset 2px 2px 0 rgba(255, 255, 255, 0.25), inset -2px -2px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* move + end turn span the full panel width */
+.tac-act.k-move { justify-content: center; }
+.tac-act.tac-end {
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(176,80,43,0.92), rgba(120,52,28,0.92));
+  border-color: #e0a07a;
+}
+
+/* ── Phone tuning — keep the HUD around 30% of the screen ────────────────── */
+@media (max-width: 560px) {
+  .tac-hud { max-height: 30vh; padding: 6px 7px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
+  .tac-hud.collapsed { max-height: none; }
+  .tac-hud-avatar { width: 38px; height: 38px; }
+  .tac-hud-name { font-size: 13px; }
+  .tac-hud-stats { font-size: 10px; }
+  .tac-group-btns { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .tac-act { padding: 8px 9px; font-size: 12px; }
+  .tac-act-icon { font-size: 14px; }
+  .tac-hud-prompt { font-size: 12px; }
+}
