@@ -105,7 +105,8 @@
 }
 .tac-fab:active { box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.5), inset -2px -2px 0 rgba(255, 255, 255, 0.2); }
 .tac-fab-menu {
-  top: calc(8px + env(safe-area-inset-top, 0px)); left: 8px;
+  /* offset to the right of the app's own ☰ (site header reopen) so they don't overlap */
+  top: calc(8px + env(safe-area-inset-top, 0px)); left: 54px;
   width: 40px; height: 40px; justify-content: center; font-size: 18px;
 }
 .tac-fab-end {

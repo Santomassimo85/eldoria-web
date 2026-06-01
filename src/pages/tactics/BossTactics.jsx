@@ -441,7 +441,7 @@ export default function BossTactics() {
   return (
     <div className="tac-screen">
       {/* floating quick-controls — always above everything */}
-      <button ref={menuFabRef} className="tac-fab tac-fab-menu" onClick={() => setShowBar((v) => !v)} title="Menu">☰</button>
+      <button ref={menuFabRef} className="tac-fab tac-fab-menu" onClick={() => setShowBar((v) => !v)} title="Controlli / Master">⚙</button>
       {isMyTurn && (
         <button className="tac-fab tac-fab-end" onClick={endTurn} title="Fine turno">⏭ Fine</button>
       )}
