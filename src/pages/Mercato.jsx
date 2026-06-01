@@ -71,7 +71,20 @@ const MarketTimer = ({ targetDate }) => {
   return <div className="timer-display">{timeLeft}</div>;
 };
 
-const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids, onDeliver }) => {
+// Rarità → numero di "gemme" (1–5), stile vecchio GDR.
+const RARITY_TIER = {
+  Comune: 1, Comune2: 1,
+  Noncomune: 2, Raro: 2, Rara: 2,
+  Magico: 3, Moltorara: 3,
+  Epico: 4,
+  Leggendario: 5, Leggendaria: 5, Artefatto: 5,
+};
+const rarityStars = (rarity) => {
+  const tier = RARITY_TIER[(rarity || "Comune").replace(/\s/g, "")] || 1;
+  return "★".repeat(tier) + "☆".repeat(5 - tier);
+};
+
+const ItemCard = ({ item }) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const isSold = item.isSold === true;
@@ -79,75 +92,53 @@ const ItemCard = ({ item, isMaster, onRemoveBid, onClearAllBids, onDeliver }) =>
 
   const userBidObj = (isAuction && item.bids && currentUser) ? item.bids[currentUser.uid] : null;
 
-  const rarityKey = (item.class || "Comune").replace(/\s/g, "");
+  const rarityName = item.class || "Comune";
+  const rarityKey = rarityName.replace(/\s/g, "");
+  const open = () => !isSold && navigate(`/mercato/${item.id}`);
 
   return (
-    <div className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""} ${isMaster ? "admin-card-expanded" : ""}`} onClick={() => !isSold && navigate(`/mercato/${item.id}`)}>
-      <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="item-image" />
-      
-      <div className="item-details">
-        <p className={`item-rarity item-rarity-${(item.class || "Comune").replace(/\s/g, "")}`}>
-          {item.class || "Comune"}
-        </p>
-        <p className="item-name"><strong>{item.name}</strong></p>
+    <div
+      className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""}`}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }}
+      role="button"
+      tabIndex={0}
+      title={isSold ? "Oggetto venduto" : `Apri ${item.name}`}
+    >
+      {/* Rarità in primo piano — banner stile loot RPG */}
+      <div className={`ic-rarity-banner rarity-${rarityKey}`}>
+        <span className="ic-rarity-stars" aria-hidden="true">{rarityStars(rarityName)}</span>
+        <span className="ic-rarity-label">{rarityName}</span>
+      </div>
+
+      {/* Immagine grande */}
+      <div className="ic-image-frame">
+        <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="item-image" />
         {item.setPayload?.name && (
-          <p className="item-set-badge" title={`Set: ${item.setPayload.name} (${item.setPayload.size || "?"} pezzi)`}>
-            ⛓ {item.setPayload.name}
-            {item.setPayload.size ? <small> · {item.setPayload.size}p</small> : null}
-          </p>
+          <span className="item-set-badge" title={`Set: ${item.setPayload.name} (${item.setPayload.size || "?"} pezzi)`}>
+            ⛓ {item.setPayload.name}{item.setPayload.size ? <small> · {item.setPayload.size}p</small> : null}
+          </span>
         )}
-        <p className="item-price">
-          {isSold ? "VENDUTO" : item.saleType === "fixed" ? `${item.price} MP` : `Base: ${item.startingBid} MP`}
-        </p>
+        {!isSold && <span className="ic-inspect">🔍 Ispeziona</span>}
+        {isSold && <span className="ic-sold-stamp">Venduto</span>}
+      </div>
 
-        <div className="item-card-description" dangerouslySetInnerHTML={{ __html: item.description }} />
-
-        <div className="item-bids-summary">
-          {isMaster && item.bids && Object.keys(item.bids).length > 0 && (
-            <div className="master-bids-view">
-              <p className="bid-title">📢 OFFERTE ({Object.keys(item.bids).length}):</p>
-              {Object.entries(item.bids).map(([uid, bid]) => (
-                <div key={uid} className="bid-row-admin" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <small>{bid.charName || "Eroe"}: <strong>{bid.amount || bid} MP</strong></small>
-                  <button 
-                    className="btn-remove-bid" 
-                    title="Rimborsa e Notifica"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      onRemoveBid(item, uid, bid.amount || bid); 
-                    }}
-                    style={{color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold'}}
-                  >✕</button>
-                </div>
-              ))}
-              <button 
-                className="btn-clear-all-bids" 
-                onClick={(e) => { e.stopPropagation(); onClearAllBids(item); }}
-                style={{width: '100%', marginTop: '10px', background: '#c0392b', color: 'white', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer'}}
-              >Svuota e Rimborsa Tutti</button>
-
-              <button 
-                className="btn-deliver-item" 
-                onClick={(e) => { e.stopPropagation(); onDeliver(item); }}
-                style={{width: '100%', marginTop: '5px', background: '#d4af37', color: 'black', border: 'none', padding: '5px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold'}}
-              >
-                ✅ OK CONSEGNA
-              </button>
-            </div>
-          )}
-
-          {!isMaster && userBidObj && (
-            <div className="player-bid-view">
-              <span className="your-bid-tag">Hai offerto: {userBidObj.amount || userBidObj} MP</span>
-            </div>
-          )}
-          
-          {isSold && item.buyerName && (
-            <div className="sold-to-info">
-              <small>Preso da: {item.buyerName}</small>
-            </div>
-          )}
+      {/* Targhetta */}
+      <div className="ic-footer">
+        <p className="item-name">{item.name}</p>
+        <div className="ic-meta">
+          <span className="item-price">
+            {isSold
+              ? (item.buyerName ? `Preso da ${item.buyerName}` : "Venduto")
+              : item.saleType === "fixed"
+                ? `${item.price} MP`
+                : `Base ${item.startingBid} MP`}
+          </span>
+          {!isSold && <span className="ic-open">Apri →</span>}
         </div>
+        {userBidObj && (
+          <span className="your-bid-tag">La tua offerta: {userBidObj.amount || userBidObj} MP</span>
+        )}
       </div>
     </div>
   );
@@ -546,14 +537,7 @@ export default function Mercato() {
       ) : (
         <div className="items-grid">
           {filteredItems.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              isMaster={false}
-              onRemoveBid={handleMasterRemoveBid}
-              onClearAllBids={handleMasterClearAllBids}
-              onDeliver={handleMasterDeliver}
-            />
+            <ItemCard key={item.id} item={item} />
           ))}
         </div>
       )}

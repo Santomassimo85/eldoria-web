@@ -104,23 +104,201 @@
   letter-spacing: 0.06em;
 }
 
-/* ── GRIGLIA ── */
+/* ── GRIGLIA: card "loot" stile vecchio GDR ──────────────────
+   Immagine grande protagonista, rarità in primo piano (banner +
+   gemme ★), click per aprire la scheda con descrizione/asta.
+   Colore bordo/glow guidato da --rarity-edge (vedi style.css). */
 .mercato-page .items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 24px;
   padding: 8px 0 0;
 }
 
-/* le item-card mantengono lo sfondo rarità; aggiungo ombra coerente sul fondo scuro */
 .mercato-page .item-card {
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-  border-radius: 16px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #241019 0%, #150a11 100%);
+  border: 2px solid var(--rarity-edge, #6b6b6b);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.45) inset,
+    0 0 18px -8px var(--rarity-edge, transparent);
+  transition: transform 0.18s ease, box-shadow 0.25s ease, border-color 0.2s ease;
 }
+/* nasconde la barretta superiore della card base: la rarità ha il suo banner */
+.mercato-page .item-card::before { display: none; }
 .mercato-page .item-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
+  transform: translateY(-5px);
+  border-color: var(--rarity-edge, #fff);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.6),
+    0 0 28px -2px var(--rarity-edge, rgba(255, 255, 255, 0.4));
+}
+.mercato-page .item-card:focus-visible {
+  outline: none;
+  border-color: var(--rarity-edge, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rarity-edge) 60%, transparent),
+              0 18px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Banner rarità (in cima, ben visibile) ── */
+.mercato-page .ic-rarity-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--rarity-edge, #6b6b6b) 88%, #000) 0%,
+    color-mix(in srgb, var(--rarity-edge, #6b6b6b) 42%, #000) 100%);
+  border-bottom: 2px solid color-mix(in srgb, var(--rarity-edge, #6b6b6b) 60%, #000);
+}
+.mercato-page .ic-rarity-label {
+  font-family: var(--font-title);
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+.mercato-page .ic-rarity-stars {
+  font-size: 0.84rem;
+  letter-spacing: 1px;
+  color: #ffe08a;
+  text-shadow: 0 0 6px rgba(255, 200, 80, 0.55), 0 1px 1px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+/* ── Immagine grande ── */
+.mercato-page .ic-image-frame {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #0d0709;
+}
+.mercato-page .ic-image-frame .item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: none;
+  border-radius: 0;
+  transition: transform 0.4s ease;
+}
+.mercato-page .item-card:hover .ic-image-frame .item-image { transform: scale(1.06); }
+.mercato-page .ic-image-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 38%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+}
+.mercato-page .ic-inspect {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translate(-50%, 14px);
+  z-index: 2;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(10, 6, 9, 0.82);
+  border: 1px solid var(--rarity-edge, #fff);
+  color: #ffe9c7;
+  font-family: var(--font-title);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.mercato-page .item-card:hover .ic-inspect { opacity: 1; transform: translate(-50%, 0); }
+.mercato-page .ic-image-frame .item-set-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  margin: 0;
+  background: rgba(10, 6, 9, 0.8);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 55%, transparent);
+  color: #e9d8ff;
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 0.66rem;
+}
+
+/* ── Targhetta inferiore ── */
+.mercato-page .ic-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  background: linear-gradient(180deg, rgba(30, 14, 24, 0.55), rgba(15, 8, 13, 0.92));
+}
+.mercato-page .item-card .item-name {
+  margin: 0;
+  font-family: var(--font-title);
+  color: #f6e7d2;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.mercato-page .ic-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mercato-page .item-card .item-price {
+  margin: 0;
+  color: #ffd97a;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.mercato-page .ic-open {
+  font-family: var(--font-title);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--rarity-edge, #ccc) 75%, #fff);
+  opacity: 0.9;
+}
+.mercato-page .item-card .your-bid-tag {
+  align-self: flex-start;
+  background: rgba(122, 46, 110, 0.35);
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, transparent);
+  color: #ffd97a;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+}
+
+/* ── Venduto ── */
+.mercato-page .item-card.sold { filter: brightness(0.72); cursor: default; }
+.mercato-page .item-card.sold .item-image { filter: grayscale(0.6); }
+.mercato-page .ic-sold-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%) rotate(-14deg);
+  padding: 4px 16px;
+  border: 3px solid #ff5a5a;
+  border-radius: 8px;
+  background: rgba(20, 6, 6, 0.55);
+  color: #ff8a8a;
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px rgba(255, 80, 80, 0.4);
 }
 
 /* ── TABELLA ADMIN (glass scuro) ── */
@@ -159,46 +337,14 @@
 }
 
 /* ============================================================
-   FIX CONTRASTO TESTI ITEM-CARD
-   Le card hanno sfondo chiaro (#fcfcfc); senza colore proprio i
-   testi ereditavano il crema della cine-page (chiaro su chiaro).
-   Le card vendute hanno sfondo scuro (#333): qui i testi scuri
-   diventavano scuro su scuro.
+   FIX CONTRASTO — TABELLA ADMIN (vista Master)
+   La tabella è ridisegnata su fondo scuro (glass), ma le celle
+   ereditavano i colori del tema chiaro originale (#111 / rosso /
+   verde scuro) → testo scuro su fondo scuro. Le rendo chiare.
    ============================================================ */
-
-/* ── Card chiare: label rarità leggibile + colore per rarità ── */
-.mercato-page .item-rarity {
-  color: #4a3b2e;
-  font-family: var(--font-title);
-  font-size: 0.74rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.mercato-page .item-rarity-Comune,
-.mercato-page .item-rarity-Comune2  { color: #565656; }
-.mercato-page .item-rarity-Raro,
-.mercato-page .item-rarity-Rara     { color: #1a5d99; }
-.mercato-page .item-rarity-Magico,
-.mercato-page .item-rarity-Moltorara { color: #6d28d9; }
-.mercato-page .item-rarity-Epico    { color: #b45309; }
-.mercato-page .item-rarity-Leggendario,
-.mercato-page .item-rarity-Leggendaria { color: #9a7b1f; }
-.mercato-page .item-rarity-Noncomune { color: #15803d; }
-.mercato-page .item-rarity-Artefatto { color: #b91c1c; }
-
-/* prezzo: oro più scuro per staccare sul bianco */
-.mercato-page .item-price { color: #9a7b1f; }
-
-/* descrizione già scura (#4e4141) → ok su chiaro, ma rafforzo leggibilità */
-.mercato-page .item-card-description { color: #3f3636; }
-
-/* ── Card vendute (sfondo scuro): testi chiari ── */
-.mercato-page .item-card.sold .item-rarity { color: #d8c7a0; }
-.mercato-page .item-card.sold .item-name { color: #ff9a8a; }
-.mercato-page .item-card.sold .item-card-description { color: #cfc6b8; }
-.mercato-page .item-card.sold .item-set-badge { color: #c4b5fd; }
-.mercato-page .item-card.sold .item-price { color: #ffd97a; }
-.mercato-page .item-card.sold .sold-to-info,
-.mercato-page .item-card.sold .sold-to-info small { color: #e2c9b3 !important; }
+.mercato-page .market-admin-table .mat-name        { color: #f3e8d6; }
+.mercato-page .market-admin-table .mat-type        { color: rgba(255, 230, 200, 0.6); }
+.mercato-page .market-admin-table .mat-price strong { color: #ffd97a; }
+.mercato-page .market-admin-table .mat-price small  { color: rgba(255, 230, 200, 0.5); }
+.mercato-page .market-admin-table .mat-status.sold   { color: #b59b86; }
+.mercato-page .market-admin-table .mat-status.active { color: #6ee79f; }

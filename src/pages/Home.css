@@ -120,6 +120,12 @@
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
 }
 .home-page .divinita-details-box { max-width: 800px; margin: 0 auto; text-align: left; line-height: 1.7; color: #e6ddc8; }
+/* I <p> ereditano dal box il crema, ma la regola globale `p, li { color:#272727 }`
+   li sovrascrive (regola diretta > valore ereditato) → testo scuro su fondo scuro.
+   Rialzo la specificità per i paragrafi (dominio/titoli/simbolo/descrizione),
+   escludendo il dogma che resta oro. */
+.home-page .divinita-details-box p:not(.dogma-text) { color: #e6ddc8; }
+.home-page .divinita-details-box .divinita-text-desc { color: #efe7d4; }
 .home-page .divinita-details-box strong { color: #ffd97a; }
 .home-page .dogma-text { color: var(--cine-gold); margin-top: 15px; text-align: center; font-style: italic; }
 .home-page .gold-divider {
