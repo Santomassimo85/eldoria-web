@@ -1,0 +1,54 @@
+/* ── BattleChat — floating toggle + docked panel ────────────────────────── */
+.bc-toggle {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5200;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 26, 36, 0.9);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55);
+}
+.bc-toggle.is-open { background: #2b6cb0; }
+
+.bc-panel {
+  position: fixed;
+  right: 10px;
+  bottom: 66px;
+  z-index: 5100;
+  width: min(380px, 92vw);
+  height: min(60vh, 460px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+/* The inner .rpg-log-panel comes from WorldBoss.css; make it fill the panel. */
+.bc-panel .rpg-log-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.bc-panel .rpg-log-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+.bc-panel .rpg-log-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bc-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+.bc-close:hover { opacity: 1; }

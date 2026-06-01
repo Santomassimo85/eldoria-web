@@ -31,7 +31,8 @@ export default function AdminPanel() {
     // PET SYSTEM — hidden while disabled
     // { label: "Punti Bestiario (✦)", desc: "Dona o rimuovi Punti Bestiario per il sistema di compagni / Pet Arena.", path: "/dm-admin/pet-points" },
     { label: "Quest Board",        desc: "Gestisci le missioni sulla bacheca di Hemile.",                       path: "/dm-admin/quests" },
-    { label: "Sprite Personaggi",  desc: "Carica o aggiorna lo sprite pixel-art di ogni personaggio.",           path: "/dm-admin/player-sprites" },
+    { label: "Sprite Personaggi",  desc: "Carica sprite dei personaggi e dei nemici minori (minion) per il Boss Fight.", path: "/dm-admin/player-sprites" },
+    { label: "Editor Mappe Battaglia", desc: "Disegna le mappe tattiche: terreni, quote, ostacoli e punti di spawn.", path: "/dm-admin/battle-maps" },
     { label: "Invia Notifica",     desc: "Invia un messaggio diretto a un giocatore nel suo menu personale.",   path: "/dm-admin/send-notif", dashed: true },
   ];
 

@@ -170,27 +170,23 @@
   box-shadow: 0 8px 20px rgba(22, 101, 52, 0.35) !important;
 }
 
-/* ── FUN ARENA section (sfide libere): blu vivido e sempre in primo piano ── */
+/* ── FUN ARENA section (sfide libere): glass blu coerente ── */
 .arena-page .fun-arena-section {
   background:
-    radial-gradient(circle at 0% 0%, rgba(125, 185, 255, 0.32), transparent 55%),
-    linear-gradient(135deg, #1b6ca8 0%, #2563eb 48%, #0f4c75 100%) !important;
-  border: 1px solid rgba(125, 175, 235, 0.7) !important;
+    radial-gradient(circle at 0% 0%, rgba(78, 122, 180, 0.18), transparent 50%),
+    linear-gradient(135deg, rgba(20, 30, 60, 0.85), rgba(10, 15, 30, 0.92)) !important;
+  border: 1px solid rgba(78, 122, 180, 0.45) !important;
   border-radius: 20px !important;
   box-shadow:
-    0 1px 0 rgba(185, 220, 255, 0.28) inset,
-    0 14px 32px rgba(12, 40, 90, 0.5) !important;
+    0 1px 0 rgba(150, 200, 255, 0.08) inset,
+    0 14px 32px rgba(0, 0, 0, 0.45) !important;
   padding: 22px 24px !important;
   margin: 28px 0 !important;
   position: relative !important;
   overflow: hidden !important;
-  color: #eaf3ff !important;
+  color: #d8e6ff !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  /* Pannello interattivo importante: escluso dal fade scroll-reveal
-     (.arena-page > * ) così resta sempre pienamente visibile. */
-  animation: none !important;
-  opacity: 1 !important;
 }
 .arena-page .fun-arena-title { color: #fff !important; }
 .arena-page .fun-arena-subtitle { color: rgba(216, 230, 255, 0.7) !important; }

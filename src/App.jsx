@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Routes, Route, NavLink } from "react-router-dom";
+import { Routes, Route, NavLink, useLocation } from "react-router-dom";
 import "./style.css";
 
 // AUTH & CONTEXT
@@ -41,6 +41,8 @@ import WorldBoss from "./pages/WorldBoss";
 import WorldBossAdmin from "./pages/WorldBossAdmin";
 import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
+import BossTactics from "./pages/tactics/BossTactics";
+import BattleMapEditor from "./pages/tactics/BattleMapEditor";
 // PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
 // imports and the matching nav link / routes below.
 // import PetArena from "./pages/PetArena";
@@ -265,9 +267,17 @@ function OnlinePresence() {
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [forceShowNav, setForceShowNav] = useState(false);
+  const location = useLocation();
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
   const closeMenu = () => setMenuOpen(false);
+
+  // Fullscreen battle pages hide the top nav to give the fight more room.
+  const FULLSCREEN_ROUTES = ["/boss-tactics", "/world-boss-fight", "/dm-admin/battle-maps"];
+  const hideChrome = FULLSCREEN_ROUTES.includes(location.pathname);
+  // Reset the temporary "reveal nav" whenever the route changes.
+  useEffect(() => { setForceShowNav(false); }, [location.pathname]);
 
   // --- LOGICA REFRESH & CACHE BUSTING ---
   useEffect(() => {
@@ -305,6 +315,12 @@ export default function App() {
   return (
     <AuthProvider>
       <NotificationOptIn />
+      {hideChrome && !forceShowNav && (
+        <button className="battle-nav-reopen" onClick={() => setForceShowNav(true)} aria-label="Apri menu">
+          ☰
+        </button>
+      )}
+      {(!hideChrome || forceShowNav) && (
       <header className="app-nav">
         <NavLink to="/" className="logo" onClick={closeMenu} aria-label="Crit Happens — Home">
           <img src="/assets/CritHappensLOGO.png" alt="" className="logo-img" />
@@ -360,6 +376,7 @@ export default function App() {
           <AdminNavLink closeMenu={closeMenu} />
         </nav>
       </header>
+      )}
 
       <main>
         <Routes>
@@ -382,7 +399,9 @@ export default function App() {
           {/* <Route path="/pet-arena" element={<PetArena />} /> */}
           <Route path="/tcg" element={<Tcg />} />
           <Route path="/crafting" element={<Crafting />} />
-          <Route path="/world-boss-fight" element={<WorldBoss />} />
+          <Route path="/world-boss-fight" element={<BossTactics />} />
+          <Route path="/world-boss-old" element={<WorldBoss />} />
+          <Route path="/boss-tactics" element={<BossTactics />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/feedback" element={<Feedback />} />
 
@@ -400,6 +419,7 @@ export default function App() {
           <Route path="/dm-admin/geo" element={<GeoAdmin />} />
           <Route path="/dm-admin/send-notif" element={<SendNotification />} />
           <Route path="/dm-admin/player-sprites" element={<PlayerSpritesAdmin />} />
+          <Route path="/dm-admin/battle-maps" element={<BattleMapEditor />} />
         </Routes>
       </main>
 

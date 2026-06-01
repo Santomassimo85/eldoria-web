@@ -34,6 +34,16 @@ service cloud.firestore {
       allow write: if isLoggedIn();
     }
 
+    // ── Tactical World Boss (battle_state/current) ───────────────────────────
+    // Single live doc holding the map + units + turn order. Master sets up and
+    // ends the battle; any logged-in player can update (their move/attack and
+    // initiative roll during the turn loop, mirroring tcg_matches).
+    match /battle_state/{docId} {
+      allow read: if isLoggedIn();
+      allow create, delete: if isMaster();
+      allow update: if isLoggedIn();
+    }
+
     match /world_boss_system/{docId} {
       allow read: if isLoggedIn();
       allow write: if isMaster();
@@ -58,7 +68,7 @@ service cloud.firestore {
     match /world_boss_chat/{msgId} {
       allow read: if isLoggedIn();
       allow create: if isLoggedIn();
-      allow update, delete: if isMaster(); 
+      allow update, delete: if isMaster();
     }
 
     // Global chat: owner can delete their own messages
@@ -154,17 +164,12 @@ service cloud.firestore {
       );
     }
 
-    // ── TCG Tournament (single-elimination) ──────────────────────────────────
-    // Single global doc `tcg_tournament/global` for status, participants and
-    // bracket. Read open to any logged-in user; update open so players can
-    // register/withdraw and match results can update the bracket;
-    // create/delete restricted to Master.
-    match /tcg_tournament/{docId} {
-      allow read: if isLoggedIn();
-      allow create, delete: if isMaster();
-      allow update: if isLoggedIn();
-    }
 
+  match /tcg_tournament/{docId} {
+    allow read: if isLoggedIn();
+    allow create, delete: if isMaster();
+    allow update: if isLoggedIn();
+  }
     // ── Player sprites ───────────────────────────────────────────────────────
     match /player_sprites/{docId} {
       allow read:  if isAuth();

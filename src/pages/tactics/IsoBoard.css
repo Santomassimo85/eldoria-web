@@ -1,0 +1,209 @@
+/* ── IsoBoard — isometric renderer styles ───────────────────────────────── */
+
+.iso-scaler {
+  position: relative;
+  transform-origin: top left;
+  /* keep pixel art crisp when scaled up */
+  image-rendering: pixelated;
+}
+
+/* Two stacking layers: the units layer sits entirely above the tiles layer so
+   a unit click is never stolen by a front tile's hit polygon. Absolutely
+   positioned children inside each layer keep their px coords (layers are at 0,0). */
+.iso-tiles-layer,
+.iso-units-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.iso-units-layer { z-index: 1000; }
+
+.iso-tile {
+  position: absolute;
+}
+
+/* user-drawn iso cube tile texture (behind the SVG highlight/hit layer) */
+.iso-tile-tex {
+  position: absolute;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.iso-cube {
+  display: block;
+  overflow: visible;
+  /* NOTE: do NOT set pointer-events:none here — in SVG that suppresses
+     hit-testing on the child polygons too, which kills tile clicks. We
+     instead make only the transparent .iso-hit polygon capture events. */
+}
+
+/* The decorative faces should never intercept — only the top hit polygon. */
+.iso-face { pointer-events: none; }
+
+.iso-hit {
+  pointer-events: all;   /* capture anywhere in the diamond, ignoring fill */
+  cursor: pointer;
+}
+
+/* ── Tile highlights (FFT-style glowing tiles) ──────────────────────────── */
+.iso-hl {
+  pointer-events: none;
+  animation: iso-hl-pulse 1.4s ease-in-out infinite;
+}
+.iso-hl-move     { fill: rgba(64, 156, 255, 0.45);  stroke: #9bd0ff; stroke-width: 1.5; }
+.iso-hl-target   { fill: rgba(255, 64, 64, 0.42);   stroke: #ff9b9b; stroke-width: 1.5; }
+.iso-hl-selected { fill: rgba(255, 214, 64, 0.42);  stroke: #ffe9a0; stroke-width: 2; }
+.iso-hl-path     { fill: rgba(64, 226, 226, 0.40);  stroke: #b0fafa; stroke-width: 1.5; }
+.iso-hl-heal     { fill: rgba(64, 220, 120, 0.42);  stroke: #b6f5cf; stroke-width: 1.5; }
+
+@keyframes iso-hl-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* ── Props (trees, boulders, columns) ───────────────────────────────────── */
+.iso-prop {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.45));
+  user-select: none;
+}
+
+/* ── Units ──────────────────────────────────────────────────────────────── */
+.iso-unit {
+  position: absolute;
+  /* container's bottom-center sits on the tile's stand point; the sprite fills
+     the container so its FEET land on the tile. HP bar + name are absolutely
+     positioned so they never push the sprite off the tile. The whole container
+     is pointer-events:none so the sprite's transparent bounding box can't steal
+     clicks from nearby tiles — only the small .iso-unit-hit base is clickable. */
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* small clickable base at the feet (≈ tile centre) used to select the unit */
+.iso-unit-hit {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 42px;       /* tall enough to click the body, narrow to spare side tiles */
+  border-radius: 40% / 30%;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* ground shadow — visually anchors the sprite to the tile it stands on */
+.iso-unit-shadow {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.33);
+  filter: blur(1px);
+}
+
+.iso-unit-sprite {
+  display: block;
+  height: 52px;          /* normalize by height so portraits & tall sprites match */
+  width: auto;
+  max-width: 78px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.5));
+  transform-origin: 50% 100%;
+}
+.iso-unit.alive .iso-unit-sprite {
+  animation: iso-breathe 2.8s ease-in-out infinite;
+}
+.iso-unit.dead .iso-unit-sprite {
+  filter: grayscale(0.7) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+  opacity: 0.9;
+  transform: rotate(-4deg);
+}
+
+@keyframes iso-breathe {
+  0%, 100% { transform: scaleY(1)    scaleX(1); }
+  50%      { transform: scaleY(1.04) scaleX(0.985); }
+}
+
+.iso-unit-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+.side-hero  .iso-unit-placeholder { background: #2b6cb0; }
+.side-enemy .iso-unit-placeholder { background: #b02b2b; }
+
+.iso-unit-name {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* advantage / disadvantage badge above the unit */
+.iso-unit-cond {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 1px #000;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  animation: iso-cond-pulse 1.2s ease-in-out infinite;
+}
+.iso-unit-cond.advantage { background: #2e9e54; }
+.iso-unit-cond.disadvantage { background: #8a3bb0; }
+@keyframes iso-cond-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50%      { transform: translateX(-50%) scale(1.18); }
+}
+
+.iso-unit-bar {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+  width: 40px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.iso-unit-bar-fill {
+  height: 100%;
+  transition: width 0.25s ease;
+}
+.iso-unit-bar-fill.hero  { background: linear-gradient(90deg, #3ad17a, #7bf0a8); }
+.iso-unit-bar-fill.enemy { background: linear-gradient(90deg, #e0463a, #ff8a7a); }

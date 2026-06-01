@@ -1,0 +1,57 @@
+/* ── BattleMapEditor — palette + save tray (reuses .tac-screen shell) ───── */
+.bme-back { color: #cfe0f5; text-decoration: none; font-size: 13px; font-weight: 700; }
+.bme-back:hover { text-decoration: underline; }
+
+.bme-palette {
+  flex: 0 0 auto;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.bme-group { display: flex; align-items: center; gap: 6px; }
+.bme-label { font-size: 11px; opacity: 0.7; font-weight: 700; text-transform: uppercase; }
+.bme-swatches { display: flex; flex-wrap: wrap; gap: 4px; }
+.bme-swatch {
+  width: 54px; height: 30px; border-radius: 5px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer; position: relative; overflow: hidden;
+  display: grid; place-items: center;
+}
+.bme-swatch span {
+  font-size: 9px; font-weight: 800; color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+.bme-swatch.on { border-color: #ffe9a0; box-shadow: 0 0 0 2px #ffe9a0; }
+
+.bme-tool {
+  background: rgba(255, 255, 255, 0.1); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
+  padding: 6px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.bme-tool.on { background: #2b6cb0; border-color: #9bd0ff; }
+
+.bme-tray {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.65);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px; color: #e8eef5;
+}
+.bme-tray-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bme-tray input {
+  background: rgba(255, 255, 255, 0.1); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 5px; padding: 4px 6px;
+}
+.bme-name { min-width: 160px; }
+.bme-tray button {
+  background: rgba(255, 255, 255, 0.12); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
+  padding: 5px 9px; cursor: pointer; font-weight: 700;
+}
+.bme-sep { opacity: 0.3; }
+.bme-mapchip { display: inline-flex; align-items: center; background: rgba(255, 255, 255, 0.07); border-radius: 6px; overflow: hidden; }
+.bme-mapchip.on { outline: 2px solid #ffe9a0; }
+.bme-mapchip button { background: transparent; border: none; }
+.bme-mapchip .bme-del { color: #ff9b9b; padding: 5px 8px; }
