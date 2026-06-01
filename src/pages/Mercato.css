@@ -301,6 +301,170 @@
   box-shadow: 0 0 14px rgba(255, 80, 80, 0.4);
 }
 
+/* ── BORDO RARITÀ più vivido + glow ── */
+.mercato-page .item-card {
+  border-width: 2.5px;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.45) inset,
+    0 0 22px -7px var(--rarity-edge, transparent);
+}
+.mercato-page .item-card:hover {
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.6),
+    0 0 34px 0 var(--rarity-edge, rgba(255, 255, 255, 0.4));
+}
+
+/* ── FOIL leggendari/artefatti: lamina olografica + bordo brillante ── */
+.mercato-page .item-card.rarity-bg-Leggendario,
+.mercato-page .item-card.rarity-bg-Leggendaria,
+.mercato-page .item-card.rarity-bg-Artefatto {
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.4) inset,
+    0 0 30px -4px var(--rarity-edge);
+}
+.mercato-page .item-card.rarity-bg-Leggendario .ic-image-frame::before,
+.mercato-page .item-card.rarity-bg-Leggendaria .ic-image-frame::before,
+.mercato-page .item-card.rarity-bg-Artefatto   .ic-image-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 18%,
+    rgba(255, 240, 170, 0.30) 34%,
+    rgba(255, 255, 255, 0.55) 44%,
+    rgba(170, 225, 255, 0.30) 54%,
+    transparent 70%);
+  background-size: 250% 250%;
+  mix-blend-mode: screen;
+  animation: ic-foil 5s linear infinite;
+}
+@keyframes ic-foil {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 200%; }
+}
+.mercato-page .item-card.rarity-bg-Leggendario .ic-rarity-banner,
+.mercato-page .item-card.rarity-bg-Leggendaria .ic-rarity-banner {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--rarity-edge) 88%, #000),
+    color-mix(in srgb, var(--rarity-edge) 50%, #fff) 50%,
+    color-mix(in srgb, var(--rarity-edge) 88%, #000));
+  background-size: 200% 100%;
+  animation: ic-banner-foil 4s linear infinite;
+}
+@keyframes ic-banner-foil {
+  0%   { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mercato-page .item-card .ic-image-frame::before,
+  .mercato-page .item-card .ic-rarity-banner { animation: none; }
+}
+
+/* ── PANNELLO MASTER sulla card (azioni rapide) ── */
+.mercato-page .ic-state-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: rgba(10, 6, 9, 0.82);
+}
+.mercato-page .ic-state-badge.active { color: #8effb4; }
+.mercato-page .ic-state-badge.sold   { color: #ffb3a8; }
+.mercato-page .ic-topbid {
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: #8effb4;
+}
+.mercato-page .ic-admin {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: default;
+}
+.mercato-page .ic-bids {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 130px;
+  overflow-y: auto;
+}
+.mercato-page .ic-bid-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  font-size: 0.78rem;
+}
+.mercato-page .ic-bid-who {
+  color: #f0e6d2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mercato-page .ic-bid-amount { color: #ffd97a; font-weight: 700; }
+.mercato-page .ic-bid-refund {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 90, 90, 0.5);
+  background: rgba(120, 20, 20, 0.4);
+  color: #ff8a8a;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.mercato-page .ic-bid-refund:hover { background: rgba(180, 30, 30, 0.6); transform: scale(1.08); }
+.mercato-page .ic-no-bids {
+  padding: 4px 0;
+  text-align: center;
+  font-style: italic;
+  font-size: 0.8rem;
+  color: rgba(255, 230, 200, 0.5);
+}
+.mercato-page .ic-admin-actions { display: flex; flex-direction: column; gap: 6px; }
+.mercato-page .ic-act {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: var(--font-title);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.mercato-page .ic-act:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.mercato-page .ic-act:active { transform: translateY(0); }
+.mercato-page .ic-act.deliver    { background: linear-gradient(135deg, #15803d, #1f9d52); color: #eafff1; }
+.mercato-page .ic-act.refund-all { background: linear-gradient(135deg, #b45309, #d97706); color: #fff7e8; }
+.mercato-page .ic-act.detail {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e9d8c2;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
 /* ── TABELLA ADMIN (glass scuro) ── */
 .mercato-page .market-admin-wrap { color: #ebe3d2; }
 .mercato-page .mat-stats { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 16px; }

@@ -7094,6 +7094,17 @@
 .arena-modal-body .class-stats-section.in-modal .class-stats-body { padding: 0 !important; }
 .arena-modal-body .master-title-editor.in-modal .master-title-body { padding: 0 !important; }
 
+/* ── FIX CONTRASTO: testi scuro-su-scuro dentro le modali (fondo scuro). ── */
+/* Config Titoli d'Arena: le righe stanno direttamente sul fondo scuro
+   della modale → il nome giocatore (era #2a1d00) spariva. */
+.arena-modal-body .title-edit-name { color: #f0e6d2; }
+.arena-modal-body .title-edit-row  { border-bottom-color: rgba(255, 255, 255, 0.1); }
+/* Statistiche Classi (Torneo + Arena Libera): le righe-classe hanno
+   sfondo BIANCO (testo scuro = corretto, da non toccare); solo la riga
+   di riepilogo in alto sta sul fondo scuro → schiarisco quella. */
+.arena-modal-body .class-stats-meta        { color: rgba(255, 235, 205, 0.82); }
+.arena-modal-body .class-stats-meta strong { color: #ffd97a; }
+
 /* FIX: Sala dei Campioni — sizing/overlap on narrow widths */
 .hall-row {
   gap: 8px !important;

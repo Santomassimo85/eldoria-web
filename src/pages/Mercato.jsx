@@ -84,26 +84,30 @@ const rarityStars = (rarity) => {
   return "★".repeat(tier) + "☆".repeat(5 - tier);
 };
 
-const ItemCard = ({ item }) => {
+const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliver }) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const isSold = item.isSold === true;
   const isAuction = item.saleType === "auction";
 
   const userBidObj = (isAuction && item.bids && currentUser) ? item.bids[currentUser.uid] : null;
+  const bids = item.bids ? Object.entries(item.bids) : [];
+  const topBid = bids.length ? Math.max(...bids.map(([, b]) => b?.amount ?? b ?? 0)) : 0;
 
   const rarityName = item.class || "Comune";
   const rarityKey = rarityName.replace(/\s/g, "");
-  const open = () => !isSold && navigate(`/mercato/${item.id}`);
+  // Il Master può aprire anche gli oggetti venduti; i player no.
+  const open = () => { if (isSold && !isMaster) return; navigate(`/mercato/${item.id}`); };
+  const stop = (e) => e.stopPropagation();
 
   return (
     <div
-      className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""}`}
+      className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""} ${isMaster ? "is-admin" : ""}`}
       onClick={open}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }}
       role="button"
       tabIndex={0}
-      title={isSold ? "Oggetto venduto" : `Apri ${item.name}`}
+      title={isSold && !isMaster ? "Oggetto venduto" : `Apri ${item.name}`}
     >
       {/* Rarità in primo piano — banner stile loot RPG */}
       <div className={`ic-rarity-banner rarity-${rarityKey}`}>
@@ -119,7 +123,12 @@ const ItemCard = ({ item }) => {
             ⛓ {item.setPayload.name}{item.setPayload.size ? <small> · {item.setPayload.size}p</small> : null}
           </span>
         )}
-        {!isSold && <span className="ic-inspect">🔍 Ispeziona</span>}
+        {isMaster && (
+          <span className={`ic-state-badge ${isSold ? "sold" : "active"}`}>
+            {isSold ? "✅ Venduto" : isAuction ? "🟢 Asta" : "🟢 Fisso"}
+          </span>
+        )}
+        {!isSold && !isMaster && <span className="ic-inspect">🔍 Ispeziona</span>}
         {isSold && <span className="ic-sold-stamp">Venduto</span>}
       </div>
 
@@ -134,10 +143,52 @@ const ItemCard = ({ item }) => {
                 ? `${item.price} MP`
                 : `Base ${item.startingBid} MP`}
           </span>
-          {!isSold && <span className="ic-open">Apri →</span>}
+          {!isSold && !isMaster && <span className="ic-open">Apri →</span>}
+          {isMaster && !isSold && topBid > 0 && <span className="ic-topbid">Top {topBid} MP</span>}
         </div>
-        {userBidObj && (
+        {userBidObj && !isMaster && (
           <span className="your-bid-tag">La tua offerta: {userBidObj.amount || userBidObj} MP</span>
+        )}
+
+        {/* ── Pannello Master: offerte + azioni rapide ── */}
+        {isMaster && !isSold && (
+          <div className="ic-admin" onClick={stop}>
+            {bids.length > 0 ? (
+              <>
+                <div className="ic-bids">
+                  {bids
+                    .sort((a, b) => (b[1]?.amount ?? b[1] ?? 0) - (a[1]?.amount ?? a[1] ?? 0))
+                    .map(([uid, bid]) => {
+                      const amount = bid?.amount ?? bid;
+                      return (
+                        <div key={uid} className="ic-bid-row">
+                          <span className="ic-bid-who">{bid?.charName || "Eroe"}</span>
+                          <span className="ic-bid-amount">{amount} MP</span>
+                          <button
+                            className="ic-bid-refund"
+                            title="Rimborsa questa offerta"
+                            onClick={() => onRemoveBid(item, uid, amount)}
+                          >✕</button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <div className="ic-admin-actions">
+                  <button className="ic-act deliver" onClick={() => onDeliver(item)}>
+                    🏆 Assegna al vincitore
+                  </button>
+                  <button className="ic-act refund-all" onClick={() => onClearAllBids(item)}>
+                    💰 Rimborsa tutti
+                  </button>
+                </div>
+              </>
+            ) : (
+              <span className="ic-no-bids">Nessuna offerta</span>
+            )}
+            <button className="ic-act detail" onClick={() => navigate(`/mercato/${item.id}`)}>
+              ↗ Dettaglio
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -145,8 +196,6 @@ const ItemCard = ({ item }) => {
 };
 
 const MarketAdminTable = ({ items, onRemoveBid, onClearAllBids, onDeliver }) => {
-  const navigate = useNavigate();
-
   const stats = useMemo(() => {
     const total = items.length;
     const sold = items.filter((i) => i.isSold).length;
@@ -169,90 +218,18 @@ const MarketAdminTable = ({ items, onRemoveBid, onClearAllBids, onDeliver }) => 
         <div className="mat-stat highlight"><span>Volume MP</span><strong>{stats.volume}</strong></div>
       </div>
 
-      <div className="market-admin-table-wrap">
-        <table className="market-admin-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Rarità</th>
-              <th>Vendita</th>
-              <th>Prezzo</th>
-              <th>Offerte</th>
-              <th>Stato</th>
-              <th>Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const rarityKey = (item.class || "Comune").replace(/\s/g, "");
-              const bidCount = item.bids ? Object.keys(item.bids).length : 0;
-              const topBid = item.bids
-                ? Math.max(0, ...Object.values(item.bids).map((b) => b?.amount ?? b ?? 0))
-                : 0;
-              return (
-                <tr
-                  key={item.id}
-                  className={`mat-row ${item.isSold ? "sold" : ""}`}
-                  onClick={() => navigate(`/mercato/${item.id}`)}
-                >
-                  <td className="mat-thumb-cell">
-                    <img src={item.img || "/assets/placeholder.jpg"} alt={item.name} className="mat-thumb" />
-                  </td>
-                  <td className="mat-name">{item.name}</td>
-                  <td className="mat-type">{item.type || "—"}</td>
-                  <td>
-                    <span className={`mat-rarity rarity-${rarityKey}`}>{item.class || "Comune"}</span>
-                  </td>
-                  <td>{item.saleType === "auction" ? "Asta cieca" : "Fisso"}</td>
-                  <td className="mat-price">
-                    {item.saleType === "auction"
-                      ? <>Base <strong>{item.startingBid} MP</strong>{topBid > 0 && <><br /><small>Top: {topBid} MP</small></>}</>
-                      : <strong>{item.price} MP</strong>}
-                  </td>
-                  <td className="mat-bids">
-                    {bidCount > 0 ? <span className="mat-badge">{bidCount}</span> : "—"}
-                  </td>
-                  <td>
-                    {item.isSold ? (
-                      <span className="mat-status sold">✅ Venduto</span>
-                    ) : (
-                      <span className="mat-status active">🟢 Attivo</span>
-                    )}
-                  </td>
-                  <td className="mat-actions" onClick={(e) => e.stopPropagation()}>
-                    {!item.isSold && bidCount > 0 && (
-                      <>
-                        <button
-                          className="mat-btn deliver"
-                          title="Consegna al miglior offerente"
-                          onClick={() => onDeliver(item)}
-                        >
-                          ✅
-                        </button>
-                        <button
-                          className="mat-btn danger"
-                          title="Svuota tutte le offerte"
-                          onClick={() => onClearAllBids(item)}
-                        >
-                          🗑
-                        </button>
-                      </>
-                    )}
-                    <button
-                      className="mat-btn ghost"
-                      title="Apri dettaglio"
-                      onClick={() => navigate(`/mercato/${item.id}`)}
-                    >
-                      ↗
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Stesse card del mercato + controlli Master rapidi su ognuna */}
+      <div className="items-grid">
+        {items.map((item) => (
+          <ItemCard
+            key={item.id}
+            item={item}
+            isMaster
+            onRemoveBid={onRemoveBid}
+            onClearAllBids={onClearAllBids}
+            onDeliver={onDeliver}
+          />
+        ))}
       </div>
     </div>
   );
