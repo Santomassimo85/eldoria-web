@@ -92,6 +92,23 @@
 .item-detail-page .master-console .mc-bids-head h3 { color: #ffd97a; }
 .item-detail-page .master-console .mc-timer-label { color: rgba(255, 235, 205, 0.72); }
 .item-detail-page .master-console .countdown-timer { color: #ff9a8a; }
+/* prezzo base (era rosso scuro #820a0a su header scuro) */
+.item-detail-page .master-console .mc-price strong { color: #ffb38a; }
+
+/* FIX contrasto: il blocco bonus-set (.ps-set-*) è nato per tema chiaro
+   (testo #2a2a2a / #444 / viola scuro). Nella CONSOLE MASTER sta su fondo
+   scuro → scuro-su-scuro: lo schiarisco SOLO lì. Nella vista Player il
+   pannello info è chiaro, quindi il testo scuro originale va benissimo. */
+.item-detail-page .master-console .ps-set-block {
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.22), rgba(124, 58, 237, 0.07));
+  border-color: rgba(168, 130, 255, 0.5);
+}
+.item-detail-page .master-console .ps-set-icon          { color: #c4b5fd; }
+.item-detail-page .master-console .ps-set-name          { color: #cbb7ff; }
+.item-detail-page .master-console .ps-set-size          { color: #b9a3f5; }
+.item-detail-page .master-console .ps-set-bonus-item    { color: #e9e0f5; }
+.item-detail-page .master-console .ps-set-bonus-frac    { color: #c4b5fd; }
+.item-detail-page .master-console .ps-set-bonus-effect  { color: #ece3f7; }
 
 .item-detail-page .status-message {
   text-align: center;
