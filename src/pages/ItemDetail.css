@@ -73,6 +73,26 @@
 .item-detail-page .master-console .mc-stat strong { color: #ffd97a; }
 .item-detail-page .master-console .mc-empty { color: rgba(255, 230, 200, 0.6); font-style: italic; }
 
+/* FIX contrasto: questi box erano nati su tema chiaro (sfondo chiaro),
+   ma il testo è stato reso chiaro per la pagina scura → chiaro su chiaro.
+   Porto i fondi su glass scuro coerente con il resto della pagina. */
+.item-detail-page .master-console .mc-stat {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: color-mix(in srgb, var(--cine-gold) 22%, transparent);
+}
+.item-detail-page .master-console .mc-stat.highlight {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.08));
+  border-color: color-mix(in srgb, var(--cine-gold) 45%, transparent);
+}
+.item-detail-page .master-console .mc-stat strong small { color: rgba(255, 235, 205, 0.55); }
+.item-detail-page .master-console .mc-bids {
+  background: linear-gradient(135deg, rgba(40, 16, 36, 0.6), rgba(20, 8, 18, 0.72));
+  border-color: color-mix(in srgb, var(--cine-gold) 25%, transparent);
+}
+.item-detail-page .master-console .mc-bids-head h3 { color: #ffd97a; }
+.item-detail-page .master-console .mc-timer-label { color: rgba(255, 235, 205, 0.72); }
+.item-detail-page .master-console .countdown-timer { color: #ff9a8a; }
+
 .item-detail-page .status-message {
   text-align: center;
   color: var(--cine-gold-soft);
