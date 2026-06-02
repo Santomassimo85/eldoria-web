@@ -19,6 +19,7 @@ import { useAuth } from "../../AuthContext";
 import IsoBoard from "./IsoBoard";
 import BattleChat from "./BattleChat";
 import { showD20Roll } from "../../components/DiceRoll";
+import { startBossBgm, stopBossBgm, setBossBgmMuted } from "../../utils/bossBgm";
 import {
   computeBoardMetrics, computePaths, reconstructPath,
   manhattan, tilesWithinRange, tileAt, TERRAINS, DEFAULT_MOVE,
@@ -76,6 +77,7 @@ export default function BossTactics() {
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
   const [setupPicker, setSetupPicker] = useState(null); // {x,y,sx,sy} deploy-phase unit picker
+  const [musicMuted, setMusicMuted] = useState(false);   // boss BGM mute (per client)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
   const autoPassedRef = useRef(null);              // turnDeadline already auto-passed (dedupe)
 
@@ -221,6 +223,14 @@ export default function BossTactics() {
   const fightStarted = battle?.fightStarted === true;
   const phase = battle?.phase || "setup";
   const isOver = phase === "over";
+
+  // Boss-fight BGM: looped, low volume, for the whole fight (per-client audio).
+  useEffect(() => {
+    if (fightStarted && !isOver) startBossBgm();
+    else stopBossBgm();
+    return () => stopBossBgm();
+  }, [fightStarted, isOver]);
+  useEffect(() => { setBossBgmMuted(musicMuted); }, [musicMuted]);
 
   // Free-order model: during "players" each player controls THEIR own hero;
   // during "enemies" the master drives one enemy at a time. The single unit you
@@ -1030,6 +1040,7 @@ export default function BossTactics() {
             <button onClick={() => zoom(-1)}>－</button>
             <button onClick={rotate} title="Ruota vista">⟳</button>
             <button onClick={fit}>Adatta</button>
+            <button onClick={() => setMusicMuted((m) => !m)} title={musicMuted ? "Riattiva musica" : "Muta musica"}>{musicMuted ? "🔇" : "🎵"}</button>
             {isMaster && battle?.active && <button onClick={endBattle}>⛔</button>}
             <button onClick={() => setShowBar(false)} title="Chiudi">✖</button>
           </div>
