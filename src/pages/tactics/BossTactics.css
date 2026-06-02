@@ -246,6 +246,18 @@
   background: linear-gradient(180deg, rgba(255, 214, 64, 0.5), rgba(196, 140, 20, 0.5));
   border-color: #ffe9a0; box-shadow: 0 0 0 1px rgba(255, 233, 160, 0.5);
 }
+.tac-master-test button.tac-heal-all {
+  margin-left: auto;
+  background: linear-gradient(180deg, rgba(42, 158, 84, 0.55), rgba(20, 92, 48, 0.55));
+  border-color: #8af0b4;
+}
+
+/* range tag on action buttons (so heals/attacks show their reach) */
+.tac-act-rng {
+  flex: 0 0 auto; font-size: 10px; font-weight: 800; line-height: 1;
+  padding: 2px 5px; border-radius: 999px; color: #ffe9a0;
+  background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 233, 160, 0.4);
+}
 
 /* turn/action counter panel — who finished (✅) and who's missing (⏳) */
 .tac-roster {

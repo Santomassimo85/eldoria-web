@@ -507,6 +507,14 @@ export default function BossTactics() {
         : "👹 (Test) Turno dei Nemici forzato dal Master." });
   };
 
+  // Master: heal every living hero back to full HP in one click (the HP-delta
+  // VFX system auto-spawns a green burst on each healed unit).
+  const healAllHeroes = async () => {
+    await txnBattle((us) => us.map((u) => (u.side === "hero" && !u.dead ? { ...u, hp: u.maxHp } : u)));
+    await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+      content: "💚 Il Master ha curato tutti gli eroi al massimo dei PF." });
+  };
+
   // ── Phase flow (Model A) ────────────────────────────────────────────────────
   // Try to advance the phase. Idempotent + transactional, so any client may call
   // it on completion and the timer may force it — only one commit wins:
@@ -1008,6 +1016,7 @@ export default function BossTactics() {
               <span className="tac-master-test-label">🧪 Test turni:</span>
               <button className={phase === "players" ? "on" : ""} onClick={() => forcePhase("players")}>🛡️ Turno Eroi</button>
               <button className={phase === "enemies" ? "on" : ""} onClick={() => forcePhase("enemies")}>👹 Turno Nemici</button>
+              <button className="tac-heal-all" onClick={healAllHeroes} title="Cura tutti gli eroi al massimo">💚 Cura eroi</button>
             </div>
           )}
         </div>
@@ -1213,11 +1222,14 @@ export default function BossTactics() {
         if (collapsed) {
           const aoe = aiming ? spellAoE(selAction) : null;
           const dir = aoe && (aoe.shape === "line" || aoe.shape === "cone");
+          const intent = aiming ? detectSpellIntent(selAction) : null;
+          const reach = aiming ? (selAction.range || actionRange(selAction)) : 0;
+          const who = intent === "heal" || intent === "buff" ? "un alleato" : "il bersaglio";
           const prompt = mode === "move"
             ? "👟 Scegli dove spostarti…"
             : aoe
-              ? `${actionKind(selAction).icon} ${selAction.name} — ${aimCenter ? "conferma, o ri-scegli" : (dir ? "scegli la direzione…" : "scegli il centro dell'area…")}`
-              : `${actionKind(selAction).icon} ${selAction.name} — scegli il bersaglio…`;
+              ? `${actionKind(selAction).icon} ${selAction.name} — ${aimCenter ? "conferma, o ri-scegli" : (dir ? "scegli la direzione…" : "scegli il centro dell'area…")} (raggio ${reach})`
+              : `${actionKind(selAction).icon} ${selAction.name} — scegli ${who} (raggio ${reach})`;
           return (
             <div className="tac-hud collapsed">
               {card}
@@ -1250,6 +1262,8 @@ export default function BossTactics() {
                   <div className="tac-group-btns">
                     {groupedActions[key].map((a, i) => {
                       const k = actionKind(a);
+                      const selfBuff = detectSpellIntent(a) === "self_buff";
+                      const reach = selfBuff ? 0 : (a.range || actionRange(a));
                       return (
                         <button key={i} disabled={activeUnit.hasActed}
                           className={`tac-act ${k.cls} ${selAction?.name === a.name ? "on" : ""}`}
@@ -1257,6 +1271,7 @@ export default function BossTactics() {
                           onClick={() => pickAction(a)}>
                           <span className="tac-act-icon">{k.icon}</span>
                           <span className="tac-act-name">{a.name}</span>
+                          {reach > 0 && <span className="tac-act-rng" title={`Raggio ${reach} caselle`}>⟶{reach}</span>}
                           {activeUnit.hasActed && <span className="tac-act-done">✓</span>}
                         </button>
                       );

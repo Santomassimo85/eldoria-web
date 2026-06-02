@@ -210,6 +210,15 @@ export function actionRange(action) {
   const t = `${action.name || ""}`.toLowerCase();
   if (/arco|balestra|long ?bow|short ?bow|crossbow|fionda|sling|dardo|javelin|giavellotto/.test(t)) return 6;
   if (detectSpellIntent(action) === "attack" && /trucchett|cantrip|livello|level|raggio|bolt|fire|fulmine|ray|eldritch/.test(`${action.category || ""} ${t}`)) return 6;
+  // Healing / support spells: most reach allies at a distance (Healing Word &c.).
+  // Touch spells stay adjacent; "ranged" wording reaches far; others get a
+  // comfortable default so players aren't forced to stand next to the target.
+  const intent = detectSpellIntent(action);
+  if (intent === "heal" || intent === "buff") {
+    if (/tocco|touch|contatto|imposizione|cure wounds|cura ferite/.test(t)) return 1;
+    if (/parola|word|distanza|a distanza|raggio|ranged|aura|massa|\bmass\b|preghiera|benedizione|bless/.test(t)) return 8;
+    return 6;
+  }
   return 1;
 }
 
