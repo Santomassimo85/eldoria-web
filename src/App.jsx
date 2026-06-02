@@ -436,9 +436,9 @@ export default function App() {
         </Routes>
       </main>
 
-<GlobalChat />
+{!hideChrome && <GlobalChat />}
       <DiceRollHost />
-      <OnlinePresence />
+      {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
 
       <footer>

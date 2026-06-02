@@ -239,6 +239,7 @@ export const SAVE_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis:
 // values are tuned to a 1 tile = 1 m grid, NOT literal D&D feet (a 20-ft fireball
 // would swallow these maps), so they read smaller than the rulebook on purpose.
 const AOE_TABLE = [
+  { re: /zona nera/,                                          shape: "sphere", size: 1, range: 6, save: "dex", half: true, dmgType: "vuoto" },  // boss: 3×3 cerchio
   { re: /palla di fuoco|fire ?ball/,                          shape: "sphere", size: 2, range: 8, save: "dex", half: true, dmgType: "fuoco" },
   { re: /tempesta di ghiaccio|ice ?storm|grandine/,           shape: "sphere", size: 2, range: 8, save: "dex", half: true, dmgType: "freddo" },
   { re: /fulmine|lightning ?bolt|saetta|catena di fulmini|chain lightning/, shape: "line", size: 8, range: 8, save: "dex", half: true, dmgType: "fulmine" },

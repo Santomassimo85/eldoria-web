@@ -202,7 +202,26 @@ export default function BossTactics() {
     setScale(c);
     setPan({ x: (vp.clientWidth - metrics.boardW * c) / 2, y: (vp.clientHeight - metrics.boardH * c) / 2 });
   }, [metrics]);
-  useEffect(() => { fit(); }, [fit]);
+  // Fit the camera ONCE when the board first appears, and on DELIBERATE view
+  // changes (board rotation, window resize) — never on battle/unit updates, so a
+  // player's zoom & pan are never yanked away after a move/attack. (battle?.map
+  // is a fresh object on every Firestore snapshot, which is why the old `[fit]`
+  // dependency refit the camera after every action.)
+  const fitRef = useRef(fit);
+  useEffect(() => { fitRef.current = fit; });
+  const didFitRef = useRef(false);
+  useEffect(() => {
+    if (!battle?.active) { didFitRef.current = false; return; }
+    if (didFitRef.current) return;
+    didFitRef.current = true;
+    fitRef.current();
+  }, [battle?.active]);
+  useEffect(() => {
+    fitRef.current();                                 // refit on a deliberate rotate
+    const onResize = () => fitRef.current();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [rotation]);
 
   const pinchDist = () => {
     const p = [...pointersRef.current.values()];
@@ -359,7 +378,7 @@ export default function BossTactics() {
   //  • enemies → players  (next round) when all enemies are done (or the 1h timer)
   //  • either  → over      when one side is wiped out
   // Terrain hazard (lava/acid) is applied to the incoming side as its phase opens.
-  const advancePhase = async (force = false) => {
+  const advancePhase = async (force = false, expectedDeadline = null) => {
     const res = await runTransaction(db, async (tx) => {
       const ref = BATTLE_REF();
       const snap = await tx.get(ref);
@@ -373,6 +392,12 @@ export default function BossTactics() {
         tx.update(ref, { phase: "over" });
         return { over: aliveHeroes ? "heroes" : "enemies" };
       }
+      // A TIME-FORCED advance must end the EXACT phase whose deadline expired.
+      // Otherwise two clients firing at the deadline would chain: the first ends
+      // players→enemies, the second (which only meant to end players) would find
+      // the phase already enemies and instantly end enemies→players, skipping the
+      // enemy turn. Guarding on the deadline makes the racing call a no-op.
+      if (force && expectedDeadline != null && d.phaseDeadline !== expectedDeadline) return null;
       const incoming = d.phase === "players" ? "enemies" : "players";
       const ready = d.phase === "players" ? sideAllDone(us, "hero") : sideAllDone(us, "enemy");
       if (!force && !ready) return null;
@@ -457,7 +482,7 @@ export default function BossTactics() {
     if (!driver) return;
     autoPassedRef.current = phaseDeadline;
     setMode("idle"); setSelAction(null);
-    advancePhase(true);
+    advancePhase(true, phaseDeadline);   // only end THIS phase (deadline-guarded)
   }, [nowTs, phaseDeadline, fightStarted, isOver, isMaster, myHero]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Combat resolution ─────────────────────────────────────────────────────
