@@ -284,14 +284,80 @@
   background: #7cffb0; box-shadow: 0 0 0 1px #1c6b3f;
   animation: vfx-rise 0.6s steps(4) forwards;
 }
-.vfx-heal i:nth-child(1) { --hx: -10px; }
-.vfx-heal i:nth-child(2) { --hx:  -3px; }
-.vfx-heal i:nth-child(3) { --hx:   4px; }
-.vfx-heal i:nth-child(4) { --hx:  11px; }
-.vfx-heal i:nth-child(5) { --hx:   0px; }
+.vfx-heal i:nth-child(1), .vfx-buff i:nth-child(1), .vfx-debuff i:nth-child(1) { --hx: -10px; }
+.vfx-heal i:nth-child(2), .vfx-buff i:nth-child(2), .vfx-debuff i:nth-child(2) { --hx:  -3px; }
+.vfx-heal i:nth-child(3), .vfx-buff i:nth-child(3), .vfx-debuff i:nth-child(3) { --hx:   4px; }
+.vfx-heal i:nth-child(4), .vfx-buff i:nth-child(4), .vfx-debuff i:nth-child(4) { --hx:  11px; }
+.vfx-heal i:nth-child(5), .vfx-buff i:nth-child(5), .vfx-debuff i:nth-child(5) { --hx:   0px; }
 @keyframes vfx-rise {
   from { transform: translate(var(--hx, 0),  6px); opacity: 1; }
   to   { transform: translate(var(--hx, 0), -22px); opacity: 0; }
+}
+
+/* BUFF (vantaggio) — golden sparkles rising; DEBUFF (svantaggio) — dark-violet
+   motes sinking. Reuse the rise framework + a mirrored "sink" keyframe. */
+.vfx-buff i {
+  background: #ffe27a; box-shadow: 0 0 0 1px #b0871c;
+  animation: vfx-rise 0.62s steps(4) forwards;
+}
+.vfx-debuff i {
+  background: #b07bff; box-shadow: 0 0 0 1px #3a1a5c;
+  animation: vfx-sink 0.62s steps(4) forwards;
+}
+@keyframes vfx-sink {
+  from { transform: translate(var(--hx, 0), -18px); opacity: 1; }
+  to   { transform: translate(var(--hx, 0),   8px); opacity: 0; }
+}
+
+/* ── Sword slash — a quick silver arc swiped over the target ────────────────── */
+.iso-slash {
+  position: absolute; pointer-events: none;
+  width: 48px; height: 9px; margin: -4px 0 0 -24px;   /* centre on the point */
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.95) 45%, #bcd8ff 62%, transparent);
+  border-radius: 6px;
+  filter: drop-shadow(0 0 3px rgba(180, 220, 255, 0.85));
+  animation: iso-slash 0.34s ease-out forwards;
+}
+@keyframes iso-slash {
+  0%   { opacity: 0; transform: rotate(-42deg) scale(0.35); }
+  35%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(-42deg) scale(1.35) translateX(7px); }
+}
+
+/* ── Projectile (arrow / magic bolt) flying source → target ─────────────────── */
+.iso-proj {
+  position: absolute; pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: iso-proj-fly 0.42s linear forwards;
+}
+.iso-proj .proj-head { display: block; }
+.proj-head.proj-arrow {
+  width: 16px; height: 3px; border-radius: 1px;
+  background: linear-gradient(90deg, #caa15a, #6e4d22);
+  box-shadow: 0 0 0 1px #2a1a0c;
+}
+.proj-head.proj-bolt {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: radial-gradient(circle, #efd0ff, #7a48c4);
+  box-shadow: 0 0 7px 1px #b07bff;
+}
+@keyframes iso-proj-fly {
+  from { transform: translate(-50%, -50%); }
+  to   { transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))); }
+}
+
+/* ── Self-buff shield — expanding protective ring ───────────────────────────── */
+.iso-ring {
+  position: absolute; pointer-events: none;
+  width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border-radius: 50%; border: 3px solid;
+  animation: iso-ring 0.6s ease-out forwards;
+}
+.ring-shield { border-color: #8fd3ff; box-shadow: 0 0 9px #8fd3ff; }
+@keyframes iso-ring {
+  0%   { opacity: 0; transform: scale(0.3); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.5); }
 }
 
 /* ── Area DOME (boss darkness blast &c.) ────────────────────────────────────

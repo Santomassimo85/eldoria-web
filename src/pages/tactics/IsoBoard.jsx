@@ -189,18 +189,27 @@ export default function IsoBoard({
               viewBox={`0 0 ${TILE_W} ${svgH}`}
               className="iso-cube"
             >
+              {/* Each face is stroked with its OWN fill colour (not a lighter
+                  edge) so the cube reads as one solid block — no visible grid —
+                  and the ~0.8px wide stroke fattens the polygon just enough to
+                  overlap its neighbours, closing the sub-pixel seams that the
+                  fractional viewport scale would otherwise leave between tiles.
+                  crispEdges keeps the pixel-art look sharp. */}
               {EH > 0 && (
                 <>
-                  <polygon className="iso-face" points={leftFace} fill={shade(terr.color, 0.62)} />
-                  <polygon className="iso-face" points={rightFace} fill={shade(terr.color, 0.46)} />
+                  <polygon className="iso-face" points={leftFace} fill={shade(terr.color, 0.62)}
+                    stroke={shade(terr.color, 0.62)} strokeWidth="1.5" shapeRendering="crispEdges" />
+                  <polygon className="iso-face" points={rightFace} fill={shade(terr.color, 0.46)}
+                    stroke={shade(terr.color, 0.46)} strokeWidth="1.5" shapeRendering="crispEdges" />
                 </>
               )}
               <polygon
                 className="iso-face"
                 points={topFace}
                 fill={terr.color}
-                stroke={shade(terr.color, 1.18)}
-                strokeWidth="1"
+                stroke={terr.color}
+                strokeWidth="1.5"
+                shapeRendering="crispEdges"
               />
             </svg>
             {/* user-drawn iso cube tile (square PNG: diamond top + cube body).
@@ -217,7 +226,12 @@ export default function IsoBoard({
                 src={texSrc}
                 alt=""
                 draggable={false}
-                style={{ left: 0, top: -TILE_W / 4, width: TILE_W, height: TILE_W }}
+                /* inflated 1px on every side (and offset to stay centred) so
+                   adjacent texture squares overlap by ~1px — this swallows the
+                   thin transparent seams the fractional board scale leaves
+                   between tiles. Front tiles (higher z-index) cover the overlap,
+                   so the bleed is invisible. */
+                style={{ left: -1, top: -TILE_W / 4 - 1, width: TILE_W + 2, height: TILE_W + 2 }}
               />
             )}
             {/* Overlay — highlight + click target must sit ABOVE the texture. */}
@@ -377,7 +391,47 @@ export default function IsoBoard({
         const [vdx, vdy] = rotateCoord(e.x, e.y, rotation, map.w, map.h);
         const tile = map.tiles[e.y * map.w + e.x];
         const stand = tileStandPoint(vdx, vdy, tile?.elevation ?? 0, origin);
-        const n = e.kind === "death" ? 8 : e.kind === "heal" ? 5 : 6;
+
+        // Projectile (arrow / magic bolt): flies from the source tile to the
+        // target tile. The outer div animates the travel; the inner head is
+        // rotated to point along the flight direction.
+        if (e.kind === "arrow" || e.kind === "bolt") {
+          const hasFrom = e.fromX != null && e.fromY != null;
+          const [fdx, fdy] = hasFrom ? rotateCoord(e.fromX, e.fromY, rotation, map.w, map.h) : [vdx, vdy];
+          const ft = hasFrom ? map.tiles[e.fromY * map.w + e.fromX] : tile;
+          const from = tileStandPoint(fdx, fdy, ft?.elevation ?? 0, origin);
+          const ang = (Math.atan2(stand.y - from.y, stand.x - from.x) * 180) / Math.PI;
+          const depth = Math.max(tileDepth(vdx, vdy), tileDepth(fdx, fdy));
+          return (
+            <div
+              key={`v-${e.id}`}
+              className="iso-proj"
+              style={{
+                left: from.x, top: from.y - 24, zIndex: depth * 4 + 5,
+                "--tx": `${stand.x - from.x}px`, "--ty": `${stand.y - from.y}px`,
+              }}
+            >
+              <i className={`proj-head proj-${e.kind}`} style={{ transform: `rotate(${ang}deg)` }} />
+            </div>
+          );
+        }
+        // Sword slash — a quick silver streak over the target.
+        if (e.kind === "slash") {
+          return (
+            <div key={`v-${e.id}`} className="iso-slash"
+              style={{ left: stand.x, top: stand.y - 26, zIndex: tileDepth(vdx, vdy) * 4 + 5 }} />
+          );
+        }
+        // Self-buff (Shield / +AC) — an expanding protective ring on the caster.
+        if (e.kind === "shield") {
+          return (
+            <div key={`v-${e.id}`} className="iso-ring ring-shield"
+              style={{ left: stand.x, top: stand.y - 22, zIndex: tileDepth(vdx, vdy) * 4 + 5 }} />
+          );
+        }
+
+        const n = e.kind === "death" ? 8
+          : (e.kind === "heal" || e.kind === "buff" || e.kind === "debuff") ? 5 : 6;
         return (
           <div
             key={`v-${e.id}`}

@@ -72,6 +72,7 @@ export default function BossTactics() {
   const prevHpRef = useRef({});                    // last-seen hp/dead per unit (for VFX diffing)
   const vfxIdRef = useRef(0);
   const lastAoeFxRef = useRef(null);               // last-applied battle.aoeFx id (dedupe dome spawns)
+  const lastFxRef = useRef(null);                  // last-applied battle.fxEvent id (slash/arrow/buff…)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
@@ -337,6 +338,16 @@ export default function BossTactics() {
       extra
     );
 
+  // Stamp a point/cast effect onto the battle doc so every client plays it (see
+  // the fxEvent pickup effect). `from` (optional) is the source tile for
+  // projectiles (arrow/bolt), which fly from there to (x,y).
+  const fxStamp = (kind, x, y, from = null) => (data) => ({
+    fxEvent: {
+      id: (data.fxEvent?.id || 0) + 1, kind, x, y,
+      fromX: from?.x ?? null, fromY: from?.y ?? null,
+    },
+  });
+
   // ── Master: setup ─────────────────────────────────────────────────────────
   const spawnBattle = async () => {
     const boss = bosses[0];
@@ -554,6 +565,22 @@ export default function BossTactics() {
     setTimeout(() => setVfx((v) => v.filter((e) => e.id !== id)), 1900);
   }, [battle?.aoeFx?.id, fightStarted]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Point/cast VFX (sword slash, arrow/bolt projectile, shield, buff/debuff) ─
+  // Broadcast through battle.fxEvent (like the dome above) so EVERY client plays
+  // the same effect without per-client writes. resolveAttack/Cond/SelfBuff stamp
+  // a new {id, kind, x, y, fromX, fromY}; here each client renders it once.
+  useEffect(() => {
+    const fx = battle?.fxEvent;
+    if (!fx || !fightStarted) return;
+    if (lastFxRef.current === null) { lastFxRef.current = fx.id; return; } // don't replay on join
+    if (lastFxRef.current === fx.id) return;
+    lastFxRef.current = fx.id;
+    const id = ++vfxIdRef.current;
+    setVfx((v) => [...v, { id, kind: fx.kind, x: fx.x, y: fx.y, fromX: fx.fromX, fromY: fx.fromY }]);
+    const dur = fx.kind === "arrow" || fx.kind === "bolt" ? 520 : fx.kind === "shield" ? 650 : 720;
+    setTimeout(() => setVfx((v) => v.filter((e) => e.id !== id)), dur);
+  }, [battle?.fxEvent?.id, fightStarted]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
     setBusy(true);
@@ -585,6 +612,13 @@ export default function BossTactics() {
     let dmg = 0;
     if (hit) { dmg = rollFormula(formula); if (crit) dmg *= 2; }
     let killed = false;
+    // Visual: melee weapon → slash on the target; ranged weapon → arrow flying
+    // from attacker to target; spell attack → magic bolt. Stamped in the SAME
+    // write as the damage so the swing/shot and the hit burst land together for
+    // every spectator (it plays on a miss too — you still swung/fired).
+    const isWeapon = /armi|arma|weapon/.test((action.category || "").toLowerCase());
+    const ranged = (action.range || actionRange(action)) > 1;
+    const fxKind = isWeapon ? (ranged ? "arrow" : "slash") : "bolt";
     // Apply damage to FRESH state (patch by id) so simultaneous attacks on the
     // same target each subtract from the current HP instead of clobbering, and
     // the attacker's advantage/disadvantage is consumed after the roll.
@@ -593,7 +627,7 @@ export default function BossTactics() {
       if (hit && u.id === target.id) { const hp = Math.max(0, u.hp - dmg); killed = hp <= 0; n = { ...n, hp, dead: hp <= 0 }; }
       if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
       return n;
-    }));
+    }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null));
     entry.damageRoll = hit ? `💥 ${dmg} danni a ${target.name}${crit ? " (CRITICO!)" : ""}${killed ? " · 💀" : ""}` : `🛡 Mancato!`;
     await logChat(entry);
     setBusy(false);
@@ -615,7 +649,8 @@ export default function BossTactics() {
   };
   const resolveSelfBuff = async (caster, action) => {
     setBusy(true);
-    await txnBattle((us) => us.map((u) => (u.id === caster.id ? { ...u, ac: u.ac + 2, hasActed: true } : u)));
+    await txnBattle((us) => us.map((u) => (u.id === caster.id ? { ...u, ac: u.ac + 2, hasActed: true } : u)),
+      fxStamp("shield", caster.x, caster.y));
     await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA` });
     setBusy(false);
     await advancePhase();
@@ -627,7 +662,7 @@ export default function BossTactics() {
       if (u.id === target.id) n = { ...n, cond };
       if (u.id === caster.id) n = { ...n, hasActed: true };
       return n;
-    }));
+    }), fxStamp(cond === "advantage" ? "buff" : "debuff", target.x, target.y));
     await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio` : `🌑 ${target.name}: svantaggio` });
     setBusy(false);
     await advancePhase();
