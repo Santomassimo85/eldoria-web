@@ -293,6 +293,59 @@
   to   { transform: translate(var(--hx, 0), -22px); opacity: 0; }
 }
 
+/* ── Area DOME (boss darkness blast &c.) ────────────────────────────────────
+   A slow, translucent, deliberately-pixelated hemisphere that expands to cover
+   the whole blast. Floor pools darken each covered tile (behind the units); the
+   pixel hemisphere arches over them (in front). Driven by shared state so every
+   client sees the same effect. ~1.8s total so nobody misses it. */
+.iso-vfx-floor {
+  position: absolute;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);  /* iso tile diamond */
+  transform-origin: center center;
+  opacity: 0;
+  animation: iso-floor-spread 1.8s ease-out both;
+  pointer-events: none;
+}
+.iso-vfx-dome {
+  position: absolute;
+  transform-origin: center bottom;
+  animation: iso-dome-grow 1.8s ease-out both;
+  pointer-events: none;
+}
+.iso-vfx-dome i {
+  position: absolute;
+  image-rendering: pixelated;
+  transform: scale(0);
+  animation: iso-dome-pop 0.5s steps(3) both;
+}
+
+/* element tints (kept dark + translucent so units stay readable underneath) */
+.iso-vfx-floor.dome-darkness { background: rgba(6, 2, 14, 0.55); }
+.iso-vfx-dome.dome-darkness i { background: rgba(12, 4, 22, 0.62); box-shadow: 0 0 0 1px rgba(70, 26, 104, 0.5); }
+.iso-vfx-floor.dome-fire     { background: rgba(40, 6, 2, 0.45); }
+.iso-vfx-dome.dome-fire     i { background: rgba(120, 26, 12, 0.55); box-shadow: 0 0 0 1px rgba(255, 120, 40, 0.5); }
+.iso-vfx-floor.dome-frost    { background: rgba(8, 22, 38, 0.42); }
+.iso-vfx-dome.dome-frost    i { background: rgba(40, 90, 130, 0.5);  box-shadow: 0 0 0 1px rgba(160, 220, 255, 0.55); }
+.iso-vfx-floor.dome-arcane   { background: rgba(20, 8, 34, 0.45); }
+.iso-vfx-dome.dome-arcane   i { background: rgba(58, 24, 92, 0.55);  box-shadow: 0 0 0 1px rgba(150, 90, 220, 0.55); }
+
+@keyframes iso-floor-spread {
+  0%   { opacity: 0;    transform: scale(0.35); }
+  18%  { opacity: 1;    transform: scale(1); }
+  72%  { opacity: 1;    transform: scale(1); }
+  100% { opacity: 0;    transform: scale(1); }
+}
+@keyframes iso-dome-grow {
+  0%   { transform: scale(0.25); opacity: 0; }
+  22%  {                         opacity: 1; }
+  70%  { transform: scale(1);    opacity: 1; }
+  100% { transform: scale(1.05); opacity: 0; }
+}
+@keyframes iso-dome-pop {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+
 .iso-unit-bar {
   position: absolute;
   bottom: 100%;

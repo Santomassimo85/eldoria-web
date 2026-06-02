@@ -56,6 +56,42 @@ function usePropSprites() {
   return sprites;
 }
 
+// Build a rough pixel "dome" covering an AoE area. Returns the centroid screen
+// point, dark floor diamonds (one per covered tile, pooled behind the units) and
+// a cluster of pixel squares forming a translucent hemisphere over the centroid.
+// All geometry is in logical board px (the outer scaler handles viewport fit).
+function buildDome(cells, rotation, map, origin) {
+  const pts = (cells || []).map((c) => {
+    const [cdx, cdy] = rotateCoord(c.x, c.y, rotation, map.w, map.h);
+    const tile = map.tiles[c.y * map.w + c.x];
+    const elev = tile?.elevation ?? 0;
+    return {
+      stand: tileStandPoint(cdx, cdy, elev, origin),
+      top: tileTopCenter(cdx, cdy, elev, origin),
+      depth: tileDepth(cdx, cdy),
+    };
+  });
+  if (!pts.length) return null;
+  const cx = pts.reduce((s, o) => s + o.stand.x, 0) / pts.length;
+  const cy = pts.reduce((s, o) => s + o.stand.y, 0) / pts.length;
+  const spread = Math.max(0, ...pts.map((o) => Math.hypot(o.stand.x - cx, o.stand.y - cy)));
+  const R = spread + TILE_W * 0.6;        // pad past the outermost tiles
+  const depth = Math.max(...pts.map((o) => o.depth));
+  // Pixel hemisphere: flat bottom on the ground line, rounded top. Chunky grid
+  // so it reads as deliberately pixelated / grezzo rather than a smooth blob.
+  const P = 9, RH = R, RV = R * 0.72, px = [];
+  for (let gy = -RV; gy <= P / 2; gy += P)
+    for (let gx = -RH; gx <= RH; gx += P) {
+      const ex = gx / RH, ey = gy / RV, d = ex * ex + ey * ey;
+      if (d <= 1) px.push({ x: Math.round(gx), y: Math.round(gy), edge: Math.sqrt(d) });
+    }
+  const floors = pts.map((o) => ({
+    x: o.top.x, y: o.top.y, depth: o.depth,
+    dist: spread > 0 ? Math.hypot(o.stand.x - cx, o.stand.y - cy) / spread : 0,
+  }));
+  return { cx, cy, depth, px, P, floors };
+}
+
 export default function IsoBoard({
   map,
   units = [],
@@ -300,6 +336,41 @@ export default function IsoBoard({
           Each burst is a cluster of solid pixel squares animated via CSS. */}
       <div className="iso-vfx-layer">
       {vfx.map((e) => {
+        // Area dome: dark floor pools (behind units) + a rough pixel hemisphere
+        // (over them) that expands to swallow the whole blast.
+        if (e.kind === "dome") {
+          const dome = buildDome(e.cells, rotation, map, origin);
+          if (!dome) return null;
+          return (
+            <React.Fragment key={`v-${e.id}`}>
+              {dome.floors.map((f, i) => (
+                <div
+                  key={`f-${i}`}
+                  className={`iso-vfx-floor dome-${e.domeKind}`}
+                  style={{
+                    left: f.x - TILE_W / 2, top: f.y, width: TILE_W, height: TILE_H,
+                    zIndex: f.depth * 4 + 1,
+                    animationDelay: `${(f.dist * 0.22).toFixed(2)}s`,
+                  }}
+                />
+              ))}
+              <div
+                className={`iso-vfx-dome dome-${e.domeKind}`}
+                style={{ left: dome.cx, top: dome.cy, zIndex: dome.depth * 4 + 6 }}
+              >
+                {dome.px.map((p, i) => (
+                  <i
+                    key={i}
+                    style={{
+                      left: p.x, top: p.y, width: dome.P, height: dome.P,
+                      animationDelay: `${(p.edge * 0.55).toFixed(2)}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            </React.Fragment>
+          );
+        }
         const [vdx, vdy] = rotateCoord(e.x, e.y, rotation, map.w, map.h);
         const tile = map.tiles[e.y * map.w + e.x];
         const stand = tileStandPoint(vdx, vdy, tile?.elevation ?? 0, origin);

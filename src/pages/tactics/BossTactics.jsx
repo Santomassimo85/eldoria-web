@@ -71,6 +71,7 @@ export default function BossTactics() {
   const [vfx, setVfx] = useState([]);             // transient pixel effects [{id,x,y,kind}]
   const prevHpRef = useRef({});                    // last-seen hp/dead per unit (for VFX diffing)
   const vfxIdRef = useRef(0);
+  const lastAoeFxRef = useRef(null);               // last-applied battle.aoeFx id (dedupe dome spawns)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
   const autoPassedRef = useRef(null);              // turnDeadline already auto-passed (dedupe)
@@ -517,6 +518,23 @@ export default function BossTactics() {
     setTimeout(() => setVfx((v) => v.filter((e) => !ids.has(e.id))), 700);
   }, [units, fightStarted]);
 
+  // ── Area "dome" VFX, broadcast through the shared battle doc ───────────────
+  // resolveAoE stamps battle.aoeFx = {id, cells, cx, cy, kind} when an area spell
+  // fires. Every client picks the new id up here and grows a rough, translucent
+  // pixel dome over the whole blast — so all players see the same Octopath-style
+  // burst without per-client writes. The dome is slow (~1.8s) so nobody misses it.
+  useEffect(() => {
+    const fx = battle?.aoeFx;
+    if (!fx || !fightStarted) return;
+    // On first sight just record the id — don't replay an old blast on join.
+    if (lastAoeFxRef.current === null) { lastAoeFxRef.current = fx.id; return; }
+    if (lastAoeFxRef.current === fx.id) return;
+    lastAoeFxRef.current = fx.id;
+    const id = ++vfxIdRef.current;
+    setVfx((v) => [...v, { id, kind: "dome", domeKind: fx.kind || "arcane", cells: fx.cells || [], cx: fx.cx, cy: fx.cy }]);
+    setTimeout(() => setVfx((v) => v.filter((e) => e.id !== id)), 1900);
+  }, [battle?.aoeFx?.id, fightStarted]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
     setBusy(true);
@@ -617,12 +635,23 @@ export default function BossTactics() {
         if (saved) dmg = aoe.half ? Math.floor(dmg / 2) : 0;
         return { id: v.id, name: v.name, side: v.side, d20, mod, saved, dmg, dead: dmg > 0 && v.hp - dmg <= 0 };
       });
+    // Element tint for the dome (darkness for the boss's shadow blast, &c.).
+    const fxText = `${action.name || ""} ${action.category || ""} ${action.dmgType || aoe.dmgType || ""}`.toLowerCase();
+    const fxKind = /oscur|tenebr|ombra|\bdark|necro|\bmort|void|abiss|maledi/.test(fxText) ? "darkness"
+      : /fuoco|fiamm|\bfire|infern|brucia|ustione|piromanz/.test(fxText) ? "fire"
+      : /ghiacc|gelo|\bice|freddo|brina/.test(fxText) ? "frost"
+      : "arcane";
+    const cellArr = [...cells].map((k) => { const [x, y] = k.split(",").map(Number); return { x, y }; });
+    // Apply damage AND publish the dome effect in the same atomic write, so the
+    // blast and the HP changes land together for every spectator.
     await txnBattle((us) => us.map((u) => {
       const r = rolls.find((x) => x.id === u.id);
       let n = u;
       if (r && r.dmg > 0) { const hp = Math.max(0, u.hp - r.dmg); n = { ...n, hp, dead: hp <= 0 }; }
       if (u.id === caster.id) n = { ...n, hasActed: true, cond: null };
       return n;
+    }), (data) => ({
+      aoeFx: { id: (data.aoeFx?.id || 0) + 1, cells: cellArr, cx, cy, shape: aoe.shape, kind: fxKind },
     }));
     await logChat({
       type: "action", senderName: caster.name, actionName: action.name,
