@@ -74,6 +74,9 @@ const blankAction = (i = 0) => ({
   halfOnSave: true,    // metà danni se superano il TS
 });
 
+// A saved minion: simplified boss — name, HP, CA and a list of attacks.
+const blankMinion = () => ({ name: "", hp: 12, ac: 11, actions: [blankAction(0)] });
+
 const initialBossState = {
   name: "",
   maxHp: "",
@@ -407,11 +410,22 @@ export default function WorldBossAdmin() {
   const [editData, setEditData] = useState({});
   const [uploadState, setUploadState] = useState({}); // { newAlive: bool, newDead: bool, editAlive: bool, editDead: bool }
 
+  // ── Minion builder (reusable mooks: name, HP, CA, attacks) ──
+  const [minions, setMinions] = useState([]);                 // saved minion templates
+  const [minionForm, setMinionForm] = useState(blankMinion());
+  const [editingMinionId, setEditingMinionId] = useState(null);
+
   useEffect(() => {
     const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) => {
       setBosses(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsubBoss();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "minions"), (snap) =>
+      setMinions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    return () => unsub();
   }, []);
 
   /**
@@ -539,6 +553,47 @@ export default function WorldBossAdmin() {
       if (cur.length <= MIN_ACTIONS) return d;
       return { ...d, actions: cur.filter((_, i) => i !== idx) };
     });
+
+  /* ── Minion builder handlers ── */
+  const updateMinionAction = (idx, patch) =>
+    setMinionForm((m) => ({ ...m, actions: m.actions.map((a, i) => (i === idx ? { ...a, ...patch } : a)) }));
+  const addMinionAction = () =>
+    setMinionForm((m) => (m.actions.length >= MAX_ACTIONS ? m : { ...m, actions: [...m.actions, blankAction(m.actions.length)] }));
+  const removeMinionAction = (idx) =>
+    setMinionForm((m) => (m.actions.length <= 1 ? m : { ...m, actions: m.actions.filter((_, i) => i !== idx) }));
+
+  const editMinion = (m) => {
+    setEditingMinionId(m.id);
+    setMinionForm({
+      name: m.name || "", hp: m.hp ?? 12, ac: m.ac ?? 11,
+      actions: m.actions?.length ? m.actions.map((a) => ({ ...blankAction(0), ...a })) : [blankAction(0)],
+    });
+    window.scrollTo({ top: document.querySelector(".wb-minions")?.offsetTop || 0, behavior: "smooth" });
+  };
+  const cancelMinionEdit = () => { setEditingMinionId(null); setMinionForm(blankMinion()); };
+  const saveMinion = async (e) => {
+    e?.preventDefault?.();
+    const payload = {
+      name: minionForm.name?.trim() || "Minion",
+      hp: parseInt(minionForm.hp) || 1,
+      ac: parseInt(minionForm.ac) || 10,
+      actions: minionForm.actions,
+      updatedAt: serverTimestamp(),
+    };
+    try {
+      if (editingMinionId) await updateDoc(doc(db, "minions", editingMinionId), payload);
+      else await addDoc(collection(db, "minions"), { ...payload, isActive: false, createdAt: serverTimestamp() });
+      cancelMinionEdit();
+    } catch (err) {
+      alert("Errore salvataggio minion: " + err.message);
+    }
+  };
+  const toggleMinion = (m) => updateDoc(doc(db, "minions", m.id), { isActive: !m.isActive });
+  const deleteMinion = async (m) => {
+    if (!window.confirm(`Eliminare il minion "${m.name}"?`)) return;
+    await deleteDoc(doc(db, "minions", m.id));
+    if (editingMinionId === m.id) cancelMinionEdit();
+  };
 
   const updateBossLocation = async (e, bossId) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -838,6 +893,91 @@ export default function WorldBossAdmin() {
           </div>
         </aside>
       </div>
+
+      {/* ── CASERMA DEI MINION ── */}
+      <section className="wb-minions">
+        <div className="wb-section-head">
+          <h2>🪓 Caserma dei Minion</h2>
+          <small>Sgherri riutilizzabili — nome, HP, CA e attacchi. Attivali (⚡) per poterli schierare in battaglia.</small>
+        </div>
+
+        <div className="wb-minion-workshop">
+          <form className="wb-minion-form" onSubmit={saveMinion}>
+            <div className="wb-field-row3">
+              <div className="wb-field">
+                <label>Nome Minion</label>
+                <input className="admin-field-input" placeholder="es. Scheletro guerriero"
+                  value={minionForm.name} onChange={(e) => setMinionForm({ ...minionForm, name: e.target.value })} required />
+              </div>
+              <div className="wb-field">
+                <label>HP</label>
+                <input className="admin-field-input" type="number" placeholder="12"
+                  value={minionForm.hp} onChange={(e) => setMinionForm({ ...minionForm, hp: e.target.value })} required />
+              </div>
+              <div className="wb-field">
+                <label>CA</label>
+                <input className="admin-field-input" type="number" placeholder="11"
+                  value={minionForm.ac} onChange={(e) => setMinionForm({ ...minionForm, ac: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="wb-actions-section">
+              <div className="wb-actions-head">
+                <label>⚔ Attacchi <small>{minionForm.actions.length}/{MAX_ACTIONS}</small></label>
+                <button type="button" className="wb-add-action-btn" onClick={addMinionAction}
+                  disabled={minionForm.actions.length >= MAX_ACTIONS}
+                  title={minionForm.actions.length >= MAX_ACTIONS ? `Massimo ${MAX_ACTIONS}` : "Aggiungi un attacco"}>
+                  + Aggiungi
+                </button>
+              </div>
+              <div className="wb-actions-grid">
+                {minionForm.actions.map((a, idx) => (
+                  <ActionEditor
+                    key={idx}
+                    action={a}
+                    idx={idx}
+                    onChange={(patch) => updateMinionAction(idx, patch)}
+                    onRemove={() => removeMinionAction(idx)}
+                    canRemove={minionForm.actions.length > 1}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="wb-minion-form-actions">
+              <button type="submit" className="wb-btn primary">
+                {editingMinionId ? "💾 Aggiorna minion" : "➕ Salva minion"}
+              </button>
+              {editingMinionId && (
+                <button type="button" className="wb-btn ghost" onClick={cancelMinionEdit}>Annulla</button>
+              )}
+            </div>
+          </form>
+
+          <aside className="wb-minion-roster">
+            <h3>Minion salvati ({minions.length})</h3>
+            {minions.length === 0 ? (
+              <p className="wb-empty">Nessun minion. Creane uno qui a fianco.</p>
+            ) : (
+              <div className="wb-minion-chips">
+                {minions.map((m) => (
+                  <div key={m.id} className={`wb-minion-chip ${m.isActive ? "on" : ""} ${editingMinionId === m.id ? "editing" : ""}`}>
+                    <button type="button" className="wb-minion-chip-main" onClick={() => editMinion(m)} title="Modifica">
+                      <strong>{m.name || "Minion"}</strong>
+                      <span>❤ {m.hp ?? "—"} · 🛡 {m.ac ?? "—"} · {(m.actions || []).length} att.</span>
+                    </button>
+                    <button type="button" className={`wb-minion-toggle ${m.isActive ? "active" : ""}`} onClick={() => toggleMinion(m)}
+                      title={m.isActive ? "Attivo — clicca per disattivare" : "Disattivato — clicca per attivare"}>
+                      {m.isActive ? "⚡" : "○"}
+                    </button>
+                    <button type="button" className="wb-minion-del" onClick={() => deleteMinion(m)} title="Elimina">🗑</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </aside>
+        </div>
+      </section>
 
       {/* ── BESTIARIO ── */}
       <section className="wb-bestiary">

@@ -381,6 +381,58 @@ textarea::placeholder { color: #998a6a; opacity: 1; }
 .wb-aoe-dim { color: #889; }
 @media (prefers-reduced-motion: reduce) { .wb-cell.blast { animation: none; } }
 
+/* ── Caserma dei Minion ───────────────────────────────────────────────────── */
+.wb-minions { margin-top: 22px; }
+.wb-minion-workshop {
+  display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
+  gap: 16px; align-items: start;
+}
+.wb-minion-form {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(160, 60, 60, 0.3);
+}
+.wb-minion-form-actions { display: flex; gap: 8px; margin-top: 2px; }
+
+.wb-minion-roster {
+  padding: 14px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.wb-minion-roster h3 {
+  margin: 0 0 10px; font-family: var(--font-title); font-size: 0.9rem;
+  letter-spacing: 0.05em; color: #d4af37;
+}
+.wb-minion-chips { display: flex; flex-direction: column; gap: 7px; }
+.wb-minion-chip {
+  display: flex; align-items: stretch; gap: 6px;
+  border-radius: 9px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.wb-minion-chip.on { border-color: rgba(242, 193, 78, 0.6); box-shadow: 0 0 0 1px rgba(242, 193, 78, 0.25); }
+.wb-minion-chip.editing { border-color: #9bd0ff; box-shadow: 0 0 0 1px rgba(155, 208, 255, 0.4); }
+.wb-minion-chip-main {
+  flex: 1 1 auto; min-width: 0; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 10px; border: none; background: transparent; color: #e8eef5;
+}
+.wb-minion-chip-main:hover { background: rgba(255, 255, 255, 0.05); }
+.wb-minion-chip-main strong { font-size: 0.86rem; }
+.wb-minion-chip-main span { font-size: 0.7rem; color: #9aa6b4; }
+.wb-minion-toggle, .wb-minion-del {
+  flex: 0 0 auto; width: 38px; cursor: pointer; font-size: 1rem;
+  border: none; border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22); color: #cbd2dc;
+}
+.wb-minion-toggle.active { background: linear-gradient(180deg, rgba(242, 193, 78, 0.35), rgba(140, 100, 20, 0.3)); color: #fff; }
+.wb-minion-toggle:hover, .wb-minion-del:hover { filter: brightness(1.25); }
+.wb-minion-del:hover { background: rgba(160, 40, 40, 0.45); color: #fff; }
+
+@media (max-width: 760px) {
+  .wb-minion-workshop { grid-template-columns: 1fr; }
+}
+
 /* Big evoke button */
 .wb-evoke-btn {
   margin-top: 6px;

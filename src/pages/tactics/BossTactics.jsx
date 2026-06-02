@@ -47,7 +47,8 @@ export default function BossTactics() {
   const [charData, setCharData] = useState(null);
   const [players, setPlayers] = useState([]);   // all characters (master setup)
   const [bosses, setBosses] = useState([]);
-  const [minionLib, setMinionLib] = useState([]); // reusable minion templates
+  const [minionLib, setMinionLib] = useState([]); // reusable minion templates (player_sprites)
+  const [minionDefs, setMinionDefs] = useState([]); // custom-built minions (Caserma)
   const [savedMaps, setSavedMaps] = useState([]); // authored maps (battle_meta kind:map)
   const [selMapId, setSelMapId] = useState("");
 
@@ -123,6 +124,12 @@ export default function BossTactics() {
   useEffect(() => {
     return onSnapshot(collection(db, "player_sprites"), (snap) =>
       setMinionLib(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  }, []);
+  // Custom-built, reusable minions (WorldBossAdmin → Caserma). Only the ones the
+  // master flagged active are offered when setting up a battle.
+  useEffect(() => {
+    return onSnapshot(collection(db, "minions"), (snap) =>
+      setMinionDefs(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.isActive)));
   }, []);
   useEffect(() => {
     if (!isMaster) return;
@@ -210,6 +217,9 @@ export default function BossTactics() {
       const boss = bosses.find((b) => b.id === activeUnit.bossId) || bosses[0];
       return (boss?.actions || []).filter((a) => a?.name);
     }
+    // Builder minions carry their own attacks; legacy ones use the single atk.
+    if (Array.isArray(activeUnit.actions) && activeUnit.actions.length)
+      return activeUnit.actions.filter((a) => a?.name);
     return [{ name: activeUnit.atkName || "Attacco", category: "Armi", damage: activeUnit.atkDice, bonus: activeUnit.atkBonus, range: activeUnit.atkRange }];
   }, [activeUnit, charData, bosses]);
 
@@ -1011,7 +1021,7 @@ export default function BossTactics() {
                 ))}
               </div>
               <div className="bt-setup-row">
-                <strong>Minion:</strong>
+                <strong>Minion (sprite):</strong>
                 {minionLib.length === 0
                   ? <span style={{ opacity: 0.6 }}>nessuno — caricali in <em>Admin → Sprite Personaggi</em></span>
                   : minionLib.map((t) => (
@@ -1020,6 +1030,20 @@ export default function BossTactics() {
                         name: t.name, hp: t.hp, ac: t.ac, dex: t.dex,
                         atkName: t.atkName, atkDice: t.atkDice, atkBonus: t.atkBonus, atkRange: t.atkRange,
                         tplId: t.id, sprite: t.spriteUrl, deadSprite: t.deadSpriteUrl,
+                      }])}>
+                      ＋ {t.name}
+                    </button>
+                  ))}
+              </div>
+              <div className="bt-setup-row">
+                <strong>Minion (Caserma):</strong>
+                {minionDefs.length === 0
+                  ? <span style={{ opacity: 0.6 }}>nessuno attivo — creali e attivali in <em>WorldBossAdmin → Caserma</em></span>
+                  : minionDefs.map((t) => (
+                    <button key={t.id} className="bt-chip" title={`HP ${t.hp} · CA ${t.ac} · ${(t.actions || []).length} attacchi`}
+                      onClick={() => setMinions((m) => [...m, {
+                        name: t.name, hp: t.hp, ac: t.ac, dex: 0,
+                        actions: t.actions || [], defId: t.id,
                       }])}>
                       ＋ {t.name}
                     </button>

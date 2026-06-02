@@ -148,10 +148,15 @@ export function makeMinionUnit(spec, idx, x, y) {
     id: `minion-${idx}`, side: "enemy", kind: "minion",
     name: spec?.name || `Nemico ${idx + 1}`,
     tplId: spec?.tplId || null,   // player_sprites template id → images resolved client-side
+    defId: spec?.defId || null,   // saved-minion doc id (custom builder) → sprite resolved client-side
+    // Builder minions carry their own list of attacks (same shape as boss actions);
+    // legacy player_sprites minions have none and fall back to the single atk below.
+    actions: Array.isArray(spec?.actions) && spec.actions.length ? spec.actions : null,
     x, y,
     hp: spec?.hp ?? 12, maxHp: spec?.hp ?? 12,
     ac: spec?.ac ?? 11, dex: spec?.dex ?? 0,
     abilities: { ...abilityBlock(spec), dex: spec?.dex ?? 0 }, // saves when caught in an AoE
+    spellDC: spec?.spellDC ?? 13,                              // DC of the minion's own AoE attacks
     move: spec?.move ?? 5,
     atkName: spec?.atkName || "Attacco",
     atkDice: spec?.atkDice || "1d6", atkBonus: spec?.atkBonus ?? 2, atkRange: spec?.atkRange ?? 1,
