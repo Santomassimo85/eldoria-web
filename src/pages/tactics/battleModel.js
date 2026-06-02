@@ -23,10 +23,8 @@ export const BOSS_SYSTEM_UID = "BOSS_MSG";
 // impossible because every mutation goes through a Firestore transaction that
 // re-reads fresh state and patches units by id (see txnBattle / the movement
 // transaction in BossTactics).
-// ⚠️ TEST VALUES (2026-06-02): 5 min each while playtesting. RESTORE to
-// 3h heroes / 1h enemies before going live →  3*60*60*1000 / 1*60*60*1000.
-export const PLAYER_PHASE_MS = 5 * 60 * 1000; // TEST: heroes 5 min  (prod: 3h)
-export const ENEMY_PHASE_MS = 5 * 60 * 1000;  // TEST: enemies 5 min (prod: 1h)
+export const PLAYER_PHASE_MS = 3 * 60 * 60 * 1000; // heroes: 3 hours
+export const ENEMY_PHASE_MS = 1 * 60 * 60 * 1000;  // enemies (boss): 1 hour
 
 // A unit has finished its round when it explicitly ended its turn, or it has
 // used BOTH its move and its action.

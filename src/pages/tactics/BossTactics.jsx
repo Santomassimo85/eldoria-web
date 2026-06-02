@@ -138,8 +138,15 @@ export default function BossTactics() {
       setSavedMaps(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "map")));
   }, [isMaster]);
 
-  const map = battle?.map || defaultBattleMap();
+  // While the master is staging (no live battle yet) the board previews the map
+  // chosen in the dropdown, so the selection is visible immediately.
+  const previewMap = useMemo(() => {
+    const chosen = savedMaps.find((x) => x.id === selMapId);
+    return chosen ? { w: chosen.w, h: chosen.h, tiles: chosen.tiles.map((t) => ({ ...t })) } : defaultBattleMap();
+  }, [savedMaps, selMapId]);
+  const map = battle?.map || previewMap;
   const units = useMemo(() => battle?.units || [], [battle]);
+  const setupPreview = isMaster && !battle?.active;   // staging: showing the map preview
 
   // Starfield backdrop: a fixed scatter of stars generated once, split into a
   // far (slow) and near (faster) layer for a gentle parallax drift, each star
@@ -184,6 +191,33 @@ export default function BossTactics() {
     }),
     [units, animUnit, spriteFor]
   );
+
+  // Preview enemies (sprites) + spawn markers for the staging map, so the master
+  // sees the chosen map's pre-placed foes and spawn points before staging.
+  const setupPreviewUnits = useMemo(() => {
+    if (!setupPreview) return [];
+    const out = [];
+    for (const t of map.tiles) {
+      if (!t.unit) continue;
+      if (t.unit.kind === "boss") {
+        const b = bosses.find((x) => x.id === t.unit.refId);
+        out.push({ id: `pp-${t.x}-${t.y}`, x: t.x, y: t.y, side: "enemy", name: b?.name || "Boss",
+          sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || null, hp: b?.maxHp || 1, maxHp: b?.maxHp || 1 });
+      } else {
+        const d = minionDefs.find((x) => x.id === t.unit.refId);
+        out.push({ id: `pp-${t.x}-${t.y}`, x: t.x, y: t.y, side: "enemy", name: d?.name || "Minion",
+          sprite: d?.imageUrl || null, deadSprite: d?.deadImageUrl || null, hp: d?.hp || 1, maxHp: d?.hp || 1 });
+      }
+    }
+    return out;
+  }, [setupPreview, map, bosses, minionDefs]);
+  const setupHighlights = useMemo(() => {
+    if (!setupPreview) return {};
+    const hl = {};
+    for (const t of map.tiles) if (t.spawn) hl[`${t.x},${t.y}`] = t.spawn === "hero" ? "self" : "target";
+    return hl;
+  }, [setupPreview, map]);
+
   const fightStarted = battle?.fightStarted === true;
   const phase = battle?.phase || "setup";
   const isOver = phase === "over";
@@ -259,6 +293,10 @@ export default function BossTactics() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [rotation]);
+  // While staging, refit whenever the previewed map changes (dropdown switch).
+  useEffect(() => {
+    if (setupPreview) fitRef.current();
+  }, [setupPreview, selMapId]);
 
   const pinchDist = () => {
     const p = [...pointersRef.current.values()];
@@ -1010,7 +1048,7 @@ export default function BossTactics() {
         onPointerDown={onPointerDown} onPointerMove={onPointerMove}
         onPointerUp={onPointerUp} onPointerLeave={onPointerUp}
       >
-        {battle?.active ? (
+        {(battle?.active || setupPreview) ? (
           <>
             {/* starry sky behind the board (two parallax layers, each star twinkles) */}
             <div className="tac-sky" aria-hidden="true">
@@ -1032,12 +1070,20 @@ export default function BossTactics() {
               </div>
             </div>
             <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
-              <IsoBoard map={map} units={displayUnits} highlights={highlights} pings={pingIds} vfx={vfx} scale={scale} rotation={rotation}
+              <IsoBoard map={map}
+                units={battle?.active ? displayUnits : setupPreviewUnits}
+                highlights={battle?.active ? highlights : setupHighlights}
+                pings={battle?.active ? pingIds : null}
+                vfx={battle?.active ? vfx : []}
+                scale={scale} rotation={rotation}
                 onTileClick={onTileClick} onTileHover={onTileHover} onUnitClick={onUnitClick} />
             </div>
+            {setupPreview && (
+              <div className="tac-preview-tag">👁 Anteprima — {savedMaps.find((x) => x.id === selMapId)?.name || "Mappa default (16×16)"}</div>
+            )}
           </>
         ) : (
-          <div className="bt-empty">{isMaster ? "Allestisci una battaglia qui sotto." : "⏳ In attesa che il Master avvii una battaglia…"}</div>
+          <div className="bt-empty">⏳ In attesa che il Master avvii una battaglia…</div>
         )}
 
         {myStatus && (
