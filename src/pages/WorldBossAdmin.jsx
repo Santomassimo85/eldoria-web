@@ -74,8 +74,8 @@ const blankAction = (i = 0) => ({
   halfOnSave: true,    // metà danni se superano il TS
 });
 
-// A saved minion: simplified boss — name, HP, CA and a list of attacks.
-const blankMinion = () => ({ name: "", hp: 12, ac: 11, actions: [blankAction(0)] });
+// A saved minion: simplified boss — name, HP, CA, attacks + alive/dead sprites.
+const blankMinion = () => ({ name: "", hp: 12, ac: 11, imageUrl: "", deadImageUrl: "", actions: [blankAction(0)] });
 
 const initialBossState = {
   name: "",
@@ -562,10 +562,25 @@ export default function WorldBossAdmin() {
   const removeMinionAction = (idx) =>
     setMinionForm((m) => (m.actions.length <= 1 ? m : { ...m, actions: m.actions.filter((_, i) => i !== idx) }));
 
+  const onMinionAlive = async (file) => {
+    const url = await uploadSprite(file, "minionAlive");
+    if (url) {
+      if (minionForm.imageUrl) cleanupStorageUrl(minionForm.imageUrl);
+      setMinionForm((m) => ({ ...m, imageUrl: url }));
+    }
+  };
+  const onMinionDead = async (file) => {
+    const url = await uploadSprite(file, "minionDead");
+    if (url) {
+      if (minionForm.deadImageUrl) cleanupStorageUrl(minionForm.deadImageUrl);
+      setMinionForm((m) => ({ ...m, deadImageUrl: url }));
+    }
+  };
   const editMinion = (m) => {
     setEditingMinionId(m.id);
     setMinionForm({
       name: m.name || "", hp: m.hp ?? 12, ac: m.ac ?? 11,
+      imageUrl: m.imageUrl || "", deadImageUrl: m.deadImageUrl || "",
       actions: m.actions?.length ? m.actions.map((a) => ({ ...blankAction(0), ...a })) : [blankAction(0)],
     });
     window.scrollTo({ top: document.querySelector(".wb-minions")?.offsetTop || 0, behavior: "smooth" });
@@ -573,10 +588,13 @@ export default function WorldBossAdmin() {
   const cancelMinionEdit = () => { setEditingMinionId(null); setMinionForm(blankMinion()); };
   const saveMinion = async (e) => {
     e?.preventDefault?.();
+    if (uploadState.minionAlive || uploadState.minionDead) return;
     const payload = {
       name: minionForm.name?.trim() || "Minion",
       hp: parseInt(minionForm.hp) || 1,
       ac: parseInt(minionForm.ac) || 10,
+      imageUrl: minionForm.imageUrl || "",
+      deadImageUrl: minionForm.deadImageUrl || "",
       actions: minionForm.actions,
       updatedAt: serverTimestamp(),
     };
@@ -591,6 +609,7 @@ export default function WorldBossAdmin() {
   const toggleMinion = (m) => updateDoc(doc(db, "minions", m.id), { isActive: !m.isActive });
   const deleteMinion = async (m) => {
     if (!window.confirm(`Eliminare il minion "${m.name}"?`)) return;
+    await Promise.all([cleanupStorageUrl(m.imageUrl), cleanupStorageUrl(m.deadImageUrl)]);
     await deleteDoc(doc(db, "minions", m.id));
     if (editingMinionId === m.id) cancelMinionEdit();
   };
@@ -921,6 +940,31 @@ export default function WorldBossAdmin() {
               </div>
             </div>
 
+            <div className="wb-minion-sprites">
+              <div className="wb-sprite-slot">
+                <span className="wb-slot-tag">Sprite vivo</span>
+                <SpriteDropzone
+                  label="Sprite Vivo" icon="🩸"
+                  value={minionForm.imageUrl}
+                  uploading={uploadState.minionAlive}
+                  onFile={onMinionAlive}
+                  onClear={() => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: "" })); }}
+                  accent="#d4af37"
+                />
+              </div>
+              <div className="wb-sprite-slot">
+                <span className="wb-slot-tag">Tomba (morto)</span>
+                <SpriteDropzone
+                  label="Sprite Morto" icon="🪦"
+                  value={minionForm.deadImageUrl}
+                  uploading={uploadState.minionDead}
+                  onFile={onMinionDead}
+                  onClear={() => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: "" })); }}
+                  accent="#7a0808"
+                />
+              </div>
+            </div>
+
             <div className="wb-actions-section">
               <div className="wb-actions-head">
                 <label>⚔ Attacchi <small>{minionForm.actions.length}/{MAX_ACTIONS}</small></label>
@@ -945,8 +989,10 @@ export default function WorldBossAdmin() {
             </div>
 
             <div className="wb-minion-form-actions">
-              <button type="submit" className="wb-btn primary">
-                {editingMinionId ? "💾 Aggiorna minion" : "➕ Salva minion"}
+              <button type="submit" className="wb-btn primary" disabled={uploadState.minionAlive || uploadState.minionDead}>
+                {(uploadState.minionAlive || uploadState.minionDead)
+                  ? "⏳ Upload…"
+                  : editingMinionId ? "💾 Aggiorna minion" : "➕ Salva minion"}
               </button>
               {editingMinionId && (
                 <button type="button" className="wb-btn ghost" onClick={cancelMinionEdit}>Annulla</button>
@@ -963,8 +1009,13 @@ export default function WorldBossAdmin() {
                 {minions.map((m) => (
                   <div key={m.id} className={`wb-minion-chip ${m.isActive ? "on" : ""} ${editingMinionId === m.id ? "editing" : ""}`}>
                     <button type="button" className="wb-minion-chip-main" onClick={() => editMinion(m)} title="Modifica">
-                      <strong>{m.name || "Minion"}</strong>
-                      <span>❤ {m.hp ?? "—"} · 🛡 {m.ac ?? "—"} · {(m.actions || []).length} att.</span>
+                      {m.imageUrl
+                        ? <img className="wb-minion-thumb" src={m.imageUrl} alt="" />
+                        : <span className="wb-minion-thumb placeholder">{(m.name || "?")[0].toUpperCase()}</span>}
+                      <span className="wb-minion-chip-txt">
+                        <strong>{m.name || "Minion"}</strong>
+                        <span>❤ {m.hp ?? "—"} · 🛡 {m.ac ?? "—"} · {(m.actions || []).length} att.</span>
+                      </span>
                     </button>
                     <button type="button" className={`wb-minion-toggle ${m.isActive ? "active" : ""}`} onClick={() => toggleMinion(m)}
                       title={m.isActive ? "Attivo — clicca per disattivare" : "Disattivato — clicca per attivare"}>

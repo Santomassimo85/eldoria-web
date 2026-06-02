@@ -166,9 +166,14 @@ export default function BossTactics() {
       const b = bosses.find((x) => x.id === u.bossId) || bosses[0];
       return { sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || b?.imageUrl || null, avatar: b?.imageUrl || b?.image || null };
     }
+    // Custom-built minion: alive + "tomba" (dead) sprites from the minions doc.
+    if (u.defId) {
+      const d = minionDefs.find((x) => x.id === u.defId);
+      return { sprite: d?.imageUrl || null, deadSprite: d?.deadImageUrl || d?.imageUrl || null, avatar: d?.imageUrl || null };
+    }
     const t = minionLib.find((x) => x.id === u.tplId);
     return { sprite: t?.spriteUrl || null, deadSprite: t?.deadSpriteUrl || t?.spriteUrl || null, avatar: t?.spriteUrl || null };
-  }, [players, bosses, minionLib]);
+  }, [players, bosses, minionLib, minionDefs]);
 
   // Rendered units: raw units enriched with images, plus the local walk override.
   const displayUnits = useMemo(
