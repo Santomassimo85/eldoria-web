@@ -28,7 +28,7 @@ import {
   makePlayerUnit, makeBossUnit, makeMinionUnit,
   unitDone, sideAllDone, resetSide, txnBattle,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
-  rollDie, rollFormula, detectSpellIntent, actionRange, battleActions,
+  rollDie, rollFormula, rollFormulaParts, detectSpellIntent, actionRange, battleActions,
   spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice,
 } from "./battleModel";
 import "./BossTactics.css";
@@ -344,9 +344,13 @@ export default function BossTactics() {
     hl[`${activeUnit.x},${activeUnit.y}`] = "selected";
     if (!isMyTurn) return hl;
     if (mode === "move" && !activeUnit.hasMoved) {
-      const occ = new Set(units.filter((u) => !u.dead && u.id !== activeUnit.id).map((u) => `${u.x},${u.y}`));
-      const { costs } = computePaths(map, activeUnit.x, activeUnit.y, activeUnit.move ?? DEFAULT_MOVE, occ);
-      for (const k of costs.keys()) if (k !== `${activeUnit.x},${activeUnit.y}`) hl[k] = "move";
+      // You can move THROUGH allies (same side) but not through enemies, and you
+      // can never STOP on an occupied tile. So only enemies block the path;
+      // ally-occupied tiles stay traversable but are excluded as destinations.
+      const blockers = new Set(units.filter((u) => !u.dead && u.id !== activeUnit.id && u.side !== activeUnit.side).map((u) => `${u.x},${u.y}`));
+      const occupied = new Set(units.filter((u) => !u.dead && u.id !== activeUnit.id).map((u) => `${u.x},${u.y}`));
+      const { costs } = computePaths(map, activeUnit.x, activeUnit.y, activeUnit.move ?? DEFAULT_MOVE, blockers);
+      for (const k of costs.keys()) if (k !== `${activeUnit.x},${activeUnit.y}` && !occupied.has(k)) hl[k] = "move";
     } else if (mode === "act" && selAction) {
       const aoe = spellAoE(selAction);
       const r = selAction.range || actionRange(selAction);
@@ -592,9 +596,11 @@ export default function BossTactics() {
       const us = d.units || [];
       const me = us.find((u) => u.id === unitId);
       if (!me || me.hasMoved || me.dead) throw new Error("STALE");
+      // Can't stop on any occupied tile (ally or enemy)…
       if (us.some((u) => !u.dead && u.id !== unitId && u.x === x && u.y === y)) throw new Error("OCCUPIED");
-      const occ = new Set(us.filter((u) => !u.dead && u.id !== unitId).map((u) => `${u.x},${u.y}`));
-      const { costs } = computePaths(d.map, me.x, me.y, me.move ?? DEFAULT_MOVE, occ);
+      // …but the path may pass THROUGH allies — only enemies block it.
+      const blockers = new Set(us.filter((u) => !u.dead && u.id !== unitId && u.side !== me.side).map((u) => `${u.x},${u.y}`));
+      const { costs } = computePaths(d.map, me.x, me.y, me.move ?? DEFAULT_MOVE, blockers);
       if (!costs.has(`${x},${y}`)) throw new Error("OCCUPIED");
       tx.update(ref, { units: us.map((u) => (u.id === unitId ? { ...u, x, y, hasMoved: true } : u)) });
     });
@@ -716,8 +722,13 @@ export default function BossTactics() {
     const bonus = parseInt(String(action.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
     const total = d + bonus, crit = d === 20;
     const formula = action.damage && action.damage !== "0" ? action.damage : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
-    const entry = { type: "action", senderName: attacker.name, actionName: action.name, uid: attacker.uid || BOSS_SYSTEM_UID, side: attacker.side, category: action.category || "Attacco", hitRoll: `🎲 ${rollNote} +${bonus} = ${total} vs CA ${target.ac}` };
     const hit = crit || total >= target.ac;
+    // Full to-hit breakdown so the maths is verifiable in chat.
+    const entry = {
+      type: "action", senderName: attacker.name, actionName: action.name,
+      uid: attacker.uid || BOSS_SYSTEM_UID, side: attacker.side, category: action.category || "Attacco",
+      hitRoll: `🎯 Colpire: ${rollNote} ${bonus >= 0 ? "+" : ""}${bonus} = ${total} vs CA ${target.ac} → ${crit ? "CRITICO 💥" : hit ? "colpito ✅" : "mancato ❌"}`,
+    };
     // Visual classification (also gates Sneak Attack to weapon hits): melee weapon
     // → slash; ranged weapon → arrow; spell attack → magic bolt.
     const isWeapon = /armi|arma|weapon/.test((action.category || "").toLowerCase());
@@ -728,10 +739,11 @@ export default function BossTactics() {
     const sneakDice = (hit && isWeapon && attacker.side === "hero") ? sneakAttackDice(attacker.cls, attacker.level) : 0;
     const allyFlank = units.some((o) => o.side === "hero" && !o.dead && o.id !== attacker.id && manhattan(o.x, o.y, target.x, target.y) === 1);
     const sneakOn = sneakDice > 0 && !hasDis && (hasAdv || allyFlank);
-    let dmg = 0, sneakDmg = 0;
+    let dmg = 0, baseRoll = null, sneakRoll = null;
     if (hit) {
-      dmg = rollFormula(formula);
-      if (sneakOn) { sneakDmg = rollFormula(`${sneakDice}d6`); dmg += sneakDmg; }
+      baseRoll = rollFormulaParts(formula);
+      dmg = baseRoll.total;
+      if (sneakOn) { sneakRoll = rollFormulaParts(`${sneakDice}d6`); dmg += sneakRoll.total; }
       if (crit) dmg *= 2;   // a crit doubles ALL dice, sneak included
     }
     let killed = false;
@@ -744,7 +756,9 @@ export default function BossTactics() {
       if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
       return n;
     }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null));
-    entry.damageRoll = hit ? `💥 ${dmg} danni a ${target.name}${crit ? " (CRITICO!)" : ""}${sneakOn ? ` · 🗡️ furtivo +${sneakDmg} (${sneakDice}d6)` : ""}${killed ? " · 💀" : ""}` : `🛡 Mancato!`;
+    entry.damageRoll = hit
+      ? `💥 Danni: ${baseRoll.text}${sneakOn ? ` + furtivo ${sneakRoll.text}` : ""}${crit ? " ×2 (CRIT)" : ""} = ${dmg} a ${target.name}${killed ? " · 💀" : ""}`
+      : `🛡 Mancato!`;
     await logChat(entry);
     setBusy(false);
     await advancePhase();
@@ -752,14 +766,15 @@ export default function BossTactics() {
 
   const resolveHeal = async (caster, target, action) => {
     setBusy(true);
-    const heal = rollFormula(action.damage && action.damage !== "0" ? action.damage : "1d8");
+    const healRoll = rollFormulaParts(action.damage && action.damage !== "0" ? action.damage : "1d8");
+    const heal = healRoll.total;
     await txnBattle((us) => us.map((u) => {
       let n = u;
       if (u.id === target.id) n = { ...n, hp: Math.min(n.maxHp, n.hp + heal) };
       if (u.id === caster.id) n = { ...n, hasActed: true };
       return n;
     }));
-    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Cura)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `💚 +${heal} HP a ${target.name}` });
+    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Cura)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `💚 Cura: ${healRoll.text} = +${heal} HP a ${target.name}` });
     setBusy(false);
     await advancePhase();
   };
@@ -847,9 +862,10 @@ export default function BossTactics() {
     if (!isMyTurn) return;
     if (mode === "move" && !activeUnit.hasMoved) {
       const cu = activeUnit;
-      const occ = new Set(units.filter((u) => !u.dead && u.id !== cu.id).map((u) => `${u.x},${u.y}`));
-      const { costs, prev } = computePaths(map, cu.x, cu.y, cu.move ?? DEFAULT_MOVE, occ);
-      if (!costs.has(`${x},${y}`) || (x === cu.x && y === cu.y)) return;
+      const blockers = new Set(units.filter((u) => !u.dead && u.id !== cu.id && u.side !== cu.side).map((u) => `${u.x},${u.y}`));
+      const occupied = new Set(units.filter((u) => !u.dead && u.id !== cu.id).map((u) => `${u.x},${u.y}`));
+      const { costs, prev } = computePaths(map, cu.x, cu.y, cu.move ?? DEFAULT_MOVE, blockers);
+      if (!costs.has(`${x},${y}`) || occupied.has(`${x},${y}`) || (x === cu.x && y === cu.y)) return;
       const path = reconstructPath(prev, cu.x, cu.y, x, y);
       if (!path) return;
       setBusy(true); setMode("idle");

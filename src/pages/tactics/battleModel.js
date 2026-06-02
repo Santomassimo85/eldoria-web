@@ -81,6 +81,27 @@ export function rollFormula(f, mod = 0) {
   return total;
 }
 
+// Like rollFormula but returns the breakdown too, so the chat can show every die
+// and modifier (e.g. "2d6[4,5]+3 = 12") — handy to verify the maths.
+export function rollFormulaParts(f, mod = 0) {
+  const clean = String(f ?? "").replace(/@mod/g, mod).replace(/\s/g, "");
+  if (!clean) return { total: 0, text: "0" };
+  let total = 0;
+  const segs = [];
+  for (const part of clean.split("+")) {
+    if (part.includes("d")) {
+      const [n, s] = part.split("d").map(Number);
+      const rolls = [];
+      for (let i = 0; i < (n || 1); i++) { const r = rollDie(s || 6); rolls.push(r); total += r; }
+      segs.push(`${n || 1}d${s || 6}[${rolls.join(",")}]`);
+    } else {
+      const v = parseInt(part) || 0; total += v;
+      if (v) segs.push(`${v}`);
+    }
+  }
+  return { total, text: segs.join("+") || "0" };
+}
+
 // ── Initiative & turn order ────────────────────────────────────────────────
 export const allRolled = (units) =>
   units.length > 0 && units.every((u) => typeof u.initiative === "number");
