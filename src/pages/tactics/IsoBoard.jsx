@@ -61,6 +61,7 @@ export default function IsoBoard({
   units = [],
   highlights = {},
   pings = null,
+  vfx = [],
   scale = 1,
   rotation = 0,
   onTileClick,
@@ -290,6 +291,26 @@ export default function IsoBoard({
               className="iso-unit-hit"
               onClick={(e) => { e.stopPropagation(); onUnitClick?.(u, e); }}
             />
+          </div>
+        );
+      })}
+      </div>
+
+      {/* Transient pixel VFX layer (hit / heal / death bursts at a unit's tile).
+          Each burst is a cluster of solid pixel squares animated via CSS. */}
+      <div className="iso-vfx-layer">
+      {vfx.map((e) => {
+        const [vdx, vdy] = rotateCoord(e.x, e.y, rotation, map.w, map.h);
+        const tile = map.tiles[e.y * map.w + e.x];
+        const stand = tileStandPoint(vdx, vdy, tile?.elevation ?? 0, origin);
+        const n = e.kind === "death" ? 8 : e.kind === "heal" ? 5 : 6;
+        return (
+          <div
+            key={`v-${e.id}`}
+            className={`iso-vfx vfx-${e.kind}`}
+            style={{ left: stand.x, top: stand.y, zIndex: tileDepth(vdx, vdy) * 4 + 3 }}
+          >
+            {Array.from({ length: n }, (_, i) => <i key={i} />)}
           </div>
         );
       })}

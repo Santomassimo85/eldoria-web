@@ -167,6 +167,33 @@
   border-color: #8af0b4;
 }
 
+/* one-move + one-action pips in the HUD card (used / available) */
+.tac-hud-pips { display: flex; gap: 6px; margin-top: 3px; }
+.tac-pip {
+  font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25); white-space: nowrap;
+}
+.tac-pip.ok   { background: rgba(42, 158, 84, 0.32); color: #b6f5cf; border-color: #2a9e54; }
+.tac-pip.used { background: rgba(120, 120, 130, 0.22); color: #b9bcc6; text-decoration: line-through; opacity: 0.7; }
+
+/* master enemy roster bar (enemies phase) */
+.tac-enemybar {
+  position: relative; z-index: 30;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 6px 10px; background: rgba(20, 12, 16, 0.85);
+  border-top: 1px solid rgba(176, 43, 43, 0.5);
+}
+.tac-enemybar-label { font-size: 11px; font-weight: 800; color: #ff9b9b; margin-right: 4px; }
+.tac-enemy-chip {
+  font-size: 11px; font-weight: 800; padding: 4px 9px; border-radius: 6px; cursor: pointer;
+  background: rgba(176, 43, 43, 0.30); color: #ffd6d6; border: 1px solid rgba(255, 120, 120, 0.4);
+}
+.tac-enemy-chip.active {
+  background: linear-gradient(180deg, rgba(255, 214, 64, 0.5), rgba(196, 140, 20, 0.5));
+  color: #fff; border-color: #ffe9a0; box-shadow: 0 0 0 2px rgba(255, 233, 160, 0.5);
+}
+.tac-enemy-chip.done { opacity: 0.5; color: #cdbcbc; text-decoration: line-through; }
+
 /* identity portrait (avatar framed + nameplate) — pixel character window */
 .tac-hud-card {
   display: flex; align-items: center; gap: 10px;

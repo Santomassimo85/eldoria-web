@@ -240,6 +240,59 @@
   50%      { transform: translateX(-50%) translateY(-6px); }
 }
 
+/* ── Pixel VFX (rough Octopath-style bursts on hit / heal / death) ──────────── */
+.iso-vfx-layer { position: absolute; inset: 0; pointer-events: none; }
+.iso-vfx {
+  position: absolute;
+  transform: translate(0, -26px);     /* lift to ~mid-body of the sprite */
+  pointer-events: none;
+}
+.iso-vfx i {
+  position: absolute; left: -3px; top: -3px;
+  width: 6px; height: 6px;
+  image-rendering: pixelated;
+}
+/* 8 outward directions reused by hit/death (steps() = chunky pixel motion) */
+.iso-vfx i:nth-child(1) { --dx:  16px; --dy:  -4px; }
+.iso-vfx i:nth-child(2) { --dx:  11px; --dy: -14px; }
+.iso-vfx i:nth-child(3) { --dx:  -2px; --dy: -18px; }
+.iso-vfx i:nth-child(4) { --dx: -13px; --dy: -12px; }
+.iso-vfx i:nth-child(5) { --dx: -16px; --dy:  -2px; }
+.iso-vfx i:nth-child(6) { --dx:  -9px; --dy:  10px; }
+.iso-vfx i:nth-child(7) { --dx:   4px; --dy:  12px; }
+.iso-vfx i:nth-child(8) { --dx:  13px; --dy:   6px; }
+
+/* HIT — yellow/orange spark burst */
+.vfx-hit i {
+  background: #ffd34d; box-shadow: 0 0 0 1px #b3471f;
+  animation: vfx-burst 0.5s steps(5) forwards;
+}
+/* DEATH — dark-red scatter, a touch bigger & slower */
+.vfx-death i {
+  width: 7px; height: 7px;
+  background: #c0392b; box-shadow: 0 0 0 1px #3a0c06;
+  animation: vfx-burst 0.65s steps(5) forwards;
+}
+@keyframes vfx-burst {
+  from { transform: translate(0, 0) scale(1);   opacity: 1; }
+  to   { transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.6); opacity: 0; }
+}
+
+/* HEAL — green pixels rising */
+.vfx-heal i {
+  background: #7cffb0; box-shadow: 0 0 0 1px #1c6b3f;
+  animation: vfx-rise 0.6s steps(4) forwards;
+}
+.vfx-heal i:nth-child(1) { --hx: -10px; }
+.vfx-heal i:nth-child(2) { --hx:  -3px; }
+.vfx-heal i:nth-child(3) { --hx:   4px; }
+.vfx-heal i:nth-child(4) { --hx:  11px; }
+.vfx-heal i:nth-child(5) { --hx:   0px; }
+@keyframes vfx-rise {
+  from { transform: translate(var(--hx, 0),  6px); opacity: 1; }
+  to   { transform: translate(var(--hx, 0), -22px); opacity: 0; }
+}
+
 .iso-unit-bar {
   position: absolute;
   bottom: 100%;

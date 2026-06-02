@@ -68,6 +68,9 @@ export default function BossTactics() {
   const [selEnemyId, setSelEnemyId] = useState(null); // enemy the master is driving (enemies phase)
   const [busy, setBusy] = useState(false);
   const [animUnit, setAnimUnit] = useState(null); // local walk override {id,x,y}
+  const [vfx, setVfx] = useState([]);             // transient pixel effects [{id,x,y,kind}]
+  const prevHpRef = useRef({});                    // last-seen hp/dead per unit (for VFX diffing)
+  const vfxIdRef = useRef(0);
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
   const autoPassedRef = useRef(null);              // turnDeadline already auto-passed (dedupe)
@@ -297,6 +300,7 @@ export default function BossTactics() {
   const pingIds = useMemo(() => {
     const s = new Set();
     if (myHero && !myHero.dead) s.add(myHero.id);
+    if (isMyTurn && activeUnit) s.add(activeUnit.id); // the unit you're playing now (incl. master's enemy)
     if (isMyTurn && activeUnit && mode === "act" && selAction) {
       const aoe = spellAoE(selAction);
       const r = selAction.range || actionRange(selAction);
@@ -485,6 +489,34 @@ export default function BossTactics() {
     advancePhase(true, phaseDeadline);   // only end THIS phase (deadline-guarded)
   }, [nowTs, phaseDeadline, fightStarted, isOver, isMaster, myHero]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Pixel VFX, derived from HP deltas between snapshots ────────────────────
+  // Spawns a rough Octopath-style burst on whoever took damage / was healed /
+  // died, at their tile. Driven by shared state, so EVERY client sees it without
+  // any extra Firestore writes. Each effect auto-clears after its animation.
+  useEffect(() => {
+    if (!fightStarted) { prevHpRef.current = {}; return; }
+    const prev = prevHpRef.current;
+    const next = {};
+    const spawned = [];
+    for (const u of units) {
+      next[u.id] = { hp: u.hp, dead: u.dead };
+      const p = prev[u.id];
+      if (!p) continue;                                  // first sight → no effect
+      if (u.dead && !p.dead) spawned.push({ kind: "death", x: u.x, y: u.y });
+      else if (u.hp < p.hp) spawned.push({ kind: "hit", x: u.x, y: u.y });
+      else if (u.hp > p.hp) spawned.push({ kind: "heal", x: u.x, y: u.y });
+    }
+    prevHpRef.current = next;
+    if (!spawned.length) return;
+    const items = spawned.map((s) => ({ ...s, id: ++vfxIdRef.current }));
+    setVfx((v) => [...v, ...items]);
+    const ids = new Set(items.map((i) => i.id));
+    // Each batch removes ITSELF after the animation. (Not tied to the effect's
+    // cleanup on purpose — that would cancel removal on the next snapshot and
+    // leave stale pixels on screen.)
+    setTimeout(() => setVfx((v) => v.filter((e) => !ids.has(e.id))), 700);
+  }, [units, fightStarted]);
+
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
     setBusy(true);
@@ -631,12 +663,15 @@ export default function BossTactics() {
       setAnimUnit(null); setBusy(false);
       await advancePhase();   // in case this completes the unit's move+action
     } else if (mode === "act" && selAction && !activeUnit.hasActed) {
-      // AoE spell: this tile becomes the CHOSEN blast centre — it does NOT fire
-      // yet. The player reviews the highlighted area, then presses Conferma.
+      // AoE spell: this tile becomes the CHOSEN centre/direction — it does NOT
+      // fire yet (the player reviews the highlight, then presses Conferma).
+      // Sphere/square are range-gated; line/cone only need a direction.
       const aoe = spellAoE(selAction);
       if (!aoe) return;
+      if (x === activeUnit.x && y === activeUnit.y) return;
+      const dir = aoe.shape === "line" || aoe.shape === "cone";
       const r = selAction.range || actionRange(selAction);
-      if (manhattan(activeUnit.x, activeUnit.y, x, y) > r) return;
+      if (!dir && manhattan(activeUnit.x, activeUnit.y, x, y) > r) return;
       setAimCenter({ x, y });
     }
   };
@@ -663,8 +698,10 @@ export default function BossTactics() {
     // (still requires Conferma; it does not fire on the click).
     const aoe = spellAoE(selAction);
     if (aoe) {
+      if (u.x === activeUnit.x && u.y === activeUnit.y) return;
+      const dir = aoe.shape === "line" || aoe.shape === "cone";
       const r = selAction.range || actionRange(selAction);
-      if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) > r) return;
+      if (!dir && manhattan(activeUnit.x, activeUnit.y, u.x, u.y) > r) return;
       setAimCenter({ x: u.x, y: u.y });
       return;
     }
@@ -716,6 +753,8 @@ export default function BossTactics() {
   const myUnit = units.find((u) => u.side === "hero" && u.uid === currentUser.uid);
   const heroesAlive = units.filter((u) => u.side === "hero" && !u.dead);
   const heroesDone = heroesAlive.filter(unitDone).length;
+  const enemiesAlive = units.filter((u) => u.side === "enemy" && !u.dead);
+  const enemiesDone = enemiesAlive.filter(unitDone).length;
   // Short note for a hero who can't act right now, so they understand why.
   const myStatus = (!myUnit || !fightStarted || isOver) ? null
     : myUnit.dead ? "💀 Sei a terra."
@@ -744,7 +783,7 @@ export default function BossTactics() {
             {battle?.active && !fightStarted && "⚔ Pronti — il Master avvia la battaglia"}
             {fightStarted && !isOver && (phase === "players"
               ? `Round ${battle.round} · 🛡️ Turno Eroi (${heroesDone}/${heroesAlive.length} hanno agito)${isMyTurn ? " — tocca a te" : ""}`
-              : `Round ${battle.round} · 👹 Turno Nemici${isMyTurn && activeUnit ? ` — ${activeUnit.name}` : ""}`)}
+              : `Round ${battle.round} · 👹 Turno Nemici (${enemiesDone}/${enemiesAlive.length} giocati)${isMyTurn && activeUnit ? ` — ${activeUnit.name}` : ""}`)}
             {isOver && "🏁 Battaglia conclusa"}
           </span>
           <div className="tac-controls">
@@ -765,7 +804,7 @@ export default function BossTactics() {
       >
         {battle?.active ? (
           <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
-            <IsoBoard map={map} units={displayUnits} highlights={highlights} pings={pingIds} scale={scale} rotation={rotation}
+            <IsoBoard map={map} units={displayUnits} highlights={highlights} pings={pingIds} vfx={vfx} scale={scale} rotation={rotation}
               onTileClick={onTileClick} onTileHover={onTileHover} onUnitClick={onUnitClick} />
           </div>
         ) : (
@@ -861,6 +900,23 @@ export default function BossTactics() {
         </div>
       )}
 
+      {/* ── Master enemy roster (enemies phase): one chip per living enemy so the
+          master always sees WHO is being played, who's already done (✓), and can
+          click to switch. Makes "each enemy gets its own move+action" obvious. ── */}
+      {isMaster && fightStarted && !isOver && phase === "enemies" && (
+        <div className="tac-enemybar">
+          <span className="tac-enemybar-label">👹 Nemici da giocare:</span>
+          {enemiesAlive.map((u) => (
+            <button key={u.id}
+              className={`tac-enemy-chip${controlledUnit?.id === u.id ? " active" : ""}${unitDone(u) ? " done" : ""}`}
+              onClick={() => setSelEnemyId(u.id)}
+              title={unitDone(u) ? "Ha già fatto movimento + azione" : "Clicca per controllarlo"}>
+              {(u.name || "?").split(" ")[0]}{unitDone(u) ? " ✓" : ""}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Action HUD (active controller): avatar + colour-grouped abilities.
           While moving or aiming an action the HUD collapses to a slim bar so the
           board stays visible; it re-expands once the move/action resolves. ── */}
@@ -884,16 +940,22 @@ export default function BossTactics() {
             <div className="tac-hud-meta">
               <span className="tac-hud-name">{activeUnit.name}</span>
               <span className="tac-hud-stats">❤ {activeUnit.hp}/{activeUnit.maxHp} · 🛡 {activeUnit.ac}</span>
+              {/* one move + one action per turn — clearly shown as used/available */}
+              <span className="tac-hud-pips">
+                <span className={`tac-pip ${activeUnit.hasMoved ? "used" : "ok"}`}>👟 {activeUnit.hasMoved ? "fatto" : "Movimento"}</span>
+                <span className={`tac-pip ${activeUnit.hasActed ? "used" : "ok"}`}>⚔ {activeUnit.hasActed ? "fatto" : "Azione"}</span>
+              </span>
             </div>
           </div>
         );
 
         if (collapsed) {
           const aoe = aiming ? spellAoE(selAction) : null;
+          const dir = aoe && (aoe.shape === "line" || aoe.shape === "cone");
           const prompt = mode === "move"
             ? "👟 Scegli dove spostarti…"
             : aoe
-              ? `${actionKind(selAction).icon} ${selAction.name} — ${aimCenter ? "conferma, o scegli un'altra casella" : "scegli il centro dell'area…"}`
+              ? `${actionKind(selAction).icon} ${selAction.name} — ${aimCenter ? "conferma, o ri-scegli" : (dir ? "scegli la direzione…" : "scegli il centro dell'area…")}`
               : `${actionKind(selAction).icon} ${selAction.name} — scegli il bersaglio…`;
           return (
             <div className="tac-hud collapsed">
