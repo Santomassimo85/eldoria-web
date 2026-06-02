@@ -145,10 +145,36 @@
   border-color: #ffd79b;
 }
 
-/* turn timer badge (top-centre) */
-.tac-timer {
+/* enemies-remaining counter — bold red pixel badge, top-centre (above timer).
+   Driven by shared battle state so master AND every player see the same count. */
+.tac-enemy-count {
   position: absolute; z-index: 1200;
   top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 6px 13px; color: #fff; border: 2px solid #3a0606; border-radius: 0;
+  background: linear-gradient(180deg, rgba(210,48,48,0.97), rgba(120,16,16,0.98));
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.22), inset -2px -2px 0 rgba(0, 0, 0, 0.5),
+              0 3px 12px rgba(140, 0, 0, 0.45);
+}
+.tac-enemy-count-skull { font-size: 15px; align-self: center; filter: drop-shadow(0 0 3px rgba(255,120,120,0.6)); }
+.tac-enemy-count-num { font-size: 20px; font-weight: 900; letter-spacing: 1px; line-height: 1; }
+.tac-enemy-count-total { font-size: 12px; font-weight: 800; opacity: 0.75; }
+.tac-enemy-count-label {
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+  opacity: 0.92; align-self: center;
+}
+.tac-enemy-count.low {
+  border-color: #ffd089;
+  background: linear-gradient(180deg, rgba(230,120,30,0.97), rgba(150,60,10,0.98));
+  animation: tac-enemy-pulse 0.9s ease-in-out infinite;
+}
+@keyframes tac-enemy-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
+
+/* turn timer badge (top-centre, sits just below the enemy counter) */
+.tac-timer {
+  position: absolute; z-index: 1200;
+  top: calc(48px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
   padding: 8px 12px; font-size: 14px; font-weight: 900; letter-spacing: 1px;
   color: #fff; border: 2px solid #0a1230; border-radius: 0;
   background: linear-gradient(180deg, rgba(36,64,140,0.96), rgba(12,24,66,0.97));
@@ -224,7 +250,7 @@
 /* turn/action counter panel — who finished (✅) and who's missing (⏳) */
 .tac-roster {
   position: absolute; z-index: 1150;
-  top: calc(56px + env(safe-area-inset-top, 0px)); left: 8px;
+  top: calc(92px + env(safe-area-inset-top, 0px)); left: 8px;
   max-width: 60vw;
   background: rgba(12, 16, 24, 0.86); color: #e8eef5;
   border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px;
@@ -377,3 +403,41 @@
   .tac-act-icon { font-size: 14px; }
   .tac-hud-prompt { font-size: 12px; }
 }
+
+/* ── Deploy-phase unit picker (shared look with the map editor) ────────────── */
+.bme-place-backdrop { position: fixed; inset: 0; z-index: 3000; }
+.bme-place-pop {
+  position: fixed; z-index: 3001; width: 256px; max-height: 312px; overflow-y: auto;
+  background: rgba(16, 20, 30, 0.98); color: #e8eef5;
+  border: 1px solid rgba(255, 233, 160, 0.35); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); padding: 8px;
+}
+.bme-place-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.78rem; font-weight: 800; color: #ffe9a0; margin-bottom: 6px;
+}
+.bme-place-head button { background: transparent; border: none; color: #ccc; cursor: pointer; font-size: 0.9rem; }
+.bme-place-quick { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.bme-place-quick button {
+  flex: 1 1 auto; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+  padding: 5px 6px; border-radius: 6px; color: #e8eef5;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.bme-place-quick button.danger { background: rgba(160, 50, 50, 0.4); border-color: rgba(255, 130, 130, 0.4); }
+.bme-place-quick button:hover { filter: brightness(1.2); }
+.bme-place-label { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; color: #9bd0ff; margin: 6px 0 4px; }
+.bme-place-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.bme-thumb {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+  padding: 4px; border-radius: 7px; color: #e8eef5;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.08s ease, border-color 0.12s ease;
+}
+.bme-thumb:hover { transform: translateY(-1px); border-color: #ffe9a0; background: rgba(255, 233, 160, 0.12); }
+.bme-thumb img { width: 100%; height: 46px; object-fit: contain; image-rendering: pixelated; }
+.bme-thumb .ph {
+  width: 100%; height: 46px; display: grid; place-items: center;
+  font-size: 1.2rem; font-weight: 900; color: #fff; background: rgba(160, 60, 60, 0.5); border-radius: 5px;
+}
+.bme-thumb small { font-size: 0.6rem; line-height: 1.1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.bme-place-empty { font-size: 0.74rem; color: #aab; line-height: 1.4; padding: 6px 2px; }

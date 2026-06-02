@@ -110,3 +110,12 @@
 }
 .bme-thumb small { font-size: 0.6rem; line-height: 1.1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .bme-place-empty { font-size: 0.74rem; color: #aab; line-height: 1.4; padding: 6px 2px; }
+
+/* placed-enemies counter in the editor topbar */
+.bme-placed-count {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; font-size: 0.78rem; font-weight: 900; color: #fff;
+  background: linear-gradient(180deg, rgba(210,48,48,0.96), rgba(120,16,16,0.97));
+  border: 1px solid #3a0606; border-radius: 999px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); box-shadow: 0 2px 8px rgba(140, 0, 0, 0.4);
+}

@@ -321,6 +321,9 @@ export default function BattleMapEditor() {
       <div className="tac-topbar">
         <Link to="/dm-admin" className="bme-back">← Admin</Link>
         <span className="tac-title">🗺 Editor Mappe Battaglia</span>
+        {previewUnits.length > 0 && (
+          <span className="bme-placed-count" title="Nemici piazzati sulla mappa">☠ {previewUnits.length}</span>
+        )}
         <div className="tac-controls">
           <button onClick={() => zoom(+1)}>＋</button>
           <button onClick={() => zoom(-1)}>－</button>

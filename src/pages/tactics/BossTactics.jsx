@@ -55,7 +55,6 @@ export default function BossTactics() {
   // setup selections (master)
   const [selPlayerIds, setSelPlayerIds] = useState([]);
   const [bossDex, setBossDex] = useState("0");
-  const [minions, setMinions] = useState([]);    // [{name,hp,ac,dex,atkDice,atkBonus,atkRange}]
   const [bossMsg, setBossMsg] = useState("");
 
   // view
@@ -76,12 +75,14 @@ export default function BossTactics() {
   const lastFxRef = useRef(null);                  // last-applied battle.fxEvent id (slash/arrow/buff…)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
+  const [setupPicker, setSetupPicker] = useState(null); // {x,y,sx,sy} deploy-phase unit picker
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
   const autoPassedRef = useRef(null);              // turnDeadline already auto-passed (dedupe)
 
   const viewportRef = useRef(null);
   const dragRef = useRef(null);
   const movedRef = useRef(false);
+  const lastPtrRef = useRef({ x: 0, y: 0 }); // last pointer screen pos (deploy picker anchor)
   const pointersRef = useRef(new Map());
   const pinchRef = useRef(null);
   const topbarRef = useRef(null);
@@ -264,6 +265,7 @@ export default function BossTactics() {
     return p.length < 2 ? 0 : Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
   };
   const onPointerDown = (e) => {
+    lastPtrRef.current = { x: e.clientX, y: e.clientY };
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointersRef.current.size === 2) { pinchRef.current = { dist: pinchDist(), scale }; dragRef.current = null; return; }
     movedRef.current = false;
@@ -380,44 +382,53 @@ export default function BossTactics() {
 
   // ── Master: setup ─────────────────────────────────────────────────────────
   const spawnBattle = async () => {
-    const boss = bosses[0];
     const chosenMap = savedMaps.find((x) => x.id === selMapId);
     const m = chosenMap ? { w: chosenMap.w, h: chosenMap.h, tiles: chosenMap.tiles.map((t) => ({ ...t })) } : defaultBattleMap();
     const chosen = players.filter((p) => selPlayerIds.includes(p.id));
     const u = [];
-    // Use spawn points painted in the editor; fall back to a spaced auto-layout
-    // (heroes left block, enemies right) when there aren't enough painted spots.
+    // Heroes go on the painted hero spawns, falling back to a spaced auto-layout.
     const heroSpawns = m.tiles.filter((t) => t.spawn === "hero").map((t) => ({ x: t.x, y: t.y }));
-    const enemySpawns = m.tiles.filter((t) => t.spawn === "enemy").map((t) => ({ x: t.x, y: t.y }));
     const heroAt = (i) => heroSpawns[i] || { x: 1 + (i % 3) * 2, y: 2 + Math.floor(i / 3) * 2 };
-    const enemyAt = (i) => enemySpawns[i] || { x: (m.w - 2) - (i % 3) * 2, y: 2 + Math.floor(i / 3) * 2 };
     chosen.forEach((c, i) => { const p = heroAt(i); u.push(makePlayerUnit(c, c.id, p.x, p.y)); });
 
-    // Enemies: if the map has units placed in the editor, spawn EXACTLY those at
-    // their tiles (boss + minions, in any number). Otherwise fall back to the
-    // manual setup: the first active boss + the minions the master added.
+    // Enemies pre-placed in the MAP EDITOR (optional). Any further boss/minion is
+    // added by clicking cells during the deploy phase (see setupAddUnit).
     const placed = m.tiles.filter((t) => t.unit);
-    if (placed.length) {
-      let mi = 0;
-      placed.forEach((t) => {
-        if (t.unit.kind === "boss") {
-          const b = bosses.find((x) => x.id === t.unit.refId) || boss;
-          if (b) u.push(makeBossUnit(b, t.x, t.y, parseInt(bossDex) || 0));
-        } else {
-          const def = minionDefs.find((x) => x.id === t.unit.refId);
-          if (def) u.push(makeMinionUnit({ name: def.name, hp: def.hp, ac: def.ac, actions: def.actions || [], defId: def.id }, mi++, t.x, t.y));
-        }
-      });
-    } else {
-      let ei = 0;
-      if (boss) { const p = enemyAt(ei++); u.push(makeBossUnit(boss, p.x, p.y, parseInt(bossDex) || 0)); }
-      minions.forEach((spec, i) => { const p = enemyAt(ei++); u.push(makeMinionUnit(spec, i, p.x, p.y)); });
-    }
-    // Guarantee unique ids (multiple placed bosses would all be "boss").
-    const seen = {};
-    u.forEach((unit) => { if (seen[unit.id]) unit.id = `${unit.id}-${seen[unit.id]++}`; else seen[unit.id] = 1; });
+    placed.forEach((t) => {
+      if (t.unit.kind === "boss") {
+        const b = bosses.find((x) => x.id === t.unit.refId);
+        if (b) u.push({ ...makeBossUnit(b, t.x, t.y, parseInt(bossDex) || 0), id: `boss-${t.x}-${t.y}` });
+      } else {
+        const def = minionDefs.find((x) => x.id === t.unit.refId);
+        if (def) u.push(makeMinionUnit({ name: def.name, hp: def.hp, ac: def.ac, actions: def.actions || [], defId: def.id }, `${t.x}-${t.y}`, t.x, t.y));
+      }
+    });
 
     await setDoc(BATTLE_REF(), { ...emptyBattle(), active: true, phase: "setup", map: m, units: u });
+  };
+
+  // ── Deploy phase: add/remove enemies by clicking the board ─────────────────
+  // One unit per tile. Adding a boss/minion replaces any enemy already on that
+  // tile; it never overwrites a hero. Writes straight into the live battle doc.
+  const setupAddUnit = async (x, y, choice) => {
+    let newUnit = null;
+    if (choice.kind === "boss") {
+      const b = bosses.find((z) => z.id === choice.refId);
+      if (b) newUnit = { ...makeBossUnit(b, x, y, parseInt(bossDex) || 0), id: `boss-${x}-${y}` };
+    } else if (choice.kind === "minion") {
+      const def = minionDefs.find((z) => z.id === choice.refId);
+      if (def) newUnit = makeMinionUnit({ name: def.name, hp: def.hp, ac: def.ac, actions: def.actions || [], defId: def.id }, `${x}-${y}`, x, y);
+    }
+    if (!newUnit) { setSetupPicker(null); return; }
+    await txnBattle((us) => {
+      if (us.some((u) => u.x === x && u.y === y && u.side === "hero")) return us; // don't cover a hero
+      return [...us.filter((u) => !(u.x === x && u.y === y && u.side === "enemy")), newUnit];
+    });
+    setSetupPicker(null);
+  };
+  const setupRemoveUnit = async (x, y) => {
+    await txnBattle((us) => us.filter((u) => !(u.x === x && u.y === y && u.side === "enemy")));
+    setSetupPicker(null);
   };
   const endBattle = async () => {
     if (!window.confirm("Terminare e azzerare la battaglia?")) return;
@@ -774,6 +785,12 @@ export default function BossTactics() {
   // ── Board interaction ─────────────────────────────────────────────────────
   const onTileClick = async (x, y) => {
     if (movedRef.current) { movedRef.current = false; return; }
+    // Deploy phase (master, battle staged but not started): click a cell to add
+    // a boss/minion from the saved lists.
+    if (isMaster && battle?.active && !fightStarted && !isOver) {
+      setSetupPicker({ x, y, sx: lastPtrRef.current.x, sy: lastPtrRef.current.y });
+      return;
+    }
     if (!isMyTurn) return;
     if (mode === "move" && !activeUnit.hasMoved) {
       const cu = activeUnit;
@@ -824,6 +841,12 @@ export default function BossTactics() {
   };
   const onUnitClick = async (u) => {
     if (movedRef.current) { movedRef.current = false; return; }
+    // Deploy phase: clicking a placed unit re-opens the picker on its cell
+    // (to replace or remove it).
+    if (isMaster && battle?.active && !fightStarted && !isOver) {
+      setSetupPicker({ x: u.x, y: u.y, sx: lastPtrRef.current.x, sy: lastPtrRef.current.y });
+      return;
+    }
     // Master, enemies phase, idle: click an enemy to pick which one to drive.
     if (isMaster && phase === "enemies" && mode === "idle" && u.side === "enemy" && !u.dead) {
       setSelEnemyId(u.id); return;
@@ -890,6 +913,7 @@ export default function BossTactics() {
   const heroesDone = heroesAlive.filter(unitDone).length;
   const enemiesAlive = units.filter((u) => u.side === "enemy" && !u.dead);
   const enemiesDone = enemiesAlive.filter(unitDone).length;
+  const enemiesTotal = units.filter((u) => u.side === "enemy").length;
   // Short note for a hero who can't act right now, so they understand why.
   const myStatus = (!myUnit || !fightStarted || isOver) ? null
     : myUnit.dead ? "💀 Sei a terra."
@@ -907,6 +931,17 @@ export default function BossTactics() {
       {remainingMs != null && (
         <div className={`tac-timer ${remainingMs <= 60000 ? "low" : ""}`} title="Tempo rimanente per il turno">
           ⏱ {String(Math.floor(remainingMs / 60000)).padStart(2, "0")}:{String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}
+        </div>
+      )}
+
+      {/* Enemies-remaining counter — visible to EVERYONE (derived from shared
+          state), so players see at a glance how many foes are left. */}
+      {fightStarted && !isOver && enemiesTotal > 0 && (
+        <div className={`tac-enemy-count ${enemiesAlive.length <= 1 ? "low" : ""}`} title="Nemici ancora in vita">
+          <span className="tac-enemy-count-skull">☠</span>
+          <span className="tac-enemy-count-num">{enemiesAlive.length}</span>
+          <span className="tac-enemy-count-total">/{enemiesTotal}</span>
+          <span className="tac-enemy-count-label">nemici</span>
         </div>
       )}
 
@@ -1022,14 +1057,6 @@ export default function BossTactics() {
           {!battle?.active ? (
             <>
               <div className="bt-setup-row">
-                <strong>Boss:</strong> {bosses[0]?.name || "⚠ nessun boss attivo (crealo in WorldBossAdmin)"}
-                <label>DEX boss (iniziativa, max +5)
-                  <input type="number" min={-5} max={5} value={bossDex}
-                    onChange={(e) => setBossDex(String(Math.max(-5, Math.min(5, parseInt(e.target.value) || 0))))}
-                    style={{ width: 50 }} />
-                </label>
-              </div>
-              <div className="bt-setup-row">
                 <strong>Mappa:</strong>
                 <select value={selMapId} onChange={(e) => setSelMapId(e.target.value)}>
                   <option value="">Default (16×16)</option>
@@ -1037,7 +1064,16 @@ export default function BossTactics() {
                 </select>
                 <a href="/dm-admin/battle-maps" style={{ color: "#9bd0ff" }}>🗺 Editor mappe</a>
                 {savedMaps.find((x) => x.id === selMapId)?.tiles?.some((t) => t.unit) && (
-                  <span style={{ color: "#8af0b4", fontSize: 12 }}>✓ nemici definiti nella mappa (boss/minion sotto ignorati)</span>
+                  <span style={{ color: "#8af0b4", fontSize: 12 }}>✓ alcuni nemici sono già piazzati nella mappa</span>
+                )}
+              </div>
+              <div className="bt-setup-row">
+                <strong>Iniziativa boss (DEX):</strong>
+                <input type="number" min={-5} max={5} value={bossDex}
+                  onChange={(e) => setBossDex(String(Math.max(-5, Math.min(5, parseInt(e.target.value) || 0))))}
+                  style={{ width: 50 }} />
+                {bosses.length === 0 && minionDefs.length === 0 && (
+                  <span style={{ color: "#ff9b9b", fontSize: 12 }}>⚠ nessun boss/minion attivo — creali in WorldBossAdmin</span>
                 )}
               </div>
               <div className="bt-setup-row"><strong>Eroi:</strong></div>
@@ -1051,47 +1087,10 @@ export default function BossTactics() {
                 ))}
               </div>
               <div className="bt-setup-row">
-                <strong>Minion (sprite):</strong>
-                {minionLib.length === 0
-                  ? <span style={{ opacity: 0.6 }}>nessuno — caricali in <em>Admin → Sprite Personaggi</em></span>
-                  : minionLib.map((t) => (
-                    <button key={t.id} className="bt-chip" title={`HP ${t.hp} · CA ${t.ac} · DEX ${t.dex}`}
-                      onClick={() => setMinions((m) => [...m, {
-                        name: t.name, hp: t.hp, ac: t.ac, dex: t.dex,
-                        atkName: t.atkName, atkDice: t.atkDice, atkBonus: t.atkBonus, atkRange: t.atkRange,
-                        tplId: t.id, sprite: t.spriteUrl, deadSprite: t.deadSpriteUrl,
-                      }])}>
-                      ＋ {t.name}
-                    </button>
-                  ))}
+                <span className="bt-init-status">
+                  🎯 Dopo «Allestisci» clicca le caselle sulla mappa per aggiungere boss e minion (li scegli dalle liste create).
+                </span>
               </div>
-              <div className="bt-setup-row">
-                <strong>Minion (Caserma):</strong>
-                {minionDefs.length === 0
-                  ? <span style={{ opacity: 0.6 }}>nessuno attivo — creali e attivali in <em>WorldBossAdmin → Caserma</em></span>
-                  : minionDefs.map((t) => (
-                    <button key={t.id} className="bt-chip" title={`HP ${t.hp} · CA ${t.ac} · ${(t.actions || []).length} attacchi`}
-                      onClick={() => setMinions((m) => [...m, {
-                        name: t.name, hp: t.hp, ac: t.ac, dex: 0,
-                        actions: t.actions || [], defId: t.id,
-                      }])}>
-                      ＋ {t.name}
-                    </button>
-                  ))}
-              </div>
-              {minions.length > 0 && (
-                <div className="bt-setup-row">
-                  {minions.map((m, i) => (
-                    <span key={i} className="bt-minion">
-                      {m.sprite && <img src={m.sprite} alt="" style={{ height: 20, imageRendering: "pixelated" }} />}
-                      {m.name}
-                      HP<input type="number" value={m.hp} onChange={(e) => setMinions((arr) => arr.map((x, j) => j === i ? { ...x, hp: +e.target.value } : x))} style={{ width: 44 }} />
-                      DEX<input type="number" value={m.dex} onChange={(e) => setMinions((arr) => arr.map((x, j) => j === i ? { ...x, dex: +e.target.value } : x))} style={{ width: 38 }} />
-                      <button onClick={() => setMinions((arr) => arr.filter((_, j) => j !== i))}>✕</button>
-                    </span>
-                  ))}
-                </div>
-              )}
               <button className="bt-primary" disabled={!selPlayerIds.length} onClick={spawnBattle}>⚔ Allestisci battaglia</button>
             </>
           ) : (
@@ -1099,6 +1098,11 @@ export default function BossTactics() {
               <div className="bt-setup-row">
                 <input className="bt-bossmsg" value={bossMsg} onChange={(e) => setBossMsg(e.target.value)} placeholder="Descrivi come è apparso il boss…" />
                 <button onClick={postBossMsg}>Invia in chat</button>
+              </div>
+              <div className="bt-setup-row">
+                <span className="bt-init-status">
+                  🎯 Clicca le caselle per piazzare/rimuovere boss e minion. Quando lo schieramento è pronto, avvia.
+                </span>
               </div>
               <div className="bt-setup-row">
                 <span className="bt-init-status">
@@ -1218,6 +1222,64 @@ export default function BossTactics() {
           </div>
         );
       })()}
+
+      {/* ── Deploy-phase unit picker (click a cell → choose boss/minion) ── */}
+      {setupPicker && (
+        <>
+          <div className="bme-place-backdrop" onClick={() => setSetupPicker(null)} />
+          <div
+            className="bme-place-pop"
+            style={{
+              left: Math.max(8, Math.min(setupPicker.sx, window.innerWidth - 268)),
+              top: Math.max(8, Math.min(setupPicker.sy, window.innerHeight - 320)),
+            }}
+          >
+            <div className="bme-place-head">
+              <span>Casella {setupPicker.x},{setupPicker.y}</span>
+              <button onClick={() => setSetupPicker(null)}>✖</button>
+            </div>
+            {units.some((u) => u.x === setupPicker.x && u.y === setupPicker.y && u.side === "enemy") && (
+              <div className="bme-place-quick">
+                <button className="danger" onClick={() => setupRemoveUnit(setupPicker.x, setupPicker.y)}>🗑 Rimuovi nemico</button>
+              </div>
+            )}
+            {bosses.length === 0 && minionDefs.length === 0 ? (
+              <div className="bme-place-empty">
+                Nessun boss/minion <strong>attivo</strong>. Creali e attivali nel pannello Boss.
+              </div>
+            ) : (
+              <>
+                {bosses.length > 0 && (
+                  <>
+                    <div className="bme-place-label">👑 Boss</div>
+                    <div className="bme-place-thumbs">
+                      {bosses.map((b) => (
+                        <button key={b.id} className="bme-thumb" title={b.name} onClick={() => setupAddUnit(setupPicker.x, setupPicker.y, { kind: "boss", refId: b.id })}>
+                          {b.imageUrl ? <img src={b.imageUrl} alt="" /> : <span className="ph">{(b.name || "?")[0]}</span>}
+                          <small>{b.name}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {minionDefs.length > 0 && (
+                  <>
+                    <div className="bme-place-label">🪓 Minion</div>
+                    <div className="bme-place-thumbs">
+                      {minionDefs.map((m) => (
+                        <button key={m.id} className="bme-thumb" title={m.name} onClick={() => setupAddUnit(setupPicker.x, setupPicker.y, { kind: "minion", refId: m.id })}>
+                          {m.imageUrl ? <img src={m.imageUrl} alt="" /> : <span className="ph">{(m.name || "?")[0]}</span>}
+                          <small>{m.name}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       <BattleChat currentUser={currentUser} isMaster={isMaster} charData={charData} locked={battle?.active && !fightStarted && !isMaster} />
     </div>
