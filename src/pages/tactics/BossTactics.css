@@ -45,8 +45,20 @@
 .tac-screen {
   position: fixed; inset: 0;
   display: flex; flex-direction: column;
-  background: radial-gradient(circle at 50% 30%, #1b2433, #0b0f16 80%);
+  /* deep gradient tinted toward the map's dominant terrain (vars set inline);
+     falls back to the old cold blue if no map is loaded yet. */
+  background: radial-gradient(circle at 50% 32%, var(--void-mid, #1b2433), var(--void-deep, #0b0f16) 82%);
   color: #e8eef5; overflow: hidden; font-family: system-ui, sans-serif;
+}
+
+/* Soft edge fade: transparent over the centre, ramping to the deep void tone at
+   the periphery so the board's hard outer edge dissolves into the background
+   instead of cutting off. Non-interactive; sits above the board, below the HUD
+   and floating controls. */
+.tac-void-fade {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: radial-gradient(ellipse 76% 72% at 50% 46%,
+    transparent 50%, var(--void-deep, #0b0f16) 88%);
 }
 .tac-topbar {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
