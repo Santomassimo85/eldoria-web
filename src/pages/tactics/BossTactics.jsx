@@ -1004,6 +1004,13 @@ export default function BossTactics() {
     <div className="tac-screen">
       {/* floating quick-controls — always above everything */}
       <button ref={menuFabRef} className="tac-fab tac-fab-menu" onClick={() => setShowBar((v) => !v)} title="Controlli / Master">⚙</button>
+      {fightStarted && !isOver && (
+        <button className={`tac-fab tac-fab-music ${musicMuted ? "off" : ""}`}
+          onClick={() => setMusicMuted((m) => !m)}
+          title={musicMuted ? "Rimetti la musica" : "Togli la musica"}>
+          {musicMuted ? "🔇" : "🎵"}
+        </button>
+      )}
       {isMyTurn && (
         <button className="tac-fab tac-fab-end" onClick={endTurn} title="Fine turno">⏭ Fine</button>
       )}
