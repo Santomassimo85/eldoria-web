@@ -361,7 +361,7 @@ export default function BossTactics() {
   };
   const postBossMsg = async () => {
     if (!bossMsg.trim()) return;
-    await logChat({ type: "narrative", senderName: "Master", uid: BOSS_SYSTEM_UID, content: bossMsg, isSystem: true });
+    await logChat({ type: "narrative", senderName: "Master", uid: BOSS_SYSTEM_UID, side: "enemy", content: bossMsg, isSystem: true });
     setBossMsg("");
   };
   const startFight = async () => {
@@ -561,7 +561,7 @@ export default function BossTactics() {
     const bonus = parseInt(String(action.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
     const total = d + bonus, crit = d === 20;
     const formula = action.damage && action.damage !== "0" ? action.damage : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
-    const entry = { type: "action", senderName: attacker.name, actionName: action.name, uid: attacker.uid || BOSS_SYSTEM_UID, category: action.category || "Attacco", hitRoll: `🎲 ${rollNote} +${bonus} = ${total} vs CA ${target.ac}` };
+    const entry = { type: "action", senderName: attacker.name, actionName: action.name, uid: attacker.uid || BOSS_SYSTEM_UID, side: attacker.side, category: action.category || "Attacco", hitRoll: `🎲 ${rollNote} +${bonus} = ${total} vs CA ${target.ac}` };
     const hit = crit || total >= target.ac;
     let dmg = 0;
     if (hit) { dmg = rollFormula(formula); if (crit) dmg *= 2; }
@@ -590,14 +590,14 @@ export default function BossTactics() {
       if (u.id === caster.id) n = { ...n, hasActed: true };
       return n;
     }));
-    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Cura)`, uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo", damageRoll: `💚 +${heal} HP a ${target.name}` });
+    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Cura)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `💚 +${heal} HP a ${target.name}` });
     setBusy(false);
     await advancePhase();
   };
   const resolveSelfBuff = async (caster, action) => {
     setBusy(true);
     await txnBattle((us) => us.map((u) => (u.id === caster.id ? { ...u, ac: u.ac + 2, hasActed: true } : u)));
-    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa)`, uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA` });
+    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA` });
     setBusy(false);
     await advancePhase();
   };
@@ -609,7 +609,7 @@ export default function BossTactics() {
       if (u.id === caster.id) n = { ...n, hasActed: true };
       return n;
     }));
-    await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio` : `🌑 ${target.name}: svantaggio` });
+    await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio` : `🌑 ${target.name}: svantaggio` });
     setBusy(false);
     await advancePhase();
   };
@@ -655,7 +655,7 @@ export default function BossTactics() {
     }));
     await logChat({
       type: "action", senderName: caster.name, actionName: action.name,
-      uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo",
+      uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo",
       hitRoll: `✨ Area (${aoe.shape}) · CD ${dc} · TS ${SAVE_LABEL[aoe.save] || aoe.save.toUpperCase()}`,
       damageRoll: rolls.length
         ? rolls.map((r) => `${r.side === "enemy" ? "👹" : "🛡"}${r.name}: ${r.d20}${r.mod >= 0 ? "+" : ""}${r.mod} ${r.saved ? "✅" : "❌"} −${r.dmg}${r.dead ? " 💀" : ""}`).join("  ·  ")

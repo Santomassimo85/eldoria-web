@@ -37,8 +37,8 @@ export default function BattleChat({ currentUser, isMaster, charData, locked = f
   useEffect(() => {
     const q = query(collection(db, "world_boss_chat"), orderBy("timestamp", "desc"), limit(100));
     const unsub = onSnapshot(q, (snap) => {
-      // store ascending so newest is at the bottom (matches old layout)
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })).reverse());
+      // keep descending so the newest message stays at the TOP — no scrolling
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
   }, []);
@@ -98,7 +98,7 @@ export default function BattleChat({ currentUser, isMaster, charData, locked = f
             </form>
             <div className="rpg-log-scroll">
               {messages.map((m) => (
-                <div key={m.id} className={`rpg-log-msg ${m.type || "narrative"} ${m.uid === currentUser?.uid ? "mine" : ""} ${m.isSystem ? "sys" : ""}`}>
+                <div key={m.id} className={`rpg-log-msg ${m.type || "narrative"} ${m.uid === currentUser?.uid ? "mine" : ""} ${m.isSystem ? "sys" : ""} ${m.side === "enemy" ? "enemy" : ""}`}>
                   <div className="rpg-log-head">
                     <ChatAvatar uid={m.uid} isBoss={m.uid === BOSS_SYSTEM_UID} />
                     <span className="rpg-log-who">{m.senderName}</span>
