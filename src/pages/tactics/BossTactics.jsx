@@ -392,9 +392,31 @@ export default function BossTactics() {
     const heroAt = (i) => heroSpawns[i] || { x: 1 + (i % 3) * 2, y: 2 + Math.floor(i / 3) * 2 };
     const enemyAt = (i) => enemySpawns[i] || { x: (m.w - 2) - (i % 3) * 2, y: 2 + Math.floor(i / 3) * 2 };
     chosen.forEach((c, i) => { const p = heroAt(i); u.push(makePlayerUnit(c, c.id, p.x, p.y)); });
-    let ei = 0;
-    if (boss) { const p = enemyAt(ei++); u.push(makeBossUnit(boss, p.x, p.y, parseInt(bossDex) || 0)); }
-    minions.forEach((spec, i) => { const p = enemyAt(ei++); u.push(makeMinionUnit(spec, i, p.x, p.y)); });
+
+    // Enemies: if the map has units placed in the editor, spawn EXACTLY those at
+    // their tiles (boss + minions, in any number). Otherwise fall back to the
+    // manual setup: the first active boss + the minions the master added.
+    const placed = m.tiles.filter((t) => t.unit);
+    if (placed.length) {
+      let mi = 0;
+      placed.forEach((t) => {
+        if (t.unit.kind === "boss") {
+          const b = bosses.find((x) => x.id === t.unit.refId) || boss;
+          if (b) u.push(makeBossUnit(b, t.x, t.y, parseInt(bossDex) || 0));
+        } else {
+          const def = minionDefs.find((x) => x.id === t.unit.refId);
+          if (def) u.push(makeMinionUnit({ name: def.name, hp: def.hp, ac: def.ac, actions: def.actions || [], defId: def.id }, mi++, t.x, t.y));
+        }
+      });
+    } else {
+      let ei = 0;
+      if (boss) { const p = enemyAt(ei++); u.push(makeBossUnit(boss, p.x, p.y, parseInt(bossDex) || 0)); }
+      minions.forEach((spec, i) => { const p = enemyAt(ei++); u.push(makeMinionUnit(spec, i, p.x, p.y)); });
+    }
+    // Guarantee unique ids (multiple placed bosses would all be "boss").
+    const seen = {};
+    u.forEach((unit) => { if (seen[unit.id]) unit.id = `${unit.id}-${seen[unit.id]++}`; else seen[unit.id] = 1; });
+
     await setDoc(BATTLE_REF(), { ...emptyBattle(), active: true, phase: "setup", map: m, units: u });
   };
   const endBattle = async () => {
@@ -1014,6 +1036,9 @@ export default function BossTactics() {
                   {savedMaps.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.w}×{m.h})</option>)}
                 </select>
                 <a href="/dm-admin/battle-maps" style={{ color: "#9bd0ff" }}>🗺 Editor mappe</a>
+                {savedMaps.find((x) => x.id === selMapId)?.tiles?.some((t) => t.unit) && (
+                  <span style={{ color: "#8af0b4", fontSize: 12 }}>✓ nemici definiti nella mappa (boss/minion sotto ignorati)</span>
+                )}
               </div>
               <div className="bt-setup-row"><strong>Eroi:</strong></div>
               <div className="bt-setup-players">

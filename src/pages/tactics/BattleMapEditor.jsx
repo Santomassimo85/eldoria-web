@@ -45,6 +45,12 @@ export default function BattleMapEditor() {
   const [newW, setNewW] = useState(12);
   const [newH, setNewH] = useState(12);
 
+  // Enemy placement: live bosses/minions (active only) + the open picker popup.
+  const [bosses, setBosses] = useState([]);
+  const [minionDefs, setMinionDefs] = useState([]);
+  const [placePicker, setPlacePicker] = useState(null); // {x,y,sx,sy} cell + screen pos
+  const lastPointerRef = useRef({ x: 0, y: 0 });
+
   // camera
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -70,6 +76,18 @@ export default function BattleMapEditor() {
     if (!isMaster) return;
     return onSnapshot(doc(db, "battle_meta", "prop_sprites"), (snap) =>
       setPropSprites(snap.exists() ? snap.data() : {}));
+  }, [isMaster]);
+
+  // Active bosses + minions, to place on the map (picker thumbnails).
+  useEffect(() => {
+    if (!isMaster) return;
+    return onSnapshot(collection(db, "bosses"), (snap) =>
+      setBosses(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((b) => b.isActive)));
+  }, [isMaster]);
+  useEffect(() => {
+    if (!isMaster) return;
+    return onSnapshot(collection(db, "minions"), (snap) =>
+      setMinionDefs(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.isActive)));
   }, [isMaster]);
 
   // Compress an uploaded image and store it as the sprite for a prop type.
@@ -108,10 +126,12 @@ export default function BattleMapEditor() {
 
   const onPointerDown = (e) => {
     movedRef.current = false;
+    lastPointerRef.current = { x: e.clientX, y: e.clientY };
     const overTile = pressTileRef.current; pressTileRef.current = null;
     // Mouse + single mode + pressed on a tile → start a paint stroke (no pan).
     // Touch keeps the old behaviour (drag = pan, tap = paint) so mobile can pan.
-    if (selMode === "single" && e.button === 0 && e.pointerType === "mouse" && overTile) {
+    // The "place" tool never paints — a click opens the unit picker instead.
+    if (tool.type !== "place" && selMode === "single" && e.button === 0 && e.pointerType === "mouse" && overTile) {
       paintingRef.current = { ids: new Set(), painted: false };
       paintTile(overTile.x, overTile.y);
       dragRef.current = null;
@@ -188,16 +208,57 @@ export default function BattleMapEditor() {
     });
   };
 
-  // ── Tile click: paint one tile (single) or anchor/close a rectangle (rect) ──
+  // ── Tile click: place a unit (place tool), paint (single), or rectangle ──
   const onTileClick = (x, y) => {
     // a drag-paint stroke just ran → ignore the click it leaves behind
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (movedRef.current) { movedRef.current = false; return; }
+    if (tool.type === "place") {                          // open the unit picker on this cell
+      setPlacePicker({ x, y, sx: lastPointerRef.current.x, sy: lastPointerRef.current.y });
+      return;
+    }
     if (selMode === "single") { applyToCoords([{ x, y }]); return; }  // tap (mobile) / plain click
     if (!rectStart) { setRectStart({ x, y }); return; }   // first corner
     applyToCoords(rectCoords(rectStart, { x, y }));        // second corner → fill
     setRectStart(null);
   };
+
+  // Apply the picker's choice to the open cell (boss/minion unit, generic spawn,
+  // or clear). A cell is either a placed unit OR a spawn marker, never both.
+  const pickPlace = (choice) => {
+    if (!placePicker) return;
+    const { x, y } = placePicker;
+    setMap((m) => {
+      const tiles = m.tiles.slice();
+      const i = y * m.w + x;
+      if (i < 0 || i >= tiles.length) return m;
+      const nt = { ...tiles[i] };
+      delete nt.unit; delete nt.spawn;
+      if (choice.kind === "spawn") nt.spawn = choice.side;
+      else if (choice.kind === "boss" || choice.kind === "minion") nt.unit = { side: "enemy", kind: choice.kind, refId: choice.refId };
+      tiles[i] = nt;
+      return { ...m, tiles };
+    });
+    setPlacePicker(null);
+  };
+
+  // Placed units → sprites on the board (resolved from bosses/minions docs).
+  const previewUnits = useMemo(() => {
+    const out = [];
+    for (const t of map.tiles) {
+      if (!t.unit) continue;
+      if (t.unit.kind === "boss") {
+        const b = bosses.find((x) => x.id === t.unit.refId);
+        out.push({ id: `p-${t.x}-${t.y}`, x: t.x, y: t.y, side: "enemy", name: b?.name || "Boss?",
+          sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || null, hp: b?.maxHp || 1, maxHp: b?.maxHp || 1 });
+      } else {
+        const mn = minionDefs.find((x) => x.id === t.unit.refId);
+        out.push({ id: `p-${t.x}-${t.y}`, x: t.x, y: t.y, side: "enemy", name: mn?.name || "Minion?",
+          sprite: mn?.imageUrl || null, deadSprite: mn?.deadImageUrl || null, hp: mn?.hp || 1, maxHp: mn?.hp || 1 });
+      }
+    }
+    return out;
+  }, [map, bosses, minionDefs]);
 
   // Show spawn tiles as coloured markers (blue = hero, red = enemy), plus the
   // live rectangle preview while picking an area.
@@ -272,9 +333,13 @@ export default function BattleMapEditor() {
         onPointerDown={onPointerDown} onPointerMove={onPointerMove}
         onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
         <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
-          <IsoBoard map={map} units={[]} highlights={highlights} scale={scale} rotation={rotation}
+          <IsoBoard map={map} units={previewUnits} highlights={highlights} scale={scale} rotation={rotation}
             onTileClick={(x, y) => onTileClick(x, y)}
             onTileDown={onTileDown}
+            onUnitClick={(u) => {
+              // re-open the picker on an occupied cell (the unit covers the tile hit)
+              if (tool.type === "place") setPlacePicker({ x: u.x, y: u.y, sx: lastPointerRef.current.x, sy: lastPointerRef.current.y });
+            }}
             onTileHover={(x, y) => {
               if (selMode === "rect" && rectStart) setHoverTile({ x, y });
               if (paintingRef.current) paintTile(x, y);   // drag-paint: dipingi le tile attraversate
@@ -294,6 +359,11 @@ export default function BattleMapEditor() {
               {rectStart && <button className="bme-tool" onClick={() => setRectStart(null)}>✖ Annulla</button>}
             </span>
           )}
+        </div>
+        <div className="bme-group">
+          <span className="bme-label">Unità</span>
+          <button className={`bme-tool ${tool.type === "place" ? "on" : ""}`} onClick={() => setTool({ type: "place" })}>📍 Posiziona</button>
+          {tool.type === "place" && <span className="bme-hint">Clicca una casella → scegli boss/minion da inserire</span>}
         </div>
         <div className="bme-group">
           <span className="bme-label">Terreni</span>
@@ -366,6 +436,65 @@ export default function BattleMapEditor() {
           ))}
         </div>
       </div>
+
+      {/* ── Unit placement picker (thumbnails of what you can drop on the cell) ── */}
+      {placePicker && (
+        <>
+          <div className="bme-place-backdrop" onClick={() => setPlacePicker(null)} />
+          <div
+            className="bme-place-pop"
+            style={{
+              left: Math.max(8, Math.min(placePicker.sx, window.innerWidth - 268)),
+              top: Math.max(8, Math.min(placePicker.sy, window.innerHeight - 320)),
+            }}
+          >
+            <div className="bme-place-head">
+              <span>Casella {placePicker.x},{placePicker.y}</span>
+              <button onClick={() => setPlacePicker(null)}>✖</button>
+            </div>
+            <div className="bme-place-quick">
+              <button onClick={() => pickPlace({ kind: "spawn", side: "hero" })}>🛡 Spawn Eroe</button>
+              <button onClick={() => pickPlace({ kind: "spawn", side: "enemy" })}>👹 Spawn Nemico</button>
+              <button className="danger" onClick={() => pickPlace({ kind: "clear" })}>🗑 Svuota</button>
+            </div>
+
+            {bosses.length === 0 && minionDefs.length === 0 ? (
+              <div className="bme-place-empty">
+                Nessun boss/minion <strong>attivo</strong>. Creali e attivali nel pannello Boss.
+              </div>
+            ) : (
+              <>
+                {bosses.length > 0 && (
+                  <>
+                    <div className="bme-place-label">👑 Boss</div>
+                    <div className="bme-place-thumbs">
+                      {bosses.map((b) => (
+                        <button key={b.id} className="bme-thumb" title={b.name} onClick={() => pickPlace({ kind: "boss", refId: b.id })}>
+                          {b.imageUrl ? <img src={b.imageUrl} alt="" /> : <span className="ph">{(b.name || "?")[0]}</span>}
+                          <small>{b.name}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {minionDefs.length > 0 && (
+                  <>
+                    <div className="bme-place-label">🪓 Minion</div>
+                    <div className="bme-place-thumbs">
+                      {minionDefs.map((m) => (
+                        <button key={m.id} className="bme-thumb" title={m.name} onClick={() => pickPlace({ kind: "minion", refId: m.id })}>
+                          {m.imageUrl ? <img src={m.imageUrl} alt="" /> : <span className="ph">{(m.name || "?")[0]}</span>}
+                          <small>{m.name}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

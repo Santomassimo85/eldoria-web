@@ -72,3 +72,41 @@
 .bme-mapchip.on { outline: 2px solid #ffe9a0; }
 .bme-mapchip button { background: transparent; border: none; }
 .bme-mapchip .bme-del { color: #ff9b9b; padding: 5px 8px; }
+
+/* ── Unit placement picker ─────────────────────────────────────────────────── */
+.bme-place-backdrop { position: fixed; inset: 0; z-index: 3000; }
+.bme-place-pop {
+  position: fixed; z-index: 3001; width: 256px; max-height: 312px; overflow-y: auto;
+  background: rgba(16, 20, 30, 0.98); color: #e8eef5;
+  border: 1px solid rgba(255, 233, 160, 0.35); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); padding: 8px;
+}
+.bme-place-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.78rem; font-weight: 800; color: #ffe9a0; margin-bottom: 6px;
+}
+.bme-place-head button { background: transparent; border: none; color: #ccc; cursor: pointer; font-size: 0.9rem; }
+.bme-place-quick { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.bme-place-quick button {
+  flex: 1 1 auto; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+  padding: 5px 6px; border-radius: 6px; color: #e8eef5;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.bme-place-quick button.danger { background: rgba(160, 50, 50, 0.4); border-color: rgba(255, 130, 130, 0.4); }
+.bme-place-quick button:hover { filter: brightness(1.2); }
+.bme-place-label { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; color: #9bd0ff; margin: 6px 0 4px; }
+.bme-place-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.bme-thumb {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+  padding: 4px; border-radius: 7px; color: #e8eef5;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.08s ease, border-color 0.12s ease;
+}
+.bme-thumb:hover { transform: translateY(-1px); border-color: #ffe9a0; background: rgba(255, 233, 160, 0.12); }
+.bme-thumb img { width: 100%; height: 46px; object-fit: contain; image-rendering: pixelated; }
+.bme-thumb .ph {
+  width: 100%; height: 46px; display: grid; place-items: center;
+  font-size: 1.2rem; font-weight: 900; color: #fff; background: rgba(160, 60, 60, 0.5); border-radius: 5px;
+}
+.bme-thumb small { font-size: 0.6rem; line-height: 1.1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.bme-place-empty { font-size: 0.74rem; color: #aab; line-height: 1.4; padding: 6px 2px; }
