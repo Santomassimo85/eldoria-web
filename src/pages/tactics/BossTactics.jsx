@@ -73,6 +73,7 @@ export default function BossTactics() {
   const vfxIdRef = useRef(0);
   const lastAoeFxRef = useRef(null);               // last-applied battle.aoeFx id (dedupe dome spawns)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
+  const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
   const autoPassedRef = useRef(null);              // turnDeadline already auto-passed (dedupe)
 
@@ -374,6 +375,24 @@ export default function BossTactics() {
     });
     await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
       content: `⚔️ La battaglia ha inizio! Turno degli Eroi — avete ${fmtPhase(PLAYER_PHASE_MS)} per agire (in qualsiasi ordine).` });
+  };
+
+  // ── TEST ONLY: master forces which side plays now ─────────────────────────
+  // Lets us drive turns by hand while playtesting instead of waiting for the
+  // auto-advance / phase timer. Resets the chosen side's move+action flags and
+  // restarts its phase window, exactly like a normal phase change.
+  const forcePhase = async (incoming) => {
+    const side = incoming === "players" ? "hero" : "enemy";
+    const ms = incoming === "players" ? PLAYER_PHASE_MS : ENEMY_PHASE_MS;
+    await txnBattle((us) => resetSide(us, side), {
+      phase: incoming, phaseDeadline: Date.now() + ms,
+    });
+    autoPassedRef.current = null;          // re-arm the auto-advance for the new deadline
+    setMode("idle"); setSelAction(null); setSelEnemyId(null);
+    await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+      content: incoming === "players"
+        ? "🛡️ (Test) Turno degli Eroi forzato dal Master."
+        : "👹 (Test) Turno dei Nemici forzato dal Master." });
   };
 
   // ── Phase flow (Model A) ────────────────────────────────────────────────────
@@ -823,6 +842,44 @@ export default function BossTactics() {
             {isMaster && battle?.active && <button onClick={endBattle}>⛔</button>}
             <button onClick={() => setShowBar(false)} title="Chiudi">✖</button>
           </div>
+          {/* TEST ONLY: master forces whose turn it is, by hand. */}
+          {isMaster && fightStarted && !isOver && (
+            <div className="tac-master-test">
+              <span className="tac-master-test-label">🧪 Test turni:</span>
+              <button className={phase === "players" ? "on" : ""} onClick={() => forcePhase("players")}>🛡️ Turno Eroi</button>
+              <button className={phase === "enemies" ? "on" : ""} onClick={() => forcePhase("enemies")}>👹 Turno Nemici</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Action / turn counter (always visible during the fight): who has
+          finished their round (✅) and who is still missing (⏳), per side. ── */}
+      {fightStarted && !isOver && (
+        <div className={`tac-roster ${rosterOpen ? "open" : ""}`}>
+          <button className="tac-roster-toggle" onClick={() => setRosterOpen((v) => !v)}>
+            {rosterOpen ? "▾" : "▸"} 🛡️ {heroesDone}/{heroesAlive.length} · 👹 {enemiesDone}/{enemiesAlive.length}
+          </button>
+          {rosterOpen && (
+            <div className="tac-roster-body">
+              <div className="tac-roster-sec">
+                <span className="tac-roster-head hero">🛡️ Eroi — {heroesDone}/{heroesAlive.length} hanno agito</span>
+                {heroesAlive.map((u) => (
+                  <span key={u.id} className={`tac-roster-unit ${unitDone(u) ? "done" : "todo"}`}>
+                    {unitDone(u) ? "✅" : "⏳"} {(u.name || "?").split(" ")[0]}
+                  </span>
+                ))}
+              </div>
+              <div className="tac-roster-sec">
+                <span className="tac-roster-head enemy">👹 Nemici — {enemiesDone}/{enemiesAlive.length} giocati</span>
+                {enemiesAlive.map((u) => (
+                  <span key={u.id} className={`tac-roster-unit ${unitDone(u) ? "done" : "todo"}`}>
+                    {unitDone(u) ? "✅" : "⏳"} {(u.name || "?").split(" ")[0]}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

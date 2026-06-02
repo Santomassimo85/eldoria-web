@@ -23,11 +23,12 @@
 }
 
 /* user-drawn iso cube tile texture (behind the SVG highlight/hit layer).
-   Clickable too, so the WHOLE visible tile counts — not just the diamond. */
+   NON-interactive: it's a full square whose transparent corners overhang the
+   diamond, so a front tile's texture would steal clicks from the tile behind it.
+   The exact .iso-hit polygons (diamond top + side walls) handle every click. */
 .iso-tile-tex {
   position: absolute;
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none;
   image-rendering: pixelated;
 }
 

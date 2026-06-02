@@ -176,6 +176,47 @@
 .tac-pip.ok   { background: rgba(42, 158, 84, 0.32); color: #b6f5cf; border-color: #2a9e54; }
 .tac-pip.used { background: rgba(120, 120, 130, 0.22); color: #b9bcc6; text-decoration: line-through; opacity: 0.7; }
 
+/* TEST ONLY: master manual phase switch (inside the top menu) */
+.tac-master-test {
+  width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255, 233, 160, 0.35);
+}
+.tac-master-test-label { font-size: 11px; font-weight: 800; color: #ffe9a0; }
+.tac-master-test button {
+  background: rgba(255, 255, 255, 0.1); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
+  padding: 5px 10px; font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.tac-master-test button.on {
+  background: linear-gradient(180deg, rgba(255, 214, 64, 0.5), rgba(196, 140, 20, 0.5));
+  border-color: #ffe9a0; box-shadow: 0 0 0 1px rgba(255, 233, 160, 0.5);
+}
+
+/* turn/action counter panel — who finished (✅) and who's missing (⏳) */
+.tac-roster {
+  position: absolute; z-index: 1150;
+  top: calc(56px + env(safe-area-inset-top, 0px)); left: 8px;
+  max-width: 60vw;
+  background: rgba(12, 16, 24, 0.86); color: #e8eef5;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5); overflow: hidden;
+}
+.tac-roster-toggle {
+  display: block; width: 100%; text-align: left;
+  background: rgba(255, 255, 255, 0.06); color: #e8eef5;
+  border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 5px 9px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap;
+}
+.tac-roster:not(.open) .tac-roster-toggle { border-bottom: none; }
+.tac-roster-body { display: flex; flex-direction: column; gap: 7px; padding: 7px 9px; }
+.tac-roster-sec { display: flex; flex-direction: column; gap: 2px; }
+.tac-roster-head { font-size: 10px; font-weight: 800; letter-spacing: 0.3px; opacity: 0.95; }
+.tac-roster-head.hero { color: #9bd0ff; }
+.tac-roster-head.enemy { color: #ff9b9b; }
+.tac-roster-unit { font-size: 12px; font-weight: 700; padding-left: 4px; }
+.tac-roster-unit.todo { color: #ffe9a0; }
+.tac-roster-unit.done { color: #8af0b4; opacity: 0.75; }
+
 /* master enemy roster bar (enemies phase) */
 .tac-enemybar {
   position: relative; z-index: 30;

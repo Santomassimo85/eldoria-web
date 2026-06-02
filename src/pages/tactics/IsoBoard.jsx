@@ -205,7 +205,12 @@ export default function IsoBoard({
             </svg>
             {/* user-drawn iso cube tile (square PNG: diamond top + cube body).
                 Lifted so the diamond-top vertex lands on the cell; the cube body
-                hangs below. Overlays the procedural base. */}
+                hangs below. Overlays the procedural base. NON-interactive: the
+                square's transparent corners overhang the diamond, and because a
+                front tile sits at a higher z-index its texture square would cover
+                the top surface of the tile behind it — stealing that tile's
+                clicks (you'd have to click "higher up" to hit it). Clicks are
+                handled solely by the exact .iso-hit polygons below. */}
             {texSrc && (
               <img
                 className="iso-tile-tex"
@@ -213,8 +218,6 @@ export default function IsoBoard({
                 alt=""
                 draggable={false}
                 style={{ left: 0, top: -TILE_W / 4, width: TILE_W, height: TILE_W }}
-                onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
-                onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)}
               />
             )}
             {/* Overlay — highlight + click target must sit ABOVE the texture. */}
