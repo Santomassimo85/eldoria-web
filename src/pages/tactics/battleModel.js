@@ -252,6 +252,17 @@ const AOE_TABLE = [
 // "attack"-intent actions can be AoE (heals/buffs stay single-target for now).
 export function spellAoE(action) {
   if (!action || detectSpellIntent(action) !== "attack") return null;
+  // Flat fields authored in the Boss editor take precedence (aoeShape/aoeSize).
+  if (action.aoeShape && action.aoeShape !== "single") {
+    return {
+      shape: action.aoeShape,
+      size: Number(action.aoeSize) || 1,
+      range: Number(action.range) || Number(action.aoeSize) || 6,
+      save: action.saveAbility || "dex",
+      half: action.halfOnSave !== false,
+      dmgType: action.dmgType || undefined,
+    };
+  }
   if (action.area && action.area.shape) {          // explicit override, if ever provided by data
     const a = action.area;
     return { shape: a.shape, size: a.size ?? a.radius ?? 1, range: a.range ?? a.size ?? 6,
