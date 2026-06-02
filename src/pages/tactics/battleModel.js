@@ -9,11 +9,55 @@
 // reuses the existing `world_boss_chat` collection unchanged.
 // ─────────────────────────────────────────────────────────────────────────
 import { db } from "../../firebase";
-import { doc } from "firebase/firestore";
+import { doc, runTransaction } from "firebase/firestore";
 import { DEFAULT_MOVE, makeFlatMap } from "./isoCore";
 
 export const BATTLE_REF = () => doc(db, "battle_state", "current");
 export const BOSS_SYSTEM_UID = "BOSS_MSG";
+
+// ── Async round model (Model A: free order within a phase) ──────────────────
+// Players don't take strict per-unit turns: during the heroes' phase every
+// player controls their own PG and acts whenever they're online, in any order.
+// The phase ends when all living heroes are done OR the window expires; then the
+// master plays the enemies in their own (shorter) window. Tile collisions are
+// impossible because every mutation goes through a Firestore transaction that
+// re-reads fresh state and patches units by id (see txnBattle / the movement
+// transaction in BossTactics).
+// ⚠️ TEST VALUES (2026-06-02): 5 min each while playtesting. RESTORE to
+// 3h heroes / 1h enemies before going live →  3*60*60*1000 / 1*60*60*1000.
+export const PLAYER_PHASE_MS = 5 * 60 * 1000; // TEST: heroes 5 min  (prod: 3h)
+export const ENEMY_PHASE_MS = 5 * 60 * 1000;  // TEST: enemies 5 min (prod: 1h)
+
+// A unit has finished its round when it explicitly ended its turn, or it has
+// used BOTH its move and its action.
+export const unitDone = (u) => !!u.done || (!!u.hasMoved && !!u.hasActed);
+
+// Every living unit on `side` has finished this round (false if none alive).
+export const sideAllDone = (units, side) => {
+  const living = units.filter((u) => u.side === side && !u.dead);
+  return living.length > 0 && living.every(unitDone);
+};
+
+// Reset a side's per-round flags — called when that side's phase begins.
+export const resetSide = (units, side) =>
+  units.map((u) => (u.side === side ? { ...u, hasMoved: false, hasActed: false, done: false } : u));
+
+// Atomically read→mutate→write the battle's units. `mutate(freshUnits, freshDoc)`
+// receives the FRESH units array and must patch by id and return the new array
+// (or throw to abort) — never rebuild from stale client state, so two players
+// writing at the same moment can't clobber each other. `extra` adds doc fields
+// (object, or a function of the fresh doc).
+export async function txnBattle(mutate, extra = {}) {
+  return runTransaction(db, async (tx) => {
+    const ref = BATTLE_REF();
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error("no-battle");
+    const data = snap.data();
+    const nextUnits = mutate(data.units || [], data);
+    const ex = typeof extra === "function" ? extra(data) : extra;
+    tx.update(ref, { units: nextUnits, ...ex });
+  });
+}
 
 // ── Dice ──────────────────────────────────────────────────────────────────
 export const rollDie = (s) => Math.floor(Math.random() * s) + 1;
@@ -126,7 +170,7 @@ export function defaultBattleMap() {
 export function emptyBattle() {
   return {
     active: false, fightStarted: false, phase: "setup",
-    round: 1, activeIdx: 0, turnOrder: [],
+    round: 1, phaseDeadline: null,
     map: defaultBattleMap(), units: [],
   };
 }

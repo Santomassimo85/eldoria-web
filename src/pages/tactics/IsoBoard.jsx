@@ -10,7 +10,8 @@
 // Props:
 //   map           { w, h, tiles:[{x,y,terrain,elevation,prop}] }
 //   units         [{ id, x, y, side, name, sprite, deadSprite, dead, hp, maxHp }]
-//   highlights    { "x,y": "move"|"target"|"selected"|"path" }
+//   highlights    { "x,y": "move"|"target"|"selected"|"path"|"heal"|"self" }
+//   pings         Set|array of unit ids that show a bouncing locator arrow
 //   scale         number — viewport fit factor
 //   onTileClick   (x, y, tile) => void
 //   onUnitClick   (unit, ev) => void
@@ -59,12 +60,15 @@ export default function IsoBoard({
   map,
   units = [],
   highlights = {},
+  pings = null,
   scale = 1,
   rotation = 0,
   onTileClick,
   onTileHover,
   onUnitClick,
 }) {
+  // ids that should show a bouncing "ping" arrow (own hero / aimed targets)
+  const pingSet = pings instanceof Set ? pings : new Set(pings || []);
   const { boardW, boardH, origin } = useMemo(
     () => computeBoardMetrics(map, rotation),
     [map, rotation]
@@ -225,6 +229,9 @@ export default function IsoBoard({
           >
             {/* ground shadow anchors the sprite to the tile centre */}
             <div className="iso-unit-shadow" />
+            {!u.dead && pingSet.has(u.id) && (
+              <div className={`iso-unit-ping side-${u.side}`} aria-hidden="true">▼</div>
+            )}
             {!u.dead && (u.cond === "advantage" || u.cond === "disadvantage") && (
               <div className={`iso-unit-cond ${u.cond}`} title={u.cond === "advantage" ? "Vantaggio al prossimo tiro" : "Svantaggio al prossimo tiro"}>
                 {u.cond === "advantage" ? "⬆" : "⬇"}

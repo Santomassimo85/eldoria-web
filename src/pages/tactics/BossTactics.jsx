@@ -13,27 +13,30 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { db } from "../../firebase";
 import {
-  doc, setDoc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp,
+  doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, runTransaction,
 } from "firebase/firestore";
 import { useAuth } from "../../AuthContext";
 import IsoBoard from "./IsoBoard";
 import BattleChat from "./BattleChat";
 import { showD20Roll } from "../../components/DiceRoll";
 import {
-  computeBoardMetrics, computePaths, reconstructPath, rotateCoord,
+  computeBoardMetrics, computePaths, reconstructPath,
   manhattan, tilesWithinRange, tileAt, TERRAINS, DEFAULT_MOVE,
 } from "./isoCore";
 import {
   BATTLE_REF, BOSS_SYSTEM_UID, emptyBattle, defaultBattleMap,
   makePlayerUnit, makeBossUnit, makeMinionUnit,
-  allRolled, computeTurnOrder, nextAliveIdx,
+  unitDone, sideAllDone, resetSide, txnBattle,
+  PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, detectSpellIntent, actionRange, battleActions,
 } from "./battleModel";
 import "./BossTactics.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const TURN_MS = 30 * 60 * 1000;   // 30 minutes per turn, then auto-pass
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+// Human label for a phase window (so log text follows the real constant, even
+// with the temporary 5-min test timers).
+const fmtPhase = (ms) => (ms >= 3600000 ? `${Math.round(ms / 3600000)}h` : `${Math.round(ms / 60000)} min`);
 
 export default function BossTactics() {
   const { currentUser } = useAuth();
@@ -59,6 +62,7 @@ export default function BossTactics() {
   const [rotation, setRotation] = useState(0);
   const [mode, setMode] = useState("idle");      // idle | move | act
   const [selAction, setSelAction] = useState(null);
+  const [selEnemyId, setSelEnemyId] = useState(null); // enemy the master is driving (enemies phase)
   const [busy, setBusy] = useState(false);
   const [animUnit, setAnimUnit] = useState(null); // local walk override {id,x,y}
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
@@ -145,15 +149,34 @@ export default function BossTactics() {
   );
   const fightStarted = battle?.fightStarted === true;
   const phase = battle?.phase || "setup";
-  const order = battle?.turnOrder || [];
-  const activeIdx = battle?.activeIdx ?? 0;
-  const activeUnit = fightStarted ? units.find((u) => u.id === order[activeIdx]) : null;
   const isOver = phase === "over";
 
-  const isMyTurn =
-    fightStarted && !isOver && activeUnit && !busy &&
-    ((activeUnit.side === "hero" && activeUnit.uid === currentUser?.uid) ||
-     (activeUnit.side === "enemy" && isMaster));
+  // Free-order model: during "players" each player controls THEIR own hero;
+  // during "enemies" the master drives one enemy at a time. The single unit you
+  // currently command is `controlledUnit` (aliased to activeUnit so the HUD,
+  // highlights and action picker below keep working unchanged).
+  const myHero = useMemo(
+    () => units.find((u) => u.side === "hero" && u.uid === currentUser?.uid),
+    [units, currentUser]
+  );
+  const controlledEnemy = useMemo(() => {
+    if (!isMaster || phase !== "enemies") return null;
+    const living = units.filter((u) => u.side === "enemy" && !u.dead);
+    return living.find((u) => u.id === selEnemyId && !unitDone(u))
+        || living.find((u) => !unitDone(u)) || null;
+  }, [isMaster, phase, units, selEnemyId]);
+
+  const controlledUnit = phase === "players" ? myHero : controlledEnemy;
+  const canAct =
+    fightStarted && !isOver && !busy && controlledUnit && !controlledUnit.dead &&
+    !unitDone(controlledUnit) &&
+    ((phase === "players" && controlledUnit.side === "hero" && controlledUnit.uid === currentUser?.uid) ||
+     (phase === "enemies" && isMaster && controlledUnit.side === "enemy"));
+
+  // Back-compat aliases so the rest of the component (HUD / highlights / action
+  // picker) reads naturally without a sweeping rename.
+  const activeUnit = controlledUnit;
+  const isMyTurn = canAct;
 
   // actions available to whoever controls the active unit
   const myActions = useMemo(() => {
@@ -216,6 +239,9 @@ export default function BossTactics() {
   // ── Highlights ──────────────────────────────────────────────────────────
   const highlights = useMemo(() => {
     const hl = {};
+    // Always mark the viewer's OWN hero tile so each player can spot themselves,
+    // even when it's not their phase. "selected" (below) overrides it on your turn.
+    if (myHero && !myHero.dead) hl[`${myHero.x},${myHero.y}`] = "self";
     if (!activeUnit) return hl;
     hl[`${activeUnit.x},${activeUnit.y}`] = "selected";
     if (!isMyTurn) return hl;
@@ -231,11 +257,36 @@ export default function BossTactics() {
         if (k !== `${activeUnit.x},${activeUnit.y}`) hl[k] = kind;
     }
     return hl;
-  }, [activeUnit, isMyTurn, mode, selAction, units, map]);
+  }, [activeUnit, isMyTurn, mode, selAction, units, map, myHero]);
+
+  // Bouncing "ping" arrows over units: always your own hero (to locate yourself),
+  // plus — while you're aiming an action — every valid target in range.
+  const pingIds = useMemo(() => {
+    const s = new Set();
+    if (myHero && !myHero.dead) s.add(myHero.id);
+    if (isMyTurn && activeUnit && mode === "act" && selAction) {
+      const r = selAction.range || actionRange(selAction);
+      const wantEnemy = ["attack", "debuff"].includes(detectSpellIntent(selAction));
+      for (const u of units) {
+        if (u.dead) continue;
+        const isEnemyOf = u.side !== activeUnit.side;
+        if (wantEnemy !== isEnemyOf) continue;
+        if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) <= r) s.add(u.id);
+      }
+    }
+    return s;
+  }, [myHero, isMyTurn, activeUnit, mode, selAction, units]);
 
   // ── Firestore writers ─────────────────────────────────────────────────────
-  const writeUnits = (next, extra = {}) => updateDoc(BATTLE_REF(), { units: next, ...extra });
   const logChat = (entry) => addDoc(collection(db, "world_boss_chat"), { timestamp: serverTimestamp(), ...entry });
+  // Atomically patch specific units by id. `updaters` maps id → (freshUnit, freshUnits)
+  // → patch object. Runs in a transaction over FRESH state so concurrent writers
+  // (free-order play) never clobber one another. Extra doc fields via `extra`.
+  const patchUnits = (updaters, extra = {}) =>
+    txnBattle(
+      (us) => us.map((u) => (updaters[u.id] ? { ...u, ...updaters[u.id](u, us) } : u)),
+      extra
+    );
 
   // ── Master: setup ─────────────────────────────────────────────────────────
   const spawnBattle = async () => {
@@ -260,95 +311,130 @@ export default function BossTactics() {
     if (!window.confirm("Terminare e azzerare la battaglia?")) return;
     await setDoc(BATTLE_REF(), { ...emptyBattle(), active: false });
   };
-  const rollEnemyInitiative = async () => {
-    setBusy(true);
-    let next = units.slice();
-    for (const u of units.filter((x) => x.side === "enemy" && typeof x.initiative !== "number")) {
-      const d = rollDie(20);
-      await showD20Roll(d, { label: `${u.name} (DES +${u.dex})` });
-      next = next.map((x) => (x.id === u.id ? { ...x, initiative: d + (u.dex || 0) } : x));
-      await writeUnits(next);
-    }
-    setBusy(false);
-  };
   const postBossMsg = async () => {
     if (!bossMsg.trim()) return;
     await logChat({ type: "narrative", senderName: "Master", uid: BOSS_SYSTEM_UID, content: bossMsg, isSystem: true });
     setBossMsg("");
   };
   const startFight = async () => {
-    if (!allRolled(units)) return;
-    const ord = computeTurnOrder(units);
-    const first = units.find((u) => u.id === ord[0]);
-    await updateDoc(BATTLE_REF(), {
-      fightStarted: true, turnOrder: ord, activeIdx: 0, round: 1,
-      phase: first?.side === "hero" ? "players" : "enemies",
-      turnDeadline: Date.now() + TURN_MS,
+    // Master kicks the fight straight into round 1 (heroes' phase). No initiative
+    // wait — free-order play needs no turn order. Heroes act over the next 3h, in
+    // any order; then the enemies' phase (1h, master-driven).
+    await txnBattle((us) => resetSide(us, "hero"), {
+      fightStarted: true, round: 1, phase: "players",
+      phaseDeadline: Date.now() + PLAYER_PHASE_MS,
     });
     await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
-      content: "⚔️ La battaglia ha inizio! Ordine: " + ord.map((id) => units.find((u) => u.id === id)?.name).join(" → ") });
+      content: `⚔️ La battaglia ha inizio! Turno degli Eroi — avete ${fmtPhase(PLAYER_PHASE_MS)} per agire (in qualsiasi ordine).` });
   };
 
-  // ── Player: roll own initiative ───────────────────────────────────────────
-  const rollMyInitiative = async () => {
-    const u = units.find((x) => x.side === "hero" && x.uid === currentUser?.uid);
-    if (!u || typeof u.initiative === "number") return;
-    setBusy(true);
-    const d = rollDie(20);
-    await showD20Roll(d, { label: `${u.name} (DES +${u.dex})` });
-    await writeUnits(units.map((x) => (x.id === u.id ? { ...x, initiative: d + (u.dex || 0) } : x)));
-    setBusy(false);
-  };
-
-  // ── Turn flow ─────────────────────────────────────────────────────────────
-  const advanceTurn = async (curUnits) => {
-    const alive = curUnits.filter((u) => !u.dead);
-    if (!alive.some((u) => u.side === "hero") || !alive.some((u) => u.side === "enemy")) {
-      await updateDoc(BATTLE_REF(), { phase: "over" });
+  // ── Phase flow (Model A) ────────────────────────────────────────────────────
+  // Try to advance the phase. Idempotent + transactional, so any client may call
+  // it on completion and the timer may force it — only one commit wins:
+  //  • players → enemies  when all living heroes are done (or forced by the 3h timer)
+  //  • enemies → players  (next round) when all enemies are done (or the 1h timer)
+  //  • either  → over      when one side is wiped out
+  // Terrain hazard (lava/acid) is applied to the incoming side as its phase opens.
+  const advancePhase = async (force = false) => {
+    const res = await runTransaction(db, async (tx) => {
+      const ref = BATTLE_REF();
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return null;
+      const d = snap.data();
+      if (!d.fightStarted || d.phase === "over") return null;
+      const us = d.units || [];
+      const aliveHeroes = us.some((u) => u.side === "hero" && !u.dead);
+      const aliveEnemies = us.some((u) => u.side === "enemy" && !u.dead);
+      if (!aliveHeroes || !aliveEnemies) {
+        tx.update(ref, { phase: "over" });
+        return { over: aliveHeroes ? "heroes" : "enemies" };
+      }
+      const incoming = d.phase === "players" ? "enemies" : "players";
+      const ready = d.phase === "players" ? sideAllDone(us, "hero") : sideAllDone(us, "enemy");
+      if (!force && !ready) return null;
+      const side = incoming === "players" ? "hero" : "enemy";
+      let next = resetSide(us, side);
+      const hazards = [];
+      next = next.map((u) => {
+        if (u.side !== side || u.dead) return u;
+        const terr = TERRAINS[tileAt(d.map, u.x, u.y)?.terrain];
+        const dmg = terr?.turnDamage || 0;
+        if (dmg <= 0) return u;
+        const hp = Math.max(0, u.hp - dmg);
+        hazards.push({ name: u.name, dmg, terr: terr.label, key: terr.key, dead: hp <= 0 });
+        return { ...u, hp, dead: hp <= 0 };
+      });
+      const round = incoming === "players" ? (d.round || 1) + 1 : (d.round || 1);
+      const ms = incoming === "players" ? PLAYER_PHASE_MS : ENEMY_PHASE_MS;
+      tx.update(ref, { units: next, phase: incoming, round, phaseDeadline: Date.now() + ms });
+      return { to: incoming, round, forced: force, hazards };
+    });
+    if (!res) return res;            // log OUTSIDE the txn (which may retry)
+    if (res.over) {
       await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
-        content: alive.some((u) => u.side === "hero") ? "🏆 Vittoria degli Eroi!" : "💀 I nemici hanno prevalso!" });
-      return;
+        content: res.over === "heroes" ? "🏆 Vittoria degli Eroi!" : "💀 I nemici hanno prevalso!" });
+      return res;
     }
-    let idx = nextAliveIdx(order, curUnits, activeIdx);
-    let round = (battle?.round || 1) + (idx <= activeIdx ? 1 : 0);
-    // hazard damage (lava/acid/…) at the start of the next unit's turn
-    let next = curUnits.map((u) => ({ ...u, ...(u.id === order[idx] ? { hasMoved: false, hasActed: false } : {}) }));
-    const nu = next.find((u) => u.id === order[idx]);
-    const terr = TERRAINS[tileAt(map, nu.x, nu.y)?.terrain];
-    const dmg = terr?.turnDamage || 0;
-    if (dmg > 0 && !nu.dead) {
-      const hp = Math.max(0, nu.hp - dmg);
-      next = next.map((u) => (u.id === nu.id ? { ...u, hp, dead: hp <= 0 } : u));
-      const icon = terr.key === "lava" ? "🔥" : terr.key === "acid" ? "🧪" : "☠";
-      await logChat({ type: "narrative", senderName: nu.name, uid: BOSS_SYSTEM_UID, isSystem: true, content: `${icon} ${nu.name} subisce ${dmg} danni da ${terr.label}: −${dmg} HP${hp <= 0 ? " · 💀" : ""}` });
+    for (const h of res.hazards) {
+      const icon = h.key === "lava" ? "🔥" : h.key === "acid" ? "🧪" : "☠";
+      await logChat({ type: "narrative", senderName: h.name, uid: BOSS_SYSTEM_UID, isSystem: true,
+        content: `${icon} ${h.name} subisce ${h.dmg} danni da ${h.terr}: −${h.dmg} HP${h.dead ? " · 💀" : ""}` });
     }
-    await writeUnits(next, { activeIdx: idx, round, phase: (next.find((u) => u.id === order[idx])?.side === "hero") ? "players" : "enemies", turnDeadline: Date.now() + TURN_MS });
+    await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+      content: res.to === "players"
+        ? `🛡️ Round ${res.round} — turno degli Eroi (${fmtPhase(PLAYER_PHASE_MS)})${res.forced ? " · tempo nemici scaduto" : ""}`
+        : `👹 Turno dei Nemici (${fmtPhase(ENEMY_PHASE_MS)})${res.forced ? " · tempo eroi scaduto" : ""}` });
+    return res;
   };
-  const endTurn = () => { if (isMyTurn) { setMode("idle"); setSelAction(null); advanceTurn(units); } };
 
-  // ── Per-turn timer (30 min, then auto-pass for everyone) ──────────────────
-  const turnDeadline = battle?.turnDeadline || null;
-  const remainingMs = turnDeadline && fightStarted && !isOver ? Math.max(0, turnDeadline - nowTs) : null;
+  // Move the controlled unit to (x,y) atomically: re-checks inside the txn that
+  // the tile is free of living units AND still reachable, so two players acting
+  // at once can never land on the same tile. Throws "OCCUPIED" if taken meanwhile.
+  const txnMove = (unitId, x, y) =>
+    runTransaction(db, async (tx) => {
+      const ref = BATTLE_REF();
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error("no-battle");
+      const d = snap.data();
+      const us = d.units || [];
+      const me = us.find((u) => u.id === unitId);
+      if (!me || me.hasMoved || me.dead) throw new Error("STALE");
+      if (us.some((u) => !u.dead && u.id !== unitId && u.x === x && u.y === y)) throw new Error("OCCUPIED");
+      const occ = new Set(us.filter((u) => !u.dead && u.id !== unitId).map((u) => `${u.x},${u.y}`));
+      const { costs } = computePaths(d.map, me.x, me.y, me.move ?? DEFAULT_MOVE, occ);
+      if (!costs.has(`${x},${y}`)) throw new Error("OCCUPIED");
+      tx.update(ref, { units: us.map((u) => (u.id === unitId ? { ...u, x, y, hasMoved: true } : u)) });
+    });
+
+  const endTurn = async () => {
+    if (!canAct) return;
+    const id = controlledUnit.id;
+    setMode("idle"); setSelAction(null);
+    await patchUnits({ [id]: () => ({ done: true }) });
+    await advancePhase();
+  };
+
+  // ── Phase timer (heroes 3h / enemies 1h, then auto-advance) ────────────────
+  const phaseDeadline = battle?.phaseDeadline || null;
+  const remainingMs = phaseDeadline && fightStarted && !isOver ? Math.max(0, phaseDeadline - nowTs) : null;
   useEffect(() => {
     if (!fightStarted || isOver) return;
     const id = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(id);
   }, [fightStarted, isOver]);
   useEffect(() => {
-    if (!fightStarted || isOver || busy || !turnDeadline || !activeUnit) return;
-    if (autoPassedRef.current === turnDeadline) return;
-    if (nowTs < turnDeadline) return;
-    // The active controller auto-passes; the master is a fallback (+15s grace)
-    // in case that controller's tab is closed — so enemy turns pass too.
-    const controller = isMyTurn;
-    const masterFallback = isMaster && nowTs > turnDeadline + 15000;
-    if (!controller && !masterFallback) return;
-    autoPassedRef.current = turnDeadline;
+    if (!fightStarted || isOver || !phaseDeadline) return;
+    if (autoPassedRef.current === phaseDeadline) return;
+    if (nowTs < phaseDeadline) return;
+    // The master drives the forced advance; any living hero is a fallback (+20s
+    // grace) so the fight still progresses if the master is offline. The
+    // transaction makes the flip idempotent regardless of who fires it.
+    const driver = isMaster || (myHero && !myHero.dead && nowTs > phaseDeadline + 20000);
+    if (!driver) return;
+    autoPassedRef.current = phaseDeadline;
     setMode("idle"); setSelAction(null);
-    logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
-      content: `⏱️ Tempo scaduto: ${activeUnit.name} passa il turno.` });
-    advanceTurn(units);
-  }, [nowTs, turnDeadline, fightStarted, isOver, busy, isMyTurn, isMaster, activeUnit, units]); // eslint-disable-line react-hooks/exhaustive-deps
+    advancePhase(true);
+  }, [nowTs, phaseDeadline, fightStarted, isOver, isMaster, myHero]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
@@ -376,46 +462,57 @@ export default function BossTactics() {
     const bonus = parseInt(String(action.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
     const total = d + bonus, crit = d === 20;
     const formula = action.damage && action.damage !== "0" ? action.damage : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
-    let next = units;
     const entry = { type: "action", senderName: attacker.name, actionName: action.name, uid: attacker.uid || BOSS_SYSTEM_UID, category: action.category || "Attacco", hitRoll: `🎲 ${rollNote} +${bonus} = ${total} vs CA ${target.ac}` };
-    if (crit || total >= target.ac) {
-      let dmg = rollFormula(formula); if (crit) dmg *= 2;
-      const dead = target.hp - dmg <= 0;
-      next = units.map((u) => (u.id === target.id ? { ...u, hp: Math.max(0, u.hp - dmg), dead } : u));
-      entry.damageRoll = `💥 ${dmg} danni a ${target.name}${crit ? " (CRITICO!)" : ""}${dead ? " · 💀" : ""}`;
-    } else entry.damageRoll = `🛡 Mancato!`;
-    // consume the attacker's advantage/disadvantage after this roll
-    next = next.map((u) => (u.id === attacker.id ? { ...u, hasActed: true, cond: null } : u));
-    await writeUnits(next);
+    const hit = crit || total >= target.ac;
+    let dmg = 0;
+    if (hit) { dmg = rollFormula(formula); if (crit) dmg *= 2; }
+    let killed = false;
+    // Apply damage to FRESH state (patch by id) so simultaneous attacks on the
+    // same target each subtract from the current HP instead of clobbering, and
+    // the attacker's advantage/disadvantage is consumed after the roll.
+    await txnBattle((us) => us.map((u) => {
+      let n = u;
+      if (hit && u.id === target.id) { const hp = Math.max(0, u.hp - dmg); killed = hp <= 0; n = { ...n, hp, dead: hp <= 0 }; }
+      if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
+      return n;
+    }));
+    entry.damageRoll = hit ? `💥 ${dmg} danni a ${target.name}${crit ? " (CRITICO!)" : ""}${killed ? " · 💀" : ""}` : `🛡 Mancato!`;
     await logChat(entry);
     setBusy(false);
+    await advancePhase();
   };
 
   const resolveHeal = async (caster, target, action) => {
     setBusy(true);
     const heal = rollFormula(action.damage && action.damage !== "0" ? action.damage : "1d8");
-    const next = units
-      .map((u) => (u.id === target.id ? { ...u, hp: Math.min(u.maxHp, u.hp + heal) } : u))
-      .map((u) => (u.id === caster.id ? { ...u, hasActed: true } : u));
-    await writeUnits(next);
+    await txnBattle((us) => us.map((u) => {
+      let n = u;
+      if (u.id === target.id) n = { ...n, hp: Math.min(n.maxHp, n.hp + heal) };
+      if (u.id === caster.id) n = { ...n, hasActed: true };
+      return n;
+    }));
     await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Cura)`, uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo", damageRoll: `💚 +${heal} HP a ${target.name}` });
     setBusy(false);
+    await advancePhase();
   };
   const resolveSelfBuff = async (caster, action) => {
     setBusy(true);
-    const next = units.map((u) => (u.id === caster.id ? { ...u, ac: u.ac + 2, hasActed: true } : u));
-    await writeUnits(next);
+    await txnBattle((us) => us.map((u) => (u.id === caster.id ? { ...u, ac: u.ac + 2, hasActed: true } : u)));
     await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa)`, uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA` });
     setBusy(false);
+    await advancePhase();
   };
   const resolveCond = async (caster, target, action, cond) => {
     setBusy(true);
-    const next = units
-      .map((u) => (u.id === target.id ? { ...u, cond } : u))
-      .map((u) => (u.id === caster.id ? { ...u, hasActed: true } : u));
-    await writeUnits(next);
+    await txnBattle((us) => us.map((u) => {
+      let n = u;
+      if (u.id === target.id) n = { ...n, cond };
+      if (u.id === caster.id) n = { ...n, hasActed: true };
+      return n;
+    }));
     await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio` : `🌑 ${target.name}: svantaggio` });
     setBusy(false);
+    await advancePhase();
   };
 
   // ── Board interaction ─────────────────────────────────────────────────────
@@ -423,20 +520,35 @@ export default function BossTactics() {
     if (movedRef.current) { movedRef.current = false; return; }
     if (!isMyTurn) return;
     if (mode === "move" && !activeUnit.hasMoved) {
-      const occ = new Set(units.filter((u) => !u.dead && u.id !== activeUnit.id).map((u) => `${u.x},${u.y}`));
-      const { costs, prev } = computePaths(map, activeUnit.x, activeUnit.y, activeUnit.move ?? DEFAULT_MOVE, occ);
-      if (!costs.has(`${x},${y}`) || (x === activeUnit.x && y === activeUnit.y)) return;
-      const path = reconstructPath(prev, activeUnit.x, activeUnit.y, x, y);
+      const cu = activeUnit;
+      const occ = new Set(units.filter((u) => !u.dead && u.id !== cu.id).map((u) => `${u.x},${u.y}`));
+      const { costs, prev } = computePaths(map, cu.x, cu.y, cu.move ?? DEFAULT_MOVE, occ);
+      if (!costs.has(`${x},${y}`) || (x === cu.x && y === cu.y)) return;
+      const path = reconstructPath(prev, cu.x, cu.y, x, y);
       if (!path) return;
       setBusy(true); setMode("idle");
-      // walk the unit along the path locally, then persist the final tile
-      for (let i = 1; i < path.length; i++) { setAnimUnit({ id: activeUnit.id, x: path[i].x, y: path[i].y }); await delay(110); }
-      await writeUnits(units.map((u) => (u.id === activeUnit.id ? { ...u, x, y, hasMoved: true } : u)));
+      // walk the unit along the path locally, then persist the final tile via a
+      // transaction that re-checks the tile is free + reachable (collision-safe).
+      for (let i = 1; i < path.length; i++) { setAnimUnit({ id: cu.id, x: path[i].x, y: path[i].y }); await delay(110); }
+      try {
+        await txnMove(cu.id, x, y);
+      } catch (e) {
+        setAnimUnit(null); setBusy(false);
+        if (e.message === "OCCUPIED")
+          await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+            content: `⚠️ ${cu.name}: quella casella è stata occupata, scegline un'altra.` });
+        return;
+      }
       setAnimUnit(null); setBusy(false);
+      await advancePhase();   // in case this completes the unit's move+action
     }
   };
   const onUnitClick = async (u) => {
     if (movedRef.current) { movedRef.current = false; return; }
+    // Master, enemies phase, idle: click an enemy to pick which one to drive.
+    if (isMaster && phase === "enemies" && mode === "idle" && u.side === "enemy" && !u.dead) {
+      setSelEnemyId(u.id); return;
+    }
     if (!isMyTurn || mode !== "act" || !selAction || activeUnit.hasActed) return;
     const r = selAction.range || actionRange(selAction);
     if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) > r) return;
@@ -484,7 +596,14 @@ export default function BossTactics() {
   if (!currentUser) return <div className="bt-msg">Loggati per entrare nel fight.</div>;
 
   const myUnit = units.find((u) => u.side === "hero" && u.uid === currentUser.uid);
-  const needMyRoll = battle?.active && !fightStarted && myUnit && typeof myUnit.initiative !== "number";
+  const heroesAlive = units.filter((u) => u.side === "hero" && !u.dead);
+  const heroesDone = heroesAlive.filter(unitDone).length;
+  // Short note for a hero who can't act right now, so they understand why.
+  const myStatus = (!myUnit || !fightStarted || isOver) ? null
+    : myUnit.dead ? "💀 Sei a terra."
+    : phase === "enemies" ? "👹 Turno dei Nemici — attendi il Master."
+    : unitDone(myUnit) ? "✅ Hai già agito in questo round."
+    : null;
 
   return (
     <div className="tac-screen">
@@ -504,8 +623,10 @@ export default function BossTactics() {
           <span className="tac-title">⚔ World Boss</span>
           <span className="tac-turninfo">
             {!battle?.active && "Nessuna battaglia attiva"}
-            {battle?.active && !fightStarted && "🎲 Fase iniziativa"}
-            {fightStarted && !isOver && activeUnit && `Round ${battle.round} · ${activeUnit.name}${activeUnit.side === "enemy" ? " 👹" : ""}${isMyTurn ? " — tocca a te" : ""}`}
+            {battle?.active && !fightStarted && "⚔ Pronti — il Master avvia la battaglia"}
+            {fightStarted && !isOver && (phase === "players"
+              ? `Round ${battle.round} · 🛡️ Turno Eroi (${heroesDone}/${heroesAlive.length} hanno agito)${isMyTurn ? " — tocca a te" : ""}`
+              : `Round ${battle.round} · 👹 Turno Nemici${isMyTurn && activeUnit ? ` — ${activeUnit.name}` : ""}`)}
             {isOver && "🏁 Battaglia conclusa"}
           </span>
           <div className="tac-controls">
@@ -526,16 +647,20 @@ export default function BossTactics() {
       >
         {battle?.active ? (
           <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
-            <IsoBoard map={map} units={displayUnits} highlights={highlights} scale={scale} rotation={rotation}
+            <IsoBoard map={map} units={displayUnits} highlights={highlights} pings={pingIds} scale={scale} rotation={rotation}
               onTileClick={onTileClick} onUnitClick={onUnitClick} />
           </div>
         ) : (
           <div className="bt-empty">{isMaster ? "Allestisci una battaglia qui sotto." : "⏳ In attesa che il Master avvii una battaglia…"}</div>
         )}
 
-        {needMyRoll && (
-          <div className="tac-overlay">
-            <button className="tac-big-btn" onClick={rollMyInitiative} disabled={busy}>🎲 Tira la tua Iniziativa</button>
+        {myStatus && (
+          <div className="tac-status-note" style={{
+            position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)",
+            background: "rgba(12,16,24,.82)", color: "#e8eefc", padding: "7px 14px",
+            borderRadius: 999, fontSize: 13, fontWeight: 600, pointerEvents: "none",
+            zIndex: 6, whiteSpace: "nowrap", boxShadow: "0 2px 10px rgba(0,0,0,.4)" }}>
+            {myStatus}
           </div>
         )}
       </div>
@@ -608,11 +733,10 @@ export default function BossTactics() {
                 <button onClick={postBossMsg}>Invia in chat</button>
               </div>
               <div className="bt-setup-row">
-                <button onClick={rollEnemyInitiative} disabled={busy}>🎲 Iniziativa nemici</button>
                 <span className="bt-init-status">
-                  {units.filter((u) => typeof u.initiative === "number").length}/{units.length} hanno tirato
+                  Avvii tu il fight: gli Eroi giocano in ordine libero (3h), poi tocca ai Nemici (1h).
                 </span>
-                <button className="bt-primary" disabled={!allRolled(units)} onClick={startFight}>⚔ INIZIA</button>
+                <button className="bt-primary" onClick={startFight}>⚔ INIZIA</button>
               </div>
             </>
           )}

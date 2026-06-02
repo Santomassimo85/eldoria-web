@@ -8,7 +8,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import {
   collection, query, orderBy, limit, onSnapshot,
-  addDoc, serverTimestamp, doc, deleteDoc,
+  addDoc, serverTimestamp, doc, deleteDoc, getDocs, writeBatch,
 } from "firebase/firestore";
 import "../WorldBoss.css";
 import "./BattleChat.css";
@@ -53,6 +53,20 @@ export default function BattleChat({ currentUser, isMaster, charData, locked = f
     setText("");
   };
   const del = (id) => { if (isMaster) deleteDoc(doc(db, "world_boss_chat", id)); };
+  // Master-only: wipe the whole battle log. Firestore batches cap at 500 ops,
+  // so delete in chunks until the collection is empty.
+  const clearAll = async () => {
+    if (!isMaster) return;
+    if (!window.confirm("Pulire TUTTO il registro di battaglia?")) return;
+    let snap;
+    do {
+      snap = await getDocs(query(collection(db, "world_boss_chat"), limit(450)));
+      if (snap.empty) break;
+      const batch = writeBatch(db);
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    } while (snap.size === 450);
+  };
 
   return (
     <>
@@ -69,6 +83,9 @@ export default function BattleChat({ currentUser, isMaster, charData, locked = f
           <div className="rpg-log-panel">
             <div className="rpg-log-title">
               Registro di Battaglia
+              {isMaster && (
+                <button className="bc-clear" onClick={clearAll} title="Pulisci tutto il registro">🗑</button>
+              )}
               <button className="bc-close" onClick={() => setOpen(false)} aria-label="Chiudi">✕</button>
             </div>
             <form className="rpg-chat-form" onSubmit={send}>

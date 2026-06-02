@@ -65,6 +65,7 @@
 .iso-hl-selected { fill: rgba(255, 214, 64, 0.42);  stroke: #ffe9a0; stroke-width: 2; }
 .iso-hl-path     { fill: rgba(64, 226, 226, 0.40);  stroke: #b0fafa; stroke-width: 1.5; }
 .iso-hl-heal     { fill: rgba(64, 220, 120, 0.42);  stroke: #b6f5cf; stroke-width: 1.5; }
+.iso-hl-self     { fill: rgba(255, 255, 255, 0.22);  stroke: #ffffff; stroke-width: 2.5; }
 
 @keyframes iso-hl-pulse {
   0%, 100% { opacity: 0.55; }
@@ -212,6 +213,26 @@
 @keyframes iso-cond-pulse {
   0%, 100% { transform: translateX(-50%) scale(1); }
   50%      { transform: translateX(-50%) scale(1.18); }
+}
+
+/* bouncing locator arrow above a unit's head (own hero / aimed targets) */
+.iso-unit-ping {
+  position: absolute;
+  bottom: calc(100% + 26px);
+  left: 50%;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 900;
+  color: #ffe066;                         /* hero default */
+  text-shadow: 0 1px 2px #000, 0 0 4px #000;
+  pointer-events: none;
+  z-index: 5;
+  animation: iso-ping-bounce 0.9s ease-in-out infinite;
+}
+.iso-unit-ping.side-enemy { color: #ff7b7b; }
+@keyframes iso-ping-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%      { transform: translateX(-50%) translateY(-6px); }
 }
 
 .iso-unit-bar {

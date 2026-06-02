@@ -94,6 +94,18 @@
 }
 .bc-close:hover { opacity: 1; }
 
+.bc-clear {
+  margin-left: auto;       /* push the buttons to the right edge */
+  margin-right: 6px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+.bc-clear:hover { opacity: 1; }
+
 @media (max-width: 560px) {
   .bc-panel { right: 8px; left: 8px; width: auto; }
 }
