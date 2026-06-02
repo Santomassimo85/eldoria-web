@@ -57,6 +57,15 @@ export async function txnBattle(mutate, extra = {}) {
   });
 }
 
+// ── Sneak Attack (rogues) ───────────────────────────────────────────────────
+// Number of d6 a rogue adds on a qualifying hit (D&D 5e progression):
+// dice = ceil(level/2) → lvl1 1d6, lvl3 2d6, lvl5 3d6, lvl7 4d6, lvl11 6d6,
+// lvl18 9d6, capped at 10d6. Returns 0 for non-rogues.
+export function sneakAttackDice(cls = "", level = 1) {
+  if (!/ladro|rogue|rouge/i.test(cls || "")) return 0;
+  return Math.min(10, Math.max(1, Math.ceil((Number(level) || 1) / 2)));
+}
+
 // ── Dice ──────────────────────────────────────────────────────────────────
 export const rollDie = (s) => Math.floor(Math.random() * s) + 1;
 export function rollFormula(f, mod = 0) {
@@ -115,6 +124,8 @@ export function makePlayerUnit(char, uid, x, y) {
     // `characters` collection to keep the battle doc under Firestore's 1 MB cap.
     id: uid, uid, side: "hero", kind: "player",
     name: char?.name || "Eroe",
+    cls: char?.class || char?.cls || "",   // class + level → Sneak Attack scaling (rogues)
+    level: char?.level ?? 1,
     x, y,
     hp: s.hp ?? s.maxHp ?? 10, maxHp: s.maxHp ?? s.hp ?? 10,
     ac: s.ac ?? 10, dex: s.dex ?? 0,

@@ -29,7 +29,7 @@ import {
   unitDone, sideAllDone, resetSide, txnBattle,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, detectSpellIntent, actionRange, battleActions,
-  spellAoE, aoeCells, SAVE_LABEL,
+  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice,
 } from "./battleModel";
 import "./BossTactics.css";
 
@@ -718,16 +718,23 @@ export default function BossTactics() {
     const formula = action.damage && action.damage !== "0" ? action.damage : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
     const entry = { type: "action", senderName: attacker.name, actionName: action.name, uid: attacker.uid || BOSS_SYSTEM_UID, side: attacker.side, category: action.category || "Attacco", hitRoll: `🎲 ${rollNote} +${bonus} = ${total} vs CA ${target.ac}` };
     const hit = crit || total >= target.ac;
-    let dmg = 0;
-    if (hit) { dmg = rollFormula(formula); if (crit) dmg *= 2; }
-    let killed = false;
-    // Visual: melee weapon → slash on the target; ranged weapon → arrow flying
-    // from attacker to target; spell attack → magic bolt. Stamped in the SAME
-    // write as the damage so the swing/shot and the hit burst land together for
-    // every spectator (it plays on a miss too — you still swung/fired).
+    // Visual classification (also gates Sneak Attack to weapon hits): melee weapon
+    // → slash; ranged weapon → arrow; spell attack → magic bolt.
     const isWeapon = /armi|arma|weapon/.test((action.category || "").toLowerCase());
     const ranged = (action.range || actionRange(action)) > 1;
     const fxKind = isWeapon ? (ranged ? "arrow" : "slash") : "bolt";
+    // Sneak Attack: a rogue adds Nd6 on a WEAPON hit when they have advantage OR
+    // an ally stands adjacent to the target (flanking) — and not at disadvantage.
+    const sneakDice = (hit && isWeapon && attacker.side === "hero") ? sneakAttackDice(attacker.cls, attacker.level) : 0;
+    const allyFlank = units.some((o) => o.side === "hero" && !o.dead && o.id !== attacker.id && manhattan(o.x, o.y, target.x, target.y) === 1);
+    const sneakOn = sneakDice > 0 && !hasDis && (hasAdv || allyFlank);
+    let dmg = 0, sneakDmg = 0;
+    if (hit) {
+      dmg = rollFormula(formula);
+      if (sneakOn) { sneakDmg = rollFormula(`${sneakDice}d6`); dmg += sneakDmg; }
+      if (crit) dmg *= 2;   // a crit doubles ALL dice, sneak included
+    }
+    let killed = false;
     // Apply damage to FRESH state (patch by id) so simultaneous attacks on the
     // same target each subtract from the current HP instead of clobbering, and
     // the attacker's advantage/disadvantage is consumed after the roll.
@@ -737,7 +744,7 @@ export default function BossTactics() {
       if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
       return n;
     }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null));
-    entry.damageRoll = hit ? `💥 ${dmg} danni a ${target.name}${crit ? " (CRITICO!)" : ""}${killed ? " · 💀" : ""}` : `🛡 Mancato!`;
+    entry.damageRoll = hit ? `💥 ${dmg} danni a ${target.name}${crit ? " (CRITICO!)" : ""}${sneakOn ? ` · 🗡️ furtivo +${sneakDmg} (${sneakDice}d6)` : ""}${killed ? " · 💀" : ""}` : `🛡 Mancato!`;
     await logChat(entry);
     setBusy(false);
     await advancePhase();
