@@ -19,7 +19,8 @@ import {
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
-import { makeFlatMap, aoeCells, tilesWithinRange } from "./tactics/isoCore";
+import { makeFlatMap, tilesWithinRange } from "./tactics/isoCore";
+import { aoeCells } from "./tactics/battleModel";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
