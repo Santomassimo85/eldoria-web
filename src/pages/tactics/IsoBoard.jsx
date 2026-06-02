@@ -102,6 +102,7 @@ export default function IsoBoard({
   rotation = 0,
   onTileClick,
   onTileHover,
+  onTileDown,
   onUnitClick,
 }) {
   // ids that should show a bouncing "ping" arrow (own hero / aimed targets)
@@ -252,12 +253,17 @@ export default function IsoBoard({
                   diamond + side walls) so a click lands anywhere on the tile,
                   not only on the small top diamond. Front tiles sit at a higher
                   z-index, so they still win over the walls behind them. */}
+              {/* onPointerDown does NOT stopPropagation: it lets the press bubble
+                  to the viewport (which decides paint-drag vs pan) while telling
+                  it WHICH tile was pressed via onTileDown. */}
               {EH > 0 && (
                 <>
                   <polygon points={leftFace} fill="transparent" className="iso-hit"
+                    onPointerDown={() => onTileDown?.(tile.x, tile.y, tile)}
                     onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
                     onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)} />
                   <polygon points={rightFace} fill="transparent" className="iso-hit"
+                    onPointerDown={() => onTileDown?.(tile.x, tile.y, tile)}
                     onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
                     onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)} />
                 </>
@@ -266,6 +272,7 @@ export default function IsoBoard({
                 points={topFace}
                 fill="transparent"
                 className="iso-hit"
+                onPointerDown={() => onTileDown?.(tile.x, tile.y, tile)}
                 onClick={(e) => {
                   e.stopPropagation();
                   onTileClick?.(tile.x, tile.y, tile);

@@ -52,6 +52,13 @@ export default function BattleMapEditor() {
   const viewportRef = useRef(null);
   const dragRef = useRef(null);
   const movedRef = useRef(false);
+  // Drag-to-paint (PC): paintingRef holds the active stroke {ids, painted} so a
+  // tile is painted only once per drag (matters for the relative ±1 elev tool);
+  // pressTileRef is set by the tile the press landed on (null = pressed the void
+  // → pan instead); suppressClickRef swallows the click that follows a stroke.
+  const paintingRef = useRef(null);
+  const pressTileRef = useRef(null);
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     if (!isMaster) return;
@@ -101,19 +108,46 @@ export default function BattleMapEditor() {
 
   const onPointerDown = (e) => {
     movedRef.current = false;
+    const overTile = pressTileRef.current; pressTileRef.current = null;
+    // Mouse + single mode + pressed on a tile → start a paint stroke (no pan).
+    // Touch keeps the old behaviour (drag = pan, tap = paint) so mobile can pan.
+    if (selMode === "single" && e.button === 0 && e.pointerType === "mouse" && overTile) {
+      paintingRef.current = { ids: new Set(), painted: false };
+      paintTile(overTile.x, overTile.y);
+      dragRef.current = null;
+      return;
+    }
     dragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y, moved: false, captured: false, pointerId: e.pointerId };
   };
   const onPointerMove = (e) => {
-    const d = dragRef.current; if (!d) return;
+    const d = dragRef.current; if (!d) return;     // painting: no pan (dragRef null)
     const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
     if (!d.moved && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) { d.moved = true; try { e.currentTarget.setPointerCapture(d.pointerId); d.captured = true; } catch { /* */ } }
     if (d.moved) setPan({ x: d.panX + dx, y: d.panY + dy });
   };
   const onPointerUp = (e) => {
+    if (paintingRef.current) {
+      suppressClickRef.current = paintingRef.current.painted; // eat the trailing click
+      paintingRef.current = null;
+    }
     const d = dragRef.current;
     movedRef.current = d?.moved || false;
     if (d?.captured) { try { e.currentTarget.releasePointerCapture(d.pointerId); } catch { /* */ } }
     dragRef.current = null;
+  };
+  // A tile reports it received the press (before the event bubbles to the
+  // viewport, which then reads this to choose paint vs pan).
+  const onTileDown = (x, y) => { pressTileRef.current = { x, y }; };
+  // Paint one tile, but at most once per active stroke (dedupe by coord).
+  const paintTile = (x, y) => {
+    const stroke = paintingRef.current;
+    if (stroke) {
+      const k = `${x},${y}`;
+      if (stroke.ids.has(k)) return;
+      stroke.ids.add(k);
+      stroke.painted = true;
+    }
+    applyToCoords([{ x, y }]);
   };
   const zoom = (dir) => setScale((s) => Math.max(0.2, Math.min(2.5, s + dir * 0.15)));
   const rotate = () => setRotation((r) => (r + 1) % 4);
@@ -156,8 +190,10 @@ export default function BattleMapEditor() {
 
   // ── Tile click: paint one tile (single) or anchor/close a rectangle (rect) ──
   const onTileClick = (x, y) => {
+    // a drag-paint stroke just ran → ignore the click it leaves behind
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (movedRef.current) { movedRef.current = false; return; }
-    if (selMode === "single") { applyToCoords([{ x, y }]); return; }
+    if (selMode === "single") { applyToCoords([{ x, y }]); return; }  // tap (mobile) / plain click
     if (!rectStart) { setRectStart({ x, y }); return; }   // first corner
     applyToCoords(rectCoords(rectStart, { x, y }));        // second corner → fill
     setRectStart(null);
@@ -238,7 +274,11 @@ export default function BattleMapEditor() {
         <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
           <IsoBoard map={map} units={[]} highlights={highlights} scale={scale} rotation={rotation}
             onTileClick={(x, y) => onTileClick(x, y)}
-            onTileHover={(x, y) => { if (selMode === "rect" && rectStart) setHoverTile({ x, y }); }} />
+            onTileDown={onTileDown}
+            onTileHover={(x, y) => {
+              if (selMode === "rect" && rectStart) setHoverTile({ x, y });
+              if (paintingRef.current) paintTile(x, y);   // drag-paint: dipingi le tile attraversate
+            }} />
         </div>
       </div>
 
