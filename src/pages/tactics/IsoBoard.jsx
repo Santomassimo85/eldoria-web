@@ -76,6 +76,31 @@ export default function IsoBoard({
   const tex = useTileTextures();
   const propSprites = usePropSprites();
 
+  // ── Sprite facing (one sprite, mirrored) ──────────────────────────────────
+  // Sprites are flat billboards facing the camera (Octopath-style); to make a
+  // unit "look" left/right we just mirror it horizontally — no extra art. Each
+  // unit faces the AVERAGE screen-x of its living opponents: opponents to the
+  // right → mirror to face right, else keep the default (art faces screen-left).
+  // Computed in screen space so it stays correct through board rotation, and it
+  // re-evaluates on movement (units = the animated displayUnits). face = ±1 fed
+  // to the CSS var --face (woven into the breathe keyframes so it doesn't fight
+  // the animation).
+  const facingById = useMemo(() => {
+    const sx = {};
+    for (const u of units) {
+      const [rx, ry] = rotateCoord(u.x, u.y, rotation, map.w, map.h);
+      sx[u.id] = tileStandPoint(rx, ry, 0, origin).x;
+    }
+    const face = {};
+    for (const u of units) {
+      const opp = units.filter((o) => !o.dead && o.side !== u.side);
+      if (!opp.length) { face[u.id] = 1; continue; }
+      const avg = opp.reduce((s, o) => s + sx[o.id], 0) / opp.length;
+      face[u.id] = avg > sx[u.id] ? -1 : 1;
+    }
+    return face;
+  }, [units, rotation, map, origin]);
+
   return (
     <div
       className="iso-scaler"
@@ -250,7 +275,7 @@ export default function IsoBoard({
                 className="iso-unit-sprite"
                 src={sprite}
                 alt={u.name}
-                style={{ animationDelay: `${(u.x * 0.3 + u.y * 0.17).toFixed(2)}s` }}
+                style={{ animationDelay: `${(u.x * 0.3 + u.y * 0.17).toFixed(2)}s`, "--face": facingById[u.id] ?? 1 }}
                 draggable={false}
               />
             ) : (
