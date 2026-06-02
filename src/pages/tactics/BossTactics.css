@@ -45,20 +45,37 @@
 .tac-screen {
   position: fixed; inset: 0;
   display: flex; flex-direction: column;
-  /* deep gradient tinted toward the map's dominant terrain (vars set inline);
-     falls back to the old cold blue if no map is loaded yet. */
-  background: radial-gradient(circle at 50% 32%, var(--void-mid, #1b2433), var(--void-deep, #0b0f16) 82%);
+  /* deep night sky: two faint nebula washes over a dark blue→black gradient */
+  background:
+    radial-gradient(60% 42% at 78% 12%, rgba(96, 74, 168, 0.28), transparent 70%),
+    radial-gradient(70% 50% at 18% 88%, rgba(40, 86, 156, 0.22), transparent 75%),
+    radial-gradient(ellipse at 50% 28%, #161d3c, #070a1a 82%);
   color: #e8eef5; overflow: hidden; font-family: system-ui, sans-serif;
 }
 
-/* Soft edge fade: transparent over the centre, ramping to the deep void tone at
-   the periphery so the board's hard outer edge dissolves into the background
-   instead of cutting off. Non-interactive; sits above the board, below the HUD
-   and floating controls. */
-.tac-void-fade {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background: radial-gradient(ellipse 76% 72% at 50% 46%,
-    transparent 50%, var(--void-deep, #0b0f16) 88%);
+/* Starry-sky backdrop — sits inside the viewport, behind the board. Two layers
+   drift at slightly different speeds (parallax); each star twinkles on its own
+   cycle. Non-interactive. */
+.tac-sky { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.tac-star-layer { position: absolute; inset: -3%; will-change: transform; }
+.tac-star-layer.far  { animation: sky-drift 96s ease-in-out infinite alternate; }
+.tac-star-layer.near { animation: sky-drift-near 62s ease-in-out infinite alternate; }
+.tac-star {
+  position: absolute; border-radius: 50%; background: #dfe8ff;
+  animation: star-twinkle var(--dur, 4s) ease-in-out var(--delay, 0s) infinite;
+}
+.tac-star.bright {
+  background: #ffffff;
+  box-shadow: 0 0 4px 1px rgba(180, 210, 255, 0.85), 0 0 8px 2px rgba(120, 150, 255, 0.4);
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: calc(var(--o, 1) * 0.32); }
+  50%      { opacity: var(--o, 1); }
+}
+@keyframes sky-drift      { from { transform: translate3d(0, 0, 0); }   to { transform: translate3d(-8px, 10px, 0); } }
+@keyframes sky-drift-near { from { transform: translate3d(0, 0, 0); }   to { transform: translate3d(14px, 22px, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .tac-star, .tac-star-layer { animation: none; }
 }
 .tac-topbar {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;

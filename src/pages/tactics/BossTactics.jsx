@@ -21,7 +21,7 @@ import BattleChat from "./BattleChat";
 import { showD20Roll } from "../../components/DiceRoll";
 import {
   computeBoardMetrics, computePaths, reconstructPath,
-  manhattan, tilesWithinRange, tileAt, TERRAINS, DEFAULT_MOVE, shade,
+  manhattan, tilesWithinRange, tileAt, TERRAINS, DEFAULT_MOVE,
 } from "./isoCore";
 import {
   BATTLE_REF, BOSS_SYSTEM_UID, emptyBattle, defaultBattleMap,
@@ -133,20 +133,20 @@ export default function BossTactics() {
   const map = battle?.map || defaultBattleMap();
   const units = useMemo(() => battle?.units || [], [battle]);
 
-  // Void backdrop tint: pick the map's most-common terrain colour and derive two
-  // deeply-darkened shades. The screen background fades between them and a soft
-  // vignette melts the board's edges into the deep tone — so the surrounding
-  // "void" recalls the terrain instead of being a flat cold grey.
-  const voidTint = useMemo(() => {
-    const counts = {};
-    for (const t of map.tiles) {
-      const c = TERRAINS[t.terrain]?.color;
-      if (c) counts[t.terrain] = (counts[t.terrain] || 0) + 1;
-    }
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-    const base = top ? TERRAINS[top[0]].color : "#243042";
-    return { deep: shade(base, 0.20), mid: shade(base, 0.42) };
-  }, [map]);
+  // Starfield backdrop: a fixed scatter of stars generated once, split into a
+  // far (slow) and near (faster) layer for a gentle parallax drift, each star
+  // twinkling on its own random cycle. Rendered behind the board (see .tac-sky).
+  const stars = useMemo(() => {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    return Array.from({ length: 150 }, (_, i) => ({
+      x: +rnd(0, 100).toFixed(2), y: +rnd(0, 100).toFixed(2),
+      size: +rnd(1, 2.6).toFixed(2),
+      delay: +rnd(0, 4).toFixed(2), dur: +rnd(2.4, 6).toFixed(2),
+      o: +rnd(0.35, 1).toFixed(2),
+      near: i % 3 === 0,        // ~1/3 of stars drift a touch faster (parallax)
+      bright: i % 19 === 0,     // a handful of hero stars get a soft glow
+    }));
+  }, []);
 
   // Resolve a unit's images from the source collections (not stored in the doc).
   const spriteFor = useCallback((u) => {
@@ -861,7 +861,7 @@ export default function BossTactics() {
     : null;
 
   return (
-    <div className="tac-screen" style={{ "--void-deep": voidTint.deep, "--void-mid": voidTint.mid }}>
+    <div className="tac-screen">
       {/* floating quick-controls — always above everything */}
       <button ref={menuFabRef} className="tac-fab tac-fab-menu" onClick={() => setShowBar((v) => !v)} title="Controlli / Master">⚙</button>
       {isMyTurn && (
@@ -940,12 +940,29 @@ export default function BossTactics() {
       >
         {battle?.active ? (
           <>
+            {/* starry sky behind the board (two parallax layers, each star twinkles) */}
+            <div className="tac-sky" aria-hidden="true">
+              <div className="tac-star-layer far">
+                {stars.filter((s) => !s.near).map((s, i) => (
+                  <span key={i} className={`tac-star${s.bright ? " bright" : ""}`} style={{
+                    left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size,
+                    "--o": s.o, "--delay": `${s.delay}s`, "--dur": `${s.dur}s`,
+                  }} />
+                ))}
+              </div>
+              <div className="tac-star-layer near">
+                {stars.filter((s) => s.near).map((s, i) => (
+                  <span key={i} className={`tac-star${s.bright ? " bright" : ""}`} style={{
+                    left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size,
+                    "--o": s.o, "--delay": `${s.delay}s`, "--dur": `${s.dur}s`,
+                  }} />
+                ))}
+              </div>
+            </div>
             <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
               <IsoBoard map={map} units={displayUnits} highlights={highlights} pings={pingIds} vfx={vfx} scale={scale} rotation={rotation}
                 onTileClick={onTileClick} onTileHover={onTileHover} onUnitClick={onUnitClick} />
             </div>
-            {/* soft edge fade — melts the board's outer rim into the terrain-tinted void */}
-            <div className="tac-void-fade" aria-hidden="true" />
           </>
         ) : (
           <div className="bt-empty">{isMaster ? "Allestisci una battaglia qui sotto." : "⏳ In attesa che il Master avvii una battaglia…"}</div>
