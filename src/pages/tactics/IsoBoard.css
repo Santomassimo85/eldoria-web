@@ -66,6 +66,7 @@
 .iso-hl-path     { fill: rgba(64, 226, 226, 0.40);  stroke: #b0fafa; stroke-width: 1.5; }
 .iso-hl-heal     { fill: rgba(64, 220, 120, 0.42);  stroke: #b6f5cf; stroke-width: 1.5; }
 .iso-hl-self     { fill: rgba(255, 255, 255, 0.22);  stroke: #ffffff; stroke-width: 2.5; }
+.iso-hl-blast    { fill: rgba(255, 120, 32, 0.55);   stroke: #ffd0a0; stroke-width: 2; }
 
 @keyframes iso-hl-pulse {
   0%, 100% { opacity: 0.55; }

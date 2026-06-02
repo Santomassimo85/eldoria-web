@@ -10,7 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 import { db } from "../../firebase";
 import { doc, runTransaction } from "firebase/firestore";
-import { DEFAULT_MOVE, makeFlatMap } from "./isoCore";
+import { DEFAULT_MOVE, makeFlatMap, tileAt, TERRAINS } from "./isoCore";
 
 export const BATTLE_REF = () => doc(db, "battle_state", "current");
 export const BOSS_SYSTEM_UID = "BOSS_MSG";
@@ -120,6 +120,8 @@ export function makePlayerUnit(char, uid, x, y) {
     x, y,
     hp: s.hp ?? s.maxHp ?? 10, maxHp: s.maxHp ?? s.hp ?? 10,
     ac: s.ac ?? 10, dex: s.dex ?? 0,
+    abilities: abilityBlock(s),         // mods for saving throws when targeted
+    spellDC: computeSpellDC(char),      // CD of this PG's own spells (8+prof+mod)
     move: moveFromChar(char),
     initiative: null, hasMoved: false, hasActed: false, dead: (s.hp ?? 1) <= 0,
   };
@@ -133,6 +135,8 @@ export function makeBossUnit(boss, x, y, dex = 0) {
     x, y,
     hp: boss?.hp ?? boss?.maxHp ?? 100, maxHp: boss?.maxHp ?? boss?.hp ?? 100,
     ac: boss?.ac ?? 12, dex,
+    abilities: { ...abilityBlock(boss), dex },   // saves when targeted (mostly 0s unless boss doc has mods)
+    spellDC: boss?.spellDC ?? 13,                // CD of the boss's own AoE spells (tune on the boss doc)
     move: boss?.move ?? 4,
     bossId: boss?.id || null,
     initiative: null, hasMoved: false, hasActed: false, dead: false,
@@ -147,6 +151,7 @@ export function makeMinionUnit(spec, idx, x, y) {
     x, y,
     hp: spec?.hp ?? 12, maxHp: spec?.hp ?? 12,
     ac: spec?.ac ?? 11, dex: spec?.dex ?? 0,
+    abilities: { ...abilityBlock(spec), dex: spec?.dex ?? 0 }, // saves when caught in an AoE
     move: spec?.move ?? 5,
     atkName: spec?.atkName || "Attacco",
     atkDice: spec?.atkDice || "1d6", atkBonus: spec?.atkBonus ?? 2, atkRange: spec?.atkRange ?? 1,
@@ -197,10 +202,95 @@ export function detectSpellIntent(action) {
 
 // Default attack range by action name (ranged weapons/cantrips reach further).
 export function actionRange(action) {
+  const aoe = spellAoE(action);
+  if (aoe) return aoe.range;                 // AoE spells carry their own range
   const t = `${action.name || ""}`.toLowerCase();
   if (/arco|balestra|long ?bow|short ?bow|crossbow|fionda|sling|dardo|javelin|giavellotto/.test(t)) return 6;
   if (detectSpellIntent(action) === "attack" && /trucchett|cantrip|livello|level|raggio|bolt|fire|fulmine|ray|eldritch/.test(`${action.category || ""} ${t}`)) return 6;
   return 1;
+}
+
+// ── Spell save DC (D&D standard: 8 + proficiency + casting-ability mod) ──────
+// Ability scores are already stored as MODIFIERS (str/dex/… = +3, −1…).
+export const profFromLevel = (lvl) => 2 + Math.floor((Math.max(1, lvl || 1) - 1) / 4);
+export function spellcastingAbility(cls = "") {
+  const c = cls.toLowerCase();
+  if (/bard|bardo|warlock|sorcerer|stregone|paladin|paladino/.test(c)) return "cha";
+  if (/cleric|chierico|druid|druido|ranger|cacciatore|monk|monaco/.test(c)) return "wis";
+  return "int"; // wizard / artificer / default
+}
+export function computeSpellDC(char) {
+  const ab = spellcastingAbility(char?.class || char?.cls || "");
+  const mod = char?.stats?.[ab] ?? 0;
+  return 8 + profFromLevel(char?.level ?? 1) + mod;
+}
+export const abilityBlock = (s = {}) => ({
+  str: s.str ?? 0, dex: s.dex ?? 0, con: s.con ?? 0,
+  int: s.int ?? 0, wis: s.wis ?? 0, cha: s.cha ?? 0,
+});
+export const SAVE_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
+
+// ── Area-of-effect spell table (CURATED, tile-scaled to these maps) ─────────
+// First regex match on the spell name wins. shapes:
+//   "sphere"/"square" — centred on a tile within `range`
+//   "line"/"cone"     — emanate from the caster toward the aimed tile, length=size
+// `save` = the ability the targets roll; `half:true` halves damage on a save
+// (Fireball-style), false = no damage on a save. ➕ Add new spells here. Note:
+// values are tuned to a 1 tile = 1 m grid, NOT literal D&D feet (a 20-ft fireball
+// would swallow these maps), so they read smaller than the rulebook on purpose.
+const AOE_TABLE = [
+  { re: /palla di fuoco|fire ?ball/,                          shape: "sphere", size: 2, range: 8, save: "dex", half: true, dmgType: "fuoco" },
+  { re: /tempesta di ghiaccio|ice ?storm|grandine/,           shape: "sphere", size: 2, range: 8, save: "dex", half: true, dmgType: "freddo" },
+  { re: /fulmine|lightning ?bolt|saetta|catena di fulmini|chain lightning/, shape: "line", size: 8, range: 8, save: "dex", half: true, dmgType: "fulmine" },
+  { re: /cono di freddo|cone of cold/,                        shape: "cone",   size: 5, range: 5, save: "con", half: true, dmgType: "freddo" },
+  { re: /mani brucianti|burning hands/,                       shape: "cone",   size: 3, range: 3, save: "dex", half: true, dmgType: "fuoco" },
+  { re: /soffio|breath|\bcono\b|\bcone\b/,                     shape: "cone",   size: 4, range: 4, save: "dex", half: true },
+  { re: /nova|deflagraz|esplos|onda d.?urto|frantum|shatter/, shape: "sphere", size: 2, range: 6, save: "con", half: true },
+];
+// AoE geometry for an action, or null if it isn't an area damage spell. Only
+// "attack"-intent actions can be AoE (heals/buffs stay single-target for now).
+export function spellAoE(action) {
+  if (!action || detectSpellIntent(action) !== "attack") return null;
+  if (action.area && action.area.shape) {          // explicit override, if ever provided by data
+    const a = action.area;
+    return { shape: a.shape, size: a.size ?? a.radius ?? 1, range: a.range ?? a.size ?? 6,
+             save: action.saveAbility || "dex", half: action.halfOnSave !== false, dmgType: action.dmgType };
+  }
+  const t = `${action.name || ""}`.toLowerCase();
+  const e = AOE_TABLE.find((x) => x.re.test(t));
+  return e ? { ...e } : null;
+}
+
+// Enumerate the tiles a blast covers (every living unit inside — friend OR foe —
+// is affected). `aoe` from spellAoE; centre (cx,cy) is the aimed tile.
+export function aoeCells(map, caster, cx, cy, aoe) {
+  const out = new Set();
+  const ok = (x, y) =>
+    x >= 0 && y >= 0 && x < map.w && y < map.h &&
+    TERRAINS[tileAt(map, x, y)?.terrain]?.color != null;
+  const add = (x, y) => { if (ok(x, y)) out.add(`${x},${y}`); };
+  if (!aoe || aoe.shape === "single") { add(cx, cy); return out; }
+  if (aoe.shape === "sphere" || aoe.shape === "square") {
+    const r = aoe.size ?? 1;
+    for (let y = cy - r; y <= cy + r; y++)
+      for (let x = cx - r; x <= cx + r; x++)
+        if (aoe.shape === "square" || (x - cx) ** 2 + (y - cy) ** 2 <= r * r + r) add(x, y);
+  } else if (aoe.shape === "line") {
+    const len = aoe.size ?? 6;
+    const dx = cx - caster.x, dy = cy - caster.y, mag = Math.hypot(dx, dy) || 1;
+    for (let i = 1; i <= len; i++) add(Math.round(caster.x + (dx / mag) * i), Math.round(caster.y + (dy / mag) * i));
+  } else if (aoe.shape === "cone") {
+    const len = aoe.size ?? 4;
+    const dx = cx - caster.x, dy = cy - caster.y, mag = Math.hypot(dx, dy) || 1;
+    const ux = dx / mag, uy = dy / mag;
+    for (let y = caster.y - len; y <= caster.y + len; y++)
+      for (let x = caster.x - len; x <= caster.x + len; x++) {
+        const vx = x - caster.x, vy = y - caster.y, vm = Math.hypot(vx, vy);
+        if (vm === 0 || vm > len) continue;
+        if ((vx * ux + vy * uy) / vm >= 0.5) add(x, y); // within ~60° of the aim direction
+      }
+  }
+  return out;
 }
 
 // Group a character's actions like the old WorldBoss, but DROP abilities/skills

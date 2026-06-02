@@ -10,7 +10,7 @@
 // Props:
 //   map           { w, h, tiles:[{x,y,terrain,elevation,prop}] }
 //   units         [{ id, x, y, side, name, sprite, deadSprite, dead, hp, maxHp }]
-//   highlights    { "x,y": "move"|"target"|"selected"|"path"|"heal"|"self" }
+//   highlights    { "x,y": "move"|"target"|"selected"|"path"|"heal"|"self"|"blast" }
 //   pings         Set|array of unit ids that show a bouncing locator arrow
 //   scale         number — viewport fit factor
 //   onTileClick   (x, y, tile) => void

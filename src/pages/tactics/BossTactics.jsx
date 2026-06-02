@@ -29,6 +29,7 @@ import {
   unitDone, sideAllDone, resetSide, txnBattle,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, detectSpellIntent, actionRange, battleActions,
+  spellAoE, aoeCells, SAVE_LABEL,
 } from "./battleModel";
 import "./BossTactics.css";
 
@@ -62,6 +63,8 @@ export default function BossTactics() {
   const [rotation, setRotation] = useState(0);
   const [mode, setMode] = useState("idle");      // idle | move | act
   const [selAction, setSelAction] = useState(null);
+  const [aimHover, setAimHover] = useState(null);     // {x,y} blast centre previewed on hover (AoE, desktop)
+  const [aimCenter, setAimCenter] = useState(null);   // {x,y} blast centre CHOSEN (awaiting Conferma)
   const [selEnemyId, setSelEnemyId] = useState(null); // enemy the master is driving (enemies phase)
   const [busy, setBusy] = useState(false);
   const [animUnit, setAnimUnit] = useState(null); // local walk override {id,x,y}
@@ -250,14 +253,25 @@ export default function BossTactics() {
       const { costs } = computePaths(map, activeUnit.x, activeUnit.y, activeUnit.move ?? DEFAULT_MOVE, occ);
       for (const k of costs.keys()) if (k !== `${activeUnit.x},${activeUnit.y}`) hl[k] = "move";
     } else if (mode === "act" && selAction) {
-      const intent = detectSpellIntent(selAction);
-      const kind = intent === "heal" || intent === "buff" ? "heal" : "target";
+      const aoe = spellAoE(selAction);
       const r = selAction.range || actionRange(selAction);
-      for (const k of tilesWithinRange(map, activeUnit.x, activeUnit.y, 1, r))
-        if (k !== `${activeUnit.x},${activeUnit.y}`) hl[k] = kind;
+      if (aoe) {
+        // faint reachable-centre marks, plus the blast of the CHOSEN centre
+        // (committed by a click) or the hover preview while still aiming.
+        const self = `${activeUnit.x},${activeUnit.y}`;
+        for (const k of tilesWithinRange(map, activeUnit.x, activeUnit.y, 1, r)) if (k !== self) hl[k] = "target";
+        const aimC = aimCenter || aimHover;
+        if (aimC && manhattan(activeUnit.x, activeUnit.y, aimC.x, aimC.y) <= r)
+          for (const k of aoeCells(map, activeUnit, aimC.x, aimC.y, aoe)) hl[k] = "blast";
+      } else {
+        const intent = detectSpellIntent(selAction);
+        const kind = intent === "heal" || intent === "buff" ? "heal" : "target";
+        for (const k of tilesWithinRange(map, activeUnit.x, activeUnit.y, 1, r))
+          if (k !== `${activeUnit.x},${activeUnit.y}`) hl[k] = kind;
+      }
     }
     return hl;
-  }, [activeUnit, isMyTurn, mode, selAction, units, map, myHero]);
+  }, [activeUnit, isMyTurn, mode, selAction, aimHover, aimCenter, units, map, myHero]);
 
   // Bouncing "ping" arrows over units: always your own hero (to locate yourself),
   // plus — while you're aiming an action — every valid target in range.
@@ -265,17 +279,27 @@ export default function BossTactics() {
     const s = new Set();
     if (myHero && !myHero.dead) s.add(myHero.id);
     if (isMyTurn && activeUnit && mode === "act" && selAction) {
+      const aoe = spellAoE(selAction);
       const r = selAction.range || actionRange(selAction);
-      const wantEnemy = ["attack", "debuff"].includes(detectSpellIntent(selAction));
-      for (const u of units) {
-        if (u.dead) continue;
-        const isEnemyOf = u.side !== activeUnit.side;
-        if (wantEnemy !== isEnemyOf) continue;
-        if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) <= r) s.add(u.id);
+      if (aoe) {
+        // ping everyone the blast would hit (friend AND foe) at the chosen/hovered centre
+        const aimC = aimCenter || aimHover;
+        if (aimC && manhattan(activeUnit.x, activeUnit.y, aimC.x, aimC.y) <= r) {
+          const cells = aoeCells(map, activeUnit, aimC.x, aimC.y, aoe);
+          for (const u of units) if (!u.dead && cells.has(`${u.x},${u.y}`)) s.add(u.id);
+        }
+      } else {
+        const wantEnemy = ["attack", "debuff"].includes(detectSpellIntent(selAction));
+        for (const u of units) {
+          if (u.dead) continue;
+          const isEnemyOf = u.side !== activeUnit.side;
+          if (wantEnemy !== isEnemyOf) continue;
+          if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) <= r) s.add(u.id);
+        }
       }
     }
     return s;
-  }, [myHero, isMyTurn, activeUnit, mode, selAction, units]);
+  }, [myHero, isMyTurn, activeUnit, mode, selAction, aimHover, aimCenter, units, map]);
 
   // ── Firestore writers ─────────────────────────────────────────────────────
   const logChat = (entry) => addDoc(collection(db, "world_boss_chat"), { timestamp: serverTimestamp(), ...entry });
@@ -515,6 +539,46 @@ export default function BossTactics() {
     await advancePhase();
   };
 
+  // Area damage (Fireball &c.): every living unit in the blast — friend AND foe —
+  // rolls its own save (d20 + ability mod) vs the caster's spell DC. Fail = full
+  // damage; success = half (or none). All applied in ONE transaction over fresh
+  // state so concurrent writes can't clobber. (cx,cy) = aimed centre tile.
+  const resolveAoE = async (caster, action, cx, cy, aoe) => {
+    setBusy(true);
+    const cells = aoeCells(map, caster, cx, cy, aoe);
+    const formula = action.damage && action.damage !== "0" ? action.damage
+      : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
+    const dc = caster.spellDC ?? 13;
+    // roll each victim's save + damage now; apply atomically below.
+    const rolls = units
+      .filter((u) => !u.dead && cells.has(`${u.x},${u.y}`))
+      .map((v) => {
+        const d20 = rollDie(20);
+        const mod = v.abilities?.[aoe.save] ?? 0;
+        const saved = d20 + mod >= dc;
+        let dmg = rollFormula(formula);
+        if (saved) dmg = aoe.half ? Math.floor(dmg / 2) : 0;
+        return { id: v.id, name: v.name, side: v.side, d20, mod, saved, dmg, dead: dmg > 0 && v.hp - dmg <= 0 };
+      });
+    await txnBattle((us) => us.map((u) => {
+      const r = rolls.find((x) => x.id === u.id);
+      let n = u;
+      if (r && r.dmg > 0) { const hp = Math.max(0, u.hp - r.dmg); n = { ...n, hp, dead: hp <= 0 }; }
+      if (u.id === caster.id) n = { ...n, hasActed: true, cond: null };
+      return n;
+    }));
+    await logChat({
+      type: "action", senderName: caster.name, actionName: action.name,
+      uid: caster.uid || BOSS_SYSTEM_UID, category: action.category || "Incantesimo",
+      hitRoll: `✨ Area (${aoe.shape}) · CD ${dc} · TS ${SAVE_LABEL[aoe.save] || aoe.save.toUpperCase()}`,
+      damageRoll: rolls.length
+        ? rolls.map((r) => `${r.side === "enemy" ? "👹" : "🛡"}${r.name}: ${r.d20}${r.mod >= 0 ? "+" : ""}${r.mod} ${r.saved ? "✅" : "❌"} −${r.dmg}${r.dead ? " 💀" : ""}`).join("  ·  ")
+        : "nessun bersaglio nell'area",
+    });
+    setBusy(false);
+    await advancePhase();
+  };
+
   // ── Board interaction ─────────────────────────────────────────────────────
   const onTileClick = async (x, y) => {
     if (movedRef.current) { movedRef.current = false; return; }
@@ -541,7 +605,27 @@ export default function BossTactics() {
       }
       setAnimUnit(null); setBusy(false);
       await advancePhase();   // in case this completes the unit's move+action
+    } else if (mode === "act" && selAction && !activeUnit.hasActed) {
+      // AoE spell: this tile becomes the CHOSEN blast centre — it does NOT fire
+      // yet. The player reviews the highlighted area, then presses Conferma.
+      const aoe = spellAoE(selAction);
+      if (!aoe) return;
+      const r = selAction.range || actionRange(selAction);
+      if (manhattan(activeUnit.x, activeUnit.y, x, y) > r) return;
+      setAimCenter({ x, y });
     }
+  };
+  // Hover preview for AoE aiming (updates the blast highlight + target pings).
+  const onTileHover = (x, y) => {
+    if (isMyTurn && mode === "act" && selAction && spellAoE(selAction)) setAimHover({ x, y });
+  };
+  // Commit the chosen AoE centre (the "accept" step) — now it fires.
+  const confirmAoE = async () => {
+    const aoe = spellAoE(selAction);
+    if (!isMyTurn || !aoe || !aimCenter || activeUnit.hasActed) return;
+    const cu = activeUnit, act = selAction, c = aimCenter;
+    setSelAction(null); setMode("idle"); setAimHover(null); setAimCenter(null);
+    await resolveAoE(cu, act, c.x, c.y, aoe);
   };
   const onUnitClick = async (u) => {
     if (movedRef.current) { movedRef.current = false; return; }
@@ -550,6 +634,15 @@ export default function BossTactics() {
       setSelEnemyId(u.id); return;
     }
     if (!isMyTurn || mode !== "act" || !selAction || activeUnit.hasActed) return;
+    // AoE spell aimed at a unit → choose the blast centre on that unit's tile
+    // (still requires Conferma; it does not fire on the click).
+    const aoe = spellAoE(selAction);
+    if (aoe) {
+      const r = selAction.range || actionRange(selAction);
+      if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) > r) return;
+      setAimCenter({ x: u.x, y: u.y });
+      return;
+    }
     const r = selAction.range || actionRange(selAction);
     if (manhattan(activeUnit.x, activeUnit.y, u.x, u.y) > r) return;
     const intent = detectSpellIntent(selAction);
@@ -567,7 +660,7 @@ export default function BossTactics() {
 
   const pickAction = (a) => {
     if (detectSpellIntent(a) === "self_buff") { resolveSelfBuff(activeUnit, a); setMode("idle"); return; }
-    setSelAction(a); setMode("act");
+    setSelAction(a); setMode("act"); setAimHover(null); setAimCenter(null);
   };
 
   // Classify an action so the HUD can colour/group it. Weapon attacks (red),
@@ -648,7 +741,7 @@ export default function BossTactics() {
         {battle?.active ? (
           <div className="tac-pan" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
             <IsoBoard map={map} units={displayUnits} highlights={highlights} pings={pingIds} scale={scale} rotation={rotation}
-              onTileClick={onTileClick} onUnitClick={onUnitClick} />
+              onTileClick={onTileClick} onTileHover={onTileHover} onUnitClick={onUnitClick} />
           </div>
         ) : (
           <div className="bt-empty">{isMaster ? "Allestisci una battaglia qui sotto." : "⏳ In attesa che il Master avvii una battaglia…"}</div>
@@ -749,7 +842,7 @@ export default function BossTactics() {
       {isMyTurn && (() => {
         const aiming = mode === "act" && selAction;
         const collapsed = mode === "move" || aiming;
-        const cancel = () => { setMode("idle"); setSelAction(null); };
+        const cancel = () => { setMode("idle"); setSelAction(null); setAimHover(null); setAimCenter(null); };
 
         // identity card (reused in both states). Portrait = the Foundry avatar
         // from the character sheet (live charData for the player you control),
@@ -771,14 +864,21 @@ export default function BossTactics() {
         );
 
         if (collapsed) {
+          const aoe = aiming ? spellAoE(selAction) : null;
+          const prompt = mode === "move"
+            ? "👟 Scegli dove spostarti…"
+            : aoe
+              ? `${actionKind(selAction).icon} ${selAction.name} — ${aimCenter ? "conferma, o scegli un'altra casella" : "scegli il centro dell'area…"}`
+              : `${actionKind(selAction).icon} ${selAction.name} — scegli il bersaglio…`;
           return (
             <div className="tac-hud collapsed">
               {card}
-              <span className="tac-hud-prompt">
-                {mode === "move"
-                  ? "👟 Scegli dove spostarti…"
-                  : `${actionKind(selAction).icon} ${selAction.name} — scegli il bersaglio…`}
-              </span>
+              <span className="tac-hud-prompt">{prompt}</span>
+              {aoe && (
+                <button className="tac-act tac-confirm" onClick={confirmAoE} disabled={!aimCenter}>
+                  ✅ Conferma
+                </button>
+              )}
               <button className="tac-act tac-cancel" onClick={cancel}>✖ Annulla</button>
             </div>
           );
