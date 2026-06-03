@@ -14,6 +14,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { db } from "../../firebase";
 import {
   doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, runTransaction,
+  query, orderBy, limit,
 } from "firebase/firestore";
 import { useAuth } from "../../AuthContext";
 import IsoBoard from "./IsoBoard";
@@ -77,6 +78,7 @@ export default function BossTactics() {
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
   const [atkPanelOpen, setAtkPanelOpen] = useState(false); // per-player attack tally (collapsible)
+  const [atkCounts, setAtkCounts] = useState({});          // uid → # attacks made this fight (from the log)
   const [setupPicker, setSetupPicker] = useState(null); // {x,y,sx,sy} deploy-phase unit picker
   const [musicMuted, setMusicMuted] = useState(false);   // boss BGM mute (per client)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
@@ -140,6 +142,33 @@ export default function BossTactics() {
     return onSnapshot(collection(db, "battle_meta"), (snap) =>
       setSavedMaps(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "map")));
   }, [isMaster]);
+  // Per-player attack tally, derived live from the battle log so it counts every
+  // attack made since the fight began — including ones logged before this panel
+  // existed. An "attack" is any action entry carrying a to-hit roll (`hitRoll`):
+  // weapon swings and offensive spells/AoE have one; heals, buffs and debuffs
+  // don't. We scope to the CURRENT fight by ignoring everything older than the
+  // most recent "La battaglia ha inizio" marker (the world_boss_chat log is
+  // reused across battles), and tally cumulatively per hero uid — not per round.
+  useEffect(() => {
+    // Pull a generous window so even a long, multi-round fight keeps its own
+    // start marker inside it — if the marker scrolled past the limit we'd never
+    // break and would bleed attacks in from the PREVIOUS fight, breaking the
+    // "total since THIS fight began" promise.
+    const q = query(collection(db, "world_boss_chat"), orderBy("timestamp", "desc"), limit(2000));
+    return onSnapshot(q, (snap) => {
+      const counts = {};
+      // Newest → oldest: stop at the most recent start marker, so we count only
+      // attacks from the current fight — cumulatively, across every round.
+      for (const d of snap.docs) {
+        const m = d.data();
+        if (m.type === "narrative" && typeof m.content === "string" && m.content.includes("La battaglia ha inizio")) break;
+        if (m.type === "action" && m.hitRoll && m.side === "hero" && m.uid) {
+          counts[m.uid] = (counts[m.uid] || 0) + 1;
+        }
+      }
+      setAtkCounts(counts);
+    });
+  }, []);
 
   // While the master is staging (no live battle yet) the board previews the map
   // chosen in the dropdown, so the selection is visible immediately.
@@ -561,6 +590,17 @@ export default function BossTactics() {
     await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
       content: "💚 Il Master ha curato tutti gli eroi al massimo dei PF." });
   };
+  // Master-only: bring a fallen unit back to life at full HP. Also clears its
+  // per-round flags so it can act again if it's still that side's phase.
+  const reviveUnit = async (unit) => {
+    if (!isMaster || !unit?.dead) return;
+    if (!window.confirm(`Far rinascere ${unit.name} con tutti i PF?`)) return;
+    await txnBattle((us) => us.map((u) => (u.id === unit.id
+      ? { ...u, dead: false, hp: u.maxHp, hasMoved: false, hasActed: false, done: false }
+      : u)));
+    await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+      content: `✨ Il Master ha riportato in vita ${unit.name} con tutti i PF!` });
+  };
 
   // ── Phase flow (Model A) ────────────────────────────────────────────────────
   // Try to advance the phase. Idempotent + transactional, so any client may call
@@ -801,7 +841,7 @@ export default function BossTactics() {
     await txnBattle((us) => us.map((u) => {
       let n = u;
       if (hit && u.id === target.id) { const hp = Math.max(0, u.hp - dmg); killed = hp <= 0; n = { ...n, hp, dead: hp <= 0 }; }
-      if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null, atkCount: (u.atkCount || 0) + 1 };
+      if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
       return n;
     }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null, fxEl));
     entry.damageRoll = hit
@@ -879,7 +919,7 @@ export default function BossTactics() {
       const r = rolls.find((x) => x.id === u.id);
       let n = u;
       if (r && r.dmg > 0) { const hp = Math.max(0, u.hp - r.dmg); n = { ...n, hp, dead: hp <= 0 }; }
-      if (u.id === caster.id) n = { ...n, hasActed: true, cond: null, atkCount: (u.atkCount || 0) + 1 };
+      if (u.id === caster.id) n = { ...n, hasActed: true, cond: null };
       return n;
     }), (data) => ({
       aoeFx: { id: (data.aoeFx?.id || 0) + 1, cells: cellArr, cx, cy, shape: aoe.shape, kind: fxKind,
@@ -961,6 +1001,12 @@ export default function BossTactics() {
     // (to replace or remove it).
     if (isMaster && battle?.active && !fightStarted && !isOver) {
       setSetupPicker({ x: u.x, y: u.y, sx: lastPtrRef.current.x, sy: lastPtrRef.current.y });
+      return;
+    }
+    // Master clicks a tomb (dead unit) during the fight → offer to revive it
+    // at full HP. Takes priority over targeting so a dead ally is reachable.
+    if (isMaster && fightStarted && u.dead) {
+      await reviveUnit(u);
       return;
     }
     // Master, enemies phase, idle: click an enemy to pick which one to drive.
@@ -1143,7 +1189,7 @@ export default function BossTactics() {
           {atkPanelOpen && (
             <div className="tac-atktally-body">
               {heroesAll.map((u) => {
-                const n = u.atkCount || 0;
+                const n = atkCounts[u.uid] || 0;
                 return (
                   <span key={u.id} className={`tac-atktally-unit ${n >= 2 ? "ok" : "low"}`}>
                     <span className="tac-atktally-name">{(u.name || "?").split(" ")[0]}{u.dead ? " 💀" : ""}</span>
