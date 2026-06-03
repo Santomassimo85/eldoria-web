@@ -216,7 +216,23 @@ export function emptyBattle() {
 }
 
 // ── Spell intent (ported from the old WorldBoss, trimmed) ──────────────────
+// Boss & minion actions authored in WorldBossAdmin carry an EXPLICIT semantic
+// `type` (the builder's dropdown). Trust it first: the live combat used to throw
+// it away and re-guess the intent from the action NAME, so a "Cura" the author
+// named "Tocco" was treated as an attack and the created action came out
+// unusable (you couldn't target an ally with it). Only the heroes' sheet actions
+// — which have no such `type` — fall through to the name/category heuristic.
+// Only the explicit NON-attack support types are trusted outright; the default
+// "attack" (and any absent type) falls through to the name heuristic below, so
+// legacy content that relied on the name still behaves exactly as before.
+const BUILDER_INTENT = {
+  heal: "heal",
+  buff_ca: "self_buff",
+  buff_adv: "buff",
+  debuff_dis: "debuff",
+};
 export function detectSpellIntent(action) {
+  if (action?.type && BUILDER_INTENT[action.type]) return BUILDER_INTENT[action.type];
   const cat = (action.category || "").toLowerCase();
   if (/armi|arma|weapon/.test(cat)) return "attack";
   const text = `${action.name || ""} ${action.description || ""}`.toLowerCase();

@@ -267,9 +267,11 @@ export default function BossTactics() {
       const boss = bosses.find((b) => b.id === activeUnit.bossId) || bosses[0];
       return (boss?.actions || []).filter((a) => a?.name);
     }
-    // Builder minions carry their own attacks; legacy ones use the single atk.
-    if (Array.isArray(activeUnit.actions) && activeUnit.actions.length)
-      return activeUnit.actions.filter((a) => a?.name);
+    // Builder minions carry their own attacks; legacy ones (and minions whose
+    // authored actions were left unnamed) fall back to a single basic atk so the
+    // minion is never stuck with "move only".
+    const named = Array.isArray(activeUnit.actions) ? activeUnit.actions.filter((a) => a?.name) : [];
+    if (named.length) return named;
     return [{ name: activeUnit.atkName || "Attacco", category: "Armi", damage: activeUnit.atkDice, bonus: activeUnit.atkBonus, range: activeUnit.atkRange }];
   }, [activeUnit, charData, bosses]);
 
