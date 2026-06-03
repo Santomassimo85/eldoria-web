@@ -76,6 +76,7 @@ export default function BossTactics() {
   const lastFxRef = useRef(null);                  // last-applied battle.fxEvent id (slash/arrow/buff…)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
+  const [atkPanelOpen, setAtkPanelOpen] = useState(false); // per-player attack tally (collapsible)
   const [setupPicker, setSetupPicker] = useState(null); // {x,y,sx,sy} deploy-phase unit picker
   const [musicMuted, setMusicMuted] = useState(false);   // boss BGM mute (per client)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
@@ -314,18 +315,48 @@ export default function BossTactics() {
     const p = [...pointersRef.current.values()];
     return p.length < 2 ? 0 : Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
   };
+  // Midpoint between the two fingers, in viewport-local px (pan is measured in
+  // the same space). This is the point the zoom must stay anchored to.
+  const pinchFocal = () => {
+    const p = [...pointersRef.current.values()];
+    const r = viewportRef.current?.getBoundingClientRect();
+    return {
+      x: (p[0].x + p[1].x) / 2 - (r?.left || 0),
+      y: (p[0].y + p[1].y) / 2 - (r?.top || 0),
+    };
+  };
   const onPointerDown = (e) => {
     lastPtrRef.current = { x: e.clientX, y: e.clientY };
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointersRef.current.size === 2) { pinchRef.current = { dist: pinchDist(), scale }; dragRef.current = null; return; }
+    if (pointersRef.current.size === 2) {
+      // Anchor the gesture: remember the board point sitting under the pinch
+      // midpoint so we can keep it locked there while scale + midpoint change.
+      // screen = pan + board*scale  ⇒  board = (focal − pan) / scale.
+      const f = pinchFocal();
+      pinchRef.current = {
+        dist: pinchDist(), scale,
+        anchorX: (f.x - pan.x) / scale,
+        anchorY: (f.y - pan.y) / scale,
+      };
+      dragRef.current = null;
+      return;
+    }
     movedRef.current = false;
     dragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y, moved: false, captured: false, pointerId: e.pointerId };
   };
   const onPointerMove = (e) => {
     if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const pr = pinchRef.current;
       const d = pinchDist();
-      if (d > 0 && pinchRef.current.dist > 0) setScale(Math.max(0.2, Math.min(2.5, pinchRef.current.scale * (d / pinchRef.current.dist))));
+      if (d > 0 && pr.dist > 0) {
+        const ns = Math.max(0.2, Math.min(2.5, pr.scale * (d / pr.dist)));
+        // Re-pin the anchored board point under the CURRENT midpoint, so the map
+        // zooms exactly where the fingers are (and two-finger drag still pans).
+        const f = pinchFocal();
+        setScale(ns);
+        setPan({ x: f.x - pr.anchorX * ns, y: f.y - pr.anchorY * ns });
+      }
       movedRef.current = true; return;
     }
     const d = dragRef.current; if (!d) return;
@@ -770,7 +801,7 @@ export default function BossTactics() {
     await txnBattle((us) => us.map((u) => {
       let n = u;
       if (hit && u.id === target.id) { const hp = Math.max(0, u.hp - dmg); killed = hp <= 0; n = { ...n, hp, dead: hp <= 0 }; }
-      if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
+      if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null, atkCount: (u.atkCount || 0) + 1 };
       return n;
     }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null, fxEl));
     entry.damageRoll = hit
@@ -848,7 +879,7 @@ export default function BossTactics() {
       const r = rolls.find((x) => x.id === u.id);
       let n = u;
       if (r && r.dmg > 0) { const hp = Math.max(0, u.hp - r.dmg); n = { ...n, hp, dead: hp <= 0 }; }
-      if (u.id === caster.id) n = { ...n, hasActed: true, cond: null };
+      if (u.id === caster.id) n = { ...n, hasActed: true, cond: null, atkCount: (u.atkCount || 0) + 1 };
       return n;
     }), (data) => ({
       aoeFx: { id: (data.aoeFx?.id || 0) + 1, cells: cellArr, cx, cy, shape: aoe.shape, kind: fxKind,
@@ -999,6 +1030,8 @@ export default function BossTactics() {
   const enemiesAlive = units.filter((u) => u.side === "enemy" && !u.dead);
   const enemiesDone = enemiesAlive.filter(unitDone).length;
   const enemiesTotal = units.filter((u) => u.side === "enemy").length;
+  // Per-player attack tally (alive + fallen, so the end-of-battle count is complete).
+  const heroesAll = units.filter((u) => u.side === "hero");
   // Short note for a hero who can't act right now, so they understand why.
   const myStatus = (!myUnit || !fightStarted || isOver) ? null
     : myUnit.dead ? "💀 Sei a terra."
@@ -1094,6 +1127,30 @@ export default function BossTactics() {
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Per-player attack counter (collapsible): green = attacked ≥2 times,
+          red = fewer. Visible during the fight AND after it ends, so the master
+          can tally who pulled their weight. ── */}
+      {fightStarted && heroesAll.length > 0 && (
+        <div className={`tac-atktally ${atkPanelOpen ? "open" : ""}`}>
+          <button className="tac-atktally-toggle" onClick={() => setAtkPanelOpen((v) => !v)}>
+            {atkPanelOpen ? "▾" : "▸"} ⚔ Attacchi
+          </button>
+          {atkPanelOpen && (
+            <div className="tac-atktally-body">
+              {heroesAll.map((u) => {
+                const n = u.atkCount || 0;
+                return (
+                  <span key={u.id} className={`tac-atktally-unit ${n >= 2 ? "ok" : "low"}`}>
+                    <span className="tac-atktally-name">{(u.name || "?").split(" ")[0]}{u.dead ? " 💀" : ""}</span>
+                    <span className="tac-atktally-num">{n}</span>
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>

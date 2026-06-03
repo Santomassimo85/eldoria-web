@@ -293,6 +293,33 @@
 .tac-roster-unit.todo { color: #ffe9a0; }
 .tac-roster-unit.done { color: #8af0b4; opacity: 0.75; }
 
+/* per-player attack tally — collapsible, top-right */
+.tac-atktally {
+  position: absolute; z-index: 1150;
+  top: calc(92px + env(safe-area-inset-top, 0px)); right: 8px;
+  min-width: 130px; max-width: 50vw;
+  background: rgba(12, 16, 24, 0.86); color: #e8eef5;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5); overflow: hidden;
+}
+.tac-atktally-toggle {
+  display: block; width: 100%; text-align: left;
+  background: rgba(255, 255, 255, 0.06); color: #e8eef5;
+  border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 5px 9px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap;
+}
+.tac-atktally:not(.open) .tac-atktally-toggle { border-bottom: none; }
+.tac-atktally-body { display: flex; flex-direction: column; gap: 3px; padding: 7px 9px; }
+.tac-atktally-unit { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; }
+.tac-atktally-num {
+  min-width: 20px; text-align: center; padding: 1px 6px; border-radius: 6px;
+  font-weight: 900; font-variant-numeric: tabular-nums;
+}
+.tac-atktally-unit.ok { color: #8af0b4; }
+.tac-atktally-unit.ok .tac-atktally-num { background: rgba(60, 200, 110, 0.22); }
+.tac-atktally-unit.low { color: #ff9b9b; }
+.tac-atktally-unit.low .tac-atktally-num { background: rgba(220, 70, 70, 0.22); }
+
 /* master enemy roster bar (enemies phase) */
 .tac-enemybar {
   position: relative; z-index: 30;
