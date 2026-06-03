@@ -29,7 +29,7 @@ import {
   makePlayerUnit, makeBossUnit, makeMinionUnit,
   unitDone, sideAllDone, resetSide, txnBattle,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
-  rollDie, rollFormula, rollFormulaParts, detectSpellIntent, actionRange, battleActions,
+  rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
   spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice,
 } from "./battleModel";
 import "./BossTactics.css";
@@ -425,10 +425,10 @@ export default function BossTactics() {
   // Stamp a point/cast effect onto the battle doc so every client plays it (see
   // the fxEvent pickup effect). `from` (optional) is the source tile for
   // projectiles (arrow/bolt), which fly from there to (x,y).
-  const fxStamp = (kind, x, y, from = null) => (data) => ({
+  const fxStamp = (kind, x, y, from = null, el = null) => (data) => ({
     fxEvent: {
       id: (data.fxEvent?.id || 0) + 1, kind, x, y,
-      fromX: from?.x ?? null, fromY: from?.y ?? null,
+      fromX: from?.x ?? null, fromY: from?.y ?? null, el,
     },
   });
 
@@ -686,7 +686,8 @@ export default function BossTactics() {
     if (lastAoeFxRef.current === fx.id) return;
     lastAoeFxRef.current = fx.id;
     const id = ++vfxIdRef.current;
-    setVfx((v) => [...v, { id, kind: "dome", domeKind: fx.kind || "arcane", cells: fx.cells || [], cx: fx.cx, cy: fx.cy }]);
+    setVfx((v) => [...v, { id, kind: "dome", domeKind: fx.kind || "arcane", cells: fx.cells || [],
+      cx: fx.cx, cy: fx.cy, shape: fx.shape, casterX: fx.casterX, casterY: fx.casterY }]);
     setTimeout(() => setVfx((v) => v.filter((e) => e.id !== id)), 1900);
   }, [battle?.aoeFx?.id, fightStarted]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -701,7 +702,7 @@ export default function BossTactics() {
     if (lastFxRef.current === fx.id) return;
     lastFxRef.current = fx.id;
     const id = ++vfxIdRef.current;
-    setVfx((v) => [...v, { id, kind: fx.kind, x: fx.x, y: fx.y, fromX: fx.fromX, fromY: fx.fromY }]);
+    setVfx((v) => [...v, { id, kind: fx.kind, x: fx.x, y: fx.y, fromX: fx.fromX, fromY: fx.fromY, el: fx.el }]);
     const dur = fx.kind === "arrow" || fx.kind === "bolt" ? 520 : fx.kind === "shield" ? 650 : 720;
     setTimeout(() => setVfx((v) => v.filter((e) => e.id !== id)), dur);
   }, [battle?.fxEvent?.id, fightStarted]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -744,6 +745,7 @@ export default function BossTactics() {
     const isWeapon = /armi|arma|weapon/.test((action.category || "").toLowerCase());
     const ranged = (action.range || actionRange(action)) > 1;
     const fxKind = isWeapon ? (ranged ? "arrow" : "slash") : "bolt";
+    const fxEl = detectElement(action);   // tint the projectile/slash by element
     // Sneak Attack: a rogue adds Nd6 on a WEAPON hit when they have advantage OR
     // an ally stands adjacent to the target (flanking) — and not at disadvantage.
     const sneakDice = (hit && isWeapon && attacker.side === "hero") ? sneakAttackDice(attacker.cls, attacker.level) : 0;
@@ -765,7 +767,7 @@ export default function BossTactics() {
       if (hit && u.id === target.id) { const hp = Math.max(0, u.hp - dmg); killed = hp <= 0; n = { ...n, hp, dead: hp <= 0 }; }
       if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
       return n;
-    }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null));
+    }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null, fxEl));
     entry.damageRoll = hit
       ? `💥 Danni: ${baseRoll.text}${sneakOn ? ` + furtivo ${sneakRoll.text}` : ""}${crit ? " ×2 (CRIT)" : ""} = ${dmg} a ${target.name}${killed ? " · 💀" : ""}`
       : `🛡 Mancato!`;
@@ -830,12 +832,10 @@ export default function BossTactics() {
         if (saved) dmg = aoe.half ? Math.floor(dmg / 2) : 0;
         return { id: v.id, name: v.name, side: v.side, d20, mod, saved, dmg, dead: dmg > 0 && v.hp - dmg <= 0 };
       });
-    // Element tint for the dome (darkness for the boss's shadow blast, &c.).
-    const fxText = `${action.name || ""} ${action.category || ""} ${action.dmgType || aoe.dmgType || ""}`.toLowerCase();
-    const fxKind = /oscur|tenebr|ombra|\bdark|necro|\bmort|void|abiss|maledi/.test(fxText) ? "darkness"
-      : /fuoco|fiamm|\bfire|infern|brucia|ustione|piromanz/.test(fxText) ? "fire"
-      : /ghiacc|gelo|\bice|freddo|brina/.test(fxText) ? "frost"
-      : "arcane";
+    // Element tint for the dome/puffs (darkness for the boss's shadow blast, &c.).
+    // A pure-physical AoE (rare) falls back to the generic arcane purple.
+    const el = detectElement({ ...action, dmgType: action.dmgType || aoe.dmgType });
+    const fxKind = el === "physical" ? "arcane" : el;
     const cellArr = [...cells].map((k) => { const [x, y] = k.split(",").map(Number); return { x, y }; });
     // Apply damage AND publish the dome effect in the same atomic write, so the
     // blast and the HP changes land together for every spectator.
@@ -846,7 +846,8 @@ export default function BossTactics() {
       if (u.id === caster.id) n = { ...n, hasActed: true, cond: null };
       return n;
     }), (data) => ({
-      aoeFx: { id: (data.aoeFx?.id || 0) + 1, cells: cellArr, cx, cy, shape: aoe.shape, kind: fxKind },
+      aoeFx: { id: (data.aoeFx?.id || 0) + 1, cells: cellArr, cx, cy, shape: aoe.shape, kind: fxKind,
+        casterX: caster.x, casterY: caster.y },
     }));
     await logChat({
       type: "action", senderName: caster.name, actionName: action.name,

@@ -68,10 +68,14 @@ function usePropSprites() {
 }
 
 // Build a rough pixel "dome" covering an AoE area. Returns the centroid screen
-// point, dark floor diamonds (one per covered tile, pooled behind the units) and
-// a cluster of pixel squares forming a translucent hemisphere over the centroid.
-// All geometry is in logical board px (the outer scaler handles viewport fit).
-function buildDome(cells, rotation, map, origin) {
+// point, dark floor diamonds (one per covered tile, pooled behind the units), a
+// cluster of pixel squares forming a translucent hemisphere over the centroid,
+// AND per-cell anchor points (used by directional shapes — raggio/cono — to pop
+// a pixel puff on every tile, sweeping outward from the caster). All geometry is
+// in logical board px (the outer scaler handles viewport fit). `caster` (cell
+// coords, optional) lets each cell carry its tile-distance from the caster so the
+// effect ripples along the beam/cone instead of all at once.
+function buildDome(cells, rotation, map, origin, caster = null) {
   const pts = (cells || []).map((c) => {
     const [cdx, cdy] = rotateCoord(c.x, c.y, rotation, map.w, map.h);
     const tile = map.tiles[c.y * map.w + c.x];
@@ -80,6 +84,7 @@ function buildDome(cells, rotation, map, origin) {
       stand: tileStandPoint(cdx, cdy, elev, origin),
       top: tileTopCenter(cdx, cdy, elev, origin),
       depth: tileDepth(cdx, cdy),
+      step: caster ? Math.abs(c.x - caster.x) + Math.abs(c.y - caster.y) : 0,
     };
   });
   if (!pts.length) return null;
@@ -97,7 +102,9 @@ function buildDome(cells, rotation, map, origin) {
       if (d <= 1) px.push({ x: Math.round(gx), y: Math.round(gy), edge: Math.sqrt(d) });
     }
   const floors = pts.map((o) => ({
-    x: o.top.x, y: o.top.y, depth: o.depth,
+    x: o.top.x, y: o.top.y, depth: o.depth, step: o.step,
+    // tile centre (where a per-cell puff pops) and outward ripple ordering.
+    puffX: o.top.x, puffY: o.top.y + TILE_H / 2,
     dist: spread > 0 ? Math.hypot(o.stand.x - cx, o.stand.y - cy) / spread : 0,
   }));
   return { cx, cy, depth, px, P, floors };
@@ -431,8 +438,14 @@ export default function IsoBoard({
         // Area dome: dark floor pools (behind units) + a rough pixel hemisphere
         // (over them) that expands to swallow the whole blast.
         if (e.kind === "dome") {
-          const dome = buildDome(e.cells, rotation, map, origin);
+          const caster = e.casterX != null ? { x: e.casterX, y: e.casterY } : null;
+          const dome = buildDome(e.cells, rotation, map, origin, caster);
           if (!dome) return null;
+          // Raggio (line) & cono (cone) are DIRECTIONAL: instead of one big blob
+          // over the centre, pop a pixel puff on every covered tile, rippling
+          // outward from the caster (step = tiles away) so the beam/fan reads as
+          // a sweep. Sphere & square keep the chunky hemisphere.
+          const directional = e.shape === "line" || e.shape === "cone";
           return (
             <React.Fragment key={`v-${e.id}`}>
               {dome.floors.map((f, i) => (
@@ -442,24 +455,40 @@ export default function IsoBoard({
                   style={{
                     left: f.x - TILE_W / 2, top: f.y, width: TILE_W, height: TILE_H,
                     zIndex: f.depth * 4 + 1,
-                    animationDelay: `${(f.dist * 0.22).toFixed(2)}s`,
+                    animationDelay: `${((directional ? f.step * 0.06 : f.dist * 0.22)).toFixed(2)}s`,
                   }}
                 />
               ))}
-              <div
-                className={`iso-vfx-dome dome-${e.domeKind}`}
-                style={{ left: dome.cx, top: dome.cy, zIndex: dome.depth * 4 + 6 }}
-              >
-                {dome.px.map((p, i) => (
-                  <i
-                    key={i}
-                    style={{
-                      left: p.x, top: p.y, width: dome.P, height: dome.P,
-                      animationDelay: `${(p.edge * 0.55).toFixed(2)}s`,
-                    }}
-                  />
-                ))}
-              </div>
+              {directional
+                ? dome.floors.map((f, i) => (
+                    <div
+                      key={`p-${i}`}
+                      className={`iso-vfx-puff dome-${e.domeKind}`}
+                      style={{
+                        left: f.puffX, top: f.puffY,
+                        zIndex: f.depth * 4 + 6,
+                        animationDelay: `${(f.step * 0.06).toFixed(2)}s`,
+                      }}
+                    >
+                      {Array.from({ length: 5 }, (_, j) => <i key={j} />)}
+                    </div>
+                  ))
+                : (
+                  <div
+                    className={`iso-vfx-dome dome-${e.domeKind}`}
+                    style={{ left: dome.cx, top: dome.cy, zIndex: dome.depth * 4 + 6 }}
+                  >
+                    {dome.px.map((p, i) => (
+                      <i
+                        key={i}
+                        style={{
+                          left: p.x, top: p.y, width: dome.P, height: dome.P,
+                          animationDelay: `${(p.edge * 0.55).toFixed(2)}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
             </React.Fragment>
           );
         }
@@ -486,14 +515,14 @@ export default function IsoBoard({
                 "--tx": `${stand.x - from.x}px`, "--ty": `${stand.y - from.y}px`,
               }}
             >
-              <i className={`proj-head proj-${e.kind}`} style={{ transform: `rotate(${ang}deg)` }} />
+              <i className={`proj-head proj-${e.kind}${e.el ? ` el-${e.el}` : ""}`} style={{ transform: `rotate(${ang}deg)` }} />
             </div>
           );
         }
         // Sword slash — a quick silver streak over the target.
         if (e.kind === "slash") {
           return (
-            <div key={`v-${e.id}`} className="iso-slash"
+            <div key={`v-${e.id}`} className={`iso-slash${e.el ? ` el-${e.el}` : ""}`}
               style={{ left: stand.x, top: stand.y - 26, zIndex: tileDepth(vdx, vdy) * 4 + 5 }} />
           );
         }

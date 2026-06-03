@@ -235,6 +235,23 @@ export function detectSpellIntent(action) {
   return "attack";
 }
 
+// Damage element of an action — drives the VFX tint (single-target projectile
+// head + AoE dome/puffs). Returns fire|frost|lightning|poison|darkness|radiant|
+// arcane, or "physical" for a plain weapon hit with no elemental flavour. Element
+// keywords are checked BEFORE the weapon fallback so a "spada fiammeggiante" still
+// reads as fire. Scans name + category + dmgType + description.
+export function detectElement(action) {
+  const t = `${action?.name || ""} ${action?.category || ""} ${action?.dmgType || ""} ${action?.description || ""}`.toLowerCase();
+  if (/fuoco|fiamm|\bfire\b|infern|brucia|ustion|piromanz|flame|rovente|combust|magma|\blava\b|ardent/.test(t)) return "fire";
+  if (/ghiacc|\bgelo\b|\bice\b|freddo|brina|\bfrost\b|congel|\bcryo|glaci|gelid/.test(t)) return "frost";
+  if (/fulmin|\blightning\b|elettr|electric|\bshock\b|scossa|saetta|\btuono\b|thunder|folgor|tempesta/.test(t)) return "lightning";
+  if (/veleno|velen|\bpoison\b|tossic|toxic|\bacid|acido|corros|putref|pestilenz|miasma/.test(t)) return "poison";
+  if (/oscur|tenebr|ombra|\bdark|necro|\bmort|\bvoid\b|abiss|maledi|shadow|umbra|funest/.test(t)) return "darkness";
+  if (/sacr|radian|\bluce\b|\blight\b|divin|\bholy\b|celest|\bsole\b|solar|punizion|\bsmite\b|fulgor/.test(t)) return "radiant";
+  if (/armi|arma|weapon|spad|ascia|\blama\b|mazza|pugnal|\barco\b|frecc|lancia|martell|fionda|balestra|giavellot/.test(t)) return "physical";
+  return "arcane";
+}
+
 // Default attack range by action name (ranged weapons/cantrips reach further).
 export function actionRange(action) {
   const aoe = spellAoE(action);

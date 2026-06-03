@@ -360,6 +360,67 @@
   to   { transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))); }
 }
 
+/* ── Element tints (el-*) — single-target projectile / slash colour by damage
+   type. physical = no class → default look (silver slash, brown arrow, purple
+   bolt). Kept chunky & glowy so each element is readable at a glance. ───────── */
+.proj-bolt.el-fire      { background: radial-gradient(circle, #ffe3a8, #e0531a); box-shadow: 0 0 7px 1px #ff8a3a; }
+.proj-bolt.el-frost     { background: radial-gradient(circle, #eafbff, #3aa0d4); box-shadow: 0 0 7px 1px #9fe0ff; }
+.proj-bolt.el-lightning { background: radial-gradient(circle, #fff8c2, #e0c020); box-shadow: 0 0 8px 1px #fff27a; }
+.proj-bolt.el-poison    { background: radial-gradient(circle, #ecffb6, #5ea01e); box-shadow: 0 0 7px 1px #c2f566; }
+.proj-bolt.el-darkness  { background: radial-gradient(circle, #caa8e8, #45196e); box-shadow: 0 0 7px 1px #8a4ac0; }
+.proj-bolt.el-radiant   { background: radial-gradient(circle, #fff7d4, #e0b030); box-shadow: 0 0 8px 1px #ffe9a0; }
+.proj-bolt.el-arcane    { background: radial-gradient(circle, #efd0ff, #7a48c4); box-shadow: 0 0 7px 1px #b07bff; }
+
+/* Elemental weapons (flaming arrow &c.): keep the dart shape, swap the glow. */
+.proj-arrow.el-fire      { background: linear-gradient(90deg, #ffd27a, #e0531a); box-shadow: 0 0 5px 1px #ff8a3a, 0 0 0 1px #2a1a0c; }
+.proj-arrow.el-frost     { background: linear-gradient(90deg, #eafbff, #3aa0d4); box-shadow: 0 0 5px 1px #9fe0ff, 0 0 0 1px #16384a; }
+.proj-arrow.el-lightning { background: linear-gradient(90deg, #fff8c2, #e0c020); box-shadow: 0 0 6px 1px #fff27a, 0 0 0 1px #4a3a06; }
+.proj-arrow.el-poison    { background: linear-gradient(90deg, #ecffb6, #5ea01e); box-shadow: 0 0 5px 1px #c2f566, 0 0 0 1px #243a08; }
+.proj-arrow.el-darkness  { background: linear-gradient(90deg, #caa8e8, #45196e); box-shadow: 0 0 5px 1px #8a4ac0, 0 0 0 1px #160828; }
+.proj-arrow.el-radiant   { background: linear-gradient(90deg, #fff7d4, #e0b030); box-shadow: 0 0 6px 1px #ffe9a0, 0 0 0 1px #4a3a10; }
+
+/* Elemental melee (flaming sword &c.): retint the streak + its drop-shadow. */
+.iso-slash.el-fire      { background: linear-gradient(90deg, transparent, rgba(255,190,110,0.95) 45%, #ffd9a8 62%, transparent); filter: drop-shadow(0 0 3px rgba(255,150,60,0.9)); }
+.iso-slash.el-frost     { background: linear-gradient(90deg, transparent, rgba(190,238,255,0.95) 45%, #eafbff 62%, transparent); filter: drop-shadow(0 0 3px rgba(140,210,255,0.9)); }
+.iso-slash.el-lightning { background: linear-gradient(90deg, transparent, rgba(255,244,150,0.97) 45%, #fffac0 62%, transparent); filter: drop-shadow(0 0 3px rgba(255,235,90,0.95)); }
+.iso-slash.el-poison    { background: linear-gradient(90deg, transparent, rgba(190,242,90,0.95) 45%, #ecffb6 62%, transparent);  filter: drop-shadow(0 0 3px rgba(150,220,60,0.9)); }
+.iso-slash.el-darkness  { background: linear-gradient(90deg, transparent, rgba(170,120,210,0.95) 45%, #d8b8f0 62%, transparent); filter: drop-shadow(0 0 3px rgba(120,70,180,0.95)); }
+.iso-slash.el-radiant   { background: linear-gradient(90deg, transparent, rgba(255,238,170,0.97) 45%, #fff6d4 62%, transparent); filter: drop-shadow(0 0 3px rgba(255,210,90,0.95)); }
+
+/* ── Directional AoE puff (raggio / cono) — a small chunky pixel burst that pops
+   on each covered tile, rippling outward from the caster so a line reads as a
+   travelling beam and a cone as an expanding fan. Element colour via dome-*. ── */
+.iso-vfx-puff {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.iso-vfx-puff i {
+  position: absolute; left: -3px; top: -3px;
+  width: 6px; height: 6px;
+  image-rendering: pixelated;
+  animation: iso-puff-pop 0.6s steps(4) both;
+}
+/* 5 pixels: a small rising spray, slightly fanned. */
+.iso-vfx-puff i:nth-child(1) { --px: -9px; }
+.iso-vfx-puff i:nth-child(2) { --px: -3px; }
+.iso-vfx-puff i:nth-child(3) { --px:  3px; }
+.iso-vfx-puff i:nth-child(4) { --px:  9px; }
+.iso-vfx-puff i:nth-child(5) { --px:  0px; }
+@keyframes iso-puff-pop {
+  0%   { transform: translate(var(--px, 0),  7px) scale(0.4); opacity: 0; }
+  30%  {                                            opacity: 1; }
+  100% { transform: translate(var(--px, 0), -15px) scale(1);   opacity: 0; }
+}
+/* puff element palette (bright + chunky so it pops over the dark floor pool) */
+.iso-vfx-puff.dome-fire      i { background: #ff9a3c; box-shadow: 0 0 0 1px #7a1e06; }
+.iso-vfx-puff.dome-frost     i { background: #bfeaff; box-shadow: 0 0 0 1px #2a6a9a; }
+.iso-vfx-puff.dome-lightning i { background: #fff27a; box-shadow: 0 0 0 1px #a8860c; }
+.iso-vfx-puff.dome-poison    i { background: #b6f25a; box-shadow: 0 0 0 1px #3a6a10; }
+.iso-vfx-puff.dome-darkness  i { background: #9a6ad0; box-shadow: 0 0 0 1px #2a0c44; }
+.iso-vfx-puff.dome-radiant   i { background: #ffe9a0; box-shadow: 0 0 0 1px #b08a2c; }
+.iso-vfx-puff.dome-arcane    i { background: #c79bff; box-shadow: 0 0 0 1px #4a2c7a; }
+
 /* ── Self-buff shield — expanding protective ring ───────────────────────────── */
 .iso-ring {
   position: absolute; pointer-events: none;
@@ -409,6 +470,12 @@
 .iso-vfx-dome.dome-frost    i { background: rgba(40, 90, 130, 0.5);  box-shadow: 0 0 0 1px rgba(160, 220, 255, 0.55); }
 .iso-vfx-floor.dome-arcane   { background: rgba(20, 8, 34, 0.45); }
 .iso-vfx-dome.dome-arcane   i { background: rgba(58, 24, 92, 0.55);  box-shadow: 0 0 0 1px rgba(150, 90, 220, 0.55); }
+.iso-vfx-floor.dome-lightning{ background: rgba(34, 30, 4, 0.42); }
+.iso-vfx-dome.dome-lightning i { background: rgba(120, 100, 14, 0.5); box-shadow: 0 0 0 1px rgba(255, 240, 120, 0.6); }
+.iso-vfx-floor.dome-poison   { background: rgba(12, 28, 4, 0.42); }
+.iso-vfx-dome.dome-poison   i { background: rgba(50, 100, 18, 0.5);  box-shadow: 0 0 0 1px rgba(170, 240, 80, 0.6); }
+.iso-vfx-floor.dome-radiant  { background: rgba(40, 34, 10, 0.34); }
+.iso-vfx-dome.dome-radiant  i { background: rgba(150, 120, 40, 0.5); box-shadow: 0 0 0 1px rgba(255, 232, 150, 0.65); }
 
 @keyframes iso-floor-spread {
   0%   { opacity: 0;    transform: scale(0.35); }
