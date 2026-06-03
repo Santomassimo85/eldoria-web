@@ -85,6 +85,18 @@ export function rotateCoord(x, y, rotation, w, h) {
   }
 }
 
+// Inverse of rotateCoord: map a ROTATED (render-space) coord back to the
+// original logical (x,y). Used by the click hit-tester to turn a picked
+// render tile back into engine coordinates. w/h are the ORIGINAL board dims.
+export function invRotateCoord(rx, ry, rotation, w, h) {
+  switch (((rotation % 4) + 4) % 4) {
+    case 1: return [(w - 1) - ry, rx];
+    case 2: return [(w - 1) - rx, (h - 1) - ry];
+    case 3: return [ry, (h - 1) - rx];
+    default: return [rx, ry];
+  }
+}
+
 // ── Isometric projection ──────────────────────────────────────────────────
 // Returns the on-board pixel coords (before the viewport scale/offset) of the
 // TOP-CENTER vertex of a tile's diamond. Elevation lifts the tile up (−y).

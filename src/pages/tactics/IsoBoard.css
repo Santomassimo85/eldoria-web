@@ -18,6 +18,20 @@
 }
 .iso-units-layer { z-index: 1000; }
 
+/* Single transparent surface that captures every board click/hover. Above the
+   tiles, below the units, so a click anywhere on a tile is taken (math resolves
+   WHICH tile) while unit clicks still win. Replaces the per-tile SVG hit
+   polygons whose rectangular host divs used to swallow clicks at the corners. */
+.iso-hit-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 900;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;   /* let the viewport handle pan/zoom gestures itself */
+}
+
 .iso-tile {
   position: absolute;
 }

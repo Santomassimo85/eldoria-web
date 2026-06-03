@@ -16,16 +16,27 @@
 //   onTileClick   (x, y, tile) => void
 //   onUnitClick   (unit, ev) => void
 // ─────────────────────────────────────────────────────────────────────────
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { db } from "../../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import {
   TILE_W, TILE_H, ELEV_STEP,
   TERRAINS, TERRAIN_KEYS, PROPS,
-  tileTopCenter, tileStandPoint, tileDepth, rotateCoord,
+  tileTopCenter, tileStandPoint, tileDepth, rotateCoord, invRotateCoord, tileAt,
   computeBoardMetrics, shade,
 } from "./isoCore";
 import "./IsoBoard.css";
+
+// Ray-casting point-in-polygon (poly = array of [x,y] in board px).
+function pointInPoly(px, py, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if (((yi > py) !== (yj > py)) &&
+        (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
 
 // Probe /assets/tiles/<terrain>.png once; only terrains whose image actually
 // loads get a texture (others fall back to the procedural coloured top).
@@ -139,6 +150,83 @@ export default function IsoBoard({
     return face;
   }, [units, rotation, map, origin]);
 
+  // ── Gapless click hit-testing ─────────────────────────────────────────────
+  // Instead of one transparent SVG polygon per tile (whose rectangular host
+  // <div> corners would silently eat clicks meant for the diamond behind), the
+  // WHOLE board has a single transparent hit layer. On any pointer event we
+  // convert the cursor → board px → tile by testing the cursor against each
+  // tile's full cube silhouette (top diamond + side walls), front-to-back, so
+  // the nearest/highest tile wins exactly as it's drawn. A click anywhere on a
+  // tile's visible surface now registers — no more "dead" spots.
+  const hitShapes = useMemo(() => {
+    const arr = [];
+    for (const tile of map.tiles) {
+      const terr = TERRAINS[tile.terrain];
+      if (!terr || terr.color == null) continue;           // void: nothing to hit
+      const [dx, dy] = rotateCoord(tile.x, tile.y, rotation, map.w, map.h);
+      const top = tileTopCenter(dx, dy, tile.elevation, origin);
+      const ox = top.x - TILE_W / 2, oy = top.y;           // silhouette origin (board px)
+      const EH = tile.elevation * ELEV_STEP;
+      // 6-vertex cube silhouette in board px (clockwise from top apex).
+      const poly = [
+        [ox + TILE_W / 2, oy],
+        [ox + TILE_W,     oy + TILE_H / 2],
+        [ox + TILE_W,     oy + TILE_H / 2 + EH],
+        [ox + TILE_W / 2, oy + TILE_H + EH],
+        [ox,              oy + TILE_H / 2 + EH],
+        [ox,              oy + TILE_H / 2],
+      ];
+      arr.push({
+        tile, poly, depth: tileDepth(dx, dy), elev: tile.elevation,
+        minX: ox, maxX: ox + TILE_W, minY: oy, maxY: oy + TILE_H + EH,
+      });
+    }
+    // nearest first (higher depth wins), then higher elevation as a tiebreak.
+    arr.sort((a, b) => b.depth - a.depth || b.elev - a.elev);
+    return arr;
+  }, [map, rotation, origin]);
+
+  const pickTile = useCallback((bx, by) => {
+    for (const s of hitShapes) {
+      if (bx < s.minX || bx > s.maxX || by < s.minY || by > s.maxY) continue;
+      if (pointInPoly(bx, by, s.poly)) return s.tile;
+    }
+    // Fallback: a pixel in a sub-pixel seam (or empty sky over the board) maps
+    // to the nearest ground cell via inverse iso projection, so we never miss.
+    const A = (bx - origin.x) / (TILE_W / 2);              // = rdx - rdy
+    const B = (by - origin.y - TILE_H / 2) / (TILE_H / 2); // = rdx + rdy
+    const rdx = Math.round((A + B) / 2), rdy = Math.round((B - A) / 2);
+    const [tx, ty] = invRotateCoord(rdx, rdy, rotation, map.w, map.h);
+    return tileAt(map, tx, ty);
+  }, [hitShapes, origin, rotation, map]);
+
+  // Cursor (screen) → board px. The scaler applies transform:scale(scale), so
+  // getBoundingClientRect already includes the scale (and any ancestor pan):
+  // dividing the in-rect offset by scale yields logical board pixels.
+  const lastHoverRef = useRef(null);
+  const eventToTile = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return pickTile((e.clientX - r.left) / scale, (e.clientY - r.top) / scale);
+  };
+  // pointerdown does NOT stopPropagation: it must bubble to the viewport (which
+  // decides paint-drag vs pan) after telling it WHICH tile was pressed.
+  const handleHitDown = (e) => {
+    const t = eventToTile(e);
+    if (t) onTileDown?.(t.x, t.y, t);
+  };
+  const handleHitClick = (e) => {
+    const t = eventToTile(e);
+    if (t) { e.stopPropagation(); onTileClick?.(t.x, t.y, t); }
+  };
+  const handleHitMove = (e) => {
+    if (!onTileHover) return;
+    const t = eventToTile(e);
+    const k = t ? `${t.x},${t.y}` : null;
+    if (k === lastHoverRef.current) return;               // only on tile change
+    lastHoverRef.current = k;
+    if (t) onTileHover(t.x, t.y, t);
+  };
+
   return (
     <div
       className="iso-scaler"
@@ -235,51 +323,19 @@ export default function IsoBoard({
                 style={{ left: -1, top: -TILE_W / 4 - 1, width: TILE_W + 2, height: TILE_W + 2 }}
               />
             )}
-            {/* Overlay — highlight + click target must sit ABOVE the texture. */}
-            <svg
-              width={TILE_W}
-              height={svgH}
-              viewBox={`0 0 ${TILE_W} ${svgH}`}
-              className="iso-cube iso-cube-overlay"
-            >
-              {/* highlight overlay (non-interactive) */}
-              {hl && (
-                <polygon
-                  className={`iso-hl iso-hl-${hl}`}
-                  points={topFace}
-                />
-              )}
-              {/* transparent hit target — spans the WHOLE visible cube (top
-                  diamond + side walls) so a click lands anywhere on the tile,
-                  not only on the small top diamond. Front tiles sit at a higher
-                  z-index, so they still win over the walls behind them. */}
-              {/* onPointerDown does NOT stopPropagation: it lets the press bubble
-                  to the viewport (which decides paint-drag vs pan) while telling
-                  it WHICH tile was pressed via onTileDown. */}
-              {EH > 0 && (
-                <>
-                  <polygon points={leftFace} fill="transparent" className="iso-hit"
-                    onPointerDown={() => onTileDown?.(tile.x, tile.y, tile)}
-                    onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
-                    onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)} />
-                  <polygon points={rightFace} fill="transparent" className="iso-hit"
-                    onPointerDown={() => onTileDown?.(tile.x, tile.y, tile)}
-                    onClick={(e) => { e.stopPropagation(); onTileClick?.(tile.x, tile.y, tile); }}
-                    onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)} />
-                </>
-              )}
-              <polygon
-                points={topFace}
-                fill="transparent"
-                className="iso-hit"
-                onPointerDown={() => onTileDown?.(tile.x, tile.y, tile)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTileClick?.(tile.x, tile.y, tile);
-                }}
-                onMouseEnter={() => onTileHover?.(tile.x, tile.y, tile)}
-              />
-            </svg>
+            {/* Overlay — highlight only. Clicks are handled by the single
+                board-wide .iso-hit-layer below (math hit-test), which is gapless
+                and immune to the host-div corners stealing clicks. */}
+            {hl && (
+              <svg
+                width={TILE_W}
+                height={svgH}
+                viewBox={`0 0 ${TILE_W} ${svgH}`}
+                className="iso-cube iso-cube-overlay"
+              >
+                <polygon className={`iso-hl iso-hl-${hl}`} points={topFace} />
+              </svg>
+            )}
 
             {prop && (
               propSprites[tile.prop]
@@ -291,8 +347,20 @@ export default function IsoBoard({
       })}
       </div>
 
-      {/* Units layer — sits ABOVE the whole tile layer so unit clicks always
-          win over front-tile hit polygons (depth-sorted among themselves). */}
+      {/* Single board-wide click/hover surface. Covers the entire board so a
+          press lands on a tile no matter where inside it you click; the exact
+          tile is resolved by math (pickTile), front-to-back. Sits ABOVE the
+          tiles but BELOW the units layer (z-index), so unit clicks still win. */}
+      <div
+        className="iso-hit-layer"
+        style={{ width: boardW, height: boardH }}
+        onPointerDown={handleHitDown}
+        onPointerMove={handleHitMove}
+        onClick={handleHitClick}
+      />
+
+      {/* Units layer — sits ABOVE the whole tile layer (and the hit layer) so
+          unit clicks always win over the board hit surface. */}
       <div className="iso-units-layer">
       {units.map((u) => {
         const tile = map.tiles[u.y * map.w + u.x];
