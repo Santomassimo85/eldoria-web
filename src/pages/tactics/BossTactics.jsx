@@ -746,7 +746,10 @@ export default function BossTactics() {
     // → slash; ranged weapon → arrow; spell attack → magic bolt.
     const isWeapon = /armi|arma|weapon/.test((action.category || "").toLowerCase());
     const ranged = (action.range || actionRange(action)) > 1;
-    const fxKind = isWeapon ? (ranged ? "arrow" : "slash") : "bolt";
+    // Any 1-tile (melee) attack is a simple slash, whatever its source — a
+    // minion's bite/claw should swipe, not "explode" like a magic bolt. Ranged
+    // weapons loose an arrow; ranged spells throw a magic bolt.
+    const fxKind = !ranged ? "slash" : isWeapon ? "arrow" : "bolt";
     const fxEl = detectElement(action);   // tint the projectile/slash by element
     // Sneak Attack: a rogue adds Nd6 on a WEAPON hit when they have advantage OR
     // an ally stands adjacent to the target (flanking) — and not at disadvantage.
