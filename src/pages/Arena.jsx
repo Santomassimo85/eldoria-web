@@ -905,12 +905,14 @@ function isClericClass(cls)   { return ["cleric","chierico"].some(c => cls.inclu
 function isBardClass(cls)     { return ["bard","bardo"].some(c => cls.includes(c)); }
 function isFighterClass(cls)  { return ["fighter","guerriero","warrior"].some(c => cls.includes(c)); }
 function isRogueBardClass(cls){ return ["rogue","ladro","bard","bardo"].some(c => cls.includes(c)); }
+// Caratteristica da incantatore usata per CD dei TS e bonus magici, per classe:
+//   INT → Mago · SAG → Chierico, Druido, Ranger · CAR → Bardo, Paladino, Stregone, Warlock
 function getSpellcastingAbility(cls) {
-  // CHA: Bardo, Paladino, Stregone, Warlock
+  // CAR: Bardo, Paladino, Stregone, Warlock
   if (["bard","bardo","warlock","sorcerer","stregone","paladin","paladino"].some(c => cls.includes(c))) return "cha";
-  // WIS: Chierico, Druido, Ranger, Monaco
-  if (["cleric","chierico","druid","druido","ranger","cacciatore","monk","monaco"].some(c => cls.includes(c))) return "wis";
-  // INT: Mago, Artefice, Guerriero (Cavaliere Arcano), Ladro (Mistificatore Arcano) + default
+  // SAG: Chierico, Druido, Ranger
+  if (["cleric","chierico","druid","druido","ranger","cacciatore"].some(c => cls.includes(c))) return "wis";
+  // INT: Mago (+ default per classi senza incantesimi a TS)
   return "int";
 }
 // Spell mod del caster (INT/SAG/CAR a seconda della classe).
@@ -919,8 +921,17 @@ function getSpellMod(snap) {
   const key = getSpellcastingAbility(cls);
   return snap?.stats?.[key] ?? 0;
 }
-// CD TS = 10 + 3 + spell mod (caster) — formula uniforme per tutti gli incantesimi (incluso danno).
-function getSpellSaveDC(snap) { return 10 + 3 + getSpellMod(snap); }
+// Bonus di competenza (D&D) in base al livello della classe principale del caster:
+// +2 (liv 1-4), +3 (5-8), +4 (9-12)… Default liv 1 → +2 se manca classLevels.
+function getProficiencyBonus(snap) {
+  const classKey = getClassKey(snap?.class);
+  const level    = snap?.classLevels?.[classKey] ?? 1;
+  return 2 + Math.floor((Math.max(1, level) - 1) / 4);
+}
+// CD TS = 8 + competenza + mod caratteristica principale del caster
+// (CAR stregone/warlock/bardo/paladino, INT mago, SAG chierico/druido).
+// Formula uniforme per tutti gli incantesimi con TS (controllo, DoT, danno).
+function getSpellSaveDC(snap) { return 8 + getProficiencyBonus(snap) + getSpellMod(snap); }
 // Un incantesimo a danno usa il TS al posto del tiro per colpire.
 // Eccezioni: spell con `special` (control/heal/buff/etc.) e quelle marcate auto-hit (hitBonus ≥ 20, es. Dardo Incantato).
 function isSaveDamageSpell(action) {
@@ -2222,6 +2233,7 @@ export default function Arena() {
       name:            charPreview.name,
       image:           charPreview.image,
       class:           charPreview.class,
+      classLevels:     charPreview.classLevels || {},
       stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
       selectedActions: finalActions,
       hasWildShape:    config.hasWildShape,
@@ -3334,7 +3346,7 @@ export default function Arena() {
 
       const _castAbility = getSpellcastingAbility(cls);
       const _spellMod    = aiSnap.stats?.[_castAbility] ?? 0;
-      const _spellDC     = 10 + 3 + _spellMod;
+      const _spellDC     = 8 + getProficiencyBonus(aiSnap) + _spellMod;
       const _tgtMP       = m.players.find(p => p.id === target.id);
       const _tgtCtrl     = !!_tgtMP?.pendingControlSave || (_tgtMP?.controlLostTurns ?? 0) > 0;
       const _tgtPoison   = !!_tgtMP?.pendingSaveDot || !!_tgtMP?.poisonDoT;
