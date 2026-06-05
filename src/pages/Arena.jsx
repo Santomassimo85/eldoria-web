@@ -5189,6 +5189,39 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
+  // ── AUTO-RISOLUZIONE DOT (veleno / sanguinamento) ──────────────────────────
+  // Niente più click manuale su "Subisci danno": quando è il mio turno e ho un
+  // DoT in sospeso, il danno si applica da solo (come fa già l'IA). Poison e
+  // bleed sono stack indipendenti: ne risolviamo uno per render, l'effetto
+  // ri-scatta dopo la scrittura e risolve il successivo. Gli handler sono
+  // idempotenti sul turn-token, quindi una doppia chiamata è innocua.
+  const dotAutoRef = useRef({});
+  useEffect(() => {
+    if (!arenaMeta?.matches || !currentUser?.uid) return;
+    for (const m of arenaMeta.matches) {
+      if (m.status !== "active" || m.turn !== currentUser.uid) continue;
+      const me = m.players?.find(p => p.id === currentUser.uid);
+      if (!me || me.hp <= 0) continue;
+      const token = m.turnExpiry || "";
+      const poisonPending = me.poisonDoT && (me.poisonResolvedTurnToken || "") !== token;
+      const bleedPending  = me.bleedDoT && (me.bleedResolvedTurnToken  || "") !== token;
+      if (poisonPending) {
+        const k = `${m.matchId}:poison:${token}`;
+        if (!dotAutoRef.current[k]) {
+          dotAutoRef.current[k] = true;
+          handleResolvePoisonDoT(m.matchId).catch(() => { delete dotAutoRef.current[k]; });
+        }
+      } else if (bleedPending) {
+        const k = `${m.matchId}:bleed:${token}`;
+        if (!dotAutoRef.current[k]) {
+          dotAutoRef.current[k] = true;
+          handleResolveBleedDoT(m.matchId).catch(() => { delete dotAutoRef.current[k]; });
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arenaMeta, currentUser]);
+
   // ── LAY OF HANDS — Bonus Action: cura senza terminare il turno ─────────────
   const handleLayOfHands = async (matchId, healAmt) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Paladino";
@@ -8743,10 +8776,8 @@ export default function Arena() {
                       const dotSource = myPlayer?.poisonDoTSourceLabel || "veleno";
                       return (
                         <div className="save-block con">
-                          <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.poisonDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.poisonDoTTurns ?? 1} turno/i rimanenti) — poi puoi agire.</p>
-                          <button className="btn-saving-throw" onClick={() => handleResolvePoisonDoT(m.matchId)}>
-                            🎲 Subisci danno da {dotSource}
-                          </button>
+                          <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.poisonDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.poisonDoTTurns ?? 1} turno/i rimanenti).</p>
+                          <span className="dot-auto-note">⏳ Danno applicato automaticamente…</span>
                         </div>
                       );
                     })()}
@@ -8758,10 +8789,8 @@ export default function Arena() {
                       const dotSource = myPlayer?.bleedDoTSourceLabel || "sanguinamento";
                       return (
                         <div className="save-block con">
-                          <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.bleedDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.bleedDoTTurns ?? 1} turno/i rimanenti) — poi puoi agire.</p>
-                          <button className="btn-saving-throw" onClick={() => handleResolveBleedDoT(m.matchId)}>
-                            🎲 Subisci danno da {dotSource}
-                          </button>
+                          <p className="save-block-label">{dotIcon} Sei {dotNoun}! Subisci {myPlayer?.bleedDoTDice || "1d6"} danni da {dotSource} ({myPlayer?.bleedDoTTurns ?? 1} turno/i rimanenti).</p>
+                          <span className="dot-auto-note">⏳ Danno applicato automaticamente…</span>
                         </div>
                       );
                     })()}
@@ -9631,11 +9660,13 @@ export default function Arena() {
                       const isLatest = i === 0;
                       const isAttLog = typeof l === 'object' && l.attId === currentUser?.uid;
                       const isDefLog = typeof l === 'object' && l.defId === currentUser?.uid;
+                      // Danno-su-turno automatico (veleno / sanguinamento): sfondo vivido.
+                      const isDotLog = typeof text === 'string' && text.includes("subisce il");
                       const ts = typeof l === 'object' && l.ts
                         ? new Date(l.ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                         : null;
                       return (
-                        <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""}`}>
+                        <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""} ${isDotLog ? "log-dot" : ""}`}>
                           {ts && <span className="log-ts">{ts}</span>}
                           {text}
                         </p>

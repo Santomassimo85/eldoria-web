@@ -2500,14 +2500,14 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(circle at 0% 0%, rgba(212, 175, 55, 0.10), transparent 50%),
-    linear-gradient(180deg, #fffaf2 0%, #f4ead5 100%);
-  border: 1px solid rgba(212, 175, 55, 0.4);
+    radial-gradient(ellipse 95% 55% at 50% -8%, rgba(192, 57, 43, 0.18), transparent 62%),
+    linear-gradient(180deg, #20283a 0%, #161b27 100%);
+  border: 1px solid rgba(232, 198, 106, 0.44);
   border-radius: 24px;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 30px 80px rgba(40, 8, 8, 0.55),
-    0 0 0 1px rgba(212, 175, 55, 0.12) inset;
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 30px 80px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(0, 0, 0, 0.4) inset;
   overflow: hidden;
   animation: arena-combat-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
