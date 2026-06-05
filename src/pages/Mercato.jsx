@@ -433,9 +433,11 @@ export default function Mercato() {
       : (marketConfig?.nextOpening ? now >= new Date(marketConfig.nextOpening) : true);
     const list = items.filter((item) => {
       if (!isMaster && !isMarketOpen) return false;
-      // Livello Ratto: un player vede solo gli oggetti alla portata del suo rango.
+      // Livello Ratto: la riserva scatta solo dal livello 2 in su.
+      // Liv 0 e liv 1 vedono le STESSE cose (tutto ciò che è sotto il liv 2);
+      // dal liv 2 si sbloccano progressivamente gli oggetti riservati.
       // Il Master vede tutto, a prescindere dalla soglia.
-      if (!isMaster && (Number(item.minLevel) || 0) > ratto.lv) return false;
+      if (!isMaster && (Number(item.minLevel) || 0) > Math.max(ratto.lv, 1)) return false;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === "all" || item.type === filterType;
       const matchesRarity = filterRarity === "all" || rarityRank(item.class) === rarityRank(filterRarity);

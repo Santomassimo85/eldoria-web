@@ -297,10 +297,11 @@ export default function ItemDetail() {
   if (loading) return <section className="cine-page item-detail-page"><p className="loading-text">Caricamento...</p></section>;
   if (!item) return <section className="cine-page item-detail-page"><p className="error-text">Oggetto non trovato.</p></section>;
 
-  // Controllo di accesso: i player sotto il rango Ratto richiesto non possono
-  // né vedere né interagire con l'oggetto. Il Master è sempre esentato.
+  // Controllo di accesso: la riserva scatta solo dal livello 2 in su, quindi
+  // liv 0 e liv 1 hanno lo stesso accesso (tutto ciò che è sotto il liv 2).
+  // Il Master è sempre esentato.
   const requiredLevel = Number(item.minLevel) || 0;
-  if (!isMaster && requiredLevel > userRattoLevel) {
+  if (!isMaster && requiredLevel > Math.max(userRattoLevel, 1)) {
     return (
       <section className="cine-page item-detail-page">
         <button onClick={() => navigate("/mercato")} className="back-button">
