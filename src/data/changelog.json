@@ -40,6 +40,10 @@
         {
           "type": "feature",
           "text": "Mercato Nero: la merce più pregiata è ora riservata. Gli oggetti con un Livello Ratto richiesto sono visibili solo ai membri della Gilda che hanno raggiunto quel rango; chi è di rango troppo basso non li vede più nell'elenco e non può aprirne la scheda."
+        },
+        {
+          "type": "feature",
+          "text": "Mercato Nero: nuovi strumenti per i player. Ora puoi filtrare la merce per tipo di oggetto e rarità, ordinarla per prezzo o rarità, e su ogni oggetto è ben visibile il rango Ratto richiesto per acquistarlo."
         }
       ]
     }

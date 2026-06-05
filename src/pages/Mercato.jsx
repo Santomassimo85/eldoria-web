@@ -26,7 +26,9 @@ const ITEM_TYPES = [
   "Pozioni", "Pergamene", "Reagenti", "Varie",
 ];
 
-const RARITIES = ["Comune", "Raro", "Magico", "Epico", "Leggendario"];
+// Rarità canoniche (allineate a MarketAdmin). Il match nel filtro avviene per
+// rank, così aggancia anche gli oggetti legacy (Raro/Magico/Epico…).
+const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
 
 const RATTO_LEVELS = [
   { lv: 0, min: 0, name: "Estraneo" },
@@ -84,6 +86,20 @@ const rarityStars = (rarity) => {
   return "★".repeat(tier) + "☆".repeat(5 - tier);
 };
 
+// Rank rarità per l'ordinamento (canonico + legacy). Più basso = più comune.
+const RARITY_RANK = {
+  Comune: 0,
+  "Non comune": 1, Noncomune: 1,
+  Rara: 2, Raro: 2,
+  "Molto rara": 3, Moltorara: 3, Magico: 3, Epico: 3,
+  Leggendaria: 4, Leggendario: 4,
+  Artefatto: 5,
+};
+const rarityRank = (rarity) => RARITY_RANK[rarity] ?? RARITY_RANK[(rarity || "").replace(/\s/g, "")] ?? -1;
+
+// Nome del rango Ratto richiesto da un oggetto (0–5).
+const rattoLevelName = (lv = 0) => RATTO_LEVELS.find((l) => l.lv === lv)?.name || "Estraneo";
+
 const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliver }) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -126,6 +142,11 @@ const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliv
         {isMaster && (
           <span className={`ic-state-badge ${isSold ? "sold" : "active"}`}>
             {isSold ? "✅ Venduto" : isAuction ? "🟢 Asta" : "🟢 Fisso"}
+          </span>
+        )}
+        {(Number(item.minLevel) || 0) > 0 && (
+          <span className="ic-ratto-badge" title={`Riservato dal rango ${rattoLevelName(Number(item.minLevel) || 0)}`}>
+            🐀 Lv {Number(item.minLevel) || 0} · {rattoLevelName(Number(item.minLevel) || 0)}
           </span>
         )}
         {!isSold && !isMaster && <span className="ic-inspect">🔍 Ispeziona</span>}
@@ -246,6 +267,7 @@ export default function Mercato() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterRarity, setFilterRarity] = useState("all");
+  const [sortBy, setSortBy] = useState("none");
 
   useEffect(() => {
     const unsubConfig = onSnapshot(doc(db, "settings", "market_config"), (snap) => snap.exists() && setMarketConfig(snap.data()));
@@ -409,17 +431,29 @@ export default function Mercato() {
     const isMarketOpen = typeof marketConfig?.isOpen === "boolean"
       ? marketConfig.isOpen
       : (marketConfig?.nextOpening ? now >= new Date(marketConfig.nextOpening) : true);
-    return items.filter((item) => {
+    const list = items.filter((item) => {
       if (!isMaster && !isMarketOpen) return false;
       // Livello Ratto: un player vede solo gli oggetti alla portata del suo rango.
       // Il Master vede tutto, a prescindere dalla soglia.
       if (!isMaster && (Number(item.minLevel) || 0) > ratto.lv) return false;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === "all" || item.type === filterType;
-      const matchesRarity = filterRarity === "all" || item.class === filterRarity;
+      const matchesRarity = filterRarity === "all" || rarityRank(item.class) === rarityRank(filterRarity);
       return matchesSearch && matchesType && matchesRarity;
     });
-  }, [items, marketConfig, searchTerm, filterType, filterRarity, isMaster, ratto.lv]);
+
+    if (sortBy === "none") return list;
+    const priceOf = (i) => Number(i.startingBid ?? i.price ?? 0);
+    return [...list].sort((a, b) => {
+      switch (sortBy) {
+        case "price-asc":  return priceOf(a) - priceOf(b);
+        case "price-desc": return priceOf(b) - priceOf(a);
+        case "rarity-asc":  return rarityRank(a.class) - rarityRank(b.class);
+        case "rarity-desc": return rarityRank(b.class) - rarityRank(a.class);
+        default: return 0;
+      }
+    });
+  }, [items, marketConfig, searchTerm, filterType, filterRarity, sortBy, isMaster, ratto.lv]);
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
@@ -480,6 +514,13 @@ export default function Mercato() {
         <select onChange={(e) => setFilterRarity(e.target.value)} value={filterRarity} className="filter-select">
           <option value="all">Tutte le Rarità</option>
           {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+        <select onChange={(e) => setSortBy(e.target.value)} value={sortBy} className="filter-select">
+          <option value="none">Ordina per…</option>
+          <option value="price-asc">Prezzo ↑ (basso → alto)</option>
+          <option value="price-desc">Prezzo ↓ (alto → basso)</option>
+          <option value="rarity-asc">Rarità ↑ (comune → rara)</option>
+          <option value="rarity-desc">Rarità ↓ (rara → comune)</option>
         </select>
       </div>
       </div>

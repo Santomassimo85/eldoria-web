@@ -1382,6 +1382,19 @@ input {
      padding-bottom: 10px;
 }
 
+.ps-ratto-req {
+     display: inline-block;
+     margin: 0 0 14px;
+     padding: 4px 12px;
+     border-radius: 999px;
+     background: rgba(10, 6, 9, 0.55);
+     border: 1px solid color-mix(in srgb, #c69a4a 55%, transparent);
+     color: #ffe1b0;
+     font-size: 0.74rem;
+     font-weight: 700;
+     letter-spacing: 0.04em;
+}
+
 .ps-price-row {
      display: flex;
      align-items: baseline;

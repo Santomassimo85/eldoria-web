@@ -463,6 +463,9 @@ export default function ItemDetail() {
           <div className="ps-info">
             <p className="ps-type">{item.type}</p>
             <h1 className="ps-title">{item.name}</h1>
+            {requiredLevel > 0 && (
+              <p className="ps-ratto-req">🐀 Riservato dal rango {requiredLevel} · Gilda dei Ratti</p>
+            )}
 
             <div className="ps-price-row">
               <span className="ps-price-label">
