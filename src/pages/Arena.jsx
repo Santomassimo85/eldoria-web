@@ -404,11 +404,12 @@ const STEALTH_ACTION = {
   type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio ai tuoi prossimi 3 attacchi · 3 cariche", special: "stealth", maxUses: 3,
 };
 
-// Triboli (Rogue) — applica svantaggio + sanguinamento (1d6/turno) per 3 turni
+// Triboli (Rogue) — TS DES dell'avversario (CD 8+comp+DES del ladro): fallito →
+// svantaggio + sanguinamento (1d6/turno) per 3 turni; riuscito → solo 1 turno.
 const TRIBOLI_ACTION = {
   name: "Triboli", hitBonus: 0, damage: "", statKey: null,
   type: "skill", icon: "🪤",
-  info: "Sparge triboli · svantaggio agli attacchi e sanguinamento (1d6/turno) per 3 turni · 2 cariche",
+  info: "Sparge triboli · TS DES avversario (CD 8+comp+DES): fallito → svantaggio + sanguinamento (1d6/turno) 3 turni; riuscito → solo 1 turno · 2 cariche",
   special: "triboli",
   disadvantageTurns: 3,
   bleedTurns: 3,
@@ -3772,12 +3773,25 @@ export default function Arena() {
       // stays (multiActionsUsed bumps) or passes the turn to the human.
       if (m.status === "active" && m.turn === aiId && aiPlayer.hp > 0) {
         const human = m.players.find(p => p.id !== aiId);
-        const key = `${m.matchId}:turn:${m.turnExpiry || ""}:${aiPlayer.hp}:${aiPlayer.multiActionsUsed ?? 0}:${aiPlayer.bonusActionUsed ? 1 : 0}:${human?.hp ?? "0"}`;
+        const token = m.turnExpiry || "";
+        // Questo tick risolve solo uno status in sospeso (veleno / sanguinamento
+        // / controllo / save) PRIMA di poter agire? In tal caso dev'essere rapido
+        // e automatico: il delay scenico va riservato al vero attacco. Altrimenti
+        // un'IA con più status accumulava 1400-2500ms PER status (anche 6-8s).
+        const resolvingStatus =
+          !!aiPlayer.pendingControlSave ||
+          !!aiPlayer.pendingSaveDot ||
+          (aiPlayer.poisonDoT && (aiPlayer.poisonResolvedTurnToken || "") !== token) ||
+          (aiPlayer.bleedDoT  && (aiPlayer.bleedResolvedTurnToken  || "") !== token) ||
+          ((aiPlayer.controlLostTurns ?? 0) > 0 && !aiPlayer.pendingControlSave);
+        const key = `${m.matchId}:turn:${token}:${aiPlayer.hp}:${aiPlayer.multiActionsUsed ?? 0}:${aiPlayer.bonusActionUsed ? 1 : 0}:${human?.hp ?? "0"}:${resolvingStatus ? "s" : "a"}`;
         if (aiInFlightRef.current[key]) continue;
         aiInFlightRef.current[key] = true;
-        const delay = (aiPlayer.multiActionsUsed ?? 0) === 0
-          ? 1400 + Math.random() * 1100   // first action: dramatic delay
-          : 700  + Math.random() * 500;   // subsequent attacks (rogue/monk/surge): snappier
+        const delay = resolvingStatus
+          ? 280 + Math.random() * 220     // status tick: snappy & automatico
+          : (aiPlayer.multiActionsUsed ?? 0) === 0
+            ? 1400 + Math.random() * 1100 // first real action: dramatic delay
+            : 700  + Math.random() * 500; // subsequent attacks (rogue/monk/surge): snappier
         const t = setTimeout(() => {
           aiTakeAction(m.matchId).finally(() => {
             delete aiInFlightRef.current[key];
@@ -4068,15 +4082,26 @@ export default function Arena() {
       return;
     }
 
-    // ── Triboli (Rogue: svantaggio + sanguinamento 1d6/turno per 3 turni, no save) ─
+    // ── Triboli (Rogue): TS DES dell'avversario (CD 8 + competenza + DES del
+    //    ladro). Fallito → svantaggio + sanguinamento 1d6/turno per 3 turni.
+    //    Riuscito → solo 1 turno (al prossimo turno). ──────────────────────────
     if (action.special === "triboli") {
-      const turns      = action.disadvantageTurns ?? 3;
-      const bleedTurns = action.bleedTurns ?? 3;
-      const bleedDice  = action.bleedDice  || "1d6";
+      const bleedDice  = action.bleedDice || "1d6";
+      const saveDC     = 8 + getProficiencyBonus(attackerSnap) + (attackerSnap?.stats?.dex ?? 0);
+      const tgtDexMod  = defenderSnap?.stats?.dex ?? 0;
+      const d20        = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: `TS · DES · ${defName}` });
+      const saveTotal  = d20 + tgtDexMod;
+      const savePass   = saveTotal >= saveDC;
+      const sign       = tgtDexMod >= 0 ? "+" : "";
+      const turns      = savePass ? 1 : 3;
+      const bleedTurns = savePass ? 1 : 3;
+      const tnLbl      = `${turns} turn${turns === 1 ? "o" : "i"}`;
+      const tsTag      = `TS DES ${d20}${sign}${tgtDexMod}=${saveTotal} vs CD ${saveDC} → ${savePass ? "✅ SUPERA" : "❌ FALLISCE"}`;
       const log = {
-        pub: `🪤 ${attName} sparge Triboli su ${defName} — svantaggio agli attacchi + sanguinamento ${bleedDice}/turno per ${turns} turni.`,
-        att: `🪤 Spargi Triboli su ${defName} — svantaggio + sanguinamento ${bleedDice}/turno per ${turns} turni.`,
-        def: `🪤 Sei trafitto dai Triboli — svantaggio agli attacchi e sanguinamento ${bleedDice}/turno per ${turns} turni.`,
+        pub: `🪤 ${attName} sparge Triboli su ${defName} — ${tsTag}: svantaggio + sanguinamento ${bleedDice}/turno per ${tnLbl}.`,
+        att: `🪤 Spargi Triboli su ${defName} — ${tsTag}: svantaggio + sanguinamento ${bleedDice}/turno per ${tnLbl}.`,
+        def: `🪤 Sei trafitto dai Triboli — ${tsTag}: svantaggio e sanguinamento ${bleedDice}/turno per ${tnLbl}.`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
       const triboliExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
@@ -6707,7 +6732,7 @@ export default function Arena() {
               <p><strong>Paladino (Paladin)</strong> — Armi marziali, 2 armi, armatura pesante + scudo. Spell paladino. <em>Skill:</em> Smite Divino (arma +2d8, 2 cariche), Imposizione delle Mani (pozza di cura = HP/3, scegli quanti curare).</p>
               <p><strong>Cacciatore (Ranger)</strong> — Armi ranger, 2 armi, armatura leggera/media + scudo. Spell ranger. <em>Skill:</em> Marchio del Cacciatore (+3 ai TPC per 3 turni, bonus action).</p>
               <p><strong>Monaco (Monk)</strong> — Armi monaco, 1 arma, nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Pugno (1d6+DES), Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+4 danno 2T), Assorbire Danni (50% del prossimo danno si converte in cura), Cura Ki (1d8+SAG).</p>
-              <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 3 attacchi), Triboli (svantaggio + 1d6 sanguinamento/turno per 3T).</p>
+              <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 3 attacchi), Triboli (TS DES avversario: fallito → svantaggio + 1d6 sanguinamento/turno per 3T; riuscito → solo 1T).</p>
               <p><strong>Mago (Wizard)</strong> — Armi semplici, 1 arma, abito da mago (no armatura, no scudo). Slot magia ampi. <em>Skill:</em> Recupero Arcano (ripristina 2 slot lv1 + 1 slot lv2).</p>
               <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <em>Skill:</em> Magia Innata (passiva), Fonte di Magia (ripristina 2 slot magia a scelta).</p>
               <p><strong>Warlock</strong> — Armi semplici, 1 arma, armatura leggera, no scudo. <em>Skill:</em> Magical Cunning (salta turno → +1 carica a ogni slot, 2 cariche), Patto Demoniaco (sacrifica 1d4 HP → +1d12 alle spell per 3T).</p>
@@ -9503,7 +9528,7 @@ export default function Arena() {
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
                                 : action.special === "web" ? "Ragnatela — intrappola: TS FOR (CD 13) ogni turno per liberarsi"
-                                : action.special === "triboli" ? "Triboli — svantaggio + sanguinamento 1d6/turno per 3 turni"
+                                : action.special === "triboli" ? "Triboli — TS DES avversario: fallito → svantaggio + sanguinamento 1d6/turno 3 turni; riuscito → solo 1 turno"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
                                 : action.special === "stealth" ? `Furtività — vantaggio ai tuoi prossimi 3 attacchi`
@@ -9526,7 +9551,7 @@ export default function Arena() {
                                   : disabledByInvis ? "👻 Invisibile"
                                   : !isEquipped ? "🔄 Cambia"
                                   : action.special === "web" ? "🕸 Intrappola"
-                                  : action.special === "triboli" ? "🩸 Sang. 3t · svant."
+                                  : action.special === "triboli" ? "🎲 TS DES · 🩸 svant."
                                   : action.special === "poison" ? `${action.damage} +TS COS`
                                   : `${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
                               </span>
