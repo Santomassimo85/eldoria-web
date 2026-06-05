@@ -14,7 +14,6 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { db } from "../../firebase";
 import {
   doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, runTransaction,
-  query, orderBy, limit,
 } from "firebase/firestore";
 import { useAuth } from "../../AuthContext";
 import IsoBoard from "./IsoBoard";
@@ -28,7 +27,7 @@ import {
 import {
   BATTLE_REF, BOSS_SYSTEM_UID, emptyBattle, defaultBattleMap,
   makePlayerUnit, makeBossUnit, makeMinionUnit,
-  unitDone, sideAllDone, resetSide, txnBattle,
+  unitDone, sideAllDone, resetSide, bumpActive, txnBattle,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
   spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice,
@@ -77,8 +76,7 @@ export default function BossTactics() {
   const lastFxRef = useRef(null);                  // last-applied battle.fxEvent id (slash/arrow/buff…)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
   const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
-  const [atkPanelOpen, setAtkPanelOpen] = useState(false); // per-player attack tally (collapsible)
-  const [atkCounts, setAtkCounts] = useState({});          // uid → # attacks made this fight (from the log)
+  const [atkPanelOpen, setAtkPanelOpen] = useState(false); // per-player participation tally (collapsible)
   const [setupPicker, setSetupPicker] = useState(null); // {x,y,sx,sy} deploy-phase unit picker
   const [musicMuted, setMusicMuted] = useState(false);   // boss BGM mute (per client)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
@@ -142,33 +140,10 @@ export default function BossTactics() {
     return onSnapshot(collection(db, "battle_meta"), (snap) =>
       setSavedMaps(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.kind === "map")));
   }, [isMaster]);
-  // Per-player attack tally, derived live from the battle log so it counts every
-  // attack made since the fight began — including ones logged before this panel
-  // existed. An "attack" is any action entry carrying a to-hit roll (`hitRoll`):
-  // weapon swings and offensive spells/AoE have one; heals, buffs and debuffs
-  // don't. We scope to the CURRENT fight by ignoring everything older than the
-  // most recent "La battaglia ha inizio" marker (the world_boss_chat log is
-  // reused across battles), and tally cumulatively per hero uid — not per round.
-  useEffect(() => {
-    // Pull a generous window so even a long, multi-round fight keeps its own
-    // start marker inside it — if the marker scrolled past the limit we'd never
-    // break and would bleed attacks in from the PREVIOUS fight, breaking the
-    // "total since THIS fight began" promise.
-    const q = query(collection(db, "world_boss_chat"), orderBy("timestamp", "desc"), limit(2000));
-    return onSnapshot(q, (snap) => {
-      const counts = {};
-      // Newest → oldest: stop at the most recent start marker, so we count only
-      // attacks from the current fight — cumulatively, across every round.
-      for (const d of snap.docs) {
-        const m = d.data();
-        if (m.type === "narrative" && typeof m.content === "string" && m.content.includes("La battaglia ha inizio")) break;
-        if (m.type === "action" && m.hitRoll && m.side === "hero" && m.uid) {
-          counts[m.uid] = (counts[m.uid] || 0) + 1;
-        }
-      }
-      setAtkCounts(counts);
-    });
-  }, []);
+  // Per-player participation is tracked directly on each unit (`actedRounds`),
+  // bumped once per round the first time it moves OR acts (see bumpActive). The
+  // tally panel below reads it straight off the live battle state — no log
+  // scraping needed — so moving-only rounds count too.
 
   // While the master is staging (no live battle yet) the board previews the map
   // chosen in the dropdown, so the selection is visible immediately.
@@ -685,7 +660,7 @@ export default function BossTactics() {
       const blockers = new Set(us.filter((u) => !u.dead && u.id !== unitId && u.side !== me.side).map((u) => `${u.x},${u.y}`));
       const { costs } = computePaths(d.map, me.x, me.y, me.move ?? DEFAULT_MOVE, blockers);
       if (!costs.has(`${x},${y}`)) throw new Error("OCCUPIED");
-      tx.update(ref, { units: us.map((u) => (u.id === unitId ? { ...u, x, y, hasMoved: true } : u)) });
+      tx.update(ref, { units: us.map((u) => (u.id === unitId ? bumpActive({ ...u, x, y, hasMoved: true }, d.round) : u)) });
     });
 
   const endTurn = async () => {
@@ -838,10 +813,10 @@ export default function BossTactics() {
     // Apply damage to FRESH state (patch by id) so simultaneous attacks on the
     // same target each subtract from the current HP instead of clobbering, and
     // the attacker's advantage/disadvantage is consumed after the roll.
-    await txnBattle((us) => us.map((u) => {
+    await txnBattle((us, d) => us.map((u) => {
       let n = u;
       if (hit && u.id === target.id) { const hp = Math.max(0, u.hp - dmg); killed = hp <= 0; n = { ...n, hp, dead: hp <= 0 }; }
-      if (u.id === attacker.id) n = { ...n, hasActed: true, cond: null };
+      if (u.id === attacker.id) n = bumpActive({ ...n, hasActed: true, cond: null }, d.round);
       return n;
     }), fxStamp(fxKind, target.x, target.y, ranged ? { x: attacker.x, y: attacker.y } : null, fxEl));
     entry.damageRoll = hit
@@ -856,10 +831,10 @@ export default function BossTactics() {
     setBusy(true);
     const healRoll = rollFormulaParts(action.damage && action.damage !== "0" ? action.damage : "1d8");
     const heal = healRoll.total;
-    await txnBattle((us) => us.map((u) => {
+    await txnBattle((us, d) => us.map((u) => {
       let n = u;
       if (u.id === target.id) n = { ...n, hp: Math.min(n.maxHp, n.hp + heal) };
-      if (u.id === caster.id) n = { ...n, hasActed: true };
+      if (u.id === caster.id) n = bumpActive({ ...n, hasActed: true }, d.round);
       return n;
     }));
     await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Cura)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `💚 Cura: ${healRoll.text} = +${heal} HP a ${target.name}` });
@@ -868,7 +843,7 @@ export default function BossTactics() {
   };
   const resolveSelfBuff = async (caster, action) => {
     setBusy(true);
-    await txnBattle((us) => us.map((u) => (u.id === caster.id ? { ...u, ac: u.ac + 2, hasActed: true } : u)),
+    await txnBattle((us, d) => us.map((u) => (u.id === caster.id ? bumpActive({ ...u, ac: u.ac + 2, hasActed: true }, d.round) : u)),
       fxStamp("shield", caster.x, caster.y));
     await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA` });
     setBusy(false);
@@ -876,10 +851,10 @@ export default function BossTactics() {
   };
   const resolveCond = async (caster, target, action, cond) => {
     setBusy(true);
-    await txnBattle((us) => us.map((u) => {
+    await txnBattle((us, d) => us.map((u) => {
       let n = u;
       if (u.id === target.id) n = { ...n, cond };
-      if (u.id === caster.id) n = { ...n, hasActed: true };
+      if (u.id === caster.id) n = bumpActive({ ...n, hasActed: true }, d.round);
       return n;
     }), fxStamp(cond === "advantage" ? "buff" : "debuff", target.x, target.y));
     await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio` : `🌑 ${target.name}: svantaggio` });
@@ -915,11 +890,11 @@ export default function BossTactics() {
     const cellArr = [...cells].map((k) => { const [x, y] = k.split(",").map(Number); return { x, y }; });
     // Apply damage AND publish the dome effect in the same atomic write, so the
     // blast and the HP changes land together for every spectator.
-    await txnBattle((us) => us.map((u) => {
+    await txnBattle((us, d) => us.map((u) => {
       const r = rolls.find((x) => x.id === u.id);
       let n = u;
       if (r && r.dmg > 0) { const hp = Math.max(0, u.hp - r.dmg); n = { ...n, hp, dead: hp <= 0 }; }
-      if (u.id === caster.id) n = { ...n, hasActed: true, cond: null };
+      if (u.id === caster.id) n = bumpActive({ ...n, hasActed: true, cond: null }, d.round);
       return n;
     }), (data) => ({
       aoeFx: { id: (data.aoeFx?.id || 0) + 1, cells: cellArr, cx, cy, shape: aoe.shape, kind: fxKind,
@@ -1178,20 +1153,22 @@ export default function BossTactics() {
         </div>
       )}
 
-      {/* ── Per-player attack counter (collapsible): green = attacked ≥2 times,
-          red = fewer. Visible during the fight AND after it ends, so the master
-          can tally who pulled their weight. ── */}
+      {/* ── Per-player participation counter (collapsible): counts the rounds in
+          which each hero did SOMETHING (move OR action — both still count as 1).
+          Green = active in ≥2 rounds, red = fewer. Visible during the fight AND
+          after it ends, so the master can tally who pulled their weight. ── */}
       {fightStarted && heroesAll.length > 0 && (
         <div className={`tac-atktally ${atkPanelOpen ? "open" : ""}`}>
           <button className="tac-atktally-toggle" onClick={() => setAtkPanelOpen((v) => !v)}>
-            {atkPanelOpen ? "▾" : "▸"} ⚔ Attacchi
+            {atkPanelOpen ? "▾" : "▸"} 🎯 Round attivi
           </button>
           {atkPanelOpen && (
             <div className="tac-atktally-body">
               {heroesAll.map((u) => {
-                const n = atkCounts[u.uid] || 0;
+                const n = u.actedRounds || 0;
                 return (
-                  <span key={u.id} className={`tac-atktally-unit ${n >= 2 ? "ok" : "low"}`}>
+                  <span key={u.id} className={`tac-atktally-unit ${n >= 2 ? "ok" : "low"}`}
+                    title="Round in cui ha fatto movimento o azione (entrambi = 1)">
                     <span className="tac-atktally-name">{(u.name || "?").split(" ")[0]}{u.dead ? " 💀" : ""}</span>
                     <span className="tac-atktally-num">{n}</span>
                   </span>

@@ -40,6 +40,16 @@ export const sideAllDone = (units, side) => {
 export const resetSide = (units, side) =>
   units.map((u) => (u.side === side ? { ...u, hasMoved: false, hasActed: false, done: false } : u));
 
+// Participation tally: bump a unit's cumulative `actedRounds` the FIRST time it
+// does anything (move OR action) in a given round. Moving AND acting in the same
+// round still counts as 1 — deduped by `lastActiveRound`. Cumulative across the
+// whole fight (never reset by resetSide), so it answers "in how many rounds did
+// this unit actually engage?". No-op if already counted this round.
+export const bumpActive = (u, round) =>
+  u.lastActiveRound === round
+    ? u
+    : { ...u, actedRounds: (u.actedRounds || 0) + 1, lastActiveRound: round };
+
 // Atomically read→mutate→write the battle's units. `mutate(freshUnits, freshDoc)`
 // receives the FRESH units array and must patch by id and return the new array
 // (or throw to abort) — never rebuild from stale client state, so two players
