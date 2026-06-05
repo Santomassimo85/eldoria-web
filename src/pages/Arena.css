@@ -2931,6 +2931,18 @@
 .loadout-shield-btn:hover:not(.disabled) {
   filter: brightness(0.92);
 }
+.shield-caster-warning {
+  margin: 8px 0 0;
+  padding: 8px 11px;
+  background: linear-gradient(135deg, #4a1414 0%, #7a1d1d 100%);
+  color: #ffe0e0;
+  border: 1.5px solid #ffb020;
+  border-left: 5px solid #ffb020;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.shield-caster-warning strong { color: #ffd97a; }
 
 /* ---- COMBAT EQUIP PANEL (iniziale) ------------------------ */
 .equip-panel {
@@ -4276,6 +4288,34 @@
 .arena-info-list li { margin-bottom: 4px; font-size: 0.88rem; line-height: 1.6; color: #333; }
 .arena-info-example { background: rgba(212,175,55,0.06); border-left: 3px solid var(--gold); padding: 10px 14px; border-radius: 0 6px 6px 0; }
 .arena-info-example p { font-size: 0.86rem; margin: 5px 0; line-height: 1.7; color: #333; }
+/* Callout vivido per le nuove regole degli scudi */
+.arena-info-shield-note {
+  background: linear-gradient(135deg, #3a0d12 0%, #6d1421 100%) !important;
+  color: #ffe3e8 !important;
+  border: 2px solid #ffb020 !important;
+  border-left: 6px solid #ffb020 !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  margin: 10px 0 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.65 !important;
+  box-shadow: 0 4px 14px rgba(109, 20, 33, 0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.arena-info-shield-note strong { color: #ffd97a; }
+.arena-info-shield-note em { color: #ffc0cb; font-style: italic; }
+.arena-info-shield-badge {
+  display: inline-block;
+  background: #ffb020;
+  color: #3a0d12;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  padding: 3px 9px;
+  border-radius: 5px;
+  margin-right: 8px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+}
 
 /* ── Master Coin Editor ──────────────────────────────── */
 .master-coin-editor {
