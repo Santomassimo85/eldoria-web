@@ -5,14 +5,42 @@
       "date": "2026-06-05",
       "title": "Bilanciamento & Novità Arena",
       "changes": [
-        { "type": "balance", "text": "I Triboli del Ladro ora si possono schivare: la vittima fa una prova di schivata. Se la supera, lo svantaggio e il sanguinamento durano solo 1 turno invece di 3." },
-        { "type": "balance", "text": "Gli scudi ora danno +1 alla Classe Armatura (prima +2). Inoltre chi lancia incantesimi tenendo uno scudo è più impacciato: i suoi incantesimi d'attacco sono meno efficaci (quelli di controllo restano invariati)." },
-        { "type": "balance", "text": "L'incantesimo Scudo della Fede ora protegge meglio: +2 a tutti i tiri salvezza per 2 turni." },
-        { "type": "balance", "text": "L'incantesimo Aiuto ora potenzia l'attacco: +1 ai danni per 2 turni." },
-        { "type": "fix", "text": "Veleno e sanguinamento ora tolgono i punti vita da soli, senza dover cliccare nulla, e appaiono in chat ben evidenziati." },
-        { "type": "fix", "text": "L'avversario gestito dal computer non si blocca più per qualche secondo quando è avvelenato, sanguina o è sotto controllo: agisce subito." },
-        { "type": "fix", "text": "La finestra di combattimento dell'Arena ora ha uno sfondo uniforme e leggibile (prima sembrava \"spezzata\" tra chiaro e scuro)." },
-        { "type": "feature", "text": "Nuova pagina \"Novità\": qui trovi tutti gli aggiornamenti del sito, spiegati in modo semplice." }
+        {
+          "type": "balance",
+          "text": "I Triboli del Ladro ora si possono schivare: la vittima fa una prova di schivata. Se la supera, lo svantaggio e il sanguinamento durano solo 1 turno invece di 3."
+        },
+        {
+          "type": "balance",
+          "text": "Gli scudi ora danno +1 alla Classe Armatura (prima +2). Inoltre chi lancia incantesimi tenendo uno scudo è più impacciato: i suoi incantesimi d'attacco sono meno efficaci (quelli di controllo restano invariati)."
+        },
+        {
+          "type": "balance",
+          "text": "L'incantesimo Scudo della Fede ora protegge meglio: +2 a tutti i tiri salvezza per 2 turni."
+        },
+        {
+          "type": "balance",
+          "text": "L'incantesimo Aiuto ora potenzia l'attacco: +1 ai danni per 2 turni."
+        },
+        {
+          "type": "fix",
+          "text": "Veleno e sanguinamento ora tolgono i punti vita da soli, senza dover cliccare nulla, e appaiono in chat ben evidenziati."
+        },
+        {
+          "type": "fix",
+          "text": "L'avversario gestito dal computer non si blocca più per qualche secondo quando è avvelenato, sanguina o è sotto controllo: agisce subito."
+        },
+        {
+          "type": "fix",
+          "text": "La finestra di combattimento dell'Arena ora ha uno sfondo uniforme e leggibile (prima sembrava \"spezzata\" tra chiaro e scuro)."
+        },
+        {
+          "type": "feature",
+          "text": "Nuova pagina \"Novità\": qui trovi tutti gli aggiornamenti del sito, spiegati in modo semplice."
+        },
+        {
+          "type": "feature",
+          "text": "Mercato Nero: la merce più pregiata è ora riservata. Gli oggetti con un Livello Ratto richiesto sono visibili solo ai membri della Gilda che hanno raggiunto quel rango; chi è di rango troppo basso non li vede più nell'elenco e non può aprirne la scheda."
+        }
       ]
     }
   ]

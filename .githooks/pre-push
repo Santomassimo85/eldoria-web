@@ -1,9 +1,10 @@
 #!/bin/sh
-# Pre-push: registra nel changelog i commit che stanno per essere pushati.
-# Non blocca mai il push: in caso di errore prosegue comunque.
-# Il file src/data/changelog.json resta modificato nel working tree:
-# committalo quando vuoi (di norma col push successivo).
-if command -v node >/dev/null 2>&1; then
-  node scripts/changelog.mjs --from-commits || true
-fi
+# Pre-push: NON aggiunge più voci in automatico.
+# Le voci del changelog vanno curate a mano (in linguaggio "per tutti"):
+# le aggiunge Claude come ultimo step dopo ogni modifica al gameplay/leggibilità,
+# oppure tu con:  npm run changelog -- "Testo leggibile" --type fix|feature|balance
+#
+# (L'auto-append dai messaggi di commit è stato disattivato apposta: i messaggi
+#  di commit sono troppo tecnici/brevi e sporcherebbero la pagina Novità.)
+echo "ℹ  Ricorda: il changelog (/updates) si aggiorna con voci curate, non dai commit."
 exit 0

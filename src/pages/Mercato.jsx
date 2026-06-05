@@ -411,12 +411,15 @@ export default function Mercato() {
       : (marketConfig?.nextOpening ? now >= new Date(marketConfig.nextOpening) : true);
     return items.filter((item) => {
       if (!isMaster && !isMarketOpen) return false;
+      // Livello Ratto: un player vede solo gli oggetti alla portata del suo rango.
+      // Il Master vede tutto, a prescindere dalla soglia.
+      if (!isMaster && (Number(item.minLevel) || 0) > ratto.lv) return false;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === "all" || item.type === filterType;
       const matchesRarity = filterRarity === "all" || item.class === filterRarity;
       return matchesSearch && matchesType && matchesRarity;
     });
-  }, [items, marketConfig, searchTerm, filterType, filterRarity, isMaster]);
+  }, [items, marketConfig, searchTerm, filterType, filterRarity, isMaster, ratto.lv]);
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>

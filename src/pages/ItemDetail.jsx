@@ -19,6 +19,18 @@ import "./ItemDetail.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+// Livelli Ratto (allineati a Mercato.jsx) per calcolare il rango del player.
+const RATTO_LEVELS = [
+  { lv: 0, min: 0 },
+  { lv: 1, min: 5 },
+  { lv: 2, min: 15 },
+  { lv: 3, min: 30 },
+  { lv: 4, min: 50 },
+  { lv: 5, min: 80 },
+];
+const getRattoLevel = (points = 0) =>
+  ([...RATTO_LEVELS].reverse().find((l) => points >= l.min) || RATTO_LEVELS[0]).lv;
+
 // Riquadro che mostra le info del set tematico dell'oggetto.
 // Render solo se setPayload è valorizzato con almeno un bonus.
 const SetBonusBlock = ({ setPayload }) => {
@@ -86,6 +98,7 @@ export default function ItemDetail() {
   const [offer, setOffer] = useState("");
   const [message, setMessage] = useState("");
   const [statusClass, setStatusClass] = useState("");
+  const [userRattoLevel, setUserRattoLevel] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -103,6 +116,15 @@ export default function ItemDetail() {
     });
     return () => unsubscribe();
   }, [id]);
+
+  // Tiene aggiornato il rango Ratto del player per il controllo di accesso.
+  useEffect(() => {
+    if (!currentUser) { setUserRattoLevel(0); return; }
+    const unsub = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
+      setUserRattoLevel(snap.exists() ? getRattoLevel(snap.data().rattoPoints || 0) : 0);
+    });
+    return () => unsub();
+  }, [currentUser]);
 
   const userBid = (currentUser && item?.bids) ? item.bids[currentUser.uid] : null;
 
@@ -274,6 +296,23 @@ export default function ItemDetail() {
 
   if (loading) return <section className="cine-page item-detail-page"><p className="loading-text">Caricamento...</p></section>;
   if (!item) return <section className="cine-page item-detail-page"><p className="error-text">Oggetto non trovato.</p></section>;
+
+  // Controllo di accesso: i player sotto il rango Ratto richiesto non possono
+  // né vedere né interagire con l'oggetto. Il Master è sempre esentato.
+  const requiredLevel = Number(item.minLevel) || 0;
+  if (!isMaster && requiredLevel > userRattoLevel) {
+    return (
+      <section className="cine-page item-detail-page">
+        <button onClick={() => navigate("/mercato")} className="back-button">
+          ← Torna al Mercato
+        </button>
+        <p className="error-text">
+          🔒 Questa merce è riservata ai Ratti di rango superiore.
+          Sali di livello nella Gilda per poterla anche solo intravedere.
+        </p>
+      </section>
+    );
+  }
 
   const rarityKey = (item.class || "Comune").replace(/\s/g, "");
   const bidEntries = item.bids ? Object.entries(item.bids) : [];
