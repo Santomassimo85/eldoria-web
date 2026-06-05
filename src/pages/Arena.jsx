@@ -166,7 +166,7 @@ const CLERIC_SPELLS = [
   { name: "Benedire",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "✨", info: "Lv1 · Vantaggio ai tuoi attacchi per 2 turni", special: "self_advantage", advantageTurns: 2, maxUses: 3 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
   { name: "Arma Spirituale",        level: 2, hitBonus: 3, damage: "1d8+4", statKey: null, type: "spell", icon: "⚔",  info: "Lv2 · Forza", maxUses: 2 },
-  { name: "Ristorare Inferiore",    level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove condizioni + cura 1d4+2 HP", special: "heal", maxUses: 2 },
+  { name: "Ristorare Inferiore",    level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove veleno/sanguinamento/svantaggio/controllo + cura 1d4+2 HP", special: "heal", cleansesStatuses: true, maxUses: 2 },
   { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Aiuto",                  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +1 al danno per 2 turni", special: "dmg_buff", aidDmgBonus: 1, aidDmgTurns: 2, maxUses: 2 },
   { name: "Cecità/Sordità",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
@@ -194,7 +194,7 @@ const PALADIN_SPELLS = [
   { name: "Punizione Travolgente", level: 1, hitBonus: 3, damage: "1d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv1 · Radiante bonus", maxUses: 3 },
   { name: "Comando",               level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📞", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Punizione Marchiante",  level: 2, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Radiante", maxUses: 2 },
-  { name: "Ristorare Inferiore",   level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove condizioni + cura 1d4+2 HP", special: "heal", maxUses: 2 },
+  { name: "Ristorare Inferiore",   level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove veleno/sanguinamento/svantaggio/controllo + cura 1d4+2 HP", special: "heal", cleansesStatuses: true, maxUses: 2 },
   { name: "Aiuto",                 level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +1 al danno per 2 turni", special: "dmg_buff", aidDmgBonus: 1, aidDmgTurns: 2, maxUses: 2 },
 ];
 
@@ -887,6 +887,42 @@ function tickEagleEnd(p) {
 function readSaveFaithBonus(p) { return (p?.saveFaithTurns ?? 0) > 0 ? (p?.saveFaithBonus ?? 0) : 0; }
 // Aiuto: +X al danno di ogni attacco finché aidDmgTurns > 0.
 function readAidDmgBonus(p) { return (p?.aidDmgTurns ?? 0) > 0 ? (p?.aidDmgBonus ?? 0) : 0; }
+
+// Ristorare: rimuove TUTTE le condizioni negative dal personaggio
+// (veleno, sanguinamento, svantaggio, controllo, intrappolamento, accecamento,
+//  disarmo, e qualsiasi tiro salvezza in sospeso). Non tocca i buff positivi.
+function clearDebuffs(p) {
+  return {
+    // DoT
+    poisonDoT: false, poisonDoTTurns: 0, poisonDoTDice: null, poisonDoTSourceLabel: null, poisonDoTNoun: null, poisonDoTIcon: null,
+    bleedDoT: false, bleedDoTTurns: 0, bleedDoTDice: null, bleedDoTSourceLabel: null, bleedDoTNoun: null, bleedDoTIcon: null,
+    // Svantaggio / accecamento / disarmo / furtività-debuff
+    attackDisadvantageTurns: 0,
+    blindDebuff: false, eagleDebuffTurns: 0,
+    weaponLockTurns: 0,
+    stealthDisadvTurns: 0,
+    entangled: false,
+    // Controllo
+    controlLostTurns: 0,
+    pendingControlSave: null, pendingControlDC: null, pendingControlSaveAbility: null,
+    // Tiri salvezza in sospeso
+    pendingConSave: null, pendingDexSave: null, pendingSaveDot: null,
+  };
+}
+// Quanti debuff attivi ha il personaggio (per loggare se Ristorare ha pulito qualcosa).
+function countDebuffs(p) {
+  let n = 0;
+  if (p?.poisonDoT) n++;
+  if (p?.bleedDoT) n++;
+  if ((p?.attackDisadvantageTurns ?? 0) > 0) n++;
+  if (p?.blindDebuff || (p?.eagleDebuffTurns ?? 0) > 0) n++;
+  if ((p?.weaponLockTurns ?? 0) > 0) n++;
+  if ((p?.stealthDisadvTurns ?? 0) > 0) n++;
+  if (p?.entangled) n++;
+  if ((p?.controlLostTurns ?? 0) > 0 || p?.pendingControlSave) n++;
+  if (p?.pendingConSave || p?.pendingDexSave || p?.pendingSaveDot) n++;
+  return n;
+}
 
 // Riduzione danni: il Barbaro in Furia subisce metà danni da armi/skill e -25% dagli incantesimi.
 function applyBarbarianRageReduction(rawDmg, defenderSnap, defenderMatchPlayer, isSpell) {
@@ -4068,7 +4104,9 @@ export default function Arena() {
             : p
         );
         const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
-        return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: sneakExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
+        // Multi-azione: NON rigenerare turnExpiry se il turno resta al giocatore,
+      // così i DoT (veleno/sanguinamento/fuoco) ticcano UNA volta per turno, non per attacco.
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || sneakExpiry) : sneakExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -4186,7 +4224,7 @@ export default function Arena() {
             : p
         );
         const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
-        return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: triboliExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
+        return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || triboliExpiry) : triboliExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
       return;
@@ -4479,7 +4517,8 @@ export default function Arena() {
           : p
       );
       const nextTurn = stayingThisTurn ? currentUser.uid : advanceTurn(playersWithMultiState, m);
-      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: allLogs };
+      // Multi-azione: turnExpiry stabile se il turno resta al giocatore → i DoT ticcano 1/turno.
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: stayingThisTurn ? (m.turnExpiry || newTurnExpiry) : newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: allLogs };
     });
 
     await awardRoundCoins(updatedMatches);
@@ -4608,8 +4647,8 @@ export default function Arena() {
           return { ...p, actionSurgeActive: true, bonusActionUsed: true, actionUsesLeft: newUses };
         });
         const log = { pub: `⚡ ${myName} attiva Scatto d'Azione! Guadagna un'azione extra.`, attId: currentUser.uid, ts: new Date().toISOString() };
-        // Turn stays on current player
-        return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: expiry, logs: [...m.logs, log] };
+        // Turn stays on current player → NON rigenerare turnExpiry (i DoT ticcano 1/turno).
+        return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: m.turnExpiry || expiry, logs: [...m.logs, log] };
       });
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
     } finally {
@@ -5662,16 +5701,23 @@ export default function Arena() {
       const data = snap.data();
       const matches = (data.matches || []).map(m => {
         if (m.matchId !== matchId) return m;
+        let cleansedCount = 0;
         const players = m.players.map(p => {
           if (p.id !== currentUser.uid) return p;
           const maxHp  = p.maxHp || p.hp;
           const newHp  = Math.min(maxHp, (p.hp || 0) + healAmt);
           const uses   = (p.actionUsesLeft || {});
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-          return { ...p, hp: newHp, ...tickEagleEnd(p), actionUsesLeft: newUses };
+          // Ristorare: oltre a curare, rimuove tutte le condizioni negative.
+          const cleansePatch = action.cleansesStatuses ? clearDebuffs(p) : {};
+          if (action.cleansesStatuses) cleansedCount = countDebuffs(p);
+          return { ...p, hp: newHp, ...tickEagleEnd(p), ...cleansePatch, actionUsesLeft: newUses };
         });
         const nextIndex = (m.players.findIndex(p => p.id === m.turn) + 1) % m.players.length;
-        const log = `${myName} lancia ${action.icon} ${action.name} → cura sé stesso di ${healAmt} HP 🎲(${healRolls}${modPart})`;
+        const cleanseTag = action.cleansesStatuses
+          ? (cleansedCount > 0 ? ` e rimuove ${cleansedCount} condizione/i negativa/e` : " (nessuna condizione da rimuovere)")
+          : "";
+        const log = `${myName} lancia ${action.icon} ${action.name} → cura sé stesso di ${healAmt} HP 🎲(${healRolls}${modPart})${cleanseTag}`;
         return { ...m, players, turn: m.players[nextIndex].id, turnExpiry: healExpiry, logs: [...m.logs, log] };
       });
       tx.update(ref, { matches });
@@ -5811,7 +5857,7 @@ export default function Arena() {
           : p
       );
       const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
-      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr] };
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || newTurnExpiry) : newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr] };
     });
 
     await awardRoundCoins(updatedMatches);

@@ -44,6 +44,14 @@
         {
           "type": "feature",
           "text": "Mercato Nero: nuovi strumenti per i player. Ora puoi filtrare la merce per tipo di oggetto e rarità, ordinarla per prezzo o rarità, e su ogni oggetto è ben visibile il rango Ratto richiesto per acquistarlo."
+        },
+        {
+          "type": "fix",
+          "text": "Arena: veleno, sanguinamento e fuoco ora colpiscono una sola volta per turno. Prima chi faceva più attacchi nello stesso turno (Ladro, Monaco…) subiva questi danni una volta per ogni attacco — ora non più."
+        },
+        {
+          "type": "fix",
+          "text": "Arena: l'incantesimo Ristorare Inferiore ora fa davvero ciò che promette — oltre a curare, libera dal veleno, dal sanguinamento, dallo svantaggio, dal controllo e dagli altri effetti negativi."
         }
       ]
     }
