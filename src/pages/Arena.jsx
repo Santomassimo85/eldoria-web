@@ -4314,7 +4314,7 @@ export default function Arena() {
     const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
-    await showD20Roll(d20, { label: isSpellAction ? action.name : `Attacco · ${action.name}` });
+    await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : ""}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
@@ -5704,7 +5704,7 @@ export default function Arena() {
     const casterHasShield = !!attackerSnap?.hasShield;
     let d20 = Math.floor(Math.random() * 20) + 1;
     if (casterHasShield) { const d20b = Math.floor(Math.random() * 20) + 1; d20 = Math.max(d20, d20b); }
-    await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${action.name}${casterHasShield ? " (vantaggio: scudo del lanciatore)" : ""}` });
+    await showD20Roll(d20, { label: `${defName} tira il TS ${SAVE_LABEL[ability]}${casterHasShield ? " a VANTAGGIO (tuo scudo ti penalizza)" : ""} · ${action.name}` });
     const tsTotal = d20 + defMod + saveBuffBonus + saveFaithBonus;
     const saves   = tsTotal >= dc;
     // Stregoneria Innata: nemico tira ≤4 sul d20 → danno +50%.
@@ -5727,7 +5727,7 @@ export default function Arena() {
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
     const sorceryTag = sorcererCrit ? " | 🌟Stregoneria Innata +50%" : "";
     const hurtTag    = (action.damageWhenHurt && targetIsHurt) ? ` | 🩸ferito (${dmgFormula})` : "";
-    const buffTag    = `${saveBuffBonus > 0 ? ` +${saveBuffBonus} 🛡abs.` : ""}${saveFaithBonus > 0 ? ` +${saveFaithBonus} ✝fede` : ""}${casterHasShield ? " | 🛡⚔scudo lanciatore: TS a vantaggio" : ""}`;
+    const buffTag    = `${saveBuffBonus > 0 ? ` +${saveBuffBonus} 🛡abs.` : ""}${saveFaithBonus > 0 ? ` +${saveFaithBonus} ✝fede` : ""}${casterHasShield ? ` | 🛡 ${attName} ha lo scudo → ${defName} tira il TS a VANTAGGIO (penalità al lanciatore)` : ""}`;
     const dmgPart = saves ? "" : ` 🎲(${diceRolls})${modSign}${casterMod} ${ability.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag} = ${damage}`;
     const vampTag    = vampHeal > 0 ? ` | 🩸cura ${vampHeal} HP [🎲${vampRolls}]` : "";
     const log = {

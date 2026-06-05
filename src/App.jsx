@@ -53,6 +53,7 @@ import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import Feedback from "./pages/Feedback";
+import Updates from "./pages/Updates";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
@@ -356,6 +357,7 @@ export default function App() {
 
         <nav className={menuOpen ? "active" : ""}>
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
+          <NavLink to="/updates" onClick={closeMenu}>📝 Novità</NavLink>
 
           <NavDropdown label="Mondo" closeAll={closeMenu}>
             <NavLink to="/world-map">Mappa</NavLink>
@@ -417,6 +419,7 @@ export default function App() {
           <Route path="/boss-tactics" element={<BossTactics />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/updates" element={<Updates />} />
 
           {/* ROTTE ADMIN */}
           <Route path="/dm-admin" element={<AdminPanel />} />

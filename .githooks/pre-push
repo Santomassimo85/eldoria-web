@@ -1,0 +1,9 @@
+#!/bin/sh
+# Pre-push: registra nel changelog i commit che stanno per essere pushati.
+# Non blocca mai il push: in caso di errore prosegue comunque.
+# Il file src/data/changelog.json resta modificato nel working tree:
+# committalo quando vuoi (di norma col push successivo).
+if command -v node >/dev/null 2>&1; then
+  node scripts/changelog.mjs --from-commits || true
+fi
+exit 0
