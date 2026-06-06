@@ -277,6 +277,8 @@ export default function App() {
   // Fullscreen battle pages hide the top nav to give the fight more room.
   const FULLSCREEN_ROUTES = ["/boss-tactics", "/world-boss-fight", "/dm-admin/battle-maps"];
   const hideChrome = FULLSCREEN_ROUTES.includes(location.pathname);
+  // Nella pagina Arena (e sottosezioni: fight, tabellone, ecc.) nascondi la chat globale.
+  const isArenaPage = location.pathname.startsWith("/arena");
   // Reset the temporary "reveal nav" whenever the route changes.
   useEffect(() => { setForceShowNav(false); }, [location.pathname]);
 
@@ -439,7 +441,7 @@ export default function App() {
         </Routes>
       </main>
 
-{!hideChrome && <GlobalChat />}
+{!hideChrome && !isArenaPage && <GlobalChat />}
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />

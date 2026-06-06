@@ -1,0 +1,71 @@
+Devo ricostruire da zero il componente del combattimento. Il tentativo precedente ha solo cambiato colori mantenendo il layout — non è quello che voglio.
+
+ISTRUZIONE CHIAVE: ignora completamente il file attuale come riferimento di struttura. Considera che stai partendo da un file vuoto. Non guardare il JSX esistente per "ispirarti".
+
+PRIMA TI DESCRIVO ESATTAMENTE IL NUOVO LAYOUT.
+ Implementa ESATTAMENTE questo, non interpretare:
+
+═══════════════════════════════════════
+DALL'ALTO VERSO IL BASSO:
+
+[1] BARRA TOP FISSA (h: 50px)
+   - Sinistra: piccolo badge "TURNO 7" 
+   - Centro: timer grande HH:MM, pulsante che lampeggia rosso sotto i 30s
+   - Destra: icona X per chiudere
+
+[2] ZONA SCONTRO (h: 40vh, è IL CUORE della schermata)
+   - Sfondo: gradiente animato che si muove lentamente
+   - PERSONAGGIO 1 (utente): occupa metà sinistra
+     * Avatar circolare GRANDE (120px), bordo glow del colore del suo turno
+     * Nome sopra l'avatar
+     * Sotto avatar: barra HP orizzontale colorata (verde→giallo→rosso)
+     * Sotto barra HP: 3 mini-stat icone (CA, Init, livello)
+   - PERSONAGGIO 2 (avversario): specchiato a destra, stesso schema
+   - AL CENTRO tra i due: simbolo VS grande che pulsa, con particelle/scintille animate intorno
+   - Quando è il turno di uno: il suo lato si illumina (glow intenso), l'altro si scurisce al 40% opacity
+
+[3] STAT DETTAGLIATI (collassabile, h: auto)
+   - Una riga sola con i 6 stat (FOR/DES/COS/INT/SAG/CAR) come pillole orizzontali scrollabili
+   - Click su una pillola → tooltip con dettaglio
+
+[4] AZIONI (h: auto, max 35vh)
+   - 4 TAB grandi in alto: Attacchi / Magie / Abilità / Oggetti
+   - Tab attiva: piena di colore + glow
+   - Sotto le tab: griglia 2 colonne di card-azione
+     * Ogni card: icona grande in alto, nome azione, danno/effetto sotto
+     * Card cliccabile con effetto press
+
+[5] CHATLOG (sticky bottom, h: 30vh, NON modificabile in posizione)
+   - Header sticky con titolo "Cronaca" + contatore eventi
+   - Lista scrollabile internamente, ultimo evento sempre visibile
+   - Ogni riga: timestamp piccolo, icona evento, testo
+
+═══════════════════════════════════════
+
+ANIMAZIONI OBBLIGATORIE (usa framer-motion o CSS animations):
+- Avatar del turno attivo: pulsazione glow ogni 2 secondi
+- Simbolo VS centrale: rotazione lenta continua + particelle orbitanti
+- Timer sotto 30s: scuote leggermente + lampeggia rosso
+- Cambio tab azioni: slide orizzontale del contenuto
+- Hover/tap su card azione: scale 1.05 + glow
+
+PALETTE ESATTA (usa questi hex, non improvvisare):
+- Sfondo principale: #0A0E27 (blu notte profondo)
+- Sfondo card: #151B3D
+- Accento primario (turno attivo): #00F0FF (ciano elettrico)
+- Accento secondario: #FF3D9A (magenta vivo)
+- Oro per highlight: #FFD700
+- HP verde: #00FF88, HP giallo: #FFD700, HP rosso: #FF3355
+- Testo: #FFFFFF, testo secondario: #8B92B8
+
+VINCOLI TECNICI:
+- Mobile-first, testato a 375px width
+- Tutto deve stare in viewport senza scroll della pagina (solo chatlog scrolla internamente)
+- Niente modifiche alla logica di gioco/state, solo presentazione
+- File: [INSERISCI PATH]
+
+WORKFLOW:
+1. NON scrivere codice subito.
+2. Prima rispondi solo con: "Confermo il layout sezione per sezione: [riepiloga in 5 righe cosa hai capito]. Procedo?"
+3. Quando ti dico "procedi", scrivi il codice in un singolo blocco.
+4. Non aggiungere features non richieste.

@@ -6,8 +6,44 @@
       "title": "Bilanciamento & Novità Arena",
       "changes": [
         {
+          "type": "fix",
+          "text": "Combattimento: rimossa l'etichetta \"Il tuo turno\"; ora il combattente di turno è evidenziato da uno sfondo oro pulsante sulla sua scheda — più chiaro e immediato di chi tocca."
+        },
+        {
+          "type": "fix",
+          "text": "Combattimento: il nome degli oggetti ora è chiaro e leggibile (prima era rosso scuro su fondo scuro), e la \"Cronaca dello Scontro\" si può ingrandire a TUTTO SCHERMO con un tocco sull'intestazione (e richiudere con un altro tocco) — comodo per leggere tutto su smartphone."
+        },
+        {
+          "type": "fix",
+          "text": "Combattimento: le schede Attacchi/Abilità/Magie/Oggetti hanno uno sfondo più luminoso e vivace (viola brillante) e non mostrano più le iconcine — solo l'etichetta, più leggibile."
+        },
+        {
+          "type": "fix",
+          "text": "Combattimento: nella scheda Oggetti l'etichetta \"Gratis\" non viene più tagliata in alto (ora è dentro la riga dell'oggetto) e gli oggetti seguono lo stesso stile compatto a riga delle altre azioni."
+        },
+        {
+          "type": "fix",
+          "text": "Combattimento — vari ritocchi: i colori passano a oro/bordeaux su fondo scuro (via il ciano fluo, ora coerente col resto del sito); il tasto \"Abbandona\" è spostato nella barra in alto, sempre raggiungibile anche su schermi bassi; armi, magie e abilità sono ora righe compatte impilate in verticale (una per riga, a tutta larghezza, con icona piccola e contatore d'angolo): niente più tagli e ne entrano molte di più senza scorrere; la chat globale è nascosta in tutta la pagina Arena (combattimento, tabellone, ecc.)."
+        },
+        {
+          "type": "fix",
+          "text": "Su smartphone i due combattenti ora restano sempre affiancati (prima andavano a capo impilandosi in verticale): avatar, anello HP e statistiche sono più piccoli ma ben leggibili anche su schermi stretti."
+        },
+        {
+          "type": "fix",
+          "text": "Zona scontro del combattimento resa compatta e full-responsive: su schermi piccoli occupa poca altezza senza tagliare nulla, con le statistiche chiave (CA/Init/Lv) sempre visibili. I Punti Vita ora sono un anello colorato che avvolge l'avatar (barra classica per gli avversari IA senza ritratto); animazione VS centrale invariata."
+        },
+        {
+          "type": "fix",
+          "text": "Nel combattimento la scheda \"Magie\" ora compare solo se il personaggio ha incantesimi: per le classi senza magie sparisce e le altre schede (Attacchi/Abilità/Oggetti) occupano lo spazio in modo pulito."
+        },
+        {
           "type": "feature",
-          "text": "Arena completamente ridisegnata! Niente più lunghissimo scroll: ora c'è un Hub a riquadri (bento) da cui apri le sezioni \"a fuoco\" una alla volta — Entra in Lizza, Tabellone, Arena Libera, Albo dei Campioni, Regole, Scommesse e Pannello Master. Nuova anima visiva \"Pietra & Rune\": fondo dungeon, rune che pulsano, luci reattive al passaggio del mouse e animazioni vive. Tutto più ordinato, veloce, responsive e facile da usare."
+          "text": "Schermata di combattimento ricostruita da zero, mobile-first e cinematografica. Dall'alto: barra con badge round, TIMER grande (lampeggia e trema sotto i 30s) e X; ZONA SCONTRO con i due lottatori che si fronteggiano (avatar grandi 120px con bordo luminoso, HP colorata e mini-stat CA/Init/Lv), simbolo VS che ruota con scintille orbitanti, e il combattente di turno illuminato mentre l'altro si spegne; riga STATISTICHE collassabile; AZIONI a 4 schede (Attacchi/Magie/Abilità/Oggetti) con griglia di card e transizione a scorrimento; CRONACA sempre fissa in basso, leggibile e colorata. Palette elettrica (blu notte + ciano/magenta/oro). Meccaniche e dati invariati."
+        },
+        {
+          "type": "feature",
+          "text": "Arena completamente ridisegnata! Niente più lunghissimo scroll: ora c'è un Hub a riquadri (bento) da cui apri le sezioni \"a fuoco\" una alla volta — Entra in Lizza, Tabellone, Arena Libera, Albo dei Campioni, Regole, Scommesse e Pannello Master, con un pulsante \"Hub\" sempre visibile per tornare indietro. Nuova anima visiva \"Pietra & Rune\": fondo dungeon, vere rune nordiche che fluttuano sullo sfondo, luci teal reattive e animazioni vive. Tutte le sezioni (Master, Tabellone, Albo) ora condividono la stessa palette pietra+teal. Più ordinato, veloce, responsive e facile da usare."
         },
         {
           "type": "fix",
