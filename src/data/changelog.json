@@ -6,6 +6,14 @@
       "title": "Bilanciamento & Novità Arena",
       "changes": [
         {
+          "type": "balance",
+          "text": "Arena — Ladro ribilanciato: il vantaggio della Furtività e lo svantaggio inflitto dai Triboli ora durano 2 turni invece di 3 (le cariche restano invariate)."
+        },
+        {
+          "type": "balance",
+          "text": "Arena — Monaco rivisto: niente più armi da scegliere (in fase di equipaggiamento appare solo \"Mani nude\"). I due attacchi del turno ora sono distinti: il 1° è il Pugno (2d4+DES), il 2° è il Calcio (1d4+FOR). Il potenziamento \"Pugno Potenziato\" della Bottega porta il Pugno a 2d6+DES."
+        },
+        {
           "type": "fix",
           "text": "Combattimento: rimossa l'etichetta \"Il tuo turno\"; ora il combattente di turno è evidenziato da uno sfondo oro pulsante sulla sua scheda — più chiaro e immediato di chi tocca."
         },

@@ -50,7 +50,7 @@ const SHOP_ITEMS = [
   {
     key: "monk_punch_d8",
     name: "Pugno Potenziato (Monaco)",
-    description: "Il Pugno del Monaco infligge 1d8+DES invece di 1d6+DES. Permanente.",
+    description: "Il Pugno del Monaco infligge 2d6+DES invece di 2d4+DES. Permanente.",
     icon: "👊",
     price: 100,
     field: "monkPunchD8",

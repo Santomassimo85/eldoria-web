@@ -266,7 +266,26 @@ const BARD_WEAPON_OPTIONS    = [...SIMPLE_WEAPONS, _mw("Stocco")].filter(Boolean
 // Il Ladro combatte a due armi (mano1 + mano2): niente armi a due mani.
 const ROGUE_WEAPON_OPTIONS   = [...SIMPLE_WEAPONS, _mw("Stocco"), _mw("Scimitarra"), _mw("Spada Corta"), _mw("Frusta"), _mw("Balestra a Mano")].filter(Boolean).filter(w => !w.twoHanded);
 const RANGER_WEAPON_OPTIONS  = [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS];
-const MONK_WEAPON_OPTIONS    = [...SIMPLE_WEAPONS, _mw("Spada Corta"), _mw("Frusta"), _mw("Balestra a Mano")].filter(Boolean);
+// Monaco — combatte solo a mani nude: l'unica "arma" selezionabile è "Mani nude".
+// In combattimento il 1° attacco del turno è il Pugno (2d4+DES), il 2° il Calcio (1d4+FOR).
+const MANI_NUDE_WEAPON = {
+  name: "Mani nude", hitBonus: 3, damage: "2d4", statKey: "dex",
+  type: "weapon", icon: "👊", twoHanded: false, damageType: "contundente",
+  info: "1° attacco Pugno (2d4+DES) · 2° attacco Calcio (1d4+FOR)", unarmedMonk: true,
+};
+const MONK_WEAPON_OPTIONS    = [MANI_NUDE_WEAPON];
+
+// Risolve l'attacco a mani nude del monaco in base alle azioni già spese nel turno:
+// 0 azioni → Pugno (2d4+DES, 2d6 se potenziato in Bottega) · ≥1 → Calcio (1d4+FOR).
+function resolveMonkUnarmed(action, usedSoFar, buffs) {
+  if (!action?.unarmedMonk) return action;
+  if ((usedSoFar ?? 0) >= 1) {
+    return { ...action, name: "Calcio", icon: "🦵", damage: "1d4", statKey: "str", info: "Calcio · 1d4+FOR" };
+  }
+  const punchUpgraded = (buffs?.monkPunchD8 ?? 0) > 0;
+  const dice = punchUpgraded ? "2d6" : "2d4";
+  return { ...action, name: "Pugno", icon: "👊", damage: dice, statKey: "dex", info: `Pugno · ${dice}+DES` };
+}
 const WIZARD_WEAPON_OPTIONS  = [_sw("Bastone Ferrato"), _sw("Daga")].filter(Boolean);
 
 
@@ -410,21 +429,21 @@ const SNEAK_ATTACK_ACTION = {
   type: "skill", icon: "🗡", info: "Arma+1d6+DES · 3 cariche", special: "sneak_attack", maxUses: 3,
 };
 
-// Furtività (Rogue) — buff puro: vantaggio ai propri 3 attacchi, 3 cariche
+// Furtività (Rogue) — buff puro: vantaggio ai propri 2 attacchi, 3 cariche
 const STEALTH_ACTION = {
   name: "Furtività", hitBonus: 0, damage: "", statKey: null,
-  type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio ai tuoi prossimi 3 attacchi · 3 cariche", special: "stealth", maxUses: 3,
+  type: "skill", icon: "🌑", info: "Attiva Furtività · vantaggio ai tuoi prossimi 2 attacchi · 3 cariche", special: "stealth", maxUses: 3,
 };
 
 // Triboli (Rogue) — TS DES dell'avversario (CD 8+comp+DES del ladro): fallito →
-// svantaggio + sanguinamento (1d6/turno) per 3 turni; riuscito → solo 1 turno.
+// svantaggio + sanguinamento (1d6/turno) per 2 turni; riuscito → solo 1 turno.
 const TRIBOLI_ACTION = {
   name: "Triboli", hitBonus: 0, damage: "", statKey: null,
   type: "skill", icon: "🪤",
-  info: "Sparge triboli · TS DES avversario (CD 8+comp+DES): fallito → svantaggio + sanguinamento (1d6/turno) 3 turni; riuscito → solo 1 turno · 2 cariche",
+  info: "Sparge triboli · TS DES avversario (CD 8+comp+DES): fallito → svantaggio + sanguinamento (1d6/turno) 2 turni; riuscito → solo 1 turno · 2 cariche",
   special: "triboli",
-  disadvantageTurns: 3,
-  bleedTurns: 3,
+  disadvantageTurns: 2,
+  bleedTurns: 2,
   bleedDice: "1d6",
   maxUses: 2,
 };
@@ -457,11 +476,6 @@ const MIGHTY_STRIKE_ACTION = {
   grantsAdvTurns: 3, maxUses: 2,
 };
 
-// Pugno (Monk) — attacco a mani nude, 1d6+DES, sempre disponibile
-const PUGNO_ACTION = {
-  name: "Pugno", hitBonus: 3, damage: "1d6", statKey: "dex",
-  type: "skill", icon: "👊", info: "Colpo a mani nude · 1d6+DES", damageType: "contundente",
-};
 // Carica di Pugni (Monk) — 2 pugni consecutivi, 2d6+DES, 2 usi
 const CARICA_PUGNI_ACTION = {
   name: "Carica di Pugni", hitBonus: 3, damage: "2d6", statKey: "dex",
@@ -856,7 +870,7 @@ const ARENA_TITLES = {
 
 // Restituisce +1 se il titolo deve attivarsi su questo tiro per colpire, altrimenti 0.
 // "Spazzaossa" si attiva su qualsiasi azione non-spell con damageType "contundente"
-// (include Pugno/Carica di Pugni del Monaco, che sono unarmed-bludgeoning).
+// (include Pugno/Calcio/Carica di Pugni del Monaco, che sono unarmed-bludgeoning).
 function getTitleHitBonus({ titleKey, classLower, isSpellAction, wildShapeForm, actionDamageType }) {
   if (!titleKey) return 0;
   if (titleKey === "myrhal"     && isSpellAction && (isWizardClass(classLower) || isSorcererClass(classLower))) return 1;
@@ -1203,7 +1217,7 @@ function getLoadoutConfig(charClass) {
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [PUGNO_ACTION, CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
@@ -2287,8 +2301,6 @@ export default function Arena() {
 
     const chaScore = charPreview.stats.cha ?? 0;
     const cls = (charPreview.class || "").toLowerCase();
-    const buffs = charPreview.arenaBuffs || {};
-    const monkPunchUpgraded = (buffs.monkPunchD8 ?? 0) > 0;
     const petAction = (isRangerClass(cls) && pendingPet && RANGER_PETS[pendingPet]) ? RANGER_PETS[pendingPet].action : null;
     const demonAction = (isWarlockClass(cls) && pendingDemon && WARLOCK_DEMONS[pendingDemon]) ? WARLOCK_DEMONS[pendingDemon].action : null;
     const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
@@ -2296,7 +2308,6 @@ export default function Arena() {
       ...pendingWeapons, ...pendingSpells, ...pendingSkills,
       ...config.autoActions.map(a => {
         if (a.special === "bardic_inspiration") return { ...a, maxUses: Math.max(1, chaScore) };
-        if (a.name === "Pugno" && monkPunchUpgraded) return { ...a, damage: "1d8", info: "Colpo a mani nude · 1d8+DES (potenziato)" };
         return a;
       }),
       ...(petAction ? [petAction] : []),
@@ -3647,9 +3658,11 @@ export default function Arena() {
     const sortedWeapons = weapons.slice().sort((a, b) => avgDmg(b.damage) - avgDmg(a.damage));
     // Rogue/Monk multi-action: rotate through weapons. Single-weapon classes
     // just always use the best.
-    const chosen = (weapons.length > 1 && (cls.includes("rogue") || cls.includes("ladr") || cls.includes("monk") || cls.includes("monaco")))
+    let chosen = (weapons.length > 1 && (cls.includes("rogue") || cls.includes("ladr") || cls.includes("monk") || cls.includes("monaco")))
       ? weapons[usedSoFar % weapons.length]
       : sortedWeapons[0];
+    // Monaco a mani nude: 1° colpo Pugno (2d4+DES), 2° colpo Calcio (1d4+FOR).
+    if (chosen?.unarmedMonk) chosen = resolveMonkUnarmed(chosen, usedSoFar, aiSnap?.arenaBuffs);
 
     const armorPenalty   = aiSnap.selectedArmor?.hitPenalty ?? 0;
     const statKey        = chosen.statKey || "str";
@@ -4136,8 +4149,8 @@ export default function Arena() {
     // ── Furtività (Rogue) — buff puro, nessun attacco ────────────────
     if (action.special === "stealth") {
       const log = {
-        pub: `🌑 ${attName} entra in Furtività — vantaggio ai prossimi 3 attacchi`,
-        att: `🌑 Entri in Furtività — i tuoi prossimi 3 attacchi hanno vantaggio`,
+        pub: `🌑 ${attName} entra in Furtività — vantaggio ai prossimi 2 attacchi`,
+        att: `🌑 Entri in Furtività — i tuoi prossimi 2 attacchi hanno vantaggio`,
         def: `🌑 ${attName} è scivolato nell'ombra...`,
         attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
       };
@@ -4152,7 +4165,7 @@ export default function Arena() {
           if (p.id === currentUser.uid) {
             const uses = p.actionUsesLeft || {};
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-            return { ...p, stealthAdvTurns: 3, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: me?.multiActionsUsed ?? 0 };
+            return { ...p, stealthAdvTurns: 2, stealthDisadvTurns: 0, stealthTurns: 0, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), rageTurns: Math.max(0, (p.rageTurns ?? 0) - 1), hunterMarkTurns: Math.max(0, (p.hunterMarkTurns ?? 0) - 1), defensiveBonus: 0, aidBuff: false, bonusActionUsed: preservedBonusUsed, actionUsesLeft: newUses, multiActionsUsed: me?.multiActionsUsed ?? 0 };
           }
           return p;
         });
@@ -4175,8 +4188,8 @@ export default function Arena() {
       const saveTotal  = d20 + tgtDexMod;
       const savePass   = saveTotal >= saveDC;
       const sign       = tgtDexMod >= 0 ? "+" : "";
-      const turns      = savePass ? 1 : 3;
-      const bleedTurns = savePass ? 1 : 3;
+      const turns      = savePass ? 1 : 2;
+      const bleedTurns = savePass ? 1 : 2;
       const tnLbl      = `${turns} turn${turns === 1 ? "o" : "i"}`;
       const tsTag      = `TS DES ${d20}${sign}${tgtDexMod}=${saveTotal} vs CD ${saveDC} → ${savePass ? "✅ SUPERA" : "❌ FALLISCE"}`;
       const log = {
@@ -4335,6 +4348,8 @@ export default function Arena() {
 
     // ── Attacco normale ───────────────────────────────────────────────
     const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
+    // Monaco a mani nude: 1° colpo Pugno (2d4+DES), 2° colpo Calcio (1d4+FOR).
+    if (action.unarmedMonk) action = resolveMonkUnarmed(action, attackerMatchPlayer?.multiActionsUsed ?? 0, attackerSnap?.arenaBuffs);
     // Class lock: prefer the class embedded on the match player (locked at match build),
     // fall back to characterSnapshots only for legacy matches without an embedded class.
     const attackerClassLower = (attackerMatchPlayer?.class || arenaMeta.characterSnapshots?.[currentUser.uid]?.class || "").toLowerCase();
@@ -6844,8 +6859,8 @@ export default function Arena() {
               <p><strong>Barbaro (Barbarian)</strong> — Armi semplici e marziali, 2 armi, armatura leggera/media o nessuna + scudo. <em>Skill:</em> Furia (+2 danni e riduzione danni 3T), Turbine di Lame (2 attacchi 2d10+FOR), Attacco Poderoso (2d8+FOR + vantaggio 3T).</p>
               <p><strong>Paladino (Paladin)</strong> — Armi marziali, 2 armi, armatura pesante + scudo. Spell paladino. <em>Skill:</em> Smite Divino (arma +2d8, 2 cariche), Imposizione delle Mani (pozza di cura = HP/3, scegli quanti curare).</p>
               <p><strong>Cacciatore (Ranger)</strong> — Armi ranger, 2 armi, armatura leggera/media + scudo. Spell ranger. <em>Skill:</em> Marchio del Cacciatore (+3 ai TPC per 3 turni, bonus action).</p>
-              <p><strong>Monaco (Monk)</strong> — Armi monaco, 1 arma, nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Pugno (1d6+DES), Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+4 danno 2T), Assorbire Danni (50% del prossimo danno si converte in cura), Cura Ki (1d8+SAG).</p>
-              <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 3 attacchi), Triboli (TS DES avversario: fallito → svantaggio + 1d6 sanguinamento/turno per 3T; riuscito → solo 1T).</p>
+              <p><strong>Monaco (Monk)</strong> — Solo mani nude (nessun'arma da scegliere), 2 attacchi a turno: 1° Pugno (2d4+DES), 2° Calcio (1d4+FOR). Nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+4 danno 2T), Assorbire Danni (50% del prossimo danno si converte in cura), Cura Ki (1d8+SAG).</p>
+              <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 2 attacchi), Triboli (TS DES avversario: fallito → svantaggio + 1d6 sanguinamento/turno per 2T; riuscito → solo 1T).</p>
               <p><strong>Mago (Wizard)</strong> — Armi semplici, 1 arma, abito da mago (no armatura, no scudo). Slot magia ampi. <em>Skill:</em> Recupero Arcano (ripristina 2 slot lv1 + 1 slot lv2).</p>
               <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <em>Skill:</em> Magia Innata (passiva), Fonte di Magia (ripristina 2 slot magia a scelta).</p>
               <p><strong>Warlock</strong> — Armi semplici, 1 arma, armatura leggera, no scudo. <em>Skill:</em> Magical Cunning (salta turno → +1 carica a ogni slot, 2 cariche), Patto Demoniaco (sacrifica 1d4 HP → +1d12 alle spell per 3T).</p>
@@ -9708,6 +9723,15 @@ export default function Arena() {
                           const handUsedThisTurn = isRogueMe && isWeapon && isEquipped && (myPlayer?.turnWeaponsUsed || []).includes(action.name);
                           const skillSlotUsed = isRogueMe && (action.special === "sneak_attack" || action.special === "triboli") && !!myPlayer?.turnSkillUsed;
                           const rogueBlocked = handUsedThisTurn || skillSlotUsed;
+                          // 🥋 Monaco a mani nude: l'etichetta mostra il colpo del momento
+                          // (Pugno al 1° attacco, Calcio al 2°), pur restando "Mani nude" come arma.
+                          const monkDisp = action.unarmedMonk
+                            ? resolveMonkUnarmed(action, myPlayer?.multiActionsUsed ?? 0, mySnap?.arenaBuffs)
+                            : null;
+                          const dispName = monkDisp?.name ?? action.name;
+                          const dispIcon = monkDisp?.icon ?? action.icon;
+                          const dispDmg  = monkDisp?.damage ?? action.damage;
+                          const dispStat = monkDisp?.statKey ?? action.statKey;
                           return (
                             <button
                               key={action.name}
@@ -9723,12 +9747,12 @@ export default function Arena() {
                                 ? `${action.name} — Usi esauriti`
                                 : disabledByInvis ? "👻 Bersaglio invisibile — solo guarigione disponibile"
                                 : action.special === "web" ? "Ragnatela — intrappola: TS FOR (CD 13) ogni turno per liberarsi"
-                                : action.special === "triboli" ? "Triboli — TS DES avversario: fallito → svantaggio + sanguinamento 1d6/turno 3 turni; riuscito → solo 1 turno"
+                                : action.special === "triboli" ? "Triboli — TS DES avversario: fallito → svantaggio + sanguinamento 1d6/turno 2 turni; riuscito → solo 1 turno"
                                 : action.special === "poison" ? `Veleno — ${action.damage} danni + TS COS`
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
-                                : action.special === "stealth" ? `Furtività — vantaggio ai tuoi prossimi 3 attacchi`
+                                : action.special === "stealth" ? `Furtività — vantaggio ai tuoi prossimi 2 attacchi`
                                 : !isEquipped ? "Clicca per impugnare (spende il turno)"
-                                : `+${action.hitBonus}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""} | ${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
+                                : `+${action.hitBonus}${dispStat ? ` +${dispStat.toUpperCase()}` : ""} | ${dispDmg}${dispStat ? ` +${dispStat.toUpperCase()}` : ""}`}
                               onClick={() => {
                                 if (noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked) return;
                                 isEquipped
@@ -9736,8 +9760,8 @@ export default function Arena() {
                                   : handleSwitchWeapon(m.matchId, action.name);
                               }}
                             >
-                              <span className="action-icon">{action.icon}</span>
-                              <span className="action-name">{action.name}</span>
+                              <span className="action-icon">{dispIcon}</span>
+                              <span className="action-name">{dispName}</span>
                               <span className="action-dice">
                                 {isStealthActive ? `🌑 ${stealthTurnsLeft}t attiva`
                                   : handUsedThisTurn ? "✓ Usata"
@@ -9748,7 +9772,7 @@ export default function Arena() {
                                   : action.special === "web" ? "🕸 Intrappola"
                                   : action.special === "triboli" ? "🎲 TS DES · 🩸 svant."
                                   : action.special === "poison" ? `${action.damage} +TS COS`
-                                  : `${action.damage}${action.statKey ? ` +${action.statKey.toUpperCase()}` : ""}`}
+                                  : `${dispDmg}${dispStat ? ` +${dispStat.toUpperCase()}` : ""}`}
                               </span>
                               {usesLeft !== null && (
                                 <span className={`action-uses-badge ${noUsesLeft ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
