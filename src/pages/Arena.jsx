@@ -1650,6 +1650,10 @@ export default function Arena() {
   const [recuperoLv1Selected, setRecuperoLv1Selected] = useState([]);
   const [recuperoLv2Selected, setRecuperoLv2Selected] = useState([]);
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
+  const [loadoutTab, setLoadoutTab] = useState("weapons"); // tab attivo nella fase di equipaggiamento
+  // ── REDESIGN: hub a riquadri + viste a fuoco (niente più lungo scroll) ──
+  // "hub" = landing bento · poi una vista per sezione.
+  const [arenaView, setArenaView] = useState("hub"); // hub | join | bracket | libera | albo | regole | master
 
   const [arenaInfoOpen, setArenaInfoOpen] = useState(false);
   const [combatModalOpen, setCombatModalOpen] = useState(false);
@@ -2233,6 +2237,7 @@ export default function Arena() {
     setLoadoutContext("tournament");
     setFunAcceptMatchId(null);
     setLoadoutPhase("class-select");
+    setArenaView("join");
   };
 
   // ── STEP 3: tira HP (+CON per dado) ──────────────────────────────────────
@@ -2451,9 +2456,11 @@ export default function Arena() {
     setPendingDemon(null);
     setPendingConstruct(null);
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
+    setLoadoutTab("weapons");
     setLoadoutContext("tournament");
     setFunAcceptMatchId(null);
     setAiMatchPending(false);
+    setArenaView("hub");
   };
 
   // ── ARENA LIBERA: open/cancel/abandon ─────────────────────────────────────
@@ -2723,6 +2730,7 @@ export default function Arena() {
     setPendingShield(null);
     setMasterJoinSetup(false);
     setLoadoutPhase("rolling");
+    setArenaView("join");
   };
 
   // ── MASTER helpers ─────────────────────────────────────────────────────────
@@ -6609,72 +6617,133 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── HERO SECTION (full-vh, parallax, immagine epica) ── */}
-      <section id="arena-hero-top" className="arena-hero" aria-label="Arena dei Campioni">
-        <div className="arena-hero-media" aria-hidden="true">
-          <img
-            src="/assets/PhotoStory/GruppoMEAA/partyfun.jpg"
-            alt=""
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
-          <div className="arena-hero-vignette" />
-          <div className="arena-hero-gradient" />
-          <div className="arena-hero-pattern" />
+      {/* ════════════════════════════════════════════════════════════
+          ARENA REDESIGN — Hub a riquadri (Bento) + viste "a fuoco".
+          Anima "Pietra & Rune": fondo dungeon, rune che pulsano,
+          metallo graffiato, luci reattive. Niente più lungo scroll.
+          ════════════════════════════════════════════════════════════ */}
+
+      {/* Atmosfera: brace/rune fluttuanti (puramente decorativo) */}
+      <div className="arena-rune-ambient" aria-hidden="true">
+        <span className="arune a1" /><span className="arune a2" /><span className="arune a3" />
+        <span className="arune a4" /><span className="arune a5" /><span className="arune a6" />
+        <span className="arune a7" /><span className="arune a8" />
+      </div>
+
+      {/* Header inciso nella pietra — sempre visibile (con "back" fuori dall'hub) */}
+      <header className="arena-rune-header" id="arena-hero-top">
+        {arenaView !== "hub" ? (
+          <button type="button" className="arena-back-btn" onClick={() => setArenaView("hub")}>
+            <span className="arena-back-arrow" aria-hidden="true">‹</span> Hub
+          </button>
+        ) : <span className="arena-rune-header-spacer" aria-hidden="true" />}
+        <div className="arena-rune-titlewrap">
+          <span className="arena-rune-eyebrow">Cronache di Exanthia</span>
+          <h1 className="arena-rune-title" data-text="Arena dei Campioni">Arena dei Campioni</h1>
         </div>
-        <div className="arena-hero-content">
-          <span className="arena-hero-eyebrow">Cronache di Exanthia</span>
-          <h1 className="arena-hero-title">Arena dei Campioni</h1>
-          <p className="arena-hero-tagline">
-            Dodici classi, una sola corona. Solo i più forti scriveranno il loro nome nelle leggende.
-          </p>
-          <div className="arena-hero-meta">
-            {arenaMeta.phase === "registration" && (
-              <span className="arena-hero-pill open">● Iscrizioni Aperte</span>
+        <div className="arena-rune-phasepill">
+          {arenaMeta.phase === "registration" && <span className="arune-pill open">● Iscrizioni</span>}
+          {arenaMeta.phase === "combat" && <span className="arune-pill combat">● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}</span>}
+          {arenaMeta.phase === "finished" && <span className="arune-pill finished">● Concluso</span>}
+          {arenaMeta.timerPaused && <span className="arune-pill paused" title="Timer in pausa">⏸</span>}
+        </div>
+      </header>
+
+      {/* ════════ HUB BENTO — la landing senza scroll ════════ */}
+      {arenaView === "hub" && (() => {
+        const partCount = arenaMeta.participants?.length || 0;
+        const hasBracket = (arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0;
+        const hasMyActive = currentUser && (arenaMeta.matches || []).some(m =>
+          ((m.kind === "fun") || arenaMeta.phase === "combat") &&
+          m.players?.some(p => p.id === currentUser?.uid) && m.status !== "open");
+        const showBet = arenaMeta.phase === "combat" && currentUser && (!isRegistered || isMaster);
+        return (
+          <div className="arena-hub">
+            {/* Riga di stato viva */}
+            <div className="arena-hub-status">
+              <div className="ahs-cell"><span className="ahs-val">{partCount}</span><span className="ahs-lab">Sfidanti</span></div>
+              <div className="ahs-cell"><span className="ahs-val">{champions.length}</span><span className="ahs-lab">Campioni</span></div>
+              {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
+                <div className="ahs-cell ahs-warn"><span className="ahs-prize-ico">♛</span><span className="ahs-prize-txt">Solo Campioni</span></div>
+              )}
+              {arenaMeta.prizes && arenaMeta.prizes.trim() && (
+                <div className="ahs-cell ahs-prize"><span className="ahs-prize-ico">🏆</span><span className="ahs-prize-txt">{arenaMeta.prizes}</span></div>
+              )}
+            </div>
+
+            {/* Tua sfida in corso — richiamo prioritario */}
+            {hasMyActive && (
+              <button type="button" className={`arena-hub-mymatch${isMyTurnInActive ? " your-turn" : ""}`} onClick={() => setCombatModalOpen(true)}>
+                <span className="ahmm-ico" aria-hidden="true">⚔</span>
+                <span className="ahmm-txt">{isMyTurnInActive ? "È IL TUO TURNO — entra nel combattimento" : "Hai una sfida in corso — guarda il combattimento"}</span>
+                <span className="ahmm-go" aria-hidden="true">›</span>
+              </button>
             )}
-            {arenaMeta.phase === "combat" && (
-              <span className="arena-hero-pill combat">
-                ● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}
-              </span>
-            )}
-            {arenaMeta.phase === "finished" && (
-              <span className="arena-hero-pill finished">● Torneo Concluso</span>
-            )}
-            {arenaMeta.timerPaused && (
-              <span className="arena-hero-pill paused">⏸ Timer in Pausa</span>
-            )}
+
+            {/* Griglia Bento */}
+            <div className="arena-bento">
+              <button type="button" className="bento-card bc-join bento-wide" onClick={() => {
+                if (arenaMeta.phase === "registration") { if (!isMaster) openLoadoutPicker(); else setArenaView("master"); }
+                else setArenaView("libera");
+              }}>
+                <span className="bento-rune" aria-hidden="true">⚔</span>
+                <span className="bento-title">Entra in Lizza</span>
+                <span className="bento-sub">{arenaMeta.phase === "registration" ? (isRegistered ? "Sei iscritto ✓" : isPending ? "In attesa di approvazione…" : "Crea il tuo campione") : "Iscrizioni chiuse · prova l'Arena Libera"}</span>
+                <span className="bento-glow" aria-hidden="true" />
+              </button>
+
+              <button type="button" className={`bento-card bc-bracket bento-wide${hasBracket ? "" : " bento-off"}`} onClick={() => hasBracket && setArenaView("bracket")} disabled={!hasBracket}>
+                <span className="bento-rune" aria-hidden="true">🏆</span>
+                <span className="bento-title">Tabellone</span>
+                <span className="bento-sub">{hasBracket ? "Segui gli scontri live" : "Nessun torneo in corso"}</span>
+                <span className="bento-glow" aria-hidden="true" />
+              </button>
+
+              <button type="button" className="bento-card bc-libera" onClick={() => setArenaView("libera")}>
+                <span className="bento-rune" aria-hidden="true">🗡</span>
+                <span className="bento-title">Arena Libera</span>
+                <span className="bento-sub">Sfide 1v1 d'allenamento</span>
+                <span className="bento-glow" aria-hidden="true" />
+              </button>
+
+              <button type="button" className="bento-card bc-albo" onClick={() => setArenaView("albo")}>
+                <span className="bento-rune" aria-hidden="true">♛</span>
+                <span className="bento-title">Albo dei Campioni</span>
+                <span className="bento-sub">{champions.length} {champions.length === 1 ? "eroe nella leggenda" : "eroi nella leggenda"}</span>
+                <span className="bento-glow" aria-hidden="true" />
+              </button>
+
+              <button type="button" className="bento-card bc-regole" onClick={() => setArenaView("regole")}>
+                <span className="bento-rune" aria-hidden="true">📜</span>
+                <span className="bento-title">Regole &amp; Classi</span>
+                <span className="bento-sub">Come funziona l'Arena</span>
+                <span className="bento-glow" aria-hidden="true" />
+              </button>
+
+              {showBet && (
+                <button type="button" className="bento-card bc-bet" onClick={() => setBettingDrawerOpen(true)}>
+                  <span className="bento-rune" aria-hidden="true">🎲</span>
+                  <span className="bento-title">Scommesse</span>
+                  <span className="bento-sub">Punta sui duellanti</span>
+                  <span className="bento-glow" aria-hidden="true" />
+                </button>
+              )}
+
+              {isMaster && (
+                <button type="button" className="bento-card bc-master" onClick={() => setArenaView("master")}>
+                  <span className="bento-rune" aria-hidden="true">⚜</span>
+                  <span className="bento-title">Pannello Master</span>
+                  <span className="bento-sub">Gestisci l'Arena</span>
+                  <span className="bento-glow" aria-hidden="true" />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="arena-hero-scroll-hint" aria-hidden="true">
-          <span>Scroll</span>
-          <span className="arena-hero-arrow">↓</span>
-        </div>
-      </section>
+        );
+      })()}
 
-      {/* ── SIDE NAV: icone piccole laterali per saltare alle sezioni
-            (sostituisce la vecchia sticky mini-nav: c'è già il side-nav
-            verticale a sinistra su desktop e in basso su mobile) ── */}
-      <nav className="arena-side-nav" aria-label="Navigazione rapida sezioni">
-        <a href="#arena-hero-top" className="arena-side-nav-btn" title="Inizio" aria-label="Vai all'inizio">
-          <span aria-hidden="true">🏰</span>
-        </a>
-        <a href="#arena-info-anchor" className="arena-side-nav-btn" title="Regole, classi, glorie" aria-label="Regole">
-          <span aria-hidden="true">📜</span>
-        </a>
-        {isMaster && (
-          <a href="#arena-master-panel" className="arena-side-nav-btn" title="Pannello del Master" aria-label="Master">
-            <span aria-hidden="true">♛</span>
-          </a>
-        )}
-        <a href="#arena-training" className="arena-side-nav-btn" title="Arena Libera (sfide allenamento)" aria-label="Arena Libera">
-          <span aria-hidden="true">⚔</span>
-        </a>
-        <a href="#arena-bracket-anchor" className="arena-side-nav-btn" title="Tabellone del Torneo" aria-label="Bracket">
-          <span aria-hidden="true">🏆</span>
-        </a>
-      </nav>
-
-      {/* ── RICOMPENSA PROSSIMA ARENA (visibile a tutti) ── */}
-      {(isMaster || (arenaMeta.prizes && arenaMeta.prizes.trim())) && (
+      {/* ── RICOMPENSA — editor solo nel Pannello Master (display premi è nell'hub) ── */}
+      {arenaView === "master" && isMaster && (
         <div className="arena-reward-panel">
           <div className="arena-reward-deco" aria-hidden="true">🏆</div>
           <div className="arena-reward-body">
@@ -6701,121 +6770,10 @@ export default function Arena() {
         </div>
       )}
 
-      {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
-        <div className="champions-arena-banner">
-          <div className="champions-arena-deco-left">⚜</div>
-          <div className="champions-arena-content">
-            <div className="champions-arena-crown">♛</div>
-            <div className="champions-arena-title">Arena dei Campioni</div>
-            <div className="champions-arena-subtitle">
-              Solo chi ha già conquistato la corona può scendere in campo
-            </div>
-            {champions.length > 0 && (
-              <div className="champions-arena-roll">
-                {champions.slice(0, 8).map(c => (
-                  <span key={c.uid} className="champions-arena-chip" title={`${c.name || "Campione"} — ${c.wins} ${c.wins === 1 ? "vittoria" : "vittorie"}`}>
-                    {c.image
-                      ? <img src={c.image} alt="" />
-                      : <span className="champions-arena-chip-icon">{CLASS_ICONS[c.class] || "♛"}</span>}
-                    <span className="champions-arena-chip-name">{(c.name || "Campione").split(" ")[0]}</span>
-                    <span className="champions-arena-chip-wins">×{c.wins}</span>
-                  </span>
-                ))}
-                {champions.length > 8 && <span className="champions-arena-more">+{champions.length - 8}</span>}
-              </div>
-            )}
-          </div>
-          <div className="champions-arena-deco-right">⚜</div>
-        </div>
-      )}
-
-      {/* FASE */}
-      <div className="arena-phase-banner">
-        {arenaMeta.phase === "registration" ? (
-          <span className="phase-tag open">Iscrizioni Aperte</span>
-        ) : arenaMeta.phase === "finished" ? (
-          <span className="phase-tag finished">Torneo Concluso</span>
-        ) : (
-          <span className="phase-tag combat">
-            {finalMatch ? "Campionato — Finale" : `Campionato — Round ${arenaMeta.currentRound}`}
-          </span>
-        )}
-        {arenaMeta.timerPaused && (
-          <span className="phase-tag paused">⏸ Timer in Pausa</span>
-        )}
-      </div>
-
-      {/* ── QUICK NAV (sticky) ── */}
-      {currentUser && (() => {
-        const hasMyActive = (arenaMeta.matches || []).some(m =>
-          ((m.kind === "fun") || arenaMeta.phase === "combat") &&
-          m.players?.some(p => p.id === currentUser?.uid) &&
-          m.status !== "open"
-        );
-        const hasBracket = (arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0;
-        const goTo = (id) => {
-          const el = document.getElementById(id);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-        };
-        return (
-          <nav className="arena-quicknav" aria-label="Navigazione rapida Arena">
-            <span className="arena-quicknav-deco" aria-hidden="true">⚜</span>
-            {hasMyActive && (
-              <button
-                type="button"
-                className={`arena-quicknav-chip arena-quicknav-chip--active${isMyTurnInActive ? " arena-quicknav-chip--your-turn" : ""}`}
-                onClick={() => goTo("arena-my-match")}
-              >
-                <span className="arena-quicknav-chip-icon">{isMyTurnInActive ? "⚔" : "🛡"}</span>
-                <span className="arena-quicknav-chip-label">
-                  {isMyTurnInActive ? "È il tuo turno" : "La Tua Sfida"}
-                </span>
-                <span className="arena-quicknav-chip-pulse" aria-hidden="true" />
-              </button>
-            )}
-            <button type="button" className="arena-quicknav-chip" onClick={() => goTo("arena-training")}>
-              <span className="arena-quicknav-chip-icon">⚔</span>
-              <span className="arena-quicknav-chip-label">Arena Libera</span>
-            </button>
-            {hasBracket && (
-              <button type="button" className="arena-quicknav-chip" onClick={() => goTo("arena-bracket")}>
-                <span className="arena-quicknav-chip-icon">♛</span>
-                <span className="arena-quicknav-chip-label">Tabellone</span>
-              </button>
-            )}
-            <span className="arena-quicknav-deco" aria-hidden="true">⚜</span>
-          </nav>
-        );
-      })()}
-
-      {/* ── SCROLLYTELLING: Lex Arenae (immagine sticky + frames che si rivelano) ── */}
-      <section className="arena-scrollytell" aria-label="Lex Arenae">
-        <div className="arena-scrollytell-media" aria-hidden="true">
-          <img
-            src="/assets/PhotoStory/GruppoLAC/woods_war.jpg"
-            alt=""
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
-          <div className="arena-scrollytell-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="arena-scrollytell-content">
-          <div className="arena-scrollytell-frame">
-            <span className="arena-scrollytell-eyebrow">Lex Arenae</span>
-            <h2 className="arena-scrollytell-title">Regole, Classi &amp; Glorie</h2>
-            <p className="arena-scrollytell-text">
-              Dodici classi, una sola corona. 10 minuti per l'iniziativa, 1 ora per agire.
-              +5 MA per match, +7 per round, +30 per la corona. Scendi in campo da campione.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SEZIONE SPIEGAZIONE ── */}
-      <div id="arena-info-anchor" className="arena-info-section">
-        <button className="arena-info-toggle" onClick={() => setArenaInfoOpen(v => !v)}>
-          {arenaInfoOpen ? "▲" : "▼"} Come funziona l'Arena
-        </button>
-        {arenaInfoOpen && (
+      {/* ── VISTA REGOLE & CLASSI ── */}
+      {arenaView === "regole" && (
+      <div id="arena-info-anchor" className="arena-info-section arena-info-section--view">
+        {(
           <div className="arena-info-body">
 
             <h3 className="arena-info-title">⚔ Come funziona l'Arena</h3>
@@ -6901,7 +6859,10 @@ export default function Arena() {
           </div>
         )}
       </div>
+      )}
 
+      {/* ── VISTA ALBO: campione attuale + Sala dei Campioni ── */}
+      {arenaView === "albo" && (<>
       {/* CHAMPION BANNER */}
       {arenaMeta.phase === "finished" && arenaMeta.tournamentWinner && (
         <div className="champion-banner">
@@ -6941,32 +6902,10 @@ export default function Arena() {
           }}
         />
       )}
+      </>)}
 
-      {/* ── SCROLLYTELLING: Custode dell'Arena (visibile al Master) ── */}
-      {isMaster && (
-        <section className="arena-scrollytell" aria-label="Il Custode dell'Arena">
-          <div className="arena-scrollytell-media" aria-hidden="true">
-            <img
-              src="/assets/Helmvil.jpg"
-              alt=""
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          </div>
-          <div className="arena-scrollytell-content">
-            <div className="arena-scrollytell-frame">
-              <span className="arena-scrollytell-eyebrow">♛ Il Custode</span>
-              <h2 className="arena-scrollytell-title">Sangue, Onore, Decisioni</h2>
-              <p className="arena-scrollytell-text">
-                Apri le iscrizioni, approva i campioni, pausa il tempo, dichiara i vincitori.
-                L'Arena risponde alla tua mano — qui sotto trovi il pannello del Master.
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── PANNELLO MASTER ── */}
-      {isMaster && (
+      {/* ── VISTA MASTER: pannello del Master + strumenti ── */}
+      {arenaView === "master" && isMaster && (
         <div id="arena-master-panel" className="master-panel">
           <h3 className="master-panel-title"><span className="master-crown">♛</span> Pannello del Master</h3>
 
@@ -7188,7 +7127,7 @@ export default function Arena() {
       )}
 
       {/* FIX: P5c — collapsible master panels become trigger buttons + modals */}
-      {isMaster && (
+      {arenaView === "master" && isMaster && (
         <div className="arena-modal-trigger-row">
           <button
             type="button"
@@ -7255,8 +7194,8 @@ export default function Arena() {
         />
       </ArenaModal>
 
-      {/* ── ZONA LOADOUT (tournament registration) ── */}
-      {(
+      {/* ── VISTA JOIN: creazione personaggio / iscrizione ── */}
+      {arenaView === "join" && (
         (arenaMeta.phase === "registration" && (!isMaster || loadoutPhase !== "idle")) ||
         (loadoutContext === "fun" && loadoutPhase !== "idle")
       ) && (
@@ -7406,7 +7345,7 @@ export default function Arena() {
                     </div>
                     <div className="hp-roll-buttons">
                       <button className="btn-reroll" onClick={rollHp} disabled={(charPreview.hpRerollCount || 0) >= 2}>↺ Ritira {(charPreview.hpRerollCount || 0) >= 2 ? "(esaurito)" : `(${2 - (charPreview.hpRerollCount || 0)} rimanenti)`}</button>
-                      <button className="btn-join" onClick={() => setLoadoutPhase("selecting")}>
+                      <button className="btn-join" onClick={() => { setLoadoutTab("weapons"); setLoadoutPhase("selecting"); }}>
                         Continua →
                       </button>
                     </div>
@@ -7441,7 +7380,6 @@ export default function Arena() {
             if (!petReady)       btnParts.push("1 compagno animale");
             if (!demonReady)     btnParts.push("1 demone");
             if (!constructReady) btnParts.push("1 costrutto");
-            const btnText = isReady ? "Invia Iscrizione" : `Mancano: ${btnParts.join(" + ")}`;
 
             // Calcolo CA anteprima
             const dexMod   = charPreview.stats.dex ?? 0;
@@ -7458,8 +7396,31 @@ export default function Arena() {
             const has2HWeapon  = pendingWeapons.some(w => w.twoHanded);
             const shieldLocked = has2HWeapon;
 
+            // ── Struttura a TAB: una categoria per scheda, niente scroll infinito ──
+            const hasMagic     = config.spellOptions.length > 0 || (config.skillOptions?.length > 0);
+            const hasCompanion = isRanger || isWarlock || isArtificer;
+            const companionMeta = isRanger
+              ? { icon: "🐾", label: "Compagno", done: petReady }
+              : isWarlock
+              ? { icon: "👁", label: "Demone", done: demonReady }
+              : { icon: "🤖", label: "Costrutto", done: constructReady };
+            const LOADOUT_TABS = [
+              { key: "weapons", icon: "⚔", label: config.maxWeapons === 1 ? "Arma" : "Armi", count: `${pendingWeapons.length}/${config.maxWeapons}`, done: weaponsLeft === 0 },
+              ...(hasMagic ? [{ key: "magic", icon: "✨", label: config.spellOptions.length > 0 ? "Magie" : "Abilità", count: config.spellOptions.length > 0 ? `${pendingSpells.length}/${config.maxSpells}` : null, done: spellsLeft === 0 }] : []),
+              { key: "armor", icon: "🛡", label: "Difesa", count: pendingArmor ? "✓" : null, done: armorReady },
+              ...(hasCompanion ? [{ key: "companion", icon: companionMeta.icon, label: companionMeta.label, count: companionMeta.done ? "✓" : null, done: companionMeta.done }] : []),
+              { key: "items", icon: "🎒", label: "Oggetti", count: `${totalItems}/2`, done: totalItems >= 1 },
+            ];
+            const activeTab = LOADOUT_TABS.some(t => t.key === loadoutTab) ? loadoutTab : LOADOUT_TABS[0].key;
+            const firstIncompleteTab = (LOADOUT_TABS.find(t => !t.done) || LOADOUT_TABS[0]).key;
+            const footerBtnText = isReady
+              ? "✓ Invia Iscrizione"
+              : activeTab === firstIncompleteTab
+              ? `Mancano: ${btnParts.join(" + ")}`
+              : "Vai alla sezione mancante →";
+
             return (
-              <div className="loadout-panel">
+              <div className="loadout-panel loadout-panel--tabbed">
                 {/* Anteprima personaggio — intestazione verticale a tutta larghezza */}
                 <div className="loadout-char-preview loadout-char-preview--top">
                   {charPreview.image && (
@@ -7478,7 +7439,30 @@ export default function Arena() {
                   </div>
                 </div>
 
+                {/* ── Barra TAB: naviga tra le categorie senza scorrere ── */}
+                <div className="loadout-tabs" role="tablist">
+                  {LOADOUT_TABS.map(t => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === t.key}
+                      className={`loadout-tab ${activeTab === t.key ? "active" : ""} ${t.done ? "done" : ""}`}
+                      onClick={() => setLoadoutTab(t.key)}
+                    >
+                      <span className="loadout-tab-icon">{t.icon}</span>
+                      <span className="loadout-tab-label">{t.label}</span>
+                      {t.count && <span className="loadout-tab-count">{t.count}</span>}
+                      <span className="loadout-tab-status">{t.done ? "✓" : "•"}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── Corpo del tab attivo ── */}
+                <div className="loadout-tab-body">
+
                 {/* Sezione Armi */}
+                {activeTab === "weapons" && (<>
                 <div className="loadout-section-title">
                   ⚔ {config.maxWeapons === 1 ? "Arma" : "Armi"} — {pendingWeapons.length}/{config.maxWeapons}
                 </div>
@@ -7505,7 +7489,10 @@ export default function Arena() {
                     );
                   })}
                 </div>
+                </>)}
 
+                {/* ── TAB MAGIE: Incantesimi + Abilità ── */}
+                {activeTab === "magic" && (<>
                 {/* Sezione Incantesimi — raggruppati per livello */}
                 {config.spellOptions.length > 0 && (() => {
                   const LEVEL_LABELS = { 0: "Trucchetti", 1: "Livello 1", 2: "Livello 2", 3: "Livello 3", 4: "Livello 4", 5: "Livello 5", 6: "Livello 6", 7: "Livello 7", 8: "Livello 8", 9: "Livello 9" };
@@ -7586,9 +7573,10 @@ export default function Arena() {
                     </div>
                   </>
                 )}
+                </>)}
 
-                {/* Abilità automatiche (Smite Paladino) */}
-                {config.autoActions.length > 0 && (
+                {/* Abilità automatiche (Smite Paladino) — incluse nel tab Armi */}
+                {activeTab === "weapons" && config.autoActions.length > 0 && (
                   <div className="loadout-auto-block">
                     <div className="loadout-section-title">⚡ Abilità Speciali (incluse automaticamente)</div>
                     {config.autoActions.map(a => (
@@ -7602,6 +7590,8 @@ export default function Arena() {
                   </div>
                 )}
 
+                {/* ── TAB DIFESA: Armatura + Scudo + Forma Selvatica ── */}
+                {activeTab === "armor" && (<>
                 {/* ── Sezione Armatura ── */}
                 <div className="loadout-section-title">
                   🛡 Armatura — {pendingArmor ? `✓ ${pendingArmor.name}` : "nessuna selezionata"}
@@ -7677,7 +7667,10 @@ export default function Arena() {
                     🐾 Avrai accesso alla <strong>Forma Selvatica</strong> durante il combattimento.
                   </div>
                 )}
+                </>)}
 
+                {/* ── TAB ALLEATO: Compagno / Demone / Costrutto ── */}
+                {activeTab === "companion" && (<>
                 {/* Compagno Animale (Ranger) */}
                 {isRanger && (() => {
                   const ownedBuffs = charPreview.arenaBuffs || {};
@@ -7759,7 +7752,10 @@ export default function Arena() {
                     </div>
                   </>
                 )}
+                </>)}
 
+                {/* ── TAB OGGETTI ── */}
+                {activeTab === "items" && (<>
                 {/* ── Sezione Oggetti ── */}
                 {(() => {
                   const totalItems = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
@@ -7802,11 +7798,18 @@ export default function Arena() {
                     ))}
                   </div>
                 )}
+                </>)}
 
-                <div className="loadout-actions">
+                </div>{/* /loadout-tab-body */}
+
+                {/* ── Footer fisso: annulla + azione intelligente ── */}
+                <div className="loadout-actions loadout-actions--sticky">
                   <button className="btn-cancel-loadout" onClick={cancelLoadout}>Annulla</button>
-                  <button className="btn-join" onClick={confirmJoin} disabled={!isReady}>
-                    {btnText}
+                  <button
+                    className={`btn-join ${isReady ? "" : "btn-join--incomplete"}`}
+                    onClick={() => { if (isReady) confirmJoin(); else setLoadoutTab(firstIncompleteTab); }}
+                  >
+                    {footerBtnText}
                   </button>
                 </div>
               </div>
@@ -7874,8 +7877,8 @@ export default function Arena() {
         </div>
       )}
 
-      {/* ── ARENA LIBERA (Fun) — sempre disponibile, separata dal torneo ── */}
-      {currentUser && (() => {
+      {/* ── VISTA ARENA LIBERA (Fun) ── */}
+      {arenaView === "libera" && currentUser && (() => {
         const openChallenges = funMatches.filter(m => m.status === "open" && !m.ai);
         const ongoingFun = funMatches.filter(m => m.status === "initiative" || m.status === "active");
         const myActiveFun = ongoingFun.find(m => m.players?.some(p => p.id === currentUser.uid));
@@ -7886,26 +7889,6 @@ export default function Arena() {
           .slice(-3);
         return (
           <>
-            {/* ── SCROLLYTELLING: Allenamento Libero ── */}
-            <section className="arena-scrollytell" aria-label="Arena Libera">
-              <div className="arena-scrollytell-media" aria-hidden="true">
-                <img
-                  src="/assets/PhotoStory/GruppoMEAA/locanda3.jpg"
-                  alt=""
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
-                />
-              </div>
-              <div className="arena-scrollytell-content">
-                <div className="arena-scrollytell-frame">
-                  <span className="arena-scrollytell-eyebrow">⚔ Sfide Libere</span>
-                  <h2 className="arena-scrollytell-title">Allenamento Senza Tempo</h2>
-                  <p className="arena-scrollytell-text">
-                    Nessuna ricompensa, solo ferro contro ferro. Sfida un compagno o l'IA con le
-                    stesse regole del torneo — addestra la tua build senza perdere onore.
-                  </p>
-                </div>
-              </div>
-            </section>
             <div className="fun-arena-section" id="arena-training">
               <div className="fun-arena-header">
                 <span className="fun-arena-icon">⚔</span>
@@ -8022,32 +8005,9 @@ export default function Arena() {
         );
       })()}
 
-      {/* ── SCROLLYTELLING: Tabellone (visibile in combat/finished) ── */}
-      {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (
-        <section className="arena-scrollytell" aria-label="Tabellone del Campionato">
-          <div className="arena-scrollytell-media" aria-hidden="true">
-            <img
-              src="/assets/PhotoStory/GruppoMEAA/run.jpg"
-              alt=""
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          </div>
-          <div className="arena-scrollytell-content">
-            <div className="arena-scrollytell-frame">
-              <span className="arena-scrollytell-eyebrow">Bracket</span>
-              <h2 className="arena-scrollytell-title">Tabellone del Campionato</h2>
-              <p className="arena-scrollytell-text">
-                Gironi, scontri diretti, finale. Il tabellone vivo qui sotto racconta in tempo reale
-                chi è ancora in piedi — segui la tua sfida verso la corona.
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── TABELLONE DEL CAMPIONATO (visibile a tutti gli utenti loggati) ── */}
+      {/* ── VISTA TABELLONE DEL CAMPIONATO ── */}
       <span id="arena-bracket-anchor" aria-hidden="true" />
-      {(arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
+      {arenaView === "bracket" && (arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
         const renderMatchCard = (m) => {
           const isMyMatch = m.players.some(p => p.id === currentUser?.uid);
 

@@ -6,6 +6,14 @@
       "title": "Bilanciamento & Novità Arena",
       "changes": [
         {
+          "type": "feature",
+          "text": "Arena completamente ridisegnata! Niente più lunghissimo scroll: ora c'è un Hub a riquadri (bento) da cui apri le sezioni \"a fuoco\" una alla volta — Entra in Lizza, Tabellone, Arena Libera, Albo dei Campioni, Regole, Scommesse e Pannello Master. Nuova anima visiva \"Pietra & Rune\": fondo dungeon, rune che pulsano, luci reattive al passaggio del mouse e animazioni vive. Tutto più ordinato, veloce, responsive e facile da usare."
+        },
+        {
+          "type": "fix",
+          "text": "Creazione del personaggio nell'Arena ridisegnata: niente più scroll infinito. Ora armi, magie, difesa, alleato e oggetti sono divisi in schede con barra in alto sempre visibile e pulsante di conferma fissato in basso. Ogni scheda mostra una spunta verde quando è completa. Risolto anche il riquadro \"Abilità Speciali\" che appariva bianco e stonato sullo sfondo scuro."
+        },
+        {
           "type": "balance",
           "text": "I Triboli del Ladro ora si possono schivare: la vittima fa una prova di schivata. Se la supera, lo svantaggio e il sanguinamento durano solo 1 turno invece di 3."
         },

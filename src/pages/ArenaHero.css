@@ -4350,3 +4350,562 @@ body .arena-bet-fab:hover {
   margin: 0 auto 20px !important;
   flex: none !important;
 }
+
+/* ============================================================
+   LAYER 7 — LOADOUT A SCHEDE (tabbed)
+   Rifà la fase "selecting" come navigazione a tab: header
+   compatto + barra schede appiccicata in alto + corpo della
+   sola categoria attiva + footer azione appiccicato in basso.
+   Obiettivo: niente più scroll infinito, struttura user-friendly.
+   ============================================================ */
+
+/* La zona loadout clippa (overflow:hidden) → romperebbe lo sticky di
+   barra schede e footer. La rendo visibile solo qui. */
+.arena-page #arena-loadout.join-zone { overflow: visible !important; }
+
+/* Pannello a colonna: header / tabs / corpo / footer */
+.arena-page .loadout-panel--tabbed {
+  display: flex !important;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* Header personaggio: compatto, orizzontale, non più gigante e centrato */
+.arena-page .loadout-panel--tabbed .loadout-char-preview--top {
+  flex-direction: row !important;
+  align-items: center !important;
+  text-align: left !important;
+  gap: 14px !important;
+  margin: 0 !important;
+  padding: 16px 20px !important;
+  border-radius: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22) !important;
+  background: rgba(20, 8, 8, 0.35) !important;
+}
+.arena-page .loadout-panel--tabbed .loadout-char-preview--top > div { width: auto; flex: 1; min-width: 0; }
+.arena-page .loadout-panel--tabbed .loadout-avatar { width: 50px !important; height: 50px !important; }
+.arena-page .loadout-panel--tabbed .loadout-char-name { font-size: 1.02rem; }
+.arena-page .loadout-panel--tabbed .loadout-char-stats { font-size: 0.72rem; line-height: 1.5; }
+
+/* ── Barra schede: appiccicata in alto, scorrevole su mobile ── */
+.arena-page .loadout-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  gap: 6px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(28, 11, 11, 0.97), rgba(22, 9, 9, 0.9));
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.arena-page .loadout-tabs::-webkit-scrollbar { height: 4px; }
+.arena-page .loadout-tabs::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.4); border-radius: 4px; }
+
+.arena-page .loadout-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1 0 auto;
+  min-width: 72px;
+  padding: 9px 12px !important;
+  border: 1px solid rgba(212, 175, 55, 0.28) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 250, 240, 0.05) !important;
+  color: rgba(245, 230, 200, 0.78) !important;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.14s ease, background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  box-shadow: none !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+.arena-page .loadout-tab:hover { transform: translateY(-1px); background: rgba(255, 250, 240, 0.1) !important; }
+.arena-page .loadout-tab-icon { font-size: 1.15rem; line-height: 1; }
+.arena-page .loadout-tab-label {
+  font-family: var(--font-title);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.arena-page .loadout-tab-count {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 217, 122, 0.85);
+}
+.arena-page .loadout-tab-status {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  font-size: 0.6rem;
+  color: rgba(245, 230, 200, 0.35);
+}
+/* Tab completato: pallino → spunta verde */
+.arena-page .loadout-tab.done .loadout-tab-status { color: #8effb4; }
+.arena-page .loadout-tab.done {
+  border-color: rgba(120, 200, 140, 0.45) !important;
+  background: rgba(40, 100, 60, 0.18) !important;
+}
+/* Tab attivo: oro pieno, in risalto */
+.arena-page .loadout-tab.active {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.32), rgba(180, 140, 40, 0.22)) !important;
+  border-color: #ffe08a !important;
+  color: #fff7e6 !important;
+  box-shadow: 0 0 0 2px rgba(255, 217, 122, 0.28), 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+}
+.arena-page .loadout-tab.active .loadout-tab-label { color: #fff7e6; }
+.arena-page .loadout-tab.active.done .loadout-tab-status { color: #aaffc8; }
+
+/* Corpo della scheda attiva */
+.arena-page .loadout-tab-body {
+  padding: 16px 20px 18px;
+}
+.arena-page .loadout-tab-body .loadout-section-title:first-child { margin-top: 4px; }
+
+/* Footer azione: appiccicato in basso, sempre raggiungibile */
+.arena-page .loadout-actions--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  display: flex;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 14px 20px;
+  background: linear-gradient(0deg, rgba(28, 11, 11, 0.98), rgba(22, 9, 9, 0.9));
+  border-top: 1px solid rgba(212, 175, 55, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.arena-page .loadout-actions--sticky .btn-cancel-loadout { flex: 0 0 auto; }
+.arena-page .loadout-actions--sticky .btn-join { flex: 1; }
+/* Azione "non pronto": ambra anziché verde, comunica che porta alla sezione mancante */
+.arena-page .btn-join.btn-join--incomplete {
+  background: linear-gradient(135deg, #b45309, #92400e) !important;
+}
+
+/* ── FIX: blocco "Abilità Speciali" non più bianco su fondo scuro ── */
+.arena-page .loadout-auto-block {
+  background: rgba(20, 8, 8, 0.34) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  margin-top: 4px;
+}
+.arena-page .loadout-auto-tag {
+  background: rgba(212, 175, 55, 0.1) !important;
+  border: 1px solid rgba(212, 175, 55, 0.32) !important;
+  border-radius: 10px !important;
+}
+.arena-page .loadout-auto-name { color: #ffd97a !important; }
+.arena-page .loadout-auto-dmg { color: #ff9a9a !important; }
+.arena-page .loadout-auto-info { color: rgba(245, 230, 200, 0.7) !important; }
+
+/* Mobile: schede a icona, footer comodo */
+@media (max-width: 560px) {
+  .arena-page .loadout-tab { min-width: 60px; padding: 8px 8px !important; }
+  .arena-page .loadout-tab-label { font-size: 0.55rem; letter-spacing: 0.08em; }
+  .arena-page .loadout-tab-body { padding: 14px 14px 16px; }
+  .arena-page .loadout-actions--sticky { padding: 12px 14px; }
+  .arena-page .loadout-panel--tabbed .loadout-char-preview--top { padding: 12px 14px !important; }
+}
+
+/* ============================================================
+   LAYER 8 — ARENA REDESIGN · "PIETRA & RUNE"
+   Hub a riquadri (bento) + viste a fuoco. Niente lungo scroll.
+   Fondo dungeon, rune che pulsano, metallo graffiato, luci
+   reattive, ombre profonde. Caricato per ultimo: vince su tutto.
+   ============================================================ */
+.arena-page {
+  --rune:        #5fe0d0;   /* glow runico arcano (teal) */
+  --rune-soft:   rgba(95, 224, 208, 0.16);
+  --stone-0:     #0a0b0e;
+  --stone-1:     #14161b;
+  --stone-2:     #1c2026;
+  --stone-edge:  rgba(150, 170, 185, 0.16);
+  --gold-r:      #e3c558;
+  --blood-r:     #d6452f;
+  --parch:       #ece3d0;
+  background:
+    radial-gradient(ellipse at 50% -8%, rgba(95, 224, 208, 0.08), transparent 46%),
+    radial-gradient(circle at 10% 16%, rgba(120, 150, 170, 0.06), transparent 30%),
+    radial-gradient(circle at 90% 88%, rgba(214, 69, 47, 0.06), transparent 34%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 7px),
+    linear-gradient(180deg, #14161b 0%, #0c0d11 56%, #0a0b0e 100%) !important;
+  color: var(--parch) !important;
+  min-height: 100vh;
+  /* La nav del sito è fixed (h ~88px): offset così l'header non finisce sotto. */
+  padding: 104px clamp(12px, 3vw, 34px) 70px !important;
+  position: relative;
+  overflow-x: clip;
+}
+
+/* Niente scroll-reveal guidato da scroll: l'hub non scrolla → resterebbe invisibile.
+   Ogni vista usa una sua entrata a tempo. */
+.arena-page > * {
+  animation: none !important;
+  opacity: 1 !important;
+  order: 0 !important;
+}
+
+/* ── Atmosfera: rune/brace fluttuanti ── */
+.arena-rune-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.arena-rune-ambient .arune {
+  position: absolute;
+  bottom: -40px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--rune), rgba(95,224,208,0) 70%);
+  filter: blur(0.4px);
+  opacity: 0;
+  animation: arune-float linear infinite;
+}
+.arena-rune-ambient .a1 { left: 8%;  animation-duration: 17s; animation-delay: 0s;   }
+.arena-rune-ambient .a2 { left: 22%; animation-duration: 23s; animation-delay: 3s;  width: 4px; height: 4px; }
+.arena-rune-ambient .a3 { left: 38%; animation-duration: 19s; animation-delay: 7s;  background: radial-gradient(circle, var(--gold-r), transparent 70%); }
+.arena-rune-ambient .a4 { left: 54%; animation-duration: 26s; animation-delay: 1s;  }
+.arena-rune-ambient .a5 { left: 67%; animation-duration: 15s; animation-delay: 5s;  width: 5px; height: 5px; background: radial-gradient(circle, var(--blood-r), transparent 70%); }
+.arena-rune-ambient .a6 { left: 79%; animation-duration: 21s; animation-delay: 9s;  }
+.arena-rune-ambient .a7 { left: 90%; animation-duration: 24s; animation-delay: 2s;  width: 4px; height: 4px; }
+.arena-rune-ambient .a8 { left: 47%; animation-duration: 29s; animation-delay: 11s; background: radial-gradient(circle, var(--gold-r), transparent 70%); }
+@keyframes arune-float {
+  0%   { transform: translateY(0) translateX(0) scale(1);     opacity: 0; }
+  10%  { opacity: 0.9; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(-105vh) translateX(24px) scale(0.4); opacity: 0; }
+}
+
+/* Tutto il contenuto reale sopra l'atmosfera (header escluso: è sticky) */
+.arena-page > *:not(.arena-rune-ambient):not(.arena-rune-header) { position: relative; z-index: 1; }
+
+/* ── HEADER inciso nella pietra ── */
+.arena-rune-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 1180px;
+  margin: 0 auto 22px;
+  padding: 16px clamp(14px, 2.4vw, 26px);
+  border-radius: 18px;
+  position: sticky;
+  top: 96px;
+  z-index: 8;
+  background:
+    linear-gradient(180deg, rgba(30,34,41,0.92), rgba(16,18,22,0.96)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 6px);
+  border: 1px solid var(--stone-edge);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 -1px 0 rgba(0,0,0,0.6) inset,
+    0 18px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.arena-rune-header::before {
+  content: "";
+  position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rune), transparent);
+  opacity: 0.7;
+  animation: rune-scan 6s ease-in-out infinite;
+}
+@keyframes rune-scan { 0%,100% { opacity: 0.25; } 50% { opacity: 0.85; } }
+.arena-rune-header-spacer { width: 64px; flex: 0 0 auto; }
+.arena-rune-titlewrap { flex: 1; min-width: 0; text-align: center; }
+.arena-rune-eyebrow {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 0.6rem;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--rune);
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+.arena-rune-title {
+  font-family: var(--font-title);
+  font-size: clamp(1.4rem, 3.6vw, 2.3rem);
+  letter-spacing: 0.06em;
+  margin: 0;
+  color: #f3ecdb;
+  text-shadow:
+    0 0 1px rgba(255,255,255,0.4),
+    0 2px 0 #000,
+    0 0 18px rgba(95, 224, 208, 0.35);
+  position: relative;
+}
+/* "Inciso": copia luminosa runica dietro al titolo */
+.arena-rune-title::after {
+  content: attr(data-text);
+  position: absolute; inset: 0;
+  color: transparent;
+  -webkit-text-stroke: 0.5px rgba(95, 224, 208, 0.35);
+  filter: blur(0.5px);
+  animation: rune-breathe 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes rune-breathe { 0%,100% { opacity: 0.25; } 50% { opacity: 0.7; } }
+
+.arena-back-btn {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(40,46,54,0.9), rgba(22,25,30,0.95)) !important;
+  border: 1px solid var(--stone-edge) !important;
+  color: var(--parch) !important;
+  font-family: var(--font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  transition: transform 0.16s, box-shadow 0.2s, border-color 0.2s;
+}
+.arena-back-btn:hover {
+  transform: translateX(-3px);
+  border-color: rgba(95,224,208,0.6) !important;
+  box-shadow: 0 0 0 1px rgba(95,224,208,0.35), 0 6px 16px rgba(0,0,0,0.5) !important;
+}
+.arena-back-arrow { font-size: 1.1rem; line-height: 1; }
+.arena-rune-phasepill { flex: 0 0 auto; display: flex; gap: 6px; min-width: 64px; justify-content: flex-end; }
+.arune-pill {
+  font-family: var(--font-title);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.arune-pill.open     { color: #6fe0c2; background: rgba(95,224,180,0.12); }
+.arune-pill.combat   { color: #ff9a6a; background: rgba(214,90,47,0.14); animation: rune-breathe 2.4s ease-in-out infinite; }
+.arune-pill.finished { color: var(--gold-r); background: rgba(227,197,88,0.12); }
+.arune-pill.paused   { color: #cdd6df; background: rgba(180,200,215,0.12); }
+
+/* ════════ HUB BENTO ════════ */
+.arena-hub {
+  max-width: 1180px;
+  margin: 0 auto;
+  animation: view-fade 0.5s ease both;
+}
+@keyframes view-fade { from { opacity: 0 !important; transform: translateY(12px); } to { opacity: 1 !important; transform: none; } }
+
+/* Riga di stato */
+.arena-hub-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.ahs-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 84px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(28,32,38,0.9), rgba(16,18,22,0.95));
+  border: 1px solid var(--stone-edge);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 20px rgba(0,0,0,0.35);
+}
+.ahs-val { font-family: var(--font-title); font-size: 1.45rem; color: var(--rune); line-height: 1; text-shadow: 0 0 14px rgba(95,224,208,0.4); }
+.ahs-lab { font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(236,227,208,0.6); margin-top: 4px; }
+.ahs-prize { flex: 1 1 200px; flex-direction: row; gap: 10px; align-items: center; justify-content: flex-start; }
+.ahs-prize-ico { font-size: 1.3rem; flex: 0 0 auto; }
+.ahs-prize-txt { font-size: 0.85rem; color: #f1d98a; font-weight: 600; line-height: 1.35; }
+.ahs-warn { flex-direction: row; gap: 8px; color: #e9c2ff; border-color: rgba(180,120,220,0.4); }
+.ahs-warn .ahs-prize-txt { color: #e9c2ff; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.72rem; }
+
+/* Tua sfida — richiamo */
+.arena-hub-mymatch {
+  width: 100%;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(60,20,16,0.92), rgba(28,12,10,0.96));
+  border: 1px solid rgba(214,69,47,0.5);
+  color: #ffe6da;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+  transition: transform 0.16s, box-shadow 0.2s;
+}
+.arena-hub-mymatch:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,0.55); }
+.arena-hub-mymatch.your-turn { border-color: #ff5a3c; animation: mymatch-throb 1.6s ease-in-out infinite; }
+@keyframes mymatch-throb {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,90,60,0.0), 0 10px 28px rgba(0,0,0,0.45); }
+  50%     { box-shadow: 0 0 0 4px rgba(255,90,60,0.28), 0 10px 28px rgba(0,0,0,0.45); }
+}
+.ahmm-ico { font-size: 1.6rem; flex: 0 0 auto; filter: drop-shadow(0 0 8px rgba(255,120,80,0.6)); }
+.ahmm-txt { flex: 1; font-family: var(--font-title); font-size: 0.9rem; letter-spacing: 0.04em; }
+.ahmm-go { font-size: 1.6rem; opacity: 0.7; }
+
+/* Griglia Bento */
+.arena-bento {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.bento-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 132px;
+  padding: 18px 18px 16px !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(30,34,41,0.86), rgba(14,16,20,0.96)),
+    repeating-linear-gradient(125deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 8px) !important;
+  border: 1px solid var(--stone-edge) !important;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 -2px 0 rgba(0,0,0,0.5) inset,
+    0 14px 30px rgba(0,0,0,0.45) !important;
+  color: var(--parch) !important;
+  cursor: pointer;
+  text-align: left;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  transition: transform 0.2s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s, border-color 0.25s;
+  animation: bento-in 0.5s cubic-bezier(.16,1,.3,1) both;
+}
+.bento-card:nth-child(1) { animation-delay: 0.02s; }
+.bento-card:nth-child(2) { animation-delay: 0.07s; }
+.bento-card:nth-child(3) { animation-delay: 0.12s; }
+.bento-card:nth-child(4) { animation-delay: 0.17s; }
+.bento-card:nth-child(5) { animation-delay: 0.22s; }
+.bento-card:nth-child(6) { animation-delay: 0.27s; }
+.bento-card:nth-child(7) { animation-delay: 0.32s; }
+@keyframes bento-in { from { opacity: 0 !important; transform: translateY(18px) scale(0.97); } to { opacity: 1 !important; transform: none; } }
+.bento-wide { grid-column: span 2; min-height: 150px; }
+
+/* rune incisa (icona grande, fioca, sullo sfondo) */
+.bento-rune {
+  position: absolute;
+  top: -8px; right: 6px;
+  font-size: 4.6rem;
+  line-height: 1;
+  opacity: 0.1;
+  filter: grayscale(0.3);
+  transition: opacity 0.3s, transform 0.4s, filter 0.3s;
+  pointer-events: none;
+}
+.bento-title {
+  font-family: var(--font-title);
+  font-size: clamp(0.95rem, 1.5vw, 1.2rem);
+  letter-spacing: 0.04em;
+  color: #f4eede;
+  position: relative; z-index: 2;
+}
+.bento-sub {
+  font-size: 0.72rem;
+  color: rgba(236,227,208,0.62);
+  line-height: 1.35;
+  position: relative; z-index: 2;
+}
+/* glow reattivo + bordo runico */
+.bento-glow {
+  position: absolute; inset: 0;
+  border-radius: 18px;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 120%, var(--bento-accent, var(--rune-soft)), transparent 62%);
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.bento-card:hover {
+  transform: translateY(-6px) scale(1.015);
+  border-color: var(--bento-edge, rgba(95,224,208,0.6)) !important;
+  box-shadow:
+    0 0 0 1px var(--bento-edge, rgba(95,224,208,0.4)),
+    0 22px 46px rgba(0,0,0,0.6),
+    0 0 34px -6px var(--bento-edge, rgba(95,224,208,0.5)) !important;
+}
+.bento-card:hover .bento-rune { opacity: 0.5; transform: scale(1.08) rotate(-4deg); filter: none; }
+.bento-card:hover .bento-glow { opacity: 1; }
+.bento-card:active { transform: translateY(-2px) scale(0.995); }
+.bento-card.bento-off { opacity: 0.5 !important; cursor: not-allowed; filter: grayscale(0.5); }
+.bento-card.bento-off:hover { transform: none; box-shadow: 0 14px 30px rgba(0,0,0,0.45) !important; }
+
+/* Accenti per carta */
+.bc-join    { --bento-accent: rgba(214,69,47,0.35);  --bento-edge: rgba(255,120,90,0.65); }
+.bc-bracket { --bento-accent: rgba(227,197,88,0.3);  --bento-edge: rgba(240,210,110,0.7); }
+.bc-libera  { --bento-accent: rgba(80,140,210,0.3);  --bento-edge: rgba(120,175,235,0.7); }
+.bc-albo    { --bento-accent: rgba(150,90,210,0.32); --bento-edge: rgba(190,140,240,0.7); }
+.bc-regole  { --bento-accent: rgba(60,170,140,0.3);  --bento-edge: rgba(110,220,190,0.7); }
+.bc-bet     { --bento-accent: rgba(60,190,180,0.3);  --bento-edge: rgba(110,225,215,0.7); }
+.bc-master  { --bento-accent: rgba(230,150,60,0.32); --bento-edge: rgba(245,185,110,0.75); }
+.bc-join .bento-title    { color: #ffd9cd; }
+.bc-bracket .bento-title { color: #f6e6a8; }
+.bc-libera .bento-title  { color: #cfe2fb; }
+.bc-albo .bento-title    { color: #e6d4fb; }
+.bc-regole .bento-title  { color: #c8f1e3; }
+.bc-bet .bento-title     { color: #c6f3ee; }
+.bc-master .bento-title  { color: #fbe1bc; }
+
+/* ── VISTE A FUOCO: contenitore comune (centrato, entrata animata) ── */
+.arena-page .arena-info-section--view,
+.arena-page .join-zone,
+.arena-page .fun-arena-section,
+.arena-page .master-panel,
+.arena-page .arena-reward-panel {
+  max-width: 1100px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  animation: view-fade 0.5s ease both;
+}
+/* Vista Regole: niente toggle, sempre aperta, leggibile su pietra */
+.arena-page .arena-info-section--view {
+  background: linear-gradient(135deg, rgba(26,30,36,0.92), rgba(14,16,20,0.96)) !important;
+  border: 1px solid var(--stone-edge) !important;
+  border-radius: 20px !important;
+  padding: 8px clamp(14px, 2.4vw, 28px) 22px !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.5) !important;
+}
+.arena-page .arena-info-section--view .arena-info-body { display: block !important; }
+
+/* La vista Albo impila banner campione + sala, centrata */
+.arena-page .champion-banner,
+.arena-page .hall-of-champions,
+.arena-page .hall-champions {
+  max-width: 1100px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .arena-bento { grid-template-columns: repeat(2, 1fr); }
+  .bento-wide { grid-column: span 2; }
+}
+@media (max-width: 560px) {
+  .arena-page { padding: 92px 10px 60px !important; }
+  .arena-rune-header { gap: 8px; padding: 12px 12px; flex-wrap: wrap; }
+  .arena-rune-header-spacer { display: none; }
+  .arena-rune-phasepill { min-width: 0; }
+  .arena-bento { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bento-wide { grid-column: span 2; min-height: 120px; }
+  .bento-card { min-height: 110px; padding: 14px !important; }
+  .bento-rune { font-size: 3.4rem; }
+  .ahs-prize { flex-basis: 100%; }
+  .arena-hub-mymatch { padding: 14px; gap: 10px; }
+  .ahmm-txt { font-size: 0.78rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-rune-ambient { display: none; }
+  .bento-card, .arena-hub, .arena-info-section--view { animation: none !important; }
+}
