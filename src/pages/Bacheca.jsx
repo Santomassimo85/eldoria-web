@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import "./Bacheca.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import AmbientFX from "../components/AmbientFX";
+import CineToolbar from "../components/CineToolbar";
 import {
   collection, onSnapshot, doc, getDoc,
   updateDoc, query, where, getDocs,
@@ -38,6 +40,8 @@ export default function Bacheca() {
   const [userParty, setUserParty]       = useState("");
   const [loading, setLoading]           = useState(true);
   const [hoveredId, setHoveredId]       = useState(null);
+  const [query, setQuery]               = useState("");
+  const [statusFilter, setStatusFilter] = useState(null); // null | "available" | "accepted"
 
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -137,9 +141,27 @@ export default function Bacheca() {
     return { ...quest, _canOpen: canOpen, _sealed: sealed, _visible: visible };
   }).filter(q => q._visible);
 
+  // ── Ricerca: titolo / gruppo / personaggio + filtro stato ──
+  const q = query.trim().toLowerCase();
+  const matchesQuest = (quest) => {
+    const byStatus =
+      statusFilter == null ? true :
+      statusFilter === "accepted" ? !!quest.acceptedBy :
+      !quest.acceptedBy;
+    if (!byStatus) return false;
+    if (!q) return true;
+    // le missive sigillate mostrano solo il gruppo che le ha in carico
+    const hay = quest._sealed
+      ? [quest.acceptedParty]
+      : [quest.title, quest.description, quest.targetParty, quest.targetCharacter, quest.acceptedParty, quest.acceptedBy];
+    return hay.filter(Boolean).join(" ").toLowerCase().replace(/<[^>]*>/g, " ").includes(q);
+  };
+  const visibleQuests = questEntries.filter(matchesQuest);
+
   // ── Render ─────────────────────────────────────────────────
   return (
-    <section className="cine-page bacheca-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
+    <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
+      <AmbientFX variant="fireflies" />
 
       {/* ── HERO ── */}
       <section id="bacheca-top" className="cine-hero cine-hero--short" aria-label="Hemile's Board">
@@ -181,13 +203,29 @@ export default function Bacheca() {
         </div>
       </section>
 
+      {!loading && questEntries.length > 0 && (
+        <CineToolbar
+          query={query}
+          onQuery={setQuery}
+          placeholder="Cerca per titolo, gruppo o personaggio…"
+          chips={[{ key: "available", label: "📜 Disponibili" }, { key: "accepted", label: "🛡 In corso" }]}
+          activeChip={statusFilter}
+          onChip={setStatusFilter}
+          allLabel="Tutte"
+          count={visibleQuests.length}
+          countNoun={visibleQuests.length === 1 ? "missiva" : "missive"}
+        />
+      )}
+
       {loading ? (
         <div className="cine-loading"><span className="cine-loading-icon">📜</span>Caricamento pergamene…</div>
       ) : questEntries.length === 0 ? (
         <div className="cine-empty">Nessuna missiva al momento. Torna più tardi.</div>
+      ) : visibleQuests.length === 0 ? (
+        <div className="cine-empty">Nessuna missiva corrisponde alla ricerca.</div>
       ) : (
         <div className="scrolls-grid">
-          {questEntries.map((quest) => {
+          {visibleQuests.map((quest) => {
             const isAccepted          = !!quest.acceptedBy;
             const isAcceptedByMe      = quest.acceptedBy === userCharName;
             const isAcceptedByMyParty = quest.acceptedParty === userParty;

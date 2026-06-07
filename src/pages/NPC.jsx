@@ -6,6 +6,8 @@ import { awardPetPoints } from '../utils/pet';
 import './NPC.css';
 import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
+import AmbientFX from '../components/AmbientFX';
+import CineToolbar from '../components/CineToolbar';
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tavern.png";
 const DIVIDER_IMAGES = [
@@ -22,6 +24,8 @@ const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").repla
 
 export default function NPC() {
   const [npcs, setNpcs] = useState([]);
+  const [query, setQuery] = useState("");
+  const [activeCity, setActiveCity] = useState(null);
   const { currentUser } = useAuth();
   useParallaxScroll();
 
@@ -52,8 +56,23 @@ export default function NPC() {
     return a.localeCompare(b, "it");
   });
 
+  // ── Ricerca: nome / fazione / luogo / descrizione + filtro città ──
+  const q = query.trim().toLowerCase();
+  const matchesNpc = (npc) => {
+    if (!q) return true;
+    const hay = [npc.name, npc.faction, npc.location, npc.description, npc.linkedCity]
+      .filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(q);
+  };
+  const visibleCities = cityKeys
+    .map((city, idx) => ({ city, idx, list: grouped[city].filter(matchesNpc) }))
+    .filter(({ city, list }) => (activeCity == null || activeCity === city) && list.length > 0);
+  const visibleCount = visibleCities.reduce((n, c) => n + c.list.length, 0);
+  const isFiltering = q !== "" || activeCity != null;
+
   return (
-    <section className="cine-page npc-page" style={{ "--cine-accent": "#2c8a5a", "--cine-accent-2": "#3fae72" }}>
+    <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "#2c8a5a", "--cine-accent-2": "#3fae72" }}>
+      <AmbientFX variant="water" />
 
       {/* ── HERO ── */}
       <section id="npc-top" className="cine-hero" aria-label="Gli abitanti del mondo">
@@ -83,10 +102,26 @@ export default function NPC() {
         </div>
       </section>
 
+      {npcs.length > 0 && (
+        <CineToolbar
+          query={query}
+          onQuery={setQuery}
+          placeholder="Cerca per nome, fazione, luogo o parola…"
+          chips={cityKeys.map((c) => ({ key: c, label: c }))}
+          activeChip={activeCity}
+          onChip={setActiveCity}
+          allLabel="Tutti i luoghi"
+          count={visibleCount}
+          countNoun={visibleCount === 1 ? "abitante" : "abitanti"}
+        />
+      )}
+
       {npcs.length === 0 ? (
         <p className="cine-empty">Nessun personaggio censito.</p>
+      ) : visibleCities.length === 0 ? (
+        <p className="cine-empty">Nessun personaggio corrisponde alla ricerca.</p>
       ) : (
-        cityKeys.map((city, idx) => (
+        visibleCities.map(({ city, idx, list }) => (
           <div key={city} className="npc-city" data-accent={idx % 5}>
             <section id={`npc-${slugify(city)}`} className="cine-scrolly cine-scrolly--short" aria-label={city}>
               <div className="cine-scrolly-media" aria-hidden="true">
@@ -99,7 +134,7 @@ export default function NPC() {
                   <span className="cine-scrolly-eyebrow">{city === "Erranti" ? "Senza dimora" : "Luogo"}</span>
                   <h2 className="cine-scrolly-title">{city}</h2>
                   <p className="cine-scrolly-text">
-                    {grouped[city].length} {grouped[city].length === 1 ? "abitante" : "abitanti"}
+                    {list.length}{isFiltering && list.length !== grouped[city].length ? ` di ${grouped[city].length}` : ""} {list.length === 1 ? "abitante" : "abitanti"}
                   </p>
                 </div>
               </div>
@@ -107,7 +142,7 @@ export default function NPC() {
 
             <div className="cine-wrap cine-wrap--wide">
               <div className="npc-grid">
-                {grouped[city].map((npc) => (
+                {list.map((npc) => (
                   <div key={npc.id} className="npc-card">
                     <img
                       src={npc.image || "/assets/player/default.png"}

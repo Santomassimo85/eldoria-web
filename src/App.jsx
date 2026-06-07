@@ -359,7 +359,7 @@ export default function App() {
 
         <nav className={menuOpen ? "active" : ""}>
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
-          <NavLink to="/updates" onClick={closeMenu}>📝 Novità</NavLink>
+          <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
           <NavDropdown label="Mondo" closeAll={closeMenu}>
             <NavLink to="/world-map">Mappa</NavLink>

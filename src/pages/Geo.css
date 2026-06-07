@@ -100,3 +100,10 @@
   box-shadow: 0 4px 12px rgba(180, 130, 30, 0.3);
 }
 .geo-page .geo-edit-btn:hover { filter: brightness(1.06); }
+
+/* ============================================================
+   AMBIENT FX — sfondo animato: contenuto sopra, layer FX dietro
+   ============================================================ */
+.geo-page > * { position: relative; z-index: 1; }
+.geo-page > .ambient-fx { position: fixed; z-index: 0; }
+.geo-page > .cine-side-nav { z-index: 95; }

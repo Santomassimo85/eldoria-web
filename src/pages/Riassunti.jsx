@@ -38,6 +38,9 @@ const escapeHtml = (s) =>
         "'": "&#39;",
     }[c]));
 
+const stripHtml = (html) =>
+    String(html ?? "").replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/gi, " ");
+
 const stripImages = (html) =>
     String(html ?? "")
         .replace(/<img\b[^>]*>/gi, "")
@@ -168,6 +171,8 @@ export default function Riassunti() {
     const isMaster = currentUser?.email === MASTER_EMAIL;
     const [allSummaries, setAllSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [query, setQuery] = useState("");
+    const [activeGroup, setActiveGroup] = useState(null);
 
     const recordVisit = async (summaryId) => {
         if (isMaster) return;
@@ -233,6 +238,34 @@ export default function Riassunti() {
         }, {});
     }, [allSummaries]);
 
+    const groupKeys = useMemo(() => Object.keys(groupedSummaries), [groupedSummaries]);
+
+    // --- Filtro: gruppo attivo + ricerca testuale (gruppo / numero / parola) ---
+    const visibleGroups = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return groupKeys
+            .map((partyKey, gi) => ({
+                partyKey,
+                gi,
+                // numero di sessione (1-based) all'interno del gruppo
+                summaries: groupedSummaries[partyKey].map((s, i) => ({ ...s, num: i + 1 })),
+            }))
+            .filter(g => activeGroup === null || g.partyKey === activeGroup)
+            .map(g => {
+                if (!q) return g;
+                const summaries = g.summaries.filter(s => {
+                    const hay = [
+                        g.partyKey,
+                        `#${s.num}`, `sessione ${s.num}`, String(s.num),
+                        s.title, s.subTitle, s.date, stripHtml(s.content),
+                    ].join(" ").toLowerCase();
+                    return hay.includes(q);
+                });
+                return { ...g, summaries };
+            })
+            .filter(g => g.summaries.length > 0);
+    }, [groupKeys, groupedSummaries, query, activeGroup]);
+
     if (loading) {
         return (
             <section className="riassunti-page">
@@ -244,11 +277,19 @@ export default function Riassunti() {
         );
     }
 
-    const groupKeys = Object.keys(groupedSummaries);
     const totalMemories = allSummaries.length;
+    const visibleCount = visibleGroups.reduce((n, g) => n + g.summaries.length, 0);
+    const isFiltering = query.trim() !== "" || activeGroup !== null;
 
     return (
         <section className="riassunti-page">
+
+            {/* ── SFONDO ANIMATO COSTANTE: rune fluttuanti (stile Arena) ── */}
+            <div className="rs-rune-ambient" aria-hidden="true">
+                {Array.from({ length: 12 }).map((_, i) => (
+                    <span key={i} className={`rs-rune rr${i + 1}`} />
+                ))}
+            </div>
 
             {/* ── HERO full-bleed (parallax, immagine epica) ── */}
             <section id="rs-top" className="rs-hero" aria-label="Memorie del Monaco Errante">
@@ -282,78 +323,118 @@ export default function Riassunti() {
                 </div>
             </section>
 
-            {/* ── SIDE NAV: salta ai gruppi ── */}
-            {groupKeys.length > 0 && (
-                <nav className="rs-side-nav" aria-label="Navigazione gruppi">
-                    <a href="#rs-top" className="rs-side-nav-btn" title="Inizio" aria-label="Vai all'inizio">
-                        <span aria-hidden="true">📜</span>
-                    </a>
-                    {groupKeys.map(partyKey => (
-                        <a
-                            key={partyKey}
-                            href={`#rs-group-${slugify(partyKey)}`}
-                            className="rs-side-nav-btn"
-                            title={`Gruppo ${partyKey}`}
-                            aria-label={`Vai al Gruppo ${partyKey}`}
+            {/* ── TOOLBAR: ricerca + filtri gruppo (sticky) ── */}
+            <div className="rs-toolbar">
+                <div className="rs-search">
+                    <span className="rs-search-icon" aria-hidden="true">🔍</span>
+                    <input
+                        type="text"
+                        className="rs-search-input"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Cerca per gruppo, numero di sessione o parola…"
+                        aria-label="Cerca nelle memorie"
+                    />
+                    {query && (
+                        <button
+                            type="button"
+                            className="rs-search-clear"
+                            onClick={() => setQuery("")}
+                            aria-label="Cancella ricerca"
                         >
-                            <span aria-hidden="true">❦</span>
-                        </a>
-                    ))}
-                </nav>
-            )}
+                            ✕
+                        </button>
+                    )}
+                </div>
 
-            {/* ── INTRO manoscritto ── */}
-            <div className="rs-intro">
-                <h3>Le schegge del mondo</h3>
-                <p>
-                    <span className="riassunti-drop">A</span>nno 1852 d.C.S.
-                    "Scrivo queste parole perché il mondo dimentica più in fretta
-                    di quanto il vento spenga una candela." Sono trascorsi quasi
-                    duemila anni dalla Caduta delle Stelle… "Se questo mondo
-                    dovrà essere ricomposto, non sarà con la forza, ma con la
-                    memoria." — <em>Obia, Monaco dell'Eco Silente</em>
-                </p>
+                {groupKeys.length > 1 && (
+                    <div className="rs-chips" role="group" aria-label="Filtra per gruppo">
+                        <button
+                            type="button"
+                            className={`rs-chip ${activeGroup === null ? "active" : ""}`}
+                            onClick={() => setActiveGroup(null)}
+                        >
+                            Tutti
+                        </button>
+                        {groupKeys.map((k, gi) => (
+                            <button
+                                key={k}
+                                type="button"
+                                data-accent={gi % 5}
+                                className={`rs-chip ${activeGroup === k ? "active" : ""}`}
+                                onClick={() => setActiveGroup(activeGroup === k ? null : k)}
+                            >
+                                ❦ {k}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <span className="rs-result-count">
+                    {visibleCount} {visibleCount === 1 ? "memoria" : "memorie"}
+                    {isFiltering ? " trovate" : ""}
+                </span>
             </div>
 
+            {/* ── INTRO manoscritto (nascosto quando si filtra) ── */}
+            {!isFiltering && (
+                <div className="rs-intro">
+                    <h3>Le schegge del mondo</h3>
+                    <p>
+                        <span className="riassunti-drop">A</span>nno 1852 d.C.S.
+                        "Scrivo queste parole perché il mondo dimentica più in fretta
+                        di quanto il vento spenga una candela." Sono trascorsi quasi
+                        duemila anni dalla Caduta delle Stelle… "Se questo mondo
+                        dovrà essere ricomposto, non sarà con la forza, ma con la
+                        memoria." — <em>Obia, Monaco dell'Eco Silente</em>
+                    </p>
+                </div>
+            )}
+
             {/* ── GRUPPI PARTY ── */}
-            {groupKeys.length === 0 ? (
-                <p className="riassunti-empty">Nessuna memoria archiviata.</p>
+            {visibleGroups.length === 0 ? (
+                <p className="riassunti-empty">
+                    {isFiltering
+                        ? "Nessuna memoria corrisponde alla ricerca."
+                        : "Nessuna memoria archiviata."}
+                </p>
             ) : (
-                groupKeys.map((partyKey, gi) => {
-                    const summaries = groupedSummaries[partyKey];
+                visibleGroups.map(({ partyKey, gi, summaries }) => {
                     return (
                         <div key={partyKey} className="rs-group" data-accent={gi % 5}>
 
-                            {/* divisore scrollytell con immagine parallax */}
+                            {/* banner di gruppo COMPATTO (niente più gap enorme) */}
                             <section
                                 id={`rs-group-${slugify(partyKey)}`}
-                                className="rs-scrollytell"
+                                className="rs-group-banner"
                                 aria-label={`Gruppo ${partyKey}`}
                             >
-                                <div className="rs-scrollytell-media" aria-hidden="true">
+                                <div className="rs-group-banner-media" aria-hidden="true">
                                     <img
                                         src={DIVIDER_IMAGES[gi % DIVIDER_IMAGES.length]}
                                         alt=""
                                         onError={(e) => { e.currentTarget.style.display = "none"; }}
                                     />
-                                    <div className="rs-scrollytell-bottom-fade" aria-hidden="true" />
                                 </div>
-                                <div className="rs-scrollytell-content">
-                                    <div className="rs-scrollytell-frame">
-                                        <span className="rs-scrollytell-eyebrow">❦ Cronaca</span>
-                                        <h2 className="rs-scrollytell-title">Gruppo {partyKey}</h2>
-                                        <p className="rs-scrollytell-text">
-                                            {summaries.length} {summaries.length === 1 ? "memoria archiviata" : "memorie archiviate"}
+                                <div className="rs-group-banner-content">
+                                    <div className="rs-group-banner-head">
+                                        <span className="rs-group-banner-eyebrow">❦ Cronaca</span>
+                                        <h2 className="rs-group-banner-title">Gruppo {partyKey}</h2>
+                                        <p className="rs-group-banner-count">
+                                            {summaries.length} {summaries.length === 1 ? "memoria" : "memorie"}
+                                            {query.trim() && groupedSummaries[partyKey].length !== summaries.length
+                                                ? ` di ${groupedSummaries[partyKey].length}`
+                                                : ""}
                                         </p>
-                                        <button
-                                            type="button"
-                                            className="riassunti-export-btn"
-                                            onClick={() => exportPartyAsPdf(partyKey, summaries)}
-                                            title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
-                                        >
-                                            📥 Esporta gruppo {partyKey} (PDF)
-                                        </button>
                                     </div>
+                                    <button
+                                        type="button"
+                                        className="riassunti-export-btn"
+                                        onClick={() => exportPartyAsPdf(partyKey, groupedSummaries[partyKey])}
+                                        title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
+                                    >
+                                        📥 Esporta (PDF)
+                                    </button>
                                 </div>
                             </section>
 
@@ -375,6 +456,7 @@ export default function Riassunti() {
                                                                 />
                                                             </div>
                                                         )}
+                                                        <span className="summary-card-num">Sessione #{summary.num}</span>
                                                         <span className="summary-card-title-text">{summary.title}</span>
                                                         {summary.date && (
                                                             <span className="summary-card-date-chip">

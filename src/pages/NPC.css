@@ -108,3 +108,10 @@
   .npc-page .npc-card-body { padding: 14px 14px 12px; }
   .npc-page .npc-card-desc { max-height: 96px; }
 }
+
+/* ============================================================
+   AMBIENT FX — sfondo animato: contenuto sopra, layer FX dietro
+   ============================================================ */
+.npc-page > * { position: relative; z-index: 1; }
+.npc-page > .ambient-fx { position: fixed; z-index: 0; }
+.npc-page > .cine-side-nav { z-index: 95; }

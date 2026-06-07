@@ -23,7 +23,7 @@ export default function Updates() {
   return (
     <div className="updates-page">
       <header className="updates-header">
-        <h1 className="updates-title">📝 Novità &amp; Aggiornamenti</h1>
+        <h1 className="updates-title">UPDATE</h1>
         <p className="updates-sub">Cosa è cambiato, versione per versione.</p>
       </header>
 

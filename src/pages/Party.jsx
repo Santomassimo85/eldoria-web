@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import "./Party.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import AmbientFX from "../components/AmbientFX";
+import CineToolbar from "../components/CineToolbar";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png";
 
@@ -98,8 +100,13 @@ function HeroCard({ hero, accent }) {
 }
 
 /* ── Party divider (scrollytell) + grid ────────────────────── */
-function PartySection({ party }) {
-  const visibleMembers = party.members.filter((m) => !m.hidden);
+function PartySection({ party, query = "" }) {
+  const q = query.trim().toLowerCase();
+  const visibleMembers = party.members
+    .filter((m) => !m.hidden)
+    .filter((m) => !q || [m.name, m.race, m.class, party.id, party.name]
+      .filter(Boolean).join(" ").toLowerCase().includes(q));
+  if (visibleMembers.length === 0) return null;
   return (
     <div className="party-faction" style={{ "--party-color": party.color }} data-id={party.id}>
       <section id={`party-${party.id}`} className="cine-scrolly cine-scrolly--short" aria-label={party.name}>
@@ -134,6 +141,7 @@ function PartySection({ party }) {
 /* ── Page ──────────────────────────────────────────────────── */
 export default function Party() {
   const [activeParty, setActiveParty] = useState("all");
+  const [query, setQuery] = useState("");
   useParallaxScroll();
 
   const allMembers = useMemo(
@@ -153,8 +161,17 @@ export default function Party() {
     [activeParty]
   );
 
+  const matchCount = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return visibleParties.reduce((n, p) => n + p.members
+      .filter((m) => !m.hidden)
+      .filter((m) => !q || [m.name, m.race, m.class, p.id, p.name].filter(Boolean).join(" ").toLowerCase().includes(q))
+      .length, 0);
+  }, [visibleParties, query]);
+
   return (
-    <section className="cine-page party-page" style={{ "--cine-accent": "#a83232", "--cine-accent-2": "#c0392b" }}>
+    <section className="cine-page party-page cine-compact" style={{ "--cine-accent": "#a83232", "--cine-accent-2": "#c0392b" }}>
+      <AmbientFX variant="leaves" />
 
       {/* ── HERO ── */}
       <section id="party-top" className="cine-hero" aria-label="Le Compagnie di Exanthia">
@@ -208,11 +225,24 @@ export default function Party() {
         </div>
       </div>
 
+      {/* ── RICERCA ── */}
+      <CineToolbar
+        query={query}
+        onQuery={setQuery}
+        placeholder="Cerca per nome, razza o classe…"
+        count={matchCount}
+        countNoun={matchCount === 1 ? "eroe" : "eroi"}
+      />
+
       {/* ── PARTY SECTIONS ── */}
       <div className="party-list">
-        {visibleParties.map((p) => (
-          <PartySection key={p.id} party={p} />
-        ))}
+        {matchCount === 0 ? (
+          <p className="cine-empty">Nessun eroe corrisponde alla ricerca.</p>
+        ) : (
+          visibleParties.map((p) => (
+            <PartySection key={p.id} party={p} query={query} />
+          ))
+        )}
       </div>
     </section>
   );

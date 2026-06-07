@@ -1,7 +1,64 @@
 {
   "versions": [
     {
-      "version": "0.4.0",
+      "version": "4",
+      "date": "2026-06-07",
+      "title": "Ricerca in tutte le sezioni",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Aggiunta una barra di ricerca (con filtri rapidi) in Archivio Geomantico, Abitanti del Mondo, Compagnie, Bottega dell'Arena e Bacheca — coerente con quella dei Riassunti e sempre ancorata in alto mentre scorri."
+        },
+        {
+          "type": "feature",
+          "text": "Ogni pagina cerca per i criteri giusti: Geo per luogo/continente/parola; NPC per nome, fazione, luogo o descrizione (+ filtro per città); Compagnie per nome eroe, razza o classe (+ tab compagnia); Bottega per nome di classe o potenziamento (+ chip Classi/Potenziamenti); Bacheca per titolo, gruppo o personaggio (+ filtro Disponibili/In corso). Un contatore mostra sempre quanti risultati corrispondono."
+        }
+      ]
+    },
+    {
+      "version": "3",
+      "date": "2026-06-07",
+      "title": "Atmosfere animate + pagine più compatte",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Ogni sezione ora ha il suo sfondo animato costante, a tema: la Bottega dell'Arena ha le braci della forgia che salgono 🔥, gli Abitanti del Mondo (NPC) hanno bolle d'acqua che risalgono 💧, le Compagnie (Party) hanno foglie al vento che cadono 🍃, l'Archivio Geomantico (Geo) ha un cielo stellato con nebulosa che deriva 🌌 e la Bacheca di Hemile ha lucciole dorate fluttuanti ✨."
+        },
+        {
+          "type": "fix",
+          "text": "Geo, NPC, Party, Bottega Arena e Bacheca sono ora molto più compatte: l'enorme intestazione a tutto schermo è stata accorciata e i divisori di sezione (continenti, luoghi, ecc.) sono diventati banner compatti come nella pagina Riassunti. Niente più spazi vuoti enormi: si scorre meno e si trova prima quello che serve."
+        },
+        {
+          "type": "feature",
+          "text": "Gli effetti sono leggeri, sempre dietro ai contenuti e non interferiscono con i click; rispettano anche l'impostazione di sistema \"riduci animazioni\" e restano fluidi su smartphone."
+        }
+      ]
+    },
+    {
+      "version": "2",
+      "date": "2026-06-07",
+      "title": "Riassunti rinnovati: ricerca & scorrimento",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Riassunti — Nuova barra di ricerca: puoi cercare al volo per nome del gruppo, numero di sessione (es. \"#3\" o \"sessione 3\") o per qualsiasi parola contenuta nel titolo, sottotitolo o nel testo della memoria. I risultati si filtrano mentre scrivi e un contatore mostra quante memorie corrispondono."
+        },
+        {
+          "type": "feature",
+          "text": "Riassunti — Filtri rapidi per gruppo: dei \"chip\" colorati permettono di mostrare un solo gruppo con un tocco (o tornare a \"Tutti\"). Ogni memoria ora ha anche il suo numero di sessione ben visibile."
+        },
+        {
+          "type": "fix",
+          "text": "Riassunti — Eliminato l'enorme spazio vuoto tra il nome del gruppo e le memorie: i divisori a tutto schermo sono diventati banner compatti, così la pagina è molto più scorrevole e organizzata."
+        },
+        {
+          "type": "feature",
+          "text": "Riassunti — Aggiunto uno sfondo animato costante con rune fluttuanti (stile Arena) e un leggero effetto di movimento sulle immagini dei gruppi. Tutto resta pienamente responsive su smartphone."
+        }
+      ]
+    },
+    {
+      "version": "1",
       "date": "2026-06-05",
       "title": "Bilanciamento & Novità Arena",
       "changes": [

@@ -694,3 +694,10 @@
   cursor: not-allowed;
 }
 
+
+/* ============================================================
+   AMBIENT FX — sfondo animato: contenuto sopra, layer FX dietro
+   ============================================================ */
+.am-page > * { position: relative; z-index: 1; }
+.am-page > .ambient-fx { position: fixed; z-index: 0; }
+.am-page > .cine-side-nav { z-index: 95; }

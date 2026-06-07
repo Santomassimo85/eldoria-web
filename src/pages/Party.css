@@ -157,3 +157,10 @@
   .party-page .hero-card,
   .party-page .hero-card-photo img { transition: none !important; transform: none !important; }
 }
+
+/* ============================================================
+   AMBIENT FX — sfondo animato: contenuto sopra, layer FX dietro
+   ============================================================ */
+.party-page > * { position: relative; z-index: 1; }
+.party-page > .ambient-fx { position: fixed; z-index: 0; }
+.party-page > .cine-side-nav { z-index: 95; }

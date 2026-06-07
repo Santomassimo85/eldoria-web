@@ -1,0 +1,177 @@
+/* ============================================================
+   AMBIENT FX — sfondo animato continuo (una variante per pagina)
+   Lo z-index è 0: ogni pagina solleva il proprio contenuto a
+   z-index:1 (vedi *-page > *), così le particelle restano dietro.
+   pointer-events:none → non intercetta mai i click.
+   ============================================================ */
+.ambient-fx {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+.afx-p {
+    position: absolute;
+    opacity: 0;
+    will-change: transform, opacity;
+}
+
+/* ============================================================
+   🔥 FUOCO — braci della forgia (ArenaMarket)
+   ============================================================ */
+.ambient-fx--fire .afx-p {
+    bottom: -30px;
+    width: calc(7px * var(--afx-size, 1));
+    height: calc(7px * var(--afx-size, 1));
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffe6a0 0%, #ff8a1e 45%, rgba(190, 40, 10, 0) 72%);
+    box-shadow: 0 0 10px rgba(255, 140, 40, 0.85), 0 0 4px rgba(255, 210, 120, 0.9);
+    animation-name: afx-rise-fire;
+    animation-timing-function: ease-in;
+    animation-iteration-count: infinite;
+}
+@keyframes afx-rise-fire {
+    0%   { transform: translate3d(0, 0, 0) scale(0.5); opacity: 0; }
+    12%  { opacity: 0.95; }
+    70%  { opacity: 0.7; }
+    100% { transform: translate3d(var(--afx-dx, 20px), -106vh, 0) scale(1.15); opacity: 0; }
+}
+.ambient-fx--fire::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 42vh;
+    background: radial-gradient(ellipse at 50% 120%, rgba(255, 110, 30, 0.18), transparent 70%);
+    animation: afx-fire-glow 4s ease-in-out infinite;
+}
+@keyframes afx-fire-glow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* ============================================================
+   💧 ACQUA — bolle che risalgono (NPC)
+   ============================================================ */
+.ambient-fx--water .afx-p {
+    bottom: -24px;
+    width: calc(10px * var(--afx-size, 1));
+    height: calc(10px * var(--afx-size, 1));
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.85), rgba(120, 220, 230, 0.22) 45%, rgba(60, 160, 180, 0.04) 72%);
+    border: 1px solid rgba(180, 240, 255, 0.35);
+    box-shadow: 0 0 8px rgba(120, 220, 240, 0.35), inset 0 0 6px rgba(255, 255, 255, 0.25);
+    animation-name: afx-rise-bubble;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+@keyframes afx-rise-bubble {
+    0%   { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; }
+    10%  { opacity: 0.7; }
+    50%  { transform: translate3d(calc(var(--afx-dx, 20px) * 0.6), -52vh, 0) scale(1); }
+    85%  { opacity: 0.5; }
+    100% { transform: translate3d(calc(var(--afx-dx, 20px) * -0.4), -104vh, 0) scale(1.05); opacity: 0; }
+}
+.ambient-fx--water::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 30%, rgba(90, 200, 220, 0.06), transparent 40%),
+        radial-gradient(circle at 80% 60%, rgba(90, 200, 220, 0.05), transparent 45%);
+    animation: afx-water-sway 12s ease-in-out infinite alternate;
+}
+@keyframes afx-water-sway { from { transform: translateX(-2%); } to { transform: translateX(2%); } }
+
+/* ============================================================
+   🍃 VENTO / FOGLIE — foglie d'autunno che cadono (Party)
+   ============================================================ */
+.ambient-fx--leaves .afx-p {
+    top: -8%;
+    width: calc(12px * var(--afx-size, 1));
+    height: calc(8px * var(--afx-size, 1));
+    background: linear-gradient(135deg, #e08a2b 0%, #9a4012 100%);
+    border-radius: 0 70% 0 70%;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    animation-name: afx-fall-leaf;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+.ambient-fx--leaves .afx-p:nth-child(3n) {
+    background: linear-gradient(135deg, #c0392b 0%, #6e1810 100%);
+}
+.ambient-fx--leaves .afx-p:nth-child(4n) {
+    background: linear-gradient(135deg, #d4af37 0%, #8a6310 100%);
+}
+@keyframes afx-fall-leaf {
+    0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.85; }
+    90%  { opacity: 0.65; }
+    100% { transform: translate3d(var(--afx-dx, 40px), 118vh, 0) rotate(560deg); opacity: 0; }
+}
+
+/* ============================================================
+   🌌 COSMO — stelle che brillano + nebulosa che deriva (Geo)
+   ============================================================ */
+.ambient-fx--cosmos {
+    background:
+        radial-gradient(circle at 18% 26%, rgba(120, 90, 200, 0.10), transparent 45%),
+        radial-gradient(circle at 82% 74%, rgba(60, 150, 180, 0.10), transparent 50%);
+}
+.ambient-fx--cosmos::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    background:
+        radial-gradient(circle at 30% 40%, rgba(150, 110, 230, 0.12), transparent 35%),
+        radial-gradient(circle at 70% 65%, rgba(60, 180, 200, 0.10), transparent 40%);
+    animation: afx-nebula 44s ease-in-out infinite alternate;
+}
+@keyframes afx-nebula {
+    from { transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1); }
+    to   { transform: translate3d(2%, 1%, 0) rotate(8deg) scale(1.08); }
+}
+.ambient-fx--cosmos .afx-p {
+    width: calc(2px * var(--afx-size, 1) + 1px);
+    height: calc(2px * var(--afx-size, 1) + 1px);
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(180, 200, 255, 0.9);
+    animation-name: afx-twinkle;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+.ambient-fx--cosmos .afx-p:nth-child(5n) { background: #bcd0ff; box-shadow: 0 0 7px rgba(150, 180, 255, 0.95); }
+.ambient-fx--cosmos .afx-p:nth-child(7n) { background: #ffe6b0; box-shadow: 0 0 7px rgba(255, 210, 130, 0.95); }
+@keyframes afx-twinkle {
+    0%, 100% { opacity: 0.12; transform: scale(0.6); }
+    50%      { opacity: 0.95; transform: scale(1.25); }
+}
+
+/* ============================================================
+   ✨ LUCCIOLE — polvere dorata che fluttua (Bacheca)
+   ============================================================ */
+.ambient-fx--fireflies .afx-p {
+    width: calc(4px * var(--afx-size, 1) + 1px);
+    height: calc(4px * var(--afx-size, 1) + 1px);
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff3b0 0%, #ffcf4d 55%, rgba(200, 140, 20, 0) 75%);
+    box-shadow: 0 0 10px rgba(255, 200, 80, 0.9), 0 0 20px rgba(255, 170, 40, 0.5);
+    animation-name: afx-firefly;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+@keyframes afx-firefly {
+    0%   { transform: translate3d(0, 0, 0) scale(0.7); opacity: 0; }
+    20%  { opacity: 0.9; }
+    50%  { transform: translate3d(var(--afx-dx, 30px), -7vh, 0) scale(1.15); opacity: 0.45; }
+    80%  { opacity: 0.85; }
+    100% { transform: translate3d(calc(var(--afx-dx, 30px) * -0.6), 5vh, 0) scale(0.7); opacity: 0; }
+}
+
+/* ============================================================
+   Rispetto del prefers-reduced-motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    .ambient-fx .afx-p,
+    .ambient-fx::before,
+    .ambient-fx::after { animation: none !important; }
+    .ambient-fx .afx-p { opacity: 0.22; }
+}

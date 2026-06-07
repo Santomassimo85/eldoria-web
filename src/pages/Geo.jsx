@@ -8,6 +8,8 @@ import { awardPetPoints } from "../utils/pet";
 import './Geo.css';
 import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
+import AmbientFX from '../components/AmbientFX';
+import CineToolbar from '../components/CineToolbar';
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/aenlor.png";
 const CONTINENT_IMAGES = {
@@ -22,6 +24,8 @@ export default function Geo() {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingLoc, setEditingLoc] = useState(null);
+  const [query, setQuery] = useState("");
+  const [activeContinent, setActiveContinent] = useState(null);
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
 
@@ -50,12 +54,27 @@ export default function Geo() {
   }
 
   const continents = ["Vathriddon", "Ehkia", "Ohzkie"];
-  const activeContinents = continents.filter(c =>
-    locations.some(l => l.continent === c || (c === "Vathriddon" && !l.continent))
+  const locsOf = (c) => locations.filter(
+    l => l.continent === c || (c === "Vathriddon" && !l.continent)
   );
+  const activeContinents = continents.filter(c => locsOf(c).length > 0);
+
+  // ── Ricerca: nome luogo / continente / descrizione + filtro continente ──
+  const q = query.trim().toLowerCase();
+  const matchesLoc = (loc, cont) => {
+    if (!q) return true;
+    const hay = [loc.name, loc.continent || cont, loc.description]
+      .filter(Boolean).join(" ").toLowerCase().replace(/<[^>]*>/g, " ");
+    return hay.includes(q);
+  };
+  const visibleContinents = activeContinents
+    .map(cont => ({ cont, list: locsOf(cont).filter(l => matchesLoc(l, cont)) }))
+    .filter(({ cont, list }) => (activeContinent == null || activeContinent === cont) && list.length > 0);
+  const visibleCount = visibleContinents.reduce((n, c) => n + c.list.length, 0);
 
   return (
-    <section className="cine-page geo-page" style={{ "--cine-accent": "#1f8a6a", "--cine-accent-2": "#2fb088" }}>
+    <section className="cine-page geo-page cine-compact" style={{ "--cine-accent": "#1f8a6a", "--cine-accent-2": "#2fb088" }}>
+      <AmbientFX variant="cosmos" />
 
       {/* ── HERO ── */}
       <section id="geo-top" className="cine-hero" aria-label="Archivio Geomantico">
@@ -92,6 +111,21 @@ export default function Geo() {
         </nav>
       )}
 
+      {/* ── RICERCA ── */}
+      {locations.length > 0 && (
+        <CineToolbar
+          query={query}
+          onQuery={setQuery}
+          placeholder="Cerca per luogo, continente o parola…"
+          chips={activeContinents.map((c) => ({ key: c, label: c }))}
+          activeChip={activeContinent}
+          onChip={setActiveContinent}
+          allLabel="Tutti i continenti"
+          count={visibleCount}
+          countNoun={visibleCount === 1 ? "luogo" : "luoghi"}
+        />
+      )}
+
       {/* ---- MODAL MODIFICA RAPIDA ---- */}
       {editingLoc && (
         <div style={{
@@ -123,13 +157,13 @@ export default function Geo() {
         </div>
       )}
 
-      {/* ---- CONTINENTI ---- */}
-      {continents.map((contName) => {
-        const locationsInContinent = locations.filter(
-          l => l.continent === contName || (contName === "Vathriddon" && !l.continent)
-        );
-        if (locationsInContinent.length === 0) return null;
+      {/* ---- NESSUN RISULTATO ---- */}
+      {locations.length > 0 && visibleContinents.length === 0 && (
+        <p className="cine-empty">Nessun luogo corrisponde alla ricerca.</p>
+      )}
 
+      {/* ---- CONTINENTI ---- */}
+      {visibleContinents.map(({ cont: contName, list: locationsInContinent }) => {
         return (
           <div key={contName} className="continent-wrapper">
             <section id={`geo-${slugify(contName)}`} className="cine-scrolly cine-scrolly--short" aria-label={contName}>

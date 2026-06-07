@@ -4,6 +4,8 @@ import { db } from "../firebase";
 import { doc, collection, onSnapshot, updateDoc, setDoc, increment } from "firebase/firestore";
 import "../styles/cinematic.css";
 import "./ArenaMarket.css";
+import AmbientFX from "../components/AmbientFX";
+import CineToolbar from "../components/CineToolbar";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -98,6 +100,8 @@ export default function ArenaMarket() {
   const [arenaMeta, setArenaMeta] = useState(null);
   const [message, setMessage] = useState(null);
   const [customPrices, setCustomPrices] = useState({});
+  const [query, setQuery] = useState("");
+  const [activeCat, setActiveCat] = useState(null); // null | "classes" | "items"
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
@@ -132,6 +136,16 @@ export default function ArenaMarket() {
   const coins    = charData?.arenaCoins ?? 0;
   const buffs    = charData?.arenaBuffs ?? {};
   const classLvls = charData?.classLevels ?? {};
+
+  // ── Ricerca: classi + potenziamenti ──
+  const q = query.trim().toLowerCase();
+  const ownedClasses = ARENA_CLASSES.filter(cls => !cls.hiddenUnlessOwned || (buffs[cls.hiddenUnlessOwned] ?? 0) > 0);
+  const filteredClasses = ownedClasses.filter(cls => !q || cls.name.toLowerCase().includes(q));
+  const filteredItems = effectiveItems.filter(it => !q || `${it.name} ${it.description}`.toLowerCase().includes(q));
+  const showClasses = activeCat !== "items";
+  const showItems   = activeCat !== "classes";
+  const showInfo    = activeCat == null && q === "";
+  const resultCount = (showClasses ? filteredClasses.length : 0) + (showItems ? filteredItems.length : 0);
 
   const showMsg = (text, type = "ok") => {
     setMessage({ text, type });
@@ -188,7 +202,8 @@ export default function ArenaMarket() {
   }
 
   return (
-    <div className="cine-page am-page" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
+    <div className="cine-page am-page cine-compact" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
+      <AmbientFX variant="fire" />
       {/* ── HERO ── */}
       <section className="cine-hero cine-hero--short" aria-label="Bottega dell'Arena">
         <div className="cine-hero-media" aria-hidden="true">
@@ -211,6 +226,19 @@ export default function ArenaMarket() {
         </div>
       </section>
 
+      {/* ── RICERCA ── */}
+      <CineToolbar
+        query={query}
+        onQuery={setQuery}
+        placeholder="Cerca una classe o un potenziamento…"
+        chips={[{ key: "classes", label: "⚔ Classi" }, { key: "items", label: "🛡 Potenziamenti" }]}
+        activeChip={activeCat}
+        onChip={setActiveCat}
+        allLabel="Tutto"
+        count={resultCount}
+        countNoun={resultCount === 1 ? "risultato" : "risultati"}
+      />
+
       <div className="cine-wrap am-body">
       {message && (
         <div className={`am-message ${message.type === "err" ? "am-message--err" : ""}`}>
@@ -219,6 +247,7 @@ export default function ArenaMarket() {
       )}
 
       {/* ── CLASSI ARENA ── */}
+      {showClasses && (
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
@@ -227,8 +256,11 @@ export default function ArenaMarket() {
             <span className="am-hp-bonus-tag"> • +{charData.arenaHpBonus} PF bonus da livelli</span>
           )}
         </p>
+        {filteredClasses.length === 0 ? (
+          <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
+        ) : (
         <div className="am-classes-grid">
-          {ARENA_CLASSES.filter(cls => !cls.hiddenUnlessOwned || (buffs[cls.hiddenUnlessOwned] ?? 0) > 0).map(cls => {
+          {filteredClasses.map(cls => {
             const lv = classLvls[cls.key] ?? 1;
             const canAfford = coins >= levelUpCost;
             return (
@@ -248,8 +280,11 @@ export default function ArenaMarket() {
             );
           })}
         </div>
+        )}
       </div>
+      )}
 
+      {showInfo && (<>
       <div className="am-how">
         <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
         <ul className="am-how-list">
@@ -282,8 +317,10 @@ export default function ArenaMarket() {
           </div>
         </div>
       </div>
+      </>)}
       </div>
 
+      {showItems && (<>
       {/* ── DIVISORE: Potenziamenti ── */}
       <section className="cine-scrolly cine-scrolly--short" aria-label="Potenziamenti">
         <div className="cine-scrolly-media" aria-hidden="true">
@@ -300,8 +337,11 @@ export default function ArenaMarket() {
       </section>
 
       <div className="cine-wrap am-body">
+      {filteredItems.length === 0 ? (
+        <p className="cine-empty">Nessun potenziamento corrisponde alla ricerca.</p>
+      ) : (
       <div className="am-grid">
-        {effectiveItems.map(item => {
+        {filteredItems.map(item => {
           const owned = buffs[item.field] ?? 0;
           const maxed = owned >= item.max;
           const canAfford = coins >= item.price;
@@ -330,9 +370,11 @@ export default function ArenaMarket() {
           );
         })}
       </div>
+      )}
 
       {isMaster && <MasterCoinPanel effectiveItems={effectiveItems} levelUpCost={levelUpCost} arenaMeta={arenaMeta} />}
       </div>
+      </>)}
     </div>
   );
 }

@@ -188,3 +188,10 @@
   .bacheca-page .quest-card.is-open .scroll-img.open   { opacity: 1; }
   .bacheca-page .quest-card.is-open .scroll-img.closed { opacity: 0; }
 }
+
+/* ============================================================
+   AMBIENT FX — sfondo animato: contenuto sopra, layer FX dietro
+   ============================================================ */
+.bacheca-page > * { position: relative; z-index: 1; }
+.bacheca-page > .ambient-fx { position: fixed; z-index: 0; }
+.bacheca-page > .cine-side-nav { z-index: 95; }
