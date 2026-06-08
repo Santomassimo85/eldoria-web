@@ -1502,9 +1502,11 @@ function BettingPanel({ arenaMeta, snapshots, currentUser, isMaster }) {
 }
 
 // ── MASTER TITLE EDITOR ──────────────────────────────────────────────────────
-// Persistente: i titoli vivono sul documento `characters/{uid}.arenaTitle`
-// e restano per sempre, anche dopo reset/fine torneo.
-function MasterTitleEditor({ forceOpen = false } = {}) {
+// Persistente: i titoli POSSEDUTI vivono sul documento `characters/{uid}.arenaTitles`
+// e restano per sempre, anche dopo reset/fine torneo. Il titolo INDOSSATO (uno solo)
+// nel torneo in corso vive sullo snapshot `characterSnapshots.{uid}.titles` e di norma
+// lo sceglie il giocatore all'iscrizione; il Master può impostarlo qui se uno se ne dimentica.
+function MasterTitleEditor({ forceOpen = false, snapshots = {} } = {}) {
   /* FIX: P5c — forceOpen makes this render its body unconditionally
      (used when wrapped in ArenaModal). The legacy toggle remains
      when forceOpen is false. */
@@ -1523,17 +1525,31 @@ function MasterTitleEditor({ forceOpen = false } = {}) {
     return () => unsub();
   }, [open]);
 
+  // Gestione del POSSESSO (pool di titoli del personaggio). Non forza più l'indossato:
+  // il titolo indossato nello snapshot viene solo "ripulito" se non è più posseduto.
   const writeTitles = async (uid, newTitles) => {
     try {
       // Scrive l'array canonico e azzera il legacy single-field per evitare duplicati di lettura.
       await updateDoc(doc(db, "characters", uid), { arenaTitles: newTitles, arenaTitle: null });
       try {
+        const wornNow = (snapshots[uid]?.titles || []).filter(k => newTitles.includes(k));
         await updateDoc(doc(db, "arena_meta", "global"), {
-          [`characterSnapshots.${uid}.titles`]: newTitles,
+          [`characterSnapshots.${uid}.titles`]: wornNow,
           [`characterSnapshots.${uid}.title`]: null,
         });
       } catch { /* snapshot non presente — ok */ }
     } catch (err) { console.error("set arena titles:", err); }
+  };
+
+  // Imposta il titolo INDOSSATO (uno solo) sullo snapshot del torneo in corso.
+  // Utile quando un giocatore si dimentica di sceglierlo all'iscrizione.
+  const setWorn = async (uid, key) => {
+    try {
+      await updateDoc(doc(db, "arena_meta", "global"), {
+        [`characterSnapshots.${uid}.titles`]: key ? [key] : [],
+        [`characterSnapshots.${uid}.title`]: null,
+      });
+    } catch (err) { console.error("set worn title:", err); }
   };
 
   const addTitle = (uid, key) => {
@@ -1568,7 +1584,8 @@ function MasterTitleEditor({ forceOpen = false } = {}) {
       {open && (
         <div className="master-title-body">
           <p className="empty-note" style={{ marginBottom: 8 }}>
-            I titoli sono permanenti e attivi sia in Torneo che in Arena dei Campioni.
+            I titoli posseduti sono permanenti. In torneo ogni giocatore ne indossa <strong>uno solo</strong>,
+            che sceglie all'iscrizione: imposta qui l'<strong>Indossato</strong> solo se qualcuno se ne dimentica.
           </p>
           {!allChars.length ? (
             <p className="empty-note">Caricamento giocatori…</p>
@@ -1584,13 +1601,16 @@ function MasterTitleEditor({ forceOpen = false } = {}) {
                 {visible.map(ch => {
                   const owned = getCharTitles(ch);
                   const available = Object.values(ARENA_TITLES).filter(opt => !owned.includes(opt.key));
+                  // Titolo indossato nello snapshot del torneo (uno solo). Solo se registrato.
+                  const snap = snapshots[ch.uid];
+                  const wornKey = snap ? (getSnapTitles(snap).find(k => ARENA_TITLES[k]) || "") : "";
                   return (
                     <div key={ch.uid} className="title-edit-row">
                       <span className="title-edit-name">{ch.name || ch.uid}</span>
                       {ch.class && <span className="p-class">{ch.class}</span>}
                       {owned.map(key => (
-                        <span key={key} className="p-title-badge" title={ARENA_TITLES[key]?.short}>
-                          {ARENA_TITLES[key]?.icon} {ARENA_TITLES[key]?.name}
+                        <span key={key} className={`p-title-badge${key === wornKey ? " worn" : ""}`} title={ARENA_TITLES[key]?.short}>
+                          {key === wornKey ? "♛ " : ""}{ARENA_TITLES[key]?.icon} {ARENA_TITLES[key]?.name}
                           <button
                             type="button"
                             className="p-title-badge-x"
@@ -1612,6 +1632,20 @@ function MasterTitleEditor({ forceOpen = false } = {}) {
                           <option key={opt.key} value={opt.key}>{opt.icon} {opt.name}</option>
                         ))}
                       </select>
+                      {/* Indossato: override del Master (solo se iscritto al torneo) */}
+                      {snap && owned.length > 0 && (
+                        <select
+                          className="title-select title-worn-select"
+                          value={wornKey}
+                          onChange={e => setWorn(ch.uid, e.target.value || null)}
+                          title="Titolo indossato in torneo"
+                        >
+                          <option value="">♛ Indossato: nessuno</option>
+                          {owned.map(key => (
+                            <option key={key} value={key}>♛ Indossa: {ARENA_TITLES[key]?.icon} {ARENA_TITLES[key]?.name}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   );
                 })}
@@ -1706,6 +1740,8 @@ export default function Arena() {
   const [recuperoLv1Selected, setRecuperoLv1Selected] = useState([]);
   const [recuperoLv2Selected, setRecuperoLv2Selected] = useState([]);
   const [pendingItemCounts, setPendingItemCounts] = useState({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
+  // Titolo "indossato" scelto in autonomia all'iscrizione al torneo (uno solo). null = nessuno.
+  const [pendingTitle, setPendingTitle] = useState(null);
   const [loadoutTab, setLoadoutTab] = useState("weapons"); // tab attivo nella fase di equipaggiamento
   // ── REDESIGN: hub a riquadri + viste a fuoco (niente più lungo scroll) ──
   // "hub" = landing bento · poi una vista per sezione.
@@ -2290,13 +2326,17 @@ export default function Arena() {
       return;
     }
     const d = charSnap.data();
+    const ownedTitles = getCharTitles(d);
+    // Pre-seleziono il titolo solo se ne possiede esattamente uno (zero attrito);
+    // con più titoli la scelta resta esplicita.
+    setPendingTitle(ownedTitles.length === 1 ? ownedTitles[0] : null);
     setCharPreview({
       name:        d.name  || "Avventuriero",
       image:       d.image || null,
       class:       "",
       stats:       { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
       arenaBuffs:  d.arenaBuffs  || {},
-      arenaTitles: getCharTitles(d),
+      arenaTitles: ownedTitles,
       classLevels: d.classLevels || {},
       rolledHp:    null,
       hpRerollCount: 0,
@@ -2376,7 +2416,9 @@ export default function Arena() {
       selectedArmor:   pendingArmor,
       selectedItemKeys,
       arenaBuffs:      charPreview.arenaBuffs || {},
-      titles:          charPreview.arenaTitles || [],
+      // Un solo titolo "indossato", scelto dal giocatore all'iscrizione al torneo.
+      // Nelle Sfide Libere i titoli non danno bonus (sono solo per il torneo).
+      titles:          (loadoutContext === "tournament" && pendingTitle) ? [pendingTitle] : [],
       selectedPet:     petAction ? pendingPet : null,
       selectedDemon:   demonAction ? pendingDemon : null,
       selectedConstruct: constructAction ? pendingConstruct : null,
@@ -2527,6 +2569,7 @@ export default function Arena() {
     setPendingDemon(null);
     setPendingConstruct(null);
     setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
+    setPendingTitle(null);
     setLoadoutTab("weapons");
     setLoadoutContext("tournament");
     setFunAcceptMatchId(null);
@@ -7253,7 +7296,7 @@ export default function Arena() {
         onClose={() => setTitlesModalOpen(false)}
         title="♛ Titoli d'Arena — Permanenti"
       >
-        <MasterTitleEditor forceOpen />
+        <MasterTitleEditor forceOpen snapshots={snapshots} />
       </ArenaModal>
       <ArenaModal
         open={statsTournModalOpen}
@@ -7488,12 +7531,16 @@ export default function Arena() {
               : isWarlock
               ? { icon: "👁", label: "Demone", done: demonReady }
               : { icon: "🤖", label: "Costrutto", done: constructReady };
+            // Titolo: scelta in autonomia, solo all'iscrizione al torneo e solo se ne possiede.
+            const ownedTitles  = (charPreview.arenaTitles || []).filter(k => ARENA_TITLES[k]);
+            const showTitleTab = loadoutContext === "tournament" && ownedTitles.length > 0;
             const LOADOUT_TABS = [
               { key: "weapons", icon: "⚔", label: config.maxWeapons === 1 ? "Arma" : "Armi", count: `${pendingWeapons.length}/${config.maxWeapons}`, done: weaponsLeft === 0 },
               ...(hasMagic ? [{ key: "magic", icon: "✨", label: config.spellOptions.length > 0 ? "Magie" : "Abilità", count: config.spellOptions.length > 0 ? `${pendingSpells.length}/${config.maxSpells}` : null, done: spellsLeft === 0 }] : []),
               { key: "armor", icon: "🛡", label: "Difesa", count: pendingArmor ? "✓" : null, done: armorReady },
               ...(hasCompanion ? [{ key: "companion", icon: companionMeta.icon, label: companionMeta.label, count: companionMeta.done ? "✓" : null, done: companionMeta.done }] : []),
               { key: "items", icon: "🎒", label: "Oggetti", count: `${totalItems}/2`, done: totalItems >= 1 },
+              ...(showTitleTab ? [{ key: "title", icon: "♛", label: "Titolo", count: pendingTitle ? "✓" : null, done: true }] : []),
             ];
             const activeTab = LOADOUT_TABS.some(t => t.key === loadoutTab) ? loadoutTab : LOADOUT_TABS[0].key;
             const firstIncompleteTab = (LOADOUT_TABS.find(t => !t.done) || LOADOUT_TABS[0]).key;
@@ -7884,6 +7931,46 @@ export default function Arena() {
                 )}
                 </>)}
 
+                {/* ── TAB TITOLO: scegli (uno solo) il titolo da indossare ── */}
+                {activeTab === "title" && showTitleTab && (<>
+                  <div className="loadout-section-title">
+                    ♛ Titolo — {pendingTitle ? "1/1" : "0/1"} <span className="loadout-optional">(facoltativo · uno solo)</span>
+                  </div>
+                  <p className="loadout-title-hint">
+                    Indossa un solo titolo: il bonus si attiva in combattimento quando ne ricorrono le condizioni.
+                  </p>
+                  <div className="loadout-grid">
+                    {/* Opzione "nessun titolo" */}
+                    <button
+                      type="button"
+                      className={`loadout-item title-opt ${!pendingTitle ? "selected" : ""}`}
+                      onClick={() => setPendingTitle(null)}
+                    >
+                      <span className="loadout-item-icon">🚫</span>
+                      <span className="loadout-item-name">Nessun titolo</span>
+                      <span className="loadout-item-info">Nessun bonus</span>
+                      {!pendingTitle && <span className="loadout-check">✓</span>}
+                    </button>
+                    {ownedTitles.map(key => {
+                      const t = ARENA_TITLES[key];
+                      const isSelected = pendingTitle === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`loadout-item title-opt ${isSelected ? "selected" : ""}`}
+                          onClick={() => setPendingTitle(isSelected ? null : key)}
+                        >
+                          <span className="loadout-item-icon">{t.icon}</span>
+                          <span className="loadout-item-name">{t.name}</span>
+                          <span className="loadout-item-damage title-bonus">{t.short}</span>
+                          {isSelected && <span className="loadout-check">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>)}
+
                 </div>{/* /loadout-tab-body */}
 
                 {/* ── Footer fisso: annulla + azione intelligente ── */}
@@ -7949,6 +8036,11 @@ export default function Arena() {
               {(isRegistered || isPending) && snapshots[currentUser?.uid]?.selectedActions && (
                 <div className="my-loadout-preview">
                   <div className="my-loadout-label">Il tuo equipaggiamento:</div>
+                  {getSnapTitles(snapshots[currentUser.uid]).filter(k => ARENA_TITLES[k]).map(k => (
+                    <span key={k} className="loadout-selected-tag loadout-title-tag" title={ARENA_TITLES[k].short}>
+                      ♛ {ARENA_TITLES[k].icon} {ARENA_TITLES[k].name} <em>{ARENA_TITLES[k].short}</em>
+                    </span>
+                  ))}
                   {snapshots[currentUser.uid].selectedActions.map(a => (
                     <span key={a.name} className="loadout-selected-tag">
                       {a.icon} {a.name} <em>{a.damage}{a.statKey ? ` +${a.statKey.toUpperCase()}` : ""}</em>

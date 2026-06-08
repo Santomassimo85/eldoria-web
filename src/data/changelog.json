@@ -1,21 +1,66 @@
 {
   "versions": [
     {
+      "version": "10.02",
+      "date": "2026-06-08",
+      "title": "Pagina Update divisa per tipologia",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Le note di ogni versione sono ora raggruppate per tipologia (Novità, Grafica, Meccaniche, Bilanciamento, Fix, Tecnico), con un'intestazione e un colore dedicati per ciascuna categoria: più facile capire a colpo d'occhio cosa è cambiato."
+        }
+      ]
+    },
+    {
+      "version": "10.01",
+      "date": "2026-06-08",
+      "title": "Arena: combattimento attivo più pulito",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Rimossi tutti i bordi che incorniciavano le sezioni del combattimento attivo (barra superiore, scheda del combattente di turno, pannelli azioni ed equipaggiamento, tab e cronaca). Le aree ora si distinguono solo per lo sfondo, per una lettura più ordinata; l'oro resta come accento sul testo."
+        }
+      ]
+    },
+    {
+      "version": "10",
+      "date": "2026-06-08",
+      "title": "Arena: scelta del titolo all'iscrizione al torneo",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Iscrivendosi al torneo, i giocatori che possiedono uno o più titoli possono ora sceglierne uno da indossare direttamente dalla nuova scheda \"Titolo\" della schermata di equipaggiamento, con il relativo bonus mostrato in chiaro accanto a ciascun titolo."
+        },
+        {
+          "type": "mechanics",
+          "text": "È possibile indossare un solo titolo per torneo: il bonus si attiva in combattimento quando ne ricorrono le condizioni. Chi possiede un unico titolo lo trova già pre-selezionato."
+        },
+        {
+          "type": "mechanics",
+          "text": "I titoli ora forniscono il bonus solo in torneo: nelle Sfide Libere non hanno effetto."
+        },
+        {
+          "type": "fix",
+          "text": "Pannello Master: l'editor dei Titoli distingue tra titoli posseduti (permanenti) e titolo indossato. Aggiunto il selettore \"Indossato\" per impostare il titolo attivo di un giocatore iscritto, utile quando se ne dimentica la scelta."
+        }
+      ]
+    },
+    {
       "version": "9",
       "date": "2026-06-08",
       "title": "Arena: nuovo tab \"Storico\" per i combattimenti conclusi",
       "changes": [
         {
           "type": "fix",
-          "text": "Quando avevi più di un combattimento (torneo, AI o sfida libera) il pannello diventava un caos: i fight già conclusi restavano impilati sopra quello attivo. Ora il combat ha due schede: \"In corso\" mostra solo le sfide vive, mentre i fight conclusi finiscono nello \"Storico\"."
+          "text": "Il pannello combattimento dell'Arena è ora diviso in due schede: \"In corso\" elenca solo le sfide attive, mentre quelle concluse vengono spostate nello \"Storico\". Risolto l'accumulo di più combattimenti impilati nella stessa vista."
         },
         {
           "type": "feature",
-          "text": "Lo \"Storico\" raccoglie gli ultimi 10 combattimenti conclusi, ognuno con i duellanti, il vincitore (👑) e la cronaca completa dello scontro consultabile a fisarmonica."
+          "text": "Aggiunta la scheda \"Storico\": conserva gli ultimi 10 combattimenti conclusi (torneo, finale, AI o sfida libera), ciascuno con i duellanti, il vincitore (👑) e la cronaca completa dello scontro consultabile a fisarmonica."
         },
         {
           "type": "fix",
-          "text": "All'apertura del combat parti automaticamente sul tab giusto: \"In corso\" se hai una sfida viva, altrimenti dritto allo \"Storico\"."
+          "text": "All'apertura del combattimento viene selezionata automaticamente la scheda appropriata: \"In corso\" in presenza di una sfida attiva, altrimenti \"Storico\"."
         }
       ]
     },
@@ -26,11 +71,11 @@
       "changes": [
         {
           "type": "fix",
-          "text": "Arena: su smartphone il pulsante \"Hub\" per tornare indietro e navigare era nascosto dietro il menu bianco. Ora è fissato qualche pixel sotto la barra, sempre visibile e cliccabile."
+          "text": "Arena: su smartphone il pulsante \"Hub\" per tornare indietro e navigare risultava nascosto dietro la barra del menu. Riposizionato appena sotto la barra, ora è sempre visibile e selezionabile."
         },
         {
           "type": "fix",
-          "text": "TCG: il pannello del Torneo ora è scrollabile su mobile — prima la parte in fondo veniva tagliata e non si riusciva a vederla."
+          "text": "TCG: il pannello del Torneo è ora scrollabile su mobile. Risolto il taglio della parte inferiore del contenuto."
         }
       ]
     },

@@ -640,6 +640,14 @@
   border: 1px solid #8a6f00;
   box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
+/* Titolo attualmente INDOSSATO nel torneo: bordo evidenziato */
+.p-title-badge.worn {
+  border: 2px solid #2a1d00;
+  box-shadow: 0 0 10px -2px rgba(245, 215, 110, 0.9);
+}
+.title-worn-select {
+  border-color: #c5a300 !important;
+}
 
 .p-title-badge-x {
   display: inline-flex;

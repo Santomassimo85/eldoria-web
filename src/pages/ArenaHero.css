@@ -4315,6 +4315,26 @@ body .arena-bet-fab:hover {
   color: #fff7e6 !important;
 }
 
+/* ── Tab Titolo: scelta del titolo da indossare all'iscrizione ── */
+.arena-page .loadout-title-hint {
+  margin: 2px 0 10px !important;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(245, 230, 200, 0.72) !important;
+}
+.arena-page .loadout-item.title-opt .title-bonus {
+  color: #9be7c4 !important;
+  font-weight: 700;
+}
+.arena-page .loadout-item.title-opt.selected {
+  border-color: rgba(212, 175, 55, 0.85) !important;
+  box-shadow: 0 0 18px -5px rgba(212, 175, 55, 0.7) !important;
+}
+.arena-page .loadout-title-tag {
+  background: rgba(212, 175, 55, 0.22) !important;
+  border-color: rgba(212, 175, 55, 0.6) !important;
+}
+
 /* Bottone "Genera a caso" (auto-PG) */
 .arena-page .btn-auto-pg {
   display: block;
@@ -5576,4 +5596,41 @@ body .arena-page.arena-page .master-actions [class*="btn-"] { box-shadow: 0 6px 
 @media (prefers-reduced-motion:reduce){
   .arena-combat-dialog *{ animation:none!important; }
 }
+
+/* ════════ DECLUTTER fight attivo — VIA TUTTI I BORDI ════════
+   Niente più cornici sulle sezioni: le aree restano distinte solo dallo
+   sfondo. L'accento oro resta solo sul TESTO (timer, titoli, nomi).
+   Le barrette colorate a sinistra dei log (attaccante/difensore) restano,
+   perché sono marcatori informativi, non cornici. */
+/* Cornice esterna del modal (anche desktop) */
+.arena-combat-dialog{ border:none!important; }
+@media (min-width:761px){ .arena-combat-dialog{ border:none!important; } }
+/* Top bar SFIDA */
+.arena-combat-dialog .cv-topbar{ border:none!important; }
+.arena-combat-dialog .cv-turn-badge{ border:none!important; background:rgba(255,255,255,.05)!important; }
+/* Card del combattente di turno: niente cornice/glow, solo lieve sfondo */
+.arena-combat-dialog .fighter-card.active-turn{
+  background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0))!important;
+  border:none!important; box-shadow:none!important; animation:none!important;
+}
+/* Statistiche, dock azioni, pannelli azioni/equip, salta-turno */
+.arena-combat-dialog .cv-stats{ border:none!important; }
+.arena-combat-dialog .action-panel{ border:none!important; }
+.arena-combat-dialog .combat-dock-tabs{ border:none!important; }
+.arena-combat-dialog .equip-panel{ border:none!important; }
+.arena-combat-dialog .dual-action-row{ background:transparent!important; border:none!important; }
+.arena-combat-dialog .btn-end-dual-turn{ border:none!important; background:rgba(255,255,255,.06)!important; }
+/* Reazioni */
+.arena-combat-dialog .arena-react-toggle{ border:none!important; background:rgba(255,255,255,.06)!important; color:#dfe4f5!important; }
+.arena-combat-dialog .arena-react-row{ border:none!important; }
+/* Tab In corso / Storico */
+.arena-combat-dialog .combat-tabs{ border:none!important; }
+.arena-combat-dialog .combat-tab{ border:none!important; background:rgba(255,255,255,.03)!important; }
+.arena-combat-dialog .combat-tab.active{ border:none!important; background:rgba(255,255,255,.08)!important; box-shadow:none!important; color:#fff!important; }
+/* Cronaca: header senza linea, righe senza cornice */
+.arena-combat-dialog .match-log{ border:none!important; }
+.arena-combat-dialog .match-log-head{ border:none!important; }
+.arena-combat-dialog .match-log-count{ border:none!important; }
+.arena-combat-dialog .log-entry.latest{ outline:none!important; box-shadow:none!important; background:rgba(255,255,255,.06)!important; }
+
 /* combat v3 — palette oro/bordeaux, dock compatto, abbandono in top bar */
