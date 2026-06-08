@@ -213,6 +213,69 @@
   animation: tac-timer-pulse 1.2s ease-in-out infinite;
 }
 
+/* ── Pixel defeat screen (boss deadline expired with the boss alive) ──────── */
+.tac-defeat {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: radial-gradient(circle at center, rgba(60,0,0,0.93) 0%, rgba(0,0,0,0.97) 70%);
+  image-rendering: pixelated;
+  animation: tac-defeat-in 0.5s ease-out both;
+}
+@keyframes tac-defeat-in { from { opacity: 0; } to { opacity: 1; } }
+.tac-defeat-scanlines {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom,
+    rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4px);
+}
+.tac-defeat-box {
+  position: relative; z-index: 2; max-width: 560px; width: 100%; text-align: center;
+  border: 4px solid #c03020; background: rgba(0,0,0,0.85);
+  box-shadow: 0 0 0 4px #000, 0 0 28px rgba(192,48,32,0.6);
+  padding: 26px 22px 30px;
+}
+.tac-defeat-skull {
+  font-size: clamp(40px, 11vw, 68px); line-height: 1; margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px rgba(192,48,32,0.8));
+  animation: tac-defeat-flash 0.9s ease-in-out infinite alternate;
+}
+.tac-defeat-title {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(18px, 6vw, 34px);
+  color: #c03020; margin: 0 0 8px; letter-spacing: 2px;
+  text-shadow: 3px 3px 0 #000, 0 0 14px rgba(192,48,32,0.7);
+}
+.tac-defeat-sub {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(8px, 2.4vw, 12px);
+  color: #ffd6d0; margin: 0 0 16px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000;
+}
+.tac-defeat-flavor {
+  font-size: clamp(14px, 3.4vw, 18px); color: #f0e0d0;
+  margin: 0 auto 18px; max-width: 460px; line-height: 1.4;
+}
+.tac-defeat-bossname { color: #ff6a52; font-weight: bold; }
+.tac-defeat-penalty {
+  border: 3px solid #c03020; background: rgba(192,48,32,0.14);
+  padding: 14px 16px; margin: 0 0 16px;
+}
+.tac-defeat-penalty-label {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(7px, 2vw, 10px);
+  color: #c03020; letter-spacing: 1px; margin-bottom: 10px; text-shadow: 1px 1px 0 #000;
+}
+.tac-defeat-penalty-text {
+  font-size: clamp(15px, 3.8vw, 20px); color: #fff; line-height: 1.4; white-space: pre-wrap;
+}
+.tac-defeat-close {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(8px, 2vw, 11px);
+  color: #fff; background: rgba(192,48,32,0.25); border: 2px solid #c03020;
+  padding: 8px 14px; margin: 0 0 14px; cursor: pointer;
+}
+.tac-defeat-close:hover { background: rgba(192,48,32,0.45); }
+.tac-defeat-press {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(7px, 1.8vw, 9px);
+  color: #b88; letter-spacing: 1px;
+  animation: tac-defeat-flash 1.2s ease-in-out infinite alternate;
+}
+@keyframes tac-defeat-flash { from { opacity: 0.55; } to { opacity: 1; } }
+
 /* ── Action HUD — Final Fantasy Tactics styled command window ────────────── */
 .tac-hud {
   flex: 0 0 auto;

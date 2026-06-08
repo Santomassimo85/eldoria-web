@@ -246,6 +246,18 @@ export default function BossTactics() {
   const fightStarted = battle?.fightStarted === true;
   const phase = battle?.phase || "setup";
   const isOver = phase === "over";
+  // Defeat screen (boss-deadline expiry): the penalty text is authored on the
+  // boss doc in WorldBossAdmin (`penalties`). Resolve it from the boss unit's
+  // bossId so every client — not just the master — can show it.
+  const defeatBossUnit = (battle?.units || []).find((u) => u.kind === "boss");
+  const defeatBossDoc = defeatBossUnit ? bosses.find((b) => b.id === defeatBossUnit.bossId) : null;
+  const defeatBossName = defeatBossUnit?.name || defeatBossDoc?.name || "Il boss";
+  const defeatPenalty = defeatBossDoc?.penalties || "";
+  // Heroes lost if the battle is over by deadline-expiry OR by being wiped out
+  // (every hero down). A boss-side victory (enemies wiped) is NOT a hero loss.
+  const heroesPresent = (battle?.units || []).some((u) => u.side === "hero");
+  const heroesWiped = isOver && heroesPresent && !(battle?.units || []).some((u) => u.side === "hero" && !u.dead);
+  const heroesLost = isOver && (battle?.bossExpired || heroesWiped);
 
   // Boss-fight BGM: looped, low volume, for the whole fight (per-client audio).
   useEffect(() => {
@@ -730,7 +742,15 @@ export default function BossTactics() {
       if (!d.fightStarted || d.phase === "over" || !d.bossDeadline) return false;
       if (Date.now() < d.bossDeadline) return false;          // re-check against FRESH state
       if (!bossAlive(d.units || [])) return false;            // boss already dead → heroes won, no failure
-      tx.update(ref, { phase: "over", bossExpired: true });
+      // Snapshot the penalty text onto the doc so the defeat screen survives even
+      // if the boss doc is later edited/deactivated.
+      const bu = (d.units || []).find((u) => u.kind === "boss");
+      const bdoc = bu ? bosses.find((b) => b.id === bu.bossId) : null;
+      tx.update(ref, {
+        phase: "over", bossExpired: true,
+        bossPenalties: bdoc?.penalties || "",
+        bossDefeatName: bu?.name || bdoc?.name || "Il boss",
+      });
       return true;
     });
     if (failed) {
@@ -1150,6 +1170,35 @@ export default function BossTactics() {
         <div className={`tac-bossclock ${bossLeftMs <= 3600000 ? "low" : ""}`}
           title={`Gli Eroi devono uccidere il boss entro il ${new Date(bossDeadline).toLocaleString("it-IT")}`}>
           💀 Boss: {fmtCountdown(bossLeftMs)}
+        </div>
+      )}
+
+      {/* ── Pixel DEFEAT SCREEN — time ran out with the boss still alive ──────
+          Shown to EVERY client (driven by shared `bossExpired`). Lists the
+          penalty authored on the boss doc (penalties). ── */}
+      {heroesLost && (
+        <div className="tac-defeat" role="alertdialog" aria-label="Sconfitta">
+          <div className="tac-defeat-scanlines" />
+          <div className="tac-defeat-box">
+            <div className="tac-defeat-skull">💀</div>
+            <h2 className="tac-defeat-title">GAME OVER</h2>
+            <p className="tac-defeat-sub">GLI EROI SONO STATI SCONFITTI</p>
+            <p className="tac-defeat-flavor">
+              {battle?.bossExpired
+                ? <>Il tempo è scaduto. <span className="tac-defeat-bossname">{battle?.bossDefeatName || defeatBossName}</span> è ancora vivo e ha prevalso.</>
+                : <>Gli Eroi sono caduti. <span className="tac-defeat-bossname">{battle?.bossDefeatName || defeatBossName}</span> ha prevalso.</>}
+            </p>
+            <div className="tac-defeat-penalty">
+              <div className="tac-defeat-penalty-label">⚔ PENALITÀ SUBÌTA ⚔</div>
+              <div className="tac-defeat-penalty-text">
+                {battle?.bossPenalties || defeatPenalty || "Il Master applicherà le conseguenze della sconfitta."}
+              </div>
+            </div>
+            {isMaster && (
+              <button className="tac-defeat-close" onClick={endBattle}>⛔ Chiudi e azzera</button>
+            )}
+            <div className="tac-defeat-press">— LA SCONFITTA È SEGNATA —</div>
+          </div>
         </div>
       )}
 

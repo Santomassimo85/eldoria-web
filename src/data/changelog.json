@@ -12,6 +12,10 @@
         {
           "type": "feature",
           "text": "Allo scadere del tempo, se il boss è ancora vivo la battaglia termina automaticamente con la sconfitta degli Eroi. La scadenza è modificabile dal Master anche a battaglia in corso."
+        },
+        {
+          "type": "feature",
+          "text": "Quando gli Eroi perdono (tempo scaduto o squadra sterminata) appare uno schermo \"GAME OVER\" pixelato che mostra la penalità subìta, presa dal campo Penalità del boss."
         }
       ]
     },
