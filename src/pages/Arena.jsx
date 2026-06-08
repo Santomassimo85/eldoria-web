@@ -874,6 +874,18 @@ const ARENA_TITLES = {
   vulkaros:   { key: "vulkaros",   name: "Campione di Vulkaros", icon: "⚔",  short: "+1 hit arma (Guerriero)" },
   gufoBianco: { key: "gufoBianco", name: "Gufo Bianco",          icon: "🦉", short: "+1 hit Druido (forma selvatica)" },
   spazzaossa: { key: "spazzaossa", name: "Spazzaossa",           icon: "🦴", short: "+1 hit senz'armi o con armi contundenti" },
+  // ── Nuova infornata di titoli (≤ +1 hit, niente di troppo potente) ──────────
+  ombraDellaNotte:   { key: "ombraDellaNotte",   name: "Ombra della Notte",     icon: "🌑", short: "+1 hit (Ladro/Monaco/Ranger)" },
+  furiaSelvaggia:    { key: "furiaSelvaggia",    name: "Furia Selvaggia",       icon: "🪓", short: "+1 hit arma (Barbaro)" },
+  giuramentoSacro:   { key: "giuramentoSacro",   name: "Giuramento Sacro",      icon: "⚜", short: "+1 hit arma (Paladino)" },
+  luceDivina:        { key: "luceDivina",        name: "Luce Divina",           icon: "☀", short: "+1 hit spell (Chierico)" },
+  cantoDiGuerra:     { key: "cantoDiGuerra",     name: "Canto di Guerra",       icon: "🎵", short: "+1 hit spell (Bardo)" },
+  pattoOscuro:       { key: "pattoOscuro",       name: "Patto Oscuro",          icon: "👁", short: "+1 hit spell (Warlock)" },
+  ingegnoMeccanico:  { key: "ingegnoMeccanico",  name: "Ingegno Meccanico",     icon: "⚙", short: "+1 hit (Artefice)" },
+  cuoreDellaForesta: { key: "cuoreDellaForesta", name: "Cuore della Foresta",   icon: "🌿", short: "+1 hit spell (Druido, no forma selvatica)" },
+  occhioDiFalco:     { key: "occhioDiFalco",     name: "Occhio di Falco",       icon: "🎯", short: "+1 hit con armi perforanti" },
+  filoDelRasoio:     { key: "filoDelRasoio",     name: "Filo del Rasoio",       icon: "🗡", short: "+1 hit con armi taglienti" },
+  signoreTempesta:   { key: "signoreTempesta",   name: "Signore della Tempesta", icon: "⚡", short: "+1 hit con attacchi da fulmine" },
 };
 
 // Restituisce +1 se il titolo deve attivarsi su questo tiro per colpire, altrimenti 0.
@@ -885,6 +897,18 @@ function getTitleHitBonus({ titleKey, classLower, isSpellAction, wildShapeForm, 
   if (titleKey === "vulkaros"   && !isSpellAction && isFighterClass(classLower)) return 1;
   if (titleKey === "gufoBianco" && isDruidClass(classLower) && !!wildShapeForm) return 1;
   if (titleKey === "spazzaossa" && !isSpellAction && actionDamageType === "contundente") return 1;
+  // ── Nuovi titoli ────────────────────────────────────────────────────────────
+  if (titleKey === "ombraDellaNotte"   && (isRogueClass(classLower) || isMonkClass(classLower) || isRangerClass(classLower))) return 1;
+  if (titleKey === "furiaSelvaggia"    && !isSpellAction && isBarbarianClass(classLower)) return 1;
+  if (titleKey === "giuramentoSacro"   && !isSpellAction && isPaladinClass(classLower)) return 1;
+  if (titleKey === "luceDivina"        && isSpellAction && isClericClass(classLower)) return 1;
+  if (titleKey === "cantoDiGuerra"     && isSpellAction && isBardClass(classLower)) return 1;
+  if (titleKey === "pattoOscuro"       && isSpellAction && isWarlockClass(classLower)) return 1;
+  if (titleKey === "ingegnoMeccanico"  && isArtificerClass(classLower)) return 1;
+  if (titleKey === "cuoreDellaForesta" && isSpellAction && isDruidClass(classLower) && !wildShapeForm) return 1;
+  if (titleKey === "occhioDiFalco"     && !isSpellAction && actionDamageType === "perforante") return 1;
+  if (titleKey === "filoDelRasoio"     && !isSpellAction && actionDamageType === "tagliente") return 1;
+  if (titleKey === "signoreTempesta"   && actionDamageType === "fulmine") return 1;
   return 0;
 }
 

@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "7",
+      "date": "2026-06-08",
+      "title": "Arena: 11 nuovi Titoli assegnabili dal Master",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuovo titolo \"Ombra della Notte\" 🌑: chi lo possiede gioca Ladro, Monaco o Ranger e ottiene +1 a tutti i tiri per colpire."
+        },
+        {
+          "type": "feature",
+          "text": "Aggiunti 10 altri titoli a tema classe, arma o incantesimo (tutti +1 al colpire, niente di sbilanciato): Furia Selvaggia 🪓 (arma Barbaro), Giuramento Sacro ⚜ (arma Paladino), Luce Divina ☀ (spell Chierico), Canto di Guerra 🎵 (spell Bardo), Patto Oscuro 👁 (spell Warlock), Ingegno Meccanico ⚙ (Artefice), Cuore della Foresta 🌿 (spell Druido senza forma selvatica), Occhio di Falco 🎯 (armi perforanti), Filo del Rasoio 🗡 (armi taglienti), Signore della Tempesta ⚡ (attacchi da fulmine)."
+        },
+        {
+          "type": "feature",
+          "text": "Tutti i nuovi titoli sono già disponibili nell'editor dei Titoli del Master e sono cumulabili e permanenti, attivi sia in Torneo che nell'Arena dei Campioni."
+        }
+      ]
+    },
+    {
       "version": "6",
       "date": "2026-06-08",
       "title": "World Boss: scadenza globale del boss",
