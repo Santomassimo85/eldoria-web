@@ -3645,13 +3645,14 @@
 /* root del torneo */
 .tcg-tourn {
   position: relative;
-  min-height: 100%;
+  height: 100%;
   width: 100%;
   padding: 24px 22px 96px;
   max-width: 1240px;
   margin: 0 auto;
   color: var(--ink);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   /* Layered background: dark gradient + epic castle + parchment grain.
      Different from Arena (no blood + gold pattern overlay). */
   background:

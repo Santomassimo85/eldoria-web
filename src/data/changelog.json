@@ -1,6 +1,40 @@
 {
   "versions": [
     {
+      "version": "9",
+      "date": "2026-06-08",
+      "title": "Arena: nuovo tab \"Storico\" per i combattimenti conclusi",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Quando avevi più di un combattimento (torneo, AI o sfida libera) il pannello diventava un caos: i fight già conclusi restavano impilati sopra quello attivo. Ora il combat ha due schede: \"In corso\" mostra solo le sfide vive, mentre i fight conclusi finiscono nello \"Storico\"."
+        },
+        {
+          "type": "feature",
+          "text": "Lo \"Storico\" raccoglie gli ultimi 10 combattimenti conclusi, ognuno con i duellanti, il vincitore (👑) e la cronaca completa dello scontro consultabile a fisarmonica."
+        },
+        {
+          "type": "fix",
+          "text": "All'apertura del combat parti automaticamente sul tab giusto: \"In corso\" se hai una sfida viva, altrimenti dritto allo \"Storico\"."
+        }
+      ]
+    },
+    {
+      "version": "8.01",
+      "date": "2026-06-08",
+      "title": "Fix mobile: tasto Hub Arena e pannello Torneo TCG",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Arena: su smartphone il pulsante \"Hub\" per tornare indietro e navigare era nascosto dietro il menu bianco. Ora è fissato qualche pixel sotto la barra, sempre visibile e cliccabile."
+        },
+        {
+          "type": "fix",
+          "text": "TCG: il pannello del Torneo ora è scrollabile su mobile — prima la parte in fondo veniva tagliata e non si riusciva a vederla."
+        }
+      ]
+    },
+    {
       "version": "8",
       "date": "2026-06-08",
       "title": "Torneo TCG: notifiche per non perdere mai un match",

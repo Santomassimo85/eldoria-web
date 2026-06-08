@@ -1717,6 +1717,7 @@ export default function Arena() {
   const [combatDock, setCombatDock] = useState("attacchi"); // attacchi | magie | abilita | oggetti
   const [combatStatsOpen, setCombatStatsOpen] = useState(false); // sezione [3] stat collassabile
   const [combatLogExpanded, setCombatLogExpanded] = useState(false); // cronaca a schermo intero (mobile)
+  const [combatTab, setCombatTab] = useState("live"); // live (in corso) | history (ultimi 10 conclusi)
   // Popup di fine combattimento (vittoria/sconfitta). null = nessun popup.
   const [fightResult, setFightResult] = useState(null);
   const fightResultSeenRef = useRef(null);
@@ -1813,6 +1814,17 @@ export default function Arena() {
     const m = arenaMeta?.matches?.find(mm => mm.matchId === myActiveMatchId);
     return !!(m && m.turn === currentUser.uid);
   }, [arenaMeta, myActiveMatchId, currentUser]);
+
+  // Quando apro il combat: parto sul tab "in corso" se ho una sfida viva,
+  // altrimenti vado dritto allo "Storico" (così non resta vuoto).
+  useEffect(() => {
+    if (!combatModalOpen) return;
+    const hasLive = (arenaMeta.matches || []).some(m =>
+      ((m.kind === "fun") || arenaMeta.phase === "combat") &&
+      m.players?.some(p => p.id === currentUser?.uid) &&
+      m.status !== "open" && m.status !== "finished");
+    setCombatTab(hasLive ? "live" : "history");
+  }, [combatModalOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll into the fight the first time a new active match appears.
   const lastScrolledMatchRef = useRef(null);
@@ -8384,12 +8396,23 @@ export default function Arena() {
       )}
 
       {/* ── COMBAT MODAL (popup attivato dal floating fight button) ──
-          Match in cui sono coinvolto: torneo (in combat) e sfide libere accettate. */}
-      {(arenaMeta.matches || []).some(m =>
-        ((m.kind === "fun") || arenaMeta.phase === "combat") &&
-        m.players?.some(p => p.id === currentUser?.uid) &&
-        m.status !== "open"
-      ) && (
+          Match in cui sono coinvolto: torneo (in combat) e sfide libere accettate.
+          Tab "In corso" = match vivi · Tab "Storico" = ultimi 10 conclusi (sola lettura). */}
+      {(() => {
+        const myMatches = (arenaMeta.matches || []).filter(m =>
+          ((m.kind === "fun") || arenaMeta.phase === "combat") &&
+          m.players?.some(p => p.id === currentUser?.uid) &&
+          m.status !== "open"
+        );
+        if (myMatches.length === 0) return null;
+        const liveMatches = myMatches.filter(m => m.status !== "finished");
+        const matchTs = (m) => (m.logs || []).reduce(
+          (mx, l) => (l && typeof l === "object" && l.ts) ? Math.max(mx, new Date(l.ts).getTime()) : mx, 0);
+        const finishedMatches = myMatches
+          .filter(m => m.status === "finished")
+          .sort((a, b) => matchTs(b) - matchTs(a))
+          .slice(0, 10);
+        return (
         <ArenaModal
           open={combatModalOpen}
           onClose={() => setCombatModalOpen(false)}
@@ -8405,11 +8428,111 @@ export default function Arena() {
             </div>
             <span className="my-arena-banner-deco">⚔</span>
           </div>
-          {arenaMeta.matches
-            .filter(m => m.players.some(p => p.id === currentUser?.uid))
-            .filter(m => m.kind === "fun" || arenaMeta.phase === "combat")
-            .filter(m => m.status !== "open")
-            .map(m => {
+
+          {/* Tab: in corso ↔ storico */}
+          <div className="combat-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={combatTab === "live"}
+              className={`combat-tab${combatTab === "live" ? " active" : ""}`}
+              onClick={() => setCombatTab("live")}
+            >
+              ⚔ In corso{liveMatches.length > 0 ? ` · ${liveMatches.length}` : ""}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={combatTab === "history"}
+              className={`combat-tab${combatTab === "history" ? " active" : ""}`}
+              onClick={() => setCombatTab("history")}
+            >
+              📜 Storico{finishedMatches.length > 0 ? ` · ${finishedMatches.length}` : ""}
+            </button>
+          </div>
+
+          {/* ════════ STORICO — ultimi 10 fight conclusi (sola lettura) ════════ */}
+          {combatTab === "history" && (
+            finishedMatches.length === 0 ? (
+              <div className="combat-empty">📜 Nessun combattimento concluso, per ora.</div>
+            ) : (
+              <div className="combat-hist-list">
+                {finishedMatches.map(m => {
+                  const when = matchTs(m);
+                  const whenStr = when
+                    ? `${new Date(when).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })} · ${new Date(when).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
+                    : null;
+                  const kindLabel = m.kind === "fun" ? "⚔ Sfida libera"
+                    : m.kind === "final" ? "🏆 Finale"
+                    : "🏟 Torneo";
+                  return (
+                    <div key={m.matchId} className="combat-hist-card">
+                      <div className="chc-head">
+                        <span className="chc-kind">{kindLabel}</span>
+                        {whenStr && <span className="chc-when">{whenStr}</span>}
+                        {m.kind === "fun" && (
+                          <button type="button" className="chc-remove" onClick={() => removeFunMatch(m.matchId)} title="Rimuovi dallo storico" aria-label="Rimuovi dallo storico">🗑</button>
+                        )}
+                      </div>
+                      <div className="chc-fighters">
+                        {m.players.map((p, idx) => {
+                          const char = snapshots[p.id] || {};
+                          const won  = m.winner === p.id;
+                          return (
+                            <React.Fragment key={p.id}>
+                              {idx > 0 && <span className="chc-vs">VS</span>}
+                              <div className={`chc-fighter${won ? " chc-won" : ""}${p.id === currentUser?.uid ? " chc-me" : ""}`}>
+                                {char.image
+                                  ? <img src={char.image} alt="" className="chc-ava" />
+                                  : <div className="chc-ava chc-ava-ph">⚔</div>}
+                                <span className="chc-name">{won ? "👑 " : ""}{p.name}</span>
+                                {char.class && <span className="chc-class">{char.class}</span>}
+                              </div>
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                      <details className="chc-log">
+                        <summary className="chc-log-sum">
+                          📜 Cronaca · {(m.logs || []).length} {(m.logs || []).length === 1 ? "evento" : "eventi"}
+                        </summary>
+                        <div className="chc-log-scroll">
+                          {[...(m.logs || [])].reverse().map((l, i) => {
+                            const text = displayLog(l, currentUser?.uid);
+                            const ts = l && typeof l === "object" && l.ts
+                              ? new Date(l.ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                              : null;
+                            return (
+                              <p key={i} className="chc-log-entry">
+                                {ts && <span className="log-ts">{ts}</span>}
+                                {text}
+                              </p>
+                            );
+                          })}
+                          {(m.logs || []).length === 0 && (
+                            <p className="match-log-empty">— Nessun evento registrato —</p>
+                          )}
+                        </div>
+                      </details>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {/* ════════ IN CORSO — match vivi (interattivi) ════════ */}
+          {combatTab === "live" && liveMatches.length === 0 && (
+            <div className="combat-empty">
+              ✅ Nessuna sfida in corso.
+              {finishedMatches.length > 0 && (
+                <button type="button" className="combat-empty-link" onClick={() => setCombatTab("history")}>
+                  Guarda lo Storico →
+                </button>
+              )}
+            </div>
+          )}
+          {combatTab === "live" && liveMatches.map(m => {
             const myPlayer       = m.players.find(p => p.id === currentUser?.uid);
             const isMyMatch      = !!myPlayer;
             const isMyTurn       = m.turn === currentUser?.uid;
@@ -9967,7 +10090,8 @@ export default function Arena() {
           })}
         </div>
         </ArenaModal>
-      )}
+        );
+      })()}
 
     </div>
   );
