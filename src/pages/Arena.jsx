@@ -13,7 +13,7 @@ import "./Arena.css";
 import "./ArenaHero.css";
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
-function ArenaModal({ open, onClose, title, children, variant = "modal" }) {
+function ArenaModal({ open, onClose, title, children, variant = "modal", className = "" }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
@@ -37,7 +37,7 @@ function ArenaModal({ open, onClose, title, children, variant = "modal" }) {
     : "arena-modal-dialog";
   return createPortal(
     <div className={overlayClass} onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
-      <div className={dialogClass} onClick={(e) => e.stopPropagation()}>
+      <div className={`${dialogClass}${className ? ` ${className}` : ""}`} onClick={(e) => e.stopPropagation()}>
         {variant === "combat" && (
           <div className="arena-combat-fx" aria-hidden="true">
             <span className="acfx-pulse" />
@@ -6819,7 +6819,7 @@ export default function Arena() {
                 <span className="bento-glow" aria-hidden="true" />
               </button>
 
-              <button type="button" className={`bento-card bc-bracket bento-wide${hasBracket ? "" : " bento-off"}`} onClick={() => hasBracket && setArenaView("bracket")} disabled={!hasBracket}>
+              <button type="button" className={`bento-card bc-bracket bento-wide${hasBracket ? "" : " bento-off"}`} onClick={() => { if (hasBracket) { setArenaView("bracket"); setBracketModalOpen(true); } }} disabled={!hasBracket}>
                 <span className="bento-rune" aria-hidden="true">🏆</span>
                 <span className="bento-title">Tabellone</span>
                 <span className="bento-sub">{hasBracket ? "Segui gli scontri live" : "Nessun torneo in corso"}</span>
@@ -8184,91 +8184,71 @@ export default function Arena() {
       {/* ── VISTA TABELLONE DEL CAMPIONATO ── */}
       <span id="arena-bracket-anchor" aria-hidden="true" />
       {arenaView === "bracket" && (arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0 && (() => {
+        // ── TABELLONE redesign: righe piatte, niente bordi/cornici ──
         const renderMatchCard = (m) => {
           const isMyMatch = m.players.some(p => p.id === currentUser?.uid);
 
-          // ── Compact view for finished matches ─────────────────
-          // Single line: [W/L badge] WinnerName  ▸  LoserName(struck-through)
-          // Badge color reflects viewer's outcome if they were in the match.
+          // Match concluso → riga singola e pulita: 👑 vincitore · perdente
           if (m.status === "finished") {
             const winner = m.players.find(p => p.id === m.winner);
             const losers = m.players.filter(p => p.id !== m.winner);
-            const myRole = isMyMatch
-              ? (m.winner === currentUser?.uid ? "win" : "loss")
-              : null;
+            const myRole = isMyMatch ? (m.winner === currentUser?.uid ? "win" : "loss") : null;
             return (
-              <div key={m.matchId} className={`bracket-card-mini ${myRole ? `mine-${myRole}` : ""}`}>
-                <span className={`bracket-mini-badge ${myRole || "neutral"}`}>
-                  {myRole === "win" ? "W" : myRole === "loss" ? "L" : "✓"}
-                </span>
-                <span className="bracket-mini-winner" title={winner?.name || "?"}>
-                  {winner?.name || "?"}
-                </span>
-                <span className="bracket-mini-vs" aria-hidden="true">▸</span>
-                <span className="bracket-mini-losers" title={losers.map(l => l.name).join(", ")}>
-                  {losers.map(l => l.name).join(", ") || "—"}
-                </span>
+              <div key={m.matchId} className={`tb-result${myRole ? ` ${myRole}` : ""}`}>
+                <span className="tb-result-crown" aria-hidden="true">👑</span>
+                <span className="tb-result-winner">{winner?.name || "?"}</span>
+                <span className="tb-result-sep">batte</span>
+                <span className="tb-result-loser">{losers.map(l => l.name).join(", ") || "—"}</span>
               </div>
             );
           }
 
-          // ── Full detail card for active / initiative / pending ──
+          // Match in corso / iniziativa / in attesa → pannello live piatto
           return (
-            <div key={m.matchId} className={`bracket-card ${m.status}${isMyMatch ? " my-match" : ""}`}>
-              {m.players.map((p, idx) => {
+            <div key={m.matchId} className={`tb-live ${m.status}${isMyMatch ? " mine" : ""}`}>
+              <div className="tb-live-status">
+                {m.status === "initiative" ? "⚡ Iniziativa" : m.status === "active" ? "⚔ In corso" : "🕓 In attesa"}
+              </div>
+              {m.players.map((p) => {
                 const char = snapshots[p.id] || { stats: { maxHp: 70 } };
                 const maxHp = char.stats?.maxHp ?? 70;
                 const hpPct = Math.max(0, Math.min(100, (p.hp / maxHp) * 100));
-                // Badge HP: rosso scuro fisso (override CSS in Arena.css); bar fill: verde chiaro fisso, track dietro rosso scuro.
                 const isActive = m.turn === p.id && m.status === "active";
                 return (
-                  <React.Fragment key={p.id}>
-                    {idx > 0 && <div className="bracket-sep">VS</div>}
-                    <div className={`bracket-fighter${isActive ? " active-turn" : ""}`}>
-                      <div className="bracket-fighter-row">
-                        {char.image && <img src={char.image} className="bracket-avatar" alt="" />}
-                        <div className="bracket-fighter-info">
-                          <span className="bracket-fighter-name">{p.name}</span>
-                          {char.class && <span className="bracket-fighter-class">{char.class}</span>}
-                          {getSnapTitles(char).map(key => ARENA_TITLES[key] && (
-                            <span key={key} className="bracket-fighter-title" title={ARENA_TITLES[key].short}>
-                              {ARENA_TITLES[key].icon} {ARENA_TITLES[key].name}
-                            </span>
-                          ))}
-                        </div>
-                        {isActive
-                          ? <span className="bracket-active-dot" title="Turno in corso">●</span>
-                          : <span className="bracket-hp-badge">{p.hp}</span>
-                        }
+                  <div key={p.id} className={`tb-fighter${isActive ? " active" : ""}`}>
+                    {char.image
+                      ? <img src={char.image} className="tb-fighter-ava" alt="" />
+                      : <div className="tb-fighter-ava tb-fighter-ava--ph" aria-hidden="true">⚔</div>}
+                    <div className="tb-fighter-body">
+                      <div className="tb-fighter-line">
+                        <span className="tb-fighter-name">{p.name}</span>
+                        {char.class && <span className="tb-fighter-class">{char.class}</span>}
+                        <span className="tb-fighter-hp">
+                          {isActive ? <span className="tb-fighter-turn" title="Turno in corso">● turno</span> : `${p.hp} HP`}
+                        </span>
                       </div>
-                      <div className="bracket-hp-track">
-                        <div className="bracket-hp-bar" style={{ width: `${hpPct}%` }} />
-                      </div>
+                      <div className="tb-hp-track"><div className="tb-hp-fill" style={{ width: `${hpPct}%` }} /></div>
                     </div>
-                  </React.Fragment>
+                  </div>
                 );
               })}
-              <div className={`bracket-status ${m.status}`}>
-                {m.status === "initiative" ? "⚡ Iniziativa" : "⚔ In combattimento"}
-              </div>
               {m.logs?.length > 0 && m.status === "active" && (
-                <div className="bracket-last-log">{logPubText(m.logs[m.logs.length - 1])}</div>
+                <div className="tb-live-log">{logPubText(m.logs[m.logs.length - 1])}</div>
               )}
               {isMaster && (
-                <div className="bracket-force-winner">
-                  <span className="bracket-force-label">♛ Forza vincitore:</span>
-                  <div className="bracket-force-btns">
-                    {m.players.map(p => (
-                      <button
-                        key={p.id}
-                        className="btn-force-winner"
-                        onClick={() => masterForceWinner(m.matchId, p.id)}
-                        title={`Dichiara ${p.name} vincitore di questo match`}
-                      >
-                        👑 {(p.name || "?").split(" ")[0]}
-                      </button>
-                    ))}
-                  </div>
+                <div className="tb-force">
+                  <span className="tb-force-label">♛ Forza vincitore</span>
+                  {m.players.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="tb-force-btn"
+                      onClick={() => masterForceWinner(m.matchId, p.id)}
+                      title={`Dichiara ${p.name} vincitore di questo match`}
+                    >
+                      👑 {(p.name || "?").split(" ")[0]}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -8286,45 +8266,47 @@ export default function Arena() {
           });
           const rounds = Object.entries(byRound).sort(([a], [b]) => a - b);
           const standings = computeGroupStandings(groupKey, tournamentMatches);
+          const medals = ["🥇", "🥈", "🥉"];
           return (
-            <div className="bracket-group">
-              <div className="bracket-group-header">
-                <span className="bracket-group-title">Girone {groupKey}</span>
-                <span className="bracket-group-count">{groupIds.length} {groupIds.length === 1 ? "giocatore" : "giocatori"}</span>
+            <section className={`tb-group tb-group--${groupKey.toLowerCase()}`} key={groupKey}>
+              <header className="tb-group-head">
+                <span className="tb-group-name">Girone {groupKey}</span>
+                <span className="tb-group-count">{groupIds.length} {groupIds.length === 1 ? "giocatore" : "giocatori"}</span>
+              </header>
+
+              {/* Classifica — lista piatta, niente tabella/bordi */}
+              <div className="tb-standings">
+                {standings.map((s, i) => {
+                  const snap = snapshots[s.uid] || {};
+                  return (
+                    <div key={s.uid} className={`tb-rank${i === 0 ? " leader" : ""}`}>
+                      <span className="tb-rank-pos">{medals[i] || i + 1}</span>
+                      {snap.image
+                        ? <img src={snap.image} className="tb-rank-ava" alt="" />
+                        : <div className="tb-rank-ava tb-rank-ava--ph" aria-hidden="true">⚔</div>}
+                      <span className="tb-rank-name">{snap.name || "?"}</span>
+                      <span className="tb-rank-record">
+                        <span className="tb-rank-w">{s.wins}V</span>
+                        <span className="tb-rank-l">{s.losses}S</span>
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <table className="bracket-standings">
-                <thead>
-                  <tr><th>#</th><th>Giocatore</th><th>V</th><th>S</th></tr>
-                </thead>
-                <tbody>
-                  {standings.map((s, i) => {
-                    const snap = snapshots[s.uid] || {};
-                    return (
-                      <tr key={s.uid} className={i === 0 ? "leader" : ""}>
-                        <td>{i + 1}</td>
-                        <td>
-                          {snap.image && <img src={snap.image} className="standings-avatar" alt="" />}
-                          {snap.name || "?"}
-                        </td>
-                        <td>{s.wins}</td>
-                        <td>{s.losses}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <div className="bracket-rounds-list">
+
+              {/* Incontri — round in verticale, match come righe piatte */}
+              <div className="tb-rounds">
                 {rounds.map(([round, rMatches]) => (
-                  <div key={round} className="bracket-round-col">
-                    <div className="bracket-round-header">Round {round}</div>
-                    {rMatches.map(renderMatchCard)}
+                  <div key={round} className="tb-round">
+                    <div className="tb-round-label">Round {round}</div>
+                    <div className="tb-round-matches">{rMatches.map(renderMatchCard)}</div>
                   </div>
                 ))}
                 {rounds.length === 0 && (
-                  <div className="bracket-rounds-empty">Nessun match in questo girone.</div>
+                  <div className="tb-empty">Nessun incontro in questo girone.</div>
                 )}
               </div>
-            </div>
+            </section>
           );
         };
 
@@ -8386,21 +8368,22 @@ export default function Arena() {
             {/* FIX: P5b — full bracket lives inside modal */}
             <ArenaModal
               open={bracketModalOpen}
-              onClose={() => setBracketModalOpen(false)}
+              onClose={() => { setBracketModalOpen(false); setArenaView("hub"); }}
               title="⚔ Tabellone del Campionato"
+              className="tb-modal"
             >
-              <div className="bracket-section">
-                <div className="bracket-section-round-bar">
-                  {arenaMeta.phase === "combat" && !finalM && <span className="bracket-round-badge bracket-round-badge--inline">Round {arenaMeta.currentRound}</span>}
-                  {finalM && <span className="bracket-round-badge final-badge bracket-round-badge--inline">Finale</span>}
+              <div className="tb-board">
+                <div className="tb-board-top">
+                  {arenaMeta.phase === "combat" && !finalM && <span className="tb-now">Round {arenaMeta.currentRound}</span>}
+                  {finalM && <span className="tb-now tb-now--final">🏆 Finale</span>}
                 </div>
-                <div className="bracket-groups-wrap">
+                <div className="tb-groups">
                   {renderGroupColumn("A")}
                   {renderGroupColumn("B")}
                 </div>
                 {finalM && (
-                  <div className="bracket-final-wrap">
-                    <div className="bracket-final-header">🏆 Finale di Campionato</div>
+                  <div className="tb-final">
+                    <div className="tb-final-head">🏆 Finale di Campionato</div>
                     {renderMatchCard(finalM)}
                   </div>
                 )}

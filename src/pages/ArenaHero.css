@@ -5633,4 +5633,132 @@ body .arena-page.arena-page .master-actions [class*="btn-"] { box-shadow: 0 6px 
 .arena-combat-dialog .match-log-count{ border:none!important; }
 .arena-combat-dialog .log-entry.latest{ outline:none!important; box-shadow:none!important; background:rgba(255,255,255,.06)!important; }
 
+/* ════════════════════════════════════════════════════════════════
+   TABELLONE v2 — redesign pulito, piatto, SENZA BORDI
+   Markup nuovo (.tb-*), così non eredita nessuno stile .bracket-*.
+   Palette coerente col tema Arena "Pietra & Rune": fondo blu-pietra
+   scuro + accento runico teal. Girone A = teal, Girone B = ambra,
+   così si distinguono a colpo d'occhio. Le aree si separano per
+   sfondo e spaziatura, mai per cornici.
+   ════════════════════════════════════════════════════════════════ */
+/* Modal: fondo blu-pietra scuro (non più rosso), via cornice + linea header */
+body .arena-modal-dialog.tb-modal{
+  background:linear-gradient(180deg, #1a2130 0%, #0d1018 100%)!important;
+  border:none!important; box-shadow:0 30px 80px rgba(0,0,0,.72)!important;
+}
+body .arena-modal-dialog.tb-modal .arena-modal-header{ border-bottom:none!important; background:transparent!important; }
+body .arena-modal-dialog.tb-modal .arena-modal-title{ color:#9af0e4!important; text-shadow:0 1px 2px rgba(0,0,0,.5), 0 0 14px rgba(95,224,208,.4)!important; }
+body .arena-modal-dialog.tb-modal .arena-modal-body{ background:transparent!important; }
+body .arena-modal-dialog.tb-modal .arena-modal-close{
+  background:rgba(255,255,255,.08)!important; color:#cfe9e4!important; border:none!important;
+  box-shadow:none!important;
+}
+body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(95,224,208,.22)!important; box-shadow:none!important; }
+
+.tb-board{ --tb-accent:#5fe0d0; --tb-accent-soft:rgba(95,224,208,.14); display:flex; flex-direction:column; gap:18px; color:#e7ecf3; }
+.tb-board-top{ display:flex; justify-content:center; }
+.tb-now{
+  font-family:var(--font-title,serif); font-size:.7rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:#9af0e4; background:rgba(95,224,208,.12); padding:6px 16px; border-radius:999px;
+}
+.tb-now--final{ color:#ffd98a; background:rgba(227,197,88,.16); }
+
+.tb-groups{ display:grid; grid-template-columns:1fr; gap:18px; }
+@media (min-width:860px){ .tb-groups{ grid-template-columns:1fr 1fr; gap:20px; } }
+
+/* ── Girone (accento per gruppo) ── */
+.tb-group{ --tb-accent:#5fe0d0; --tb-accent-soft:rgba(95,224,208,.14); background:rgba(95,224,208,.035); border-radius:16px; padding:16px 16px 18px; }
+.tb-group--b{ --tb-accent:#e3c558; --tb-accent-soft:rgba(227,197,88,.16); background:rgba(227,197,88,.045); }
+.tb-group-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.tb-group-name{
+  font-family:var(--font-title,serif); font-size:1.05rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--tb-accent);
+}
+.tb-group-count{
+  margin-left:auto; font-size:.62rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  color:#cdd7e0; background:rgba(255,255,255,.07); padding:3px 10px; border-radius:999px;
+}
+
+/* ── Classifica ── */
+.tb-standings{ display:flex; flex-direction:column; gap:4px; margin-bottom:16px; }
+.tb-rank{
+  display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:10px;
+  background:rgba(255,255,255,.02); transition:background .2s;
+}
+.tb-rank.leader{ background:linear-gradient(90deg, var(--tb-accent-soft), transparent); }
+.tb-rank-pos{ flex:0 0 26px; text-align:center; font-size:.9rem; font-weight:800; color:#aeb9c6; }
+.tb-rank.leader .tb-rank-pos{ font-size:1.05rem; }
+.tb-rank-ava{ width:30px; height:30px; border-radius:50%; object-fit:cover; flex:0 0 auto; }
+.tb-rank-ava--ph{ display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.06); font-size:.8rem; }
+.tb-rank-name{ flex:1 1 auto; min-width:0; font-weight:700; font-size:.92rem; color:#eef3f8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tb-rank.leader .tb-rank-name{ color:var(--tb-accent); }
+.tb-rank-record{ flex:0 0 auto; display:flex; gap:8px; font-size:.78rem; font-weight:800; }
+.tb-rank-w{ color:#6fe0a0; }
+.tb-rank-l{ color:#ff9a9a; }
+
+/* ── Round + incontri ── */
+.tb-rounds{ display:flex; flex-direction:column; gap:14px; }
+.tb-round{ display:flex; flex-direction:column; gap:8px; }
+.tb-round-label{
+  font-size:.62rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--tb-accent); opacity:.85;
+}
+.tb-round-matches{ display:flex; flex-direction:column; gap:7px; }
+.tb-empty{ font-size:.85rem; color:rgba(220,230,240,.5); font-style:italic; padding:6px 2px; }
+
+/* Match concluso — riga piatta */
+.tb-result{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 12px; border-radius:10px;
+  background:rgba(255,255,255,.035); font-size:.88rem;
+}
+.tb-result.win{ background:rgba(94,200,95,.12); }
+.tb-result.loss{ background:rgba(226,72,58,.12); }
+.tb-result-crown{ font-size:.85rem; }
+.tb-result-winner{ font-weight:800; color:#eef3f8; }
+.tb-result.win .tb-result-winner{ color:#b6f3cf; }
+.tb-result-sep{ font-size:.72rem; color:rgba(220,230,240,.5); }
+.tb-result-loser{ color:rgba(220,230,240,.6); }
+
+/* Match live — pannello piatto */
+.tb-live{
+  display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:12px;
+  background:rgba(255,255,255,.045);
+}
+.tb-live.mine{ background:linear-gradient(180deg, var(--tb-accent-soft), rgba(255,255,255,.02)); }
+.tb-live-status{
+  font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--tb-accent);
+}
+.tb-live.initiative .tb-live-status{ color:#ffe08a; }
+.tb-fighter{ display:flex; align-items:center; gap:10px; padding:6px; border-radius:9px; }
+.tb-fighter.active{ background:var(--tb-accent-soft); }
+.tb-fighter-ava{ width:38px; height:38px; border-radius:50%; object-fit:cover; flex:0 0 auto; }
+.tb-fighter-ava--ph{ display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.06); font-size:1rem; }
+.tb-fighter-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:5px; }
+.tb-fighter-line{ display:flex; align-items:baseline; gap:8px; }
+.tb-fighter-name{ font-weight:800; font-size:.92rem; color:#eef3f8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tb-fighter-class{ font-size:.68rem; color:var(--tb-accent); text-transform:capitalize; flex:0 0 auto; }
+.tb-fighter-hp{ margin-left:auto; flex:0 0 auto; font-size:.74rem; font-weight:800; color:#bcc7d4; }
+.tb-fighter-turn{ color:#6fe0a0; }
+.tb-hp-track{ height:7px; border-radius:999px; background:rgba(0,0,0,.4); overflow:hidden; }
+.tb-hp-fill{ height:100%; border-radius:999px; background:linear-gradient(90deg,#5ec85f,#9be86a); transition:width .3s; }
+.tb-live-log{ font-size:.78rem; font-style:italic; color:rgba(220,230,240,.7); line-height:1.4; padding:0 4px; }
+
+/* Forza vincitore (master) */
+.tb-force{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:2px; }
+.tb-force-label{ font-size:.66rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:rgba(220,230,240,.55); }
+.tb-force-btn{
+  font-size:.74rem; font-weight:700; color:#eef3f8; background:rgba(255,255,255,.07);
+  padding:5px 12px; border-radius:999px; cursor:pointer; border:none;
+}
+.tb-force-btn:hover{ background:var(--tb-accent-soft); }
+
+/* Finale */
+.tb-final{
+  background:linear-gradient(180deg, rgba(227,197,88,.14), rgba(227,197,88,.03));
+  border-radius:16px; padding:16px;
+}
+.tb-final-head{
+  text-align:center; font-family:var(--font-title,serif); font-size:1rem; font-weight:800;
+  letter-spacing:.1em; text-transform:uppercase; color:#ffd98a; margin-bottom:12px;
+}
+
 /* combat v3 — palette oro/bordeaux, dock compatto, abbandono in top bar */

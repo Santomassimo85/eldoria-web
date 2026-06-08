@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "11",
+      "date": "2026-06-08",
+      "title": "Tabellone del Campionato ridisegnato",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Il Tabellone del Campionato è stato completamente ridisegnato: layout pulito e arioso, senza cornici, con i colori del tema Arena (blu-pietra scuro e accento runico). I gironi sono affiancati con classifica a podio (🥇🥈🥉) e gli incontri elencati round per round; il Girone A e il Girone B hanno tinte diverse per distinguerli subito."
+        },
+        {
+          "type": "graphic",
+          "text": "Gli incontri conclusi appaiono come una riga compatta (vincitore in evidenza), mentre quello in corso mostra un pannello live con avatar, classe e barre dei punti vita. La Finale ha un riquadro dedicato."
+        },
+        {
+          "type": "graphic",
+          "text": "Aprendo il Tabellone si va ora direttamente alla nuova vista, senza passaggi intermedi."
+        }
+      ]
+    },
+    {
       "version": "10.02",
       "date": "2026-06-08",
       "title": "Pagina Update divisa per tipologia",
