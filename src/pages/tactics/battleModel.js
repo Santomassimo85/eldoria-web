@@ -36,6 +36,16 @@ export const sideAllDone = (units, side) => {
   return living.length > 0 && living.every(unitDone);
 };
 
+// Is the boss still standing? The global deadline is "kill the BOSS in time", so
+// we look at the boss unit specifically; if a battle was staged with only minions
+// (no boss unit), fall back to "any enemy alive" so the deadline still means
+// something. Returns false when there are no enemies at all.
+export const bossAlive = (units = []) => {
+  const bosses = units.filter((u) => u.side === "enemy" && u.kind === "boss");
+  if (bosses.length) return bosses.some((u) => !u.dead);
+  return units.some((u) => u.side === "enemy" && !u.dead);
+};
+
 // Reset a side's per-round flags — called when that side's phase begins.
 export const resetSide = (units, side) =>
   units.map((u) => (u.side === side ? { ...u, hasMoved: false, hasActed: false, done: false } : u));
@@ -221,6 +231,10 @@ export function emptyBattle() {
   return {
     active: false, fightStarted: false, phase: "setup",
     round: 1, phaseDeadline: null,
+    // Global deadline (ms epoch) by which the heroes must kill the boss. When it
+    // passes with the boss still alive the fight ends as a hero defeat. null = no
+    // deadline. Independent of the per-phase windows above.
+    bossDeadline: null, bossExpired: false,
     map: defaultBattleMap(), units: [],
   };
 }

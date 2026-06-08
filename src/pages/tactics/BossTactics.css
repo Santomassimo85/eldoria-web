@@ -197,6 +197,22 @@
 }
 @keyframes tac-timer-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
 
+/* Global boss deadline countdown — sits just under the phase timer, darker/ominous */
+.tac-bossclock {
+  position: absolute; z-index: 1200;
+  top: calc(88px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  padding: 6px 12px; font-size: 13px; font-weight: 900; letter-spacing: 1px;
+  color: #ffe3e3; border: 2px solid #2a0a0a; border-radius: 0; white-space: nowrap;
+  background: linear-gradient(180deg, rgba(60,18,30,0.96), rgba(26,8,12,0.97));
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.12), inset -2px -2px 0 rgba(0, 0, 0, 0.55);
+}
+.tac-bossclock.low {
+  background: linear-gradient(180deg, rgba(196,42,42,0.97), rgba(120,20,20,0.98));
+  border-color: #ff9b8a; color: #fff;
+  animation: tac-timer-pulse 1.2s ease-in-out infinite;
+}
+
 /* ── Action HUD — Final Fantasy Tactics styled command window ────────────── */
 .tac-hud {
   flex: 0 0 auto;

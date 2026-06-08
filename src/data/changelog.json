@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "6",
+      "date": "2026-06-08",
+      "title": "World Boss: scadenza globale del boss",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Il Master può impostare una data di scadenza entro cui gli Eroi devono uccidere il boss. Un conto alla rovescia globale (💀 Boss) è visibile a tutti durante il fight."
+        },
+        {
+          "type": "feature",
+          "text": "Allo scadere del tempo, se il boss è ancora vivo la battaglia termina automaticamente con la sconfitta degli Eroi. La scadenza è modificabile dal Master anche a battaglia in corso."
+        }
+      ]
+    },
+    {
       "version": "5",
       "date": "2026-06-07",
       "title": "Bottega Arena: bilanciamenti & Nota Dolente del Bardo",

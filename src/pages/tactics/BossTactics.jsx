@@ -27,7 +27,7 @@ import {
 import {
   BATTLE_REF, BOSS_SYSTEM_UID, emptyBattle, defaultBattleMap,
   makePlayerUnit, makeBossUnit, makeMinionUnit,
-  unitDone, sideAllDone, resetSide, bumpActive, txnBattle,
+  unitDone, sideAllDone, resetSide, bumpActive, txnBattle, bossAlive,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
   spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice,
@@ -39,6 +39,21 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // Human label for a phase window (so log text follows the real constant, even
 // with the temporary 5-min test timers).
 const fmtPhase = (ms) => (ms >= 3600000 ? `${Math.round(ms / 3600000)}h` : `${Math.round(ms / 60000)} min`);
+// ms epoch → "YYYY-MM-DDTHH:mm" in local time (for <input type="datetime-local">).
+const toLocalInput = (ms) => {
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+// Human-readable "time left until the boss deadline" (coarse: days/hours/min/sec).
+const fmtCountdown = (ms) => {
+  if (ms <= 0) return "scaduto";
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d) return `${d}g ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m ${String(s % 60).padStart(2, "0")}s`;
+};
 
 export default function BossTactics() {
   const { currentUser } = useAuth();
@@ -57,6 +72,9 @@ export default function BossTactics() {
   const [selPlayerIds, setSelPlayerIds] = useState([]);
   const [bossDex, setBossDex] = useState("0");
   const [bossMsg, setBossMsg] = useState("");
+  // Global boss deadline the master sets at staging (datetime-local string). Empty
+  // = no deadline. Written into the battle doc as `bossDeadline` (ms epoch).
+  const [bossDeadlineInput, setBossDeadlineInput] = useState("");
 
   // view
   const [scale, setScale] = useState(1);
@@ -493,7 +511,8 @@ export default function BossTactics() {
       }
     });
 
-    await setDoc(BATTLE_REF(), { ...emptyBattle(), active: true, phase: "setup", map: m, units: u });
+    const bossDeadline = bossDeadlineInput ? new Date(bossDeadlineInput).getTime() : null;
+    await setDoc(BATTLE_REF(), { ...emptyBattle(), active: true, phase: "setup", map: m, units: u, bossDeadline });
   };
 
   // ── Deploy phase: add/remove enemies by clicking the board ─────────────────
@@ -692,6 +711,51 @@ export default function BossTactics() {
     setMode("idle"); setSelAction(null);
     advancePhase(true, phaseDeadline);   // only end THIS phase (deadline-guarded)
   }, [nowTs, phaseDeadline, fightStarted, isOver, isMaster, myHero]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Global boss deadline ───────────────────────────────────────────────────
+  // A single hard deadline set by the master at staging: the heroes must kill the
+  // boss before it. If the deadline passes with the boss still alive the fight is
+  // a HERO DEFEAT (phase → "over"). Unlike the phase timer this never advances a
+  // turn — it ends the whole battle. Transactional + idempotent so any client may
+  // fire it; only the commit that still sees a live boss past the deadline wins.
+  const bossDeadline = battle?.bossDeadline || null;
+  const bossLeftMs = bossDeadline && fightStarted && !isOver ? bossDeadline - nowTs : null;
+  const bossExpiredRef = useRef(false);
+  const expireBoss = async () => {
+    const failed = await runTransaction(db, async (tx) => {
+      const ref = BATTLE_REF();
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return false;
+      const d = snap.data();
+      if (!d.fightStarted || d.phase === "over" || !d.bossDeadline) return false;
+      if (Date.now() < d.bossDeadline) return false;          // re-check against FRESH state
+      if (!bossAlive(d.units || [])) return false;            // boss already dead → heroes won, no failure
+      tx.update(ref, { phase: "over", bossExpired: true });
+      return true;
+    });
+    if (failed) {
+      await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
+        content: "⏳💀 Tempo scaduto! Il boss è ancora vivo — gli Eroi hanno fallito." });
+    }
+  };
+  useEffect(() => {
+    if (!fightStarted || isOver || !bossDeadline) return;
+    if (bossExpiredRef.current) return;
+    if (nowTs < bossDeadline) return;
+    // Master drives it; any living hero is a fallback (+20s) if the master is offline.
+    const driver = isMaster || (myHero && nowTs > bossDeadline + 20000);
+    if (!driver) return;
+    bossExpiredRef.current = true;
+    expireBoss();
+  }, [nowTs, bossDeadline, fightStarted, isOver, isMaster, myHero]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Re-arm the one-shot guard whenever the master moves the deadline.
+  useEffect(() => { bossExpiredRef.current = false; }, [bossDeadline]);
+
+  // Master: set / move / clear the global boss deadline on the LIVE battle doc
+  // (works while staging and mid-fight). Pass null to remove it.
+  const setLiveDeadline = async (ms) => {
+    await txnBattle((us) => us, { bossDeadline: ms, bossExpired: false });
+  };
 
   // ── Pixel VFX, derived from HP deltas between snapshots ────────────────────
   // Spawns a rough Octopath-style burst on whoever took damage / was healed /
@@ -1080,6 +1144,15 @@ export default function BossTactics() {
         </div>
       )}
 
+      {/* Global boss deadline — visible to EVERYONE during the fight. Shows the
+          time left to kill the boss; turns red in the last hour, "scaduto" at 0. */}
+      {bossLeftMs != null && (
+        <div className={`tac-bossclock ${bossLeftMs <= 3600000 ? "low" : ""}`}
+          title={`Gli Eroi devono uccidere il boss entro il ${new Date(bossDeadline).toLocaleString("it-IT")}`}>
+          💀 Boss: {fmtCountdown(bossLeftMs)}
+        </div>
+      )}
+
       {/* Enemies-remaining counter — visible to EVERYONE (derived from shared
           state), so players see at a glance how many foes are left. */}
       {fightStarted && !isOver && enemiesTotal > 0 && (
@@ -1100,7 +1173,7 @@ export default function BossTactics() {
             {fightStarted && !isOver && (phase === "players"
               ? `Round ${battle.round} · 🛡️ Turno Eroi (${heroesDone}/${heroesAlive.length} hanno agito)${isMyTurn ? " — tocca a te" : ""}`
               : `Round ${battle.round} · 👹 Turno Nemici (${enemiesDone}/${enemiesAlive.length} giocati)${isMyTurn && activeUnit ? ` — ${activeUnit.name}` : ""}`)}
-            {isOver && "🏁 Battaglia conclusa"}
+            {isOver && (battle?.bossExpired ? "⏳💀 Tempo scaduto — gli Eroi hanno fallito" : "🏁 Battaglia conclusa")}
           </span>
           <div className="tac-controls">
             <button onClick={() => zoom(+1)}>＋</button>
@@ -1118,6 +1191,11 @@ export default function BossTactics() {
               <button className={phase === "players" ? "on" : ""} onClick={() => forcePhase("players")}>🛡️ Turno Eroi</button>
               <button className={phase === "enemies" ? "on" : ""} onClick={() => forcePhase("enemies")}>👹 Turno Nemici</button>
               <button className="tac-heal-all" onClick={healAllHeroes} title="Cura tutti gli eroi al massimo">💚 Cura eroi</button>
+              <span className="tac-master-test-label">⏳ Scadenza:</span>
+              <input type="datetime-local"
+                value={battle?.bossDeadline ? toLocalInput(battle.bossDeadline) : ""}
+                onChange={(e) => setLiveDeadline(e.target.value ? new Date(e.target.value).getTime() : null)}
+                title="Data entro cui gli Eroi devono uccidere il boss" />
             </div>
           )}
         </div>
@@ -1258,6 +1336,17 @@ export default function BossTactics() {
                   <span style={{ color: "#ff9b9b", fontSize: 12 }}>⚠ nessun boss/minion attivo — creali in WorldBossAdmin</span>
                 )}
               </div>
+              <div className="bt-setup-row">
+                <strong>⏳ Scadenza boss:</strong>
+                <input type="datetime-local" value={bossDeadlineInput}
+                  onChange={(e) => setBossDeadlineInput(e.target.value)} />
+                {bossDeadlineInput && (
+                  <button type="button" onClick={() => setBossDeadlineInput("")} title="Rimuovi scadenza">✕</button>
+                )}
+                <span style={{ color: "#9bb0c8", fontSize: 12 }}>
+                  gli Eroi devono uccidere il boss entro questa data, altrimenti falliscono. Lascia vuoto per nessun limite.
+                </span>
+              </div>
               <div className="bt-setup-row"><strong>Eroi:</strong></div>
               <div className="bt-setup-players">
                 {players.map((p) => (
@@ -1280,6 +1369,15 @@ export default function BossTactics() {
               <div className="bt-setup-row">
                 <input className="bt-bossmsg" value={bossMsg} onChange={(e) => setBossMsg(e.target.value)} placeholder="Descrivi come è apparso il boss…" />
                 <button onClick={postBossMsg}>Invia in chat</button>
+              </div>
+              <div className="bt-setup-row">
+                <strong>⏳ Scadenza boss:</strong>
+                <input type="datetime-local"
+                  value={battle?.bossDeadline ? toLocalInput(battle.bossDeadline) : ""}
+                  onChange={(e) => setLiveDeadline(e.target.value ? new Date(e.target.value).getTime() : null)} />
+                {battle?.bossDeadline
+                  ? <span style={{ color: "#9bb0c8", fontSize: 12 }}>scade il {new Date(battle.bossDeadline).toLocaleString("it-IT")}</span>
+                  : <span style={{ color: "#9bb0c8", fontSize: 12 }}>nessuna scadenza impostata</span>}
               </div>
               <div className="bt-setup-row">
                 <span className="bt-init-status">
