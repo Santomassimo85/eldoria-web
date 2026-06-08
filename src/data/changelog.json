@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "8",
+      "date": "2026-06-08",
+      "title": "Torneo TCG: notifiche per non perdere mai un match",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Il Torneo TCG ora invia notifiche (in-app + push sulla webapp) ad ogni evento importante: iscrizioni aperte, il tuo match del round è pronto, sei stato proclamato Campione, e quando il Master decide d'ufficio l'esito di una tua partita."
+        },
+        {
+          "type": "feature",
+          "text": "TCG PvP: se crei una sfida aperta e ti allontani, ricevi una notifica appena un avversario la accetta — torni al tavolo senza dover restare incollato alla lobby."
+        },
+        {
+          "type": "feature",
+          "text": "Le notifiche dei match del round successivo arrivano solo ai giocatori coinvolti (i bye e i bot non spammano il log), mentre iscrizioni aperte e Campione sono annunci globali a tutti."
+        }
+      ]
+    },
+    {
       "version": "7",
       "date": "2026-06-08",
       "title": "Arena: 11 nuovi Titoli assegnabili dal Master",

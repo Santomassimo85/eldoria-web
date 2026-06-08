@@ -467,3 +467,39 @@ exports.pushOnMarketConfigCreated = onDocumentCreated('settings/market_config', 
   if (!data.isOpen) return;
   await broadcastMarketState(true);
 });
+
+// 7) TCG Tournament — broadcast eventi globali (iscrizioni aperte, campione).
+//    Gli eventi MIRATI (match del round pronto, sfida accettata, verdetto
+//    del master) sono gestiti client-side via doc `notifications` (che a
+//    loro volta fanno scattare pushOnNotification). Qui solo i broadcast a
+//    tutti i giocatori, per non intasare il log in-app di ognuno.
+exports.pushOnTcgTournamentUpdate = onDocumentUpdated('tcg_tournament/global', async (event) => {
+  const before = event.data?.before?.data();
+  const after  = event.data?.after?.data();
+  if (!before || !after) return;
+
+  // Iscrizioni aperte
+  if (before.status !== "open" && after.status === "open") {
+    const uids = await getAllUids();
+    await sendPush({
+      uids,
+      title: "🃏 Torneo TCG — Iscrizioni aperte!",
+      body: `${after.name || "Il Torneo dei Regni"} apre le iscrizioni. Schiera il tuo mazzo!`,
+      url: "/tcg",
+      tag: "tcg-tournament-open",
+    });
+  }
+
+  // Torneo concluso — campione proclamato (broadcast a tutti)
+  if (before.status !== "ended" && after.status === "ended" && after.champion) {
+    const uids = await getAllUids();
+    const champName = after.champion?.name || "Un campione";
+    await sendPush({
+      uids,
+      title: "🏆 Torneo TCG — Campione!",
+      body: `${champName} ha vinto ${after.name || "il Torneo dei Regni"}!`,
+      url: "/tcg",
+      tag: `tcg-tournament-end-${after.champion?.uid || ""}`,
+    });
+  }
+});

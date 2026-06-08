@@ -27,6 +27,7 @@ import {
 import { db } from "../firebase.js";
 import { createGame } from "./engine.js";
 import { buildDeck } from "./cards.js";
+import { notifyUser } from "../utils/notify.js";
 
 const COL = "tcg_matches";
 const CHALLENGE_TTL_MS = 5 * 60 * 1000; // open challenges expire after 5 min
@@ -158,6 +159,15 @@ export async function acceptChallenge(match, uid, name, deck, cover, classChoice
     updatedAt: serverTimestamp(),
     seen: { p0: serverTimestamp(), p1: serverTimestamp() },
   });
+
+  // Avvisa lo sfidante che la sua sfida è stata accettata: potrebbe
+  // essersi allontanato dopo aver creato la sfida aperta.
+  notifyUser(
+    match.challenger?.uid,
+    "🃏 Sfida accettata!",
+    `${name || "Un avversario"} ha accettato la tua sfida a Eldoria TCG. Torna al tavolo, la partita è iniziata!`,
+  );
+
   return match.id;
 }
 

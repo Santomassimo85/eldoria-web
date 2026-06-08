@@ -38,6 +38,7 @@ import { db } from "../firebase.js";
 import { createGame } from "./engine.js";
 import { buildDeck, buildClassDeck } from "./cards.js";
 import { CLASSES, CLASS_VIE } from "./classes.js";
+import { notifyUsers, notifyUser } from "../utils/notify.js";
 
 const TCOL = "tcg_tournament";
 const TDOC = "global";
@@ -292,6 +293,31 @@ async function buildBracketEntry(roundNo, idx, partsMap, a, b) {
   };
 }
 
+/* Notifica i giocatori UMANI che il loro match di un round è pronto.
+   Salta i bye (passaggio gratuito), gli AI e i match già conclusi.
+   Crea un doc `notifications` per ciascuno → log in-app + push. */
+async function notifyRoundReady(matches, roundNo, totalRounds, partsMap) {
+  const label = roundLabel(roundNo, totalRounds);
+  const nameOf = (uid) => partsMap?.[uid]?.name || "un avversario";
+  const entries = [];
+  for (const m of matches) {
+    if (m.winnerUid) continue; // già risolto (bye/AI-vs-AI)
+    const humans = [m.a, m.b].filter((u) => u && !isAiUid(u));
+    for (const uid of humans) {
+      const oppUid = uid === m.a ? m.b : m.a;
+      const oppName = oppUid ? nameOf(oppUid) : null;
+      entries.push({
+        uid,
+        title: "🃏 Torneo TCG — Il tuo match è pronto!",
+        message: oppName
+          ? `${label}: sfidi ${oppName}. Entra nel torneo e gioca la tua partita!`
+          : `${label}: la tua partita ti aspetta. Entra nel torneo!`,
+      });
+    }
+  }
+  await notifyUsers(entries);
+}
+
 /* Genera bracket round 1 e crea le partite tcg_matches per ogni
    coppia umano-vs-umano. Avviabile solo se ci sono ≥ 2 iscritti.
    Se gli iscritti sono dispari, aggiunge automaticamente un AI bot. */
@@ -323,6 +349,10 @@ export async function startTournament() {
     champion: null,
     updatedAt: serverTimestamp(),
   });
+
+  // Avvisa i giocatori che il loro primo match è pronto.
+  const totalRounds = totalRoundsFor(ids.length);
+  await notifyRoundReady(matches, 1, totalRounds, partsMap);
 }
 
 /* Genera il round successivo a partire dai vincitori del round
@@ -349,6 +379,13 @@ export async function advanceRound() {
       champion: { uid: champUid, name: champ?.name || "Campione" },
       updatedAt: serverTimestamp(),
     });
+    // Notifica personale al campione (il broadcast "X è campione" a tutti
+    // è gestito dalla Cloud Function pushOnTcgTournamentUpdate).
+    await notifyUser(
+      champUid,
+      "🏆 Campione del Torneo TCG!",
+      `${champ?.name || "Campione"}, hai vinto il ${t.name || "Torneo dei Regni"}! La tua leggenda è scritta.`,
+    );
     return;
   }
 
@@ -382,6 +419,12 @@ export async function advanceRound() {
     currentRound: nextRoundNo,
     updatedAt: serverTimestamp(),
   });
+
+  // Avvisa i giocatori che il loro match del nuovo round è pronto.
+  const round1 = t.rounds[0]?.matches || [];
+  const initialSlots = round1.reduce((n, m) => n + 1 + (m.b != null ? 1 : 0), 0);
+  const totalRounds = totalRoundsFor(initialSlots);
+  await notifyRoundReady(matches, nextRoundNo, totalRounds, partsMap);
 }
 
 export async function endTournament() {
@@ -502,6 +545,7 @@ export async function forceFinishMatch(bracketEntryId, winnerUid) {
 
   let touched = false;
   let firestoreMatchId = null;
+  let matchPlayers = null;
   const rounds = t.rounds.map((r) => ({
     ...r,
     matches: r.matches.map((m) => {
@@ -512,12 +556,32 @@ export async function forceFinishMatch(bracketEntryId, winnerUid) {
       }
       touched = true;
       firestoreMatchId = m.matchId || null;
+      matchPlayers = { a: m.a, b: m.b };
       return { ...m, winnerUid, forcedByMaster: true };
     }),
   }));
   if (!touched) throw new Error("Match non trovato o già concluso");
 
   await updateDoc(tref(), { rounds, updatedAt: serverTimestamp() });
+
+  // Avvisa i giocatori umani del verdetto del master (specie il perdente,
+  // che potrebbe essere ancora in attesa della partita).
+  if (matchPlayers) {
+    const nameOf = (uid) => t.participants?.[uid]?.name || "il tuo avversario";
+    const entries = [matchPlayers.a, matchPlayers.b]
+      .filter((u) => u && !isAiUid(u))
+      .map((uid) => {
+        const won = uid === winnerUid;
+        return {
+          uid,
+          title: won ? "🃏 Torneo TCG — Passi il turno!" : "🃏 Torneo TCG — Match assegnato",
+          message: won
+            ? "Il Master ti ha assegnato la vittoria del match. Avanzi nel torneo!"
+            : `Il Master ha assegnato il match a ${nameOf(winnerUid)}. La tua corsa nel torneo finisce qui.`,
+        };
+      });
+    await notifyUsers(entries);
+  }
 
   // Se la entry aveva un doc su tcg_matches, chiudilo così l'avversario
   // viene buttato fuori dalla partita e non resta in limbo.
