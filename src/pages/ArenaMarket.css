@@ -181,6 +181,47 @@
   border-color: #ccc;
 }
 
+/* ── GLOW VERDE: card acquistabile (il player ha abbastanza monete) ── */
+.am-card--affordable {
+  border-color: #2faf5a;
+  box-shadow: 0 0 0 1px rgba(47,175,90,0.4), 0 0 16px rgba(47,175,90,0.45);
+  animation: am-afford-pulse 2s ease-in-out infinite;
+}
+.am-card--affordable:hover {
+  border-color: #3ad06f;
+  box-shadow: 0 0 0 1px rgba(47,175,90,0.6), 0 6px 22px rgba(47,175,90,0.5);
+}
+.am-card--affordable .am-buy-btn {
+  border-color: #2faf5a;
+  background: rgba(47,175,90,0.16);
+  color: #166534;
+}
+.am-card--affordable .am-buy-btn:hover:not(:disabled) { background: rgba(47,175,90,0.3); }
+
+.am-class-card--affordable {
+  border-color: #2faf5a;
+  box-shadow: 0 0 0 1px rgba(47,175,90,0.4), 0 0 14px rgba(47,175,90,0.4);
+  animation: am-afford-pulse 2s ease-in-out infinite;
+}
+.am-class-card--affordable:hover {
+  border-color: #3ad06f;
+  box-shadow: 0 0 0 1px rgba(47,175,90,0.6), 0 4px 16px rgba(47,175,90,0.5);
+}
+.am-class-card--affordable .am-class-lvup-btn {
+  border-color: #2faf5a;
+  background: rgba(47,175,90,0.16);
+  color: #166534;
+}
+.am-class-card--affordable .am-class-lvup-btn:hover:not(:disabled) { background: rgba(47,175,90,0.3); }
+
+@keyframes am-afford-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(47,175,90,0.35), 0 0 12px rgba(47,175,90,0.35); }
+  50%      { box-shadow: 0 0 0 1px rgba(47,175,90,0.6),  0 0 22px rgba(47,175,90,0.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .am-card--affordable, .am-class-card--affordable { animation: none !important; }
+}
+
 .am-card-icon { font-size: 2.2rem; }
 .am-card-name { font-family: var(--font-title, serif); font-size: 0.9rem; color: var(--red, #820a0a); letter-spacing: 0.03em; }
 .am-card-desc { font-size: 0.82rem; color: #555; line-height: 1.6; }

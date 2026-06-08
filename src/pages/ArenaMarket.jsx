@@ -16,16 +16,17 @@ const SHOP_ITEMS = [
   {
     key: "pozione_cura_media",
     name: "Pozione di Cura Media",
-    description: "Cura 2d8 PF durante un fight nell'Arena.",
+    description: "Ogni acquisto fornisce 10 cariche (10 pozioni): nel fight ciascuna cura 2d8 PF. Le cariche non usate in un fight restano disponibili.",
     icon: "💚",
     price: 3,
     field: "healingPotions",
-    max: 3,
+    addAmount: 10,
+    max: 90,
   },
   {
     key: "arma_plus1",
     name: "Arma +1",
-    description: "+1 ai tiri per colpire con arma e +1 alla Classe Armatura. Permanente.",
+    description: "+1 ai tiri per colpire e +1 ai danni con arma. Permanente.",
     icon: "⚔️",
     price: 6,
     field: "weaponBonus",
@@ -42,8 +43,8 @@ const SHOP_ITEMS = [
   },
   {
     key: "ranger_unique_pet",
-    name: "Drago di Smeraldo (Ranger)",
-    description: "Compagno unico: 3d6+3 danni auto-hit + cura 1d6 PF al ranger · 2 cariche. Disponibile come 4° pet nel loadout Ranger.",
+    name: "Draghetto di Smeraldo (Ranger)",
+    description: "Compagno unico: 2d6 danni auto-hit · 2 cariche. Disponibile come 4° pet nel loadout Ranger.",
     icon: "🐉",
     price: 150,
     field: "rangerUniquePet",
@@ -52,10 +53,19 @@ const SHOP_ITEMS = [
   {
     key: "monk_punch_d8",
     name: "Pugno Potenziato (Monaco)",
-    description: "Il Pugno del Monaco infligge 2d6+DES invece di 2d4+DES. Permanente.",
+    description: "Sostituisce il Pugno del Monaco: infligge 3d4+DES invece di 2d4+DES. Permanente.",
     icon: "👊",
     price: 100,
     field: "monkPunchD8",
+    max: 1,
+  },
+  {
+    key: "bard_nota_dolente",
+    name: "Nota Dolente (Bardo)",
+    description: "Sblocca l'abilità Nota Dolente: 3d6 danni da fulmine + vantaggio al bardo per 2 turni · 2 cariche per fight. In combattimento è disponibile solo al Bardo.",
+    icon: "⚡",
+    price: 400,
+    field: "bardNotaDolente",
     max: 1,
   },
   {
@@ -159,11 +169,8 @@ export default function ArenaMarket() {
     if (currentVal >= item.max) { showMsg("Hai già questo potenziamento al massimo.", "err"); return; }
     const updates = {
       arenaCoins: increment(-item.price),
-      [`arenaBuffs.${item.field}`]: increment(1),
+      [`arenaBuffs.${item.field}`]: increment(item.addAmount ?? 1),
     };
-    if (item.key === "arma_plus1" && !(buffs.armorBonus >= 1)) {
-      updates["arenaBuffs.armorBonus"] = increment(1);
-    }
     await updateDoc(doc(db, "characters", currentUser.uid), updates);
     showMsg(`Acquistato: ${item.name}!`);
   };
@@ -251,7 +258,7 @@ export default function ArenaMarket() {
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
-          Ogni classe parte da Lv.1 — salire di livello costa <strong>{levelUpCost} MA</strong> e aggiunge <strong>+1d10</strong> al tiro HP della prossima Arena (base: 7d10 per tutte le classi).
+          Ogni classe parte da Lv.1 — salire di livello costa <strong>{levelUpCost} MA</strong> e aggiunge <strong>+1 dado bonus (1d10) + COS</strong> ai PF della prossima Arena (base: 7d10 per tutte le classi).
           {(charData?.arenaHpBonus ?? 0) > 0 && (
             <span className="am-hp-bonus-tag"> • +{charData.arenaHpBonus} PF bonus da livelli</span>
           )}
@@ -264,7 +271,7 @@ export default function ArenaMarket() {
             const lv = classLvls[cls.key] ?? 1;
             const canAfford = coins >= levelUpCost;
             return (
-              <div key={cls.key} className="am-class-card">
+              <div key={cls.key} className={`am-class-card ${canAfford ? "am-class-card--affordable" : ""}`}>
                 <div className="am-class-icon">{cls.icon}</div>
                 <div className="am-class-name">{cls.name}</div>
                 <div className="am-class-level">Lv. {lv}</div>
@@ -346,7 +353,7 @@ export default function ArenaMarket() {
           const maxed = owned >= item.max;
           const canAfford = coins >= item.price;
           return (
-            <div key={item.key} className={`am-card ${maxed ? "am-card--maxed" : ""}`}>
+            <div key={item.key} className={`am-card ${maxed ? "am-card--maxed" : canAfford ? "am-card--affordable" : ""}`}>
               <div className="am-card-icon">{item.icon}</div>
               <div className="am-card-name">{item.name}</div>
               <div className="am-card-desc">{item.description}</div>
@@ -386,6 +393,7 @@ const ITEM_FIELDS = [
   { field: "rangerUniquePet", label: "Drago di Smeraldo",    icon: "🐉" },
   { field: "monkPunchD8",     label: "Pugno Potenziato",     icon: "👊" },
   { field: "classArtificer",  label: "Classe Artefice",      icon: "⚙️" },
+  { field: "bardNotaDolente", label: "Nota Dolente",         icon: "⚡" },
 ];
 
 function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
@@ -412,9 +420,7 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
   };
 
   const removeItem = async (uid, field) => {
-    const updates = { [`arenaBuffs.${field}`]: 0 };
-    if (field === "weaponBonus") updates["arenaBuffs.armorBonus"] = 0;
-    await updateDoc(doc(db, "characters", uid), updates);
+    await updateDoc(doc(db, "characters", uid), { [`arenaBuffs.${field}`]: 0 });
   };
 
   const savePrice = async (key) => {

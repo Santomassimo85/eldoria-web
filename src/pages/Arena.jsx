@@ -283,7 +283,7 @@ function resolveMonkUnarmed(action, usedSoFar, buffs) {
     return { ...action, name: "Calcio", icon: "🦵", damage: "1d4", statKey: "str", info: "Calcio · 1d4+FOR" };
   }
   const punchUpgraded = (buffs?.monkPunchD8 ?? 0) > 0;
-  const dice = punchUpgraded ? "2d6" : "2d4";
+  const dice = punchUpgraded ? "3d4" : "2d4";
   return { ...action, name: "Pugno", icon: "👊", damage: dice, statKey: "dex", info: `Pugno · ${dice}+DES` };
 }
 const WIZARD_WEAPON_OPTIONS  = [_sw("Bastone Ferrato"), _sw("Daga")].filter(Boolean);
@@ -455,6 +455,14 @@ const BARDIC_INSPIRATION_ACTION = {
   special: "bardic_inspiration", maxUses: 1, bonusAction: true,
 };
 
+// Nota Dolente (Bardo) — potenziamento Bottega: 3d6 fulmine + vantaggio 2 turni, 2 cariche.
+// Disponibile solo se il bardo ha acquistato il buff "bardNotaDolente" in Bottega.
+const NOTA_DOLENTE_ACTION = {
+  name: "Nota Dolente", hitBonus: 3, damage: "3d6", statKey: "cha",
+  type: "skill", icon: "⚡", info: "3d6 danni da fulmine + vantaggio per 2 turni · 2 cariche",
+  damageType: "fulmine", grantsAdvTurns: 2, maxUses: 2, requiresBuff: "bardNotaDolente",
+};
+
 // Furia (Barbarian) — aggiunto automaticamente (4 cariche, +2 danno armi per 3 turni)
 const RAGE_ACTION = {
   name: "Furia", hitBonus: 0, damage: "—", statKey: null,
@@ -539,12 +547,12 @@ const RANGER_PETS = {
     },
   },
   drago: {
-    key: "drago", name: "Drago di Smeraldo", icon: "🐉",
-    info: "Unico (Bottega) · bonus action · 3d6+3 danni auto-hit + cura 1d6 · 2 cariche",
+    key: "drago", name: "Draghetto di Smeraldo", icon: "🐉",
+    info: "Unico (Bottega) · bonus action · 2d6 danni auto-hit · 2 cariche",
     requiresBuff: "rangerUniquePet",
     action: {
-      name: "Soffio del Drago", hitBonus: 0, damage: "3d6+3", statKey: null,
-      type: "skill", icon: "🐉", info: "Bonus Action · 3d6+3 danni auto-hit + cura 1d6 PF · 2 cariche",
+      name: "Soffio del Draghetto", hitBonus: 0, damage: "2d6", statKey: null,
+      type: "skill", icon: "🐉", info: "Bonus Action · 2d6 danni auto-hit · 2 cariche",
       special: "pet_drago", maxUses: 2, bonusAction: true,
     },
   },
@@ -1184,10 +1192,11 @@ function getClassKey(charClass) {
   return "fighter";
 }
 
-function getHpDice(charClass, classLevels) {
-  const classKey = getClassKey(charClass);
-  const extraLevels = Math.max(0, (classLevels?.[classKey] ?? 1) - 1);
-  return { count: 7 + extraLevels, sides: 10 };
+function getHpDice() {
+  // Base 7d10 per tutte le classi. Il bonus PF da salita di livello NON aggiunge
+  // dadi qui: è applicato come arenaHpBonus piatto (1 dado bonus + COS per livello),
+  // così non c'è doppio conteggio.
+  return { count: 7, sides: 10 };
 }
 
 // spellLimits: { level: maxSelectable } — lv3+ bloccati nell'arena
@@ -1216,7 +1225,7 @@ function getLoadoutConfig(charClass) {
   if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
-  if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
@@ -2306,10 +2315,12 @@ export default function Arena() {
     const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
     const finalActions = [
       ...pendingWeapons, ...pendingSpells, ...pendingSkills,
-      ...config.autoActions.map(a => {
-        if (a.special === "bardic_inspiration") return { ...a, maxUses: Math.max(1, chaScore) };
-        return a;
-      }),
+      ...config.autoActions
+        .filter(a => !a.requiresBuff || ((charPreview.arenaBuffs || {})[a.requiresBuff] ?? 0) > 0)
+        .map(a => {
+          if (a.special === "bardic_inspiration") return { ...a, maxUses: Math.max(1, chaScore) };
+          return a;
+        }),
       ...(petAction ? [petAction] : []),
       ...(demonAction ? [demonAction] : []),
       ...(constructAction ? [constructAction] : []),
@@ -4977,7 +4988,6 @@ export default function Arena() {
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     const { total: rawDmg, rolls } = rollDmg(action.damage);
     const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _dragoMatch?.players.find(p => p.id === targetId), false);
-    const { total: heal, rolls: healRolls } = rollDmg("1d6");
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -4986,14 +4996,13 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          const maxHp = p.maxHp || p.hp;
-          return { ...p, hp: Math.min(maxHp, p.hp + heal), bonusActionUsed: true, actionUsesLeft: newUses };
+          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
         }
         if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
         return p;
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🐉 Il Drago di Smeraldo di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni e cura il padrone 🎲(${healRolls})=${heal} PF! · bonus action`;
+      const log = `🐉 Il Draghetto di Smeraldo di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni! · bonus action`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       // Bonus action: il turno NON avanza.
@@ -7615,10 +7624,10 @@ export default function Arena() {
                 </>)}
 
                 {/* Abilità automatiche (Smite Paladino) — incluse nel tab Armi */}
-                {activeTab === "weapons" && config.autoActions.length > 0 && (
+                {activeTab === "weapons" && config.autoActions.filter(a => !a.requiresBuff || ((charPreview.arenaBuffs || {})[a.requiresBuff] ?? 0) > 0).length > 0 && (
                   <div className="loadout-auto-block">
                     <div className="loadout-section-title">⚡ Abilità Speciali (incluse automaticamente)</div>
-                    {config.autoActions.map(a => (
+                    {config.autoActions.filter(a => !a.requiresBuff || ((charPreview.arenaBuffs || {})[a.requiresBuff] ?? 0) > 0).map(a => (
                       <div key={a.name} className="loadout-auto-tag">
                         <span className="loadout-auto-icon">{a.icon}</span>
                         <span className="loadout-auto-name">{a.name}</span>
@@ -9319,11 +9328,11 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={noUses ? "Cariche esaurite" : "3d6+3 auto-hit + cura 1d6"}
+                                title={noUses ? "Cariche esaurite" : "2d6 danni auto-hit"}
                                 onClick={() => !blocked && handlePetDrago(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{noUses ? "Esaurita" : `${action.damage} +💚`}</span>
+                                <span className="action-dice">{noUses ? "Esaurita" : `${action.damage}`}</span>
                                 <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );

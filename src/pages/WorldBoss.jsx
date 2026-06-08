@@ -148,12 +148,29 @@ export default function WorldBoss() {
 
   const isFightOver = isBossDefeated || areAllPlayersDead;
 
+  // Live clock — ticks every second so the boss deadline (expiryDate) countdown
+  // and isTimeExpired recompute even with no Firestore change on the page.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Milliseconds left until the boss deadline (the event scadenza set at creation).
+  // null when there's no active boss / no deadline.
+  const bossTimeLeft = useMemo(() => {
+    if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return null;
+    const expiry = new Date(activeBosses[0].expiryDate).getTime();
+    if (Number.isNaN(expiry)) return null;
+    return expiry - nowTs;
+  }, [activeBosses, nowTs]);
+
   const isTimeExpired = useMemo(() => {
     if (activeBosses.length === 0 || !activeBosses[0].expiryDate) return false;
-    const now = new Date().getTime();
     const expiry = new Date(activeBosses[0].expiryDate).getTime();
-    return now >= expiry && activeBosses[0].hp > 0;
-  }, [activeBosses]);
+    if (Number.isNaN(expiry)) return false;
+    return nowTs >= expiry && activeBosses[0].hp > 0;
+  }, [activeBosses, nowTs]);
 
   const chatEndRef = useRef(null);
   const isMaster = useMemo(
@@ -1141,9 +1158,9 @@ export default function WorldBoss() {
                 </span>
               </div>
             )}
-            {fightStarted && !isGameOver && boss.expiryDate && (
-              <div className="rpg-event-expiry">
-                <span className="rpg-event-label">Evento:</span>
+            {!isGameOver && boss.expiryDate && (
+              <div className={`rpg-event-expiry ${bossTimeLeft != null && bossTimeLeft < 60 * 60 * 1000 ? "urgent" : ""}`}>
+                <span className="rpg-event-label">⏳ Tempo del Boss:</span>
                 <TimerDisplay expiryDate={boss.expiryDate} />
               </div>
             )}
@@ -1549,6 +1566,29 @@ export default function WorldBoss() {
           </div>
         );
       })()}
+
+      {/* ── DEFEAT SCREEN — time ran out & boss still alive ──────────────── */}
+      {isTimeExpired && boss && (
+        <div className="rpg-defeat-screen" role="alertdialog" aria-label="Sconfitta">
+          <div className="rpg-defeat-scanlines" />
+          <div className="rpg-defeat-box">
+            <div className="rpg-defeat-skull">💀</div>
+            <h2 className="rpg-defeat-title">GAME OVER</h2>
+            <p className="rpg-defeat-sub">GLI EROI SONO STATI SCONFITTI</p>
+            <p className="rpg-defeat-flavor">
+              Il tempo è scaduto. <span className="rpg-defeat-bossname">{boss.name}</span> ha
+              prevalso e ancora incombe su Exanthia.
+            </p>
+            <div className="rpg-defeat-penalty">
+              <div className="rpg-defeat-penalty-label">⚔ PENALITÀ INFLITTA ⚔</div>
+              <div className="rpg-defeat-penalty-text">
+                {boss.penalties || "Il Master applicherà le conseguenze della sconfitta."}
+              </div>
+            </div>
+            <div className="rpg-defeat-press">— LA SCONFITTA È SEGNATA —</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

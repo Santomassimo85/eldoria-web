@@ -376,6 +376,120 @@
   to   { opacity: 0.65; }
 }
 
+/* ── DEFEAT SCREEN (time ran out, boss alive) — full-screen pixel game over ── */
+.rpg-defeat-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at center, rgba(60,0,0,0.92) 0%, rgba(0,0,0,0.97) 70%);
+  image-rendering: pixelated;
+  animation: rpgDefeatIn 0.35s steps(4) both;
+  overflow: hidden;
+}
+@keyframes rpgDefeatIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* CRT scanlines */
+.rpg-defeat-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,0.35) 3px,
+    rgba(0,0,0,0.35) 4px
+  );
+  z-index: 1;
+}
+.rpg-defeat-box {
+  position: relative;
+  z-index: 2;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+  border: 4px solid var(--rpg-red);
+  background: rgba(0,0,0,0.82);
+  box-shadow: 0 0 0 4px #000, 0 0 28px rgba(192,48,32,0.6);
+  padding: 26px 22px 30px;
+}
+.rpg-defeat-skull {
+  font-size: clamp(40px, 11vw, 68px);
+  line-height: 1;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px rgba(192,48,32,0.8));
+  animation: rpgFlash 0.9s ease-in-out infinite alternate;
+}
+.rpg-defeat-title {
+  font-family: var(--rpg-font-px);
+  font-size: clamp(18px, 6vw, 34px);
+  color: var(--rpg-red);
+  margin: 0 0 8px;
+  letter-spacing: 2px;
+  text-shadow: 3px 3px 0 #000, 0 0 14px rgba(192,48,32,0.7);
+}
+.rpg-defeat-sub {
+  font-family: var(--rpg-font-px);
+  font-size: clamp(8px, 2.4vw, 12px);
+  color: #ffd6d0;
+  margin: 0 0 16px;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 #000;
+}
+.rpg-defeat-flavor {
+  font-family: var(--rpg-font-vt);
+  font-size: clamp(15px, 3.4vw, 20px);
+  color: #f0e0d0;
+  margin: 0 auto 18px;
+  max-width: 460px;
+  line-height: 1.35;
+}
+.rpg-defeat-bossname { color: var(--rpg-red); font-weight: bold; }
+.rpg-defeat-penalty {
+  border: 3px solid var(--rpg-red);
+  background: rgba(192,48,32,0.14);
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+.rpg-defeat-penalty-label {
+  font-family: var(--rpg-font-px);
+  font-size: clamp(7px, 2vw, 10px);
+  color: var(--rpg-red);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  text-shadow: 1px 1px 0 #000;
+}
+.rpg-defeat-penalty-text {
+  font-family: var(--rpg-font-vt);
+  font-size: clamp(16px, 3.8vw, 22px);
+  color: #fff;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.rpg-defeat-press {
+  font-family: var(--rpg-font-px);
+  font-size: clamp(7px, 1.8vw, 9px);
+  color: #b88;
+  letter-spacing: 1px;
+  animation: rpgFlash 1.2s ease-in-out infinite alternate;
+}
+
+/* Boss deadline timer — urgent state when under an hour */
+.rpg-event-expiry.urgent {
+  border-color: var(--rpg-red) !important;
+  color: var(--rpg-red) !important;
+  animation: rpgFlash 1s ease-in-out infinite alternate;
+}
+.rpg-event-expiry.urgent .rpg-event-label,
+.rpg-event-expiry.urgent .timer-countdown-text { color: var(--rpg-red) !important; }
+
 .rpg-prefight-overlay {
   position: absolute;
   inset: 0;

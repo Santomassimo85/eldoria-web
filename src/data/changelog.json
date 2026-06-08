@@ -1,6 +1,56 @@
 {
   "versions": [
     {
+      "version": "5",
+      "date": "2026-06-07",
+      "title": "Bottega Arena: bilanciamenti & Nota Dolente del Bardo",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Arma +1: ora dà +1 ai tiri per colpire e +1 ai danni (non dà più +1 alla Classe Armatura — per quello c'è Armatura +1)."
+        },
+        {
+          "type": "balance",
+          "text": "Pozione di Cura Media: ogni acquisto fornisce 10 cariche (10 pozioni da 2d8 PF l'una) usabili nei fight. Le cariche non usate in un fight restano disponibili; puoi accumularne fino a 90."
+        },
+        {
+          "type": "balance",
+          "text": "Il \"Drago di Smeraldo\" del Ranger si chiama ora \"Draghetto di Smeraldo\" e infligge 2d6 danni auto-hit (niente più cura al padrone)."
+        },
+        {
+          "type": "balance",
+          "text": "Pugno Potenziato del Monaco: ora sostituisce il Pugno facendolo passare a 3d4+DES (prima 2d6+DES)."
+        },
+        {
+          "type": "balance",
+          "text": "Salita di livello classe: dà esattamente 1 dado bonus (1d10) + COS ai Punti Ferita per livello (corretto un doppio conteggio: prima il dado extra veniva sommato due volte)."
+        },
+        {
+          "type": "feature",
+          "text": "Nuovo potenziamento del Bardo in Bottega — \"Nota Dolente\" (400 Monete Arena): sblocca un'abilità da 3d6 danni da fulmine che dona anche vantaggio al bardo per 2 turni (2 cariche per fight). In combattimento compare solo per i Bardi che l'hanno acquistata."
+        },
+        {
+          "type": "fix",
+          "text": "Tutti gli acquisti restano legati al personaggio che li compra e si attivano automaticamente nei suoi fight dell'Arena."
+        }
+      ]
+    },
+    {
+      "version": "4.01",
+      "date": "2026-06-07",
+      "title": "Bottega Arena: cosa puoi comprare, in verde",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nella Bottega dell'Arena le classi e i potenziamenti che puoi permetterti adesso (hai abbastanza Monete Arena) si illuminano di un alone verde pulsante — così vedi a colpo d'occhio cosa puoi acquistare o di quale classe puoi salire di livello. Ogni giocatore vede in verde solo ciò che può comprare lui."
+        },
+        {
+          "type": "chore",
+          "text": "Verificato che tutti gli acquisti della Bottega sono pienamente attivi nell'Arena per chi li compra: Arma +1 (+1 colpire e +1 CA), Armatura +1, Pozioni di Cura, Drago di Smeraldo del Ranger, Pugno Potenziato del Monaco, classe Artefice, e le salite di livello che aumentano i Punti Ferita nel torneo."
+        }
+      ]
+    },
+    {
       "version": "4",
       "date": "2026-06-07",
       "title": "Ricerca in tutte le sezioni",
