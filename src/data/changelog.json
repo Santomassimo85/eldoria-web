@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "12",
+      "date": "2026-06-09",
+      "title": "Manuale delle Classi e progressione fino al Lv.20",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Aggiunto il Manuale delle Classi nella Bottega dell'Arena: per ogni classe posseduta è consultabile la progressione completa dal Livello 3 al 20, con gli incantesimi, le abilità attive, le passive e i punti caratteristica sbloccati a ciascun livello. Le voci che concedono punti caratteristica sono evidenziate."
+        },
+        {
+          "type": "mechanics",
+          "text": "Tutte le classi partono ora da Livello 3. I punti caratteristica (+2 da distribuire) maturano ai livelli 4, 8, 12, 16 e 19; il Guerriero ne riceve anche a 6 e 14, il Ladro anche a 10."
+        },
+        {
+          "type": "mechanics",
+          "text": "Il bonus di competenza segue la tabella standard: +2 ai livelli 1-4, +3 ai 5-8, +4 ai 9-12, +5 ai 13-16, +6 ai 17-20. Ogni classe mantiene una progressione separata."
+        }
+      ]
+    },
+    {
       "version": "11",
       "date": "2026-06-08",
       "title": "Tabellone del Campionato ridisegnato",

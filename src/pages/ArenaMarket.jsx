@@ -103,6 +103,299 @@ const HIT_DICE = {
 const LEVEL_UP_KEY = "level_up_cost";
 const LEVEL_UP_DEFAULT = 10;
 
+// ── MANUALE: progressione di livello per classe (Lv 1→20) ────────────────────
+// SOLO informativo: cosa sblocca ogni classe salendo di livello. Non è
+// acquistabile né funzionale da qui — serve a far capire ai player cosa otterranno.
+// 🎯 = punti caratteristica (ASI). Indice 0 = Lv 1.
+const CLASS_PROGRESSION = {
+  fighter: [
+    "Secondo Respiro (cura) e Carica (2d6+FOR)",
+    "Scatto d'Azione: un'azione extra nel turno",
+    "Stile di Combattimento: Difesa / Duellante / Tiratore",
+    "🎯 +2 punti caratteristica · Disarmare il nemico",
+    "Attacco Extra: 2 attacchi per turno",
+    "🎯 +2 punti caratteristica · Presenza Possente (ritira l'1 a colpire)",
+    "Risolutezza: ritira un tiro salvezza fallito (1/fight)",
+    "🎯 +2 punti caratteristica · più cariche alle abilità",
+    "Indomito: la prima volta che cadi a 0 PF resti a 1 (1/fight)",
+    "Secondo Stile di Combattimento",
+    "Attacco Extra: 3 attacchi per turno",
+    "🎯 +2 punti caratteristica · Critico Migliorato (critico con 19-20)",
+    "Colpo Stordente: TS o il nemico salta un turno",
+    "🎯 +2 punti caratteristica · Disarmare migliorato",
+    "Critico Superiore: critico con 18-19-20",
+    "🎯 +2 punti caratteristica",
+    "Colpo d'Ascia Devastante: 6d6+FOR, ignora metà CA",
+    "Sopravvissuto: ti curi a inizio turno sotto metà PF",
+    "🎯 +2 punti caratteristica",
+    "Attacco Extra: 4 attacchi per turno",
+  ],
+  barbarian: [
+    "Furia (+danno per turni) e Attacco Poderoso",
+    "Attacco Irruento: colpisci con vantaggio rischiando",
+    "Furia Bestiale: più danno quanto più sei ferito",
+    "🎯 +2 punti caratteristica · Furia +3 al danno",
+    "Attacco Extra: 2 attacchi per turno · Turbine di Lame",
+    "Resistenza Ferina: in Furia dimezzi i danni fisici",
+    "Istinto Selvaggio: vantaggio all'iniziativa",
+    "🎯 +2 punti caratteristica · +1 carica Turbine di Lame",
+    "Furia +4 al danno · 5 cariche di Furia",
+    "Urlo di Guerra: indebolisce i tiri del nemico",
+    "Furia Implacabile: resti a 1 PF con un TS COS",
+    "🎯 +2 punti caratteristica · più cariche",
+    "Turbine di Lame: 3 colpi",
+    "Caccia Spietata: +danno contro nemici sotto metà PF",
+    "Furia Persistente: non scade finché ci sono nemici",
+    "🎯 +2 punti caratteristica · Furia +6 al danno",
+    "6 cariche di Furia · più cariche skill",
+    "Forza Indomabile: ritiri i TS FOR/COS falliti",
+    "🎯 +2 punti caratteristica · Attacco Poderoso 3d8",
+    "Campione Primordiale: inizi già in Furia, +3 danno",
+  ],
+  monk: [
+    "Carica di Pugni · 2 attacchi base",
+    "Concentrazione (+danno) · Difesa senza armatura (+1 CA)",
+    "Deviare Colpi: riduci il prossimo colpo subìto",
+    "🎯 +2 punti caratteristica · Assorbire Danni",
+    "Colpo Stordente (TS o salta turno) · Carica di Pugni 3 colpi",
+    "Cura Ki · i pugni contano come magici",
+    "Elusione: TS DES superato = nessun danno",
+    "🎯 +2 punti caratteristica · +1 carica Concentrazione",
+    "Carica di Pugni 4 colpi · +1 carica Cura Ki",
+    "Purezza del Corpo: immune a veleno e sanguinamento",
+    "Raffica Tempestosa: 3 attacchi a mani nude in un'azione",
+    "🎯 +2 punti caratteristica · più cariche ki",
+    "Lingua di Sole e Luna: i colpi ignorano le resistenze",
+    "Anima di Diamante: ritiri un TS fallito a turno",
+    "Cura Ki 2d8+SAG",
+    "🎯 +2 punti caratteristica",
+    "Palmo Tremante: 6d10 ritardati con TS COS",
+    "Corpo Vuoto: invisibile e resistente per 1 turno (1/fight)",
+    "🎯 +2 punti caratteristica · Raffica +1 colpo",
+    "Perfezione Interiore: recuperi una carica ki a inizio turno",
+  ],
+  rogue: [
+    "Attacco Furtivo (1d6) · 2 azioni base",
+    "Furtività (vantaggio) · Azione Scaltra (azione extra)",
+    "Triboli · Maestria (Inganno o Agilità)",
+    "🎯 +2 punti caratteristica · Attacco Furtivo 2d6",
+    "Schivata Prodigiosa: dimezzi un colpo a turno",
+    "+1 carica Attacco Furtivo · seconda Maestria",
+    "Elusione: TS DES superato = nessun danno",
+    "🎯 +2 punti caratteristica · Attacco Furtivo 3d6",
+    "Colpo Mortale: esecuzione sotto il 20% PF",
+    "🎯 +2 punti caratteristica · Talento Affidabile",
+    "Attacco Furtivo 4d6 · +1 carica Triboli",
+    "🎯 +2 punti caratteristica · +1 carica Azione Scaltra",
+    "Schivata Migliorata: schivi due volte a turno",
+    "Veleno da Lama: +2d6 veleno per 3 colpi",
+    "Sensi Acuti: non puoi essere colto di sorpresa né accecato",
+    "🎯 +2 punti caratteristica · Attacco Furtivo 5d6",
+    "+1 carica Colpo Mortale · soglia esecuzione 25% PF",
+    "Elusività: i nemici non hanno mai vantaggio su di te",
+    "🎯 +2 punti caratteristica · Attacco Furtivo 6d6",
+    "Colpo di Fortuna: trasformi un mancato in critico (1/fight)",
+  ],
+  paladin: [
+    "Smite Divino · Lay of Hands (cura dalla pozza)",
+    "Incantesimi tier 1 · Stile di Combattimento",
+    "Salute Divina (immune a malattia/veleno) · Giuramento",
+    "🎯 +2 punti caratteristica · +1 carica Smite",
+    "Attacco Extra: 2 attacchi · Incantesimi tier 2",
+    "Aura di Protezione: +CAR ai tuoi tiri salvezza",
+    "Aura del Giuramento",
+    "🎯 +2 punti caratteristica · +1 carica Smite",
+    "Incantesimi tier 3 · Smite Tremante (TS o salta turno)",
+    "Aura di Coraggio: immune a paura e controllo mentale",
+    "Smite Migliorato: +1d8 radiante a ogni colpo",
+    "🎯 +2 punti caratteristica · Lay of Hands più grande",
+    "Incantesimi tier 4",
+    "Tocco Purificante: Lay of Hands rimuove un debuff",
+    "Aure potenziate",
+    "🎯 +2 punti caratteristica · più cariche",
+    "Incantesimi tier 5",
+    "Aure sempre attive",
+    "🎯 +2 punti caratteristica · Smite 3d8",
+    "Avatar del Giuramento: forma potenziata (1/fight)",
+  ],
+  ranger: [
+    "Marchio del Cacciatore · Compagno Animale",
+    "Incantesimi tier 1 · Stile di Combattimento",
+    "Archetipo: Cacciatore o Maestro di Bestie",
+    "🎯 +2 punti caratteristica · +1 carica Marchio",
+    "Attacco Extra: 2 attacchi · Incantesimi tier 2",
+    "+1 carica pet · Marchio dura più a lungo",
+    "Difesa del Predatore: meno danni col bersaglio marchiato",
+    "🎯 +2 punti caratteristica · +1 carica pet",
+    "Incantesimi tier 3 · Raffica di Frecce",
+    "Mimetismo: parti furtivo a inizio fight",
+    "Marchio Furioso: bonus aumentato e si sposta da solo",
+    "🎯 +2 punti caratteristica · +1 carica Raffica",
+    "Incantesimi tier 4",
+    "Svanire: non bersagliabile per 1 turno (1/fight)",
+    "Pet Superiore: il compagno raddoppia i danni",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 5",
+    "Sensi Ferini: immune ad accecamento e furtività nemica",
+    "🎯 +2 punti caratteristica · Marchio +1d10",
+    "Nemico Mortale: critico 19-20 e ignori metà CA sul marchiato",
+  ],
+  wizard: [
+    "Incantesimi tier 1 · Recupero Arcano",
+    "Tradizione Arcana: Evocazione / Abiurazione / Divinazione",
+    "Incantesimi tier 2",
+    "🎯 +2 punti caratteristica · +1 trucchetto",
+    "Incantesimi tier 3 (Palla di Fuoco, Fulmine…)",
+    "Bonus avanzato della tua scuola",
+    "Incantesimi tier 4",
+    "🎯 +2 punti caratteristica · +1 carica incantesimi",
+    "Incantesimi tier 5",
+    "Maestria Trucchetti: i trucchetti fanno più danno",
+    "Incantesimi tier 6",
+    "🎯 +2 punti caratteristica · +1 incantesimo noto",
+    "Incantesimi tier 7",
+    "Bonus finale della tua scuola",
+    "Incantesimi tier 8",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 9 (Meteora, Parola del Potere…)",
+    "Maestria Incantesimi: un incantesimo a costo zero",
+    "🎯 +2 punti caratteristica · +1 incantesimo alto",
+    "Firma Magica: 2 incantesimi a cariche illimitate",
+  ],
+  sorcerer: [
+    "Incantesimi tier 1 · Stregoneria Innata · Fonte di Magia",
+    "Origine: Draconica o Magia Selvaggia",
+    "Incantesimi tier 2 · Metamagia: Spell Gemella",
+    "🎯 +2 punti caratteristica · +1 trucchetto",
+    "Incantesimi tier 3 · Metamagia: Spell Potenziata",
+    "Bonus avanzato d'Origine",
+    "Incantesimi tier 4",
+    "🎯 +2 punti caratteristica · +1 carica Fonte di Magia",
+    "Incantesimi tier 5",
+    "Metamagia: Spell Rapida (lancio come bonus action)",
+    "Incantesimi tier 6",
+    "🎯 +2 punti caratteristica · +1 carica metamagia",
+    "Incantesimi tier 7",
+    "Bonus finale d'Origine",
+    "Incantesimi tier 8",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 9",
+    "Restauro Stregonesco: recuperi cariche col tempo",
+    "🎯 +2 punti caratteristica · +1 incantesimo alto",
+    "Restauro Arcano: inizi con cariche extra",
+  ],
+  warlock: [
+    "Incantesimi tier 1 · Astuzia Magica · Patto Demoniaco",
+    "Suppliche Occulte (a scelta)",
+    "Dono del Patto: Lama / Tomo / Catena",
+    "🎯 +2 punti caratteristica · +1 trucchetto",
+    "Incantesimi tier 3 · (Patto della Lama) Attacco Extra",
+    "Seconda Supplica",
+    "Incantesimi tier 4",
+    "🎯 +2 punti caratteristica · +1 carica Patto Demoniaco",
+    "Incantesimi tier 5",
+    "Terza Supplica",
+    "Arcano Mistico: un incantesimo tier 6 (1/fight)",
+    "🎯 +2 punti caratteristica · +1 carica demone",
+    "Arcano Mistico: tier 7 (1/fight)",
+    "Potere supremo del tuo Patto",
+    "Arcano Mistico: tier 8 (1/fight)",
+    "🎯 +2 punti caratteristica",
+    "Arcano Mistico: tier 9 (1/fight)",
+    "+1 carica Astuzia Magica",
+    "🎯 +2 punti caratteristica · Patto Demoniaco potenziato",
+    "Maestro Occulto: ricarichi tutti gli incantesimi bassi (1/fight)",
+  ],
+  cleric: [
+    "Incantesimi tier 1 (cura, danno radiante/necrotico)",
+    "Incanalare Divinità: Dominio Vita / Guerra / Morte",
+    "Incantesimi tier 2",
+    "🎯 +2 punti caratteristica · +1 trucchetto",
+    "Incantesimi tier 3 · cure e danni potenziati",
+    "Bonus di Dominio · +1 carica Incanalare",
+    "Incantesimi tier 4",
+    "🎯 +2 punti caratteristica · Colpo Divino (+1d8 radiante)",
+    "Incantesimi tier 5",
+    "Intervento Divino: effetto miracoloso casuale",
+    "Incantesimi tier 6",
+    "🎯 +2 punti caratteristica · +1 carica Incanalare",
+    "Incantesimi tier 7",
+    "Bonus finale di Dominio",
+    "Incantesimi tier 8",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 9",
+    "Incanalare Divinità a uso illimitato",
+    "🎯 +2 punti caratteristica · +1 incantesimo alto",
+    "Intervento Divino garantito (1/fight)",
+  ],
+  druid: [
+    "Incantesimi tier 1",
+    "Forma Selvatica · Circolo: Terra o Luna",
+    "Incantesimi tier 2",
+    "🎯 +2 punti caratteristica · Forma Selvatica migliorata",
+    "Incantesimi tier 3",
+    "Bonus di Circolo",
+    "Incantesimi tier 4",
+    "🎯 +2 punti caratteristica · +1 carica Forma Selvatica",
+    "Incantesimi tier 5",
+    "Anima Selvatica: immune a veleno/malattia",
+    "Incantesimi tier 6",
+    "🎯 +2 punti caratteristica · +1 carica incantesimi",
+    "Incantesimi tier 7",
+    "Bonus finale di Circolo",
+    "Incantesimi tier 8",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 9",
+    "Forma Selvatica a cariche illimitate",
+    "🎯 +2 punti caratteristica · +1 incantesimo alto",
+    "Arcidruido: Forma Selvatica gratis, trucchetti illimitati",
+  ],
+  bard: [
+    "Ispirazione Bardica (cariche = CAR)",
+    "Tuttofare: +1 a tutti i tiri",
+    "Incantesimi tier 2 · Collegio: Sapienza / Valore / Spada",
+    "🎯 +2 punti caratteristica · +1 carica Ispirazione",
+    "Fonte d'Ispirazione (ricarica) · Incantesimi tier 3",
+    "Bonus di Collegio · Nota Dolente (se sbloccata)",
+    "Incantesimi tier 4",
+    "🎯 +2 punti caratteristica · Ispirazione 1d8",
+    "Incantesimi tier 5 · Canto del Riposo (cura)",
+    "Magia Segreta: 2 incantesimi di altre classi · Ispirazione 1d10",
+    "Incantesimi tier 6",
+    "🎯 +2 punti caratteristica · +1 carica incantesimi",
+    "Incantesimi tier 7",
+    "Bonus finale di Collegio",
+    "Incantesimi tier 8 · Ispirazione 1d12",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 9",
+    "Più cariche di Magia Segreta",
+    "🎯 +2 punti caratteristica · +1 incantesimo alto",
+    "Ispirazione Superiore: cariche piene a ogni fight",
+  ],
+  artificer: [
+    "Incantesimi tier 1 e trucchetti · Forgia Armatura",
+    "Infusione: potenzia la tua arma",
+    "Costrutto (golem/serpente) · Specialista: Alchimista / Artigliere / Battaglia",
+    "🎯 +2 punti caratteristica · +1 carica Forgia Armatura",
+    "Incantesimi tier 2 · Attacco Extra o +1 costrutto",
+    "Bonus di specializzazione",
+    "Spruzzo di Schegge: l'arma da fuoco colpisce ad area",
+    "🎯 +2 punti caratteristica · +1 carica Infusione",
+    "Incantesimi tier 3",
+    "Maestro di Infusioni: 2 infusioni insieme",
+    "Oggetto Mirabile: effetto a scelta (cura/scudo/danno)",
+    "🎯 +2 punti caratteristica · +1 carica costrutto",
+    "Incantesimi tier 4",
+    "Bonus finale di specializzazione",
+    "Costrutto Superiore: raddoppia i danni",
+    "🎯 +2 punti caratteristica",
+    "Incantesimi tier 5",
+    "Genio Magico: 4 infusioni",
+    "🎯 +2 punti caratteristica · +1 carica Oggetto Mirabile",
+    "Soul of Artifice: il costrutto ti rialza a 1 PF (1/fight)",
+  ],
+};
+
 export default function ArenaMarket() {
   useParallaxScroll();
   const { currentUser } = useAuth();
@@ -178,7 +471,7 @@ export default function ArenaMarket() {
   const levelUpClass = async (cls) => {
     if (!currentUser || !charData) return;
     if (coins < levelUpCost) { showMsg("Monete Arena insufficienti.", "err"); return; }
-    const currentLv = classLvls[cls.key] ?? 1;
+    const currentLv = classLvls[cls.key] ?? 3;
     const die = HIT_DICE[cls.key] ?? 8;
     // CON modifier from the arena character snapshot (stored as modifier, e.g. +2)
     const mySnap = arenaMeta?.characterSnapshots?.[currentUser.uid];
@@ -258,7 +551,7 @@ export default function ArenaMarket() {
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
-          Ogni classe parte da Lv.1 — salire di livello costa <strong>{levelUpCost} MA</strong> e aggiunge <strong>+1 dado bonus (1d10) + COS</strong> ai PF della prossima Arena (base: 7d10 per tutte le classi).
+          Ogni classe parte da <strong>Lv.3</strong> — salire di livello costa <strong>{levelUpCost} MA</strong>. Ogni livello sblocca, in base alla classe, <strong>incantesimi, abilità, passive e punti caratteristica</strong> (vedi il <strong>Manuale delle Classi</strong> più in basso), oltre a <strong>+1 dado PF (1d10)+COS</strong>. Ogni classe ha una progressione separata.
           {(charData?.arenaHpBonus ?? 0) > 0 && (
             <span className="am-hp-bonus-tag"> • +{charData.arenaHpBonus} PF bonus da livelli</span>
           )}
@@ -268,7 +561,7 @@ export default function ArenaMarket() {
         ) : (
         <div className="am-classes-grid">
           {filteredClasses.map(cls => {
-            const lv = classLvls[cls.key] ?? 1;
+            const lv = classLvls[cls.key] ?? 3;
             const canAfford = coins >= levelUpCost;
             return (
               <div key={cls.key} className={`am-class-card ${canAfford ? "am-class-card--affordable" : ""}`}>
@@ -292,6 +585,43 @@ export default function ArenaMarket() {
       )}
 
       {showInfo && (<>
+      <div className="am-how am-class-manual">
+        <h3 className="am-how-title">📖 Manuale delle Classi — Progressione (Lv 3→20)</h3>
+        <p className="am-classes-sub" style={{ marginBottom: "10px" }}>
+          Tutti i personaggi partono da <strong>Livello 3</strong>. Salire di livello sblocca, a seconda della classe,
+          <strong> incantesimi di tier superiore, abilità attive, passive</strong> e <strong>punti caratteristica</strong>.
+          Ogni classe ha la <strong>sua progressione separata</strong>: livelli e sblocchi di una classe non valgono per le altre.
+        </p>
+        <ul className="am-how-list" style={{ marginBottom: "12px" }}>
+          <li>🎯 <strong>Punti caratteristica</strong>: ai livelli <strong>4, 8, 12, 16, 19</strong> ricevi <strong>+2 punti</strong> da assegnare (+2 a una caratteristica oppure +1 a due). Il <strong>Guerriero</strong> li riceve anche a 6 e 14, il <strong>Ladro</strong> anche a 10.</li>
+          <li>📈 <strong>Bonus di competenza</strong>: +2 (Lv 1-4) · +3 (5-8) · +4 (9-12) · +5 (13-16) · +6 (17-20).</li>
+          <li>✨ <strong>Incantesimi</strong>: i lanciatori sbloccano tier sempre più alti man mano che salgono.</li>
+        </ul>
+        <p className="am-manual-note">ℹ️ Le capacità ai livelli più alti vengono introdotte in modo graduale.</p>
+        <div className="am-manual-classes">
+          {ownedClasses.map(cls => (
+            <details key={cls.key} className="am-manual-class">
+              <summary className="am-manual-class-summary">
+                <span className="am-manual-class-icon">{cls.icon}</span>
+                <span className="am-manual-class-name">{cls.name}</span>
+                <span className="am-manual-class-hint">Lv 1→20 ▾</span>
+              </summary>
+              <ol className="am-manual-levels">
+                {(CLASS_PROGRESSION[cls.key] || []).map((txt, i) => {
+                  const isAsi = txt.startsWith("🎯");
+                  return (
+                    <li key={i} className={`am-manual-level ${isAsi ? "am-manual-level--asi" : ""}`}>
+                      <span className="am-manual-lv">Lv {i + 1}</span>
+                      <span className="am-manual-lv-txt">{txt}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
+          ))}
+        </div>
+      </div>
+
       <div className="am-how">
         <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
         <ul className="am-how-list">
@@ -433,7 +763,7 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
   const saveClassLevel = async (uid, classKey) => {
     const inputKey = `${uid}_${classKey}`;
     const val = parseInt(editLevels[inputKey], 10);
-    if (isNaN(val) || val < 1) return;
+    if (isNaN(val) || val < 3) return;
     await updateDoc(doc(db, "characters", uid), { [`classLevels.${classKey}`]: val });
     setEditLevels(prev => { const n = { ...prev }; delete n[inputKey]; return n; });
   };
@@ -441,8 +771,8 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
   const levelDownClass = async (uid, cls) => {
     const char = allChars.find(c => c.uid === uid);
     if (!char) return;
-    const currentLv = (char.classLevels ?? {})[cls.key] ?? 1;
-    if (currentLv <= 1) return;
+    const currentLv = (char.classLevels ?? {})[cls.key] ?? 3;
+    if (currentLv <= 3) return;
     const die = HIT_DICE[cls.key] ?? 8;
     const mySnap = arenaMeta?.characterSnapshots?.[uid];
     const conMod = mySnap?.stats?.con ?? 0;
@@ -536,7 +866,7 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
               {isOpen && (
                 <div className="am-master-classes">
                   {ARENA_CLASSES.map(cls => {
-                    const lv = classLvls[cls.key] ?? 1;
+                    const lv = classLvls[cls.key] ?? 3;
                     const inputKey = `${ch.uid}_${cls.key}`;
                     return (
                       <div key={cls.key} className="am-master-class-row">
@@ -545,13 +875,13 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
                         <button
                           className="am-coin-save am-lvdown-btn"
                           title={`Scendi a Lv.${lv - 1}`}
-                          disabled={lv <= 1}
+                          disabled={lv <= 3}
                           onClick={() => levelDownClass(ch.uid, cls)}
                         >−</button>
                         <input
                           className="am-coin-input am-coin-input--sm"
                           type="number"
-                          min={1}
+                          min={3}
                           placeholder="lv"
                           value={editLevels[inputKey] ?? ""}
                           onChange={e => setEditLevels(prev => ({ ...prev, [inputKey]: e.target.value }))}

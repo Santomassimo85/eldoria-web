@@ -1037,7 +1037,7 @@ function getSpellMod(snap) {
 // +2 (liv 1-4), +3 (5-8), +4 (9-12)… Default liv 1 → +2 se manca classLevels.
 function getProficiencyBonus(snap) {
   const classKey = getClassKey(snap?.class);
-  const level    = snap?.classLevels?.[classKey] ?? 1;
+  const level    = snap?.classLevels?.[classKey] ?? 3;
   return 2 + Math.floor((Math.max(1, level) - 1) / 4);
 }
 // CD TS = 8 + competenza + mod caratteristica principale del caster

@@ -1,0 +1,560 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ARENA — SISTEMA DI PROGRESSIONE CLASSI  (Lv 1 → 20)                            ║
+║  Documento di progettazione interno (per Claude). NON è UI, è la "bibbia"       ║
+║  di cosa sbloccare e dare al player quando compra livelli di classe.            ║
+║  Aggiornato: 2026-06-09                                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────────────────────────────────
+0. COSA SUCCEDE OGGI NEL CODICE (stato attuale, da NON rompere)
+────────────────────────────────────────────────────────────────────────────────
+File chiave: src/pages/Arena.jsx  +  src/pages/ArenaMarket.jsx
+
+• Ogni personaggio ha `classLevels: { [classKey]: number }` su Firestore
+  (collezione `characters`). getClassKey(class) normalizza il nome.
+  ★ I PLAYER PARTONO TUTTI DA LIVELLO 3 (non 1). Quindi i livelli 1-2-3 sono il
+    "kit base" che ogni player ha già senza comprare nulla; l'acquisto di livelli
+    parte di fatto dal 4 in su.
+    NB: oggi il codice fa `?? 1` (Arena.jsx:1040, ArenaMarket.jsx:181/271/444/539).
+    → VA CORRETTO in `?? 3` ovunque, così il default reale è livello 3.
+  ★ TUTTO È PER-CLASSE. classLevels è indicizzato per chiave di classe: i livelli,
+    le spell, le skill, le passive e i punti caratteristica spesi su una classe
+    valgono SOLO per quella classe. Un player che compra livelli da Chierico NON
+    ottiene nulla sul suo Ladro: sono progressioni separate, ognuna parte da 3.
+
+• Salire di livello (ArenaMarket.jsx ~riga 178 `levelUpClass`):
+    arenaCoins -= levelUpCost (default 10 MA)
+    classLevels.<key> += 1
+  Il Master può settare/abbassare il livello a mano (MasterCoinPanel).
+
+• OGGI il livello incide SOLO su due cose:
+    1) PF iniziali → +1 dado (1d10)+COS per livello (base 7d10).  ← NON ci interessa.
+    2) getProficiencyBonus(snap) = 2 + floor((level-1)/4)
+       → +2 (1-4) · +3 (5-8) · +4 (9-12) · +5 (13-16) · +6 (17-20)
+       Questo alza CD TS spell (getSpellSaveDC = 8 + comp + mod) e i tiri.
+
+• Le spell vivono in array per classe: WIZARD_SPELLS, SORCERER_SPELLS,
+  WARLOCK_SPELLS, DRUID_SPELLS, CLERIC_SPELLS, BARD_SPELLS, PALADIN_SPELLS,
+  RANGER_SPELLS, ARTIFICER_SPELLS. Ogni spell ha: { name, level (0=trucchetto..3),
+  hitBonus, damage("XdY"), special, maxUses, info, icon, ... }.
+  Oggi arrivano MAX a level:3 e parecchie lv3 sono "bloccate".
+
+• Quante spell il player può PORTARE in battaglia = SPELL_LIMITS[classKey]:
+    wizard {0:3,1:4,2:2,3:0} · sorcerer {0:4,1:4,2:2,3:0} · warlock {0:2,1:2,2:2,3:0}
+    druid {0:2,1:4,2:2,3:0} · cleric {0:3,1:4,2:2,3:0} · bard {0:0,1:4,2:2,3:0}
+    paladin {0:0,1:2,2:1,3:0} · ranger {0:0,1:3,2:0,3:0} · artificer {0:2,1:3,2:0,3:0}
+  maxSpells = sumLimits(...). I limiti sono COSTANTI: il livello NON li cambia ancora.
+
+• Le skill attive e le passive sono `autoActions` assegnati per classe in
+  getClassLoadout() (~riga 1244). Sono oggetti tipo:
+    { name, type:"skill"|"passive", special, maxUses(cariche), bonusAction?, info, icon }
+  Esempi già esistenti per classe (riferimento, NON ricreare):
+    Fighter:   SECOND_WIND, ACTION_SURGE, CHARGE, DISARM, PRESENZA_POSSENTE(p), CRITICO_MIGLIORATO(p)
+    Barbarian: RAGE, TURBINE_LAME, MIGHTY_STRIKE
+    Monk:      CARICA_PUGNI, CONCENTRAZIONE, ASSORBIRE_DANNI, KI_HEALING
+    Rogue:     SNEAK_ATTACK, DEATHBLOW, STEALTH, TRIBOLI
+    Paladin:   SMITE, LAY_OF_HANDS  (+ spell)
+    Ranger:    HUNTER_MARK, RANGER_PETS (lupo/ragno/aquila/draghetto)  (+ spell)
+    Wizard:    RECUPERO_ARCANO
+    Sorcerer:  INNATE_SORCERY(p), FONTE_DI_MAGIA
+    Warlock:   MAGICAL_CUNNING, PATTO_DEMONIACO, WARLOCK_DEMONS (mephit/succubus/demone)
+    Cleric:    — (solo spell, ha cura/danno radiante/necrotico)
+    Druid:     WILD_SHAPE (hasWildShape) + spell
+    Bard:      BARDIC_INSPIRATION, NOTA_DOLENTE(buff Bottega)
+    Artefice:  FORGIA_ARMATURA, ARTIFICER_CONSTRUCTS (golem/serpente), armi da fuoco
+
+────────────────────────────────────────────────────────────────────────────────
+1. PRINCIPI DI DESIGN (regole che mi do per costruire la progressione)
+────────────────────────────────────────────────────────────────────────────────
+R1. Si dànno: spell, skill attive, passive E PUNTI CARATTERISTICA (ASI, vedi 2E).
+    NIENTE HP e niente CA flat dal level-up. (PF restano gestiti dal mercato.)
+R2. Si segue la "tabella D&D" come SCHELETRO dei livelli, adattata al motore arena:
+    le "spell slot" diventano CARICHE (maxUses) e TIER di spell sbloccati. Gli
+    "ASI" (Ability Score Improvement) sono PUNTI CARATTERISTICA VERI da assegnare
+    a una stat (FOR/DES/COS/INT/SAG/CAR), come in D&D — vedi tabella 2E.
+R7. PER-CLASSE: ogni acquisto (livelli, spell, skill, punti caratteristica) è
+    legato alla chiave di classe. Comprare su una classe non tocca le altre.
+R8. START A LIVELLO 3: levello base = 3. I livelli 1-3 sono già sbloccati per
+    tutti; il primo ASI raggiungibile salendo è quindi quello di livello 4.
+R3. Ogni livello deve dare QUALCOSA di percepibile (anche solo +cariche), così
+    comprare un livello non è mai "vuoto". I livelli "grossi" danno spell-tier o
+    skill nuove; i "piccoli" danno cariche/uso extra o upgrade di una skill.
+R4. Gating per LIVELLO: una spell/skill compare nel loadout solo se
+    classLevels[key] >= requiredLevel. → introdurre campo `reqLevel` sulle
+    spell/skill e filtrarle in getClassLoadout.
+R5. SPELL_LIMITS diventa funzione del livello: spellLimitsForLevel(key, lvl).
+    Più sali, più spell conosci e più tier alti puoi equipaggiare.
+R6. Cap di equilibrio: l'arena è 1v1 a turni. I tier alti (spell lv 6-9, Extra
+    Attack multipli) vanno tenuti a poche cariche (1-2) per non spezzare il PvP.
+
+────────────────────────────────────────────────────────────────────────────────
+2. TABELLE GLOBALI (valide per TUTTE le classi, da tabella D&D 5e)
+────────────────────────────────────────────────────────────────────────────────
+2A. BONUS DI COMPETENZA (già implementato, NON ricodificare):
+    Lv 1-4 → +2 | 5-8 → +3 | 9-12 → +4 | 13-16 → +5 | 17-20 → +6
+
+2B. TIER DI INCANTESIMO sbloccato per LIVELLO PERSONAGGIO:
+    Full caster (Mago, Stregone, Chierico, Druido, Bardo):
+      Lv 1 → spell tier 1
+      Lv 3 → tier 2
+      Lv 5 → tier 3
+      Lv 7 → tier 4   (DA CREARE)
+      Lv 9 → tier 5   (DA CREARE)
+      Lv 11 → tier 6  (DA CREARE)
+      Lv 13 → tier 7  (DA CREARE)
+      Lv 15 → tier 8  (DA CREARE)
+      Lv 17 → tier 9  (DA CREARE)
+    Half caster (Paladino, Ranger, Artefice — Artefice arrotonda per eccesso):
+      Lv 2 → tier 1 (Artefice già da lv1) · Lv 5 → tier 2 · Lv 9 → tier 3
+      Lv 13 → tier 4 · Lv 17 → tier 5
+    Warlock (Pact Magic, adattato): tier 1@1, 2@3, 3@5, 4@7, 5@9; oltre lv9 i
+      "Mystic Arcanum" = 1 spell singola di tier 6/7/8/9 a lv 11/13/15/17 (1 carica).
+
+2C. "SLOT → CARICHE": invece degli slot D&D, ogni tier di spell ha un pool di
+    cariche che cresce coi livelli. Regola pratica per il loadout:
+      n. spell equipaggiabili di un tier = base del tier + bonus livello (vedi R5).
+    Trucchetti (tier 0): cariche alte (4) sempre. Tier alti: 1-2 cariche.
+
+2D. EXTRA ATTACK (classi marziali Fighter/Barbarian/Monk/Paladin/Ranger):
+    Lv 5 → +1 attacco (2 azioni base). Fighter: Lv 11 → +1 (3), Lv 20 → +1 (4).
+    Implementare in getMaxActionsPerTurn(snap) leggendo classLevels.
+
+2E. PUNTI CARATTERISTICA / ASI (regola D&D 5e corretta, marcati [C] nelle classi):
+    A ogni livello-ASI il player riceve +2 PUNTI da assegnare alle caratteristiche
+    (FOR/DES/COS/INT/SAG/CAR): può mettere +2 su una sola, oppure +1 su due diverse.
+    (Cap consigliato per stat: 20 / mod +5, come in D&D.)
+    Livelli ASI per QUASI tutte le classi:   Lv 4 · 8 · 12 · 16 · 19
+    Eccezioni di classe (ASI extra):
+      • GUERRIERO (Fighter): ASI anche a Lv 6 e Lv 14  → 4·6·8·12·14·16·19
+      • LADRO (Rogue):       ASI anche a Lv 10         → 4·8·10·12·16·19
+    Poiché si parte da Lv 3, il primo ASI ottenibile è quello del Lv 4.
+    NB: queste stat alzano implicitamente molte cose già nel motore: mod di
+    attacco/danno (statKey), CD TS spell (getSpellSaveDC usa il mod del caster),
+    CA da DES, cariche di Ispirazione (=CAR), pozza Lay of Hands, ecc.
+    Salvataggio: i punti spesi vanno tracciati PER CLASSE (vedi R7) — es.
+    `arenaStatPoints: { [classKey]: { str, dex, con, int, wis, cha } }`, così le
+    stat effettive in arena = stat base del personaggio + bonus della classe usata.
+
+────────────────────────────────────────────────────────────────────────────────
+3. HOOK TECNICI DA AGGIUNGERE (così tutto è data-driven)
+────────────────────────────────────────────────────────────────────────────────
+H1. Campo `reqLevel` (default 1) su ogni spell e su ogni autoAction.
+    In getClassLoadout filtrare: opt.reqLevel <= classLevels[key].
+H2. spellLimitsForLevel(classKey, level) → ritorna l'oggetto {0:..,1:..,...}
+    scalato (vedi tabelle per-classe sotto, colonna "Limiti spell").
+H3. getMaxActionsPerTurn legge il livello per l'Extra Attack (vedi 2D).
+H4. chargesForLevel(skillName, level): alcune skill aumentano le cariche con i
+    livelli (es. Rage, Smite, Sneak Attack). Tabella per-skill nelle sezioni classe.
+H5. Le passive nuove (type:"passive") basta aggiungerle agli autoActions con
+    reqLevel: si attivano da sole, nessun click.
+H6. Nel pannello classe del mercato mostrare "Prossimo sblocco a Lv X: …" leggendo
+    queste tabelle (sorgente unica: un oggetto JS CLASS_PROGRESSION da creare).
+
+LEGENDA sblocchi:  [S]=spell/tier  [A]=skill attiva  [P]=passiva  [U]=upgrade/cariche
+                   [C]=punti caratteristica (ASI: +2 da distribuire, vedi 2E)
+                   (NEW)=da creare ex-novo   (esiste)=già nel codice
+NOTA: tutte le righe segnate [C] dànno i +2 punti caratteristica del livello; gli
+      eventuali [U]/[A]/[P] sulla stessa riga sono extra che si sommano all'ASI.
+
+════════════════════════════════════════════════════════════════════════════════
+4. PROGRESSIONE PER CLASSE
+════════════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────────────
+GUERRIERO (Fighter)  — marziale puro, no spell. Re del numero di attacchi.
+────────────────────────────────────────────────────────────────────────────────
+Lv1  [A] Secondo Respiro (esiste) · [A] Carica (esiste)
+Lv2  [A] Scatto d'Azione (esiste) — 1 carica @lv2, sale a 2@lv5, 3@lv9 [U]
+Lv3  [P] Stile di Combattimento (NEW): scegli 1 → "Difesa" +1 CA passivo /
+         "Duellante" +2 danno con 1 arma / "Tiratore" +2 danno a distanza
+Lv4  [C] ASI +2 punti · [A] Disarmare (esiste, 2 cariche)
+Lv5  [P] Extra Attack — 2 attacchi/turno (hook H3)
+Lv6  [C] ASI +2 punti (extra Guerriero) · [U] +1 carica Carica · [P] Presenza Possente (esiste, ritira l'1)
+Lv7  [P] Risolutezza (NEW): 1 volta/fight, ritira un TS fallito
+Lv8  [C] ASI +2 punti · [U] +1 carica a Scatto d'Azione e Disarmare
+Lv9  [P] Indomito (NEW): la prima volta che scenderesti a 0 PF resti a 1 (1/fight)
+Lv10 [P] Stile di Combattimento #2 (secondo stile a scelta)
+Lv11 [P] Extra Attack (2) — 3 attacchi/turno
+Lv12 [C] ASI +2 punti · [P] Critico Migliorato (esiste): critico anche con 19
+Lv13 [A] Colpo Stordente (NEW): TS COS o il nemico salta 1 turno · 2 cariche
+Lv14 [C] ASI +2 punti (extra Guerriero) · [U] +1 carica Colpo Stordente · Disarmare dura 4 turni
+Lv15 [P] Critico Superiore (NEW): critico con 18-19-20
+Lv16 [C] ASI +2 punti · [U] +1 carica a tutte le skill marziali
+Lv17 [A] Colpo d'Ascia Devastante (NEW): 6d6+FOR, ignora metà CA · 1 carica
+Lv18 [P] Sopravvissuto (NEW): a inizio turno se <50% PF curi 5+COS
+Lv19 [C] ASI +2 punti
+Lv20 [P] Extra Attack (3) — 4 attacchi/turno (firma del Guerriero)
+
+────────────────────────────────────────────────────────────────────────────────
+BARBARO (Barbarian)  — marziale, Furia, danno esplosivo, resistenza.
+────────────────────────────────────────────────────────────────────────────────
+Lv1  [A] Furia (esiste) — 4 cariche · [A] Attacco Poderoso (esiste)
+Lv2  [P] Attacco Irruento (NEW): puoi attaccare con vantaggio, ma il nemico ha
+         vantaggio contro di te fino al tuo prossimo turno (toggle in Furia)
+Lv3  [P] Furia Bestiale (NEW): durante Furia +1 al danno per ogni 25% PF mancante
+Lv4  [C] ASI +2 punti · [U] +1 danno arma in Furia (Furia +3 invece di +2)
+Lv5  [P] Extra Attack — 2 attacchi/turno · [A] Turbine di Lame (esiste)
+Lv6  [P] Resistenza Ferina (NEW): in Furia dimezzi danni contundente/taglio/perfor.
+Lv7  [P] Istinto Selvaggio (NEW): vantaggio all'iniziativa, niente svantaggio agli attacchi in Furia
+Lv8  [C] ASI +2 punti · [U] +1 carica Turbine di Lame
+Lv9  [U] Furia: +1 danno (ora +4) · 5 cariche di Furia
+Lv10 [A] Urlo di Guerra (NEW): TS SAG nemico o -2 ai suoi tiri per 3 turni · 2 car.
+Lv11 [P] Furia Implacabile (NEW): se scenderesti a 0 in Furia, TS COS (CD10) per
+         restare a 1 PF (CD +5 ogni uso nello stesso fight)
+Lv12 [C] ASI +2 punti · [U] +1 carica Attacco Poderoso e Urlo di Guerra
+Lv13 [U] Turbine di Lame ora 3 colpi (3d10+FOR)
+Lv14 [P] Caccia Spietata (NEW): +1d6 danni contro nemici sotto il 50% PF
+Lv15 [P] Furia Persistente (NEW): la Furia non scade finché ci sono nemici vivi
+Lv16 [C] ASI +2 punti · [U] Furia: +2 danno (ora +6)
+Lv17 [U] +1 carica generale skill · 6 cariche Furia
+Lv18 [P] Forza Indomabile (NEW): se fallisci un TS FOR/COS lo ritiri (1/turno)
+Lv19 [C] ASI +2 punti · [U] Attacco Poderoso ora 3d8+FOR
+Lv20 [P] Campione Primordiale (NEW): inizi ogni fight già in Furia; danno Furia +3
+
+────────────────────────────────────────────────────────────────────────────────
+MONACO (Monk)  — marziale a mani nude/agile, multi-attacco, ki.
+────────────────────────────────────────────────────────────────────────────────
+Lv1  [A] Carica di Pugni (esiste) · 2 attacchi base (Monk già =2 in getMaxActions)
+Lv2  [A] Concentrazione (esiste) · [P] Movimento Senza Armatura (NEW): +1 CA se
+         senza armatura (passivo)
+Lv3  [A] Deviare Colpi (NEW): bonus action, il prossimo attacco subìto fa -1d10+DES
+Lv4  [C] ASI +2 punti · [A] Assorbire Danni (esiste) · [P] Caduta Lenta (flavor)
+Lv5  [A] Colpo Stordente (NEW): TS COS o nemico salta 1 turno · 2 cariche ·
+         [P] Attacco Extra integrato (resta 2, ma Carica di Pugni → 3 colpi)
+Lv6  [A] Cura Ki (esiste) · [P] Colpi Ki: i pugni contano come magici
+Lv7  [P] Elusione (NEW): se passi un TS DES non subisci danni (1/turno)
+Lv8  [C] ASI +2 punti · [U] +1 carica Concentrazione
+Lv9  [U] Carica di Pugni +1 colpo (4 colpi) · Cura Ki +1 carica
+Lv10 [P] Purezza del Corpo (NEW): immune a veleno e sanguinamento
+Lv11 [A] Raffica Tempestosa (NEW): 3 attacchi a mani nude in un'azione · 2 car.
+Lv12 [C] ASI +2 punti · [U] +1 carica a Colpo Stordente e Deviare Colpi
+Lv13 [P] Lingua di Sole e Luna (NEW): i tuoi colpi ignorano resistenze
+Lv14 [P] Anima di Diamante (NEW): competenza in tutti i TS; ritira 1 TS fallito/turno
+Lv15 [U] Cura Ki ora 2d8+SAG
+Lv16 [C] ASI +2 punti · [U] +1 carica generale ki
+Lv17 [A] Palmo Tremante (NEW): TS COS o danni 6d10 ritardati a fine round · 1 car.
+Lv18 [P] Corpo Vuoto (NEW): bonus action, invisibile + resistenza a tutto 1 turno · 1/fight
+Lv19 [C] ASI +2 punti · [U] Raffica Tempestosa +1 colpo
+Lv20 [P] Perfezione Interiore (NEW): a inizio turno recuperi 1 carica di una skill ki
+
+────────────────────────────────────────────────────────────────────────────────
+LADRO (Rogue)  — danno furtivo, controllo, 2 azioni.
+────────────────────────────────────────────────────────────────────────────────
+Lv1  [A] Attacco Furtivo (esiste, 1d6) · 2 azioni base (Rogue =2)
+Lv2  [A] Furtività (esiste) · [A] Azione Scaltra (NEW): bonus action, +1 azione
+         questo turno · 2 cariche
+Lv3  [A] Triboli (esiste) · [P] Maestria (NEW): scegli "Inganno" (vantaggio al
+         1° attacco di ogni fight) o "Agilità" (+1 CA contro il 1° colpo nemico)
+Lv4  [C] ASI +2 punti · [U] Attacco Furtivo → 2d6
+Lv5  [P] Schivata Prodigiosa (NEW): dimezzi i danni di un attacco/turno (reaction)
+Lv6  [U] +1 carica Attacco Furtivo · Maestria #2
+Lv7  [P] Elusione (NEW): TS DES superato = 0 danni
+Lv8  [C] ASI +2 punti · [U] Attacco Furtivo → 3d6
+Lv9  [A] Colpo Mortale (esiste, deathblow ≤20% PF) — sbloccato a lv9
+Lv10 [C] ASI +2 punti (extra Ladro) · [P] Talento Affidabile (NEW): coi tiri con vantaggio non scendi sotto 10
+Lv11 [U] Attacco Furtivo → 4d6 · +1 carica Triboli
+Lv12 [C] ASI +2 punti · [U] +1 carica Azione Scaltra
+Lv13 [P] Schivata Migliorata (NEW): schivi senza spendere reaction, 2/turno
+Lv14 [A] Veleno da Lama (NEW): avvelena l'arma, +2d6 veleno per 3 colpi · 2 car.
+Lv15 [P] Sensi Acuti (NEW): non puoi essere colto di sorpresa né accecato
+Lv16 [C] ASI +2 punti · [U] Attacco Furtivo → 5d6
+Lv17 [U] +1 carica Colpo Mortale (ora 2→3) · soglia deathblow ≤25% PF
+Lv18 [P] Elusività (NEW): i nemici non hanno mai vantaggio contro di te
+Lv19 [C] ASI +2 punti · [U] Attacco Furtivo → 6d6
+Lv20 [P] Colpo di Fortuna (NEW): 1/fight trasformi un mancato in un critico
+
+────────────────────────────────────────────────────────────────────────────────
+PALADINO (Paladin)  — half-caster, Smite, cura, aura. CAR.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell (half-caster):
+  Lv2 {1:1} · Lv5 {1:2,2:1} · Lv9 {1:2,2:2,3:1} · Lv13 {..,4:1} · Lv17 {..,5:1}
+Lv1  [A] Smite Divino (esiste) · [A] Lay of Hands (esiste, pozza 1/3 PF)
+Lv2  [S] Tier 1 spell (esistono PALADIN_SPELLS lv1) · [P] Stile di Combattimento (NEW)
+Lv3  [P] Salute Divina (NEW): immune a malattia/veleno · [P] Giuramento (NEW):
+         scegli "Devozione" (+CA aura) / "Vendetta" (+danno vs chi ti ha colpito)
+Lv4  [C] ASI +2 punti · [U] +1 carica Smite
+Lv5  [P] Extra Attack — 2 attacchi · [S] Tier 2
+Lv6  [P] Aura di Protezione (NEW): +CAR ai tuoi TS (passivo)
+Lv7  [P] Aura del Giuramento (NEW): effetto extra del giuramento scelto a lv3
+Lv8  [C] ASI +2 punti · [U] +1 carica Smite (ora 3)
+Lv9  [S] Tier 3 · [A] Smite Tremante (NEW): smite + TS o nemico salta 1 turno
+Lv10 [P] Aura di Coraggio (NEW): immune a paura/controllo mentale
+Lv11 [P] Smite Migliorato (NEW): ogni attacco con arma infligge +1d8 radiante passivo
+Lv12 [C] ASI +2 punti · [U] Lay of Hands pool 1/2 PF max
+Lv13 [S] Tier 4
+Lv14 [P] Tocco Purificante (NEW): Lay of Hands rimuove anche 1 debuff
+Lv15 [P] Aura potenziata: raggio/effetti del giuramento +50%
+Lv16 [C] ASI +2 punti · [U] +1 carica a tutte le skill
+Lv17 [S] Tier 5
+Lv18 [P] Auras attive sempre (anche a 0 cariche)
+Lv19 [C] ASI +2 punti · [U] Smite ora 3d8 base
+Lv20 [P] Avatar del Giuramento (NEW): 1/fight, 3 turni: +Extra Attack e smite gratis
+
+────────────────────────────────────────────────────────────────────────────────
+RANGER (Ranger/Cacciatore)  — half-caster, pet, marchio, danno mirato. DES/SAG.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell: come Paladino (half-caster), ma RANGER_SPELLS oggi solo lv1.
+Lv1  [A] Marchio del Cacciatore (esiste) · [A] Compagno Animale (RANGER_PETS, esiste)
+Lv2  [S] Tier 1 · [P] Stile di Combattimento (NEW: Arco/Due Armi/Difesa)
+Lv3  [P] Predatore (NEW): scegli archetipo → "Cacciatore" (+1d6 vs bersaglio
+         marchiato) / "Maestro di Bestie" (il pet attacca ogni turno gratis)
+Lv4  [C] ASI +2 punti · [U] +1 carica Marchio
+Lv5  [P] Extra Attack — 2 attacchi · [S] Tier 2
+Lv6  [U] +1 carica pet · Marchio dura 4 turni
+Lv7  [P] Difesa del Predatore (NEW): mentre c'è un bersaglio marchiato, -2 danni subiti
+Lv8  [C] ASI +2 punti · [U] pet +1 carica
+Lv9  [S] Tier 3 · [A] Raffica di Frecce (NEW): colpisce 2 volte a distanza · 2 car.
+Lv10 [P] Mimetismo (NEW): a inizio fight parti furtivo (vantaggio 1° attacco)
+Lv11 [P] Marchio Furioso (NEW): il bonus di Marchio sale a +1d8 e si sposta gratis
+         sul prossimo nemico quando il marchiato muore
+Lv12 [C] ASI +2 punti · [U] +1 carica Raffica
+Lv13 [S] Tier 4
+Lv14 [P] Svanire (NEW): bonus action, diventi non bersagliabile 1 turno · 1/fight
+Lv15 [P] Pet Superiore: il compagno raddoppia i dadi di danno
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 5
+Lv18 [P] Sensi Ferini (NEW): immune ad accecamento e furtività nemica
+Lv19 [C] ASI +2 punti · [U] Marchio +1d10
+Lv20 [P] Nemico Mortale (NEW): contro un bersaglio marchiato i tuoi attacchi
+         critico con 19-20 e ignorano metà CA
+
+────────────────────────────────────────────────────────────────────────────────
+MAGO (Wizard)  — full caster INT, versatile, Recupero Arcano.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell per livello (esempio scalabile, colonna 0/1/2/3/4/5/6/7/8/9):
+  Lv1  {0:3,1:2}
+  Lv3  {0:3,1:3,2:2}
+  Lv5  {0:4,1:3,2:2,3:1}
+  Lv7  {0:4,1:3,2:2,3:2,4:1}
+  Lv9  {0:4,1:3,2:3,3:2,4:1,5:1}
+  Lv11 {..,6:1}  Lv13 {..,7:1}  Lv15 {..,8:1}  Lv17 {..,9:1}
+  Lv19 +1 trucchetto e +1 spell di tier alto (cap finale).
+Lv1  [S] Tier1 (WIZARD_SPELLS esiste fino a lv3) · [A] Recupero Arcano (esiste)
+Lv2  [P] Tradizione Arcana (NEW): scegli scuola →
+         "Evocazione" (spell danno +1 dado) / "Abiurazione" (scudo arcano:
+         assorbe i primi 2×liv danni a fight) / "Divinazione" (1 ritiro TS/turno)
+Lv3  [S] Tier 2 (sblocca lv2 già esistenti)
+Lv4  [C] ASI +2 punti · [U] +1 trucchetto noto
+Lv5  [S] Tier 3 (sblocca Palla di Fuoco / Fulmine / Contrincantesimo, già esistenti)
+Lv6  [P] Bonus di scuola #2 (effetto avanzato della tradizione scelta)
+Lv7  [S] Tier 4 (NEW: es. "Tempesta di Ghiaccio" 6d6 area/freddo, "Porta Dimens."
+         = teletrasporto difensivo salta 1 attacco)
+Lv8  [C] ASI +2 punti · [U] +1 carica spell tier basso
+Lv9  [S] Tier 5 (NEW: "Cono di Freddo" 8d8, "Telecinesi" = stun TS FOR)
+Lv10 [P] Maestria Trucchetti (NEW): i trucchetti danno +1 dado
+Lv11 [S] Tier 6 (NEW: "Disintegrazione" 10d6+40 TS DES, "Globo di Invuln." 2 turni)
+Lv12 [C] ASI +2 punti · [U] +1 spell nota tier medio
+Lv13 [S] Tier 7 (NEW: "Dito della Morte" 7d8+30 necrotico, "Inversione Gravità")
+Lv14 [P] Bonus di scuola finale
+Lv15 [S] Tier 8 (NEW: "Parola del Potere: Stordire", "Incenerire" 12d6)
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 9 (NEW: "Meteora" 20d6 una volta, "Parola del Potere: Morte")
+Lv18 [P] Maestria Incantesimi (NEW): 1 spell tier≤2 lanciabile a costo 0 cariche
+Lv19 [C] ASI +2 punti · [U] +1 spell di tier alto
+Lv20 [P] Firma Magica (NEW): 2 spell scelte (tier≤3) hanno cariche illimitate
+
+────────────────────────────────────────────────────────────────────────────────
+STREGONE (Sorcerer)  — full caster CAR, metamagia, burst. INNATE_SORCERY.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell: come Mago (full caster).
+Lv1  [S] Tier1 (SORCERER_SPELLS) · [P] Stregoneria Innata (esiste) · [A] Fonte di Magia (esiste)
+Lv2  [P] Origine Stregonesca (NEW): "Draconica" (spell elementali +1d/colpo) /
+         "Magia Selvaggia" (ogni spell ha 10% di effetto bonus casuale)
+Lv3  [S] Tier 2 · [A] Metamagia: Spell Gemella (NEW): la prossima spell colpisce 2 volte · 2 car.
+Lv4  [C] ASI +2 punti · [U] +1 trucchetto
+Lv5  [S] Tier 3 · [A] Metamagia: Spell Potenziata (NEW): ritira i dadi di danno bassi · 2 car.
+Lv6  [P] Bonus d'Origine #2
+Lv7  [S] Tier 4 (NEW)
+Lv8  [C] ASI +2 punti · [U] +1 carica Fonte di Magia
+Lv9  [S] Tier 5 (NEW)
+Lv10 [A] Metamagia: Spell Rapida (NEW): lancia una spell come bonus action · 2 car.
+Lv11 [S] Tier 6 (NEW)
+Lv12 [C] ASI +2 punti · [U] +1 carica metamagia
+Lv13 [S] Tier 7 (NEW)
+Lv14 [P] Bonus d'Origine finale (es. Draconica: resistenza elementale + ali=svanire 1 turno)
+Lv15 [S] Tier 8 (NEW)
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 9 (NEW)
+Lv18 [P] Restauro Stregonesco (NEW): a inizio turno 25% di recuperare 1 carica spell
+Lv19 [C] ASI +2 punti · [U] +1 spell tier alto
+Lv20 [P] Restauro Arcano (NEW): inizi il fight con +2 cariche distribuite
+
+────────────────────────────────────────────────────────────────────────────────
+WARLOCK (Oscuro Cultore)  — Pact Magic CAR, demoni, patto, controllo.
+────────────────────────────────────────────────────────────────────────────────
+Mystic Arcanum: a lv 11/13/15/17 sblocca 1 spell singola tier 6/7/8/9 (1 carica).
+Limiti spell base (poche ma ricaricabili con Astuzia Magica):
+  Lv1 {0:2,1:2} · Lv3 {0:2,1:2,2:1} · Lv5 {..,3:1} · Lv7 {..,4:1} · Lv9 {..,5:1}
+Lv1  [S] Tier1 (WARLOCK_SPELLS) · [A] Astuzia Magica (esiste) · [A] Patto Demoniaco (esiste)
+Lv2  [P] Suppliche Occulte (NEW): scegli 1 → "Maschera" (i tuoi trucchetti +1d) /
+         "Vista del Diavolo" (immune accecamento) / "Catene" (controllo dura +1 turno)
+Lv3  [A] Dono del Patto (NEW): scegli → "Patto della Lama" (evoca arma 1d8+CAR
+         con Extra Attack a lv5) / "Patto del Tomo" (+2 trucchetti) /
+         "Patto della Catena" → sblocca WARLOCK_DEMONS migliorato
+Lv4  [C] ASI +2 punti · [U] +1 trucchetto
+Lv5  [S] Tier 3 · (se Patto della Lama) Extra Attack — 2 attacchi
+Lv6  [P] Supplica #2
+Lv7  [S] Tier 4 (NEW)
+Lv8  [C] ASI +2 punti · [U] +1 carica Patto Demoniaco
+Lv9  [S] Tier 5 (NEW)
+Lv10 [P] Supplica #3 (es. resistenza a un tipo di danno)
+Lv11 [S] Mystic Arcanum tier 6 (NEW, 1 carica/fight)
+Lv12 [C] ASI +2 punti · [U] +1 carica demone
+Lv13 [S] Mystic Arcanum tier 7 (NEW, 1 carica)
+Lv14 [P] Effetto capstone del patto (es. Catena: il demone non muore mai)
+Lv15 [S] Mystic Arcanum tier 8 (NEW, 1 carica)
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Mystic Arcanum tier 9 (NEW, 1 carica)
+Lv18 [U] +1 carica Astuzia Magica (recupera più slot)
+Lv19 [C] ASI +2 punti · [U] Patto Demoniaco ora +1d12 e dura 4 turni
+Lv20 [P] Maestro Occulto (NEW): 1/fight ricarichi TUTTE le spell tier≤2
+
+────────────────────────────────────────────────────────────────────────────────
+CHIERICO (Cleric)  — full caster SAG, cura + radiante/necrotico + buff.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell: come Mago (full caster).
+Lv1  [S] Tier1 (CLERIC_SPELLS: cura/Fiamma Sacra/Infliggi)
+Lv2  [A] Incanalare Divinità (NEW): scegli Dominio →
+         "Vita" (cura +2×liv, AoH passiva) / "Guerra" (1/turno +10 a un tiro) /
+         "Morte/Tempesta" (Scacciare: TS o nemico salta 1 turno · 2 cariche)
+Lv3  [S] Tier 2
+Lv4  [C] ASI +2 punti · [U] +1 trucchetto
+Lv5  [S] Tier 3 · [P] Distruggere Non Morti / Colpo Benedetto (NEW: cure e danni +1d)
+Lv6  [P] Bonus di Dominio #2 (incanalare divinità +1 carica)
+Lv7  [S] Tier 4 (NEW: "Guardiano della Fede" = riflette danni, "Cura di Massa")
+Lv8  [C] ASI +2 punti · [P] Colpo Divino (NEW): 1/turno +1d8 radiante in mischia
+Lv9  [S] Tier 5 (NEW: "Colonna di Fiamma" 8d6, "Risurrezione" = revive a 1 PF se cali)
+Lv10 [P] Intervento Divino (NEW): 10%/turno effetto miracoloso (cura piena o stun)
+Lv11 [S] Tier 6 (NEW: "Lama Spirituale", "Guarigione" cura totale 1/fight)
+Lv12 [C] ASI +2 punti · [U] +1 carica Incanalare
+Lv13 [S] Tier 7 (NEW: "Parola Divina" TS o stun, "Rigenerazione")
+Lv14 [P] Bonus di Dominio finale
+Lv15 [S] Tier 8 (NEW: "Antipatia/Simpatia", "Fuoco Sacro" 12d6 radiante)
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 9 (NEW: "Raffica Solare" 12d6×2, "Risurrezione Vera")
+Lv18 [P] Incanalare Divinità a uso illimitato (cariche infinite del dominio base)
+Lv19 [C] ASI +2 punti · [U] +1 spell tier alto
+Lv20 [P] Intervento Divino garantito 1/fight (effetto miracoloso sicuro)
+
+────────────────────────────────────────────────────────────────────────────────
+DRUIDO (Druid)  — full caster SAG, Wild Shape, natura.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell: come Mago (full caster). Ha hasWildShape:true (WILD_SHAPES).
+Lv1  [S] Tier1 (DRUID_SPELLS) · [P] Druidico (flavor)
+Lv2  [A] Forma Selvatica (Wild Shape esiste) — 2 cariche · [P] Circolo Druidico (NEW):
+         "Terra" (+1 carica spell di un tier) / "Luna" (forme da combattimento più forti)
+Lv3  [S] Tier 2
+Lv4  [C] ASI +2 punti · [U] Forma Selvatica migliorata (forme con più PF/danno)
+Lv5  [S] Tier 3
+Lv6  [P] Bonus di Circolo (Luna: cura in forma; Terra: trucchetto difensivo gratis)
+Lv7  [S] Tier 4 (NEW: "Tempesta di Ghiaccio", "Evoca Animali" = pet temporaneo)
+Lv8  [C] ASI +2 punti · [U] +1 carica Forma Selvatica
+Lv9  [S] Tier 5 (NEW: "Pelle di Pietra" = resistenza fisica, "Flagello d'Insetti" DoT)
+Lv10 [P] Anima Selvatica (NEW): immune a veleno/malattia; forme ignorano resistenze
+Lv11 [S] Tier 6 (NEW: "Muro di Spine", "Guarigione" natura)
+Lv12 [C] ASI +2 punti · [U] +1 carica spell
+Lv13 [S] Tier 7 (NEW: "Tempesta di Fuoco" 7d10, "Inversione")
+Lv14 [P] Bonus di Circolo finale
+Lv15 [S] Tier 8 (NEW: "Terremoto" stun TS, "Sole Bruciante" 12d6)
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 9 (NEW: "Tempesta Elementale", "Cambiare Forma" suprema)
+Lv18 [U] Forma Selvatica cariche illimitate (cambi forma a volontà)
+Lv19 [C] ASI +2 punti · [U] +1 spell tier alto
+Lv20 [P] Arcidruido (NEW): Forma Selvatica gratis + trucchetti SAG illimitati
+
+────────────────────────────────────────────────────────────────────────────────
+BARDO (Bard)  — full caster CAR, supporto, ispirazione, jack-of-all-trades.
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell base: {0:0,1:4,2:2,...} (no trucchetti d'attacco — è un supporto),
+scala come full caster sui tier alti.
+Lv1  [A] Ispirazione Bardica (esiste, cariche=CAR)
+Lv2  [P] Tuttofare (NEW): +1 a tutti i tiri per colpire/TS (passivo)
+Lv3  [S] Tier 2 · [P] Collegio (NEW): "Sapienza" (ruba 1 spell di altra classe) /
+         "Valore" (+1 attacco e armi marziali) / "Spada" (danni in mischia +1d6)
+Lv4  [C] ASI +2 punti · [U] +1 carica Ispirazione
+Lv5  [P] Fonte d'Ispirazione (NEW): l'Ispirazione si ricarica a metà fight ·
+         [S] Tier 3
+Lv6  [P] Bonus di Collegio #2 · [A] Nota Dolente (esiste, se buff Bottega)
+Lv7  [S] Tier 4 (NEW)
+Lv8  [C] ASI +2 punti · [U] Ispirazione ora +1d8
+Lv9  [S] Tier 5 (NEW) · [A] Canto del Riposo (NEW): cura un tot a inizio fight
+Lv10 [P] Magia Segreta (NEW): impara 2 spell extra di qualunque classe ·
+         Ispirazione +1d (ora 1d10)
+Lv11 [S] Tier 6 (NEW)
+Lv12 [C] ASI +2 punti · [U] +1 carica spell
+Lv13 [S] Tier 7 (NEW)
+Lv14 [P] Bonus di Collegio finale
+Lv15 [S] Tier 8 (NEW) · Ispirazione → 1d12
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 9 (NEW)
+Lv18 [U] +cariche Magia Segreta
+Lv19 [C] ASI +2 punti · [U] +1 spell tier alto
+Lv20 [P] Ispirazione Superiore (NEW): inizi ogni fight con cariche Ispirazione piene
+
+────────────────────────────────────────────────────────────────────────────────
+ARTEFICE (Artificer)  — half-caster INT, armi da fuoco, costrutti. (sbloccato in Bottega)
+────────────────────────────────────────────────────────────────────────────────
+Limiti spell (half-caster, ma cantrip da lv1):
+  Lv1 {0:2,1:2} · Lv5 {0:2,1:3,2:1} · Lv9 {..,3:1} · Lv13 {..,4:1} · Lv17 {..,5:1}
+Lv1  [S] Tier1 + trucchetti (ARTIFICER_SPELLS) · [A] Forgia Armatura (esiste)
+Lv2  [A] Infusione (NEW): potenzia l'arma → +1 ai tiri/danni per il fight (2 cariche)
+Lv3  [A] Costrutto (ARTIFICER_CONSTRUCTS golem/serpente, esiste) · [P] Specialista (NEW):
+         "Alchimista" (cura+danno acido) / "Artigliere" (armi da fuoco +1d) /
+         "Battaglia" (il costrutto agisce ogni turno)
+Lv4  [C] ASI +2 punti · [U] +1 carica Forgia Armatura
+Lv5  [S] Tier 2 · [P] Extra Attack (solo Artigliere) o +1 carica costrutto
+Lv6  [P] Bonus di specializzazione #2
+Lv7  [P] Spruzzo di Schegge (NEW): 1/turno l'arma da fuoco fa +1d6 ad area
+Lv8  [C] ASI +2 punti · [U] +1 carica Infusione
+Lv9  [S] Tier 3 (NEW)
+Lv10 [P] Maestro di Infusioni (NEW): 2 infusioni attive insieme
+Lv11 [A] Oggetto Mirabile (NEW): bonus action, effetto a scelta (cura/scudo/danno) · 2 car.
+Lv12 [C] ASI +2 punti · [U] costrutto +1 carica
+Lv13 [S] Tier 4 (NEW)
+Lv14 [P] Bonus di specializzazione finale
+Lv15 [P] Costrutto Superiore (NEW): il costrutto raddoppia i dadi
+Lv16 [C] ASI +2 punti · [U] +1 carica generale
+Lv17 [S] Tier 5 (NEW)
+Lv18 [P] Genio Magico (NEW): 4 infusioni; oggetti a costo ridotto
+Lv19 [C] ASI +2 punti · [U] +1 carica Oggetto Mirabile
+Lv20 [P] Soul of Artifice (NEW): finché un costrutto è vivo, +1 a tutti i TS;
+         se cadi a 0 PF, il costrutto si sacrifica e ti rialza a 1 (1/fight)
+
+════════════════════════════════════════════════════════════════════════════════
+5. RIEPILOGO "COSA C'È vs COSA CREARE"
+════════════════════════════════════════════════════════════════════════════════
+GIÀ ESISTE (da agganciare a reqLevel, non ricreare):
+  • Tutte le spell tier 0-3 negli array *_SPELLS.
+  • Tutte le skill/passive elencate nella sezione 0.
+  • getProficiencyBonus, getMaxActionsPerTurn, getClassLoadout, SPELL_LIMITS,
+    WILD_SHAPES, RANGER_PETS, WARLOCK_DEMONS, ARTIFICER_CONSTRUCTS.
+
+DA CORREGGERE SUBITO (allineamento al design):
+  C0. Default livello = 3, non 1: cambiare `?? 1` in `?? 3` in
+      Arena.jsx:1040 e ArenaMarket.jsx:181/271/444/539. Così tutti partono da Lv3.
+
+DA CREARE (in ordine di priorità d'impatto):
+  P0. PUNTI CARATTERISTICA (ASI): sistema per assegnare i +2 punti ai livelli-ASI.
+      • storage per-classe: `arenaStatPoints: { [classKey]: {str,dex,con,int,wis,cha} }`
+      • UI nel mercato (o in fase di loadout) per spendere i punti maturati
+        = somma dei punti dei livelli-ASI raggiunti − punti già spesi.
+      • le stat effettive in arena = stat base personaggio + arenaStatPoints[classKey].
+        Tutti i calcoli (mod attacco/danno, getSpellSaveDC, CA da DES, cariche=CAR,
+        Lay of Hands) già leggono snap.stats → basta iniettare i bonus nello snapshot
+        al join, in base alla classe scelta. Cap per stat = 20.
+  P1. Spell tier 4-9 per i 5 full caster + tier 4-5 half-caster + Mystic Arcanum
+      warlock. (È il grosso del lavoro: ~6 tier × 5 classi, anche 2-3 spell/tier.)
+  P2. Le passive di sottoclasse/archetipo ai liv 2-3 di ogni classe (scelta unica
+      salvata PER CLASSE, es. `arenaSubclass: { [classKey]: "evocazione" }`).
+  P3. Extra Attack scalato col livello (hook H3).
+  P4. spellLimitsForLevel + reqLevel filtering (hook H1/H2/R4/R5).
+  P5. Le skill attive nuove dei marziali (Colpo Stordente, Raffica, ecc.).
+  P6. Pannello mercato: "Prossimo sblocco a Lv X" + "Punti caratteristica da spendere".
+
+NOTE DI BILANCIAMENTO (1v1 a turni):
+  • Tier 6-9 e capstone (lv 20): SEMPRE 1 carica/fight. Evitano il one-shot ripetuto.
+  • Le "cariche illimitate" (Mago lv20, Druido lv18/20, ecc.) limitarle a
+    trucchetti/spell tier basso, MAI ai tier alti.
+  • Le scelte di sottoclasse sono PERMANENTI per classe (come i talenti): salvate
+    su Firestore, modificabili solo dal Master (coerente col resto dell'Arena).
+  • Quando implemento un blocco, aggiorno src/data/changelog.json (tipo "mechanics").
