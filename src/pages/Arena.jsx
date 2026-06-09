@@ -9,7 +9,6 @@ import {
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { awardPetPoints } from "../utils/pet";
-import { VfxLayer } from "./WorldBossVfx";
 import "./Arena.css";
 import "./ArenaHero.css";
 
@@ -44,6 +43,52 @@ function withArenaFx(matches, matchId, effect, targetId) {
   if (!targetId || !effect) return matches;
   const fx = { id: `${effect}:${targetId}:${Date.now()}`, effect, targetId };
   return matches.map(m => (m.matchId === matchId ? { ...m, lastFx: fx } : m));
+}
+
+// Effetti pixel in stile World Boss isometrico (CSS, semplici e pixelati):
+// armi (mischia + distanza) → schizzo di sangue rosso (tutte uguali);
+// incantesimi → "bolt" colorato per elemento (stile colpo arcano);
+// cure → pixel verdi che salgono.
+function arenaFxKind(effect) {
+  if (effect === "heal") return { kind: "heal" };
+  if (effect === "slash" || effect === "ranged") return { kind: "blood" };
+  return { kind: "bolt", el: effect === "magic" ? "arcane" : effect };
+}
+const ARENA_VFX_MS = 1050;
+function ArenaVfxLayer({ messages }) {
+  const seenRef = useRef(new Set());
+  const [active, setActive] = useState([]);
+  useEffect(() => {
+    if (!messages?.length) return;
+    for (const msg of messages) {
+      if (!msg?.id || seenRef.current.has(msg.id)) continue;
+      seenRef.current.add(msg.id);
+      for (const t of (msg.effectTargets || [])) {
+        const node = document.querySelector(`[data-vfx-target="${t}"]`);
+        if (!node) continue;
+        const rect = node.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        const id = `${msg.id}-${t}`;
+        const fx = arenaFxKind(msg.effect);
+        setActive(prev => [...prev, { id, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, ...fx }]);
+        setTimeout(() => setActive(prev => prev.filter(a => a.id !== id)), ARENA_VFX_MS);
+      }
+    }
+  }, [messages]);
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    active.map(({ id, x, y, kind, el }) => {
+      const n = kind === "blood" ? 9 : kind === "heal" ? 5 : 7;
+      return (
+        <div key={id} className={`avfx avfx-${kind}${el ? ` el-${el}` : ""}`}
+          style={{ position: "fixed", left: x, top: y, pointerEvents: "none", zIndex: 9999 }}>
+          {kind === "bolt" && <span className="avfx-core" />}
+          {Array.from({ length: n }, (_, i) => <i key={i} />)}
+        </div>
+      );
+    }),
+    document.body
+  );
 }
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
@@ -5741,7 +5786,7 @@ export default function Arena() {
         const log = `${myName} lancia ${action.icon || "🤢"} ${action.name} su ${targetName} → TS ${SAVE_LABEL[ability]} (CD ${dc}) richiesto!`;
         return { ...m, players, turn: m.players[nextIndex].id, turnExpiry: expiry, logs: [...m.logs, log] };
       });
-      tx.update(ref, { matches });
+      tx.update(ref, { matches: withArenaFx(matches, matchId, "poison", targetId) });
     });
   };
 
@@ -6113,7 +6158,7 @@ export default function Arena() {
         const log = `${myName} lancia ${action.icon} ${action.name} su ${targetName} → TS ${SAVE_LABEL[saveAbility]} (CD ${ctrlDC}) richiesto!`;
         return { ...m, players, turn: m.players[nextIndex].id, turnExpiry: ctrlExpiry, logs: [...m.logs, log] };
       });
-      tx.update(ref, { matches });
+      tx.update(ref, { matches: withArenaFx(matches, matchId, "magic", targetId) });
     });
   };
 
@@ -6786,8 +6831,8 @@ export default function Arena() {
   return (
     <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}`}>
 
-      {/* ── VFX pixelati: overlay in portal sopra le card dei combattenti ── */}
-      <VfxLayer messages={vfxMessages} />
+      {/* ── VFX pixelati (stile World Boss isometrico): overlay sopra le card ── */}
+      <ArenaVfxLayer messages={vfxMessages} />
 
       {/* ── Floating Fight Button — sempre visibile durante un match attivo.
             Più epico quando è il tuo turno (pulsa rosso). ── */}
@@ -8788,6 +8833,8 @@ export default function Arena() {
                     const hpPct    = Math.max(0, (p.hp / (char.stats?.maxHp ?? 70)) * 100);
                     const hpColor  = hpPct > 60 ? "#00FF88" : hpPct > 30 ? "#FFD700" : "#FF3355";
                     const fLvl     = Object.values(char.classLevels || {}).reduce((a, b) => a + (b || 0), 0) || 1;
+                    // Sotto controllo (Sonno/Paura/Blocca/Charme/Ragnatela…) → aura viola pixelata
+                    const isControlled = !isDead && ((p.controlLostTurns ?? 0) > 0 || !!p.pendingControlSave || !!p.entangled);
 
                     return (
                       <React.Fragment key={p.id}>
@@ -8799,7 +8846,7 @@ export default function Arena() {
                             <span className="cv-orbit o3" aria-hidden="true" />
                           </div>
                         )}
-                        <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead ? "waiting" : "")} ${isDead ? "defeated" : ""}`} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
+                        <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead ? "waiting" : "")} ${isDead ? "defeated" : ""}`}>
                           {isActive && !isDead && <div className="turn-indicator">Il tuo turno</div>}
                           {isDead && <div className="defeated-banner">Sconfitto</div>}
 
@@ -8811,12 +8858,16 @@ export default function Arena() {
                             </div>
                           ))}
                           {char.image ? (
-                            <div className="cv-avatar-wrap" style={{ "--hp": `${hpPct}%`, "--hpcol": hpColor }}>
+                            <div className={`cv-avatar-wrap${isControlled ? " is-controlled" : ""}`} style={{ "--hp": `${hpPct}%`, "--hpcol": hpColor }} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
                               <span className="cv-hp-ring" aria-hidden="true" />
                               <img src={char.image} alt={p.name} className="fighter-avatar" />
+                              {isControlled && <span className="cv-control-aura" aria-hidden="true" />}
                             </div>
                           ) : (
-                            <div className="cv-noavatar" aria-hidden="true">{CLASS_ICONS[(char.class || "").toLowerCase()] || CLASS_ICONS[char.class] || "⚔"}</div>
+                            <div className={`cv-noavatar${isControlled ? " is-controlled" : ""}`} aria-hidden="true" data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
+                              {CLASS_ICONS[(char.class || "").toLowerCase()] || CLASS_ICONS[char.class] || "⚔"}
+                              {isControlled && <span className="cv-control-aura" aria-hidden="true" />}
+                            </div>
                           )}
                           {char.image ? (
                             <span className="cv-hp-text" style={{ color: hpColor }}>{p.hp}<small>/{char.stats?.maxHp ?? 70}</small></span>

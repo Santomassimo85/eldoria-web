@@ -9030,3 +9030,59 @@
   0%, 100% { text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(232, 198, 106, 0.45); }
   50%      { text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 0 36px rgba(232, 198, 106, 0.85); }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   EFFETTI PIXEL D'ARENA (stile World Boss isometrico) — in portal su <body>
+   Armi (mischia + distanza) → schizzo di sangue rosso (tutte uguali).
+   Incantesimi → "bolt" colorato per elemento (stile colpo arcano).
+   Cure → pixel verdi che salgono. Semplici, lenti il giusto per essere visti.
+   ════════════════════════════════════════════════════════════════════════ */
+.avfx { position: fixed; pointer-events: none; }
+.avfx i { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; image-rendering: pixelated; }
+/* 9 direzioni di esplosione (steps() = movimento "a pixel") */
+.avfx i:nth-child(1){ --dx: 22px; --dy:  -5px; }
+.avfx i:nth-child(2){ --dx: 15px; --dy: -19px; }
+.avfx i:nth-child(3){ --dx: -3px; --dy: -25px; }
+.avfx i:nth-child(4){ --dx:-18px; --dy: -16px; }
+.avfx i:nth-child(5){ --dx:-23px; --dy:  -3px; }
+.avfx i:nth-child(6){ --dx:-12px; --dy:  14px; }
+.avfx i:nth-child(7){ --dx:  6px; --dy:  17px; }
+.avfx i:nth-child(8){ --dx: 18px; --dy:   9px; }
+.avfx i:nth-child(9){ --dx:  1px; --dy: -13px; }
+@keyframes avfx-burst {
+  from { transform: translate(0,0) scale(1.25); opacity: 1; }
+  to   { transform: translate(var(--dx,0), var(--dy,0)) scale(0.5); opacity: 0; }
+}
+
+/* SANGUE — schizzo rosso per ogni attacco con arma (mischia e distanza) */
+.avfx-blood i { background:#c81e1e; box-shadow:0 0 0 1px #4a0606; animation: avfx-burst .9s steps(6) forwards; }
+.avfx-blood i:nth-child(odd){ background:#e23b3b; }
+
+/* BOLT magico — nucleo luminoso + scintille colorate (stile colpo arcano) */
+.avfx-bolt i { animation: avfx-burst 1s steps(6) forwards; }
+.avfx-core { position:absolute; left:-8px; top:-8px; width:16px; height:16px; border-radius:50%; image-rendering:pixelated; animation: avfx-core 1s steps(6) forwards; }
+@keyframes avfx-core { 0%{ transform:scale(.2); opacity:0; } 28%{ transform:scale(1.35); opacity:1; } 100%{ transform:scale(.7); opacity:0; } }
+.avfx-bolt.el-fire      i{ background:#ff8a3a; box-shadow:0 0 0 1px #7a1e06; }
+.avfx-bolt.el-fire      .avfx-core{ background:radial-gradient(circle,#ffe3a8,#e0531a); box-shadow:0 0 10px 2px #ff8a3a; }
+.avfx-bolt.el-frost     i{ background:#bfeaff; box-shadow:0 0 0 1px #2a6a9a; }
+.avfx-bolt.el-frost     .avfx-core{ background:radial-gradient(circle,#eafbff,#3aa0d4); box-shadow:0 0 10px 2px #9fe0ff; }
+.avfx-bolt.el-lightning i{ background:#fff27a; box-shadow:0 0 0 1px #a8860c; }
+.avfx-bolt.el-lightning .avfx-core{ background:radial-gradient(circle,#fff8c2,#e0c020); box-shadow:0 0 11px 2px #fff27a; }
+.avfx-bolt.el-poison    i{ background:#b6f25a; box-shadow:0 0 0 1px #3a6a10; }
+.avfx-bolt.el-poison    .avfx-core{ background:radial-gradient(circle,#ecffb6,#5ea01e); box-shadow:0 0 10px 2px #c2f566; }
+.avfx-bolt.el-arcane    i{ background:#c79bff; box-shadow:0 0 0 1px #4a2c7a; }
+.avfx-bolt.el-arcane    .avfx-core{ background:radial-gradient(circle,#efd0ff,#7a48c4); box-shadow:0 0 10px 2px #b07bff; }
+
+/* CURA — pixel verdi che salgono */
+.avfx-heal i { background:#7cffb0; box-shadow:0 0 0 1px #1c6b3f; animation: avfx-rise .95s steps(4) forwards; }
+.avfx-heal i:nth-child(1){ --hx:-13px; }
+.avfx-heal i:nth-child(2){ --hx: -5px; }
+.avfx-heal i:nth-child(3){ --hx:  5px; }
+.avfx-heal i:nth-child(4){ --hx: 13px; }
+.avfx-heal i:nth-child(5){ --hx:  0px; }
+@keyframes avfx-rise {
+  from { transform: translate(var(--hx,0),  9px); opacity: 1; }
+  to   { transform: translate(var(--hx,0), -28px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce){ .avfx{ display:none; } }

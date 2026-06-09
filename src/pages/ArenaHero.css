@@ -5403,6 +5403,36 @@ body .arena-page.arena-page .master-actions [class*="btn-"] { box-shadow: 0 6px 
 .arena-combat-dialog .side-foe .cv-noavatar{ border:2px solid rgba(192,57,43,.5); box-shadow:0 0 14px rgba(192,57,43,.4); }
 .arena-combat-dialog .side-you .cv-noavatar{ border:2px solid rgba(227,197,88,.5); box-shadow:0 0 14px rgba(227,197,88,.4); }
 
+/* ── SOTTO CONTROLLO: aura viola pixelata che avvolge l'avatar ──────────────── */
+.arena-combat-dialog .cv-avatar-wrap.is-controlled .fighter-avatar{
+  border-color:rgba(168,85,247,.9)!important;
+  box-shadow:0 0 18px rgba(147,51,234,.85)!important;
+  filter:saturate(.6) brightness(.9);
+  animation:none!important;
+}
+.arena-combat-dialog .cv-noavatar.is-controlled{
+  position:relative; border-color:rgba(168,85,247,.9)!important;
+  box-shadow:0 0 18px rgba(147,51,234,.7)!important;
+}
+/* alone viola pulsante (pixel: pulsazione a scatti con steps) */
+.arena-combat-dialog .cv-control-aura{
+  position:absolute; inset:-10%; border-radius:50%; pointer-events:none; z-index:3;
+  mix-blend-mode:screen;
+  background:radial-gradient(circle, rgba(168,85,247,.40) 0%, rgba(147,51,234,.14) 46%, transparent 64%);
+  animation:cv-ctrl-pulse 1.2s steps(5) infinite;
+}
+/* due anelli tratteggiati (segmenti "pixel") che ruotano a scatti attorno all'avatar */
+.arena-combat-dialog .cv-control-aura::before,
+.arena-combat-dialog .cv-control-aura::after{
+  content:""; position:absolute; border-radius:50%;
+  border:3px dashed rgba(192,132,252,.92);
+}
+.arena-combat-dialog .cv-control-aura::before{ inset:8%; animation:cv-ctrl-spin 2.4s steps(12) infinite; }
+.arena-combat-dialog .cv-control-aura::after{ inset:20%; border-width:2px; border-color:rgba(216,180,254,.8); animation:cv-ctrl-spin-rev 1.8s steps(9) infinite; }
+@keyframes cv-ctrl-spin{ to{ transform:rotate(360deg); } }
+@keyframes cv-ctrl-spin-rev{ to{ transform:rotate(-360deg); } }
+@keyframes cv-ctrl-pulse{ 0%,100%{ opacity:.5; transform:scale(.95); } 50%{ opacity:1; transform:scale(1.07); } }
+
 /* Barra HP lineare: SOLO per chi non ha avatar (es. IA) */
 .arena-combat-dialog .fighter-card .hp-bar-wrap{ order:-1; width:100%; max-width:150px; }
 .arena-combat-dialog .hp-bar-bg{ height:11px!important; border-radius:999px!important; background:rgba(0,0,0,.55)!important; border:1px solid rgba(255,255,255,.14)!important; overflow:hidden; }

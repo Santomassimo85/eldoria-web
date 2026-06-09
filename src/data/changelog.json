@@ -7,11 +7,15 @@
       "changes": [
         {
           "type": "graphic",
-          "text": "Gli attacchi nell'Arena mostrano ora un effetto pixelato sulla card del bersaglio, scelto in base al tipo d'azione (fuoco, gelo, fulmine, veleno, fendente, colpo a distanza, magia). Le cure e i potenziamenti compaiono invece sulla propria card. Gli effetti sono sincronizzati: li vedono entrambi i giocatori."
+          "text": "Gli attacchi nell'Arena mostrano ora un effetto pixelato in stile World Boss isometrico sulla card del bersaglio: gli attacchi con arma (mischia e a distanza) fanno uno schizzo di sangue, gli incantesimi un colpo arcano colorato per elemento (fuoco, gelo, fulmine, veleno, magia). Cure e potenziamenti compaiono sulla propria card. Tutto sincronizzato tra i due giocatori."
         },
         {
           "type": "graphic",
-          "text": "Copertura: attacchi con arma e a distanza, incantesimi a danno, Smite, Attacco Furtivo, Triboli, Veleno, attacchi dell'IA, compagni del Ranger, demoni del Warlock, costrutti dell'Artefice, cure e potenziamenti. Riutilizza gli effetti e i suoni introdotti con il World Boss."
+          "text": "Copertura: attacchi con arma e a distanza, incantesimi a danno, Smite, Attacco Furtivo, Triboli, Veleno, attacchi dell'IA, compagni del Ranger, demoni del Warlock, costrutti dell'Artefice, cure e controllo. Effetti semplici e pixelati, lenti il giusto per essere visti."
+        },
+        {
+          "type": "graphic",
+          "text": "I combattenti sotto controllo (Sonno, Paura, Blocca Persone, Charme, Ragnatela…) sono ora avvolti da un'aura viola pixelata attorno all'avatar, finché l'effetto dura. Gli incantesimi di controllo mostrano inoltre un lampo viola al momento del lancio."
         }
       ]
     },
