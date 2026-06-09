@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "13.01",
+      "date": "2026-06-09",
+      "title": "Effetto cura pixelato rivisto",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "L'effetto di cura è stato ridisegnato: pixel verde-dorato che scendono sull'avatar accompagnati da un alone curativo pulsante, ora ben visibile."
+        },
+        {
+          "type": "fix",
+          "text": "Le cure che prima non mostravano alcun effetto ora lo attivano correttamente: pozione di cura e incantesimi di guarigione dell'IA, Lay of Hands del Paladino."
+        },
+        {
+          "type": "fix",
+          "text": "Gli incantesimi a danno privi di un elemento esplicito nel nome mostrano ora il bolt arcano corretto invece dello schizzo di sangue; aggiunti gli effetti pixelati per gli incantesimi offensivi dell'IA, colorati per elemento."
+        }
+      ]
+    },
+    {
       "version": "13",
       "date": "2026-06-09",
       "title": "Effetti pixelati sugli attacchi dell'Arena",

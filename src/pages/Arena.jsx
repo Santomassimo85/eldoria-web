@@ -28,6 +28,9 @@ function classifyArenaVfx(entry) {
   if (/(gelo|freddo|ghiacc|congel|frost|gelidito|coltello di ghiaccio|cono di freddo)/.test(text)) return "frost";
   if (/(fulmine|scossa|tuono|tonante|schianto|elettr|smite|folgor)/.test(text)) return "lightning";
   if (/(veleno|tossic|velenoso|triboli|ragnatela|sanguinament|acid|nube|infestazione|braccia di hadar)/.test(text)) return "poison";
+  // Incantesimo a danno marcato con ✨ ma privo di elemento esplicito → bolt arcano
+  // (evita che "colpisce con <spell>" venga scambiato per un attacco con arma = sangue)
+  if (/✨/.test(text)) return "magic";
   // A distanza
   if (/(arco|freccia|dardo|balestra|pistola|fucile|rifle|morso|picchiata|soffio|raffica)/.test(text)) return "ranged";
   // Attacco in mischia generico
@@ -78,11 +81,11 @@ function ArenaVfxLayer({ messages }) {
   if (typeof document === "undefined") return null;
   return createPortal(
     active.map(({ id, x, y, kind, el }) => {
-      const n = kind === "blood" ? 9 : kind === "heal" ? 5 : 7;
+      const n = kind === "blood" ? 9 : kind === "heal" ? 9 : 7;
       return (
         <div key={id} className={`avfx avfx-${kind}${el ? ` el-${el}` : ""}`}
           style={{ position: "fixed", left: x, top: y, pointerEvents: "none", zIndex: 9999 }}>
-          {kind === "bolt" && <span className="avfx-core" />}
+          {(kind === "bolt" || kind === "heal") && <span className="avfx-core" />}
           {Array.from({ length: n }, (_, i) => <i key={i} />)}
         </div>
       );
@@ -3602,7 +3605,7 @@ export default function Arena() {
         });
         return { ...x, players, logs: [...x.logs, healLog] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "heal", aiId) });
       return; // next tick of the useEffect will trigger the attack
     }
 
@@ -3709,6 +3712,7 @@ export default function Arena() {
         let logMsg;
         let dmgToTarget = 0;
         let aiPatch = {};
+        let healFxTargetId = null; // se valorizzato → VFX cura pixelata su quel player
         const targetPatch = {};
 
         if (_picked.kind === "shield_buff") {
@@ -3726,6 +3730,7 @@ export default function Arena() {
           const healAmt = Math.max(1, hDice + _spellMod);
           const newHp = Math.min(maxHp, aiPlayer.hp + healAmt);
           aiPatch = { hp: newHp };
+          healFxTargetId = aiId;
           const modPart = _spellMod !== 0 ? `${_spellMod >= 0 ? "+" : ""}${_spellMod}` : "";
           logMsg = `${sp.icon || "💚"} ${aiName} lancia ${sp.name} — cura sé stesso di ${healAmt} HP [🎲${hRolls}${modPart}].`;
         } else if (_picked.kind === "control") {
@@ -3855,7 +3860,19 @@ export default function Arena() {
           return { ...x, players: rawPlayers, logs };
         });
 
-        await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+        // VFX pixelato per le spell AI: cura sull'AI, altrimenti bolt arcano/elementale
+        // sul bersaglio (elemento dedotto dal testo del log).
+        let aiSpellFx = null;
+        if (healFxTargetId) {
+          aiSpellFx = { effect: "heal", targetId: healFxTargetId };
+        } else if (target?.id && (dmgToTarget > 0 || _picked.kind === "control" || _picked.kind === "save_dot")) {
+          aiSpellFx = { effect: classifyArenaVfx({ pub: logMsg }) || "magic", targetId: target.id };
+        }
+        await updateDoc(doc(db, "arena_meta", "global"), {
+          matches: aiSpellFx
+            ? withArenaFx(updatedMatches, matchId, aiSpellFx.effect, aiSpellFx.targetId)
+            : updatedMatches,
+        });
         return; // spell consumed the action; watcher re-fires if multi-action
       }
     }
@@ -5625,7 +5642,7 @@ export default function Arena() {
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     setShowLayOfHandsPicker(false);
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "heal", currentUser.uid) });
   };
 
   // ── AID BUFF (Aiuto) — +4 di default, +2 per Chierico/Paladino ──────────────

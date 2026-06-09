@@ -9073,16 +9073,35 @@
 .avfx-bolt.el-arcane    i{ background:#c79bff; box-shadow:0 0 0 1px #4a2c7a; }
 .avfx-bolt.el-arcane    .avfx-core{ background:radial-gradient(circle,#efd0ff,#7a48c4); box-shadow:0 0 10px 2px #b07bff; }
 
-/* CURA — pixel verdi che salgono */
-.avfx-heal i { background:#7cffb0; box-shadow:0 0 0 1px #1c6b3f; animation: avfx-rise .95s steps(4) forwards; }
-.avfx-heal i:nth-child(1){ --hx:-13px; }
-.avfx-heal i:nth-child(2){ --hx: -5px; }
-.avfx-heal i:nth-child(3){ --hx:  5px; }
-.avfx-heal i:nth-child(4){ --hx: 13px; }
-.avfx-heal i:nth-child(5){ --hx:  0px; }
-@keyframes avfx-rise {
-  from { transform: translate(var(--hx,0),  9px); opacity: 1; }
-  to   { transform: translate(var(--hx,0), -28px); opacity: 0; }
+/* CURA — pixel verde/dorato che SCENDONO sull'avatar + alone curativo */
+.avfx-heal i { width:7px; height:7px; image-rendering:pixelated;
+  background:#7cffb0; box-shadow:0 0 0 1px #1c6b3f, 0 0 5px #aaffcc;
+  animation: avfx-fall .9s steps(5) forwards; }
+/* scintille dorate alternate */
+.avfx-heal i:nth-child(even){ background:#ffe27a; box-shadow:0 0 0 1px #8a6a12, 0 0 5px #ffd86a; }
+.avfx-heal i:nth-child(1){ --hx:-18px; animation-delay:.00s; }
+.avfx-heal i:nth-child(2){ --hx: 18px; animation-delay:.08s; }
+.avfx-heal i:nth-child(3){ --hx: -9px; animation-delay:.04s; }
+.avfx-heal i:nth-child(4){ --hx:  9px; animation-delay:.14s; }
+.avfx-heal i:nth-child(5){ --hx:  0px; animation-delay:.02s; }
+.avfx-heal i:nth-child(6){ --hx:-14px; animation-delay:.18s; }
+.avfx-heal i:nth-child(7){ --hx: 14px; animation-delay:.10s; }
+.avfx-heal i:nth-child(8){ --hx: -4px; animation-delay:.20s; }
+.avfx-heal i:nth-child(9){ --hx:  4px; animation-delay:.06s; }
+@keyframes avfx-fall {
+  0%   { transform: translate(var(--hx,0), -34px); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translate(var(--hx,0),  12px); opacity: 0; }
+}
+/* alone curativo verde-dorato che pulsa sull'avatar */
+.avfx-heal .avfx-core{ left:-16px; top:-10px; width:32px; height:32px;
+  background:radial-gradient(circle, rgba(216,255,230,.95), rgba(95,227,154,.55) 55%, transparent 72%);
+  box-shadow:0 0 16px 4px #7cffb0;
+  animation: avfx-healglow 1s steps(6) forwards; }
+@keyframes avfx-healglow {
+  0%   { transform:scale(.3);  opacity:0; }
+  35%  { transform:scale(1);   opacity:.85; }
+  100% { transform:scale(1.25);opacity:0; }
 }
 
 @media (prefers-reduced-motion: reduce){ .avfx{ display:none; } }
