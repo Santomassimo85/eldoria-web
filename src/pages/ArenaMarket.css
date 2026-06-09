@@ -744,9 +744,13 @@
 .am-page > .cine-side-nav { z-index: 95; }
 
 /* ── Manuale delle Classi (solo informativo) ───────────────────────────── */
+/* Il manuale vive in un box chiaro: forza testo scuro (la pagina di default
+   ha testo crema chiaro, illeggibile su questo sfondo). */
+.am-page .am-class-manual .am-classes-sub { color: #4a3f2f; }
+.am-page .am-class-manual .am-how-list li { color: #3a3a3a; }
 .am-class-manual .am-manual-note {
   font-size: 0.78rem;
-  color: #8a6d2f;
+  color: #6e5320;
   margin: 0 0 12px;
   font-style: italic;
 }
@@ -791,11 +795,11 @@
 }
 .am-manual-class-hint {
   font-size: 0.74rem;
-  color: #b08d3a;
+  color: #7a5a1e;
   font-weight: 600;
   white-space: nowrap;
 }
-.am-manual-class[open] .am-manual-class-hint { opacity: 0.55; }
+.am-manual-class[open] .am-manual-class-hint { opacity: 0.75; }
 
 .am-manual-levels {
   list-style: none;
