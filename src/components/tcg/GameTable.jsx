@@ -844,9 +844,14 @@ export default function GameTable({
         <button
           className="tcg-btn tcg-btn--primary"
           style={{ marginTop: 18 }}
-          onClick={() => onExit && onExit()}
+          onClick={() => {
+            // Non basta tornare indietro: il match va abbandonato e rimosso,
+            // altrimenti resta appeso e si rientra di nuovo nel limbo.
+            if (!isAi && matchId) deleteMatch(matchId);
+            if (onExit) onExit();
+          }}
         >
-          ← Torna indietro
+          ← Abbandona partita
         </button>
       </div>
     );

@@ -7,7 +7,7 @@
       "changes": [
         {
           "type": "fix",
-          "text": "La schermata \"Caricamento partita…\" del TCG mostra ora un pulsante \"Torna indietro\": in caso di match il cui stato non si carica mai (ad esempio un torneo chiuso con la partita mai realmente avviata) il giocatore non resta più bloccato senza alcun comando."
+          "text": "La schermata \"Caricamento partita…\" del TCG mostra ora un pulsante \"Abbandona partita\": in caso di match il cui stato non si carica mai (ad esempio un torneo chiuso con la partita mai realmente avviata) il giocatore non resta più bloccato senza comandi. Il pulsante rimuove e abbandona il match, così non resta appeso e non si rientra nel limbo."
         }
       ]
     },
