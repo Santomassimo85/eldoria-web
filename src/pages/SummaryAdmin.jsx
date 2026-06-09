@@ -20,6 +20,9 @@ import {
 import HtmlToolbar from "../components/HtmlToolbar";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+// Email autorizzate a gestire i riassunti di sessione (master + collaboratore).
+const SUMMARY_EDITORS = [MASTER_EMAIL, "ripperti96@gmail.com"];
+const canEditSummaries = (user) => !!user && SUMMARY_EDITORS.includes(user.email);
 
 const PARTIES = [
   { key: "AMEA",  label: "AMEA",  color: "#c0392b", roster: "Garroth, Tanagar, Caius, Sylva" },
@@ -175,7 +178,7 @@ export default function SummaryAdmin() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
+    if (!canEditSummaries(currentUser)) return;
     const unsub = onSnapshot(collection(db, "summaries"), (snap) => {
       const list = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
@@ -186,7 +189,7 @@ export default function SummaryAdmin() {
     return () => unsub();
   }, [currentUser]);
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!canEditSummaries(currentUser)) {
     return (
       <p style={{ textAlign: "center", paddingTop: "100px" }}>
         Accesso negato: solo DM.

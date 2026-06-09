@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "13.04",
+      "date": "2026-06-09",
+      "title": "Collaboratore per i riassunti di sessione",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Introdotto un permesso dedicato che consente a un collaboratore di gestire esclusivamente la pagina dei riassunti di sessione, senza accesso al resto del pannello di amministrazione. Regole Firestore e Storage limitano la scrittura sulla collezione e sulle copertine ai soli account autorizzati."
+        }
+      ]
+    },
+    {
       "version": "13.03",
       "date": "2026-06-09",
       "title": "Via d'uscita dalla partita TCG bloccata",

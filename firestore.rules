@@ -18,6 +18,13 @@ service cloud.firestore {
         request.auth.token.email == "santomassimo85@gmail.com"
       );
     }
+    // Può gestire SOLO i riassunti di sessione (collaboratore), oltre al master.
+    function canEditSummaries() {
+      return isMaster() || (
+        isLoggedIn() &&
+        request.auth.token.email == "ripperti96@gmail.com"
+      );
+    }
 
     // ── World Boss & turn tracker ────────────────────────────────────────────
     match /battle_meta/turn_tracker {
@@ -262,7 +269,7 @@ service cloud.firestore {
     match /session_videos/{video} { allow read: if isLoggedIn(); allow write: if isMaster(); }
     match /summaries/{summaryId} {
       allow read: if true;
-      allow write: if isMaster();
+      allow write: if canEditSummaries();
       allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']);
     }
     match /messages/{msgId}       { allow create: if isLoggedIn(); allow read, write: if isMaster(); }

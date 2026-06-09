@@ -120,6 +120,25 @@ const AdminNavLink = ({ closeMenu }) => {
   return null;
 };
 
+// --- Link dedicato al solo collaboratore dei riassunti (non vede il resto del pannello DM) ---
+const SUMMARY_EDITOR_EMAIL = "ripperti96@gmail.com";
+const SummaryAdminNavLink = ({ closeMenu }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.email === SUMMARY_EDITOR_EMAIL) {
+    return (
+      <NavLink
+        to="/dm-admin/summaries"
+        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+        onClick={closeMenu}
+        style={{ backgroundColor: "var(--gold)", color: "var(--red)", fontWeight: "bold" }}
+      >
+        RIASSUNTI
+      </NavLink>
+    );
+  }
+  return null;
+};
+
 // --- TCG nav link — hidden while the page is locked unless the
 //     current account is on the TCG allow-list (master, testers). ---
 const TcgNavLink = ({ onClick }) => {
@@ -391,6 +410,7 @@ export default function App() {
           </NavDropdown>
 
           <AdminNavLink closeMenu={closeMenu} />
+          <SummaryAdminNavLink closeMenu={closeMenu} />
         </nav>
       </header>
       )}
