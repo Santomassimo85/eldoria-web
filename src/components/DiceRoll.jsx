@@ -41,12 +41,14 @@ export default function DiceRollHost() {
 
   useEffect(() => {
     if (!roll) return;
-    const total = TUMBLE_MS + SETTLE_MS + HOLD_MS + FADE_MS;
-    const t = setTimeout(() => {
-      roll.resolve();
-      setRoll(null);
-    }, total);
-    return () => clearTimeout(t);
+    // Sblocco la logica (risultato + effetti pixel) appena il dado si FERMA sul
+    // numero (tumble+settle), così il colpo è sincronizzato con la rivelazione.
+    // L'overlay del dado resta visibile per hold+fade e si smonta da solo dopo.
+    const revealAt = TUMBLE_MS + SETTLE_MS;
+    const total    = revealAt + HOLD_MS + FADE_MS;
+    const tReveal = setTimeout(() => roll.resolve(), revealAt);
+    const tEnd    = setTimeout(() => setRoll(null), total);
+    return () => { clearTimeout(tReveal); clearTimeout(tEnd); };
   }, [roll]);
 
   if (!roll) return null;

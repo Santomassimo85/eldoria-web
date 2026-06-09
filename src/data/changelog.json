@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "13.02",
+      "date": "2026-06-09",
+      "title": "Effetti di combattimento più reattivi",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Gli effetti pixelati e il risultato del colpo compaiono ora appena il dado si ferma sul numero, invece di attendere la fine completa dell'animazione: circa 0,8 secondi di attesa in meno a ogni azione, in Arena e nel World Boss. Il dado resta visibile e si dissolve da solo."
+        }
+      ]
+    },
+    {
       "version": "13.01",
       "date": "2026-06-09",
       "title": "Effetto cura pixelato rivisto",
