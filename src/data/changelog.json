@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "13.03",
+      "date": "2026-06-09",
+      "title": "Via d'uscita dalla partita TCG bloccata",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "La schermata \"Caricamento partita…\" del TCG mostra ora un pulsante \"Torna indietro\": in caso di match il cui stato non si carica mai (ad esempio un torneo chiuso con la partita mai realmente avviata) il giocatore non resta più bloccato senza alcun comando."
+        }
+      ]
+    },
+    {
       "version": "13.02",
       "date": "2026-06-09",
       "title": "Effetti di combattimento più reattivi",

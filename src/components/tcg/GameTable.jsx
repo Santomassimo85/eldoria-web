@@ -834,10 +834,20 @@ export default function GameTable({
   }, [emoteCdEnd]);
 
   if (!state || !state.players) {
+    // Stato del match assente/incompleto: senza questo escape il giocatore
+    // resta bloccato in "Caricamento partita…" all'infinito (es. torneo
+    // chiuso col match mai realmente partito). Diamo sempre una via d'uscita.
     return (
       <div className="tcg-table tcg-table--loading">
         <div className="tcg-waiting__spinner" />
         <p>Caricamento partita…</p>
+        <button
+          className="tcg-btn tcg-btn--primary"
+          style={{ marginTop: 18 }}
+          onClick={() => onExit && onExit()}
+        >
+          ← Torna indietro
+        </button>
       </div>
     );
   }
