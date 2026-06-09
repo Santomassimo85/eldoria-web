@@ -4744,40 +4744,64 @@ body .arena-bet-fab:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 18px 10px 14px !important;
+  padding: 11px 20px 11px 15px !important;
   border-radius: 999px !important;
-  background: linear-gradient(180deg, rgba(34,40,48,0.96), rgba(16,19,24,0.98)) !important;
-  border: 1px solid rgba(95,224,208,0.45) !important;
-  color: #eafffb !important;
+  background: linear-gradient(135deg, #5fe0d0 0%, #36c9b6 38%, #ffd86a 100%) !important;
+  border: 2px solid #fff3c4 !important;
+  color: #0a1714 !important;
   font-family: var(--font-title);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.45);
   cursor: pointer;
   box-shadow:
-    0 0 0 1px rgba(95,224,208,0.15),
-    0 10px 26px rgba(0,0,0,0.55),
-    0 0 22px -6px rgba(95,224,208,0.55) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: transform 0.18s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s, border-color 0.25s;
-  animation: hubfab-in 0.35s cubic-bezier(.16,1,.3,1) both;
+    0 0 0 1px rgba(255,255,255,0.5),
+    0 8px 22px rgba(0,0,0,0.5),
+    0 0 18px 1px rgba(95,224,208,0.8),
+    0 0 34px 4px rgba(255,216,106,0.55) !important;
+  transition: transform 0.18s cubic-bezier(.2,.8,.2,1), box-shadow 0.25s, filter 0.25s;
+  animation:
+    hubfab-in 0.35s cubic-bezier(.16,1,.3,1) both,
+    hubfab-pulse 1.8s ease-in-out 0.4s infinite;
 }
 @keyframes hubfab-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+/* Pulsazione luminosa per saltare all'occhio */
+@keyframes hubfab-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.5),
+      0 8px 22px rgba(0,0,0,0.5),
+      0 0 18px 1px rgba(95,224,208,0.8),
+      0 0 34px 4px rgba(255,216,106,0.55);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.7),
+      0 8px 22px rgba(0,0,0,0.5),
+      0 0 26px 4px rgba(95,224,208,1),
+      0 0 50px 10px rgba(255,216,106,0.85);
+    filter: brightness(1.12);
+  }
+}
 .arena-page .arena-hub-fab:hover {
-  transform: translateX(-3px) scale(1.04);
-  border-color: rgba(95,224,208,0.9) !important;
+  transform: translateX(-3px) scale(1.06);
+  border-color: #ffffff !important;
+  filter: brightness(1.1) saturate(1.15);
   box-shadow:
-    0 0 0 1px rgba(95,224,208,0.4),
-    0 12px 30px rgba(0,0,0,0.6),
-    0 0 30px -4px rgba(95,224,208,0.8) !important;
+    0 0 0 1px rgba(255,255,255,0.8),
+    0 12px 30px rgba(0,0,0,0.55),
+    0 0 30px 3px rgba(95,224,208,1),
+    0 0 60px 12px rgba(255,216,106,0.9) !important;
 }
 .arena-page .arena-hub-fab:active { transform: translateX(-1px) scale(0.98); }
 .arena-hub-fab-arrow {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   line-height: 1;
-  color: var(--rune);
-  text-shadow: 0 0 10px rgba(95,224,208,0.8);
+  color: #0a1714;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
   animation: hubfab-arrow 1.8s ease-in-out infinite;
 }
 @keyframes hubfab-arrow { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-3px); } }
