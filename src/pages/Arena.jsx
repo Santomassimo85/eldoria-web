@@ -3253,6 +3253,24 @@ export default function Arena() {
     });
   };
 
+  // Ritorna la finale SOLO se QUESTA modifica l'ha appena conclusa (transizione
+  // not-finished → finished sullo stesso match) e non è già stato dichiarato un
+  // campione. Evita di rinviare la notifica al vincitore di un torneo precedente
+  // la cui finale è ancora presente in `arena_meta.matches` (qualsiasi attacco,
+  // anche in una Sfida Libera, la ritroverebbe altrimenti). null = non inviare.
+  const finalJustConcluded = (updatedMatches) => {
+    if (arenaMeta?.tournamentWinner) return null;
+    const prevById = new Map((arenaMeta?.matches || []).map(m => [m.matchId, m]));
+    // tra le finali concluse, prendi quella che NON era già conclusa prima d'ora
+    // (così l'ordine in `matches` non conta e una vecchia finale non sopprime
+    //  la notifica legittima di quella nuova).
+    return (updatedMatches || []).find(m => {
+      if (m.kind !== "final" || m.status !== "finished" || !m.winner) return false;
+      const prev = prevById.get(m.matchId);
+      return !(prev && prev.status === "finished");
+    }) || null;
+  };
+
   // ── COMBAT ─────────────────────────────────────────────────────────────────
   const advanceTurn = (players, matchObj) => {
     const currentIndex = matchObj.players.findIndex(p => p.id === currentUser.uid);
@@ -4558,8 +4576,8 @@ export default function Arena() {
         }
         return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: poisonExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
-      const finalM = updatedMatches.find(m => m.kind === "final");
-      if (finalM && finalM.status === "finished" && finalM.winner) {
+      const finalM = finalJustConcluded(updatedMatches);
+      if (finalM) {
         const champSnap = snapshots[finalM.winner] || {};
         await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
         await updateDoc(doc(db, "arena_meta", "global"), {
@@ -4790,8 +4808,8 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const finalM = updatedMatches.find(m => m.kind === "final");
-    if (finalM && finalM.status === "finished" && finalM.winner) {
+    const finalM = finalJustConcluded(updatedMatches);
+    if (finalM) {
       const champSnap = snapshots[finalM.winner] || {};
       await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
       await updateDoc(doc(db, "arena_meta", "global"), {
@@ -6127,8 +6145,8 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const finalM = updatedMatches.find(m => m.kind === "final");
-    if (finalM && finalM.status === "finished" && finalM.winner) {
+    const finalM = finalJustConcluded(updatedMatches);
+    if (finalM) {
       const champSnap = snapshots[finalM.winner] || {};
       await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished" });
@@ -6406,8 +6424,8 @@ export default function Arena() {
     await awardRoundCoins(updatedMatches);
     await resolveBetsForFinishedMatches(updatedMatches);
     await recordMatchHistory(updatedMatches);
-    const finalM = updatedMatches.find(m => m.kind === "final");
-    if (finalM && finalM.status === "finished" && finalM.winner) {
+    const finalM = finalJustConcluded(updatedMatches);
+    if (finalM) {
       const champSnap = (arenaMeta.characterSnapshots || {})[finalM.winner] || {};
       await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
       await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished" });
@@ -6803,8 +6821,8 @@ export default function Arena() {
       await resolveBetsForFinishedMatches(updatedMatches);
       await recordMatchHistory(updatedMatches);
 
-      const finalM = updatedMatches.find(m => m.kind === "final");
-      if (finalM && finalM.status === "finished" && finalM.winner) {
+      const finalM = finalJustConcluded(updatedMatches);
+      if (finalM) {
         const champSnap = snapshots[finalM.winner] || {};
         await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
         await updateDoc(doc(db, "arena_meta", "global"), {
