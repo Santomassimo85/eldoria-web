@@ -35,8 +35,11 @@ export default function Lobby({
       setOpen(open);
       setOnline(online);
       if (error) setErr("Connessione alla lobby non riuscita.");
-      // auto-enter once someone accepts my challenge / I'm in a match
-      if (mine) onEnterMatch(mine.id);
+      // auto-enter once someone accepts my challenge / I'm in a match.
+      // SOLO se il match è ancora attivo: un match concluso (o appena
+      // abbandonato) non deve ri-trascinare il giocatore dentro, altrimenti
+      // resta intrappolato e non riesce più a creare/accettare sfide.
+      if (mine && mine.status === "active") onEnterMatch(mine.id);
       // detect my own open challenge still alive
       const stillMine =
         myIdRef.current && open.some((m) => m.id === myIdRef.current);

@@ -32,7 +32,7 @@ import {
 } from "../../tcg/ai.js";
 import {
   pushState, heartbeat, opponentGone, sendEmote, sendCardReaction,
-  deleteMatch,
+  deleteMatch, leaveMatch,
 } from "../../tcg/net.js";
 import { TCG_COINS } from "../../tcg/collection.js";
 import { playSfx } from "../../utils/tcgSfx.js";
@@ -845,9 +845,10 @@ export default function GameTable({
           className="tcg-btn tcg-btn--primary"
           style={{ marginTop: 18 }}
           onClick={() => {
-            // Non basta tornare indietro: il match va abbandonato e rimosso,
-            // altrimenti resta appeso e si rientra di nuovo nel limbo.
-            if (!isAi && matchId) deleteMatch(matchId);
+            // Non basta tornare indietro: il match va abbandonato e chiuso,
+            // altrimenti resta "active" e la lobby ci ri-trascina nel limbo.
+            // leaveMatch cancella (se sei host) o segna "ended" (se sei p1).
+            if (!isAi && matchId) leaveMatch(matchId);
             if (onExit) onExit();
           }}
         >

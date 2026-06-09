@@ -72,7 +72,15 @@ export function watchLobby(uid, cb) {
           .filter(
             (m) =>
               sideForUid(m, uid) !== null &&
-              ((m.status === "active" && m.state) ||
+              // "active" conta come mio SOLO se lo stato è davvero giocabile
+              // (ha entrambi i player). Un doc active con state rotto/parziale
+              // intrappolava il giocatore in "Caricamento partita…" senza
+              // mai lasciarlo tornare a creare/accettare sfide.
+              ((m.status === "active" &&
+                m.state &&
+                m.state.players &&
+                m.state.players.p0 &&
+                m.state.players.p1) ||
                 (m.status === "ended" &&
                   now - tsMillis(m.updatedAt || m.createdAt) < RECENT_END_MS))
           )
@@ -257,5 +265,27 @@ export async function deleteMatch(matchId) {
     await deleteDoc(doc(db, COL, matchId));
   } catch {
     /* not the host / already gone */
+  }
+}
+
+/* Abbandona un match in modo robusto, da QUALSIASI lato.
+   Lo sfidante (p0) può cancellare il doc; lo sfidato (p1) no (le regole
+   Firestore permettono delete solo all'host/master), perciò se il delete
+   fallisce segniamo il match come "ended". In entrambi i casi il match
+   smette di essere "active" e la lobby non ri-trascina più dentro nessuno. */
+export async function leaveMatch(matchId) {
+  try {
+    await deleteDoc(doc(db, COL, matchId));
+    return;
+  } catch {
+    /* non sei l'host → prova a chiuderlo invece */
+  }
+  try {
+    await updateDoc(doc(db, COL, matchId), {
+      status: "ended",
+      updatedAt: serverTimestamp(),
+    });
+  } catch {
+    /* offline / permessi negati */
   }
 }

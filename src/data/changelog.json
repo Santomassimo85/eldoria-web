@@ -7,7 +7,11 @@
       "changes": [
         {
           "type": "fix",
-          "text": "La schermata \"Caricamento partita…\" del TCG mostra ora un pulsante \"Abbandona partita\": in caso di match il cui stato non si carica mai (ad esempio un torneo chiuso con la partita mai realmente avviata) il giocatore non resta più bloccato senza comandi. Il pulsante rimuove e abbandona il match, così non resta appeso e non si rientra nel limbo."
+          "text": "Risolto il blocco nel limbo del TCG: un match con stato rotto o mai avviato (ad esempio dopo un torneo chiuso) intrappolava il giocatore nella schermata \"Caricamento partita…\" e, una volta uscito, la lobby lo ri-trascinava dentro impedendogli di creare o accettare nuove sfide."
+        },
+        {
+          "type": "fix",
+          "text": "La schermata \"Caricamento partita…\" mostra ora un pulsante \"Abbandona partita\" che chiude correttamente il match anche per lo sfidato (prima solo lo sfidante poteva eliminarlo); la lobby non rientra più automaticamente in partite concluse o non più giocabili."
         }
       ]
     },
