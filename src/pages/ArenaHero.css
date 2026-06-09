@@ -398,8 +398,24 @@
 }
 .arena-page .btn-roll-hp,
 .arena-page .btn-init {
-  background: linear-gradient(135deg, #166534, #15803d) !important;
-  color: #fff !important;
+  background: linear-gradient(135deg, var(--cyan, #5fe0d0), #e3c558 60%, #b8892a) !important;
+  color: #04201c !important;
+  border: 2px solid #f3e3b0 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.35),
+    0 6px 16px rgba(0,0,0,0.45),
+    0 0 20px 2px rgba(227,197,88,0.6) !important;
+  animation: cv-pulse-cy 2s ease-in-out infinite;
+}
+.arena-page .btn-init:hover {
+  filter: brightness(1.1) saturate(1.12);
+  border-color: #ffffff !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.6),
+    0 8px 22px rgba(0,0,0,0.5),
+    0 0 30px 6px rgba(227,197,88,0.85) !important;
 }
 .arena-page .btn-reroll,
 .arena-page .btn-cancel-loadout,
