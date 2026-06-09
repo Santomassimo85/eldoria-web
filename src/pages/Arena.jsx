@@ -9,8 +9,42 @@ import {
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
 import { awardPetPoints } from "../utils/pet";
+import { VfxLayer } from "./WorldBossVfx";
 import "./Arena.css";
 import "./ArenaHero.css";
+
+// ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
+// Riusa gli effetti del World Boss (/public/animations/*). Nessuna modifica ai
+// 30+ handler d'attacco: deduciamo l'effetto dal `pub`/`att` e il bersaglio da
+// defId (attacchi → nemico) o attId (cure/buff → sé stesso).
+const ARENA_OFFENSIVE_FX = new Set(["slash", "ranged", "fire", "frost", "lightning", "poison"]);
+function classifyArenaVfx(entry) {
+  if (!entry || typeof entry !== "object") return null;
+  const text = (entry.pub || entry.att || "").toLowerCase();
+  if (!text) return null;
+  // Cure / recuperi di PF
+  if (/(cura|guari|canalizza il ki|secondo respiro|lay of hands|ristora|recupera \d+ hp|tocco vampirico|drena)/.test(text)) return "heal";
+  // Elementi
+  if (/(fuoco|fiamm|brucia|rovente|incendio|bomba|infernale|deflagrazione)/.test(text)) return "fire";
+  if (/(gelo|freddo|ghiacc|congel|frost|gelidito|coltello di ghiaccio|cono di freddo)/.test(text)) return "frost";
+  if (/(fulmine|scossa|tuono|tonante|schianto|elettr|smite|folgor)/.test(text)) return "lightning";
+  if (/(veleno|tossic|velenoso|triboli|ragnatela|sanguinament|acid|nube|infestazione|braccia di hadar)/.test(text)) return "poison";
+  // A distanza
+  if (/(arco|freccia|dardo|balestra|pistola|fucile|rifle|morso|picchiata|soffio|raffica)/.test(text)) return "ranged";
+  // Attacco in mischia generico
+  if (/(colpisce|colpisci|attacc|fendente|turbine|carica|furtivo|colpo|mischia|lama|taglia)/.test(text)) return "slash";
+  // Incantesimi / buff generici
+  if (/(lancia|invoca|scudo|aiuto|concentr|marchio|furia|ispirazione|magic|incantesimo|raggio|dardo incantato)/.test(text)) return "magic";
+  return null;
+}
+// Aggancia un effetto VFX al match tramite un campo PARALLELO `lastFx` (NON tocca
+// i log né la logica di combattimento). Serve per pet/demoni/costrutti/cure, che
+// usano log-stringa privi del riferimento al bersaglio. Il driver legge lastFx.
+function withArenaFx(matches, matchId, effect, targetId) {
+  if (!targetId || !effect) return matches;
+  const fx = { id: `${effect}:${targetId}:${Date.now()}`, effect, targetId };
+  return matches.map(m => (m.matchId === matchId ? { ...m, lastFx: fx } : m));
+}
 
 /* FIX: P5b/P5c/P5d — reusable modal portal */
 function ArenaModal({ open, onClose, title, children, variant = "modal", className = "" }) {
@@ -1754,6 +1788,10 @@ export default function Arena() {
   const [combatStatsOpen, setCombatStatsOpen] = useState(false); // sezione [3] stat collassabile
   const [combatLogExpanded, setCombatLogExpanded] = useState(false); // cronaca a schermo intero (mobile)
   const [combatTab, setCombatTab] = useState("live"); // live (in corso) | history (ultimi 10 conclusi)
+  // ── VFX pixelati sulle card dei combattenti (riuso effetti World Boss) ──
+  const [vfxMessages, setVfxMessages] = useState([]);
+  const vfxSeenRef     = useRef(new Set());   // id già processati (no doppioni)
+  const vfxBaselineRef = useRef(new Set());   // matchId già "azzerati" (no replay della cronologia)
   // Popup di fine combattimento (vittoria/sconfitta). null = nessun popup.
   const [fightResult, setFightResult] = useState(null);
   const fightResultSeenRef = useRef(null);
@@ -1861,6 +1899,46 @@ export default function Arena() {
       m.status !== "open" && m.status !== "finished");
     setCombatTab(hasLive ? "live" : "history");
   }, [combatModalOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Driver VFX: osserva i log dei miei match e fa partire l'effetto pixelato
+  // sulla card del bersaglio quando arriva una NUOVA voce d'attacco/cura. Alla
+  // prima osservazione di un match azzera la cronologia (niente replay). ──
+  useEffect(() => {
+    const matches = arenaMeta?.matches || [];
+    const mine = matches.filter(m => m.players?.some(p => p.id === currentUser?.uid));
+    const fresh = [];
+    for (const m of mine) {
+      const logs = m.logs || [];
+      const baselined = vfxBaselineRef.current.has(m.matchId);
+      for (const entry of logs) {
+        if (!entry || typeof entry !== "object" || !entry.ts) continue;
+        const effect = classifyArenaVfx(entry);
+        if (!effect) continue;
+        const id = `${m.matchId}:${entry.ts}`;
+        if (vfxSeenRef.current.has(id)) continue;
+        vfxSeenRef.current.add(id);
+        if (!baselined) continue; // cronologia pre-apertura: marca come vista ma non animare
+        const offensive = ARENA_OFFENSIVE_FX.has(effect);
+        let targetId = entry.defId;
+        if (!targetId) targetId = offensive ? m.players.find(p => p.id !== entry.attId)?.id : entry.attId;
+        if (!targetId) continue;
+        fresh.push({ id, effect, effectTargets: [`arena-fx:${m.matchId}:${targetId}`] });
+      }
+      // Effetti dal campo parallelo lastFx (pet/demoni/costrutti/cure)
+      const lf = m.lastFx;
+      if (lf && lf.id) {
+        const lfId = `lf:${m.matchId}:${lf.id}`;
+        if (!vfxSeenRef.current.has(lfId)) {
+          vfxSeenRef.current.add(lfId);
+          if (baselined && lf.targetId) {
+            fresh.push({ id: lfId, effect: lf.effect, effectTargets: [`arena-fx:${m.matchId}:${lf.targetId}`] });
+          }
+        }
+      }
+      if (!baselined) vfxBaselineRef.current.add(m.matchId);
+    }
+    if (fresh.length) setVfxMessages(prev => [...prev.slice(-40), ...fresh]);
+  }, [arenaMeta?.matches, currentUser?.uid]);
 
   // Auto-scroll into the fight the first time a new active match appears.
   const lastScrolledMatchRef = useRef(null);
@@ -4988,7 +5066,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "slash", targetId) });
   };
 
   const handlePetSpider = async (matchId, targetId, action) => {
@@ -5026,7 +5104,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "poison", targetId) });
   };
 
   const handlePetEagle = async (matchId, targetId, action) => {
@@ -5056,7 +5134,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "ranged", targetId) });
   };
 
   // ── DRAGO DI SMERALDO (Ranger unique) — auto-hit + cura caster ──────────
@@ -5087,7 +5165,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "fire", targetId) });
   };
 
   // ── DEMONI EVOCATI (Warlock) ─────────────────────────────────────────────
@@ -5123,7 +5201,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "fire", targetId) });
   };
 
   const handleDemonSuccubus = async (matchId, targetId, action) => {
@@ -5159,7 +5237,7 @@ export default function Arena() {
         : `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 3 turni · svantaggio per 3 turni.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "magic", targetId) });
   };
 
   const handleDemonGreater = async (matchId, targetId, action) => {
@@ -5187,7 +5265,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "magic", targetId) });
   };
 
   // ── COSTRUTTI (Artefice) ─────────────────────────────────────────────────
@@ -5216,7 +5294,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "slash", targetId) });
   };
 
   const handleConstructSnake = async (matchId, targetId, action) => {
@@ -5243,7 +5321,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "poison", targetId) });
   };
 
   // ── FORGIA ARMATURA (Artefice) — +2 CA per 2 turni ─────────────────────────
@@ -5844,7 +5922,7 @@ export default function Arena() {
         const log = `${myName} lancia ${action.icon} ${action.name} → cura sé stesso di ${healAmt} HP 🎲(${healRolls}${modPart})${cleanseTag}`;
         return { ...m, players, turn: m.players[nextIndex].id, turnExpiry: healExpiry, logs: [...m.logs, log] };
       });
-      tx.update(ref, { matches });
+      tx.update(ref, { matches: withArenaFx(matches, matchId, "heal", currentUser.uid) });
     });
   };
 
@@ -6707,6 +6785,9 @@ export default function Arena() {
 
   return (
     <div className={`arena-page${myActiveMatchId ? " arena-page--focus" : ""}`}>
+
+      {/* ── VFX pixelati: overlay in portal sopra le card dei combattenti ── */}
+      <VfxLayer messages={vfxMessages} />
 
       {/* ── Floating Fight Button — sempre visibile durante un match attivo.
             Più epico quando è il tuo turno (pulsa rosso). ── */}
@@ -8718,7 +8799,7 @@ export default function Arena() {
                             <span className="cv-orbit o3" aria-hidden="true" />
                           </div>
                         )}
-                        <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead ? "waiting" : "")} ${isDead ? "defeated" : ""}`}>
+                        <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead ? "waiting" : "")} ${isDead ? "defeated" : ""}`} data-vfx-target={`arena-fx:${m.matchId}:${p.id}`}>
                           {isActive && !isDead && <div className="turn-indicator">Il tuo turno</div>}
                           {isDead && <div className="defeated-banner">Sconfitto</div>}
 

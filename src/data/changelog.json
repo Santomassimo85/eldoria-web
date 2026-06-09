@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "13",
+      "date": "2026-06-09",
+      "title": "Effetti pixelati sugli attacchi dell'Arena",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Gli attacchi nell'Arena mostrano ora un effetto pixelato sulla card del bersaglio, scelto in base al tipo d'azione (fuoco, gelo, fulmine, veleno, fendente, colpo a distanza, magia). Le cure e i potenziamenti compaiono invece sulla propria card. Gli effetti sono sincronizzati: li vedono entrambi i giocatori."
+        },
+        {
+          "type": "graphic",
+          "text": "Copertura: attacchi con arma e a distanza, incantesimi a danno, Smite, Attacco Furtivo, Triboli, Veleno, attacchi dell'IA, compagni del Ranger, demoni del Warlock, costrutti dell'Artefice, cure e potenziamenti. Riutilizza gli effetti e i suoni introdotti con il World Boss."
+        }
+      ]
+    },
+    {
       "version": "12",
       "date": "2026-06-09",
       "title": "Manuale delle Classi e progressione fino al Lv.20",
