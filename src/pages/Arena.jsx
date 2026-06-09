@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { showD20Roll } from "../components/DiceRoll";
+import DieIcon from "../components/DieIcon";
 import { awardPetPoints } from "../utils/pet";
 import "./Arena.css";
 import "./ArenaHero.css";
@@ -1397,6 +1398,26 @@ function logPubText(log) {
   if (!log) return '';
   if (typeof log === 'string') return log;
   return log.pub;
+}
+
+// Sostituisce ogni 🎲 nel testo del log con l'icona poliedrica giusta. Il tipo di
+// dado è dedotto dal formato NdM scritto subito dopo il 🎲 (es. `🎲d20=…`,
+// `[🎲2d6=…]`); dove il formato non c'è (solo i numeri tirati), usa un dado
+// generico (d6). Ritorna una stringa se non c'è alcun 🎲, altrimenti un array di
+// nodi (testo + <DieIcon>).
+const STD_DICE = new Set([4, 6, 8, 10, 12, 20]);
+function renderLogWithDice(text) {
+  if (typeof text !== 'string' || text.indexOf('🎲') === -1) return text;
+  const segs = text.split('🎲');
+  const out = [segs[0]];
+  for (let i = 1; i < segs.length; i++) {
+    const after = segs[i];
+    const m = /^\s*\(?\s*\d*d(\d+)/.exec(after);
+    const n = m ? parseInt(m[1], 10) : 6;
+    out.push(<DieIcon key={`die-${i}`} sides={STD_DICE.has(n) ? n : 6} />);
+    out.push(after);
+  }
+  return out;
 }
 
 // ── BETTING PANEL ─────────────────────────────────────────────────────────────
@@ -8394,7 +8415,7 @@ export default function Arena() {
                 );
               })}
               {m.logs?.length > 0 && m.status === "active" && (
-                <div className="tb-live-log">{logPubText(m.logs[m.logs.length - 1])}</div>
+                <div className="tb-live-log">{renderLogWithDice(logPubText(m.logs[m.logs.length - 1]))}</div>
               )}
               {isMaster && (
                 <div className="tb-force">
@@ -8741,7 +8762,7 @@ export default function Arena() {
                             return (
                               <p key={i} className="chc-log-entry">
                                 {ts && <span className="log-ts">{ts}</span>}
-                                {text}
+                                {renderLogWithDice(text)}
                               </p>
                             );
                           })}
@@ -10317,7 +10338,7 @@ export default function Arena() {
                       return (
                         <p key={i} className={`log-entry ${isLatest ? "latest" : ""} ${isAttLog ? "log-attacker" : ""} ${isDefLog ? "log-defender" : ""} ${isDotLog ? "log-dot" : ""}`}>
                           {ts && <span className="log-ts">{ts}</span>}
-                          {text}
+                          {renderLogWithDice(text)}
                         </p>
                       );
                     })}

@@ -9105,3 +9105,38 @@
 }
 
 @media (prefers-reduced-motion: reduce){ .avfx{ display:none; } }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ICONE DADO (d4·d6·d8·d10·d12·d20) nel log — silhouette poliedriche SVG
+   inline, teal + faccette dorate, al posto del 🎲 di sistema.
+   ════════════════════════════════════════════════════════════════════════ */
+.die-icon{
+  display:inline-block;
+  width:1.05em; height:1.05em;
+  vertical-align:-0.18em;
+  margin:0 2px;
+  flex:0 0 auto;
+  filter: drop-shadow(0 0 2px rgba(95,224,208,0.35));
+}
+.die-icon-body{
+  fill: rgba(95,224,208,0.16);
+  stroke:#5fe0d0;
+  stroke-width:7;
+  stroke-linejoin:round;
+}
+.die-icon-facet{
+  fill:none;
+  stroke:rgba(255,216,106,0.65);
+  stroke-width:4.5;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+}
+.die-icon-num{
+  fill:#f3fffb;
+  stroke:rgba(6,18,16,0.9);
+  stroke-width:3.4;
+  paint-order: stroke fill;       /* contorno scuro DIETRO al riempimento → numero nitido */
+  font-family: var(--font-title, system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: -1px;
+}
