@@ -5831,4 +5831,28 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(95,2
   letter-spacing:.1em; text-transform:uppercase; color:#ffd98a; margin-bottom:12px;
 }
 
+/* ── Smartphone stretti: TABELLONE a tutta larghezza, padding ridotti, niente clip ──
+   Su schermi stretti il modale aveva troppi padding (overlay 16 + body 22 + gruppo 16)
+   e overflow-x:hidden tagliava la colonna record (le "S" sconfitte sparivano).
+   Qui il modale va a 100% dello schermo, i padding si riducono e i contenitori
+   flex/grid ottengono min-width:0 così i contenuti si restringono invece di sbordare. */
+@media (max-width: 600px){
+  body .arena-modal-overlay{ padding: 8px 0 0 !important; }
+  body .arena-modal-dialog{
+    width:100% !important; max-width:100% !important;
+    max-height: calc(100vh - 8px) !important;
+    border-radius:14px 14px 0 0 !important;
+  }
+  body .arena-modal-header{ padding:12px 14px !important; }
+  body .arena-modal-body{ padding:12px 10px 16px !important; }
+  .tb-board{ gap:14px; }
+  .tb-group{ padding:12px 10px 14px !important; min-width:0; }
+  .tb-group-head{ flex-wrap:wrap; gap:6px 8px; }
+  .tb-group-name{ min-width:0; }
+  .tb-rank{ padding:6px 6px; gap:8px; min-width:0; }
+  .tb-rank-record{ gap:5px; }
+  .tb-result, .tb-live, .tb-fighter, .tb-fighter-line{ min-width:0; }
+  .tb-result-winner, .tb-result-loser, .tb-fighter-name{ min-width:0; }
+}
+
 /* combat v3 — palette oro/bordeaux, dock compatto, abbandono in top bar */
