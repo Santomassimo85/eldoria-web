@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "16.01",
+      "date": "2026-06-10",
+      "title": "Arena — Cronaca dello scontro più compatta",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Le righe del log di combattimento sono ora più compatte (interlinea, margini e orario ridotti): su smartphone entrano più eventi nello stesso spazio invece di occupare lunghi blocchi verticali."
+        }
+      ]
+    },
+    {
       "version": "16",
       "date": "2026-06-10",
       "title": "Arena — Incantesimi rifatti secondo il D&D 5e ufficiale",

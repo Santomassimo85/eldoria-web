@@ -5770,11 +5770,11 @@
 
 .match-log .log-entry {
   font-family: var(--font-text);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   color: var(--ar-ink);
-  margin: 0 0 4px;
-  padding: 3px 6px;
-  line-height: 1.5;
+  margin: 0 0 2px;
+  padding: 2px 6px;
+  line-height: 1.3;
   border-radius: 4px;
 }
 .match-log .log-entry:last-child { margin-bottom: 0; }
@@ -6578,8 +6578,10 @@
   .my-arena-banner { padding: 8px 12px; gap: 10px; }
   .my-arena-banner-title { font-size: 0.95rem; }
   .my-arena-banner-eyebrow { font-size: 0.56rem; letter-spacing: 0.14em; }
-  .match-log-scroll { max-height: 280px; padding: 8px 12px 10px; }
-  .match-log .log-entry { font-size: 0.82rem; }
+  .match-log-scroll { max-height: 280px; padding: 6px 10px 8px; }
+  .match-log .log-entry { font-size: 0.78rem; line-height: 1.25; margin: 0 0 1px; padding: 1px 5px; }
+  /* Timestamp più piccolo e meno ingombrante su smartphone: tiene la riga compatta. */
+  .match-log .log-ts { font-size: 0.56rem; padding: 0 4px; margin-right: 4px; }
   .bracket-section { padding: 16px 14px 16px; }
   .bracket-title { font-size: 1.1rem; gap: 8px; }
   .bracket-rounds-list { grid-template-columns: 1fr; gap: 8px; }
@@ -8870,9 +8872,15 @@
 .arena-combat-dialog .match-log-title { font-size: clamp(0.7rem, 2.2vw, 0.8rem); }
 .arena-combat-dialog .match-log-scroll {
   max-height: clamp(150px, 28vh, 320px);
-  padding: clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 14px) clamp(10px, 2.5vw, 14px);
+  padding: clamp(6px, 1.6vw, 12px) clamp(8px, 2vw, 12px) clamp(8px, 2vw, 12px);
 }
-.arena-combat-dialog .match-log .log-entry { font-size: clamp(0.76rem, 2.3vw, 0.86rem); }
+/* Righe compatte: meno interlinea/margini così entrano più eventi nel poco spazio mobile. */
+.arena-combat-dialog .match-log .log-entry {
+  font-size: clamp(0.74rem, 2.2vw, 0.84rem);
+  line-height: 1.28;
+  margin: 0 0 2px;
+  padding: 2px 6px;
+}
 
 /* Reazioni: chip a capo */
 .arena-combat-dialog .arena-react-bar { gap: clamp(5px, 1.5vw, 8px); margin: 0 clamp(8px, 2.5vw, 16px) clamp(10px, 2vw, 14px); }
