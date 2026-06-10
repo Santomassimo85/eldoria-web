@@ -28,6 +28,14 @@
         {
           "type": "graphic",
           "text": "I pulsanti degli incantesimi a danno mostrano ora la meccanica esatta: tiro per colpire e bonus, oppure caratteristica e CD del tiro salvezza con l'indicazione se dimezza o annulla i danni."
+        },
+        {
+          "type": "graphic",
+          "text": "Nella schermata di scelta delle magie ogni incantesimo a danno mostra la propria meccanica (tiro per colpire / colpisce sempre / TS che dimezza / TS che annulla)."
+        },
+        {
+          "type": "mechanics",
+          "text": "L'intelligenza artificiale ora valuta gli incantesimi a danno in base alla loro meccanica reale (colpo automatico, tiro per colpire, TS che dimezza o annulla), scegliendo l'opzione con il danno atteso più alto."
         }
       ]
     },

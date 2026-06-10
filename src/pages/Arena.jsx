@@ -1224,6 +1224,14 @@ function getSpellCast(action) {
 }
 // Bonus al tiro per colpire degli incantesimi = competenza + mod da incantatore.
 function getSpellAttackBonus(snap) { return getProficiencyBonus(snap) + getSpellMod(snap); }
+// Etichetta leggibile della meccanica di un incantesimo a danno (loadout/manuale).
+function spellMechanicTag(action) {
+  const { cast, save } = getSpellCast(action);
+  if (cast === "attack")    return "🎯 Tiro per colpire vs CA";
+  if (cast === "auto")      return "✨ Colpisce sempre (no tiro)";
+  if (cast === "save_half") return `TS ${SAVE_LABEL[save]} · supera = ½ danni`;
+  return `TS ${SAVE_LABEL[save]} · supera = nessun danno`;
+}
 
 function isRogueClass(cls)      { return ["rogue","ladro"].some(c => cls.includes(c)); }
 function isRangerClass(cls)     { return ["ranger","cacciatore"].some(c => cls.includes(c)); }
@@ -3800,9 +3808,15 @@ export default function Arena() {
             _candidates.push({ kind: "save_dot", spell: sp, score: dotAvg * _failChance });
           }
         } else if (isSaveDamageSpell(sp)) {
-          // TS-based damage — expected damage on fail
+          // Danno atteso in base alla meccanica reale dell'incantesimo:
+          //  auto = sempre · attacco ≈ 65% · TS dimezza = pieno se fallisce + metà se supera · TS annulla = solo se fallisce.
           const dmgAvg = _avg(sp.damage) + _spellMod;
-          _candidates.push({ kind: "save_damage", spell: sp, score: dmgAvg * _failChance });
+          const { cast: _cm } = getSpellCast(sp);
+          const expected = _cm === "auto"      ? dmgAvg
+                         : _cm === "attack"    ? dmgAvg * 0.65
+                         : _cm === "save_half" ? dmgAvg * (0.5 + 0.5 * _failChance)
+                         :                       dmgAvg * _failChance;
+          _candidates.push({ kind: "save_damage", spell: sp, score: expected });
         }
       }
 
@@ -8007,6 +8021,7 @@ export default function Arena() {
                                     <span className="loadout-item-damage">{item.damage}</span>
                                     {item.maxUses && !isLocked && <span className="spell-uses-tag">{item.maxUses} usi</span>}
                                     {item.info && <span className="loadout-item-info">{item.info}</span>}
+                                    {isSaveDamageSpell(item) && <span className="loadout-item-info">{spellMechanicTag(item)}</span>}
                                     {isSelected && <span className="loadout-check">✓</span>}
                                   </button>
                                 );
