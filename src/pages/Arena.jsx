@@ -7281,18 +7281,35 @@ export default function Arena() {
               <p><strong>Nota:</strong> il personaggio Arena è separato dalla tua scheda principale e non influenza la campagna.</p>
             </div>
 
-            <h3 className="arena-info-title">🎲 Come si combatte</h3>
+            <h3 className="arena-info-title">🎲 Come si combatte — attacchi e armi</h3>
             <div className="arena-info-example">
-              <p><strong>Attacco con arma:</strong> d20 + bonus arma + FOR (mischia) o DES (distanza/finezza) vs CA. Se colpisce: danno dell'arma + modificatore. <em>Critico</em> su 20: danno ×2.</p>
-              <p><strong>Attacco con incantesimo:</strong> d20 + bonus incantesimo + INT/SAG/CAR (a seconda della classe) vs CA, oppure il bersaglio tira un Tiro Salvezza. Alcune spell infliggono effetti continuati (veleno, sanguinamento, controllo).</p>
-              <p><strong>Azione bonus:</strong> molte abilità di classe (Furia, Marchio, Lay of Hands, Cura Ki, Ispirazione Bardica…) sono <strong>bonus action</strong> — puoi farle nello stesso turno di un attacco.</p>
-              <p><strong>Armature:</strong> le pesanti hanno CA fissa alta ma penalità ai tiri. Le leggere/medie sommano DES (cap variabile) alla CA base.</p>
+              <p><strong>Attacco con arma:</strong> d20 + bonus arma + FOR (mischia) o DES (distanza/finezza) vs CA del bersaglio. Se il totale è ≥ CA colpisci: danno dell'arma + modificatore. <em>Critico</em> su 20 naturale: dadi del danno ×2.</p>
+              <p><strong>Attacchi per turno:</strong> <strong>Monaco e Ladro</strong> attaccano <strong>2 volte</strong> a turno; tutte le altre classi <strong>1 volta</strong> (più eventuali bonus action). Scatto d'Azione (Guerriero) e Passo Spedito (Ranger) concedono un'azione extra.</p>
+              <p><strong>Combattere a due armi (Ladro):</strong> il Ladro colpisce una volta <strong>per mano</strong>, quindi servono <strong>due armi diverse equipaggiate</strong> — la stessa arma non può essere usata due volte nello stesso turno.</p>
+              <p><strong>Cambio arma:</strong> impugnare un'arma <strong>non</strong> equipaggiata <strong>costa il turno</strong>; dal turno dopo puoi attaccare con la nuova arma. Le armi a due mani disattivano lo scudo.</p>
+              <p><strong>Arma incandescente</strong> (Riscaldare Arma / Disarmare): arroventa <strong>solo l'arma attualmente equipaggiata</strong> del bersaglio per alcuni turni. Se hai un'altra arma riposta puoi impugnarla e combattere comunque.</p>
+              <p><strong>Azione bonus:</strong> molte abilità di classe (Furia, Marchio, Lay of Hands, Cura Ki, Ispirazione Bardica…) sono <strong>bonus action</strong>: puoi usarle nello stesso turno di un attacco. Anche usare un <strong>oggetto</strong> (pozioni, bomba) è un'<strong>azione gratuita</strong> e non consuma l'attacco.</p>
+              <p><strong>Armature:</strong> le pesanti hanno CA fissa alta ma penalità ai tiri per colpire. Le leggere/medie sommano DES (con cap) alla CA base; alcune classi usano una difesa senz'armatura (Monaco 10+DES+SAG, Barbaro 10+DES+COS).</p>
               <p className="arena-info-shield-note">
                 <span className="arena-info-shield-badge">🛡 SCUDI — NUOVE REGOLE</span>
                 Lo scudo ora dà <strong>+1 CA</strong> (prima +2). <strong>MA</strong> ingombra il lanciatore: se un <strong>caster impugna uno scudo</strong>, i suoi <strong>incantesimi da DANNO</strong> sono ostacolati — tira <strong>a svantaggio</strong> i colpi a tiro-per-colpire, e i bersagli tirano il <strong>Tiro Salvezza con vantaggio</strong>. Gli incantesimi di <em>controllo</em> non sono toccati.
               </p>
-              <p><strong>Scudo della Fede</strong> (chierico &amp; affini): <strong>+2 a TUTTI i tiri salvezza per 2 turni</strong>. <strong>Aiuto</strong>: <strong>+1 al danno per 2 turni</strong>.</p>
               <p><strong>Esempio:</strong> Fighter (FOR +3) con Spada Lunga (1d8). d20=14 → 14+3+3=20 vs CA 16 → <em>colpo!</em> Danno: 1d8=5 → 5+3 = <strong>8</strong>.</p>
+            </div>
+
+            <h3 className="arena-info-title">✨ Incantesimi e Tiri Salvezza (TS)</h3>
+            <div className="arena-info-example">
+              <p><strong>CD del Tiro Salvezza:</strong> <strong>8 + competenza + caratteristica da incantatore</strong> del lanciatore. La caratteristica dipende dalla classe: <strong>INT</strong> (Mago), <strong>SAG</strong> (Chierico, Druido, Ranger), <strong>CAR</strong> (Bardo, Paladino, Stregone, Warlock).</p>
+              <p><strong>Quale TS tira il bersaglio:</strong> dipende dall'<em>incantesimo</em>, non dal lanciatore — <strong>DES</strong> per fuoco/fulmine/freddo/tuono/radiante, <strong>COS</strong> per veleno/necrotico, ecc. Il bersaglio tira d20 + il proprio modificatore in quella caratteristica contro la CD.</p>
+              <p><strong>Gli incantesimi a danno funzionano in 4 modi:</strong></p>
+              <ul className="arena-info-list">
+                <li><strong>🎯 Tiro per colpire</strong> — il caster tira d20 + competenza + caratteristica vs CA (come un'arma); 20 naturale = dadi ×2. <em>Es.: Dardo di Fuoco, Raggio Rovente, Infliggi Ferite, Tocco Vampirico.</em></li>
+                <li><strong>TS dimezza i danni</strong> — il bersaglio tira il TS: fallisce = danno pieno, <strong>supera = metà danni</strong>. <em>Es.: Palla di Fuoco, Fulmine, Mani Brucianti, Frantumare.</em></li>
+                <li><strong>TS annulla i danni</strong> — fallisce = danno pieno, supera = <strong>nessun danno</strong>. <em>Es.: Spruzzo Velenoso, Fiamma Sacra, Rintocco Funebre.</em></li>
+                <li><strong>✨ Colpisce sempre</strong> — nessun tiro. <em>Es.: Dardo Incantato (3d4 automatici).</em></li>
+              </ul>
+              <p><strong>Controllo</strong> (Sonno, Blocca Persone, Charme…): il bersaglio tira il TS indicato o <strong>perde 2 turni</strong>, con un nuovo tiro a ogni turno per liberarsi. <strong>Veleno/effetti nel tempo:</strong> TS a inizio turno per ridurre i danni continuati.</p>
+              <p><strong>Difese contro i TS:</strong> <em>Assorbire Elementi</em> dà +3 ai prossimi 3 TS; <em>Scudo della Fede</em> (chierico &amp; affini) dà <strong>+2 a TUTTI i TS per 2 turni</strong>. <strong>Aiuto</strong>: +1 al danno per 2 turni.</p>
             </div>
 
             <h3 className="arena-info-title">🛡 Le 12 Classi</h3>

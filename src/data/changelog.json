@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "16.02",
+      "date": "2026-06-10",
+      "title": "Arena — Manuale aggiornato con le meccaniche di combattimento",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Il manuale dell'Arena (Regole & Classi) spiega ora nel dettaglio attacchi e armi: tiro per colpire e critico, quanti attacchi per turno per classe, combattimento a due armi del Ladro, cambio arma (costa il turno) e arma incandescente."
+        },
+        {
+          "type": "chore",
+          "text": "Nuova sezione del manuale \"Incantesimi e Tiri Salvezza\": come si calcola la CD in base alla classe del lanciatore, quale caratteristica tira il bersaglio e le 4 modalità degli incantesimi a danno (tiro per colpire, TS che dimezza, TS che annulla, colpo automatico)."
+        }
+      ]
+    },
+    {
       "version": "16.01",
       "date": "2026-06-10",
       "title": "Arena — Cronaca dello scontro più compatta",
