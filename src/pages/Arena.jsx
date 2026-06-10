@@ -152,7 +152,7 @@ const WIZARD_SPELLS = [
   { name: "Raggio di Gelo",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🧊", info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Lama Vorticosa",        level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "🌀", info: "Trucchetto · Tuono · mischia", maxUses: 4 },
   // ── Livello 1 ──────────────────────────────────────────────────────────────
-  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 4 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre (no tiro)", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
@@ -179,7 +179,7 @@ const SORCERER_SPELLS = [
   { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
   { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
   { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
-  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · TS DES", maxUses: 3 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre (no tiro)", maxUses: 3 },
   { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
   { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "6d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 2 },
@@ -230,7 +230,7 @@ const DRUID_SPELLS = [
   { name: "Charme su Persone",  level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Assorbire Elementi", level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +3 ai prossimi 3 TS (difesa elementale)", special: "save_buff", tsBonus: 3, tsAttacks: 3, maxUses: 2 },
   // ── Livello 2 ──────────────────────────────────────────────────────────────
-  { name: "Riscaldare Arma",    level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🔩", info: "Lv2 · Il nemico non può attaccare con armi per 2 turni", special: "weapon_lock", weaponLockTurns: 2, maxUses: 2 },
+  { name: "Riscaldare Arma",    level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🔩", info: "Lv2 · Arroventa l'arma equipaggiata del nemico per 2 turni (può cambiare su un'altra arma)", special: "weapon_lock", weaponLockTurns: 2, maxUses: 2 },
   { name: "Frantumare",         level: 2, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
   { name: "Blocca Persone",     level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🧲", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Raggio di Luna",     level: 2, hitBonus: 3, damage: "2d10",  statKey: null, type: "spell", icon: "🌙", info: "Lv2 · Radiante", maxUses: 2 },
@@ -484,7 +484,7 @@ const ACTION_SURGE_ACTION = {
 // Disarmare (Fighter) — disarma il nemico: non può attaccare con armi per 3 turni
 const DISARM_ACTION = {
   name: "Disarmare", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🪓", info: "Disarma il nemico: non può attaccare con armi per 3 turni · 2 cariche",
+  type: "skill", icon: "🪓", info: "Disarma l'arma equipaggiata del nemico per 3 turni (può cambiare su un'altra arma) · 2 cariche",
   special: "weapon_lock", weaponLockTurns: 3, maxUses: 2,
 };
 
@@ -573,18 +573,19 @@ const CARICA_PUGNI_ACTION = {
   type: "skill", icon: "💥", info: "2 colpi a mani nude · 2d6+DES · 2 usi", maxUses: 2, damageType: "contundente",
 };
 
-// Concentrazione (Monk) — Bonus Action: +4 danni per 2 turni, 2 cariche
+// Concentrazione (Monk) — Bonus Action: +2 danni per 2 turni, 2 cariche
 const CONCENTRAZIONE_ACTION = {
   name: "Concentrazione", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🧘", info: "Bonus Action · +4 danni per 2 turni · 2 cariche",
+  type: "skill", icon: "🧘", info: "Bonus Action · +2 danni per 2 turni · 2 cariche",
   special: "concentrate_buff", maxUses: 2, bonusAction: true,
 };
 
-// Assorbire Danni (Monk) — Bonus Action: il prossimo danno subito ti cura del 50%
+// Assorbire Danni (Monk) — Bonus Action: il prossimo danno subito ti cura dell'80%, 1 carica.
+// Il nemico NON deve sapere che è attivo: si mostra solo come "posizione difensiva" generica.
 const ASSORBIRE_DANNI_ACTION = {
   name: "Assorbire Danni", hitBonus: 0, damage: "—", statKey: null,
-  type: "skill", icon: "🌀", info: "Bonus Action · il prossimo danno subito ti cura del 50% · 2 cariche",
-  special: "absorb_damage", maxUses: 2, bonusAction: true,
+  type: "skill", icon: "🌀", info: "Bonus Action · il prossimo danno subito ti cura dell'80% · 1 carica",
+  special: "absorb_damage", maxUses: 1, bonusAction: true,
 };
 
 // Cura Ki (Monk) — Bonus Action: cura 1d8+SAG HP, 2 cariche
@@ -907,9 +908,9 @@ function makeAiSnapshotAndPlayer(matchSeed) {
 
 // ── ITEMS ─────────────────────────────────────────────────────────────────────
 const ARENA_ITEMS = [
-  { key: "pozione_cura",        name: "Pozione di Cura",        icon: "🧪", info: "Cura 2d12 · Passa il turno",                 damage: "2d12" },
-  { key: "pozione_cura_media",  name: "Pozione di Cura Media",  icon: "💚", info: "Cura 2d8 · Passa il turno (Bottega Arena)",   damage: "2d8",  shopOnly: true },
-  { key: "bomba",               name: "Bomba",                  icon: "💣", info: "2d6 danni al bersaglio · Passa il turno",    damage: "2d6"  },
+  { key: "pozione_cura",        name: "Pozione di Cura",        icon: "🧪", info: "Cura 2d12 · azione gratuita (1/turno)",       damage: "2d12" },
+  { key: "pozione_cura_media",  name: "Pozione di Cura Media",  icon: "💚", info: "Cura 2d8 · azione gratuita (Bottega Arena)",  damage: "2d8",  shopOnly: true },
+  { key: "bomba",               name: "Bomba",                  icon: "💣", info: "2d6 danni al bersaglio · azione gratuita",   damage: "2d6"  },
   { key: "pozione_veleno",      name: "Pozione di Veleno",      icon: "☠",  info: "1d6 veleno al bersaglio il prossimo turno",   damage: "1d6"  },
 ];
 
@@ -1037,7 +1038,7 @@ function clearDebuffs(p) {
     // Svantaggio / accecamento / disarmo / furtività-debuff
     attackDisadvantageTurns: 0,
     blindDebuff: false, eagleDebuffTurns: 0,
-    weaponLockTurns: 0,
+    weaponLockTurns: 0, weaponLockNames: null,
     stealthDisadvTurns: 0,
     entangled: false,
     // Controllo
@@ -1146,7 +1147,84 @@ function parseSpellSaveAbility(action) {
   if (info.includes("TS CAR")) return "cha";
   return "wis";
 }
+// Caratteristica del TS per gli incantesimi a DANNO: il bersaglio tira la stat
+// dell'INCANTESIMO (non quella del lanciatore, che serve solo per la CD).
+// Priorità: etichetta "TS XXX" esplicita → tipo di danno → DES di default.
+// Convenzione: veleno/necrotico = Costituzione · tutto il resto = Destrezza.
+function damageSpellSaveAbility(action) {
+  const info = (action?.info || "").toUpperCase();
+  if (action?.saveAbility) return action.saveAbility;
+  if (info.includes("TS FOR")) return "str";
+  if (info.includes("TS DES")) return "dex";
+  if (info.includes("TS COS")) return "con";
+  if (info.includes("TS INT")) return "int";
+  if (info.includes("TS CAR")) return "cha";
+  if (info.includes("TS SAG")) return "wis";
+  if (/VELENO|NECROTICO/.test(info)) return "con";
+  return "dex";
+}
 const SAVE_LABEL = { str: "FOR", dex: "DES", con: "COS", int: "INT", wis: "SAG", cha: "CAR" };
+
+// ── MECCANICA UFFICIALE D&D 5e per ogni incantesimo a DANNO (per nome) ─────────
+//   cast: "attack"       → tiro per colpire dell'incantatore vs CA del bersaglio
+//         "save_half"    → il bersaglio tira il TS: fallisce = danno pieno · supera = metà
+//         "save_negate"  → il bersaglio tira il TS: fallisce = danno pieno · supera = nessun danno
+//         "auto"         → colpisce sempre, nessun tiro (es. Dardo Incantato / Magic Missile)
+//   save: caratteristica del TS del bersaglio (solo per le modalità con TS)
+const SPELL_MECHANICS = {
+  // Trucchetti — tiro per colpire
+  "Dardo di Fuoco":         { cast: "attack" },
+  "Tocco Gelido":           { cast: "attack" },
+  "Scossa Folgorante":      { cast: "attack" },
+  "Raggio di Gelo":         { cast: "attack" },
+  "Deflagrazione Occulta":  { cast: "attack" },
+  "Frusta di Spine":        { cast: "attack" },
+  "Produrre Fiamma":        { cast: "attack" },
+  // Trucchetti — TS annulla
+  "Spruzzo Velenoso":       { cast: "save_negate", save: "con" },
+  "Lama Vorticosa":         { cast: "save_negate", save: "dex" },
+  "Gelidito":               { cast: "save_negate", save: "con" },
+  "Morso di Gelo":          { cast: "save_negate", save: "con" },
+  "Infestazione":           { cast: "save_negate", save: "con" },
+  "Schianto di Tuono":      { cast: "save_negate", save: "con" },
+  "Rintocco Funebre":       { cast: "save_negate", save: "wis" },
+  "Rintocco dei Morti":     { cast: "save_negate", save: "wis" },
+  "Fiamma Sacra":           { cast: "save_negate", save: "dex" },
+  "Parola di Splendore":    { cast: "save_negate", save: "con" },
+  // Livello 1
+  "Dardo Incantato":        { cast: "auto" },
+  "Mani Brucianti":         { cast: "save_half", save: "dex" },
+  "Colpo Cromatico":        { cast: "attack" },
+  "Onda Tonante":           { cast: "save_half", save: "con" },
+  "Braccia di Hadar":       { cast: "save_half", save: "str" },
+  "Rappresaglia Infernale": { cast: "save_half", save: "dex" },
+  "Coltello di Ghiaccio":   { cast: "attack" },
+  "Dardo Guidato":          { cast: "attack" },
+  "Infliggi Ferite":        { cast: "attack" },
+  "Punizione Travolgente":  { cast: "attack" },
+  "Grandine di Spine":      { cast: "attack" },
+  // Livello 2
+  "Raggio Rovente":         { cast: "attack" },
+  "Frantumare":             { cast: "save_half", save: "con" },
+  "Frastornare":            { cast: "save_half", save: "con" },
+  "Tocco Vampirico":        { cast: "attack" },
+  "Raggio di Luna":         { cast: "save_half", save: "con" },
+  "Lama di Fiamma":         { cast: "attack" },
+  "Arma Spirituale":        { cast: "attack" },
+  "Punizione Marchiante":   { cast: "attack" },
+  // Livello 3
+  "Palla di Fuoco":         { cast: "save_half", save: "dex" },
+  "Fulmine":                { cast: "save_half", save: "dex" },
+};
+// Meccanica di un incantesimo a danno: dalla tabella, con fallback "TS annulla".
+function getSpellCast(action) {
+  const m = SPELL_MECHANICS[action?.name];
+  if (m) return { cast: m.cast, save: m.save || damageSpellSaveAbility(action) };
+  return { cast: "save_negate", save: damageSpellSaveAbility(action) };
+}
+// Bonus al tiro per colpire degli incantesimi = competenza + mod da incantatore.
+function getSpellAttackBonus(snap) { return getProficiencyBonus(snap) + getSpellMod(snap); }
+
 function isRogueClass(cls)      { return ["rogue","ladro"].some(c => cls.includes(c)); }
 function isRangerClass(cls)     { return ["ranger","cacciatore"].some(c => cls.includes(c)); }
 function isArtificerClass(cls)  { return ["artificer","artefice"].some(c => cls.includes(c)); }
@@ -1231,7 +1309,8 @@ function getFighterStatuses(p) {
   if ((p.defensiveBonus ?? 0) > 0)          push("def", "🛡", `Difensivo +${p.defensiveBonus}`, "is-shield", `+${p.defensiveBonus} CA fino al prossimo turno`);
   if ((p.saveBuffAttacks ?? 0) > 0)         push("savebuff", "🧿", `Difesa Mistica +${p.saveBuffBonus ?? 0}`, "is-shield", `+${p.saveBuffBonus ?? 0} ai TS · ${p.saveBuffAttacks} rimasti`);
   if ((p.saveFaithTurns ?? 0) > 0)          push("savefaith", "✝", `Scudo Fede +${p.saveFaithBonus ?? 2} ${p.saveFaithTurns}t`, "is-shield", `+${p.saveFaithBonus ?? 2} a TUTTI i tiri salvezza per ${p.saveFaithTurns} turni`);
-  if (p.absorbDamageNext)                   push("absorb", "✨", "Assorbi danno", "is-shield", "Assorbe il prossimo colpo");
+  // ⚠ Volutamente generico: il nemico NON deve sapere che il Monaco sta per assorbire (altrimenti smette di attaccare).
+  if (p.absorbDamageNext)                   push("absorb", "🧘", "Posizione difensiva", "is-shield", "Ha assunto una posizione difensiva");
 
   // ── Buff offensivi / vantaggi ──
   if ((p.selfAdvTurns ?? 0) > 0)            push("selfadv", "🌟", `Vantaggio ${p.selfAdvTurns}t`, "is-buff");
@@ -3792,27 +3871,52 @@ export default function Arena() {
           };
           logMsg = `${sp.icon || "🤢"} ${aiName} lancia ${sp.name} su ${target.name} → TS ${SAVE_LABEL[saveAbility]} (CD ${dotDC}) richiesto!`;
         } else if (_picked.kind === "save_damage") {
-          // Resolve the human's TS now with a visible d20 popup, mirroring
-          // the reverse direction (handleSpellSave shows a d20 too).
-          const ability = _castAbility;
-          const defMod  = targetSnap.stats?.[ability] ?? 0;
+          // Meccanica ufficiale D&D 5e per nome: attack / save_half / save_negate / auto.
+          // CD/bonus al colpire dalla classe dell'IA; il TS umano è nella stat dello spell.
+          const { cast: castMode, save: saveAbil } = getSpellCast(sp);
           const tgtSaveBuff = (_tgtMP?.saveBuffAttacks ?? 0) > 0 ? (_tgtMP?.saveBuffBonus ?? 0) : 0;
-          const d20 = Math.floor(Math.random() * 20) + 1;
-          await showD20Roll(d20, { label: `TS ${SAVE_LABEL[ability]} · ${sp.name}` });
-          const tsTotal = d20 + defMod + tgtSaveBuff;
-          const saves   = tsTotal >= _spellDC;
-          const { total: dmg, rolls: dmgRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(sp.damage);
-          dmgToTarget = saves ? 0 : Math.max(0, dmg + _spellMod);
-          const modSign = _spellMod >= 0 ? "+" : "";
-          const buffTag = tgtSaveBuff > 0 ? ` +${tgtSaveBuff}🛡` : "";
-          logMsg = saves
-            ? `✨ ${target.name} resiste a ${sp.name} di ${aiName} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} ≥ CD ${_spellDC}) — nessun danno.`
-            : `✨ ${aiName} colpisce ${target.name} con ${sp.icon || "✨"} ${sp.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} < CD ${_spellDC}) — 🎲${dmgRolls}${modSign}${_spellMod} = ${dmgToTarget} danni.`;
-          if (tgtSaveBuff > 0) {
-            const newAtk = Math.max(0, (_tgtMP?.saveBuffAttacks ?? 0) - 1);
-            targetPatch.saveBuffAttacks = newAtk;
-            if (newAtk === 0) targetPatch.saveBuffBonus = 0;
+          const tgtFaith    = readSaveFaithBonus(_tgtMP);
+          let connected = false, halfDamage = false, critHit = false, outLog = "";
+          if (castMode === "auto") {
+            connected = true; outLog = "colpisce automaticamente";
+          } else if (castMode === "attack") {
+            const spellHit = getSpellAttackBonus(aiSnap);
+            const shieldDef = (_tgtMP?.shieldSkillTurns ?? 0) > 0 ? (_tgtMP?.shieldSkillBonus ?? 3) : 0;
+            const targetAc = getEffectiveAc(_tgtMP, targetSnap) + shieldDef + (_tgtMP?.defensiveBonus ?? 0);
+            const d20 = Math.floor(Math.random() * 20) + 1;
+            await showD20Roll(d20, { label: `${aiName} tira per colpire · ${sp.name}` });
+            const totalHit = d20 + spellHit;
+            critHit = d20 === 20;
+            connected = critHit || (d20 !== 1 && totalHit >= targetAc);
+            outLog = connected
+              ? `colpisce [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]${critHit ? " CRITICO!" : ""}`
+              : `manca [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]`;
+          } else {
+            const defMod = targetSnap.stats?.[saveAbil] ?? 0;
+            const d20 = Math.floor(Math.random() * 20) + 1;
+            await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbil]} · ${sp.name}` });
+            const tsTotal = d20 + defMod + tgtSaveBuff + tgtFaith;
+            const saved = tsTotal >= _spellDC;
+            connected  = !saved || castMode === "save_half";
+            halfDamage = saved && castMode === "save_half";
+            const buffBits = `${tgtSaveBuff > 0 ? `+${tgtSaveBuff}🛡` : ""}${tgtFaith > 0 ? `+${tgtFaith}✝` : ""}`;
+            outLog = saved
+              ? `supera il TS ${SAVE_LABEL[saveAbil]} [${tsTotal}${buffBits} ≥ CD ${_spellDC}] — ${castMode === "save_half" ? "danni dimezzati" : "nessun danno"}`
+              : `fallisce il TS ${SAVE_LABEL[saveAbil]} [${tsTotal}${buffBits} < CD ${_spellDC}]`;
+            if (tgtSaveBuff > 0) {
+              const newAtk = Math.max(0, (_tgtMP?.saveBuffAttacks ?? 0) - 1);
+              targetPatch.saveBuffAttacks = newAtk;
+              if (newAtk === 0) targetPatch.saveBuffBonus = 0;
+            }
           }
+          let { total: dmg } = connected ? rollDmg(sp.damage) : { total: 0 };
+          if (critHit && connected) dmg += rollDmg(sp.damage).total; // crit: dadi raddoppiati
+          let raw = connected ? Math.max(0, dmg + _spellMod) : 0;
+          if (halfDamage) raw = Math.floor(raw / 2);
+          dmgToTarget = raw;
+          logMsg = connected
+            ? `✨ ${aiName} → ${sp.icon || "✨"} ${sp.name}: ${outLog} su ${target.name} — ${dmgToTarget} danni.`
+            : `✨ ${aiName} → ${sp.name}: ${outLog} su ${target.name} — nessun danno.`;
         }
 
         // Multi-action logic — only damage spells get the multi-action
@@ -3833,7 +3937,7 @@ export default function Arena() {
               // Monk's "Assorbire Danni" also catches save-based damage spells.
               if (p.absorbDamageNext && dmgToTarget > 0) {
                 const tgtMaxHp = targetSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
-                const heal = Math.floor(dmgToTarget / 2);
+                const heal = Math.floor(dmgToTarget * 0.8);
                 spellAbsorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
                 return {
                   ...p,
@@ -4028,7 +4132,7 @@ export default function Arena() {
           // Monk's "Assorbire Danni": next damage taken is converted into a 50% heal.
           if (p.absorbDamageNext && damage > 0) {
             const tgtMaxHp = targetSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
-            const heal = Math.floor(damage / 2);
+            const heal = Math.floor(damage * 0.8);
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
             return {
               ...p,
@@ -4194,11 +4298,17 @@ export default function Arena() {
     const attName = attackerSnap?.name || "?";
     const defName = defenderSnap?.name || "?";
 
-    // 🔩 Riscaldare Arma — blocca attacchi con armi finché weaponLockTurns > 0.
+    // 🔩 Riscaldare Arma — blocca SOLO l'arma arroventata (quella equipaggiata al momento
+    // del blocco). Un'arma diversa, non equipaggiata allora, può essere impugnata e usata.
     const _myMatchEarly = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
     if (action.type === "weapon" && (_myMatchEarly?.weaponLockTurns ?? 0) > 0) {
-      alert(`🔩 La tua arma è incandescente! Non puoi attaccare con armi per ${_myMatchEarly.weaponLockTurns} turno/i.`);
-      return;
+      const _lockNames = _myMatchEarly?.weaponLockNames;
+      // Senza elenco (match legacy) blocca tutte le armi; altrimenti solo quelle arroventate.
+      const _thisLocked = !_lockNames || _lockNames.length === 0 ? true : _lockNames.includes(action.name);
+      if (_thisLocked) {
+        alert(`🔩 ${action.name} è incandescente! Cambia su un'altra arma per ${_myMatchEarly.weaponLockTurns} turno/i.`);
+        return;
+      }
     }
 
     // 🗡 Ladro — struttura del turno: 1 attacco mano1 + 1 attacco mano2 + 1 abilità
@@ -4633,7 +4743,7 @@ export default function Arena() {
     const aidBonus           = readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
     const rageDmgBonus       = !isSpellAction && (attackerMatchPlayer?.rageTurns ?? 0) > 0 ? 2 : 0;
     const barbarianDmgBonus  = !isSpellAction && isBarbarianClass(attackerClassLower) ? 2 : 0;
-    const concentrationDmg   = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 4 : 0;
+    const concentrationDmg   = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 2 : 0;
     const bardInspirationActive = !!attackerMatchPlayer?.bardicInspirationActive;
     const { total: inspirationBonus, rolls: inspirationRolls } = bardInspirationActive ? rollDmg("1d6") : { total: 0, rolls: "" };
     const magicDetectBonus   = readActiveBonus(attackerMatchPlayer?.magicDetectActive, 3);
@@ -4744,7 +4854,7 @@ export default function Arena() {
           if (p.absorbDamageNext && damage > 0) {
             const tgtSnap = (arenaMeta.characterSnapshots || {})[targetId] || {};
             const maxHp = tgtSnap.stats?.maxHp ?? p.maxHp ?? p.hp;
-            const heal  = Math.floor(damage / 2);
+            const heal  = Math.floor(damage * 0.8);
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
             return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           }
@@ -4984,7 +5094,7 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
-  // ── CONCENTRAZIONE (Monk · Bonus Action: +4 danni per 2 turni) ────────────
+  // ── CONCENTRAZIONE (Monk · Bonus Action: +2 danni per 2 turni) ────────────
   const handleConcentrate = async (matchId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Monaco";
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
@@ -4998,7 +5108,7 @@ export default function Arena() {
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
         return { ...p, concentrationTurns: 2, bonusActionUsed: true, actionUsesLeft: newUses };
       });
-      const log = { pub: `🧘 ${myName} si concentra! +4 danni per 2 turni (bonus action)`, attId: currentUser.uid, ts: new Date().toISOString() };
+      const log = { pub: `🧘 ${myName} si concentra! +2 danni per 2 turni (bonus action)`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -5030,7 +5140,7 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
-  // ── ASSORBIRE DANNI (Monk · Bonus Action: prossimo danno → cura 50%) ──────
+  // ── ASSORBIRE DANNI (Monk · Bonus Action: prossimo danno → cura 80%, 1 carica) ──────
   // Il nemico vede solo una posa marziale generica per non perdere l'incentivo ad attaccare.
   const handleAbsorbDamage = async (matchId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Monaco";
@@ -5039,7 +5149,7 @@ export default function Arena() {
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     const log = {
       pub: `🧘 ${myName} chiude gli occhi e respira profondamente.`,
-      att: `🌀 Ti prepari ad assorbire il prossimo colpo (curi il 50% del danno subito · bonus action)`,
+      att: `🌀 Ti prepari ad assorbire il prossimo colpo (curi l'80% del danno subito · bonus action)`,
       attId: currentUser.uid, ts: new Date().toISOString(),
     };
     const updatedMatches = arenaMeta.matches.map(m => {
@@ -5734,7 +5844,9 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
-        if (p.id === targetId) return { ...p, weaponLockTurns: turns };
+        // Si arroventa SOLO l'arma attualmente equipaggiata: il bersaglio può cambiare
+        // su un'altra arma non equipaggiata (es. arma a 2 mani riposta) e usarla.
+        if (p.id === targetId) return { ...p, weaponLockTurns: turns, weaponLockNames: p.equippedWeaponNames || [] };
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
@@ -6043,52 +6155,98 @@ export default function Arena() {
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
     if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 5);
 
-    const ability = getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
-    const dc      = getSpellSaveDC(attackerSnap);
-    const defMod  = defenderSnap?.stats?.[ability] ?? 0;
-    const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-    const saveBuffBonus = (defMatchPlayer?.saveBuffAttacks ?? 0) > 0 ? (defMatchPlayer?.saveBuffBonus ?? 0) : 0;
+    // ── Meccanica ufficiale D&D 5e per nome: attack / save_half / save_negate / auto ──
+    // La CD dei TS dipende dalla classe del lanciatore; il bonus al colpire degli
+    // attacchi a incantesimo = competenza + mod da incantatore; il TS è nella stat dello spell.
+    const { cast: castMode, save: saveAbil } = getSpellCast(action);
+    const castAbility = getSpellcastingAbility((attackerSnap?.class || "").toLowerCase());
+    const casterMod   = attackerSnap?.stats?.[castAbility] ?? 0;
+    const dc          = getSpellSaveDC(attackerSnap);
+    const defMatchPlayer      = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
+    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
+    const saveBuffBonus  = (defMatchPlayer?.saveBuffAttacks ?? 0) > 0 ? (defMatchPlayer?.saveBuffBonus ?? 0) : 0;
     const saveFaithBonus = readSaveFaithBonus(defMatchPlayer); // Scudo della Fede del bersaglio
-    // Scudo del LANCIATORE → svantaggio per lui = il bersaglio tira il TS con VANTAGGIO.
-    const casterHasShield = !!attackerSnap?.hasShield;
-    let d20 = Math.floor(Math.random() * 20) + 1;
-    if (casterHasShield) { const d20b = Math.floor(Math.random() * 20) + 1; d20 = Math.max(d20, d20b); }
-    await showD20Roll(d20, { label: `${defName} tira il TS ${SAVE_LABEL[ability]}${casterHasShield ? " a VANTAGGIO (tuo scudo ti penalizza)" : ""} · ${action.name}` });
-    const tsTotal = d20 + defMod + saveBuffBonus + saveFaithBonus;
-    const saves   = tsTotal >= dc;
-    // Stregoneria Innata: nemico tira ≤4 sul d20 → danno +50%.
-    const sorcererCrit = !saves && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 <= 4;
-    // Rintocco Funebre: 1d12 se nemico già ferito.
+    const rolledSave = castMode === "save_half" || castMode === "save_negate";
+    // Rintocco Funebre: 1d12 se il nemico è già ferito.
     const targetMaxHp = defenderSnap?.stats?.maxHp ?? defMatchPlayer?.maxHp ?? defMatchPlayer?.hp ?? 0;
     const targetCurHp = defMatchPlayer?.hp ?? 0;
     const targetIsHurt = targetMaxHp > 0 && targetCurHp < targetMaxHp;
-    const dmgFormula = (action.damageWhenHurt && targetIsHurt) ? action.damageWhenHurt : action.damage;
-    const casterMod = attackerSnap?.stats?.[ability] ?? 0;
-    const attackerMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === currentUser.uid);
-    const concentrationDmg = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 4 : 0;
+    const dmgFormula  = (action.damageWhenHurt && targetIsHurt) ? action.damageWhenHurt : action.damage;
+    const concentrationDmg = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 2 : 0;
     const aidDmgBonus = readAidDmgBonus(attackerMatchPlayer); // Aiuto: +X al danno
-    const { total: baseDmg, rolls: diceRolls } = saves ? { total: 0, rolls: "0" } : rollDmg(dmgFormula);
-    const rawDmg = saves ? 0 : Math.max(0, baseDmg + casterMod + concentrationDmg + aidDmgBonus);
-    const damage = sorcererCrit ? Math.floor(rawDmg * 1.5) : rawDmg;
+
+    let connected = false, halfDamage = false, critHit = false, sorcererCrit = false, outcomeLog = "";
+    let casterHitPatch = {};
+    if (castMode === "auto") {
+      // Dardo Incantato / Magic Missile: colpisce sempre, nessun tiro.
+      connected = true;
+      outcomeLog = "colpisce automaticamente";
+    } else if (castMode === "attack") {
+      // Tiro per colpire dell'incantatore vs CA del bersaglio.
+      const spellHit = getSpellAttackBonus(attackerSnap);
+      const mdAtk = attackerMatchPlayer?.magicDetectAttacks ?? 0;
+      const aidHit = mdAtk > 0 ? readActiveBonus(attackerMatchPlayer?.magicDetectActive, 0) : readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
+      const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
+      const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: `${attName} tira per colpire · ${action.name}` });
+      const totalHit = d20 + spellHit + aidHit;
+      critHit = d20 === 20;
+      connected = critHit || (d20 !== 1 && totalHit >= targetAc);
+      const aidPart = aidHit ? `+${aidHit}` : "";
+      outcomeLog = connected
+        ? `colpisce [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]${critHit ? " CRITICO!" : ""}`
+        : `manca [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]`;
+      if (mdAtk > 0) {
+        const newMdAtk = Math.max(0, mdAtk - 1);
+        casterHitPatch = { magicDetectAttacks: newMdAtk, magicDetectActive: newMdAtk > 0 ? attackerMatchPlayer?.magicDetectActive : false };
+      }
+    } else {
+      // save_half / save_negate: il bersaglio tira il TS nella stat dell'incantesimo.
+      const defMod = defenderSnap?.stats?.[saveAbil] ?? 0;
+      const casterHasShield = !!attackerSnap?.hasShield; // scudo del caster → bersaglio salva a VANTAGGIO
+      let d20 = Math.floor(Math.random() * 20) + 1;
+      if (casterHasShield) { const d20b = Math.floor(Math.random() * 20) + 1; d20 = Math.max(d20, d20b); }
+      await showD20Roll(d20, { label: `${defName} tira il TS ${SAVE_LABEL[saveAbil]}${casterHasShield ? " a VANTAGGIO" : ""} · ${action.name}` });
+      const tsTotal = d20 + defMod + saveBuffBonus + saveFaithBonus;
+      const saved = tsTotal >= dc;
+      // Stregoneria Innata: nemico tira ≤4 sul d20 → danno +50%.
+      sorcererCrit = !saved && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 <= 4;
+      connected  = !saved || castMode === "save_half";
+      halfDamage = saved && castMode === "save_half";
+      const buffBits = `${saveBuffBonus > 0 ? `+${saveBuffBonus}🛡` : ""}${saveFaithBonus > 0 ? `+${saveFaithBonus}✝` : ""}`;
+      outcomeLog = saved
+        ? `supera il TS ${SAVE_LABEL[saveAbil]} [${tsTotal}${buffBits} ≥ CD ${dc}] — ${castMode === "save_half" ? "danni dimezzati" : "nessun danno"}`
+        : `fallisce il TS ${SAVE_LABEL[saveAbil]} [${tsTotal}${buffBits} < CD ${dc}]`;
+    }
+
+    // ── Danno ──
+    let { total: dmgDice, rolls: diceRolls } = connected ? rollDmg(dmgFormula) : { total: 0, rolls: "0" };
+    if (critHit && connected) { const ex = rollDmg(dmgFormula); dmgDice += ex.total; diceRolls = `${diceRolls}+${ex.rolls}`; } // crit: dadi raddoppiati
+    let rawDmg = connected ? Math.max(0, dmgDice + casterMod + concentrationDmg + aidDmgBonus) : 0;
+    if (halfDamage)  rawDmg = Math.floor(rawDmg / 2);
+    if (sorcererCrit) rawDmg = Math.floor(rawDmg * 1.5);
+    const damage = rawDmg;
+    const saves  = damage <= 0; // "nessun danno subìto" per il blocco a valle (assorbi/HP)
     // Tocco Vampirico: cura il caster su danno inflitto.
-    const { total: vampHeal, rolls: vampRolls } = (!saves && action.vampiric && damage > 0) ? rollDmg(action.vampiricHeal || "1d8") : { total: 0, rolls: "" };
+    const { total: vampHeal, rolls: vampRolls } = (connected && action.vampiric && damage > 0) ? rollDmg(action.vampiricHeal || "1d8") : { total: 0, rolls: "" };
     const modSign = casterMod >= 0 ? "+" : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
     const sorceryTag = sorcererCrit ? " | 🌟Stregoneria Innata +50%" : "";
     const hurtTag    = (action.damageWhenHurt && targetIsHurt) ? ` | 🩸ferito (${dmgFormula})` : "";
-    const buffTag    = `${saveBuffBonus > 0 ? ` +${saveBuffBonus} 🛡abs.` : ""}${saveFaithBonus > 0 ? ` +${saveFaithBonus} ✝fede` : ""}${casterHasShield ? ` | 🛡 ${attName} ha lo scudo → ${defName} tira il TS a VANTAGGIO (penalità al lanciatore)` : ""}`;
-    const dmgPart = saves ? "" : ` 🎲(${diceRolls})${modSign}${casterMod} ${ability.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag} = ${damage}`;
+    const halfTag    = halfDamage ? " | ½ TS" : "";
     const vampTag    = vampHeal > 0 ? ` | 🩸cura ${vampHeal} HP [🎲${vampRolls}]` : "";
+    const dmgTail    = damage > 0 ? ` 🎲(${diceRolls})${modSign}${casterMod} ${castAbility.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag}${halfTag} = ${damage} danni${vampTag}` : "";
     const log = {
-      pub: saves
-        ? `✨ ${defName} resiste a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} ≥ ${dc}) — nessun danno.`
-        : `✨ ${attName} colpisce ${defName} con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} < ${dc})${dmgPart}${vampTag} — ${damage} danni.`,
-      att: saves
-        ? `✨ ${defName} resiste a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} ≥ CD ${dc}).`
-        : `✨ Colpisci ${defName} con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} < CD ${dc})${dmgPart}${vampTag} — ${damage} danni.`,
-      def: saves
-        ? `✨ Resisti a ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} ≥ CD ${dc}).`
-        : `✨ ${attName} ti colpisce con ${action.name} (TS ${SAVE_LABEL[ability]} ${tsTotal}${buffTag} < CD ${dc}) — ${damage} danni.`,
+      pub: connected
+        ? `✨ ${attName} → ${action.name}: ${outcomeLog} su ${defName}${dmgTail}`
+        : `✨ ${attName} → ${action.name}: ${outcomeLog} su ${defName} — nessun danno.`,
+      att: connected
+        ? `✨ ${action.name}: ${outcomeLog} su ${defName}${dmgTail}`
+        : `✨ ${action.name}: ${outcomeLog} su ${defName} — nessun danno.`,
+      def: connected
+        ? `✨ ${attName} ti colpisce con ${action.name}: ${outcomeLog}${dmgTail}`
+        : `✨ Eviti ${action.name} di ${attName}: ${outcomeLog}.`,
       attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
     };
 
@@ -6098,15 +6256,15 @@ export default function Arena() {
       if (m.matchId !== matchId) return m;
       const rawPlayers = m.players.map(p => {
         if (p.id === targetId) {
-          // Save buff (Assorbire Elementi): scala il counter solo se il buff ha contribuito.
-          const decSaveBuff = (p.saveBuffAttacks ?? 0) > 0;
+          // Save buff (Assorbire Elementi): scala il counter solo se c'è stato un vero TS.
+          const decSaveBuff = (p.saveBuffAttacks ?? 0) > 0 && rolledSave;
           const newSaveAtk  = decSaveBuff ? Math.max(0, (p.saveBuffAttacks ?? 0) - 1) : (p.saveBuffAttacks ?? 0);
           const newSaveBon  = newSaveAtk > 0 ? p.saveBuffBonus : 0;
           const baseSavePatch = decSaveBuff ? { saveBuffAttacks: newSaveAtk, saveBuffBonus: newSaveBon } : {};
           if (saves) return { ...p, ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1), ...baseSavePatch };
           if (p.absorbDamageNext && damage > 0) {
             const tgtMaxHp = defenderSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
-            const heal = Math.floor(damage / 2);
+            const heal = Math.floor(damage * 0.8);
             spellAbsorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
             return { ...p, hp: Math.min(tgtMaxHp, p.hp + heal), absorbDamageNext: false, ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1), ...baseSavePatch };
           }
@@ -6119,7 +6277,7 @@ export default function Arena() {
           const myMaxHp = attackerSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
           const healedHp = vampHeal > 0 ? Math.min(myMaxHp, (p.hp ?? 0) + vampHeal) : (p.hp ?? 0);
           // Timer turn-based gestiti in turnEndDecaysSpell (sotto), non qui.
-          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, ...casterHitPatch, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
         }
         return { ...p, ...consumeInvisibility(p) };
       });
@@ -7129,7 +7287,7 @@ export default function Arena() {
               <p><strong>Barbaro (Barbarian)</strong> — Armi semplici e marziali, 2 armi, armatura leggera/media o nessuna + scudo. <em>Skill:</em> Furia (+2 danni e riduzione danni 3T), Turbine di Lame (2 attacchi 2d10+FOR), Attacco Poderoso (2d8+FOR + vantaggio 3T).</p>
               <p><strong>Paladino (Paladin)</strong> — Armi marziali, 2 armi, armatura pesante + scudo. Spell paladino. <em>Skill:</em> Smite Divino (arma +2d8, 2 cariche), Imposizione delle Mani (pozza di cura = HP/3, scegli quanti curare).</p>
               <p><strong>Cacciatore (Ranger)</strong> — Armi ranger, 2 armi, armatura leggera/media + scudo. Spell ranger. <em>Skill:</em> Marchio del Cacciatore (+3 ai TPC per 3 turni, bonus action).</p>
-              <p><strong>Monaco (Monk)</strong> — Solo mani nude (nessun'arma da scegliere), 2 attacchi a turno: 1° Pugno (2d4+DES), 2° Calcio (1d4+FOR). Nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+4 danno 2T), Assorbire Danni (50% del prossimo danno si converte in cura), Cura Ki (1d8+SAG).</p>
+              <p><strong>Monaco (Monk)</strong> — Solo mani nude (nessun'arma da scegliere), 2 attacchi a turno: 1° Pugno (2d4+DES), 2° Calcio (1d4+FOR). Nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+2 danno 2T), Assorbire Danni (80% del prossimo danno si converte in cura · 1 carica), Cura Ki (1d8+SAG).</p>
               <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 2 attacchi), Triboli (TS DES avversario: fallito → svantaggio + 1d6 sanguinamento/turno per 2T; riuscito → solo 1T).</p>
               <p><strong>Mago (Wizard)</strong> — Armi semplici, 1 arma, abito da mago (no armatura, no scudo). Slot magia ampi. <em>Skill:</em> Recupero Arcano (ripristina 2 slot lv1 + 1 slot lv2).</p>
               <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <em>Skill:</em> Magia Innata (passiva), Fonte di Magia (ripristina 2 slot magia a scelta).</p>
@@ -9628,12 +9786,12 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={baUsed && !alreadyActive ? "Bonus action già usata questo turno" : alreadyActive ? `Concentrazione attiva (${myPlayer.concentrationTurns} turni)` : noUses ? "Cariche esaurite" : "Bonus action · +4 danni per 2 turni"}
+                                title={baUsed && !alreadyActive ? "Bonus action già usata questo turno" : alreadyActive ? `Concentrazione attiva (${myPlayer.concentrationTurns} turni)` : noUses ? "Cariche esaurite" : "Bonus action · +2 danni per 2 turni"}
                                 onClick={() => !blocked && handleConcentrate(m.matchId, action)}>
                                 <span className="bonus-action-tag">⚡ Bonus</span>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.concentrationTurns} turni` : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "+4 dmg · 2 turni"}</span>
+                                <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.concentrationTurns} turni` : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "+2 dmg · 2 turni"}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );
@@ -9648,12 +9806,12 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={baUsed && !alreadyActive ? "Bonus action già usata questo turno" : alreadyActive ? "Pronto ad assorbire il prossimo colpo" : noUses ? "Cariche esaurite" : "Bonus action · il prossimo danno subito ti cura del 50%"}
+                                title={baUsed && !alreadyActive ? "Bonus action già usata questo turno" : alreadyActive ? "Pronto ad assorbire il prossimo colpo" : noUses ? "Cariche esaurite" : "Bonus action · il prossimo danno subito ti cura dell'80%"}
                                 onClick={() => !blocked && handleAbsorbDamage(m.matchId, action)}>
                                 <span className="bonus-action-tag">⚡ Bonus</span>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{alreadyActive ? "✓ Pronto" : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "Cura 50% prossimo colpo"}</span>
+                                <span className="action-dice">{alreadyActive ? "✓ Pronto" : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "Cura 80% prossimo colpo"}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );
@@ -9954,7 +10112,7 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action spell ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={noUses ? "Cariche esaurite" : `Il nemico non potrà attaccare con armi per ${action.weaponLockTurns ?? 2} turni`}
+                                title={noUses ? "Cariche esaurite" : `Arroventa l'arma equipaggiata del nemico per ${action.weaponLockTurns ?? 2} turni (potrà cambiare su un'altra arma)`}
                                 onClick={() => !blocked && handleWeaponLock(m.matchId, chosenTargetId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
@@ -10142,6 +10300,11 @@ export default function Arena() {
                           const handUsedThisTurn = isRogueMe && isWeapon && isEquipped && (myPlayer?.turnWeaponsUsed || []).includes(action.name);
                           const skillSlotUsed = isRogueMe && (action.special === "sneak_attack" || action.special === "triboli") && !!myPlayer?.turnSkillUsed;
                           const rogueBlocked = handUsedThisTurn || skillSlotUsed;
+                          // 🔩 Arma arroventata: bloccata SOLO se è quella equipaggiata al momento del blocco.
+                          // Un'arma non equipaggiata resta cliccabile (switch) e poi usabile.
+                          const wLockNames = myPlayer?.weaponLockNames;
+                          const isWeaponLocked = (myPlayer?.weaponLockTurns ?? 0) > 0 && isWeapon && isEquipped
+                            && (!wLockNames || wLockNames.length === 0 ? true : wLockNames.includes(action.name));
                           // 🥋 Monaco a mani nude: l'etichetta mostra il colpo del momento
                           // (Pugno al 1° attacco, Calcio al 2°), pur restando "Mani nude" come arma.
                           const monkDisp = action.unarmedMonk
@@ -10151,13 +10314,28 @@ export default function Arena() {
                           const dispIcon = monkDisp?.icon ?? action.icon;
                           const dispDmg  = monkDisp?.damage ?? action.damage;
                           const dispStat = monkDisp?.statKey ?? action.statKey;
+                          // ✨ Incantesimo a danno: il bersaglio salva nella caratteristica dello spell.
+                          const _isDmgSpell  = isSaveDamageSpell(action);
+                          const _spellCast   = _isDmgSpell ? getSpellCast(action) : null;
+                          const _dmgSpellTs  = _spellCast ? SAVE_LABEL[_spellCast.save] : null;
+                          const _dmgSpellDc  = _isDmgSpell ? getSpellSaveDC(mySnap) : null;
+                          const _spellAtkBon = _isDmgSpell ? getSpellAttackBonus(mySnap) : null;
+                          // Etichetta breve della meccanica per il bottone.
+                          const _spellMechLabel = _spellCast
+                            ? (_spellCast.cast === "attack"      ? `🎯 +${_spellAtkBon} colpire`
+                             : _spellCast.cast === "auto"        ? "✨ colpisce sempre"
+                             : _spellCast.cast === "save_half"   ? `TS ${_dmgSpellTs} CD ${_dmgSpellDc} · ½`
+                             :                                     `TS ${_dmgSpellTs} CD ${_dmgSpellDc}`)
+                            : null;
                           return (
                             <button
                               key={action.name}
-                              className={`btn-action ${action.type} ${isWeapon && !wildShapeForm ? (isEquipped ? "equipped" : "unequipped") : ""} ${noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked ? "no-uses" : ""} ${isDeathblow ? "deathblow-ready" : ""} ${action.special === "smite" && !noUsesLeft ? "smite-active" : ""} ${isStealthActive ? "stealth-active" : ""}`}
-                              disabled={noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked}
+                              className={`btn-action ${action.type} ${isWeapon && !wildShapeForm ? (isEquipped ? "equipped" : "unequipped") : ""} ${noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked || isWeaponLocked ? "no-uses" : ""} ${isDeathblow ? "deathblow-ready" : ""} ${action.special === "smite" && !noUsesLeft ? "smite-active" : ""} ${isStealthActive ? "stealth-active" : ""}`}
+                              disabled={noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked || isWeaponLocked}
                               title={isStealthActive
                                 ? `🌑 Furtività attiva — ${stealthTurnsLeft} turno/i rimasti`
+                                : isWeaponLocked
+                                ? `🔩 ${action.name} è incandescente — cambia su un'altra arma (${myPlayer?.weaponLockTurns ?? 0} turno/i)`
                                 : handUsedThisTurn
                                 ? "🗡 Arma già usata questo turno — usa l'altra mano"
                                 : skillSlotUsed
@@ -10171,9 +10349,13 @@ export default function Arena() {
                                 : action.special === "deathblow" ? `Colpo Mortale — ${action.damage} +DES (solo ≤20% HP)`
                                 : action.special === "stealth" ? `Furtività — vantaggio ai tuoi prossimi 2 attacchi`
                                 : !isEquipped ? "Clicca per impugnare (spende il turno)"
+                                : _isDmgSpell ? (_spellCast.cast === "attack" ? `${dispDmg} danni · tiro per colpire +${_spellAtkBon} vs CA`
+                                                 : _spellCast.cast === "auto" ? `${dispDmg} danni · colpisce automaticamente`
+                                                 : _spellCast.cast === "save_half" ? `${dispDmg} danni · TS ${_dmgSpellTs} (CD ${_dmgSpellDc}): supera = metà danni`
+                                                 : `${dispDmg} danni · TS ${_dmgSpellTs} (CD ${_dmgSpellDc}): supera = nessun danno`)
                                 : `+${action.hitBonus}${dispStat ? ` +${dispStat.toUpperCase()}` : ""} | ${dispDmg}${dispStat ? ` +${dispStat.toUpperCase()}` : ""}`}
                               onClick={() => {
-                                if (noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked) return;
+                                if (noUsesLeft || disabledByInvis || isStealthActive || rogueBlocked || isWeaponLocked) return;
                                 isEquipped
                                   ? handleAttack(m.matchId, chosenTargetId, action)
                                   : handleSwitchWeapon(m.matchId, action.name);
@@ -10183,6 +10365,7 @@ export default function Arena() {
                               <span className="action-name">{dispName}</span>
                               <span className="action-dice">
                                 {isStealthActive ? `🌑 ${stealthTurnsLeft}t attiva`
+                                  : isWeaponLocked ? "🔩 Incandescente"
                                   : handUsedThisTurn ? "✓ Usata"
                                   : skillSlotUsed ? "✓ Abilità usata"
                                   : noUsesLeft ? "Esaurito"
@@ -10191,6 +10374,7 @@ export default function Arena() {
                                   : action.special === "web" ? "🕸 Intrappola"
                                   : action.special === "triboli" ? "🎲 TS DES · 🩸 svant."
                                   : action.special === "poison" ? `${action.damage} +TS COS`
+                                  : _isDmgSpell ? `${dispDmg} · ${_spellMechLabel}`
                                   : `${dispDmg}${dispStat ? ` +${dispStat.toUpperCase()}` : ""}`}
                               </span>
                               {usesLeft !== null && (

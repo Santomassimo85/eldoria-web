@@ -1,6 +1,83 @@
 {
   "versions": [
     {
+      "version": "16",
+      "date": "2026-06-10",
+      "title": "Arena — Incantesimi rifatti secondo il D&D 5e ufficiale",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Ogni incantesimo a danno ora usa la meccanica corretta del D&D 5e: tiro per colpire (l'incantatore tira contro la CA del bersaglio), tiro salvezza per dimezzare i danni, tiro salvezza per evitarli del tutto, oppure colpo automatico senza tiro."
+        },
+        {
+          "type": "mechanics",
+          "text": "Nuova feature: tiro salvezza per DIMEZZARE i danni. Incantesimi ad area come Palla di Fuoco, Fulmine, Mani Brucianti, Onda Tonante, Frantumare, Raggio di Luna e Rappresaglia Infernale infliggono ora metà danni se il bersaglio supera il TS, invece di annullarli."
+        },
+        {
+          "type": "mechanics",
+          "text": "Nuova feature: tiro per colpire degli incantesimi. Trucchetti e incantesimi a bersaglio singolo (Dardo di Fuoco, Raggio di Gelo, Deflagrazione Occulta, Colpo Cromatico, Raggio Rovente, Dardo Guidato, Infliggi Ferite, Tocco Vampirico, Lama di Fiamma e altri) richiedono ora un tiro per colpire dell'incantatore (competenza + caratteristica da incantatore) contro la CA del bersaglio; con un 20 naturale i dadi del danno raddoppiano."
+        },
+        {
+          "type": "mechanics",
+          "text": "Dardo Incantato (Magic Missile) ora colpisce automaticamente per 3d4, senza tiro per colpire né tiro salvezza."
+        },
+        {
+          "type": "mechanics",
+          "text": "I tiri salvezza usano la caratteristica corretta dell'incantesimo (Destrezza per fuoco/fulmine/freddo/tuono/radiante, Costituzione per veleno/necrotico, ecc.) e la CD resta legata alla classe e alla caratteristica da incantatore del lanciatore."
+        },
+        {
+          "type": "graphic",
+          "text": "I pulsanti degli incantesimi a danno mostrano ora la meccanica esatta: tiro per colpire e bonus, oppure caratteristica e CD del tiro salvezza con l'indicazione se dimezza o annulla i danni."
+        }
+      ]
+    },
+    {
+      "version": "15.05",
+      "date": "2026-06-10",
+      "title": "Arena — Tiri salvezza degli incantesimi a danno coerenti",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Sugli incantesimi a danno il bersaglio ora tira il tiro salvezza nella caratteristica dell'incantesimo (Destrezza per fuoco/fulmine/tuono/freddo/radiante/forza, Costituzione per veleno/necrotico), non più nella caratteristica di lancio del nemico. Prima Dardo Incantato indicava \"TS DES\" ma faceva tirare un TS diverso: ora descrizione e tiro coincidono."
+        },
+        {
+          "type": "mechanics",
+          "text": "La CD del tiro salvezza resta legata alla classe del lanciatore (8 + competenza + Intelligenza per il Mago, Saggezza per Chierico/Druido/Ranger, Carisma per Bardo/Paladino/Stregone/Warlock)."
+        },
+        {
+          "type": "graphic",
+          "text": "I pulsanti degli incantesimi a danno mostrano ora la caratteristica del tiro salvezza e la CD richiesta al bersaglio."
+        }
+      ]
+    },
+    {
+      "version": "15.04",
+      "date": "2026-06-10",
+      "title": "Arena — Ribilanciamento del Monaco",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Concentrazione (Monaco) ridotta da +4 a +2 danni per 2 turni."
+        },
+        {
+          "type": "balance",
+          "text": "Assorbire Danni (Monaco) ora ha 1 sola carica (prima 2), ma converte in cura l'80% del prossimo colpo subito (prima 50%)."
+        },
+        {
+          "type": "mechanics",
+          "text": "Quando il Monaco attiva Assorbire Danni, l'avversario vede solo un generico stato \"Posizione difensiva\": non sa più che il prossimo colpo verrà assorbito."
+        },
+        {
+          "type": "fix",
+          "text": "Chiarito che usare un oggetto in combattimento (pozioni, bomba) è un'azione gratuita: non consuma più il turno né gli attacchi. Il testo degli oggetti riportava ancora \"Passa il turno\"."
+        },
+        {
+          "type": "fix",
+          "text": "Riscaldare Arma / Disarmare ora arroventano solo l'arma attualmente equipaggiata: chi ha un'altra arma riposta (es. una seconda arma a due mani) può impugnarla e combattere. Prima il blocco impediva qualsiasi attacco con armi anche disponendo di un'arma non equipaggiata."
+        }
+      ]
+    },
+    {
       "version": "15.03",
       "date": "2026-06-10",
       "title": "TCG — Home pulita e tiro dadi creature corretto",
