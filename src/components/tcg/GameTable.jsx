@@ -24,7 +24,7 @@ import {
   canPlay, canAttack, spellTargets, effStats, opp, reviveState,
   discardCard, HAND_CAP, passPriority, START_HP,
   legalBlockers, activateUltimate, canActivateUltimate, ultimateBlockReason,
-  resolveCombatPending,
+  resolveCombatPending, forceEndTurn,
 } from "../../tcg/engine.js";
 import ClassPanel from "./ClassPanel.jsx";
 import {
@@ -46,6 +46,24 @@ const EMOTES = [
   "Hai pescato bene, eh?",
 ];
 const EMOTE_COOLDOWN_MS = 60 * 1000; // 1 minuto fra un emote e l'altro
+
+// Tempo massimo per turno: scaduto, il turno passa automaticamente.
+const TURN_MS = 2 * 60 * 1000; // 2 minuti per turno
+// Il giocatore NON attivo fa da fallback (se l'attivo è in background e il
+// suo timer è "congelato" dal browser) con un piccolo ritardo extra.
+const TURN_FALLBACK_MS = 15 * 1000;
+// Durata massima di una partita: scaduta, il match si chiude senza
+// vincitore e senza premi, i giocatori vengono espulsi.
+const MATCH_MS = 3 * 60 * 60 * 1000; // 3 ore
+
+const tsMillis = (t) =>
+  t && typeof t.toMillis === "function" ? t.toMillis() : t ? +new Date(t) : 0;
+const fmtClock = (ms) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+};
 
 /* Mana gems — one gem per ELEMENT instead of one per land (saves room
    on phones). Each gem shows the count overlaid on the diamond. Spent
@@ -260,6 +278,19 @@ export default function GameTable({
   const endedRef = useRef(false);
   const cineRef = useRef(false);
   const cineTimers = useRef([]);
+  // timer 2 minuti/turno: quando cambia il numero del turno ne registro
+  // l'istante d'inizio (clock locale, come heartbeat/emote)
+  const turnStartRef = useRef({ turn: -1, at: 0 });
+  // istante d'inizio partita per il match timer da 3 ore (PvP: createdAt
+  // del doc così è coerente fra i client e sopravvive ai reconnect; AI: ora)
+  const matchStartRef = useRef(null);
+  if (matchStartRef.current == null) {
+    matchStartRef.current = isAi
+      ? Date.now()
+      : tsMillis(match?.createdAt) || Date.now();
+  }
+  const [clockTick, setClockTick] = useState(0); // re-render per i countdown
+  const [matchExpired, setMatchExpired] = useState(false);
 
   // award coins / notify exactly once when the game ends
   useEffect(() => {
@@ -267,9 +298,67 @@ export default function GameTable({
     endedRef.current = true;
     const w = state.winner;
     const r = w === "draw" ? "draw" : w === mySide ? "win" : "lose";
-    if (onGameEnd) onGameEnd(r);
+    // la resa è segnalata dall'engine: l'hook lo propaga così i premi
+    // possono essere soppressi a monte (awardFor in Tcg.jsx).
+    if (onGameEnd) onGameEnd(r, { byForfeit: state.endReason === "forfeit" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state && state.winner]);
+
+  // registra l'inizio di ogni turno (per il countdown dei 2 minuti)
+  useEffect(() => {
+    if (!state || state.winner) return;
+    if (turnStartRef.current.turn !== state.turn) {
+      turnStartRef.current = { turn: state.turn, at: Date.now() };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state && state.turn, state && state.winner]);
+
+  // tick 1s per aggiornare i countdown (turno + partita) finché si gioca
+  useEffect(() => {
+    if (!state || state.winner || matchExpired) return;
+    const iv = setInterval(() => setClockTick((n) => n + 1), 1000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state && state.winner, matchExpired]);
+
+  // TIMER 2 MINUTI/TURNO: se il giocatore attivo non agisce, il turno passa.
+  // L'attivo applica allo scadere; l'avversario fa da rete di sicurezza con
+  // un piccolo ritardo (caso tab in background dell'attivo). forceEndTurn è
+  // idempotente: agisce solo sul turno corretto e altrimenti è un no-op.
+  useEffect(() => {
+    if (!state || state.winner || matchExpired) return;
+    if (isAi && state.active !== mySide) return; // in AI l'IA gestisce il suo turno
+    const amActive = state.active === mySide;
+    const start = turnStartRef.current.at || Date.now();
+    const fireAt = start + TURN_MS + (amActive ? 0 : TURN_FALLBACK_MS);
+    const delay = Math.max(0, fireAt - Date.now());
+    const t = setTimeout(() => {
+      const s = stateRef.current;
+      if (!s || s.winner || s.active !== state.active) return;
+      const next = forceEndTurn(s, s.active);
+      if (next !== s) applyState(next);
+    }, delay);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state && state.turn, state && state.active, state && state.winner, matchExpired, isAi, mySide]);
+
+  // MATCH TIMER 3 ORE: scaduto, chiudi il match (nessun vincitore, nessun
+  // premio) ed espelli i giocatori.
+  useEffect(() => {
+    if (!state || state.winner || matchExpired) return;
+    const fireAt = matchStartRef.current + MATCH_MS;
+    const delay = fireAt - Date.now();
+    const expire = () => {
+      endedRef.current = true; // blocca qualsiasi erogazione premi
+      setMatchExpired(true);
+      if (!isAi && matchId) leaveMatch(matchId); // → doc "ended": espelle entrambi
+      setTimeout(() => { if (onExit) onExit(); }, 5000);
+    };
+    if (delay <= 0) { expire(); return; }
+    const t = setTimeout(expire, delay);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state && state.winner, matchExpired, isAi, matchId]);
 
   const pushFloat = (zone, text, tone) => {
     const pos = {
@@ -1169,11 +1258,29 @@ export default function GameTable({
   // actually lands on the player's tcgCoins. (Previously the panel
   // showed 30/60 while only 5/15 were granted → user-visible bug.)
   const COIN_TABLE = isAi ? TCG_COINS.ai : TCG_COINS.pvp;
-  const endCoins = result ? COIN_TABLE[result] ?? 0 : null;
+  // La resa non eroga premi: il pannello mostra 0 così combacia con ciò che
+  // viene davvero accreditato (awardFor scarta i match conclusi per resa).
+  const byForfeit = state.endReason === "forfeit";
+  const endCoins = result ? (byForfeit ? 0 : COIN_TABLE[result] ?? 0) : null;
   const winnerName =
     !winner || winner === "draw"
       ? null
       : state.players[winner]?.name || (winner === mySide ? "Tu" : "Avversario");
+
+  // countdown turno (2 min) e partita (3h). `clockTick` forza il refresh.
+  void clockTick;
+  // se l'effect non ha ancora registrato questo turno, considera il tempo
+  // pieno (evita un lampo di "0:00" al primo render del nuovo turno).
+  const turnStartedAt =
+    turnStartRef.current.turn === state.turn ? turnStartRef.current.at : Date.now();
+  const turnRemain = winner
+    ? null
+    : Math.max(0, TURN_MS - (Date.now() - turnStartedAt));
+  const myTurnNow = !winner && state.active === mySide;
+  const turnLow = turnRemain != null && turnRemain <= 30 * 1000;
+  const matchRemain = winner
+    ? null
+    : Math.max(0, matchStartRef.current + MATCH_MS - Date.now());
 
   const statusLine = winner
     ? "Partita conclusa"
@@ -1780,6 +1887,34 @@ export default function GameTable({
           <p>L'avversario sembra disconnesso.</p>
           <button className="tcg-btn tcg-btn--primary" onClick={claimWin}>
             Reclama vittoria
+          </button>
+        </div>
+      )}
+
+      {!winner && !matchExpired && turnRemain != null && (
+        <div
+          className={
+            "tcg-timers" + (turnLow && myTurnNow ? " tcg-timers--urgent" : "")
+          }
+          aria-hidden="true"
+        >
+          <span className="tcg-timer tcg-timer--turn">
+            ⏳ {myTurnNow ? "Tuo turno" : "Avversario"} {fmtClock(turnRemain)}
+          </span>
+          <span className="tcg-timer tcg-timer--match">
+            🕒 {fmtClock(matchRemain)}
+          </span>
+        </div>
+      )}
+
+      {matchExpired && (
+        <div className="tcg-disconnect">
+          <p>Tempo della partita scaduto (3 ore). La partita è stata chiusa: nessun vincitore, nessun premio.</p>
+          <button
+            className="tcg-btn tcg-btn--primary"
+            onClick={() => { if (onExit) onExit(); }}
+          >
+            Esci
           </button>
         </div>
       )}

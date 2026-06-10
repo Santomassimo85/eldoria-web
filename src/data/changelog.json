@@ -1,6 +1,71 @@
 {
   "versions": [
     {
+      "version": "15.01",
+      "date": "2026-06-10",
+      "title": "TCG — Drop rate di epiche, leggendarie e foil ribilanciato",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Le probabilità di estrazione dai pacchetti seguono ora un modello geometrico a divario crescente (come nei veri giochi di carte): ogni rarità è un multiplo più rara di quella sotto, e il salto si amplia in cima. Per carta: comune 62,6% · non comune 26,1% · rara 9,3% · epica 1,86% · leggendaria 0,16% (prima erano 8% e 1%). Su un pacchetto da 15 carte significa circa una leggendaria ogni 43 pacchetti e un'epica ogni 3-4 pacchetti."
+        },
+        {
+          "type": "balance",
+          "text": "Probabilità foil drasticamente ridotta: dal 2% allo 0,5% per carta (circa 1 carta foil ogni 200, cioè ~7% dei pacchetti da 15)."
+        }
+      ]
+    },
+    {
+      "version": "15",
+      "date": "2026-06-10",
+      "title": "TCG — Espansione \"Arcane Convergence\" ◈",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuova espansione \"Arcane Convergence\": 75 carte inedite (55 creature, 12 magie, 8 manufatti) che ampliano il pool di ogni classe. Ogni carta dell'espansione è marchiata col sigillo arcano ◈ in un angolo."
+        },
+        {
+          "type": "mechanics",
+          "text": "Introdotte le carte BICOLORE: il loro costo richiede due colori diversi, trasformando ogni coppia di colori nella firma di una classe (Mago Natura/Fuoco · Guerriero Fuoco/Luce · Chierico Luce/Ombra · Ladro Ombra/Acqua · Druido Natura/Acqua). Le carte bicolore possono essere giocate solo da chi padroneggia entrambi i colori."
+        },
+        {
+          "type": "graphic",
+          "text": "Le carte bicolore sfoggiano una cornice e un'intestazione sfumate tra i due colori, così la coppia si riconosce a colpo d'occhio."
+        },
+        {
+          "type": "mechanics",
+          "text": "Cinque creature già esistenti (Fiamma Verdeggiante, Solarus Leone di Brace, Sacerdote Spettrale, Serpe Spettrale, Mokrun della Palude) sono state convertite in bicolore, una per ogni coppia di classe."
+        },
+        {
+          "type": "balance",
+          "text": "Il generatore di mazzi (starter, IA e auto-build dalla collezione) ora include una carta nei colori di una classe solo se TUTTI i suoi simboli di mana colorati rientrano nei due colori della classe: niente più carte impossibili da lanciare nel proprio mazzo."
+        }
+      ]
+    },
+    {
+      "version": "14",
+      "date": "2026-06-10",
+      "title": "Timer di turno e di partita nel TCG",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Ogni turno ha ora un limite di 2 minuti: allo scadere il turno passa automaticamente all'avversario (vengono risolte combattimento e pila in sospeso e si scartano le carte oltre il limite di mano). Un contatore in alto al tavolo mostra il tempo rimanente, che diventa rosso negli ultimi 30 secondi."
+        },
+        {
+          "type": "mechanics",
+          "text": "Introdotto un timer massimo di partita di 3 ore: alla scadenza il match viene chiuso senza vincitore né premi e i giocatori vengono espulsi dal tavolo. Evita le partite che restano appese all'infinito."
+        },
+        {
+          "type": "balance",
+          "text": "I premi delle partite contro l'IA sono ora di 10 monete, assegnate esclusivamente al vincitore: sconfitta e pareggio non erogano monete."
+        },
+        {
+          "type": "balance",
+          "text": "La resa non fornisce più premi a nessuno: un match concluso per abbandono fa comunque avanzare il vincitore nel bracket del torneo, ma non accredita monete."
+        }
+      ]
+    },
+    {
       "version": "13.04",
       "date": "2026-06-09",
       "title": "Collaboratore per i riassunti di sessione",

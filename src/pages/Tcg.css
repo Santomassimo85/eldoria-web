@@ -1288,6 +1288,29 @@
   background: rgba(0,0,0,.72); text-align: center;
 }
 
+/* timer turno (2 min) + partita (3h): chip in alto al centro del tavolo */
+.tcg-timers {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+  z-index: 40; display: flex; gap: 8px; pointer-events: none;
+}
+.tcg-timer {
+  font-size: 12px; font-weight: 700; letter-spacing: .3px;
+  padding: 3px 9px; border-radius: 999px;
+  background: rgba(0,0,0,.55); color: #e9e3d4;
+  border: 1px solid rgba(255,255,255,.14);
+  font-variant-numeric: tabular-nums;
+}
+.tcg-timer--match { opacity: .82; }
+.tcg-timers--urgent .tcg-timer--turn {
+  background: rgba(150,20,20,.78); color: #fff;
+  border-color: rgba(255,120,120,.5);
+  animation: tcg-timer-pulse .9s ease-in-out infinite;
+}
+@keyframes tcg-timer-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+
 .tcg-inspect {
   position: absolute; inset: 0; z-index: 60;
   display: flex; flex-direction: column;
@@ -2188,6 +2211,45 @@
 }
 .tcg-card--mini .tcg-card__rarc,
 .tcg-card--back .tcg-card__rarc { display: none; }
+
+/* ── EXPANSION SEAL (Arcane Convergence ◈) ──────────────────
+   A small arcane glyph in the bottom-left corner that marks a
+   card as belonging to a set. Sits above the frame, never on
+   top of the P/T plate (that lives bottom-right). */
+.tcg-card__exp-seal {
+  position: absolute; left: 4px; bottom: 4px; z-index: 24;
+  display: grid; place-items: center;
+  width: clamp(13px, 1.7vw, 20px); height: clamp(13px, 1.7vw, 20px);
+  font-size: clamp(9px, 1.2vw, 14px); line-height: 1;
+  color: #f4e6c2;
+  background: radial-gradient(circle at 50% 45%,
+    color-mix(in srgb, var(--el-col2) 55%, #1a1206),
+    #120c05 95%);
+  border: 1px solid color-mix(in srgb, var(--el-col2) 60%, #000);
+  border-radius: 50%;
+  box-shadow: 0 0 5px color-mix(in srgb, var(--el-col2) 50%, transparent),
+              0 1px 3px rgba(0,0,0,.6);
+  text-shadow: 0 0 4px color-mix(in srgb, var(--el-col2) 70%, #fff);
+  pointer-events: none;
+}
+.tcg-card--mini .tcg-card__exp-seal,
+.tcg-card--back .tcg-card__exp-seal { display: none; }
+
+/* ── BICOLOR FRAME ──────────────────────────────────────────
+   Two-colour cards blend their PRIMARY (--el-col) and SECONDARY
+   (--el-col2) along the frame border & header so the colour pair
+   reads at a glance. */
+.tcg-card--bicolor {
+  background: linear-gradient(150deg, var(--el-col), var(--el-col2) 60%, #14100b 92%);
+  border-color: color-mix(in srgb, var(--el-col2) 55%, #000);
+  box-shadow: 0 5px 12px rgba(0,0,0,.55),
+              0 0 0 1px color-mix(in srgb, var(--el-col2) 45%, transparent) inset;
+}
+.tcg-card--bicolor .tcg-card__top {
+  background: linear-gradient(105deg,
+    color-mix(in srgb, var(--el-col) 60%, #000),
+    color-mix(in srgb, var(--el-col2) 60%, #000) 88%);
+}
 .tcg-card__kw {
   display: flex; flex-wrap: wrap; gap: 3px;
   padding: 2px 5px 0;

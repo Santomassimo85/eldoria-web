@@ -256,16 +256,18 @@ export default function Tcg() {
     setScreen("ai");
   };
 
-  const awardFor = (mode, result) => {
+  const awardFor = (mode, result, meta) => {
     if (!currentUser?.uid) return;
+    // La resa non eroga premi a nessuno (richiesta 2026-06-10).
+    if (meta?.byForfeit) return;
     const table = TCG_COINS[mode] || TCG_COINS.ai;
     awardCoins(currentUser.uid, table[result] ?? 0).catch(() => {});
   };
 
   /* Quando finisce una partita PvP che appartiene al torneo, scrivi
      il vincitore nel bracket. Idempotente. */
-  const pvpEndHook = (result) => {
-    awardFor("pvp", result);
+  const pvpEndHook = (result, meta) => {
+    awardFor("pvp", result, meta);
     if (!match || !match.tournament) return;
     if (result === "draw") return; // engine non emette draw, ma per sicurezza
     const meSide = sideForUid(match, currentUser?.uid);
@@ -330,8 +332,8 @@ export default function Tcg() {
 
   /* Hook di fine partita per i match torneo vs AI. Riporta il risultato
      al bracket usando l'entry id come chiave. */
-  const tournAiEndHook = (result) => {
-    awardFor("ai", result);
+  const tournAiEndHook = (result, meta) => {
+    awardFor("ai", result, meta);
     if (!tournAiEntry) return;
     const winnerUid = result === "win" ? tournAiEntry.humanUid : tournAiEntry.aiUid;
     reportMatchResult(tournAiEntry.id, winnerUid).catch(() => {});
@@ -515,7 +517,7 @@ export default function Tcg() {
               setMulliganDone(false);
               setAiSeed((n) => n + 1);
             }}
-            onGameEnd={(r) => awardFor("ai", r)}
+            onGameEnd={(r, meta) => awardFor("ai", r, meta)}
           />
         </GameBoundary>
       )}

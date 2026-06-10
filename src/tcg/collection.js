@@ -21,7 +21,7 @@ import {
 import { db } from "../firebase.js";
 import {
   POOL, LANDS, ELEMENTS, getCard, DECK_SIZE, buildDeck, buildClassDeck,
-  isLand,
+  isLand, cardInColors,
   RARITY_ORDER, RARITY_ODDS, RARITY_ODDS_PREMIUM, FOIL_CHANCE,
 } from "./cards.js";
 import {
@@ -36,9 +36,10 @@ import {
    (Previously the two were out of sync — panel claimed 30/60, actual
    grant was 5/15 — which is what the user was reporting.) */
 export const TCG_COINS = {
-  // +10 / +7 / +7 vs. the old rates (user request 2026-05-22: bump
-  // every payout by 5-10 coins so packs are more reachable).
-  ai:  { win: 15, lose: 8,  draw: 10 },
+  // AI: 10 monete SOLO al vincitore. Nessun premio per sconfitta/pareggio
+  // (richiesta 2026-06-10). La resa non eroga nulla a nessuno — gestito
+  // separatamente via endReason="forfeit" in awardFor/endCoins.
+  ai:  { win: 10, lose: 0,  draw: 0 },
   pvp: { win: 25, lose: 12, draw: 15 },
 };
 
@@ -335,7 +336,7 @@ export function autoClassDeck(collection, klass) {
   for (const id of POOL) {
     const c = getCard(id);
     if (!c || c.type === "land") continue;
-    if (!allowed.has(c.element)) continue;
+    if (!cardInColors(c, allowed)) continue;
     const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
     const have = Math.min(cap, collection[id] || 0);
     for (let i = 0; i < have; i++) owned.push(id);
@@ -450,7 +451,7 @@ export function autoMixDeck(collection, classes) {
   for (const id of POOL) {
     const c = getCard(id);
     if (!c || c.type === "land") continue;
-    if (!colSet.has(c.element)) continue;
+    if (!cardInColors(c, colSet)) continue;
     const cap = c.rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES;
     const have = Math.min(cap, collection[id] || 0);
     for (let i = 0; i < have; i++) owned.push(id);
@@ -605,7 +606,7 @@ function starterCollection(klass) {
   const c = {};
   const cols = new Set(classColors(klass));
   // 3 copies of every card of the chosen class' 2 colours
-  for (const id of POOL) if (cols.has(getCard(id).element)) c[id] = 3;
+  for (const id of POOL) if (cardInColors(getCard(id), cols)) c[id] = 3;
   return c;
 }
 
@@ -688,7 +689,7 @@ export async function openPack(uid, packId) {
   // pack's eligible cards (one or more colours), grouped by rarity
   const colors = pack.colors || (pack.element ? [pack.element] : ELEMENTS);
   const allowed = new Set(colors);
-  const inEl = POOL.filter((id) => allowed.has(getCard(id).element));
+  const inEl = POOL.filter((id) => cardInColors(getCard(id), allowed));
   const pool = inEl.length ? inEl : POOL;
   const byRar = {};
   for (const id of pool) (byRar[getCard(id).rarity] ||= []).push(id);

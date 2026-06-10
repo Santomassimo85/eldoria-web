@@ -1683,9 +1683,66 @@ export function forfeit(state, side) {
   const s = clone(state);
   s.winner = opp(side);
   s.phase = "ended";
+  // Marca la resa: il bracket del torneo usa comunque il vincitore per
+  // avanzare, ma i premi in monete NON vengono erogati su una resa
+  // (vedi awardFor in Tcg.jsx + endCoins in GameTable).
+  s.endReason = "forfeit";
+  s.forfeitedBy = side;
   logMsg(s, side, `${s.players[side].name} abbandona la partita.`);
   fx(s, { kind: "win", winner: s.winner });
   return s;
+}
+
+/* TIMEOUT TURNO — forza la chiusura del turno del giocatore attivo `side`.
+   Usato dal timer dei 2 minuti per turno: se il giocatore non agisce entro
+   il tempo, il turno passa automaticamente. Risolve in sequenza qualunque
+   finestra ancora aperta (priorità sulla pila, dichiarazione bloccanti,
+   danno da combattimento in sospeso) e poi chiama endTurn. È sicura: agisce
+   SOLO sul turno di `side` e, se non riesce ad avanzare, ritorna lo stato
+   invariato (così chi la chiama non spinge scritture inutili). */
+export function forceEndTurn(state, side) {
+  if (!state || state.winner) return state;
+  if (state.active !== side) return state;
+  let s = state;
+  for (let guard = 0; guard < 60; guard++) {
+    if (s.winner) return s;
+    // finestra di priorità aperta → la passa chi la detiene
+    if (s.priority) {
+      const before = s;
+      s = passPriority(s, s.priority);
+      if (s === before) break;
+      continue;
+    }
+    // il difensore deve dichiarare i bloccanti → nessun blocco (subisce il colpo)
+    if (s.combat && s.phase === "block" && s.combat.step === "declare_blocks") {
+      const before = s;
+      s = confirmBlocks(s, opp(s.combat.attackerSide), {});
+      if (s === before) break;
+      continue;
+    }
+    // finestra post-blocchi chiusa → applica il danno da combattimento
+    if (s.combat && s.combat.step === "after_blocks") {
+      const before = s;
+      s = resolveCombatPending(s);
+      if (s === before) break;
+      continue;
+    }
+    // fase principale pulita → scarta fino al limite mano e chiudi il turno
+    if (s.phase === "main" && s.active === side && !s.stack.length && !s.priority) {
+      while (s.players[side].hand.length > HAND_CAP) {
+        const hand = s.players[side].hand;
+        const hc = hand[hand.length - 1];
+        const before = s;
+        s = discardCard(s, side, hc.instId);
+        if (s === before) break;
+      }
+      const before = s;
+      s = endTurn(s, side);
+      return s === before ? state : s;
+    }
+    break;
+  }
+  return s === state ? state : s;
 }
 
 function checkWin(s) {

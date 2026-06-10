@@ -86,6 +86,20 @@ export const ELEMENT_FX = {
 };
 
 /* ============================================================
+   EXPANSIONS — set marker shown on every card of a release.
+   The first set, "Arcane Convergence" (◈), introduces BICOLOR
+   cards: a cost that requires TWO colours, turning each colour
+   pair into a class signature. A card's `expansion` field holds
+   the set id; CardView renders the matching `symbol`.
+   ============================================================ */
+export const EXPANSIONS = {
+  arcanum: { id: "arcanum", name: "Arcane Convergence", symbol: "◈" },
+};
+export function expansionOf(card) {
+  return card && card.expansion ? EXPANSIONS[card.expansion] || null : null;
+}
+
+/* ============================================================
    RARITY — 5 tiers, shown as a small coloured dot on the card.
    Pack odds fall off steeply for the higher tiers.
    ============================================================ */
@@ -109,20 +123,54 @@ export const RARITY_WEIGHT = {
   common: 46, uncommon: 27, rare: 16, epic: 8, legendary: 3,
 };
 
-/* FIXED pack odds — identical for every element so the displayed
-   percentages are exact. Premium packs (light / darkness) have a
-   LOWER legendary chance (rolled into epic). Each table sums to 1.
-   2026-05-26: legendary chance lowered from 3.0% → 1.0% on standard
-   packs (and 0.5% → 0.3% on premium) so leggendarie feel genuinely
-   rare. The freed share moves into rare/common. */
-export const RARITY_ODDS = {
-  common: 0.43, uncommon: 0.30, rare: 0.18, epic: 0.08, legendary: 0.01,
-};
-export const RARITY_ODDS_PREMIUM = {
-  common: 0.42, uncommon: 0.30, rare: 0.18, epic: 0.097, legendary: 0.003,
-};
-/* every drawn card has this tiny independent chance to be FOIL */
-export const FOIL_CHANCE = 0.02;
+/* ============================================================
+   PACK PULL ODDS — ESCALATING-GAP GEOMETRIC MODEL
+   ------------------------------------------------------------
+   Real card games don't space rarities evenly: each tier is some
+   MULTIPLE rarer than the one below it, and that multiple GROWS
+   toward the top — so commons are routine, rares are a treat, and
+   epics/legendaries are genuinely scarce.
+
+   We model exactly that. `STEPS[k]` = "how many times rarer tier k
+   is than tier k-1" (STEPS[0] = 1, the anchor). The unnormalised
+   weight of tier k is the running product:
+
+        w[0] = 1
+        w[k] = w[k-1] / STEPS[k]          (k = 1..4)
+
+   and the pull probability is w[k] / Σw — a clean, exact discrete
+   distribution that always sums to 1. Tuning the tail is just a
+   matter of the last two STEPS (epic, legendary).
+
+   2026-06-10: drastically lowered the top tiers vs the old flat
+   table (epic 8.0% → ~1.9%, legendary 1.0% → ~0.16%). With 15-card
+   packs that means ≈1 legendary every ~40 packs and ≈1 epic every
+   ~3–4 packs — instead of one of each almost every pack.
+
+   STEPS (standard):  ×2.4 ×2.8 ×5 ×12   →
+     common 62.6% · uncommon 26.1% · rare 9.3% · epic 1.86% · leg 0.16%
+   STEPS (premium):   ×2.4 ×2.8 ×5.5 ×16  → epic/leg even scarcer.
+   ============================================================ */
+function rarityOddsFromSteps(steps) {
+  const w = [];
+  let cur = 1;
+  for (let k = 0; k < RARITY_ORDER.length; k++) {
+    cur = k === 0 ? 1 : cur / (steps[k] || 1);
+    w.push(cur);
+  }
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  const out = {};
+  RARITY_ORDER.forEach((t, k) => { out[t] = w[k] / sum; });
+  return out;
+}
+export const RARITY_STEPS = [1, 2.4, 2.8, 5, 12];
+export const RARITY_STEPS_PREMIUM = [1, 2.4, 2.8, 5.5, 16];
+export const RARITY_ODDS = rarityOddsFromSteps(RARITY_STEPS);
+export const RARITY_ODDS_PREMIUM = rarityOddsFromSteps(RARITY_STEPS_PREMIUM);
+
+/* every drawn card has this tiny independent chance to be FOIL.
+   2026-06-10: 2.0% → 0.5% (≈1 in 200 cards, ~7% of 15-card packs). */
+export const FOIL_CHANCE = 0.005;
 
 /* Canonical legendaries — one (or more) per element. Forced to the
    "legendary" tier no matter what computeRarities would assign by
@@ -193,6 +241,9 @@ const INSTANT_IDS = new Set([
   "s_thunderclap", "s_smite", "s_soulrip",
   "s_glacialprison", "s_tidalrush",
   "s_lifebloom", "s_thornlash",
+  // expansion: Arcane Convergence
+  "ac_s_dawnstrike", "ac_s_judgment", "ac_s_undertow", "ac_s_bloomtide",
+  "ac_s_emberblast", "ac_s_deepfreeze", "ac_s_dreadbolt", "ac_s_overgrow",
 ]);
 const RARITY_BY_ARTIFACT = {
   a_tome: "rare", a_valor: "rare", a_staff: "uncommon",
@@ -316,6 +367,35 @@ const A = (id, name, cmc, icon, element, passive, text, flavor, art = null) => (
   cost: deriveCost(cmc, element), cmc,
   art, icon, passive, text, flavor,
 });
+
+/* ---- BICOLOR cost ----
+   A two-colour card spends ONE coloured pip of each element plus
+   generic for the rest, so its CMC (and curve/balance) is preserved
+   while requiring access to BOTH colours. `element` stays the PRIMARY
+   colour (used for art border, rarity bucket & deck inclusion); the
+   SECONDARY colour rides in `element2` for display and in the cost so
+   canAfford()/payCost() already enforce it natively. */
+function biCost(cmc, el1, el2) {
+  const cost = { generic: Math.max(0, cmc - 2) };
+  cost[el1] = (cost[el1] || 0) + 1;
+  cost[el2] = (cost[el2] || 0) + 1;
+  return cost;
+}
+const BI = (id, name, cmc, art, icon, el1, el2, power, toughness, text, flavor) => ({
+  id, name, type: "creature", element: el1, element2: el2,
+  cost: biCost(cmc, el1, el2), cmc,
+  art, icon, power, toughness, text, flavor,
+});
+const BS = (id, name, cmc, icon, el1, el2, effect, text, flavor, art = null) => ({
+  id, name, type: "spell", element: el1, element2: el2,
+  cost: biCost(cmc, el1, el2), cmc,
+  art, icon, effect, text, flavor,
+});
+const BA = (id, name, cmc, icon, el1, el2, passive, text, flavor, art = null) => ({
+  id, name, type: "artifact", element: el1, element2: el2,
+  cost: biCost(cmc, el1, el2), cmc,
+  art, icon, passive, text, flavor,
+});
 /* a basic land — taps for 1 mana of its element, free to play */
 const L = (element) => ({
   id: "l_" + element,
@@ -332,6 +412,238 @@ const L = (element) => ({
 });
 
 export const LANDS = ELEMENTS.map(L);
+
+/* ============================================================
+   EXPANSION — ARCANE CONVERGENCE ◈  (2026-06-10)
+   ------------------------------------------------------------
+   75 carte (55 creature · 12 magie · 8 manufatti) che introducono
+   le carte BICOLORE: il costo richiede DUE colori, così ogni coppia
+   di colori diventa la firma di una classe —
+     Mago      Natura + Fuoco   ·  Guerriero Fuoco + Luce
+     Chierico  Luce  + Ombra    ·  Ladro     Ombra + Acqua
+     Druido    Natura + Acqua
+   Ogni carta è marchiata col sigillo ◈ (campo `expansion`). L'arte
+   attinge alle illustrazioni finora inutilizzate in tgc_card/.
+   ============================================================ */
+const ARCANUM = [
+  /* ===== BICOLORE — MAGO (Natura + Fuoco) ===== */
+  BI("ac_pyrowyrm", "Pyrosilvo, Drago Ardente", 4, "halfdragon", "🐉", "nature", "fire", 4, 4,
+    "", "Sangue di drago e linfa antica scorrono nelle stesse vene."),
+  BI("ac_scalelord", "Signore delle Scaglie Ardenti", 5, "scalewarlord", "🦎", "nature", "fire", 6, 5,
+    "", "Le sue scaglie ardono di smeraldo e di brace."),
+  BI("ac_runedrake", "Dragonide Runico", 3, "dragonborn", "🐲", "fire", "nature", 3, 3,
+    "", "Recita incantesimi col respiro di fuoco."),
+  BI("ac_emberwyrm", "Draghetto di Brace Verde", 2, "greenwyrmling", "🌿", "nature", "fire", 2, 2,
+    "", "Piccolo, vorace, già fumante."),
+  BI("ac_kindlekobold", "Coboldo Pirosilvano", 2, "wingedkobold", "🔥", "fire", "nature", 2, 1,
+    "", "Vola basso e brucia tutto ciò che sfiora."),
+
+  /* ===== BICOLORE — GUERRIERO (Fuoco + Luce) ===== */
+  BI("ac_helmcrusader", "Armatura del Crociato", 4, "helmedhorror", "🛡️", "light", "fire", 4, 4,
+    "", "L'acciaio ricorda ancora chi lo indossò."),
+  BI("ac_sunmarauder", "Predone Solare", 3, "frenzymarauder", "☀️", "fire", "light", 4, 2,
+    "", "Carica con la luce abbagliante del mezzogiorno."),
+  BI("ac_holyorc", "Orco Crociato", 3, "whiteorc", "⚔️", "light", "fire", 3, 3,
+    "", "Giura sulla lama che lo ha redento."),
+  BI("ac_halfchampion", "Campione Mezzorco", 3, "halforc", "🪓", "fire", "light", 3, 4,
+    "", "Metà furia, metà disciplina, tutto cuore."),
+  BI("ac_dawnknight", "Cavaliere dell'Alba", 4, "ravenknight", "🌅", "light", "fire", 4, 3,
+    "", "Le sue ali catturano il primo raggio del giorno."),
+
+  /* ===== BICOLORE — CHIERICO (Luce + Ombra) ===== */
+  BI("ac_blindprophet", "Profeta Cieco", 3, "blindseer", "👁️", "light", "darkness", 2, 4,
+    "", "Perse gli occhi e in cambio vide ogni cosa."),
+  BI("ac_penitentlamia", "Lamia Penitente", 4, "lamia", "🐍", "darkness", "light", 4, 4,
+    "", "Cerca redenzione mordendo la propria coda."),
+  BI("ac_thresholdwitch", "Strega della Soglia", 4, "nighthag", "🌗", "darkness", "light", 3, 5,
+    "", "Veglia il confine tra l'ultimo respiro e il primo."),
+  BI("ac_dirgespecter", "Spettro del Requiem", 3, "specter", "🕯️", "darkness", "light", 3, 3,
+    "", "Canta i defunti verso la luce che li attende."),
+  BI("ac_twilightsage", "Saggio del Crepuscolo", 4, "ancientsage", "📿", "light", "darkness", 2, 6,
+    "", "Conosce il nome di ogni alba e di ogni tramonto."),
+
+  /* ===== BICOLORE — LADRO (Ombra + Acqua) ===== */
+  BI("ac_reefstalker", "Predatore della Scogliera", 3, "sahuagin", "🦈", "water", "darkness", 3, 3,
+    "", "Risale dal fondo solo per la caccia."),
+  BI("ac_shoalnaga", "Naga delle Secche", 4, "naga", "🐍", "water", "darkness", 4, 4,
+    "", "Striscia tra le maree come un veleno paziente."),
+  BI("ac_tidejackal", "Sciacallo di Marea", 2, "jackalwere", "🐺", "darkness", "water", 2, 2,
+    "", "Caccia dove l'ombra incontra la risacca."),
+  BI("ac_abyssassassin", "Sicario degli Abissi", 3, "merfolk", "🌑", "darkness", "water", 3, 2,
+    "", "Nessun colpo lo trova: l'acqua lo nasconde."),
+  BI("ac_kuothief", "Kuo-Toa Predone", 2, "kuotoa", "🐠", "water", "darkness", 2, 3,
+    "", "Ti ruba la borsa e la voce prima che annaspi."),
+
+  /* ===== BICOLORE — DRUIDO (Natura + Acqua) ===== */
+  BI("ac_tidewarden", "Custode delle Maree", 5, "tidegolem", "🌊", "water", "nature", 4, 7,
+    "", "Si dissolve nell'onda e rinasce dalla riva."),
+  BI("ac_reefbrute", "Bruto della Barriera", 4, "marinebrute", "🐚", "water", "nature", 4, 5,
+    "", "Cresciuto dove il corallo si fa muscolo."),
+  BI("ac_bogmass", "Massa della Palude", 4, "shamblingmound", "🌿", "nature", "water", 3, 6,
+    "", "La palude che ha imparato a camminare."),
+  BI("ac_sporekeeper", "Custode delle Spore", 3, "sporekeeper", "🍄", "nature", "water", 2, 4,
+    "", "Respira, e mille spore prendono il volo."),
+  BI("ac_marshsaurian", "Sauride della Palude", 3, "saurian", "🦎", "nature", "water", 3, 4,
+    "", "Antico come il primo acquitrino."),
+
+  /* ===== MONOCOLORE — FUOCO (7) ===== */
+  C("ac_emberdwarf", "Nano di Brace", 2, "emberdwarf", "🔨", "fire", 3, 2,
+    "", "Forgia armi col proprio respiro."),
+  C("ac_axedevil", "Diavolo dell'Ascia", 3, "fireaxedevil", "🪓", "fire", 4, 2,
+    "", "Una sola regola: colpire per primo."),
+  C("ac_hornedevil", "Diavolo Cornuto", 4, "hornedevil", "😈", "fire", 4, 4,
+    "", "Le sue corna grondano zolfo e promesse rotte."),
+  C("ac_spineddevil", "Diavolo Spinato", 2, "spineddevil", "🦂", "fire", 2, 2,
+    "", "Scaglia spine ardenti da lontano."),
+  C("ac_infernospirit", "Spirito Infernale", 3, "infernospirit", "🔥", "fire", 3, 3,
+    "", "Una fiamma che ha imparato l'odio."),
+  C("ac_goristro", "Goristro", 5, "goristro", "🐗", "fire", 6, 5,
+    "", "Tonnellate di furia con le zanne."),
+  C("ac_orcbarbarian", "Barbaro Orco", 3, "orcbarbarian", "🪓", "fire", 4, 3,
+    "", "Carica prima di pensare. Soprattutto prima di pensare."),
+
+  /* ===== MONOCOLORE — ACQUA (6) ===== */
+  C("ac_icemephit", "Mefit di Ghiaccio", 1, "icemephit", "🧊", "water", 1, 2,
+    "", "Un dispetto gelido con le ali."),
+  C("ac_watermage", "Mago dell'Acqua", 3, "watermage", "🌊", "water", 3, 3,
+    "", "Le maree obbediscono al suo gesto."),
+  C("ac_cryomancer", "Criomante", 4, "cryomancer", "❄️", "water", 3, 5,
+    "", "Congela il tempo a un grado sotto zero."),
+  C("ac_winterwolf", "Lupo Invernale", 3, "winterwolf", "🐺", "water", 4, 2,
+    "", "Caccia nella bufera che lui stesso porta."),
+  C("ac_whitedragon", "Drago Bianco", 5, "whitedragon", "🐉", "water", 6, 5,
+    "", "Il suo respiro trasforma i mari in lastre."),
+  C("ac_mudmephit", "Mefit di Fango", 2, "mudmephit", "💧", "water", 2, 3,
+    "", "Appiccicoso, lento, sorprendentemente cattivo."),
+
+  /* ===== MONOCOLORE — LUCE (4) ===== */
+  C("ac_pegasus", "Pegaso", 3, "pegasus", "🦄", "light", 3, 3,
+    "", "Galoppa dove finisce il cielo."),
+  C("ac_aarakocra", "Aarakocra", 2, "aarakocra", "🦅", "light", 2, 2,
+    "", "Figlio del vento e del primo mattino."),
+  C("ac_hawk", "Falco Cacciatore", 1, "hawk", "🦅", "light", 1, 1,
+    "", "Vede il topo da un miglio, e non perdona."),
+  C("ac_crystalgolem", "Golem di Cristallo", 4, "crystalgolem", "💎", "light", 3, 6,
+    "", "La luce, fatta sentinella."),
+
+  /* ===== MONOCOLORE — OMBRA (7) ===== */
+  C("ac_bilebehemoth", "Behemoth Biliare", 5, "bilebehemoth", "🪱", "darkness", 5, 6,
+    "", "Una montagna di bile e malizia."),
+  C("ac_braineater", "Divoratore di Menti", 4, "braineater", "🧠", "darkness", 4, 4,
+    "", "Cena coi pensieri di chi gli pensa vicino."),
+  C("ac_deathdog", "Cane della Morte", 2, "deathdog", "🐕", "darkness", 3, 1,
+    "", "Due teste, una sola fame."),
+  C("ac_deathslaad", "Slaad della Morte", 4, "deathslaad", "🐸", "darkness", 4, 4,
+    "", "Il caos preso forma di rospo."),
+  C("ac_wendigo", "Wendigo", 4, "wendigo", "🦌", "darkness", 5, 3,
+    "", "La fame che cammina nelle nevi."),
+  C("ac_mindancient", "Illithid Anziano", 5, "mindflayerancient", "🐙", "darkness", 5, 5,
+    "", "Mille menti gli servono da dispensa."),
+  C("ac_oni", "Oni di Guerra", 4, "oni", "👹", "darkness", 5, 4,
+    "", "Demone che porta il temporale sulla clava."),
+
+  /* ===== MONOCOLORE — NATURA (6) ===== */
+  C("ac_axebeak", "Beccascure", 2, "axebeak", "🐦", "nature", 3, 1,
+    "", "Un becco che taglia come un'accetta."),
+  C("ac_bugbear", "Bugbear", 2, "bugbear", "🐾", "nature", 3, 2,
+    "", "Silenzioso come un'ombra, pesante come un masso."),
+  C("ac_twigblight", "Avvizzito", 1, "twigblight", "🥢", "nature", 1, 1,
+    "", "Sembra un ramo secco. Lo è, finché non ti afferra."),
+  C("ac_leafmother", "Madre delle Foglie", 4, "leafmother", "🍃", "nature", 3, 5,
+    "", "Ogni foglia caduta torna a lei."),
+  C("ac_wilddruid", "Druido Selvaggio", 3, "wilddruid", "🌳", "nature", 3, 3,
+    "", "Parla la lingua delle radici e dei lupi."),
+  C("ac_stonebrute", "Bruto di Pietra", 4, "stonebrute", "🪨", "nature", 4, 6,
+    "", "Cammina come una frana con un'idea."),
+
+  /* ===== MAGIE — BICOLORE (5) ===== */
+  BS("ac_s_wildfire", "Incendio Selvatico", 3, "🌋", "nature", "fire",
+    { kind: "aoe_enemy", amount: 3 },
+    "Infliggi 3 danni a TUTTE le creature nemiche.",
+    "La foresta brucia, e poi rinasce più fitta."),
+  BS("ac_s_dawnstrike", "Colpo dell'Alba", 2, "🔆", "fire", "light",
+    { kind: "damage", amount: 3, target: "any" },
+    "Istantaneo. Infliggi 3 danni a un bersaglio qualsiasi.",
+    "La luce non chiede permesso, e nemmeno la fiamma.", "ravenknight"),
+  BS("ac_s_judgment", "Sentenza", 3, "⚖️", "light", "darkness",
+    { kind: "destroy", target: "creature" },
+    "Istantaneo. Distruggi una creatura bersaglio.",
+    "Pesata l'anima, la condanna è immediata.", "blindseer"),
+  BS("ac_s_undertow", "Risacca Oscura", 2, "🌑", "darkness", "water",
+    { kind: "damage", amount: 3, target: "creature" },
+    "Istantaneo. Infliggi 3 danni a una creatura.",
+    "L'onda nera prende, e non restituisce mai.", "merfolk"),
+  BS("ac_s_bloomtide", "Marea Fiorita", 2, "🌊", "nature", "water",
+    { kind: "pump", p: 2, t: 2, target: "friendly_creature" },
+    "Istantaneo. Una tua creatura ottiene +2/+2 fino a fine turno.",
+    "Dove l'acqua incontra la radice, tutto prospera.", "leafmother"),
+
+  /* ===== MAGIE — MONOCOLORE (7) ===== */
+  S("ac_s_emberblast", "Scoppio di Brace", 1, "⚡", "fire",
+    { kind: "damage", amount: 2, target: "any" },
+    "Istantaneo. Infliggi 2 danni a un bersaglio qualsiasi.",
+    "Una scintilla basta a chi sa dove soffiare.", "emberdwarf"),
+  S("ac_s_pyrelance", "Lancia di Pira", 3, "🔥", "fire",
+    { kind: "damage", amount: 4, target: "any" },
+    "Infliggi 4 danni a un bersaglio qualsiasi.",
+    "Un giavellotto di fuoco scagliato dal nulla.", "infernospirit"),
+  S("ac_s_deepfreeze", "Gelo Profondo", 2, "🧊", "water",
+    { kind: "freeze", target: "creature" },
+    "Istantaneo. Congela una creatura nemica: tappata e salta il prossimo untap.",
+    "Sotto la superficie, il tempo si arrende.", "cryomancer"),
+  S("ac_s_dawnmend", "Carezza dell'Alba", 2, "✨", "light",
+    { kind: "heal", amount: 6 },
+    "Recuperi 6 Punti Vita.",
+    "La prima luce richiude ogni ferita della notte.", "pegasus"),
+  S("ac_s_soulfeast", "Banchetto d'Anime", 3, "👻", "darkness",
+    { kind: "weaken", p: 2, t: 2, target: "creature" },
+    "Una creatura bersaglio ottiene -2/-2 in modo permanente.",
+    "Ciò che l'ombra divora, non ricresce.", "braineater"),
+  S("ac_s_dreadbolt", "Dardo del Terrore", 2, "🟣", "darkness",
+    { kind: "damage", amount: 3, target: "any" },
+    "Istantaneo. Infliggi 3 danni a un bersaglio qualsiasi.",
+    "La paura ha preso la forma di una freccia.", "wendigo"),
+  S("ac_s_overgrow", "Rigoglio Improvviso", 1, "🌱", "nature",
+    { kind: "pump", p: 3, t: 3, target: "friendly_creature" },
+    "Istantaneo. Una tua creatura ottiene +3/+3 fino a fine turno.",
+    "La linfa esplode e il piccolo diventa colosso.", "twigblight"),
+
+  /* ===== MANUFATTI — BICOLORE (5) ===== */
+  BA("ac_a_wildstaff", "Bastone Silvo-Igneo", 3, "🌿", "nature", "fire",
+    { kind: "startDraw", amount: 1 },
+    "All'inizio del tuo turno, peschi 1 carta extra.",
+    "Una scintilla in cima a un ramo ancora vivo.", "greenwyrmling"),
+  BA("ac_a_sunblade", "Lama Solare", 2, "⚔️", "fire", "light",
+    { kind: "anthem", p: 1, t: 1 },
+    "Le tue creature hanno +1/+1.",
+    "Forgiata in una fucina che brucia di luce.", "helmedhorror"),
+  BA("ac_a_reliquary", "Reliquiario del Crepuscolo", 3, "⚱️", "light", "darkness",
+    { kind: "startHeal", amount: 2 },
+    "All'inizio del tuo turno, recuperi 2 PV.",
+    "Custodisce un osso santo e un peccato.", "ancientsage"),
+  BA("ac_a_tidedagger", "Pugnale di Marea", 2, "🗡️", "darkness", "water",
+    { kind: "anthem", p: 2, t: 0 },
+    "Le tue creature hanno +2/+0.",
+    "La lama è fredda come il fondale che l'ha forgiata.", "sahuagin"),
+  BA("ac_a_grovestone", "Pietra del Bosco", 3, "🪨", "nature", "water",
+    { kind: "startHeal", amount: 3 },
+    "All'inizio del tuo turno, recuperi 3 PV.",
+    "Le sue radici bevono a sorgenti senza nome.", "shamblingmound"),
+
+  /* ===== MANUFATTI — MONOCOLORE (3) ===== */
+  A("ac_a_forgeheart", "Cuore della Forgia", 3, "🔥", "fire",
+    { kind: "anthem", p: 2, t: 0 },
+    "Le tue creature hanno +2/+0.",
+    "Pulsa di brace come un secondo cuore.", "emberdwarf"),
+  A("ac_a_bonechalice", "Calice d'Ossa", 3, "🍷", "darkness",
+    { kind: "startDraw", amount: 1 },
+    "All'inizio del tuo turno, peschi 1 carta extra.",
+    "Beve chi non teme di vedere troppo.", "deathdog"),
+  A("ac_a_lightaegis", "Egida di Luce", 3, "🛡️", "light",
+    { kind: "anthem", p: 0, t: 2 },
+    "Le tue creature hanno +0/+2.",
+    "Una parete di alba fra te e il colpo.", "crystalgolem"),
+].map((c) => ({ ...c, expansion: "arcanum" }));
 
 const RAW = [
   /* ---------- LANDS (6) ---------- */
@@ -416,7 +728,7 @@ const RAW = [
     "", "Parla, e i cieli rispondono col fulmine."),
   C("irongolem", "Lokrim, Sentinella di Ferro", 4, "irongolem", "🤖", "nature", 4, 7,
     "", "Non dorme, non teme, non si arrende. La foresta lo forgiò una sola volta."),
-  C("wraithpriest", "Sacerdote Spettrale", 4, "wraithpriest", "🕯️", "darkness", 5, 4,
+  BI("wraithpriest", "Sacerdote Spettrale", 4, "wraithpriest", "🕯️", "darkness", "light", 5, 4,
     "", "Officia messe per dèi dimenticati."),
   C("nalfeshnee", "Nalfeshnee", 4, "nalfeshnee", "🐗", "darkness", 6, 4,
     "", "Vanità demoniaca incarnata in tonnellate di furia."),
@@ -558,13 +870,13 @@ const RAW = [
     "", "Il suo respiro è alba che incenerisce — e che salva."),
   C("prismheart", "Cuore di Prisma", 4, "prismheart", "🔆", "water", 3, 5,
     "", "Spezzalo e si ricompone in mille schegge."),
-  C("wraithserpent", "Serpe Spettrale", 3, "wraithserpent", "🐍", "darkness", 4, 2,
+  BI("wraithserpent", "Serpe Spettrale", 3, "wraithserpent", "🐍", "darkness", "water", 4, 2,
     "", "Striscia tra i sogni e li avvelena."),
   C("voidwraith", "Spettro del Vuoto", 4, "voidwraith", "🌑", "darkness", 4, 4,
     "", "Dove passa, resta solo l'assenza."),
   C("soulcomet", "Cometa d'Anime", 4, "soulcomet", "☄️", "fire", 5, 3,
     "", "Cade portando con sé chi non vuole lasciarla."),
-  C("emberlion", "Solarus, Leone di Brace", 4, "emberlion", "🦁", "fire", 5, 4,
+  BI("emberlion", "Solarus, Leone di Brace", 4, "emberlion", "🦁", "fire", "light", 5, 4,
     "", "Il suo ruggito fa cadere la pioggia di cenere."),
   C("duskfiend", "Nyxar, Demone del Crepuscolo", 5, "duskfiend", "😈", "darkness", 6, 5,
     "", "Nasce ogni sera quando l'ultima luce esita."),
@@ -576,7 +888,7 @@ const RAW = [
     "", "Quando spiega le ali, mille foreste ricordano il suo vero nome."),
   C("emberspirit", "Spirito di Brace", 2, "emberspirit", "🔥", "fire", 3, 2,
     "", "Una scintilla che ha imparato a volere."),
-  C("verdantflame", "Fiamma Verdeggiante", 3, "verdantflame", "🍃", "nature", 3, 4,
+  BI("verdantflame", "Fiamma Verdeggiante", 3, "verdantflame", "🍃", "nature", "fire", 3, 4,
     "", "Brucia e fa germogliare nello stesso istante."),
   C("elderwood", "Quercion l'Antico", 4, "elderwood", "🌳", "nature", 4, 6,
     "", "Ricorda quando la foresta entrava in un solo seme."),
@@ -792,7 +1104,7 @@ const RAW = [
     "", "Ogni spina conosce il sapore del coraggio."),
   C("sylvan-horror", "Orrore Silvano", 4, "sylvan-horror", "🌳", "nature", 4, 5,
     "", "La foresta che ha smesso di proteggere."),
-  C("marsh-brute", "Mokrun della Palude", 4, "marsh-brute", "🪨", "nature", 4, 6,
+  BI("marsh-brute", "Mokrun della Palude", 4, "marsh-brute", "🪨", "nature", "water", 4, 6,
     "", "La palude provvede ai suoi figli più grossi. Mokrun è il più grosso."),
   C("totem-giant", "Vargmar, Gigante Totem", 5, "totem-giant", "🗿", "nature", 5, 7,
     "", "Porta sulle spalle gli dèi della sua tribù, e qualche debito."),
@@ -949,6 +1261,9 @@ const RAW = [
     "", "Le sue spore parlano sotto voce, ma in coro."),
   C("ogrezombie", "Ogre Zombi", 4, "ogrezombie", "🧟", "darkness", 5, 4,
     "", "Lento, immondo, instancabile. Soprattutto immondo."),
+
+  /* ---------- EXPANSION: ARCANE CONVERGENCE ◈ (75) ---------- */
+  ...ARCANUM,
 ];
 
 /* ============================================================
@@ -1106,6 +1421,59 @@ const KEYWORDS_BY_ID = {
   lanternwraith: ["flying"],
   harengonknight: ["haste"],
   ogrezombie: ["menace"],
+  // ── EXPANSION: Arcane Convergence ◈ ──
+  // bicolor signatures
+  ac_pyrowyrm: ["trample"],
+  ac_scalelord: ["flying"],
+  ac_runedrake: ["haste"],
+  ac_emberwyrm: ["deathtouch"],
+  ac_kindlekobold: ["flying", "haste"],
+  ac_helmcrusader: ["vigilance", "shield"],
+  ac_sunmarauder: ["haste"],
+  ac_holyorc: ["firststrike"],
+  ac_halfchampion: ["vigilance"],
+  ac_dawnknight: ["flying", "firststrike"],
+  ac_blindprophet: ["hexproof"],
+  ac_penitentlamia: ["lifelink"],
+  ac_thresholdwitch: ["deathtouch"],
+  ac_dirgespecter: ["flying", "lifelink"],
+  ac_twilightsage: ["defender"],
+  ac_reefstalker: ["menace"],
+  ac_shoalnaga: ["deathtouch"],
+  ac_tidejackal: ["menace"],
+  ac_abyssassassin: ["unblockable"],
+  ac_kuothief: ["haste"],
+  ac_tidewarden: ["regen", "vigilance"],
+  ac_reefbrute: ["trample"],
+  ac_bogmass: ["reach"],
+  ac_sporekeeper: ["reach"],
+  ac_marshsaurian: ["vigilance"],
+  // monocolor
+  ac_emberdwarf: ["haste"],
+  ac_axedevil: ["firststrike"],
+  ac_hornedevil: ["flying"],
+  ac_spineddevil: ["flying"],
+  ac_infernospirit: ["haste"],
+  ac_goristro: ["trample"],
+  ac_orcbarbarian: ["trample"],
+  ac_icemephit: ["flying"],
+  ac_watermage: ["hexproof"],
+  ac_winterwolf: ["haste"],
+  ac_whitedragon: ["flying"],
+  ac_pegasus: ["flying"],
+  ac_aarakocra: ["flying"],
+  ac_hawk: ["flying"],
+  ac_crystalgolem: ["defender", "shield"],
+  ac_bilebehemoth: ["trample"],
+  ac_braineater: ["hexproof"],
+  ac_deathdog: ["menace"],
+  ac_deathslaad: ["regen"],
+  ac_wendigo: ["haste"],
+  ac_mindancient: ["hexproof", "menace"],
+  ac_oni: ["menace"],
+  ac_axebeak: ["haste"],
+  ac_leafmother: ["reach"],
+  ac_stonebrute: ["defender"],
 };
 
 /* element-aware rarity table (every colour gets all 5 tiers) */
@@ -1141,6 +1509,20 @@ export function getCard(id) {
 export function isLand(id) {
   const c = getCard(id);
   return !!c && c.type === "land";
+}
+
+/* Does a card fit inside a set of allowed colours? A card fits iff its
+   PRIMARY colour is allowed AND every coloured cost pip is too. This is
+   what makes BICOLOR cards class signatures: a Luce/Ombra card only
+   "fits" a class that owns BOTH colours (the Chierico), never a class
+   that owns just one of them — so the deck-builder never drafts a card
+   the deck can't actually pay for. `allowed` is a Set of element keys. */
+export function cardInColors(card, allowed) {
+  if (!card) return false;
+  if (card.element && !allowed.has(card.element)) return false;
+  for (const el of ELEMENTS)
+    if ((card.cost?.[el] || 0) > 0 && !allowed.has(el)) return false;
+  return true;
 }
 
 /* the 6 selectable cover images (live in /public/assets/card_cover) */
@@ -1273,7 +1655,7 @@ export function buildClassDeck(colors, klass, seed) {
   if (!Array.isArray(colors) || colors.length === 0) return buildDeck(seed);
   const rnd = seed == null ? Math.random : mulberry32(seed ^ 0x12345678);
   const allowed = new Set(colors);
-  const pool = POOL.filter((id) => allowed.has(getCard(id).element));
+  const pool = POOL.filter((id) => cardInColors(getCard(id), allowed));
   if (pool.length < 12) return buildDeck(seed);
 
   const profile = buildProfileFor(klass);

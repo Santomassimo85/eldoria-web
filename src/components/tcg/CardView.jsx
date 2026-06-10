@@ -25,7 +25,7 @@ const ZOOM_MS = 650;
 import {
   cardArtUrl, cardBackUrl, costPips, TYPE_COLOR,
   ELEMENT_PIP, ELEMENT_LABEL, RARITY_COLOR, RARITY_LABEL, KEYWORDS,
-  DICE_STATS, statDiceLabel,
+  DICE_STATS, statDiceLabel, expansionOf,
 } from "../../tcg/cards.js";
 import { spellSlotTier } from "../../tcg/classes.js";
 
@@ -191,6 +191,8 @@ export default function CardView({
         )}`;
   const keywords = kwList(card);
   const rarity = card.rarity || "common";
+  const expSet = expansionOf(card);
+  const isBicolor = !!card.element2 && card.element2 !== card.element;
 
   const startPress = () => {
     if (!onInspect && !onReact) return;
@@ -248,6 +250,8 @@ export default function CardView({
     "tcg-card",
     `tcg-card--${variant}`,
     `tcg-card--${card.type}`,
+    isBicolor && "tcg-card--bicolor",
+    expSet && "tcg-card--exp",
     selected && "is-selected",
     playable && "is-playable",
     targetable && "is-targetable",
@@ -274,6 +278,7 @@ export default function CardView({
         "--type-col": TYPE_COLOR[card.type],
         "--rar": RARITY_COLOR[rarity],
         "--el-col": ELEMENT_PIP[card.element] || "#8a6a23",
+        "--el-col2": ELEMENT_PIP[card.element2] || ELEMENT_PIP[card.element] || "#8a6a23",
       }}
       draggable={draggable}
       onDragStart={handleDragStart}
@@ -369,6 +374,15 @@ export default function CardView({
         title={RARITY_LABEL[rarity]}
         aria-hidden="true"
       />
+      {expSet && (
+        <span
+          className="tcg-card__exp-seal"
+          title={expSet.name}
+          aria-label={expSet.name}
+        >
+          {expSet.symbol}
+        </span>
+      )}
       {foil && <span className="tcg-card__foil" aria-hidden="true" />}
       {reactOpen && (
         <div
