@@ -8,7 +8,6 @@ import CardView from "./CardView.jsx";
 import CardZoom from "./CardZoom.jsx";
 import {
   getCard, ELEMENT_ICON, ELEMENT_PIP, RARITY_COLOR, RARITY_LABEL,
-  RARITY_ORDER,
 } from "../../tcg/cards.js";
 import { PACKS } from "../../tcg/collection.js";
 
@@ -226,11 +225,9 @@ export default function Shop({ profile, onOpenPack, onBack }) {
       <div className="tcg-shop__body">
         {msg && <p className="tcg-shop__msg">{msg}</p>}
         <p className="tcg-shop__intro">
-          I <b>Pacchetti di Classe</b> contengono carte dei <b>due colori</b>{" "}
-          della classe scelta (es. Mago = Fuoco + Natura, Guerriero = Fuoco +
-          Luce, Chierico = Luce + Tenebre, Ladro = Tenebre + Acqua, Druido =
-          Natura + Acqua). Ogni carta ha una piccola chance di essere{" "}
-          <b>✨ Foil</b>.
+          Ogni <b>Pacchetto di Classe</b> contiene <b>15 carte</b> dei{" "}
+          <b>due colori</b> della classe. Rarità e probabilità sono spiegate nel{" "}
+          <b>📖 Manuale</b>.
         </p>
 
         <div className="tcg-shop__grid">
@@ -266,47 +263,6 @@ export default function Shop({ profile, onOpenPack, onBack }) {
                   </div>
                 )}
                 {pk.premium && <div className="tcg-packcard__tag">Premium</div>}
-                {(() => {
-                  // Qualitative drop hints — we no longer expose raw
-                  // probabilities to players. Each rarity gets a short
-                  // "possibilità di trovare …" descriptor that pairs
-                  // with the coloured rarity dot.
-                  const ODDS_HINT = {
-                    common:    "ne trovi sempre",
-                    uncommon:  "spesso presenti",
-                    rare:      "occasionali",
-                    epic:      "rare",
-                    legendary: "se sei fortunato",
-                  };
-                  return (
-                    <ul className="tcg-packcard__odds">
-                      <li className="tcg-packcard__oheader">
-                        Possibilità di trovare:
-                      </li>
-                      {RARITY_ORDER.map((r) => (
-                        <li key={r}>
-                          <span
-                            className="tcg-packcard__odot"
-                            style={{ background: RARITY_COLOR[r] }}
-                          />
-                          <span className="tcg-packcard__olabel">
-                            {RARITY_LABEL[r]}
-                          </span>
-                          <span className="tcg-packcard__ohint">
-                            {ODDS_HINT[r]}
-                          </span>
-                        </li>
-                      ))}
-                      <li className="tcg-packcard__ofoil">
-                        <span className="tcg-packcard__odot tcg-packcard__odot--foil" />
-                        <span className="tcg-packcard__olabel">✨ Foil</span>
-                        <span className="tcg-packcard__ohint">
-                          tocco di fortuna
-                        </span>
-                      </li>
-                    </ul>
-                  );
-                })()}
                 <button
                   className="tcg-btn tcg-btn--primary tcg-packcard__buy"
                   disabled={!afford}

@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "15.03",
+      "date": "2026-06-10",
+      "title": "TCG — Home pulita e tiro dadi creature corretto",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Rimosse tutte le icone decorative dalla schermata principale del TCG (riquadri Gioca/Mazzo/Negozio/Collezione/Manuale/Torneo): aspetto più sobrio e pulito. I riquadri sono ora più compatti."
+        },
+        {
+          "type": "mechanics",
+          "text": "Corretto il tiro di Forza/Costituzione all'evocazione delle creature. La vecchia formula era sbilanciata verso l'alto (una creatura \"3\" usciva in media 3,5) e con dadi piccoli capitava spesso il massimo, dando l'impressione che i dadi tirassero sempre alto. Ora il tiro usa dadi dispari (d3/d5/d7) centrati esattamente sul valore stampato: la media è precisa e un risultato basso è probabile quanto uno alto."
+        }
+      ]
+    },
+    {
+      "version": "15.02",
+      "date": "2026-06-10",
+      "title": "TCG — Negozio più ordinato su smartphone",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Rivisto il layout del Negozio: i pacchetti sono ora riquadri compatti disposti in griglia (due per riga su smartphone) invece di colonne lunghe e strette. Rimossa da ogni pacchetto la lunga lista \"Possibilità di trovare\" con le rarità."
+        },
+        {
+          "type": "chore",
+          "text": "Le informazioni su rarità, probabilità di estrazione e carte foil sono ora consultabili nel Manuale (sezione Rarità), invece che ripetute su ogni pacchetto del Negozio."
+        }
+      ]
+    },
+    {
       "version": "15.01",
       "date": "2026-06-10",
       "title": "TCG — Drop rate di epiche, leggendarie e foil ribilanciato",

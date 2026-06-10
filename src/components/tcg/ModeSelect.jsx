@@ -34,8 +34,8 @@ function MasterReset({ onMasterReset }) {
         {busy
           ? "Azzeramento…"
           : armed
-          ? "⚠️ Conferma: azzera TUTTI"
-          : "🗝️ Reset TCG (master)"}
+          ? "Conferma: azzera TUTTI"
+          : "Reset TCG (master)"}
       </button>
       {msg && <span className="tcg-master__msg">{msg}</span>}
     </div>
@@ -58,12 +58,12 @@ export default function ModeSelect({
   onMasterReset,
 }) {
   const TOURN_LABEL = {
-    open:    { sub: "Iscrizioni aperte — entra!", icon: "🟢" },
-    running: { sub: "In corso — guarda il tabellone", icon: "⚔️" },
-    ended:   { sub: "Conclusosi — vedi il campione", icon: "👑" },
-    closed:  { sub: "Master: gestisci il torneo", icon: "🛑" },
+    open:    "Iscrizioni aperte — entra!",
+    running: "In corso — guarda il tabellone",
+    ended:   "Conclusosi — vedi il campione",
+    closed:  "Master: gestisci il torneo",
   };
-  const tourn = TOURN_LABEL[tournamentStatus] || TOURN_LABEL.closed;
+  const tournSub = TOURN_LABEL[tournamentStatus] || TOURN_LABEL.closed;
   return (
     <div className="tcg-menu">
       <div className="tcg-menu__head">
@@ -73,14 +73,13 @@ export default function ModeSelect({
         </div>
         {loggedIn && (
           <div className="tcg-menu__coins" title="Monete TCG">
-            🪙 {coins}
+            {coins} monete
           </div>
         )}
       </div>
 
       <div className="tcg-menu__grid">
         <button className="tcg-tile tcg-tile--ai" onClick={onPickAi}>
-          <span className="tcg-tile__icon">🐉</span>
           <span className="tcg-tile__title">Gioca contro l'IA</span>
           <span className="tcg-tile__desc">Partita immediata col tuo mazzo.</span>
         </button>
@@ -90,7 +89,6 @@ export default function ModeSelect({
           onClick={onPickPvp}
           disabled={!loggedIn}
         >
-          <span className="tcg-tile__icon">⚔️</span>
           <span className="tcg-tile__title">Gioca online</span>
           <span className="tcg-tile__desc">
             {loggedIn ? "Sfida un altro giocatore." : "Accedi per giocare online."}
@@ -102,7 +100,6 @@ export default function ModeSelect({
           onClick={onDeck}
           disabled={!loggedIn}
         >
-          <span className="tcg-tile__icon">🛠️</span>
           <span className="tcg-tile__title">Mazzo</span>
           <span className="tcg-tile__desc">
             {loggedIn ? "Costruisci e salva il tuo mazzo." : "Accedi per costruire."}
@@ -114,7 +111,6 @@ export default function ModeSelect({
           onClick={onShop}
           disabled={!loggedIn}
         >
-          <span className="tcg-tile__icon">🏪</span>
           <span className="tcg-tile__title">Negozio</span>
           <span className="tcg-tile__desc">
             {loggedIn ? "Apri pacchetti di carte." : "Accedi per il negozio."}
@@ -126,7 +122,6 @@ export default function ModeSelect({
           onClick={onCollection}
           disabled={!loggedIn}
         >
-          <span className="tcg-tile__icon">📚</span>
           <span className="tcg-tile__title">Collezione</span>
           <span className="tcg-tile__desc">
             {loggedIn ? "Le tue carte e statistiche." : "Accedi per la collezione."}
@@ -134,7 +129,6 @@ export default function ModeSelect({
         </button>
 
         <button className="tcg-tile" onClick={onManual}>
-          <span className="tcg-tile__icon">📖</span>
           <span className="tcg-tile__title">Manuale</span>
           <span className="tcg-tile__desc">Come si gioca, passo per passo.</span>
         </button>
@@ -145,11 +139,8 @@ export default function ModeSelect({
             onClick={onTournament}
             disabled={!loggedIn && !isMaster}
           >
-            <span className="tcg-tile__icon">🏆</span>
             <span className="tcg-tile__title">Torneo</span>
-            <span className="tcg-tile__desc">
-              {tourn.icon} {tourn.sub}
-            </span>
+            <span className="tcg-tile__desc">{tournSub}</span>
           </button>
         )}
       </div>

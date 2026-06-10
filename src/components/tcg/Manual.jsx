@@ -401,10 +401,12 @@ export default function Manual({ onBack }) {
             <>
               <h3>🎲 Forza e Costituzione a dadi</h3>
               <p>
-                Le creature in mano mostrano <b>base + 1dN</b> (es. 3+1d6).
+                Le creature in mano mostrano <b>base + 1dN</b> (es. 2+1d5).
                 Quando le <b>evochi</b>, il gioco tira i dadi <b>una volta
                 sola</b>: quei numeri restano fissi per il resto della partita.
-                La media equivale ai vecchi valori, l'equilibrio è preservato.
+                Il tiro è <b>centrato sul valore stampato</b> (è la media
+                esatta) e <b>simmetrico</b>: un risultato basso è probabile
+                quanto uno alto, senza sbilanciamenti verso il massimo.
               </p>
             </>
           )}
@@ -448,8 +450,15 @@ export default function Manual({ onBack }) {
           </p>
           <small>
             Più alta è la rarità, più la carta è potente e meno frequente nei
-            pacchetti.
+            pacchetti. La scala è ripida: <b>comuni</b> e <b>non comuni</b>{" "}
+            riempiono quasi ogni pacchetto, le <b>rare</b> sono occasionali, le{" "}
+            <b>epiche</b> rare e le <b>leggendarie</b> veri colpi di fortuna.
           </small>
+          <Note tone="info">
+            ✨ <b>Foil:</b> ogni carta, di qualunque rarità, ha una piccolissima
+            probabilità (~0,5%) di uscire in versione <b>foil</b> brillante —
+            puramente estetica.
+          </Note>
         </Section>
 
         {/* ─── 11. Abilità chiave ─── */}

@@ -914,13 +914,6 @@
   animation: tcg-foil-tag 2.4s linear infinite;
 }
 @keyframes tcg-foil-tag { to { background-position: 300% 0; } }
-.tcg-packcard__odot--foil {
-  background: linear-gradient(90deg,#ffe7a0,#a0e7ff,#e7a0ff,#ffe7a0);
-  background-size: 300% 100%;
-  animation: tcg-foil-tag 2.4s linear infinite;
-}
-.tcg-packcard__ofoil { margin-top: 2px; padding-top: 4px;
-  border-top: 1px solid rgba(255,255,255,.12); }
 .tcg-card.is-attacking {
   box-shadow: 0 0 22px var(--bad); z-index: 36;
   animation: tcg-lunge-me 1.7s ease;
@@ -1615,8 +1608,9 @@
 /* each tile = an engraved gilded tome / rune plaque */
 .tcg-tile {
   position: relative; isolation: isolate;
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  padding: 30px 18px 26px; min-height: 188px;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px;
+  padding: 22px 18px; min-height: 116px;
   color: inherit; cursor: pointer;
   border: 1px solid rgba(216,177,90,.45);
   border-radius: 14px;
@@ -2100,13 +2094,13 @@
   opacity: .8; font-size: 13px;
 }
 .tcg-shop__grid {
-  display: grid; gap: 14px;
+  display: grid; gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  max-width: 900px; margin: 0 auto;
+  max-width: 760px; margin: 0 auto;
 }
 .tcg-packcard {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 18px 14px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 10px 12px; border-radius: 14px;
   border: 1px solid var(--pip, var(--line));
   background: linear-gradient(160deg, #2c2417, #16110a);
   position: relative;
@@ -2116,40 +2110,27 @@
   box-shadow: 0 0 14px -2px var(--pip);
 }
 .tcg-packcard__art {
-  font-size: 44px;
+  font-size: 38px; line-height: 1;
   filter: drop-shadow(0 0 8px var(--pip));
 }
-.tcg-packcard__name { font-weight: 700; font-size: 14px; text-align: center; }
+.tcg-packcard__name {
+  font-weight: 700; font-size: 13.5px; text-align: center; line-height: 1.2;
+}
 .tcg-packcard__tag {
   position: absolute; top: 8px; right: 8px;
   font-size: 10px; font-weight: 800; letter-spacing: .5px;
   color: #1c1405; background: var(--pip);
   border-radius: 999px; padding: 2px 8px;
 }
-.tcg-packcard__odds {
-  list-style: none; margin: 0; padding: 6px 0 2px;
-  width: 100%; display: flex; flex-direction: column; gap: 3px;
-  font-size: 11px;
+.tcg-packcard__buy { width: 100%; margin-top: 2px; }
+
+/* Phones: a tidy 2-up grid instead of one long skinny column. */
+@media (max-width: 560px) {
+  .tcg-shop__grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tcg-packcard { padding: 12px 8px 10px; }
+  .tcg-packcard__art { font-size: 32px; }
+  .tcg-packcard__name { font-size: 12.5px; }
 }
-.tcg-packcard__odds li {
-  display: flex; align-items: center; gap: 6px;
-}
-.tcg-packcard__odot {
-  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
-  box-shadow: 0 0 4px currentColor;
-}
-.tcg-packcard__olabel { flex: 0 0 auto; opacity: .92; min-width: 84px; }
-.tcg-packcard__opct { font-weight: 700; font-variant-numeric: tabular-nums; }
-.tcg-packcard__oheader {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .3px;
-  color: #ffd76b; text-transform: uppercase; opacity: .85;
-  padding-bottom: 2px;
-}
-.tcg-packcard__ohint {
-  flex: 1 1 auto; text-align: right;
-  font-style: italic; opacity: .72; font-size: 10.5px;
-}
-.tcg-packcard__buy { width: 100%; }
 
 .tcg-master {
   display: flex; flex-direction: column; align-items: center; gap: 6px;

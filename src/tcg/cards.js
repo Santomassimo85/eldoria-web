@@ -1550,11 +1550,19 @@ export function cardBackUrl(cover) {
    rolled ONCE when the creature enters play (very D&D).
    ------------------------------------------------------------
    • Derived from the card's fixed power/toughness: that value is
-     kept as the AVERAGE, so the existing balance & rarity tiers
-     are preserved and the ~155 cards need no hand-editing.
-   • Die size is capped by mana cost (cmc1–2 ≤ d4, 3–4 ≤ d6,
-     5+ ≤ d8). Tiny stats (≤2) stay FIXED — small creatures
-     must stay small.
+     the EXACT AVERAGE of the roll, so balance & rarity tiers are
+     preserved and the ~300 cards need no hand-editing.
+   • The roll is SYMMETRIC and CENTERED on the printed value: the
+     minimum is exactly as likely as the maximum, and there is NO
+     upward bias. This is achieved with ODD dice (d3/d5/d7) whose
+     mean (N+1)/2 is a whole number — so `base = V − mean` is exact
+     and `base + 1dN` averages precisely V.
+       (The old version used even dice + a rounded base, which gave
+        a +0.5 bias and made small creatures hit their MAX ~25% of
+        the time — it *looked* like the dice always rolled high.)
+   • Spread scales with mana cost: ±1 (d3) for cmc≤2, ±2 (d5) for
+     cmc 3–4, ±3 (d7) for cmc 5+, and is never wider than V−1 so a
+     stat can't roll below 1. Tiny stats (≤2) stay FIXED.
    • Flip DICE_STATS to false to instantly restore the classic
      fixed stats (the original numbers live untouched on every
      card, so the old settings are always recoverable).
@@ -1562,16 +1570,16 @@ export function cardBackUrl(cover) {
 export const DICE_STATS = true;
 
 /* value V on a creature of mana cost C → { base, die }.
-   Final stat = base + 1dN (die = N; die 0 means a fixed value). */
+   Final stat = base + 1dN (die = N; die 0 means a fixed value).
+   The distribution is uniform on [V−spread, V+spread] with mean V. */
 export function statDice(value, cmc) {
   const V = Math.max(0, value | 0);
-  if (V <= 2) return { base: V, die: 0 };          // low stays low (fixed)
-  const cap = cmc <= 2 ? 4 : cmc <= 4 ? 6 : 8;     // mana-scaled ceiling
-  let N = V <= 4 ? 4 : V <= 6 ? 6 : 8;             // bigger body → bigger die
-  N = Math.min(N, cap);
-  const avgDie = (N + 1) / 2;                       // mean of 1dN
-  const base = Math.max(0, Math.round(V - avgDie)); // keep V as the average
-  return { base, die: N };
+  if (V <= 2) return { base: V, die: 0 };           // tiny stays fixed
+  let spread = cmc <= 2 ? 1 : cmc <= 4 ? 2 : 3;      // ±1 / ±2 / ±3 by cost
+  spread = Math.min(spread, V - 1);                  // never roll below 1
+  const die = 2 * spread + 1;                        // odd die: d3 / d5 / d7
+  const base = V - (spread + 1);                     // mean of base+1dN === V
+  return { base, die };
 }
 
 /* short label for cards NOT in play (hand/shop/deck/collection) */
