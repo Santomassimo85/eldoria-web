@@ -1020,6 +1020,12 @@ function tickEagleEnd(p) {
     saveFaithBonus: newSaveFaith > 0 ? p.saveFaithBonus : 0,
     aidDmgTurns: newAidDmg,
     aidDmgBonus: newAidDmg > 0 ? p.aidDmgBonus : 0,
+    // 🔩 Arma incandescente (Riscaldare Arma / Disarmare): il blocco scala a
+    // fine turno del bersaglio QUALUNQUE azione abbia scelto (attacco, magia,
+    // abilità, cambio arma, skip…). Centralizzato qui perché tickEagleEnd è
+    // chiamato da tutti gli handler di fine turno: così il debuff "viene
+    // sempre contato" e scade nei turni previsti, in ogni modalità (PvP/torneo).
+    weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1),
   };
 }
 // Scudo della Fede: +X a TUTTI i tiri salvezza finché saveFaithTurns > 0.
@@ -4060,17 +4066,67 @@ export default function Arena() {
 
     // ── ATTACK PHASE ──
     const weapons = (aiSnap.selectedActions || []).filter(a => a.type === "weapon");
-    if (weapons.length === 0) return;
+    // 🔩 Arma incandescente (Riscaldare Arma / Disarmare): sono bloccate SOLO le
+    // armi arroventate al momento del blocco (quelle equipaggiate allora). Senza
+    // elenco (match legacy) sono bloccate tutte. L'IA può ripiegare su un'arma
+    // diversa non arroventata; se non ne ha, passa il turno (vedi sotto).
+    const _aiLockTurns = aiPlayer.weaponLockTurns ?? 0;
+    const _aiLockNames = aiPlayer.weaponLockNames;
+    const _isWpnLocked = (w) => _aiLockTurns > 0 &&
+      (!_aiLockNames || _aiLockNames.length === 0 ? true : _aiLockNames.includes(w.name));
+    const availableWeapons = weapons.filter(w => !_isWpnLocked(w));
+
+    // Nessun'arma utilizzabile (incandescenza totale o build senza armi) e nessun
+    // incantesimo lanciato in questo tick → l'IA passa il turno (scelta sua) e fa
+    // scalare i timer a round, incluso il blocco arma: ogni turno saltato conta.
+    // Senza questo ramo il turno restava incastrato sull'IA o il debuff non scalava.
+    if (availableWeapons.length === 0) {
+      const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+      const lockedOut = _aiLockTurns > 0 && weapons.length > 0;
+      const passLog = lockedOut
+        ? `🔩 ${aiName} ha l'arma incandescente e non può attaccare — passa il turno.`
+        : `⏭ ${aiName} non ha attacchi disponibili — passa il turno.`;
+      const updatedMatches = meta.matches.map(x => {
+        if (x.matchId !== matchId) return x;
+        const players = x.players.map(p => {
+          if (p.id !== aiId) return p;
+          return {
+            ...p,
+            multiActionsUsed: 0,
+            turnWeaponsUsed: [],
+            turnSkillUsed: false,
+            bonusActionUsed: false,
+            itemUsedThisTurn: false,
+            actionSurgeActive: false,
+            ...tickEagleEnd(p),
+            ...consumeInvisibility(p),
+            rageTurns:        Math.max(0, (p.rageTurns ?? 0) - 1),
+            shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1),
+            hunterMarkTurns:  Math.max(0, (p.hunterMarkTurns ?? 0) - 1),
+            concentrationTurns: Math.max(0, (p.concentrationTurns ?? 0) - 1),
+            armorForgeTurns:  Math.max(0, (p.armorForgeTurns ?? 0) - 1),
+            selfAdvTurns:     Math.max(0, (p.selfAdvTurns ?? 0) - 1),
+            stealthAdvTurns:  Math.max(0, readStealthAdvTurns(p) - 1),
+            attackDisadvantageTurns: Math.max(0, (p.attackDisadvantageTurns ?? 0) - 1),
+            weaponLockTurns:  Math.max(0, (p.weaponLockTurns ?? 0) - 1),
+          };
+        });
+        return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, passLog] };
+      });
+      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      return;
+    }
+
     const avgDmg = (formula) => {
       const mtx = /^(\d+)d(\d+)/.exec(formula || "");
       if (!mtx) return 0;
       return parseInt(mtx[1], 10) * (parseInt(mtx[2], 10) + 1) / 2;
     };
-    const sortedWeapons = weapons.slice().sort((a, b) => avgDmg(b.damage) - avgDmg(a.damage));
+    const sortedWeapons = availableWeapons.slice().sort((a, b) => avgDmg(b.damage) - avgDmg(a.damage));
     // Rogue/Monk multi-action: rotate through weapons. Single-weapon classes
-    // just always use the best.
-    let chosen = (weapons.length > 1 && (cls.includes("rogue") || cls.includes("ladr") || cls.includes("monk") || cls.includes("monaco")))
-      ? weapons[usedSoFar % weapons.length]
+    // just always use the best. Si ruota solo sulle armi NON arroventate.
+    let chosen = (availableWeapons.length > 1 && (cls.includes("rogue") || cls.includes("ladr") || cls.includes("monk") || cls.includes("monaco")))
+      ? availableWeapons[usedSoFar % availableWeapons.length]
       : sortedWeapons[0];
     // Monaco a mani nude: 1° colpo Pugno (2d4+DES), 2° colpo Calcio (1d4+FOR).
     if (chosen?.unarmedMonk) chosen = resolveMonkUnarmed(chosen, usedSoFar, aiSnap?.arenaBuffs);
@@ -4198,6 +4254,7 @@ export default function Arena() {
             pattoTurns: Math.max(0, (p.pattoTurns ?? 0) - 1),
             armorForgeTurns: Math.max(0, (p.armorForgeTurns ?? 0) - 1),
             selfAdvTurns: Math.max(0, (p.selfAdvTurns ?? 0) - 1),
+            weaponLockTurns: Math.max(0, (p.weaponLockTurns ?? 0) - 1),
             ...tickEagleEnd(p),
             aidBuff:         false,
             bonusActionUsed: false, itemUsedThisTurn: false,
@@ -6572,7 +6629,10 @@ export default function Arena() {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
-        return { ...p, equippedWeaponNames: [weaponName], shieldSuppressed: is2H, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1) };
+        // Il cambio arma spende il turno: scala i timer a round (incluso il
+        // blocco arma, via tickEagleEnd) così il debuff viene contato anche
+        // quando si ripiega su un'arma non arroventata.
+        return { ...p, equippedWeaponNames: [weaponName], shieldSuppressed: is2H, shieldSkillTurns: Math.max(0, (p.shieldSkillTurns ?? 0) - 1), ...tickEagleEnd(p) };
       });
       const currentIndex = m.players.findIndex(p => p.id === currentUser.uid);
       let nextIndex = (currentIndex + 1) % m.players.length;

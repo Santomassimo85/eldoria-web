@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "17.01",
+      "date": "2026-06-11",
+      "title": "Arena — Arma incandescente: blocco contato in ogni modalità",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Il blocco dell'arma incandescente (Riscaldare Arma / Disarmare) ora scala correttamente a fine turno del bersaglio qualunque azione scelga (attacco, incantesimo, abilità, cambio arma o turno saltato), in ogni modalità — sfide PvP e torneo compresi. Prima, lanciando una magia o cambiando arma, il turno passava ma il debuff non veniva contato e non scadeva."
+        },
+        {
+          "type": "fix",
+          "text": "L'arma incandescente colpisce solo le armi equipaggiate al momento del blocco: un'arma a due mani riposta non viene arroventata e resta utilizzabile cambiando impugnatura."
+        },
+        {
+          "type": "fix",
+          "text": "L'IA ora subisce il debuff come un giocatore: se non ha armi utilizzabili né incantesimi passa il turno invece di restare bloccata o di attaccare ignorando l'incandescenza."
+        }
+      ]
+    },
+    {
       "version": "17",
       "date": "2026-06-11",
       "title": "Arena — Personalizza i tuoi dadi",
