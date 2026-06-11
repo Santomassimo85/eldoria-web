@@ -4987,6 +4987,8 @@ body .arena-bet-fab:hover {
 .bc-regole  { --bento-accent: rgba(60,170,140,0.3);  --bento-edge: rgba(110,220,190,0.7); }
 .bc-bet     { --bento-accent: rgba(60,190,180,0.3);  --bento-edge: rgba(110,225,215,0.7); }
 .bc-master  { --bento-accent: rgba(230,150,60,0.32); --bento-edge: rgba(245,185,110,0.75); }
+.bc-dadi    { --bento-accent: rgba(190,120,240,0.3);  --bento-edge: rgba(210,160,250,0.7); }
+.bc-dadi .bento-title    { color: #e8d2fb; }
 .bc-join .bento-title    { color: #ffd9cd; }
 .bc-bracket .bento-title { color: #f6e6a8; }
 .bc-libera .bento-title  { color: #cfe2fb; }

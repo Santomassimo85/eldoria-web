@@ -2,6 +2,42 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import "./DiceRoll.css";
 
+/* ── Skin del dado ───────────────────────────────────────────────
+   Ogni giocatore sceglie l'aspetto del proprio d20 (menu "I Tuoi Dadi"
+   nell'Arena). La scelta è puramente visiva e locale: il numero, il
+   critico (20) e il fallimento (1) restano sempre evidenziati in
+   oro/rosso così da non perdere il segnale di gioco — la skin colora
+   solo i tiri "normali".
+────────────────────────────────────────────────────────────────*/
+export const DICE_SKINS = [
+  // 5 colori base
+  { id: "classic",   label: "Oro Antico",  kind: "base",    glyph: "🎲" },
+  { id: "rubino",    label: "Rubino",      kind: "base",    glyph: "🔴" },
+  { id: "zaffiro",   label: "Zaffiro",     kind: "base",    glyph: "🔵" },
+  { id: "smeraldo",  label: "Smeraldo",    kind: "base",    glyph: "🟢" },
+  { id: "ossidiana", label: "Ossidiana",   kind: "base",    glyph: "⚫" },
+  // 5 speciali con effetti animati
+  { id: "damascato", label: "Acciaio Damascato", kind: "special", glyph: "🗡", desc: "Trame d'acciaio forgiato" },
+  { id: "arcano",    label: "Arcano",            kind: "special", glyph: "✨", desc: "Bagliore magico pulsante" },
+  { id: "infernale", label: "Infernale",         kind: "special", glyph: "🔥", desc: "Crepe di lava ardente" },
+  { id: "glaciale",  label: "Glaciale",          kind: "special", glyph: "❄",  desc: "Ghiaccio scintillante" },
+  { id: "cosmico",   label: "Cosmico",           kind: "special", glyph: "🌌", desc: "Nebulosa stellare" },
+];
+
+const DEFAULT_SKIN = "classic";
+const VALID_SKINS = new Set(DICE_SKINS.map((s) => s.id));
+
+let currentSkin = DEFAULT_SKIN;
+
+/** Imposta la skin attiva del dado (chiamata dal menu "I Tuoi Dadi"). */
+export function setDiceSkin(id) {
+  currentSkin = VALID_SKINS.has(id) ? id : DEFAULT_SKIN;
+}
+/** Skin attiva del dado. */
+export function getDiceSkin() {
+  return currentSkin;
+}
+
 /* ── Module-level singleton ─────────────────────────────────────
    The host component registers a trigger; callers anywhere in the
    app can `await showD20Roll(value)` and get a promise that
@@ -27,6 +63,8 @@ export default function DiceRollHost() {
           id: Math.random().toString(36).slice(2),
           value,
           label: opts.label || "",
+          // La skin si legge al momento del tiro: rispecchia sempre la scelta corrente.
+          skin: VALID_SKINS.has(currentSkin) ? currentSkin : DEFAULT_SKIN,
           resolve,
         });
       });
@@ -58,7 +96,7 @@ export default function DiceRollHost() {
   const variant = isCrit ? "crit" : isFumble ? "fumble" : "normal";
 
   return createPortal(
-    <div className={`dice-overlay ${variant}`} key={roll.id} aria-hidden="true">
+    <div className={`dice-overlay ${variant} skin-${roll.skin}`} key={roll.id} aria-hidden="true">
       <div
         className="dice-d20"
         style={{

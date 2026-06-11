@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "17",
+      "date": "2026-06-11",
+      "title": "Arena — Personalizza i tuoi dadi",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuovo menu \"I Tuoi Dadi\" nell'hub dell'Arena: ogni giocatore può scegliere l'aspetto del proprio d20. La skin resta attiva finché non viene cambiata."
+        },
+        {
+          "type": "feature",
+          "text": "10 skin disponibili: 5 colori base (Oro Antico, Rubino, Zaffiro, Smeraldo, Ossidiana) e 5 speciali con effetti animati (Acciaio Damascato, Arcano, Infernale, Glaciale, Cosmico)."
+        },
+        {
+          "type": "graphic",
+          "text": "Selezionando una skin parte un tiro di anteprima. Il critico (20) resta sempre dorato e il fallimento (1) rosso, così il segnale di gioco non si perde mai."
+        }
+      ]
+    },
+    {
       "version": "16.03",
       "date": "2026-06-11",
       "title": "Arena — Niente critico sugli incantesimi",

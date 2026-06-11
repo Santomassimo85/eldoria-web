@@ -181,13 +181,310 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+/* ============================================================
+   SKIN DEL DADO — scelte dal giocatore (menu "I Tuoi Dadi").
+   Si applicano SOLO ai tiri normali (`.normal`): critico (oro) e
+   fallimento (rosso) mantengono sempre il loro colore-segnale.
+   ============================================================ */
+
+/* ── Base · Rubino ──────────────────────────────────────────── */
+.dice-overlay.normal.skin-rubino .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 25%, #ffd9d2, transparent 55%),
+    linear-gradient(135deg, #ef5350 0%, #c62828 45%, #7a1414 100%);
+  border-color: #5a1010;
+}
+.dice-overlay.normal.skin-rubino .dice-d20-num { color: #fff0ec; text-shadow: 0 2px 4px rgba(0,0,0,0.45); }
+.dice-overlay.normal.skin-rubino .dice-d20-glow {
+  background: radial-gradient(circle, rgba(239, 83, 80, 0.65), transparent 65%);
+}
+
+/* ── Base · Zaffiro ─────────────────────────────────────────── */
+.dice-overlay.normal.skin-zaffiro .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 25%, #d2e6ff, transparent 55%),
+    linear-gradient(135deg, #42a5f5 0%, #1565c0 45%, #0b3a73 100%);
+  border-color: #0a2c52;
+}
+.dice-overlay.normal.skin-zaffiro .dice-d20-num { color: #f0f7ff; text-shadow: 0 2px 4px rgba(0,0,0,0.45); }
+.dice-overlay.normal.skin-zaffiro .dice-d20-glow {
+  background: radial-gradient(circle, rgba(66, 165, 245, 0.65), transparent 65%);
+}
+
+/* ── Base · Smeraldo ────────────────────────────────────────── */
+.dice-overlay.normal.skin-smeraldo .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 25%, #d2ffe2, transparent 55%),
+    linear-gradient(135deg, #43c66b 0%, #1e8e4f 45%, #0d5a30 100%);
+  border-color: #0a3d21;
+}
+.dice-overlay.normal.skin-smeraldo .dice-d20-num { color: #f0fff5; text-shadow: 0 2px 4px rgba(0,0,0,0.45); }
+.dice-overlay.normal.skin-smeraldo .dice-d20-glow {
+  background: radial-gradient(circle, rgba(67, 198, 107, 0.6), transparent 65%);
+}
+
+/* ── Base · Ossidiana ───────────────────────────────────────── */
+.dice-overlay.normal.skin-ossidiana .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 22%, #6a6a82, transparent 50%),
+    linear-gradient(135deg, #3a3a44 0%, #1c1c24 50%, #0a0a0e 100%);
+  border-color: #000;
+}
+.dice-overlay.normal.skin-ossidiana .dice-d20-num { color: #e8e6f2; text-shadow: 0 0 8px rgba(150,130,220,0.5), 0 2px 4px rgba(0,0,0,0.6); }
+.dice-overlay.normal.skin-ossidiana .dice-d20-glow {
+  background: radial-gradient(circle, rgba(120, 100, 190, 0.45), transparent 65%);
+}
+
+/* ── Speciale · Acciaio Damascato ───────────────────────────── */
+.dice-overlay.normal.skin-damascato .dice-d20-face {
+  background:
+    repeating-linear-gradient(115deg, #d7dbe0 0 4px, #9aa1ab 4px 8px, #c2c8d0 8px 13px, #7d848f 13px 18px),
+    linear-gradient(135deg, #e8ebef 0%, #9aa1ab 50%, #5c626c 100%);
+  background-blend-mode: overlay, normal;
+  border-color: #4a4f57;
+}
+.dice-overlay.normal.skin-damascato .dice-d20-num { color: #20232a; text-shadow: 0 1px 0 rgba(255,255,255,0.55); }
+.dice-overlay.normal.skin-damascato .dice-d20-glow {
+  background: radial-gradient(circle, rgba(210, 220, 235, 0.6), transparent 65%);
+}
+.dice-overlay.normal.skin-damascato .dice-d20 {
+  animation: skin-damascato-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes skin-damascato-shimmer {
+  0%, 100% { filter: drop-shadow(0 12px 26px rgba(0,0,0,0.55)) brightness(1); }
+  50%      { filter: drop-shadow(0 12px 26px rgba(0,0,0,0.55)) brightness(1.22); }
+}
+
+/* ── Speciale · Arcano (glow pulsante) ──────────────────────── */
+.dice-overlay.normal.skin-arcano .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 25%, #e6c8ff, transparent 55%),
+    linear-gradient(135deg, #9b59ff 0%, #6a1fc0 45%, #34106e 100%);
+  border-color: #2a0a5a;
+}
+.dice-overlay.normal.skin-arcano .dice-d20-num { color: #f6ecff; text-shadow: 0 0 10px rgba(180,120,255,0.8); }
+.dice-overlay.normal.skin-arcano .dice-d20-glow {
+  background: radial-gradient(circle, rgba(155, 89, 255, 0.85), transparent 65%);
+  filter: blur(9px);
+}
+.dice-overlay.normal.skin-arcano .dice-d20 {
+  animation: skin-arcano-pulse 1.3s ease-in-out infinite;
+}
+@keyframes skin-arcano-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(155,89,255,0.55)); }
+  50%      { filter: drop-shadow(0 0 22px rgba(180,120,255,0.95)); }
+}
+
+/* ── Speciale · Infernale (lava ardente) ────────────────────── */
+.dice-overlay.normal.skin-infernale .dice-d20-face {
+  background:
+    radial-gradient(circle at 35% 30%, #ffcf6b 0%, transparent 40%),
+    radial-gradient(circle at 65% 70%, #ff5722 0%, transparent 45%),
+    linear-gradient(135deg, #3a0a04 0%, #7a1a06 50%, #1a0502 100%);
+  border-color: #2a0702;
+}
+.dice-overlay.normal.skin-infernale .dice-d20-num { color: #ffe9c2; text-shadow: 0 0 10px rgba(255,120,30,0.9); }
+.dice-overlay.normal.skin-infernale .dice-d20-glow {
+  background: radial-gradient(circle, rgba(255, 87, 34, 0.85), transparent 65%);
+  filter: blur(9px);
+}
+.dice-overlay.normal.skin-infernale .dice-d20 {
+  animation: skin-infernale-flicker 0.9s ease-in-out infinite;
+}
+@keyframes skin-infernale-flicker {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(255,87,34,0.6)); }
+  35%      { filter: drop-shadow(0 0 20px rgba(255,150,40,0.95)); }
+  70%      { filter: drop-shadow(0 0 12px rgba(255,87,34,0.75)); }
+}
+
+/* ── Speciale · Glaciale (ghiaccio) ─────────────────────────── */
+.dice-overlay.normal.skin-glaciale .dice-d20-face {
+  background:
+    radial-gradient(circle at 30% 22%, #ffffff, transparent 50%),
+    linear-gradient(135deg, #d7f3ff 0%, #8fd6f0 45%, #4a9fc7 100%);
+  border-color: #3a7fa0;
+}
+.dice-overlay.normal.skin-glaciale .dice-d20-num { color: #0b3a52; text-shadow: 0 0 8px rgba(255,255,255,0.7); }
+.dice-overlay.normal.skin-glaciale .dice-d20-glow {
+  background: radial-gradient(circle, rgba(143, 214, 240, 0.8), transparent 65%);
+  filter: blur(8px);
+}
+.dice-overlay.normal.skin-glaciale .dice-d20 {
+  animation: skin-glaciale-shimmer 1.8s ease-in-out infinite;
+}
+@keyframes skin-glaciale-shimmer {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(180,235,255,0.55)) brightness(1); }
+  50%      { filter: drop-shadow(0 0 18px rgba(220,250,255,0.9)) brightness(1.15); }
+}
+
+/* ── Speciale · Cosmico (nebulosa) ──────────────────────────── */
+.dice-overlay.normal.skin-cosmico .dice-d20-face {
+  background:
+    radial-gradient(circle at 28% 26%, #ff8fe6 0%, transparent 38%),
+    radial-gradient(circle at 70% 64%, #4fd6ff 0%, transparent 42%),
+    radial-gradient(circle at 50% 50%, #7b4fff 0%, transparent 60%),
+    linear-gradient(135deg, #2a1259 0%, #140a36 55%, #05030f 100%);
+  border-color: #1a0d40;
+}
+.dice-overlay.normal.skin-cosmico .dice-d20-num { color: #f3ecff; text-shadow: 0 0 10px rgba(120,180,255,0.85); }
+.dice-overlay.normal.skin-cosmico .dice-d20-glow {
+  background: radial-gradient(circle, rgba(123, 79, 255, 0.8), transparent 65%);
+  filter: blur(9px);
+}
+.dice-overlay.normal.skin-cosmico .dice-d20 {
+  animation: skin-cosmico-pulse 2s ease-in-out infinite;
+}
+@keyframes skin-cosmico-pulse {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(123,79,255,0.55)) hue-rotate(0deg); }
+  50%      { filter: drop-shadow(0 0 22px rgba(79,214,255,0.85)) hue-rotate(40deg); }
+}
+
+/* ============================================================
+   PICKER "I TUOI DADI" — griglia di scelta della skin
+   ============================================================ */
+.dice-picker-intro {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #cdbfa0;
+  margin: 0 0 14px;
+}
+.dice-picker-section-label {
+  font-family: "Cinzel Decorative", serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e6c46a;
+  margin: 16px 0 8px;
+}
+.dice-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+.dice-skin-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(150, 120, 60, 0.35);
+  background: rgba(28, 22, 12, 0.55);
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.12s, background 0.18s;
+}
+.dice-skin-card:hover { transform: translateY(-2px); border-color: rgba(230, 196, 106, 0.7); }
+.dice-skin-card.is-active {
+  border-color: #e6c46a;
+  background: rgba(60, 46, 16, 0.7);
+  box-shadow: 0 0 0 1px #e6c46a inset, 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+.dice-skin-card.is-special { border-style: dashed; }
+.dice-skin-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f3e2b5;
+  text-align: center;
+  line-height: 1.2;
+}
+.dice-skin-desc {
+  font-size: 0.66rem;
+  color: #a89878;
+  text-align: center;
+  line-height: 1.25;
+}
+.dice-skin-check {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.8rem;
+  color: #ffd96b;
+  font-weight: 700;
+}
+
+/* ── Swatch (mini-d20) — riusa l'aspetto facciale di ogni skin ── */
+.dice-swatch {
+  width: 46px;
+  height: 46px;
+  border: 2px solid #6b4f0e;
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  background:
+    radial-gradient(circle at 30% 25%, #fff5d2, transparent 55%),
+    linear-gradient(135deg, #f0c250 0%, #d4af37 45%, #8c6a17 100%);
+}
+.dice-swatch.skin-rubino {
+  border-color: #5a1010;
+  background:
+    radial-gradient(circle at 30% 25%, #ffd9d2, transparent 55%),
+    linear-gradient(135deg, #ef5350 0%, #c62828 45%, #7a1414 100%);
+}
+.dice-swatch.skin-zaffiro {
+  border-color: #0a2c52;
+  background:
+    radial-gradient(circle at 30% 25%, #d2e6ff, transparent 55%),
+    linear-gradient(135deg, #42a5f5 0%, #1565c0 45%, #0b3a73 100%);
+}
+.dice-swatch.skin-smeraldo {
+  border-color: #0a3d21;
+  background:
+    radial-gradient(circle at 30% 25%, #d2ffe2, transparent 55%),
+    linear-gradient(135deg, #43c66b 0%, #1e8e4f 45%, #0d5a30 100%);
+}
+.dice-swatch.skin-ossidiana {
+  border-color: #000;
+  background:
+    radial-gradient(circle at 30% 22%, #6a6a82, transparent 50%),
+    linear-gradient(135deg, #3a3a44 0%, #1c1c24 50%, #0a0a0e 100%);
+}
+.dice-swatch.skin-damascato {
+  border-color: #4a4f57;
+  background:
+    repeating-linear-gradient(115deg, #d7dbe0 0 4px, #9aa1ab 4px 8px, #c2c8d0 8px 13px, #7d848f 13px 18px),
+    linear-gradient(135deg, #e8ebef 0%, #9aa1ab 50%, #5c626c 100%);
+  background-blend-mode: overlay, normal;
+}
+.dice-swatch.skin-arcano {
+  border-color: #2a0a5a;
+  background:
+    radial-gradient(circle at 30% 25%, #e6c8ff, transparent 55%),
+    linear-gradient(135deg, #9b59ff 0%, #6a1fc0 45%, #34106e 100%);
+  box-shadow: 0 0 10px rgba(155, 89, 255, 0.7);
+}
+.dice-swatch.skin-infernale {
+  border-color: #2a0702;
+  background:
+    radial-gradient(circle at 35% 30%, #ffcf6b 0%, transparent 40%),
+    radial-gradient(circle at 65% 70%, #ff5722 0%, transparent 45%),
+    linear-gradient(135deg, #3a0a04 0%, #7a1a06 50%, #1a0502 100%);
+  box-shadow: 0 0 10px rgba(255, 87, 34, 0.7);
+}
+.dice-swatch.skin-glaciale {
+  border-color: #3a7fa0;
+  background:
+    radial-gradient(circle at 30% 22%, #ffffff, transparent 50%),
+    linear-gradient(135deg, #d7f3ff 0%, #8fd6f0 45%, #4a9fc7 100%);
+  box-shadow: 0 0 10px rgba(143, 214, 240, 0.7);
+}
+.dice-swatch.skin-cosmico {
+  border-color: #1a0d40;
+  background:
+    radial-gradient(circle at 28% 26%, #ff8fe6 0%, transparent 38%),
+    radial-gradient(circle at 70% 64%, #4fd6ff 0%, transparent 42%),
+    radial-gradient(circle at 50% 50%, #7b4fff 0%, transparent 60%),
+    linear-gradient(135deg, #2a1259 0%, #140a36 55%, #05030f 100%);
+  box-shadow: 0 0 10px rgba(123, 79, 255, 0.7);
+}
+
 /* ── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .dice-d20-face,
   .dice-d20-num,
   .dice-d20-glow,
   .dice-label,
-  .dice-tag {
+  .dice-tag,
+  .dice-d20 {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

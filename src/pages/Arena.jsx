@@ -7,7 +7,7 @@ import {
   runTransaction, increment, query, where,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
-import { showD20Roll } from "../components/DiceRoll";
+import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
 import { awardPetPoints } from "../utils/pet";
 import "./Arena.css";
@@ -1954,9 +1954,33 @@ export default function Arena() {
   /* FIX: P5b/P5c/P5d — modal/drawer state */
   const [bracketModalOpen, setBracketModalOpen] = useState(false);
   const [bettingDrawerOpen, setBettingDrawerOpen] = useState(false);
+  // Skin del dado scelta dal giocatore (persistita in localStorage per-utente).
+  const [dicePickerOpen, setDicePickerOpen] = useState(false);
+  const [diceSkinId, setDiceSkinId] = useState("classic");
   const [titlesModalOpen, setTitlesModalOpen] = useState(false);
   const [statsTournModalOpen, setStatsTournModalOpen] = useState(false);
   const [statsFunModalOpen, setStatsFunModalOpen] = useState(false);
+
+  // Carica la skin del dado salvata per questo utente e la rende attiva.
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    let saved = "classic";
+    try { saved = localStorage.getItem(`eldoria_dice_skin_${currentUser.uid}`) || "classic"; } catch { /* storage off */ }
+    if (!DICE_SKINS.some((s) => s.id === saved)) saved = "classic";
+    setDiceSkin(saved);
+    setDiceSkinId(saved);
+  }, [currentUser?.uid]);
+
+  // Cambia skin: persiste, attiva e mostra un tiro di anteprima (valore neutro così
+  // si vede la skin e non il colore di critico/fallimento).
+  const handleChangeDiceSkin = (id) => {
+    setDiceSkin(id);
+    setDiceSkinId(id);
+    try { if (currentUser?.uid) localStorage.setItem(`eldoria_dice_skin_${currentUser.uid}`, id); } catch { /* storage off */ }
+    const previewVal = 2 + Math.floor(Math.random() * 18); // 2..19
+    const label = DICE_SKINS.find((s) => s.id === id)?.label || "";
+    showD20Roll(previewVal, { label: `Anteprima · ${label}` });
+  };
 
   /* FIX: P5d — count placed bets for FAB badge */
   const [userBetsCount, setUserBetsCount] = useState(0);
@@ -7201,6 +7225,13 @@ export default function Arena() {
                 <span className="bento-glow" aria-hidden="true" />
               </button>
 
+              <button type="button" className="bento-card bc-dadi" onClick={() => setDicePickerOpen(true)}>
+                <span className="bento-rune" aria-hidden="true">🎲</span>
+                <span className="bento-title">I Tuoi Dadi</span>
+                <span className="bento-sub">{DICE_SKINS.find((s) => s.id === diceSkinId)?.label || "Oro Antico"} · cambia colore</span>
+                <span className="bento-glow" aria-hidden="true" />
+              </button>
+
               {showBet && (
                 <button type="button" className="bento-card bc-bet" onClick={() => setBettingDrawerOpen(true)}>
                   <span className="bento-rune" aria-hidden="true">🎲</span>
@@ -8796,6 +8827,50 @@ export default function Arena() {
           </ArenaModal>
         </>
       )}
+
+      {/* ── MENU "I TUOI DADI" — scelta skin del d20 ── */}
+      <ArenaModal
+        open={dicePickerOpen}
+        onClose={() => setDicePickerOpen(false)}
+        title="🎲 I Tuoi Dadi"
+        className="dice-picker-modal"
+      >
+        <p className="dice-picker-intro">
+          Scegli l'aspetto del tuo d20. La skin resta attiva finché non la cambi.
+          Critico (20) e fallimento (1) restano sempre in oro e rosso.
+        </p>
+        <div className="dice-picker-section-label">Colori base</div>
+        <div className="dice-picker-grid">
+          {DICE_SKINS.filter((s) => s.kind === "base").map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`dice-skin-card${diceSkinId === s.id ? " is-active" : ""}`}
+              onClick={() => handleChangeDiceSkin(s.id)}
+            >
+              <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />
+              <span className="dice-skin-name">{s.label}</span>
+              {diceSkinId === s.id && <span className="dice-skin-check" aria-hidden="true">✓</span>}
+            </button>
+          ))}
+        </div>
+        <div className="dice-picker-section-label">Speciali ✦</div>
+        <div className="dice-picker-grid">
+          {DICE_SKINS.filter((s) => s.kind === "special").map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`dice-skin-card is-special${diceSkinId === s.id ? " is-active" : ""}`}
+              onClick={() => handleChangeDiceSkin(s.id)}
+            >
+              <span className={`dice-swatch skin-${s.id}`} aria-hidden="true" />
+              <span className="dice-skin-name">{s.label}</span>
+              {s.desc && <span className="dice-skin-desc">{s.desc}</span>}
+              {diceSkinId === s.id && <span className="dice-skin-check" aria-hidden="true">✓</span>}
+            </button>
+          ))}
+        </div>
+      </ArenaModal>
 
       {/* ── POPUP FINE COMBATTIMENTO (vittoria / sconfitta) ── */}
       {fightResult && createPortal(
