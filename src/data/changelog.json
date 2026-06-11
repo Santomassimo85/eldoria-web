@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "16.03",
+      "date": "2026-06-11",
+      "title": "Arena — Niente critico sugli incantesimi",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Gli incantesimi a tiro per colpire non possono più fare un colpo critico: un 20 naturale colpisce comunque ma non raddoppia più i dadi del danno. Il critico resta riservato agli attacchi con arma. Correzione valida sia per i giocatori che per l'IA."
+        }
+      ]
+    },
+    {
       "version": "16.02",
       "date": "2026-06-10",
       "title": "Arena — Manuale aggiornato con le meccaniche di combattimento",

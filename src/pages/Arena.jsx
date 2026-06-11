@@ -3900,10 +3900,10 @@ export default function Arena() {
             const d20 = Math.floor(Math.random() * 20) + 1;
             await showD20Roll(d20, { label: `${aiName} tira per colpire · ${sp.name}` });
             const totalHit = d20 + spellHit;
-            critHit = d20 === 20;
-            connected = critHit || (d20 !== 1 && totalHit >= targetAc);
+            // Niente critico sugli incantesimi: nat 20 colpisce, nat 1 manca, ma danni mai raddoppiati.
+            connected = d20 === 20 || (d20 !== 1 && totalHit >= targetAc);
             outLog = connected
-              ? `colpisce [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]${critHit ? " CRITICO!" : ""}`
+              ? `colpisce [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]`
               : `manca [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]`;
           } else {
             const defMod = targetSnap.stats?.[saveAbil] ?? 0;
@@ -6205,11 +6205,11 @@ export default function Arena() {
       const d20 = Math.floor(Math.random() * 20) + 1;
       await showD20Roll(d20, { label: `${attName} tira per colpire · ${action.name}` });
       const totalHit = d20 + spellHit + aidHit;
-      critHit = d20 === 20;
-      connected = critHit || (d20 !== 1 && totalHit >= targetAc);
+      // Gli incantesimi NON fanno critico: nat 20 colpisce sempre, nat 1 manca, ma niente danni raddoppiati.
+      connected = d20 === 20 || (d20 !== 1 && totalHit >= targetAc);
       const aidPart = aidHit ? `+${aidHit}` : "";
       outcomeLog = connected
-        ? `colpisce [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]${critHit ? " CRITICO!" : ""}`
+        ? `colpisce [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]`
         : `manca [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]`;
       if (mdAtk > 0) {
         const newMdAtk = Math.max(0, mdAtk - 1);
