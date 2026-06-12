@@ -3,7 +3,7 @@ import changelog from "../data/changelog.json";
 import "./Updates.css";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
-import { doc, onSnapshot, updateDoc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HIDDEN_DOC   = doc(db, "settings", "changelog_hidden");
@@ -42,30 +42,36 @@ export default function Updates() {
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
-  const [hidden,      setHidden]      = useState(new Set());
-  const [showHidden,  setShowHidden]  = useState(false);
-  const [pendingText, setPendingText] = useState(null); // testo in attesa di conferma
+  // texts: Set di testi di singole voci nascosti
+  // versionNums: Set di numeri versione (es. "17.14") nascosti per intero
+  const [hiddenTexts,    setHiddenTexts]    = useState(new Set());
+  const [hiddenVersions, setHiddenVersions] = useState(new Set());
+  const [showHidden,     setShowHidden]     = useState(false);
 
-  // Carica/ascolta le voci nascoste da Firestore
+  // pending: { type: "text"|"version", key: string }
+  const [pending, setPending] = useState(null);
+
   useEffect(() => {
     const unsub = onSnapshot(HIDDEN_DOC, snap => {
-      const texts = snap.exists() ? (snap.data().texts || []) : [];
-      setHidden(new Set(texts));
+      const d = snap.exists() ? snap.data() : {};
+      setHiddenTexts(new Set(d.texts || []));
+      setHiddenVersions(new Set(d.versions || []));
     });
     return unsub;
   }, []);
 
-  async function hideEntry(text) {
-    try {
-      await setDoc(HIDDEN_DOC, { texts: arrayUnion(text) }, { merge: true });
-    } catch { /* doc potrebbe non esistere ancora */ }
-    setPendingText(null);
+  async function hide(type, key) {
+    const field = type === "version" ? "versions" : "texts";
+    await setDoc(HIDDEN_DOC, { [field]: arrayUnion(key) }, { merge: true });
+    setPending(null);
   }
 
-  async function restoreEntry(text) {
-    await updateDoc(HIDDEN_DOC, { texts: arrayRemove(text) });
+  async function restore(type, key) {
+    const field = type === "version" ? "versions" : "texts";
+    await setDoc(HIDDEN_DOC, { [field]: arrayRemove(key) }, { merge: true });
   }
 
+  const hiddenCount = hiddenTexts.size + hiddenVersions.size;
   const versions = changelog?.versions || [];
 
   return (
@@ -78,20 +84,30 @@ export default function Updates() {
             className={`upd-toggle-hidden${showHidden ? " active" : ""}`}
             onClick={() => setShowHidden(v => !v)}
           >
-            {showHidden ? "👁 Nascondi nascosti" : `👁 Mostra nascosti${hidden.size > 0 ? ` (${hidden.size})` : ""}`}
+            {showHidden
+              ? "👁 Nascondi nascosti"
+              : `👁 Mostra nascosti${hiddenCount > 0 ? ` (${hiddenCount})` : ""}`}
           </button>
         )}
       </header>
 
-      {/* Popup di conferma eliminazione */}
-      {pendingText && (
-        <div className="upd-confirm-overlay" onClick={() => setPendingText(null)}>
+      {/* Popup di conferma */}
+      {pending && (
+        <div className="upd-confirm-overlay" onClick={() => setPending(null)}>
           <div className="upd-confirm-box" onClick={e => e.stopPropagation()}>
-            <p className="upd-confirm-msg">Nascondere questa voce ai player?</p>
-            <p className="upd-confirm-text">"{pendingText.slice(0, 90)}{pendingText.length > 90 ? "…" : ""}"</p>
+            <p className="upd-confirm-msg">
+              {pending.type === "version"
+                ? `Nascondere l'intero pannello v${pending.key} ai player?`
+                : "Nascondere questa voce ai player?"}
+            </p>
+            {pending.type === "text" && (
+              <p className="upd-confirm-text">
+                "{pending.key.slice(0, 90)}{pending.key.length > 90 ? "…" : ""}"
+              </p>
+            )}
             <div className="upd-confirm-actions">
-              <button className="upd-confirm-cancel" onClick={() => setPendingText(null)}>Annulla</button>
-              <button className="upd-confirm-ok" onClick={() => hideEntry(pendingText)}>Nascondi</button>
+              <button className="upd-confirm-cancel" onClick={() => setPending(null)}>Annulla</button>
+              <button className="upd-confirm-ok" onClick={() => hide(pending.type, pending.key)}>Nascondi</button>
             </div>
           </div>
         </div>
@@ -103,26 +119,54 @@ export default function Updates() {
 
       <div className="updates-timeline">
         {versions.map((v, i) => {
-          // Filtra le voci per ogni gruppo
+          const versionHidden = hiddenVersions.has(v.version);
+
+          // Versione nascosta: i player non la vedono; il master la vede solo in "mostra nascosti"
+          if (versionHidden && !isMaster) return null;
+          if (versionHidden && !showHidden) return null;
+
           const groups = groupByType(v.changes).map(g => ({
             ...g,
-            visible: g.items.filter(c => !hidden.has(c.text)),
-            hiddenItems: g.items.filter(c => hidden.has(c.text)),
+            visible: g.items.filter(c => !hiddenTexts.has(c.text)),
+            hiddenItems: g.items.filter(c => hiddenTexts.has(c.text)),
           }));
 
-          // Per i player: nascondi gruppi vuoti e versioni completamente vuote
           const visibleGroups = isMaster
             ? groups
             : groups.filter(g => g.visible.length > 0);
 
           if (!isMaster && visibleGroups.length === 0) return null;
 
+          // La prima versione NON nascosta è "ULTIMA" per i player
+          const isLatest = i === 0;
+
           return (
-            <article key={v.version + i} className={`updates-card ${i === 0 ? "latest" : ""}`}>
+            <article
+              key={v.version + i}
+              className={`updates-card ${isLatest ? "latest" : ""}${versionHidden ? " upd-version-hidden" : ""}`}
+            >
               <div className="updates-card-head">
                 <span className="updates-version">v{v.version}</span>
-                {i === 0 && <span className="updates-latest-badge">ULTIMA</span>}
+                {isLatest && !versionHidden && <span className="updates-latest-badge">ULTIMA</span>}
+                {versionHidden && isMaster && <span className="upd-hidden-badge">NASCOSTO</span>}
                 <span className="updates-date">{fmtDate(v.date)}</span>
+                {/* Bottone nasconde/ripristina l'intera versione — solo master */}
+                {isMaster && !versionHidden && (
+                  <button
+                    className="upd-del-btn upd-ver-del-btn"
+                    title="Nascondi questo pannello ai player"
+                    onClick={() => setPending({ type: "version", key: v.version })}
+                    aria-label="Nascondi versione"
+                  >🗑</button>
+                )}
+                {isMaster && versionHidden && (
+                  <button
+                    className="upd-restore-btn upd-ver-restore-btn"
+                    title="Ripristina versione"
+                    onClick={() => restore("version", v.version)}
+                    aria-label="Ripristina versione"
+                  >↩ Ripristina</button>
+                )}
               </div>
               {v.title && <h2 className="updates-card-title">{v.title}</h2>}
 
@@ -143,7 +187,7 @@ export default function Updates() {
                       </div>
                       <ul className="updates-changes">
                         {shownItems.map((c, j) => {
-                          const isHid = hidden.has(c.text);
+                          const isHid = hiddenTexts.has(c.text);
                           return (
                             <li key={j} className={`updates-change${isHid ? " upd-hidden-entry" : ""}`}>
                               <span className="updates-change-dot" aria-hidden="true" />
@@ -152,7 +196,7 @@ export default function Updates() {
                                 <button
                                   className="upd-del-btn"
                                   title="Nascondi ai player"
-                                  onClick={() => setPendingText(c.text)}
+                                  onClick={() => setPending({ type: "text", key: c.text })}
                                   aria-label="Nascondi voce"
                                 >🗑</button>
                               )}
@@ -160,7 +204,7 @@ export default function Updates() {
                                 <button
                                   className="upd-restore-btn"
                                   title="Ripristina"
-                                  onClick={() => restoreEntry(c.text)}
+                                  onClick={() => restore("text", c.text)}
                                   aria-label="Ripristina voce"
                                 >↩</button>
                               )}

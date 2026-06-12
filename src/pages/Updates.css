@@ -129,6 +129,36 @@
 }
 .updates-change-text { font-size: 0.92rem; color: #ddd6c6; }
 
+/* ── Versione intera nascosta (solo master in "mostra nascosti") ── */
+.upd-version-hidden {
+  opacity: 0.45;
+  border-left-color: rgba(192, 57, 43, 0.5) !important;
+}
+.upd-hidden-badge {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: rgba(192, 57, 43, 0.2);
+  border: 1px solid rgba(192, 57, 43, 0.5);
+  color: #e07060;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+/* Bottone 🗑 nella testata della versione: sempre visibile (non solo on hover) */
+.upd-ver-del-btn,
+.upd-ver-restore-btn {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.updates-card:hover .upd-ver-del-btn,
+.updates-card:hover .upd-ver-restore-btn { opacity: 1; }
+
+.upd-ver-restore-btn {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+}
+
 /* ── Master: toggle "mostra nascosti" ── */
 .upd-toggle-hidden {
   display: inline-block;
