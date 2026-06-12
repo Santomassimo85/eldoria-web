@@ -1,0 +1,305 @@
+/* src/GeneraNPC.css */
+.npcgen-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: calc(var(--navbar-h, 80px) + 34px) 18px 100px;
+  background:
+    radial-gradient(
+      ellipse 90% 55% at 50% 0%,
+      rgba(216, 177, 90, 0.10) 0%,
+      transparent 70%),
+    radial-gradient(
+      ellipse at 50% 40%,
+      #1c2042 0%,
+      #12142e 48%,
+      #0a0b1d 100%),
+    #0a0b1d;
+  color: #ece9f8;
+  font-family: var(--font-text, "Cardo", serif);
+}
+.npcgen-inner {
+  max-width: 640px;
+  margin: 0 auto;
+}
+.npcgen-title {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-size: clamp(1.6rem, 4.5vw, 2.2rem);
+  margin: 0 0 6px;
+  text-align: center;
+  background:
+    linear-gradient(
+      180deg,
+      #f0d489 0%,
+      #d9b25a 55%,
+      #a47a2c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.npcgen-sub {
+  text-align: center;
+  color: #a7a4cf;
+  font-size: 1rem;
+  margin: 0 0 26px;
+  line-height: 1.5;
+}
+.npcgen-label {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #d9b25a;
+  margin: 0 0 6px 2px;
+}
+.npcgen-input {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 177, 90, 0.35);
+  background: #14172f;
+  color: #f1eedd;
+  font-size: 1rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.npcgen-input::placeholder {
+  color: #7d7aa8;
+}
+.npcgen-input:focus {
+  border-color: #d9b25a;
+  box-shadow: 0 0 0 3px rgba(217, 178, 90, 0.18);
+}
+.npcgen-btn {
+  margin-top: 14px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      180deg,
+      #e7c878 0%,
+      #d9b25a 45%,
+      #b8902f 100%);
+  color: #241c05;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+  transition: filter 0.15s, transform 0.1s;
+}
+.npcgen-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.npcgen-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.npcgen-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.npcgen-btn--ghost {
+  background: rgba(216, 177, 90, 0.08);
+  border: 1px solid rgba(216, 177, 90, 0.45);
+  color: #e9cd86;
+  font-weight: 600;
+  box-shadow: none;
+}
+.npcgen-btn--ghost:hover:not(:disabled) {
+  background: rgba(216, 177, 90, 0.16);
+  filter: none;
+}
+.npcgen-status {
+  margin-top: 16px;
+  min-height: 22px;
+  text-align: center;
+  font-style: italic;
+  color: #c9b06a;
+  font-size: 0.98rem;
+}
+.npcgen-status--error {
+  color: #e2483a;
+  font-style: normal;
+}
+.npcgen-card {
+  margin-top: 26px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(216, 177, 90, 0.06) 0%,
+      transparent 120px),
+    #161936;
+  border: 1px solid rgba(216, 177, 90, 0.4);
+  border-radius: 16px;
+  padding: 24px 22px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+}
+.npcgen-name {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-size: 1.5rem;
+  color: #e9cd86;
+  margin: 0 0 2px;
+  line-height: 1.25;
+}
+.npcgen-role {
+  color: #a7a4cf;
+  font-size: 1rem;
+  margin: 0 0 6px;
+}
+.npcgen-divider {
+  height: 1px;
+  margin: 14px 0 4px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(216, 177, 90, 0.55),
+      transparent);
+  border: none;
+}
+.npcgen-card .npcgen-k {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #d9b25a;
+  margin: 16px 0 3px;
+}
+.npcgen-card .npcgen-v {
+  font-size: 1.04rem;
+  color: #f0ecdd;
+  margin: 0;
+  line-height: 1.65;
+}
+.npcgen-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 8px;
+}
+.npcgen-chip {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(216, 177, 90, 0.12);
+  border: 1px solid rgba(216, 177, 90, 0.4);
+  color: #e9cd86;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.npcgen-img {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 18px;
+  border: 1px solid rgba(216, 177, 90, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: block;
+}
+@media (max-width: 480px) {
+  .npcgen-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .npcgen-card {
+    padding: 18px 14px;
+  }
+}
+
+/* src/pages/DmTools.css */
+.dmt-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+.dmt-tab {
+  flex: 1;
+  padding: 11px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(216, 177, 90, 0.08);
+  border: 1px solid rgba(216, 177, 90, 0.45);
+  color: #e9cd86;
+  transition: background 0.15s, filter 0.15s;
+}
+.dmt-tab:hover {
+  background: rgba(216, 177, 90, 0.16);
+}
+.dmt-tab.on {
+  background:
+    linear-gradient(
+      180deg,
+      #e7c878 0%,
+      #d9b25a 45%,
+      #b8902f 100%);
+  color: #241c05;
+  border-color: transparent;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+}
+.dmt-field {
+  margin-top: 16px;
+}
+.dmt-row {
+  display: flex;
+  gap: 10px;
+}
+.dmt-row > div {
+  flex: 1;
+  min-width: 0;
+}
+select.npcgen-input {
+  cursor: pointer;
+}
+select.npcgen-input option {
+  background: #14172f;
+  color: #f1eedd;
+}
+textarea.npcgen-input {
+  resize: vertical;
+  min-height: 76px;
+  line-height: 1.5;
+}
+textarea.npcgen-input.dmt-prompt {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+.dmt-result {
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 10px);
+}
+.dmt-li {
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(216, 177, 90, 0.18);
+}
+.dmt-li:last-child {
+  border-bottom: none;
+}
+.dmt-li .n {
+  color: #f0ecdd;
+  font-size: 1.02rem;
+}
+.dmt-li .n b {
+  color: #e9cd86;
+}
+.dmt-li .d {
+  color: #a7a4cf;
+  font-size: 0.92rem;
+  margin-top: 2px;
+}
+.npcgen-chip.dmt-pill {
+  margin-left: 8px;
+  font-size: 0.78rem;
+  padding: 3px 9px;
+  font-weight: 600;
+}
