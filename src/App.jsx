@@ -104,20 +104,24 @@ function NavDropdown({ label, children, closeAll }) {
   );
 }
 
-// --- Link master-only al Generatore NPC (primo link del menu) ---
+// Elenco dei co-master: hanno accesso agli strumenti DM ma non al pannello admin completo.
+const CO_MASTER_EMAILS = ["ripperti96@gmail.com"];
+const isDmUser = (email) => email === MASTER_EMAIL_UI || CO_MASTER_EMAILS.includes(email);
+
+// --- Link al Generatore NPC (master + co-master) ---
 const NpcGenNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
-  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  if (!isDmUser(currentUser?.email)) return null;
   return (
     <NavLink to="/dm-admin/genera-npc" onClick={closeMenu}>
       🧙 Genera NPC
     </NavLink>
   );
 };
-// --- Link dedicato agli strumenti DM (visibile solo al master) ---
+// --- Link agli strumenti DM (master + co-master) ---
 const DmToolsNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
-  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  if (!isDmUser(currentUser?.email)) return null;
   return <NavLink to="/dm-admin/strumenti" onClick={closeMenu}>🛠️ Strumenti DM</NavLink>;
 };
 
@@ -139,23 +143,31 @@ const AdminNavLink = ({ closeMenu }) => {
   return null;
 };
 
-// --- Link dedicato al solo collaboratore dei riassunti (non vede il resto del pannello DM) ---
-const SUMMARY_EDITOR_EMAIL = "ripperti96@gmail.com";
+// --- Link DM dedicati al co-master (summaries + black market) ---
 const SummaryAdminNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
-  if (currentUser?.email === SUMMARY_EDITOR_EMAIL) {
-    return (
+  if (!CO_MASTER_EMAILS.includes(currentUser?.email)) return null;
+  const linkStyle = { backgroundColor: "var(--gold)", color: "var(--red)", fontWeight: "bold" };
+  return (
+    <>
       <NavLink
         to="/dm-admin/summaries"
         className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
         onClick={closeMenu}
-        style={{ backgroundColor: "var(--gold)", color: "var(--red)", fontWeight: "bold" }}
+        style={linkStyle}
       >
         RIASSUNTI
       </NavLink>
-    );
-  }
-  return null;
+      <NavLink
+        to="/dm-admin/market"
+        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+        onClick={closeMenu}
+        style={linkStyle}
+      >
+        MARKET
+      </NavLink>
+    </>
+  );
 };
 
 // --- TCG nav link — hidden while the page is locked unless the

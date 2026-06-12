@@ -13,6 +13,8 @@ import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
 import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+const CO_MASTER_EMAILS = ["ripperti96@gmail.com"];
+const canAccessMarket = (email) => email === MASTER_EMAIL || CO_MASTER_EMAILS.includes(email);
 const RARITIES = ["Comune", "Non comune", "Rara", "Molto rara", "Leggendaria", "Artefatto"];
 // Livelli Ratto (allineati a Mercato.jsx)
 const RATTO_LEVELS_ADMIN = [
@@ -398,7 +400,7 @@ export default function MarketAdmin() {
   };
 
   useEffect(() => {
-    if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
+    if (!currentUser || !canAccessMarket(currentUser.email)) return;
     const unsubConfig = onSnapshot(doc(db, "settings", "market_config"), (snap) => {
       if (snap.exists()) {
         const d = snap.data();
@@ -773,7 +775,7 @@ export default function MarketAdmin() {
 
   const previewRarityKey = (formData.class || "Comune").replace(/\s/g, "");
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !canAccessMarket(currentUser.email)) {
     return <p style={{ textAlign: "center", paddingTop: "100px" }}>Accesso negato.</p>;
   }
 

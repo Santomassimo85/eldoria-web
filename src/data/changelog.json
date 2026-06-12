@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "17.13",
+      "date": "2026-06-12",
+      "title": "Accessi DM — co-master con permessi allargati",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Il co-master ora ha accesso (link nel menu + pagina) a Genera NPC, Strumenti DM e Black Market Admin, oltre ai Riassunti già disponibili in precedenza."
+        }
+      ]
+    },
+    {
       "version": "17.12",
       "date": "2026-06-12",
       "title": "Arena — Uscita dallo Storico combattimenti",
