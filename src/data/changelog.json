@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "17.04",
+      "date": "2026-06-12",
+      "title": "Strumenti DM — Generatore NPC in tema scuro",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "La pagina Generatore NPC (strumenti DM) adotta il tema scuro del sito: sfondo a tutta pagina, titolo dorato, scheda dell'NPC con statblock a riquadri e ritratto incorniciato."
+        },
+        {
+          "type": "fix",
+          "text": "Corretto il testo della scheda NPC che ereditava il colore scuro globale e risultava illeggibile sul fondo scuro: ora tutti i campi hanno colori chiari espliciti e leggibili."
+        }
+      ]
+    },
+    {
       "version": "17.03",
       "date": "2026-06-12",
       "title": "TCG Torneo — Risolto il kick all'ingresso nei match",
