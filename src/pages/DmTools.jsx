@@ -1,98 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
+import "../GeneraNPC.css";
+import "./DmTools.css";
 
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
-   Incontri (viaggio), Loot, Città (descrizione + mappa AI).
-   Cervello: /api/dm-tools (Claude). Mappa: /api/genera-immagine (Gemini).
+   Incontri, Loot, Città (descrizione + mappa AI).
+   Cervello: /api/dm-tools (Claude). Mappa: /api/genera-immagine.
+   Visivamente identico a GeneraNPC.jsx.
    ============================================================ */
-
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
-.dmt{
-  --bg:#0a0b14; --panel:#15172b; --panel2:#1b1e38; --line:#2c2f52;
-  --gold:#e0bd6b; --gold-dim:#b9974c; --arc:#9b6cd6; --arc-dim:#6f4aa6;
-  --ink:#ece9f5; --muted:#9c9ac4;
-  max-width:560px; margin:0 auto; min-height:100vh;
-  /* la navbar del sito è FISSA: la pagina parte sempre sotto di lei */
-  padding: calc(var(--navbar-h, 80px) + 16px) 14px 60px;
-  font-family:'EB Garamond',Georgia,serif; font-size:17px; line-height:1.5; color:var(--ink);
-  background:radial-gradient(900px 480px at 50% -8%,#1a1736 0%,rgba(26,23,54,0) 60%),var(--bg);
-}
-.dmt *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-.dmt h1{font-family:'Cinzel',serif;color:var(--gold);font-size:24px;margin:4px 2px 4px}
-.dmt .lead{color:var(--muted);font-size:15px;margin:0 2px 18px}
-.dmt-tabs{display:flex;gap:6px;margin-bottom:18px}
-.dmt-tab{flex:1;padding:11px 4px;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--muted);
-  font-family:'Cinzel',serif;font-size:13px;letter-spacing:.05em;text-align:center;cursor:pointer;transition:.18s}
-.dmt-tab.on{background:linear-gradient(180deg,#2a2550,#1c1d3a);color:var(--gold);border-color:var(--gold-dim)}
-.dmt label{display:block;font-size:13px;color:var(--muted);margin:12px 2px 5px}
-.dmt input,.dmt select,.dmt textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);
-  background:var(--panel);color:var(--ink);font-size:16px;font-family:'EB Garamond',serif}
-.dmt textarea{resize:vertical;min-height:70px;line-height:1.45}
-.dmt input:focus,.dmt select:focus,.dmt textarea:focus{outline:none;border-color:var(--gold-dim)}
-.dmt .row{display:flex;gap:10px}
-.dmt .row>div{flex:1}
-.dmt-go{margin-top:16px;width:100%;padding:13px;border:none;border-radius:11px;background:var(--gold);
-  color:#241c05;font-family:'Cinzel',serif;font-size:15px;font-weight:600;cursor:pointer}
-.dmt-go:disabled{opacity:.5}
-.dmt-msg{margin-top:12px;color:var(--muted);font-size:14px;min-height:18px}
-.dmt-msg.err{color:#ef8e87}
-.dmt-card{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
-.dmt-title{font-family:'Cinzel',serif;color:var(--gold);font-size:21px;margin:0 0 4px}
-.dmt-tag{color:var(--muted);font-size:14px;margin:0 0 12px}
-.dmt-k{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dim);margin:16px 0 5px;
-  display:flex;align-items:center;gap:9px}
-.dmt-k::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
-.dmt-v{font-size:15px;line-height:1.55;margin:0}
-.dmt-li{padding:8px 0;border-bottom:1px solid var(--line)}
-.dmt-li .n{color:var(--ink);font-size:15px}
-.dmt-li .n b{color:var(--gold)}
-.dmt-li .d{color:var(--muted);font-size:14px;margin-top:2px}
-.dmt-pill{display:inline-block;font-family:'Cinzel',serif;font-size:11px;padding:2px 8px;border-radius:6px;margin-left:6px;
-  background:rgba(155,108,214,.15);color:#c6a6f0;border:1px solid var(--arc-dim)}
-.dmt-prompt{margin-top:8px;font-family:ui-monospace,monospace;font-size:13px;background:#0f1120;border-color:var(--arc-dim)}
-.dmt-mini{margin-top:10px;padding:10px;border:1px solid var(--gold-dim);border-radius:9px;background:linear-gradient(180deg,#2a2550,#1c1d3a);
-  color:var(--gold);font-family:'Cinzel',serif;font-size:14px;cursor:pointer;width:100%}
-.dmt-map{width:100%;border-radius:12px;margin-top:14px;border:1px solid var(--gold-dim)}
-.dmt-hint{display:none;color:var(--muted);font-size:15px;text-align:center;padding:28px 16px;
-  border:1px dashed var(--line);border-radius:14px}
-.dmt-result{scroll-margin-top:calc(var(--navbar-h, 80px) + 10px)}
-/* ── DESKTOP: pagina larga, form a sinistra e risultati a destra ── */
-@media (min-width:840px){
-  .dmt{max-width:980px;padding:calc(var(--navbar-h, 80px) + 24px) 20px 60px}
-  .dmt h1{font-size:30px}
-  .dmt .lead{font-size:16px}
-  .dmt-tabs{gap:8px}
-  .dmt-tab{font-size:14px;padding:12px 4px}
-  .dmt-grid{display:grid;grid-template-columns:360px 1fr;gap:24px;align-items:start}
-  .dmt-form{position:sticky;top:calc(var(--navbar-h, 80px) + 16px);background:var(--panel2);border:1px solid var(--line);
-    border-radius:14px;padding:4px 16px 16px}
-  .dmt-card{margin-top:0}
-  .dmt-card+.dmt-card{margin-top:14px}
-  .dmt-hint{display:block}
-}
-@media (prefers-reduced-motion:reduce){.dmt *{animation:none!important;transition:none!important}}
-`;
 
 const API = "/api/dm-tools";
 
 export default function DmTools() {
-  const [tab, setTab] = useState("incontro");
+  const [tab, setTab]   = useState("incontro");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [out, setOut] = useState(null);
+  const [msg, setMsg]   = useState("");
+  const [out, setOut]   = useState(null);
 
-  // form state
-  const [enc, setEnc] = useState({ zona: "una strada nella foresta di Eldoria", livelloParty: 5, numPg: 4, momento: "giorno", difficolta: "media" });
+  const [enc,  setEnc]  = useState({ zona: "una strada nella foresta di Eldoria", livelloParty: 5, numPg: 4, momento: "giorno", difficolta: "media" });
   const [loot, setLoot] = useState({ fonte: "tesoro", riferimento: "drago giovane", livelloMedio: 5, tema: "vario" });
   const [city, setCity] = useState({ nome: "", dimensione: "cittadina", carattere: "porto commerciale sul fiume", note: "" });
 
-  // mappa
   const [mapPrompt, setMapPrompt] = useState("");
-  const [mapImg, setMapImg] = useState(null);
-  const [mapBusy, setMapBusy] = useState(false);
+  const [mapImg,    setMapImg]    = useState(null);
+  const [mapBusy,   setMapBusy]   = useState(false);
 
-  // su smartphone il risultato compare sotto il form: portalo in vista
   const resultRef = useRef(null);
   useEffect(() => {
     if (out && resultRef.current && window.innerWidth < 840) {
@@ -139,137 +71,175 @@ export default function DmTools() {
   }
 
   return (
-    <div className="dmt">
-      <style>{CSS}</style>
-      <h1>Strumenti DM</h1>
-      <p className="lead">Genera al volo incontri, bottino e città per Eldoria.</p>
+    <div className="npcgen-page">
+      <div className="npcgen-inner">
+        <h1 className="npcgen-title">Strumenti DM</h1>
+        <p className="npcgen-sub">Genera al volo incontri, bottino e città per Eldoria.</p>
 
-      <div className="dmt-tabs">
-        {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"]].map(([id, label]) => (
-          <div key={id} className={"dmt-tab" + (tab === id ? " on" : "")}
-            onClick={() => { setTab(id); setOut(null); setMsg(""); setMapImg(null); }}>
-            {label}
-          </div>
-        ))}
-      </div>
-
-      <div className="dmt-grid">
-      <div className="dmt-form">
-      {/* FORM */}
-      {tab === "incontro" && (
-        <>
-          <label>Zona / luogo</label>
-          <input value={enc.zona} onChange={e => setEnc({ ...enc, zona: e.target.value })} />
-          <div className="row">
-            <div><label>Livello party</label>
-              <input type="number" value={enc.livelloParty} onChange={e => setEnc({ ...enc, livelloParty: e.target.value })} /></div>
-            <div><label>N° PG</label>
-              <input type="number" value={enc.numPg} onChange={e => setEnc({ ...enc, numPg: e.target.value })} /></div>
-          </div>
-          <div className="row">
-            <div><label>Momento</label>
-              <select value={enc.momento} onChange={e => setEnc({ ...enc, momento: e.target.value })}>
-                <option>giorno</option><option>notte</option><option>alba/tramonto</option></select></div>
-            <div><label>Difficoltà</label>
-              <select value={enc.difficolta} onChange={e => setEnc({ ...enc, difficolta: e.target.value })}>
-                <option>facile</option><option>media</option><option>dura</option><option>mortale</option></select></div>
-          </div>
-        </>
-      )}
-
-      {tab === "loot" && (
-        <>
-          <label>Fonte del bottino</label>
-          <select value={loot.fonte} onChange={e => setLoot({ ...loot, fonte: e.target.value })}>
-            <option>nemico singolo</option><option>gruppo di nemici</option><option>tesoro</option><option>mercante</option>
-          </select>
-          <label>Riferimento di potere</label>
-          <input value={loot.riferimento} onChange={e => setLoot({ ...loot, riferimento: e.target.value })} placeholder="es. CR 3, drago giovane, bandito comune" />
-          <label>Livello medio del party</label>
-          <input type="number" value={loot.livelloMedio} onChange={e => setLoot({ ...loot, livelloMedio: e.target.value })} />
-          <label>Tema (facoltativo)</label>
-          <input value={loot.tema} onChange={e => setLoot({ ...loot, tema: e.target.value })} placeholder="es. necromanzia, pirati, nani" />
-        </>
-      )}
-
-      {tab === "citta" && (
-        <>
-          <label>Nome (lascia vuoto per inventarlo)</label>
-          <input value={city.nome} onChange={e => setCity({ ...city, nome: e.target.value })} />
-          <div className="row">
-            <div><label>Dimensione</label>
-              <select value={city.dimensione} onChange={e => setCity({ ...city, dimensione: e.target.value })}>
-                <option>villaggio</option><option>cittadina</option><option>città</option><option>metropoli</option></select></div>
-            <div><label>Carattere</label>
-              <input value={city.carattere} onChange={e => setCity({ ...city, carattere: e.target.value })} /></div>
-          </div>
-          <label>Dettagli extra (facoltativo)</label>
-          <textarea value={city.note} onChange={e => setCity({ ...city, note: e.target.value })}
-            placeholder="Qualcosa di specifico che vuoi nella città (un evento, un problema, un legame con la trama)… la religione la sceglie l'agent dal tuo pantheon." />
-        </>
-      )}
-
-      <button className="dmt-go" onClick={generate} disabled={busy}>{busy ? "…" : "Genera"}</button>
-      <div className={"dmt-msg" + (msg.startsWith("Errore") ? " err" : "")}>{msg}</div>
-      </div>
-
-      {/* RISULTATI */}
-      <div className="dmt-result" ref={resultRef}>
-      {!out && !busy && (
-        <div className="dmt-hint">Compila il form e premi <b>Genera</b>: il risultato apparirà qui.</div>
-      )}
-      {out && tab === "incontro" && (
-        <div className="dmt-card">
-          <h2 className="dmt-title">{out.titolo}</h2>
-          <p className="dmt-tag">{out.difficolta} · {out.ambiente}</p>
-          <div className="dmt-k">Nemici</div>
-          {(out.nemici || []).map((n, i) => (
-            <div className="dmt-li" key={i}><div className="n"><b>×{n.numero}</b> {n.nome}</div>{n.note && <div className="d">{n.note}</div>}</div>
+        {/* TAB */}
+        <div className="dmt-tabs">
+          {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"]].map(([id, label]) => (
+            <div key={id} className={"dmt-tab" + (tab === id ? " on" : "")}
+              onClick={() => { setTab(id); setOut(null); setMsg(""); setMapImg(null); }}>
+              {label}
+            </div>
           ))}
-          <div className="dmt-k">Tattica</div><p className="dmt-v">{out.tattica}</p>
-          <div className="dmt-k">Colpo di scena</div><p className="dmt-v">{out.colpo_di_scena}</p>
-          <div className="dmt-k">Ricompensa</div><p className="dmt-v">{out.ricompensa}</p>
         </div>
-      )}
 
-      {out && tab === "loot" && (
-        <div className="dmt-card">
-          <div className="dmt-k">Monete</div><p className="dmt-v">{out.monete}</p>
-          <div className="dmt-k">Oggetti</div>
-          {(out.oggetti || []).map((o, i) => (
-            <div className="dmt-li" key={i}><div className="n">{o.nome}<span className="dmt-pill">{o.rarita}</span></div>
-              {o.descrizione && <div className="d">{o.descrizione}</div>}</div>
-          ))}
-          {out.nota && (<><div className="dmt-k">Nota</div><p className="dmt-v">{out.nota}</p></>)}
+        {/* FORM INCONTRO */}
+        {tab === "incontro" && (<>
+          <div className="dmt-field">
+            <label className="npcgen-label">Zona / luogo</label>
+            <input className="npcgen-input" value={enc.zona} onChange={e => setEnc({ ...enc, zona: e.target.value })} />
+          </div>
+          <div className="dmt-row">
+            <div className="dmt-field">
+              <label className="npcgen-label">Livello party</label>
+              <input className="npcgen-input" type="number" value={enc.livelloParty} onChange={e => setEnc({ ...enc, livelloParty: e.target.value })} />
+            </div>
+            <div className="dmt-field">
+              <label className="npcgen-label">N° PG</label>
+              <input className="npcgen-input" type="number" value={enc.numPg} onChange={e => setEnc({ ...enc, numPg: e.target.value })} />
+            </div>
+          </div>
+          <div className="dmt-row">
+            <div className="dmt-field">
+              <label className="npcgen-label">Momento</label>
+              <select className="npcgen-input" value={enc.momento} onChange={e => setEnc({ ...enc, momento: e.target.value })}>
+                <option>giorno</option><option>notte</option><option>alba/tramonto</option>
+              </select>
+            </div>
+            <div className="dmt-field">
+              <label className="npcgen-label">Difficoltà</label>
+              <select className="npcgen-input" value={enc.difficolta} onChange={e => setEnc({ ...enc, difficolta: e.target.value })}>
+                <option>facile</option><option>media</option><option>dura</option><option>mortale</option>
+              </select>
+            </div>
+          </div>
+        </>)}
+
+        {/* FORM LOOT */}
+        {tab === "loot" && (<>
+          <div className="dmt-field">
+            <label className="npcgen-label">Fonte del bottino</label>
+            <select className="npcgen-input" value={loot.fonte} onChange={e => setLoot({ ...loot, fonte: e.target.value })}>
+              <option>nemico singolo</option><option>gruppo di nemici</option><option>tesoro</option><option>mercante</option>
+            </select>
+          </div>
+          <div className="dmt-field">
+            <label className="npcgen-label">Riferimento di potere</label>
+            <input className="npcgen-input" value={loot.riferimento} onChange={e => setLoot({ ...loot, riferimento: e.target.value })} placeholder="es. CR 3, drago giovane, bandito comune" />
+          </div>
+          <div className="dmt-field">
+            <label className="npcgen-label">Livello medio del party</label>
+            <input className="npcgen-input" type="number" value={loot.livelloMedio} onChange={e => setLoot({ ...loot, livelloMedio: e.target.value })} />
+          </div>
+          <div className="dmt-field">
+            <label className="npcgen-label">Tema (facoltativo)</label>
+            <input className="npcgen-input" value={loot.tema} onChange={e => setLoot({ ...loot, tema: e.target.value })} placeholder="es. necromanzia, pirati, nani" />
+          </div>
+        </>)}
+
+        {/* FORM CITTÀ */}
+        {tab === "citta" && (<>
+          <div className="dmt-field">
+            <label className="npcgen-label">Nome (lascia vuoto per inventarlo)</label>
+            <input className="npcgen-input" value={city.nome} onChange={e => setCity({ ...city, nome: e.target.value })} />
+          </div>
+          <div className="dmt-row">
+            <div className="dmt-field">
+              <label className="npcgen-label">Dimensione</label>
+              <select className="npcgen-input" value={city.dimensione} onChange={e => setCity({ ...city, dimensione: e.target.value })}>
+                <option>villaggio</option><option>cittadina</option><option>città</option><option>metropoli</option>
+              </select>
+            </div>
+            <div className="dmt-field">
+              <label className="npcgen-label">Carattere</label>
+              <input className="npcgen-input" value={city.carattere} onChange={e => setCity({ ...city, carattere: e.target.value })} />
+            </div>
+          </div>
+          <div className="dmt-field">
+            <label className="npcgen-label">Dettagli extra (facoltativo)</label>
+            <textarea className="npcgen-input" value={city.note} onChange={e => setCity({ ...city, note: e.target.value })}
+              placeholder="Qualcosa di specifico che vuoi nella città (un evento, un problema, un legame con la trama)…" />
+          </div>
+        </>)}
+
+        <button className="npcgen-btn" style={{ marginTop: 20 }} onClick={generate} disabled={busy}>
+          {busy ? "Sto generando…" : "⚒ Genera"}
+        </button>
+
+        <div className={`npcgen-status${msg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{msg}</div>
+
+        {/* RISULTATI */}
+        <div ref={resultRef} className="dmt-result">
+
+          {out && tab === "incontro" && (
+            <div className="npcgen-card">
+              <p className="npcgen-name">{out.titolo}</p>
+              <p className="npcgen-role">{out.difficolta} · {out.ambiente}</p>
+              <hr className="npcgen-divider" />
+              <p className="npcgen-k">Nemici</p>
+              {(out.nemici || []).map((n, i) => (
+                <div className="dmt-li" key={i}>
+                  <div className="n"><b>×{n.numero}</b> {n.nome}</div>
+                  {n.note && <div className="d">{n.note}</div>}
+                </div>
+              ))}
+              <p className="npcgen-k">Tattica</p><p className="npcgen-v">{out.tattica}</p>
+              <p className="npcgen-k">Colpo di scena</p><p className="npcgen-v">{out.colpo_di_scena}</p>
+              <p className="npcgen-k">Ricompensa</p><p className="npcgen-v">{out.ricompensa}</p>
+            </div>
+          )}
+
+          {out && tab === "loot" && (
+            <div className="npcgen-card">
+              <p className="npcgen-k">Monete</p><p className="npcgen-v">{out.monete}</p>
+              <p className="npcgen-k">Oggetti</p>
+              {(out.oggetti || []).map((o, i) => (
+                <div className="dmt-li" key={i}>
+                  <div className="n">{o.nome}<span className="npcgen-chip dmt-pill">{o.rarita}</span></div>
+                  {o.descrizione && <div className="d">{o.descrizione}</div>}
+                </div>
+              ))}
+              {out.nota && (<><p className="npcgen-k">Nota</p><p className="npcgen-v">{out.nota}</p></>)}
+            </div>
+          )}
+
+          {out && tab === "citta" && (
+            <div className="npcgen-card">
+              <p className="npcgen-name">{out.nome}</p>
+              <p className="npcgen-role">{out.dimensione} · {out.carattere}</p>
+              <hr className="npcgen-divider" />
+              <p className="npcgen-v">{out.descrizione}</p>
+              <p className="npcgen-k">Governo</p><p className="npcgen-v">{out.governo}{out.capo ? ` — ${out.capo}` : ""}</p>
+              <p className="npcgen-k">Difesa</p><p className="npcgen-v">{out.difesa}</p>
+              <p className="npcgen-k">Religione</p><p className="npcgen-v">{out.religione}</p>
+              <p className="npcgen-k">Economia</p><p className="npcgen-v">{out.economia}</p>
+              {(out.luoghi || []).length > 0 && (<>
+                <p className="npcgen-k">Luoghi notevoli</p>
+                {out.luoghi.map((l, i) => (
+                  <div className="dmt-li" key={i}>
+                    <div className="n"><b>{l.nome}</b> — {l.tipo}</div>
+                    <div className="d">{l.descrizione}</div>
+                  </div>
+                ))}
+              </>)}
+              {(out.ganci || []).length > 0 && (<>
+                <p className="npcgen-k">Ganci narrativi</p>
+                {out.ganci.map((g, i) => <p className="npcgen-v" key={i}>• {g}</p>)}
+              </>)}
+              <p className="npcgen-k">Prompt mappa (modificabile)</p>
+              <textarea className="npcgen-input dmt-prompt" rows={8} value={mapPrompt} onChange={e => setMapPrompt(e.target.value)} />
+              <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 10 }} onClick={copyPrompt}>📋 Copia prompt</button>
+              <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaMappa} disabled={mapBusy}>
+                {mapBusy ? "Sto disegnando la mappa…" : "🗺️ Genera mappa"}
+              </button>
+              {mapImg && <img className="npcgen-img" src={mapImg} alt={"Mappa di " + out.nome} />}
+            </div>
+          )}
+
         </div>
-      )}
-
-      {out && tab === "citta" && (
-        <div className="dmt-card">
-          <h2 className="dmt-title">{out.nome}</h2>
-          <p className="dmt-tag">{out.dimensione} · {out.carattere}</p>
-          <p className="dmt-v">{out.descrizione}</p>
-          <div className="dmt-k">Governo</div><p className="dmt-v">{out.governo}{out.capo ? ` — ${out.capo}` : ""}</p>
-          <div className="dmt-k">Difesa</div><p className="dmt-v">{out.difesa}</p>
-          <div className="dmt-k">Religione</div><p className="dmt-v">{out.religione}</p>
-          <div className="dmt-k">Economia</div><p className="dmt-v">{out.economia}</p>
-          {(out.luoghi || []).length > 0 && <>
-            <div className="dmt-k">Luoghi notevoli</div>
-            {out.luoghi.map((l, i) => (<div className="dmt-li" key={i}><div className="n"><b>{l.nome}</b> — {l.tipo}</div><div className="d">{l.descrizione}</div></div>))}
-          </>}
-          {(out.ganci || []).length > 0 && <>
-            <div className="dmt-k">Ganci narrativi</div>
-            {out.ganci.map((g, i) => <p className="dmt-v" key={i}>• {g}</p>)}
-          </>}
-
-          <div className="dmt-k">Prompt mappa (modificabile)</div>
-          <textarea className="dmt-prompt" rows={9} value={mapPrompt} onChange={e => setMapPrompt(e.target.value)} />
-          <button className="dmt-mini" onClick={copyPrompt}>📋 Copia prompt</button>
-          <button className="dmt-mini" onClick={generaMappa} disabled={mapBusy}>{mapBusy ? "Sto disegnando la mappa…" : "🗺️ Genera mappa"}</button>
-          {mapImg && <img className="dmt-map" src={mapImg} alt={"Mappa di " + out.nome} />}
-        </div>
-      )}
-      </div>
       </div>
     </div>
   );

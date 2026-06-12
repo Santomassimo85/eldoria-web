@@ -1,13 +1,24 @@
 {
   "versions": [
     {
-      "version": "17.11",
+      "version": "17.12",
       "date": "2026-06-12",
       "title": "Arena — Uscita dallo Storico combattimenti",
       "changes": [
         {
           "type": "fix",
           "text": "Nel popup del combattimento, la tab Storico (e la schermata senza sfide in corso) ora ha un tasto ✕ per chiudere: prima non c'era alcun modo di tornare indietro, dato che la finestra copre tutto lo schermo."
+        }
+      ]
+    },
+    {
+      "version": "17.11",
+      "date": "2026-06-12",
+      "title": "Strumenti DM — Restyling identico a Genera NPC",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "La pagina Strumenti DM adotta esattamente la stessa grafica del Generatore NPC: sfondo con gradiente indaco, titolo dorato, campi e bottoni in oro coerenti con il resto degli strumenti DM."
         }
       ]
     },

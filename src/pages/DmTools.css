@@ -1,0 +1,66 @@
+/* ============================================================
+   STRUMENTI DM — stesso tema del Generatore NPC (GeneraNPC.css,
+   importato insieme a questo). Qui SOLO gli extra che il
+   generatore non ha: tab, righe a 2 colonne, liste risultato.
+   ============================================================ */
+
+/* ---------- tab dei 3 strumenti ---------- */
+.dmt-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+.dmt-tab {
+  flex: 1;
+  padding: 11px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(216, 177, 90, 0.08);
+  border: 1px solid rgba(216, 177, 90, 0.45);
+  color: #e9cd86;
+  transition: background 0.15s, filter 0.15s;
+}
+.dmt-tab:hover { background: rgba(216, 177, 90, 0.16); }
+.dmt-tab.on {
+  background: linear-gradient(180deg, #e7c878 0%, #d9b25a 45%, #b8902f 100%);
+  color: #241c05;
+  border-color: transparent;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- form ---------- */
+.dmt-field { margin-top: 16px; }
+.dmt-row { display: flex; gap: 10px; }
+.dmt-row > div { flex: 1; min-width: 0; }
+
+select.npcgen-input { cursor: pointer; }
+select.npcgen-input option { background: #14172f; color: #f1eedd; }
+textarea.npcgen-input { resize: vertical; min-height: 76px; line-height: 1.5; }
+textarea.npcgen-input.dmt-prompt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+/* ---------- risultato ---------- */
+.dmt-result { scroll-margin-top: calc(var(--navbar-h, 80px) + 10px); }
+
+.dmt-li {
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(216, 177, 90, 0.18);
+}
+.dmt-li:last-child { border-bottom: none; }
+.dmt-li .n { color: #f0ecdd; font-size: 1.02rem; }
+.dmt-li .n b { color: #e9cd86; }
+.dmt-li .d { color: #a7a4cf; font-size: 0.92rem; margin-top: 2px; }
+
+.npcgen-chip.dmt-pill {
+  margin-left: 8px;
+  font-size: 0.78rem;
+  padding: 3px 9px;
+  font-weight: 600;
+}
