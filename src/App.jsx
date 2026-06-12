@@ -43,6 +43,7 @@ import Arena from "./pages/Arena";
 import ArenaMarket from "./pages/ArenaMarket";
 import BossTactics from "./pages/tactics/BossTactics";
 import BattleMapEditor from "./pages/tactics/BattleMapEditor";
+import DmTools from "./pages/DmTools";
 // PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
 // imports and the matching nav link / routes below.
 // import PetArena from "./pages/PetArena";
@@ -112,6 +113,12 @@ const NpcGenNavLink = ({ closeMenu }) => {
       🧙 Genera NPC
     </NavLink>
   );
+};
+// --- Link dedicato agli strumenti DM (visibile solo al master) ---
+const DmToolsNavLink = ({ closeMenu }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  return <NavLink to="/dm-admin/strumenti" onClick={closeMenu}>🛠️ Strumenti DM</NavLink>;
 };
 
 // --- Componente Link Admin Condizionale ---
@@ -390,6 +397,7 @@ export default function App() {
 
         <nav className={menuOpen ? "active" : ""}>
           <NpcGenNavLink closeMenu={closeMenu} />
+          <DmToolsNavLink closeMenu={closeMenu} />
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
@@ -460,6 +468,7 @@ export default function App() {
 
           {/* ROTTE ADMIN */}
           <Route path="/dm-admin/genera-npc" element={<GeneraNPC />} />
+          <Route path="/dm-admin/strumenti" element={<DmTools />} />
           <Route path="/dm-admin" element={<AdminPanel />} />
           <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />
