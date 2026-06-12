@@ -12,6 +12,10 @@
         {
           "type": "fix",
           "text": "Corretto il testo della scheda NPC che ereditava il colore scuro globale e risultava illeggibile sul fondo scuro: ora tutti i campi hanno colori chiari espliciti e leggibili."
+        },
+        {
+          "type": "chore",
+          "text": "Il Generatore NPC è raggiungibile dal menu di navigazione come primo collegamento (visibile solo all'account del Master)."
         }
       ]
     },

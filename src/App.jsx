@@ -103,6 +103,17 @@ function NavDropdown({ label, children, closeAll }) {
   );
 }
 
+// --- Link master-only al Generatore NPC (primo link del menu) ---
+const NpcGenNavLink = ({ closeMenu }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  return (
+    <NavLink to="/dm-admin/genera-npc" onClick={closeMenu}>
+      🧙 Genera NPC
+    </NavLink>
+  );
+};
+
 // --- Componente Link Admin Condizionale ---
 const AdminNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
@@ -378,6 +389,7 @@ export default function App() {
         </div>
 
         <nav className={menuOpen ? "active" : ""}>
+          <NpcGenNavLink closeMenu={closeMenu} />
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
