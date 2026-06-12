@@ -119,7 +119,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5",
-        max_tokens: 1600,
+        max_tokens: tipo === "citta" ? 4000 : 1600,
         messages: [{ role: "user", content: buildPrompt(tipo, input) }]
       })
     });
@@ -128,7 +128,25 @@ export default async function handler(req, res) {
     if (data.error) return res.status(500).json({ error: data.error.message });
 
     const testo = (data.content || []).map(b => b.text || "").join("");
-    const pulito = testo.replace(/```json|```/g, "").trim();
+    let pulito = testo.replace(/```json|```/g, "").trim();
+
+    // Fallback: se il JSON è spezzato (token limit), lo chiudiamo a forza
+    try {
+      JSON.parse(pulito);
+    } catch {
+      // Tronca all'ultimo campo completo e chiude il JSON
+      const lastComma = pulito.lastIndexOf('",');
+      const lastClose = pulito.lastIndexOf('"}');
+      const cutAt = Math.max(lastComma, lastClose);
+      if (cutAt > 0) {
+        pulito = pulito.substring(0, cutAt + 2);
+        // Chiudi eventuali array/oggetti aperti
+        const opens = (pulito.match(/\[/g) || []).length - (pulito.match(/\]/g) || []).length;
+        const openO = (pulito.match(/\{/g) || []).length - (pulito.match(/\}/g) || []).length;
+        pulito += "]".repeat(Math.max(0, opens)) + "}".repeat(Math.max(0, openO));
+      }
+    }
+
     return res.status(200).json(JSON.parse(pulito));
   } catch (e) {
     return res.status(500).json({ error: "Generazione fallita: " + e.message });
