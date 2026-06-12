@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "17.14",
+      "date": "2026-06-12",
+      "title": "Pagina UPDATE — il master può nascondere voci",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Il master può nascondere singole voci dalla pagina UPDATE senza deploy: cliccando 🗑 accanto a una voce (visibile solo a lui) appare una conferma, poi la voce scompare per i player. Dal toggle \"Mostra nascosti\" è possibile vederle barrate e ripristinarle in qualsiasi momento."
+        }
+      ]
+    },
+    {
       "version": "17.13",
       "date": "2026-06-12",
       "title": "Accessi DM — co-master con permessi allargati",

@@ -129,6 +129,116 @@
 }
 .updates-change-text { font-size: 0.92rem; color: #ddd6c6; }
 
+/* ── Master: toggle "mostra nascosti" ── */
+.upd-toggle-hidden {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 198, 106, 0.4);
+  background: rgba(232, 198, 106, 0.07);
+  color: #c9a84c;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.upd-toggle-hidden:hover,
+.upd-toggle-hidden.active {
+  background: rgba(232, 198, 106, 0.16);
+  border-color: rgba(232, 198, 106, 0.7);
+  color: #f4da86;
+}
+
+/* ── Voce nascosta (visibile solo al master in "mostra nascosti") ── */
+.upd-hidden-entry { opacity: 0.38; }
+.upd-hidden-entry .updates-change-text { text-decoration: line-through; }
+
+/* ── Bottone 🗑 per nascondere ── */
+.upd-del-btn,
+.upd-restore-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+.updates-change:hover .upd-del-btn,
+.updates-change:hover .upd-restore-btn { opacity: 1; }
+
+.upd-del-btn {
+  background: rgba(192, 57, 43, 0.15);
+  border: 1px solid rgba(192, 57, 43, 0.45);
+  color: #e07060;
+}
+.upd-del-btn:hover { background: rgba(192, 57, 43, 0.3); }
+
+.upd-restore-btn {
+  background: rgba(80, 200, 120, 0.12);
+  border: 1px solid rgba(80, 200, 120, 0.4);
+  color: #84e3ab;
+}
+.upd-restore-btn:hover { background: rgba(80, 200, 120, 0.25); }
+
+/* ── Popup di conferma ── */
+.upd-confirm-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.upd-confirm-box {
+  background: #1a2035;
+  border: 1px solid rgba(232, 198, 106, 0.4);
+  border-radius: 14px;
+  padding: 24px 22px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.upd-confirm-msg {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ece6da;
+  margin: 0 0 10px;
+}
+.upd-confirm-text {
+  font-size: 0.88rem;
+  color: #a7a895;
+  font-style: italic;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.upd-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.upd-confirm-cancel,
+.upd-confirm-ok {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.upd-confirm-cancel {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #a7a895;
+}
+.upd-confirm-cancel:hover { background: rgba(255, 255, 255, 0.12); }
+.upd-confirm-ok {
+  background: rgba(192, 57, 43, 0.18);
+  border: 1px solid rgba(192, 57, 43, 0.5);
+  color: #e07060;
+}
+.upd-confirm-ok:hover { background: rgba(192, 57, 43, 0.32); }
+
 @media (max-width: 560px) {
   .updates-date { margin-left: 0; width: 100%; }
 }

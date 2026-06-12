@@ -256,6 +256,11 @@ service cloud.firestore {
       allow write: if isMaster();
     }
 
+    match /settings/changelog_hidden {
+      allow read: if true;
+      allow write: if isMaster();
+    }
+
     // ── Misc collections ─────────────────────────────────────────────────────
     match /geo_archive/{docId}    { allow read: if true; allow write: if isMaster(); }
     match /map_pins/{pinId}       { allow read: if true; allow write: if isMaster(); }
