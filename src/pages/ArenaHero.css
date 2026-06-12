@@ -5343,6 +5343,17 @@ body .arena-page.arena-page .master-actions [class*="btn-"] { box-shadow: 0 6px 
   color:var(--cyan); background:rgba(227,197,88,.12); border-color:rgba(227,197,88,.5);
   box-shadow:0 0 16px -6px rgba(227,197,88,.6);
 }
+/* ✕ di uscita nella riga tab: unica via d'uscita in Storico / senza match vivi */
+.arena-combat-dialog .combat-tabs-close{
+  flex:0 0 auto; width:38px; min-height:38px; cursor:pointer; border-radius:9px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:.95rem; font-weight:800; line-height:1; color:#fff;
+  background:rgba(192,57,43,.16); border:1px solid rgba(192,57,43,.45);
+  transition:background .18s, border-color .18s;
+}
+.arena-combat-dialog .combat-tabs-close:hover{
+  background:rgba(192,57,43,.32); border-color:rgba(192,57,43,.7);
+}
 .arena-combat-dialog .combat-empty{
   flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
   padding:30px 24px; text-align:center; color:var(--txt2); font-size:.95rem;

@@ -9123,6 +9123,11 @@ export default function Arena() {
             >
               📜 Storico{finishedMatches.length > 0 ? ` · ${finishedMatches.length}` : ""}
             </button>
+            {/* La top bar con la ✕ esiste solo nelle card dei match vivi:
+                qui serve un'uscita quando sei nello Storico o senza match in corso. */}
+            {(combatTab === "history" || liveMatches.length === 0) && (
+              <button type="button" className="combat-tabs-close" onClick={() => setCombatModalOpen(false)} aria-label="Chiudi" title="Chiudi">✕</button>
+            )}
           </div>
 
           {/* ════════ STORICO — ultimi 10 fight conclusi (sola lettura) ════════ */}

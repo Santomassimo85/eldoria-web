@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
@@ -12,7 +12,9 @@ const CSS = `
   --bg:#0a0b14; --panel:#15172b; --panel2:#1b1e38; --line:#2c2f52;
   --gold:#e0bd6b; --gold-dim:#b9974c; --arc:#9b6cd6; --arc-dim:#6f4aa6;
   --ink:#ece9f5; --muted:#9c9ac4;
-  max-width:560px; margin:0 auto; padding:18px 14px 60px; min-height:100vh;
+  max-width:560px; margin:0 auto; min-height:100vh;
+  /* la navbar del sito è FISSA: la pagina parte sempre sotto di lei */
+  padding: calc(var(--navbar-h, 80px) + 16px) 14px 60px;
   font-family:'EB Garamond',Georgia,serif; font-size:17px; line-height:1.5; color:var(--ink);
   background:radial-gradient(900px 480px at 50% -8%,#1a1736 0%,rgba(26,23,54,0) 60%),var(--bg);
 }
@@ -24,8 +26,8 @@ const CSS = `
   font-family:'Cinzel',serif;font-size:13px;letter-spacing:.05em;text-align:center;cursor:pointer;transition:.18s}
 .dmt-tab.on{background:linear-gradient(180deg,#2a2550,#1c1d3a);color:var(--gold);border-color:var(--gold-dim)}
 .dmt label{display:block;font-size:13px;color:var(--muted);margin:12px 2px 5px}
-.dmt input,.dmt select,.dmt textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
-  background:var(--panel);color:var(--ink);font-size:15px;font-family:'EB Garamond',serif}
+.dmt input,.dmt select,.dmt textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);font-size:16px;font-family:'EB Garamond',serif}
 .dmt textarea{resize:vertical;min-height:70px;line-height:1.45}
 .dmt input:focus,.dmt select:focus,.dmt textarea:focus{outline:none;border-color:var(--gold-dim)}
 .dmt .row{display:flex;gap:10px}
@@ -52,6 +54,24 @@ const CSS = `
 .dmt-mini{margin-top:10px;padding:10px;border:1px solid var(--gold-dim);border-radius:9px;background:linear-gradient(180deg,#2a2550,#1c1d3a);
   color:var(--gold);font-family:'Cinzel',serif;font-size:14px;cursor:pointer;width:100%}
 .dmt-map{width:100%;border-radius:12px;margin-top:14px;border:1px solid var(--gold-dim)}
+.dmt-hint{display:none;color:var(--muted);font-size:15px;text-align:center;padding:28px 16px;
+  border:1px dashed var(--line);border-radius:14px}
+.dmt-result{scroll-margin-top:calc(var(--navbar-h, 80px) + 10px)}
+/* ── DESKTOP: pagina larga, form a sinistra e risultati a destra ── */
+@media (min-width:840px){
+  .dmt{max-width:980px;padding:calc(var(--navbar-h, 80px) + 24px) 20px 60px}
+  .dmt h1{font-size:30px}
+  .dmt .lead{font-size:16px}
+  .dmt-tabs{gap:8px}
+  .dmt-tab{font-size:14px;padding:12px 4px}
+  .dmt-grid{display:grid;grid-template-columns:360px 1fr;gap:24px;align-items:start}
+  .dmt-form{position:sticky;top:calc(var(--navbar-h, 80px) + 16px);background:var(--panel2);border:1px solid var(--line);
+    border-radius:14px;padding:4px 16px 16px}
+  .dmt-card{margin-top:0}
+  .dmt-card+.dmt-card{margin-top:14px}
+  .dmt-hint{display:block}
+}
+@media (prefers-reduced-motion:reduce){.dmt *{animation:none!important;transition:none!important}}
 `;
 
 const API = "/api/dm-tools";
@@ -71,6 +91,14 @@ export default function DmTools() {
   const [mapPrompt, setMapPrompt] = useState("");
   const [mapImg, setMapImg] = useState(null);
   const [mapBusy, setMapBusy] = useState(false);
+
+  // su smartphone il risultato compare sotto il form: portalo in vista
+  const resultRef = useRef(null);
+  useEffect(() => {
+    if (out && resultRef.current && window.innerWidth < 840) {
+      resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [out]);
 
   async function generate() {
     setBusy(true); setMsg("Sto generando…"); setOut(null); setMapImg(null); setMapPrompt("");
@@ -125,6 +153,8 @@ export default function DmTools() {
         ))}
       </div>
 
+      <div className="dmt-grid">
+      <div className="dmt-form">
       {/* FORM */}
       {tab === "incontro" && (
         <>
@@ -181,8 +211,13 @@ export default function DmTools() {
 
       <button className="dmt-go" onClick={generate} disabled={busy}>{busy ? "…" : "Genera"}</button>
       <div className={"dmt-msg" + (msg.startsWith("Errore") ? " err" : "")}>{msg}</div>
+      </div>
 
       {/* RISULTATI */}
+      <div className="dmt-result" ref={resultRef}>
+      {!out && !busy && (
+        <div className="dmt-hint">Compila il form e premi <b>Genera</b>: il risultato apparirà qui.</div>
+      )}
       {out && tab === "incontro" && (
         <div className="dmt-card">
           <h2 className="dmt-title">{out.titolo}</h2>
@@ -234,6 +269,8 @@ export default function DmTools() {
           {mapImg && <img className="dmt-map" src={mapImg} alt={"Mappa di " + out.nome} />}
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }

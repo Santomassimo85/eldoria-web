@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "17.11",
+      "date": "2026-06-12",
+      "title": "Arena — Uscita dallo Storico combattimenti",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Nel popup del combattimento, la tab Storico (e la schermata senza sfide in corso) ora ha un tasto ✕ per chiudere: prima non c'era alcun modo di tornare indietro, dato che la finestra copre tutto lo schermo."
+        }
+      ]
+    },
+    {
+      "version": "17.10",
+      "date": "2026-06-12",
+      "title": "Strumenti DM — Layout largo su PC e ottimizzazione mobile",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "La pagina Strumenti DM ora parte sempre sotto il menu di navigazione: prima la barra bianca in alto copriva titolo e tab."
+        },
+        {
+          "type": "graphic",
+          "text": "Su PC la pagina Strumenti DM si allarga su due colonne: form di generazione a sinistra (sempre visibile durante lo scorrimento) e risultati a destra. Su smartphone resta la colonna singola."
+        },
+        {
+          "type": "graphic",
+          "text": "Su smartphone, dopo la generazione la pagina scorre automaticamente al risultato; campi di input più comodi al tocco e senza zoom automatico su iPhone."
+        }
+      ]
+    },
+    {
       "version": "17.09",
       "date": "2026-06-12",
       "title": "Scheda PG — Layout largo su PC, ricerca e zaino organizzato",
