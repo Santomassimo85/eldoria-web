@@ -2353,24 +2353,24 @@
 
 /* Button "Genera automaticamente" / Random */
 .arena-page .btn-auto-generate {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.08)) !important;
-  color: #ffd97a !important;
-  border: 1px solid rgba(212, 175, 55, 0.5) !important;
+  background: linear-gradient(135deg, #e7c878, #d9b25a 55%, #b8902f) !important;
+  color: #241c05 !important;
+  border: 1px solid #b8902f !important;
   border-radius: 10px !important;
   padding: 9px 16px !important;
   font-family: var(--font-title, sans-serif);
   font-size: 0.78rem !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s;
-  box-shadow: 0 3px 10px rgba(180, 130, 30, 0.18);
+  transition: transform 0.15s ease, filter 0.2s, box-shadow 0.2s;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }
 .arena-page .btn-auto-generate:hover {
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.4), rgba(212, 175, 55, 0.18)) !important;
+  filter: brightness(1.08);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(180, 130, 30, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 .arena-page .btn-auto-generate:active { transform: translateY(0); }
 
@@ -4335,6 +4335,25 @@ body .arena-bet-fab:hover {
   border-color: #ffe08a !important;
   box-shadow: 0 0 0 2px rgba(255, 217, 122, 0.45) !important;
 }
+/* ── Arma consigliata per la classe: bordo e bagliore verde ── */
+.arena-page .loadout-item.weapon.optimal {
+  position: relative;
+  border-color: rgba(95, 224, 160, 0.75) !important;
+  box-shadow: 0 0 0 1.5px rgba(95, 224, 160, 0.4), 0 0 16px -2px rgba(95, 224, 160, 0.5) !important;
+}
+.arena-page .loadout-item.weapon.optimal.selected {
+  box-shadow: 0 0 0 2px rgba(120, 255, 190, 0.6), 0 0 18px -2px rgba(95, 224, 160, 0.7) !important;
+}
+.arena-page .loadout-optimal-tag {
+  position: absolute; top: 5px; left: 7px;
+  color: #6affb0; font-size: 0.82rem; line-height: 1;
+  text-shadow: 0 0 6px rgba(95, 224, 160, 0.85);
+}
+.arena-page .loadout-section-hint {
+  font-size: 0.8rem; color: rgba(180, 235, 205, 0.85);
+  margin: 2px 2px 10px; line-height: 1.4;
+}
+.arena-page .loadout-section-hint strong { color: #6affb0; }
 .arena-page .loadout-item-name { color: #fff7e6 !important; }
 .arena-page .loadout-item-damage,
 .arena-page .loadout-item-info,
@@ -5621,6 +5640,20 @@ body .arena-page.arena-page .master-actions [class*="btn-"] { box-shadow: 0 6px 
 .arena-combat-dialog .cdt-tab.active{ background:linear-gradient(135deg,var(--cyan),#b8892a)!important; border-color:#fff!important; color:#2a1c02!important; box-shadow:0 0 20px rgba(227,197,88,.7)!important; }
 .arena-combat-dialog .cdt-tab:active{ transform:scale(.96); }
 .arena-combat-dialog .combat-dock-empty{ padding:18px; text-align:center; color:var(--txt2); font-style:italic; animation:cv-slide .26s ease both; }
+/* ── Sotto-tab dentro "Abilità" (Abilità ↔ Compagno) — Ranger ── */
+.arena-combat-dialog .abilita-subtabs{ display:flex; gap:6px; padding:10px 12px 0; }
+.arena-combat-dialog .abilita-subtab{
+  flex:1 1 0; padding:8px 6px!important; border-radius:10px!important; cursor:pointer;
+  background:rgba(255,255,255,.04)!important; border:1px solid rgba(190,160,235,.35)!important; color:#cfc4e8!important;
+  font-family:var(--font-title,serif); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; font-weight:800;
+  transition:background .18s, color .18s, border-color .18s, box-shadow .18s;
+}
+.arena-combat-dialog .abilita-subtab:hover{ background:rgba(190,160,235,.12)!important; border-color:rgba(210,185,250,.6)!important; }
+.arena-combat-dialog .abilita-subtab.active{
+  background:linear-gradient(135deg,var(--cyan),#b8892a)!important; border-color:#fff!important; color:#2a1c02!important;
+  box-shadow:0 0 14px rgba(227,197,88,.55)!important;
+}
+.arena-combat-dialog .abilita-subtab:active{ transform:scale(.96); }
 .arena-combat-dialog .action-groups{ padding:10px 12px; }
 .arena-combat-dialog .action-group{ animation:cv-slide .26s ease both; }
 @keyframes cv-slide{from{opacity:0; transform:translateX(26px)}to{opacity:1; transform:none}}

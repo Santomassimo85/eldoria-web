@@ -306,8 +306,8 @@ const RANGER_SPELLS = [
   { name: "Intralciare",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Grandine di Spine",     level: 1, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🌵", info: "Lv1 · Perforante · bonus attacco ranged", maxUses: 3 },
   { name: "Colpo Intralciante",    level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕸", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
-  { name: "Nebbia",                level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌫", info: "Lv1 · Svantaggio ai tiri per colpire del nemico per 3 turni", special: "disadvantage_enemy", disadvantageTurns: 3, maxUses: 3 },
-  { name: "Passo Spedito",         level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "💨", info: "Lv1 · Doppio turno il prossimo turno", special: "extra_turn", maxUses: 3 },
+  { name: "Nebbia",                level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌫", info: "Lv1 · Svantaggio ai tiri per colpire del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 3 },
+  { name: "Passo Spedito",         level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "💨", info: "Lv1 · Bonus action · doppio turno il prossimo turno", special: "extra_turn", bonusAction: true, maxUses: 3 },
 ];
 
 // ── ARMI SEMPLICI ──────────────────────────────────────────────────────
@@ -416,8 +416,11 @@ const ARENA_ARMORS = {
   ],
   // Druido: leggere + medie, niente metalli
   druid:      [..._ARMOR_LIGHT, ..._ARMOR_MEDIUM],
-  // Ranger: leggere + medie + borchiate
+  // Chierico / Artefice: leggere + medie + borchiate
   lightMedium:[..._ARMOR_LIGHT, ..._ARMOR_MEDIUM, ..._ARMOR_MEDIUM_STUDDED],
+  // Ranger: solo cuoio borchiato (leggera) + medie — niente cuoio semplice,
+  // cuoio borchiato medio o mezza piastra.
+  ranger: [..._ARMOR_LIGHT.slice(1), ..._ARMOR_MEDIUM],
   // Barbarian: leggere + medie + opzione senza armatura (10+DES+COS)
   barbarian:  [
     { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "💪", info: "Senza armatura · 10+DES+COS", unarmoredDefense: true },
@@ -617,15 +620,31 @@ const HUNTER_MARK_ACTION = {
   type: "skill", icon: "🎯", info: "Bonus action · +3 ai tiri per colpire per 3 turni · 2 cariche", special: "hunter_mark", bonusAction: true, maxUses: 2,
 };
 
+// Sopravvissuto (Ranger) — analizza il nemico e ne intuisce le mosse:
+// vantaggio ai propri attacchi per 2 turni, 2 cariche. Riusa il sistema self_advantage.
+const SURVIVOR_ACTION = {
+  name: "Sopravvissuto", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "🔍", info: "Analizza il nemico · vantaggio ai tuoi attacchi per 2 turni · 2 cariche",
+  special: "self_advantage", advantageTurns: 2, maxUses: 2,
+};
+
+// Raffica Letale (Ranger) — skill FIRMA: scocca tre frecce in rapida successione,
+// 3d8 + DES perforante in un unico tiro per colpire. 2 cariche.
+const RANGER_VOLLEY_ACTION = {
+  name: "Raffica Letale", hitBonus: 3, damage: "3d8", statKey: "dex",
+  type: "skill", icon: "🏹", info: "3 frecce · ogni freccia tira per colpire e infligge 1d8+DES perforante · 2 cariche",
+  damageType: "perforante", multiHit: 3, perHitDamage: "1d8", maxUses: 2,
+};
+
 // Compagni Animali (Ranger) — uno scelto in fase di loadout
 const RANGER_PETS = {
   wolf: {
     key: "wolf", name: "Lupo", icon: "🐺",
-    info: "Bonus action · Il lupo morde per 1d8+3 · 3 cariche",
+    info: "Bonus action · Il lupo morde per 1d8+3 · TS COS o sanguinamento 1d4/turno per 2 turni · 3 cariche",
     action: {
       name: "Morso del Lupo", hitBonus: 0, damage: "1d8+3", statKey: null,
-      type: "skill", icon: "🐺", info: "Bonus Action · 1d8+3 danni automatici · 3 cariche",
-      special: "pet_wolf", maxUses: 3, bonusAction: true,
+      type: "skill", icon: "🐺", info: "Bonus Action · 1d8+3 danni · TS COS (CD da SAG) o sanguinamento 1d4/turno per 2 turni · 3 cariche",
+      special: "pet_wolf", bleedDice: "1d4", bleedTurns: 2, bleedSaveAbility: "con", maxUses: 3, bonusAction: true,
     },
   },
   spider: {
@@ -1449,7 +1468,7 @@ function getArmorConfig(cls) {
   if (isMonkClass(cls))       return { armorCategory: "monk",        canHaveShield: false  }; // solo senza armatura, 10+DES+SAG
   if (isRogueClass(cls))      return { armorCategory: "light",       canHaveShield: false  };
   if (isRogueBardClass(cls))  return { armorCategory: "light",       canHaveShield: false  };
-  if (isRangerClass(cls))     return { armorCategory: "lightMedium", canHaveShield: true   };
+  if (isRangerClass(cls))     return { armorCategory: "ranger",      canHaveShield: true   };
   if (isArtificerClass(cls))  return { armorCategory: "lightMedium", canHaveShield: true   };
   if (PHYSICAL_CLASSES.some(c => cls.includes(c))) return { armorCategory: "medium", canHaveShield: false };
   if (CASTER_CLASSES.some(c => cls.includes(c)))   return { armorCategory: "caster", canHaveShield: false };
@@ -1510,7 +1529,7 @@ function getLoadoutConfig(charClass) {
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION, SURVIVOR_ACTION, RANGER_VOLLEY_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (CASTER_CLASSES.some(k => cls.includes(k)))   return { weaponOptions: SIMPLE_WEAPONS, spellOptions: WIZARD_SPELLS, spellLimits: SPELL_LIMITS.generic, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.generic), autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -2029,6 +2048,7 @@ export default function Arena() {
   const [combatModalOpen, setCombatModalOpen] = useState(false);
   // ── COMBAT REDESIGN: arena immersiva — dock azioni a schede + cronaca a cassetto ──
   const [combatDock, setCombatDock] = useState("attacchi"); // attacchi | magie | abilita | oggetti
+  const [abilitaSub, setAbilitaSub] = useState("skill"); // sotto-tab dentro "abilita": skill | pet (Ranger)
   const [combatStatsOpen, setCombatStatsOpen] = useState(false); // sezione [3] stat collassabile
   const [combatLogExpanded, setCombatLogExpanded] = useState(false); // cronaca a schermo intero (mobile)
   const [combatTab, setCombatTab] = useState("live"); // live (in corso) | history (ultimi 10 conclusi)
@@ -4939,6 +4959,59 @@ export default function Arena() {
     const casterShieldSpellDisadv = isSpellAction && !!attackerSnap?.hasShield && !!(action.damage && action.damage !== "—");
     const hasDisadvantage    = readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv;
     const isFighter = isFighterClass(attackerClassLower);
+    // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
+    // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
+    let damage, isHit, golemHalved = false, log;
+    if (action.multiHit) {
+      // ── RAFFICA LETALE: N frecce, ognuna col proprio tiro per colpire e danno ──
+      const arrows = action.multiHit;
+      const perDie = action.perHitDamage || "1d8";
+      const aidDmgBonus2      = readAidDmgBonus(attackerMatchPlayer);
+      const shieldLost2       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
+      const shieldSkillBonus2 = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
+      const armorForgeBonus2  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
+      const defensiveAcBonus2 = defMatchPlayer?.defensiveBonus ?? 0;
+      const defAC2 = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost2 ? 1 : 0) + shieldSkillBonus2 + armorForgeBonus2 + defensiveAcBonus2;
+      const critTh2 = isFighter ? 19 : 20;
+      let total = 0; let anyHit = false; const tags = [];
+      for (let i = 0; i < arrows; i++) {
+        let r1 = Math.floor(Math.random() * 20) + 1;
+        if (r1 === 1 && isFighter) r1 = Math.floor(Math.random() * 20) + 1;
+        const r2 = (hasAdvantage || hasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
+        const rd = hasAdvantage && !hasDisadvantage ? Math.max(r1, r2)
+                 : hasDisadvantage && !hasAdvantage ? Math.min(r1, r2) : r1;
+        await showD20Roll(rd, { label: `🏹 ${action.name} — Freccia ${i + 1}/${arrows}` });
+        const aCrit = rd >= critTh2;
+        const aHitTotal = rd + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
+        const aHit = aHitTotal >= defAC2 || aCrit;
+        if (aHit) {
+          anyHit = true;
+          const { total: ad } = rollDmg(perDie);
+          const arrowDmg = (ad + statMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus2) * (aCrit ? 2 : 1);
+          total += arrowDmg;
+          tags.push(`🎯${rd}${aCrit ? "★" : ""}=${arrowDmg}`);
+        } else {
+          tags.push(`✗${rd}`);
+        }
+      }
+      const reduced = applyBarbarianRageReduction(total, defenderSnap, defMatchPlayer, false);
+      golemHalved = anyHit && !!defMatchPlayer?.nextHitHalved && reduced > 0;
+      damage = golemHalved ? Math.floor(reduced / 2) : reduced;
+      isHit  = anyHit;
+      const volleyTag = `[${tags.join(" · ")}] vs CA ${defAC2}`;
+      log = {
+        pub: anyHit
+          ? `🏹 ${attName} scatena ${action.name} su ${defName} — ${volleyTag} — ${damage} danni`
+          : `🛡️ ${attName} scaglia ${action.name} ma ${defName} schiva tutte le frecce ${volleyTag}`,
+        att: anyHit
+          ? `🏹 Scateni ${action.name} su ${defName} — ${volleyTag} — ${damage} danni`
+          : `🛡️ ${defName} schiva tutte le frecce di ${action.name} ${volleyTag}`,
+        def: anyHit
+          ? `🏹 ${attName} ti colpisce con ${action.name} — ${volleyTag} — ${damage} danni`
+          : `🛡️ Schivi tutte le frecce di ${action.name} di ${attName} ${volleyTag}`,
+        attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
+      };
+    } else {
     let d20a = Math.floor(Math.random() * 20) + 1;
     if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1; // Presenza Possente: ritira l'1
     let d20b = (hasAdvantage || hasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -4955,7 +5028,7 @@ export default function Arena() {
     const defAC    = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost ? 1 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
     const critThreshold = isFighter ? 19 : 20; // Critico Migliorato: 19-20 per il guerriero
     const isCrit   = d20 >= critThreshold; // nat 20 (o 19 per fighter) = critico
-    const isHit    = hitTotal >= defAC || isCrit;
+    isHit    = hitTotal >= defAC || isCrit;
     const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
     // Critico spells: doppio danno
     const critMult = isCrit ? 2 : 1;
@@ -4973,8 +5046,8 @@ export default function Arena() {
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     const rageReducedDamage = applyBarbarianRageReduction(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
-    const golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
-    const damage = golemHalved ? Math.floor(rageReducedDamage / 2) : rageReducedDamage;
+    golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
+    damage = golemHalved ? Math.floor(rageReducedDamage / 2) : rageReducedDamage;
 
     // Log breakdown
     const statPart       = !isSpellAction && action.statKey ? ` ${statMod >= 0 ? "+" : ""}${statMod} ${action.statKey.toUpperCase()}` : '';
@@ -5003,7 +5076,7 @@ export default function Arena() {
       ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
-    const log = {
+    log = {
       pub: isHit
         ? (isBlindDebuff
             ? `🙈 ${attName} accieca ${defName}! (−3 ai tiri per colpire per 1 turno)`
@@ -5021,6 +5094,7 @@ export default function Arena() {
         : `🛡️ ${attName} ti ha mancato con ${action.name}`,
       attId: currentUser.uid, defId: targetId, ts: new Date().toISOString(),
     };
+    } // ── fine attacco normale (else di action.multiHit) ──
 
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
@@ -5424,7 +5498,8 @@ export default function Arena() {
 
   // ── COMPAGNI ANIMALI (Ranger) ─────────────────────────────────────────────
   const handlePetWolf = async (matchId, targetId, action) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Ranger";
+    const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    const myName = mySnap?.name || "Ranger";
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
@@ -5432,21 +5507,42 @@ export default function Arena() {
     const targetSnapPre = arenaMeta.characterSnapshots?.[targetId];
     const targetMatchPre = myMatch?.players.find(p => p.id === targetId);
     const dmg = applyBarbarianRageReduction(rawDmg, targetSnapPre, targetMatchPre, false);
+    const targetName = targetSnapPre?.name || "?";
+    // ── TS contro sanguinamento (CD = 8 + competenza + SAG del ranger) ──
+    const bleedDice = action.bleedDice || "1d4";
+    const bleedTurns = action.bleedTurns ?? 2;
+    const saveAbility = action.bleedSaveAbility || "con";
+    const saveDC = getSpellSaveDC(mySnap);
+    const tgtMod = targetSnapPre?.stats?.[saveAbility] ?? 0;
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    await showD20Roll(d20, { label: `TS · ${SAVE_LABEL[saveAbility]} · ${targetName}` });
+    const saveTotal = d20 + tgtMod;
+    const savePass = saveTotal >= saveDC;
+    const sign = tgtMod >= 0 ? "+" : "";
+    const tsTag = `TS ${SAVE_LABEL[saveAbility]} ${d20}${sign}${tgtMod}=${saveTotal} vs CD ${saveDC} → ${savePass ? "✅ SUPERA" : "❌ FALLISCE — 🩸 sanguinamento " + bleedDice + "/turno x" + bleedTurns}`;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
-      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
-      const targetName = targetSnap?.name || "?";
       const rawPlayers = m.players.map(p => {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
         }
-        if (p.id === targetId) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        if (p.id === targetId) {
+          const bled = !savePass ? {
+            bleedDoT: true,
+            bleedDoTTurns: Math.max(p.bleedDoTTurns ?? 0, bleedTurns),
+            bleedDoTDice: bleedDice,
+            bleedDoTSourceLabel: "morso del lupo",
+            bleedDoTNoun: "sanguinante",
+            bleedDoTIcon: "🩸",
+          } : {};
+          return { ...p, hp: Math.max(0, p.hp - dmg), ...bled };
+        }
         return p;
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = `🐺 Il lupo di ${myName} morde ${targetName} 🎲(${rolls})=${dmg} danni! · bonus action`;
+      const log = `🐺 Il lupo di ${myName} morde ${targetName} 🎲(${rolls})=${dmg} danni! · ${tsTag} · bonus action`;
       const alive = players.filter(p => p.hp > 0);
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       // Bonus action: il turno NON avanza.
@@ -6083,6 +6179,12 @@ export default function Arena() {
   const handleExtraTurn = async (matchId, action) => {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
     const myName = mySnap?.name || "?";
+    const isBonus = !!action.bonusAction;
+    if (isBonus) {
+      const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
+      const me = myMatch?.players.find(p => p.id === currentUser.uid);
+      if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
+    }
     const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -6090,10 +6192,13 @@ export default function Arena() {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-        return { ...p, extraTurnActive: true, ...tickEagleEnd(p), actionUsesLeft: newUses };
+        return { ...p, extraTurnActive: true, ...(isBonus ? { bonusActionUsed: true } : {}), ...tickEagleEnd(p), actionUsesLeft: newUses };
       });
-      const log = { pub: `💨 ${myName} si prepara a un Passo Spedito: il prossimo turno avrà 2 azioni!`, attId: currentUser.uid, ts: new Date().toISOString() };
-      return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
+      const log = { pub: `💨 ${myName} si prepara a un Passo Spedito: il prossimo turno avrà 2 azioni!${isBonus ? " · bonus action" : ""}`, attId: currentUser.uid, ts: new Date().toISOString() };
+      // Bonus action: il turno NON avanza. Altrimenti consuma l'azione.
+      return isBonus
+        ? { ...m, players: updatedPlayers, logs: [...m.logs, log] }
+        : { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
@@ -7963,6 +8068,23 @@ export default function Arena() {
                 <div className="hp-roll-buttons">
                   <button className="btn-cancel-loadout" onClick={() => setLoadoutPhase("class-select")}>← Classe</button>
                   <button className="btn-auto-generate" onClick={() => {
+                    /* Scelta AI: distribuzione mirata per la classe.
+                       Priorità: stat chiave della classe → COS (sopravvivenza) → il resto.
+                       Ogni stat è cappata a +3, budget 10 punti. */
+                    const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+                    let rem = 10;
+                    const seen = new Set();
+                    const priority = [...keyStats, "con", "dex", "str", "wis", "cha", "int"]
+                      .filter(k => (seen.has(k) ? false : seen.add(k)));
+                    for (const k of priority) {
+                      while (rem > 0 && stats[k] < 3) { stats[k]++; rem--; }
+                      if (rem === 0) break;
+                    }
+                    setPendingStats(stats);
+                  }} title="L'AI assegna le caratteristiche in modo ottimale per la classe">
+                    🤖 Scelta AI
+                  </button>
+                  <button className="btn-auto-generate" onClick={() => {
                     /* distribuisci 10 punti random tra 6 stat, cap a 3 per stat */
                     const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
                     let remaining = 10;
@@ -8149,16 +8271,21 @@ export default function Arena() {
                 <div className="loadout-section-title">
                   ⚔ {config.maxWeapons === 1 ? "Arma" : "Armi"} — {pendingWeapons.length}/{config.maxWeapons}
                 </div>
+                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).</div>
                 <div className="loadout-grid">
-                  {config.weaponOptions.map(item => {
-                    const isSelected = pendingWeapons.some(a => a.name === item.name);
-                    const isDisabled = !isSelected && pendingWeapons.length >= config.maxWeapons;
-                    return (
+                  {(() => {
+                    const keyStats = ARENA_KEY_STATS[getClassKey(charPreview.class)] || [];
+                    return config.weaponOptions.map(item => {
+                      const isSelected = pendingWeapons.some(a => a.name === item.name);
+                      const isDisabled = !isSelected && pendingWeapons.length >= config.maxWeapons;
+                      const isOptimal = !!item.statKey && keyStats.includes(item.statKey);
+                      return (
                       <button
                         key={item.name}
-                        className={`loadout-item weapon ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}`}
+                        className={`loadout-item weapon ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""} ${isOptimal ? "optimal" : ""}`}
                         onClick={() => toggleWeapon(item, config.maxWeapons)}
                       >
+                        {isOptimal && <span className="loadout-optimal-tag" title="Arma adatta alla classe">★</span>}
                         <span className="loadout-item-icon">{item.icon}</span>
                         <span className="loadout-item-name">{item.name}</span>
                         <span className="loadout-item-damage">
@@ -8169,8 +8296,9 @@ export default function Arena() {
                         {item.info && !item.twoHanded && <span className="loadout-item-info">{item.info}</span>}
                         {isSelected && <span className="loadout-check">✓</span>}
                       </button>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
                 </>)}
 
@@ -9324,7 +9452,7 @@ export default function Arena() {
                             <span className="cv-orbit o3" aria-hidden="true" />
                           </div>
                         )}
-                        <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead ? "waiting" : "")} ${isDead ? "defeated" : ""}`}>
+                        <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead && m.status === "active" ? "waiting" : "")} ${isDead ? "defeated" : ""}`}>
                           {isActive && !isDead && <div className="turn-indicator">Il tuo turno</div>}
                           {isDead && <div className="defeated-banner">Sconfitto</div>}
 
@@ -9937,7 +10065,14 @@ export default function Arena() {
                         const isRangedWeapon = (a) => a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
                         const meleeActions  = currentActions.filter(a => a.type === "weapon" && !isRangedWeapon(a));
                         const rangedActions = currentActions.filter(a => a.type === "weapon" && isRangedWeapon(a));
-                        const skillActions  = currentActions.filter(a => (a.type === "skill" || a.type === "passive") && !(action => action.special === "deathblow" && targetHpPct > 20)(a));
+                        const allSkillActions = currentActions.filter(a => (a.type === "skill" || a.type === "passive") && !(action => action.special === "deathblow" && targetHpPct > 20)(a));
+                        // Il Ranger ha un compagno: le sue azioni (pet_*) vanno in una sotto-tab dedicata.
+                        const isPetAction   = (a) => typeof a.special === "string" && a.special.startsWith("pet_");
+                        const petActions    = allSkillActions.filter(isPetAction);
+                        const skillActions  = allSkillActions.filter(a => !isPetAction(a));
+                        const hasPet        = petActions.length > 0;
+                        // Se non c'è pet, la sotto-tab attiva ricade sempre su "skill".
+                        const abSub = (abilitaSub === "pet" && hasPet) ? "pet" : "skill";
                         const spellGroups   = [0, 1, 2, 3].map(lvl => ({
                           lvl,
                           spells: currentActions.filter(a => a.type === "spell" && a.level === lvl),
@@ -10415,15 +10550,17 @@ export default function Arena() {
                             const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.extraTurnActive;
+                            const baBlocked = !!action.bonusAction && !!myPlayer?.bonusActionUsed;
+                            const blocked = noUses || alreadyActive || baBlocked;
                             return (
                               <button key={action.name}
-                                className={`btn-action spell ${noUses || alreadyActive ? "no-uses" : ""}`}
-                                disabled={noUses || alreadyActive}
-                                title={alreadyActive ? "Già attivo" : noUses ? "Cariche esaurite" : "Doppio turno il prossimo turno"}
-                                onClick={() => !noUses && !alreadyActive && handleExtraTurn(m.matchId, action)}>
+                                className={`btn-action spell ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={baBlocked ? "Bonus action già usata questo turno" : alreadyActive ? "Già attivo" : noUses ? "Cariche esaurite" : "Bonus action · doppio turno il prossimo turno"}
+                                onClick={() => !blocked && handleExtraTurn(m.matchId, action)}>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{alreadyActive ? "✓ Attivo" : noUses ? "Esaurito" : "+1 azione"}</span>
+                                <span className="action-dice">{alreadyActive ? "✓ Attivo" : baBlocked ? "BA usata" : noUses ? "Esaurito" : "+1 azione"}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );
@@ -10670,10 +10807,33 @@ export default function Arena() {
                             {dock === "magie" && spellGroups.length === 0 && (
                               <div className="combat-dock-empty">Nessun incantesimo disponibile.</div>
                             )}
-                            {dock === "abilita" && skillActions.length > 0 && (
+                            {dock === "abilita" && hasPet && (
+                              <div className="abilita-subtabs" role="tablist">
+                                <button
+                                  type="button" role="tab" aria-selected={abSub === "skill"}
+                                  className={`abilita-subtab${abSub === "skill" ? " active" : ""}`}
+                                  onClick={() => setAbilitaSub("skill")}
+                                >⚡ Abilità</button>
+                                <button
+                                  type="button" role="tab" aria-selected={abSub === "pet"}
+                                  className={`abilita-subtab${abSub === "pet" ? " active" : ""}`}
+                                  onClick={() => setAbilitaSub("pet")}
+                                >🐾 Compagno</button>
+                              </div>
+                            )}
+                            {dock === "abilita" && abSub === "skill" && skillActions.length > 0 && (
                               <div className="action-group">
                                 <div className="action-group-label skill">⚡ Abilità</div>
                                 <div className="action-buttons">{skillActions.map(renderActionBtn)}</div>
+                              </div>
+                            )}
+                            {dock === "abilita" && abSub === "skill" && skillActions.length === 0 && (
+                              <div className="combat-dock-empty">Nessuna abilità disponibile.</div>
+                            )}
+                            {dock === "abilita" && abSub === "pet" && hasPet && (
+                              <div className="action-group">
+                                <div className="action-group-label skill">🐾 Compagno</div>
+                                <div className="action-buttons">{petActions.map(renderActionBtn)}</div>
                               </div>
                             )}
                           </div>

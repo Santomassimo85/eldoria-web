@@ -1,6 +1,60 @@
 {
   "versions": [
     {
+      "version": "19",
+      "date": "2026-06-12",
+      "title": "Arena — Creazione PG assistita e rifinitura Ranger",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Creazione personaggio: nuovo tasto «🤖 Scelta AI» nella schermata delle caratteristiche — distribuisce i punti in modo ottimale per la classe scelta (caratteristiche chiave al massimo, poi Costituzione)."
+        },
+        {
+          "type": "graphic",
+          "text": "Creazione personaggio: nella scelta delle armi, quelle più adatte alla classe (che usano la sua caratteristica principale) sono evidenziate in verde con una stella."
+        },
+        {
+          "type": "mechanics",
+          "text": "Ranger: il Morso del Lupo ora impone alla vittima un Tiro Salvezza su Costituzione (CD basata sulla Saggezza del ranger); chi fallisce subisce sanguinamento 1d4/turno per 2 turni."
+        },
+        {
+          "type": "balance",
+          "text": "Ranger: «Passo Spedito» è ora una azione bonus (non consuma più l'azione del turno)."
+        },
+        {
+          "type": "balance",
+          "text": "Ranger: «Nebbia» dura 2 turni invece di 3."
+        },
+        {
+          "type": "balance",
+          "text": "Ranger: dalle armature disponibili sono state rimosse Armatura di cuoio, Cuoio Borchiato e Mezza Piastra (restano cuoio borchiato leggero e le armature medie)."
+        },
+        {
+          "type": "fix",
+          "text": "Combattimento: durante la fase di iniziativa il pulsante «Tira Iniziativa» e la card del combattente non sono più smorzati (sembravano coperti da una patina grigia): l'effetto di attenuazione ora si applica solo durante i turni di combattimento veri e propri."
+        }
+      ]
+    },
+    {
+      "version": "18",
+      "date": "2026-06-12",
+      "title": "Arena — Ranger potenziato e sotto-tab Compagno",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Ranger: nel combattimento le azioni dell'animale (Lupo, Ragno, Aquila, Draghetto) hanno una sotto-tab dedicata «Compagno» dentro il pannello Abilità, separata dalle altre abilità."
+        },
+        {
+          "type": "feature",
+          "text": "Ranger: nuova abilità «Sopravvissuto» — analizza il nemico e concede vantaggio ai propri attacchi per 2 turni (2 cariche)."
+        },
+        {
+          "type": "feature",
+          "text": "Ranger: nuova abilità firma «Raffica Letale» — scocca tre frecce, ognuna con il proprio tiro per colpire e 1d8+DES danni perforanti (ogni freccia può fare critico) (2 cariche)."
+        }
+      ]
+    },
+    {
       "version": "17.14",
       "date": "2026-06-12",
       "title": "Pagina UPDATE — il master può nascondere voci",
