@@ -281,14 +281,20 @@ export default function GameTable({
   // timer 2 minuti/turno: quando cambia il numero del turno ne registro
   // l'istante d'inizio (clock locale, come heartbeat/emote)
   const turnStartRef = useRef({ turn: -1, at: 0 });
-  // istante d'inizio partita per il match timer da 3 ore (PvP: createdAt
-  // del doc così è coerente fra i client e sopravvive ai reconnect; AI: ora)
+  // istante d'inizio partita per il match timer da 3 ore.
+  // PvP: ancora su `startedAt` (scritto quando entrambi confermano il
+  // mulligan), coerente fra i client e sopravvive ai reconnect. MAI sul
+  // createdAt: i match torneo nascono all'avvio del round, anche giorni
+  // prima che si giochi — l'ancora sul createdAt faceva scadere il match
+  // all'istante ed espelleva i giocatori appena entrati. Finché startedAt
+  // non è ancora arrivato nello snapshot, fallback sul mount locale.
   const matchStartRef = useRef(null);
   if (matchStartRef.current == null) {
-    matchStartRef.current = isAi
-      ? Date.now()
-      : tsMillis(match?.createdAt) || Date.now();
+    matchStartRef.current = Date.now();
   }
+  const matchStart = isAi
+    ? matchStartRef.current
+    : tsMillis(match?.startedAt) || matchStartRef.current;
   const [clockTick, setClockTick] = useState(0); // re-render per i countdown
   const [matchExpired, setMatchExpired] = useState(false);
 
@@ -346,7 +352,7 @@ export default function GameTable({
   // premio) ed espelli i giocatori.
   useEffect(() => {
     if (!state || state.winner || matchExpired) return;
-    const fireAt = matchStartRef.current + MATCH_MS;
+    const fireAt = matchStart + MATCH_MS;
     const delay = fireAt - Date.now();
     const expire = () => {
       endedRef.current = true; // blocca qualsiasi erogazione premi
@@ -358,7 +364,7 @@ export default function GameTable({
     const t = setTimeout(expire, delay);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state && state.winner, matchExpired, isAi, matchId]);
+  }, [state && state.winner, matchExpired, isAi, matchId, matchStart]);
 
   const pushFloat = (zone, text, tone) => {
     const pos = {
@@ -1280,7 +1286,7 @@ export default function GameTable({
   const turnLow = turnRemain != null && turnRemain <= 30 * 1000;
   const matchRemain = winner
     ? null
-    : Math.max(0, matchStartRef.current + MATCH_MS - Date.now());
+    : Math.max(0, matchStart + MATCH_MS - Date.now());
 
   const statusLine = winner
     ? "Partita conclusa"

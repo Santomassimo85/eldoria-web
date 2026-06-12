@@ -14,7 +14,7 @@ import { createGame, reshuffleSideForMulligan } from "../tcg/engine.js";
 import { buildClassDeck } from "../tcg/cards.js";
 import {
   watchMatch, sideForUid,
-  pushMulliganReshuffle, pushMulliganCommit,
+  pushMulliganReshuffle, pushMulliganCommit, markMatchStarted, reviveMatch,
 } from "../tcg/net.js";
 import {
   watchProfile, grantStarter, needsStarter, openPack, saveDeck,
@@ -35,6 +35,7 @@ import Tournament from "../components/tcg/Tournament.jsx";
 import { CLASS_VIE, CLASSES, classColors } from "../tcg/classes.js";
 import {
   watchTournament, reportMatchResult, isTournamentVisibleFor,
+  recreateTournamentMatchDoc,
 } from "../tcg/tournament.js";
 import "./Tcg.css";
 
@@ -288,15 +289,29 @@ export default function Tcg() {
     stopWatch();
     setMatchId(id);
     setScreen("pvp");
+    let triedRecreate = false;
+    const bail = () => {
+      setMatch(null);
+      setScreen(returnTo);
+      stopWatch();
+      setMatchId(null);
+    };
     unsubRef.current = watchMatch(id, (m) => {
       if (!m) {
-        // doc gone (host deleted it on match end / cancel) → return the
-        // player to where they came from (the tournament for bracket
-        // matches, otherwise the PvP lobby) instead of always the lobby.
-        setMatch(null);
-        setScreen(returnTo);
-        stopWatch();
-        setMatchId(null);
+        // Doc mancante. Per i match TORNEO può essere il relitto del bug
+        // del timer 3h (allo scadere il client host cancellava il doc,
+        // lasciando il bracket appeso a un matchId che punta nel vuoto):
+        // proviamo a ricrearlo UNA volta con lo stesso id — onSnapshot
+        // resta in ascolto e aggancia il doc appena ricompare. Altrimenti
+        // (match casual concluso/cancellato) si torna da dove si è venuti.
+        if (returnTo === "tournament" && !triedRecreate) {
+          triedRecreate = true;
+          recreateTournamentMatchDoc(id, currentUser?.uid)
+            .then((ok) => { if (!ok) bail(); })
+            .catch(() => bail());
+          return;
+        }
+        bail();
         return;
       }
       setMatch(m);
@@ -361,6 +376,38 @@ export default function Tcg() {
   const loggedIn = !!currentUser;
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
+  // FORCE landscape ONLY during an actual battle (vs AI, PvP o torneo-IA).
+  // Every other screen (menu, deck, collection, shop, manual, lobby) stays
+  // in normal vertical orientation with the global navbar on top.
+  const inFight =
+    screen === "ai" || screen === "pvp" || screen === "tournament-ai";
+
+  // Durante la partita la UI globale sparisce: navbar, chat globale e
+  // contatore giocatori online (regole su body.tcg-infight in Tcg.css).
+  useEffect(() => {
+    document.body.classList.toggle("tcg-infight", inFight);
+    return () => document.body.classList.remove("tcg-infight");
+  }, [inFight]);
+
+  // VERO inizio partita PvP: quando entrambi hanno confermato il mulligan
+  // e il doc non ha ancora `startedAt`, lo scriviamo. Il timer dei 3 ore
+  // di GameTable parte da lì e NON dal createdAt: i match del torneo
+  // vengono creati all'avvio del round, anche giorni prima di giocare, e
+  // l'ancora sul createdAt espelleva i giocatori appena entravano.
+  // In più: un match torneo rimasto "ended" senza vincitore (relitto del
+  // bug del timer) viene rimesso "active" al rientro, così si gioca.
+  useEffect(() => {
+    if (screen !== "pvp" || !match || !matchId) return;
+    if (match.tournament && match.status === "ended" && !match.state?.winner) {
+      reviveMatch(matchId);
+      return;
+    }
+    if (match.startedAt) return;
+    const mul = match.mulligan;
+    const committed = (s) => !mul || !mul[s] || mul[s].committed;
+    if (committed("p0") && committed("p1")) markMatchStarted(matchId);
+  }, [screen, match, matchId]);
+
   // wait for the persisted profile before deciding anything (no flash
   // of the starter screen on reload → never a "false reset")
   if (loggedIn && !profile) {
@@ -385,12 +432,6 @@ export default function Tcg() {
     );
   }
 
-  // FORCE landscape ONLY during an actual battle (vs AI or PvP). Every
-  // other screen (menu, deck, collection, shop, manual, lobby) stays in
-  // normal vertical orientation.
-  // the actual battle goes full-bleed (covers the app menu); every
-  // other screen keeps the global navbar visible on top.
-  const inFight = screen === "ai" || screen === "pvp";
   const forceLandscape = isPortrait && inFight;
 
   return (

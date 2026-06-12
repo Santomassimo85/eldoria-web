@@ -508,6 +508,66 @@ async function createTournamentMatchDoc(a, b, roundNo) {
   return ref.id;
 }
 
+/* Ricrea il doc tcg_matches di una entry del bracket il cui doc è stato
+   CANCELLATO (relitto del bug del timer 3h ancorato al createdAt: allo
+   scadere, il client del challenger cancellava il doc e il bracket restava
+   con un matchId che punta nel vuoto → rimbalzo immediato fuori dal match).
+   setDoc con lo STESSO id della entry, così il bracket resta coerente.
+   Il chiamante diventa challenger: le regole Firestore richiedono
+   challenger.uid == auth.uid per la create (i lati p0/p1 possono quindi
+   risultare invertiti rispetto al doc originale — irrilevante). */
+export async function recreateTournamentMatchDoc(matchId, uid) {
+  if (!matchId || !uid) return false;
+  const t = await getTournamentOnce();
+  if (!t || t.status !== "running") return false;
+  const cur = t.rounds?.[t.currentRound - 1];
+  if (!cur) return false;
+  const entry = cur.matches.find(
+    (m) => m.matchId === matchId && !m.winnerUid && !m.vsAi
+  );
+  if (!entry) return false;
+  if (entry.a !== uid && entry.b !== uid) return false;
+  const foeUid = entry.a === uid ? entry.b : entry.a;
+  const me = t.participants?.[uid];
+  const foe = t.participants?.[foeUid];
+  if (!me || !foe) return false;
+
+  const mref = doc(db, MCOL, matchId);
+  // già ricreato dall'avversario nel frattempo? non sovrascrivere.
+  const existing = await getDoc(mref);
+  if (existing.exists()) return true;
+
+  const starter = Math.random() < 0.5 ? "p0" : "p1";
+  const state = createGame({
+    p0Name: me.name || "P1",
+    p1Name: foe.name || "P2",
+    deck0: Array.isArray(me.deck) ? me.deck : buildDeck(),
+    deck1: Array.isArray(foe.deck) ? foe.deck : buildDeck(),
+    starter,
+    p0Class: me.classChoice || null,
+    p1Class: foe.classChoice || null,
+  });
+  await setDoc(mref, {
+    status: "active",
+    challenger: { uid: me.uid, name: me.name || "P1" },
+    challenged: { uid: foe.uid, name: foe.name || "P2" },
+    covers: { p0: me.cover || "nature", p1: foe.cover || "nature" },
+    classes: { p0: me.classChoice || null, p1: foe.classChoice || null },
+    challengerDeck: Array.isArray(me.deck) ? me.deck : null,
+    state,
+    mulligan: {
+      p0: { used: 0, committed: false },
+      p1: { used: 0, committed: false },
+    },
+    tournament: { id: TDOC, round: cur.round },
+    winnerUid: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    seen: {},
+  });
+  return true;
+}
+
 /* Chiamato al termine di una partita-torneo: marca il vincitore nel
    bracket. Idempotente.
    - Per match PvP: matchOrEntryId è il doc id su tcg_matches.

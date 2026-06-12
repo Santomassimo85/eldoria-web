@@ -105,6 +105,16 @@
   left: 0;
   z-index: 4000;
 }
+/* In partita la UI globale dell'app sparisce del tutto: navbar in alto,
+   chat globale (FAB + finestra) e contatore giocatori online del master.
+   La classe è messa sul <body> da Tcg.jsx quando screen = ai/pvp/tournament-ai. */
+body.tcg-infight .app-nav,
+body.tcg-infight .chat-toggle-btn,
+body.tcg-infight .global-chat-window,
+body.tcg-infight .online-fab,
+body.tcg-infight .online-popup {
+  display: none !important;
+}
 .tcg-page--force-landscape {
   width: 100vh;
   height: 100vw;

@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "17.03",
+      "date": "2026-06-12",
+      "title": "TCG Torneo — Risolto il kick all'ingresso nei match",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Risolto il bug che espelleva i giocatori appena entravano in un match del torneo: il limite di 3 ore della partita partiva dalla creazione del tabellone (anche giorni prima), quindi il match risultava già scaduto e chiudeva la partita all'istante. Ora il timer parte solo quando entrambi i giocatori hanno confermato la mano iniziale."
+        },
+        {
+          "type": "fix",
+          "text": "I match del torneo chiusi o cancellati per errore dal vecchio bug vengono ripristinati automaticamente al rientro dei giocatori: la partita ancora attesa dal tabellone si può rigiocare normalmente, senza intervento del Master."
+        }
+      ]
+    },
+    {
+      "version": "17.02",
+      "date": "2026-06-11",
+      "title": "TCG — Partita a schermo pieno senza distrazioni",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Durante una partita TCG (vs IA, PvP o torneo) il menu di navigazione in alto, il pulsante della chat globale e il contatore dei giocatori online ora scompaiono: il tavolo da gioco occupa lo schermo senza elementi sovrapposti."
+        },
+        {
+          "type": "fix",
+          "text": "Anche i match del torneo contro i bot IA ora vanno a schermo pieno con rotazione automatica in orizzontale su smartphone, come gli altri match."
+        }
+      ]
+    },
+    {
       "version": "17.01",
       "date": "2026-06-11",
       "title": "Arena — Arma incandescente: blocco contato in ogni modalità",

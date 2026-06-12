@@ -204,6 +204,39 @@ export async function pushMulliganCommit(matchId, side) {
   });
 }
 
+/* Segna l'istante di VERO inizio partita (entrambi i mulligan committati).
+   Il timer dei 3h di GameTable parte da qui, NON dal createdAt del doc:
+   i match del torneo vengono creati su tcg_matches quando il master avvia
+   il round, anche giorni prima che i due giocatori si siedano a giocare.
+   Ancorare la scadenza al createdAt espelleva all'istante chiunque
+   entrasse in un match più vecchio di 3 ore. */
+export async function markMatchStarted(matchId) {
+  try {
+    await updateDoc(doc(db, COL, matchId), {
+      startedAt: serverTimestamp(),
+    });
+  } catch {
+    /* offline / doc removed */
+  }
+}
+
+/* Riporta in gioco un match torneo rimasto "ended" SENZA vincitore: è il
+   relitto del bug del timer ancorato al createdAt (o di un'uscita forzata
+   da un match bloccato). Rinnova anche startedAt, così il timer dei 3 ore
+   riparte da ora e i giocatori possono davvero giocare la partita che il
+   bracket sta ancora aspettando. */
+export async function reviveMatch(matchId) {
+  try {
+    await updateDoc(doc(db, COL, matchId), {
+      status: "active",
+      startedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch {
+    /* offline / doc removed */
+  }
+}
+
 export function watchMatch(matchId, cb) {
   return onSnapshot(doc(db, COL, matchId), (d) => {
     if (!d.exists()) return cb(null);

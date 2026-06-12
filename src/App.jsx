@@ -52,6 +52,7 @@ import { isTcgUnlockedFor } from "./tcg/access";
 import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
+import GeneraNPC from "./GeneraNPC";
 import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
@@ -444,6 +445,7 @@ export default function App() {
           <Route path="/updates" element={<Updates />} />
 
           {/* ROTTE ADMIN */}
+          <Route path="/dm-admin/genera-npc" element={<GeneraNPC />} />
           <Route path="/dm-admin" element={<AdminPanel />} />
           <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />
