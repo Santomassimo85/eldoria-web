@@ -3071,6 +3071,55 @@
   text-align: center;
 }
 
+/* ── Stat consigliate per classe: riga verde + descrizione d'uso ── */
+.arena-page .stat-assign-hint {
+  font-size: 0.85rem;
+  color: rgba(60, 45, 25, 0.85);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+.arena-page .stat-assign-row {
+  flex-wrap: wrap;
+}
+.arena-page .stat-assign-row.stat-key {
+  border-color: rgba(47, 158, 87, 0.65);
+  background: rgba(230, 248, 236, 0.9);
+  box-shadow: inset 3px 0 0 #2f9e57;
+}
+.arena-page .stat-assign-row.stat-key:hover {
+  border-color: #2f9e57;
+  background: rgba(222, 246, 230, 0.98);
+}
+.arena-page .stat-assign-row.stat-key .stat-assign-label {
+  color: #1d7a40;
+}
+.arena-page .stat-key-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #2f9e57;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.arena-page .stat-assign-desc {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(60, 45, 25, 0.72);
+  font-family: var(--font-text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.arena-page .stat-assign-row.stat-key .stat-assign-desc {
+  color: #1d6b3a;
+}
+
 /* ── ARMOR / SKILL / ITEM GRIDS ───────────────────────────── */
 .arena-page .armor-grid,
 .arena-page .skill-grid,
@@ -3385,6 +3434,8 @@
 @media (max-width: 480px) {
   .arena-page .stat-assign-row { padding: 8px 10px; gap: 8px; }
   .arena-page .stat-adj-btn { width: 28px; height: 28px; font-size: 1rem; }
+  .arena-page .stat-assign-desc { font-size: 0.72rem; }
+  .arena-page .stat-key-tag { font-size: 0.52rem; padding: 2px 6px; margin-left: 6px; }
   .arena-page .target-picker,
   .arena-page .save-block,
   .arena-page .hp-roll-panel { padding: 14px 14px; }

@@ -172,19 +172,29 @@ const WIZARD_SPELLS = [
   { name: "Contrincantesimo",      level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚫", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
 ];
 
-// ── SORCERER SPELLS (Stregone) — pool: 4 trucchetti · 4 lv1 · 3 lv2 (sceglie 4+4+2)
+// ── SORCERER SPELLS (Stregone) — pool: 6 trucchetti · 6 lv1 · 5 lv2 (sceglie 4+4+2)
+// Slot in stile D&D (solo Stregone): trucchetti ILLIMITATI (niente maxUses),
+// le spell Lv1/Lv2 consumano un pool CONDIVISO di 4 slot per livello — vedi
+// spendSpellUse/readSpellSlots. Il maxUses=4 sulle spell con livello serve
+// solo come denominatore del badge in UI (= SORC_SLOTS_MAX).
 const SORCERER_SPELLS = [
-  { name: "Dardo di Fuoco",        level: 0, hitBonus: 3,  damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
-  { name: "Scossa Folgorante",     level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "⚡",  info: "Trucchetto · Fulmine", maxUses: 4 },
-  { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo", maxUses: 4 },
-  { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno", maxUses: 4 },
-  { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 3 },
-  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre (no tiro)", maxUses: 3 },
-  { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 2 },
-  { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
-  { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "6d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 2 },
-  { name: "Frantumare",            level: 2, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 2 },
-  { name: "Suggestione",           level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 2 },
+  { name: "Dardo di Fuoco",        level: 0, hitBonus: 3,  damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco · illimitato" },
+  { name: "Scossa Folgorante",     level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "⚡",  info: "Trucchetto · Fulmine · illimitato" },
+  { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo · illimitato" },
+  { name: "Spruzzo Velenoso",      level: 0, hitBonus: 3,  damage: "1d12",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Veleno · illimitato" },
+  { name: "Tocco Gelido",          level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "💀", info: "Trucchetto · Necrotico · illimitato" },
+  { name: "Raggio di Gelo",        level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "🧊", info: "Trucchetto · Freddo · illimitato" },
+  { name: "Mani Brucianti",        level: 1, hitBonus: 3,  damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv1 · Fuoco", maxUses: 4 },
+  { name: "Dardo Incantato",       level: 1, hitBonus: 3,  damage: "3d4",   statKey: null, type: "spell", icon: "✨", info: "Lv1 · Forza · colpisce sempre (no tiro)", maxUses: 4 },
+  { name: "Colpo Cromatico",       level: 1, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "🌈", info: "Lv1 · Magico", maxUses: 4 },
+  { name: "Scudo",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🛡", info: "Lv1 · +1 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 1, shieldBuffTurns: 3, maxUses: 4 },
+  { name: "Charme su Persone",     level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 4 },
+  { name: "Sonno",                 level: 1, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😴", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 4 },
+  { name: "Raggio Rovente",        level: 2, hitBonus: 3,  damage: "6d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 4 },
+  { name: "Frantumare",            level: 2, hitBonus: 3,  damage: "3d8",   statKey: null, type: "spell", icon: "💥", info: "Lv2 · Tuono", maxUses: 4 },
+  { name: "Suggestione",           level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 4 },
+  { name: "Nube di Pugnali",       level: 2, hitBonus: 3,  damage: "4d4",   statKey: null, type: "spell", icon: "🗡", info: "Lv2 · Tagliente · colpisce sempre (no tiro)", maxUses: 4 },
+  { name: "Cecità/Sordità",        level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 4 },
   { name: "Palla di Fuoco",        level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", maxUses: 1 },
   { name: "Fulmine",               level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", maxUses: 1 },
   { name: "Paura",                 level: 3, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
@@ -395,8 +405,14 @@ const ARENA_ARMORS = {
   heavy: [
     { name: "Cotta ad Anelli",    baseAc: 15, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco" },
     // { name: "Cotta di Maglia",    baseAc: 20, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
-    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −3 attacco" },
-    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −4 attacco" },
+    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco" },
+    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
+  ],
+  // Guerriero: addestrato alle pesanti — niente Cotta ad Anelli e
+  // Armatura a Placche SENZA malus al colpire. Il paladino resta su "heavy".
+  heavyFighter: [
+    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty:  0, icon: "🛡", info: "Pesante · senza DES · ±0 attacco" },
+    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
   ],
   // Druido: leggere + medie, niente metalli
   druid:      [..._ARMOR_LIGHT, ..._ARMOR_MEDIUM],
@@ -725,10 +741,11 @@ const FORGIA_ARMATURA_ACTION = {
   special: "armor_forge", maxUses: 2,
 };
 
-// Stregoneria Innata (Sorcerer) — passiva: se il nemico ottiene 4 o meno sul TS, danni +50%
+// Stregoneria Innata (Sorcerer) — passiva: TS nemico ≤7 sul d20 (spell con TS)
+// oppure d20 naturale 17+ del caster (spell con tiro per colpire) → danni +50%.
 const INNATE_SORCERY_PASSIVE = {
   name: "Stregoneria Innata", hitBonus: 0, damage: "—", statKey: null,
-  type: "passive", icon: "🌟", info: "Passiva · se il nemico tira ≤4 sul TS contro le tue spell, danni +50%",
+  type: "passive", icon: "🌟", info: "Passiva · TS nemico ≤7 sul d20, o tuo d20 naturale 17+ sugli spell-attack → danni +50%",
 };
 
 // Fonte di Magia (Sorcerer) — ripristina 2 slot magia, 2 cariche
@@ -1211,6 +1228,7 @@ const SPELL_MECHANICS = {
   "Grandine di Spine":      { cast: "attack" },
   // Livello 2
   "Raggio Rovente":         { cast: "attack" },
+  "Nube di Pugnali":        { cast: "auto" },
   "Frantumare":             { cast: "save_half", save: "con" },
   "Frastornare":            { cast: "save_half", save: "con" },
   "Tocco Vampirico":        { cast: "attack" },
@@ -1263,6 +1281,70 @@ function getMaxActionsPerTurn(snap, matchPlayer) {
   if (matchPlayer?.extraTurnActive) base += 1;
   if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
+}
+
+// ── STAT CONSIGLIATE PER CLASSE (fase di creazione del PG) ──────────────────
+// Le stat "chiave" della classe scelta sono evidenziate in verde nella
+// schermata di assegnazione punti; ogni stat ha una riga che ne spiega l'uso.
+const STAT_DESCS = {
+  str: "Colpire e danno con le armi da mischia pesanti · TS di Forza (Intralciare, prese)",
+  dex: "Colpire e danno con armi agili e a distanza · CA con armature leggere/medie · TS di Destrezza (Palla di Fuoco…)",
+  con: "Più Punti Ferita · TS di Costituzione (veleni, Frantumare) · CA del Barbaro e dei caster senza armatura",
+  int: "Caratteristica da incantatore di Mago e Artefice: CD dei TS e bonus al danno delle spell",
+  wis: "Caratteristica da incantatore di Chierico, Druido e Ranger · TS di Saggezza contro i controlli (Sonno, Charme…)",
+  cha: "Caratteristica da incantatore di Stregone, Warlock, Bardo e Paladino: CD dei TS e bonus al danno delle spell",
+};
+const ARENA_KEY_STATS = {
+  fighter:   ["str", "con"],
+  barbarian: ["str", "con"],
+  paladin:   ["str", "cha"],
+  ranger:    ["dex", "wis"],
+  monk:      ["dex", "wis"],
+  rogue:     ["dex", "con"],
+  wizard:    ["int", "con"],
+  sorcerer:  ["cha", "con"],
+  warlock:   ["cha", "dex"],
+  bard:      ["cha", "dex"],
+  cleric:    ["wis", "con"],
+  druid:     ["wis", "con"],
+  artificer: ["int", "dex"],
+};
+
+// ── SLOT INCANTESIMO CONDIVISI (Stregone) ───────────────────────────────────
+// Come gli spell slot di D&D: i trucchetti sono ILLIMITATI, le spell Lv1 e
+// Lv2 attingono a UN pool condiviso di 4 slot per livello (4 lanci totali di
+// Lv1 con qualunque mix, idem Lv2). Le altre classi continuano a usare il
+// contatore per-incantesimo (actionUsesLeft).
+const SORC_SLOTS_MAX = 4;
+function usesSharedSpellSlots(snap) {
+  return isSorcererClass((snap?.class || "").toLowerCase());
+}
+function readSpellSlots(matchPlayer, lvl) {
+  return matchPlayer?.spellSlots?.[lvl] ?? SORC_SLOTS_MAX;
+}
+// Usi visibili in UI per un'azione: null = illimitato / nessun contatore.
+function readSpellUsesLeft(matchPlayer, snap, action) {
+  if (action?.type === "spell" && usesSharedSpellSlots(snap)) {
+    const lvl = action.level ?? 0;
+    if (lvl === 0) return null;
+    return readSpellSlots(matchPlayer, lvl);
+  }
+  return action?.maxUses !== undefined
+    ? (matchPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses)
+    : null;
+}
+// Patch immutabile del consumo: {spellSlots} per lo Stregone (spell con
+// livello), {actionUsesLeft} per tutto il resto, {} se illimitato.
+function spendSpellUse(matchPlayer, snap, action) {
+  if (action?.type === "spell" && usesSharedSpellSlots(snap)) {
+    const lvl = action.level ?? 0;
+    if (lvl === 0) return {};
+    const cur = readSpellSlots(matchPlayer, lvl);
+    return { spellSlots: { ...(matchPlayer.spellSlots || {}), [lvl]: Math.max(0, cur - 1) } };
+  }
+  if (action?.maxUses === undefined) return {};
+  const uses = matchPlayer.actionUsesLeft || {};
+  return { actionUsesLeft: { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } };
 }
 
 // Bonus al tiro per colpire delle spell di buff: Chierico/Paladino sono ridotti a +2.
@@ -1362,7 +1444,7 @@ function getArmorConfig(cls) {
   if (isDruidClass(cls))      return { armorCategory: "druid",       canHaveShield: "wood" };
   if (isPaladinClass(cls))    return { armorCategory: "heavy",       canHaveShield: true   };
   if (isClericClass(cls))     return { armorCategory: "lightMedium", canHaveShield: true   };
-  if (isFighterClass(cls))    return { armorCategory: "heavy",       canHaveShield: true   };
+  if (isFighterClass(cls))    return { armorCategory: "heavyFighter", canHaveShield: true  };
   if (isBarbarianClass(cls))  return { armorCategory: "barbarian",   canHaveShield: true   }; // leggere+medie+no armatura, scudo ok
   if (isMonkClass(cls))       return { armorCategory: "monk",        canHaveShield: false  }; // solo senza armatura, 10+DES+SAG
   if (isRogueClass(cls))      return { armorCategory: "light",       canHaveShield: false  };
@@ -5048,7 +5130,8 @@ export default function Arena() {
 
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
   const handleShieldSkill = async (matchId, action) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
+    const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    const myName = mySnap?.name || "?";
     const bonus = action?.shieldBuffBonus ?? 3;
     const turns = action?.shieldBuffTurns ?? 3;
     const spellName = action?.name || "Scudo";
@@ -5058,11 +5141,7 @@ export default function Arena() {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        const newUses = action?.maxUses !== undefined
-          ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) }
-          : uses;
-        return { ...p, shieldSkillTurns: turns, shieldSkillBonus: bonus, defensiveBonus: 0, ...tickEagleEnd(p), actionUsesLeft: newUses };
+        return { ...p, shieldSkillTurns: turns, shieldSkillBonus: bonus, defensiveBonus: 0, ...tickEagleEnd(p), ...spendSpellUse(p, mySnap, action) };
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: shieldExpiry, logs: [...m.logs, log] };
     });
@@ -5262,16 +5341,15 @@ export default function Arena() {
 
   // ── INVISIBILITÀ (il nemico non può attaccare il prossimo turno) ──────────
   const handleInvisibility = async (matchId, action) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Bardo";
+    const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    const myName = mySnap?.name || "Bardo";
     const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const duration = action.invisibilityDuration ?? 1;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
-        const uses = p.actionUsesLeft || {};
-        const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, invisible: true, invisibilityTurns: duration, ...tickEagleEnd(p), actionUsesLeft: newUses };
+        return { ...p, invisible: true, invisibilityTurns: duration, ...tickEagleEnd(p), ...spendSpellUse(p, mySnap, action) };
       });
       const turnsLog = duration > 1 ? `${duration} turni` : "il prossimo turno";
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `👻 ${myName} svanisce nell'ombra! Il nemico non può attaccare per ${turnsLog}.`] };
@@ -5647,8 +5725,8 @@ export default function Arena() {
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
   };
 
-  // ── FONTE DI MAGIA (Sorcerer) — ripristina 2 slot magia ──────────────────
-  const handleFonteConfirm = async (matchId, fonteAction, selectedSpellNames) => {
+  // ── FONTE DI MAGIA (Sorcerer) — recupera 2 SLOT condivisi (Lv1/Lv2 a scelta) ──
+  const handleFonteConfirm = async (matchId, fonteAction, addLv1, addLv2) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Stregone";
     const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     const updatedMatches = arenaMeta.matches.map(m => {
@@ -5656,19 +5734,18 @@ export default function Arena() {
       const updatedPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
         const uses = { ...(p.actionUsesLeft || {}) };
-        // Decrement Fonte di Magia charge
+        // Scala la carica della Fonte di Magia
         uses[fonteAction.name] = Math.max(0, (uses[fonteAction.name] ?? fonteAction.maxUses) - 1);
-        // Restore 1 use for each selected spell
-        const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
-        selectedSpellNames.forEach(spellName => {
-          const spell = (mySnap?.selectedActions || []).find(a => a.name === spellName);
-          if (spell?.maxUses) {
-            uses[spellName] = Math.min(spell.maxUses, (uses[spellName] ?? spell.maxUses) + 1);
-          }
-        });
-        return { ...p, ...tickEagleEnd(p), actionUsesLeft: uses };
+        // Recupera gli slot condivisi (cap al massimo del pool)
+        const slots = { ...(p.spellSlots || {}) };
+        slots[1] = Math.min(SORC_SLOTS_MAX, (slots[1] ?? SORC_SLOTS_MAX) + addLv1);
+        slots[2] = Math.min(SORC_SLOTS_MAX, (slots[2] ?? SORC_SLOTS_MAX) + addLv2);
+        return { ...p, ...tickEagleEnd(p), actionUsesLeft: uses, spellSlots: slots };
       });
-      const log = `🔮 ${myName} attinge alla Fonte di Magia! Ripristina: ${selectedSpellNames.join(", ")}`;
+      const bits = [];
+      if (addLv1 > 0) bits.push(`+${addLv1} slot Lv1`);
+      if (addLv2 > 0) bits.push(`+${addLv2} slot Lv2`);
+      const log = `🔮 ${myName} attinge alla Fonte di Magia! Recupera ${bits.join(" e ")}.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -5989,9 +6066,7 @@ export default function Arena() {
       const updatedPlayers = m.players.map(p => {
         if (p.id === targetId) return { ...p, attackDisadvantageTurns: turns };
         if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
-          return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
+          return { ...p, ...tickEagleEnd(p), ...spendSpellUse(p, mySnap, action) };
         }
         return p;
       });
@@ -6288,6 +6363,8 @@ export default function Arena() {
       const totalHit = d20 + spellHit + aidHit;
       // Gli incantesimi NON fanno critico: nat 20 colpisce sempre, nat 1 manca, ma niente danni raddoppiati.
       connected = d20 === 20 || (d20 !== 1 && totalHit >= targetAc);
+      // Stregoneria Innata (spell-attack): d20 naturale 17+ che colpisce → danno +50%.
+      sorcererCrit = connected && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 >= 17;
       const aidPart = aidHit ? `+${aidHit}` : "";
       outcomeLog = connected
         ? `colpisce [d20 ${d20}+${spellHit}${aidPart}=${totalHit} vs CA ${targetAc}]`
@@ -6305,8 +6382,8 @@ export default function Arena() {
       await showD20Roll(d20, { label: `${defName} tira il TS ${SAVE_LABEL[saveAbil]}${casterHasShield ? " a VANTAGGIO" : ""} · ${action.name}` });
       const tsTotal = d20 + defMod + saveBuffBonus + saveFaithBonus;
       const saved = tsTotal >= dc;
-      // Stregoneria Innata: nemico tira ≤4 sul d20 → danno +50%.
-      sorcererCrit = !saved && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 <= 4;
+      // Stregoneria Innata: nemico tira ≤7 sul d20 (e fallisce il TS) → danno +50%.
+      sorcererCrit = !saved && isSorcererClass((attackerSnap?.class || "").toLowerCase()) && d20 <= 7;
       connected  = !saved || castMode === "save_half";
       halfDamage = saved && castMode === "save_half";
       const buffBits = `${saveBuffBonus > 0 ? `+${saveBuffBonus}🛡` : ""}${saveFaithBonus > 0 ? `+${saveFaithBonus}✝` : ""}`;
@@ -6328,6 +6405,10 @@ export default function Arena() {
     const modSign = casterMod >= 0 ? "+" : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
     const sorceryTag = sorcererCrit ? " | 🌟Stregoneria Innata +50%" : "";
+    // Riga dedicata in chat quando la passiva scatta (oltre al tag nel danno).
+    const innataLogArr = sorcererCrit && damage > 0
+      ? [`🌟 STREGONERIA INNATA! La magia ribolle nelle vene di ${attName}: ${action.name} infligge +50% danni!`]
+      : [];
     const hurtTag    = (action.damageWhenHurt && targetIsHurt) ? ` | 🩸ferito (${dmgFormula})` : "";
     const halfTag    = halfDamage ? " | ½ TS" : "";
     const vampTag    = vampHeal > 0 ? ` | 🩸cura ${vampHeal} HP [🎲${vampRolls}]` : "";
@@ -6366,13 +6447,13 @@ export default function Arena() {
           return { ...p, hp: Math.max(0, p.hp - damage), ...consumeInvisibility(p), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1), ...baseSavePatch };
         }
         if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = action.maxUses !== undefined ? { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) } : uses;
+          // Consumo: slot condivisi per lo Stregone, usi per-spell altrimenti.
+          const usePatch = spendSpellUse(p, attackerSnap, action);
           // Tocco Vampirico: cura il caster.
           const myMaxHp = attackerSnap?.stats?.maxHp ?? p.maxHp ?? p.hp;
           const healedHp = vampHeal > 0 ? Math.min(myMaxHp, (p.hp ?? 0) + vampHeal) : (p.hp ?? 0);
           // Timer turn-based gestiti in turnEndDecaysSpell (sotto), non qui.
-          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, ...casterHitPatch, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), actionUsesLeft: newUses };
+          return { ...p, hp: healedHp, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, ...casterHitPatch, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...usePatch };
         }
         return { ...p, ...consumeInvisibility(p) };
       });
@@ -6380,7 +6461,7 @@ export default function Arena() {
       const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
       const alive = players.filter(p => p.hp > 0);
       const absorbLogArr = spellAbsorbedLog ? [spellAbsorbedLog] : [];
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...innataLogArr, ...extraLogs, ...absorbLogArr, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       // Multi-azione: Monaco x2, Ladro x2, +1 se Passo Spedito attivo.
       const meBefore = m.players.find(p => p.id === currentUser.uid);
       const maxActions = getMaxActionsPerTurn(attackerSnap, meBefore);
@@ -6413,7 +6494,7 @@ export default function Arena() {
           : p
       );
       const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
-      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || newTurnExpiry) : newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, ...absorbLogArr] };
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || newTurnExpiry) : newTurnExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...innataLogArr, ...extraLogs, ...absorbLogArr] };
     });
 
     await awardRoundCoins(updatedMatches);
@@ -6446,9 +6527,7 @@ export default function Arena() {
         const targetName = targetSnap?.name || "?";
         const players = m.players.map(p => {
           if (p.id === currentUser.uid) {
-            const uses    = (p.actionUsesLeft || {});
-            const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
-            return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
+            return { ...p, ...tickEagleEnd(p), ...spendSpellUse(p, mySnap, action) };
           }
           if (p.id === targetId) {
             const isCoronaSpell = action.special === "corona_pazzia";
@@ -7412,7 +7491,7 @@ export default function Arena() {
               <p><strong>Monaco (Monk)</strong> — Solo mani nude (nessun'arma da scegliere), 2 attacchi a turno: 1° Pugno (2d4+DES), 2° Calcio (1d4+FOR). Nessuna armatura (CA = 10 + DES + SAG), no scudo. <em>Skill:</em> Carica di Pugni (2 colpi 2d6+DES), Concentrazione (+2 danno 2T), Assorbire Danni (80% del prossimo danno si converte in cura · 1 carica), Cura Ki (1d8+SAG).</p>
               <p><strong>Ladro (Rogue)</strong> — Armi ladro, 2 armi, armatura leggera, no scudo. Vantaggio all'iniziativa. <em>Skill:</em> Attacco Furtivo (arma +1d6+DES, 3 cariche), Furtività (vantaggio sui prossimi 2 attacchi), Triboli (TS DES avversario: fallito → svantaggio + 1d6 sanguinamento/turno per 2T; riuscito → solo 1T).</p>
               <p><strong>Mago (Wizard)</strong> — Armi semplici, 1 arma, abito da mago (no armatura, no scudo). Slot magia ampi. <em>Skill:</em> Recupero Arcano (ripristina 2 slot lv1 + 1 slot lv2).</p>
-              <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <em>Skill:</em> Magia Innata (passiva), Fonte di Magia (ripristina 2 slot magia a scelta).</p>
+              <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <strong>Slot in stile D&D:</strong> trucchetti <strong>illimitati</strong>; <strong>4 slot di Livello 1</strong> e <strong>4 slot di Livello 2</strong> condivisi fra tutte le spell di quel livello (4 lanci totali per livello, con qualunque combinazione). <em>Skill:</em> Stregoneria Innata (passiva: se il nemico tira ≤7 sul TS contro le tue spell, o se tiri 17+ naturale con uno spell-attack, i danni aumentano del 50%), Fonte di Magia (recupera 2 slot a scelta · 2 cariche).</p>
               <p><strong>Warlock</strong> — Armi semplici, 1 arma, armatura leggera, no scudo. <em>Skill:</em> Magical Cunning (salta turno → +1 carica a ogni slot, 2 cariche), Patto Demoniaco (sacrifica 1d4 HP → +1d12 alle spell per 3T).</p>
               <p><strong>Druido (Druid)</strong> — Armi druido, 1 arma, armatura druidica + scudo di legno. Spell druido. <em>Skill:</em> Forma Selvaggia (Wild Shape, trasformazione con HP propri).</p>
               <p><strong>Chierico (Cleric)</strong> — Armi cleric, 1 arma, armatura leggera/media + scudo. Slot magia (cura, buff, danni divini). <em>Spell chiave:</em> Scudo della Fede (+2 a TUTTI i TS per 2T), Aiuto (+1 al danno per 2T).</p>
@@ -7839,6 +7918,7 @@ export default function Arena() {
             const spent = Object.values(pendingStats).reduce((a, b) => a + b, 0);
             const remaining = STAT_BUDGET - spent;
             const STAT_LABELS = [["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]];
+            const keyStats = ARENA_KEY_STATS[getClassKey(charPreview.class)] || [];
             return (
               <div className="hp-roll-panel">
                 <div className="loadout-char-preview" style={{ justifyContent: "center", marginBottom: 20 }}>
@@ -7852,23 +7932,31 @@ export default function Arena() {
                 </div>
                 <div className="hp-roll-title">Caratteristiche</div>
                 <div className="stat-budget-badge">{remaining > 0 ? `${remaining} punti da assegnare` : "✓ Punti assegnati"}</div>
+                <div className="stat-assign-hint">⭐ In <strong>verde</strong> le caratteristiche consigliate per la classe <strong>{charPreview.class}</strong>.</div>
                 <div className="stat-assign-grid">
-                  {STAT_LABELS.map(([key, label]) => (
-                    <div key={key} className="stat-assign-row">
-                      <span className="stat-assign-label">{label}</span>
-                      <button
-                        className="stat-adj-btn"
-                        onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.max(0, prev[key] - 1) }))}
-                        disabled={pendingStats[key] <= 0}
-                      >−</button>
-                      <span className="stat-assign-val">{pendingStats[key] >= 0 ? "+" : ""}{pendingStats[key]}</span>
-                      <button
-                        className="stat-adj-btn"
-                        onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(3, prev[key] + 1) }))}
-                        disabled={pendingStats[key] >= 3 || remaining <= 0}
-                      >+</button>
-                    </div>
-                  ))}
+                  {STAT_LABELS.map(([key, label]) => {
+                    const isKey = keyStats.includes(key);
+                    return (
+                      <div key={key} className={`stat-assign-row${isKey ? " stat-key" : ""}`}>
+                        <span className="stat-assign-label">
+                          {label}
+                          {isKey && <span className="stat-key-tag">⭐ consigliata</span>}
+                        </span>
+                        <button
+                          className="stat-adj-btn"
+                          onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.max(0, prev[key] - 1) }))}
+                          disabled={pendingStats[key] <= 0}
+                        >−</button>
+                        <span className="stat-assign-val">{pendingStats[key] >= 0 ? "+" : ""}{pendingStats[key]}</span>
+                        <button
+                          className="stat-adj-btn"
+                          onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(3, prev[key] + 1) }))}
+                          disabled={pendingStats[key] >= 3 || remaining <= 0}
+                        >+</button>
+                        <div className="stat-assign-desc">{STAT_DESCS[key]}</div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="hp-roll-buttons">
                   <button className="btn-cancel-loadout" onClick={() => setLoadoutPhase("class-select")}>← Classe</button>
@@ -8127,7 +8215,9 @@ export default function Arena() {
                                     <span className="loadout-item-icon">{item.icon}</span>
                                     <span className="loadout-item-name">{item.name}</span>
                                     <span className="loadout-item-damage">{item.damage}</span>
-                                    {item.maxUses && !isLocked && <span className="spell-uses-tag">{item.maxUses} usi</span>}
+                                    {!isLocked && usesSharedSpellSlots(charPreview)
+                                      ? <span className="spell-uses-tag">{(item.level ?? 0) === 0 ? "∞ illimitato" : `${SORC_SLOTS_MAX} slot condivisi`}</span>
+                                      : item.maxUses && !isLocked && <span className="spell-uses-tag">{item.maxUses} usi</span>}
                                     {item.info && <span className="loadout-item-info">{item.info}</span>}
                                     {isSaveDamageSpell(item) && <span className="loadout-item-info">{spellMechanicTag(item)}</span>}
                                     {isSelected && <span className="loadout-check">✓</span>}
@@ -9469,42 +9559,33 @@ export default function Arena() {
                       if (!fonteAction) return null;
                       const usesLeft = myPlayer?.actionUsesLeft?.[fonteAction.name] ?? fonteAction.maxUses;
                       const noUses = usesLeft <= 0;
-                      // Spells that have been partially or fully depleted
-                      const depleteableSpells = (mySnap?.selectedActions || []).filter(a => {
-                        if (!a.maxUses) return false;
-                        const used = myPlayer?.actionUsesLeft?.[a.name] ?? a.maxUses;
-                        return used < a.maxUses;
-                      });
                       if (showFontePicker) {
+                        const slot1 = readSpellSlots(myPlayer, 1);
+                        const slot2 = readSpellSlots(myPlayer, 2);
+                        const fonteOpts = [
+                          { l1: 2, l2: 0, label: "+2 slot Lv1" },
+                          { l1: 1, l2: 1, label: "+1 Lv1 · +1 Lv2" },
+                          { l1: 0, l2: 2, label: "+2 slot Lv2" },
+                        ];
                         return (
                           <div className="lay-of-hands-picker">
-                            <div className="loh-title">🔮 Fonte di Magia — Scegli 2 slot da ripristinare ({2 - fonteSelected.length} rimasti)</div>
+                            <div className="loh-title">🔮 Fonte di Magia — Recupera 2 slot (hai Lv1 {slot1}/{SORC_SLOTS_MAX} · Lv2 {slot2}/{SORC_SLOTS_MAX})</div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", margin: "8px 0" }}>
-                              {depleteableSpells.length === 0
-                                ? <span style={{ opacity: 0.6 }}>Nessun slot esaurito</span>
-                                : depleteableSpells.map(sp => {
-                                    const cur = myPlayer?.actionUsesLeft?.[sp.name] ?? sp.maxUses;
-                                    const isSel = fonteSelected.includes(sp.name);
-                                    return (
-                                      <button key={sp.name}
-                                        className={`equip-weapon-btn ${isSel ? "sel" : ""}`}
-                                        disabled={!isSel && fonteSelected.length >= 2}
-                                        onClick={() => setFonteSelected(prev =>
-                                          isSel ? prev.filter(n => n !== sp.name) : [...prev, sp.name]
-                                        )}>
-                                        {sp.icon} {sp.name} ({cur}/{sp.maxUses})
-                                      </button>
-                                    );
-                                  })
-                              }
+                              {fonteOpts.map(o => {
+                                // l'opzione è inutile se i pool interessati sono già pieni
+                                const effective = Math.min(o.l1, SORC_SLOTS_MAX - slot1) + Math.min(o.l2, SORC_SLOTS_MAX - slot2);
+                                return (
+                                  <button key={o.label}
+                                    className="equip-weapon-btn"
+                                    disabled={effective <= 0}
+                                    onClick={() => handleFonteConfirm(m.matchId, fonteAction, o.l1, o.l2)}>
+                                    {o.label}
+                                  </button>
+                                );
+                              })}
                             </div>
                             <div className="loh-buttons">
                               <button className="btn-cancel-wild" onClick={() => { setShowFontePicker(false); setFonteSelected([]); }}>Annulla</button>
-                              <button className="btn-join" style={{ padding: "6px 18px", fontSize: "0.88rem" }}
-                                disabled={fonteSelected.length === 0}
-                                onClick={() => handleFonteConfirm(m.matchId, fonteAction, fonteSelected)}>
-                                Ripristina ({fonteSelected.length}/2)
-                              </button>
                             </div>
                           </div>
                         );
@@ -9873,7 +9954,7 @@ export default function Arena() {
                           if (action.special === "deathblow" && targetHpPct > 20) return null;
                           const isDeathblow = action.special === "deathblow";
                           if (action.special === "heal") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             return (
                               <button key={action.name} className={`btn-action spell heal ${noUses ? "no-uses" : ""}`}
@@ -9887,7 +9968,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "control" || action.special === "corona_pazzia") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const _casterSnap = arenaMeta.characterSnapshots?.[currentUser.uid];
                             const _dc      = getSpellSaveDC(_casterSnap);
@@ -9904,7 +9985,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "bardic_inspiration") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.bardicInspirationActive;
                             const baUsed = !!myPlayer?.bonusActionUsed;
@@ -9924,7 +10005,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "magic_detect") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.magicDetectActive;
                             const mdBonusVal  = action.buffBonus  ?? getMagicDetectBonusForClass(mySnap?.class || "");
@@ -9944,7 +10025,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "concentrate_buff") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = (myPlayer?.concentrationTurns ?? 0) > 0;
                             const baUsed = !!myPlayer?.bonusActionUsed;
@@ -9964,7 +10045,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "absorb_damage") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.absorbDamageNext;
                             const baUsed = !!myPlayer?.bonusActionUsed;
@@ -9984,7 +10065,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "ki_healing") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const baUsed = !!myPlayer?.bonusActionUsed;
                             const blocked = noUses || baUsed;
@@ -10179,7 +10260,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "invisibility") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.invisible;
                             return (
@@ -10196,7 +10277,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "second_wind") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             return (
                               <button key={action.name}
@@ -10212,7 +10293,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "action_surge") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.actionSurgeActive;
                             const baUsed = !!myPlayer?.bonusActionUsed;
@@ -10232,7 +10313,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "rage") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = (myPlayer?.rageTurns ?? 0) > 0;
                             const baUsed = !!myPlayer?.bonusActionUsed;
@@ -10252,7 +10333,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "hunter_mark") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = (myPlayer?.hunterMarkTurns ?? 0) > 0;
                             const baUsed = !!myPlayer?.bonusActionUsed;
@@ -10272,7 +10353,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "weapon_lock") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const blocked = noUses || !chosenTargetId;
                             return (
@@ -10289,7 +10370,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "disadvantage_enemy") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const blocked = noUses || !chosenTargetId;
                             return (
@@ -10306,7 +10387,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "self_advantage") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = (myPlayer?.selfAdvTurns ?? 0) > 0;
                             const advTurns = action.advantageTurns ?? 2;
@@ -10324,7 +10405,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "extra_turn") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.extraTurnActive;
                             return (
@@ -10341,7 +10422,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "save_buff") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = (myPlayer?.saveBuffAttacks ?? 0) > 0;
                             return (
@@ -10358,7 +10439,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "save_dot") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const blocked = noUses || !chosenTargetId;
                             const _casterSnap = arenaMeta.characterSnapshots?.[currentUser.uid];
@@ -10380,7 +10461,7 @@ export default function Arena() {
                           if (action.special === "shield_buff") {
                             const sbBonus = action.shieldBuffBonus ?? 3;
                             const sbTurns = action.shieldBuffTurns ?? 3;
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             return (
                               <button key={action.name} className={`btn-action skill ${noUses ? "no-uses" : ""}`}
@@ -10397,7 +10478,7 @@ export default function Arena() {
                           if (action.special === "save_faith") {
                             const sfBonus = action.saveFaithBonus ?? 2;
                             const sfTurns = action.saveFaithTurns ?? 2;
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const active = (myPlayer?.saveFaithTurns ?? 0) > 0;
                             return (
@@ -10415,7 +10496,7 @@ export default function Arena() {
                           if (action.special === "dmg_buff") {
                             const dbBonus = action.aidDmgBonus ?? 1;
                             const dbTurns = action.aidDmgTurns ?? 2;
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const active = (myPlayer?.aidDmgTurns ?? 0) > 0;
                             return (
@@ -10431,7 +10512,7 @@ export default function Arena() {
                             );
                           }
                           if (action.special === "aid_buff") {
-                            const usesLeft = action.maxUses !== undefined ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses) : null;
+                            const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                             const noUses = usesLeft !== null && usesLeft <= 0;
                             const alreadyActive = !!myPlayer?.aidBuff;
                             const aidBonusVal = getAidBonusForClass(mySnap?.class || "");
@@ -10451,9 +10532,7 @@ export default function Arena() {
                             const pool = myPlayer?.layOfHandsPool ?? 0;
                             return null; // rendered separately outside renderActionBtn
                           }
-                          const usesLeft = action.maxUses !== undefined
-                            ? (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses)
-                            : null;
+                          const usesLeft = readSpellUsesLeft(myPlayer, mySnap, action);
                           const noUsesLeft = usesLeft !== null && usesLeft <= 0;
                           const isWeapon   = action.type === "weapon";
                           const isEquipped = !isWeapon || wildShapeForm || equippedNames.includes(action.name);
@@ -10572,6 +10651,11 @@ export default function Arena() {
                               <div key={lvl} className="action-group">
                                 <div className={`action-group-label spell-lv${lvl}`}>
                                   {lvl === 0 ? "✨" : "🔮"} {LEVEL_LABELS[lvl]}
+                                  {usesSharedSpellSlots(mySnap) && (
+                                    lvl === 0
+                                      ? <span style={{ opacity: 0.85 }}> · ∞</span>
+                                      : <span style={{ opacity: 0.85 }}> · {readSpellSlots(myPlayer, lvl)}/{SORC_SLOTS_MAX} slot</span>
+                                  )}
                                 </div>
                                 <div className="action-buttons">{spells.map(renderActionBtn)}</div>
                               </div>

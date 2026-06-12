@@ -1,6 +1,59 @@
 {
   "versions": [
     {
+      "version": "17.07",
+      "date": "2026-06-12",
+      "title": "Arena — Creazione PG guidata: stat consigliate per classe",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nella schermata di assegnazione punti, le caratteristiche chiave della classe scelta sono evidenziate in verde con l'etichetta \"consigliata\". Sotto ogni caratteristica una breve descrizione spiega a cosa serve in Arena (colpire, CA, punti ferita, CD degli incantesimi, tiri salvezza)."
+        }
+      ]
+    },
+    {
+      "version": "17.06",
+      "date": "2026-06-12",
+      "title": "Arena — Stregone rinforzato: slot in stile D&D e nuovi incantesimi",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Stregone: i trucchetti sono ora ILLIMITATI. Gli incantesimi di livello 1 e 2 usano veri spell slot condivisi in stile D&D: 4 slot di Lv1 e 4 slot di Lv2 a partita, spendibili su qualunque combinazione di incantesimi di quel livello."
+        },
+        {
+          "type": "balance",
+          "text": "Stregone: 6 nuovi incantesimi nel pool, presi dalla sua lista ufficiale — trucchetti Tocco Gelido (1d8 necrotico) e Raggio di Gelo (1d8 freddo); Lv1 Colpo Cromatico (3d8) e Charme su Persone (controllo, TS SAG); Lv2 Nube di Pugnali (4d4, colpisce sempre) e Cecità/Sordità (svantaggio agli attacchi nemici per 2 turni). Ora il loadout offre una vera scelta: 4 trucchetti su 6, 4 spell Lv1 su 6, 2 Lv2 su 5."
+        },
+        {
+          "type": "balance",
+          "text": "Stregoneria Innata potenziata: scatta quando il nemico tira 7 o meno sul TS (prima 4 o meno) e ora funziona anche sugli incantesimi con tiro per colpire, con un d20 naturale di 17+. Quando si attiva, il +50% ai danni viene annunciato in chat con una riga dedicata."
+        },
+        {
+          "type": "balance",
+          "text": "Fonte di Magia aggiornata al nuovo sistema: ogni carica recupera 2 slot a scelta (2×Lv1, 2×Lv2 oppure 1+1). I contatori degli slot sono visibili accanto ai livelli nel dock delle magie."
+        }
+      ]
+    },
+    {
+      "version": "17.05",
+      "date": "2026-06-12",
+      "title": "Arena — Armature pesanti del Guerriero riviste",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Guerriero: la Cotta ad Anelli è stata rimossa dalle armature disponibili. Le opzioni pesanti restano Armatura a Placche e Piastre Intere."
+        },
+        {
+          "type": "balance",
+          "text": "Guerriero: l'Armatura a Placche non impone più il malus al tiro per colpire (prima −1). Le Piastre Intere mantengono il −2. Il Paladino conserva la lista pesante completa con i malus invariati."
+        },
+        {
+          "type": "fix",
+          "text": "Corrette le descrizioni delle armature pesanti che indicavano malus errati (−3/−4) rispetto a quelli realmente applicati."
+        }
+      ]
+    },
+    {
       "version": "17.04",
       "date": "2026-06-12",
       "title": "Strumenti DM — Generatore NPC in tema scuro",
