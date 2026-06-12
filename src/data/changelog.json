@@ -1,6 +1,48 @@
 {
   "versions": [
     {
+      "version": "17.09",
+      "date": "2026-06-12",
+      "title": "Scheda PG — Layout largo su PC, ricerca e zaino organizzato",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "La Scheda PG ora parte sempre sotto il menu di navigazione (prima la barra bianca tagliava la parte alta della scheda). Su PC il layout si allarga: caratteristiche su 6 colonne, abilità su 3, carte e zaino su 2. Su smartphone resta la colonna singola."
+        },
+        {
+          "type": "graphic",
+          "text": "Incantesimi colorati per livello: trucchetti acciaio, Lv1 azzurri, Lv2 rossi, Lv3 verdi, Lv4 viola, Lv5 arancio — bordo della carta e titolo di sezione seguono il colore del livello."
+        },
+        {
+          "type": "graphic",
+          "text": "Caratteristiche: i modificatori negativi sono in arancio, e le due stat chiave della classe sono evidenziate in verde con una stella."
+        },
+        {
+          "type": "feature",
+          "text": "Nuova barra di ricerca nella scheda: trova all'istante oggetti dello zaino, incantesimi e azioni per nome o tipologia."
+        },
+        {
+          "type": "feature",
+          "text": "Zaino riorganizzato per tipologia (Armi, Munizioni, Equipaggiamento, Consumabili, Strumenti, Tesori), con i contenitori e il loro contenuto in fondo. Rimosso il tasto di tiro dalle armi della scheda."
+        }
+      ]
+    },
+    {
+      "version": "17.08",
+      "date": "2026-06-12",
+      "title": "Arena — Pulsante iniziativa leggibile e tiri del dado più chiari",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Il pulsante \"Tira Iniziativa\" è ora oro pieno con testo scuro e bagliore: prima, nel combat su tema scuro, risultava quasi invisibile (testo scuro su fondo trasparente)."
+        },
+        {
+          "type": "fix",
+          "text": "Le etichette dei tiri di dado nelle sfide contro l'IA ora dicono chi tira e perché: \"X lancia Spruzzo Velenoso → Y tira il TS COS\" invece del generico \"TS COS · Spruzzo Velenoso\". Il TS che compariva dopo un tiro per colpire mancato era l'azione successiva dell'IA contro di te, non un tiro legato alla spell mancata: le spell con tiro per colpire non fanno mai tirare alcun TS."
+        }
+      ]
+    },
+    {
       "version": "17.07",
       "date": "2026-06-12",
       "title": "Arena — Creazione PG guidata: stat consigliate per classe",

@@ -1382,27 +1382,31 @@
 }
 
 /* ---- INIT BUTTON ----------------------------------------- */
+/* Deve essere LEGGIBILE ovunque (card chiare E modale combat scuro, che è
+   in portal fuori da .arena-page): fondo oro pieno + testo scuro, mai
+   trasparenze che spariscono sul tema scuro. */
 .btn-init {
   display: block;
   width: 100%;
   margin-top: 12px;
-  padding: 9px;
-  background: rgba(212, 175, 55, 0.1);
-  color: #7a5e10;
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  border-radius: 7px;
+  padding: 10px;
+  background: linear-gradient(135deg, #efd283 0%, #d4af37 55%, #a87b1f 100%);
+  color: #241c05;
+  border: 2px solid #f3e3b0;
+  border-radius: 8px;
   font-family: var(--font-title);
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   transition: 0.2s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 16px rgba(212, 175, 55, 0.45);
 }
 
 .btn-init:hover {
-  background: rgba(212, 175, 55, 0.2);
-  border-color: var(--gold);
+  filter: brightness(1.08);
+  border-color: #ffffff;
 }
 
 /* ---- ACTION PANEL ---------------------------------------- */
@@ -8597,16 +8601,27 @@
 .arena-combat-dialog .action-dice { color: var(--fc-ink-soft); }
 
 /* ── Bottoni iniziativa / tiro salvezza / item / target ── */
-.arena-combat-dialog .btn-init,
-.arena-combat-dialog .btn-saving-throw {
-  background: linear-gradient(180deg, rgba(232, 198, 106, 0.16), rgba(180, 130, 30, 0.12));
-  color: var(--fc-gold-bright);
-  border: 1px solid var(--fc-line-strong);
+/* Tira Iniziativa nel modale combat: oro pieno, MAI traslucido (su fondo
+   scuro il testo scuro su sfondo trasparente era illeggibile). */
+.arena-combat-dialog .btn-init {
+  background: linear-gradient(135deg, #efd283 0%, #e3c558 55%, #b8892a 100%) !important;
+  color: #241c05 !important;
+  border: 2px solid #f3e3b0 !important;
+  font-weight: 800;
+  box-shadow: 0 0 18px rgba(227, 197, 88, 0.5) !important;
 }
-.arena-combat-dialog .btn-init:hover,
+.arena-combat-dialog .btn-saving-throw {
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.22), rgba(180, 130, 30, 0.16));
+  color: var(--fc-gold-bright, #f4da86);
+  border: 1px solid var(--fc-line-strong, rgba(232, 198, 106, 0.44));
+}
+.arena-combat-dialog .btn-init:hover {
+  filter: brightness(1.08);
+  border-color: #ffffff !important;
+}
 .arena-combat-dialog .btn-saving-throw:hover {
-  background: linear-gradient(180deg, rgba(232, 198, 106, 0.28), rgba(180, 130, 30, 0.2));
-  border-color: var(--fc-gold);
+  background: linear-gradient(180deg, rgba(232, 198, 106, 0.32), rgba(180, 130, 30, 0.24));
+  border-color: var(--fc-gold, #e8c66a);
 }
 .arena-combat-dialog .btn-item {
   background: rgba(232, 198, 106, 0.1);

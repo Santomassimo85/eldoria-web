@@ -25,7 +25,7 @@ import ItemDetail from "./pages/ItemDetail";
 import AdminPanel from "./pages/AdminPanel";
 import MarketAdmin from "./pages/MarketAdmin";
 import SummaryAdmin from "./pages/SummaryAdmin";
-import PgSheetEditor from "./pages/PgSheetEditor";
+import SchedaPG from "./pages/SchedaPG";
 import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
 import Bacheca from "./pages/Bacheca";
@@ -400,6 +400,7 @@ export default function App() {
 
           <NavDropdown label="Eroi" closeAll={closeMenu}>
             <NavLink to="/party">Party</NavLink>
+            <NavLink to="/scheda-pg">Scheda PG</NavLink>
             <NavLink to="/npc">NPC</NavLink>
             <NavLink to="/riassunti">Riassunti</NavLink>
           </NavDropdown>
@@ -440,7 +441,8 @@ export default function App() {
           <Route path="/bacheca" element={<Bacheca />} />
           <Route path="/quest/:id" element={<QuestDetail />} />
           <Route path="/cinema" element={<Cinema />} />
-          <Route path="/my-pg" element={<PgSheetEditor />} />
+          <Route path="/my-pg" element={<SchedaPG />} />
+          <Route path="/scheda-pg" element={<SchedaPG />} />
           <Route path="/mercato" element={<Mercato />} />
           <Route path="/mercato/:id" element={<ItemDetail />} />
           <Route path="/arena" element={<Arena />} />

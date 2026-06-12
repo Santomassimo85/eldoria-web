@@ -3606,7 +3606,7 @@ export default function Arena() {
       const saveBuffBonus  = saveBuffActive ? (aiPlayer.saveBuffBonus ?? 0) : 0;
       const d20 = Math.floor(Math.random() * 20) + 1;
       const lbl = SAVE_LABEL[ctrlAbility] || ctrlAbility.toUpperCase();
-      await showD20Roll(d20, { label: `TS · ${lbl} · ${aiName}` });
+      await showD20Roll(d20, { label: `${aiName} tira il proprio TS · ${lbl}` });
       const total = d20 + ctrlMod + saveBuffBonus;
       const pass  = total >= ctrlDC;
       const sign  = ctrlMod >= 0 ? "+" : "";
@@ -3681,7 +3681,7 @@ export default function Arena() {
       const saveBuffBonus  = saveBuffActive ? (aiPlayer.saveBuffBonus ?? 0) : 0;
       const d20 = Math.floor(Math.random() * 20) + 1;
       const lbl = SAVE_LABEL[ability] || ability.toUpperCase();
-      await showD20Roll(d20, { label: `TS · ${lbl} · ${aiName}` });
+      await showD20Roll(d20, { label: `${aiName} tira il proprio TS · ${lbl}` });
       const total = d20 + mod + saveBuffBonus;
       const pass  = total >= dc;
       const sign  = mod >= 0 ? "+" : "";
@@ -4020,7 +4020,9 @@ export default function Arena() {
           } else {
             const defMod = targetSnap.stats?.[saveAbil] ?? 0;
             const d20 = Math.floor(Math.random() * 20) + 1;
-            await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbil]} · ${sp.name}` });
+            // Etichetta esplicita: è la spell DELL'IA, il bersaglio tira il TS
+            // (prima "TS COS · Spell" sembrava legato all'azione precedente del player).
+            await showD20Roll(d20, { label: `${aiName} lancia ${sp.name} → ${target.name} tira il TS ${SAVE_LABEL[saveAbil]}` });
             const tsTotal = d20 + defMod + tgtSaveBuff + tgtFaith;
             const saved = tsTotal >= _spellDC;
             connected  = !saved || castMode === "save_half";
