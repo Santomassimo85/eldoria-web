@@ -24,6 +24,10 @@
         {
           "type": "fix",
           "text": "Assistente: le azioni di scrittura ora funzionano davvero — un'offerta in asta blocca il platino e registra la puntata; accettare una missione la assegna al personaggio e al gruppo con lo stato corretto."
+        },
+        {
+          "type": "fix",
+          "text": "Assistente: risolto il caso in cui rispondeva «Non ho trovato una risposta» pur avendo consultato i dati. Il ragionamento interno non esaurisce più i token e, se necessario, viene forzata una risposta finale sui dati già raccolti."
         }
       ]
     },

@@ -307,17 +307,29 @@ function buildSystemPrompt(ctx) {
       (PARTY_ROSTER[ctx.party] ? ` Compagni di gruppo: ${PARTY_ROSTER[ctx.party].join(", ")}.` : "");
   }
   return `Sei l'assistente di gioco per la campagna fantasy Eldoria (sistema D&D 5e).
-Aiuti i giocatori a consultare le informazioni della campagna e a compiere azioni nel gioco.
+Sei un AGENTE: non ti limiti a chiacchierare, agisci. Per ogni richiesta consulti i dati reali con gli strumenti, ragioni e dai una risposta utile e concreta.
 
 CONTESTO GIOCATORE (usalo sempre, non chiederlo): ${who}
 
-Quando l'utente dice "il mio gruppo", "il party", "noi", "la nostra sessione", "l'ultima sessione" o "riassumi", riferisciti SEMPRE al gruppo del giocatore qui sopra (${ctx.party || "sconosciuto"}). I riassunti e le missioni sono divisi per gruppo: usa gli strumenti, che filtrano già sul gruppo giusto.
+Quando l'utente dice "il mio gruppo", "il party", "noi", "la nostra sessione", "l'ultima sessione", "riassumi" o "per me", riferisciti SEMPRE al gruppo del giocatore qui sopra (${ctx.party || "sconosciuto"}). Riassunti e missioni sono divisi per gruppo: gli strumenti filtrano già sul gruppo giusto.
 
-REGOLE:
-- Rispondi SEMPRE in italiano, in modo conciso e coinvolgente, con lo stile di un narratore fantasy ma chiaro.
-- Usa gli strumenti per rispondere su scheda, party, mercato, missioni, NPC, luoghi, sessioni passate, divinità, arena. Non inventare mai dati non presenti negli strumenti: se non trovi qualcosa, dillo.
-- Puoi usare più strumenti per una stessa domanda (es. scheda + party).
-- Per le azioni (fai_offerta, accetta_missione): chiama lo strumento corretto, poi nella risposta finale spiega chiaramente cosa stai per fare e chiedi conferma. Non agire mai senza che l'utente confermi.`;
+COME LAVORI (importante):
+- Per QUALSIASI domanda che riguardi dati di gioco, chiama PRIMA lo strumento giusto e poi rispondi sui risultati. Non rispondere mai "non lo so" senza aver provato uno strumento.
+  · mercato / oggetti in vendita / aste → leggi_mercato
+  · "per me" sul mercato → leggi_mercato e poi evidenzia ciò che è adatto al giocatore (livello Ratto, classe, soldi disponibili).
+  · missioni / incarichi / bacheca → leggi_bacheca
+  · la mia scheda / PF / incantesimi / inventario / soldi → leggi_scheda
+  · il mio gruppo / compagni / party → leggi_party
+  · riassunti / cosa è successo / ultima sessione → leggi_riassunti
+  · NPC / personaggi → leggi_npc · luoghi / città → leggi_geo · divinità → leggi_divinita · arena → leggi_arena
+- Puoi e DEVI usare più strumenti se serve (es. "cosa posso comprare?" → leggi_scheda + leggi_mercato per confrontare i soldi).
+- Dopo aver ricevuto i risultati di uno strumento, produci SEMPRE una risposta testuale per il giocatore. Non terminare mai con una chiamata a strumento senza spiegare cosa hai trovato.
+
+STILE:
+- Rispondi SEMPRE in italiano, con tono da narratore fantasy ma chiaro e diretto. Vai al punto, usa elenchi quando aiutano.
+- Non inventare dati non presenti negli strumenti. Se uno strumento non restituisce nulla, dillo con onestà (es. "Il mercato è vuoto al momento").
+
+AZIONI (scrittura): per fai_offerta e accetta_missione chiama lo strumento, poi nella risposta finale spiega chiaramente cosa stai per fare e chiedi conferma. Non agire mai senza conferma dell'utente.`;
 }
 
 // ---- Scrittura: piazza un'offerta in asta (scala platino, scrive bids.UID) ----
@@ -358,20 +370,34 @@ async function acceptQuest(uid, params, apiKey) {
     : { ok: false, msg: "❌ Errore nell'accettare la missione. Riprova." };
 }
 
-async function callGemini(geminiKey, systemPrompt, contents) {
+async function callGemini(geminiKey, systemPrompt, contents, { useTools = true } = {}) {
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+      // Limita il "thinking" così non consuma tutti i token lasciando la risposta vuota,
+      // ma ne tiene abbastanza per decidere quali strumenti usare.
+      thinkingConfig: { thinkingBudget: 512 },
+    },
+  };
+  if (useTools) body.tools = [TOOLS_DEF];
   const r = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        tools: [TOOLS_DEF],
-      }),
+      body: JSON.stringify(body),
     }
   );
   return r.json();
+}
+
+// Estrae il testo dalle parti, ignorando le parti di "thinking".
+function extractText(data) {
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts.filter(p => p.text && !p.thought).map(p => p.text).join("").trim();
 }
 
 export default async function handler(req, res) {
@@ -421,9 +447,10 @@ export default async function handler(req, res) {
 
     // ---- Ciclo tool use ----
     let pendingAction = null;
+    let usedTools = false;
     let iterations = 0;
 
-    while (iterations < 6) {
+    while (iterations < 8) {
       iterations++;
       const parts = data?.candidates?.[0]?.content?.parts || [];
       const toolCalls = parts.filter(p => p.functionCall);
@@ -432,11 +459,12 @@ export default async function handler(req, res) {
       const resultParts = [];
       for (const part of toolCalls) {
         const { name, args } = part.functionCall;
+        usedTools = true;
 
         // Azioni di scrittura → non eseguire, segnalare al frontend per conferma
         if (name === "fai_offerta" || name === "accetta_missione") {
           pendingAction = { type: name, params: args };
-          resultParts.push({ functionResponse: { name, response: { result: "RICHIEDE_CONFERMA_UTENTE: l'azione verrà eseguita solo dopo che l'utente conferma nel modale." } } });
+          resultParts.push({ functionResponse: { name, response: { result: "RICHIEDE_CONFERMA_UTENTE: l'azione verrà eseguita solo dopo che l'utente conferma nel modale. Riassumi cosa stai per fare e chiedi conferma." } } });
           continue;
         }
 
@@ -451,8 +479,26 @@ export default async function handler(req, res) {
       if (data.error) return res.status(500).json({ error: data.error.message });
     }
 
-    const finalParts = data?.candidates?.[0]?.content?.parts || [];
-    const reply = finalParts.filter(p => p.text).map(p => p.text).join("") || "Non ho trovato una risposta.";
+    let reply = extractText(data);
+
+    // Fallback robusto: se il modello ha raccolto dati ma non ha prodotto testo
+    // (thinking troppo lungo, MAX_TOKENS, oppure è rimasto bloccato sui tool),
+    // forziamo una risposta finale SENZA strumenti usando il contesto già raccolto.
+    if (!reply && (usedTools || pendingAction)) {
+      geminiMessages.push({
+        role: "user",
+        parts: [{ text: "Ora rispondi al giocatore in italiano, in modo chiaro e discorsivo, usando SOLO le informazioni già raccolte qui sopra. Se hai trovato dei dati, presentali; non dire che non hai trovato una risposta." }],
+      });
+      const forced = await callGemini(geminiKey, systemPrompt, geminiMessages, { useTools: false });
+      reply = extractText(forced);
+    }
+
+    if (!reply) {
+      const fr = data?.candidates?.[0]?.finishReason;
+      reply = fr === "SAFETY"
+        ? "Mi spiace, non posso rispondere a questa richiesta."
+        : "Non sono riuscito a formulare una risposta. Riprova a riformulare la domanda.";
+    }
 
     return res.status(200).json({ reply, pendingAction });
   } catch (e) {
