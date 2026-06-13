@@ -50,7 +50,7 @@ const PARTIES = [
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
       { name: "Alaric Voltasorte",      race: "Halfling",                   class: "Warlock",      image: "/assets/player/alaric.png" },
-      { name: "Daga",                   race: "Satiro",                class: "???",      image: "/assets/player/daga.jpeg" },
+      { name: "Daga",                   race: "Satiro",                class: "Paladino",      image: "/assets/player/daga2.jpeg" },
     ],
   },
   {
