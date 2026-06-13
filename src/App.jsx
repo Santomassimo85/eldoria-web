@@ -55,6 +55,7 @@ import Crafting from "./pages/Crafting";
 import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import GeneraNPC from "./GeneraNPC";
+import FoundryItemForm from "./pages/FoundryItemForm";
 import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
 import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
@@ -124,6 +125,13 @@ const DmToolsNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
   if (!isDmUser(currentUser?.email)) return null;
   return <NavLink to="/dm-admin/strumenti" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--red)", fontWeight: 700 })}>Strumenti DM</NavLink>;
+};
+
+// --- Link al form "Crea Oggetto → Foundry" (master + co-master) ---
+const FoundryItemNavLink = ({ closeMenu }) => {
+  const { currentUser } = useAuth();
+  if (!isDmUser(currentUser?.email)) return null;
+  return <NavLink to="/dm-admin/foundry-item" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--red)", fontWeight: 700 })}>Oggetto → Foundry</NavLink>;
 };
 
 // --- Componente Link Admin Condizionale ---
@@ -411,6 +419,7 @@ export default function App() {
         <nav className={menuOpen ? "active" : ""}>
           <NpcGenNavLink closeMenu={closeMenu} />
           <DmToolsNavLink closeMenu={closeMenu} />
+          <FoundryItemNavLink closeMenu={closeMenu} />
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
           <NavLink to="/assistente" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "#0e4d75", fontWeight: 700 })}>Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
@@ -484,6 +493,7 @@ export default function App() {
           {/* ROTTE ADMIN */}
           <Route path="/dm-admin/genera-npc" element={<GeneraNPC />} />
           <Route path="/dm-admin/strumenti" element={<DmTools />} />
+          <Route path="/dm-admin/foundry-item" element={<FoundryItemForm />} />
           <Route path="/dm-admin" element={<AdminPanel />} />
           <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />

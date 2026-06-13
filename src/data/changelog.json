@@ -7,6 +7,10 @@
       "changes": [
         {
           "type": "feature",
+          "text": "Strumenti DM: nuovo «Oggetto → Foundry». Il Master compila un oggetto (nome, tipo, rarità, prezzo, peso, descrizione e campi meccanici come danno, proprietà, CA) e lo mette in coda; una macro lanciata su Foundry crea l'oggetto come Item dnd5e, nel mondo o direttamente nell'inventario di un giocatore scelto. Direzione inversa rispetto alla sincronizzazione delle schede."
+        },
+        {
+          "type": "feature",
           "text": "Assistente: ora riferisce i combattimenti d'arena di torneo in corso — chi sta affrontando chi, i PF di ciascuno e chi sta vincendo — escludendo i match amichevoli e quelli contro l'AI. Basta chiedere «chi sta combattendo nell'arena?»."
         },
         {

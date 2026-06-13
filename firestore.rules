@@ -101,6 +101,15 @@ service cloud.firestore {
       allow write: if isLoggedIn();
     }
 
+    // ── Coda oggetti verso Foundry ───────────────────────────────────────────
+    // Il sito (Master) crea l'oggetto; la macro Foundry lo legge senza auth
+    // (solo API key) e lo marca importato / lo elimina, come fa il sync attore.
+    match /foundry_inbox/{docId} {
+      allow read: if true;            // la macro Foundry legge la coda
+      allow create: if isMaster();    // solo il Master, dal sito
+      allow update, delete: if true;  // la macro marca "imported"/elimina (non autenticata)
+    }
+
     // ── Characters & sheets ──────────────────────────────────────────────────
     // Writes intentionally open because the Pet system needs to write to the
     // opponent's character doc when a battle resolves.

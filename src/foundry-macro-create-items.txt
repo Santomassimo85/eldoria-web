@@ -1,0 +1,166 @@
+// ================================================================
+// MACRO FOUNDRY: Crea Oggetti dal sito → Foundry  (Exanthia Web)
+// ================================================================
+// Specchio inverso della macro di sincronizzazione personaggio.
+// Legge la coda `foundry_inbox` su Firestore (gli oggetti creati dal
+// form "Crea Oggetto → Foundry" sul sito) e li CREA come Item dnd5e:
+//   - target "world"  → nella cartella Oggetti del mondo
+//   - target "player" → nell'inventario del personaggio (via firebaseUID)
+// Dopo aver creato un oggetto, lo RIMUOVE dalla coda.
+//
+// USO: lanciala come GM quando vuoi importare gli oggetti in coda.
+// (Funziona identica su Foundry online: la macro gira nel tuo browser.)
+//
+// NOTA: gli oggetti "player" vengono messi nell'attore che ha il flag
+//   world.firebaseUID uguale all'UID scelto sul sito — lo stesso flag
+//   che imposti per la macro di sincronizzazione.
+// ================================================================
+
+// --- CONFIGURAZIONE FIREBASE (uguale all'altra macro) ---
+const FIREBASE_CONFIG = {
+  projectId: "TUO_PROJECT_ID",
+  apiKey:    "TUA_API_KEY"
+};
+
+const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
+
+// ----------------------------------------------------------------
+// HELPER: converte un valore Firestore REST in JS semplice
+// ----------------------------------------------------------------
+function val(v) {
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue !== undefined) return Number(v.doubleValue);
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.nullValue !== undefined) return null;
+  if (v.timestampValue !== undefined) return v.timestampValue;
+  if (v.mapValue) return obj(v.mapValue.fields || {});
+  if (v.arrayValue) return (v.arrayValue.values || []).map(val);
+  return null;
+}
+function obj(fields) {
+  const o = {};
+  for (const [k, v] of Object.entries(fields)) o[k] = val(v);
+  return o;
+}
+
+// ----------------------------------------------------------------
+// HELPER: costruisce il `system` dnd5e a partire dai dati del sito
+// Gestisce dnd5e v2 e v3 (differenze su weight e properties).
+// ----------------------------------------------------------------
+const DND_MAJOR = parseInt((game.system.version || "3").split(".")[0]) || 3;
+
+function buildItemData(d) {
+  const descHtml = /<[a-z][\s\S]*>/i.test(d.description || "")
+    ? (d.description || "")
+    : `<p>${(d.description || "").replace(/\n/g, "<br>")}</p>`;
+
+  const system = {
+    description: { value: descHtml, chat: "" },
+    quantity: d.quantity || 1,
+    price: { value: d.price || 0, denomination: "gp" },
+    rarity: d.rarity || "",
+    identified: true,
+  };
+
+  // peso: v3 vuole un oggetto {value, units}, v2 un numero
+  system.weight = DND_MAJOR >= 3 ? { value: d.weight || 0, units: "lb" } : (d.weight || 0);
+
+  // ── danno / attacco (armi e consumabili offensivi) ──
+  const parts = [];
+  if (d.damageFormula) parts.push([d.damageFormula, d.damageType || ""]);
+  if (d.damage2Formula) parts.push([d.damage2Formula, d.damage2Type || ""]);
+  if (parts.length || d.versatileFormula) {
+    system.damage = { parts, versatile: d.versatileFormula || "" };
+  }
+  if (d.actionType) system.actionType = d.actionType;
+  if (d.attackBonus) system.attackBonus = String(d.attackBonus);
+
+  // ── tiro salvezza ──
+  if (d.saveAbility && d.saveDC) {
+    system.save = { ability: d.saveAbility, dc: d.saveDC, scaling: "flat" };
+  }
+
+  // ── per tipo ──
+  if (d.foundryType === "weapon") {
+    // competenza: v3 usa system.proficient (numero), v2 idem
+    system.proficient = d.proficient ? 1 : 0;
+    const props = Array.isArray(d.properties) ? d.properties : [];
+    if (DND_MAJOR >= 3) {
+      system.properties = props;                       // v3: array di chiavi
+    } else {
+      system.properties = props.reduce((o, k) => (o[k] = true, o), {}); // v2: oggetto
+    }
+  }
+
+  if (d.foundryType === "equipment" && d.armorType) {
+    system.armor = { value: d.armorValue || 0, type: d.armorType, dex: null };
+    system.type = { value: d.armorType };
+  }
+
+  const out = { name: d.name || "Oggetto", type: d.foundryType || "loot", system };
+  if (d.img) out.img = d.img;
+  return out;
+}
+
+// ----------------------------------------------------------------
+// MAIN
+// ----------------------------------------------------------------
+(async () => {
+  ui.notifications.info("Importazione oggetti dal sito in corso…");
+
+  // 1) leggi la coda
+  let docs = [];
+  try {
+    const res = await fetch(`${BASE}/foundry_inbox?key=${FIREBASE_CONFIG.apiKey}&pageSize=200`);
+    const data = await res.json();
+    docs = (data.documents || []).map(doc => ({
+      _path: doc.name,                         // path completo per DELETE
+      _id: doc.name.split("/").pop(),
+      ...obj(doc.fields || {})
+    }));
+  } catch (e) {
+    ui.notifications.error("Errore lettura coda Firestore.");
+    console.error(e);
+    return;
+  }
+
+  const pending = docs.filter(d => d.status === "pending");
+  if (!pending.length) {
+    ui.notifications.info("Nessun oggetto in coda.");
+    return;
+  }
+
+  let created = 0, skipped = 0;
+  for (const d of pending) {
+    try {
+      const itemData = buildItemData(d);
+
+      if (d.target === "player") {
+        // trova l'attore col flag firebaseUID corrispondente
+        const actor = game.actors.contents.find(a => a.getFlag("world", "firebaseUID") === d.targetUid);
+        if (!actor) {
+          console.warn(`[Import] Nessun attore con firebaseUID ${d.targetUid} per "${d.name}". Salto.`);
+          ui.notifications.warn(`"${d.name}": nessun attore collegato a ${d.targetName || d.targetUid}.`);
+          skipped++;
+          continue; // lascia in coda per riprovare
+        }
+        await actor.createEmbeddedDocuments("Item", [itemData]);
+        console.log(`[Import] "${d.name}" → inventario di ${actor.name}`);
+      } else {
+        await Item.create(itemData);
+        console.log(`[Import] "${d.name}" → cartella Oggetti del mondo`);
+      }
+
+      // 2) rimuovi dalla coda (DELETE su Firestore)
+      await fetch(`https://firestore.googleapis.com/v1/${d._path}?key=${FIREBASE_CONFIG.apiKey}`, { method: "DELETE" });
+      created++;
+    } catch (e) {
+      console.error(`[Import] Errore su "${d.name}":`, e);
+      ui.notifications.error(`Errore su "${d.name}": ${e.message || e}`);
+      skipped++;
+    }
+  }
+
+  ui.notifications.info(`✅ Creati ${created} oggetti${skipped ? `, ${skipped} saltati` : ""}.`);
+})();
