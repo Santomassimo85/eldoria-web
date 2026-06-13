@@ -69,16 +69,30 @@ async function readDoc(path, apiKey) {
   return firestoreDocToObj(data);
 }
 
-// PATCH con supporto a field paths annidati (es. "bids.UID") e valori mappa/array.
+// PATCH con supporto a field paths annidati (es. "bids.UID").
+// Per un path "a.b" Firestore REST richiede: updateMask.fieldPaths=a.b E un body
+// con la struttura mappa annidata { a: { mapValue: { fields: { b: <valore> } } } }.
+// (NON una chiave letterale "a.b": quella corromperebbe il documento.)
 async function patchDoc(path, fields, apiKey) {
-  const mask = Object.keys(fields)
-    .map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`)
-    .join("&");
-  const url = `${FS_BASE}/${path}?key=${apiKey}&${mask}`;
+  const maskPaths = [];
   const body = { fields: {} };
   for (const [k, v] of Object.entries(fields)) {
-    body.fields[k] = toFirestoreValue(v);
+    const segs = k.split(".");
+    // updateMask: ogni segmento "strano" va racchiuso in backtick
+    maskPaths.push(segs.map(s => /^[A-Za-z_][A-Za-z0-9_]*$/.test(s) ? s : "`" + s + "`").join("."));
+    // costruisci la struttura annidata nel body
+    let cursor = body.fields;
+    segs.forEach((seg, i) => {
+      if (i === segs.length - 1) {
+        cursor[seg] = toFirestoreValue(v);
+      } else {
+        if (!cursor[seg]) cursor[seg] = { mapValue: { fields: {} } };
+        cursor = cursor[seg].mapValue.fields;
+      }
+    });
   }
+  const mask = maskPaths.map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join("&");
+  const url = `${FS_BASE}/${path}?key=${apiKey}&${mask}`;
   const r = await fetch(url, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -508,27 +522,43 @@ STILE:
 AZIONI (scrittura): per fai_offerta e accetta_missione chiama lo strumento, poi nella risposta finale spiega chiaramente cosa stai per fare e chiedi conferma. Non agire mai senza conferma dell'utente.`;
 }
 
+// Risolve l'oggetto del mercato: prima per id, poi (fallback robusto) per nome.
+// Gli id Firestore sono stringhe casuali di 20 caratteri che il modello può
+// trascrivere male: la ricerca per nome rende l'offerta affidabile lo stesso.
+async function resolveMarketItem(params, apiKey) {
+  let item = params.item_id ? await readDoc(`items/${params.item_id}`, apiKey) : null;
+  if (item && item.name) return { item, id: params.item_id };
+
+  const wanted = (params.item_nome || "").trim().toLowerCase();
+  if (!wanted) return { item: null, id: null };
+  const all = await readCollection("items", apiKey, 60);
+  const candidates = all.filter(i => (i.name || "").trim().toLowerCase() === wanted);
+  // Preferisci un oggetto non ancora venduto
+  const pick = candidates.find(i => !i.isSold) || candidates[0] || null;
+  return pick ? { item: pick, id: pick._id } : { item: null, id: null };
+}
+
 // ---- Scrittura: piazza un'offerta in asta (scala platino, scrive bids.UID) ----
 async function placeBid(uid, params, apiKey) {
-  const item = await readDoc(`items/${params.item_id}`, apiKey);
-  if (!item || !item.name) return { ok: false, msg: "❌ Oggetto non più disponibile." };
-  if (item.isSold) return { ok: false, msg: "❌ Questo oggetto è già stato venduto." };
-  if (item.saleType !== "auction") return { ok: false, msg: "❌ Questo oggetto non è in asta: non si possono fare offerte." };
+  const { item, id } = await resolveMarketItem(params, apiKey);
+  if (!item || !item.name) return { ok: false, msg: `❌ Non trovo "${params.item_nome || params.item_id}" al mercato. Controlla il nome o riprova a chiedere cosa c'è in vendita.` };
+  if (item.isSold) return { ok: false, msg: `❌ **${item.name}** è già stato venduto.` };
+  if (item.saleType !== "auction") return { ok: false, msg: `❌ **${item.name}** non è all'asta: non si possono fare offerte.` };
   const minBid = item.startingBid || 0;
-  if (params.importo < minBid) return { ok: false, msg: `❌ L'offerta minima è ${minBid} MP.` };
+  if (params.importo < minBid) return { ok: false, msg: `❌ L'offerta minima per **${item.name}** è ${minBid} MP.` };
 
   const me = await readDoc(`characters/${uid}`, apiKey);
   const platinum = me?.platinum || 0;
   if (platinum < params.importo) return { ok: false, msg: `❌ Platino insufficiente: hai ${platinum} MP, ne servono ${params.importo}.` };
 
   const charName = me?.name || "Un eroe";
-  const okItem = await patchDoc(`items/${params.item_id}`, {
+  const okItem = await patchDoc(`items/${id}`, {
     [`bids.${uid}`]: { amount: params.importo, charName, timestamp: new Date().toISOString() },
   }, apiKey);
   if (!okItem) return { ok: false, msg: "❌ Errore nell'invio dell'offerta. Riprova." };
 
   await patchDoc(`characters/${uid}`, { platinum: platinum - params.importo }, apiKey);
-  return { ok: true, msg: `✅ Offerta di **${params.importo} MP** su **${params.item_nome}** piazzata! Il platino è stato bloccato; verrà rimborsato se non vinci l'asta.` };
+  return { ok: true, msg: `✅ Offerta di **${params.importo} MP** su **${item.name}** piazzata! Il platino è stato bloccato; verrà rimborsato se non vinci l'asta.` };
 }
 
 // ---- Scrittura: accetta una missione ----

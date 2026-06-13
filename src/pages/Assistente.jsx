@@ -1,12 +1,135 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
+import { db } from "../firebase";
+import {
+  doc, getDoc, collection, query, where, getDocs,
+  runTransaction, writeBatch, serverTimestamp,
+} from "firebase/firestore";
 
 /* ============================================================
    Assistente Player — chat in linguaggio naturale con Eldoria.
    Legge scheda, mercato, bacheca, NPC, luoghi, riassunti, ecc.
    Le azioni (offerte, missioni) chiedono sempre conferma.
-   Backend: /api/assistente (Gemini, gratuito).
+   Backend: /api/assistente (Gemini, gratuito) per la CONVERSAZIONE.
+   Le SCRITTURE confermate (offerta, accetta missione) avvengono
+   qui lato client, dove l'utente è autenticato (le regole Firestore
+   richiedono il login: il backend non potrebbe scriverle).
    ============================================================ */
+
+// Roster party (allineato a Bacheca.jsx) per accettare missioni di gruppo.
+const PARTY_ROSTER = {
+  "AMEA": ["Tanagar", "Garroth Tel´Arion", "Caius Maxis-Richtofen"],
+  "ENOX": ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger", "Timoty Bevibotte", "Alaric Voltasorte"],
+  "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
+  "LEAF": ["Makenna", "Taaras Stormrage", "Soran", "Zethir Nightwhisper"],
+  "ECO":  ["Aksel", "Dago", "Ismael Van Dyke"],
+};
+const getPartyByCharName = (name) => {
+  for (const [party, members] of Object.entries(PARTY_ROSTER)) {
+    if (members.includes(name)) return party;
+  }
+  return "Senza Gruppo";
+};
+
+// Risolve un oggetto del mercato per id, con fallback per nome (l'id può essere
+// trascritto male dall'AI). Ritorna { id, data } o null.
+async function resolveItem(params) {
+  if (params.item_id) {
+    const snap = await getDoc(doc(db, "items", params.item_id));
+    if (snap.exists()) return { id: snap.id, data: snap.data() };
+  }
+  const nome = (params.item_nome || "").trim();
+  if (!nome) return null;
+  const qs = await getDocs(query(collection(db, "items"), where("name", "==", nome)));
+  const docs = qs.docs.map(d => ({ id: d.id, data: d.data() }));
+  return docs.find(d => !d.data.isSold) || docs[0] || null;
+}
+
+// Piazza un'offerta in asta lato client (come ItemDetail.handleSubmitOffer).
+async function doOffer(uid, params) {
+  const found = await resolveItem(params);
+  if (!found) return `⚠️ Non trovo "${params.item_nome || params.item_id}" al mercato. Controlla il nome.`;
+  const { id, data } = found;
+  if (data.isSold) return `⚠️ **${data.name}** è già stato venduto.`;
+  if (data.saleType !== "auction") return `⚠️ **${data.name}** non è all'asta: non si possono fare offerte.`;
+  const amount = parseInt(params.importo, 10);
+  const minBid = data.startingBid || 0;
+  if (!(amount >= minBid)) return `⚠️ L'offerta minima per **${data.name}** è ${minBid} MP.`;
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const charRef = doc(db, "characters", uid);
+      const itemRef = doc(db, "items", id);
+      const charSnap = await tx.get(charRef);
+      const plat = charSnap.data()?.platinum || 0;
+      if (plat < amount) throw new Error(`Platino insufficiente: hai ${plat} MP, ne servono ${amount}.`);
+      const charName = charSnap.data()?.name || "Un eroe";
+      tx.update(charRef, { platinum: plat - amount });
+      tx.update(itemRef, {
+        [`bids.${uid}`]: { amount, charName, timestamp: new Date().toISOString() },
+      });
+      const notifyRef = doc(collection(db, "notifications"));
+      tx.set(notifyRef, {
+        userId: uid, title: "Offerta Piazzata! 🎲",
+        message: `Hai puntato ${amount} MP per "${data.name}". Incrocia le dita!`,
+        read: false, timestamp: serverTimestamp(),
+      });
+    });
+    return `✅ Offerta di **${amount} MP** su **${data.name}** piazzata! Il platino è stato bloccato; verrà rimborsato se non vinci l'asta.`;
+  } catch (e) {
+    return `⚠️ ${e.message || "Errore nell'invio dell'offerta."}`;
+  }
+}
+
+// Accetta una missione lato client (come Bacheca.toggleQuestStatus).
+async function doAcceptQuest(uid, params) {
+  let qDoc = null;
+  if (params.quest_id) {
+    const snap = await getDoc(doc(db, "quests", params.quest_id));
+    if (snap.exists()) qDoc = { id: snap.id, data: snap.data() };
+  }
+  if (!qDoc && params.quest_titolo) {
+    const qs = await getDocs(query(collection(db, "quests"), where("title", "==", params.quest_titolo.trim())));
+    if (qs.docs[0]) qDoc = { id: qs.docs[0].id, data: qs.docs[0].data() };
+  }
+  if (!qDoc) return `⚠️ Non trovo la missione "${params.quest_titolo || params.quest_id}".`;
+  if (qDoc.data.acceptedBy) return `⚠️ La missione **${qDoc.data.title}** è già stata accettata da ${qDoc.data.acceptedBy}.`;
+
+  const charSnap = await getDoc(doc(db, "characters", uid));
+  const charName = charSnap.exists() ? (charSnap.data().name || "") : "";
+  if (!charName) return "⚠️ Scheda non trovata: impossibile accettare la missione.";
+  const party = getPartyByCharName(charName);
+
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, "quests", qDoc.id), {
+      acceptedBy: charName, acceptedParty: party, status: "in_progress",
+    });
+    // Notifica al compagni se è una missione di gruppo, altrimenti a sé stessi.
+    const isPartyQuest = qDoc.data.targetParty && qDoc.data.targetParty !== "All";
+    const members = isPartyQuest ? (PARTY_ROSTER[qDoc.data.targetParty] || []) : [];
+    if (members.length) {
+      const cs = await getDocs(query(collection(db, "characters"), where("name", "in", members)));
+      cs.forEach((m) => {
+        batch.set(doc(collection(db, "notifications")), {
+          userId: m.id, title: "⚔️ Missione di Gruppo!",
+          message: `${charName} ha accettato "${qDoc.data.title}" per il party ${party}. Preparatevi!`,
+          read: false, timestamp: serverTimestamp(),
+        });
+      });
+    } else {
+      batch.set(doc(collection(db, "notifications")), {
+        userId: uid, title: "📜 Incarico Accettato",
+        message: `Hai preso in carico la missione: "${qDoc.data.title}".`,
+        read: false, timestamp: serverTimestamp(),
+      });
+    }
+    await batch.commit();
+    return `✅ Missione **${qDoc.data.title}** accettata a nome di **${charName}** (gruppo ${party})! Buona fortuna.`;
+  } catch (e) {
+    return `⚠️ ${e.message || "Errore nell'accettare la missione."}`;
+  }
+}
 
 const CSS = `
 .ast{
@@ -232,15 +355,16 @@ export default function Assistente() {
     setLoading(true);
     addTrace("⚡", `Eseguo: ${action.type}`);
     try {
-      const r = await fetch("/api/assistente", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ uid: currentUser?.uid, confirmedAction: action })
-      });
-      const data = await r.json();
-      if (data.error) throw new Error(data.error);
+      const uid = currentUser?.uid;
+      if (!uid) throw new Error("Devi essere loggato per eseguire questa azione.");
+      // La scrittura avviene QUI lato client (utente autenticato): le regole
+      // Firestore richiedono il login, quindi il backend non potrebbe scriverla.
+      let reply;
+      if (action.type === "fai_offerta") reply = await doOffer(uid, action.params);
+      else if (action.type === "accetta_missione") reply = await doAcceptQuest(uid, action.params);
+      else throw new Error("Azione non riconosciuta.");
       addTrace("✅", "Azione completata");
-      setMessages(m => [...m, { role: "assistant", content: data.reply, time: now() }]);
+      setMessages(m => [...m, { role: "assistant", content: reply, time: now() }]);
     } catch (e) {
       setMessages(m => [...m, { role: "assistant", content: `⚠️ Errore: ${e.message}`, time: now() }]);
     } finally {

@@ -6,6 +6,10 @@
       "title": "Assistente di Eldoria — consapevole di giocatore e gruppo",
       "changes": [
         {
+          "type": "fix",
+          "text": "Assistente: le offerte al mercato nero ora vanno a buon fine. Dopo la conferma non compare più «oggetto non più disponibile»: l'offerta viene piazzata correttamente (platino bloccato e puntata registrata) e l'oggetto viene riconosciuto anche se il nome è scritto in modo leggermente diverso. Stesso fix per l'accettazione delle missioni."
+        },
+        {
           "type": "feature",
           "text": "Assistente: conosce ora TUTTE le valute e i progressi del giocatore — oro, platino del mercato nero, monete Arena, monete TCG, rango Ratto — oltre al profilo del gioco di carte (classe TCG, carte possedute, dimensione del mazzo). Chiedendo «quante monete ho?» risponde con tutti i conti."
         },
