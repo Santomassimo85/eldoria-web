@@ -294,17 +294,31 @@ function now() {
 export default function Assistente() {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Salve, avventuriero. Sono la memoria vivente di Eldoria. Chiedimi di missioni, mercato, personaggi, luoghi o sessioni passate. Come posso aiutarti?", time: now() }
+    { role: "assistant", content: "Salve. Sono la memoria vivente di Eldoria. Chiedimi di missioni, mercato, personaggi, luoghi o sessioni passate. Come posso aiutarti?", time: now() }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [trace, setTrace] = useState([]);
   const [pendingAction, setPendingAction] = useState(null);
   const [showHints, setShowHints] = useState(true);
+  const greetedRef = useRef(false);
   const bottomRef = useRef(null);
   const taRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+
+  // Saluto personalizzato col nome del personaggio (se la conversazione è ancora vergine).
+  useEffect(() => {
+    if (!currentUser?.uid || greetedRef.current) return;
+    greetedRef.current = true;
+    getDoc(doc(db, "characters", currentUser.uid)).then(snap => {
+      const nome = snap.exists() ? (snap.data().name || "").trim() : "";
+      if (!nome) return;
+      setMessages(m => (m.length === 1 && m[0].role === "assistant")
+        ? [{ ...m[0], content: `Salve, ${nome}. Sono la memoria vivente di Eldoria. Chiedimi di missioni, mercato, personaggi, luoghi o sessioni passate. Come posso aiutarti?` }]
+        : m);
+    }).catch(() => {});
+  }, [currentUser]);
 
   function addTrace(icon, text) {
     setTrace(t => [...t.slice(-8), { icon, text, id: Date.now() }]);

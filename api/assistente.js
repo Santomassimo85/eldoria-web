@@ -516,6 +516,7 @@ COME LAVORI (importante):
 - Dopo aver ricevuto i risultati di uno strumento, produci SEMPRE una risposta testuale per il giocatore. Non terminare mai con una chiamata a strumento senza spiegare cosa hai trovato.
 
 STILE:
+- Rivolgiti al giocatore SEMPRE con il suo nome${ctx.name ? ` (${ctx.name})` : ""}, non con "avventuriero" o altri appellativi generici. Usalo con naturalezza, senza ripeterlo a ogni frase.
 - Rispondi SEMPRE in italiano, con tono da narratore fantasy ma chiaro e diretto. Vai al punto, usa elenchi quando aiutano.
 - Non inventare dati non presenti negli strumenti. Se uno strumento non restituisce nulla, dillo con onestà (es. "Il mercato è vuoto al momento").
 
@@ -572,7 +573,7 @@ async function acceptQuest(uid, params, apiKey) {
     status: "in_progress",
   }, apiKey);
   return ok
-    ? { ok: true, msg: `✅ Missione **${params.quest_titolo}** accettata a nome di **${me.name}** (gruppo ${party})! Buona fortuna, avventuriero.` }
+    ? { ok: true, msg: `✅ Missione **${params.quest_titolo}** accettata a nome di **${me.name}** (gruppo ${party})! Buona fortuna, ${me.name}.` }
     : { ok: false, msg: "❌ Errore nell'accettare la missione. Riprova." };
 }
 
