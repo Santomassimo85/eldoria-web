@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "21.01",
+      "date": "2026-06-13",
+      "title": "Assistente — fix lettura incantesimi",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Assistente: risolto l'errore «spellSlots.map is not a function» quando si chiedeva «Che incantesimi ho?». I campi di scheda (slot, azioni, inventario) vengono ora letti correttamente anche quando arrivano da Foundry in un formato diverso."
+        }
+      ]
+    },
+    {
       "version": "21",
       "date": "2026-06-13",
       "title": "Restyle scuro «Arcanum Nocturne» + novità TCG e mappa",

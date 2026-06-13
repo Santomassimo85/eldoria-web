@@ -174,6 +174,14 @@ async function loadPlayerContext(uid, apiKey) {
   };
 }
 
+// Normalizza in array: alcuni campi possono arrivare come mappa {0:…,1:…}
+// invece che come array (a seconda di come Foundry/Firestore li ha scritti).
+function asArray(v) {
+  if (Array.isArray(v)) return v;
+  if (v && typeof v === "object") return Object.values(v);
+  return [];
+}
+
 // ---- Esegui uno strumento (lettura) ----
 async function executeTool(toolName, toolInput, ctx, apiKey) {
   const { uid, name: myName, party: myParty } = ctx;
@@ -182,8 +190,9 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
       const doc = ctx.char || await readDoc(`characters/${uid}`, apiKey);
       if (!doc || !doc.name) return "Scheda non trovata. Chiedi al Master di sincronizzarla da Foundry.";
       const s = doc.stats || {};
-      const cantrips = (doc.actions || []).filter(a => a.category === "Trucchetto").map(a => a.name);
-      const spells = (doc.actions || []).filter(a => /livello/i.test(a.category || "")).map(a => `${a.name} (${a.category})`);
+      const actions = asArray(doc.actions);
+      const cantrips = actions.filter(a => a && a.category === "Trucchetto").map(a => a.name);
+      const spells = actions.filter(a => a && /livello/i.test(a.category || "")).map(a => `${a.name} (${a.category})`);
       const ratto = getRatto(doc.rattoPoints || 0);
       // Profilo TCG (salvato sul personaggio)
       const tcgColl = doc.tcgCollection && typeof doc.tcgCollection === "object" ? doc.tcgCollection : {};
@@ -208,10 +217,10 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
           carteUniche, carteTotaliPossedute: carteTotali,
           carteNelMazzo: Array.isArray(doc.tcgDeck) ? doc.tcgDeck.length : 0,
         },
-        slotIncantesimi: (doc.spellSlots || []).map(sl => `${sl.label}: ${sl.value}/${sl.max}`),
+        slotIncantesimi: asArray(doc.spellSlots).filter(sl => sl && sl.label).map(sl => `${sl.label}: ${sl.value}/${sl.max}`),
         trucchetti: cantrips,
         incantesimi: spells,
-        inventario: (doc.inventory || []).slice(0, 25).map(i => `${i.name}${i.quantity > 1 ? ` x${i.quantity}` : ""}${i.equipped ? " (equipaggiato)" : ""}`),
+        inventario: asArray(doc.inventory).slice(0, 25).filter(i => i && i.name).map(i => `${i.name}${i.quantity > 1 ? ` x${i.quantity}` : ""}${i.equipped ? " (equipaggiato)" : ""}`),
       });
     }
 
