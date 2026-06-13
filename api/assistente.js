@@ -524,8 +524,8 @@ const TOOLS_DEF = {
     { name: "leggi_boss", description: "Legge lo stato del World Boss: se c'è un boss attivo, i suoi PF, lo scudo, il round e di chi è il turno. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_divinita", description: "Informazioni sulle divinità e il pantheon di Eldoria.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_statistiche_agent", description: "SOLO MASTER. Statistiche d'uso dell'assistente: quante volte è stato consultato in totale e da chi. Usa questo strumento quando il master chiede 'quante volte sei stato consultato/usato'.", parameters: { type: "OBJECT", properties: {}, required: [] } },
-    { name: "fai_offerta", description: "Piazza un'offerta su un oggetto del mercato nero IN ASTA (scala il platino dal personaggio). RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { item_id: { type: "STRING", description: "ID dell'oggetto" }, item_nome: { type: "STRING", description: "Nome dell'oggetto" }, importo: { type: "NUMBER", description: "Importo in MP (platino)" } }, required: ["item_id", "item_nome", "importo"] } },
-    { name: "accetta_missione", description: "Accetta una missione dalla bacheca a nome del giocatore. RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { quest_id: { type: "STRING", description: "ID della missione" }, quest_titolo: { type: "STRING", description: "Titolo della missione" } }, required: ["quest_id", "quest_titolo"] } },
+    { name: "fai_offerta", description: "Piazza un'offerta su un oggetto del mercato nero IN ASTA (scala il platino dal personaggio). Basta il NOME dell'oggetto: il sistema lo ritrova da solo. RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { item_nome: { type: "STRING", description: "Nome dell'oggetto su cui offrire" }, importo: { type: "NUMBER", description: "Importo in MP (platino)" }, item_id: { type: "STRING", description: "ID dell'oggetto (facoltativo: ometti se non lo conosci, basta il nome)" } }, required: ["item_nome", "importo"] } },
+    { name: "accetta_missione", description: "Accetta una missione dalla bacheca a nome del giocatore. Basta il TITOLO della missione. RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { quest_titolo: { type: "STRING", description: "Titolo della missione" }, quest_id: { type: "STRING", description: "ID della missione (facoltativo: ometti se non lo conosci, basta il titolo)" } }, required: ["quest_titolo"] } },
   ],
 };
 
@@ -576,7 +576,7 @@ STILE:
 - Rispondi SEMPRE in italiano, con tono da narratore fantasy ma chiaro e diretto. Vai al punto, usa elenchi quando aiutano.
 - Non inventare dati non presenti negli strumenti. Se uno strumento non restituisce nulla, dillo con onestà (es. "Il mercato è vuoto al momento").
 
-AZIONI (scrittura): per fai_offerta e accetta_missione chiama lo strumento, poi nella risposta finale spiega chiaramente cosa stai per fare e chiedi conferma. Non agire mai senza conferma dell'utente.`;
+AZIONI (scrittura): per fai_offerta e accetta_missione chiama lo strumento, poi nella risposta finale spiega chiaramente cosa stai per fare e chiedi conferma. Non agire mai senza conferma dell'utente. Per fare un'offerta ti basta il NOME dell'oggetto e l'importo: NON ti serve l'ID (il sistema ritrova l'oggetto dal nome). Idem per accettare una missione: basta il titolo. Non rifiutare mai un'offerta "perché non hai l'id".`;
 }
 
 // Risolve l'oggetto del mercato: prima per id, poi (fallback robusto) per nome.

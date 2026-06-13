@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "21.02",
+      "date": "2026-06-13",
+      "title": "Assistente — offerte al mercato senza ID",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Assistente: ora puoi fare un'offerta al mercato nero indicando solo il NOME dell'oggetto (e l'importo) — non serve più l'ID. Niente più errori «senza id». Lo stesso vale per accettare una missione: basta il titolo."
+        }
+      ]
+    },
+    {
       "version": "21.01",
       "date": "2026-06-13",
       "title": "Assistente — fix lettura incantesimi",
