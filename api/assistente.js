@@ -34,6 +34,19 @@ function getPartyByCharName(name) {
   return "Senza Gruppo";
 }
 
+// ---- Sistema Ratto (allineato a Mercato.jsx): punti → rango/livello ----
+const RATTO_LEVELS = [
+  { lv: 0, min: 0, name: "Estraneo" },
+  { lv: 1, min: 5, name: "Simpatizzante" },
+  { lv: 2, min: 15, name: "Informatore" },
+  { lv: 3, min: 30, name: "Ricettatore" },
+  { lv: 4, min: 50, name: "Veterano" },
+  { lv: 5, min: 80, name: "Ombra di Obia" },
+];
+function getRatto(points = 0) {
+  return [...RATTO_LEVELS].reverse().find(l => points >= l.min) || RATTO_LEVELS[0];
+}
+
 // ---- Pantheon (già conosciuto, non serve leggerlo da Firestore) ----
 const PANTHEON_BRIEF = `Vecchie divinità: Vulkàros(fuoco/guerra), Nysia(acqua/vita/morte), Syrael(aria/profezia), Drokhan(terra/giustizia), Enoia(spirito/destino), Lirael(arte/memoria), Myrhal(magia/segreti), Zenara(natura/bestie), Kal-Durr(tempo/fato), Naavir(inganno/ombre).
 Nuovi dei: Malakor(ordine/contratti distorto), Venestra(amore ossessivo/disperazione), Xylos(sfortuna), Sune(bellezza/amore buono).
@@ -130,7 +143,17 @@ function formatCurrency(cur) {
 async function loadPlayerContext(uid, apiKey) {
   const me = await readDoc(`characters/${uid}`, apiKey);
   if (!me || !me.name) return { char: me, name: null, party: null };
-  return { char: me, name: me.name, party: getPartyByCharName(me.name) };
+  const ratto = getRatto(me.rattoPoints || 0);
+  return {
+    char: me,
+    name: me.name,
+    party: getPartyByCharName(me.name),
+    platinum: me.platinum || 0,        // MP usati al mercato nero
+    gold: me.currency?.gp || 0,        // oro "normale"
+    rattoPoints: me.rattoPoints || 0,
+    rattoLv: ratto.lv,
+    rattoName: ratto.name,
+  };
 }
 
 // ---- Esegui uno strumento (lettura) ----
@@ -205,19 +228,33 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
       const items = await readCollection("items", apiKey, 40);
       const onSale = items.filter(i => !i.isSold);
       if (!onSale.length) return "Il mercato nero è vuoto al momento.";
-      return JSON.stringify(onSale.map(i => {
-        const bids = i.bids ? Object.values(i.bids) : [];
-        const topBid = bids.length ? Math.max(...bids.map(b => b?.amount ?? b ?? 0)) : 0;
-        return {
-          id: i._id, nome: i.name, tipo: i.type, rarita: i.class,
-          modalita: i.saleType === "auction" ? "asta" : "prezzo fisso",
-          prezzo: i.saleType === "auction" ? null : i.price,
-          baseAsta: i.saleType === "auction" ? i.startingBid : null,
-          offertaPiuAlta: topBid || null,
-          descrizione: stripHtml(i.description).slice(0, 300),
-          livelloRattoMin: i.minLevel || 0,
-        };
-      }));
+      // Visibilità per rango Ratto (come Mercato.jsx): la riserva scatta dal livello 2 in su.
+      const myRattoLv = ctx.rattoLv || 0;
+      const myMp = ctx.platinum || 0;
+      const visible = onSale.filter(i => (Number(i.minLevel) || 0) <= Math.max(myRattoLv, 1));
+      const nascostiPerRango = onSale.length - visible.length;
+      if (!visible.length) return JSON.stringify({ mpDisponibili: myMp, oggetti: [], nota: `Nessun oggetto accessibile al tuo rango Ratto (${ctx.rattoName}). ${nascostiPerRango} oggetti richiedono un rango più alto.` });
+      return JSON.stringify({
+        mpDisponibili: myMp,
+        rangoRatto: ctx.rattoName,
+        oggettiRiservatiPerRangoSuperiore: nascostiPerRango,
+        oggetti: visible.map(i => {
+          const bids = i.bids ? Object.values(i.bids) : [];
+          const topBid = bids.length ? Math.max(...bids.map(b => b?.amount ?? b ?? 0)) : 0;
+          const isAuction = i.saleType === "auction";
+          const costo = isAuction ? (i.startingBid || 0) : (i.price || 0);
+          return {
+            id: i._id, nome: i.name, tipo: i.type, rarita: i.class,
+            modalita: isAuction ? "asta" : "prezzo fisso",
+            prezzo: isAuction ? null : i.price,
+            baseAsta: isAuction ? i.startingBid : null,
+            offertaPiuAlta: topBid || null,
+            puoiPermettertelo: myMp >= costo,
+            descrizione: stripHtml(i.description).slice(0, 300),
+            livelloRattoMin: i.minLevel || 0,
+          };
+        }),
+      });
     }
 
     case "leggi_bacheca": {
@@ -300,10 +337,16 @@ const TOOLS_DEF = {
 function buildSystemPrompt(ctx) {
   let who = "Il giocatore non ha ancora una scheda sincronizzata: invitalo a chiedere al Master.";
   if (ctx.name) {
+    const s = ctx.char?.stats || {};
     who = `Il giocatore loggato è **${ctx.name}**` +
-      (ctx.char?.class ? `, ${ctx.char.class}` : "") +
+      (ctx.char?.race ? `, ${ctx.char.race}` : "") +
+      (ctx.char?.class ? ` ${ctx.char.class}` : "") +
+      (ctx.char?.subclass ? ` (${ctx.char.subclass})` : "") +
       (ctx.char?.level ? ` di livello ${ctx.char.level}` : "") +
-      `, e fa parte del gruppo **${ctx.party}**.` +
+      `, gruppo **${ctx.party}**.` +
+      ` Statistiche: PF ${s.hp ?? "?"}/${s.maxHp ?? "?"}, CA ${s.ac ?? "?"}.` +
+      ` Soldi: **${ctx.platinum} MP** (platino, valuta del mercato nero) e ${ctx.gold} mo (oro).` +
+      ` Rango Ratto: **${ctx.rattoName}** (livello ${ctx.rattoLv}, ${ctx.rattoPoints} punti) — determina quali oggetti del mercato nero può vedere/comprare.` +
       (PARTY_ROSTER[ctx.party] ? ` Compagni di gruppo: ${PARTY_ROSTER[ctx.party].join(", ")}.` : "");
   }
   return `Sei l'assistente di gioco per la campagna fantasy Eldoria (sistema D&D 5e).
@@ -312,6 +355,8 @@ Sei un AGENTE: non ti limiti a chiacchierare, agisci. Per ogni richiesta consult
 CONTESTO GIOCATORE (usalo sempre, non chiederlo): ${who}
 
 Quando l'utente dice "il mio gruppo", "il party", "noi", "la nostra sessione", "l'ultima sessione", "riassumi" o "per me", riferisciti SEMPRE al gruppo del giocatore qui sopra (${ctx.party || "sconosciuto"}). Riassunti e missioni sono divisi per gruppo: gli strumenti filtrano già sul gruppo giusto.
+
+COSA SAI GIÀ (dal contesto, senza strumenti): nome, razza, classe, livello, gruppo, PF/CA, **MP (platino del mercato)**, oro e rango Ratto del giocatore sono scritti qui sopra. NON dire mai "non conosco le tue MP / i tuoi soldi / il tuo livello": leggili dal contesto. Usa leggi_scheda solo per dettagli più fini (inventario completo, lista incantesimi, slot).
 
 COME LAVORI (importante):
 - Per QUALSIASI domanda che riguardi dati di gioco, chiama PRIMA lo strumento giusto e poi rispondi sui risultati. Non rispondere mai "non lo so" senza aver provato uno strumento.

@@ -28,6 +28,10 @@
         {
           "type": "fix",
           "text": "Assistente: risolto il caso in cui rispondeva «Non ho trovato una risposta» pur avendo consultato i dati. Il ragionamento interno non esaurisce più i token e, se necessario, viene forzata una risposta finale sui dati già raccolti."
+        },
+        {
+          "type": "feature",
+          "text": "Assistente: conosce già soldi (MP del mercato e oro), PF/CA e rango Ratto del giocatore senza doverli cercare. Alla domanda «cosa c'è al mercato per me?» mostra solo gli oggetti accessibili al proprio rango e indica quali ci si può permettere."
         }
       ]
     },
