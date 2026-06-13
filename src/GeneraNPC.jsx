@@ -1,9 +1,7 @@
 import { useState } from "react";
+import { db } from "./firebase";
+import { collection, addDoc } from "firebase/firestore";
 import "./GeneraNPC.css";
-
-// Componente DM: genera un NPC (cervello = Claude) e il suo ritratto (immagini = Gemini).
-// Mettilo in una pagina/rotta del tuo sito (es. una pagina "Strumenti DM").
-// I due bottoni chiamano i tuoi helper su Vercel: /api/genera-npc e /api/genera-immagine.
 
 export default function GeneraNPC() {
   const [contesto, setContesto] = useState("taverniere in un porto di Tirrendale");
@@ -13,10 +11,12 @@ export default function GeneraNPC() {
   const [errore, setErrore] = useState(false);
   const [loadingNpc, setLoadingNpc] = useState(false);
   const [loadingImg, setLoadingImg] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+  const [salvato, setSalvato] = useState(false);
 
   async function generaNpc() {
-    setLoadingNpc(true); setStato("Sto inventando l'NPC…"); setErrore(false);
-    setNpc(null); setImmagine(null);
+    setLoadingNpc(true); setStato("Sto evocando l'NPC…"); setErrore(false);
+    setNpc(null); setImmagine(null); setSalvato(false);
     try {
       const r = await fetch("/api/genera-npc", {
         method: "POST",
@@ -35,7 +35,7 @@ export default function GeneraNPC() {
 
   async function generaImmagine() {
     if (!npc) return;
-    setLoadingImg(true); setStato("Sto disegnando il ritratto…"); setErrore(false);
+    setLoadingImg(true); setStato("Sto dipingendo il ritratto…"); setErrore(false);
     try {
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
@@ -52,22 +52,36 @@ export default function GeneraNPC() {
     }
   }
 
-  // --- SALVATAGGIO SU FIRESTORE (attivalo quando vuoi) ---
-  // 1. In cima al file aggiungi (adatta il percorso al tuo progetto):
-  //      import { db } from "../firebase";
-  //      import { collection, addDoc } from "firebase/firestore";
-  // 2. Togli i commenti a questa funzione e al bottone "Salva" più sotto.
-  // NOTA immagini: un ritratto base64 è grande; per Firestore conviene caricarlo
-  //      prima su Firebase Storage e salvare qui solo l'URL.
-  //
-  // async function salvaNPC() {
-  //   await addDoc(collection(db, "npc"), {
-  //     ...npc,
-  //     ritratto: immagine || null,
-  //     creato: Date.now()
-  //   });
-  //   setStato("NPC salvato!");
-  // }
+  async function salvaInNpcs() {
+    if (!npc || salvato) return;
+    setLoadingSave(true); setStato("Salvataggio in corso…"); setErrore(false);
+    try {
+      await addDoc(collection(db, "npcs"), {
+        name: npc.nome || "",
+        image: immagine || "",
+        faction: npc.razza || "",
+        location: npc.ruolo || "",
+        description: [
+          npc.aspetto,
+          npc.personalita,
+          npc.voce,
+          npc.segreto ? `🔒 ${npc.segreto}` : null
+        ].filter(Boolean).join(" — "),
+        linkedCity: "",
+        mapX: 50,
+        mapY: 50,
+        statblock: npc.statblock || {},
+        generato: true,
+        creato: Date.now()
+      });
+      setSalvato(true);
+      setStato(`✅ "${npc.nome}" aggiunto all'archivio NPC!`);
+    } catch (e) {
+      setStato("Errore salvataggio: " + e.message); setErrore(true);
+    } finally {
+      setLoadingSave(false);
+    }
+  }
 
   return (
     <div className="npcgen-page">
@@ -136,7 +150,14 @@ export default function GeneraNPC() {
               {loadingImg ? "Sto dipingendo…" : "🎨 Genera ritratto"}
             </button>
 
-            {/* <button className="npcgen-btn npcgen-btn--ghost" onClick={salvaNPC}>Salva NPC</button> */}
+            <button
+              className="npcgen-btn npcgen-btn--ghost"
+              onClick={salvaInNpcs}
+              disabled={loadingSave || salvato}
+              style={salvato ? { opacity: 0.6, cursor: "default" } : {}}
+            >
+              {loadingSave ? "Salvataggio…" : salvato ? "✅ Aggiunto all'archivio" : "📖 Aggiungi agli NPC"}
+            </button>
           </div>
         )}
       </div>
