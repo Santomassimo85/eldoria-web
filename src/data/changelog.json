@@ -1,6 +1,33 @@
 {
   "versions": [
     {
+      "version": "20",
+      "date": "2026-06-13",
+      "title": "Assistente di Eldoria — consapevole di giocatore e gruppo",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Assistente: ora riconosce chi è il giocatore loggato e a quale gruppo appartiene (AMEA, ENOX, LAC, LEAF, ECO), derivandolo dal personaggio. Domande come «il mio gruppo», «la nostra sessione» o «riassumi l'ultima sessione» rispondono con i dati del gruppo corretto."
+        },
+        {
+          "type": "mechanics",
+          "text": "Assistente: i riassunti di sessione vengono filtrati sul gruppo del giocatore (più gli eventi condivisi) e ordinati dal più recente; «leggi il party» restituisce i compagni del proprio gruppo invece di tutti i personaggi."
+        },
+        {
+          "type": "mechanics",
+          "text": "Assistente: la bacheca mostra solo le missioni visibili al giocatore (mirate al suo gruppo/personaggio o pubbliche); il mercato distingue prezzo fisso e aste mostrando l'offerta più alta ed esclude gli oggetti già venduti."
+        },
+        {
+          "type": "fix",
+          "text": "Assistente: corretti i dati letti male — luoghi (Geo), NPC (fazione e città), scheda (valuta, slot incantesimi, inventario) e riassunti ora vengono ripuliti dall'HTML e mostrati correttamente."
+        },
+        {
+          "type": "fix",
+          "text": "Assistente: le azioni di scrittura ora funzionano davvero — un'offerta in asta blocca il platino e registra la puntata; accettare una missione la assegna al personaggio e al gruppo con lo stato corretto."
+        }
+      ]
+    },
+    {
       "version": "19.01",
       "date": "2026-06-13",
       "title": "Assistente di Eldoria — restyle in tema",
