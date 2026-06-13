@@ -16,7 +16,7 @@ const CSS = `
 .spg-page{
   --bg:#0a0b14; --panel:#15172b; --panel2:#1b1e38; --line:#2c2f52;
   --gold:#e0bd6b; --gold-dim:#b9974c; --arc:#9b6cd6; --arc-dim:#6f4aa6;
-  --ink:#ece9f5; --muted:#9c9ac4; --hp:#cf5a52; --hp-track:#3a1f24;
+  --ink:#f4f2fb; --muted:#c5c3e4; --hp:#e0726a; --hp-track:#3a1f24;
   --neg:#f0915c; --key:#5fcf8a; --key-dim:#2f7a4e;
   min-height:100vh;
   /* la navbar del sito è FISSA: la scheda parte sempre sotto di lei */

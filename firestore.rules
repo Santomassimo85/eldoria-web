@@ -93,6 +93,14 @@ service cloud.firestore {
       allow update: if isMaster();
     }
 
+    // ── Statistiche d'uso dell'assistente (Agent) ────────────────────────────
+    // Contatore incrementato dal client a ogni consultazione; lettura aperta
+    // (l'assistente lo legge senza autenticazione e lo mostra solo al Master).
+    match /agent_stats/{docId} {
+      allow read: if true;
+      allow write: if isLoggedIn();
+    }
+
     // ── Characters & sheets ──────────────────────────────────────────────────
     // Writes intentionally open because the Pet system needs to write to the
     // opponent's character doc when a battle resolves.

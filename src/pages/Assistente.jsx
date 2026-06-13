@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
 import {
-  doc, getDoc, collection, query, where, getDocs,
-  runTransaction, writeBatch, serverTimestamp,
+  doc, getDoc, setDoc, collection, query, where, getDocs,
+  runTransaction, writeBatch, serverTimestamp, increment,
 } from "firebase/firestore";
 
 /* ============================================================
@@ -338,13 +338,23 @@ export default function Assistente() {
     setTrace([]);
     addTrace("🔍", "Invio richiesta…");
 
+    // Conta la consultazione (totale + per giocatore). Fire-and-forget.
+    if (currentUser?.uid) {
+      setDoc(doc(db, "agent_stats", "global"), {
+        total: increment(1),
+        perUser: { [currentUser.uid]: increment(1) },
+        lastUsed: serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    }
+
     try {
       const r = await fetch("/api/assistente", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           messages: history.map(m => ({ role: m.role, content: m.content })),
-          uid: currentUser?.uid
+          uid: currentUser?.uid,
+          email: currentUser?.email,
         })
       });
       const data = await r.json();

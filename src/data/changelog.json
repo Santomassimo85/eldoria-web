@@ -6,6 +6,22 @@
       "title": "Assistente di Eldoria — consapevole di giocatore e gruppo",
       "changes": [
         {
+          "type": "feature",
+          "text": "Assistente: ora riferisce i combattimenti d'arena di torneo in corso — chi sta affrontando chi, i PF di ciascuno e chi sta vincendo — escludendo i match amichevoli e quelli contro l'AI. Basta chiedere «chi sta combattendo nell'arena?»."
+        },
+        {
+          "type": "feature",
+          "text": "Assistente: il Master può ora chiedere quante volte l'assistente è stato consultato (totale e per singolo giocatore). Le statistiche sono riservate al Master."
+        },
+        {
+          "type": "graphic",
+          "text": "Scheda PG: testo secondario reso più chiaro e leggibile sul tema scuro."
+        },
+        {
+          "type": "fix",
+          "text": "Menu: le voci «Agent», «Strumenti DM» e «Genera NPC» quando selezionate mostrano il testo in bianco (prima restava colorato sullo sfondo rosso e non si leggeva)."
+        },
+        {
           "type": "graphic",
           "text": "Menu: le voci «Strumenti DM» e «Genera NPC» sono ora in rosso e senza icona; la voce «Agent» è in azzurro scuro."
         },

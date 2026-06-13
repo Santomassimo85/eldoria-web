@@ -14,6 +14,7 @@
 
 const PROJECT_ID = "eldoria-web";
 const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 // ---- Party roster: unica fonte di verità (allineata a Bacheca.jsx) ----
 // L'appartenenza al gruppo si deriva dal NOME del personaggio (campo char.name).
@@ -344,6 +345,27 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
       history.sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || "")));
       const last = history[0] || null;
       const phaseLabel = { registration: "iscrizioni aperte", combat: "torneo in corso", finished: "concluso" }[meta.phase] || (meta.phase || "nessun torneo attivo");
+
+      // ── Combattimenti REALI in corso (torneo): solo kind group/final, ──
+      // ── niente match "fun" né AI (gli AI hanno players[].isAi). ──
+      const realMatches = (meta.matches || []).filter(m =>
+        (m.kind === "group" || m.kind === "final") &&
+        m.status !== "finished" && !m.winner &&
+        (m.players || []).every(p => !p.isAi)
+      );
+      const combattimentiInCorso = realMatches.map(m => {
+        const [p1, p2] = m.players || [];
+        const vincente = (p1 && p2)
+          ? (p1.hp === p2.hp ? "pareggio" : (p1.hp > p2.hp ? p1.name : p2.name))
+          : null;
+        return {
+          tipo: m.kind === "final" ? "finale" : "girone",
+          fase: m.status,
+          sfidanti: [p1, p2].filter(Boolean).map(p => ({ nome: p.name, pf: p.hp, pfMax: p.maxHp })),
+          staVincendo: vincente,
+        };
+      });
+
       return JSON.stringify({
         torneoInCorso: {
           stato: phaseLabel,
@@ -353,6 +375,7 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
           premi: meta.prizes ? stripHtml(meta.prizes).slice(0, 200) : null,
           vincitoreCorrente: meta.tournamentWinner ? (meta.lastChampion?.name || "proclamato") : null,
         },
+        combattimentiInCorso: combattimentiInCorso.length ? combattimentiInCorso : "Nessun combattimento di torneo in corso adesso.",
         ultimoTorneoVinto: last ? {
           vincitore: last.winnerName, classe: last.winnerClass || null,
           vittorieTotaliDelVincitore: last.wins || null,
@@ -451,6 +474,27 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
     case "leggi_divinita":
       return PANTHEON_BRIEF;
 
+    case "leggi_statistiche_agent": {
+      // Solo il master può vedere le statistiche d'uso dell'assistente.
+      if (!ctx.isMaster) return "Queste statistiche sono riservate al Master.";
+      const stats = await readDoc("agent_stats/global", apiKey) || {};
+      const total = stats.total || 0;
+      const perUser = stats.perUser && typeof stats.perUser === "object" ? stats.perUser : {};
+      // Risolvi gli uid in nomi personaggio
+      const chars = await readCollection("characters", apiKey, 60);
+      const nameByUid = {};
+      chars.forEach(c => { if (c._id) nameByUid[c._id] = c.name; });
+      const perGiocatore = Object.entries(perUser)
+        .map(([uid, n]) => ({ giocatore: nameByUid[uid] || uid, consultazioni: Number(n) || 0 }))
+        .sort((a, b) => b.consultazioni - a.consultazioni)
+        .slice(0, 20);
+      return JSON.stringify({
+        consultazioniTotali: total,
+        perGiocatore,
+        ultimoUtilizzo: stats.lastUsed || null,
+      });
+    }
+
     default:
       return "Strumento non riconosciuto.";
   }
@@ -466,10 +510,11 @@ const TOOLS_DEF = {
     { name: "leggi_bacheca", description: "Legge le missioni della bacheca visibili al giocatore (mirate al suo gruppo/personaggio o pubbliche).", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_npc", description: "Cerca un NPC per nome, fazione o città.", parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "Nome, fazione o città dell'NPC" } }, required: [] } },
     { name: "leggi_geo", description: "Cerca luoghi, città o regioni di Eldoria.", parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "Nome del luogo da cercare" } }, required: [] } },
-    { name: "leggi_arena", description: "Legge lo stato dell'Arena: torneo in corso (fase, round, iscritti), vincitore dell'ultimo torneo e albo dei campioni. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
+    { name: "leggi_arena", description: "Legge lo stato dell'Arena: torneo in corso (fase, round, iscritti), COMBATTIMENTI di torneo attualmente in corso (chi combatte contro chi e i PF di ciascuno, chi sta vincendo), vincitore dell'ultimo torneo e albo dei campioni. Esclude i match amichevoli e contro l'AI. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_tcg", description: "Legge lo stato del torneo di carte TCG: se è aperto/in corso/concluso, round, iscritti e campione. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_boss", description: "Legge lo stato del World Boss: se c'è un boss attivo, i suoi PF, lo scudo, il round e di chi è il turno. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_divinita", description: "Informazioni sulle divinità e il pantheon di Eldoria.", parameters: { type: "OBJECT", properties: {}, required: [] } },
+    { name: "leggi_statistiche_agent", description: "SOLO MASTER. Statistiche d'uso dell'assistente: quante volte è stato consultato in totale e da chi. Usa questo strumento quando il master chiede 'quante volte sei stato consultato/usato'.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "fai_offerta", description: "Piazza un'offerta su un oggetto del mercato nero IN ASTA (scala il platino dal personaggio). RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { item_id: { type: "STRING", description: "ID dell'oggetto" }, item_nome: { type: "STRING", description: "Nome dell'oggetto" }, importo: { type: "NUMBER", description: "Importo in MP (platino)" } }, required: ["item_id", "item_nome", "importo"] } },
     { name: "accetta_missione", description: "Accetta una missione dalla bacheca a nome del giocatore. RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { quest_id: { type: "STRING", description: "ID della missione" }, quest_titolo: { type: "STRING", description: "Titolo della missione" } }, required: ["quest_id", "quest_titolo"] } },
   ],
@@ -508,10 +553,12 @@ COME LAVORI (importante):
   · il mio gruppo / compagni / party → leggi_party
   · riassunti / cosa è successo / ultima sessione → leggi_riassunti
   · NPC / personaggi → leggi_npc · luoghi / città → leggi_geo · divinità → leggi_divinita
-  · arena / torneo dell'arena / chi ha vinto / albo campioni → leggi_arena
+  · arena / torneo dell'arena / chi ha vinto / albo campioni / "chi sta combattendo ora" / "è attivo il match tra X e Y" / chi sta vincendo → leggi_arena
   · TCG / torneo di carte / chi è il campione TCG → leggi_tcg
   · World Boss / "c'è un boss?" / "come sta il boss" / battaglia → leggi_boss
   Questi tre (arena, TCG, boss) sono di SOLA CONSULTAZIONE: non esistono azioni di combattimento, puoi solo riferire lo stato.
+  · "chi sta combattendo nell'arena", "chi sta vincendo", "che PF ha X nel match" → leggi_arena (sezione combattimentiInCorso).${ctx.isMaster ? `
+  · (MASTER) "quante volte sei stato consultato/usato", statistiche d'uso → leggi_statistiche_agent.` : ""}
 - Puoi e DEVI usare più strumenti se serve (es. "cosa posso comprare?" → leggi_scheda + leggi_mercato per confrontare i soldi).
 - Dopo aver ricevuto i risultati di uno strumento, produci SEMPRE una risposta testuale per il giocatore. Non terminare mai con una chiamata a strumento senza spiegare cosa hai trovato.
 
@@ -610,7 +657,8 @@ function extractText(data) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { messages, uid, confirmedAction } = req.body || {};
+  const { messages, uid, confirmedAction, email } = req.body || {};
+  const isMaster = (email || "").toLowerCase() === MASTER_EMAIL;
   const apiKey = process.env.FIREBASE_API_KEY || "AIzaSyBGv3dT_2-ztsAwx0B4s42YtPL-Q1UBMcM";
   const geminiKey = process.env.GEMINI_API_KEY;
 
@@ -641,7 +689,7 @@ export default async function handler(req, res) {
   try {
     // Carica una volta chi è il giocatore e in che gruppo gioca.
     const playerCtx = await loadPlayerContext(uid, apiKey);
-    const ctx = { uid, ...playerCtx };
+    const ctx = { uid, isMaster, ...playerCtx };
     const systemPrompt = buildSystemPrompt(ctx);
 
     const geminiMessages = messages.map(m => ({
