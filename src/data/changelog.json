@@ -14,6 +14,10 @@
           "text": "Assistente: ora consulta anche Arena, TCG e World Boss. Può dire chi ha vinto l'ultimo torneo dell'arena e come procede quello in corso, lo stato del torneo di carte (iscritti, round, campione) e se c'è un World Boss attivo con i suoi PF e di chi è il turno. Sono solo consultazioni: niente azioni di combattimento."
         },
         {
+          "type": "fix",
+          "text": "Assistente: lo stato del World Boss ora viene letto dalla battaglia in corso (PF reali, eroi caduti, round) e non più dai valori-modello del boss. A scontro finito riporta correttamente l'esito — vittoria dei giocatori o sconfitta (boss sopravvissuto allo scadere del tempo o eroi annientati) — invece di indicare PF pieni e un finto turno del boss."
+        },
+        {
           "type": "feature",
           "text": "Assistente: ora riconosce chi è il giocatore loggato e a quale gruppo appartiene (AMEA, ENOX, LAC, LEAF, ECO), derivandolo dal personaggio. Domande come «il mio gruppo», «la nostra sessione» o «riassumi l'ultima sessione» rispondono con i dati del gruppo corretto."
         },

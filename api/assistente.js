@@ -349,26 +349,68 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
     }
 
     case "leggi_boss": {
-      const bosses = await readCollection("bosses", apiKey, 20);
-      const active = bosses.filter(b => b.isActive);
-      const battle = await readDoc("battle_state/current", apiKey) || {};
-      const turn = await readDoc("battle_meta/turn_tracker", apiKey) || {};
-      if (!active.length && !battle.active) {
-        return JSON.stringify({ bossAttivo: false, messaggio: "Nessun World Boss attivo al momento." });
+      // FONTE DI VERITÀ: battle_state/current (HP vivi nelle `units`).
+      // La collection `bosses` tiene i valori-modello (PF pieni di reset) e NON è
+      // affidabile come stato vivo: si usa solo come fallback se non c'è battaglia.
+      const battle = await readDoc("battle_state/current", apiKey);
+      const units = battle && Array.isArray(battle.units) ? battle.units : [];
+      const bossUnits = units.filter(u => u.side === "enemy" && u.kind === "boss");
+      const heroes = units.filter(u => u.side === "hero");
+      const minions = units.filter(u => u.side === "enemy" && u.kind === "minion");
+
+      // Nessuna battaglia tattica valida → guarda quale boss è "selezionato" (catalogo)
+      if (!battle || !battle.fightStarted || !bossUnits.length) {
+        const active = (await readCollection("bosses", apiKey, 20)).filter(b => b.isActive);
+        return JSON.stringify({
+          battagliaInCorso: false,
+          messaggio: active.length
+            ? "Nessuna battaglia World Boss in corso in questo momento."
+            : "Nessun World Boss attivo al momento.",
+          bossSelezionato: active.map(b => b.name).slice(0, 3),
+        });
       }
-      const turnoDi = turn.phase === "boss" ? "il Boss" : turn.phase === "players" ? "i giocatori" : (battle.currentPhase === "enemies" ? "il Boss" : battle.currentPhase === "players" ? "i giocatori" : null);
+
+      const bossInfo = bossUnits.map(b => ({
+        nome: b.name, pf: b.hp, pfMax: b.maxHp,
+        percentualePf: b.maxHp ? Math.round((b.hp / b.maxHp) * 100) + "%" : null,
+        sconfitto: !!b.dead,
+      }));
+      const heroesAlive = heroes.filter(u => !u.dead).length;
+      const phase = battle.phase || "setup"; // setup | fighting | over
+
+      // ── Battaglia conclusa: deriva l'esito come fa il gioco (BossTactics) ──
+      if (phase === "over") {
+        const heroesWiped = heroes.length > 0 && heroesAlive === 0;
+        const heroesLost = !!battle.bossExpired || heroesWiped;
+        let esito, vincitore;
+        if (heroesLost) {
+          vincitore = "Boss";
+          esito = battle.bossExpired
+            ? "SCONFITTA DEI GIOCATORI — il tempo è scaduto e il boss è sopravvissuto."
+            : "SCONFITTA DEI GIOCATORI — tutti gli eroi sono caduti.";
+        } else {
+          vincitore = "Giocatori";
+          esito = "VITTORIA DEI GIOCATORI — il boss è stato sconfitto.";
+        }
+        return JSON.stringify({
+          battagliaInCorso: false, battagliaConclusa: true,
+          vincitore, esito, round: battle.round || null,
+          boss: bossInfo, eroiSopravvissuti: heroesAlive, eroiTotali: heroes.length,
+        });
+      }
+
+      if (phase === "setup") {
+        return JSON.stringify({ battagliaInCorso: false, stato: "in preparazione (non ancora iniziata)", boss: bossInfo, eroi: heroes.length });
+      }
+
+      // ── Battaglia in corso (fighting) ──
+      const turn = await readDoc("battle_meta/turn_tracker", apiKey) || {};
+      const turnoDi = turn.phase === "boss" ? "il Boss e i nemici" : turn.phase === "players" ? "i giocatori" : null;
       return JSON.stringify({
-        bossAttivo: true,
-        round: battle.round || turn.turnNumber || null,
-        faseBattaglia: battle.phase || null,
-        turnoDi,
-        bosses: active.map(b => ({
-          nome: b.name,
-          pf: b.hp, pfMax: b.maxHp,
-          percentualePf: b.maxHp ? Math.round((b.hp / b.maxHp) * 100) + "%" : null,
-          scudo: b.shield || 0,
-          sconfitto: (b.hp ?? 1) <= 0,
-        })),
+        battagliaInCorso: true, round: battle.round || null, turnoDi,
+        boss: bossInfo,
+        minionVivi: minions.filter(m => !m.dead).length,
+        eroiVivi: heroesAlive, eroiTotali: heroes.length,
       });
     }
 
