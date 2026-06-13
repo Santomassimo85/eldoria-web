@@ -44,6 +44,7 @@ import ArenaMarket from "./pages/ArenaMarket";
 import BossTactics from "./pages/tactics/BossTactics";
 import BattleMapEditor from "./pages/tactics/BattleMapEditor";
 import DmTools from "./pages/DmTools";
+import Assistente from "./pages/Assistente";
 // PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
 // imports and the matching nav link / routes below.
 // import PetArena from "./pages/PetArena";
@@ -411,6 +412,7 @@ export default function App() {
           <NpcGenNavLink closeMenu={closeMenu} />
           <DmToolsNavLink closeMenu={closeMenu} />
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
+          <NavLink to="/assistente" onClick={closeMenu}>Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
           <NavDropdown label="Mondo" closeAll={closeMenu}>
@@ -453,6 +455,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/party" element={<Party />} />
+          <Route path="/assistente" element={<Assistente />} />
           <Route path="/npc" element={<NPC />} />
           <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />
