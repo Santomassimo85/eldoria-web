@@ -6,6 +6,10 @@
       "title": "Assistente di Eldoria — consapevole di giocatore e gruppo",
       "changes": [
         {
+          "type": "graphic",
+          "text": "Assistente: sotto la chat ci sono ora pulsanti rapidi raggruppati per categoria (Scheda, Gruppo, Mercato, Missioni, Riassunti, NPC, Luoghi, Divinità, Arena, TCG, World Boss) con domande pronte da toccare."
+        },
+        {
           "type": "feature",
           "text": "Assistente: ora consulta anche Arena, TCG e World Boss. Può dire chi ha vinto l'ultimo torneo dell'arena e come procede quello in corso, lo stato del torneo di carte (iscritti, round, campione) e se c'è un World Boss attivo con i suoi PF e di chi è il turno. Sono solo consultazioni: niente azioni di combattimento."
         },
