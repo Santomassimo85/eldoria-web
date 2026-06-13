@@ -114,8 +114,8 @@ const NpcGenNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
   if (!isDmUser(currentUser?.email)) return null;
   return (
-    <NavLink to="/dm-admin/genera-npc" onClick={closeMenu}>
-      🧙 Genera NPC
+    <NavLink to="/dm-admin/genera-npc" onClick={closeMenu} style={{ color: "var(--red)", fontWeight: 700 }}>
+      Genera NPC
     </NavLink>
   );
 };
@@ -123,7 +123,7 @@ const NpcGenNavLink = ({ closeMenu }) => {
 const DmToolsNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
   if (!isDmUser(currentUser?.email)) return null;
-  return <NavLink to="/dm-admin/strumenti" onClick={closeMenu}>🛠️ Strumenti DM</NavLink>;
+  return <NavLink to="/dm-admin/strumenti" onClick={closeMenu} style={{ color: "var(--red)", fontWeight: 700 }}>Strumenti DM</NavLink>;
 };
 
 // --- Componente Link Admin Condizionale ---
@@ -412,7 +412,7 @@ export default function App() {
           <NpcGenNavLink closeMenu={closeMenu} />
           <DmToolsNavLink closeMenu={closeMenu} />
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
-          <NavLink to="/assistente" onClick={closeMenu}>Agent</NavLink>
+          <NavLink to="/assistente" onClick={closeMenu} style={{ color: "#0e4d75", fontWeight: 700 }}>Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
           <NavDropdown label="Mondo" closeAll={closeMenu}>

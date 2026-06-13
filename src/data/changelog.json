@@ -7,6 +7,10 @@
       "changes": [
         {
           "type": "graphic",
+          "text": "Menu: le voci «Strumenti DM» e «Genera NPC» sono ora in rosso e senza icona; la voce «Agent» è in azzurro scuro."
+        },
+        {
+          "type": "graphic",
           "text": "Assistente: ora si rivolge al giocatore con il nome del suo personaggio (es. «Salve, Garroth») invece del generico «avventuriero»."
         },
         {
