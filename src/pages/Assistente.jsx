@@ -133,9 +133,9 @@ async function doAcceptQuest(uid, params) {
 
 const CSS = `
 .ast{
-  --panel:#fffdf8; --panel2:#faf4e6; --line:rgba(212,175,55,.45);
-  --gold:#d4af37; --gold-deep:#b8860b; --red:#820a0a; --red-soft:#a32222;
-  --ink:#2b2b2b; --muted:#7a6f55;
+  --panel:#0f1729; --panel2:#141d33; --line:rgba(176,124,255,.28);
+  --gold:#f0a93b; --gold-deep:#c07e1e; --red:#ff5a4d; --red-soft:#c12d22;
+  --ink:#eef2ff; --muted:#9fabcb;
   display:flex; flex-direction:column;
   height:calc(100dvh - var(--navbar-h) - 24px); margin:calc(var(--navbar-h) + 24px) auto 0;
   max-width:760px; width:100%;
@@ -148,7 +148,7 @@ const CSS = `
 .ast-head{
   padding:16px 18px 14px; border-bottom:2px solid var(--gold);
   display:flex; align-items:center; gap:14px; flex:0 0 auto;
-  background:linear-gradient(180deg,#ffffff,#faf4e6);
+  background:linear-gradient(180deg,#141d33,#0f1729);
 }
 .ast-head .orb{
   width:44px;height:44px;border-radius:50%;flex:0 0 44px;
@@ -187,7 +187,7 @@ const CSS = `
   box-shadow:0 2px 8px rgba(130,10,10,.2);
 }
 .msg.bot .msg-bubble{
-  background:#fffdf8; color:var(--ink);
+  background:var(--panel2); color:var(--ink);
   border:1px solid var(--line); border-bottom-left-radius:4px;
   box-shadow:0 1px 4px rgba(0,0,0,.05);
 }
@@ -221,7 +221,7 @@ const CSS = `
 .ast-modal button{flex:1;padding:12px;border-radius:10px;font-family:var(--font-title),'Cinzel',serif;font-size:14px;cursor:pointer;border:none;transition:.15s}
 .ast-modal .ok{background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#2a1a00}
 .ast-modal .ok:hover{filter:brightness(1.06)}
-.ast-modal .no{background:#fff;color:var(--red);border:1px solid var(--line)}
+.ast-modal .no{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
 .ast-modal .no:hover{background:var(--panel2)}
 
 /* SUGGESTIONS */
@@ -243,11 +243,11 @@ const CSS = `
 /* INPUT */
 .ast-bar{
   padding:12px 16px 14px;border-top:2px solid var(--gold);
-  display:flex;gap:10px;flex:0 0 auto;background:linear-gradient(0deg,#ffffff,#faf4e6);
+  display:flex;gap:10px;flex:0 0 auto;background:linear-gradient(0deg,#0b1220,#0f1729);
 }
 .ast-bar textarea{
   flex:1;padding:11px 13px;border-radius:11px;border:1px solid var(--gold);
-  background:#fff;color:var(--ink);font-size:16px;font-family:var(--font-text),serif;
+  background:var(--bg-0,#0b1220);color:var(--ink);font-size:16px;font-family:var(--font-text),serif;
   resize:none;height:46px;max-height:120px;overflow-y:auto;line-height:1.4;margin:0;
 }
 .ast-bar textarea::placeholder{color:#a89a7a}

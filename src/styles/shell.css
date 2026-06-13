@@ -1,0 +1,162 @@
+/* ============================================================================
+   CRIT HAPPENS — Shell (header + navigazione)  ·  override scuro premium
+   Caricato dopo theme.css. Solo CSS: nessun markup/logica toccati.
+   Desktop: top-bar in vetro scuro. Mobile: drawer a tutta altezza animato.
+   ============================================================================ */
+
+/* ── Sfondo decorativo: ritinta il drago e attenua, coerente col navy ── */
+body::before { opacity:.05; filter:hue-rotate(8deg) saturate(.5) brightness(1.3); }
+body::after  { opacity:.06; filter:grayscale(.3) brightness(1.2); }
+
+/* ── TOP BAR ── */
+.app-nav {
+  background:rgba(10,15,26,.78) !important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  backdrop-filter:blur(16px) saturate(1.2);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 8px 30px -12px rgba(0,0,0,.7) !important;
+  padding:10px clamp(14px,4vw,40px) !important;
+}
+
+/* Logo: lascio il wordmark originale (oro/rosso, già clippato e leggibile su navy);
+   aggiungo solo un alone caldo all'icona. */
+.logo:hover { transform:translateY(-1px) scale(1.03); }
+.logo-img { filter:drop-shadow(0 2px 10px rgba(240,169,59,.35)); }
+
+/* ── LINK NAV — fantasy oro-pergamena, hover epico ── */
+nav a, .nav-dd-trigger {
+  color:#ecdcae !important;                 /* oro pergamena, ben leggibile su navy */
+  font-family:var(--font-head) !important;  /* Cinzel (fantasy)  */
+  font-weight:600 !important; letter-spacing:.06em; border-radius:var(--r-pill); position:relative; overflow:hidden;
+  transition:color var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease), text-shadow var(--dur) var(--ease) !important;
+}
+nav a:hover, .nav-dd-trigger:hover {
+  color:#fff !important;
+  background:linear-gradient(90deg, rgba(240,169,59,.24), rgba(176,124,255,.12)) !important;
+  box-shadow:inset 0 0 0 1px rgba(240,169,59,.45), 0 0 20px -4px rgba(240,169,59,.55) !important;
+  text-shadow:0 0 14px rgba(240,169,59,.7);
+}
+nav a.active {
+  background:var(--grad-amber) !important; color:#241501 !important; box-shadow:var(--glow-amber);
+  text-shadow:none;
+}
+.nav-dd--open .nav-dd-trigger { background:var(--grad-arc) !important; color:#170a30 !important; text-shadow:none; }
+
+/* Tasto "DM ADMIN" (inline gold): testo scuro leggibile sull'ambra */
+.admin-link, nav a.admin-link { color:#241501 !important; font-family:var(--font-head) !important; text-shadow:none !important; }
+
+/* Dropdown scuro */
+.nav-dd-menu {
+  background:linear-gradient(180deg,var(--bg-2),var(--bg-1)) !important;
+  border:1px solid var(--line) !important; border-top:3px solid var(--amber) !important;
+  border-radius:0 0 var(--r-md) var(--r-md) !important;
+  box-shadow:var(--shadow-2) !important; overflow:hidden;
+  animation:ch-pop .22s var(--ease-out) both;
+}
+.nav-dd-menu a {
+  color:var(--muted) !important; border-bottom:1px solid var(--line-soft) !important;
+}
+.nav-dd-menu a:hover { background:rgba(176,124,255,.12) !important; color:var(--ink) !important; padding-left:24px; }
+.nav-dd-menu a.active {
+  background:rgba(240,169,59,.12) !important; color:var(--amber-soft) !important;
+  border-left:3px solid var(--amber) !important;
+}
+
+/* Burger → ambra */
+.burger .line { background:var(--amber) !important; box-shadow:0 0 8px rgba(240,169,59,.4); }
+
+/* Bottoni login/avatar sul fondo scuro restano leggibili (gradiente crit) */
+.login-button, .logged-user-button {
+  background:var(--grad-crit) !important; color:#fff !important; border:none;
+  box-shadow:0 6px 18px -8px rgba(255,90,77,.6);
+}
+
+/* ============================================================================
+   MOBILE — drawer a tutta altezza (≤1300px, coerente coi breakpoint esistenti)
+   ============================================================================ */
+@media (max-width: 1300px) {
+  :root { --navbar-h: 66px; }
+
+  .app-nav {
+    flex-direction:row !important;
+    justify-content:space-between; align-items:center;
+    border-bottom:1px solid var(--line) !important;
+    padding:8px 16px !important;
+  }
+  .logo { margin-left:0 !important; }
+  .logo-img { height:42px !important; }
+
+  /* il <nav> diventa un pannello laterale che scorre da destra */
+  nav, .burger.open + nav {
+    position:fixed !important; top:0 !important; right:0 !important; left:auto !important; bottom:0 !important;
+    width:min(86vw, 380px) !important; height:100dvh !important; margin:0 !important;
+    flex-direction:column !important; align-items:stretch !important; justify-content:flex-start !important;
+    gap:3px !important; padding:calc(var(--navbar-h) + 14px) 16px 24px !important;
+    background:linear-gradient(180deg,#0e1426,#0a0f1c) !important;
+    border-left:1px solid var(--line) !important; border-radius:0 !important;
+    box-shadow:-24px 0 60px -20px rgba(0,0,0,.8) !important;
+    transform:translateX(105%); visibility:hidden; opacity:0;
+    transition:transform .42s var(--ease-out), opacity .3s ease, visibility 0s linear .42s;
+    overflow-y:auto; z-index:1050 !important; display:flex !important;
+  }
+  nav.active {
+    transform:translateX(0) !important; visibility:visible !important; opacity:1 !important;
+    background:linear-gradient(180deg,#0e1426,#0a0f1c) !important; margin:0 !important;
+    transition:transform .42s var(--ease-out), opacity .3s ease;
+  }
+  /* backdrop sfocato dietro al drawer */
+  nav.active::before {
+    content:""; position:fixed; inset:0; z-index:-1;
+    background:var(--overlay); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    animation:ch-fade-in .35s ease both;
+  }
+
+  /* link a tutta larghezza, ingresso a cascata */
+  nav.active > a, nav.active > .nav-dd, nav.active > * {
+    width:100%; opacity:0; animation:ch-fade-up .4s var(--ease-out) forwards;
+  }
+  nav.active > *:nth-child(1){ animation-delay:.05s; }
+  nav.active > *:nth-child(2){ animation-delay:.09s; }
+  nav.active > *:nth-child(3){ animation-delay:.13s; }
+  nav.active > *:nth-child(4){ animation-delay:.17s; }
+  nav.active > *:nth-child(5){ animation-delay:.21s; }
+  nav.active > *:nth-child(6){ animation-delay:.25s; }
+  nav.active > *:nth-child(7){ animation-delay:.29s; }
+  nav.active > *:nth-child(8){ animation-delay:.33s; }
+  nav.active > *:nth-child(n+9){ animation-delay:.37s; }
+
+  nav a, .nav-dd-trigger {
+    display:flex; width:100%; justify-content:flex-start; padding:9px 14px !important;
+    font-size:0.92rem !important; letter-spacing:.04em; border-radius:var(--r-sm) !important;
+    border:1px solid transparent;
+  }
+  /* barra runica che cresce a sinistra all'hover (effetto epico) */
+  nav a::before, .nav-dd-trigger::before {
+    content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:3px;
+    background:var(--grad-amber); transform:scaleY(0); transform-origin:center;
+    transition:transform .28s var(--ease-spring); box-shadow:0 0 12px rgba(240,169,59,.7);
+  }
+  nav a:hover::before, .nav-dd-trigger:hover::before { transform:scaleY(1); }
+  nav a:hover, .nav-dd-trigger:hover { border-color:rgba(240,169,59,.25); padding-left:24px !important; }
+  nav a.active::before { transform:scaleY(0); }
+  .nav-dd { width:100%; }
+  .nav-dd-menu {
+    position:static !important; transform:none !important; width:100% !important; min-width:0 !important;
+    box-shadow:none !important; border:none !important; border-left:2px solid var(--amber-deep) !important;
+    border-radius:0 !important; margin:4px 0 4px 10px !important; background:transparent !important;
+  }
+  .nav-dd-menu a { padding:7px 14px 7px 18px !important; font-size:0.84rem !important; }
+  nav a::before, .nav-dd-trigger::before { top:6px; bottom:6px; }
+
+  /* col drawer aperto, nascondi i bottoni flottanti (chat, calendario, presenza) */
+  body:has(nav.active) .chat-toggle-btn,
+  body:has(nav.active) .global-chat-window,
+  body:has(nav.active) .floating-sidebar-btn,
+  body:has(nav.active) .online-fab { display:none !important; }
+}
+
+/* Niente animazioni se l'utente preferisce ridurre il moto */
+@media (prefers-reduced-motion: reduce) {
+  nav, nav.active { transition:none !important; }
+  nav.active > * { animation:none !important; opacity:1 !important; }
+}

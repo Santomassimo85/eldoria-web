@@ -1,6 +1,41 @@
 {
   "versions": [
     {
+      "version": "21",
+      "date": "2026-06-13",
+      "title": "Restyle scuro «Arcanum Nocturne» + novità TCG e mappa",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Nuovo tema grafico dark premium su tutto il sito: palette navy + ambra + viola, tipografia fantasy (Cinzel + EB Garamond), card e bottoni animati, sfondo ambiente coerente e animazioni d'ingresso."
+        },
+        {
+          "type": "graphic",
+          "text": "Navigazione ripensata: su smartphone il menu è un drawer a tutta altezza con voci fantasy leggibili, hover epico e apertura a cascata. I sottomenu ora funzionano a fisarmonica (uno solo aperto per volta, e si richiude ri-cliccando). Gli strumenti del Master sono raccolti nel menu «DM Tools»."
+        },
+        {
+          "type": "graphic",
+          "text": "Pannello del giocatore (avatar) ridisegnato in tema scuro, riposizionato per non uscire dallo schermo e con animazione di apertura/chiusura «a papiro»."
+        },
+        {
+          "type": "feature",
+          "text": "Mappa del Mondo: su smartphone si apre automaticamente in orizzontale (landscape) per sfruttare lo spazio, e torna in verticale uscendo dalla pagina."
+        },
+        {
+          "type": "feature",
+          "text": "TCG · Deck builder: aggiunti i filtri per Colore (multi-selezione) e per Mana (costo 0–6+), combinabili con i filtri esistenti."
+        },
+        {
+          "type": "mechanics",
+          "text": "TCG · Multiclassi rivisti: ogni multiclasse (Lamamagica, Templare, Inquisitore, Predone, Sciamano) ha ora un kit di abilità tutto suo, progressivo per livello, con il proprio ultimate. Scegliendo un multiclasse non si passa più dalla selezione della «via»: la scelta è diretta."
+        },
+        {
+          "type": "fix",
+          "text": "TCG · Risolto il tasto «Fine turno» che a volte non faceva nulla: se restava aperta una finestra di priorità o c'era qualcosa sulla pila, ora il turno si chiude comunque."
+        }
+      ]
+    },
+    {
       "version": "20",
       "date": "2026-06-13",
       "title": "Assistente di Eldoria — consapevole di giocatore e gruppo",

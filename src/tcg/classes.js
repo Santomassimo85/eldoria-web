@@ -320,11 +320,10 @@ export function vieFor(klass) {
 /* Casting tier for a (klass, via) pair. For a multiclasse, the tier
    is inherited from the parent class that owns the chosen via. */
 export function casterTierFor(klass, via) {
+  // I multiclassi hanno un caster tier FISSO (vedi MULTICLASS_CASTER_TIER):
+  // non dipende più dalla via (che per i multiclassi non si sceglie).
   if (MULTICLASS_DEF[klass]) {
-    for (const p of MULTICLASS_DEF[klass].parts) {
-      if (CLASS_VIE[p] && CLASS_VIE[p][via]) return CLASS_CASTER_TIER[p];
-    }
-    return "martial";
+    return MULTICLASS_CASTER_TIER[klass] || "semi";
   }
   return CLASS_CASTER_TIER[klass] || "martial";
 }
@@ -601,29 +600,96 @@ export const CLASS_PROGRESSION = {
   },
 };
 
-/* Look up a single level's reward. Returns null if no reward exists
-   for that (klass, via, level) combination (e.g. stubbed classes).
+/* ── MULTICLASS PROGRESSION (2026-06-13) ─────────────────────────
+   Ogni multiclasse ha ora un KIT PROPRIO (non più ereditato dalle vie
+   delle classi sorgenti): perk dedicati a lv2/3/4 + il suo ultimate a
+   lv5. La via non si sceglie più per i multiclassi. */
+export const MULTICLASS_CASTER_TIER = {
+  lamamagica:  "semi",
+  templare:    "semi",
+  inquisitore: "semi",
+  predone:     "martial",
+  sciamano:    "full",
+};
 
-   Multiclassi: lv 2-4 use the parent class's via progression; lv 5
-   is REPLACED by the multiclasse's dedicated ultimate (the via's own
-   lv-5 ultimate is discarded — you can't double-dip). */
+export const MULTICLASS_PROGRESSION = {
+  lamamagica: {
+    2: lv(2, "Lama Incantata", "🗡️",
+          "La prima creatura giocata ogni turno costa −1 mana generico.",
+          { firstCreatureDiscount: 1 }),
+    3: lv(3, "Affondo Arcano", "⚔️",
+          "Le tue creature infliggono +1 danno in combattimento.",
+          { creatureCombatBonus: 1 }),
+    4: lv(4, "Taglio Devastante", "💥",
+          "Tutte le tue creature ottengono Travolgere.",
+          { creatureTrample: 1 }),
+    5: lv(5, "Lama Arcana", "🗡️✨",
+          "ULTIMATE — Le tue creature ottengono +2/+2 e Travolgere fino a fine turno.",
+          { ultimate: "lama_arcana" }),
+  },
+  templare: {
+    2: lv(2, "Mano Risanatrice", "✚",
+          "Recuperi 1 PV ogni volta che evochi una creatura.",
+          { onCreaturePlayHeal: 1 }),
+    3: lv(3, "Disciplina Sacra", "🛡️",
+          "Aura: tutte le tue creature ottengono +0/+1.",
+          { creatureBuffT: 1 }),
+    4: lv(4, "Voto del Templare", "✝️",
+          "Tutte le tue creature ottengono Legame vitale.",
+          { creatureLifelink: 1 }),
+    5: lv(5, "Giudizio Sacro", "⚖️",
+          "ULTIMATE — Infliggi 3 danni a ogni creatura nemica e recuperi 5 PV.",
+          { ultimate: "giudizio_sacro" }),
+  },
+  inquisitore: {
+    2: lv(2, "Sguardo Inquisitorio", "👁️",
+          "Le tue magie a bersaglio singolo infliggono +1 danno.",
+          { singleTargetDmgBonus: 1 }),
+    3: lv(3, "Marchio del Reo", "🔥",
+          "Quando una creatura nemica muore, infliggi 1 danno all'eroe avversario.",
+          { onEnemyDeathPing: 1 }),
+    4: lv(4, "Castigo Rapido", "⚡",
+          "La prima reazione-danno che lanci ogni turno infligge +1 danno.",
+          { firstReactionDmgBonus: 1 }),
+    5: lv(5, "Sentenza Finale", "📜",
+          "ULTIMATE — Distruggi la creatura nemica più potente e pesca 2 carte.",
+          { ultimate: "sentenza_finale" }),
+  },
+  predone: {
+    2: lv(2, "Affilatura", "🗡️",
+          "La prima creatura giocata ogni turno entra con +1/+0.",
+          { firstCreatureBuffP: 1 }),
+    3: lv(3, "Agguato dall'Alto", "🦅",
+          "La prima creatura giocata ogni turno entra con Volare.",
+          { firstCreatureFlying: 1 }),
+    4: lv(4, "Colpo Mirato", "🎯",
+          "Tutti i tuoi danni all'eroe avversario sono aumentati di 1.",
+          { heroDmgBonus: 1 }),
+    5: lv(5, "Imboscata Silvana", "🌑🌿",
+          "ULTIMATE — Le tue creature si stappano, perdono fiacca e ottengono +1/+1 fino a fine turno; pesca 2 carte.",
+          { ultimate: "imboscata_silvana" }),
+  },
+  sciamano: {
+    2: lv(2, "Comunione con la Terra", "🌍",
+          "Puoi giocare +1 terra extra per turno.",
+          { extraLandPerTurn: 1 }),
+    3: lv(3, "Spiriti Ancestrali", "🗿",
+          "Le creature con costo ≥4 costano −1 mana generico.",
+          { bigCreatureDiscount: 1 }),
+    4: lv(4, "Furia Elementale", "🌪️",
+          "Tutte le tue magie ad area infliggono +1 danno.",
+          { aoeBonus: 1 }),
+    5: lv(5, "Convergenza Elementale", "🌪️",
+          "ULTIMATE — Infliggi 4 danni a ogni creatura nemica, 2 all'eroe avversario e recuperi 4 PV.",
+          { ultimate: "convergenza_elementale" }),
+  },
+};
+
+/* Look up a single level's reward. Returns null if no reward exists.
+   Multiclassi: kit dedicato (MULTICLASS_PROGRESSION), via ignorata. */
 export function rewardAt(klass, via, level) {
   if (MULTICLASS_DEF[klass]) {
-    if (level === 5) {
-      const u = MULTICLASS_DEF[klass].ultimate;
-      return {
-        level: 5,
-        name: u.name,
-        icon: u.icon,
-        description: u.desc,
-        patch: { ultimate: u.id },
-      };
-    }
-    for (const p of MULTICLASS_DEF[klass].parts) {
-      const row = CLASS_PROGRESSION[p]?.[via]?.[level];
-      if (row) return row;
-    }
-    return null;
+    return MULTICLASS_PROGRESSION[klass]?.[level] || null;
   }
   return CLASS_PROGRESSION[klass]?.[via]?.[level] || null;
 }

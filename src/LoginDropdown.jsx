@@ -35,6 +35,7 @@ export default function LoginDropdown() {
   const navigate = useNavigate();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -44,15 +45,22 @@ export default function LoginDropdown() {
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
+  // Chiusura animata: avvia l'animazione di "ri-arrotolamento" e poi smonta il pannello.
+  const closePanel = () => {
+    setIsClosing(true);
+    setTimeout(() => { setIsClosing(false); setIsOpen(false); }, 240);
+  };
+  const togglePanel = () => { if (isOpen) closePanel(); else setIsOpen(true); };
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setIsOpen(false);
+        if (isOpen) closePanel();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -102,11 +110,11 @@ export default function LoginDropdown() {
   if (!currentUser) {
     return (
       <div className="ld-container" ref={dropdownRef}>
-        <button onClick={() => setIsOpen((v) => !v)} className="ld-login-btn">
+        <button onClick={togglePanel} className="ld-login-btn">
           Accedi
         </button>
-        {isOpen && (
-          <div className="ld-panel ld-panel--login">
+        {(isOpen || isClosing) && (
+          <div className={`ld-panel ld-panel--login${isClosing ? " ld-panel--closing" : ""}`}>
             {error && <p className="ld-error">{error}</p>}
             <form onSubmit={handleLogin} className="ld-form">
               <input
@@ -136,7 +144,7 @@ export default function LoginDropdown() {
   // --- LOGGATO ---
   return (
     <div className="ld-container" ref={dropdownRef}>
-      <button className="ld-avatar-btn" onClick={() => setIsOpen((v) => !v)}>
+      <button className="ld-avatar-btn" onClick={togglePanel}>
         <img
           src={charData?.image || "/assets/player/default.png"}
           alt="Avatar"
@@ -147,8 +155,8 @@ export default function LoginDropdown() {
         )}
       </button>
 
-      {isOpen && (
-        <div className="ld-panel ld-panel--user">
+      {(isOpen || isClosing) && (
+        <div className={`ld-panel ld-panel--user${isClosing ? " ld-panel--closing" : ""}`}>
           {/* Header personaggio */}
           <div className="ld-char-header">
             <img

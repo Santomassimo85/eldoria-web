@@ -70,17 +70,29 @@ const MASTER_EMAIL_UI = "santomassimo85@gmail.com";
 const APP_VERSION = "2.2.1"; // <--- CAMBIA QUESTO NUMERO PER FORZARE IL REFRESH GLOBALE
 
 // --- Dropdown menu component ---
-function NavDropdown({ label, children, closeAll }) {
-  const [open, setOpen] = useState(false);
+function NavDropdown({ label, children, closeAll, id, openId, setOpenId }) {
+  // Modalità "fisarmonica" se controllato (id + setOpenId): un solo menu aperto per volta.
+  const controlled = id !== undefined && typeof setOpenId === "function";
+  const [openU, setOpenU] = useState(false);
+  const open = controlled ? openId === id : openU;
+  const setOpen = (v) => {
+    const next = typeof v === "function" ? v(open) : v;
+    if (controlled) setOpenId(next ? id : null);
+    else setOpenU(next);
+  };
   const ref = useRef(null);
 
+  // Click-fuori: solo in modalità NON controllata. In accordion (controllato)
+  // se ne occupa un singolo listener nel padre, altrimenti i fratelli si
+  // interferiscono e il re-click non chiude il sottomenu.
   useEffect(() => {
+    if (controlled) return;
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target)) setOpenU(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [controlled]);
 
   const handleChildClick = () => {
     setOpen(false);
@@ -132,6 +144,19 @@ const FoundryItemNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
   if (!isDmUser(currentUser?.email)) return null;
   return <NavLink to="/dm-admin/foundry-item" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--red)", fontWeight: 700 })}>Oggetto → Foundry</NavLink>;
+};
+
+// --- Menu raggruppato "DM Tools" (master + co-master) ---
+const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
+  const { currentUser } = useAuth();
+  if (!isDmUser(currentUser?.email)) return null;
+  return (
+    <NavDropdown label="DM Tools" closeAll={closeMenu} id="dmtools" openId={openId} setOpenId={setOpenId}>
+      <NavLink to="/dm-admin/genera-npc">Genera NPC</NavLink>
+      <NavLink to="/dm-admin/strumenti">Strumenti DM</NavLink>
+      <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
+    </NavDropdown>
+  );
 };
 
 // --- Componente Link Admin Condizionale ---
@@ -328,10 +353,19 @@ function OnlinePresence() {
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [forceShowNav, setForceShowNav] = useState(false);
+  const [openDd, setOpenDd] = useState(null); // dropdown nav aperto (fisarmonica: uno solo)
   const location = useLocation();
 
   const toggleMenu = () => setMenuOpen((prev) => !prev);
-  const closeMenu = () => setMenuOpen(false);
+  const closeMenu = () => { setMenuOpen(false); setOpenDd(null); };
+
+  // Chiude il dropdown aperto cliccando fuori da qualsiasi .nav-dd (un solo listener).
+  useEffect(() => {
+    if (!openDd) return;
+    const h = (e) => { if (!e.target.closest || !e.target.closest(".nav-dd")) setOpenDd(null); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [openDd]);
 
   // Fullscreen battle pages hide the top nav to give the fight more room.
   const FULLSCREEN_ROUTES = ["/boss-tactics", "/world-boss-fight", "/dm-admin/battle-maps"];
@@ -417,26 +451,23 @@ export default function App() {
         </div>
 
         <nav className={menuOpen ? "active" : ""}>
-          <NpcGenNavLink closeMenu={closeMenu} />
-          <DmToolsNavLink closeMenu={closeMenu} />
-          <FoundryItemNavLink closeMenu={closeMenu} />
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
           <NavLink to="/assistente" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "#0e4d75", fontWeight: 700 })}>Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
-          <NavDropdown label="Mondo" closeAll={closeMenu}>
+          <NavDropdown label="Mondo" closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/world-map">Mappa</NavLink>
             <NavLink to="/Geo">Archivio Geomatico</NavLink>
           </NavDropdown>
 
-          <NavDropdown label="Eroi" closeAll={closeMenu}>
+          <NavDropdown label="Eroi" closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/party">Party</NavLink>
             <NavLink to="/scheda-pg">Scheda PG</NavLink>
             <NavLink to="/npc">NPC</NavLink>
             <NavLink to="/riassunti">Riassunti</NavLink>
           </NavDropdown>
 
-          <NavDropdown label="Gilda" closeAll={closeMenu}>
+          <NavDropdown label="Gilda" closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/mercato">Mercato Nero</NavLink>
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
@@ -446,7 +477,7 @@ export default function App() {
             <NavLink to="/feedback">💬 Feedback</NavLink>
           </NavDropdown>
 
-          <NavDropdown label="Battaglia" closeAll={closeMenu}>
+          <NavDropdown label="Battaglia" closeAll={closeMenu} id="battaglia" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
             {/* <NavLink to="/pet">Pet Hub</NavLink> */}
@@ -454,6 +485,7 @@ export default function App() {
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
 
+          <DmToolsDropdown closeMenu={closeMenu} openId={openDd} setOpenId={setOpenDd} />
           <AdminNavLink closeMenu={closeMenu} />
           <SummaryAdminNavLink closeMenu={closeMenu} />
         </nav>

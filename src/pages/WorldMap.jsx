@@ -52,6 +52,40 @@ export default function WorldMap() {
 
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
+  // ── Orientamento: SOLO in questa pagina forziamo il landscape (la mappa è
+  // larga e in portrait si vede male). All'uscita ripristiniamo il portrait
+  // (il default dell'app, vedi manifest). Funziona quando la pagina può
+  // bloccare l'orientamento (PWA installata o fullscreen); altrove fallisce
+  // in silenzio. iOS Safari non supporta il lock via web. ──
+  useEffect(() => {
+    const orient = (typeof window !== "undefined" && window.screen && window.screen.orientation) || null;
+    if (!orient || typeof orient.lock !== "function") return;
+    // Solo su mobile/touch: niente fullscreen forzato su desktop.
+    const isMobile = window.matchMedia("(max-width: 900px)").matches || window.matchMedia("(pointer: coarse)").matches;
+    if (!isMobile) return;
+
+    // Se non siamo già fullscreen, prova a entrarci sull'elemento radice:
+    // su Chrome Android il lock dell'orientamento richiede il fullscreen.
+    const root = document.documentElement;
+    const wasFullscreen = !!document.fullscreenElement;
+    const tryLock = async () => {
+      try {
+        if (!document.fullscreenElement && root.requestFullscreen) {
+          await root.requestFullscreen().catch(() => {});
+        }
+        await orient.lock("landscape");
+      } catch { /* in tab senza gesture/fullscreen fallisce: nessun problema */ }
+    };
+    tryLock();
+
+    return () => {
+      try { orient.unlock && orient.unlock(); } catch { /* noop */ }
+      if (!wasFullscreen && document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, []);
+
   // Firebase
   useEffect(() => {
     const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) =>

@@ -1,0 +1,229 @@
+/* ============================================================================
+   CRIT HAPPENS — Design System "Arcanum Nocturne"
+   Fondazione globale: design tokens + componenti base + animazioni.
+   Caricato DOPO style.css (in main.jsx) così rimappa i token legacy
+   (--bg/--gold/--red/--font-*) verso il nuovo sistema scuro coerente.
+   Solo presentazione: nessuna logica, nessun nome di rotta/import toccato.
+   Palette: deep navy + ambra + viola neon (+ rosso "crit" semantico).
+   ============================================================================ */
+
+:root {
+  /* ── Superfici (deep navy) ── */
+  --bg-0:#0b1220;   /* fondo app            */
+  --bg-1:#0f1729;   /* superfici            */
+  --bg-2:#141d33;   /* card                 */
+  --bg-3:#1b2742;   /* elementi elevati     */
+  --line:#293a5e;   /* bordi                */
+  --line-soft:#1d2a45;
+  --overlay:rgba(7,11,22,.66);
+
+  /* ── Accenti ── */
+  --amber:#f0a93b;  --amber-deep:#c07e1e;  --amber-soft:#f8cd7e;
+  --arc:#b07cff;    --arc-deep:#7d4fd6;    --arc-soft:#cdb0ff;
+  --crit:#ff5a4d;   --crit-deep:#c12d22;
+  --ok:#46c98b;     --warn:#f0a93b;        --info:#5ab0ff;
+
+  /* ── Testo ── */
+  --ink:#eef2ff;  --muted:#9fabcb;  --faint:#6c789b;
+
+  /* ── Tipografia (fantasy) ── */
+  --font-display:"Cinzel Decorative", serif;   /* hero ornato        */
+  --font-head:"Cinzel", Georgia, serif;         /* titoli / nav       */
+  --font-ui:"EB Garamond", Georgia, serif;      /* UI / testo (serif fantasy) */
+  --font-sans:"Manrope", system-ui, sans-serif; /* fallback per dati densi */
+  --font-lore:"EB Garamond", Georgia, serif;    /* narrativa lunga    */
+
+  /* ── Raggi ── */
+  --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px; --r-pill:999px;
+
+  /* ── Spazi ── */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
+
+  /* ── Ombre & glow ── */
+  --shadow-1:0 2px 10px rgba(0,0,0,.35);
+  --shadow-2:0 14px 44px -14px rgba(0,0,0,.65);
+  --shadow-3:0 28px 70px -24px rgba(0,0,0,.75);
+  --glow-amber:0 0 0 1px rgba(240,169,59,.40), 0 10px 34px -10px rgba(240,169,59,.55);
+  --glow-arc:0 0 0 1px rgba(176,124,255,.45), 0 10px 34px -10px rgba(176,124,255,.60);
+  --glow-crit:0 0 0 1px rgba(255,90,77,.45), 0 10px 34px -10px rgba(255,90,77,.55);
+
+  /* ── Gradienti firma ── */
+  --grad-amber:linear-gradient(135deg,#f8cd7e,#f0a93b 45%,#c07e1e);
+  --grad-arc:linear-gradient(135deg,#cdb0ff,#b07cff 45%,#7d4fd6);
+  --grad-crit:linear-gradient(135deg,#ff7d72,#ff5a4d 45%,#c12d22);
+  --grad-night:radial-gradient(1200px 800px at 75% -10%, rgba(176,124,255,.12), transparent 60%),
+               radial-gradient(900px 700px at 10% 8%, rgba(240,169,59,.08), transparent 55%),
+               linear-gradient(180deg,#0b1220,#0a0f1c 60%,#080c16);
+
+  /* ── Motion ── */
+  --dur-fast:.16s; --dur:.28s; --dur-slow:.5s;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+
+  /* ── Layout ── */
+  --bottomnav-h:64px;
+  --maxw:1180px;
+
+  /* ── REMAP token legacy → nuovo sistema (così tutte le pagine si scuriscono) ── */
+  --bg:var(--bg-0);
+  --gold:var(--amber);   --gold-deep:var(--amber-deep);   --gold-dim:var(--amber-deep);
+  --red:var(--crit);     --red-soft:var(--crit-deep);
+  --font-title:var(--font-display);
+  --font-text:var(--font-ui);
+}
+
+/* ── Reset/ambiente di base ── */
+html { -webkit-text-size-adjust:100%; }
+body {
+  background:var(--grad-night) fixed;
+  color:var(--ink);
+  font-family:var(--font-ui);
+  letter-spacing:.1px;
+}
+::selection { background:rgba(176,124,255,.35); color:#fff; }
+
+/* Scrollbar coerente */
+* { scrollbar-width:thin; scrollbar-color:var(--arc-deep) transparent; }
+*::-webkit-scrollbar { width:10px; height:10px; }
+*::-webkit-scrollbar-thumb { background:linear-gradient(180deg,var(--amber-deep),var(--arc-deep)); border-radius:99px; }
+*::-webkit-scrollbar-track { background:transparent; }
+
+/* ============================================================================
+   COMPONENTI BASE (prefisso ch- per non collidere con classi esistenti)
+   ============================================================================ */
+
+/* ── Contenitore pagina ── */
+.ch-wrap { width:100%; max-width:var(--maxw); margin-inline:auto; padding-inline:clamp(14px,4vw,28px); }
+
+/* ── Titoli ── */
+.ch-h1 { font-family:var(--font-display); font-weight:900; font-size:clamp(28px,7vw,52px); line-height:1.04; color:var(--ink);
+  background:linear-gradient(180deg,#fff,#cfd6ee); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ch-h2 { font-family:var(--font-head); font-weight:700; font-size:clamp(20px,4.5vw,30px); color:var(--amber-soft); letter-spacing:.5px; }
+.ch-eyebrow { font-family:var(--font-head); text-transform:uppercase; letter-spacing:.28em; font-size:12px; color:var(--arc-soft); }
+.ch-lore { font-family:var(--font-lore); font-size:1.08rem; line-height:1.7; color:#d7ddf2; }
+
+/* ── Bottoni: micro-animazioni hover/click + ripple ── */
+.ch-btn {
+  --bg:var(--bg-3); --fg:var(--ink); --bd:var(--line);
+  position:relative; display:inline-flex; align-items:center; justify-content:center; gap:.55em;
+  padding:12px 20px; border-radius:var(--r-pill); border:1px solid var(--bd);
+  background:var(--bg); color:var(--fg); cursor:pointer; overflow:hidden;
+  font-family:var(--font-ui); font-weight:700; font-size:15px; letter-spacing:.2px;
+  transition:transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur) var(--ease), filter var(--dur) var(--ease);
+  will-change:transform;
+}
+.ch-btn:hover { transform:translateY(-2px); }
+.ch-btn:active { transform:translateY(0) scale(.97); }
+.ch-btn::after { /* ripple */
+  content:""; position:absolute; inset:0; border-radius:inherit;
+  background:radial-gradient(circle at center, rgba(255,255,255,.35), transparent 45%);
+  opacity:0; transform:scale(.4); transition:transform .5s var(--ease-out), opacity .6s;
+}
+.ch-btn:active::after { opacity:.5; transform:scale(1.6); transition:0s; }
+.ch-btn--amber { --bg:var(--grad-amber); --fg:#2a1a04; --bd:transparent; }
+.ch-btn--amber:hover { box-shadow:var(--glow-amber); }
+.ch-btn--arc { --bg:var(--grad-arc); --fg:#190a33; --bd:transparent; }
+.ch-btn--arc:hover { box-shadow:var(--glow-arc); }
+.ch-btn--crit { --bg:var(--grad-crit); --fg:#270603; --bd:transparent; }
+.ch-btn--crit:hover { box-shadow:var(--glow-crit); }
+.ch-btn--ghost { --bg:transparent; --bd:var(--line); }
+.ch-btn--ghost:hover { --bd:var(--amber); box-shadow:var(--glow-amber); }
+.ch-btn:disabled { opacity:.45; cursor:default; transform:none !important; box-shadow:none !important; }
+
+/* ── Card ── */
+.ch-card {
+  position:relative; background:linear-gradient(180deg,var(--bg-2),var(--bg-1));
+  border:1px solid var(--line); border-radius:var(--r-lg); padding:var(--sp-5);
+  box-shadow:var(--shadow-1); overflow:hidden;
+  transition:transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.ch-card::before { /* bagliore d'angolo */
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.0;
+  background:radial-gradient(420px 220px at 100% 0%, rgba(176,124,255,.16), transparent 60%);
+  transition:opacity var(--dur) var(--ease);
+}
+.ch-card:hover { transform:translateY(-4px); border-color:var(--arc-deep); box-shadow:var(--shadow-2); }
+.ch-card:hover::before { opacity:1; }
+.ch-card--amber:hover { border-color:var(--amber-deep); }
+
+/* ── Pannello (superficie neutra) ── */
+.ch-panel { background:var(--bg-1); border:1px solid var(--line); border-radius:var(--r-md); padding:var(--sp-4); }
+
+/* ── Chip / tag ── */
+.ch-chip {
+  display:inline-flex; align-items:center; gap:.4em; padding:5px 12px; border-radius:var(--r-pill);
+  font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+  background:rgba(176,124,255,.12); color:var(--arc-soft); border:1px solid rgba(176,124,255,.25);
+}
+.ch-chip--amber { background:rgba(240,169,59,.12); color:var(--amber-soft); border-color:rgba(240,169,59,.28); }
+.ch-chip--crit  { background:rgba(255,90,77,.12); color:#ff9a90; border-color:rgba(255,90,77,.30); }
+
+/* ── Campi form ── */
+.ch-field { display:flex; flex-direction:column; gap:6px; }
+.ch-label { font-family:var(--font-head); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+.ch-input, .ch-select, .ch-textarea {
+  width:100%; background:var(--bg-0); color:var(--ink); border:1px solid var(--line);
+  border-radius:var(--r-sm); padding:12px 14px; font-family:var(--font-ui); font-size:15px;
+  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background var(--dur);
+}
+.ch-input:focus, .ch-select:focus, .ch-textarea:focus {
+  outline:none; border-color:var(--arc); box-shadow:0 0 0 3px rgba(176,124,255,.18); background:var(--bg-1);
+}
+.ch-input::placeholder, .ch-textarea::placeholder { color:#5e6b8e; }
+
+/* ── Griglia fluida 1→3+ colonne ── */
+.ch-grid { display:grid; gap:var(--sp-4); grid-template-columns:repeat(auto-fill, minmax(min(100%,280px), 1fr)); }
+
+/* ── Divider runico ── */
+.ch-divider { height:1px; border:0; background:linear-gradient(90deg,transparent,var(--line),transparent); margin:var(--sp-5) 0; }
+
+/* ============================================================================
+   ANIMAZIONI
+   ============================================================================ */
+@keyframes ch-fade-up   { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:none; } }
+@keyframes ch-fade-in   { from { opacity:0; } to { opacity:1; } }
+@keyframes ch-pop       { 0% { opacity:0; transform:scale(.92) translateY(10px); } 100% { opacity:1; transform:none; } }
+@keyframes ch-glow-pulse{ 0%,100% { box-shadow:0 0 0 0 rgba(176,124,255,.0); } 50% { box-shadow:0 0 26px -4px rgba(176,124,255,.55); } }
+@keyframes ch-shimmer   { 100% { background-position:200% 0; } }
+@keyframes ch-float     { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
+@keyframes ch-spin-rune { to { transform:rotate(360deg); } }
+
+/* Ingressi allo scroll: aggiungi class .ch-reveal; .is-in la attiva (via IntersectionObserver presentazionale) */
+.ch-reveal { opacity:0; transform:translateY(22px); transition:opacity .6s var(--ease-out), transform .6s var(--ease-out); }
+.ch-reveal.is-in { opacity:1; transform:none; }
+.ch-reveal[data-d="1"] { transition-delay:.08s; }
+.ch-reveal[data-d="2"] { transition-delay:.16s; }
+.ch-reveal[data-d="3"] { transition-delay:.24s; }
+.ch-reveal[data-d="4"] { transition-delay:.32s; }
+
+/* Entra di default (fallback se l'observer non gira) */
+.ch-animate-in { animation:ch-fade-up .6s var(--ease-out) both; }
+
+/* ── Loading "shimmer" (no spinner statico) ── */
+.ch-skel {
+  border-radius:var(--r-sm);
+  background:linear-gradient(100deg, var(--bg-2) 30%, var(--bg-3) 50%, var(--bg-2) 70%);
+  background-size:200% 100%; animation:ch-shimmer 1.3s linear infinite;
+}
+/* ── Loading "dadi che rotolano" ── */
+.ch-loader { display:inline-flex; gap:8px; align-items:center; }
+.ch-loader i {
+  width:12px; height:12px; border-radius:4px; display:inline-block;
+  background:var(--grad-amber); animation:ch-float 1s var(--ease) infinite;
+}
+.ch-loader i:nth-child(2){ animation-delay:.12s; background:var(--grad-arc); }
+.ch-loader i:nth-child(3){ animation-delay:.24s; background:var(--grad-crit); }
+
+/* ── Anello rune per stati "caricamento" pieni ── */
+.ch-rune-spin { width:42px; height:42px; border-radius:50%;
+  border:2px solid rgba(176,124,255,.18); border-top-color:var(--amber); animation:ch-spin-rune .9s linear infinite; }
+
+/* ============================================================================
+   ACCESSIBILITÀ: rispetta prefers-reduced-motion
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  .ch-reveal { opacity:1; transform:none; }
+  body { background-attachment:scroll; }
+}

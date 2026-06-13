@@ -107,7 +107,12 @@ export default function ClassPicker({ onConfirm, onBack, deck = null }) {
         key={k}
         type="button"
         className={`tcg-picker__class ${meta.isMulti ? "is-multi" : ""}`}
-        onClick={() => { setKlass(k); setVia(null); }}
+        onClick={() => {
+          // I multiclassi sono un'identità a sé: niente passo "via",
+          // si conferma subito (via = chiave del multiclasse come sentinella).
+          if (meta.isMulti) onConfirm({ klass: k, via: k });
+          else { setKlass(k); setVia(null); }
+        }}
       >
         <div className="tcg-picker__class-ico">{meta.icon}</div>
         <div className="tcg-picker__class-name">{meta.label}</div>

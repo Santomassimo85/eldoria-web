@@ -40,6 +40,7 @@ const TYPE_OPTIONS = [
   { id: "artifact",  label: "Manufatto", icon: "💠" },
 ];
 const RARITY_OPTIONS = ["all", ...RARITY_ORDER];
+const MANA_OPTIONS = ["all", 0, 1, 2, 3, 4, 5, 6]; // 6 = 6+
 const SORT_OPTIONS = [
   { id: "cmc",     label: "CMC ↑" },
   { id: "cmcDesc", label: "CMC ↓" },
@@ -87,6 +88,10 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
   const [klassFilter, setKlassFilter] = useState(() => new Set());
   const [typeFilter, setTypeFilter] = useState("all");
   const [rarFilter, setRarFilter] = useState("all");
+  // filtro per colore (elemento) — multi-select, Set vuoto = tutti
+  const [colorFilter, setColorFilter] = useState(() => new Set());
+  // filtro per costo di mana (CMC) — "all" oppure 0..6 (6 = 6+)
+  const [manaFilter, setManaFilter] = useState("all");
   // when on, the grid shows ONLY cards the player owns at least one foil
   // copy of — useful for showing off / building a "premium" deck even
   // though the engine treats foil & regular copies as identical.
@@ -159,6 +164,14 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
     });
   };
   const clearKlass = () => { setMsg(""); setKlassFilter(new Set()); };
+
+  const toggleColor = (el) => {
+    setColorFilter((s) => {
+      const n = new Set(s);
+      n.has(el) ? n.delete(el) : n.add(el);
+      return n;
+    });
+  };
 
   /* "Costruisci" — smart auto-build based on how many classes are selected:
        0 → random deck across the whole collection
@@ -244,6 +257,12 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
     }
     list = list.filter((id) => matchType(getCard(id), typeFilter));
     list = list.filter((id) => matchRarity(getCard(id), rarFilter));
+    if (colorFilter.size > 0) {
+      list = list.filter((id) => colorFilter.has(getCard(id).element));
+    }
+    if (manaFilter !== "all") {
+      list = list.filter((id) => Math.min(getCard(id).cmc || 0, 6) === manaFilter);
+    }
     const cmp = (a, b) => {
       const ca = getCard(a), cb = getCard(b);
       if (sortBy === "name")   return ca.name.localeCompare(cb.name);
@@ -252,7 +271,7 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
       return (ca.cmc - cb.cmc) || ca.name.localeCompare(cb.name);
     };
     return list.sort(cmp);
-  }, [collection, foils, foilOnly, klassFilter, typeFilter, rarFilter, sortBy]);
+  }, [collection, foils, foilOnly, klassFilter, typeFilter, rarFilter, colorFilter, manaFilter, sortBy]);
 
   // deck list grouped, lands last, by cmc
   const grouped = useMemo(() => {
@@ -355,6 +374,39 @@ export default function DeckBuilder({ profile, onSave, onSetCover, onBack }) {
             Costruzione ottimizzata: curva, ratio creature/spell e numero di
             terre tarati allo stile della classe.
           </span>
+        </div>
+
+        {/* ── Filtri Colore + Mana ── */}
+        <div className="tcg-deck__bar-row">
+          <span className="tcg-deck__barlbl">Colore</span>
+          <button
+            className={`tcg-chipbtn ${colorFilter.size === 0 ? "is-on" : ""}`}
+            onClick={() => setColorFilter(new Set())}
+            title="Tutti i colori"
+          >Tutti</button>
+          {ELEMENTS.map((el) => (
+            <button
+              key={el}
+              className={`tcg-chipbtn ${colorFilter.has(el) ? "is-on" : ""}`}
+              onClick={() => toggleColor(el)}
+              style={{ borderColor: ELEMENT_PIP[el] }}
+              title={ELEMENT_LABEL[el]}
+            >
+              {ELEMENT_ICON[el]} {ELEMENT_LABEL[el]}
+            </button>
+          ))}
+          <span className="tcg-deck__autosep" aria-hidden="true">·</span>
+          <span className="tcg-deck__barlbl">Mana</span>
+          {MANA_OPTIONS.map((m) => (
+            <button
+              key={String(m)}
+              className={`tcg-chipbtn ${manaFilter === m ? "is-on" : ""}`}
+              onClick={() => setManaFilter(m)}
+              title={m === "all" ? "Tutti i costi" : `Costo ${m === 6 ? "6+" : m} mana`}
+            >
+              {m === "all" ? "Tutti" : (m === 6 ? "6+" : m)}
+            </button>
+          ))}
         </div>
 
         <div className="tcg-deck__bar-row">

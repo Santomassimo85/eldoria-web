@@ -1220,7 +1220,13 @@ export default function GameTable({
       setHandOpen(true);
       return;
     }
-    applyState(endTurn(state, mySide));
+    // endTurn() ritorna lo stato INVARIATO se è rimasta aperta una finestra di
+    // priorità o c'è qualcosa sulla pila: in quel caso applyState non farebbe
+    // nulla ("non succede niente al click"). Se non avanza, forziamo la
+    // chiusura del turno risolvendo le finestre pendenti (come fa il timer).
+    let next = endTurn(state, mySide);
+    if (next === state) next = forceEndTurn(state, mySide);
+    applyState(next);
     setSel(null);
     setAttackers([]);
     setDiscarding(false);

@@ -8,14 +8,14 @@
    ============================================================ */
 
 .cine-page {
-  /* ---- palette (override per-pagina) ---- */
-  --cine-accent:      #8a0e0e;   /* colore tema della pagina      */
-  --cine-accent-2:    #b81a1a;   /* variante chiara dell'accento  */
-  --cine-gold:        #d4af37;
-  --cine-gold-soft:   #ffe1a8;
-  --cine-bg-top:      #14070a;
-  --cine-bg-mid:      #1d0a0a;
-  --cine-bg-bot:      #100404;
+  /* ---- palette (override per-pagina) — Arcanum Nocturne (navy/ambra/viola) ---- */
+  --cine-accent:      #6b3fd4;   /* accento tema (viola arcano)   */
+  --cine-accent-2:    #b07cff;   /* variante chiara dell'accento  */
+  --cine-gold:        #f0a93b;   /* ambra                          */
+  --cine-gold-soft:   #f8cd7e;
+  --cine-bg-top:      #0e1426;
+  --cine-bg-mid:      #0b1220;
+  --cine-bg-bot:      #080c16;
   --cine-radius:      22px;
 
   min-height: 100vh;
@@ -23,7 +23,7 @@
   margin: 0;
   padding: 0 0 96px;
   font-family: var(--font-text);
-  color: #ebe3d2;
+  color: #e7ecff;
   position: relative;
   overflow-x: clip;
 

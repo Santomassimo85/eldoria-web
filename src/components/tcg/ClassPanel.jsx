@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import {
   CLASS_LABEL, CLASS_ICON, CLASS_VIE,
   LEVEL_THRESHOLDS, MAX_LEVEL, rewardAt,
+  isMulticlass, classLabelOf, classIconOf, MULTICLASS_DEF,
 } from "../../tcg/classes.js";
 import { ELEMENT_PIP, ELEMENT_LABEL } from "../../tcg/cards.js";
 
@@ -67,11 +68,15 @@ export default function ClassPanel({
   // each level unlocked at any point during the match.
   const [perksOpen, setPerksOpen] = useState(false);
   if (!player || !player.klass || !player.via) return null;
+  const isMC = isMulticlass(player.klass);
   const vieMap = CLASS_VIE[player.klass] || {};
   const viaDef = vieMap[player.via];
-  const element = viaDef?.element || "natura";
+  const element = viaDef?.element || (isMC ? (MULTICLASS_DEF[player.klass]?.elements?.[0] || "natura") : "natura");
   const elColor = ELEMENT_PIP[element] || "#888";
   const elName  = ELEMENT_LABEL[element] || element;
+  const klassLabel = classLabelOf(player.klass);
+  const klassIcon  = classIconOf(player.klass);
+  const viaLabel   = isMC ? "Multiclasse" : (viaDef?.label || player.via);
   const { pct, label } = xpProgress(player.level, player.xp);
   const hasUlt = !!(player.perks && player.perks.ultimateId);
   const ultUsed = !!(player.perks && player.perks.ultimateUsed);
@@ -99,13 +104,13 @@ export default function ClassPanel({
       style={{ "--el": elColor }}
     >
       <div className="tcg-class__head">
-        <span className="tcg-class__ico" title={CLASS_LABEL[player.klass]}>
-          {CLASS_ICON[player.klass]}
+        <span className="tcg-class__ico" title={klassLabel}>
+          {klassIcon}
         </span>
         <span className="tcg-class__txt">
-          <b className="tcg-class__klass">{CLASS_LABEL[player.klass]}</b>
+          <b className="tcg-class__klass">{klassLabel}</b>
           <span className="tcg-class__via" title={`Elemento: ${elName}`}>
-            {viaDef?.label || player.via}
+            {viaLabel}
           </span>
         </span>
         {/* Clicking the level badge toggles the "perks earned" drawer
