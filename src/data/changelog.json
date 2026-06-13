@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "19.01",
+      "date": "2026-06-13",
+      "title": "Assistente di Eldoria — restyle in tema",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Assistente: la pagina adotta il tema chiaro del sito (pergamena, rosso e oro, font Cinzel/Cardo) al posto del precedente tema scuro fuori stile."
+        },
+        {
+          "type": "fix",
+          "text": "Assistente: risolto il testo scuro su sfondo scuro; tutti i messaggi, i suggerimenti e i campi sono ora pienamente leggibili."
+        },
+        {
+          "type": "fix",
+          "text": "Assistente: il riquadro della chat non finisce più sotto la barra di navigazione e resta centrato come le altre pagine."
+        }
+      ]
+    },
+    {
       "version": "19",
       "date": "2026-06-12",
       "title": "Arena — Creazione PG assistita e rifinitura Ranger",
