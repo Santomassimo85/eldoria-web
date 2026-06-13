@@ -102,11 +102,18 @@ const CSS = `
 .ast-modal .no:hover{background:var(--panel2)}
 
 /* SUGGESTIONS */
-.ast-hints{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 4px;flex:0 0 auto}
+.ast-hints{display:flex;flex-direction:column;gap:9px;padding:10px 16px 6px;flex:0 1 auto;overflow-y:auto;max-height:44vh}
+.ast-hint-group{display:flex;flex-direction:column;gap:5px}
+.ast-hint-label{
+  font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--gold-deep);font-family:var(--font-title),'Cinzel',serif;
+  display:flex;align-items:center;gap:6px;
+}
+.ast-hint-row{display:flex;gap:6px;flex-wrap:wrap}
 .hint{
-  padding:7px 13px;border-radius:20px;font-size:13px;cursor:pointer;
+  padding:6px 12px;border-radius:18px;font-size:13px;cursor:pointer;
   background:var(--panel2);border:1px solid var(--line);color:var(--red);
-  white-space:nowrap; transition:.15s; font-family:var(--font-text),serif;
+  transition:.15s; font-family:var(--font-text),serif;
 }
 .hint:hover{background:var(--red);color:#fdf3e3;border-color:var(--red)}
 
@@ -136,15 +143,18 @@ const CSS = `
 @media(prefers-reduced-motion:reduce){.ast *{animation:none!important;transition:none!important}}
 `;
 
-const HINTS = [
-  "Mostrami la mia scheda",
-  "Cosa c'è al mercato nero?",
-  "Ci sono missioni per me?",
-  "Chi è Hemile?",
-  "Riassumi l'ultima sessione",
-  "Dimmi di Tirrendale",
-  "Chi venera Morgath?",
-  "Com'è messo il party?",
+const HINT_GROUPS = [
+  { icon: "📜", label: "Scheda", hints: ["Mostrami la mia scheda", "Quanti soldi ho?", "Che incantesimi ho?"] },
+  { icon: "🛡️", label: "Gruppo", hints: ["Com'è messo il mio gruppo?", "Chi sono i miei compagni?"] },
+  { icon: "🛒", label: "Mercato", hints: ["Cosa c'è al mercato per me?", "Cosa posso permettermi?"] },
+  { icon: "⚔️", label: "Missioni", hints: ["Ci sono missioni per me?", "Quali incarichi sono disponibili?"] },
+  { icon: "📖", label: "Riassunti", hints: ["Riassumi l'ultima sessione", "Cosa è successo finora?"] },
+  { icon: "🧙", label: "NPC", hints: ["Chi è Hemile?", "Cerca un personaggio"] },
+  { icon: "🗺️", label: "Luoghi", hints: ["Parlami di Tirrendale", "Descrivimi un luogo"] },
+  { icon: "✨", label: "Divinità", hints: ["Chi venera Morgath?", "Parlami del pantheon"] },
+  { icon: "🏆", label: "Arena", hints: ["Chi ha vinto l'ultimo torneo?", "Come va il torneo dell'arena?"] },
+  { icon: "🃏", label: "TCG", hints: ["Come va il torneo di carte?", "Chi è il campione TCG?"] },
+  { icon: "🐉", label: "World Boss", hints: ["C'è un boss attivo?", "Come sta il boss?"] },
 ];
 
 function formatText(text) {
@@ -304,8 +314,15 @@ export default function Assistente() {
       {/* SUGGERIMENTI */}
       {showHints && (
         <div className="ast-hints">
-          {HINTS.map((h, i) => (
-            <div key={i} className="hint" onClick={() => send(h)}>{h}</div>
+          {HINT_GROUPS.map((g, gi) => (
+            <div key={gi} className="ast-hint-group">
+              <div className="ast-hint-label"><span>{g.icon}</span>{g.label}</div>
+              <div className="ast-hint-row">
+                {g.hints.map((h, i) => (
+                  <div key={i} className="hint" onClick={() => send(h)}>{h}</div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
