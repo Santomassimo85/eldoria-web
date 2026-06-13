@@ -151,6 +151,8 @@ async function loadPlayerContext(uid, apiKey) {
     party: getPartyByCharName(me.name),
     platinum: me.platinum || 0,        // MP usati al mercato nero
     gold: me.currency?.gp || 0,        // oro "normale"
+    arenaCoins: me.arenaCoins || 0,    // monete dell'Arena (scommesse)
+    tcgCoins: me.tcgCoins || 0,        // monete del gioco di carte TCG
     rattoPoints: me.rattoPoints || 0,
     rattoLv: ratto.lv,
     rattoName: ratto.name,
@@ -167,12 +169,30 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
       const s = doc.stats || {};
       const cantrips = (doc.actions || []).filter(a => a.category === "Trucchetto").map(a => a.name);
       const spells = (doc.actions || []).filter(a => /livello/i.test(a.category || "")).map(a => `${a.name} (${a.category})`);
+      const ratto = getRatto(doc.rattoPoints || 0);
+      // Profilo TCG (salvato sul personaggio)
+      const tcgColl = doc.tcgCollection && typeof doc.tcgCollection === "object" ? doc.tcgCollection : {};
+      const carteUniche = Object.keys(tcgColl).length;
+      const carteTotali = Object.values(tcgColl).reduce((a, n) => a + (Number(n) || 0), 0);
       return JSON.stringify({
         nome: doc.name, classe: doc.class, sottoclasse: doc.subclass || null,
         livello: doc.level, razza: doc.race, gruppo: myParty,
         pf: s.hp, pfMax: s.maxHp, ca: s.ac, iniziativa: s.initiative,
         cdIncantesimi: s.spellDc, bonusCompetenza: s.prof,
-        valuta: formatCurrency(doc.currency), platinoMercato: doc.platinum || 0,
+        // ── Economie e progressi (tutto ciò che il giocatore possiede) ──
+        monete: {
+          oro: doc.currency?.gp || 0,
+          valutaCompleta: formatCurrency(doc.currency),
+          platinoMercatoNero: doc.platinum || 0,
+          moneteArena: doc.arenaCoins || 0,
+          moneteTCG: doc.tcgCoins || 0,
+        },
+        rangoRatto: `${ratto.name} (livello ${ratto.lv}, ${doc.rattoPoints || 0} punti)`,
+        profiloTCG: {
+          classeTCG: doc.tcgStarterClass || null,
+          carteUniche, carteTotaliPossedute: carteTotali,
+          carteNelMazzo: Array.isArray(doc.tcgDeck) ? doc.tcgDeck.length : 0,
+        },
         slotIncantesimi: (doc.spellSlots || []).map(sl => `${sl.label}: ${sl.value}/${sl.max}`),
         trucchetti: cantrips,
         incantesimi: spells,
@@ -452,7 +472,7 @@ function buildSystemPrompt(ctx) {
       (ctx.char?.level ? ` di livello ${ctx.char.level}` : "") +
       `, gruppo **${ctx.party}**.` +
       ` Statistiche: PF ${s.hp ?? "?"}/${s.maxHp ?? "?"}, CA ${s.ac ?? "?"}.` +
-      ` Soldi: **${ctx.platinum} MP** (platino, valuta del mercato nero) e ${ctx.gold} mo (oro).` +
+      ` Soldi: **${ctx.platinum} MP** (platino, valuta del mercato nero), ${ctx.gold} mo (oro), **${ctx.arenaCoins} monete Arena** (per scommettere nell'arena) e **${ctx.tcgCoins} monete TCG** (per il gioco di carte).` +
       ` Rango Ratto: **${ctx.rattoName}** (livello ${ctx.rattoLv}, ${ctx.rattoPoints} punti) — determina quali oggetti del mercato nero può vedere/comprare.` +
       (PARTY_ROSTER[ctx.party] ? ` Compagni di gruppo: ${PARTY_ROSTER[ctx.party].join(", ")}.` : "");
   }
@@ -463,7 +483,7 @@ CONTESTO GIOCATORE (usalo sempre, non chiederlo): ${who}
 
 Quando l'utente dice "il mio gruppo", "il party", "noi", "la nostra sessione", "l'ultima sessione", "riassumi" o "per me", riferisciti SEMPRE al gruppo del giocatore qui sopra (${ctx.party || "sconosciuto"}). Riassunti e missioni sono divisi per gruppo: gli strumenti filtrano già sul gruppo giusto.
 
-COSA SAI GIÀ (dal contesto, senza strumenti): nome, razza, classe, livello, gruppo, PF/CA, **MP (platino del mercato)**, oro e rango Ratto del giocatore sono scritti qui sopra. NON dire mai "non conosco le tue MP / i tuoi soldi / il tuo livello": leggili dal contesto. Usa leggi_scheda solo per dettagli più fini (inventario completo, lista incantesimi, slot).
+COSA SAI GIÀ (dal contesto, senza strumenti): nome, razza, classe, livello, gruppo, PF/CA, e TUTTE le valute del giocatore — **MP (platino del mercato)**, **oro**, **monete Arena**, **monete TCG** — più il rango Ratto, sono scritti qui sopra. NON dire mai "non conosco le tue MP / le tue monete / i tuoi soldi / il tuo livello": leggili dal contesto. Usa leggi_scheda solo per dettagli più fini (inventario completo, lista incantesimi, slot, profilo carte TCG).
 
 COME LAVORI (importante):
 - Per QUALSIASI domanda che riguardi dati di gioco, chiama PRIMA lo strumento giusto e poi rispondi sui risultati. Non rispondere mai "non lo so" senza aver provato uno strumento.

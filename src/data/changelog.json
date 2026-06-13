@@ -6,6 +6,10 @@
       "title": "Assistente di Eldoria — consapevole di giocatore e gruppo",
       "changes": [
         {
+          "type": "feature",
+          "text": "Assistente: conosce ora TUTTE le valute e i progressi del giocatore — oro, platino del mercato nero, monete Arena, monete TCG, rango Ratto — oltre al profilo del gioco di carte (classe TCG, carte possedute, dimensione del mazzo). Chiedendo «quante monete ho?» risponde con tutti i conti."
+        },
+        {
           "type": "graphic",
           "text": "Assistente: sotto la chat ci sono ora pulsanti rapidi raggruppati per categoria (Scheda, Gruppo, Mercato, Missioni, Riassunti, NPC, Luoghi, Divinità, Arena, TCG, World Boss) con domande pronte da toccare."
         },
