@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "21.03",
+      "date": "2026-06-13",
+      "title": "Mercato — filtro venduti/disponibili",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Mercato nero: nuovo filtro per stato dell'oggetto — «Venduti e non», «Solo disponibili», «Solo venduti»."
+        }
+      ]
+    },
+    {
       "version": "21.02",
       "date": "2026-06-13",
       "title": "Assistente — offerte al mercato senza ID",

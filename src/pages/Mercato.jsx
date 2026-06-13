@@ -267,6 +267,7 @@ export default function Mercato() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterRarity, setFilterRarity] = useState("all");
+  const [filterSold, setFilterSold] = useState("all"); // all | available | sold
   const [sortBy, setSortBy] = useState("none");
 
   useEffect(() => {
@@ -441,7 +442,10 @@ export default function Mercato() {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === "all" || item.type === filterType;
       const matchesRarity = filterRarity === "all" || rarityRank(item.class) === rarityRank(filterRarity);
-      return matchesSearch && matchesType && matchesRarity;
+      const matchesSold =
+        filterSold === "all" ||
+        (filterSold === "sold" ? item.isSold === true : item.isSold !== true);
+      return matchesSearch && matchesType && matchesRarity && matchesSold;
     });
 
     if (sortBy === "none") return list;
@@ -455,7 +459,7 @@ export default function Mercato() {
         default: return 0;
       }
     });
-  }, [items, marketConfig, searchTerm, filterType, filterRarity, sortBy, isMaster, ratto.lv]);
+  }, [items, marketConfig, searchTerm, filterType, filterRarity, filterSold, sortBy, isMaster, ratto.lv]);
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
@@ -516,6 +520,11 @@ export default function Mercato() {
         <select onChange={(e) => setFilterRarity(e.target.value)} value={filterRarity} className="filter-select">
           <option value="all">Tutte le Rarità</option>
           {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+        <select onChange={(e) => setFilterSold(e.target.value)} value={filterSold} className="filter-select">
+          <option value="all">Venduti e non</option>
+          <option value="available">Solo disponibili</option>
+          <option value="sold">Solo venduti</option>
         </select>
         <select onChange={(e) => setSortBy(e.target.value)} value={sortBy} className="filter-select">
           <option value="none">Ordina per…</option>
