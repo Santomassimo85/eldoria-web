@@ -14,7 +14,7 @@ const CSS = `
   --gold:#d4af37; --gold-deep:#b8860b; --red:#820a0a; --red-soft:#a32222;
   --ink:#2b2b2b; --muted:#7a6f55;
   display:flex; flex-direction:column;
-  height:calc(100dvh - var(--navbar-h)); margin:var(--navbar-h) auto 0;
+  height:calc(100dvh - var(--navbar-h) - 24px); margin:calc(var(--navbar-h) + 24px) auto 0;
   max-width:760px; width:100%;
   font-family:var(--font-text),Georgia,serif; font-size:17px; color:var(--ink);
   background:var(--panel);
