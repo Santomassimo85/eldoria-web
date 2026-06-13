@@ -111,6 +111,7 @@ function extractValue(v) {
   if (v.integerValue !== undefined) return Number(v.integerValue);
   if (v.doubleValue !== undefined) return Number(v.doubleValue);
   if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.timestampValue !== undefined) return v.timestampValue; // ISO string
   if (v.nullValue !== undefined) return null;
   if (v.mapValue) return firestoreDocToObj(v.mapValue);
   if (v.arrayValue) return (v.arrayValue.values || []).map(extractValue);
@@ -304,9 +305,71 @@ async function executeTool(toolName, toolInput, ctx, apiKey) {
     }
 
     case "leggi_arena": {
-      const entries = await readCollection("arena", apiKey, 30);
-      if (!entries.length) return "Nessun dato arena trovato.";
-      return JSON.stringify(entries.slice(0, 15));
+      const meta = await readDoc("arena_meta/global", apiKey) || {};
+      const history = await readCollection("arena_tournament_history", apiKey, 30);
+      history.sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || "")));
+      const last = history[0] || null;
+      const phaseLabel = { registration: "iscrizioni aperte", combat: "torneo in corso", finished: "concluso" }[meta.phase] || (meta.phase || "nessun torneo attivo");
+      return JSON.stringify({
+        torneoInCorso: {
+          stato: phaseLabel,
+          round: meta.phase === "combat" ? (meta.currentRound || 1) : null,
+          iscritti: (meta.participants || []).length,
+          soloCampioni: !!meta.championsOnly,
+          premi: meta.prizes ? stripHtml(meta.prizes).slice(0, 200) : null,
+          vincitoreCorrente: meta.tournamentWinner ? (meta.lastChampion?.name || "proclamato") : null,
+        },
+        ultimoTorneoVinto: last ? {
+          vincitore: last.winnerName, classe: last.winnerClass || null,
+          vittorieTotaliDelVincitore: last.wins || null,
+          partecipanti: (last.participants || []).length,
+          premi: last.prizes ? stripHtml(last.prizes).slice(0, 200) : null,
+        } : null,
+        alboCampioni: history.slice(0, 6).map(h => h.winnerName).filter(Boolean),
+      });
+    }
+
+    case "leggi_tcg": {
+      const t = await readDoc("tcg_tournament/global", apiKey);
+      if (!t || t.status === "closed") {
+        return "Al momento non c'è nessun torneo TCG attivo (o è nascosto ai giocatori).";
+      }
+      const participants = t.participants && typeof t.participants === "object"
+        ? Object.values(t.participants) : [];
+      const statoLabel = { open: "iscrizioni aperte", running: "in corso", ended: "concluso" }[t.status] || t.status;
+      return JSON.stringify({
+        nomeTorneo: t.name || "Torneo TCG",
+        stato: statoLabel,
+        roundCorrente: t.currentRound || 0,
+        roundTotaliGiocati: (t.rounds || []).length,
+        iscritti: participants.length,
+        nomiIscritti: participants.map(p => p.name).filter(Boolean).slice(0, 16),
+        campione: t.champion?.name || null,
+      });
+    }
+
+    case "leggi_boss": {
+      const bosses = await readCollection("bosses", apiKey, 20);
+      const active = bosses.filter(b => b.isActive);
+      const battle = await readDoc("battle_state/current", apiKey) || {};
+      const turn = await readDoc("battle_meta/turn_tracker", apiKey) || {};
+      if (!active.length && !battle.active) {
+        return JSON.stringify({ bossAttivo: false, messaggio: "Nessun World Boss attivo al momento." });
+      }
+      const turnoDi = turn.phase === "boss" ? "il Boss" : turn.phase === "players" ? "i giocatori" : (battle.currentPhase === "enemies" ? "il Boss" : battle.currentPhase === "players" ? "i giocatori" : null);
+      return JSON.stringify({
+        bossAttivo: true,
+        round: battle.round || turn.turnNumber || null,
+        faseBattaglia: battle.phase || null,
+        turnoDi,
+        bosses: active.map(b => ({
+          nome: b.name,
+          pf: b.hp, pfMax: b.maxHp,
+          percentualePf: b.maxHp ? Math.round((b.hp / b.maxHp) * 100) + "%" : null,
+          scudo: b.shield || 0,
+          sconfitto: (b.hp ?? 1) <= 0,
+        })),
+      });
     }
 
     case "leggi_divinita":
@@ -327,7 +390,9 @@ const TOOLS_DEF = {
     { name: "leggi_bacheca", description: "Legge le missioni della bacheca visibili al giocatore (mirate al suo gruppo/personaggio o pubbliche).", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_npc", description: "Cerca un NPC per nome, fazione o città.", parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "Nome, fazione o città dell'NPC" } }, required: [] } },
     { name: "leggi_geo", description: "Cerca luoghi, città o regioni di Eldoria.", parameters: { type: "OBJECT", properties: { query: { type: "STRING", description: "Nome del luogo da cercare" } }, required: [] } },
-    { name: "leggi_arena", description: "Legge i dati e la classifica dell'arena.", parameters: { type: "OBJECT", properties: {}, required: [] } },
+    { name: "leggi_arena", description: "Legge lo stato dell'Arena: torneo in corso (fase, round, iscritti), vincitore dell'ultimo torneo e albo dei campioni. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
+    { name: "leggi_tcg", description: "Legge lo stato del torneo di carte TCG: se è aperto/in corso/concluso, round, iscritti e campione. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
+    { name: "leggi_boss", description: "Legge lo stato del World Boss: se c'è un boss attivo, i suoi PF, lo scudo, il round e di chi è il turno. Solo consultazione.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "leggi_divinita", description: "Informazioni sulle divinità e il pantheon di Eldoria.", parameters: { type: "OBJECT", properties: {}, required: [] } },
     { name: "fai_offerta", description: "Piazza un'offerta su un oggetto del mercato nero IN ASTA (scala il platino dal personaggio). RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { item_id: { type: "STRING", description: "ID dell'oggetto" }, item_nome: { type: "STRING", description: "Nome dell'oggetto" }, importo: { type: "NUMBER", description: "Importo in MP (platino)" } }, required: ["item_id", "item_nome", "importo"] } },
     { name: "accetta_missione", description: "Accetta una missione dalla bacheca a nome del giocatore. RICHIEDE CONFERMA dell'utente prima di eseguire.", parameters: { type: "OBJECT", properties: { quest_id: { type: "STRING", description: "ID della missione" }, quest_titolo: { type: "STRING", description: "Titolo della missione" } }, required: ["quest_id", "quest_titolo"] } },
@@ -366,7 +431,11 @@ COME LAVORI (importante):
   · la mia scheda / PF / incantesimi / inventario / soldi → leggi_scheda
   · il mio gruppo / compagni / party → leggi_party
   · riassunti / cosa è successo / ultima sessione → leggi_riassunti
-  · NPC / personaggi → leggi_npc · luoghi / città → leggi_geo · divinità → leggi_divinita · arena → leggi_arena
+  · NPC / personaggi → leggi_npc · luoghi / città → leggi_geo · divinità → leggi_divinita
+  · arena / torneo dell'arena / chi ha vinto / albo campioni → leggi_arena
+  · TCG / torneo di carte / chi è il campione TCG → leggi_tcg
+  · World Boss / "c'è un boss?" / "come sta il boss" / battaglia → leggi_boss
+  Questi tre (arena, TCG, boss) sono di SOLA CONSULTAZIONE: non esistono azioni di combattimento, puoi solo riferire lo stato.
 - Puoi e DEVI usare più strumenti se serve (es. "cosa posso comprare?" → leggi_scheda + leggi_mercato per confrontare i soldi).
 - Dopo aver ricevuto i risultati di uno strumento, produci SEMPRE una risposta testuale per il giocatore. Non terminare mai con una chiamata a strumento senza spiegare cosa hai trovato.
 

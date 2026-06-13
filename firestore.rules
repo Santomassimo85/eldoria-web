@@ -28,7 +28,7 @@ service cloud.firestore {
 
     // ── World Boss & turn tracker ────────────────────────────────────────────
     match /battle_meta/turn_tracker {
-      allow read: if isLoggedIn();
+      allow read: if true; // consultabile (assistente di gioco)
       allow create, delete: if isMaster();
       allow update: if isLoggedIn() && (
         isMaster() ||
@@ -37,7 +37,7 @@ service cloud.firestore {
     }
 
     match /battle_meta/{docId} {
-      allow read: if isLoggedIn();
+      allow read: if true; // consultabile (assistente di gioco)
       allow write: if isLoggedIn();
     }
 
@@ -46,7 +46,7 @@ service cloud.firestore {
     // ends the battle; any logged-in player can update (their move/attack and
     // initiative roll during the turn loop, mirroring tcg_matches).
     match /battle_state/{docId} {
-      allow read: if isLoggedIn();
+      allow read: if true; // consultabile (assistente di gioco)
       allow create, delete: if isMaster();
       allow update: if isLoggedIn();
     }
@@ -112,12 +112,12 @@ service cloud.firestore {
     }
 
     match /arena_meta/global {
-      allow read: if isLoggedIn();
+      allow read: if true; // consultabile (assistente di gioco)
       allow write: if isLoggedIn();
     }
 
     match /arena_meta/{docId} {
-      allow read: if isLoggedIn();
+      allow read: if true; // consultabile (assistente di gioco)
       allow write: if isLoggedIn();
     }
 
@@ -134,7 +134,7 @@ service cloud.firestore {
     }
 
     match /arena_tournament_history/{docId} {
-      allow read: if isMaster();
+      allow read: if true; // albo dei campioni, consultabile (assistente di gioco)
       allow create: if isLoggedIn();
       allow update, delete: if isMaster();
     }
@@ -181,7 +181,7 @@ service cloud.firestore {
 
 
   match /tcg_tournament/{docId} {
-    allow read: if isLoggedIn();
+    allow read: if true; // consultabile (assistente di gioco)
     allow create, delete: if isMaster();
     allow update: if isLoggedIn();
   }
