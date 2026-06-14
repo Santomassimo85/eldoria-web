@@ -53,6 +53,39 @@
 .home-page .home-creation-image.hide { opacity: 0; transform: translateY(-40px); pointer-events: none; }
 .home-page .home-creation-image.show { opacity: 1; transform: translateY(0); }
 
+/* L'immagine "creation" della lore sfuma allo scroll: collasso anche lo SPAZIO
+   che occupa, così non resta un vuoto bianco nel pannello (scoped all'id →
+   non tocca l'immagine del Pantheon, che resta sempre visibile). */
+.home-page #creation-img {
+  max-height: 600px;
+  overflow: hidden;
+  transition: opacity 0.6s ease, transform 0.6s ease, max-height 0.7s ease, margin 0.6s ease, border-width 0.6s ease;
+}
+.home-page #creation-img.hide {
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-width: 0;
+}
+
+/* ---- Reveal d'ingresso (scroll-driven, GPU, niente JS) ---------------
+   Progressive enhancement: dove animation-timeline non è supportato
+   (es. Safari) il contenuto resta semplicemente visibile. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home-page .home-lore-section,
+    .home-page .home-deity-section {
+      animation: home-reveal both;
+      animation-timeline: view();
+      animation-range: entry 2% entry 32%;
+    }
+    @keyframes home-reveal {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: none; }
+    }
+  }
+}
+
 /* ---- DEITY GROUP SECTIONS (toggle dark glass) ------------- */
 .home-page .home-deity-section { margin: 0 auto; padding-top: 4px; }
 

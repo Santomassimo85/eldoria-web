@@ -270,7 +270,7 @@ export default function Home() {
     ));
 
   return (
-    <div className="cine-page home-page" style={{ "--cine-accent": "#2f5689", "--cine-accent-2": "#4e7ab4" }}>
+    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#2f5689", "--cine-accent-2": "#4e7ab4" }}>
       <button
         className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -286,7 +286,7 @@ export default function Home() {
               <Countdown key={s.id} partyName={s.id} targetDate={s.date} />
             ))
           ) : (
-            <p style={{ textAlign: "center", color: "666" }}>
+            <p style={{ textAlign: "center", color: "#6a5b41" }}>
               Nessuna sessione programmata.
             </p>
           )}

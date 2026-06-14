@@ -342,14 +342,18 @@
   width: 100%; height: 100%;
   object-fit: cover;
   object-position: center 35%;
-  opacity: 0.62;
-  filter: sepia(0.16) saturate(1.05) contrast(1.03);
+  opacity: 0.92;
+  filter: sepia(0.2) saturate(1.05) contrast(1.04);
   will-change: transform;
   transform: scale(1.06) translate3d(0, calc(var(--cine-scroll, 0) * 0.06px), 0);
 }
+/* overlay seppia uniforme: l'immagine resta una "illustrazione antica" ricca
+   e il frame-pergamena del titolo risalta sopra (no più banner slavato). */
 .cine-scrolly-media::before {
   content: ""; position: absolute; inset: 0; z-index: 1;
-  background: radial-gradient(ellipse at center, transparent 32%, rgba(34, 22, 8, 0.34) 72%, rgba(28, 18, 6, 0.6) 100%);
+  background:
+    radial-gradient(ellipse at center, rgba(30, 20, 8, 0.22) 0%, rgba(30, 20, 8, 0.40) 60%, rgba(22, 14, 5, 0.66) 100%),
+    linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--cine-bg-bot) 70%, transparent) 100%);
 }
 .cine-scrolly-media::after {
   content: ""; position: absolute; inset: 0; z-index: 2;
