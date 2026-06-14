@@ -5,8 +5,10 @@ import {
   collection, addDoc, getDocs, query, orderBy,
   onSnapshot, deleteDoc, doc, serverTimestamp,
 } from "firebase/firestore";
+import { Link } from "react-router-dom";
 import "../GeneraNPC.css";
 import "./DmTools.css";
+import "./admin.css";
 
 /* ============================================================
    Crea Oggetto → Foundry
@@ -159,6 +161,7 @@ export default function FoundryItemForm() {
   return (
     <div className="npcgen-page">
       <div className="npcgen-inner">
+        <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
         <h1 className="npcgen-title">Crea Oggetto → Foundry</h1>
         <p className="npcgen-sub">Compila l'oggetto, mettilo in coda, poi lancia la macro su Foundry per crearlo (nel mondo o nell'inventario di un giocatore).</p>
 

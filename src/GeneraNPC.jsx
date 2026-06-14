@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { db } from "./firebase";
 import { collection, addDoc } from "firebase/firestore";
 import "./GeneraNPC.css";
+import "./pages/admin.css";
 
 export default function GeneraNPC() {
   const [contesto, setContesto] = useState("taverniere in un porto di Tirrendale");
@@ -86,6 +88,7 @@ export default function GeneraNPC() {
   return (
     <div className="npcgen-page">
       <div className="npcgen-inner">
+        <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
         <h1 className="npcgen-title">Generatore NPC</h1>
         <p className="npcgen-sub">
           Descrivi il personaggio che ti serve: ci pensa l'oracolo a dargli
