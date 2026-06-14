@@ -4514,6 +4514,27 @@
 }
 .geoadm-sub, .sumadm-sub, .qstadm-sub { color: #6a5b41 !important; font-style: italic; }
 
+/* ── INVIA NOTIFICA — chip destinatari ── */
+.adm .sn-recipients {
+  display: grid; grid-template-columns: 1fr; gap: 8px;
+  max-height: 420px; overflow-y: auto; padding-right: 4px;
+}
+@media (min-width: 560px) { .adm .sn-recipients { grid-template-columns: 1fr 1fr; } }
+.adm .sn-chip {
+  display: flex; align-items: center; gap: 9px; cursor: pointer; text-align: left;
+  padding: 10px 14px; border-radius: 12px;
+  background: #fffdf7; border: 1.5px solid color-mix(in srgb, var(--cine-accent) 22%, #c9b78a);
+  color: #33281a; font-family: var(--font-text); font-size: .9rem;
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.adm .sn-chip:hover { transform: translateY(-1px); border-color: var(--cine-accent); }
+.adm .sn-chip-tick { font-size: .95rem; color: #b0a07a; }
+.adm .sn-chip.on {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cine-accent) 16%, #fffdf7), #fffdf7);
+  border-color: var(--cine-accent); color: var(--cine-accent); font-weight: 600;
+}
+.adm .sn-chip.on .sn-chip-tick { color: var(--cine-accent); }
+
 /* — REPUTAZIONE: griglia di card su desktop (no liste sparse su PC) — */
 .rep-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .rep-grid .rep-char-card { margin-bottom: 0; }

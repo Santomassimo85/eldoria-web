@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "29",
+      "date": "2026-06-14",
+      "title": "Pannelli del Master ridisegnati — «Console del Master»",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Nuovo design unico per i pannelli del Master: intestazione a console con statistiche, impaginazione a colonne (editor + lista/anteprima) e card su pergamena. La dashboard è ora un «Quartier Generale» con riquadri a icone divisi per area."
+        },
+        {
+          "type": "graphic",
+          "text": "Ridisegnati Reputazione, Gestione Sessioni, Cinema, Monete (Platino/TCG) e Invia Notifica; Mercato Nero, Geomantia, Scriptorium e Bacheca allineati alla nuova intestazione."
+        }
+      ]
+    },
+    {
       "version": "28",
       "date": "2026-06-14",
       "title": "Pannelli del Master ottimizzati per desktop + pulizia",

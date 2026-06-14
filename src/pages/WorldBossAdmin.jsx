@@ -702,7 +702,7 @@ export default function WorldBossAdmin() {
 
   return (
     <div className="wb-admin-page wb-redesign">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       {/* ── HERO ── */}
       <header className="wb-hero">

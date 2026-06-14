@@ -190,7 +190,7 @@ export default function PlayerSpritesAdmin() {
 
   return (
     <div className="wb-admin-page">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
       <h1 className="admin-page-title">Sprite Personaggi</h1>
       <div className="admin-divider"><span className="admin-divider-icon">🧝</span></div>
 
