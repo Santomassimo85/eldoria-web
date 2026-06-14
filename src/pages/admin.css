@@ -4441,6 +4441,43 @@
 .adm .rep-card-controls { display: flex; gap: 8px; justify-content: flex-end; }
 .adm .rep-mini { padding: 6px 14px; font-size: .82rem; border-radius: 10px; }
 
+/* ── PLATINO — card 2D ri-tonalizzate in pergamena + griglia desktop ── */
+.adm.pa-page .pa-search {
+  border: 1.5px solid color-mix(in srgb, var(--cine-accent) 28%, #c9b78a) !important;
+  box-shadow: none !important; font-weight: 500; color: #33281a;
+}
+.adm.pa-page .pa-search:focus { border-color: var(--cine-accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--cine-accent) 18%, transparent) !important; transform: none !important; }
+.adm.pa-page .pa-count {
+  background: var(--cine-accent); border-color: var(--cine-accent); box-shadow: none; color: #fff7e6;
+}
+.adm.pa-page .pa-list { grid-template-columns: 1fr; }
+@media (min-width: 760px)  { .adm.pa-page .pa-list { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1280px) { .adm.pa-page .pa-list { grid-template-columns: repeat(3, 1fr); } }
+.adm.pa-page .pa-card {
+  border: 1px solid var(--line, #c9b78a);
+  box-shadow: 0 12px 30px -20px rgba(86,64,30,.5);
+  background: linear-gradient(180deg, #fffdf7, #fbf6ea);
+}
+.adm.pa-page .pa-card:hover { transform: translateY(-3px); box-shadow: 0 20px 42px -22px rgba(86,64,30,.55); }
+.adm.pa-page .pa-card:focus-within { border-color: var(--cine-accent); box-shadow: 0 12px 30px -18px color-mix(in srgb, var(--cine-accent) 60%, transparent); transform: none; }
+.adm.pa-page .pa-card__head {
+  background: linear-gradient(135deg, #f3e6c4, #e9d9b0);
+  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+}
+.adm.pa-page .pa-avatar {
+  background: radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--cine-accent) 70%, #fff) 0%, var(--cine-accent) 60%, #000 130%);
+  border: 2px solid rgba(255,240,210,.6); box-shadow: 0 4px 10px -4px rgba(86,64,30,.5);
+}
+.adm.pa-page .pa-card__id strong { color: #33281a; text-shadow: none; }
+.adm.pa-page .pa-col--mp { background: linear-gradient(160deg, #fdf3cf, #f3e6b8); border-right: 1px solid color-mix(in srgb, var(--cine-accent) 25%, transparent); }
+.adm.pa-page .pa-col--tcg { background: linear-gradient(160deg, #e7eefb, #cfdcf3); }
+.adm.pa-page .pa-col__head { border: 1px solid color-mix(in srgb, var(--cine-accent) 22%, #c9b78a); box-shadow: none; }
+.adm.pa-page .pa-input { border: 1.5px solid color-mix(in srgb, var(--cine-accent) 28%, #c9b78a); box-shadow: none; }
+.adm.pa-page .pa-input:focus { border-color: var(--cine-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cine-accent) 18%, transparent); transform: none; }
+.adm.pa-page .pa-btn { border-width: 1.5px; border-color: rgba(86,64,30,.25); box-shadow: 0 3px 0 0 rgba(86,64,30,.25); text-shadow: none; }
+.adm.pa-page .pa-btn:hover { box-shadow: 0 4px 0 0 rgba(86,64,30,.3); }
+.adm.pa-page .pa-btn:active { box-shadow: 0 1px 0 0 rgba(86,64,30,.3); }
+
 /* — REPUTAZIONE: griglia di card su desktop (no liste sparse su PC) — */
 .rep-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .rep-grid .rep-char-card { margin-bottom: 0; }

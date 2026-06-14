@@ -139,25 +139,36 @@ export default function PlatinumAdmin() {
   };
 
   return (
-    <section className="admin-platinum-page pa-page">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+    <section className="adm pa-page" style={{ "--cine-accent": "#7c560f", "--cine-accent-2": "#a9781a" }}>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
-      <h1 className="admin-page-title">Monete Platino &amp; Monete TCG</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">🪙</span></div>
+      <div className="adm-masthead">
+        <div className="adm-mast-main">
+          <span className="adm-eyebrow">🪙 Tesoreria</span>
+          <h1 className="adm-title">Monete Platino &amp; TCG</h1>
+          <p className="adm-sub">Aggiorna il saldo di Monete Platino e Monete TCG dei personaggi.</p>
+        </div>
+        <div className="adm-mast-aside">
+          <div className="adm-stat"><span>Personaggi</span><strong>{characters.length}</strong></div>
+        </div>
+      </div>
 
-      <div className="pa-toolbar">
-        <input
-          type="search"
-          className="pa-search"
-          placeholder="Cerca personaggio, email o ID…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <span className="pa-count">{visible.length} / {characters.length}</span>
+      <div className="adm-panel" style={{ marginBottom: 18 }}>
+        <div className="pa-toolbar" style={{ margin: 0 }}>
+          <input
+            type="search"
+            className="adm-input pa-search"
+            placeholder="🔎 Cerca personaggio, email o ID…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ flex: "1 1 240px" }}
+          />
+          <span className="pa-count">{visible.length} / {characters.length}</span>
+        </div>
       </div>
 
       {status && (
-        <div className={`pa-status ${status.includes('✅') ? 'is-ok' : status.includes('❌') ? 'is-err' : 'is-info'}`}>
+        <div className={`adm-status ${status.includes('✅') ? 'adm-status--ok' : status.includes('❌') ? 'adm-status--err' : ''}`}>
           {status}
         </div>
       )}
