@@ -6,6 +6,10 @@ import {
   onSnapshot, deleteDoc, doc, serverTimestamp,
 } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import {
+  marketItemToFormState, marketItemToFoundryPayload,
+  resolveFoundryType, resolveFoundryRarity, foundryReadiness,
+} from "../utils/foundryMap";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
@@ -82,6 +86,8 @@ export default function FoundryItemForm() {
   const [pending, setPending] = useState([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [market, setMarket] = useState([]);   // oggetti del Mercato
+  const [mq, setMq] = useState("");            // ricerca nel mercato
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
@@ -102,6 +108,18 @@ export default function FoundryItemForm() {
     if (!isMaster) return;
     const unsub = onSnapshot(query(collection(db, "foundry_inbox"), orderBy("createdAt", "desc")), snap => {
       setPending(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [isMaster]);
+
+  // Oggetti del Mercato (per l'import).
+  useEffect(() => {
+    if (!isMaster) return;
+    const unsub = onSnapshot(collection(db, "items"), snap => {
+      setMarket(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+      );
     });
     return () => unsub();
   }, [isMaster]);
@@ -157,6 +175,37 @@ export default function FoundryItemForm() {
     try { await deleteDoc(doc(db, "foundry_inbox", id)); } catch {}
   }
 
+  // Carica un oggetto del Mercato nel form (per revisione prima della coda).
+  function fillFromMarket(item) {
+    setF({ ...EMPTY, ...marketItemToFormState(item) });
+    setMsg(`📥 Caricato "${item.name}" dal mercato — controlla i dati e premi "Metti in coda".`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Mette in coda direttamente un oggetto del Mercato (usa la destinazione del form).
+  async function queueFromMarket(item) {
+    if (!item?.name?.trim()) { setMsg("Errore: l'oggetto non ha un nome."); return; }
+    if (f.target === "player" && !f.targetUid) { setMsg("Errore: scegli prima il personaggio destinatario (sotto)."); return; }
+    setBusy(true); setMsg(`Invio "${item.name}" in coda…`);
+    try {
+      const payload = marketItemToFoundryPayload(item, {
+        target: f.target, targetUid: f.targetUid, targetName: f.targetName,
+      });
+      await addDoc(collection(db, "foundry_inbox"), {
+        status: "pending", ...payload,
+        createdAt: serverTimestamp(), createdBy: currentUser.email,
+      });
+      setMsg(`✅ "${payload.name}" in coda! Lancia la macro su Foundry per crearlo.`);
+    } catch (e) {
+      setMsg("Errore: " + (e.message || e));
+    } finally { setBusy(false); }
+  }
+
+  const mqx = mq.trim().toLowerCase();
+  const marketFiltered = mqx
+    ? market.filter(i => `${i.name} ${i.type} ${i.class}`.toLowerCase().includes(mqx))
+    : market;
+
   const t = f.foundryType;
   return (
     <div className="npcgen-page">
@@ -164,6 +213,58 @@ export default function FoundryItemForm() {
         <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
         <h1 className="npcgen-title">Crea Oggetto → Foundry</h1>
         <p className="npcgen-sub">Compila l'oggetto, mettilo in coda, poi lancia la macro su Foundry per crearlo (nel mondo o nell'inventario di un giocatore).</p>
+
+        {/* ── IMPORTA DAL MERCATO ── */}
+        <div className="fdy-import">
+          <div className="fdy-import-head">
+            <span className="fdy-import-title">📥 Importa dal Mercato Nero</span>
+            <span className="fdy-import-count">{marketFiltered.length} oggetti</span>
+          </div>
+          <input
+            className="npcgen-input"
+            placeholder="🔎 Cerca un oggetto del mercato…"
+            value={mq}
+            onChange={e => setMq(e.target.value)}
+          />
+          <p className="fdy-import-tip">
+            <strong>Coda diretta</strong> = lo manda subito a Foundry coi dati salvati nel mercato.
+            <strong> Compila</strong> = lo carica nel form qui sotto per rivederlo. I dati di combattimento si impostano una volta sola nell'editor del Mercato (sezione “Dati per Foundry”).
+          </p>
+          <div className="fdy-import-list">
+            {marketFiltered.length === 0 && <p className="npcgen-v">Nessun oggetto nel mercato.</p>}
+            {marketFiltered.slice(0, 60).map(item => {
+              const ft = resolveFoundryType(item);
+              const fr = resolveFoundryRarity(item);
+              const rd = foundryReadiness(item);
+              return (
+                <div className="fdy-row" key={item.id}>
+                  <img className="fdy-thumb" src={item.img || "/assets/placeholder.jpg"} alt=""
+                    onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }} />
+                  <div className="fdy-row-main">
+                    <div className="fdy-row-name">{item.name}</div>
+                    <div className="fdy-row-meta">
+                      <span className="npcgen-chip dmt-pill">{item.type}</span>
+                      <span className="npcgen-chip dmt-pill">{ft} · {fr}</span>
+                      {!rd.ready && <span className="fdy-warn" title={rd.reason}>⚠ da completare</span>}
+                    </div>
+                  </div>
+                  <div className="fdy-row-actions">
+                    <button type="button" className="npcgen-btn npcgen-btn--ghost fdy-mini"
+                      onClick={() => fillFromMarket(item)}>Compila</button>
+                    <button type="button" className="npcgen-btn fdy-mini"
+                      disabled={busy} onClick={() => queueFromMarket(item)}
+                      title={rd.ready ? "Manda subito a Foundry" : rd.reason + " — verrà inviato comunque"}>
+                      {rd.ready ? "📦 Coda diretta" : "📦 Coda (incompleto)"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {marketFiltered.length > 60 && (
+              <p className="fdy-more">…e altri {marketFiltered.length - 60}. Affina la ricerca.</p>
+            )}
+          </div>
+        </div>
 
         {/* IDENTITÀ */}
         <div className="dmt-field">

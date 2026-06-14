@@ -8,6 +8,11 @@ import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "fi
 import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
+import {
+  EMPTY_FOUNDRY, resolveFoundryType,
+  FOUNDRY_TYPES, FOUNDRY_DAMAGE_TYPES, FOUNDRY_ACTION_TYPES,
+  FOUNDRY_WEAPON_PROPS, FOUNDRY_ARMOR_TYPES, FOUNDRY_ABILITIES,
+} from "../utils/foundryMap";
 import { PET_ITEMS, ITEMS_ORDER } from "../data/petItems";
 import { EGG_ICON, RARITY_LABEL } from "../data/petSpecies";
 import { TCG_CARDS, TCG_CARD_LIST } from "../data/tcgCards";
@@ -146,6 +151,8 @@ const initialFormData = {
   setName: "",
   setSize: 5,
   setBonuses: [], // [{ pieces: 2, effect: "STR +1" }, ...]
+  // FOUNDRY — dati di combattimento facoltativi per l'import su Foundry
+  foundry: { ...EMPTY_FOUNDRY },
 };
 
 const formatEndDate = (iso) => {
@@ -448,6 +455,8 @@ export default function MarketAdmin() {
       setBonuses: Array.isArray(item.setPayload?.bonuses)
         ? item.setPayload.bonuses.map(b => ({ pieces: Number(b.pieces) || 1, effect: String(b.effect || "") }))
         : [],
+      // Riporta i dati Foundry (merge coi default per non perdere nuovi campi)
+      foundry: { ...EMPTY_FOUNDRY, ...(item.foundry || {}) },
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -608,6 +617,13 @@ export default function MarketAdmin() {
       setBonuses: prev.setBonuses.filter((_, i) => i !== index),
     }));
   };
+
+  // ── Helpers per i dati Foundry ──
+  const setFoundry = (k, v) => setFormData(prev => ({ ...prev, foundry: { ...prev.foundry, [k]: v } }));
+  const toggleFoundryProp = (p) => setFormData(prev => {
+    const props = prev.foundry?.properties || [];
+    return { ...prev, foundry: { ...prev.foundry, properties: props.includes(p) ? props.filter(x => x !== p) : [...props, p] } };
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -774,6 +790,8 @@ export default function MarketAdmin() {
   }, [items]);
 
   const previewRarityKey = (formData.class || "Comune").replace(/\s/g, "");
+  const fdr = formData.foundry || EMPTY_FOUNDRY;
+  const fType = resolveFoundryType({ type: formData.type, foundry: formData.foundry });
 
   if (!currentUser || !canAccessMarket(currentUser.email)) {
     return <p style={{ textAlign: "center", paddingTop: "100px" }}>Accesso negato.</p>;
@@ -1221,6 +1239,142 @@ export default function MarketAdmin() {
                 rows="5"
               />
             </div>
+
+            {/* ── DATI PER FOUNDRY (import in un clic) ── */}
+            <details className="mkadm-foundry">
+              <summary className="mkadm-foundry-summary">
+                ⚒ Dati per Foundry <small>(facoltativi · per l'import diretto)</small>
+              </summary>
+              <div className="mkadm-foundry-body">
+                <p className="mkadm-foundry-hint">
+                  Compila qui i dati di combattimento <strong>una volta sola</strong>: l'oggetto si potrà importare
+                  su Foundry in un clic dalla pagina <em>Crea Oggetto → Foundry</em>. I player non vedono questi campi.
+                </p>
+
+                <div className="mkadm-field-row">
+                  <div className="mkadm-field">
+                    <label>Tipo Foundry</label>
+                    <select className="admin-field-select" value={fdr.foundryType}
+                      onChange={(e) => setFoundry("foundryType", e.target.value)}>
+                      <option value="">Automatico (da Tipo: {fType})</option>
+                      {FOUNDRY_TYPES.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="mkadm-field">
+                    <label>Peso (lb)</label>
+                    <input className="admin-field-input" type="number" value={fdr.weight}
+                      onChange={(e) => setFoundry("weight", e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="mkadm-field">
+                    <label>Quantità</label>
+                    <input className="admin-field-input" type="number" value={fdr.quantity}
+                      onChange={(e) => setFoundry("quantity", e.target.value)} placeholder="1" />
+                  </div>
+                </div>
+
+                {fType === "weapon" && (<>
+                  <div className="mkadm-field-row">
+                    <div className="mkadm-field">
+                      <label>Tipo d'attacco</label>
+                      <select className="admin-field-select" value={fdr.actionType}
+                        onChange={(e) => setFoundry("actionType", e.target.value)}>
+                        {FOUNDRY_ACTION_TYPES.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="mkadm-field">
+                      <label>Bonus al colpire (+x)</label>
+                      <input className="admin-field-input" type="number" value={fdr.attackBonus}
+                        onChange={(e) => setFoundry("attackBonus", e.target.value)} placeholder="0" />
+                    </div>
+                  </div>
+                  <div className="mkadm-field-row">
+                    <div className="mkadm-field">
+                      <label>Danno (formula) *</label>
+                      <input className="admin-field-input" value={fdr.damageFormula}
+                        onChange={(e) => setFoundry("damageFormula", e.target.value)} placeholder="es. 1d8+1" />
+                    </div>
+                    <div className="mkadm-field">
+                      <label>Tipo di danno</label>
+                      <select className="admin-field-select" value={fdr.damageType}
+                        onChange={(e) => setFoundry("damageType", e.target.value)}>
+                        {FOUNDRY_DAMAGE_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mkadm-field-row">
+                    <div className="mkadm-field">
+                      <label>Danno extra (facolt.)</label>
+                      <input className="admin-field-input" value={fdr.damage2Formula}
+                        onChange={(e) => setFoundry("damage2Formula", e.target.value)} placeholder="es. 1d6" />
+                    </div>
+                    <div className="mkadm-field">
+                      <label>Tipo danno extra</label>
+                      <select className="admin-field-select" value={fdr.damage2Type}
+                        onChange={(e) => setFoundry("damage2Type", e.target.value)}>
+                        <option value="">—</option>
+                        {FOUNDRY_DAMAGE_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mkadm-field">
+                    <label>Formula versatile (a due mani)</label>
+                    <input className="admin-field-input" value={fdr.versatileFormula}
+                      onChange={(e) => setFoundry("versatileFormula", e.target.value)} placeholder="es. 1d10" />
+                  </div>
+                  <div className="mkadm-field">
+                    <label>Proprietà</label>
+                    <div className="mkadm-foundry-props">
+                      {FOUNDRY_WEAPON_PROPS.map(p => (
+                        <button type="button" key={p.v}
+                          className={`mkadm-foundry-chip ${(fdr.properties || []).includes(p.v) ? "on" : ""}`}
+                          onClick={() => toggleFoundryProp(p.v)}>
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="mkadm-foundry-check">
+                    <input type="checkbox" checked={fdr.proficient !== false}
+                      onChange={(e) => setFoundry("proficient", e.target.checked)} />
+                    Competente con quest'arma
+                  </label>
+                </>)}
+
+                {fType === "equipment" && (
+                  <div className="mkadm-field-row">
+                    <div className="mkadm-field">
+                      <label>Tipo armatura</label>
+                      <select className="admin-field-select" value={fdr.armorType}
+                        onChange={(e) => setFoundry("armorType", e.target.value)}>
+                        {FOUNDRY_ARMOR_TYPES.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="mkadm-field">
+                      <label>Valore CA</label>
+                      <input className="admin-field-input" type="number" value={fdr.armorValue}
+                        onChange={(e) => setFoundry("armorValue", e.target.value)} placeholder="es. 14" />
+                    </div>
+                  </div>
+                )}
+
+                {(fType === "weapon" || fType === "consumable") && (
+                  <div className="mkadm-field-row">
+                    <div className="mkadm-field">
+                      <label>Tiro Salvezza (caratt.)</label>
+                      <select className="admin-field-select" value={fdr.saveAbility}
+                        onChange={(e) => setFoundry("saveAbility", e.target.value)}>
+                        {FOUNDRY_ABILITIES.map(a => <option key={a} value={a}>{a ? a.toUpperCase() : "—"}</option>)}
+                      </select>
+                    </div>
+                    <div className="mkadm-field">
+                      <label>CD</label>
+                      <input className="admin-field-input" type="number" value={fdr.saveDC}
+                        onChange={(e) => setFoundry("saveDC", e.target.value)} placeholder="es. 15" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
 
             <div className="mkadm-form-actions">
               <button type="submit" disabled={loading || uploading} className="mkadm-btn-primary">

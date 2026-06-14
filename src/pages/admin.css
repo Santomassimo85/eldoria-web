@@ -4579,6 +4579,69 @@
 .adm .wbs-name { font-weight: 700; margin-bottom: 6px; }
 .adm .wbs-mini-btn { padding: 4px 9px; font-size: .72rem; border-radius: 8px; }
 
+/* ── MARKET ADMIN — sezione "Dati per Foundry" ── */
+.mkadm-foundry {
+  border: 1.5px dashed color-mix(in srgb, var(--gold, #a9781a) 45%, transparent);
+  border-radius: 12px; background: rgba(169,120,26,.05); padding: 0; overflow: hidden;
+}
+.mkadm-foundry[open] { background: rgba(169,120,26,.04); }
+.mkadm-foundry-summary {
+  cursor: pointer; list-style: none; padding: 12px 16px;
+  font-family: var(--font-title); font-size: .82rem; letter-spacing: .04em; color: #7c560f;
+}
+.mkadm-foundry-summary::-webkit-details-marker { display: none; }
+.mkadm-foundry-summary small { color: #9a8a6b; font-weight: 400; letter-spacing: .02em; }
+.mkadm-foundry-summary:hover { background: rgba(169,120,26,.08); }
+.mkadm-foundry-body { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.mkadm-foundry-hint {
+  margin: 0; font-size: .8rem; line-height: 1.5; color: #6a5b41;
+  background: rgba(255,255,255,.5); border-left: 3px solid var(--gold, #a9781a);
+  border-radius: 0 8px 8px 0; padding: 8px 12px;
+}
+.mkadm-foundry-props { display: flex; flex-wrap: wrap; gap: 6px; }
+.mkadm-foundry-chip {
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid color-mix(in srgb, var(--gold, #a9781a) 35%, #c9b78a);
+  background: #fffdf7; color: #6a5b41; font-family: var(--font-text); font-size: .8rem;
+  transition: all .15s;
+}
+.mkadm-foundry-chip:hover { border-color: var(--gold, #a9781a); }
+.mkadm-foundry-chip.on { background: linear-gradient(135deg, #e6c477, #a9781a); border-color: #a9781a; color: #2a1c06; font-weight: 600; }
+.mkadm-foundry-check { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: #33281a; cursor: pointer; }
+.mkadm-foundry-check input { width: 16px; height: 16px; accent-color: var(--gold, #a9781a); }
+
+/* ── FOUNDRY IMPORT — pannello "Importa dal Mercato" ── */
+.fdy-import {
+  margin: 6px 0 18px; padding: 14px 16px; border-radius: 14px;
+  border: 1.5px solid color-mix(in srgb, #8a261c 30%, #c9b78a);
+  background: linear-gradient(180deg, #fffdf7, #fbf4e0);
+  box-shadow: 0 12px 30px -22px rgba(86,64,30,.5);
+}
+.fdy-import-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.fdy-import-title { font-family: var(--font-title); font-size: .95rem; color: #8a261c; letter-spacing: .03em; }
+.fdy-import-count { font-size: .74rem; color: #9a8a6b; }
+.fdy-import-tip { margin: 8px 0 10px; font-size: .76rem; line-height: 1.5; color: #6a5b41; }
+.fdy-import-tip strong { color: #8a261c; }
+.fdy-import-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.fdy-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px;
+  background: #fffdf7; border: 1px solid #e2d3a8;
+}
+.fdy-row:hover { border-color: color-mix(in srgb, #8a261c 40%, transparent); }
+.fdy-thumb { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: #e9dcbe; border: 1px solid #c9b78a; }
+.fdy-row-main { flex: 1 1 auto; min-width: 0; }
+.fdy-row-name { font-family: var(--font-title); font-size: .92rem; color: #33281a; line-height: 1.2; word-break: break-word; }
+.fdy-row-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.fdy-warn { font-size: .68rem; color: #b45309; font-weight: 700; }
+.fdy-row-actions { flex: 0 0 auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.fdy-mini { padding: 6px 11px !important; font-size: .76rem !important; }
+.fdy-more { text-align: center; font-size: .76rem; color: #9a8a6b; font-style: italic; padding: 6px; }
+@media (max-width: 600px) {
+  .fdy-row { flex-wrap: wrap; }
+  .fdy-row-actions { width: 100%; justify-content: stretch; }
+  .fdy-row-actions .fdy-mini { flex: 1 1 auto; }
+}
+
 /* — REPUTAZIONE: griglia di card su desktop (no liste sparse su PC) — */
 .rep-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .rep-grid .rep-char-card { margin-bottom: 0; }

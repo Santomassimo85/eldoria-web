@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "32",
+      "date": "2026-06-14",
+      "title": "Collegamento Mercato → Foundry (strumenti Master)",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Gli oggetti del Mercato possono ora portare dati di combattimento opzionali per Foundry (impostati una volta nell'editor del Mercato) e si importano in un clic dalla pagina del Master «Crea Oggetto → Foundry». Nessun impatto sulla vista del giocatore."
+        }
+      ]
+    },
+    {
       "version": "31",
       "date": "2026-06-14",
       "title": "Pannelli Master: tasto «torna alla Console» + restyle World Boss",

@@ -55,6 +55,11 @@ export const createMarketItem = (data) => {
        Shape: { name: string, size: number, bonuses: [{ pieces:number, effect:string }] } */
     setPayload: data.setPayload || null,
 
+    /* FOUNDRY payload — dati di combattimento facoltativi per l'import
+       su Foundry (danno, CA, proprietà…). NON è mostrato ai player:
+       il Mercato lato giocatore non legge questo campo. */
+    foundry: data.foundry || null,
+
     // Logica di Mercato e Stato
     isSold: false,
     isRefunded: false,
