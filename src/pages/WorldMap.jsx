@@ -247,7 +247,11 @@ export default function WorldMap() {
 
   return (
     <div className="cine-page map-page" style={{ "--cine-accent": "#2f6e8a", "--cine-accent-2": "#4a9ac0" }}>
-      <h1 className="map-page-title">Mappa di Exanthia</h1>
+      <div className="map-cartouche">
+        <span className="map-cartouche-eyebrow">✦ Archivio Cartografico ✦</span>
+        <h1 className="map-page-title">Mappa di Exanthia</h1>
+        <span className="map-cartouche-rule" aria-hidden="true" />
+      </div>
 
       <div
         ref={viewportRef}

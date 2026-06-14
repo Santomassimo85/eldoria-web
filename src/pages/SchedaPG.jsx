@@ -14,23 +14,24 @@ import { useAuth } from "../AuthContext";
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
 .spg-page{
-  --bg:#0a0b14; --panel:#15172b; --panel2:#1b1e38; --line:#2c2f52;
-  --gold:#e0bd6b; --gold-dim:#b9974c; --arc:#9b6cd6; --arc-dim:#6f4aa6;
-  --ink:#f4f2fb; --muted:#c5c3e4; --hp:#e0726a; --hp-track:#3a1f24;
-  --neg:#f0915c; --key:#5fcf8a; --key-dim:#2f7a4e;
+  /* Pergamena Antica (chiaro) — palette ribaltata dal vecchio grimorio scuro */
+  --bg:#ece0c2; --panel:#fbf4e0; --panel2:#f1e7cf; --line:#c9b78a;
+  --gold:#7c560f; --gold-dim:#a9781a; --arc:#6f44c9; --arc-dim:#b79bf0;
+  --ink:#33281a; --muted:#6a5b41; --hp:#b8362a; --hp-track:#e6d3c0;
+  --neg:#b0552a; --key:#2c8a5a; --key-dim:#7bbf9a;
   min-height:100vh;
   /* la navbar del sito è FISSA: la scheda parte sempre sotto di lei */
   padding: calc(var(--navbar-h, 80px) + 16px) 14px 60px;
   font-family:'EB Garamond', Georgia, serif; font-size:17px; line-height:1.5; color:var(--ink);
-  background:radial-gradient(900px 480px at 50% -8%, #1a1736 0%, rgba(26,23,54,0) 60%), var(--bg);
+  background:radial-gradient(900px 480px at 50% -8%, rgba(169,120,26,.14) 0%, rgba(246,237,214,0) 60%), var(--bg);
 }
 .spg-page *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 .spg-wrap{max-width:560px; margin:0 auto;}
-.spg-loading,.spg-empty{max-width:520px;margin:60px auto;text-align:center;color:#9c9ac4;font-family:'EB Garamond',serif}
+.spg-loading,.spg-empty{max-width:520px;margin:60px auto;text-align:center;color:var(--muted);font-family:'EB Garamond',serif}
 .spg-hero{display:flex;gap:16px;align-items:center;padding:6px 2px 18px}
 .spg-portrait{width:84px;height:84px;flex:0 0 84px;border-radius:50%;
-  background:linear-gradient(160deg,#2a2550,#15172b);border:2px solid var(--gold-dim);
-  box-shadow:0 0 0 4px rgba(155,108,214,.12),0 6px 20px rgba(0,0,0,.5);
+  background:linear-gradient(160deg,#f3ead4,#e3d4b0);border:2px solid var(--gold-dim);
+  box-shadow:0 0 0 4px rgba(155,108,214,.12),0 6px 20px rgba(86,64,30,.28);
   display:flex;align-items:center;justify-content:center;overflow:hidden;
   font-family:'Cinzel',serif;font-size:34px;color:var(--gold)}
 .spg-portrait img{width:100%;height:100%;object-fit:cover}
@@ -46,7 +47,7 @@ const CSS = `
 .spg-hpbar{height:10px;border-radius:6px;background:var(--hp-track);overflow:hidden}
 .spg-hpfill{height:100%;background:linear-gradient(90deg,#a8453f,var(--hp));border-radius:6px;transition:width .8s ease}
 .spg-ac{width:66px;height:74px;flex:0 0 66px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 50% 30%,#23264a,#14162a);border:1px solid var(--gold-dim);
+  background:radial-gradient(circle at 50% 30%,#fbf4e0,#e9dcbe);border:1px solid var(--gold-dim);
   clip-path:polygon(50% 0,100% 18%,100% 62%,50% 100%,0 62%,0 18%)}
 .spg-ac .n{font-family:'Cinzel',serif;font-size:26px;color:var(--gold);line-height:1}
 .spg-ac .l{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:3px}
@@ -66,7 +67,7 @@ const CSS = `
   background:linear-gradient(var(--bg) 78%,rgba(10,11,20,0))}
 .spg-tab{flex:1;padding:10px 4px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--muted);
   font-family:'Cinzel',serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;text-align:center;cursor:pointer;transition:.18s}
-.spg-tab.on{background:linear-gradient(180deg,#2a2550,#1c1d3a);color:var(--gold);border-color:var(--gold-dim)}
+.spg-tab.on{background:linear-gradient(180deg,#f3e6c4,#e9d9b0);color:var(--gold);border-color:var(--gold-dim);box-shadow:0 2px 8px -4px rgba(169,120,26,.5)}
 .spg-panel{animation:spgFade .35s ease}
 @keyframes spgFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .spg-sec{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dim);
@@ -104,16 +105,16 @@ const CSS = `
 .spg-card summary::-webkit-details-marker{display:none}
 .spg-card .cn{flex:1;min-width:0;font-size:16px}
 .spg-badge{font-family:'Cinzel',serif;font-size:12px;padding:3px 8px;border-radius:7px;white-space:nowrap}
-.spg-badge.dmg{background:rgba(207,90,82,.16);color:#ef8e87;border:1px solid rgba(207,90,82,.35)}
+.spg-badge.dmg{background:rgba(184,54,42,.14);color:#b8362a;border:1px solid rgba(184,54,42,.4)}
 .spg-badge.hit{background:rgba(224,189,107,.14);color:var(--gold);border:1px solid rgba(224,189,107,.3)}
 .spg-chev{color:var(--muted);transition:.2s;flex:0 0 auto}
 .spg-card[open] .spg-chev{transform:rotate(90deg)}
 .spg-body{padding:0 14px 14px;color:var(--muted);font-size:15px;line-height:1.55}
 .spg-roll{margin-top:10px;width:100%;padding:10px;border:1px solid var(--gold-dim);border-radius:9px;
-  background:linear-gradient(180deg,#2a2550,#1c1d3a);color:var(--gold);font-family:'Cinzel',serif;font-size:14px;cursor:pointer}
+  background:linear-gradient(180deg,#f3e6c4,#e9d9b0);color:var(--gold);font-family:'Cinzel',serif;font-size:14px;cursor:pointer}
 .spg-roll:active{transform:scale(.98)}
 .spg-slots{display:flex;flex-direction:column;gap:10px;margin-bottom:6px}
-.spg-slot{background:linear-gradient(180deg,#221a3a,var(--panel));border:1px solid var(--arc-dim);border-radius:12px;
+.spg-slot{background:linear-gradient(180deg,#efe2c6,var(--panel));border:1px solid var(--arc-dim);border-radius:12px;
   padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
 .spg-slot .sl{font-family:'Cinzel',serif;font-size:15px}
 .spg-pips{display:flex;gap:6px}
@@ -123,8 +124,8 @@ const CSS = `
 .spg-coin{flex:1;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:9px 2px}
 .spg-coin .cv{font-family:'Cinzel',serif;font-size:17px;line-height:1}
 .spg-coin .cl{font-size:10px;letter-spacing:.1em;color:var(--muted);margin-top:4px}
-.spg-coin.pp .cv{color:#dfe6ee}.spg-coin.gp .cv{color:var(--gold)}.spg-coin.ep .cv{color:#cdbf8a}
-.spg-coin.sp .cv{color:#c3c8d0}.spg-coin.cp .cv{color:#c8794e}
+.spg-coin.pp .cv{color:#5a6b7a}.spg-coin.gp .cv{color:var(--gold)}.spg-coin.ep .cv{color:#8a7320}
+.spg-coin.sp .cv{color:#6b7280}.spg-coin.cp .cv{color:#b5651d}
 .spg-invgrid{display:grid;grid-template-columns:1fr;gap:7px;align-items:start}
 .spg-inv{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--panel);border:1px solid var(--line);border-radius:11px}
 .spg-inv .qty{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);min-width:30px;text-align:center}

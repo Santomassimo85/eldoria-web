@@ -146,17 +146,32 @@ const CSS = `
 }
 .ast *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 .ast-head{
-  padding:16px 18px 14px; border-bottom:2px solid var(--gold);
-  display:flex; align-items:center; gap:14px; flex:0 0 auto;
-  background:linear-gradient(180deg,#f3ead4,#fbf4e0);
+  position:relative;
+  padding:18px 20px 16px; border-bottom:2px solid var(--gold);
+  display:flex; align-items:center; gap:16px; flex:0 0 auto;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(169,120,26,.12), transparent 45%),
+    linear-gradient(180deg,#f6edd6,#fbf4e0);
+}
+/* filetto araldico decorativo sotto l'header */
+.ast-head::after{
+  content:"";position:absolute;left:18px;right:18px;bottom:-2px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--red) 20%,var(--gold) 50%,var(--red) 80%,transparent);
+  opacity:.6;
 }
 .ast-head .orb{
-  width:44px;height:44px;border-radius:50%;flex:0 0 44px;
+  width:50px;height:50px;border-radius:50%;flex:0 0 50px;
   background:radial-gradient(circle at 38% 32%,#ffe7a8,#d4af37 55%,#820a0a);
-  box-shadow:0 0 14px rgba(212,175,55,.45), inset 0 0 6px rgba(255,255,255,.4);
-  display:flex;align-items:center;justify-content:center;font-size:22px;
+  box-shadow:0 0 16px rgba(212,175,55,.5), inset 0 0 6px rgba(255,255,255,.4), 0 0 0 2px rgba(255,240,210,.5);
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  animation:ast-orb-glow 3s ease-in-out infinite;
 }
-.ast-head .info h1{font-family:var(--font-title),'Cinzel',serif;font-size:19px;color:var(--red);margin:0;line-height:1.2;letter-spacing:.5px}
+@keyframes ast-orb-glow{0%,100%{box-shadow:0 0 16px rgba(212,175,55,.5), inset 0 0 6px rgba(255,255,255,.4), 0 0 0 2px rgba(255,240,210,.5)}50%{box-shadow:0 0 26px rgba(212,175,55,.7), inset 0 0 6px rgba(255,255,255,.5), 0 0 0 2px rgba(255,240,210,.6)}}
+.ast-head .info .eyebrow{
+  display:block;font-family:var(--font-title),'Cinzel',serif;
+  font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-deep);margin:0 0 3px;
+}
+.ast-head .info h1{font-family:var(--font-title),'Cinzel',serif;font-size:21px;color:var(--red);margin:0;line-height:1.15;letter-spacing:.5px}
 .ast-head .info p{font-size:13px;color:var(--muted);margin:3px 0 0}
 
 /* TRACE LOG */
@@ -428,6 +443,7 @@ export default function Assistente() {
       <div className="ast-head">
         <div className="orb">🔮</div>
         <div className="info">
+          <span className="eyebrow">✦ Oracolo di Eldoria</span>
           <h1>Assistente di Eldoria</h1>
           <p>Mercato · Missioni · NPC · Luoghi · Sessioni</p>
         </div>
