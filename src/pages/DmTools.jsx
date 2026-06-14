@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import "../GeneraNPC.css";
 import "./DmTools.css";
+import "./admin.css";
 
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
@@ -73,6 +75,7 @@ export default function DmTools() {
   return (
     <div className="npcgen-page">
       <div className="npcgen-inner">
+        <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
         <h1 className="npcgen-title">Strumenti DM</h1>
         <p className="npcgen-sub">Genera al volo incontri, bottino e città per Eldoria.</p>
 

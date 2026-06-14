@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "31",
+      "date": "2026-06-14",
+      "title": "Pannelli Master: tasto «torna alla Console» + restyle World Boss",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Il tasto «Console del Master» ora è una pillola rossa ben visibile che resta agganciata in alto mentre scorri, ed è stata aggiunta anche agli Strumenti DM (prima non c'era modo di tornare indietro)."
+        },
+        {
+          "type": "graphic",
+          "text": "«Sala delle Minacce» (gestione World Boss) ridisegnata da zero: tema pergamena coerente, campi più grandi e leggibili, forgia a piena larghezza con altare a fianco sugli schermi larghi, card-azione spaziose e tutto più usabile su PC e telefono. Meccaniche e collegamenti invariati."
+        }
+      ]
+    },
+    {
       "version": "30",
       "date": "2026-06-14",
       "title": "Pannelli World Boss del Master ridisegnati",

@@ -4265,16 +4265,24 @@
 }
 @media (min-width: 1700px) { .adm { max-width: 1480px; } }
 
-/* ── back pill ── */
+/* ── back pill — VIVO + STICKY (ti segue mentre scrolli) ── */
 .adm-back {
-  display: inline-flex; align-items: center; gap: 6px; text-decoration: none; cursor: pointer;
-  font-family: var(--font-head, "Cinzel"), serif; font-size: .8rem; letter-spacing: .04em; color: #8a261c;
-  background: linear-gradient(135deg, #fbf4e0, #f1e7cf);
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 35%, #c9b78a);
-  border-radius: 999px; padding: 7px 16px; margin-bottom: 16px;
-  transition: transform .15s, box-shadow .15s;
+  position: sticky;
+  top: calc(var(--navbar-h, 80px) - 2px);
+  z-index: 60;
+  width: max-content; max-width: 100%;
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none; cursor: pointer;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700; font-size: .82rem; letter-spacing: .04em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--red, #820a0a), #5e0707);
+  border: 1px solid rgba(255, 230, 210, 0.25);
+  border-radius: 999px; padding: 10px 20px; margin-bottom: 18px;
+  box-shadow: 0 10px 24px -8px rgba(130, 10, 10, .65), 0 1px 0 rgba(255,255,255,.15) inset;
+  transition: transform .15s, box-shadow .15s, filter .15s;
 }
-.adm-back:hover { transform: translateY(-2px); box-shadow: 0 8px 18px -10px rgba(86, 64, 30, .5); }
+.adm-back:hover { transform: translateY(-1px); filter: brightness(1.1); box-shadow: 0 14px 30px -10px rgba(130, 10, 10, .75); }
+.adm-back:active { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .adm-back { transition: none; } }
 
 /* ── masthead console ── */
 .adm-masthead {
@@ -4570,40 +4578,6 @@
 .adm .wbs-in:focus { border-color: var(--cine-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cine-accent) 16%, transparent); }
 .adm .wbs-name { font-weight: 700; margin-bottom: 6px; }
 .adm .wbs-mini-btn { padding: 4px 9px; font-size: .72rem; border-radius: 8px; }
-
-/* ── WORLD BOSS ADMIN — allineamento alla console (corpo/meccanica intatti) ── */
-@media (min-width: 1280px) { .wb-admin-page.wb-redesign { max-width: 1320px; } }
-.wb-admin-page.wb-redesign .wb-hero {
-  background: linear-gradient(135deg, rgba(255,253,245,.97), rgba(243,234,212,.94)) !important;
-  background-blend-mode: normal !important;
-  border: 1px solid var(--line, #c9b78a) !important;
-  border-left: 6px solid #8a0e0e !important;
-  border-radius: 20px !important;
-  box-shadow: 0 20px 50px -24px rgba(86,64,30,.55), 0 1px 0 rgba(255,255,255,.7) inset !important;
-  color: #33281a !important;
-  animation: adm-mast-in .6s cubic-bezier(.16,1,.3,1) both;
-}
-.wb-admin-page.wb-redesign .wb-hero::before { display: none !important; }
-.wb-admin-page.wb-redesign .wb-hero-title {
-  font-family: var(--font-display, "Cinzel Decorative"), serif !important; font-weight: 900 !important;
-  font-size: clamp(1.5rem, 3.6vw, 2.3rem) !important; margin: 4px 0 4px !important;
-  background: linear-gradient(180deg, #3a2a12, #8a0e0e 75%) !important;
-  -webkit-background-clip: text !important; background-clip: text !important; color: transparent !important;
-  text-shadow: none !important;
-}
-.wb-admin-page.wb-redesign .wb-hero-sub { color: #6a5b41 !important; font-style: italic; text-shadow: none !important; }
-.wb-admin-page.wb-redesign .wb-hero-stat {
-  background: #fffdf7 !important; border: 1px solid color-mix(in srgb, #8a0e0e 28%, #c9b78a) !important; box-shadow: none !important;
-}
-.wb-admin-page.wb-redesign .wb-hero-stat span { color: #8a7a5a !important; }
-.wb-admin-page.wb-redesign .wb-hero-stat strong { color: #8a0e0e !important; text-shadow: none !important; }
-.wb-admin-page.wb-redesign .wb-hero-stat.active strong { color: #b8362a !important; text-shadow: none !important; }
-/* card forgia/altare → trama pergamena */
-.wb-admin-page.wb-redesign .wb-forge,
-.wb-admin-page.wb-redesign .wb-altar,
-.wb-admin-page.wb-redesign .wb-boss-card {
-  background: linear-gradient(180deg, #fffdf7, #fbf6ea) !important;
-}
 
 /* — REPUTAZIONE: griglia di card su desktop (no liste sparse su PC) — */
 .rep-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
