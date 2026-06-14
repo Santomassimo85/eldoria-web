@@ -129,23 +129,17 @@ export default function QuestDetail() {
 
   return (
     <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label={quest.title}>
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: copertina full-bleed + placca-missiva a sinistra ── */}
+      <section className="qd-hero" aria-label={quest.title}>
+        <div className="qd-hero-media" aria-hidden="true">
           <img src={quest.coverImage || HERO_IMAGE} alt=""
                onError={(e) => { e.currentTarget.src = HERO_IMAGE; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Incarico{quest.zona ? ` · ${quest.zona}` : ""}</span>
-          <h1 className="cine-hero-title">{quest.title}</h1>
-          <p className="cine-hero-tagline">Emesso da {quest.sender || "Mittente Misterioso"}</p>
-        </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
+        <div className="qd-hero-wash" aria-hidden="true" />
+        <div className="qd-hero-plate">
+          <span className="qd-hero-seal">📜 Incarico{quest.zona ? ` · ${quest.zona}` : ""}</span>
+          <h1 className="qd-hero-title">{quest.title}</h1>
+          <p className="qd-hero-tagline">Emesso da {quest.sender || "Mittente Misterioso"}</p>
         </div>
       </section>
 

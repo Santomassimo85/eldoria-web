@@ -805,25 +805,19 @@ export default function Feedback() {
 
   return (
     <section className="cine-page fb-page" style={{ "--cine-accent": "#1f7a8a", "--cine-accent-2": "#2fb0c0" }}>
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label="Feedback">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca a sinistra ── */}
+      <section className="fb-hero" aria-label="Feedback">
+        <div className="fb-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">La tua voce conta</span>
-          <h1 className="cine-hero-title">Feedback</h1>
-          <p className="cine-hero-tagline">
+        <div className="fb-hero-wash" aria-hidden="true" />
+        <div className="fb-hero-plate">
+          <span className="fb-hero-seal">✦ La tua voce conta</span>
+          <h1 className="fb-hero-title">Feedback</h1>
+          <p className="fb-hero-tagline">
             Valuta ogni funzionalità, scegli pro e contro, lascia un messaggio.
             Puoi modificare il tuo feedback quando vuoi.
           </p>
-        </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
         </div>
       </section>
 

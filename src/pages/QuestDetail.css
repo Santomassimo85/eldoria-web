@@ -4,6 +4,61 @@
 
 .quest-detail-page.cine-page { padding-top: 0; }
 
+/* ── HERO ASIMMETRICO "missiva" (Pergamena) ─────────────── */
+.quest-detail-page .qd-hero {
+  position: relative; width: 100vw; margin-left: calc(50% - 50vw);
+  min-height: 58vh; display: flex; align-items: flex-end;
+  overflow: hidden; isolation: isolate; padding: 0 0 40px;
+}
+.quest-detail-page .qd-hero-media { position: absolute; inset: 0; z-index: 0; }
+.quest-detail-page .qd-hero-media img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 28%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.22px), 0); will-change: transform;
+}
+.quest-detail-page .qd-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(26,16,6,.58) 0%, rgba(26,16,6,.18) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+}
+.quest-detail-page .qd-hero-plate {
+  position: relative; z-index: 2; margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a); border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px; animation: qd-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes qd-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.quest-detail-page .qd-hero-seal {
+  display: inline-block; font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
+  color: #9a4e16; padding: 6px 14px; border: 1px solid rgba(154,78,22,.45);
+  border-radius: 999px; background: rgba(154,78,22,.08);
+}
+.quest-detail-page .qd-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.8rem, 6.4vw, 3.4rem); line-height: 1.04; margin: 16px 0 12px;
+  background: linear-gradient(180deg, #3a230f 0%, #9a4e16 58%, #c2691f 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.quest-detail-page .qd-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif; font-style: italic; color: #6a5b41;
+  font-size: clamp(.95rem, 2.4vw, 1.05rem); margin: 0;
+}
+@media (min-width: 900px) {
+  .quest-detail-page .qd-hero { min-height: 66vh; align-items: center; }
+  .quest-detail-page .qd-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(26,16,6,.7) 0%, rgba(26,16,6,.24) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .quest-detail-page .qd-hero-plate { margin: 0 0 0 7vw; max-width: 540px; padding: 34px 32px; }
+}
+.quest-detail-page .qd-hero + .cine-wrap { margin-top: 18px; }
+@media (prefers-reduced-motion: reduce) { .quest-detail-page .qd-hero-plate { animation: none !important; } }
+
 /* stati senza hero (loading / not found / sealed): spaziatura sotto navbar */
 .quest-detail-page.cine-page > p { padding-top: calc(var(--navbar-h, 80px) + 70px); text-align: center; }
 .quest-detail-page.cine-page > .admin-back-link { margin-top: calc(var(--navbar-h, 80px) + 24px); }

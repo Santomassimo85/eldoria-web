@@ -10,7 +10,6 @@ import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar2.png";
-const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoMEAA/caius2.png";
 
 const SHOP_ITEMS = [
   {
@@ -504,25 +503,19 @@ export default function ArenaMarket() {
   return (
     <div className="cine-page am-page cine-compact" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
       <AmbientFX variant="fire" />
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label="Bottega dell'Arena">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-bottega a sinistra ── */}
+      <section className="am-hero" aria-label="Bottega dell'Arena">
+        <div className="am-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Arena dei Campioni</span>
-          <h1 className="cine-hero-title">Bottega dell'Arena</h1>
-          <p className="cine-hero-tagline">Spendi le tue Monete Arena per potenziamenti esclusivi.</p>
-          <div className="cine-hero-meta">
-            <span className="cine-pill cine-pill--accent">🪙 {coins} Monete Arena</span>
-          </div>
-        </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
+        <div className="am-hero-wash" aria-hidden="true" />
+        <div className="am-hero-plate">
+          <span className="am-hero-seal">⚔ Arena dei Campioni</span>
+          <h1 className="am-hero-title">Bottega<br />dell'Arena</h1>
+          <p className="am-hero-tagline">Spendi le tue Monete Arena per potenziamenti esclusivi.</p>
+          <dl className="am-hero-stats">
+            <div><dt>Monete Arena</dt><dd>🪙 {coins}</dd></div>
+          </dl>
         </div>
       </section>
 
@@ -658,20 +651,12 @@ export default function ArenaMarket() {
       </div>
 
       {showItems && (<>
-      {/* ── DIVISORE: Potenziamenti ── */}
-      <section className="cine-scrolly cine-scrolly--short" aria-label="Potenziamenti">
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame">
-            <span className="cine-scrolly-eyebrow">Armeria del Campione</span>
-            <h2 className="cine-scrolly-title">Potenziamenti</h2>
-            <p className="cine-scrolly-text">Pozioni, armi e doni unici per dominare l'Arena.</p>
-          </div>
-        </div>
-      </section>
+      {/* ── RUBRICA: Potenziamenti ── */}
+      <div className="am-rubric">
+        <span className="am-rubric-eyebrow">Armeria del Campione</span>
+        <h2 className="am-rubric-title">Potenziamenti</h2>
+        <p className="am-rubric-sub">Pozioni, armi e doni unici per dominare l'Arena.</p>
+      </div>
 
       <div className="cine-wrap am-body">
       {filteredItems.length === 0 ? (

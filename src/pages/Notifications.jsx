@@ -51,27 +51,21 @@ export default function Notifications() {
 
   return (
     <section className="cine-page notifications-page" style={{ "--cine-accent": "#3f5a7a", "--cine-accent-2": "#5a7ea8" }}>
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label="Log dei Messaggi">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca a sinistra ── */}
+      <section className="notif-hero" aria-label="Log dei Messaggi">
+        <div className="notif-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Corvi messaggeri</span>
-          <h1 className="cine-hero-title">Log dei Messaggi</h1>
-          <p className="cine-hero-tagline">Missive, esiti d'asta e richiami del Master, tutti in un luogo.</p>
+        <div className="notif-hero-wash" aria-hidden="true" />
+        <div className="notif-hero-plate">
+          <span className="notif-hero-seal">🪶 Corvi messaggeri</span>
+          <h1 className="notif-hero-title">Log dei<br />Messaggi</h1>
+          <p className="notif-hero-tagline">Missive, esiti d'asta e richiami del Master, tutti in un luogo.</p>
           {list.length > 0 && (
-            <div className="cine-hero-meta">
-              <span className="cine-pill cine-pill--accent">🔔 {list.length} {list.length === 1 ? "messaggio" : "messaggi"}</span>
-            </div>
+            <dl className="notif-hero-stats">
+              <div><dt>Messaggi</dt><dd>{list.length}</dd></div>
+            </dl>
           )}
-        </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
         </div>
       </section>
 

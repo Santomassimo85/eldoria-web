@@ -1,6 +1,105 @@
 /* ArenaMarket usa lo scheletro cinematic (tema rosso Arena).
    Le card chiare restano coerenti sul fondo scuro. */
 .am-page.cine-page { color: #ebe3d2; }
+
+/* ── HERO ASIMMETRICO (Pergamena) ───────────────────────── */
+.am-page .am-hero {
+  position: relative; width: 100vw; margin-left: calc(50% - 50vw);
+  min-height: 58vh; display: flex; align-items: flex-end;
+  overflow: hidden; isolation: isolate; padding: 0 0 42px;
+}
+.am-page .am-hero-media { position: absolute; inset: 0; z-index: 0; }
+.am-page .am-hero-media img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 26%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.22px), 0); will-change: transform;
+}
+.am-page .am-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(24,6,6,.6) 0%, rgba(24,6,6,.2) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(24,6,6,.08) 0%, rgba(24,6,6,.34) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+}
+.am-page .am-hero-plate {
+  position: relative; z-index: 2; margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a); border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px; animation: am-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes am-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.am-page .am-hero-seal {
+  display: inline-block; font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
+  color: #8a0e0e; padding: 6px 14px; border: 1px solid rgba(138,14,14,.45);
+  border-radius: 999px; background: rgba(138,14,14,.08);
+}
+.am-page .am-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(2rem, 7vw, 3.6rem); line-height: 1.02; margin: 16px 0 12px;
+  background: linear-gradient(180deg, #4a0808 0%, #8a0e0e 58%, #c0392b 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.am-page .am-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif; color: #46382a;
+  font-size: clamp(.95rem, 2.4vw, 1.06rem); line-height: 1.55; margin: 0 0 16px; max-width: 46ch;
+}
+.am-page .am-hero-stats {
+  display: grid; grid-template-columns: minmax(0, 1fr); margin: 0;
+  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
+}
+.am-page .am-hero-stats > div {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 2px 4px;
+}
+.am-page .am-hero-stats dt {
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: #6a5b41;
+}
+.am-page .am-hero-stats dd {
+  margin: 0; font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: 1.3rem; line-height: 1; color: #8a0e0e;
+}
+@media (min-width: 900px) {
+  .am-page .am-hero { min-height: 66vh; align-items: center; }
+  .am-page .am-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(24,6,6,.72) 0%, rgba(24,6,6,.26) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .am-page .am-hero-plate { margin: 0 0 0 7vw; max-width: 500px; padding: 34px 32px; }
+}
+@media (prefers-reduced-motion: reduce) { .am-page .am-hero-plate { animation: none !important; } }
+
+/* ── RUBRICA "Potenziamenti" ─────────────────────────────── */
+.am-page .am-rubric {
+  max-width: 900px; margin: 30px auto 6px; padding: 0 20px; text-align: center;
+}
+.am-page .am-rubric-eyebrow {
+  display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .24em; text-transform: uppercase; color: #ffd97a;
+}
+.am-page .am-rubric-eyebrow::before,
+.am-page .am-rubric-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 28px; height: 1px;
+  background: color-mix(in srgb, #c0392b 60%, transparent);
+}
+.am-page .am-rubric-eyebrow::before { right: 100%; }
+.am-page .am-rubric-eyebrow::after  { left: 100%; }
+.am-page .am-rubric-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.05;
+  background: linear-gradient(180deg, #fff 0%, #ffd97a 60%, #c0392b 110%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.am-page .am-rubric-sub {
+  margin: 4px auto 0; max-width: 52ch;
+  font-family: var(--font-ui, Georgia), serif; font-style: italic;
+  color: rgba(255, 232, 205, 0.78); font-size: clamp(.9rem, 2vw, 1rem);
+}
+
 .am-page .am-body { max-width: 900px; margin: 0 auto; padding: 8px 20px 0; box-sizing: border-box; }
 /* titoli/sottotitoli direttamente sul fondo scuro → resi chiari */
 .am-page .am-classes-section > .am-how-title { color: #ffd97a; }
