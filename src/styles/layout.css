@@ -1,0 +1,83 @@
+/* ============================================================
+   LAYOUT — posizionamento coerente dei pulsanti flottanti
+   (mobile-first) + safe-area iOS. Caricato PER ULTIMO.
+   Solo presentazione: nessuna logica/handler toccati.
+
+   Convenzione FAB (niente più sovrapposizioni):
+     • basso-DESTRA  → chat globale (+ finestra chat sopra)
+     • basso-SINISTRA → presenza online (+ calendario in Home, impilati)
+     • basso-CENTRO  → cine-side-nav (pagine "cine", gestita in cinematic.css)
+   ============================================================ */
+:root {
+  --fab-edge: 16px;            /* distanza dai bordi               */
+  --fab-gap: 12px;             /* spazio fra elementi impilati     */
+  --fab-chat: 52px;            /* Ø pulsante chat                  */
+  --fab-online: 48px;          /* Ø pulsante presenza              */
+  --fab-sidebar: 48px;         /* Ø pulsante calendario (Home)     */
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+
+/* ── CHAT → basso-destra ───────────────────────────────────── */
+.chat-toggle-btn {
+  bottom: calc(var(--fab-edge) + var(--safe-b)) !important;
+  right: calc(var(--fab-edge) + var(--safe-r)) !important;
+  left: auto !important;
+}
+.global-chat-window {
+  bottom: calc(var(--fab-edge) + var(--fab-chat) + var(--fab-gap) + var(--safe-b)) !important;
+  right: calc(var(--fab-edge) + var(--safe-r)) !important;
+  left: auto !important;
+}
+
+/* ── PRESENZA ONLINE → basso-sinistra (toglie lo scontro a destra) ─ */
+.online-fab {
+  left: calc(var(--fab-edge) + var(--safe-l)) !important;
+  right: auto !important;
+  bottom: calc(var(--fab-edge) + var(--safe-b)) !important;
+}
+.online-popup {
+  left: calc(var(--fab-edge) + var(--safe-l)) !important;
+  right: auto !important;
+  bottom: calc(var(--fab-edge) + var(--fab-online) + var(--fab-gap) + var(--safe-b)) !important;
+}
+
+/* ── CALENDARIO (solo Home) ────────────────────────────────────
+   Desktop: resta in alto a sinistra (regola originale in style.css).
+   Mobile/tablet: in basso a sinistra; e impilo la presenza online
+   SOPRA di esso così non si sovrappongono.                        */
+@media (max-width: 1300px) {
+  .floating-sidebar-btn {
+    top: auto !important;
+    bottom: calc(var(--fab-edge) + var(--safe-b)) !important;
+    left: calc(var(--fab-edge) + var(--safe-l)) !important;
+    right: auto !important;
+  }
+  /* :has → solo quando il calendario è presente (Home) */
+  body:has(.floating-sidebar-btn) .online-fab {
+    bottom: calc(var(--fab-edge) + var(--fab-sidebar) + var(--fab-gap) + var(--safe-b)) !important;
+  }
+  body:has(.floating-sidebar-btn) .online-popup {
+    bottom: calc(var(--fab-edge) + var(--fab-sidebar) + var(--fab-gap)
+                 + var(--fab-online) + var(--fab-gap) + var(--safe-b)) !important;
+  }
+}
+
+/* ── Header: rispetta il notch in orizzontale ─────────────────── */
+.app-nav {
+  padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
+}
+
+/* ── Drawer mobile: ultimo link non sotto la barra gesti iOS ──── */
+@media (max-width: 1300px) {
+  nav.active {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── Footer: margine inferiore sicuro su iOS ──────────────────── */
+footer {
+  padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+}
