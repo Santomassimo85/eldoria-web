@@ -42,8 +42,27 @@ nav a.active {
 }
 .nav-dd--open .nav-dd-trigger { background:var(--grad-arc) !important; color:#170a30 !important; text-shadow:none; }
 
-/* Tasto "DM ADMIN" (inline gold): testo scuro leggibile sull'ambra */
+/* Tasto "DM ADMIN" (inline gold): testo scuro leggibile sull'ambra.
+   Hover: schiarisco il testo (rosso → ambra chiara) mantenendo lo sfondo oro. */
 .admin-link, nav a.admin-link { color:#241501 !important; font-family:var(--font-head) !important; text-shadow:none !important; }
+nav a.admin-link:hover { color:#fff5e6 !important; text-shadow:0 1px 3px rgba(0,0,0,.35) !important; }
+
+/* Tasto "DM Tools" (dropdown trigger): sfondo azzurro, testo nero.
+   Hover: schiarisco il testo mantenendo l'azzurro. */
+.nav-dd-trigger[data-dd="dmtools"] {
+  background:linear-gradient(180deg,#7fd0ff,#4eb8f5) !important;
+  color:#0b1626 !important; text-shadow:none !important;
+  box-shadow:0 6px 18px -8px rgba(78,184,245,.6), inset 0 0 0 1px rgba(255,255,255,.25) !important;
+}
+.nav-dd-trigger[data-dd="dmtools"] .nav-dd-arrow { color:#0b1626 !important; }
+.nav-dd-trigger[data-dd="dmtools"]:hover {
+  background:linear-gradient(180deg,#1f6fa3,#124b73) !important;
+  color:#eaf6ff !important; text-shadow:0 1px 3px rgba(0,0,0,.35) !important;
+}
+.nav-dd-trigger[data-dd="dmtools"]:hover .nav-dd-arrow { color:#eaf6ff !important; }
+.nav-dd--open .nav-dd-trigger[data-dd="dmtools"] {
+  background:linear-gradient(180deg,#9bdcff,#62c2f7) !important; color:#0b1626 !important;
+}
 
 /* Dropdown scuro */
 .nav-dd-menu {

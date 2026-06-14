@@ -103,6 +103,7 @@ function NavDropdown({ label, children, closeAll, id, openId, setOpenId }) {
     <div className={`nav-dd${open ? " nav-dd--open" : ""}`} ref={ref}>
       <button
         className="nav-dd-trigger"
+        data-dd={id}
         onClick={() => setOpen((v) => !v)}
       >
         {label} <span className="nav-dd-arrow">▾</span>
