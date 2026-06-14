@@ -13,19 +13,6 @@ const MASTER_EMAIL = "santomassimo85@gmail.com";
 // Immagine eroica della testata — NON usata in Arena.
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg";
 
-// Immagini di sezione (parallax) per i divisori tra gruppi — NON usate in Arena.
-// Assegnate per indice di gruppo (in ciclo) così ogni gruppo ha la sua.
-const DIVIDER_IMAGES = [
-    "/assets/PhotoStory/GruppoMEAA/portale.png",
-    "/assets/PhotoStory/GruppoLAC/horn_spider.jpg",
-    "/assets/PhotoStory/GruppoENOX/voragine.png",
-    "/assets/PhotoStory/GruppoLEAF/dragonLeaf.png",
-    "/assets/PhotoStory/GruppoMEAA/drago_fiume.png",
-    "/assets/PhotoStory/GruppoMEAA/arcanite_distrutta.jpg",
-    "/assets/PhotoStory/GruppoENOX/muro.png",
-    "/assets/PhotoStory/GruppoMEAA/orso_arcanite.jpg",
-];
-
 const slugify = (s) =>
     String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
@@ -291,7 +278,7 @@ export default function Riassunti() {
                 ))}
             </div>
 
-            {/* ── HERO full-bleed (parallax, immagine epica) ── */}
+            {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
             <section id="rs-top" className="rs-hero" aria-label="Memorie del Monaco Errante">
                 <div className="rs-hero-media" aria-hidden="true">
                     <img
@@ -299,23 +286,19 @@ export default function Riassunti() {
                         alt=""
                         onError={(e) => { e.currentTarget.style.display = "none"; }}
                     />
-                    <div className="rs-hero-vignette" />
-                    <div className="rs-hero-gradient" />
-                    <div className="rs-hero-pattern" />
                 </div>
-                <div className="rs-hero-content">
-                    <span className="rs-hero-eyebrow">Cronache di Eldoria</span>
-                    <h1 className="rs-hero-title">Memorie del Monaco Errante</h1>
+                <div className="rs-hero-wash" aria-hidden="true" />
+                <div className="rs-hero-plate">
+                    <span className="rs-hero-seal">❦ Cronache di Eldoria</span>
+                    <h1 className="rs-hero-title">Memorie del<br />Monaco Errante</h1>
                     <p className="rs-hero-tagline">
                         Le schegge del mondo, raccolte sessione dopo sessione.
                         Ciò che la forza dimentica, la memoria conserva.
                     </p>
-                    <div className="rs-hero-meta">
-                        <span className="rs-hero-pill">📜 {totalMemories} memorie</span>
-                        {groupKeys.length > 0 && (
-                            <span className="rs-hero-pill">❦ {groupKeys.length} {groupKeys.length === 1 ? "gruppo" : "gruppi"}</span>
-                        )}
-                    </div>
+                    <dl className="rs-hero-stats">
+                        <div><dt>Memorie</dt><dd>{totalMemories}</dd></div>
+                        <div><dt>{groupKeys.length === 1 ? "Gruppo" : "Gruppi"}</dt><dd>{groupKeys.length}</dd></div>
+                    </dl>
                 </div>
                 <div className="rs-hero-scroll-hint" aria-hidden="true">
                     <span>Scorri</span>
@@ -401,42 +384,33 @@ export default function Riassunti() {
             ) : (
                 visibleGroups.map(({ partyKey, gi, summaries }) => {
                     return (
-                        <div key={partyKey} className="rs-group" data-accent={gi % 5}>
-
-                            {/* banner di gruppo COMPATTO (niente più gap enorme) */}
-                            <section
-                                id={`rs-group-${slugify(partyKey)}`}
-                                className="rs-group-banner"
-                                aria-label={`Gruppo ${partyKey}`}
-                            >
-                                <div className="rs-group-banner-media" aria-hidden="true">
-                                    <img
-                                        src={DIVIDER_IMAGES[gi % DIVIDER_IMAGES.length]}
-                                        alt=""
-                                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                                    />
-                                </div>
-                                <div className="rs-group-banner-content">
-                                    <div className="rs-group-banner-head">
-                                        <span className="rs-group-banner-eyebrow">❦ Cronaca</span>
-                                        <h2 className="rs-group-banner-title">Gruppo {partyKey}</h2>
-                                        <p className="rs-group-banner-count">
-                                            {summaries.length} {summaries.length === 1 ? "memoria" : "memorie"}
-                                            {query.trim() && groupedSummaries[partyKey].length !== summaries.length
-                                                ? ` di ${groupedSummaries[partyKey].length}`
-                                                : ""}
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="riassunti-export-btn"
-                                        onClick={() => exportPartyAsPdf(partyKey, groupedSummaries[partyKey])}
-                                        title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
-                                    >
-                                        📥 Esporta (PDF)
-                                    </button>
-                                </div>
-                            </section>
+                        <section
+                            key={partyKey}
+                            id={`rs-group-${slugify(partyKey)}`}
+                            className="rs-group"
+                            data-accent={gi % 5}
+                            aria-label={`Gruppo ${partyKey}`}
+                        >
+                            {/* marginalia sticky del gruppo */}
+                            <aside className="rs-group-aside">
+                                <span className="rs-group-seal" aria-hidden="true">❦</span>
+                                <span className="rs-group-eyebrow">Cronaca</span>
+                                <h2 className="rs-group-name">Gruppo {partyKey}</h2>
+                                <span className="rs-group-chip">
+                                    {summaries.length} {summaries.length === 1 ? "memoria" : "memorie"}
+                                    {query.trim() && groupedSummaries[partyKey].length !== summaries.length
+                                        ? ` di ${groupedSummaries[partyKey].length}`
+                                        : ""}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="riassunti-export-btn"
+                                    onClick={() => exportPartyAsPdf(partyKey, groupedSummaries[partyKey])}
+                                    title={`Esporta tutte le memorie del Gruppo ${partyKey} in PDF`}
+                                >
+                                    📥 Esporta (PDF)
+                                </button>
+                            </aside>
 
                             {/* card delle memorie */}
                             <div className="rs-group-body">
@@ -508,7 +482,7 @@ export default function Riassunti() {
                                     ))}
                                 </div>
                             </div>
-                        </div>
+                        </section>
                     );
                 })
             )}

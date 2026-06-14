@@ -15,7 +15,6 @@ import { useAuth } from "../AuthContext";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/treasure.png";
-const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoENOX/incontro.png";
 
 // ── Unica fonte di verità per i party ─────────────────────────
 const PARTY_ROSTER = {
@@ -163,45 +162,37 @@ export default function Bacheca() {
     <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
       <AmbientFX variant="fireflies" />
 
-      {/* ── HERO ── */}
-      <section id="bacheca-top" className="cine-hero cine-hero--short" aria-label="Hemile's Board">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-saluto a sinistra ── */}
+      <section id="bacheca-top" className="bch-hero" aria-label="Hemile's Board">
+        <div className="bch-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Bacheca di Hemile</span>
-          <h1 className="cine-hero-title">Hemile's Board</h1>
-          <p className="cine-hero-tagline">
+        <div className="bch-hero-wash" aria-hidden="true" />
+        <div className="bch-hero-plate">
+          <span className="bch-hero-seal">✦ Bacheca di Hemile</span>
+          <h1 className="bch-hero-title">Hemile's<br />Board</h1>
+          <p className="bch-hero-greet">
             Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
-            {userParty && userParty !== "Senza Gruppo" ? ` — Party ${userParty}` : ""}.
+            {userParty && userParty !== "Senza Gruppo" ? <> — Party <strong>{userParty}</strong></> : ""}.
+          </p>
+          <p className="bch-hero-tagline">
             Pergamene, sigilli e missive attendono mani coraggiose.
           </p>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
-        </div>
+        <a href="#bacheca-albo" className="bch-hero-scroll" aria-label="Scorri all'albo">
+          <span className="bch-hero-scroll-tx">Scorri</span>
+          <span className="bch-hero-scroll-ic" aria-hidden="true">↓</span>
+        </a>
       </section>
 
-      {/* ── DIVISORE: Le Missive ── */}
-      <section className="cine-scrolly cine-scrolly--short" aria-label="Le Missive">
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame">
-            <span className="cine-scrolly-eyebrow">Incarichi</span>
-            <h2 className="cine-scrolly-title">Le Missive</h2>
-            <p className="cine-scrolly-text">
-              Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* ── RUBRICA: Le Missive ── */}
+      <div id="bacheca-albo" className="bch-rubric">
+        <span className="bch-rubric-eyebrow">Incarichi</span>
+        <h2 className="bch-rubric-title">Le Missive</h2>
+        <p className="bch-rubric-sub">
+          Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
+        </p>
+      </div>
 
       {!loading && questEntries.length > 0 && (
         <CineToolbar
@@ -224,6 +215,7 @@ export default function Bacheca() {
       ) : visibleQuests.length === 0 ? (
         <div className="cine-empty">Nessuna missiva corrisponde alla ricerca.</div>
       ) : (
+        <div className="bch-board">
         <div className="scrolls-grid">
           {visibleQuests.map((quest) => {
             const isAccepted          = !!quest.acceptedBy;
@@ -325,6 +317,7 @@ export default function Bacheca() {
               </article>
             );
           })}
+        </div>
         </div>
       )}
     </section>

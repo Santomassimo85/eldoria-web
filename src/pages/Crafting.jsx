@@ -15,8 +15,6 @@ import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/helmvil_nani.png";
-const DIVIDER_PROF = "/assets/PhotoStory/GruppoMEAA/tanagar1.png";
-const DIVIDER_EX = "/assets/PhotoStory/GruppoMEAA/Garroth4.png";
 
 const CARATTERISTICHE = ["all", "FOR", "DES", "INT", "SAG", "MAG"];
 const CARATTERISTICA_LABEL = {
@@ -42,31 +40,43 @@ export default function Crafting() {
 
   return (
     <section className="cine-page cr-page" style={{ "--cine-accent": "#b07a1f", "--cine-accent-2": "#d4922a" }}>
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label="Crafting di Exanthia">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-frontespizio a sinistra ── */}
+      <section id="cr-top" className="cr-hero2" aria-label="Crafting di Exanthia">
+        <div className="cr-hero2-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Manuale dell'Artigiano · Edizione del Maestro</span>
-          <h1 className="cine-hero-title">Crafting di Exanthia</h1>
-          <p className="cine-hero-tagline">{HERO_QUOTE}</p>
-          <div className="cine-hero-meta">
-            <span className="cine-pill">🔨 Artigianato 5e</span>
-            <span className="cine-pill cine-pill--accent">⚗ 10 Professioni</span>
-          </div>
+        <div className="cr-hero2-wash" aria-hidden="true" />
+        <div className="cr-hero2-plate">
+          <span className="cr-hero2-seal">⚒ Manuale dell'Artigiano · Edizione del Maestro</span>
+          <h1 className="cr-hero2-title">Crafting<br />di Exanthia</h1>
+          <p className="cr-hero2-quote">{HERO_QUOTE}</p>
+          <dl className="cr-hero2-stats">
+            <div><dt>Sistema</dt><dd>5e</dd></div>
+            <div><dt>Professioni</dt><dd>10</dd></div>
+            <div><dt>Pregiature</dt><dd>5</dd></div>
+          </dl>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
-        </div>
+        <a href="#cr-index" className="cr-hero2-scroll" aria-label="Scorri al sommario">
+          <span className="cr-hero2-scroll-tx">Scorri</span>
+          <span className="cr-hero2-scroll-ic" aria-hidden="true">↓</span>
+        </a>
       </section>
 
+      {/* ── SOMMARIO DEL MANUALE ── */}
+      <nav id="cr-index" className="cr-index" aria-label="Sommario del manuale">
+        <span className="cr-index-eyebrow">Sommario</span>
+        <ol className="cr-index-list">
+          <li><a href="#cr-pregiature"><span className="cr-index-num">I</span> Le Cinque Pregiature</a></li>
+          <li><a href="#cr-tiro"><span className="cr-index-num">II</span> Il Tiro di Pregiatura</a></li>
+          <li><a href="#cr-materiali"><span className="cr-index-num">III</span> Materiali, Tempo, Costi</a></li>
+          <li><a href="#cr-sentiero"><span className="cr-index-num">IV</span> Il Sentiero del Maestro</a></li>
+          <li><a href="#cr-professioni"><span className="cr-index-num">V</span> Le 10 Professioni</a></li>
+          <li><a href="#cr-esempi"><span className="cr-index-num">VI</span> Esempi di Gioco</a></li>
+        </ol>
+      </nav>
+
       {/* ── PREGIATURE LADDER ───────────────────────────── */}
-      <section className="cr-section">
+      <section id="cr-pregiature" className="cr-section" data-chapter="I">
         <h2 className="cr-section-title">⚖ Le Cinque Pregiature</h2>
         <p className="cr-section-sub">Ogni oggetto creato ottiene una qualità basata sul tiro di Pregiatura.</p>
         <div className="cr-pregiature-row">
@@ -86,7 +96,7 @@ export default function Crafting() {
       </section>
 
       {/* ── FORMULA + CARATTERISTICHE ───────────────────── */}
-      <section className="cr-section">
+      <section id="cr-tiro" className="cr-section" data-chapter="II">
         <h2 className="cr-section-title">🎲 Il Tiro di Pregiatura</h2>
         <div className="cr-formula-box">
           <div className="cr-formula-eyebrow">FORMULA</div>
@@ -127,7 +137,7 @@ export default function Crafting() {
       </section>
 
       {/* ── COSTI + INGREDIENTI ─────────────────────────── */}
-      <section className="cr-section">
+      <section id="cr-materiali" className="cr-section" data-chapter="III">
         <h2 className="cr-section-title">⏳ Materiali, Tempo, Costi</h2>
         <p className="cr-section-sub">La pregiatura mirata determina costo e tempo. Tirare al di sotto significa ottenere comunque un oggetto inferiore.</p>
         <div className="cr-cost-table">
@@ -166,7 +176,7 @@ export default function Crafting() {
       </section>
 
       {/* ── SENTIERO DEL MAESTRO ───────────────────────── */}
-      <section className="cr-section">
+      <section id="cr-sentiero" className="cr-section" data-chapter="IV">
         <h2 className="cr-section-title">🏆 Il Sentiero del Maestro</h2>
         <p className="cr-section-sub">
           L'artigiano cresce creando opere notevoli, non semplicemente accumulando esperienza.
@@ -201,23 +211,15 @@ export default function Crafting() {
         </div>
       </section>
 
-      {/* ── DIVISORE: Professioni ── */}
-      <section className="cine-scrolly cine-scrolly--short" aria-label="Le Professioni">
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={DIVIDER_PROF} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame">
-            <span className="cine-scrolly-eyebrow">Vie verso la Maestria</span>
-            <h2 className="cine-scrolly-title">Le 10 Professioni</h2>
-            <p className="cine-scrolly-text">Dieci sentieri, una sola scelta alla creazione del personaggio.</p>
-          </div>
-        </div>
-      </section>
+      {/* ── RUBRICA: Professioni ── */}
+      <div className="cr-rubric">
+        <span className="cr-rubric-eyebrow">Vie verso la Maestria</span>
+        <h2 className="cr-rubric-title">Le 10 Professioni</h2>
+        <p className="cr-rubric-sub">Dieci sentieri, una sola scelta alla creazione del personaggio.</p>
+      </div>
 
       {/* ── 10 PROFESSIONI ──────────────────────────────── */}
-      <section className="cr-section">
+      <section id="cr-professioni" className="cr-section" data-chapter="V">
         <h2 className="cr-section-title">📚 Le 10 Professioni</h2>
         <p className="cr-section-sub">
           Dieci vie verso la maestria. Una sola scegli alla creazione del personaggio.
@@ -248,23 +250,15 @@ export default function Crafting() {
         </div>
       </section>
 
-      {/* ── DIVISORE: Esempi ── */}
-      <section className="cine-scrolly cine-scrolly--short" aria-label="Esempi di Gioco">
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={DIVIDER_EX} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame">
-            <span className="cine-scrolly-eyebrow">Dal Tavolo</span>
-            <h2 className="cine-scrolly-title">Esempi di Gioco</h2>
-            <p className="cine-scrolly-text">Tre scene per chiarire come ogni regola si combina.</p>
-          </div>
-        </div>
-      </section>
+      {/* ── RUBRICA: Esempi ── */}
+      <div className="cr-rubric">
+        <span className="cr-rubric-eyebrow">Dal Tavolo</span>
+        <h2 className="cr-rubric-title">Esempi di Gioco</h2>
+        <p className="cr-rubric-sub">Tre scene per chiarire come ogni regola si combina.</p>
+      </div>
 
       {/* ── ESEMPI DI GIOCO ─────────────────────────────── */}
-      <section className="cr-section">
+      <section id="cr-esempi" className="cr-section" data-chapter="VI">
         <h2 className="cr-section-title">🎭 Esempi di Gioco</h2>
         <p className="cr-section-sub">Tre scene dal tavolo per chiarire come tutto si combina.</p>
         <div className="cr-examples">

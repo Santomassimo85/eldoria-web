@@ -1,6 +1,33 @@
 {
   "versions": [
     {
+      "version": "26",
+      "date": "2026-06-14",
+      "title": "Restyle strutturale: Bacheca, Riassunti, Crafting, Gilda, Cinema",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Bacheca «Albo degli Incarichi»: hero asimmetrico con saluto personalizzato, rubrica e pannello-albo con le missive appuntate (puntina di ceralacca); l'animazione apri-pergamena delle missive resta invariata."
+        },
+        {
+          "type": "graphic",
+          "text": "Memorie del Monaco Errante: hero asimmetrico e gruppi a doppia pagina con colonna-sigillo e bottone Esporta PDF; rune fluttuanti, ricerca e card invariate."
+        },
+        {
+          "type": "graphic",
+          "text": "Crafting «Tomo dell'Artigiano»: hero asimmetrico, sommario a capitoli navigabile, titoli di sezione come rubriche di capitolo numerate; tabelle, filtri e schede professione invariati."
+        },
+        {
+          "type": "graphic",
+          "text": "Gilda dei Ratti «Codice del Sottosuolo»: hero asimmetrico, lore a manoscritto con marginalia e capolettera, e i gradi di reputazione come scala gerarchica a gradini."
+        },
+        {
+          "type": "graphic",
+          "text": "Teatro delle Cronache: hero asimmetrico a locandina e rubrica per l'archivio; featured, lista bobine e sala di proiezione con sipari invariati."
+        }
+      ]
+    },
+    {
       "version": "25",
       "date": "2026-06-14",
       "title": "Restyle strutturale: Eroi, NPC, Geo, Mercato",

@@ -35,7 +35,173 @@
 .cr-page .cr-prof-chip { background: rgba(255, 250, 235, 0.96); }
 .cr-page .cr-prof-chip-name { color: #2d2418; }
  
-/* ── HERO ───────────────────────────────────────────────── */
+/* ============================================================
+   HERO ASIMMETRICO — immagine full-bleed + placca-frontespizio
+   ============================================================ */
+.cr-page .cr-hero2 {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 70vh;
+  display: flex; align-items: flex-end;
+  overflow: hidden; isolation: isolate;
+  padding: 0 0 48px;
+}
+.cr-page .cr-hero2-media { position: absolute; inset: 0; z-index: 0; }
+.cr-page .cr-hero2-media img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 30%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.24px), 0);
+  will-change: transform;
+}
+.cr-page .cr-hero2-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(26,16,6,.56) 0%, rgba(26,16,6,.16) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+}
+.cr-page .cr-hero2-plate {
+  position: relative; z-index: 2; margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: cr-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes cr-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.cr-page .cr-hero2-seal {
+  display: inline-block;
+  font-family: var(--font-title, "Cinzel"), serif;
+  font-size: .64rem; letter-spacing: .18em; text-transform: uppercase;
+  color: #8a3a1a; padding: 6px 14px;
+  border: 1px solid rgba(138,58,26,.45); border-radius: 999px;
+  background: rgba(176,122,31,.1);
+}
+.cr-page .cr-hero2-title {
+  font-family: var(--font-title, "Cinzel"), serif; font-weight: 900;
+  font-size: clamp(2rem, 7.4vw, 3.8rem); line-height: 1.02; margin: 16px 0 12px; letter-spacing: .02em;
+  background: linear-gradient(180deg, #5a3410 0%, #b07a1f 58%, #d4922a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.cr-page .cr-hero2-quote {
+  font-family: var(--font-text, Georgia), serif; font-style: italic;
+  color: #46382a; font-size: clamp(.95rem, 2.3vw, 1.08rem); line-height: 1.55;
+  margin: 0 0 18px; max-width: 46ch;
+}
+.cr-page .cr-hero2-stats {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 0; margin: 0;
+  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
+}
+.cr-page .cr-hero2-stats > div {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 10px 12px 6px;
+  border-right: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
+}
+.cr-page .cr-hero2-stats > div:last-child { border-right: none; }
+.cr-page .cr-hero2-stats dt {
+  font-family: var(--font-title, "Cinzel"), serif;
+  font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: #6a5b41;
+}
+.cr-page .cr-hero2-stats dd {
+  margin: 0; font-family: var(--font-title, "Cinzel"), serif; font-weight: 900;
+  font-size: 1.3rem; line-height: 1; color: #b07a1f;
+}
+.cr-page .cr-hero2-scroll {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-decoration: none; color: #6a3a10;
+  font-family: var(--font-title, "Cinzel"), serif; font-size: .56rem; letter-spacing: .42em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(255,248,230,.7);
+}
+.cr-page .cr-hero2-scroll-ic {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1.5px solid rgba(176,122,31,.5);
+  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
+  color: #b07a1f; font-size: 1rem; animation: cr-bob 2.2s ease-in-out infinite;
+}
+@keyframes cr-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+@media (min-width: 900px) {
+  .cr-page .cr-hero2 { min-height: 80vh; align-items: center; }
+  .cr-page .cr-hero2-wash {
+    background:
+      linear-gradient(90deg, rgba(26,16,6,.66) 0%, rgba(26,16,6,.22) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .cr-page .cr-hero2-plate { margin: 0 0 0 7vw; max-width: 540px; padding: 36px 34px; }
+}
+
+/* ============================================================
+   SOMMARIO DEL MANUALE
+   ============================================================ */
+.cr-page .cr-index {
+  max-width: 880px; margin: 28px auto 8px; padding: 22px clamp(18px, 4vw, 32px);
+  border-radius: 16px;
+  border: 1px solid var(--line, #c9b78a);
+  border-top: 3px solid color-mix(in srgb, var(--cine-accent) 70%, transparent);
+  background: linear-gradient(180deg, rgba(255,253,245,.9), rgba(243,234,212,.8));
+  box-shadow: 0 16px 40px -22px rgba(86,64,30,.5), 0 1px 0 rgba(255,255,255,.6) inset;
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+}
+.cr-page .cr-index-eyebrow {
+  display: block; text-align: center; margin-bottom: 14px;
+  font-family: var(--font-title, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .28em; text-transform: uppercase; color: #8a3a1a;
+}
+.cr-page .cr-index-list {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr; gap: 4px;
+}
+@media (min-width: 620px) { .cr-page .cr-index-list { grid-template-columns: repeat(2, 1fr); gap: 4px 28px; } }
+.cr-page .cr-index-list li { border-bottom: 1px dotted color-mix(in srgb, var(--cine-accent) 35%, transparent); }
+.cr-page .cr-index-list a {
+  display: flex; align-items: baseline; gap: 12px; padding: 9px 4px;
+  text-decoration: none; color: #4a3a20;
+  font-family: var(--font-text, Georgia), serif; font-size: .98rem;
+  transition: color .15s ease, padding .15s ease;
+}
+.cr-page .cr-index-list a:hover { color: #b07a1f; padding-left: 8px; }
+.cr-page .cr-index-num {
+  flex: 0 0 auto; min-width: 1.8em; text-align: center;
+  font-family: var(--font-title, "Cinzel"), serif; font-weight: 700;
+  color: #b07a1f; font-size: .9rem;
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 45%, transparent); border-radius: 6px;
+  padding: 1px 4px;
+}
+
+/* ============================================================
+   RUBRICA (sostituisce i divisori-foto)
+   ============================================================ */
+.cr-page .cr-rubric {
+  max-width: 1080px; margin: 30px auto 6px; padding: 0 18px; text-align: center;
+}
+.cr-page .cr-rubric-eyebrow {
+  display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
+  font-family: var(--font-title, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .24em; text-transform: uppercase; color: #8a3a1a;
+}
+.cr-page .cr-rubric-eyebrow::before,
+.cr-page .cr-rubric-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 28px; height: 1px;
+  background: color-mix(in srgb, var(--cine-accent) 55%, transparent);
+}
+.cr-page .cr-rubric-eyebrow::before { right: 100%; }
+.cr-page .cr-rubric-eyebrow::after  { left: 100%; }
+.cr-page .cr-rubric-title {
+  margin: 0;
+  font-family: var(--font-title, "Cinzel"), serif; font-weight: 900;
+  font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.05;
+  background: linear-gradient(180deg, #5a3410 0%, #b07a1f 70%, #d4922a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.cr-page .cr-rubric-sub {
+  margin: 4px auto 0; max-width: 52ch;
+  font-family: var(--font-text, Georgia), serif; font-style: italic;
+  color: #6a5b41; font-size: clamp(.9rem, 2vw, 1rem);
+}
+
+/* ── HERO (vecchio, non più usato nel markup) ───────────── */
 .cr-hero {
   text-align: center;
   padding: 32px 16px 24px;
@@ -90,27 +256,36 @@
 /* ── SECTION ────────────────────────────────────────────── */
 .cr-section {
   margin: 36px 0;
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+}
+/* eyebrow di capitolo "Capitolo I" da data-chapter */
+.cr-page .cr-section[data-chapter]::before {
+  content: "Capitolo " attr(data-chapter);
+  display: block;
+  font-family: var(--font-title, "Cinzel"), serif;
+  font-size: 0.64rem; letter-spacing: 0.28em; text-transform: uppercase;
+  color: #b07a1f; margin-bottom: 4px;
 }
 .cr-section-title {
   font-family: var(--font-title, serif);
-  font-size: 1.5rem;
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+  font-weight: 900;
   color: #7d2929;
-  letter-spacing: 0.04em;
-  text-align: center;
+  letter-spacing: 0.03em;
+  text-align: left;
   margin: 0 0 6px;
   position: relative;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
+  display: flex; align-items: center; gap: 14px;
 }
 .cr-section-title::after {
   content: "";
-  display: block;
-  width: 60px;
+  flex: 1 1 auto;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #c9a961, transparent);
-  margin: 8px auto 0;
+  background: linear-gradient(90deg, #c9a961, transparent);
 }
 .cr-section-sub {
-  text-align: center;
+  text-align: left;
   color: #6f6453;
   font-style: italic;
   margin: 0 0 18px;

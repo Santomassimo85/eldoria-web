@@ -1,16 +1,166 @@
 /* ============================================================
-   BACHECA — Hemile's Board · tema cinematic (sienna/oro)
-   Scheletro da styles/cinematic.css.
+   BACHECA — architettura "Albo degli Incarichi" (Pergamena Antica)
+   Hero asimmetrico con saluto · rubrica · pannello-albo con
+   missive appuntate (animazione apri-pergamena preservata).
    ============================================================ */
+
+/* ============================================================
+   1) HERO ASIMMETRICO — immagine full-bleed + placca-saluto
+   ============================================================ */
+.bacheca-page .bch-hero {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 66vh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 0 0 46px;
+}
+.bacheca-page .bch-hero-media { position: absolute; inset: 0; z-index: 0; }
+.bacheca-page .bch-hero-media img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 28%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.22px), 0);
+  will-change: transform;
+}
+.bacheca-page .bch-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(26,16,6,.56) 0%, rgba(26,16,6,.16) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+}
+.bacheca-page .bch-hero-plate {
+  position: relative; z-index: 2;
+  margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: bch-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes bch-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.bacheca-page .bch-hero-seal {
+  display: inline-block;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
+  color: #9a4e16; padding: 6px 14px;
+  border: 1px solid rgba(154,78,22,.45); border-radius: 999px;
+  background: rgba(154,78,22,.08);
+}
+.bacheca-page .bch-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 7.4vw, 3.8rem);
+  line-height: 1.02; margin: 16px 0 10px; letter-spacing: .01em;
+  background: linear-gradient(180deg, #3a230f 0%, #9a4e16 58%, #c2691f 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.bacheca-page .bch-hero-greet {
+  margin: 0 0 6px; font-family: var(--font-ui, Georgia), serif;
+  color: #33281a; font-size: clamp(.96rem, 2.3vw, 1.08rem);
+}
+.bacheca-page .bch-hero-greet strong { color: #9a4e16; }
+.bacheca-page .bch-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif; font-style: italic;
+  color: #6a5b41; font-size: clamp(.9rem, 2.2vw, 1rem); line-height: 1.55;
+  margin: 0; max-width: 44ch;
+}
+.bacheca-page .bch-hero-scroll {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-decoration: none; color: #6a3a10;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .56rem; letter-spacing: .42em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(255,248,230,.7);
+}
+.bacheca-page .bch-hero-scroll-ic {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1.5px solid rgba(154,78,22,.5);
+  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
+  color: #9a4e16; font-size: 1rem;
+  animation: bch-bob 2.2s ease-in-out infinite;
+}
+@keyframes bch-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+@media (min-width: 900px) {
+  .bacheca-page .bch-hero { min-height: 74vh; align-items: center; }
+  .bacheca-page .bch-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(26,16,6,.68) 0%, rgba(26,16,6,.22) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .bacheca-page .bch-hero-plate { margin: 0 0 0 7vw; max-width: 520px; padding: 34px 32px; }
+}
+
+/* ============================================================
+   2) RUBRICA "Le Missive"
+   ============================================================ */
+.bacheca-page .bch-rubric {
+  max-width: 960px; margin: 28px auto 8px;
+  padding: 0 clamp(16px, 4vw, 30px); text-align: center;
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+}
+.bacheca-page .bch-rubric-eyebrow {
+  display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: #9a4e16;
+}
+.bacheca-page .bch-rubric-eyebrow::before,
+.bacheca-page .bch-rubric-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 30px; height: 1px;
+  background: color-mix(in srgb, var(--cine-accent) 55%, transparent);
+}
+.bacheca-page .bch-rubric-eyebrow::before { right: 100%; }
+.bacheca-page .bch-rubric-eyebrow::after  { left: 100%; }
+.bacheca-page .bch-rubric-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.5rem, 5vw, 2.6rem); line-height: 1.05;
+  background: linear-gradient(180deg, #3a230f 0%, #9a4e16 70%, #c2691f 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.bacheca-page .bch-rubric-sub {
+  margin: 4px auto 0; max-width: 52ch;
+  font-family: var(--font-ui, Georgia), serif; font-style: italic;
+  color: #6a5b41; font-size: clamp(.9rem, 2vw, 1.02rem);
+}
+
+/* ============================================================
+   3) ALBO — pannello che racchiude le missive appuntate
+   ============================================================ */
+.bacheca-page .bch-board {
+  position: relative;
+  max-width: 1320px;
+  margin: 10px auto 0;
+  padding: 18px clamp(10px, 2.5vw, 22px);
+  border-radius: 18px;
+  border: 1px solid var(--line, #c9b78a);
+  border-top: 3px solid color-mix(in srgb, var(--cine-accent) 70%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255,253,245,.7), rgba(243,234,212,.55)),
+    repeating-linear-gradient(135deg, rgba(154,78,22,.04) 0 14px, transparent 14px 28px);
+  box-shadow: 0 18px 44px -22px rgba(86,64,30,.5), 0 1px 0 rgba(255,255,255,.6) inset;
+}
+/* viti/chiodi agli angoli dell'albo */
+.bacheca-page .bch-board::before,
+.bacheca-page .bch-board::after {
+  content: ""; position: absolute; top: 10px; width: 9px; height: 9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8c79a, #8a6a32);
+  box-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+.bacheca-page .bch-board::before { left: 12px; }
+.bacheca-page .bch-board::after  { right: 12px; }
 
 /* ---- SCROLLS GRID ----------------------------------------- */
 .bacheca-page .scrolls-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 22px;
-  max-width: 1320px;
   margin: 0 auto;
-  padding: 8px 20px 40px;
+  padding: 8px 4px 8px;
 }
 @media (min-width: 768px) {
   .bacheca-page .scrolls-grid {
@@ -29,11 +179,19 @@
   background: linear-gradient(160deg, #fbf4e0, #fffdf5);
   border: 1px solid #c9b78a;
   border-radius: 16px;
-  padding: 22px 16px 18px;
+  padding: 28px 16px 18px;
   box-shadow: 0 1px 0 rgba(255, 253, 245, 0.7) inset, 0 12px 30px rgba(86, 64, 30, 0.18);
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
   cursor: default;
   overflow: hidden;
+}
+/* puntina di ceralacca: la missiva è appuntata all'albo */
+.bacheca-page .quest-card::before {
+  content: "";
+  position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  width: 14px; height: 14px; border-radius: 50%; z-index: 3;
+  background: radial-gradient(circle at 35% 30%, #d9624f, #8a261c 70%);
+  box-shadow: 0 2px 5px rgba(86,64,30,.4), 0 0 0 2px rgba(255,240,210,.5);
 }
 .bacheca-page .quest-card.is-clickable { cursor: pointer; }
 .bacheca-page .quest-card.is-clickable:hover {

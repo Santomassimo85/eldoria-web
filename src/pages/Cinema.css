@@ -5,6 +5,138 @@
 
 /* Cinema usa lo scheletro cinematic (tema viola). Contenuti centrati. */
 .theatrum.cine-page { color: #33281a; }
+
+/* ============================================================
+   HERO ASIMMETRICO — immagine full-bleed + placca-locandina
+   ============================================================ */
+.theatrum .theatrum-hero {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 70vh;
+  display: flex; align-items: flex-end;
+  overflow: hidden; isolation: isolate;
+  padding: 0 0 48px;
+}
+.theatrum .theatrum-hero-media { position: absolute; inset: 0; z-index: 0; }
+.theatrum .theatrum-hero-media img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 28%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.24px), 0);
+  will-change: transform;
+}
+.theatrum .theatrum-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(18,8,26,.6) 0%, rgba(18,8,26,.18) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(18,8,26,.08) 0%, rgba(18,8,26,.32) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+}
+.theatrum .theatrum-hero-plate {
+  position: relative; z-index: 2; margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: theatrum-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes theatrum-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.theatrum .theatrum-hero-seal {
+  display: inline-block;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .64rem; letter-spacing: .2em; text-transform: uppercase;
+  color: #6b34a8; padding: 6px 14px;
+  border: 1px solid rgba(107,52,168,.45); border-radius: 999px;
+  background: rgba(107,52,168,.08);
+}
+.theatrum .theatrum-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(2rem, 7.4vw, 3.8rem); line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
+  background: linear-gradient(180deg, #2c123f 0%, #6b34a8 58%, #9a52cf 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.theatrum .theatrum-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif;
+  color: #46382a; font-size: clamp(.96rem, 2.4vw, 1.1rem); line-height: 1.6;
+  margin: 0 0 18px; max-width: 44ch;
+}
+.theatrum .theatrum-hero-stats {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 0; margin: 0;
+  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
+}
+.theatrum .theatrum-hero-stats > div {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 10px 14px 6px;
+  border-right: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
+}
+.theatrum .theatrum-hero-stats > div:last-child { border-right: none; }
+.theatrum .theatrum-hero-stats dt {
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: #6a5b41;
+}
+.theatrum .theatrum-hero-stats dd {
+  margin: 0; font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: 1.15rem; line-height: 1.1; color: #6b34a8;
+}
+.theatrum .theatrum-hero-scroll {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: #4a1f70;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .56rem; letter-spacing: .42em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(255,248,230,.7);
+}
+.theatrum .theatrum-hero-scroll-ic {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1.5px solid rgba(107,52,168,.5);
+  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
+  color: #6b34a8; font-size: 1rem; animation: theatrum-bob 2.2s ease-in-out infinite;
+}
+@keyframes theatrum-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+@media (min-width: 900px) {
+  .theatrum .theatrum-hero { min-height: 80vh; align-items: center; }
+  .theatrum .theatrum-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(18,8,26,.72) 0%, rgba(18,8,26,.24) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .theatrum .theatrum-hero-plate { margin: 0 0 0 7vw; max-width: 520px; padding: 34px 32px; }
+}
+
+/* ============================================================
+   RUBRICA "Sessioni Precedenti" (sostituisce il divisore-foto)
+   ============================================================ */
+.theatrum .theatrum-rubric {
+  max-width: 1240px; margin: 36px auto 6px; padding: 0 20px; text-align: center;
+}
+.theatrum .theatrum-rubric-eyebrow {
+  display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .24em; text-transform: uppercase; color: #6b34a8;
+}
+.theatrum .theatrum-rubric-eyebrow::before,
+.theatrum .theatrum-rubric-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 28px; height: 1px;
+  background: color-mix(in srgb, var(--cine-accent) 55%, transparent);
+}
+.theatrum .theatrum-rubric-eyebrow::before { right: 100%; }
+.theatrum .theatrum-rubric-eyebrow::after  { left: 100%; }
+.theatrum .theatrum-rubric-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.05;
+  background: linear-gradient(180deg, #2c123f 0%, #6b34a8 70%, #9a52cf 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.theatrum .theatrum-rubric-sub {
+  margin: 4px auto 0; max-width: 52ch;
+  font-family: var(--font-ui, Georgia), serif; font-style: italic;
+  color: #6a5b41; font-size: clamp(.9rem, 2vw, 1rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  .theatrum .theatrum-hero-plate,
+  .theatrum .theatrum-hero-scroll-ic { animation: none !important; }
+}
 .theatrum .theatrum-feature,
 .theatrum .theatrum-archive {
   max-width: 1240px;

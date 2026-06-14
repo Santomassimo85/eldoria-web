@@ -7,7 +7,6 @@ import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/fantasma.png";
-const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoMEAA/senzaOnore.png";
 
 // Best YouTube thumbnail with HQ fallback baked in via onError.
 const ytThumb = (id) => `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
@@ -109,30 +108,26 @@ export default function Cinema() {
 
   return (
     <section className="cine-page theatrum" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
-      {/* ── HERO ── */}
-      <section className="cine-hero" aria-label="Teatro delle Cronache">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-locandina a sinistra ── */}
+      <section className="theatrum-hero" aria-label="Teatro delle Cronache">
+        <div className="theatrum-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Theatrum Mundi · Crit Happens</span>
-          <h1 className="cine-hero-title">Teatro delle Cronache</h1>
-          <p className="cine-hero-tagline">
+        <div className="theatrum-hero-wash" aria-hidden="true" />
+        <div className="theatrum-hero-plate">
+          <span className="theatrum-hero-seal">🎭 Theatrum Mundi · Crit Happens</span>
+          <h1 className="theatrum-hero-title">Teatro<br />delle Cronache</h1>
+          <p className="theatrum-hero-tagline">
             L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo.
           </p>
-          <div className="cine-hero-meta">
-            <span className="cine-pill">📽 {totalEpisodes} {totalEpisodes === 1 ? "sessione" : "sessioni"}</span>
-            {latestDateStr && (
-              <span className="cine-pill cine-pill--accent">🎟 ultima: {latestDateStr}</span>
-            )}
-          </div>
+          <dl className="theatrum-hero-stats">
+            <div><dt>Sessioni</dt><dd>{totalEpisodes}</dd></div>
+            {latestDateStr && <div><dt>Ultima</dt><dd>{latestDateStr}</dd></div>}
+          </dl>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
+        <div className="theatrum-hero-scroll" aria-hidden="true">
+          <span className="theatrum-hero-scroll-tx">Scorri</span>
+          <span className="theatrum-hero-scroll-ic">↓</span>
         </div>
       </section>
 
@@ -191,19 +186,11 @@ export default function Cinema() {
           {/* ── ARCHIVE LIST ───────────────────────────── */}
           {archive.length > 0 && (
             <>
-            <section className="cine-scrolly cine-scrolly--short" aria-label="Sessioni Precedenti">
-              <div className="cine-scrolly-media" aria-hidden="true">
-                <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-              </div>
-              <div className="cine-scrolly-content">
-                <div className="cine-scrolly-frame">
-                  <span className="cine-scrolly-eyebrow">Archivio</span>
-                  <h2 className="cine-scrolly-title">Sessioni Precedenti</h2>
-                  <p className="cine-scrolly-text">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
-                </div>
-              </div>
-            </section>
+            <div className="theatrum-rubric">
+              <span className="theatrum-rubric-eyebrow">Archivio</span>
+              <h2 className="theatrum-rubric-title">Sessioni Precedenti</h2>
+              <p className="theatrum-rubric-sub">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
+            </div>
             <section className="theatrum-archive">
               <ul className="theatrum-rolls">
                 {archive.map((v, i) => (

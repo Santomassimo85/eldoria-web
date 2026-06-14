@@ -4,7 +4,6 @@ import "./RattiLore.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/drider.png";
-const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoLAC/mago_fungo.png";
 
 const RATTO_LEVELS = [
   { lv: 0, min: 0, name: "Estraneo", bonus: "Nessun privilegio. Sei solo un altro volto nella massa." },
@@ -22,32 +21,36 @@ export default function RattiLore() {
   return (
     <section className="cine-page ratti-page" style={{ "--cine-accent": "#6e7a2a", "--cine-accent-2": "#9aab3a" }}>
 
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label="La Gilda dei Ratti">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca a sinistra ── */}
+      <section id="ratti-top" className="ratti-hero" aria-label="La Gilda dei Ratti">
+        <div className="ratti-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Il Sottosuolo di Exanthia</span>
-          <h1 className="cine-hero-title">La Gilda dei Ratti</h1>
-          <p className="cine-hero-tagline">
+        <div className="ratti-hero-wash" aria-hidden="true" />
+        <div className="ratti-hero-plate">
+          <span className="ratti-hero-seal">🐀 Il Sottosuolo di Exanthia</span>
+          <h1 className="ratti-hero-title">La Gilda<br />dei Ratti</h1>
+          <p className="ratti-hero-tagline">
             Tra le macerie e l'ombra, la reputazione è la moneta più preziosa del Mercato Nero.
           </p>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
-        </div>
+        <a href="#ratti-gradi" className="ratti-hero-scroll" aria-label="Scorri ai gradi">
+          <span className="ratti-hero-scroll-tx">Scorri</span>
+          <span className="ratti-hero-scroll-ic" aria-hidden="true">↓</span>
+        </a>
       </section>
 
-      {/* ── LORE ── */}
-      <div className="cine-wrap cine-wrap--narrow">
-        <article className="cine-panel ratti-lore">
-          <p>
-            Nelle cronache di <strong>Obia</strong>, tra le macerie della prima grande guerra, si parla di uno squadrone
+      {/* ── LORE a manoscritto (marginalia + capolettera) ── */}
+      <section className="ratti-lore">
+        <aside className="ratti-lore-aside">
+          <span className="ratti-lore-orn" aria-hidden="true">🐀</span>
+          <span className="ratti-lore-chapter">Cronache</span>
+          <span className="ratti-lore-note">di Obia</span>
+          <span className="ratti-lore-age">1852 anni dopo</span>
+        </aside>
+        <div className="ratti-lore-main">
+          <p className="ratti-lore-text">
+            <span className="ratti-lore-drop">N</span>elle cronache di <strong>Obia</strong>, tra le macerie della prima grande guerra, si parla di uno squadrone
             eterogeneo conosciuto come i <strong>"Ratti"</strong>. Mentre gli eserciti cadevano, questo gruppo
             formato da rinnegati di ogni razza combatteva nell'ombra, riuscendo da solo a ricacciare nell'abisso oltre la
             metà delle legioni demoniache e abbattendo due generali infernali.
@@ -57,62 +60,48 @@ export default function RattiLore() {
             <i>"Non cercavano la gloria dei serafini, ma la sopravvivenza del fango."</i>
           </blockquote>
 
-          <p>
+          <p className="ratti-lore-text">
             Oggi, 1852 anni dopo la <em><b>Caduta delle Stelle</b></em>, la reputazione tra i Ratti non è solo un titolo,
             ma la chiave per accedere alle risorse più rare di Exanthia. Interagire con il Mercato Nero significa dimostrare
             la propria astuzia: ogni offerta piazzata e ogni affare concluso aumenta la tua influenza nel sottosuolo.
           </p>
 
           <h3 className="ratti-subtitle">🐀 Come funziona la reputazione?</h3>
-          <p>
+          <p className="ratti-lore-text">
             Ogni acquisto effettuato nel Mercato Nero ti fa guadagnare Punti Ratto (PR). Più alto è il tuo livello di Ratto,
             più vantaggi sblocchi, come sconti esclusivi, accesso a oggetti nascosti e persino poteri temporanei.
             Ma attenzione: i Ratti sono sempre alla ricerca di nuovi membri, e la tua reputazione è la tua moneta più preziosa.
             Riuscirai a scalare le gerarchie del sottosuolo e diventare una leggenda tra i Ratti?
           </p>
-          <p>
+          <p className="ratti-lore-text">
             Ovviamente i criminali più pericolosi di Exanthia sono continuamente alla ricerca di tesori… e questo fa di voi delle possibili prede.
           </p>
-        </article>
-      </div>
-
-      {/* ── DIVISORE: Gradi ── */}
-      <section className="cine-scrolly cine-scrolly--short" aria-label="Gradi di Reputazione">
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame">
-            <span className="cine-scrolly-eyebrow">Gerarchie</span>
-            <h2 className="cine-scrolly-title">Gradi di Reputazione</h2>
-            <p className="cine-scrolly-text">Scala le gerarchie del sottosuolo, un affare alla volta.</p>
-          </div>
         </div>
       </section>
 
-      {/* ── TABELLA ── */}
-      <div className="cine-wrap cine-wrap--narrow">
-        <div className="ratti-table-wrap">
-          <table className="ratti-table">
-            <thead>
-              <tr>
-                <th>Grado</th>
-                <th>Punti</th>
-                <th>Privilegi del Sottosuolo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {RATTO_LEVELS.map((l) => (
-                <tr key={l.lv}>
-                  <td><strong>Lv.{l.lv} — {l.name}</strong></td>
-                  <td className="ratti-pr">{l.min} PR</td>
-                  <td className="ratti-bonus">{l.bonus}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* ── RUBRICA: Gradi ── */}
+      <div id="ratti-gradi" className="ratti-rubric">
+        <span className="ratti-rubric-eyebrow">Gerarchie</span>
+        <h2 className="ratti-rubric-title">Gradi di Reputazione</h2>
+        <p className="ratti-rubric-sub">Scala le gerarchie del sottosuolo, un affare alla volta.</p>
+      </div>
+
+      {/* ── SCALA GERARCHICA (ladder) ── */}
+      <div className="ratti-ladder">
+        {RATTO_LEVELS.map((l) => (
+          <div key={l.lv} className="ratti-rung">
+            <div className="ratti-rung-seal">
+              <span className="ratti-rung-lv">Lv.{l.lv}</span>
+            </div>
+            <div className="ratti-rung-body">
+              <div className="ratti-rung-head">
+                <h3 className="ratti-rung-name">{l.name}</h3>
+                <span className="ratti-rung-pr">{l.min} PR</span>
+              </div>
+              <p className="ratti-rung-bonus">{l.bonus}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
