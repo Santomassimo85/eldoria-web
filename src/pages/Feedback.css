@@ -51,11 +51,11 @@
 }
 
 /* ── Cinematic skin (tema teal): pagina scura, pannelli crema restano ── */
-.fb-page.cine-page { max-width: none; margin: 0; padding: 0 0 80px; color: #ebe3d2; }
+.fb-page.cine-page { max-width: none; margin: 0; padding: 0 0 80px; color: #33281a; }
 .fb-page .fb-body { max-width: 980px; margin: 0 auto; padding: 8px 16px 0; }
 .fb-page .fb-locked-wrap { padding-top: calc(var(--navbar-h, 80px) + 50px); text-align: center; }
 .fb-page.cine-page > .cine-wrap .fb-title,
-.fb-page .fb-locked-wrap .fb-title { color: var(--cine-gold-soft); }
+.fb-page .fb-locked-wrap .fb-title { color: #7c560f; }
 
 .fb-panel {
   background: var(--fb-paper);
@@ -535,7 +535,7 @@
   transition: transform 0.06s, box-shadow 0.06s;
 }
 .fb-reply-toggle:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 0 var(--fb-ink); }
-.fb-reply-toggle--has { background: #4a2855; }
+.fb-reply-toggle--has { background: #553099; }
 
 .fb-reply-edit {
   margin-top: 8px;

@@ -1,0 +1,21 @@
+<svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="Crit Happens" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B3DF5"/>
+      <stop offset="1" stop-color="#D63AD0"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="120" height="120" rx="26" fill="url(#brand)"/>
+  <polygon fill="#F0E2FF" points="60,18 96.37,39 60,36.48"/>
+  <polygon fill="#F0E2FF" points="60,18 60,36.48 23.63,39"/>
+  <polygon fill="#CCA6FB" points="60,36.48 96.37,39 80.37,71.76"/>
+  <polygon fill="#B788F7" points="96.37,39 96.37,81 80.37,71.76"/>
+  <polygon fill="#A472F2" points="96.37,81 60,102 80.37,71.76"/>
+  <polygon fill="#B17EF4" points="80.37,71.76 60,102 39.63,71.76"/>
+  <polygon fill="#A472F2" points="60,102 23.63,81 39.63,71.76"/>
+  <polygon fill="#B788F7" points="23.63,81 23.63,39 39.63,71.76"/>
+  <polygon fill="#CCA6FB" points="39.63,71.76 23.63,39 60,36.48"/>
+  <polygon fill="#6E2EDB" points="60,36.48 80.37,71.76 39.63,71.76"/>
+  <polygon fill="none" stroke="#3A1486" stroke-width="1.5" stroke-linejoin="round" points="60,18 96.37,39 96.37,81 60,102 23.63,81 23.63,39"/>
+  <text x="60" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-size="30" font-weight="900" fill="#FFFFFF" stroke="#000000" stroke-width="2" paint-order="stroke" stroke-linejoin="round">1</text>
+</svg>

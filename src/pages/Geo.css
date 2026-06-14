@@ -10,7 +10,7 @@
   justify-content: center;
   min-height: 70vh;
   gap: 14px;
-  color: #ffd97a;
+  color: #7c560f;
   font-family: var(--font-title);
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -37,7 +37,7 @@
   border: 1px solid rgba(180, 140, 80, 0.28);
   border-left: 4px solid var(--cine-accent);
   background: linear-gradient(180deg, rgba(255, 252, 245, 0.97), rgba(252, 246, 235, 0.93));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 32px rgba(86, 64, 30, 0.18);
   overflow: hidden;
   height: 100%;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
@@ -45,7 +45,7 @@
 .geo-page .geo-card-wrapper .toggle-section:hover {
   transform: translateY(-3px);
   border-color: color-mix(in srgb, var(--cine-gold) 60%, transparent);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 20px 44px rgba(86, 64, 30, 0.22);
 }
 .geo-page .geo-card-wrapper .toggle-title {
   background: transparent !important;

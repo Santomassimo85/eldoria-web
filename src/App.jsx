@@ -376,6 +376,21 @@ export default function App() {
   // Reset the temporary "reveal nav" whenever the route changes.
   useEffect(() => { setForceShowNav(false); }, [location.pathname]);
 
+  // TEMA: il sito è light "pergamena" di default; le pagine immersive di gioco
+  // (arena, tcg, world boss tattico, pet) restano scure → body.theme-dark.
+  useEffect(() => {
+    const p = location.pathname;
+    const isDarkGamePage =
+      p.startsWith("/arena") ||
+      p === "/tcg" ||
+      p.startsWith("/world-boss") ||
+      p === "/boss-tactics" ||
+      p.startsWith("/pet") ||
+      p === "/dm-admin/battle-maps";
+    document.body.classList.toggle("theme-dark", isDarkGamePage);
+    return () => document.body.classList.remove("theme-dark");
+  }, [location.pathname]);
+
   // --- LOGICA REFRESH & CACHE BUSTING ---
   useEffect(() => {
     // 1. Controllo Versione (LocalStorage)
@@ -420,7 +435,7 @@ export default function App() {
       {(!hideChrome || forceShowNav) && (
       <header className="app-nav">
         <NavLink to="/" className="logo" onClick={closeMenu} aria-label="Crit Happens — Home">
-          <img src="/assets/CritHappensLOGO.png" alt="" className="logo-img" />
+          <img src="/assets/critHappensMark.svg" alt="" className="logo-img" />
           <span className="logo-wordmark">
             <span className="logo-word logo-word--crit">Crit</span>
             <span className="logo-word logo-word--happens">Happens</span>
@@ -555,6 +570,16 @@ export default function App() {
       <FirestoreErrorGuard />
 
       <footer>
+        <a
+          className="footer-yt"
+          href="https://www.youtube.com/@Crit_Happens-p9e"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Crit Happens su YouTube"
+        >
+          <img src="/assets/critHappensMark.svg" alt="" className="footer-yt-logo" />
+          Guardaci su YouTube
+        </a>
         <p>
           © {new Date().getFullYear()}{" "}
           <strong>

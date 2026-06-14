@@ -22,10 +22,10 @@
 .home-page .home-lore-text {
   font-size: clamp(0.9rem, 2.2vw, 1.02rem);
   line-height: 1.95;
-  color: #3a2a10;
+  color: #33281a;
   text-align: justify;
 }
-.home-page .home-lore-text i { color: #6b4f10; }
+.home-page .home-lore-text i { color: #7c560f; }
 .home-page .home-lore-drop {
   font-family: var(--font-title);
   font-size: clamp(2.6rem, 6vw, 4rem);
@@ -33,7 +33,7 @@
   float: left;
   margin: 4px 12px 0 0;
   padding: 6px 10px 4px;
-  color: #fff;
+  color: #fffdf5;
   background: var(--cine-accent);
   border-radius: 6px;
 }
@@ -44,8 +44,8 @@
   width: min(55%, 380px);
   margin: 0 auto 28px;
   border-radius: 12px;
-  border: 1px solid rgba(180, 140, 80, 0.5);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(86, 64, 30, 0.18);
   transition: opacity 0.6s ease, transform 0.6s ease;
   opacity: 1;
   transform: translateY(0);
@@ -62,8 +62,8 @@
   border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
   background:
     radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--cine-gold) 10%, transparent), transparent 50%),
-    linear-gradient(135deg, rgba(30, 20, 30, 0.85), rgba(15, 10, 18, 0.92));
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
+    linear-gradient(135deg, #fbf4e0, #e9dcbe);
+  box-shadow: 0 14px 38px rgba(86, 64, 30, 0.18);
   overflow: hidden;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -73,7 +73,7 @@
   background-color: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  color: #ffd97a !important;
+  color: #7c560f !important;
   font-family: var(--font-title);
   font-size: clamp(0.9rem, 2.5vw, 1.1rem) !important;
   letter-spacing: 0.14em;
@@ -100,9 +100,9 @@
 .home-page .pantheon-list { text-align: left; }
 
 /* ---- DIVINITÀ (su pannello scuro) ------------------------- */
-.home-page .divinita-entry { color: #ebe3d2; }
+.home-page .divinita-entry { color: #33281a; }
 .home-page .divinita-name-red {
-  color: #ff6b6b;
+  color: #b8362a;
   font-weight: bold;
   font-size: clamp(1.3rem, 4vw, 2.2rem);
   margin-bottom: 5px;
@@ -117,16 +117,16 @@
   border: 1px solid color-mix(in srgb, var(--cine-gold) 45%, transparent);
   border-radius: 10px;
   margin: 20px 0;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 28px rgba(86, 64, 30, 0.18);
 }
-.home-page .divinita-details-box { max-width: 800px; margin: 0 auto; text-align: left; line-height: 1.7; color: #e6ddc8; }
+.home-page .divinita-details-box { max-width: 800px; margin: 0 auto; text-align: left; line-height: 1.7; color: #33281a; }
 /* I <p> ereditano dal box il crema, ma la regola globale `p, li { color:#272727 }`
    li sovrascrive (regola diretta > valore ereditato) → testo scuro su fondo scuro.
    Rialzo la specificità per i paragrafi (dominio/titoli/simbolo/descrizione),
    escludendo il dogma che resta oro. */
-.home-page .divinita-details-box p:not(.dogma-text) { color: #e6ddc8; }
-.home-page .divinita-details-box .divinita-text-desc { color: #efe7d4; }
-.home-page .divinita-details-box strong { color: #ffd97a; }
+.home-page .divinita-details-box p:not(.dogma-text) { color: #33281a; }
+.home-page .divinita-details-box .divinita-text-desc { color: #33281a; }
+.home-page .divinita-details-box strong { color: #7c560f; }
 .home-page .dogma-text { color: var(--cine-gold); margin-top: 15px; text-align: center; font-style: italic; }
 .home-page .gold-divider {
   border: none;

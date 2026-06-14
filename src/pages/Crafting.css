@@ -5,16 +5,16 @@
 
 /* Crafting usa lo scheletro cinematic (tema bronzo). Le card restano
    pergamena (coerenti sul fondo scuro); titoli/sub su fondo scuro resi chiari. */
-.cr-page.cine-page { color: #ebe3d2; }
+.cr-page.cine-page { color: #33281a; }
 .cr-page .cr-section {
   max-width: 1080px;
   margin: 36px auto;
   padding: 0 18px;
 }
-.cr-page .cr-section-title { color: #ff9166; }
-.cr-page .cr-section-sub { color: rgba(255, 232, 205, 0.72); }
-.cr-page .cr-subtitle { color: #ffd97a; border-bottom-color: color-mix(in srgb, var(--cine-gold) 45%, transparent); }
-.cr-page .cr-footer { color: var(--cine-gold-soft); }
+.cr-page .cr-section-title { color: #b8362a; }
+.cr-page .cr-section-sub { color: #6a5b41; }
+.cr-page .cr-subtitle { color: #7c560f; border-bottom-color: color-mix(in srgb, var(--cine-gold) 45%, transparent); }
+.cr-page .cr-footer { color: #7c560f; }
 
 /* I pannelli chiari translucidi diventavano illeggibili sul fondo scuro
    (testo scuro su sfondo semitrasparente scuro): li rendo opachi/chiari. */

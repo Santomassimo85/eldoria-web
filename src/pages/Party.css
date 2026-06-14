@@ -17,20 +17,20 @@
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  background: linear-gradient(135deg, rgba(40, 18, 18, 0.7), rgba(20, 9, 9, 0.8));
+  background: linear-gradient(135deg, #fbf4e0, #e9dcbe);
   border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
   border-radius: 22px;
   font-family: var(--font-title);
   font-size: 0.74rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #e6d6b8;
+  color: #6a5b41;
   cursor: pointer;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: border-color 0.15s, color 0.15s, transform 0.15s, background 0.15s;
 }
-.party-page .party-tab:hover { border-color: var(--tab-color); color: #fff; transform: translateY(-1px); }
+.party-page .party-tab:hover { border-color: var(--tab-color); color: #33281a; transform: translateY(-1px); }
 .party-page .party-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--tab-color); }
 .party-page .party-tab.on {
   background: linear-gradient(135deg, var(--tab-color), color-mix(in srgb, var(--tab-color) 55%, #000));
@@ -58,7 +58,7 @@
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
   border: 2px solid rgba(255, 240, 210, 0.4);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 20px rgba(86, 64, 30, 0.18);
 }
 .party-page .party-crest-letter {
   font-family: var(--font-title);
@@ -72,13 +72,13 @@
   margin: 4px auto 0;
   padding: 5px 16px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--party-color) 28%, rgba(0,0,0,0.4));
+  background: color-mix(in srgb, var(--party-color) 28%, rgba(45, 32, 14, 0.18));
   border: 1px solid color-mix(in srgb, var(--party-color) 70%, transparent);
   font-family: var(--font-title);
   font-size: 0.7rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #fff;
+  color: #33281a;
 }
 
 /* ─── HERO GRID ────────────────────────────────────────────── */
@@ -101,18 +101,18 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(28, 18, 12, 0.95), rgba(16, 10, 8, 0.95));
+  background: linear-gradient(180deg, #fbf4e0, #e9dcbe);
   border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-radius: 16px;
   overflow: hidden;
   isolation: isolate;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 30px rgba(86, 64, 30, 0.18);
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 .party-page .hero-card:hover {
-  border-color: #ffe6b0;
+  border-color: var(--cine-gold);
   transform: translateY(-3px);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 20px 44px rgba(86, 64, 30, 0.26);
 }
 .party-page .hero-card-photo { position: relative; aspect-ratio: 3 / 4; overflow: hidden; }
 .party-page .hero-card-photo img {

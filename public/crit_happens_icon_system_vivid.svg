@@ -1,0 +1,39 @@
+<svg width="100%" viewBox="0 0 680 250" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+<title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Sistema logo Crit Happens vivido</title>
+<desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Icona quadrata con dado a 20 facce in viola acceso e numero 1 bianco bordato di nero, accanto alla scritta Crit Happens con CRIT sfumato, e sotto un'anteprima a dimensioni piccole.</desc>
+<defs>
+<linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#8B3DF5"/>
+<stop offset="1" stop-color="#D63AD0"/>
+</linearGradient>
+<g id="mark">
+<rect x="0" y="0" width="120" height="120" rx="26" fill="url(#brand)"/>
+<polygon fill="#F0E2FF" points="60,18 96.37,39 60,36.48"/>
+<polygon fill="#F0E2FF" points="60,18 60,36.48 23.63,39"/>
+<polygon fill="#CCA6FB" points="60,36.48 96.37,39 80.37,71.76"/>
+<polygon fill="#B788F7" points="96.37,39 96.37,81 80.37,71.76"/>
+<polygon fill="#A472F2" points="96.37,81 60,102 80.37,71.76"/>
+<polygon fill="#B17EF4" points="80.37,71.76 60,102 39.63,71.76"/>
+<polygon fill="#A472F2" points="60,102 23.63,81 39.63,71.76"/>
+<polygon fill="#B788F7" points="23.63,81 23.63,39 39.63,71.76"/>
+<polygon fill="#CCA6FB" points="39.63,71.76 23.63,39 60,36.48"/>
+<polygon fill="#6E2EDB" points="60,36.48 80.37,71.76 39.63,71.76"/>
+<polygon fill="none" stroke="#3A1486" stroke-width="1.5" stroke-linejoin="round" points="60,18 96.37,39 96.37,81 60,102 23.63,81 23.63,39"/>
+<text x="60" y="68" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-size="30" font-weight="900" fill="#FFFFFF" stroke="#000000" stroke-width="2" paint-order="stroke" stroke-linejoin="round">1</text>
+</g>
+</defs>
+
+
+<use href="#mark" transform="translate(40,28)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<text x="186.5" y="82.5" font-size="46" font-weight="900" letter-spacing="2" fill="#3F1296" opacity="0.45" style="fill:rgb(63, 18, 150);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.45;font-family:Cinzel, &quot;Trajan Pro&quot;, Georgia, serif;font-size:46px;font-weight:900;text-anchor:start;dominant-baseline:auto">CRIT</text>
+<text x="185" y="80" font-size="46" font-weight="900" letter-spacing="2" fill="url(#brand)" style="stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Cinzel, &quot;Trajan Pro&quot;, Georgia, serif;font-size:46px;font-weight:900;text-anchor:start;dominant-baseline:auto">CRIT</text>
+<text x="185" y="126" font-size="34" font-weight="700" letter-spacing="4" style="fill:rgb(201, 160, 255);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Cinzel, &quot;Trajan Pro&quot;, Georgia, serif;font-size:34px;font-weight:700;text-anchor:start;dominant-baseline:auto">HAPPENS</text>
+<rect x="187" y="136" width="120" height="4.5" rx="2.25" fill="url(#brand)" style="stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<line x1="40" y1="178" x2="640" y2="178" stroke="#B788F7" stroke-width="0.75" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(183, 136, 247);color:rgb(0, 0, 0);stroke-width:0.75px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<use href="#mark" transform="translate(40,194) scale(0.42)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<use href="#mark" transform="translate(110,201) scale(0.3)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<use href="#mark" transform="translate(160,207) scale(0.21)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(0, 0, 0);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+</svg>

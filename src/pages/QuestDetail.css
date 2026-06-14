@@ -11,8 +11,8 @@
 /* ── BACK LINK (ghost dorato) ── */
 .quest-detail-page .admin-back-link {
   display: inline-block;
-  background: linear-gradient(135deg, rgba(40, 22, 12, 0.7), rgba(22, 12, 8, 0.8));
-  color: #ffd97a;
+  background: linear-gradient(135deg, rgba(233, 220, 190, 0.9), rgba(241, 231, 207, 0.85));
+  color: #7c560f;
   border: 1px solid color-mix(in srgb, var(--cine-gold) 35%, transparent);
   border-radius: 12px;
   padding: 9px 18px;
@@ -33,17 +33,17 @@
   border-radius: var(--cine-radius);
   border: 1px solid rgba(180, 140, 80, 0.30);
   border-left: 4px solid var(--cine-accent);
-  background: linear-gradient(135deg, rgba(255, 250, 235, 0.97), rgba(250, 242, 222, 0.92));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 16px 44px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, rgba(255, 253, 245, 0.97), rgba(251, 244, 224, 0.92));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 16px 44px rgba(86, 64, 30, 0.18);
   padding: 26px 30px;
-  color: #3a2a10;
+  color: #33281a;
 }
-.quest-detail-page .quest-detail-field { margin: 0 0 8px; color: #4a3a18; }
+.quest-detail-page .quest-detail-field { margin: 0 0 8px; color: #6a5b41; }
 .quest-detail-page .quest-detail-field strong { color: var(--cine-accent); }
 .quest-detail-page .quest-detail-lore {
   margin: 16px 0;
   line-height: 1.8;
-  color: #3a2a10;
+  color: #33281a;
   white-space: pre-wrap;
 }
 .quest-detail-page .quest-detail-rewards {
@@ -60,9 +60,9 @@
   margin-top: 20px;
   padding: 14px 16px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(45, 32, 14, 0.04);
   border: 1px dashed rgba(180, 140, 80, 0.5);
-  color: #4a3a18;
+  color: #6a5b41;
 }
 
 /* ── BOTTONE ACCETTA ── */

@@ -10,10 +10,10 @@
   width: 100%;
   padding: calc(var(--navbar-h, 80px) + 34px) 18px 100px;
   background:
-    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(216, 177, 90, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse at 50% 40%, #1c2042 0%, #12142e 48%, #0a0b1d 100%),
-    #0a0b1d;
-  color: #ece9f8;
+    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(169, 120, 26, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 40%, #f1e7cf 0%, #e9dcbe 48%, #e3d4b0 100%),
+    #f1e7cf;
+  color: #33281a;
   font-family: var(--font-text, "Cardo", serif);
 }
 
@@ -28,7 +28,7 @@
   font-size: clamp(1.6rem, 4.5vw, 2.2rem);
   margin: 0 0 6px;
   text-align: center;
-  background: linear-gradient(180deg, #f0d489 0%, #d9b25a 55%, #a47a2c 100%);
+  background: linear-gradient(180deg, #a9781a 0%, #8a6212 55%, #7c560f 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -36,7 +36,7 @@
 
 .npcgen-sub {
   text-align: center;
-  color: #a7a4cf;
+  color: #6a5b41;
   font-size: 1rem;
   margin: 0 0 26px;
   line-height: 1.5;
@@ -48,7 +48,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #d9b25a;
+  color: #7c560f;
   margin: 0 0 6px 2px;
 }
 
@@ -56,19 +56,19 @@
   width: 100%;
   padding: 13px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(216, 177, 90, 0.35);
-  background: #14172f;
-  color: #f1eedd;
+  border: 1px solid #c9b78a;
+  background: #fffdf5;
+  color: #33281a;
   font-size: 1rem;
   font-family: inherit;
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.npcgen-input::placeholder { color: #7d7aa8; }
+.npcgen-input::placeholder { color: #9a8a6b; }
 .npcgen-input:focus {
-  border-color: #d9b25a;
-  box-shadow: 0 0 0 3px rgba(217, 178, 90, 0.18);
+  border-color: #a9781a;
+  box-shadow: 0 0 0 3px rgba(169, 120, 26, 0.18);
 }
 
 .npcgen-btn {
@@ -84,7 +84,7 @@
   font-family: inherit;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 3px 12px rgba(86, 64, 30, 0.18);
   transition: filter 0.15s, transform 0.1s;
 }
 .npcgen-btn:hover:not(:disabled) { filter: brightness(1.08); }
@@ -92,14 +92,14 @@
 .npcgen-btn:disabled { opacity: 0.55; cursor: default; }
 
 .npcgen-btn--ghost {
-  background: rgba(216, 177, 90, 0.08);
-  border: 1px solid rgba(216, 177, 90, 0.45);
-  color: #e9cd86;
+  background: rgba(169, 120, 26, 0.10);
+  border: 1px solid rgba(169, 120, 26, 0.45);
+  color: #7c560f;
   font-weight: 600;
   box-shadow: none;
 }
 .npcgen-btn--ghost:hover:not(:disabled) {
-  background: rgba(216, 177, 90, 0.16);
+  background: rgba(169, 120, 26, 0.18);
   filter: none;
 }
 
@@ -109,33 +109,33 @@
   min-height: 22px;
   text-align: center;
   font-style: italic;
-  color: #c9b06a;
+  color: #7c560f;
   font-size: 0.98rem;
 }
-.npcgen-status--error { color: #e2483a; font-style: normal; }
+.npcgen-status--error { color: #b8362a; font-style: normal; }
 
 /* ---------- scheda NPC ---------- */
 .npcgen-card {
   margin-top: 26px;
   background:
-    linear-gradient(180deg, rgba(216, 177, 90, 0.06) 0%, transparent 120px),
-    #161936;
-  border: 1px solid rgba(216, 177, 90, 0.4);
+    linear-gradient(180deg, rgba(169, 120, 26, 0.06) 0%, transparent 120px),
+    #fbf4e0;
+  border: 1px solid #c9b78a;
   border-radius: 16px;
   padding: 24px 22px;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 34px rgba(86, 64, 30, 0.18);
 }
 
 .npcgen-name {
   font-family: var(--font-title, "Cinzel Decorative", serif);
   font-size: 1.5rem;
-  color: #e9cd86;
+  color: #7c560f;
   margin: 0 0 2px;
   line-height: 1.25;
 }
 
 .npcgen-role {
-  color: #a7a4cf;
+  color: #6a5b41;
   font-size: 1rem;
   margin: 0 0 6px;
 }
@@ -143,7 +143,7 @@
 .npcgen-divider {
   height: 1px;
   margin: 14px 0 4px;
-  background: linear-gradient(90deg, transparent, rgba(216, 177, 90, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(169, 120, 26, 0.55), transparent);
   border: none;
 }
 
@@ -151,13 +151,13 @@
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #d9b25a;
+  color: #7c560f;
   margin: 16px 0 3px;
 }
 
 .npcgen-card .npcgen-v {
   font-size: 1.04rem;
-  color: #f0ecdd;
+  color: #33281a;
   margin: 0;
   line-height: 1.65;
 }
@@ -173,9 +173,9 @@
   display: inline-block;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(216, 177, 90, 0.12);
-  border: 1px solid rgba(216, 177, 90, 0.4);
-  color: #e9cd86;
+  background: rgba(169, 120, 26, 0.12);
+  border: 1px solid rgba(169, 120, 26, 0.4);
+  color: #7c560f;
   font-size: 0.92rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -186,8 +186,8 @@
   width: 100%;
   border-radius: 12px;
   margin-top: 18px;
-  border: 1px solid rgba(216, 177, 90, 0.4);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(169, 120, 26, 0.4);
+  box-shadow: 0 8px 24px rgba(86, 64, 30, 0.18);
   display: block;
 }
 

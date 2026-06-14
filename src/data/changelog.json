@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "22",
+      "date": "2026-06-14",
+      "title": "Nuovo tema chiaro «Pergamena Antica»",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Tutto il sito passa a un tema chiaro fantasy «Pergamena Antica»: fondo bianco sporco/carta invecchiata, inchiostro seppia e accenti oro antico, arcano viola e rosso. Coinvolti header, footer e tutte le pagine di contenuto (Home, Party, NPC, Mercato, Bacheca, Geo, Riassunti, Crafting, Cinema, Feedback, Lore Ratti, schede, pannelli DM e altro)."
+        },
+        {
+          "type": "graphic",
+          "text": "Le pagine immersive di gioco (Arena, TCG, World Boss tattico, Pet) restano in tema scuro per preservarne l'atmosfera; le animazioni di sfondo sono rimaste invariate."
+        }
+      ]
+    },
+    {
+      "version": "21.04",
+      "date": "2026-06-14",
+      "title": "Nuovo logo Crit Happens",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Nuovo logo del progetto (dado a 20 facce viola) adottato nell'header e come icona del browser."
+        },
+        {
+          "type": "graphic",
+          "text": "Footer rinnovato: un unico pulsante «Guardaci su YouTube» con il logo Crit Happens, che collega al canale ufficiale."
+        }
+      ]
+    },
+    {
       "version": "21.03",
       "date": "2026-06-13",
       "title": "Mercato — filtro venduti/disponibili",

@@ -19,18 +19,18 @@
   }
 }
 
-/* ---- QUEST CARD (pergamena su fondo scuro) ---------------- */
+/* ---- QUEST CARD (pergamena su fondo chiaro) --------------- */
 .bacheca-page .quest-card {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: linear-gradient(160deg, rgba(253, 246, 227, 0.97), rgba(255, 248, 237, 0.95));
-  border: 1px solid rgba(180, 140, 80, 0.3);
+  background: linear-gradient(160deg, #fbf4e0, #fffdf5);
+  border: 1px solid #c9b78a;
   border-radius: 16px;
   padding: 22px 16px 18px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 0 rgba(255, 253, 245, 0.7) inset, 0 12px 30px rgba(86, 64, 30, 0.18);
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
   cursor: default;
   overflow: hidden;
@@ -38,11 +38,11 @@
 .bacheca-page .quest-card.is-clickable { cursor: pointer; }
 .bacheca-page .quest-card.is-clickable:hover {
   transform: translateY(-3px);
-  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 42px rgba(86, 64, 30, 0.26);
   border-color: color-mix(in srgb, var(--cine-gold) 60%, transparent);
 }
 .bacheca-page .quest-card.accepted {
-  background: linear-gradient(160deg, rgba(243, 234, 208, 0.97), rgba(248, 239, 212, 0.95));
+  background: linear-gradient(160deg, #f3ead0, #f8efd4);
   border-color: color-mix(in srgb, var(--cine-accent) 45%, transparent);
 }
 .bacheca-page .quest-card.sealed {

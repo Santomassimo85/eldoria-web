@@ -11,8 +11,8 @@
   justify-content: center;
   gap: 18px;
   background: radial-gradient(ellipse at center,
-    rgba(20, 12, 4, 0.55) 0%,
-    rgba(0, 0, 0, 0.75) 90%);
+    rgba(45, 32, 14, 0.30) 0%,
+    rgba(45, 32, 14, 0.45) 90%);
   pointer-events: none;
   animation: dice-overlay-fade var(--fade-ms, 280ms) ease-in-out forwards;
   animation-delay: calc(var(--tumble-ms, 750ms) + var(--settle-ms, 450ms) + var(--hold-ms, 550ms));
@@ -138,9 +138,9 @@
   font-family: "Cinzel Decorative", serif;
   font-size: 0.78rem;
   letter-spacing: 0.18em;
-  color: #f3e2b5;
+  color: #33281a;
   text-transform: uppercase;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(255, 253, 245, 0.6);
   opacity: 0;
   animation: dice-caption-in var(--settle-ms, 450ms) ease-out var(--tumble-ms, 750ms) forwards;
 }
@@ -345,7 +345,7 @@
 .dice-picker-intro {
   font-size: 0.86rem;
   line-height: 1.5;
-  color: #cdbfa0;
+  color: var(--muted, #6a5b41);
   margin: 0 0 14px;
 }
 .dice-picker-section-label {
@@ -353,7 +353,7 @@
   font-size: 0.78rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #e6c46a;
+  color: #7c560f;
   margin: 16px 0 8px;
 }
 .dice-picker-grid {
@@ -369,28 +369,28 @@
   gap: 6px;
   padding: 12px 8px 10px;
   border-radius: 12px;
-  border: 1.5px solid rgba(150, 120, 60, 0.35);
-  background: rgba(28, 22, 12, 0.55);
+  border: 1.5px solid var(--line, #c9b78a);
+  background: var(--bg-2, #fbf4e0);
   cursor: pointer;
   transition: border-color 0.18s, transform 0.12s, background 0.18s;
 }
-.dice-skin-card:hover { transform: translateY(-2px); border-color: rgba(230, 196, 106, 0.7); }
+.dice-skin-card:hover { transform: translateY(-2px); border-color: rgba(169, 120, 26, 0.7); }
 .dice-skin-card.is-active {
-  border-color: #e6c46a;
-  background: rgba(60, 46, 16, 0.7);
-  box-shadow: 0 0 0 1px #e6c46a inset, 0 6px 18px rgba(0, 0, 0, 0.4);
+  border-color: #a9781a;
+  background: rgba(169, 120, 26, 0.14);
+  box-shadow: 0 0 0 1px #a9781a inset, 0 6px 18px rgba(86, 64, 30, 0.18);
 }
 .dice-skin-card.is-special { border-style: dashed; }
 .dice-skin-name {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #f3e2b5;
+  color: var(--ink, #33281a);
   text-align: center;
   line-height: 1.2;
 }
 .dice-skin-desc {
   font-size: 0.66rem;
-  color: #a89878;
+  color: var(--muted, #6a5b41);
   text-align: center;
   line-height: 1.25;
 }
@@ -399,7 +399,7 @@
   top: 6px;
   right: 8px;
   font-size: 0.8rem;
-  color: #ffd96b;
+  color: #7c560f;
   font-weight: 700;
 }
 

@@ -2,12 +2,12 @@
 .admin-notif-container {
     background: #f4e4bc; /* Colore base carta invecchiata */
     background-image: 
-        radial-gradient(circle at 2px 2px, rgba(0,0,0,0.05) 1px, transparent 0);
+        radial-gradient(circle at 2px 2px, rgba(86,64,30,0.06) 1px, transparent 0);
     background-size: 4px 4px;
     padding: 40px;
     border-radius: 5px;
-    box-shadow: 
-        0 0 5px rgba(0,0,0,0.2),
+    box-shadow:
+        0 0 5px rgba(86, 64, 30, 0.18),
         inset 0 0 50px rgba(139, 69, 19, 0.2); /* Effetto bruciacchiato ai bordi */
     border: 2px solid #8b4513;
     max-width: 600px;
@@ -108,7 +108,7 @@
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 2px 2px 5px rgba(86,64,30,0.25);
 }
 
 .admin-notif-container button:hover {

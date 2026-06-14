@@ -4,7 +4,7 @@
    ============================================================ */
 
 /* Cinema usa lo scheletro cinematic (tema viola). Contenuti centrati. */
-.theatrum.cine-page { color: #ebe3d2; }
+.theatrum.cine-page { color: #33281a; }
 .theatrum .theatrum-feature,
 .theatrum .theatrum-archive {
   max-width: 1240px;
@@ -699,23 +699,23 @@
 .theatrum-empty-glyph { font-size: 3rem; margin-bottom: 12px; }
 .theatrum-empty small { display: block; margin-top: 8px; opacity: 0.75; font-size: 0.82rem; }
 
-/* ── Override tema scuro (cinematic): testi su fondo scuro ── */
-.theatrum .theatrum-feature-eyebrow { color: var(--cine-gold-soft, #ffe1a8); }
-.theatrum .theatrum-feature-eyebrow-glyph { color: #ff8a6a; }
+/* ── Override tema pergamena (cinematic): testi su fondo chiaro ── */
+.theatrum .theatrum-feature-eyebrow { color: #7c560f; }
+.theatrum .theatrum-feature-eyebrow-glyph { color: #b8362a; }
 .theatrum .theatrum-feature-num {
-  color: #ffd2c0;
-  background: rgba(200, 40, 40, 0.18);
-  border-color: color-mix(in srgb, var(--cine-gold) 45%, transparent);
+  color: #b8362a;
+  background: rgba(184, 54, 42, 0.10);
+  border-color: rgba(169, 120, 26, 0.45);
 }
-.theatrum .theatrum-feature-title { color: #fff; }
-.theatrum .theatrum-feature-date { color: var(--cine-gold-soft, #ffe1a8); }
+.theatrum .theatrum-feature-title { color: #33281a; }
+.theatrum .theatrum-feature-date { color: #7c560f; }
 .theatrum .theatrum-feature-desc {
-  color: #e6ddc8;
-  border-left-color: var(--cine-gold);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--cine-gold) 14%, transparent), transparent 60%);
+  color: #33281a;
+  border-left-color: #a9781a;
+  background: linear-gradient(90deg, rgba(169, 120, 26, 0.14), transparent 60%);
 }
 .theatrum .theatrum-loading,
-.theatrum .theatrum-empty { color: var(--cine-gold-soft, #ffe1a8); }
+.theatrum .theatrum-empty { color: #6a5b41; }
 
 .theatrum-reel {
   width: 56px; height: 56px;
