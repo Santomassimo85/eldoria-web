@@ -76,9 +76,17 @@
   box-shadow: 0 8px 20px -10px rgba(86,64,30,.6);
   transition: transform .15s ease, box-shadow .2s ease, filter .15s ease;
 }
-.home-page .home-cta--antichi { background: linear-gradient(135deg, #e6c477, #a9781a); color: #2a1c06; }
-.home-page .home-cta--nuovi   { background: linear-gradient(135deg, #b79bf0, #6f44c9); color: #fff; }
-.home-page .home-cta--malvagi { background: linear-gradient(135deg, #d96a5d, #8a261c); color: #fff; }
+.home-page .home-cta--antichi { background: linear-gradient(135deg, #e6c477, #a9781a); }
+.home-page .home-cta--nuovi   { background: linear-gradient(135deg, #b79bf0, #6f44c9); }
+.home-page .home-cta--malvagi { background: linear-gradient(135deg, #d96a5d, #8a261c); }
+/* testo dei pulsanti del pantheon: crema molto chiara + ombra per leggibilità */
+.home-page .home-cta--antichi,
+.home-page .home-cta--nuovi,
+.home-page .home-cta--malvagi {
+  color: #fff9ee !important;
+  -webkit-text-fill-color: #fff9ee;
+  text-shadow: 0 1px 2px rgba(40, 20, 8, 0.55);
+}
 .home-page .home-cta:hover { transform: translateY(-2px); filter: brightness(1.06); }
 .home-page .home-cta:active { transform: translateY(0); }
 

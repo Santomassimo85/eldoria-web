@@ -222,6 +222,12 @@ section.active {
      display: block;
      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18));
 }
+/* logo a immagine singola (public/logo.png) */
+.logo--img-only .logo-img {
+     height: 58px;
+     max-width: 230px;
+     object-fit: contain;
+}
 
 .logo-wordmark {
      display: flex;

@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "33",
+      "date": "2026-06-14",
+      "title": "Nuovo logo, ritocchi Home e rimozione chat globale",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Nuovo logo del sito nell'intestazione."
+        },
+        {
+          "type": "graphic",
+          "text": "Home: il testo dei pulsanti del pantheon (Antichi/Nuovi/Dei Malvagi) ora è in crema chiaro, più leggibile."
+        },
+        {
+          "type": "fix",
+          "text": "Rimosso il pulsante della chat globale."
+        }
+      ]
+    },
+    {
       "version": "32",
       "date": "2026-06-14",
       "title": "Collegamento Mercato → Foundry (strumenti Master)",

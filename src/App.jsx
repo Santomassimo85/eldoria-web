@@ -58,7 +58,6 @@ import GeneraNPC from "./GeneraNPC";
 import FoundryItemForm from "./pages/FoundryItemForm";
 import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
-import GlobalChat from "./components/GlobalChat"; // Importa il nuovo componente
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
@@ -515,12 +514,8 @@ export default function App() {
       )}
       {(!hideChrome || forceShowNav) && (
       <header className="app-nav">
-        <NavLink to="/" className="logo" onClick={closeMenu} aria-label="Crit Happens — Home">
-          <img src="/assets/critHappensMark.svg" alt="" className="logo-img" />
-          <span className="logo-wordmark">
-            <span className="logo-word logo-word--crit">Crit</span>
-            <span className="logo-word logo-word--happens">Happens</span>
-          </span>
+        <NavLink to="/" className="logo logo--img-only" onClick={closeMenu} aria-label="Crit Happens — Home">
+          <img src="/logo.png" alt="Crit Happens" className="logo-img" />
         </NavLink>
 
         {/* Destra header: avatar sempre visibile + burger su mobile */}
@@ -645,7 +640,6 @@ export default function App() {
         </Routes>
       </main>
 
-{!hideChrome && !isArenaPage && <GlobalChat />}
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
