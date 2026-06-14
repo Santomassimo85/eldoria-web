@@ -4535,6 +4535,76 @@
 }
 .adm .sn-chip.on .sn-chip-tick { color: var(--cine-accent); }
 
+/* ── SPRITE ADMIN (World Boss) — console ── */
+.adm .wbs-bg-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+@media (min-width: 760px) { .adm .wbs-bg-grid { grid-template-columns: 1fr 1fr; } }
+.adm .wbs-bg-preview {
+  width: 100%; height: 170px; object-fit: cover; border-radius: 12px; display: block; margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 35%, #c9b78a);
+}
+.adm .wbs-bg-empty {
+  height: 120px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; opacity: .4;
+  border: 1.5px dashed color-mix(in srgb, var(--cine-accent) 30%, #c9b78a); border-radius: 12px; margin-bottom: 12px;
+}
+.adm .wbs-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
+.adm .wbs-card { background: #fffdf7; border: 1px solid var(--line, #c9b78a); border-radius: 14px; padding: 14px; box-shadow: 0 8px 22px -16px rgba(86,64,30,.4); }
+.adm .wbs-slots { display: flex; gap: 14px; justify-content: center; padding: 4px 0 10px; flex-wrap: wrap; }
+.adm .wbs-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.adm .wbs-slot-label { font-family: var(--font-head, "Cinzel"), serif; font-size: .58rem; letter-spacing: .14em; text-transform: uppercase; color: #9a8a6b; }
+.adm .wbs-sprite { image-rendering: pixelated; mix-blend-mode: multiply; max-height: 90px; }
+.adm .wbs-sprite--mini { max-height: 70px; }
+.adm .wbs-sprite-ph { font-size: 1.8rem; opacity: .25; height: 90px; display: flex; align-items: center; }
+.adm .wbs-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.adm .wbs-card-name { margin: 0; font-family: var(--font-head, "Cinzel"), serif; font-size: 1rem; color: var(--cine-accent); }
+.adm .wbs-card-tag { font-size: .66rem; color: #9a8a6b; font-family: var(--font-head, "Cinzel"), serif; letter-spacing: .06em; }
+.adm .wbs-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.adm .wbs-fields2 { display: grid; grid-template-columns: 2fr 1fr; gap: 7px; margin-top: 7px; }
+.adm .wbs-fields label, .adm .wbs-fields2 label {
+  display: flex; flex-direction: column; gap: 2px;
+  font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; color: #8a6212; font-family: var(--font-head, "Cinzel"), serif;
+}
+.adm .wbs-in {
+  width: 100%; padding: 7px 9px; border: 1.5px solid color-mix(in srgb, var(--cine-accent) 24%, #c9b78a);
+  border-radius: 8px; background: #fff; color: #33281a; font-family: var(--font-text); font-size: .85rem; outline: none;
+}
+.adm .wbs-in:focus { border-color: var(--cine-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cine-accent) 16%, transparent); }
+.adm .wbs-name { font-weight: 700; margin-bottom: 6px; }
+.adm .wbs-mini-btn { padding: 4px 9px; font-size: .72rem; border-radius: 8px; }
+
+/* ── WORLD BOSS ADMIN — allineamento alla console (corpo/meccanica intatti) ── */
+@media (min-width: 1280px) { .wb-admin-page.wb-redesign { max-width: 1320px; } }
+.wb-admin-page.wb-redesign .wb-hero {
+  background: linear-gradient(135deg, rgba(255,253,245,.97), rgba(243,234,212,.94)) !important;
+  background-blend-mode: normal !important;
+  border: 1px solid var(--line, #c9b78a) !important;
+  border-left: 6px solid #8a0e0e !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 50px -24px rgba(86,64,30,.55), 0 1px 0 rgba(255,255,255,.7) inset !important;
+  color: #33281a !important;
+  animation: adm-mast-in .6s cubic-bezier(.16,1,.3,1) both;
+}
+.wb-admin-page.wb-redesign .wb-hero::before { display: none !important; }
+.wb-admin-page.wb-redesign .wb-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), serif !important; font-weight: 900 !important;
+  font-size: clamp(1.5rem, 3.6vw, 2.3rem) !important; margin: 4px 0 4px !important;
+  background: linear-gradient(180deg, #3a2a12, #8a0e0e 75%) !important;
+  -webkit-background-clip: text !important; background-clip: text !important; color: transparent !important;
+  text-shadow: none !important;
+}
+.wb-admin-page.wb-redesign .wb-hero-sub { color: #6a5b41 !important; font-style: italic; text-shadow: none !important; }
+.wb-admin-page.wb-redesign .wb-hero-stat {
+  background: #fffdf7 !important; border: 1px solid color-mix(in srgb, #8a0e0e 28%, #c9b78a) !important; box-shadow: none !important;
+}
+.wb-admin-page.wb-redesign .wb-hero-stat span { color: #8a7a5a !important; }
+.wb-admin-page.wb-redesign .wb-hero-stat strong { color: #8a0e0e !important; text-shadow: none !important; }
+.wb-admin-page.wb-redesign .wb-hero-stat.active strong { color: #b8362a !important; text-shadow: none !important; }
+/* card forgia/altare → trama pergamena */
+.wb-admin-page.wb-redesign .wb-forge,
+.wb-admin-page.wb-redesign .wb-altar,
+.wb-admin-page.wb-redesign .wb-boss-card {
+  background: linear-gradient(180deg, #fffdf7, #fbf6ea) !important;
+}
+
 /* — REPUTAZIONE: griglia di card su desktop (no liste sparse su PC) — */
 .rep-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .rep-grid .rep-char-card { margin-bottom: 0; }

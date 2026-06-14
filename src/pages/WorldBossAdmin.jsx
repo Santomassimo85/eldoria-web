@@ -707,7 +707,8 @@ export default function WorldBossAdmin() {
       {/* ── HERO ── */}
       <header className="wb-hero">
         <div className="wb-hero-titles">
-          <h1 className="wb-hero-title">🩸 Sala delle Minacce</h1>
+          <span className="adm-eyebrow">🩸 Bestiario delle Calamità</span>
+          <h1 className="wb-hero-title">Sala delle Minacce</h1>
           <p className="wb-hero-sub">Forgia, evoca e governa le calamità di Exanthia</p>
         </div>
         <div className="wb-hero-stats">

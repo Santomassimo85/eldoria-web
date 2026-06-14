@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "30",
+      "date": "2026-06-14",
+      "title": "Pannelli World Boss del Master ridisegnati",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "«Sprite Personaggi» ridisegnato nella Console del Master: sfondi, libreria minion e sprite degli eroi (vivo/morto) ora in pannelli pergamena a griglia. La «Sala delle Minacce» (gestione World Boss) è allineata alla nuova intestazione. Meccaniche e collegamenti invariati."
+        }
+      ]
+    },
+    {
       "version": "29",
       "date": "2026-06-14",
       "title": "Pannelli del Master ridisegnati — «Console del Master»",

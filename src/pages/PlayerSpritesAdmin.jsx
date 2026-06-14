@@ -189,183 +189,146 @@ export default function PlayerSpritesAdmin() {
   }
 
   return (
-    <div className="wb-admin-page">
+    <section className="adm" style={{ "--cine-accent": "#7a2e1a", "--cine-accent-2": "#b8362a" }}>
       <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
-      <h1 className="admin-page-title">Sprite Personaggi</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">🧝</span></div>
 
-      {/* ── Battle Background (World Boss) ── */}
-      <div className="boss-card" style={{ maxWidth: 520, margin: "0 auto 32px", padding: "16px 20px" }}>
-        <h3 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, marginBottom: 10 }}>
-          Sfondo Battaglia (World Boss)
-        </h3>
-        {battleBg ? (
-          <img
-            src={battleBg}
-            alt="Battle background"
-            style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block", marginBottom: 10, border: "2px solid var(--gold)" }}
-          />
-        ) : (
-          <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 28, marginBottom: 10 }}>🌄</div>
-        )}
-        <input
-          ref={bgInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => loadBattleBg(e.target.files[0])}
-        />
-        <div className="boss-actions-admin">
-          <button className="btn-edit" onClick={() => bgInputRef.current?.click()}>
-            📁 {battleBg ? "Cambia" : "Carica"} Sfondo
-          </button>
-          {battleBg && (
-            <button className="btn-delete btn-admin-danger" onClick={removeBattleBg}>
-              ✖ Rimuovi
-            </button>
-          )}
+      <div className="adm-masthead">
+        <div className="adm-mast-main">
+          <span className="adm-eyebrow">🧝 Armeria degli Sprite</span>
+          <h1 className="adm-title">Sprite Personaggi</h1>
+          <p className="adm-sub">Sprite di eroi e nemici minori, e sfondi delle arene del Boss Fight.</p>
+        </div>
+        <div className="adm-mast-aside">
+          <div className="adm-stat"><span>Eroi</span><strong>{characters.length}</strong></div>
+          <div className="adm-stat"><span>Minion</span><strong>{minions.length}</strong></div>
         </div>
       </div>
 
-      {/* ── Arena Background ── */}
-      <div className="boss-card" style={{ maxWidth: 520, margin: "0 auto 32px", padding: "16px 20px" }}>
-        <h3 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, marginBottom: 10 }}>
-          Sfondo Arena (PvP)
-        </h3>
-        {arenaBg ? (
-          <img
-            src={arenaBg}
-            alt="Arena background"
-            style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block", marginBottom: 10, border: "2px solid var(--gold)" }}
-          />
-        ) : (
-          <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 28, marginBottom: 10 }}>⚔️</div>
-        )}
-        <input
-          ref={arenaBgInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => loadArenaBg(e.target.files[0])}
-        />
-        <div className="boss-actions-admin">
-          <button className="btn-edit" onClick={() => arenaBgInputRef.current?.click()}>
-            📁 {arenaBg ? "Cambia" : "Carica"} Sfondo
-          </button>
-          {arenaBg && (
-            <button className="btn-delete btn-admin-danger" onClick={removeArenaBg}>
-              ✖ Rimuovi
-            </button>
-          )}
+      {/* ── Sfondi ── */}
+      <div className="adm-panel" style={{ marginBottom: 18 }}>
+        <div className="adm-panel-head"><h2 className="adm-panel-title">🌄 Sfondi di battaglia</h2></div>
+        <div className="wbs-bg-grid">
+          {/* Battle BG */}
+          <div>
+            <label className="adm-label" style={{ display: "block", marginBottom: 8 }}>Sfondo Battaglia (World Boss)</label>
+            {battleBg
+              ? <img src={battleBg} alt="Battle background" className="wbs-bg-preview" />
+              : <div className="wbs-bg-empty">🌄</div>}
+            <input ref={bgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => loadBattleBg(e.target.files[0])} />
+            <div className="adm-btn-row">
+              <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => bgInputRef.current?.click()}>📁 {battleBg ? "Cambia" : "Carica"}</button>
+              {battleBg && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={removeBattleBg}>✖ Rimuovi</button>}
+            </div>
+          </div>
+          {/* Arena BG */}
+          <div>
+            <label className="adm-label" style={{ display: "block", marginBottom: 8 }}>Sfondo Arena (PvP)</label>
+            {arenaBg
+              ? <img src={arenaBg} alt="Arena background" className="wbs-bg-preview" />
+              : <div className="wbs-bg-empty">⚔️</div>}
+            <input ref={arenaBgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => loadArenaBg(e.target.files[0])} />
+            <div className="adm-btn-row">
+              <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => arenaBgInputRef.current?.click()}>📁 {arenaBg ? "Cambia" : "Carica"}</button>
+              {arenaBg && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={removeArenaBg}>✖ Rimuovi</button>}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Minion / Nemici minori (libreria riusabile nei Boss Fight) ── */}
-      <div className="boss-card" style={{ maxWidth: 920, margin: "0 auto 24px", padding: "16px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <h3 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9 }}>
-            👹 Nemici minori (Minion)
-          </h3>
-          <button className="btn-edit" onClick={addMinion}>＋ Nuovo minion</button>
+      {/* ── Minion ── */}
+      <div className="adm-panel" style={{ marginBottom: 18 }}>
+        <div className="adm-panel-head">
+          <h2 className="adm-panel-title">👹 Nemici minori <span style={{ opacity: .6, fontWeight: 400 }}>({minions.length})</span></h2>
+          <button className="adm-btn adm-btn--primary wbs-mini-btn" onClick={addMinion}>＋ Nuovo minion</button>
         </div>
-        <p style={{ fontSize: 11, opacity: 0.6, marginBottom: 12 }}>
-          Carica qui sprite e stat dei nemici minori: li potrai poi scegliere e piazzare nel Boss Fight tattico.
-        </p>
-        {minions.length === 0 && <p style={{ opacity: 0.4, fontSize: 12 }}>Nessun minion. Aggiungine uno.</p>}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-          {minions.map((m) => (
-            <div key={m.id} style={{ border: "1px solid rgba(0,0,0,0.2)", borderRadius: 8, padding: 10, width: 250, background: "rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 8 }}>
-                {/* live */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 8, opacity: 0.6, fontFamily: "monospace" }}>VIVO</span>
-                  {m.spriteUrl
-                    ? <img src={m.spriteUrl} alt={m.name} style={{ imageRendering: "pixelated", maxHeight: 70, mixBlendMode: "multiply" }} />
-                    : <div style={{ fontSize: 24, opacity: 0.25 }}>👹</div>}
-                  <input ref={(el) => { minionFileRefs.current[m.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={(e) => loadMinionSprite(e.target.files[0], m.id, "spriteUrl")} />
-                  <button className="btn-edit" style={{ fontSize: 9, padding: "2px 6px" }} onClick={() => minionFileRefs.current[m.id]?.click()}>📁</button>
+        <p className="adm-sub" style={{ margin: "0 0 14px" }}>Sprite e statistiche dei nemici minori da piazzare nel Boss Fight tattico.</p>
+        {minions.length === 0 ? (
+          <p className="adm-empty">Nessun minion. Aggiungine uno.</p>
+        ) : (
+          <div className="wbs-grid">
+            {minions.map((m) => (
+              <div key={m.id} className="wbs-card">
+                <div className="wbs-slots">
+                  <div className="wbs-slot">
+                    <span className="wbs-slot-label">Vivo</span>
+                    {m.spriteUrl
+                      ? <img src={m.spriteUrl} alt={m.name} className="wbs-sprite wbs-sprite--mini" />
+                      : <div className="wbs-sprite-ph" style={{ height: 70 }}>👹</div>}
+                    <input ref={(el) => { minionFileRefs.current[m.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => loadMinionSprite(e.target.files[0], m.id, "spriteUrl")} />
+                    <button className="adm-btn adm-btn--ghost wbs-mini-btn" onClick={() => minionFileRefs.current[m.id]?.click()}>📁</button>
+                  </div>
+                  <div className="wbs-slot">
+                    <span className="wbs-slot-label">Morto</span>
+                    {m.deadSpriteUrl
+                      ? <img src={m.deadSpriteUrl} alt="" className="wbs-sprite wbs-sprite--mini" style={{ filter: "grayscale(0.5)" }} />
+                      : <div className="wbs-sprite-ph" style={{ height: 70 }}>💀</div>}
+                    <input ref={(el) => { minionDeadFileRefs.current[m.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => loadMinionSprite(e.target.files[0], m.id, "deadSpriteUrl")} />
+                    <button className="adm-btn adm-btn--ghost wbs-mini-btn" onClick={() => minionDeadFileRefs.current[m.id]?.click()}>💀</button>
+                  </div>
                 </div>
-                {/* dead */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  <span style={{ fontSize: 8, opacity: 0.6, fontFamily: "monospace" }}>MORTO</span>
-                  {m.deadSpriteUrl
-                    ? <img src={m.deadSpriteUrl} alt="" style={{ imageRendering: "pixelated", maxHeight: 70, mixBlendMode: "multiply", filter: "grayscale(0.5)" }} />
-                    : <div style={{ fontSize: 24, opacity: 0.25 }}>💀</div>}
-                  <input ref={(el) => { minionDeadFileRefs.current[m.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={(e) => loadMinionSprite(e.target.files[0], m.id, "deadSpriteUrl")} />
-                  <button className="btn-edit" style={{ fontSize: 9, padding: "2px 6px" }} onClick={() => minionDeadFileRefs.current[m.id]?.click()}>💀</button>
+                <input className="wbs-in wbs-name" value={m.name || ""} onChange={(e) => patchMinion(m.id, { name: e.target.value })} placeholder="Nome" />
+                <div className="wbs-fields">
+                  <label>HP<input className="wbs-in" type="number" value={m.hp ?? 12} onChange={(e) => patchMinion(m.id, { hp: +e.target.value })} /></label>
+                  <label>CA<input className="wbs-in" type="number" value={m.ac ?? 11} onChange={(e) => patchMinion(m.id, { ac: +e.target.value })} /></label>
+                  <label>DEX<input className="wbs-in" type="number" value={m.dex ?? 1} onChange={(e) => patchMinion(m.id, { dex: +e.target.value })} /></label>
+                </div>
+                <div className="wbs-fields2">
+                  <label>Att.<input className="wbs-in" value={m.atkName || "Attacco"} onChange={(e) => patchMinion(m.id, { atkName: e.target.value })} /></label>
+                  <label>Dadi<input className="wbs-in" value={m.atkDice || "1d6"} onChange={(e) => patchMinion(m.id, { atkDice: e.target.value })} /></label>
+                  <label>+colpire<input className="wbs-in" type="number" value={m.atkBonus ?? 2} onChange={(e) => patchMinion(m.id, { atkBonus: +e.target.value })} /></label>
+                  <label>Gittata<input className="wbs-in" type="number" value={m.atkRange ?? 1} onChange={(e) => patchMinion(m.id, { atkRange: +e.target.value })} /></label>
+                </div>
+                <button className="adm-btn adm-btn--danger wbs-mini-btn" style={{ marginTop: 10, width: "100%" }} onClick={() => removeMinion(m.id)}>✖ Elimina</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Sprite eroi ── */}
+      <div className="adm-panel">
+        <div className="adm-panel-head"><h2 className="adm-panel-title">🧍 Sprite degli eroi</h2></div>
+        <div className="wbs-grid">
+          {characters.map((char) => (
+            <div key={char.id} className="wbs-card">
+              <div className="wbs-card-head">
+                <h3 className="wbs-card-name">{char.name}</h3>
+                <span className="wbs-card-tag">{char.class || "—"}</span>
+              </div>
+              <div className="wbs-slots">
+                {/* Vivo */}
+                <div className="wbs-slot">
+                  <span className="wbs-slot-label">Vivo</span>
+                  {char.spriteUrl
+                    ? <img src={char.spriteUrl} alt={char.name} className="wbs-sprite" />
+                    : <div className="wbs-sprite-ph">🧍</div>}
+                  <input ref={(el) => { fileRefs.current[char.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => loadSprite(e.target.files[0], char.id)} />
+                  <div className="adm-btn-row">
+                    <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => fileRefs.current[char.id]?.click()}>📁 {char.spriteUrl ? "Cambia" : "Carica"}</button>
+                    {char.spriteUrl && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => removeSprite(char.id)}>✖</button>}
+                  </div>
+                </div>
+                {/* Morto */}
+                <div className="wbs-slot">
+                  <span className="wbs-slot-label">Morto</span>
+                  {char.deadSpriteUrl
+                    ? <img src={char.deadSpriteUrl} alt={`${char.name} dead`} className="wbs-sprite" style={{ filter: "grayscale(0.5)" }} />
+                    : <div className="wbs-sprite-ph">💀</div>}
+                  <input ref={(el) => { deadFileRefs.current[char.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => loadDeadSprite(e.target.files[0], char.id)} />
+                  <div className="adm-btn-row">
+                    <button className="adm-btn adm-btn--gold wbs-mini-btn" onClick={() => deadFileRefs.current[char.id]?.click()}>💀 {char.deadSpriteUrl ? "Cambia" : "Carica"}</button>
+                    {char.deadSpriteUrl && <button className="adm-btn adm-btn--danger wbs-mini-btn" onClick={() => removeDeadSprite(char.id)}>✖</button>}
+                  </div>
                 </div>
               </div>
-              <input value={m.name || ""} onChange={(e) => patchMinion(m.id, { name: e.target.value })}
-                placeholder="Nome" style={{ width: "100%", marginBottom: 6, fontWeight: 700 }} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, fontSize: 11 }}>
-                <label>HP<input type="number" value={m.hp ?? 12} onChange={(e) => patchMinion(m.id, { hp: +e.target.value })} style={{ width: "100%" }} /></label>
-                <label>CA<input type="number" value={m.ac ?? 11} onChange={(e) => patchMinion(m.id, { ac: +e.target.value })} style={{ width: "100%" }} /></label>
-                <label>DEX<input type="number" value={m.dex ?? 1} onChange={(e) => patchMinion(m.id, { dex: +e.target.value })} style={{ width: "100%" }} /></label>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 4, fontSize: 11, marginTop: 4 }}>
-                <label>Att.<input value={m.atkName || "Attacco"} onChange={(e) => patchMinion(m.id, { atkName: e.target.value })} style={{ width: "100%" }} /></label>
-                <label>Dadi<input value={m.atkDice || "1d6"} onChange={(e) => patchMinion(m.id, { atkDice: e.target.value })} style={{ width: "100%" }} /></label>
-                <label>+colpire<input type="number" value={m.atkBonus ?? 2} onChange={(e) => patchMinion(m.id, { atkBonus: +e.target.value })} style={{ width: "100%" }} /></label>
-                <label>Gittata<input type="number" value={m.atkRange ?? 1} onChange={(e) => patchMinion(m.id, { atkRange: +e.target.value })} style={{ width: "100%" }} /></label>
-              </div>
-              <button className="btn-delete btn-admin-danger" style={{ fontSize: 10, padding: "3px 7px", marginTop: 8, width: "100%" }} onClick={() => removeMinion(m.id)}>✖ Elimina</button>
             </div>
           ))}
         </div>
       </div>
-
-      <div className="admin-dashboard-grid wb-boss-grid">
-        {characters.map((char) => (
-          <div key={char.id} className="boss-card">
-            <div className="view-mode">
-              <div className="boss-card-header">
-                <h3>{char.name}</h3>
-                <span className="status-tag" style={{ fontSize: "9px", opacity: 0.7 }}>
-                  {char.class || "—"}
-                </span>
-              </div>
-
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", padding: "8px 0" }}>
-                {/* Sprite Vivo */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 9, opacity: 0.6, fontFamily: "monospace" }}>VIVO</span>
-                  {char.spriteUrl
-                    ? <img src={char.spriteUrl} alt={char.name} className="boss-sprite-preview" style={{ imageRendering: "pixelated", mixBlendMode: "multiply", maxHeight: 90 }} />
-                    : <div style={{ fontSize: 28, opacity: 0.25 }}>🧍</div>
-                  }
-                  <input ref={(el) => { fileRefs.current[char.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={(e) => loadSprite(e.target.files[0], char.id)} />
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button className="btn-edit" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => fileRefs.current[char.id]?.click()}>
-                      📁 {char.spriteUrl ? "Cambia" : "Carica"}
-                    </button>
-                    {char.spriteUrl && <button className="btn-delete btn-admin-danger" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => removeSprite(char.id)}>✖</button>}
-                  </div>
-                </div>
-
-                {/* Sprite Morto */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 9, opacity: 0.6, fontFamily: "monospace" }}>MORTO</span>
-                  {char.deadSpriteUrl
-                    ? <img src={char.deadSpriteUrl} alt={`${char.name} dead`} className="boss-sprite-preview" style={{ imageRendering: "pixelated", mixBlendMode: "multiply", maxHeight: 90, filter: "grayscale(0.5)" }} />
-                    : <div style={{ fontSize: 28, opacity: 0.25 }}>💀</div>
-                  }
-                  <input ref={(el) => { deadFileRefs.current[char.id] = el; }} type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={(e) => loadDeadSprite(e.target.files[0], char.id)} />
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button className="btn-edit" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => deadFileRefs.current[char.id]?.click()}>
-                      💀 {char.deadSpriteUrl ? "Cambia" : "Carica"}
-                    </button>
-                    {char.deadSpriteUrl && <button className="btn-delete btn-admin-danger" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => removeDeadSprite(char.id)}>✖</button>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </section>
   );
 }
