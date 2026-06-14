@@ -84,6 +84,9 @@ nav a.admin-link:hover { color:#fff5e6 !important; text-shadow:0 1px 3px rgba(0,
 /* Burger → ambra */
 .burger .line { background:var(--amber) !important; box-shadow:0 0 8px rgba(240,169,59,.4); }
 
+/* X di chiusura del drawer: visibile solo su mobile (vedi media query) */
+.nav-close { display:none; }
+
 /* Bottoni login/avatar sul fondo scuro restano leggibili (gradiente crit) */
 .login-button, .logged-user-button {
   background:var(--grad-crit) !important; color:#fff !important; border:none;
@@ -123,9 +126,21 @@ nav a.admin-link:hover { color:#fff5e6 !important; text-shadow:0 1px 3px rgba(0,
     background:linear-gradient(180deg,#0e1426,#0a0f1c) !important; margin:0 !important;
     transition:transform .42s var(--ease-out), opacity .3s ease;
   }
-  /* backdrop sfocato dietro al drawer */
-  nav.active::before {
-    content:""; position:fixed; inset:0; z-index:-1;
+  /* X di chiusura in alto a destra nel drawer */
+  .nav-close {
+    display:block !important; position:absolute;
+    top:calc(var(--navbar-h) - 40px); right:14px;
+    width:34px; height:34px; padding:0; line-height:1;
+    font-size:26px; font-weight:700;
+    background:none; color:#ff8a80; border:none; border-radius:50%;
+    cursor:pointer; z-index:2;
+    transition:color var(--dur) var(--ease), text-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+  }
+  .nav-close:hover { color:#ffd2cd; text-shadow:0 0 10px rgba(255,138,128,.6); transform:scale(1.12); }
+
+  /* backdrop sfocato dietro al drawer: elemento reale e cliccabile (chiude il menu) */
+  .nav-backdrop {
+    position:fixed; inset:0; z-index:1040;
     background:var(--overlay); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
     animation:ch-fade-in .35s ease both;
   }

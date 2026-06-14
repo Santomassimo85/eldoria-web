@@ -451,7 +451,12 @@ export default function App() {
           )}
         </div>
 
-        <nav className={menuOpen ? "active" : ""}>
+        {menuOpen && <div className="nav-backdrop" onClick={closeMenu} aria-hidden="true" />}
+        <nav
+          className={menuOpen ? "active" : ""}
+          onClick={(e) => { if (e.target === e.currentTarget) closeMenu(); }}
+        >
+          <button type="button" className="nav-close" onClick={closeMenu} aria-label="Chiudi menu">×</button>
           <NavLink to="/" end onClick={closeMenu}>Home</NavLink>
           <NavLink to="/assistente" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "#0e4d75", fontWeight: 700 })}>Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
