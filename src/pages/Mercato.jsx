@@ -19,7 +19,6 @@ import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/padithas.png";
-const DIVIDER_IMAGE = "/assets/PhotoStory/GruppoENOX/serpenteArcanite.png";
 
 const ITEM_TYPES = [
   "Arma", "Armatura", "Accessori", "Artefatto Magico",
@@ -463,25 +462,23 @@ export default function Mercato() {
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
-      {/* ── HERO ── */}
-      <section className="cine-hero cine-hero--short" aria-label="Mercato Nero di Exanthia">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
+      <section className="merc-hero" aria-label="Mercato Nero di Exanthia">
+        <div className="merc-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Il Sottosuolo · Gilda dei Ratti</span>
-          <h1 className="cine-hero-title">Mercato Nero di Exanthia</h1>
-          <p className="cine-hero-tagline">
+        <div className="merc-hero-wash" aria-hidden="true" />
+        <div className="merc-hero-plate">
+          <span className="merc-hero-seal">✦ Il Sottosuolo · Gilda dei Ratti</span>
+          <h1 className="merc-hero-title">Mercato Nero<br />di Exanthia</h1>
+          <p className="merc-hero-tagline">
             Reagenti proibiti, artefatti rubati e aste cieche. Ogni affare aumenta la tua influenza nell'ombra.
           </p>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
-        </div>
+        <a href="#merc-banco" className="merc-hero-scroll" aria-label="Scorri al banco">
+          <span className="merc-hero-scroll-tx">Scorri</span>
+          <span className="merc-hero-scroll-ic" aria-hidden="true">↓</span>
+        </a>
       </section>
 
       <div className="cine-wrap cine-wrap--wide mercato-body">
@@ -536,20 +533,12 @@ export default function Mercato() {
       </div>
       </div>
 
-      {/* ── DIVISORE: La Merce ── */}
-      <section className="cine-scrolly cine-scrolly--short" aria-label="La Merce">
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={DIVIDER_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame">
-            <span className="cine-scrolly-eyebrow">Banco del Contrabbando</span>
-            <h2 className="cine-scrolly-title">La Merce</h2>
-            <p className="cine-scrolly-text">Ciò che nessuna bottega onesta oserebbe esporre.</p>
-          </div>
-        </div>
-      </section>
+      {/* ── RUBRICA: Il Banco del Contrabbando ── */}
+      <div id="merc-banco" className="merc-rubric">
+        <span className="merc-rubric-eyebrow">Banco del Contrabbando</span>
+        <h2 className="merc-rubric-title">La Merce</h2>
+        <p className="merc-rubric-sub">Ciò che nessuna bottega onesta oserebbe esporre.</p>
+      </div>
 
       <div className="cine-wrap cine-wrap--wide mercato-body">
       {filteredItems.length === 0 ? (

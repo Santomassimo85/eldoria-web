@@ -1,166 +1,403 @@
 /* ============================================================
-   PARTY — tema cinematic (crimson/oro, accento per-compagnia)
-   Scheletro da styles/cinematic.css.
+   PARTY — architettura "Registro Araldico delle Casate" (Pergamena)
+   Hero asimmetrico · indice a sigilli · casate a doppia pagina
+   (marginalia sticky + registro di medaglioni) · scheda al tap.
+   Scheletro condiviso da cinematic.css; qui la struttura della pagina.
    ============================================================ */
 
-/* ─── FACTION TABS (glass scuri) ───────────────────────────── */
-.party-page .party-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin: 8px 0 8px;
-}
-.party-page .party-tab {
-  --tab-color: var(--cine-gold);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 18px;
-  background: linear-gradient(135deg, #fbf4e0, #e9dcbe);
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
-  border-radius: 22px;
-  font-family: var(--font-title);
-  font-size: 0.74rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #6a5b41;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: border-color 0.15s, color 0.15s, transform 0.15s, background 0.15s;
-}
-.party-page .party-tab:hover { border-color: var(--tab-color); color: #33281a; transform: translateY(-1px); }
-.party-page .party-tab-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--tab-color); }
-.party-page .party-tab.on {
-  background: linear-gradient(135deg, var(--tab-color), color-mix(in srgb, var(--tab-color) 55%, #000));
-  border-color: var(--tab-color);
-  color: #fff;
-}
-.party-page .party-tab.on .party-tab-dot { background: #fff; }
-
-/* ─── PARTY LIST ───────────────────────────────────────────── */
-.party-page .party-list { display: flex; flex-direction: column; }
-.party-page .party-faction { position: relative; }
-
-/* frame divisore in colore compagnia */
-.party-page .party-faction .cine-scrolly-frame { border-top-color: var(--party-color); }
-
-/* crest tondo dentro al frame */
-.party-page .party-crest {
-  --accent: var(--cine-gold);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
-  border: 2px solid rgba(255, 240, 210, 0.4);
-  box-shadow: 0 8px 20px rgba(86, 64, 30, 0.18);
-}
-.party-page .party-crest-letter {
-  font-family: var(--font-title);
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: #fffbea;
-  line-height: 1;
-}
-.party-page .party-count-chip {
-  display: inline-block;
-  margin: 4px auto 0;
-  padding: 5px 16px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--party-color) 28%, rgba(45, 32, 14, 0.18));
-  border: 1px solid color-mix(in srgb, var(--party-color) 70%, transparent);
-  font-family: var(--font-title);
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #33281a;
-}
-
-/* ─── HERO GRID ────────────────────────────────────────────── */
-.party-page .hero-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 18px;
-  padding: 8px 0 0;
-}
-@media (min-width: 720px) {
-  .party-page .hero-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 22px; }
-}
-@media (max-width: 420px) {
-  .party-page .hero-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-}
-
-/* ─── HERO CARD (glass scuro con accento compagnia) ────────── */
-.party-page .hero-card {
-  --accent: var(--cine-gold);
+/* ============================================================
+   1) HERO ASIMMETRICO — immagine full-bleed + placca-registro
+   ============================================================ */
+.party-page .party-hero {
   position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 84vh;
   display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, #fbf4e0, #e9dcbe);
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 16px;
+  align-items: flex-end;
   overflow: hidden;
   isolation: isolate;
-  box-shadow: 0 12px 30px rgba(86, 64, 30, 0.18);
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  padding: 0 0 52px;
 }
-.party-page .hero-card:hover {
-  border-color: var(--cine-gold);
-  transform: translateY(-3px);
-  box-shadow: 0 20px 44px rgba(86, 64, 30, 0.26);
-}
-.party-page .hero-card-photo { position: relative; aspect-ratio: 3 / 4; overflow: hidden; }
-.party-page .hero-card-photo img {
+.party-page .party-hero-media { position: absolute; inset: 0; z-index: 0; }
+.party-page .party-hero-media img {
+  position: absolute; inset: 0;
   width: 100%; height: 100%;
-  object-fit: cover; object-position: center top;
-  transition: transform 0.4s ease;
+  object-fit: cover; object-position: center 24%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.24px), 0);
+  will-change: transform;
 }
-.party-page .hero-card:hover .hero-card-photo img { transform: scale(1.05); }
-.party-page .hero-card-shade { display: none; }
-.party-page .hero-card-plate {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  padding: 12px 14px 14px;
-  z-index: 1;
-  text-align: left;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 92%, #000) 38%);
+.party-page .party-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(26,16,6,.54) 0%, rgba(26,16,6,.16) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
 }
-.party-page .hero-card-name {
-  font-family: var(--font-title);
-  font-size: clamp(0.86rem, 2.4vw, 1rem);
-  letter-spacing: 0.04em;
-  color: #fff;
-  margin: 0 0 4px;
-  line-height: 1.2;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+.party-page .party-hero-plate {
+  position: relative; z-index: 2;
+  margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: party-plate-in .7s cubic-bezier(.16,1,.3,1) both;
 }
-.party-page .hero-card-meta {
-  font-family: var(--font-text);
-  font-size: 0.72rem;
-  color: rgba(255, 245, 230, 0.92);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-.party-page .hero-card-meta .dot { opacity: 0.6; }
+@keyframes party-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .party-page .hero-card,
-  .party-page .hero-card-photo img { transition: none !important; transform: none !important; }
+.party-page .party-hero-seal {
+  display: inline-block;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase;
+  color: #8a261c; padding: 6px 14px;
+  border: 1px solid rgba(138,38,28,.45); border-radius: 999px;
+  background: rgba(168,50,50,.08);
+}
+.party-page .party-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 7.6vw, 4rem);
+  line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
+  background: linear-gradient(180deg, #3a160f 0%, #8a261c 58%, #c0392b 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.party-page .party-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif;
+  color: #46382a; font-size: clamp(.98rem, 2.4vw, 1.1rem); line-height: 1.6;
+  margin: 0 0 18px; max-width: 44ch;
+}
+
+/* statistiche come righe di registro (non pills) */
+.party-page .party-hero-stats {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 0; margin: 0;
+  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
+}
+.party-page .party-hero-stats > div {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
+}
+.party-page .party-hero-stats dt {
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .18em; text-transform: uppercase; color: #6a5b41;
+}
+.party-page .party-hero-stats dd {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: 1.25rem; line-height: 1; color: var(--cine-accent);
+}
+
+.party-page .party-hero-scroll {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-decoration: none; color: #5a3d12;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .58rem; letter-spacing: .42em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(255,248,230,.7);
+}
+.party-page .party-hero-scroll-ic {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1.5px solid rgba(168,50,50,.5);
+  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
+  color: #8a261c; font-size: 1rem;
+  animation: party-bob 2.2s ease-in-out infinite;
+}
+@keyframes party-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+
+@media (min-width: 560px) {
+  .party-page .party-hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .party-page .party-hero-stats > div {
+    flex-direction: column; align-items: flex-start; gap: 4px;
+    border-bottom: none; border-right: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
+    padding: 10px 14px 6px;
+  }
+  .party-page .party-hero-stats > div:last-child { border-right: none; }
+}
+@media (min-width: 900px) {
+  .party-page .party-hero { min-height: 92vh; align-items: center; }
+  .party-page .party-hero-media img { object-position: center 28%; }
+  .party-page .party-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(26,16,6,.66) 0%, rgba(26,16,6,.22) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .party-page .party-hero-plate { margin: 0 0 0 7vw; max-width: 540px; padding: 36px 34px; }
 }
 
 /* ============================================================
-   AMBIENT FX — sfondo animato: contenuto sopra, layer FX dietro
+   2) INDICE DELLE CASATE — sigilli araldici (filtro)
+   ============================================================ */
+.party-page .party-index {
+  max-width: 1120px; margin: 26px auto 4px;
+  padding: 0 clamp(16px, 4vw, 30px);
+  text-align: center;
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+}
+.party-page .party-index-eyebrow {
+  display: inline-block; margin-bottom: 14px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: #6a5b41;
+  position: relative; padding: 0 18px;
+}
+.party-page .party-index-eyebrow::before,
+.party-page .party-index-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 26px; height: 1px;
+  background: color-mix(in srgb, var(--cine-accent) 50%, transparent);
+}
+.party-page .party-index-eyebrow::before { right: 100%; }
+.party-page .party-index-eyebrow::after  { left: 100%; }
+
+.party-page .party-index-sigils {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+}
+.party-page .party-sigil {
+  --accent: var(--cine-accent);
+  display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 4px 6px 2px; background: none; border: none; cursor: pointer;
+  transition: transform .15s ease;
+}
+.party-page .party-sigil:hover { transform: translateY(-2px); }
+.party-page .party-sigil-crest {
+  display: flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px; border-radius: 50%;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 700;
+  font-size: 1.4rem; color: #6a5b41;
+  background: linear-gradient(135deg, #fbf4e0, #e9dcbe);
+  border: 2px solid color-mix(in srgb, var(--accent) 38%, #c9b78a);
+  box-shadow: 0 6px 16px -8px rgba(86,64,30,.5);
+  transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.party-page .party-sigil-label {
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: #6a5b41;
+  transition: color .18s ease;
+}
+.party-page .party-sigil:hover .party-sigil-crest { border-color: var(--accent); }
+.party-page .party-sigil.on .party-sigil-crest {
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+  border-color: var(--accent); color: #fffbea;
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.party-page .party-sigil.on .party-sigil-label { color: #33281a; }
+
+/* ============================================================
+   3) CASATE — doppia pagina di manoscritto
+   ============================================================ */
+.party-page .party-list { display: flex; flex-direction: column; gap: 8px; }
+
+.party-page .party-house {
+  --party-color: var(--cine-accent);
+  max-width: 1120px; margin: 0 auto;
+  padding: 30px clamp(16px, 4vw, 30px);
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+  border-top: 1px solid color-mix(in srgb, var(--party-color) 24%, transparent);
+}
+.party-page .party-house:first-child { border-top: none; }
+
+/* ── marginalia ── */
+.party-page .party-house-aside {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+  margin-bottom: 18px;
+}
+.party-page .party-crest {
+  --accent: var(--cine-gold);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+  border: 2px solid rgba(255, 240, 210, 0.45);
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--accent) 70%, rgba(86,64,30,.4));
+}
+.party-page .party-crest-letter {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-size: 1.9rem; font-weight: 700; color: #fffbea; line-height: 1;
+}
+.party-page .party-house-code {
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: #6a5b41;
+}
+.party-page .party-house-motto {
+  margin: 0; max-width: 26ch;
+  font-family: var(--font-ui, Georgia), serif; font-style: italic;
+  color: #7c560f; font-size: .92rem; line-height: 1.5;
+}
+.party-page .party-count-chip {
+  display: inline-block;
+  padding: 5px 16px; border-radius: 999px;
+  background: color-mix(in srgb, var(--party-color) 22%, rgba(45, 32, 14, 0.10));
+  border: 1px solid color-mix(in srgb, var(--party-color) 60%, transparent);
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .18em; text-transform: uppercase; color: #33281a;
+}
+
+/* ── registro ── */
+.party-page .party-roster-rubric {
+  display: flex; align-items: center; gap: 14px; margin: 0 0 14px;
+}
+.party-page .party-roster-rubric::before,
+.party-page .party-roster-rubric::after {
+  content: ""; height: 1px; flex: 1 1 auto;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--party-color) 55%, transparent));
+}
+.party-page .party-roster-rubric::after { background: linear-gradient(270deg, transparent, color-mix(in srgb, var(--party-color) 55%, transparent)); }
+.party-page .party-roster-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.3rem, 4vw, 2rem); letter-spacing: .04em; text-align: center;
+  background: linear-gradient(180deg, #3a2a12 0%, var(--party-color) 92%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.party-page .roster-list {
+  display: grid; grid-template-columns: 1fr; gap: 10px;
+}
+@media (min-width: 620px) { .party-page .roster-list { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+
+/* ── voce di registro: medaglione + testo ── */
+.party-page .roster-entry {
+  --accent: var(--cine-accent);
+  display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer;
+  padding: 10px 14px 10px 10px;
+  background: linear-gradient(180deg, rgba(255,252,245,.98), rgba(250,242,222,.96));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-left: 4px solid var(--accent);
+  border-radius: 14px;
+  box-shadow: 0 10px 26px -16px rgba(86,64,30,.5);
+  transition: transform .16s ease, box-shadow .2s ease, border-color .16s ease;
+  position: relative;
+}
+.party-page .roster-entry:hover {
+  transform: translateX(3px);
+  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  box-shadow: 0 18px 38px -18px rgba(86,64,30,.6);
+}
+.party-page .roster-entry:active { transform: translateX(1px) scale(.997); }
+
+.party-page .roster-medallion {
+  flex: 0 0 62px; width: 62px; height: 62px; border-radius: 50%; overflow: hidden;
+  background: #e9dcbe;
+  border: 2px solid color-mix(in srgb, var(--accent) 55%, #c9b78a);
+  box-shadow: 0 4px 12px -6px rgba(86,64,30,.5);
+}
+.party-page .roster-medallion img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block;
+  transition: transform .35s ease;
+}
+.party-page .roster-entry:hover .roster-medallion img { transform: scale(1.08); }
+
+.party-page .roster-entry-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.party-page .roster-entry-name {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: 1.04rem; color: #33281a; letter-spacing: .01em; line-height: 1.15;
+}
+.party-page .roster-entry-meta {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-family: var(--font-ui, Georgia), serif; font-size: .8rem; color: #6a5b41; letter-spacing: .02em;
+}
+.party-page .roster-entry-meta .dot { opacity: .55; }
+.party-page .roster-entry-cue {
+  flex: 0 0 auto;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--accent); opacity: .7; transition: transform .16s ease, opacity .16s ease;
+}
+.party-page .roster-entry:hover .roster-entry-cue { transform: translateX(3px); opacity: 1; }
+
+/* ── desktop: marginalia sticky a sinistra, registro a destra ── */
+@media (min-width: 900px) {
+  .party-page .party-house {
+    display: grid; grid-template-columns: 220px 1fr; gap: 42px; align-items: start;
+    padding-block: 40px;
+  }
+  .party-page .party-house-aside {
+    position: sticky; top: calc(var(--navbar-h, 80px) + 28px);
+    margin-bottom: 0; padding: 18px 14px;
+    border-right: 2px solid color-mix(in srgb, var(--party-color) 30%, transparent);
+  }
+  .party-page .party-crest { width: 76px; height: 76px; }
+  .party-page .party-crest-letter { font-size: 2.2rem; }
+  .party-page .party-roster-rubric { justify-content: flex-start; }
+  .party-page .party-roster-rubric::after { display: none; }
+  .party-page .party-roster-title { text-align: left; }
+}
+
+/* ============================================================
+   4) SCHEDA EROE — modale-pergamena (tap)
+   ============================================================ */
+.party-page .hero-modal-overlay {
+  position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center;
+  padding: 18px; background: rgba(34,22,8,.55);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  animation: party-fade .2s ease both;
+}
+@keyframes party-fade { from { opacity: 0; } to { opacity: 1; } }
+.party-page .hero-modal {
+  --accent: var(--cine-accent);
+  position: relative; width: 100%; max-width: 440px; max-height: calc(100dvh - 80px); overflow-y: auto;
+  background: linear-gradient(180deg, #fffdf5, #f3ead4);
+  border: 1px solid var(--line, #c9b78a); border-top: 4px solid var(--accent);
+  border-radius: 18px; padding: 0 24px 24px;
+  box-shadow: 0 30px 70px -24px rgba(86,64,30,.7);
+  animation: party-pop .28s cubic-bezier(.34,1.56,.64,1) both;
+  text-align: center;
+}
+@keyframes party-pop { from { opacity: 0; transform: scale(.92) translateY(12px); } to { opacity: 1; transform: none; } }
+.party-page .hero-modal-close {
+  position: sticky; top: 12px; float: right; margin: 12px -8px 0 0;
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(124,86,15,.3);
+  background: rgba(255,253,245,.9); color: #8a261c; font-size: .85rem; cursor: pointer; z-index: 2;
+  transition: background .15s ease, transform .15s ease;
+}
+.party-page .hero-modal-close:hover { background: #f1e7cf; transform: scale(1.08); }
+.party-page .hero-modal-img {
+  width: 168px; height: 168px; object-fit: cover; object-position: center top;
+  border-radius: 50%; margin: 18px auto 14px; display: block;
+  border: 3px solid color-mix(in srgb, var(--accent) 55%, #c9b78a);
+  box-shadow: 0 12px 30px -12px rgba(86,64,30,.6);
+}
+.party-page .hero-modal-house {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: #6a5b41;
+}
+.party-page .hero-modal-house-crest {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+  color: #fffbea; font-family: var(--font-display, "Cinzel Decorative"), serif; font-size: .8rem; font-weight: 700;
+}
+.party-page .hero-modal-name {
+  font-family: var(--font-display, "Cinzel Decorative"), serif; font-weight: 900;
+  font-size: clamp(1.3rem, 5vw, 1.8rem); color: var(--accent); margin: 6px 0 12px; line-height: 1.1;
+}
+.party-page .hero-modal-meta {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0 0 14px; text-align: left;
+}
+.party-page .hero-modal-meta p {
+  margin: 0; padding: 10px 14px; color: #33281a; font-size: .9rem; line-height: 1.4;
+  background: color-mix(in srgb, var(--accent) 8%, rgba(169,120,26,.06));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 12px;
+}
+.party-page .hero-modal-meta strong {
+  display: block; font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: #8a261c; margin-bottom: 2px;
+}
+.party-page .hero-modal-motto {
+  margin: 0; padding: 12px 16px; color: var(--accent); font-style: italic;
+  border-left: 3px solid var(--accent); text-align: left;
+  background: color-mix(in srgb, var(--accent) 6%, transparent); border-radius: 0 10px 10px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .party-page .party-hero-plate,
+  .party-page .party-hero-scroll-ic,
+  .party-page .roster-entry,
+  .party-page .roster-medallion img,
+  .party-page .hero-modal,
+  .party-page .hero-modal-overlay { animation: none !important; transition: none !important; }
+}
+
+/* ============================================================
+   AMBIENT FX — contenuto sopra, layer FX dietro
    ============================================================ */
 .party-page > * { position: relative; z-index: 1; }
 .party-page > .ambient-fx { position: fixed; z-index: 0; }
-.party-page > .cine-side-nav { z-index: 95; }

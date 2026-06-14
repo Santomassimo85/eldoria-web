@@ -10,16 +10,6 @@ import AmbientFX from '../components/AmbientFX';
 import CineToolbar from '../components/CineToolbar';
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tavern.png";
-const DIVIDER_IMAGES = [
-  "/assets/PhotoStory/GruppoMEAA/oldman.png",
-  "/assets/PhotoStory/GruppoENOX/meetDuke.png",
-  "/assets/PhotoStory/GruppoENOX/tarbunusMeet.png",
-  "/assets/PhotoStory/GruppoLEAF/meetTaaras.png",
-  "/assets/PhotoStory/GruppoMEAA/silaen.png",
-  "/assets/PhotoStory/GruppoMEAA/getha_nephew.png",
-  "/assets/PhotoStory/GruppoMEAA/jade.png",
-  "/assets/PhotoStory/GruppoMEAA/caius.png",
-];
 const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function NPC() {
@@ -74,31 +64,27 @@ export default function NPC() {
     <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "#2c8a5a", "--cine-accent-2": "#3fae72" }}>
       <AmbientFX variant="water" />
 
-      {/* ── HERO ── */}
-      <section id="npc-top" className="cine-hero" aria-label="Gli abitanti del mondo">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
+      <section id="npc-top" className="npc-hero" aria-label="Gli abitanti del mondo">
+        <div className="npc-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Archivio dei Volti</span>
-          <h1 className="cine-hero-title">Gli Abitanti del Mondo</h1>
-          <p className="cine-hero-tagline">
+        <div className="npc-hero-wash" aria-hidden="true" />
+        <div className="npc-hero-plate">
+          <span className="npc-hero-seal">✦ Schedario dei Volti</span>
+          <h1 className="npc-hero-title">Gli Abitanti<br />del Mondo</h1>
+          <p className="npc-hero-tagline">
             Mercanti, nobili, erranti e creature: ogni volto che gli eroi
             hanno incrociato lungo le strade di Exanthia.
           </p>
-          <div className="cine-hero-meta">
-            <span className="cine-pill">👤 {npcs.length} personaggi</span>
-            {cityKeys.length > 0 && (
-              <span className="cine-pill cine-pill--accent">🏙 {cityKeys.length} {cityKeys.length === 1 ? "luogo" : "luoghi"}</span>
-            )}
-          </div>
+          <dl className="npc-hero-stats">
+            <div><dt>Personaggi</dt><dd>{npcs.length}</dd></div>
+            <div><dt>{cityKeys.length === 1 ? "Luogo" : "Luoghi"}</dt><dd>{cityKeys.length}</dd></div>
+          </dl>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
+        <div className="npc-hero-scroll" aria-hidden="true">
+          <span className="npc-hero-scroll-tx">Scorri</span>
+          <span className="npc-hero-scroll-ic">↓</span>
         </div>
       </section>
 
@@ -122,49 +108,49 @@ export default function NPC() {
         <p className="cine-empty">Nessun personaggio corrisponde alla ricerca.</p>
       ) : (
         visibleCities.map(({ city, idx, list }) => (
-          <div key={city} className="npc-city" data-accent={idx % 5}>
-            <section id={`npc-${slugify(city)}`} className="cine-scrolly cine-scrolly--short" aria-label={city}>
-              <div className="cine-scrolly-media" aria-hidden="true">
-                <img src={DIVIDER_IMAGES[idx % DIVIDER_IMAGES.length]} alt=""
-                     onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-              </div>
-              <div className="cine-scrolly-content">
-                <div className="cine-scrolly-frame">
-                  <span className="cine-scrolly-eyebrow">{city === "Erranti" ? "Senza dimora" : "Luogo"}</span>
-                  <h2 className="cine-scrolly-title">{city}</h2>
-                  <p className="cine-scrolly-text">
-                    {list.length}{isFiltering && list.length !== grouped[city].length ? ` di ${grouped[city].length}` : ""} {list.length === 1 ? "abitante" : "abitanti"}
-                  </p>
-                </div>
-              </div>
-            </section>
+          <section
+            key={city}
+            id={`npc-${slugify(city)}`}
+            className="npc-city"
+            data-accent={idx % 5}
+            aria-label={city}
+          >
+            {/* marginalia sticky del luogo */}
+            <aside className="npc-city-aside">
+              <span className="npc-city-seal" aria-hidden="true">{city === "Erranti" ? "✸" : "⌖"}</span>
+              <span className="npc-city-eyebrow">{city === "Erranti" ? "Senza dimora" : "Luogo"}</span>
+              <h2 className="npc-city-name">{city}</h2>
+              <span className="npc-city-chip">
+                {list.length}{isFiltering && list.length !== grouped[city].length ? ` di ${grouped[city].length}` : ""} {list.length === 1 ? "abitante" : "abitanti"}
+              </span>
+            </aside>
 
-            <div className="cine-wrap cine-wrap--wide">
-              <div className="npc-grid">
-                {list.map((npc) => (
-                  <div key={npc.id} className="npc-card">
+            {/* registro delle schede-dossier */}
+            <div className="npc-dossier-list">
+              {list.map((npc) => (
+                <article key={npc.id} className="npc-dossier">
+                  <div className="npc-dossier-portrait">
                     <img
                       src={npc.image || "/assets/player/default.png"}
                       alt={npc.name}
-                      className="npc-card-image"
+                      loading="lazy"
                     />
-                    <div className="npc-card-body">
-                      <h3 className="npc-card-name">{npc.name}</h3>
-                      {(npc.faction || npc.location) && (
-                        <p className="npc-card-meta">
-                          {[npc.faction, npc.location].filter(Boolean).join(' · ')}
-                        </p>
-                      )}
-                      {npc.description && (
-                        <p className="npc-card-desc">{npc.description}</p>
-                      )}
-                    </div>
                   </div>
-                ))}
-              </div>
+                  <div className="npc-dossier-body">
+                    <h3 className="npc-dossier-name">{npc.name}</h3>
+                    {(npc.faction || npc.location) && (
+                      <p className="npc-dossier-meta">
+                        {[npc.faction, npc.location].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {npc.description && (
+                      <p className="npc-dossier-desc">{npc.description}</p>
+                    )}
+                  </div>
+                </article>
+              ))}
             </div>
-          </div>
+          </section>
         ))
       )}
 

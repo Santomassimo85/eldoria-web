@@ -115,3 +115,65 @@
   color: var(--cine-gold-soft);
   margin-top: 14px;
 }
+
+/* ============================================================
+   VISTA PLAYER → "Cartiglio di Stima" (Pergamena Antica)
+   Reframe della vetrina: ritratto incorniciato + voce di registro,
+   prezzo a bolla di ceralacca. Solo presentazione, override scoped.
+   ============================================================ */
+.item-detail-page .player-showcase {
+  background: linear-gradient(180deg, #fffdf5, #f3ead4) !important;
+  border: 1px solid var(--line, #c9b78a) !important;
+  border-top: 5px solid var(--rarity-edge, var(--cine-accent)) !important;
+  border-radius: 18px !important;
+  padding: 16px 16px 0 !important;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.55), 0 1px 0 rgba(255,255,255,.7) inset !important;
+}
+/* ritratto incorniciato (non più incollato ai bordi) */
+.item-detail-page .player-showcase .ps-image-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 16/10;
+  background: #1a0f14;
+  border: 1px solid color-mix(in srgb, var(--rarity-edge, var(--cine-accent)) 45%, #c9b78a);
+  box-shadow: 0 12px 30px -12px rgba(86,64,30,.5);
+}
+.item-detail-page .player-showcase .ps-rarity-badge {
+  font-family: var(--font-head, "Cinzel"), serif;
+}
+/* corpo come voce di registro */
+.item-detail-page .player-showcase .ps-info { padding: 22px 18px 28px; }
+.item-detail-page .player-showcase .ps-type {
+  font-family: var(--font-head, "Cinzel"), serif;
+  color: #7a2e6e; letter-spacing: .2em;
+}
+.item-detail-page .player-showcase .ps-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  color: var(--rarity-edge, #7a2e6e);
+  border-bottom: 1px solid color-mix(in srgb, var(--rarity-edge, var(--cine-accent)) 45%, #c9b78a);
+}
+/* prezzo a bolla di ceralacca */
+.item-detail-page .player-showcase .ps-price-row {
+  background: linear-gradient(135deg, rgba(122,46,110,.08), rgba(169,120,26,.06)) !important;
+  border: 1px solid color-mix(in srgb, var(--cine-gold) 45%, #c9b78a) !important;
+  border-radius: 14px !important;
+}
+.item-detail-page .player-showcase .ps-price-label {
+  font-family: var(--font-head, "Cinzel"), serif; color: #7c560f;
+}
+.item-detail-page .player-showcase .ps-price-value {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  color: #8a261c;
+}
+.item-detail-page .player-showcase .ps-description {
+  border-top: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
+  color: #33281a;
+  font-family: var(--font-ui, Georgia), serif;
+}
+/* CTA acquisto/offerta in stile placca */
+.item-detail-page .player-showcase .ps-buy-btn,
+.item-detail-page .player-showcase .ps-bid-btn {
+  font-family: var(--font-head, "Cinzel"), serif; letter-spacing: .04em;
+  border-radius: 12px;
+}

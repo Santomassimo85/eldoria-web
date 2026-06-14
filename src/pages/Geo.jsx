@@ -76,39 +76,42 @@ export default function Geo() {
     <section className="cine-page geo-page cine-compact" style={{ "--cine-accent": "#1f8a6a", "--cine-accent-2": "#2fb088" }}>
       <AmbientFX variant="cosmos" />
 
-      {/* ── HERO ── */}
-      <section id="geo-top" className="cine-hero" aria-label="Archivio Geomantico">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
+      <section id="geo-top" className="geo-hero" aria-label="Archivio Geomantico">
+        <div className="geo-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Le Terre di Exanthia</span>
-          <h1 className="cine-hero-title">Archivio Geomantico</h1>
-          <p className="cine-hero-tagline">
+        <div className="geo-hero-wash" aria-hidden="true" />
+        <div className="geo-hero-plate">
+          <span className="geo-hero-seal">✦ Atlante Geomantico</span>
+          <h1 className="geo-hero-title">Archivio<br />Geomantico</h1>
+          <p className="geo-hero-tagline">
             Continenti, regni e rovine: ogni luogo che le cronache hanno cartografato.
           </p>
-          <div className="cine-hero-meta">
-            <span className="cine-pill">🗺 {locations.length} luoghi</span>
-            <span className="cine-pill cine-pill--accent">🌍 {activeContinents.length} continenti</span>
-          </div>
+          <dl className="geo-hero-stats">
+            <div><dt>Luoghi</dt><dd>{locations.length}</dd></div>
+            <div><dt>{activeContinents.length === 1 ? "Continente" : "Continenti"}</dt><dd>{activeContinents.length}</dd></div>
+          </dl>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
-        </div>
+        <a href="#geo-index" className="geo-hero-scroll" aria-label="Scorri all'atlante">
+          <span className="geo-hero-scroll-tx">Scorri</span>
+          <span className="geo-hero-scroll-ic" aria-hidden="true">↓</span>
+        </a>
       </section>
 
-      {/* ── SIDE NAV ── */}
+      {/* ── INDICE DEI CONTINENTI: sigilli inline (sostituisce il rail flottante) ── */}
       {activeContinents.length > 0 && (
-        <nav className="cine-side-nav" aria-label="Navigazione continenti">
-          <a href="#geo-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">🗺</span></a>
-          {activeContinents.map(c => (
-            <a key={c} href={`#geo-${slugify(c)}`} className="cine-side-nav-btn" title={c}><span aria-hidden="true">🌍</span></a>
-          ))}
-        </nav>
+        <div id="geo-index" className="geo-index">
+          <span className="geo-index-eyebrow">Indice · Le Terre di Exanthia</span>
+          <div className="geo-index-sigils">
+            {activeContinents.map((c, i) => (
+              <a key={c} href={`#geo-${slugify(c)}`} className="geo-sigil" data-accent={i % 3}>
+                <span className="geo-sigil-crest" aria-hidden="true">🌍</span>
+                <span className="geo-sigil-label">{c}</span>
+              </a>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── RICERCA ── */}
@@ -163,55 +166,56 @@ export default function Geo() {
       )}
 
       {/* ---- CONTINENTI ---- */}
-      {visibleContinents.map(({ cont: contName, list: locationsInContinent }) => {
+      {visibleContinents.map(({ cont: contName, list: locationsInContinent }, ci) => {
         return (
-          <div key={contName} className="continent-wrapper">
-            <section id={`geo-${slugify(contName)}`} className="cine-scrolly cine-scrolly--short" aria-label={contName}>
-              <div className="cine-scrolly-media" aria-hidden="true">
+          <section
+            key={contName}
+            id={`geo-${slugify(contName)}`}
+            className="continent-wrapper"
+            data-accent={ci % 3}
+            aria-label={contName}
+          >
+            {/* marginalia sticky del continente */}
+            <aside className="geo-cont-aside">
+              <span className="geo-cont-seal" aria-hidden="true">
                 <img src={CONTINENT_IMAGES[contName] || HERO_IMAGE} alt=""
                      onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-              </div>
-              <div className="cine-scrolly-content">
-                <div className="cine-scrolly-frame">
-                  <span className="cine-scrolly-eyebrow">Continente</span>
-                  <h2 className="cine-scrolly-title">{contName}</h2>
-                  <p className="cine-scrolly-text">
-                    {locationsInContinent.length} {locationsInContinent.length === 1 ? "luogo cartografato" : "luoghi cartografati"}
-                  </p>
-                </div>
-              </div>
-            </section>
+              </span>
+              <span className="geo-cont-eyebrow">Continente</span>
+              <h2 className="geo-cont-name">{contName}</h2>
+              <span className="geo-cont-chip">
+                {locationsInContinent.length} {locationsInContinent.length === 1 ? "luogo cartografato" : "luoghi cartografati"}
+              </span>
+            </aside>
 
-            <div className="cine-wrap cine-wrap--wide">
-              <div className="geo-grid">
-                {locationsInContinent.map((loc) => (
-                  <div key={loc.id} className="geo-card-wrapper">
-                    <ToggleSection
-                      title={loc.name}
-                      defaultOpen={false}
-                      staticContent={loc.image && (
-                        <img src={loc.image} alt={loc.name} className="geo-card-preview" />
-                      )}
-                    >
-                      {isMaster && (
-                        <button
-                          className="geo-edit-btn"
-                          onClick={() => setEditingLoc(loc)}
-                        >
-                          ⚙️ Modifica Luogo
-                        </button>
-                      )}
-                      <div
-                        className="geo-description"
-                        dangerouslySetInnerHTML={{ __html: loc.description }}
-                      />
-                    </ToggleSection>
-                  </div>
-                ))}
-              </div>
+            {/* carte d'atlante (accordion) */}
+            <div className="geo-grid">
+              {locationsInContinent.map((loc) => (
+                <div key={loc.id} className="geo-card-wrapper">
+                  <ToggleSection
+                    title={loc.name}
+                    defaultOpen={false}
+                    staticContent={loc.image && (
+                      <img src={loc.image} alt={loc.name} className="geo-card-preview" />
+                    )}
+                  >
+                    {isMaster && (
+                      <button
+                        className="geo-edit-btn"
+                        onClick={() => setEditingLoc(loc)}
+                      >
+                        ⚙️ Modifica Luogo
+                      </button>
+                    )}
+                    <div
+                      className="geo-description"
+                      dangerouslySetInnerHTML={{ __html: loc.description }}
+                    />
+                  </ToggleSection>
+                </div>
+              ))}
             </div>
-          </div>
+          </section>
         );
       })}
     </section>

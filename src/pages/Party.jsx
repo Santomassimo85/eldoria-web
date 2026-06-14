@@ -70,71 +70,108 @@ const PARTIES = [
   },
 ];
 
-/* ── Hero card ─────────────────────────────────────────────── */
-function HeroCard({ hero, accent }) {
+/* helper: filtra i membri visibili di una compagnia secondo la query */
+function membersFor(party, query) {
+  const q = query.trim().toLowerCase();
+  return party.members
+    .filter((m) => !m.hidden)
+    .filter((m) => !q || [m.name, m.race, m.class, party.id, party.name]
+      .filter(Boolean).join(" ").toLowerCase().includes(q));
+}
+
+/* ── Voce di registro: medaglione + nome + razza·classe (tap → scheda) ── */
+function RosterEntry({ hero, accent, onOpen }) {
   return (
-    <div
-      className="hero-card"
-      style={{ "--accent": accent }}
-    >
-      <div className="hero-card-photo">
+    <button type="button" className="roster-entry" style={{ "--accent": accent }} onClick={onOpen}>
+      <span className="roster-medallion">
         <img
           src={hero.image}
           alt={hero.name}
           loading="lazy"
           onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
         />
-        <span className="hero-card-shade" aria-hidden="true" />
-      </div>
-
-      <div className="hero-card-plate">
-        <h3 className="hero-card-name">{hero.name}</h3>
-        <p className="hero-card-meta">
+      </span>
+      <span className="roster-entry-body">
+        <span className="roster-entry-name">{hero.name}</span>
+        <span className="roster-entry-meta">
           <span>{hero.race}</span>
           <span className="dot">·</span>
           <span>{hero.class}</span>
-        </p>
+        </span>
+      </span>
+      <span className="roster-entry-cue" aria-hidden="true">Scheda ›</span>
+    </button>
+  );
+}
+
+/* ── Scheda-pergamena del singolo eroe (modale) ── */
+function HeroModal({ hero, party, onClose }) {
+  return (
+    <div className="hero-modal-overlay" onClick={onClose}>
+      <div
+        className="hero-modal"
+        role="dialog"
+        aria-modal="true"
+        style={{ "--accent": party.color }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className="hero-modal-close" onClick={onClose} aria-label="Chiudi">✕</button>
+        <img
+          className="hero-modal-img"
+          src={hero.image}
+          alt={hero.name}
+          onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
+        />
+        <span className="hero-modal-house">
+          <span className="hero-modal-house-crest">{party.code}</span>
+          {party.name}
+        </span>
+        <h3 className="hero-modal-name">{hero.name}</h3>
+        <div className="hero-modal-meta">
+          <p><strong>Razza:</strong> {hero.race}</p>
+          <p><strong>Classe:</strong> {hero.class}</p>
+        </div>
+        <p className="hero-modal-motto"><em>«{party.motto}»</em></p>
       </div>
     </div>
   );
 }
 
-/* ── Party divider (scrollytell) + grid ────────────────────── */
-function PartySection({ party, query = "" }) {
-  const q = query.trim().toLowerCase();
-  const visibleMembers = party.members
-    .filter((m) => !m.hidden)
-    .filter((m) => !q || [m.name, m.race, m.class, party.id, party.name]
-      .filter(Boolean).join(" ").toLowerCase().includes(q));
+/* ── Casata = doppia pagina di manoscritto: marginalia + registro ── */
+function HouseSection({ party, query }) {
+  const [openIdx, setOpenIdx] = useState(null);
+  const visibleMembers = membersFor(party, query);
   if (visibleMembers.length === 0) return null;
-  return (
-    <div className="party-faction" style={{ "--party-color": party.color }} data-id={party.id}>
-      <section id={`party-${party.id}`} className="cine-scrolly cine-scrolly--short" aria-label={party.name}>
-        <div className="cine-scrolly-media" aria-hidden="true">
-          <img src={party.divider} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-scrolly-bottom-fade" aria-hidden="true" />
-        </div>
-        <div className="cine-scrolly-content">
-          <div className="cine-scrolly-frame party-frame">
-            <span className="party-crest" style={{ "--accent": party.color }}>
-              <span className="party-crest-letter">{party.code}</span>
-            </span>
-            <span className="cine-scrolly-eyebrow">Casata di Exanthia · {party.id}</span>
-            <h2 className="cine-scrolly-title">{party.name}</h2>
-            <p className="cine-scrolly-text">«{party.motto}»</p>
-            <p className="party-count-chip">{visibleMembers.length} {visibleMembers.length === 1 ? "Eroe" : "Eroi"}</p>
-          </div>
-        </div>
-      </section>
+  const open = openIdx != null ? visibleMembers[openIdx] : null;
 
-      <div className="cine-wrap cine-wrap--wide">
-        <div className="hero-grid">
-          {visibleMembers.map((m) => (
-            <HeroCard key={m.name} hero={m} accent={party.color} />
+  return (
+    <section id={`party-${party.id}`} className="party-house" style={{ "--party-color": party.color }} data-id={party.id}>
+      {/* marginalia sticky */}
+      <aside className="party-house-aside">
+        <span className="party-crest" style={{ "--accent": party.color }}>
+          <span className="party-crest-letter">{party.code}</span>
+        </span>
+        <span className="party-house-code">Casata · {party.id}</span>
+        <p className="party-house-motto">«{party.motto}»</p>
+        <span className="party-count-chip">
+          {visibleMembers.length} {visibleMembers.length === 1 ? "Eroe" : "Eroi"}
+        </span>
+      </aside>
+
+      {/* registro degli eroi */}
+      <div className="party-roster">
+        <div className="party-roster-rubric">
+          <h2 className="party-roster-title">{party.name}</h2>
+        </div>
+        <div className="roster-list">
+          {visibleMembers.map((m, i) => (
+            <RosterEntry key={m.name} hero={m} accent={party.color} onOpen={() => setOpenIdx(i)} />
           ))}
         </div>
       </div>
-    </div>
+
+      {open && <HeroModal hero={open} party={party} onClose={() => setOpenIdx(null)} />}
+    </section>
   );
 }
 
@@ -161,65 +198,63 @@ export default function Party() {
     [activeParty]
   );
 
-  const matchCount = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return visibleParties.reduce((n, p) => n + p.members
-      .filter((m) => !m.hidden)
-      .filter((m) => !q || [m.name, m.race, m.class, p.id, p.name].filter(Boolean).join(" ").toLowerCase().includes(q))
-      .length, 0);
-  }, [visibleParties, query]);
+  const matchCount = useMemo(
+    () => visibleParties.reduce((n, p) => n + membersFor(p, query).length, 0),
+    [visibleParties, query]
+  );
 
   return (
     <section className="cine-page party-page cine-compact" style={{ "--cine-accent": "#a83232", "--cine-accent-2": "#c0392b" }}>
       <AmbientFX variant="leaves" />
 
-      {/* ── HERO ── */}
-      <section id="party-top" className="cine-hero" aria-label="Le Compagnie di Exanthia">
-        <div className="cine-hero-media" aria-hidden="true">
+      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
+      <section id="party-top" className="party-hero" aria-label="Le Compagnie di Exanthia">
+        <div className="party-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="cine-hero-vignette" />
-          <div className="cine-hero-gradient" />
-          <div className="cine-hero-pattern" />
         </div>
-        <div className="cine-hero-content">
-          <span className="cine-eyebrow">Sangue · Inchiostro · Avventura</span>
-          <h1 className="cine-hero-title">Le Compagnie di Exanthia</h1>
-          <p className="cine-hero-tagline">
+        <div className="party-hero-wash" aria-hidden="true" />
+        <div className="party-hero-plate">
+          <span className="party-hero-seal">✦ Registro delle Compagnie</span>
+          <h1 className="party-hero-title">Le Compagnie<br />di Exanthia</h1>
+          <p className="party-hero-tagline">
             Quattro compagnie. Sedici anime. Una sola leggenda che si scrive,
             notte dopo notte, sulle pietre di Exanthia.
           </p>
-          <div className="cine-hero-meta">
-            <span className="cine-pill">⚔ {stats.parties} compagnie</span>
-            <span className="cine-pill">🛡 {stats.heroes} eroi</span>
-            <span className="cine-pill cine-pill--accent">✦ {stats.classes} classi</span>
-          </div>
+          <dl className="party-hero-stats">
+            <div><dt>Compagnie</dt><dd>{stats.parties}</dd></div>
+            <div><dt>Eroi</dt><dd>{stats.heroes}</dd></div>
+            <div><dt>Classi</dt><dd>{stats.classes}</dd></div>
+            <div><dt>Razze</dt><dd>{stats.races}</dd></div>
+          </dl>
         </div>
-        <div className="cine-hero-scroll-hint" aria-hidden="true">
-          <span>Scorri</span>
-          <span className="cine-hero-arrow">↓</span>
-        </div>
+        <a href="#party-index" className="party-hero-scroll" aria-label="Scorri al registro">
+          <span className="party-hero-scroll-tx">Scorri</span>
+          <span className="party-hero-scroll-ic" aria-hidden="true">↓</span>
+        </a>
       </section>
 
-      {/* ── FACTION TABS ── */}
-      <div className="cine-wrap">
-        <div className="party-tabs" role="tablist">
+      {/* ── INDICE DELLE CASATE: sigilli araldici (filtro) ── */}
+      <div id="party-index" className="party-index">
+        <span className="party-index-eyebrow">Indice · Le Casate di Exanthia</span>
+        <div className="party-index-sigils" role="tablist">
           <button
             type="button"
-            className={`party-tab ${activeParty === "all" ? "on" : ""}`}
+            className={`party-sigil party-sigil--all ${activeParty === "all" ? "on" : ""}`}
             onClick={() => setActiveParty("all")}
           >
-            ✦ Tutte le Compagnie
+            <span className="party-sigil-crest">✦</span>
+            <span className="party-sigil-label">Tutte</span>
           </button>
           {PARTIES.map((p) => (
             <button
               key={p.id}
               type="button"
-              className={`party-tab ${activeParty === p.id ? "on" : ""}`}
+              className={`party-sigil ${activeParty === p.id ? "on" : ""}`}
               onClick={() => setActiveParty(p.id)}
-              style={{ "--tab-color": p.color }}
+              style={{ "--accent": p.color }}
             >
-              <span className="party-tab-dot" />
-              {p.id}
+              <span className="party-sigil-crest">{p.code}</span>
+              <span className="party-sigil-label">{p.id}</span>
             </button>
           ))}
         </div>
@@ -234,13 +269,13 @@ export default function Party() {
         countNoun={matchCount === 1 ? "eroe" : "eroi"}
       />
 
-      {/* ── PARTY SECTIONS ── */}
+      {/* ── CASATE ── */}
       <div className="party-list">
         {matchCount === 0 ? (
           <p className="cine-empty">Nessun eroe corrisponde alla ricerca.</p>
         ) : (
           visibleParties.map((p) => (
-            <PartySection key={p.id} party={p} query={query} />
+            <HouseSection key={p.id} party={p} query={query} />
           ))
         )}
       </div>

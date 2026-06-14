@@ -1,21 +1,154 @@
 /* ============================================================
-   MERCATO NERO — tema cinematic (magenta/oro)
+   MERCATO NERO — architettura "Banco del Contrabbando" (Pergamena)
+   Hero asimmetrico · rango Ratto come sigillo di lealtà ·
+   rubrica del banco · griglia loot-card (preservata).
    Override scoped sui selettori globali del mercato.
    ============================================================ */
 
 .mercato-page .mercato-body { margin-top: 8px; }
 
+/* ============================================================
+   HERO ASIMMETRICO — immagine full-bleed + placca-registro
+   ============================================================ */
+.mercato-page .merc-hero {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 64vh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 0 0 44px;
+}
+.mercato-page .merc-hero-media { position: absolute; inset: 0; z-index: 0; }
+.mercato-page .merc-hero-media img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 28%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.22px), 0);
+  will-change: transform;
+}
+.mercato-page .merc-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(22,8,20,.58) 0%, rgba(22,8,20,.18) 52%, transparent 76%),
+    linear-gradient(180deg, rgba(22,8,20,.08) 0%, rgba(22,8,20,.32) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+}
+.mercato-page .merc-hero-plate {
+  position: relative; z-index: 2;
+  margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: merc-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes merc-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+.mercato-page .merc-hero-seal {
+  display: inline-block;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .66rem; letter-spacing: .2em; text-transform: uppercase;
+  color: #7a2e6e; padding: 6px 14px;
+  border: 1px solid rgba(122,46,110,.45); border-radius: 999px;
+  background: rgba(122,46,110,.08);
+}
+.mercato-page .merc-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-weight: 900;
+  font-size: clamp(1.9rem, 7vw, 3.7rem);
+  line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
+  background: linear-gradient(180deg, #34112f 0%, #7a2e6e 58%, #a3479a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.mercato-page .merc-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif;
+  color: #46382a; font-size: clamp(.96rem, 2.4vw, 1.08rem); line-height: 1.6;
+  margin: 0; max-width: 46ch;
+}
+.mercato-page .merc-hero-scroll {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-decoration: none; color: #5a2150;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .56rem; letter-spacing: .42em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(255,248,230,.7);
+}
+.mercato-page .merc-hero-scroll-ic {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1.5px solid rgba(122,46,110,.5);
+  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
+  color: #7a2e6e; font-size: 1rem;
+  animation: merc-bob 2.2s ease-in-out infinite;
+}
+@keyframes merc-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+
+@media (min-width: 900px) {
+  .mercato-page .merc-hero { min-height: 72vh; align-items: center; }
+  .mercato-page .merc-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(22,8,20,.7) 0%, rgba(22,8,20,.24) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .mercato-page .merc-hero-plate { margin: 0 0 0 7vw; max-width: 520px; padding: 34px 32px; }
+}
+
+/* ============================================================
+   RUBRICA "La Merce" — fascia etichettata (no divisore-foto)
+   ============================================================ */
+.mercato-page .merc-rubric {
+  max-width: 960px; margin: 30px auto 6px;
+  padding: 0 clamp(16px, 4vw, 30px); text-align: center;
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+}
+.mercato-page .merc-rubric-eyebrow {
+  display: inline-block; position: relative; padding: 0 22px; margin-bottom: 6px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: #7a2e6e;
+}
+.mercato-page .merc-rubric-eyebrow::before,
+.mercato-page .merc-rubric-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 30px; height: 1px;
+  background: color-mix(in srgb, var(--cine-accent) 55%, transparent);
+}
+.mercato-page .merc-rubric-eyebrow::before { right: 100%; }
+.mercato-page .merc-rubric-eyebrow::after  { left: 100%; }
+.mercato-page .merc-rubric-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.5rem, 5vw, 2.6rem); line-height: 1.05;
+  background: linear-gradient(180deg, #34112f 0%, #7a2e6e 70%, #a3479a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.mercato-page .merc-rubric-sub {
+  margin: 4px 0 0; font-family: var(--font-ui, Georgia), serif; font-style: italic;
+  color: #6a5b41; font-size: clamp(.9rem, 2vw, 1.02rem);
+}
+
 /* ── RANGO RATTO (pannello glass scuro) ── */
 .mercato-page .ratto-status-container {
+  position: relative;
   max-width: 640px;
   margin: 0 auto 18px;
-  padding: 16px 20px;
+  padding: 16px 20px 16px 56px;
   border-radius: var(--cine-radius);
   border: 1px solid #c9b78a;
+  border-left: 5px solid var(--cine-accent);
   background: linear-gradient(135deg, #fbf4e0, #f1e7cf);
   box-shadow: 0 14px 38px rgba(86, 64, 30, 0.18);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+/* sigillo di lealtà alla Gilda dei Ratti */
+.mercato-page .ratto-status-container::before {
+  content: "🐀";
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; border-radius: 50%;
+  background: linear-gradient(135deg, var(--cine-accent), color-mix(in srgb, var(--cine-accent) 55%, #000));
+  border: 2px solid rgba(255, 240, 210, 0.45);
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--cine-accent) 70%, transparent);
 }
 .mercato-page .ratto-info { display: flex; align-items: baseline; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .mercato-page .ratto-label { font-family: var(--font-title); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.74rem; color: #6a5b41; }

@@ -1,6 +1,33 @@
 {
   "versions": [
     {
+      "version": "25",
+      "date": "2026-06-14",
+      "title": "Restyle strutturale: Eroi, NPC, Geo, Mercato",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Eroi/Compagnie ricostruita come «Registro Araldico»: hero asimmetrico, indice delle casate a sigilli, ogni compagnia su doppia pagina di manoscritto con colonna araldica e roster a medaglioni; scheda eroe al tocco."
+        },
+        {
+          "type": "graphic",
+          "text": "NPC ricostruita come «Schedario dei Volti»: hero asimmetrico e capitoli per città con colonna-sigillo del luogo; gli abitanti diventano schede-dossier orizzontali con ritratto a lato e descrizione a vista."
+        },
+        {
+          "type": "graphic",
+          "text": "Archivio Geomantico ricostruito come «Atlante»: hero asimmetrico, indice dei continenti a sigilli e capitoli con colonna-marginalia; le carte dei luoghi mostrano l'anteprima come vignetta incorniciata."
+        },
+        {
+          "type": "graphic",
+          "text": "Mercato Nero rivisto come «Banco del Contrabbando»: hero asimmetrico, rango Ratto come sigillo di lealtà e nuova rubrica della merce; griglia degli oggetti e aste invariate. La scheda oggetto diventa un cartiglio di stima con ritratto incorniciato."
+        },
+        {
+          "type": "fix",
+          "text": "Archivio Geomantico: risolto il difetto dell'indicatore «Scorri» e delle iconcine che comparivano in un riquadro bianco fuori posto."
+        }
+      ]
+    },
+    {
       "version": "24",
       "date": "2026-06-14",
       "title": "Home ridisegnata + nuova navigazione mobile",
