@@ -29,29 +29,30 @@
     - Lore **manoscritto**: desktop = marginalia sticky (Capitolo I) + articolo con rubrica/illustrazione float/capolettera; mobile = colonna unica. Prosa originale invariata.
     - Pantheon: **fascia etichettata** + **griglia carte** (1/2/3 col) con **dettaglio al tap (modale)**. Sostituisce il vecchio accordion.
 
-### DA FARE (una pagina alla volta, stesso workflow + test B&N)
-Ordine suggerito:
-1. Eroi / Party (`src/pages/Party.jsx` + `Party.css`)
-2. NPC (`src/pages/NPC.*`)
-3. **Geo / Archivio Geomantico** (`src/pages/Geo.*`) — BUG NOTO da risolvere: l'indicatore "Scorri" e le iconcine renderizzano in un riquadro bianco vuoto/fuori posto.
-4. Mercato (`src/pages/Mercato.*`) + ItemDetail (`src/pages/ItemDetail.*`)
-5. Bacheca (`src/pages/Bacheca.*`)
-6. Riassunti (`src/pages/Riassunti.*`)
-7. Crafting (`src/pages/Crafting.*`)
-8. Gilda dei Ratti (`src/pages/RattiLore.*`)
-9. Cinema (`src/pages/Cinema.*`)
-10. Feedback (`src/pages/Feedback.*`)
-11. QuestDetail (`src/pages/QuestDetail.*`)
-12. Notifications (`src/pages/Notifications.*`)
-13. Bottega Arena (`src/pages/ArenaMarket.*`) — è contenuto, NON il combattimento Arena
-14. Assistente (`src/pages/Assistente.jsx`, stile inline)
-15. Scheda PG (`src/pages/SchedaPG.jsx` + `pgSheetEditor.css`)
-16. Pannelli DM/Admin (`src/pages/admin.css`, `src/GeneraNPC.*`, `src/pages/DmTools.*`)
-17. WorldMap (`src/pages/WorldMap.*`) — SOLO cornice/UI, mappa interattiva intatta
-18. Updates (`src/pages/Updates.*`) — già a tema, rifinire solo se serve
+### DA FARE — RESTYLE COMPLETATO ✅ (2026-06-14)
+Tutte le pagine del giro sono state ristrutturate (changelog v25/v26/v27). Sintesi:
+1. Eroi / Party → "Registro Araldico" (hero asimmetrico, indice sigilli, casate a doppia pagina, scheda eroe modale). ✅
+2. NPC → "Schedario dei Volti" (capitoli per città a marginalia, schede-dossier orizzontali). ✅
+3. Geo → "Atlante Geomantico" (indice continenti inline; **bug "Scorri" + iconcine in riquadro bianco RISOLTI**). ✅
+4. Mercato → "Banco del Contrabbando" (hero + rango Ratto come sigillo + rubrica; loot-card/aste intatte) + ItemDetail "cartiglio di stima". ✅
+5. Bacheca → "Albo degli Incarichi" (albo incorniciato + missive appuntate; animazione apri-pergamena intatta). ✅
+6. Riassunti → "Codice delle Memorie" (gruppi a doppia pagina con marginalia + export PDF). ✅
+7. Crafting → "Tomo dell'Artigiano" (sommario a capitoli + rubriche di capitolo numerate). ✅
+8. Gilda dei Ratti → "Codice del Sottosuolo" (lore manoscritto + gradi a scala gerarchica). ✅
+9. Cinema → hero a locandina + rubrica (teatro/featured/sala invariati). ✅
+10. Feedback → hero asimmetrico (form/dashboard invariati). ✅
+11. QuestDetail → hero "missiva" con copertina dinamica. ✅
+12. Notifications → hero asimmetrico (card invariate). ✅
+13. Bottega Arena → hero + rubrica Potenziamenti (shop/classi/master invariati). ✅
+14. Assistente → masthead "oracolo" (chat invariata). ✅
+15. Scheda PG → palette ribaltata da grimorio scuro a Pergamena chiara. ✅
+16. Pannelli DM/Admin → masthead condiviso a filetto (`GeneraNPC.css`); `admin.css` già a tema. ✅
+17. WorldMap → titolo a cartiglio cartografico, mappa/zoom intatti. ✅
+18. Updates → eyebrow/rubrica (già a tema). ✅
 
 ### Note / aperti
-- Rail `cine-side-nav` (indice sezioni): valutare trasformazione in indice-capitoli inline (oggi solo riposizionato sopra la bottom-bar).
+- `pgSheetEditor.css` (editor PG del master) e i restanti pannelli admin minori: già su `admin.css` chiaro; eventuale rifinitura strutturale dedicata se richiesta.
+- Rail `cine-side-nav`: dismesso sulle pagine ristrutturate a favore di indici inline / marginalia.
 - `Antico_pantheon.png` non più mostrato nella sezione Antichi (eventuale reinserimento nella fascia).
 
 ### Verifica

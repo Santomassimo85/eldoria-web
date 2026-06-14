@@ -77,6 +77,7 @@ export default function Updates() {
   return (
     <div className="updates-page">
       <header className="updates-header">
+        <span className="updates-eyebrow">✦ Cronache delle Versioni ✦</span>
         <h1 className="updates-title">UPDATE</h1>
         <p className="updates-sub">Cosa è cambiato, versione per versione.</p>
         {isMaster && (

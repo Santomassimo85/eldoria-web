@@ -26,12 +26,19 @@
 .npcgen-title {
   font-family: var(--font-title, "Cinzel Decorative", serif);
   font-size: clamp(1.6rem, 4.5vw, 2.2rem);
-  margin: 0 0 6px;
+  margin: 0 0 10px;
   text-align: center;
   background: linear-gradient(180deg, #a9781a 0%, #8a6212 55%, #7c560f 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+/* filetto-masthead manoscritto sotto il titolo (condiviso DM tools) */
+.npcgen-title::after {
+  content: "";
+  display: block;
+  width: 120px; height: 2px; margin: 10px auto 0;
+  background: linear-gradient(90deg, transparent, #a9781a, transparent);
 }
 
 .npcgen-sub {

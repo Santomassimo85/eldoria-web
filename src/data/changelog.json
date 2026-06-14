@@ -1,6 +1,29 @@
 {
   "versions": [
     {
+      "version": "27",
+      "date": "2026-06-14",
+      "title": "Restyle Pergamena completato: schede, pannelli e utility",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Scheda PG riportata al tema chiaro «Pergamena Antica»: caratteristiche, abilità, azioni, magie e zaino ora su carta invecchiata invece del vecchio grimorio scuro; logica e tiri invariati."
+        },
+        {
+          "type": "graphic",
+          "text": "Hero asimmetrico esteso a Feedback, Notifiche, Bottega Arena e dettaglio Incarico; la Bottega Arena ha anche la nuova rubrica dei Potenziamenti."
+        },
+        {
+          "type": "graphic",
+          "text": "Dettaglio Oggetto del Mercato come «cartiglio di stima» con ritratto incorniciato e prezzo a ceralacca."
+        },
+        {
+          "type": "graphic",
+          "text": "Mappa del Mondo: titolo in cartiglio cartografico; mappa, zoom e segnaposto invariati. Assistente con masthead da oracolo. Pannelli DM e pagina UPDATE rifiniti a tema."
+        }
+      ]
+    },
+    {
       "version": "26",
       "date": "2026-06-14",
       "title": "Restyle strutturale: Bacheca, Riassunti, Crafting, Gilda, Cinema",

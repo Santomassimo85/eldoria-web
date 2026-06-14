@@ -6,6 +6,11 @@
 }
 
 .updates-header { text-align: center; margin-bottom: 26px; }
+.updates-eyebrow {
+  display: inline-block; margin-bottom: 8px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: 0.64rem; letter-spacing: 0.28em; text-transform: uppercase; color: #a9781a;
+}
 .updates-title {
   font-size: clamp(1.6rem, 4vw, 2.3rem);
   font-weight: 900;
