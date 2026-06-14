@@ -1,49 +1,64 @@
-RUOLO E CONTESTO
-Sei un senior frontend designer + React engineer. Lavori su una webapp React 
-esistente: il companion del mio mondo fantasy D&D "Eldoria/Exanthia" (progetto 
-"Crit Happens"). È multi-pagina, deployata su Vercel con backend Firebase/Firestore, 
-ed è usata SOPRATTUTTO da mobile.
+CONTESTO
+Webapp React "Crit Happens" (companion D&D Eldoria/Exanthia), mobile-first, 
+Vercel + Firebase/Firestore.
 
-OBIETTIVO
-Ristrutturazione completa di DESIGN e STRUTTURA visiva (non solo colori): qualcosa di 
-epico, dinamico, fluido e mobile-first. Deve sembrare una nuova versione, non un reskin.
+VERDETTO SUL LAVORO PRECEDENTE — LEGGI BENE
+Nell'ultima sessione dovevi fare una RISTRUTTURAZIONE di design e hai cambiato 
+SOLO i colori (scuro → tema chiaro "Pergamena Antica"). Struttura, griglie, 
+posizionamenti, gerarchia, ordine delle sezioni e forma dei componenti sono 
+IDENTICI a prima. Questo è un FALLIMENTO del task, non un restyle. Hai anche 
+introdotto bug di layout. Ricominciamo con regole diverse e più severe.
 
-TEMA UNICO DI RIFERIMENTO
-Adotta ovunque il tema chiaro "Pergamena Antica" già presente in alcune pagine 
-(es. /update): fondo carta invecchiata, inchiostro seppia, accenti oro antico + 
-arcano viola/rosso. Diventa il sistema di design UNICO di tutto il sito.
+REGOLA #1 — RICOLORARE = FALLIRE
+Vietato riusare il layout attuale cambiando solo palette/font. Ogni pagina che 
+tocchi deve avere una NUOVA architettura visiva: griglia diversa, gerarchia 
+diversa, forma/stile dei componenti diversa, disposizione delle sezioni diversa.
+TEST DI ACCETTAZIONE: se affianco "prima" e "dopo" anche in BIANCO E NERO, devono 
+sembrare due siti diversi. Se si distinguono solo per il colore, è da rifare.
+
+COSA SIGNIFICA "STRUTTURALE" (esempi)
+- NO (colore):    "lo sfondo era nero, ora è carta".
+- SÌ (struttura): "la hero non è più testo centrato su immagine piena: ora layout 
+  asimmetrico con pannello pergamena che sborda sull'immagine, titolo a sinistra, 
+  CTA in colonna su mobile".
+- SÌ (struttura): "la pagina Eroi non è più banner-full-width + riga di card 
+  larghe: ora header compagnia STICKY + griglia card 1 col mobile / 3 col desktop, 
+  con interazione al tap".
 
 VINCOLI ASSOLUTI (non negoziabili)
-1. NON toccare meccaniche/logica/funzioni: solo presentazione (markup strutturale + CSS/animazioni).
-2. NON modificare alcun link, route, href o navigazione.
-3. NON toccare queste pagine: TCG, Arena, World Boss Fight (restano identiche).
-4. Non rinominare/spostare componenti se non strettamente necessario; se serve, segnalalo nel piano.
+1. NON toccare meccaniche/logica/funzioni: solo presentazione (markup + CSS/animazioni).
+2. NON modificare link, route, href, navigazione.
+3. NON toccare le pagine TCG, Arena, World Boss Fight: restano identiche.
+4. Mantieni il tema chiaro "Pergamena Antica" come sistema di design unico.
 
-COSA VOGLIO (feature di design)
-- Layout responsive MOBILE-FIRST + fix dei posizionamenti errati (header/nav, 
-  pulsanti flottanti che si sovrappongono, spaziature).
-- Header con effetto PARALLAX: l'immagine di sfondo resta "ferma" mentre il contenuto scorre.
-  IMPORTANTE: NON usare `background-attachment: fixed` (rotto/janky su iOS Safari, 
-  cioè proprio il device più usato). Usa un layer dedicato con `transform: translateY()` 
-  guidato dallo scroll, oppure immagine in `position: sticky/fixed` dietro al contenuto. 
-  Deve essere fluido (~60fps) su mobile.
-- Sfondi animati: mantieni/eleva le animazioni attuali, GPU-friendly.
-- Indicatore di scroll animato (la freccia "Scorri") nella home e nelle pagine lunghe.
-- Micro-animazioni ed effetti epici ma sobri (entrata elementi, hover, transizioni).
-- Rispetta `prefers-reduced-motion`.
+REQUISITI DI DESIGN (epico, dinamico, MOBILE-FIRST)
+- Header con parallax: immagine di sfondo "ferma" mentre il contenuto scorre.
+  VIETATO `background-attachment: fixed` (rotto su iOS Safari = il device più usato).
+  Usa layer dedicato con transform: translateY() su scroll, oppure position sticky/fixed 
+  dietro al contenuto. Deve essere fluido a ~60fps su mobile.
+- Sfondi animati GPU-friendly (mantieni/eleva quelli attuali).
+- Indicatore di scroll animato nella home e nelle pagine lunghe.
+- Micro-animazioni d'ingresso/hover sobrie ma d'impatto.
+- Rispetta prefers-reduced-motion.
+
+BUG DA RISOLVERE (regressioni che hai introdotto)
+- Pagina Archivio Geomantico: l'indicatore "Scorri" e le iconcine renderizzano dentro 
+  un riquadro bianco vuoto e fuori posto. Layout rotto, da rifare.
+- Pulsanti flottanti (notifica + chat) si sovrappongono al contenuto.
+- Rail laterale di icone + FAB calendario in alto a sinistra: galleggiano male, 
+  vanno reintegrati in un sistema di navigazione responsive vero.
 
 WORKFLOW OBBLIGATORIO — NON SCRIVERE CODICE ORA
-FASE 0 = AUDIT + PIANO. In questa risposta NON scrivere né modificare codice. Devi:
-1. Mappare la struttura attuale: pagine/route, componenti di layout condivisi 
-   (header, footer, nav, sfondi) e dove vive oggi il tema "Pergamena Antica".
-2. Identificare i posizionamenti errati che trovi nel codice.
-3. Proporre un PIANO A FASI (es. Fase 1 = design tokens/tema globale, Fase 2 = layout & nav, 
-   Fase 3 = home + parallax + scroll arrow, Fase 4 = pagine contenuto…). Una fase = un blocco 
-   di lavoro salvabile.
-4. Per ogni decisione importante dammi ALTERNATIVE quando sensato (es. parallax translateY vs 
-   sticky; stile scroll-arrow A vs B), con pro/contro brevi e la TUA raccomandazione.
-5. Elenca ESATTAMENTE quali file toccherai in ogni fase.
-6. Conferma esplicita di cosa NON toccherai (meccaniche, link, TCG/Arena/WorldBoss).
+FASE 0 (questa risposta, ZERO codice):
+1. Mappa pagine/route e i componenti di layout condivisi (header, nav, footer, sfondi).
+2. Scegli UNA PAGINA-PILOTA (proponi: Home + shell/nav globale, perché la nav è condivisa 
+   e detta il tono ovunque) e per quella scrivi un confronto:
+   STRUTTURA VECCHIA (punti) → STRUTTURA NUOVA (punti), che deve essere chiaramente diversa.
+3. Dove sensato, dammi ALTERNATIVE (es. parallax translateY vs sticky; nav mobile bottom-bar 
+   vs hamburger) con pro/contro brevi e la TUA raccomandazione.
+4. Elenca ESATTAMENTE i file che toccherai per la pagina-pilota.
+Poi FERMATI e aspetta la mia conferma.
 
-Poi FERMATI e aspetta la mia conferma del piano. Solo dopo procederai UNA FASE ALLA VOLTA, 
-salvando i file ad ogni fase (commit se uso git) e aspettando il mio OK prima della fase successiva.
+Dopo la mia conferma: implementa SOLO la pagina-pilota, salva (commit se uso git) e 
+aspetta il mio OK. Solo allora passeremo alla pagina successiva, UNA ALLA VOLTA, 
+applicando lo stesso test di accettazione ad ognuna.

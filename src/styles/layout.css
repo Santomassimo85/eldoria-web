@@ -1,83 +1,186 @@
 /* ============================================================
-   LAYOUT — posizionamento coerente dei pulsanti flottanti
-   (mobile-first) + safe-area iOS. Caricato PER ULTIMO.
-   Solo presentazione: nessuna logica/handler toccati.
+   LAYOUT & NAVIGAZIONE RESPONSIVE — caricato PER ULTIMO.
+   Solo presentazione: nessuna logica/handler/route toccati.
 
-   Convenzione FAB (niente più sovrapposizioni):
-     • basso-DESTRA  → chat globale (+ finestra chat sopra)
-     • basso-SINISTRA → presenza online (+ calendario in Home, impilati)
-     • basso-CENTRO  → cine-side-nav (pagine "cine", gestita in cinematic.css)
+   • Desktop (>1300px): top-bar con nav inline (come oggi, restyle).
+   • Mobile/tablet (≤1300px): TOP-BAR (marchio + auth) + BOTTOM-BAR di
+     navigazione (Home · Mondo · Eroi · Gilda · Menu). Le categorie aprono
+     una bottom-sheet; "Menu" apre il drawer completo (tutto il resto).
+   • Flottanti (chat/presenza/calendario) riuniti in un dock coerente,
+     SEMPRE sopra la bottom-bar, con safe-area iOS.
    ============================================================ */
 :root {
-  --fab-edge: 16px;            /* distanza dai bordi               */
-  --fab-gap: 12px;             /* spazio fra elementi impilati     */
-  --fab-chat: 52px;            /* Ø pulsante chat                  */
-  --fab-online: 48px;          /* Ø pulsante presenza              */
-  --fab-sidebar: 48px;         /* Ø pulsante calendario (Home)     */
+  --fab-edge: 16px;
+  --fab-gap: 12px;
+  --fab-chat: 52px;
+  --fab-online: 48px;
+  --fab-sidebar: 48px;
+  --bottombar-h: 60px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
+  /* Base verticale dei FAB: su desktop sull'edge, su mobile SOPRA la bottom-bar */
+  --fab-base: calc(var(--fab-edge) + var(--safe-b));
 }
 
-/* ── CHAT → basso-destra ───────────────────────────────────── */
+/* ============================================================
+   DOCK FLOTTANTI — chat (destra) · presenza online (sinistra)
+   ============================================================ */
 .chat-toggle-btn {
-  bottom: calc(var(--fab-edge) + var(--safe-b)) !important;
+  bottom: var(--fab-base) !important;
   right: calc(var(--fab-edge) + var(--safe-r)) !important;
   left: auto !important;
 }
 .global-chat-window {
-  bottom: calc(var(--fab-edge) + var(--fab-chat) + var(--fab-gap) + var(--safe-b)) !important;
+  bottom: calc(var(--fab-base) + var(--fab-chat) + var(--fab-gap)) !important;
   right: calc(var(--fab-edge) + var(--safe-r)) !important;
   left: auto !important;
 }
-
-/* ── PRESENZA ONLINE → basso-sinistra (toglie lo scontro a destra) ─ */
 .online-fab {
   left: calc(var(--fab-edge) + var(--safe-l)) !important;
   right: auto !important;
-  bottom: calc(var(--fab-edge) + var(--safe-b)) !important;
+  bottom: var(--fab-base) !important;
 }
 .online-popup {
   left: calc(var(--fab-edge) + var(--safe-l)) !important;
   right: auto !important;
-  bottom: calc(var(--fab-edge) + var(--fab-online) + var(--fab-gap) + var(--safe-b)) !important;
+  bottom: calc(var(--fab-base) + var(--fab-online) + var(--fab-gap)) !important;
 }
 
-/* ── CALENDARIO (solo Home) ────────────────────────────────────
-   Desktop: resta in alto a sinistra (regola originale in style.css).
-   Mobile/tablet: in basso a sinistra; e impilo la presenza online
-   SOPRA di esso così non si sovrappongono.                        */
-@media (max-width: 1300px) {
-  .floating-sidebar-btn {
-    top: auto !important;
-    bottom: calc(var(--fab-edge) + var(--safe-b)) !important;
-    left: calc(var(--fab-edge) + var(--safe-l)) !important;
-    right: auto !important;
-  }
-  /* :has → solo quando il calendario è presente (Home) */
-  body:has(.floating-sidebar-btn) .online-fab {
-    bottom: calc(var(--fab-edge) + var(--fab-sidebar) + var(--fab-gap) + var(--safe-b)) !important;
-  }
-  body:has(.floating-sidebar-btn) .online-popup {
-    bottom: calc(var(--fab-edge) + var(--fab-sidebar) + var(--fab-gap)
-                 + var(--fab-online) + var(--fab-gap) + var(--safe-b)) !important;
-  }
-}
-
-/* ── Header: rispetta il notch in orizzontale ─────────────────── */
+/* Header: rispetta il notch in orizzontale */
 .app-nav {
   padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
   padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
 }
 
-/* ── Drawer mobile: ultimo link non sotto la barra gesti iOS ──── */
+/* ============================================================
+   BOTTOM-BAR (mobile/tablet ≤1300px)
+   ============================================================ */
+.app-bottom-nav { display: none; }
+
 @media (max-width: 1300px) {
-  nav.active {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+  /* i FAB salgono SOPRA la barra */
+  :root { --fab-base: calc(var(--bottombar-h) + var(--safe-b) + 10px); }
+
+  /* la voce "Menu" della bottom-bar sostituisce il burger */
+  .burger { display: none !important; }
+
+  .app-bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 1065; /* sopra il backdrop della sheet → tab sempre tappabili */
+    height: calc(var(--bottombar-h) + var(--safe-b));
+    padding-bottom: var(--safe-b);
+    align-items: stretch;
+    justify-content: space-around;
+    background: linear-gradient(180deg, rgba(255,250,235,.95), rgba(243,234,212,.985));
+    border-top: 1px solid var(--line, #c9b78a);
+    box-shadow: 0 -10px 30px -14px rgba(86,64,30,.45);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+  }
+
+  .mnav-tab {
+    flex: 1 1 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    background: none; border: none; cursor: pointer;
+    padding: 7px 2px 5px; margin: 0;
+    text-decoration: none; position: relative;
+    color: #6a5b41;
+    font-family: var(--font-head, "Cinzel"), Georgia, serif;
+    font-size: .62rem; letter-spacing: .05em; line-height: 1;
+    transition: color .15s ease;
+  }
+  .mnav-ic { font-size: 1.2rem; line-height: 1; filter: grayscale(.25) opacity(.85); transition: transform .18s var(--ease-spring, ease), filter .18s ease; }
+  .mnav-lb { white-space: nowrap; }
+  .mnav-tab:active { transform: translateY(1px); }
+  .mnav-tab.is-active,
+  .mnav-tab.active { color: #7c560f; font-weight: 700; }
+  .mnav-tab.is-active .mnav-ic,
+  .mnav-tab.active .mnav-ic { transform: translateY(-2px) scale(1.12); filter: none; }
+  /* sigillo runico sopra la voce attiva */
+  .mnav-tab.is-active::before,
+  .mnav-tab.active::before {
+    content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 28px; height: 3px; border-radius: 0 0 4px 4px;
+    background: var(--grad-amber, linear-gradient(90deg, #e6c477, #a9781a));
+    box-shadow: 0 2px 8px rgba(169,120,26,.5);
+  }
+
+  /* drawer aperto → nascondi la bottom-bar (il drawer copre lo schermo) */
+  body:has(nav.active) .app-bottom-nav { display: none; }
+
+  /* contenuti/footer non coperti dalla barra */
+  footer { margin-bottom: calc(var(--bottombar-h) + var(--safe-b)); }
+  .cine-page { padding-bottom: calc(96px + var(--bottombar-h)); }
+}
+
+/* la rail laterale "indice sezioni" (cine) sale sopra la barra su mobile */
+@media (max-width: 1280px) {
+  .cine-side-nav {
+    bottom: calc(var(--bottombar-h) + 12px + var(--safe-b)) !important;
   }
 }
 
-/* ── Footer: margine inferiore sicuro su iOS ──────────────────── */
-footer {
-  padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+/* ============================================================
+   BOTTOM-SHEET di categoria (Mondo / Eroi / Gilda)
+   ============================================================ */
+.mnav-backdrop {
+  position: fixed; inset: 0; z-index: 1061;
+  background: rgba(45,32,14,.42);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  animation: mnav-fade .25s ease both;
+}
+@keyframes mnav-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.mnav-sheet {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(var(--bottombar-h) + var(--safe-b));
+  z-index: 1062;
+  background: linear-gradient(180deg, #fffdf5, #f3ead4);
+  border-top: 3px solid var(--amber, #a9781a);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -22px 50px -18px rgba(86,64,30,.55);
+  padding: 10px 14px calc(16px + var(--safe-b));
+  animation: mnav-rise .28s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes mnav-rise { from { transform: translateY(100%); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+
+.mnav-sheet-grip {
+  display: block; width: 42px; height: 4px; border-radius: 999px;
+  background: rgba(124,86,15,.35); margin: 2px auto 12px;
+}
+.mnav-sheet-head {
+  font-family: var(--font-head, "Cinzel"), Georgia, serif;
+  font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+  color: #7c560f; padding: 0 6px 10px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(124,86,15,.18);
+}
+.mnav-sheet-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mnav-sheet-link,
+.mnav-sheet-links > a {
+  display: flex; align-items: center; min-height: 52px;
+  padding: 10px 14px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255,252,245,.96), rgba(247,238,214,.96));
+  border: 1px solid rgba(124,86,15,.22);
+  border-left: 4px solid var(--arc, #7a4fcf);
+  color: #33281a; text-decoration: none;
+  font-family: var(--font-ui, Georgia), serif; font-size: .95rem; font-weight: 600;
+  box-shadow: 0 4px 14px -8px rgba(86,64,30,.4);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.mnav-sheet-link:active { transform: scale(.98); }
+.mnav-sheet-link.active {
+  border-left-color: var(--amber, #a9781a);
+  background: linear-gradient(135deg, rgba(169,120,26,.16), rgba(255,252,245,.96));
+  color: #5a3d12;
+}
+/* l'ultima voce dispari occupa l'intera riga */
+.mnav-sheet-links > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mnav-backdrop, .mnav-sheet { animation: none !important; }
 }

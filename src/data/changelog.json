@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "24",
+      "date": "2026-06-14",
+      "title": "Home ridisegnata + nuova navigazione mobile",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuova navigazione mobile: barra in basso (Home · Mondo · Eroi · Gilda · Menu) con menù a comparsa per categoria; pulsanti flottanti riordinati sopra la barra. Su desktop la barra in alto resta invariata."
+        },
+        {
+          "type": "graphic",
+          "text": "Home ricostruita: hero asimmetrico con placca-pergamena e titolo a sinistra, racconto delle origini in stile manoscritto, e Pantheon come galleria di carte con scheda di dettaglio al tocco."
+        }
+      ]
+    },
+    {
       "version": "23",
       "date": "2026-06-14",
       "title": "Restyle completo mobile-first «Pergamena Antica»",

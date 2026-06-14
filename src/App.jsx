@@ -233,6 +233,87 @@ const MasterPricingLink = ({ closeMenu }) => {
   );
 };
 
+// ── NAV MOBILE — bottom-bar (≤1300px) + bottom-sheet per categoria ──────────────
+// Sistema di navigazione responsive: le rotte sono ESATTAMENTE quelle del menu
+// esistente (nessun link/route nuovo). "Menu" apre il drawer completo (tutto il
+// resto: Agent, Update, Battaglia, DM Tools, DM Admin).
+const MOBILE_GROUPS = {
+  mondo: { icon: "🗺️", label: "Mondo", links: [
+    { to: "/world-map", label: "Mappa" },
+    { to: "/Geo", label: "Archivio Geomantico" },
+  ]},
+  eroi: { icon: "⚔️", label: "Eroi", links: [
+    { to: "/party", label: "Party" },
+    { to: "/scheda-pg", label: "Scheda PG" },
+    { to: "/npc", label: "NPC" },
+    { to: "/riassunti", label: "Riassunti" },
+  ]},
+  gilda: { icon: "🏛️", label: "Gilda", links: [
+    { to: "/mercato", label: "Mercato Nero" },
+    { to: "/bacheca", label: "Bacheca" },
+    { to: "/crafting", label: "Crafting" },
+    { to: "/ratti-lore", label: "Gilda dei Ratti" },
+    { to: "/cinema", label: "Cinema" },
+    { to: "/feedback", label: "Feedback" },
+  ]},
+};
+
+function MobileBottomNav({ openMenu }) {
+  const location = useLocation();
+  const [sheet, setSheet] = useState(null);
+  const p = location.pathname;
+
+  // chiudi la sheet a ogni cambio rotta
+  useEffect(() => { setSheet(null); }, [p]);
+
+  const group =
+    p === "/" ? "home"
+    : ["/world-map", "/Geo"].includes(p) ? "mondo"
+    : ["/party", "/scheda-pg", "/my-pg", "/npc", "/riassunti"].includes(p) ? "eroi"
+    : ["/mercato", "/bacheca", "/crafting", "/ratti-lore", "/cinema", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
+    : null;
+
+  const g = sheet ? MOBILE_GROUPS[sheet] : null;
+  const toggle = (key) => setSheet((s) => (s === key ? null : key));
+
+  return (
+    <>
+      {g && <div className="mnav-backdrop" onClick={() => setSheet(null)} aria-hidden="true" />}
+      {g && (
+        <div className="mnav-sheet" role="dialog" aria-label={g.label}>
+          <span className="mnav-sheet-grip" aria-hidden="true" />
+          <div className="mnav-sheet-head"><span aria-hidden="true">{g.icon}</span> {g.label}</div>
+          <div className="mnav-sheet-links">
+            {g.links.map((l) => (
+              <NavLink key={l.to} to={l.to} className="mnav-sheet-link" onClick={() => setSheet(null)}>
+                {l.label}
+              </NavLink>
+            ))}
+            {sheet === "gilda" && <MasterPricingLink closeMenu={() => setSheet(null)} />}
+          </div>
+        </div>
+      )}
+      <div className="app-bottom-nav" role="navigation" aria-label="Navigazione rapida">
+        <NavLink to="/" end className="mnav-tab" onClick={() => setSheet(null)}>
+          <span className="mnav-ic" aria-hidden="true">🏠</span><span className="mnav-lb">Home</span>
+        </NavLink>
+        <button type="button" className={`mnav-tab${group === "mondo" || sheet === "mondo" ? " is-active" : ""}`} onClick={() => toggle("mondo")}>
+          <span className="mnav-ic" aria-hidden="true">🗺️</span><span className="mnav-lb">Mondo</span>
+        </button>
+        <button type="button" className={`mnav-tab${group === "eroi" || sheet === "eroi" ? " is-active" : ""}`} onClick={() => toggle("eroi")}>
+          <span className="mnav-ic" aria-hidden="true">⚔️</span><span className="mnav-lb">Eroi</span>
+        </button>
+        <button type="button" className={`mnav-tab${group === "gilda" || sheet === "gilda" ? " is-active" : ""}`} onClick={() => toggle("gilda")}>
+          <span className="mnav-ic" aria-hidden="true">🏛️</span><span className="mnav-lb">Gilda</span>
+        </button>
+        <button type="button" className="mnav-tab" onClick={() => { setSheet(null); openMenu(); }}>
+          <span className="mnav-ic" aria-hidden="true">☰</span><span className="mnav-lb">Menu</span>
+        </button>
+      </div>
+    </>
+  );
+}
+
 // ── PRESENZA ONLINE ───────────────────────────────────────────────────────────
 function relTime(ms) {
   const sec = Math.floor((Date.now() - ms) / 1000);
@@ -568,6 +649,8 @@ export default function App() {
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
+
+      {!hideChrome && <MobileBottomNav openMenu={() => setMenuOpen(true)} />}
 
       <footer>
         <a

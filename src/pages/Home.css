@@ -1,173 +1,323 @@
 /* ============================================================
-   HOME — tema cinematic (celeste/oro)
-   Lo scheletro (hero, scrollytell, side-nav, pannelli) arriva da
-   styles/cinematic.css. Qui solo gli stili specifici della Home.
+   HOME — architettura "Codice di Exanthia" (Pergamena Antica)
+   Hero asimmetrico · lore a manoscritto (marginalia + articolo) ·
+   pantheon a fascia + griglia di carte con dettaglio al tap.
+   Scheletro condiviso da cinematic.css; qui la struttura della Home.
    ============================================================ */
 
-/* ---- LORE SECTION (pannello pergamena) -------------------- */
-.home-page .home-lore-section {
-  margin: 0 auto 8px;
-  text-align: left;
-}
-.home-page .home-lore-title {
-  font-family: var(--font-title);
-  font-size: clamp(1.2rem, 4vw, 2rem);
-  color: var(--cine-accent);
-  text-align: center;
-  letter-spacing: 0.06em;
-  margin: 8px 0 24px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(180, 140, 80, 0.4);
-}
-.home-page .home-lore-text {
-  font-size: clamp(0.9rem, 2.2vw, 1.02rem);
-  line-height: 1.95;
-  color: #33281a;
-  text-align: justify;
-}
-.home-page .home-lore-text i { color: #7c560f; }
-.home-page .home-lore-drop {
-  font-family: var(--font-title);
-  font-size: clamp(2.6rem, 6vw, 4rem);
-  line-height: 0.78;
-  float: left;
-  margin: 4px 12px 0 0;
-  padding: 6px 10px 4px;
-  color: #fffdf5;
-  background: var(--cine-accent);
-  border-radius: 6px;
-}
-
-/* ---- CREATION IMAGE --------------------------------------- */
-.home-page .home-creation-image {
-  display: block;
-  width: min(55%, 380px);
-  margin: 0 auto 28px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 24px rgba(86, 64, 30, 0.18);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-  opacity: 1;
-  transform: translateY(0);
-}
-.home-page .home-creation-image.hide { opacity: 0; transform: translateY(-40px); pointer-events: none; }
-.home-page .home-creation-image.show { opacity: 1; transform: translateY(0); }
-
-/* L'immagine "creation" della lore sfuma allo scroll: collasso anche lo SPAZIO
-   che occupa, così non resta un vuoto bianco nel pannello (scoped all'id →
-   non tocca l'immagine del Pantheon, che resta sempre visibile). */
-.home-page #creation-img {
-  max-height: 600px;
+/* ============================================================
+   1) HERO ASIMMETRICO — immagine full-bleed + placca a sinistra
+   ============================================================ */
+.home-page .home-hero {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  min-height: 86vh;
+  display: flex;
+  align-items: flex-end;
   overflow: hidden;
-  transition: opacity 0.6s ease, transform 0.6s ease, max-height 0.7s ease, margin 0.6s ease, border-width 0.6s ease;
+  isolation: isolate;
+  padding: 0 0 56px;
 }
-.home-page #creation-img.hide {
-  max-height: 0;
-  margin-top: 0;
-  margin-bottom: 0;
-  border-width: 0;
+.home-page .home-hero-media { position: absolute; inset: 0; z-index: 0; }
+.home-page .home-hero-media img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 28%;
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.26px), 0);
+  will-change: transform;
 }
-
-/* ---- Reveal d'ingresso (scroll-driven, GPU, niente JS) ---------------
-   Progressive enhancement: dove animation-timeline non è supportato
-   (es. Safari) il contenuto resta semplicemente visibile. */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .home-page .home-lore-section,
-    .home-page .home-deity-section {
-      animation: home-reveal both;
-      animation-timeline: view();
-      animation-range: entry 2% entry 32%;
-    }
-    @keyframes home-reveal {
-      from { opacity: 0; transform: translateY(30px); }
-      to   { opacity: 1; transform: none; }
-    }
-  }
-}
-
-/* ---- DEITY GROUP SECTIONS (toggle dark glass) ------------- */
-.home-page .home-deity-section { margin: 0 auto; padding-top: 4px; }
-
-.home-page .home-deity-section > .toggle-section {
-  margin: 0;
-  border-radius: var(--cine-radius);
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 30%, transparent);
+.home-page .home-hero-wash {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--cine-gold) 10%, transparent), transparent 50%),
-    linear-gradient(135deg, #fbf4e0, #e9dcbe);
-  box-shadow: 0 14px 38px rgba(86, 64, 30, 0.18);
-  overflow: hidden;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+    linear-gradient(90deg, rgba(26,16,6,.52) 0%, rgba(26,16,6,.14) 52%, transparent 74%),
+    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
 }
-.home-page .home-deity-section > .toggle-section > .toggle-title {
-  background: transparent !important;
-  background-color: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  color: #7c560f !important;
-  font-family: var(--font-title);
-  font-size: clamp(0.9rem, 2.5vw, 1.1rem) !important;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 18px 22px !important;
-  text-align: left;
-  border-bottom: 1px solid color-mix(in srgb, var(--cine-gold) 22%, transparent) !important;
+.home-page .home-hero-plate {
+  position: relative; z-index: 2;
+  margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: home-plate-in .7s cubic-bezier(.16,1,.3,1) both;
 }
-.home-page .home-deity-section > .toggle-section > .toggle-title:hover {
-  background: color-mix(in srgb, var(--cine-gold) 8%, transparent) !important;
-}
-.home-page .home-deity-section > .toggle-section > .toggle-title .toggle-icon { color: var(--cine-gold); }
-.home-page .home-deity-section .toggle-content.open { padding: 22px !important; }
+@keyframes home-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
 
-/* ---- PANTHEON -------------------------------------------- */
-.home-page .pantheon-main-title {
-  font-family: var(--font-title);
-  font-size: clamp(0.95rem, 2.8vw, 1.3rem);
-  color: var(--cine-gold);
-  text-align: center;
-  letter-spacing: 0.08em;
-  margin-bottom: 20px;
+.home-page .home-hero-seal {
+  display: inline-block;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .26em; text-transform: uppercase;
+  color: #7c560f; padding: 6px 14px;
+  border: 1px solid rgba(124,86,15,.5); border-radius: 999px;
+  background: rgba(169,120,26,.08);
 }
-.home-page .pantheon-list { text-align: left; }
+.home-page .home-hero-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-weight: 900;
+  font-size: clamp(2.1rem, 8vw, 4.2rem);
+  line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
+  background: linear-gradient(180deg, #3a2a12 0%, #7c560f 58%, #a9781a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.home-page .home-hero-tagline {
+  font-family: var(--font-ui, Georgia), serif;
+  color: #46382a; font-size: clamp(.98rem, 2.4vw, 1.12rem); line-height: 1.6;
+  margin: 0 0 20px; max-width: 46ch;
+}
+.home-page .home-hero-cta { display: flex; flex-direction: column; gap: 10px; }
+.home-page .home-cta {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45em;
+  padding: 12px 18px; border-radius: 12px; border: 1px solid transparent;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
+  font-size: .86rem; letter-spacing: .06em; text-decoration: none;
+  box-shadow: 0 8px 20px -10px rgba(86,64,30,.6);
+  transition: transform .15s ease, box-shadow .2s ease, filter .15s ease;
+}
+.home-page .home-cta--antichi { background: linear-gradient(135deg, #e6c477, #a9781a); color: #2a1c06; }
+.home-page .home-cta--nuovi   { background: linear-gradient(135deg, #b79bf0, #6f44c9); color: #fff; }
+.home-page .home-cta--malvagi { background: linear-gradient(135deg, #d96a5d, #8a261c); color: #fff; }
+.home-page .home-cta:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.home-page .home-cta:active { transform: translateY(0); }
 
-/* ---- DIVINITÀ (su pannello scuro) ------------------------- */
-.home-page .divinita-entry { color: #33281a; }
-.home-page .divinita-name-red {
-  color: #b8362a;
-  font-weight: bold;
-  font-size: clamp(1.3rem, 4vw, 2.2rem);
-  margin-bottom: 5px;
-  text-transform: uppercase;
-  font-family: 'Cinzel', serif;
+.home-page .home-hero-scroll {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  text-decoration: none; color: #5a3d12;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .58rem; letter-spacing: .42em; text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(255,248,230,.7);
 }
-.home-page .divinita-titolo-gold { color: var(--cine-gold); font-size: clamp(1rem, 2.6vw, 1.2rem); margin-bottom: 20px; }
-.home-page .divinita-main-img {
-  width: 100%;
-  max-width: 600px;
-  height: auto;
-  border: 1px solid color-mix(in srgb, var(--cine-gold) 45%, transparent);
-  border-radius: 10px;
-  margin: 20px 0;
-  box-shadow: 0 10px 28px rgba(86, 64, 30, 0.18);
+.home-page .home-hero-scroll-ic {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1.5px solid rgba(169,120,26,.55);
+  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
+  color: #7c560f; font-size: 1rem;
+  animation: home-bob 2.2s ease-in-out infinite;
 }
-.home-page .divinita-details-box { max-width: 800px; margin: 0 auto; text-align: left; line-height: 1.7; color: #33281a; }
-/* I <p> ereditano dal box il crema, ma la regola globale `p, li { color:#272727 }`
-   li sovrascrive (regola diretta > valore ereditato) → testo scuro su fondo scuro.
-   Rialzo la specificità per i paragrafi (dominio/titoli/simbolo/descrizione),
-   escludendo il dogma che resta oro. */
-.home-page .divinita-details-box p:not(.dogma-text) { color: #33281a; }
-.home-page .divinita-details-box .divinita-text-desc { color: #33281a; }
-.home-page .divinita-details-box strong { color: #7c560f; }
-.home-page .dogma-text { color: var(--cine-gold); margin-top: 15px; text-align: center; font-style: italic; }
-.home-page .gold-divider {
-  border: none;
-  border-top: 1px solid color-mix(in srgb, var(--cine-gold) 22%, transparent);
-  margin: 22px 0;
+@keyframes home-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+
+@media (min-width: 560px) {
+  .home-page .home-hero-cta { flex-direction: row; flex-wrap: wrap; }
+  .home-page .home-cta { flex: 1 1 auto; }
+}
+@media (min-width: 900px) {
+  .home-page .home-hero { min-height: 94vh; align-items: center; }
+  .home-page .home-hero-media img { object-position: center 32%; }
+  .home-page .home-hero-wash {
+    background:
+      linear-gradient(90deg, rgba(26,16,6,.66) 0%, rgba(26,16,6,.22) 42%, transparent 66%),
+      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
+  }
+  .home-page .home-hero-plate { margin: 0 0 0 7vw; max-width: 540px; padding: 36px 34px; }
 }
 
-@media (max-width: 420px) {
-  .home-page .home-lore-text { text-align: left; }
-  .home-page .home-creation-image { width: 85%; }
+/* ============================================================
+   2) LORE — manoscritto: marginalia sticky + articolo
+   ============================================================ */
+.home-page .home-lore {
+  max-width: 1120px; margin: 4px auto 0;
+  padding: 8px clamp(16px, 4vw, 30px) 0;
+}
+.home-page .home-lore-aside { display: none; }
+.home-page .home-lore-rubric {
+  display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 6px;
+}
+.home-page .home-lore-rubric::before,
+.home-page .home-lore-rubric::after {
+  content: ""; height: 1px; flex: 1 1 auto; max-width: 120px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cine-accent) 55%, transparent));
+}
+.home-page .home-lore-rubric::after { background: linear-gradient(270deg, transparent, color-mix(in srgb, var(--cine-accent) 55%, transparent)); }
+.home-page .home-lore-title {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-size: clamp(1.3rem, 4vw, 2.1rem); color: var(--cine-accent);
+  text-align: center; letter-spacing: .05em; margin: 0;
+}
+.home-page .home-lore-illum { margin: 0; text-align: center; }
+.home-page .home-creation-image {
+  display: inline-block; width: min(64%, 360px); margin: 8px auto 18px;
+  border-radius: 12px; border: 2px solid color-mix(in srgb, var(--cine-accent) 38%, transparent);
+  box-shadow: 0 14px 32px -12px rgba(86,64,30,.55);
+  max-height: 600px; overflow: hidden;
+  transition: opacity .6s ease, transform .6s ease, max-height .7s ease, margin .6s ease, border-width .6s ease;
+  opacity: 1; transform: translateY(0);
+}
+.home-page #creation-img.hide { opacity: 0; transform: translateY(-30px); max-height: 0; margin: 0; border-width: 0; }
+.home-page #creation-img.show { opacity: 1; transform: translateY(0); }
+
+.home-page .home-lore-text {
+  font-family: var(--font-ui, Georgia), serif;
+  font-size: clamp(.96rem, 2.2vw, 1.06rem); line-height: 1.92;
+  color: #33281a; text-align: justify;
+}
+.home-page .home-lore-text i { color: #7c560f; font-style: italic; }
+.home-page .home-lore-drop {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
+  font-size: clamp(2.8rem, 7vw, 4.2rem); line-height: .72;
+  float: left; margin: 6px 12px 0 0; padding: 8px 12px 6px; color: #fffdf5;
+  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+  border-radius: 8px; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--cine-accent) 70%, transparent);
+}
+
+@media (min-width: 900px) {
+  .home-page .home-lore {
+    display: grid; grid-template-columns: 210px 1fr; gap: 40px; align-items: start;
+  }
+  .home-page .home-lore-aside {
+    display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+    position: sticky; top: calc(var(--navbar-h, 80px) + 28px);
+    padding: 20px 14px; border-right: 2px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+  }
+  .home-page .home-lore-aside .home-lore-orn { font-size: 1.4rem; color: var(--cine-accent); }
+  .home-page .home-lore-chapter {
+    font-family: var(--font-display, "Cinzel Decorative"), serif; font-size: 1.1rem; color: var(--cine-accent); letter-spacing: .08em;
+  }
+  .home-page .home-lore-note { font-family: var(--font-head, "Cinzel"), serif; font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: #6a5b41; line-height: 1.5; }
+  .home-page .home-lore-age {
+    margin-top: 4px; font-family: var(--font-ui), serif; font-style: italic; font-size: .82rem; color: #7c560f;
+    border-top: 1px solid color-mix(in srgb, var(--cine-accent) 25%, transparent); padding-top: 8px;
+  }
+  .home-page .home-lore-rubric { justify-content: flex-start; }
+  .home-page .home-lore-rubric::after { display: none; }
+  .home-page .home-lore-title { text-align: left; }
+  .home-page .home-lore-illum { float: right; width: 320px; margin: 0 0 14px 28px; }
+  .home-page .home-creation-image { width: 100%; margin: 0; }
+}
+
+/* ============================================================
+   3) PANTHEON — fascia etichettata + griglia di carte (tap → dettaglio)
+   ============================================================ */
+.home-page .pantheon-band {
+  position: relative; width: 100vw; margin: 48px calc(50% - 50vw) 0;
+  min-height: 168px; display: flex; align-items: center;
+  overflow: hidden; isolation: isolate;
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+  border-block: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+}
+.home-page .pantheon-band-media { position: absolute; inset: 0; z-index: 0; }
+.home-page .pantheon-band-media img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center 35%;
+  opacity: .9; filter: sepia(.2) saturate(1.05);
+  animation: home-band-kb 28s ease-in-out infinite alternate;
+}
+@keyframes home-band-kb { from { transform: scale(1.04); } to { transform: scale(1.12); } }
+.home-page .pantheon-band::before {
+  content: ""; position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(90deg, rgba(24,15,5,.9) 0%, rgba(28,18,7,.66) 48%, rgba(28,18,7,.34) 100%);
+}
+.home-page .pantheon-band--evil::before {
+  background: linear-gradient(90deg, rgba(30,8,8,.92) 0%, rgba(34,10,10,.68) 48%, rgba(28,8,8,.36) 100%);
+}
+.home-page .pantheon-band-inner {
+  position: relative; z-index: 2; padding: 22px clamp(18px, 5vw, 64px); max-width: 1180px; margin: 0 auto; width: 100%;
+}
+.home-page .pantheon-band-eyebrow {
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .68rem; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--cine-gold-soft, #f1d8a0);
+}
+.home-page .pantheon-band-title {
+  font-family: var(--font-display, "Cinzel Decorative"), serif; font-weight: 900;
+  font-size: clamp(1.6rem, 5vw, 2.8rem); margin: 4px 0 4px; line-height: 1.05;
+  background: linear-gradient(180deg, #fff, #ffe9c2 60%, var(--cine-gold-soft, #f1d8a0));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 4px 20px rgba(20,12,4,.5);
+}
+.home-page .pantheon-band-sub { color: rgba(255,248,235,.9); font-family: var(--font-ui), serif; font-size: clamp(.9rem, 2vw, 1.05rem); margin: 0; max-width: 54ch; }
+
+/* ── Griglia carte-divinità ── */
+.home-page .deity-grid {
+  display: grid; grid-template-columns: 1fr; gap: 14px;
+  margin: 22px auto 0; padding: 0;
+}
+@media (min-width: 620px) { .home-page .deity-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .home-page .deity-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
+
+.home-page .deity-card {
+  display: flex; align-items: stretch; gap: 0; text-align: left; cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,252,245,.98), rgba(250,242,222,.96));
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
+  border-left: 4px solid var(--cine-accent);
+  border-radius: 16px; overflow: hidden; padding: 0;
+  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
+  transition: transform .18s ease, box-shadow .2s ease, border-color .18s ease;
+  position: relative;
+}
+.home-page .deity-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--cine-accent) 65%, transparent);
+  box-shadow: 0 22px 44px -18px rgba(86,64,30,.6);
+}
+.home-page .deity-card:active { transform: translateY(-1px) scale(.995); }
+.home-page .deity-card-portrait {
+  flex: 0 0 84px; width: 84px; align-self: stretch; overflow: hidden;
+  background: #e9dcbe;
+}
+.home-page .deity-card-portrait img { width: 100%; height: 100%; min-height: 96px; object-fit: cover; object-position: top; display: block; }
+.home-page .deity-card-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 12px 14px; }
+.home-page .deity-card-name {
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: 1.02rem; color: var(--cine-accent); letter-spacing: .01em; line-height: 1.1;
+}
+.home-page .deity-card-epithet { font-family: var(--font-ui), serif; font-style: italic; font-size: .8rem; color: #7c560f; line-height: 1.25; }
+.home-page .deity-card-dominio { margin-top: 4px; font-size: .76rem; color: #6a5b41; line-height: 1.3; }
+.home-page .deity-card-cue {
+  position: absolute; right: 10px; bottom: 8px;
+  font-family: var(--font-head, "Cinzel"), serif; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--cine-accent); opacity: .75; transition: transform .18s ease, opacity .18s ease;
+}
+.home-page .deity-card:hover .deity-card-cue { transform: translateX(3px); opacity: 1; }
+
+/* ── Modale dettaglio divinità ── */
+.home-page .deity-modal-overlay {
+  position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center;
+  padding: 18px; background: rgba(34,22,8,.55);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  animation: home-fade .2s ease both;
+}
+@keyframes home-fade { from { opacity: 0; } to { opacity: 1; } }
+.home-page .deity-modal {
+  position: relative; width: 100%; max-width: 520px; max-height: calc(100dvh - 80px); overflow-y: auto;
+  background: linear-gradient(180deg, #fffdf5, #f3ead4);
+  border: 1px solid var(--line, #c9b78a); border-top: 4px solid var(--cine-accent);
+  border-radius: 18px; padding: 0 24px 24px;
+  box-shadow: 0 30px 70px -24px rgba(86,64,30,.7);
+  animation: home-pop .28s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes home-pop { from { opacity: 0; transform: scale(.92) translateY(12px); } to { opacity: 1; transform: none; } }
+.home-page .deity-modal-close {
+  position: sticky; top: 12px; float: right; margin: 12px -8px 0 0;
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(124,86,15,.3);
+  background: rgba(255,253,245,.9); color: #8a261c; font-size: .85rem; cursor: pointer; z-index: 2;
+  transition: background .15s ease, transform .15s ease;
+}
+.home-page .deity-modal-close:hover { background: #f1e7cf; transform: scale(1.08); }
+.home-page .deity-modal-img {
+  width: 100%; height: 220px; object-fit: cover; object-position: top;
+  border-radius: 12px; margin: 16px 0 12px; border: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+}
+.home-page .deity-modal-name {
+  font-family: var(--font-display, "Cinzel Decorative"), serif; font-weight: 900;
+  font-size: clamp(1.2rem, 4vw, 1.7rem); color: var(--cine-accent); margin: 0 0 4px; line-height: 1.1;
+}
+.home-page .deity-modal-titolo { font-family: var(--font-ui), serif; font-style: italic; color: #7c560f; margin: 0 0 14px; }
+.home-page .deity-modal-meta {
+  display: grid; gap: 6px; padding: 12px 14px; margin: 0 0 14px;
+  background: rgba(169,120,26,.08); border: 1px solid rgba(124,86,15,.2); border-radius: 12px;
+}
+.home-page .deity-modal-meta p { margin: 0; color: #33281a; font-size: .92rem; line-height: 1.5; }
+.home-page .deity-modal-meta strong { color: #7c560f; }
+.home-page .deity-modal-desc { color: #33281a; line-height: 1.7; margin: 0 0 14px; }
+.home-page .deity-modal-dogma {
+  margin: 0; padding: 12px 16px; text-align: center; color: var(--cine-accent); font-style: italic;
+  border-left: 3px solid var(--cine-accent); background: rgba(47,86,137,.06); border-radius: 0 10px 10px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page .home-hero-plate,
+  .home-page .home-hero-scroll-ic,
+  .home-page .pantheon-band-media img,
+  .home-page .deity-modal,
+  .home-page .deity-modal-overlay { animation: none !important; }
 }
