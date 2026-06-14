@@ -133,22 +133,22 @@ async function doAcceptQuest(uid, params) {
 
 const CSS = `
 .ast{
-  --panel:#0f1729; --panel2:#141d33; --line:rgba(176,124,255,.28);
-  --gold:#f0a93b; --gold-deep:#c07e1e; --red:#ff5a4d; --red-soft:#c12d22;
-  --ink:#eef2ff; --muted:#9fabcb;
+  --panel:#fbf4e0; --panel2:#f1e7cf; --line:rgba(124,86,15,.28);
+  --gold:#a9781a; --gold-deep:#7c560f; --red:#b8362a; --red-soft:#8a261c;
+  --ink:#33281a; --muted:#6a5b41;
   display:flex; flex-direction:column;
   height:calc(100dvh - var(--navbar-h) - 24px); margin:calc(var(--navbar-h) + 24px) auto 0;
   max-width:760px; width:100%;
   font-family:var(--font-text),Georgia,serif; font-size:17px; color:var(--ink);
   background:var(--panel);
   border-left:1px solid var(--line); border-right:1px solid var(--line);
-  box-shadow:0 0 40px rgba(0,0,0,.06);
+  box-shadow:0 0 40px rgba(86,64,30,.10);
 }
 .ast *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 .ast-head{
   padding:16px 18px 14px; border-bottom:2px solid var(--gold);
   display:flex; align-items:center; gap:14px; flex:0 0 auto;
-  background:linear-gradient(180deg,#141d33,#0f1729);
+  background:linear-gradient(180deg,#f3ead4,#fbf4e0);
 }
 .ast-head .orb{
   width:44px;height:44px;border-radius:50%;flex:0 0 44px;
@@ -243,11 +243,11 @@ const CSS = `
 /* INPUT */
 .ast-bar{
   padding:12px 16px 14px;border-top:2px solid var(--gold);
-  display:flex;gap:10px;flex:0 0 auto;background:linear-gradient(0deg,#0b1220,#0f1729);
+  display:flex;gap:10px;flex:0 0 auto;background:linear-gradient(0deg,#efe6d0,#fbf4e0);
 }
 .ast-bar textarea{
   flex:1;padding:11px 13px;border-radius:11px;border:1px solid var(--gold);
-  background:var(--bg-0,#0b1220);color:var(--ink);font-size:16px;font-family:var(--font-text),serif;
+  background:#fffdf5;color:var(--ink);font-size:16px;font-family:var(--font-text),serif;
   resize:none;height:46px;max-height:120px;overflow-y:auto;line-height:1.4;margin:0;
 }
 .ast-bar textarea::placeholder{color:#a89a7a}
