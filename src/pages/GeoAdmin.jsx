@@ -311,12 +311,13 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
 
   return (
     <section className="admin-geo-page geoadm">
-      {!onComplete && <Link to="/dm-admin" className="admin-back-link">← Dashboard</Link>}
+      {!onComplete && <Link to="/dm-admin" className="adm-back">← Console del Master</Link>}
 
       {/* ── HERO ── */}
       <header className="geoadm-hero">
         <div className="geoadm-hero-titles">
-          <h1 className="geoadm-title">🗺 Cartografo dei Mondi</h1>
+          <span className="adm-eyebrow">🗺 Atlante di Exanthia</span>
+          <h1 className="geoadm-title">Cartografo dei Mondi</h1>
           <p className="geoadm-sub">Archivia luoghi, fazioni e abitanti di Exanthia</p>
         </div>
         <div className="geoadm-stats">

@@ -310,12 +310,13 @@ export default function QuestAdmin() {
 
   return (
     <section className="admin-quest-page qstadm">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Master</Link>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       {/* ── HERO ── */}
       <header className="qstadm-hero">
         <div className="qstadm-hero-titles">
-          <h1 className="qstadm-title">📜 Bacheca di Hemile</h1>
+          <span className="adm-eyebrow">🪧 Locanda di Hemile</span>
+          <h1 className="qstadm-title">Bacheca di Hemile</h1>
           <p className="qstadm-sub">Sigilla missive, assegna ricompense, governa le voci della Locanda</p>
         </div>
         <div className="qstadm-stats">

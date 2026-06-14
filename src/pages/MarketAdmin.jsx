@@ -780,13 +780,14 @@ export default function MarketAdmin() {
   }
 
   return (
-    <section className="admin-market-page mkadm">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard</Link>
+    <section className="adm mkadm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       {/* ─── HERO STATS BAR ─── */}
       <div className="mkadm-hero">
         <div className="mkadm-hero-titles">
-          <h1 className="mkadm-title">⚔ Forgia del Mercato Nero</h1>
+          <span className="adm-eyebrow">⚔ Sottosuolo · Gilda dei Ratti</span>
+          <h1 className="mkadm-title">Forgia del Mercato Nero</h1>
           <p className="mkadm-subtitle">Solo aste alla cieca · Crea, modifica e gestisci il magazzino</p>
         </div>
         <div className="mkadm-stats">

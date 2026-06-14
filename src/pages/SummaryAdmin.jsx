@@ -383,12 +383,13 @@ export default function SummaryAdmin() {
 
   return (
     <section className="admin-summary-page sumadm">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
       {/* ── HERO ── */}
       <header className="sumadm-hero">
         <div className="sumadm-hero-titles">
-          <h1 className="sumadm-title">📜 Scriptorium del Monaco</h1>
+          <span className="adm-eyebrow">📜 Cronache di Eldoria</span>
+          <h1 className="sumadm-title">Scriptorium del Monaco</h1>
           <p className="sumadm-sub">Annota le memorie delle sessioni e i frammenti del mondo</p>
         </div>
         <div className="sumadm-stats">
