@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, updateDoc, increment } from "firebase/firestore";
 import { Link } from "react-router-dom";
@@ -16,6 +16,7 @@ const RATTO_LEVELS = [
 export default function ReputationAdmin() {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
 
   const fetchCharacters = async () => {
     try {
@@ -62,39 +63,68 @@ export default function ReputationAdmin() {
     };
   };
 
-  return (
-    <section className="admin-reputation-page">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+  const stats = useMemo(() => {
+    const total = characters.length;
+    const ombre = characters.filter((c) => c.rattoPoints >= 80).length;
+    const top = characters[0];
+    return { total, ombre, top: top ? (top.name || top.charName || "—") : "—" };
+  }, [characters]);
 
-      <h1 className="admin-page-title">Reputazione della Gilda</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">🐀</span></div>
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return characters;
+    return characters.filter((c) => (c.name || c.charName || "").toLowerCase().includes(q));
+  }, [characters, query]);
+
+  return (
+    <section className="adm" style={{ "--cine-accent": "#7a2e1a", "--cine-accent-2": "#a9781a" }}>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
+
+      <div className="adm-masthead">
+        <div className="adm-mast-main">
+          <span className="adm-eyebrow">🐀 Gilda di Obia</span>
+          <h1 className="adm-title">Reputazione della Gilda</h1>
+          <p className="adm-sub">Gestisci la lealtà dei player e i loro gradi nel sottosuolo.</p>
+        </div>
+        <div className="adm-mast-aside">
+          <div className="adm-stat"><span>Membri</span><strong>{stats.total}</strong></div>
+          <div className="adm-stat"><span>Ombre di Obia</span><strong>{stats.ombre}</strong></div>
+        </div>
+      </div>
+
+      <div className="adm-panel" style={{ marginBottom: 18 }}>
+        <input
+          className="adm-input"
+          placeholder="🔎 Cerca un personaggio…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
 
       {loading ? (
-        <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Sguinzagliando i ratti spia...</p>
+        <p className="adm-empty">Sguinzagliando i ratti spia…</p>
+      ) : visible.length === 0 ? (
+        <p className="adm-empty">Nessun personaggio corrisponde alla ricerca.</p>
       ) : (
-        <div className="rep-grid">
-          {characters.map((char) => {
+        <div className="adm-grid-3">
+          {visible.map((char) => {
             const progress = getProgressData(char.rattoPoints);
             return (
-              <div key={char.id} className="rep-char-card">
-                <div className="rep-char-header">
-                  <h3 className="rep-char-name">{char.name || char.charName}</h3>
-                  <span className="rep-char-rank">{progress.rankName}</span>
+              <div key={char.id} className="adm-panel rep-card">
+                <div className="rep-card-head">
+                  <h3 className="rep-card-name">{char.name || char.charName}</h3>
+                  <span className="rep-card-rank">{progress.rankName}</span>
                 </div>
 
-                <div className="rep-progress-bar-bg">
-                  <div
-                    className="rep-progress-bar-fill"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                  <span className="rep-progress-text">{progress.text}</span>
+                <div className="rep-bar">
+                  <div className="rep-bar-fill" style={{ width: `${progress.percent}%` }} />
+                  <span className="rep-bar-text">{progress.text}</span>
                 </div>
 
-                <div className="rep-controls">
-                  <small>Modifica rapida:</small>
-                  <button onClick={() => updatePoints(char.id, -1)} className="btn-rep-minus">−1</button>
-                  <button onClick={() => updatePoints(char.id, 1)}  className="btn-rep-plus">+1</button>
-                  <button onClick={() => updatePoints(char.id, 5)}  className="btn-rep-plus">+5</button>
+                <div className="rep-card-controls">
+                  <button onClick={() => updatePoints(char.id, -1)} className="adm-btn adm-btn--danger rep-mini">−1</button>
+                  <button onClick={() => updatePoints(char.id, 1)}  className="adm-btn adm-btn--gold rep-mini">+1</button>
+                  <button onClick={() => updatePoints(char.id, 5)}  className="adm-btn adm-btn--gold rep-mini">+5</button>
                 </div>
               </div>
             );

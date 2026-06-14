@@ -1,7 +1,5 @@
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
-import { db } from "../firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import "./admin.css";
 
 export default function AdminPanel() {
@@ -12,52 +10,96 @@ export default function AdminPanel() {
 
   if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return (
-      <section className="admin-page">
-        <h1 className="admin-page-title">Accesso Negato</h1>
-        <p style={{ textAlign: "center" }}>Solo il Dungeon Master può accedere a questo pannello.</p>
+      <section className="adm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
+        <div className="adm-masthead">
+          <div className="adm-mast-main">
+            <span className="adm-eyebrow">✦ Accesso riservato ✦</span>
+            <h1 className="adm-title">Accesso Negato</h1>
+            <p className="adm-sub">Solo il Dungeon Master può varcare questa soglia.</p>
+          </div>
+        </div>
       </section>
     );
   }
 
-  const BLOCKS = [
-    { label: "Black Market",       desc: "Aggiungi o modifica oggetti e gestisci le aste del Ratto.",            path: "/dm-admin/market" },
-    { label: "Rat Reputation",     desc: "Gestisci i gradi e la lealtà dei player alla Gilda di Obia.",          path: "/dm-admin/reputation" },
-    { label: "World Boss Fight",   desc: "Crea nuovi boss, attivali e gestisci i loro HP in tempo reale.",       path: "/dm-admin/world-boss" },
-    { label: "Geomantia",          desc: "Gestisci le mappe, le lore delle città e i ping NPC.",                 path: "/dm-admin/geo" },
-    { label: "Gestione Sessioni",  desc: "Imposta date, orari e link per Party AMEA, LAC ed Enox.",             path: "/dm-admin/sessions" },
-    { label: "Cinema",             desc: "Carica i link delle registrazioni delle sessioni passate.",            path: "/dm-admin/videos" },
-    { label: "Session Summaries",  desc: "Aggiorna i log narrativi delle ultime avventure.",                    path: "/dm-admin/summaries" },
-    { label: "Platinum Coins (MP)",desc: "Aggiorna il saldo dei personaggi (Monete Platino).",                  path: "/dm-admin/platinum" },
-    // PET SYSTEM — hidden while disabled
-    // { label: "Punti Bestiario (✦)", desc: "Dona o rimuovi Punti Bestiario per il sistema di compagni / Pet Arena.", path: "/dm-admin/pet-points" },
-    { label: "Quest Board",        desc: "Gestisci le missioni sulla bacheca di Hemile.",                       path: "/dm-admin/quests" },
-    { label: "Sprite Personaggi",  desc: "Carica sprite dei personaggi e dei nemici minori (minion) per il Boss Fight.", path: "/dm-admin/player-sprites" },
-    { label: "Editor Mappe Battaglia", desc: "Disegna le mappe tattiche: terreni, quote, ostacoli e punti di spawn.", path: "/dm-admin/battle-maps" },
-    { label: "Invia Notifica",     desc: "Invia un messaggio diretto a un giocatore nel suo menu personale.",   path: "/dm-admin/send-notif", dashed: true },
+  // Pannelli raggruppati per area, con icona — nuova console del Master.
+  const GROUPS = [
+    {
+      label: "Economia & Gilda",
+      items: [
+        { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",                 path: "/dm-admin/market" },
+        { icon: "🐀", label: "Rat Reputation",   desc: "Gradi e lealtà dei player alla Gilda di Obia.",       path: "/dm-admin/reputation" },
+        { icon: "🪙", label: "Platinum Coins",   desc: "Saldo Monete Platino dei personaggi.",                path: "/dm-admin/platinum" },
+      ],
+    },
+    {
+      label: "Mondo & Cronache",
+      items: [
+        { icon: "🗺", label: "Geomantia",        desc: "Mappe, lore delle città e ping NPC.",                 path: "/dm-admin/geo" },
+        { icon: "📜", label: "Session Summaries",desc: "Log narrativi delle ultime avventure.",               path: "/dm-admin/summaries" },
+        { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni delle sessioni.",            path: "/dm-admin/videos" },
+        { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
+        { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",                   path: "/dm-admin/quests" },
+      ],
+    },
+    {
+      label: "Battaglia & Risorse",
+      items: [
+        { icon: "👹", label: "World Boss Fight", desc: "Crea boss, attivali e gestisci gli HP live.",         path: "/dm-admin/world-boss" },
+        { icon: "🧝", label: "Sprite Personaggi",desc: "Sprite di PG e minion per il Boss Fight.",            path: "/dm-admin/player-sprites" },
+        { icon: "🗺", label: "Editor Mappe",     desc: "Mappe tattiche: terreni, quote, ostacoli, spawn.",    path: "/dm-admin/battle-maps" },
+      ],
+    },
+    {
+      label: "Comunicazioni",
+      items: [
+        { icon: "🔔", label: "Invia Notifica",   desc: "Messaggio diretto a un giocatore.",                   path: "/dm-admin/send-notif", dashed: true },
+      ],
+    },
   ];
 
+  const totalTools = GROUPS.reduce((n, g) => n + g.items.length, 0);
+
   return (
-    <section className="admin-page">
-      <h1 className="admin-page-title">Crit Happens · Administration Panel</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">⚔</span></div>
-
-      <p style={{ textAlign: "center", marginBottom: 36, color: "#666", fontSize: "0.9rem" }}>
-        Bentornato, Master {currentUser.email.split("@")[0]}. Gestisci il destino del mondo.
-      </p>
-
-      <div className="admin-dash-grid">
-        {BLOCKS.map(({ label, desc, path, dashed }) => (
-          <div
-            key={path}
-            className="admin-dash-block"
-            style={dashed ? { borderStyle: "dashed" } : undefined}
-            onClick={() => navigate(path)}
-          >
-            <h2>{label}</h2>
-            <p>{desc}</p>
-          </div>
-        ))}
+    <section className="adm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
+      <div className="adm-masthead">
+        <div className="adm-mast-main">
+          <span className="adm-eyebrow">✦ Console del Master ✦</span>
+          <h1 className="adm-title">Quartier Generale</h1>
+          <p className="adm-sub">
+            Bentornato, Master <strong>{currentUser.email.split("@")[0]}</strong>. Da qui governi il destino di Exanthia.
+          </p>
+        </div>
+        <div className="adm-mast-aside">
+          <div className="adm-stat"><span>Strumenti</span><strong>{totalTools}</strong></div>
+          <div className="adm-stat"><span>Aree</span><strong>{GROUPS.length}</strong></div>
+        </div>
       </div>
+
+      {GROUPS.map((group) => (
+        <div key={group.label} style={{ marginBottom: 26 }}>
+          <h2 className="adm-panel-title" style={{ margin: "0 0 12px", fontSize: "0.82rem", letterSpacing: ".16em", textTransform: "uppercase", color: "#8a6212" }}>
+            {group.label}
+          </h2>
+          <div className="adm-tiles">
+            {group.items.map(({ icon, label, desc, path, dashed }) => (
+              <div
+                key={path}
+                className={`adm-tile ${dashed ? "adm-tile--dashed" : ""}`}
+                onClick={() => navigate(path)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(path); } }}
+              >
+                <span className="adm-tile-icon" aria-hidden="true">{icon}</span>
+                <h3 className="adm-tile-title">{label}</h3>
+                <p className="adm-tile-desc">{desc}</p>
+                <span className="adm-tile-cue">Apri ›</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }

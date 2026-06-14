@@ -72,75 +72,62 @@ export default function VideoAdmin() {
   };
 
   return (
-    <section className="admin-video-page">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+    <section className="adm" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
-      <h1 className="admin-page-title">Gestione Cinema</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">🎬</span></div>
-
-      {/* Form aggiunta video */}
-      <div className="admin-card">
-        <h2 className="admin-section-title">Pubblica Nuova Registrazione</h2>
-        <form onSubmit={handleAddVideo} className="admin-form-grid admin-form-grid--2col">
-          <div>
-            <label>Titolo Sessione</label>
-            <input
-              className="admin-field-input"
-              placeholder="es. Sessione 42: La caduta di Exanthia"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label>Link Video YouTube</label>
-            <input
-              className="admin-field-input"
-              placeholder="https://www.youtube.com/watch?v=..."
-              value={youtubeLink}
-              onChange={e => setYoutubeLink(e.target.value)}
-              required
-            />
-          </div>
-          <div className="full">
-            <label>Descrizione</label>
-            <textarea
-              className="admin-field-textarea"
-              placeholder="Cosa è successo in questa sessione?"
-              value={desc}
-              onChange={e => setDesc(e.target.value)}
-              rows="3"
-            />
-          </div>
-          <div className="btn-admin-actions">
-            <button type="submit" className="btn-admin-primary">Pubblica Registrazione</button>
-          </div>
-        </form>
+      <div className="adm-masthead">
+        <div className="adm-mast-main">
+          <span className="adm-eyebrow">🎬 Teatro delle Cronache</span>
+          <h1 className="adm-title">Gestione Cinema</h1>
+          <p className="adm-sub">Pubblica i link delle registrazioni delle sessioni passate.</p>
+        </div>
+        <div className="adm-mast-aside">
+          <div className="adm-stat"><span>Registrazioni</span><strong>{videos.length}</strong></div>
+        </div>
       </div>
 
-      {/* Lista video */}
-      <div className="admin-item-list-card">
-        <div style={{ padding: "0 18px" }}>
-          <h2 className="admin-section-title" style={{ marginBottom: 0, marginTop: 18 }}>
-            Video Caricati ({videos.length})
-          </h2>
-        </div>
-        {videos.length === 0 && (
-          <p style={{ padding: "20px 18px", color: "#aaa", fontStyle: "italic" }}>Nessuna registrazione presente.</p>
-        )}
-        {videos.map(video => (
-          <div key={video.id} className="video-admin-card">
-            <div className="video-admin-card-info">
-              <strong>{video.title}</strong>
-              <small>
-                {video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}
-              </small>
+      <div className="adm-workspace">
+        {/* Editor */}
+        <form onSubmit={handleAddVideo} className="adm-panel adm-col-sticky">
+          <div className="adm-panel-head"><h2 className="adm-panel-title">✦ Pubblica registrazione</h2></div>
+          <div className="adm-form">
+            <div className="adm-field">
+              <label>Titolo Sessione</label>
+              <input className="adm-input" placeholder="es. Sessione 42: La caduta di Exanthia" value={title} onChange={e => setTitle(e.target.value)} required />
             </div>
-            <button onClick={() => handleDelete(video.id)} className="btn-admin-danger">
-              Elimina
-            </button>
+            <div className="adm-field">
+              <label>Link Video YouTube</label>
+              <input className="adm-input" placeholder="https://www.youtube.com/watch?v=..." value={youtubeLink} onChange={e => setYoutubeLink(e.target.value)} required />
+            </div>
+            <div className="adm-field">
+              <label>Descrizione</label>
+              <textarea className="adm-textarea" placeholder="Cosa è successo in questa sessione?" value={desc} onChange={e => setDesc(e.target.value)} rows="3" />
+            </div>
+            <div className="adm-btn-row">
+              <button type="submit" className="adm-btn adm-btn--primary">▶ Pubblica</button>
+            </div>
           </div>
-        ))}
+        </form>
+
+        {/* Lista */}
+        <div className="adm-panel">
+          <div className="adm-panel-head"><h2 className="adm-panel-title">🎞 Video caricati <span style={{ opacity: .6, fontWeight: 400 }}>({videos.length})</span></h2></div>
+          {videos.length === 0 ? (
+            <p className="adm-empty">Nessuna registrazione presente.</p>
+          ) : (
+            <div className="adm-list">
+              {videos.map(video => (
+                <div key={video.id} className="adm-row">
+                  <div style={{ minWidth: 0 }}>
+                    <strong style={{ color: "var(--cine-accent)", fontFamily: "var(--font-head, 'Cinzel'), serif", display: "block" }}>{video.title}</strong>
+                    <small style={{ color: "#9a8a6b" }}>{video.platform === "twitch" ? "Twitch" : "YouTube"} · ID: {video.videoId}</small>
+                  </div>
+                  <button onClick={() => handleDelete(video.id)} className="adm-btn adm-btn--danger" style={{ padding: "7px 14px", fontSize: "0.78rem" }}>Elimina</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -39,82 +39,64 @@ export default function AdminSessions() {
   };
 
   return (
-    <section className="admin-sessions-page">
-      <Link to="/dm-admin" className="admin-back-link">← Dashboard Admin</Link>
+    <section className="adm" style={{ "--cine-accent": "#3f5a7a", "--cine-accent-2": "#5a7ea8" }}>
+      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
 
-      <h1 className="admin-page-title">Gestione Sessioni</h1>
-      <div className="admin-divider"><span className="admin-divider-icon">📅</span></div>
-
-      {/* Form nuova sessione */}
-      <div className="admin-card">
-        <h2 className="admin-section-title">Imposta Nuova Sessione</h2>
-        <div className="admin-form-grid admin-form-grid--2col">
-          <div>
-            <label>Seleziona Party</label>
-            <select
-              className="admin-field-select"
-              value={party}
-              onChange={(e) => setParty(e.target.value)}
-            >
-              <option value="Amea">Amea</option>
-              <option value="Lac">Lac</option>
-              <option value="Enox">Enox</option>
-              <option value="Leaf">Leaf</option>
-              <option value="Eco">Eco</option>
-            </select>
-          </div>
-          <div>
-            <label>Data e Ora</label>
-            <DateTimePicker
-              value={date}
-              onChange={setDate}
-              presets="session"
-              placeholder="Quando si gioca?"
-            />
-          </div>
-          <div className="btn-admin-actions">
-            <button onClick={saveSession} className="btn-admin-primary">
-              Salva / Aggiorna Sessione
-            </button>
-          </div>
+      <div className="adm-masthead">
+        <div className="adm-mast-main">
+          <span className="adm-eyebrow">📅 Calendario di gioco</span>
+          <h1 className="adm-title">Gestione Sessioni</h1>
+          <p className="adm-sub">Imposta date, orari e link per i party di Exanthia.</p>
+        </div>
+        <div className="adm-mast-aside">
+          <div className="adm-stat"><span>Programmate</span><strong>{activeSessions.length}</strong></div>
         </div>
       </div>
 
-      {/* Sessioni attive */}
-      <div className="admin-item-list-card">
-        <div style={{ padding: "0 18px" }}>
-          <h2 className="admin-section-title" style={{ marginTop: 18, marginBottom: 0 }}>
-            Sessioni Attive nel Database
-          </h2>
+      <div className="adm-workspace">
+        {/* Editor */}
+        <div className="adm-panel adm-col-sticky">
+          <div className="adm-panel-head"><h2 className="adm-panel-title">✦ Imposta sessione</h2></div>
+          <div className="adm-form adm-form--2">
+            <div className="adm-field">
+              <label>Party</label>
+              <select className="adm-select" value={party} onChange={(e) => setParty(e.target.value)}>
+                <option value="Amea">Amea</option>
+                <option value="Lac">Lac</option>
+                <option value="Enox">Enox</option>
+                <option value="Leaf">Leaf</option>
+                <option value="Eco">Eco</option>
+              </select>
+            </div>
+            <div className="adm-field">
+              <label>Data e Ora</label>
+              <DateTimePicker value={date} onChange={setDate} presets="session" placeholder="Quando si gioca?" />
+            </div>
+            <div className="full adm-btn-row">
+              <button onClick={saveSession} className="adm-btn adm-btn--primary">💾 Salva / Aggiorna</button>
+            </div>
+          </div>
         </div>
-        {activeSessions.length === 0 ? (
-          <p style={{ padding: "16px 18px", color: "#aaa", fontStyle: "italic" }}>
-            Nessuna sessione programmata al momento.
-          </p>
-        ) : (
-          <table className="sessions-table">
-            <thead>
-              <tr>
-                <th>Party</th>
-                <th>Data e Ora</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
+
+        {/* Lista */}
+        <div className="adm-panel">
+          <div className="adm-panel-head"><h2 className="adm-panel-title">🗓 Sessioni attive</h2></div>
+          {activeSessions.length === 0 ? (
+            <p className="adm-empty">Nessuna sessione programmata al momento.</p>
+          ) : (
+            <div className="adm-list">
               {activeSessions.map(s => (
-                <tr key={s.id}>
-                  <td><strong>{s.id}</strong></td>
-                  <td>{new Date(s.date).toLocaleString("it-IT")}</td>
-                  <td>
-                    <button onClick={() => deleteSession(s.id)} className="btn-admin-danger">
-                      Elimina
-                    </button>
-                  </td>
-                </tr>
+                <div key={s.id} className="adm-row">
+                  <div>
+                    <strong style={{ color: "var(--cine-accent)", fontFamily: "var(--font-head, 'Cinzel'), serif" }}>{s.id}</strong>
+                    <div style={{ fontSize: "0.82rem", color: "#6a5b41" }}>{new Date(s.date).toLocaleString("it-IT")}</div>
+                  </div>
+                  <button onClick={() => deleteSession(s.id)} className="adm-btn adm-btn--danger" style={{ padding: "7px 14px", fontSize: "0.78rem" }}>Elimina</button>
+                </div>
               ))}
-            </tbody>
-          </table>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
