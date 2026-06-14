@@ -1,6 +1,29 @@
 {
   "versions": [
     {
+      "version": "23",
+      "date": "2026-06-14",
+      "title": "Restyle completo mobile-first «Pergamena Antica»",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Sistema di design unico «Pergamena Antica» esteso a tutto il sito: hero con immagine antichizzata che sfuma nella carta, divisori a banner compatti, card e pannelli su pergamena coerenti. Nuovo indicatore di scorrimento a freccia in anello."
+        },
+        {
+          "type": "graphic",
+          "text": "Micro-animazioni d'ingresso: card e sezioni «salgono» entrando nello schermo (effetto fluido su GPU, disattivato se preferisci ridurre le animazioni)."
+        },
+        {
+          "type": "fix",
+          "text": "Layout mobile-first: pulsanti flottanti riordinati senza più sovrapposizioni (chat a destra, presenza/calendario a sinistra) e rispetto delle aree di sicurezza su iPhone (notch/barra gesti)."
+        },
+        {
+          "type": "mechanics",
+          "text": "Parallax dell'header reso fluido e compatibile con iOS (niente più scatti su Safari): l'immagine resta «ferma» mentre il contenuto scorre."
+        }
+      ]
+    },
+    {
       "version": "22",
       "date": "2026-06-14",
       "title": "Nuovo tema chiaro «Pergamena Antica»",
