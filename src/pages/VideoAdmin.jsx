@@ -81,7 +81,7 @@ export default function VideoAdmin() {
       {/* Form aggiunta video */}
       <div className="admin-card">
         <h2 className="admin-section-title">Pubblica Nuova Registrazione</h2>
-        <form onSubmit={handleAddVideo} className="admin-form-grid">
+        <form onSubmit={handleAddVideo} className="admin-form-grid admin-form-grid--2col">
           <div>
             <label>Titolo Sessione</label>
             <input
@@ -102,7 +102,7 @@ export default function VideoAdmin() {
               required
             />
           </div>
-          <div>
+          <div className="full">
             <label>Descrizione</label>
             <textarea
               className="admin-field-textarea"

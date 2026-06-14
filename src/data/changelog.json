@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "28",
+      "date": "2026-06-14",
+      "title": "Pannelli del Master ottimizzati per desktop + pulizia",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Tutti i pannelli del Master (mercato, reputazione, sessioni, cinema, riassunti, geomantia, quest, monete, sprite) ora più larghi e ariosi su PC, con intestazione a cartiglio coerente e card, tabelle e form rifiniti."
+        },
+        {
+          "type": "graphic",
+          "text": "Gestione Sessioni e Cinema: form su due colonne nelle schermate larghe; Reputazione e Cinema mostrano le voci in griglia invece che in colonna singola."
+        },
+        {
+          "type": "chore",
+          "text": "Rimossi file di pagina non più usati (vecchia Geo e due copie del World Boss)."
+        }
+      ]
+    },
+    {
       "version": "27",
       "date": "2026-06-14",
       "title": "Restyle Pergamena completato: schede, pannelli e utility",

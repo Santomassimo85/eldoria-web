@@ -4147,3 +4147,125 @@
 .qstadm-icon.edit:hover   { background: rgba(212, 175, 55, 0.18); color: var(--red); }
 .qstadm-icon.danger:hover { background: rgba(231, 76, 60, 0.15); color: #c0392b; }
 .qstadm-icon + .qstadm-icon { border-left: 1px solid rgba(212, 175, 55, 0.2); }
+
+/* ============================================================
+   ★ POTENZIAMENTO DESKTOP & MASTHEAD — pannelli admin (2026-06-14)
+   Migliora TUTTI i pannelli insieme: più larghi su PC (uso
+   prevalente da desktop), masthead a cartiglio, card/tabelle/form
+   rifiniti e responsive. In coda → vince sulle regole precedenti.
+   ============================================================ */
+
+/* — container più ampio su desktop large — */
+@media (min-width: 1280px) {
+  .admin-page,
+  .admin-summary-page,
+  .admin-market-page,
+  .admin-container,
+  .admin-video-page,
+  .admin-reputation-page,
+  .admin-sessions-page,
+  .admin-quest-page,
+  .admin-platinum-page,
+  .admin-geo-page {
+    max-width: 1320px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .mkadm { max-width: 1460px; }
+}
+@media (min-width: 1700px) {
+  .admin-page,
+  .admin-summary-page,
+  .admin-market-page,
+  .admin-container,
+  .admin-video-page,
+  .admin-reputation-page,
+  .admin-sessions-page,
+  .admin-quest-page,
+  .admin-platinum-page,
+  .admin-geo-page { max-width: 1440px; }
+}
+
+/* — MASTHEAD a cartiglio: eyebrow + titolo gradient + filetto — */
+.admin-page-title {
+  position: relative;
+  font-weight: 900;
+  background: linear-gradient(180deg, #a9781a 0%, #8a6212 55%, #7c560f 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.admin-page-title::before {
+  content: "✦ Pannello del Master ✦";
+  display: block;
+  -webkit-text-fill-color: #a9781a; color: #a9781a;
+  font-family: var(--font-title);
+  font-size: 0.62rem; letter-spacing: 0.3em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+/* il divisore esistente fa già da filetto; lo rendo un filo più sobrio */
+.admin-divider { margin-bottom: 30px; }
+
+/* — back link: bottone pieno e comodo su desktop — */
+.admin-back-link {
+  background: linear-gradient(135deg, #fbf4e0, #f1e7cf);
+  box-shadow: 0 4px 12px -6px rgba(86, 64, 30, 0.4);
+}
+@media (min-width: 768px) {
+  .admin-back-link { font-size: 0.9rem; padding: 8px 18px; }
+}
+
+/* — HUB dashboard: card più ricche e ariose su PC — */
+@media (min-width: 1280px) {
+  .admin-dash-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; }
+}
+.admin-dash-block {
+  background: linear-gradient(180deg, #fffdf7, #fbf4e0);
+  border-left: 4px solid transparent;
+}
+.admin-dash-block:hover { border-left-color: var(--gold); }
+
+/* — card/list di sezione: leggera trama pergamena — */
+.admin-card,
+.admin-item-list-card { background: linear-gradient(180deg, #fffdf7, #fbf6ea); }
+
+/* — FORM: due colonne su desktop SOLO se la griglia opta con
+   `.admin-form-grid--2col` (evita di rompere i layout esistenti).
+   Un figlio con `.full` torna a tutta larghezza. */
+@media (min-width: 860px) {
+  .admin-form-grid--2col { grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+  .admin-form-grid--2col > .full,
+  .admin-form-grid--2col > textarea,
+  .admin-form-grid--2col > .admin-field-textarea,
+  .admin-form-grid--2col > .btn-admin-actions { grid-column: 1 / -1; }
+}
+
+/* — TABELLE: intestazione sticky + zebra su desktop — */
+@media (min-width: 768px) {
+  .sessions-table thead th {
+    position: sticky; top: calc(var(--navbar-h, 80px) - 8px);
+    background: #fbf4e0; z-index: 1;
+  }
+  .sessions-table tbody tr:nth-child(even) td { background: rgba(212, 175, 55, 0.05); }
+}
+
+/* — messaggi di stato: un filo più presenti — */
+.admin-status-ok, .admin-status-err { box-shadow: 0 6px 18px -12px rgba(86, 64, 30, 0.4); }
+
+/* — REPUTAZIONE: griglia di card su desktop (no liste sparse su PC) — */
+.rep-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.rep-grid .rep-char-card { margin-bottom: 0; }
+@media (min-width: 720px)  { .rep-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1180px) { .rep-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* — VIDEO admin: card a griglia su desktop — */
+@media (min-width: 900px) {
+  .admin-video-page .admin-item-list-card {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    padding: 10px; background: transparent; border: none; box-shadow: none; overflow: visible;
+  }
+  .admin-video-page .admin-item-list-card > div:first-child { grid-column: 1 / -1; }
+  .admin-video-page .video-admin-card {
+    margin-bottom: 0;
+    border-radius: 12px;
+  }
+}

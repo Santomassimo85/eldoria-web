@@ -48,7 +48,7 @@ export default function AdminSessions() {
       {/* Form nuova sessione */}
       <div className="admin-card">
         <h2 className="admin-section-title">Imposta Nuova Sessione</h2>
-        <div className="admin-form-grid">
+        <div className="admin-form-grid admin-form-grid--2col">
           <div>
             <label>Seleziona Party</label>
             <select

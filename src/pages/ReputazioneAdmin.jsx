@@ -72,7 +72,7 @@ export default function ReputationAdmin() {
       {loading ? (
         <p style={{ textAlign: "center", color: "#aaa", fontStyle: "italic" }}>Sguinzagliando i ratti spia...</p>
       ) : (
-        <div>
+        <div className="rep-grid">
           {characters.map((char) => {
             const progress = getProgressData(char.rattoPoints);
             return (
