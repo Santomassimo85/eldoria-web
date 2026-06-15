@@ -802,41 +802,41 @@ const AI_HARD_PRESETS = [
     archetype: "fighter-plate",
     name: "🤖 Veterano d'Acciaio",
     class: "Fighter",
-    // High STR, modest DEX, very high CON. Plate armour for max AC.
-    stats: { str: 5, dex: 1, con: 5, int: -1, wis: 1, cha: 0 },
+    // STR/CON focus, low DEX. Stessi limiti del giocatore: 10 punti, max +3.
+    stats: { str: 3, dex: 1, con: 3, int: 1, wis: 2, cha: 0 },
     armor: { name: "Piastre Intere", baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES" },
     hasShield: null,
     weapons: [{ name: "Spadone", hitBonus: 3, damage: "2d6", statKey: "str", type: "weapon", icon: "⚔", twoHanded: true }],
-    hp: 95,
+    hp: 72,
     items: { pozione_cura: 2 },
   },
   {
     archetype: "barbarian-axe",
     name: "🤖 Vargash il Sanguinario",
     class: "Barbarian",
-    stats: { str: 5, dex: 3, con: 5, int: -1, wis: 0, cha: -1 },
+    stats: { str: 3, dex: 2, con: 3, int: 1, wis: 1, cha: 0 },
     armor: { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "💪", info: "Senza armatura · 10+DES+COS", unarmoredDefense: true },
     hasShield: null,
     weapons: [{ name: "Ascia Bipenne", hitBonus: 3, damage: "1d12", statKey: "str", type: "weapon", icon: "🪓", twoHanded: true }],
-    hp: 105,
+    hp: 78,
     items: { pozione_cura: 1, bomba: 1 },
   },
   {
     archetype: "ranger-longbow",
     name: "🤖 Liriel Occhio d'Aquila",
     class: "Ranger",
-    stats: { str: 1, dex: 5, con: 4, int: 0, wis: 4, cha: 0 },
+    stats: { str: 1, dex: 3, con: 2, int: 1, wis: 3, cha: 0 },
     armor: { name: "Cuoio Borchiato", baseAc: 14, maxDex: 2, hitPenalty: 0, icon: "⚙", info: "Borchiata · +DES max 2" },
     hasShield: null,
     weapons: [{ name: "Arco Lungo", hitBonus: 3, damage: "1d8", statKey: "dex", type: "weapon", icon: "🏹", twoHanded: true }],
-    hp: 78,
+    hp: 60,
     items: { pozione_cura: 2 },
   },
   {
     archetype: "rogue-twin",
     name: "🤖 Vyra la Cuspide",
     class: "Rogue",
-    stats: { str: 0, dex: 5, con: 4, int: 2, wis: 1, cha: 1 },
+    stats: { str: 1, dex: 3, con: 2, int: 2, wis: 0, cha: 2 },
     armor: { name: "Armatura di cuoio borchiato", baseAc: 12, maxDex: 99, hitPenalty: 0, icon: "👘", info: "Leggera · +DES pieno" },
     hasShield: null,
     // Rogue gets 3 attacks/turn — gets to swing both blades + one more.
@@ -844,18 +844,18 @@ const AI_HARD_PRESETS = [
       { name: "Spada Corta", hitBonus: 3, damage: "1d6", statKey: "dex", type: "weapon", icon: "⚔", twoHanded: false },
       { name: "Stocco",      hitBonus: 3, damage: "1d8", statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false },
     ],
-    hp: 74,
+    hp: 56,
     items: { pozione_cura: 1, pozione_veleno: 1 },
   },
   {
     archetype: "paladin-sword-shield",
     name: "🤖 Sir Caedric il Giudice",
     class: "Paladin",
-    stats: { str: 5, dex: 1, con: 4, int: 0, wis: 1, cha: 4 },
+    stats: { str: 3, dex: 1, con: 2, int: 0, wis: 1, cha: 3 },
     armor: { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante" },
     hasShield: "metallo", // +2 AC
     weapons: [{ name: "Spada Lunga", hitBonus: 3, damage: "1d10", statKey: "str", type: "weapon", icon: "⚔", twoHanded: false }],
-    hp: 90,
+    hp: 68,
     items: { pozione_cura: 2 },
   },
   {
@@ -865,7 +865,7 @@ const AI_HARD_PRESETS = [
     archetype: "wizard-fire",
     name: "🤖 Arconte Pyrios",
     class: "Wizard",
-    stats: { str: -1, dex: 2, con: 3, int: 5, wis: 1, cha: 0 },
+    stats: { str: 0, dex: 2, con: 2, int: 3, wis: 2, cha: 1 },
     armor: { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "🪶", info: "Senza armatura · 10+DES" },
     hasShield: null,
     weapons: [{ name: "Pugnale", hitBonus: 3, damage: "1d4", statKey: "dex", type: "weapon", icon: "🗡", twoHanded: false }],
@@ -880,7 +880,7 @@ const AI_HARD_PRESETS = [
       // Lv2 — danno grosso
       { name: "Raggio Rovente", level: 2, hitBonus: 3, damage: "6d6",  statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6)", maxUses: 2 },
     ],
-    hp: 60,
+    hp: 52,
     items: { pozione_cura: 2 },
   },
 ];
@@ -997,15 +997,15 @@ const ARENA_TITLES = {
   // ── Nuova infornata di titoli (≤ +1 hit, niente di troppo potente) ──────────
   ombraDellaNotte:   { key: "ombraDellaNotte",   name: "Ombra della Notte",     icon: "🌑", short: "+1 hit (Ladro/Monaco/Ranger)" },
   furiaSelvaggia:    { key: "furiaSelvaggia",    name: "Furia Selvaggia",       icon: "🪓", short: "+1 hit arma (Barbaro)" },
-  giuramentoSacro:   { key: "giuramentoSacro",   name: "Giuramento Sacro",      icon: "⚜", short: "+1 hit arma (Paladino)" },
-  luceDivina:        { key: "luceDivina",        name: "Luce Divina",           icon: "☀", short: "+1 hit spell (Chierico)" },
+  giuramentoSacro:   { key: "giuramentoSacro",   name: "Giuramento Sacro",      icon: "⚜", short: "+1 hit arma (Paladino/Chierico)" },
+  luceDivina:        { key: "luceDivina",        name: "Luce Divina",           icon: "☀", short: "+1 hit spell (Chierico/Paladino)" },
   cantoDiGuerra:     { key: "cantoDiGuerra",     name: "Canto di Guerra",       icon: "🎵", short: "+1 hit spell (Bardo)" },
   pattoOscuro:       { key: "pattoOscuro",       name: "Patto Oscuro",          icon: "👁", short: "+1 hit spell (Warlock)" },
   ingegnoMeccanico:  { key: "ingegnoMeccanico",  name: "Ingegno Meccanico",     icon: "⚙", short: "+1 hit (Artefice)" },
   cuoreDellaForesta: { key: "cuoreDellaForesta", name: "Cuore della Foresta",   icon: "🌿", short: "+1 hit spell (Druido, no forma selvatica)" },
   occhioDiFalco:     { key: "occhioDiFalco",     name: "Occhio di Falco",       icon: "🎯", short: "+1 hit con armi perforanti" },
   filoDelRasoio:     { key: "filoDelRasoio",     name: "Filo del Rasoio",       icon: "🗡", short: "+1 hit con armi taglienti" },
-  signoreTempesta:   { key: "signoreTempesta",   name: "Signore della Tempesta", icon: "⚡", short: "+1 hit con attacchi da fulmine" },
+  signoreTempesta:   { key: "signoreTempesta",   name: "Signore della Tempesta", icon: "⚡", short: "+1d6 danni (fulmine) con spell di fulmine/gelo/acqua" },
 };
 
 // Restituisce +1 se il titolo deve attivarsi su questo tiro per colpire, altrimenti 0.
@@ -1020,16 +1020,27 @@ function getTitleHitBonus({ titleKey, classLower, isSpellAction, wildShapeForm, 
   // ── Nuovi titoli ────────────────────────────────────────────────────────────
   if (titleKey === "ombraDellaNotte"   && (isRogueClass(classLower) || isMonkClass(classLower) || isRangerClass(classLower))) return 1;
   if (titleKey === "furiaSelvaggia"    && !isSpellAction && isBarbarianClass(classLower)) return 1;
-  if (titleKey === "giuramentoSacro"   && !isSpellAction && isPaladinClass(classLower)) return 1;
-  if (titleKey === "luceDivina"        && isSpellAction && isClericClass(classLower)) return 1;
+  if (titleKey === "giuramentoSacro"   && !isSpellAction && (isPaladinClass(classLower) || isClericClass(classLower))) return 1;
+  if (titleKey === "luceDivina"        && isSpellAction && (isClericClass(classLower) || isPaladinClass(classLower))) return 1;
   if (titleKey === "cantoDiGuerra"     && isSpellAction && isBardClass(classLower)) return 1;
   if (titleKey === "pattoOscuro"       && isSpellAction && isWarlockClass(classLower)) return 1;
   if (titleKey === "ingegnoMeccanico"  && isArtificerClass(classLower)) return 1;
   if (titleKey === "cuoreDellaForesta" && isSpellAction && isDruidClass(classLower) && !wildShapeForm) return 1;
   if (titleKey === "occhioDiFalco"     && !isSpellAction && actionDamageType === "perforante") return 1;
   if (titleKey === "filoDelRasoio"     && !isSpellAction && actionDamageType === "tagliente") return 1;
-  if (titleKey === "signoreTempesta"   && actionDamageType === "fulmine") return 1;
+  // "signoreTempesta" non dà più +1 colpire: ora aggiunge +1d6 danni da fulmine
+  // alle spell di fulmine/gelo/acqua (gestito nel calcolo danni via isStormSpell).
   return 0;
+}
+
+// Le spell non hanno un damageType strutturato: l'elemento è nel nome/`info`.
+// "Tempesta" = fulmine/tuono OPPURE gelo/acqua → abilita il bonus del titolo
+// "Signore della Tempesta" (+1d6 danni da fulmine).
+function isStormSpell(action) {
+  const t = `${action?.name || ""} ${action?.info || ""}`.toLowerCase();
+  const lightning = /fulmin|saetta|folgor|elettr|tuono|tonante|schianto|frantum|frastorn/.test(t);
+  const iceWater  = /gelo|ghiacc|freddo|brina|\bneve\b|gelid|acqua|marea|onda/.test(t);
+  return lightning || iceWater;
 }
 
 // Invisibilità con durata variabile. `invisibilityTurns` è la fonte di verità; legacy `invisible: true/false` fa da fallback.
@@ -5038,11 +5049,14 @@ export default function Arena() {
     // Patto Demoniaco (Warlock): +1d12 ai danni delle spell che colpiscono per 3 turni dopo l'attivazione.
     const pattoActive = (attackerMatchPlayer?.pattoTurns ?? 0) > 0;
     const { total: pattoBonusDmg, rolls: pattoRolls } = isHit && isSpellAction && pattoActive ? rollDmg("1d12") : { total: 0, rolls: "" };
+    // Signore della Tempesta (titolo): +1d6 danni da fulmine sulle spell di fulmine/gelo/acqua.
+    const stormTitleOn = isHit && isSpellAction && attackerTitles.includes("signoreTempesta") && isStormSpell(action);
+    const { total: stormBonusDmg, rolls: stormRolls } = stormTitleOn ? rollDmg("1d6") : { total: 0, rolls: "" };
     // Le spell che fanno danno usano il mod del caster (INT/SAG/CAR), come le armi col loro statKey.
     const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
     const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
     const aidDmgBonus    = readAidDmgBonus(attackerMatchPlayer); // Aiuto: +X al danno
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus) * critMult + poisonBonusDmg + pattoBonusDmg : 0;
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     const rageReducedDamage = applyBarbarianRageReduction(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
@@ -5058,6 +5072,7 @@ export default function Arena() {
     const critTag        = isCrit ? " ★CRITICO★" : "";
     const poisonTag      = poisonBonusDmg > 0 ? ` | veleno 🎲${poisonRolls}=${poisonBonusDmg}` : "";
     const pattoTag       = pattoBonusDmg > 0 ? ` | 🩸patto 🎲${pattoRolls}=${pattoBonusDmg}` : "";
+    const stormTag       = stormBonusDmg > 0 ? ` | ⚡tempesta 🎲${stormRolls}=${stormBonusDmg}` : "";
     const rageTag        = rageDmgBonus > 0 ? ` | furia +${rageDmgBonus}` : "";
     const barbDmgTag     = barbarianDmgBonus > 0 ? ` | barb +${barbarianDmgBonus}` : "";
     const concentrationTag = concentrationDmg > 0 ? ` | 🧘conc. +${concentrationDmg}` : "";
@@ -5073,7 +5088,7 @@ export default function Arena() {
       : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
     log = {
@@ -6432,6 +6447,7 @@ export default function Arena() {
     const snapshots    = arenaMeta.characterSnapshots || {};
     const attackerSnap = snapshots[currentUser.uid];
     const defenderSnap = snapshots[targetId];
+    const attackerTitles = getSnapTitles(attackerSnap);
     const attName = attackerSnap?.name || "?";
     const defName = defenderSnap?.name || "?";
 
@@ -6510,7 +6526,10 @@ export default function Arena() {
     // ── Danno ──
     let { total: dmgDice, rolls: diceRolls } = connected ? rollDmg(dmgFormula) : { total: 0, rolls: "0" };
     if (critHit && connected) { const ex = rollDmg(dmgFormula); dmgDice += ex.total; diceRolls = `${diceRolls}+${ex.rolls}`; } // crit: dadi raddoppiati
-    let rawDmg = connected ? Math.max(0, dmgDice + casterMod + concentrationDmg + aidDmgBonus) : 0;
+    // Signore della Tempesta (titolo): +1d6 danni da fulmine sulle spell di fulmine/gelo/acqua.
+    const stormTitleOn = connected && attackerTitles.includes("signoreTempesta") && isStormSpell(action);
+    const { total: stormBonusDmg, rolls: stormRolls } = stormTitleOn ? rollDmg("1d6") : { total: 0, rolls: "" };
+    let rawDmg = connected ? Math.max(0, dmgDice + casterMod + concentrationDmg + aidDmgBonus + stormBonusDmg) : 0;
     if (halfDamage)  rawDmg = Math.floor(rawDmg / 2);
     if (sorcererCrit) rawDmg = Math.floor(rawDmg * 1.5);
     const damage = rawDmg;
@@ -6526,8 +6545,9 @@ export default function Arena() {
       : [];
     const hurtTag    = (action.damageWhenHurt && targetIsHurt) ? ` | 🩸ferito (${dmgFormula})` : "";
     const halfTag    = halfDamage ? " | ½ TS" : "";
+    const stormTag   = stormBonusDmg > 0 ? ` | ⚡tempesta 🎲${stormRolls}=${stormBonusDmg}` : "";
     const vampTag    = vampHeal > 0 ? ` | 🩸cura ${vampHeal} HP [🎲${vampRolls}]` : "";
-    const dmgTail    = damage > 0 ? ` 🎲(${diceRolls})${modSign}${casterMod} ${castAbility.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag}${halfTag} = ${damage} danni${vampTag}` : "";
+    const dmgTail    = damage > 0 ? ` 🎲(${diceRolls})${modSign}${casterMod} ${castAbility.toUpperCase()}${concentrationTag}${sorceryTag}${hurtTag}${stormTag}${halfTag} = ${damage} danni${vampTag}` : "";
     const log = {
       pub: connected
         ? `✨ ${attName} → ${action.name}: ${outcomeLog} su ${defName}${dmgTail}`
@@ -8057,17 +8077,19 @@ export default function Arena() {
                           {label}
                           {isKey && <span className="stat-key-tag">⭐ consigliata</span>}
                         </span>
-                        <button
-                          className="stat-adj-btn"
-                          onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.max(0, prev[key] - 1) }))}
-                          disabled={pendingStats[key] <= 0}
-                        >−</button>
-                        <span className="stat-assign-val">{pendingStats[key] >= 0 ? "+" : ""}{pendingStats[key]}</span>
-                        <button
-                          className="stat-adj-btn"
-                          onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(3, prev[key] + 1) }))}
-                          disabled={pendingStats[key] >= 3 || remaining <= 0}
-                        >+</button>
+                        <div className="stat-assign-controls">
+                          <button
+                            className="stat-adj-btn"
+                            onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.max(0, prev[key] - 1) }))}
+                            disabled={pendingStats[key] <= 0}
+                          >−</button>
+                          <span className="stat-assign-val">{pendingStats[key] >= 0 ? "+" : ""}{pendingStats[key]}</span>
+                          <button
+                            className="stat-adj-btn"
+                            onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(3, prev[key] + 1) }))}
+                            disabled={pendingStats[key] >= 3 || remaining <= 0}
+                          >+</button>
+                        </div>
                         <div className="stat-assign-desc">{STAT_DESCS[key]}</div>
                       </div>
                     );

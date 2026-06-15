@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "41",
+      "date": "2026-06-15",
+      "title": "Arena: AI ribilanciata, titoli aggiornati e creazione PG più leggibile",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Avversari IA (Sfida l'IA · Hard Mode) ribilanciati: prima avevano caratteristiche fuori scala (fino a +5 e oltre i 10 punti) e troppi PF, il che permetteva anche iniziative impossibili (es. 25). Ora rispettano gli stessi limiti dei giocatori — massimo +3 per caratteristica, 10 punti totali — e PF allineati, quindi sono sfidanti ma equi."
+        },
+        {
+          "type": "mechanics",
+          "text": "Titoli d'Arena: «Luce Divina» (+1 colpire con le spell) e «Giuramento Sacro» (+1 colpire con le armi) ora valgono sia per Chierico sia per Paladino. «Signore della Tempesta» non dà più +1 al colpire ma +1d6 danni da fulmine quando lanci una spell di fulmine/tuono o gelo/acqua."
+        },
+        {
+          "type": "graphic",
+          "text": "Pannello di creazione personaggio uniformato: tutte le fasi (classe, caratteristiche, armi, incantesimi, armatura, oggetti) usano la stessa palette scura con accento oro; bordi interni ridondanti rimossi; numeri HP del tiro dadi e tasto «Annulla» resi leggibili; hover dei pulsanti più evidente."
+        }
+      ]
+    },
+    {
       "version": "40",
       "date": "2026-06-15",
       "title": "Arena: titolo «Gufo Bianco» ridefinito",

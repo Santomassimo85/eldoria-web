@@ -5952,4 +5952,160 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(95,2
   .tb-result-winner, .tb-result-loser, .tb-fighter-name{ min-width:0; }
 }
 
+/* ============================================================
+   FIX leggibilità — pannello CREAZIONE PG (class-select / stat / loadout)
+   Prima era pergamena chiara con testo chiaro = illeggibile. Lo porto a
+   tema scuro con testo chiaro/oro. Caricato per ultimo → vince.
+   ============================================================ */
+.arena-page .join-zone {
+  background: linear-gradient(135deg, rgba(26, 16, 14, 0.97), rgba(16, 10, 10, 0.97)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+}
+.arena-page .loadout-char-preview {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: none !important;
+}
+/* pannello interno senza bordo né sfondo proprio: si fonde col contenitore
+   esterno (.join-zone), che resta l'unico pannello "bordato" */
+.arena-page .hp-roll-panel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.arena-page .hp-roll-title { color: #ffd97a !important; }
+.arena-page .loadout-char-name { color: #fff7e6 !important; }
+.arena-page .loadout-char-class { color: #ffd97a !important; opacity: 1 !important; }
+
+/* pulsanti classe: scuri, testo chiaro */
+.arena-page .class-select-btn {
+  background: linear-gradient(135deg, rgba(60, 44, 32, 0.92), rgba(40, 28, 22, 0.92)) !important;
+  border: 1.5px solid rgba(212, 175, 55, 0.35) !important;
+  color: #f3e6c8 !important;
+}
+.arena-page .class-select-btn:hover {
+  border-color: var(--arena-gold) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5) !important;
+}
+.arena-page .class-select-btn.selected {
+  border-color: #ffd97a !important;
+  background: linear-gradient(135deg, rgba(138, 14, 14, 0.55), rgba(90, 8, 8, 0.55)) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 2px rgba(255, 217, 122, 0.45), 0 8px 20px rgba(0, 0, 0, 0.5) !important;
+}
+.arena-page .hp-roll-buttons button {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.07)) !important;
+  color: #ffe9b0 !important;
+}
+/* fase distribuzione punti: badge + hint sul pannello scuro */
+.arena-page .stat-budget-badge { color: #ffe9b0 !important; }
+.arena-page .stat-assign-hint { color: rgba(245, 230, 200, 0.85) !important; }
+
+/* righe stat: scure con testo chiaro (prima cream + valori invisibili) */
+.arena-page .stat-assign-row {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(212, 175, 55, 0.22) !important;
+}
+.arena-page .stat-assign-row:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(212, 175, 55, 0.45) !important;
+}
+.arena-page .stat-assign-label { color: #f3e6c8 !important; }
+.arena-page .stat-assign-val   { color: #fff7e6 !important; }
+.arena-page .stat-assign-desc  { color: rgba(238, 226, 200, 0.7) !important; }
+.arena-page .stat-adj-btn      { background: rgba(255, 255, 255, 0.92) !important; color: var(--arena-blood) !important; }
+/* stat consigliate: accento verde su fondo scuro */
+.arena-page .stat-assign-row.stat-key {
+  background: rgba(47, 158, 87, 0.16) !important;
+  border-color: rgba(47, 158, 87, 0.6) !important;
+}
+.arena-page .stat-assign-row.stat-key:hover { background: rgba(47, 158, 87, 0.24) !important; }
+.arena-page .stat-assign-row.stat-key .stat-assign-label { color: #8af0b4 !important; }
+.arena-page .stat-assign-row.stat-key .stat-assign-desc  { color: rgba(150, 235, 185, 0.85) !important; }
+
+/* layout riga: sigla(+tag) a sinistra che può andare a capo, controlli −/valore/+
+   raggruppati e ancorati a destra (mai più il "+" che scende da solo) */
+.arena-page .stat-assign-label {
+  flex: 1 1 auto !important; min-width: 0 !important;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+}
+.arena-page .stat-key-tag { margin-left: 0 !important; }
+.arena-page .stat-assign-controls {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 12px; margin-left: auto;
+}
+
+/* ============================================================
+   CREAZIONE PG — palette uniforme + hover marcato (tutte le fasi
+   come la scheda statistiche: scuro neutro, accento oro, verde =
+   consigliato). Caricato per ultimo → vince.
+   ============================================================ */
+/* card di scelta (armi/spell/armatura/oggetti): stesso fondo neutro per tutte */
+.arena-page .loadout-item,
+.arena-page .loadout-item.weapon,
+.arena-page .loadout-item.spell,
+.arena-page .loadout-item.armor,
+.arena-page .loadout-item.item-slot {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(212, 175, 55, 0.3) !important;
+  color: #f3e6c8 !important;
+  transition: transform 0.15s ease, border-color 0.2s, box-shadow 0.2s, background 0.2s !important;
+}
+.arena-page .loadout-item:hover:not(.disabled) {
+  transform: translateY(-2px) !important;
+  border-color: var(--arena-gold, #d4af37) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.5) !important;
+  filter: none !important;
+}
+/* selezionato = oro, uguale per ogni tipo */
+.arena-page .loadout-item.weapon.selected,
+.arena-page .loadout-item.spell.selected,
+.arena-page .loadout-item.armor.selected,
+.arena-page .loadout-item.item-slot.selected {
+  background: rgba(212, 175, 55, 0.28) !important;
+  border-color: #ffd97a !important;
+  box-shadow: 0 0 0 2px rgba(255, 217, 122, 0.5), 0 6px 18px rgba(0, 0, 0, 0.5) !important;
+}
+/* "consigliato" resta verde (coerente con le stat consigliate) */
+.arena-page .loadout-item.weapon.optimal {
+  border-color: rgba(95, 224, 160, 0.75) !important;
+  box-shadow: 0 0 0 1.5px rgba(95, 224, 160, 0.4), 0 0 16px -2px rgba(95, 224, 160, 0.5) !important;
+}
+
+/* risultato del tiro HP: dorato leggibile (prima rosso su scuro) */
+.arena-page .hp-rolled-result {
+  background: none !important;
+  -webkit-text-fill-color: #ffe9a0 !important;
+  color: #ffe9a0 !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65) !important;
+}
+
+/* tasti Annulla / Ritira: testo chiaro (prima rosso su scuro) + hover marcato */
+.arena-page .btn-cancel-loadout,
+.arena-page .btn-reroll,
+.arena-page .btn-cancel-wild,
+.arena-page .btn-revert-wild {
+  color: #ffe9b0 !important;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s, border-color 0.2s !important;
+}
+
+/* hover ben visibile su TUTTI i pulsanti di creazione */
+.arena-page .class-select-btn:hover {
+  transform: translateY(-3px) !important;
+  border-color: var(--arena-gold, #d4af37) !important;
+  background: linear-gradient(135deg, rgba(82, 60, 42, 0.95), rgba(54, 38, 28, 0.95)) !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(212, 175, 55, 0.55) !important;
+}
+.arena-page .hp-roll-buttons button:hover,
+.arena-page .stat-adj-btn:hover:not(:disabled),
+.arena-page .btn-cancel-loadout:hover,
+.arena-page .btn-reroll:hover,
+.arena-page .btn-cancel-wild:hover,
+.arena-page .btn-revert-wild:hover {
+  transform: translateY(-2px) !important;
+  filter: brightness(1.15) !important;
+  border-color: var(--arena-gold, #d4af37) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
 /* combat v3 — palette oro/bordeaux, dock compatto, abbandono in top bar */
