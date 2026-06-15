@@ -145,7 +145,10 @@
      positioned so they never push the sprite off the tile. The whole container
      is pointer-events:none so the sprite's transparent bounding box can't steal
      clicks from nearby tiles — only the small .iso-unit-hit base is clickable. */
-  transform: translate(-50%, -100%);
+  /* feet sit slightly INTO the tile's top face (toward the front-centre of the
+     diamond) instead of on its back vertex, so the sprite reads as standing on
+     the ground rather than hovering above it */
+  transform: translate(-50%, calc(-100% + 5px));
   pointer-events: none;
 }
 /* While a unit walks its path, glide tile-to-tile instead of teleporting. Scoped
@@ -167,17 +170,31 @@
   cursor: pointer;
 }
 
-/* ground shadow — visually anchors the sprite to the tile it stands on */
+/* ground shadow — a soft, flat iso ellipse right under the feet. A radial fade
+   (instead of a hard disc) gives a believable contact shadow that "glues" the
+   sprite to the tile on any terrain. */
 .iso-unit-shadow {
   position: absolute;
-  bottom: -2px;
+  bottom: -1px;
   left: 50%;
   transform: translateX(-50%);
-  width: 30px;
-  height: 12px;
+  width: 44px;
+  height: 16px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.33);
-  filter: blur(1px);
+  background: radial-gradient(ellipse at center,
+    rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.34) 42%, rgba(0, 0, 0, 0) 72%);
+  filter: blur(1.5px);
+}
+/* the contact shadow tightens as the unit "breathes" up, loosens as it settles */
+.iso-unit.alive .iso-unit-shadow {
+  animation: iso-shadow-breathe 2.8s ease-in-out infinite;
+}
+@keyframes iso-shadow-breathe {
+  0%, 100% { transform: translateX(-50%) scale(1);    opacity: 1;    }
+  50%      { transform: translateX(-50%) scale(0.92); opacity: 0.82; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iso-unit.alive .iso-unit-shadow { animation: none; }
 }
 
 .iso-unit-sprite {
@@ -187,7 +204,9 @@
   max-width: 78px;
   object-fit: contain;
   image-rendering: pixelated;
-  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.5));
+  /* gentler cast shadow — the ground ellipse now does the grounding, so the
+     sprite's own drop-shadow no longer needs to fake a big "lift" gap */
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
   transform-origin: 50% 100%;
   /* --face = 1 (default art, faces screen-left) or -1 (mirrored, faces right).
      Set per-unit in IsoBoard so a single sprite covers both facings. */
