@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "39",
+      "date": "2026-06-15",
+      "title": "World Boss Fight: evidenza del tile dell'eroe",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Il tile su cui si trova un eroe vivo è ora contornato da una linea sottile che assume il colore opposto del terreno sottostante (qualunque esso sia), così gli alleati si individuano a colpo d'occhio senza coprire il terreno."
+        }
+      ]
+    },
+    {
       "version": "38",
       "date": "2026-06-15",
       "title": "Crea Oggetto → Foundry: filtri per il Mercato",

@@ -241,6 +241,14 @@ export default function BossTactics() {
     [units, animUnit, spriteFor]
   );
 
+  // Tiles currently occupied by a LIVE hero — IsoBoard draws a subtle
+  // terrain-inverting outline on these so allies are easy to spot on any
+  // terrain (uses the walk override so the marker follows a moving hero).
+  const heroTiles = useMemo(
+    () => new Set(displayUnits.filter((u) => u.side === "hero" && !u.dead).map((u) => `${u.x},${u.y}`)),
+    [displayUnits]
+  );
+
   // Drop the local walk override only once the live snapshot has caught up to
   // where we walked the sprite. Clearing it the instant txnMove resolves makes
   // the sprite snap BACK to the old tile for a frame (the write hasn't round-
@@ -1391,6 +1399,7 @@ export default function BossTactics() {
               <IsoBoard map={map}
                 units={battle?.active ? displayUnits : setupPreviewUnits}
                 highlights={battle?.active ? highlights : setupHighlights}
+                heroTiles={battle?.active ? heroTiles : null}
                 pings={battle?.active ? pingIds : null}
                 vfx={battle?.active ? vfx : []}
                 scale={scale} rotation={rotation}

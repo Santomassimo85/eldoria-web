@@ -88,6 +88,27 @@
   50%      { opacity: 1; }
 }
 
+/* ── Hero-tile marker ──────────────────────────────────────────────────────
+   A thin outline that inverts the terrain colour beneath it (mix-blend-mode:
+   difference + white stroke = the exact opposite colour on ANY terrain). No
+   fill, so it never overpowers the ground; a gentle pulse keeps it readable. */
+.iso-hero-mark {
+  pointer-events: none;
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  mix-blend-mode: difference;
+  opacity: 0.85;
+  animation: iso-hero-pulse 1.8s ease-in-out infinite;
+}
+@keyframes iso-hero-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iso-hero-mark { animation: none; }
+}
+
 /* ── Props (trees, boulders, columns) ───────────────────────────────────── */
 .iso-prop {
   position: absolute;

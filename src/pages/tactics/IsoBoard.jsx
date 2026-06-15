@@ -114,6 +114,7 @@ export default function IsoBoard({
   map,
   units = [],
   highlights = {},
+  heroTiles = null,
   pings = null,
   vfx = [],
   scale = 1,
@@ -254,6 +255,7 @@ export default function IsoBoard({
         const EH = tile.elevation * ELEV_STEP;     // side-face height
         const depth = tileDepth(dx, dy);
         const hl = highlights[`${tile.x},${tile.y}`];
+        const heroHere = heroTiles?.has(`${tile.x},${tile.y}`);
         const prop = tile.prop ? PROPS[tile.prop] : null;
         const texSrc = tex[tile.terrain];   // user-drawn top, if loaded
 
@@ -329,6 +331,21 @@ export default function IsoBoard({
                    so the bleed is invisible. */
                 style={{ left: -1, top: -TILE_W / 4 - 1, width: TILE_W + 2, height: TILE_W + 2 }}
               />
+            )}
+            {/* Hero marker — a subtle terrain-inverting outline on the tile a
+                living hero stands on. mix-blend-mode:difference makes the colour
+                the opposite of whatever terrain is beneath, on ANY terrain, while
+                staying just an outline so it never overpowers the ground. Drawn
+                under the interaction highlight so move/aim cues still win. */}
+            {heroHere && (
+              <svg
+                width={TILE_W}
+                height={svgH}
+                viewBox={`0 0 ${TILE_W} ${svgH}`}
+                className="iso-cube iso-cube-overlay"
+              >
+                <polygon className="iso-hero-mark" points={topFace} />
+              </svg>
             )}
             {/* Overlay — highlight only. Clicks are handled by the single
                 board-wide .iso-hit-layer below (math hit-test), which is gapless
