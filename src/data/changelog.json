@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "39.01",
+      "date": "2026-06-15",
+      "title": "World Boss Fight: sprite appoggiati al terreno",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "I personaggi ora poggiano davvero sulla casella invece di sembrare sospesi: piedi spostati verso il centro del tile e nuova ombra di contatto morbida che li àncora al suolo."
+        }
+      ]
+    },
+    {
       "version": "39",
       "date": "2026-06-15",
       "title": "World Boss Fight: evidenza del tile dell'eroe",
