@@ -520,14 +520,16 @@
   .tac-turninfo { text-align: left; white-space: normal; overflow: visible; }
   .tac-controls { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
 
-  .tac-hud { max-height: 30vh; padding: 6px 7px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
+  .tac-hud { max-height: 42vh; padding: 6px 7px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
   .tac-hud.collapsed { max-height: none; }
   .tac-hud-avatar { width: 38px; height: 38px; }
   .tac-hud-name { font-size: 13px; }
   .tac-hud-stats { font-size: 10px; }
-  .tac-group-btns { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-  .tac-act { padding: 8px 9px; font-size: 12px; }
-  .tac-act-icon { font-size: 14px; }
+  /* one spell per row so the full name is readable (no side-by-side truncation) */
+  .tac-group-btns { grid-template-columns: 1fr; }
+  .tac-act { padding: 10px 11px; font-size: 13px; }
+  .tac-act-name { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
+  .tac-act-icon { font-size: 15px; }
   .tac-hud-prompt { font-size: 12px; }
 }
 

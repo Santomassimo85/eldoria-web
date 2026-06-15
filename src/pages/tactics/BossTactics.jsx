@@ -212,10 +212,23 @@ export default function BossTactics() {
   const displayUnits = useMemo(
     () => units.map((u) => {
       const e = { ...u, ...spriteFor(u) };
-      return animUnit && u.id === animUnit.id ? { ...e, x: animUnit.x, y: animUnit.y } : e;
+      return animUnit && u.id === animUnit.id ? { ...e, x: animUnit.x, y: animUnit.y, _walking: true } : e;
     }),
     [units, animUnit, spriteFor]
   );
+
+  // Drop the local walk override only once the live snapshot has caught up to
+  // where we walked the sprite. Clearing it the instant txnMove resolves makes
+  // the sprite snap BACK to the old tile for a frame (the write hasn't round-
+  // tripped yet), then jump forward when the snapshot lands. A safety timer
+  // clears it anyway if the snapshot never matches (e.g. the move was rejected).
+  useEffect(() => {
+    if (!animUnit) return;
+    const u = units.find((x) => x.id === animUnit.id);
+    if (u && u.x === animUnit.x && u.y === animUnit.y) { setAnimUnit(null); return; }
+    const t = setTimeout(() => setAnimUnit(null), 1200);
+    return () => clearTimeout(t);
+  }, [units, animUnit]);
 
   // Preview enemies (sprites) + spawn markers for the staging map, so the master
   // sees the chosen map's pre-placed foes and spawn points before staging.
@@ -1017,7 +1030,10 @@ export default function BossTactics() {
       setBusy(true); setMode("idle");
       // walk the unit along the path locally, then persist the final tile via a
       // transaction that re-checks the tile is free + reachable (collision-safe).
-      for (let i = 1; i < path.length; i++) { setAnimUnit({ id: cu.id, x: path[i].x, y: path[i].y }); await delay(110); }
+      // 200 ms/tile + the CSS glide on .iso-unit.walking = a smooth, unhurried
+      // stroll. animUnit is NOT cleared here on success — the effect above drops
+      // it once the snapshot lands, so the sprite never snaps back mid-move.
+      for (let i = 1; i < path.length; i++) { setAnimUnit({ id: cu.id, x: path[i].x, y: path[i].y }); await delay(200); }
       try {
         await txnMove(cu.id, x, y);
       } catch (e) {
@@ -1027,7 +1043,7 @@ export default function BossTactics() {
             content: `⚠️ ${cu.name}: quella casella è stata occupata, scegline un'altra.` });
         return;
       }
-      setAnimUnit(null); setBusy(false);
+      setBusy(false);
       await advancePhase();   // in case this completes the unit's move+action
     } else if (mode === "act" && selAction && !activeUnit.hasActed) {
       // AoE spell: this tile becomes the CHOSEN centre/direction — it does NOT

@@ -127,6 +127,11 @@
   transform: translate(-50%, -100%);
   pointer-events: none;
 }
+/* While a unit walks its path, glide tile-to-tile instead of teleporting. Scoped
+   to .walking so board rotation / snapshot snaps don't slide every sprite. The
+   0.21s glide slightly overlaps the 200 ms/tile cadence → one continuous stroll. */
+.iso-unit.walking { transition: left 0.21s linear, top 0.21s linear; }
+@media (prefers-reduced-motion: reduce) { .iso-unit.walking { transition: none; } }
 
 /* small clickable base at the feet (≈ tile centre) used to select the unit */
 .iso-unit-hit {

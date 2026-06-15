@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "35",
+      "date": "2026-06-15",
+      "title": "World Boss Fight: movimento più fluido e HUD mobile",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Corretto il movimento del personaggio: lo sprite non torna più indietro per un istante dopo il clic. L'animazione resta visibile fino a quando la posizione si sincronizza, eliminando lo scatto avanti-indietro."
+        },
+        {
+          "type": "fix",
+          "text": "Su mobile la barra azioni mostra ora una spell per riga, a tutta larghezza: i nomi degli incantesimi sono leggibili per intero senza troncamenti."
+        },
+        {
+          "type": "graphic",
+          "text": "Movimento delle unità più fluido e leggermente più lento: lo sprite scivola da casella a casella invece di saltare di scatto."
+        }
+      ]
+    },
+    {
       "version": "34",
       "date": "2026-06-15",
       "title": "Sala delle Minacce: tipo di danno per attacchi e minion",

@@ -381,7 +381,7 @@ export default function IsoBoard({
         return (
           <div
             key={`u-${u.id}`}
-            className={`iso-unit ${u.dead ? "dead" : "alive"} side-${u.side}`}
+            className={`iso-unit ${u.dead ? "dead" : "alive"} side-${u.side} ${u._walking ? "walking" : ""}`}
             style={{
               left: stand.x,
               top: stand.y,
