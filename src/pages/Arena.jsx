@@ -3884,21 +3884,19 @@ export default function Arena() {
     const buffPatch = {};
     let preLog = null;
     if (isFirstAttackThisTurn && (aiPlayer.aiBuffActivated !== true)) {
+      // Durate e effetti IDENTICI alle abilità dei giocatori (Furia: +2 danni/3t;
+      // Marchio del Cacciatore: +3 AL COLPIRE/3t). Niente buff inventati.
       if (cls.includes("barbar") && !aiPlayer.rageTurns) {
-        buffPatch.rageTurns = 5;
+        buffPatch.rageTurns = 3;
         buffPatch.aiBuffActivated = true;
-        preLog = { pub: `🔥 ${aiSnap.name} entra in Furia! (+2 danni e dimezza i danni fisici subiti per 5 turni)`, ts: tsNow };
+        preLog = { pub: `🔥 ${aiSnap.name} entra in Furia! (+2 danni e riduzione danni subiti per 3 turni)`, ts: tsNow };
       } else if ((cls.includes("ranger") || cls.includes("cacciat")) && !aiPlayer.hunterMarkTurns) {
-        buffPatch.hunterMarkTurns = 5;
+        buffPatch.hunterMarkTurns = 3;
         buffPatch.aiBuffActivated = true;
-        preLog = { pub: `🎯 ${aiSnap.name} marca ${target.name}! (+3 danni per 5 turni)`, ts: tsNow };
-      } else if (cls.includes("paladin")) {
-        // Paladin opens with Magic Detect/Aid bonus prep (+aid bonus on first hits).
-        buffPatch.aidBuff = 4;
-        buffPatch.aiBuffActivated = true;
-        preLog = { pub: `🙏 ${aiSnap.name} invoca un'aura di guida divina (+4 al prossimo colpo)`, ts: tsNow };
-      } else if (cls.includes("fighter")) {
-        // Fighter doesn't buff turn 1 — saves Action Surge for later.
+        preLog = { pub: `🎯 ${aiSnap.name} marca ${target.name}! (+3 al colpire per 3 turni)`, ts: tsNow };
+      } else if (cls.includes("paladin") || cls.includes("fighter")) {
+        // Paladino/Guerriero: nessun buff fittizio (il Paladino NON ha un'aura
+        // "+colpire"). Attaccano; il Guerriero tiene lo Scatto d'Azione per dopo.
         buffPatch.aiBuffActivated = true;
       }
     }
@@ -4255,7 +4253,7 @@ export default function Arena() {
     const effAidBonus        = readActiveBonus(buffPatch.aidBuff ?? aiPlayer.aidBuff, 4);
     const rageDmgBonus       = effRageTurns ? 2 : 0;
     const barbarianDmgBonus  = cls.includes("barbar") ? 2 : 0;
-    const hunterMarkDmgBonus = effHunterMark ? 3 : 0;
+    const hunterMarkHitBonus = effHunterMark ? 3 : 0;   // Marchio = +3 AL COLPIRE (come il player)
     // Fighter: crit on 19+ (Critico Migliorato).
     const isFighter   = cls.includes("fighter") || cls.includes("guerr");
     const critThresh  = isFighter ? 19 : 20;
@@ -4278,7 +4276,7 @@ export default function Arena() {
     const defensiveBonus   = tgtMatchPlayer?.defensiveBonus ?? 0;
     const targetAc = getEffectiveAc(tgtMatchPlayer, targetSnap) + shieldSkillBonus + defensiveBonus;
 
-    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus;
+    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus + hunterMarkHitBonus;
     const isCrit   = d20 >= critThresh;
     const isHit    = hitTotal >= targetAc || isCrit;
 
@@ -4287,7 +4285,7 @@ export default function Arena() {
     if (isHit) {
       const { total, rolls } = rollDmg(chosen.damage);
       const critMult = isCrit ? 2 : 1;
-      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + hunterMarkDmgBonus) * critMult;
+      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus) * critMult;
       damage = applyBarbarianRageReduction(raw, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
@@ -4296,17 +4294,17 @@ export default function Arena() {
     const aidPart = effAidBonus ? ` +${effAidBonus} aiuto` : "";
     const ragePart= rageDmgBonus ? ` +${rageDmgBonus} furia` : "";
     const barbPart= barbarianDmgBonus ? ` +${barbarianDmgBonus} barb` : "";
-    const hmPart  = hunterMarkDmgBonus ? ` +${hunterMarkDmgBonus} 🎯marchio` : "";
+    const hmHitPart = hunterMarkHitBonus ? ` +${hunterMarkHitBonus} 🎯marchio` : "";
     const aiAdvTag = aiHasAdvantage && !aiHasDisadvantage ? ` 🌟vant.[${d20a},${d20b}]`
                    : aiHasDisadvantage && !aiHasAdvantage ? ` 🌑svant.[${d20a},${d20b}]`
                    : (aiHasAdvantage && aiHasDisadvantage) ? ` ⚖️ vant.+svant. annullati` : "";
-    const breakdown = `d20=${d20}${aiAdvTag}+hit${chosen.hitBonus || 0}${statMod >= 0 ? "+" : ""}${statMod} ${statKey.toUpperCase()}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""}${aidPart}=${hitTotal} vs CA ${targetAc}`;
+    const breakdown = `d20=${d20}${aiAdvTag}+hit${chosen.hitBonus || 0}${statMod >= 0 ? "+" : ""}${statMod} ${statKey.toUpperCase()}${armorPenalty < 0 ? ` ${armorPenalty} arm.` : ""}${aidPart}${hmHitPart}=${hitTotal} vs CA ${targetAc}`;
     const attackLog = {
       pub: isHit
         ? `💥 ${aiSnap.name} colpisce ${target.name} con ${chosen.name}${critTag} — ${damage} danni`
         : `🛡️ ${aiSnap.name} manca ${target.name} con ${chosen.name} (${hitTotal} vs CA ${targetAc})`,
       att: isHit
-        ? `💥 Colpisci ${target.name} con ${chosen.name} [${breakdown}]${critTag} → 🎲${damageRolls}${statMod !== 0 ? `${statMod >= 0 ? "+" : ""}${statMod}` : ""}${ragePart}${barbPart}${hmPart}${isCrit ? " ×2" : ""} = ${damage} danni`
+        ? `💥 Colpisci ${target.name} con ${chosen.name} [${breakdown}]${critTag} → 🎲${damageRolls}${statMod !== 0 ? `${statMod >= 0 ? "+" : ""}${statMod}` : ""}${ragePart}${barbPart}${isCrit ? " ×2" : ""} = ${damage} danni`
         : `🛡️ Manchi ${target.name} con ${chosen.name} [${breakdown}]`,
       def: isHit
         ? `⚔️ ${aiSnap.name} ti colpisce con ${chosen.name}${critTag} — ${damage} danni`

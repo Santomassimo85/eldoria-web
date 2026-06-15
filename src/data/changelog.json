@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "41.01",
+      "date": "2026-06-15",
+      "title": "Arena: AI solo con abilità reali + hover creazione",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "L'IA non usa più potenziamenti inventati: rimossa la falsa «aura +4 al colpire» del Paladino. Il Marchio del Cacciatore dell'IA ora dà +3 al colpire (come per i giocatori, non +3 ai danni) e le durate di Furia/Marchio scendono a 3 turni, identiche alle versioni dei player."
+        },
+        {
+          "type": "graphic",
+          "text": "Creazione PG: l'effetto hover su armi/incantesimi/armatura non ingrandisce più la card (che usciva dal riquadro) — ora schiarisce lo sfondo e illumina il bordo, restando dentro lo spazio."
+        }
+      ]
+    },
+    {
       "version": "41",
       "date": "2026-06-15",
       "title": "Arena: AI ribilanciata, titoli aggiornati e creazione PG più leggibile",

@@ -6050,11 +6050,13 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(95,2
   color: #f3e6c8 !important;
   transition: transform 0.15s ease, border-color 0.2s, box-shadow 0.2s, background 0.2s !important;
 }
+/* hover calmo: nessun movimento/ingrandimento (non esce dalla cella), solo
+   sfondo schiarito + bordo oro + leggera ombra INTERNA */
 .arena-page .loadout-item:hover:not(.disabled) {
-  transform: translateY(-2px) !important;
+  transform: none !important;
   border-color: var(--arena-gold, #d4af37) !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.5) !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 217, 122, 0.4) !important;
   filter: none !important;
 }
 /* selezionato = oro, uguale per ogni tipo */
