@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "40",
+      "date": "2026-06-15",
+      "title": "Arena: titolo «Gufo Bianco» ridefinito",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Il titolo d'Arena «Gufo Bianco» (Druido) ora concede +1d12 HP quando ti trasformi in forma selvatica e +1 al tiro per colpire con gli incantesimi. Prima dava solo +1 al colpire in forma selvatica."
+        }
+      ]
+    },
+    {
       "version": "39.01",
       "date": "2026-06-15",
       "title": "World Boss Fight: sprite appoggiati al terreno",

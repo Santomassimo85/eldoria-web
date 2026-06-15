@@ -992,7 +992,7 @@ const PATTO_DEMONIACO_ACTION = {
 const ARENA_TITLES = {
   myrhal:     { key: "myrhal",     name: "Campione di Myrhal",   icon: "✨", short: "+1 hit spell (Mago/Stregone)" },
   vulkaros:   { key: "vulkaros",   name: "Campione di Vulkaros", icon: "⚔",  short: "+1 hit arma (Guerriero)" },
-  gufoBianco: { key: "gufoBianco", name: "Gufo Bianco",          icon: "🦉", short: "+1 hit Druido (forma selvatica)" },
+  gufoBianco: { key: "gufoBianco", name: "Gufo Bianco",          icon: "🦉", short: "Druido: +1d12 HP in forma selvatica · +1 hit con le spell" },
   spazzaossa: { key: "spazzaossa", name: "Spazzaossa",           icon: "🦴", short: "+1 hit senz'armi o con armi contundenti" },
   // ── Nuova infornata di titoli (≤ +1 hit, niente di troppo potente) ──────────
   ombraDellaNotte:   { key: "ombraDellaNotte",   name: "Ombra della Notte",     icon: "🌑", short: "+1 hit (Ladro/Monaco/Ranger)" },
@@ -1015,7 +1015,7 @@ function getTitleHitBonus({ titleKey, classLower, isSpellAction, wildShapeForm, 
   if (!titleKey) return 0;
   if (titleKey === "myrhal"     && isSpellAction && (isWizardClass(classLower) || isSorcererClass(classLower))) return 1;
   if (titleKey === "vulkaros"   && !isSpellAction && isFighterClass(classLower)) return 1;
-  if (titleKey === "gufoBianco" && isDruidClass(classLower) && !!wildShapeForm) return 1;
+  if (titleKey === "gufoBianco" && isSpellAction && isDruidClass(classLower)) return 1;   // +1 hit spell (l'HP bonus in forma selvatica è gestito in handleWildShape)
   if (titleKey === "spazzaossa" && !isSpellAction && actionDamageType === "contundente") return 1;
   // ── Nuovi titoli ────────────────────────────────────────────────────────────
   if (titleKey === "ombraDellaNotte"   && (isRogueClass(classLower) || isMonkClass(classLower) || isRangerClass(classLower))) return 1;
@@ -6334,8 +6334,16 @@ export default function Arena() {
     const { count, sides } = form.hpDice;
     // HP della forma = tiro vero del dado (countdsides), non massimo teorico.
     const { total: rolledHp, rolls: hpRolls } = rollDmg(`${count}d${sides}`);
-    const newHp = Math.max(1, rolledHp);
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Druido";
+    let newHp = Math.max(1, rolledHp);
+    // Titolo "Gufo Bianco": +1d12 HP extra quando ti trasformi in bestia.
+    const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    let gufoNote = "";
+    if (getSnapTitles(mySnap).includes("gufoBianco")) {
+      const { total: bonusHp, rolls: bonusRolls } = rollDmg("1d12");
+      newHp += bonusHp;
+      gufoNote = ` +🦉Gufo Bianco 1d12=${bonusRolls}`;
+    }
+    const myName = mySnap?.name || "Druido";
     const newUsesLeft = wsUsesLeft - 1;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
@@ -6346,7 +6354,7 @@ export default function Arena() {
         p.id === currentUser.uid ? { ...p, hp: newHp, maxHp: newHp, wildShape: formKey, preWildShapeHp: preHp, preWildShapeMaxHp: preMaxHp, wildShapeUsesLeft: newUsesLeft, ...tickEagleEnd(p) } : p
       );
       return { ...m, players: updatedPlayers,
-        logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! [🎲${count}d${sides}=${hpRolls}] → ${newHp} HP [Usi rimasti: ${newUsesLeft}/1]`] };
+        logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! [🎲${count}d${sides}=${hpRolls}${gufoNote}] → ${newHp} HP [Usi rimasti: ${newUsesLeft}/1]`] };
     });
     setShowWildPicker(false);
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
