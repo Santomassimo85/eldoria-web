@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "34",
+      "date": "2026-06-15",
+      "title": "Sala delle Minacce: tipo di danno per attacchi e minion",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nell'editor del World Boss ogni attacco (del Boss e dei minion) ha ora un selettore «Tipo di danno»: Fuoco, Ghiaccio, Fulmine, Veleno, Oscurità, Sacro, Fisico, Arcano o Auto. Il tipo scelto determina l'effetto/tinta mostrato in combattimento; «Auto» lo rileva dal nome dell'azione come prima."
+        },
+        {
+          "type": "mechanics",
+          "text": "Il tipo di danno impostato ha la precedenza sull'euristica del nome: un attacco contrassegnato come Veleno mostra l'effetto velenoso anche se il nome non lo suggerisce, sia nella battaglia tattica sia nella pagina World Boss classica."
+        }
+      ]
+    },
+    {
       "version": "33",
       "date": "2026-06-14",
       "title": "Nuovo logo, ritocchi Home e rimozione chat globale",

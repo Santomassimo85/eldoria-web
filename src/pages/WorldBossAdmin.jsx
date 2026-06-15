@@ -20,7 +20,7 @@ import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
 import DateTimePicker from "../components/DateTimePicker";
 import { makeFlatMap, tilesWithinRange } from "./tactics/isoCore";
-import { aoeCells } from "./tactics/battleModel";
+import { aoeCells, DMG_TYPE_OPTIONS } from "./tactics/battleModel";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
@@ -45,13 +45,6 @@ const AOE_SHAPES = [
   { value: "line",   icon: "➖", label: "Linea" },
   { value: "cone",   icon: "🔺", label: "Cono" },
 ];
-const AOE_ELEMENTS = [
-  { value: "",          label: "Elemento…" },
-  { value: "fuoco",     label: "🔥 Fuoco" },
-  { value: "ghiaccio",  label: "❄ Ghiaccio" },
-  { value: "oscurità",  label: "🌑 Ombra" },
-  { value: "arcano",    label: "✨ Arcano" },
-];
 const SAVES = [
   { v: "dex", l: "DES" }, { v: "con", l: "COS" }, { v: "wis", l: "SAG" },
   { v: "str", l: "FOR" }, { v: "int", l: "INT" }, { v: "cha", l: "CAR" },
@@ -69,7 +62,7 @@ const blankAction = (i = 0) => ({
   range: 1,            // gittata in tile (raggio d'azione per colpire/mirare)
   aoeShape: "single",  // single | sphere | square | line | cone
   aoeSize: 1,          // raggio (cerchio/quadrato) o lunghezza (linea/cono)
-  dmgType: "",         // elemento → tinta dell'effetto a schermo
+  dmgType: "",         // tipo di danno → effetto/tinta a schermo (vedi DMG_TYPE_OPTIONS); "" = auto dal nome
   saveAbility: "dex",  // TS che i bersagli tirano contro le aree
   halfOnSave: true,    // metà danni se superano il TS
 });
@@ -240,6 +233,20 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
         </div>
       )}
 
+      {type === "attack" && (
+        <div className="wb-dice-row wb-dice-row--single wb-dmgtype-row">
+          <label className="wb-inline-label">🩸 Tipo di danno</label>
+          <select
+            className="admin-field-input wb-dmgtype-select"
+            value={action.dmgType || ""}
+            onChange={(e) => onChange({ dmgType: e.target.value })}
+            title="Decide l'effetto/tinta a schermo. Auto = rilevato dal nome dell'azione."
+          >
+            {DMG_TYPE_OPTIONS.map((el) => <option key={el.value} value={el.value}>{el.label}</option>)}
+          </select>
+        </div>
+      )}
+
       {type === "buff_ca" && (
         <div className="wb-dice-row wb-dice-row--single">
           <label className="wb-inline-label">+CA</label>
@@ -297,13 +304,6 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
                       onChange={(e) => onChange({ aoeSize: clamp(parseInt(e.target.value) || 1, 1, 6) })}
                     />
                     <span className="wb-aoe-unit">tile</span>
-                    <select
-                      className="admin-field-input wb-aoe-elem"
-                      value={action.dmgType || ""}
-                      onChange={(e) => onChange({ dmgType: e.target.value })}
-                    >
-                      {AOE_ELEMENTS.map((el) => <option key={el.value} value={el.value}>{el.label}</option>)}
-                    </select>
                   </div>
                   <div className="wb-aoe-line">
                     <label className="wb-inline-label">🎲 TS</label>

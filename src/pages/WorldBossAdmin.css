@@ -181,7 +181,8 @@
 .wb-aoe-unit { font-size: .72rem; color: var(--wb-muted); }
 .wb-num { width: 64px; flex: 0 0 auto; text-align: center; }
 .wb-num-wide { width: 84px; flex: 0 0 auto; }
-.wb-aoe-elem { flex: 1 1 130px; min-width: 110px; }
+.wb-dmgtype-row { margin-top: 6px; }
+.wb-dmgtype-select { width: 100%; }
 .wb-aoe-check { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; color: var(--wb-ink); cursor: pointer; }
 .wb-aoe-check input { accent-color: var(--wb-gold); width: 16px; height: 16px; }
 

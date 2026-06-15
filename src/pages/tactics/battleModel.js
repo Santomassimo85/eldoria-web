@@ -275,12 +275,38 @@ export function detectSpellIntent(action) {
   return "attack";
 }
 
+// Damage-type options authored in the Boss/Minion editor (WorldBossAdmin). The
+// `value` is what gets stored on the action's `dmgType`; it maps explicitly to a
+// VFX element via DMGTYPE_ELEMENT below. "" = auto-detect from the action name.
+export const DMG_TYPE_OPTIONS = [
+  { value: "",          label: "Auto (dal nome)" },
+  { value: "fuoco",     label: "🔥 Fuoco" },
+  { value: "ghiaccio",  label: "❄ Ghiaccio" },
+  { value: "fulmine",   label: "⚡ Fulmine" },
+  { value: "veleno",    label: "☠ Veleno" },
+  { value: "oscurità",  label: "🌑 Oscurità" },
+  { value: "sacro",     label: "✨ Sacro" },
+  { value: "fisico",    label: "⚔ Fisico" },
+  { value: "arcano",    label: "🔮 Arcano" },
+];
+// Explicit dmgType → VFX element. Accepts the Italian editor values AND the
+// canonical English keys, so legacy/typed data still resolves.
+const DMGTYPE_ELEMENT = {
+  fuoco: "fire", ghiaccio: "frost", fulmine: "lightning", veleno: "poison",
+  "oscurità": "darkness", oscurita: "darkness", sacro: "radiant", fisico: "physical", arcano: "arcane",
+  fire: "fire", frost: "frost", lightning: "lightning", poison: "poison",
+  darkness: "darkness", radiant: "radiant", physical: "physical", arcane: "arcane",
+};
+
 // Damage element of an action — drives the VFX tint (single-target projectile
 // head + AoE dome/puffs). Returns fire|frost|lightning|poison|darkness|radiant|
-// arcane, or "physical" for a plain weapon hit with no elemental flavour. Element
-// keywords are checked BEFORE the weapon fallback so a "spada fiammeggiante" still
-// reads as fire. Scans name + category + dmgType + description.
+// arcane, or "physical" for a plain weapon hit with no elemental flavour. An
+// explicit `dmgType` set in the editor WINS over everything; otherwise element
+// keywords are checked BEFORE the weapon fallback so a "spada fiammeggiante"
+// still reads as fire. Scans name + category + dmgType + description.
 export function detectElement(action) {
+  const explicit = DMGTYPE_ELEMENT[(action?.dmgType || "").toLowerCase().trim()];
+  if (explicit) return explicit;
   const t = `${action?.name || ""} ${action?.category || ""} ${action?.dmgType || ""} ${action?.description || ""}`.toLowerCase();
   if (/fuoco|fiamm|\bfire\b|infern|brucia|ustion|piromanz|flame|rovente|combust|magma|\blava\b|ardent/.test(t)) return "fire";
   if (/ghiacc|\bgelo\b|\bice\b|freddo|brina|\bfrost\b|congel|\bcryo|glaci|gelid/.test(t)) return "frost";
