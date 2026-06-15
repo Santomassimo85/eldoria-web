@@ -1664,16 +1664,21 @@ export default function BossTactics() {
                 </div>
                 <button className="tac-preview-x" onClick={() => setPreviewAction(null)} title="Chiudi">✖</button>
               </div>
-              <div className="tac-preview-tags">
-                {dmg && <span className="tac-preview-tag dmg">🎲 {dmg}</span>}
-                {selfBuff
-                  ? <span className="tac-preview-tag">🛡 Su di sé</span>
-                  : reach > 0 && <span className="tac-preview-tag">⟶ {reach} caselle</span>}
-                {aoe && <span className="tac-preview-tag area">💥 Area · {aoe.shape}{aoe.size ? ` ${aoe.size}` : ""}</span>}
-                {aoe?.save && <span className="tac-preview-tag">TS {(SAVE_LABEL[aoe.save] || aoe.save).toUpperCase()}</span>}
-                {a.dmgType && <span className="tac-preview-tag">{a.dmgType}</span>}
+              {/* stats + description together in one scrollable block, so the
+                  coloured badges live inside the description and never float
+                  over the buttons */}
+              <div className="tac-preview-body">
+                <div className="tac-preview-stats">
+                  {dmg && <span className="tps tps-dmg">🎲 {dmg}</span>}
+                  {selfBuff
+                    ? <span className="tps tps-self">🛡 Su di sé</span>
+                    : reach > 0 && <span className="tps tps-range">⟶ {reach} caselle</span>}
+                  {aoe && <span className="tps tps-area">💥 {aoe.shape}{aoe.size ? ` ${aoe.size}` : ""}</span>}
+                  {aoe?.save && <span className="tps tps-save">TS {(SAVE_LABEL[aoe.save] || aoe.save).toUpperCase()}</span>}
+                  {a.dmgType && <span className="tps tps-elem">✦ {a.dmgType}</span>}
+                </div>
+                {desc && <p className="tac-preview-desc">{desc}</p>}
               </div>
-              {desc && <p className="tac-preview-desc">{desc}</p>}
               <div className="tac-preview-buttons">
                 <button className="tac-act tac-cancel" onClick={() => setPreviewAction(null)}>✖ Annulla</button>
                 <button className={`tac-act ${k.cls} tac-preview-use`} disabled={activeUnit.hasActed} onClick={use}>

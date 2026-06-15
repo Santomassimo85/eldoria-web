@@ -579,17 +579,27 @@
   border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
   padding: 4px 9px; font-size: 14px; font-weight: 800; cursor: pointer;
 }
-.tac-preview-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.tac-preview-tag {
-  font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.22); color: #e8eef5;
+/* stats + description in one scrollable block (badges live INSIDE the
+   description area, never floating over the buttons) */
+.tac-preview-body {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 38vh; overflow-y: auto;
+  padding: 9px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.12);
 }
-.tac-preview-tag.dmg { background: rgba(255, 200, 90, 0.2); border-color: rgba(255, 210, 110, 0.55); color: #ffe9a0; }
-.tac-preview-tag.area { background: rgba(196, 58, 42, 0.22); border-color: rgba(255, 150, 130, 0.5); color: #ffc4b8; }
-.tac-preview-tag.cat { opacity: 0.8; }
+.tac-preview-stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.tps {
+  font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.tps-dmg   { background: rgba(255, 200, 90, 0.20); border-color: rgba(255, 210, 110, 0.6); color: #ffe9a0; }
+.tps-range { background: rgba(120, 180, 255, 0.18); border-color: rgba(150, 200, 255, 0.55); color: #bfe0ff; }
+.tps-self  { background: rgba(120, 180, 255, 0.18); border-color: rgba(150, 200, 255, 0.55); color: #bfe0ff; }
+.tps-area  { background: rgba(196, 58, 42, 0.22); border-color: rgba(255, 150, 130, 0.55); color: #ffc4b8; }
+.tps-save  { background: rgba(122, 72, 196, 0.24); border-color: rgba(190, 150, 255, 0.55); color: #d7bcff; }
+.tps-elem  { background: rgba(60, 200, 140, 0.18); border-color: rgba(120, 230, 180, 0.55); color: #a9f0cf; }
 .tac-preview-desc {
-  margin: 0; font-size: 13px; line-height: 1.4; color: #d2dcf0;
-  max-height: 30vh; overflow-y: auto;
+  margin: 0; font-size: 13px; line-height: 1.45; color: #d2dcf0;
 }
 .tac-preview-buttons { display: flex; gap: 8px; }
 .tac-preview-buttons .tac-act { width: auto; flex: 1 1 0; justify-content: center; }
