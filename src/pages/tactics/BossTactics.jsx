@@ -1594,11 +1594,14 @@ export default function BossTactics() {
         }
 
         return (
-          <div className="tac-hud">
-            <div className="tac-hud-top">
-              {card}
-              <button className="tac-hud-collapse" onClick={() => setActionsOpen(false)} title="Comprimi">▾</button>
-            </div>
+          <>
+            {/* slim always-visible handle ABOVE the scrollable panel, so the
+                close control never scrolls out of view */}
+            <button className="tac-hud-handle" onClick={() => setActionsOpen(false)} title="Chiudi azioni">
+              ▾ Chiudi azioni
+            </button>
+            <div className="tac-hud">
+            {card}
 
             {/* movement */}
             <button className="tac-act k-move" disabled={activeUnit.hasMoved}
@@ -1632,7 +1635,8 @@ export default function BossTactics() {
                 </div>
               ))}
             </div>
-          </div>
+            </div>
+          </>
         );
       })()}
 
@@ -1654,7 +1658,10 @@ export default function BossTactics() {
             <div className={`tac-preview g-${k.group}`} role="dialog" aria-label={a.name}>
               <div className="tac-preview-head">
                 <span className="tac-preview-icon">{k.icon}</span>
-                <span className="tac-preview-name">{a.name}</span>
+                <div className="tac-preview-titles">
+                  <span className="tac-preview-name">{a.name}</span>
+                  {a.category && <p className="tac-preview-cat">{a.category}</p>}
+                </div>
                 <button className="tac-preview-x" onClick={() => setPreviewAction(null)} title="Chiudi">✖</button>
               </div>
               <div className="tac-preview-tags">
@@ -1665,7 +1672,6 @@ export default function BossTactics() {
                 {aoe && <span className="tac-preview-tag area">💥 Area · {aoe.shape}{aoe.size ? ` ${aoe.size}` : ""}</span>}
                 {aoe?.save && <span className="tac-preview-tag">TS {(SAVE_LABEL[aoe.save] || aoe.save).toUpperCase()}</span>}
                 {a.dmgType && <span className="tac-preview-tag">{a.dmgType}</span>}
-                {a.category && <span className="tac-preview-tag cat">{a.category}</span>}
               </div>
               {desc && <p className="tac-preview-desc">{desc}</p>}
               <div className="tac-preview-buttons">

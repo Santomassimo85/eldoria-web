@@ -540,16 +540,16 @@
   background: linear-gradient(180deg, rgba(122,72,196,0.96), rgba(66,34,120,0.96));
   border-color: #b07bff;
 }
-/* header row of the expanded HUD: identity card + a collapse chevron */
-.tac-hud-top { display: flex; align-items: center; gap: 8px; }
-.tac-hud-top .tac-hud-card { flex: 1 1 auto; min-width: 0; }
-.tac-hud-collapse {
-  flex: 0 0 auto; align-self: stretch; min-width: 40px;
-  background: rgba(255, 255, 255, 0.12); color: #fff;
-  border: 2px solid #0a1230; border-radius: 0; cursor: pointer;
-  font-size: 16px; font-weight: 900;
-  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.2), inset -2px -2px 0 rgba(0, 0, 0, 0.4);
+/* slim close handle that sits ABOVE the scrollable action panel, so it stays
+   visible no matter how far you scroll the ability list */
+.tac-hud-handle {
+  flex: 0 0 auto; width: 100%;
+  background: rgba(12, 24, 66, 0.97); color: #cfe0ff;
+  border: none; border-top: 1px solid rgba(159, 199, 255, 0.3);
+  padding: 4px 0; font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
+  cursor: pointer;
 }
+.tac-hud-handle:active { background: rgba(20, 36, 86, 0.98); }
 
 /* ── Ability preview popup — damage + description, confirm before committing ── */
 .tac-preview-backdrop { position: fixed; inset: 0; z-index: 2400; background: rgba(0, 0, 0, 0.45); }
@@ -568,7 +568,12 @@
 .tac-preview.g-support { border-color: #8af0b4; }
 .tac-preview-head { display: flex; align-items: center; gap: 8px; }
 .tac-preview-icon { font-size: 22px; flex: 0 0 auto; }
-.tac-preview-name { flex: 1 1 auto; font-size: 17px; font-weight: 900; letter-spacing: 0.3px; }
+.tac-preview-titles { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tac-preview-name { font-size: 17px; font-weight: 900; letter-spacing: 0.3px; line-height: 1.15; }
+.tac-preview-cat {
+  margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; color: #aeb8d0;
+}
 .tac-preview-x {
   flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
