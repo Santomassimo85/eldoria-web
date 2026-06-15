@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
 import {
@@ -88,6 +88,9 @@ export default function FoundryItemForm() {
   const [busy, setBusy] = useState(false);
   const [market, setMarket] = useState([]);   // oggetti del Mercato
   const [mq, setMq] = useState("");            // ricerca nel mercato
+  const [typeFilter, setTypeFilter] = useState("all");   // categoria (Arma/Armatura/…)
+  const [soldFilter, setSoldFilter] = useState("all");   // all | available | sold
+  const [buyerFilter, setBuyerFilter] = useState("all"); // acquirente (solo venduti)
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
@@ -201,10 +204,26 @@ export default function FoundryItemForm() {
     } finally { setBusy(false); }
   }
 
+  // Categorie e acquirenti realmente presenti tra gli oggetti del mercato.
+  const typeOptions = useMemo(
+    () => Array.from(new Set(market.map(i => i.type).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [market]
+  );
+  const buyerOptions = useMemo(
+    () => Array.from(new Set(market.filter(i => i.isSold && i.buyerName).map(i => i.buyerName))).sort((a, b) => a.localeCompare(b)),
+    [market]
+  );
+
   const mqx = mq.trim().toLowerCase();
-  const marketFiltered = mqx
-    ? market.filter(i => `${i.name} ${i.type} ${i.class}`.toLowerCase().includes(mqx))
-    : market;
+  const marketFiltered = useMemo(() => market.filter(i => {
+    if (mqx && !`${i.name} ${i.type} ${i.class}`.toLowerCase().includes(mqx)) return false;
+    if (typeFilter !== "all" && i.type !== typeFilter) return false;
+    const sold = i.isSold === true;
+    if (soldFilter === "available" && sold) return false;
+    if (soldFilter === "sold" && !sold) return false;
+    if (buyerFilter !== "all" && (i.buyerName || "") !== buyerFilter) return false;
+    return true;
+  }), [market, mqx, typeFilter, soldFilter, buyerFilter]);
 
   const t = f.foundryType;
   return (
@@ -226,6 +245,25 @@ export default function FoundryItemForm() {
             value={mq}
             onChange={e => setMq(e.target.value)}
           />
+          <div className="fdy-filters">
+            <select className="npcgen-input" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} title="Categoria">
+              <option value="all">🗂 Tutte le categorie</option>
+              {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select className="npcgen-input" value={soldFilter}
+              onChange={e => { const v = e.target.value; setSoldFilter(v); if (v === "available") setBuyerFilter("all"); }}
+              title="Stato di vendita">
+              <option value="all">Venduti e non</option>
+              <option value="available">🟢 Solo disponibili</option>
+              <option value="sold">✅ Solo venduti</option>
+            </select>
+            <select className="npcgen-input" value={buyerFilter} onChange={e => setBuyerFilter(e.target.value)}
+              disabled={soldFilter === "available" || buyerOptions.length === 0}
+              title="Acquirente (solo oggetti venduti)">
+              <option value="all">👤 Tutti gli acquirenti</option>
+              {buyerOptions.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </div>
           <p className="fdy-import-tip">
             <strong>Coda diretta</strong> = lo manda subito a Foundry coi dati salvati nel mercato.
             <strong> Compila</strong> = lo carica nel form qui sotto per rivederlo. I dati di combattimento si impostano una volta sola nell'editor del Mercato (sezione “Dati per Foundry”).
@@ -245,6 +283,11 @@ export default function FoundryItemForm() {
                     <div className="fdy-row-meta">
                       <span className="npcgen-chip dmt-pill">{item.type}</span>
                       <span className="npcgen-chip dmt-pill">{ft} · {fr}</span>
+                      {item.isSold
+                        ? <span className="npcgen-chip dmt-pill fdy-sold" title={item.soldAt ? `Venduto il ${new Date(item.soldAt).toLocaleDateString("it-IT")}` : "Venduto"}>
+                            ✅ Venduto{item.buyerName ? ` a ${item.buyerName}` : ""}
+                          </span>
+                        : <span className="npcgen-chip dmt-pill fdy-avail">🟢 Disponibile</span>}
                       {!rd.ready && <span className="fdy-warn" title={rd.reason}>⚠ da completare</span>}
                     </div>
                   </div>

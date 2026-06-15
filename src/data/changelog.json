@@ -1,6 +1,55 @@
 {
   "versions": [
     {
+      "version": "38",
+      "date": "2026-06-15",
+      "title": "Crea Oggetto → Foundry: filtri per il Mercato",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "La lista «Importa dal Mercato Nero» ha ora tre filtri: per categoria (Arma, Armatura, Pozioni…), per stato di vendita (venduti e non / solo disponibili / solo venduti) e per acquirente. Ogni riga mostra un'etichetta «✅ Venduto a <nome>» o «🟢 Disponibile»."
+        }
+      ]
+    },
+    {
+      "version": "37",
+      "date": "2026-06-15",
+      "title": "World Boss Fight: interfaccia ripensata per smartphone",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Pannello azioni del giocatore ora richiudibile: su smartphone parte compatto (carta personaggio + «Muovi» + «Scegli azione»), così la mappa resta visibile finché non si decide di agire. Su schermi ampi resta aperto come prima."
+        },
+        {
+          "type": "feature",
+          "text": "Toccando un incantesimo o un'arma si apre una scheda con danni, gittata, tipo di area/TS e una breve descrizione: si legge cosa fa e si conferma con «Scegli bersaglio», oppure si annulla senza impegnare l'azione."
+        },
+        {
+          "type": "fix",
+          "text": "Riquadri in alto (nemici rimasti, timer del turno, scadenza del boss) raccolti in un'unica striscia che va a capo ordinatamente: non si sovrappongono più tra loro né ai pulsanti, su mobile e su PC."
+        },
+        {
+          "type": "graphic",
+          "text": "Su smartphone i contatori secondari (roster, round attivi) partono chiusi e le etichette ingombranti sono abbreviate, per liberare spazio sulla mappa."
+        }
+      ]
+    },
+    {
+      "version": "36",
+      "date": "2026-06-15",
+      "title": "World Boss Fight: HP a schermo e pannello Master riordinato",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Sulla barra HP di eroi e nemici sono ora stampati i punti vita correnti e massimi (es. 24/30), con contorno marcato per restare leggibili anche su smartphone e a board rimpicciolita."
+        },
+        {
+          "type": "fix",
+          "text": "Pannello del Master (barra superiore) riordinato: i controlli di test e la scadenza vanno a capo su una riga dedicata e i riquadri flottanti (timer turno, conto alla rovescia del boss, nemici rimasti, roster) scivolano sotto la barra invece di sovrapporsi ad essa, sia su PC sia su mobile."
+        }
+      ]
+    },
+    {
       "version": "35",
       "date": "2026-06-15",
       "title": "World Boss Fight: movimento più fluido e HUD mobile",

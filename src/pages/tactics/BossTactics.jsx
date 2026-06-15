@@ -10,7 +10,7 @@
 //
 // Route: /boss-tactics  (top nav is hidden here for space)
 // ─────────────────────────────────────────────────────────────────────────
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { db } from "../../firebase";
 import {
   doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, runTransaction,
@@ -93,8 +93,15 @@ export default function BossTactics() {
   const lastAoeFxRef = useRef(null);               // last-applied battle.aoeFx id (dedupe dome spawns)
   const lastFxRef = useRef(null);                  // last-applied battle.fxEvent id (slash/arrow/buff…)
   const [showBar, setShowBar] = useState(false);  // top menu hidden by default, recalled via ☰
-  const [rosterOpen, setRosterOpen] = useState(true); // turn/action counter panel (test aid)
+  const isNarrow = typeof window !== "undefined" && window.innerWidth <= 760;
+  const [rosterOpen, setRosterOpen] = useState(!isNarrow); // turn/action counter panel (collapsed on phones)
   const [atkPanelOpen, setAtkPanelOpen] = useState(false); // per-player participation tally (collapsible)
+  // Bottom action panel: on phones it starts COLLAPSED (just a button) so the
+  // board isn't buried by the spell list until the player chooses to act.
+  const [actionsOpen, setActionsOpen] = useState(!isNarrow);
+  // Tapping an ability opens this preview (damage + description) so the player
+  // can read what it does and confirm before committing to aim/target it.
+  const [previewAction, setPreviewAction] = useState(null);
   const [setupPicker, setSetupPicker] = useState(null); // {x,y,sx,sy} deploy-phase unit picker
   const [musicMuted, setMusicMuted] = useState(false);   // boss BGM mute (per client)
   const [nowTs, setNowTs] = useState(() => Date.now()); // ticks each second for the turn timer
@@ -108,6 +115,23 @@ export default function BossTactics() {
   const pinchRef = useRef(null);
   const topbarRef = useRef(null);
   const menuFabRef = useRef(null);
+  const screenRef = useRef(null);
+
+  // While the master panel (topbar) is open it sits in-flow at the top, so the
+  // floating status widgets (timer / boss clock / enemy count / side rosters)
+  // would overlap it. Measure the bar's live height into --bt-topbar-h so the
+  // CSS can push those widgets below it. Re-measures on wrap/resize.
+  useLayoutEffect(() => {
+    const screen = screenRef.current;
+    if (!screen) return;
+    if (!showBar || !topbarRef.current) { screen.style.removeProperty("--bt-topbar-h"); return; }
+    const bar = topbarRef.current;
+    const set = () => screen.style.setProperty("--bt-topbar-h", `${bar.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [showBar]);
 
   // Close the top menu when clicking anywhere outside it (but not on the ☰
   // button, whose own handler toggles it). Uses a document listener so it
@@ -1120,6 +1144,20 @@ export default function BossTactics() {
     setSelAction(a); setMode("act"); setAimHover(null); setAimCenter(null);
   };
 
+  // Human-readable damage for the preview popup: explicit formula wins, else the
+  // boss-editor's diceNum/diceType, plus the to-hit/damage bonus when present.
+  const actionDamageText = (a) => {
+    const f = a.damage && a.damage !== "0" ? a.damage : (a.diceNum ? `${a.diceNum}${a.diceType || "d6"}` : null);
+    if (!f) return null;
+    const b = parseInt(String(a.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
+    return `${f}${b ? (b > 0 ? ` +${b}` : ` ${b}`) : ""}`;
+  };
+  // Foundry descriptions can carry HTML; strip tags + clamp so the popup stays tidy.
+  const cleanDesc = (s) => {
+    const t = String(s || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    return t.length > 320 ? `${t.slice(0, 317)}…` : t;
+  };
+
   // Classify an action so the HUD can colour/group it. Weapon attacks (red),
   // offensive spells (purple), healing (green), buffs (blue).
   const actionKind = (a) => {
@@ -1161,7 +1199,7 @@ export default function BossTactics() {
     : null;
 
   return (
-    <div className="tac-screen">
+    <div className={`tac-screen ${showBar ? "bar-open" : ""}`} ref={screenRef}>
       {/* floating quick-controls — always above everything */}
       <button ref={menuFabRef} className="tac-fab tac-fab-menu" onClick={() => setShowBar((v) => !v)} title="Controlli / Master">⚙</button>
       {fightStarted && !isOver && (
@@ -1174,18 +1212,30 @@ export default function BossTactics() {
       {isMyTurn && (
         <button className="tac-fab tac-fab-end" onClick={endTurn} title="Fine turno">⏭ Fine</button>
       )}
-      {remainingMs != null && (
-        <div className={`tac-timer ${remainingMs <= 60000 ? "low" : ""}`} title="Tempo rimanente per il turno">
-          ⏱ {String(Math.floor(remainingMs / 60000)).padStart(2, "0")}:{String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}
-        </div>
-      )}
-
-      {/* Global boss deadline — visible to EVERYONE during the fight. Shows the
-          time left to kill the boss; turns red in the last hour, "scaduto" at 0. */}
-      {bossLeftMs != null && (
-        <div className={`tac-bossclock ${bossLeftMs <= 3600000 ? "low" : ""}`}
-          title={`Gli Eroi devono uccidere il boss entro il ${new Date(bossDeadline).toLocaleString("it-IT")}`}>
-          💀 Boss: {fmtCountdown(bossLeftMs)}
+      {/* Compact status strip (nemici · timer turno · scadenza boss) — wrapped in
+          one flex bar so the chips never stack on top of each other. Visible to
+          everyone during the fight. */}
+      {fightStarted && !isOver && (enemiesTotal > 0 || remainingMs != null || bossLeftMs != null) && (
+        <div className="tac-statusbar">
+          {enemiesTotal > 0 && (
+            <div className={`tac-enemy-count ${enemiesAlive.length <= 1 ? "low" : ""}`} title="Nemici ancora in vita">
+              <span className="tac-enemy-count-skull">☠</span>
+              <span className="tac-enemy-count-num">{enemiesAlive.length}</span>
+              <span className="tac-enemy-count-total">/{enemiesTotal}</span>
+              <span className="tac-enemy-count-label">nemici</span>
+            </div>
+          )}
+          {remainingMs != null && (
+            <div className={`tac-timer ${remainingMs <= 60000 ? "low" : ""}`} title="Tempo rimanente per il turno">
+              ⏱ {String(Math.floor(remainingMs / 60000)).padStart(2, "0")}:{String(Math.floor((remainingMs % 60000) / 1000)).padStart(2, "0")}
+            </div>
+          )}
+          {bossLeftMs != null && (
+            <div className={`tac-bossclock ${bossLeftMs <= 3600000 ? "low" : ""}`}
+              title={`Gli Eroi devono uccidere il boss entro il ${new Date(bossDeadline).toLocaleString("it-IT")}`}>
+              💀 <span className="tac-bossclock-lbl">Boss: </span>{fmtCountdown(bossLeftMs)}
+            </div>
+          )}
         </div>
       )}
 
@@ -1215,17 +1265,6 @@ export default function BossTactics() {
             )}
             <div className="tac-defeat-press">— LA SCONFITTA È SEGNATA —</div>
           </div>
-        </div>
-      )}
-
-      {/* Enemies-remaining counter — visible to EVERYONE (derived from shared
-          state), so players see at a glance how many foes are left. */}
-      {fightStarted && !isOver && enemiesTotal > 0 && (
-        <div className={`tac-enemy-count ${enemiesAlive.length <= 1 ? "low" : ""}`} title="Nemici ancora in vita">
-          <span className="tac-enemy-count-skull">☠</span>
-          <span className="tac-enemy-count-num">{enemiesAlive.length}</span>
-          <span className="tac-enemy-count-total">/{enemiesTotal}</span>
-          <span className="tac-enemy-count-label">nemici</span>
         </div>
       )}
 
@@ -1534,9 +1573,32 @@ export default function BossTactics() {
           );
         }
 
+        // Collapsed (phones): show only the identity card + Muovi + a button to
+        // open the abilities, so the board stays visible until you choose to act.
+        if (!actionsOpen) {
+          return (
+            <div className="tac-hud tac-hud--mini">
+              {card}
+              <div className="tac-hud-quick">
+                <button className="tac-act k-move" disabled={activeUnit.hasMoved}
+                  onClick={() => { setMode("move"); setSelAction(null); }}>
+                  👟 Muovi {activeUnit.hasMoved ? "✓" : ""}
+                </button>
+                <button className="tac-act tac-open-actions" disabled={activeUnit.hasActed}
+                  onClick={() => setActionsOpen(true)}>
+                  ⚔ Scegli azione ▴
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="tac-hud">
-            {card}
+            <div className="tac-hud-top">
+              {card}
+              <button className="tac-hud-collapse" onClick={() => setActionsOpen(false)} title="Comprimi">▾</button>
+            </div>
 
             {/* movement */}
             <button className="tac-act k-move" disabled={activeUnit.hasMoved}
@@ -1558,7 +1620,7 @@ export default function BossTactics() {
                         <button key={i} disabled={activeUnit.hasActed}
                           className={`tac-act ${k.cls} ${selAction?.name === a.name ? "on" : ""}`}
                           title={a.description || a.name}
-                          onClick={() => pickAction(a)}>
+                          onClick={() => setPreviewAction(a)}>
                           <span className="tac-act-icon">{k.icon}</span>
                           <span className="tac-act-name">{a.name}</span>
                           {reach > 0 && <span className="tac-act-rng" title={`Raggio ${reach} caselle`}>⟶{reach}</span>}
@@ -1571,6 +1633,49 @@ export default function BossTactics() {
               ))}
             </div>
           </div>
+        );
+      })()}
+
+      {/* ── Ability preview: damage + description, then confirm to aim/cast ── */}
+      {isMyTurn && previewAction && (() => {
+        const a = previewAction;
+        const k = actionKind(a);
+        const intent = detectSpellIntent(a);
+        const selfBuff = intent === "self_buff";
+        const reach = selfBuff ? 0 : (a.range || actionRange(a));
+        const aoe = spellAoE(a);
+        const dmg = actionDamageText(a);
+        const desc = cleanDesc(a.description);
+        const useLabel = selfBuff ? "✅ Usa" : (intent === "heal" || intent === "buff") ? "🎯 Scegli alleato" : "🎯 Scegli bersaglio";
+        const use = () => { setPreviewAction(null); pickAction(a); };
+        return (
+          <>
+            <div className="tac-preview-backdrop" onClick={() => setPreviewAction(null)} />
+            <div className={`tac-preview g-${k.group}`} role="dialog" aria-label={a.name}>
+              <div className="tac-preview-head">
+                <span className="tac-preview-icon">{k.icon}</span>
+                <span className="tac-preview-name">{a.name}</span>
+                <button className="tac-preview-x" onClick={() => setPreviewAction(null)} title="Chiudi">✖</button>
+              </div>
+              <div className="tac-preview-tags">
+                {dmg && <span className="tac-preview-tag dmg">🎲 {dmg}</span>}
+                {selfBuff
+                  ? <span className="tac-preview-tag">🛡 Su di sé</span>
+                  : reach > 0 && <span className="tac-preview-tag">⟶ {reach} caselle</span>}
+                {aoe && <span className="tac-preview-tag area">💥 Area · {aoe.shape}{aoe.size ? ` ${aoe.size}` : ""}</span>}
+                {aoe?.save && <span className="tac-preview-tag">TS {(SAVE_LABEL[aoe.save] || aoe.save).toUpperCase()}</span>}
+                {a.dmgType && <span className="tac-preview-tag">{a.dmgType}</span>}
+                {a.category && <span className="tac-preview-tag cat">{a.category}</span>}
+              </div>
+              {desc && <p className="tac-preview-desc">{desc}</p>}
+              <div className="tac-preview-buttons">
+                <button className="tac-act tac-cancel" onClick={() => setPreviewAction(null)}>✖ Annulla</button>
+                <button className={`tac-act ${k.cls} tac-preview-use`} disabled={activeUnit.hasActed} onClick={use}>
+                  {useLabel}
+                </button>
+              </div>
+            </div>
+          </>
         );
       })()}
 

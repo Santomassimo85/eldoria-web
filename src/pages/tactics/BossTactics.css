@@ -79,9 +79,11 @@
 }
 .tac-topbar {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; row-gap: 8px;
   gap: 8px; padding: 8px 12px 8px 54px;
-  background: rgba(0, 0, 0, 0.4); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative; z-index: 50;
+  background: rgba(8, 12, 26, 0.94); border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative; z-index: 60;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 .tac-title { font-weight: 800; font-size: 14px; letter-spacing: 0.5px; }
 .tac-turninfo { font-size: 13px; font-weight: 700; opacity: 0.95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; text-align: center; }
@@ -154,11 +156,22 @@
   border-color: #20242e;
 }
 
-/* enemies-remaining counter — bold red pixel badge, top-centre (above timer).
-   Driven by shared battle state so master AND every player see the same count. */
-.tac-enemy-count {
+/* ── Status strip: holds the enemy / timer / boss chips in one flex row so they
+   never stack on top of one another. Anchored top-centre; pushed below the
+   master bar when it's open (see .bar-open rule). ── */
+.tac-statusbar {
   position: absolute; z-index: 1200;
   top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 8px; flex-wrap: wrap;
+  max-width: min(640px, calc(100vw - 230px));
+  pointer-events: none;
+}
+.tac-statusbar > * { pointer-events: auto; }
+
+/* enemies-remaining counter — bold red pixel badge.
+   Driven by shared battle state so master AND every player see the same count. */
+.tac-enemy-count {
   display: inline-flex; align-items: baseline; gap: 5px;
   padding: 6px 13px; color: #fff; border: 2px solid #3a0606; border-radius: 0;
   background: linear-gradient(180deg, rgba(210,48,48,0.97), rgba(120,16,16,0.98));
@@ -180,10 +193,8 @@
 }
 @keyframes tac-enemy-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
 
-/* turn timer badge (top-centre, sits just below the enemy counter) */
+/* turn timer chip */
 .tac-timer {
-  position: absolute; z-index: 1200;
-  top: calc(48px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
   padding: 8px 12px; font-size: 14px; font-weight: 900; letter-spacing: 1px;
   color: #fff; border: 2px solid #0a1230; border-radius: 0;
   background: linear-gradient(180deg, rgba(36,64,140,0.96), rgba(12,24,66,0.97));
@@ -197,11 +208,9 @@
 }
 @keyframes tac-timer-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
 
-/* Global boss deadline countdown — sits just under the phase timer, darker/ominous */
+/* Global boss deadline countdown chip — darker/ominous */
 .tac-bossclock {
-  position: absolute; z-index: 1200;
-  top: calc(88px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
-  padding: 6px 12px; font-size: 13px; font-weight: 900; letter-spacing: 1px;
+  padding: 8px 12px; font-size: 13px; font-weight: 900; letter-spacing: 1px;
   color: #ffe3e3; border: 2px solid #2a0a0a; border-radius: 0; white-space: nowrap;
   background: linear-gradient(180deg, rgba(60,18,30,0.96), rgba(26,8,12,0.97));
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
@@ -212,6 +221,15 @@
   border-color: #ff9b8a; color: #fff;
   animation: tac-timer-pulse 1.2s ease-in-out infinite;
 }
+
+/* ── When the master panel (topbar) is open, slide the floating status widgets
+   BELOW it so nothing overlaps. --bt-topbar-h is the bar's measured height
+   (set in JS); the per-widget offset keeps their original vertical spacing. ── */
+.tac-screen.bar-open .tac-statusbar,
+.tac-screen.bar-open .tac-roster,
+.tac-screen.bar-open .tac-atktally,
+.tac-screen.bar-open .tac-fab-music,
+.tac-screen.bar-open .tac-fab-end     { top: calc(var(--bt-topbar-h, 44px) + 12px + env(safe-area-inset-top, 0px)); }
 
 /* ── Pixel defeat screen (boss deadline expired with the boss alive) ──────── */
 .tac-defeat {
@@ -511,6 +529,67 @@
   border-color: #e0a07a;
 }
 
+/* ── Collapsed action HUD (default on phones): card + 2 buttons, board stays
+   visible until the player opens the ability list. ── */
+.tac-hud--mini { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; max-height: none; }
+.tac-hud--mini .tac-hud-card { flex: 1 1 200px; min-width: 0; }
+.tac-hud-quick { display: flex; gap: 8px; flex: 1 1 240px; }
+.tac-hud-quick .tac-act { flex: 1 1 0; width: auto; }
+.tac-act.tac-open-actions {
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(122,72,196,0.96), rgba(66,34,120,0.96));
+  border-color: #b07bff;
+}
+/* header row of the expanded HUD: identity card + a collapse chevron */
+.tac-hud-top { display: flex; align-items: center; gap: 8px; }
+.tac-hud-top .tac-hud-card { flex: 1 1 auto; min-width: 0; }
+.tac-hud-collapse {
+  flex: 0 0 auto; align-self: stretch; min-width: 40px;
+  background: rgba(255, 255, 255, 0.12); color: #fff;
+  border: 2px solid #0a1230; border-radius: 0; cursor: pointer;
+  font-size: 16px; font-weight: 900;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.2), inset -2px -2px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ── Ability preview popup — damage + description, confirm before committing ── */
+.tac-preview-backdrop { position: fixed; inset: 0; z-index: 2400; background: rgba(0, 0, 0, 0.45); }
+.tac-preview {
+  position: fixed; z-index: 2401;
+  left: 50%; bottom: max(16px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  width: min(440px, calc(100vw - 24px)); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px; border-radius: 0;
+  background: linear-gradient(180deg, rgba(28,36,64,0.98), rgba(12,18,40,0.99));
+  border: 2px solid #9fc7ff;
+  box-shadow: 0 -6px 26px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.tac-preview.g-attack  { border-color: #ff9b8a; }
+.tac-preview.g-spell   { border-color: #c79bff; }
+.tac-preview.g-support { border-color: #8af0b4; }
+.tac-preview-head { display: flex; align-items: center; gap: 8px; }
+.tac-preview-icon { font-size: 22px; flex: 0 0 auto; }
+.tac-preview-name { flex: 1 1 auto; font-size: 17px; font-weight: 900; letter-spacing: 0.3px; }
+.tac-preview-x {
+  flex: 0 0 auto; background: rgba(255, 255, 255, 0.12); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 6px;
+  padding: 4px 9px; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.tac-preview-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tac-preview-tag {
+  font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.22); color: #e8eef5;
+}
+.tac-preview-tag.dmg { background: rgba(255, 200, 90, 0.2); border-color: rgba(255, 210, 110, 0.55); color: #ffe9a0; }
+.tac-preview-tag.area { background: rgba(196, 58, 42, 0.22); border-color: rgba(255, 150, 130, 0.5); color: #ffc4b8; }
+.tac-preview-tag.cat { opacity: 0.8; }
+.tac-preview-desc {
+  margin: 0; font-size: 13px; line-height: 1.4; color: #d2dcf0;
+  max-height: 30vh; overflow-y: auto;
+}
+.tac-preview-buttons { display: flex; gap: 8px; }
+.tac-preview-buttons .tac-act { width: auto; flex: 1 1 0; justify-content: center; }
+.tac-preview-use { flex: 2 1 0 !important; font-weight: 900; }
+
 /* ── Phone tuning — keep the HUD around 30% of the screen ────────────────── */
 @media (max-width: 560px) {
   /* Stack the top bar on two rows so the (master's many) controls don't
@@ -520,8 +599,8 @@
   .tac-turninfo { text-align: left; white-space: normal; overflow: visible; }
   .tac-controls { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
 
-  .tac-hud { max-height: 42vh; padding: 6px 7px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
-  .tac-hud.collapsed { max-height: none; }
+  .tac-hud { max-height: 46vh; padding: 6px 7px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
+  .tac-hud.collapsed, .tac-hud--mini { max-height: none; }
   .tac-hud-avatar { width: 38px; height: 38px; }
   .tac-hud-name { font-size: 13px; }
   .tac-hud-stats { font-size: 10px; }
@@ -531,7 +610,30 @@
   .tac-act-name { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; }
   .tac-act-icon { font-size: 15px; }
   .tac-hud-prompt { font-size: 12px; }
+
+  /* ── Top status strip: own row below the FAB row, compact chips, no overlap ── */
+  .tac-statusbar {
+    top: calc(48px + env(safe-area-inset-top, 0px));
+    left: 6px; right: 6px; transform: none; max-width: none;
+    justify-content: center; gap: 6px;
+  }
+  .tac-enemy-count { padding: 4px 9px; gap: 3px; }
+  .tac-enemy-count-num { font-size: 16px; }
+  .tac-enemy-count-label { display: none; }      /* the skull already says "nemici" */
+  .tac-timer { padding: 5px 9px; font-size: 13px; }
+  .tac-bossclock { padding: 5px 9px; font-size: 12px; }
+  .tac-bossclock-lbl { display: none; }           /* just the skull + countdown */
+
+  /* roster / participation toggles sit below the status strip */
+  .tac-roster, .tac-atktally { top: calc(86px + env(safe-area-inset-top, 0px)); }
+  .tac-roster-toggle, .tac-atktally-toggle { font-size: 11px; padding: 5px 8px; }
+
+  /* preview popup fills the width comfortably */
+  .tac-preview { width: calc(100vw - 16px); }
 }
+
+/* hide the boss-clock label everywhere except where there's room */
+.tac-bossclock-lbl { display: inline; }
 
 /* ── Deploy-phase unit picker (shared look with the map editor) ────────────── */
 .bme-place-backdrop { position: fixed; inset: 0; z-index: 3000; }

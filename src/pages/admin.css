@@ -4622,6 +4622,11 @@
 .fdy-import-count { font-size: .74rem; color: #9a8a6b; }
 .fdy-import-tip { margin: 8px 0 10px; font-size: .76rem; line-height: 1.5; color: #6a5b41; }
 .fdy-import-tip strong { color: #8a261c; }
+.fdy-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; }
+.fdy-filters .npcgen-input { flex: 1 1 160px; min-width: 130px; }
+.fdy-filters .npcgen-input:disabled { opacity: .5; cursor: not-allowed; }
+.fdy-sold  { background: #e9f6ec !important; border-color: #9ccfa6 !important; color: #2f7a44 !important; }
+.fdy-avail { background: #f3eede !important; border-color: #d9c79a !important; color: #6a5b41 !important; }
 .fdy-import-list { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
 .fdy-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px;

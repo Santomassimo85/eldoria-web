@@ -404,6 +404,7 @@ export default function IsoBoard({
                   className={`iso-unit-bar-fill ${u.side === "hero" ? "hero" : "enemy"}`}
                   style={{ width: `${hpPct}%` }}
                 />
+                <span className="iso-unit-hp">{u.hp}<i>/{u.maxHp}</i></span>
               </div>
             )}
             {sprite ? (
