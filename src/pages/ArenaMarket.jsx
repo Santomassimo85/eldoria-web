@@ -94,13 +94,15 @@ export const ARENA_CLASSES = [
   { key: "artificer", name: "Artefice",   icon: "⚙️", hiddenUnlessOwned: "classArtificer" },
 ];
 
-const HIT_DICE = {
-  fighter: 10, barbarian: 10, paladin: 10, rogue: 10, ranger: 10,
-  monk: 10, wizard: 10, sorcerer: 10, warlock: 10, bard: 10, cleric: 10, druid: 10, artificer: 10,
-};
-
 const LEVEL_UP_KEY = "level_up_cost";
 const LEVEL_UP_DEFAULT = 10;
+
+// Livelli-ASI (punti caratteristica) — coerenti con Arena.jsx / Arena_class_progress.txt §2E.
+const ASI_LEVELS_DEFAULT = [4, 8, 12, 16, 19];
+const ASI_LEVELS_BY_CLASS = {
+  fighter: [4, 6, 8, 12, 14, 16, 19],
+  rogue:   [4, 8, 10, 12, 16, 19],
+};
 
 // ── MANUALE: progressione di livello per classe (Lv 1→20) ────────────────────
 // SOLO informativo: cosa sblocca ogni classe salendo di livello. Non è
@@ -471,25 +473,15 @@ export default function ArenaMarket() {
     if (!currentUser || !charData) return;
     if (coins < levelUpCost) { showMsg("Monete Arena insufficienti.", "err"); return; }
     const currentLv = classLvls[cls.key] ?? 3;
-    const die = HIT_DICE[cls.key] ?? 8;
-    // CON modifier from the arena character snapshot (stored as modifier, e.g. +2)
-    const mySnap = arenaMeta?.characterSnapshots?.[currentUser.uid];
-    const conMod = mySnap?.stats?.con ?? 0;
-    const dieRoll = Math.floor(Math.random() * die) + 1;
-    const hpGain = Math.max(1, dieRoll + conMod);
+    const newLv = currentLv + 1;
     await updateDoc(doc(db, "characters", currentUser.uid), {
       arenaCoins: increment(-levelUpCost),
-      [`classLevels.${cls.key}`]: currentLv + 1,
-      arenaHpBonus: increment(hpGain),
+      [`classLevels.${cls.key}`]: newLv,
     });
-    // Keep the arena snapshot in sync so generateMatches picks up the bonus
-    if (mySnap) {
-      await updateDoc(doc(db, "arena_meta", "global"), {
-        [`characterSnapshots.${currentUser.uid}.arenaHpBonus`]: increment(hpGain),
-      });
-    }
-    const conStr = conMod !== 0 ? ` + CON ${conMod > 0 ? "+" : ""}${conMod}` : "";
-    showMsg(`${cls.name} → Lv.${currentLv + 1}! +${hpGain} PF (1d${die}=${dieRoll}${conStr})`);
+    // PF (+1 dado) e punti caratteristica si applicano alla creazione del PG nell'Arena.
+    const asiLevels = ASI_LEVELS_BY_CLASS[cls.key] || ASI_LEVELS_DEFAULT;
+    const gotAsi = asiLevels.includes(newLv);
+    showMsg(`${cls.name} → Lv.${newLv}! +1 dado PF${gotAsi ? " · +2 punti caratteristica" : ""} (si applicano creando il PG nell'Arena)`);
   };
 
   if (!currentUser) {
@@ -544,10 +536,7 @@ export default function ArenaMarket() {
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
-          Ogni classe parte da <strong>Lv.3</strong> — salire di livello costa <strong>{levelUpCost} MA</strong>. Ogni livello sblocca, in base alla classe, <strong>incantesimi, abilità, passive e punti caratteristica</strong> (vedi il <strong>Manuale delle Classi</strong> più in basso), oltre a <strong>+1 dado PF (1d10)+COS</strong>. Ogni classe ha una progressione separata.
-          {(charData?.arenaHpBonus ?? 0) > 0 && (
-            <span className="am-hp-bonus-tag"> • +{charData.arenaHpBonus} PF bonus da livelli</span>
-          )}
+          Ogni classe parte da <strong>Lv.3</strong> — salire di livello costa <strong>{levelUpCost} MA</strong>. Ogni livello sblocca, in base alla classe, <strong>incantesimi, abilità, passive e punti caratteristica</strong> (vedi il <strong>Manuale delle Classi</strong> più in basso), oltre a <strong>+1 dado PF (1d10)+COS</strong> al tiro dei Punti Vita in fase di creazione del PG. Ogni classe ha una progressione separata.
         </p>
         {filteredClasses.length === 0 ? (
           <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
@@ -758,22 +747,11 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
     if (!char) return;
     const currentLv = (char.classLevels ?? {})[cls.key] ?? 3;
     if (currentLv <= 3) return;
-    const die = HIT_DICE[cls.key] ?? 8;
-    const mySnap = arenaMeta?.characterSnapshots?.[uid];
-    const conMod = mySnap?.stats?.con ?? 0;
-    // Reverse an average-roll HP gain (ceil of average + CON, minimum 1)
-    const hpToRemove = Math.max(1, Math.ceil(die / 2) + conMod);
-    const newHpBonus = Math.max(0, (char.arenaHpBonus ?? 0) - hpToRemove);
+    // I PF e i punti caratteristica derivano dal livello in fase di creazione PG,
+    // quindi basta abbassare il livello: niente più bonus piatto da scalare.
     await updateDoc(doc(db, "characters", uid), {
       [`classLevels.${cls.key}`]: currentLv - 1,
-      arenaHpBonus: newHpBonus,
     });
-    if (mySnap) {
-      const newSnapBonus = Math.max(0, (mySnap.arenaHpBonus ?? 0) - hpToRemove);
-      await updateDoc(doc(db, "arena_meta", "global"), {
-        [`characterSnapshots.${uid}.arenaHpBonus`]: newSnapBonus,
-      });
-    }
   };
 
   return (

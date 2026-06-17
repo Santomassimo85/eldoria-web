@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "43.01",
+      "date": "2026-06-17",
+      "title": "Arena: i Punti Vita ora scalano col livello di classe",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Il tiro dei Punti Vita non conteggiava il livello: restava sempre 7d10. Ora aggiunge 1 dado (1d10) per ogni livello di classe oltre il 3° — un personaggio al Lv.4 tira 8d10, al Lv.5 9d10, e così via (più il bonus COS per dado). Il vecchio bonus PF 'piatto' accumulato all'acquisto è stato rimosso per non contare due volte gli stessi Punti Vita."
+        },
+        {
+          "type": "fix",
+          "text": "Coerenza livello/creazione: Punti Vita e punti caratteristica (ASI) leggono ora la stessa progressione di classe, così salendo di livello entrambi aumentano in fase di creazione del personaggio."
+        }
+      ]
+    },
+    {
       "version": "43",
       "date": "2026-06-17",
       "title": "Arena: contenuti del Lv.5 — Attacco Extra e incantesimi di tier 3",

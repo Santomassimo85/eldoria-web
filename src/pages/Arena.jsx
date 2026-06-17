@@ -1537,11 +1537,13 @@ function getClassKey(charClass) {
   return "fighter";
 }
 
-function getHpDice() {
-  // Base 7d10 per tutte le classi. Il bonus PF da salita di livello NON aggiunge
-  // dadi qui: è applicato come arenaHpBonus piatto (1 dado bonus + COS per livello),
-  // così non c'è doppio conteggio.
-  return { count: 7, sides: 10 };
+function getHpDice(charClass, classLevels) {
+  // Base 7d10 al livello di partenza (Lv3). Ogni livello di classe oltre il 3°
+  // aggiunge 1d10 al tiro PF (il bonus COS si applica per dado in rollHp).
+  // Vedi Arena_class_progress.txt §0/R1.
+  const classKey = getClassKey(charClass);
+  const level = Math.max(3, classLevels?.[classKey] ?? 3);
+  return { count: 7 + (level - 3), sides: 10 };
 }
 
 // spellLimits: { level: maxSelectable } — lv3+ bloccati nell'arena
@@ -3352,8 +3354,9 @@ export default function Arena() {
 
   const buildPlayerForMatch = (id, snapshots) => {
     const snap = snapshots[id] || {};
-    const baseHp   = snap.stats?.maxHp ?? 70;
-    const startHp  = baseHp + (snap.arenaHpBonus ?? 0);
+    // I PF dei livelli sono già nel tiro dadi (getHpDice scala col livello),
+    // quindi NON sommiamo più arenaHpBonus: evita il doppio conteggio.
+    const startHp  = snap.stats?.maxHp ?? 70;
     const itemUses = {};
     (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
     const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
