@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "43.03",
+      "date": "2026-06-17",
+      "title": "Arena: armature del Barbaro ridotte",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Il Barbaro non può più equipaggiare Mezza Piastre, Cuoio Borchiato (media) e Armatura di cuoio borchiato (leggera). Restano: Senza Armatura (10+DES+COS), Armatura di cuoio e le medie (Pelliccia Rinforzata, Cuoio Indurito)."
+        }
+      ]
+    },
+    {
       "version": "43.02",
       "date": "2026-06-17",
       "title": "Arena: il Master assegna i punti caratteristica a mano",
