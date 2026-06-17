@@ -166,7 +166,7 @@ const WIZARD_SPELLS = [
   { name: "Invisibilità",          level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "👻", info: "Lv2 · Il nemico non può attaccarti il prossimo turno", special: "invisibility", invisibilityDuration: 1, maxUses: 2 },
   { name: "Cecità/Sordità",        level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
   { name: "Tocco Vampirico",       level: 2, hitBonus: 3, damage: "3d6",   statKey: null, type: "spell", icon: "🩸", info: "Lv2 · Necrotico · cura 1d8 in caso di danno", vampiric: true, vampiricHeal: "1d8", maxUses: 2 },
-  // ── Livello 3 (bloccati — sbloccabili con Potenziamento) ──────────────────
+  // ── Livello 3 (bloccati fino al Lv5 di classe) ────────────────────────────
   { name: "Palla di Fuoco",        level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", maxUses: 1 },
   { name: "Fulmine",               level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", maxUses: 1 },
   { name: "Contrincantesimo",      level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚫", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
@@ -1318,12 +1318,27 @@ function readStealthAnyTurns(p)    { return Math.max(readStealthAdvTurns(p), rea
 // Numero massimo di azioni per turno: Monaco = 2, Ladro = 2, altrimenti 1.
 // +1 se il giocatore ha extraTurnActive (Passo Spedito).
 // +1 se Scatto d'Azione è attivo (Guerriero) — concede un'azione extra per questo turno.
+const EXTRA_ATTACK_CLASSES = ["fighter", "barbarian", "paladin", "ranger"];
 function getMaxActionsPerTurn(snap, matchPlayer) {
   if (!snap) return 1;
   const cls = (snap.class || "").toLowerCase();
   let base = 1;
   if (isMonkClass(cls)) base = 2;
   else if (isRogueClass(cls)) base = 2;
+  else {
+    // Attacco Extra (D&D Lv5) — vedi Arena_class_progress.txt 2D: Guerriero,
+    // Barbaro, Paladino e Ranger passano a 2 attacchi dal Lv5. Il Guerriero
+    // sale a 3 dal Lv11 e a 4 dal Lv20.
+    const classKey = getClassKey(snap.class);
+    const level = snap.classLevels?.[classKey] ?? 3;
+    if (EXTRA_ATTACK_CLASSES.includes(classKey)) {
+      if (level >= 5) base = 2;
+      if (classKey === "fighter") {
+        if (level >= 11) base = 3;
+        if (level >= 20) base = 4;
+      }
+    }
+  }
   if (matchPlayer?.extraTurnActive) base += 1;
   if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
@@ -1366,7 +1381,9 @@ function usesSharedSpellSlots(snap) {
   return isSorcererClass((snap?.class || "").toLowerCase());
 }
 function readSpellSlots(matchPlayer, lvl) {
-  return matchPlayer?.spellSlots?.[lvl] ?? SORC_SLOTS_MAX;
+  // I tier alti (3+) hanno poche cariche per non spezzare il PvP 1v1 (doc R6): 1 slot.
+  const fallback = lvl >= 3 ? 1 : SORC_SLOTS_MAX;
+  return matchPlayer?.spellSlots?.[lvl] ?? fallback;
 }
 // Usi visibili in UI per un'azione: null = illimitato / nessun contatore.
 function readSpellUsesLeft(matchPlayer, snap, action) {
@@ -1541,12 +1558,26 @@ const SPELL_LIMITS = {
   generic:  { 0: 1, 1: 1, 2: 1, 3: 0 },
 };
 
-function getLoadoutConfig(charClass) {
+// Limiti spell in funzione del livello — vedi Arena_class_progress.txt 2B/R5.
+// Mago e Stregone (gli unici con incantesimi di tier 3 già nel codice) sbloccano
+// il tier 3 al Lv5 con 1 carica. Le altre classi non hanno ancora contenuti di
+// tier 3 (vedi P1 nel doc), quindi i loro limiti restano invariati.
+function spellLimitsForLevel(classKey, level) {
+  const base = SPELL_LIMITS[classKey];
+  if (!base) return base;
+  const lv = Math.max(3, level ?? 3);
+  if (lv >= 5 && (classKey === "wizard" || classKey === "sorcerer")) {
+    return { ...base, 3: Math.max(base[3] ?? 0, 1) };
+  }
+  return base;
+}
+
+function getLoadoutConfig(charClass, level) {
   const cls = (charClass || "").toLowerCase();
   const { armorCategory, canHaveShield } = getArmorConfig(cls);
   const sumLimits = (lim) => Object.values(lim).reduce((a, b) => a + b, 0);
-  if (isWizardClass(cls))   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: SPELL_LIMITS.wizard,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.wizard),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isWizardClass(cls))   { const lim = spellLimitsForLevel("wizard", level);   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: lim,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(lim),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield }; }
+  if (isSorcererClass(cls)) { const lim = spellLimitsForLevel("sorcerer", level); return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: lim, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(lim), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield }; }
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION, PATTO_DEMONIACO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
@@ -2757,7 +2788,7 @@ export default function Arena() {
 
   // ── STEP 3: conferma iscrizione ───────────────────────────────────────────
   const confirmJoin = async () => {
-    const config = getLoadoutConfig(charPreview.class);
+    const config = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
     if (pendingWeapons.length < config.maxWeapons) return;
     if (pendingSpells.length  < config.maxSpells)  return;
     if (!charPreview.rolledHp) return;
@@ -3071,7 +3102,6 @@ export default function Arena() {
 
   const toggleSpell = (item, spellLimits) => {
     const lvl = item.level ?? 0;
-    if (lvl >= 3) return; // lv3+ non disponibili in arena
     setPendingSpells(prev => {
       const already = prev.find(a => a.name === item.name);
       if (already) return prev.filter(a => a.name !== item.name);
@@ -3117,16 +3147,19 @@ export default function Arena() {
     const classPool = MASTER_JOIN_CLASSES.length ? MASTER_JOIN_CLASSES : MASTER_JOIN_CLASSES_BASE;
     const cls = rnd(classPool);
     const clsLower = (cls || "").toLowerCase();
-    const config = getLoadoutConfig(cls);
+    const clsLevel = charPreview.classLevels?.[getClassKey(cls)];
+    const config = getLoadoutConfig(cls, clsLevel);
 
-    // stat: 10 punti casuali, cap 3 per stat
+    // stat: 10 punti base + punti caratteristica (ASI) maturati, cap (3 + ASI) per stat
+    const asiBonus = getAsiPoints(getClassKey(cls), clsLevel);
+    const statCap = 3 + asiBonus;
     const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
     const keys = Object.keys(stats);
-    let rem = 10, guard = 0;
+    let rem = 10 + asiBonus, guard = 0;
     while (rem > 0 && guard++ < 500) {
       const k = rnd(keys);
-      if (stats[k] < 3) { stats[k]++; rem--; }
-      else if (keys.every(kk => stats[kk] >= 3)) break;
+      if (stats[k] < statCap) { stats[k]++; rem--; }
+      else if (keys.every(kk => stats[kk] >= statCap)) break;
     }
 
     // HP
@@ -3139,13 +3172,13 @@ export default function Arena() {
     const weapons = shuffle(config.weaponOptions).slice(0, config.maxWeapons);
     const has2H = weapons.some(w => w.twoHanded);
 
-    // incantesimi (rispetta i limiti per livello; salta i livelli bloccati ≥3)
+    // incantesimi (rispetta i limiti per livello; il tier 3 è ammesso solo se il
+    // limite di classe/livello lo consente — Mago/Stregone dal Lv5)
     const spells = [];
     const limits = config.spellLimits || {};
     for (const sp of shuffle(config.spellOptions)) {
       if (spells.length >= config.maxSpells) break;
       const lvl = sp.level ?? 0;
-      if (lvl >= 3) continue;
       const atLvl = spells.filter(s => (s.level ?? 0) === lvl).length;
       if (atLvl >= (limits[lvl] ?? 0)) continue;
       spells.push(sp);
@@ -4343,7 +4376,8 @@ export default function Arena() {
 
     // Multi-action arithmetic mirrors the existing player flow at line ~3070:
     // staying-this-turn iff (used+1) < maxActions. Action Surge bumps cap.
-    const baseMaxActions = (cls.includes("monk") || cls.includes("monaco") || cls.includes("rogue") || cls.includes("ladr")) ? 2 : 1;
+    // Stessa fonte dei giocatori (include l'Attacco Extra di Lv5 se l'IA è di livello).
+    const baseMaxActions = getMaxActionsPerTurn(aiSnap, null);
     const effectiveMaxActions = baseMaxActions + (surgePatch.actionSurgeActive ? 1 : 0) + (aiPlayer.actionSurgeActive ? 1 : 0);
     const stayingThisTurn = (usedSoFar + 1) < effectiveMaxActions;
 
@@ -7603,7 +7637,7 @@ export default function Arena() {
             <h3 className="arena-info-title">🎲 Come si combatte — attacchi e armi</h3>
             <div className="arena-info-example">
               <p><strong>Attacco con arma:</strong> d20 + bonus arma + FOR (mischia) o DES (distanza/finezza) vs CA del bersaglio. Se il totale è ≥ CA colpisci: danno dell'arma + modificatore. <em>Critico</em> su 20 naturale: dadi del danno ×2.</p>
-              <p><strong>Attacchi per turno:</strong> <strong>Monaco e Ladro</strong> attaccano <strong>2 volte</strong> a turno; tutte le altre classi <strong>1 volta</strong> (più eventuali bonus action). Scatto d'Azione (Guerriero) e Passo Spedito (Ranger) concedono un'azione extra.</p>
+              <p><strong>Attacchi per turno:</strong> <strong>Monaco e Ladro</strong> attaccano <strong>2 volte</strong> a turno. <strong>Guerriero, Barbaro, Paladino e Ranger</strong> ottengono l'<strong>Attacco Extra al Lv.5</strong> (2 attacchi); il Guerriero sale a 3 al Lv.11 e a 4 al Lv.20. Le altre classi attaccano <strong>1 volta</strong> (più eventuali bonus action). Scatto d'Azione (Guerriero) e Passo Spedito (Ranger) concedono un'azione extra.</p>
               <p><strong>Combattere a due armi (Ladro):</strong> il Ladro colpisce una volta <strong>per mano</strong>, quindi servono <strong>due armi diverse equipaggiate</strong> — la stessa arma non può essere usata due volte nello stesso turno.</p>
               <p><strong>Cambio arma:</strong> impugnare un'arma <strong>non</strong> equipaggiata <strong>costa il turno</strong>; dal turno dopo puoi attaccare con la nuova arma. Le armi a due mani disattivano lo scudo.</p>
               <p><strong>Arma incandescente</strong> (Riscaldare Arma / Disarmare): arroventa <strong>solo l'arma attualmente equipaggiata</strong> del bersaglio per alcuni turni. Se hai un'altra arma riposta puoi impugnarla e combattere comunque.</p>
@@ -8211,7 +8245,7 @@ export default function Arena() {
 
           {/* ── Fase SELECTING: equipaggiamento ── */}
           {loadoutPhase === "selecting" && charPreview && (() => {
-            const config       = getLoadoutConfig(charPreview.class);
+            const config       = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
             const isRanger     = isRangerClass((charPreview.class || "").toLowerCase());
             const isWarlock    = isWarlockClass((charPreview.class || "").toLowerCase());
             const isArtificer  = isArtificerClass((charPreview.class || "").toLowerCase());
@@ -8365,14 +8399,15 @@ export default function Arena() {
                       </div>
                       {presentLevels.map(lvl => {
                         const spellsOfLevel = config.spellOptions.filter(s => (s.level ?? 0) === lvl);
-                        const isLocked = lvl >= 3;
                         const limit = config.spellLimits?.[lvl] ?? 0;
+                        // Tier 3+ resta bloccato finché il livello non ne concede il limite (Mago/Stregone dal Lv5).
+                        const isLocked = lvl >= 3 && limit <= 0;
                         const selectedAtLevel = pendingSpells.filter(s => (s.level ?? 0) === lvl).length;
                         return (
                           <div key={lvl} className={`spell-level-group lv${lvl}${isLocked ? " locked-level" : ""}`}>
                             <div className="spell-level-header">
                               {isLocked
-                                ? <><span className="spell-level-lock">🔒</span>{LEVEL_LABELS[lvl]} <span className="spell-level-locked-note">— Sbloccabile con Potenziamento</span></>
+                                ? <><span className="spell-level-lock">🔒</span>{LEVEL_LABELS[lvl]} <span className="spell-level-locked-note">— Si sblocca al Lv.5</span></>
                                 : lvl > 0 && config.spellLimits?.nonCantripMax != null
                                   ? <><span className={`spell-level-badge lv${lvl}`}>{LEVEL_LABELS[lvl]}</span><span className="spell-level-count">{pendingSpells.filter(s => (s.level ?? 0) > 0).length}/{config.spellLimits.nonCantripMax} slot totali</span></>
                                   : <><span className={`spell-level-badge lv${lvl}`}>{LEVEL_LABELS[lvl]}</span><span className="spell-level-count">{selectedAtLevel}/{limit}</span></>

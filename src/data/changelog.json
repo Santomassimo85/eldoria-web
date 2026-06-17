@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "43",
+      "date": "2026-06-17",
+      "title": "Arena: contenuti del Lv.5 — Attacco Extra e incantesimi di tier 3",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Attacco Extra al Lv.5: Guerriero, Barbaro, Paladino e Ranger che salgono al livello 5 effettuano 2 attacchi/azioni per turno. Il Guerriero prosegue a 3 attacchi dal Lv.11 e a 4 dal Lv.20. Monaco e Ladro restano a 2 come prima."
+        },
+        {
+          "type": "mechanics",
+          "text": "Incantesimi di tier 3 sbloccati dal Lv.5 per Mago e Stregone: Palla di Fuoco, Fulmine e Contrincantesimo/Paura non sono più bloccati ma si rendono disponibili in creazione raggiunto il Lv.5 della classe (1 carica, per non sbilanciare l'1v1). Le altre classi non hanno ancora incantesimi di tier 3."
+        }
+      ]
+    },
+    {
       "version": "42",
       "date": "2026-06-17",
       "title": "Arena: i livelli ora danno punti caratteristica (ASI)",
