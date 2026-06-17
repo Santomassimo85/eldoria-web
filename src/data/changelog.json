@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "43.02",
+      "date": "2026-06-17",
+      "title": "Arena: il Master assegna i punti caratteristica a mano",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "La creazione del personaggio dal pannello Master («Crea il tuo personaggio») assegnava statistiche preimpostate per classe e saltava la schermata «Caratteristiche»: non era possibile distribuire i punti caratteristica (né i punti caratteristica extra dai livelli). Ora il flusso del Master passa per la stessa schermata dei giocatori, con budget 10 + punti ASI maturati e i pulsanti rapidi «Scelta AI» / «Random»."
+        }
+      ]
+    },
+    {
       "version": "43.01",
       "date": "2026-06-17",
       "title": "Arena: i Punti Vita ora scalano col livello di classe",

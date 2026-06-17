@@ -3226,25 +3226,8 @@ export default function Arena() {
     setLoadoutPhase("selecting");
   };
 
-  const getMasterDefaultStats = (cls) => {
-    if (["Fighter","Barbarian","Paladin"].includes(cls))
-      return { maxHp: 85, ac: 16, str: 3, dex: 1, con: 2, int: 0, wis: 1, cha: 1 };
-    if (["Ranger","Monk"].includes(cls))
-      return { maxHp: 75, ac: 15, str: 1, dex: 3, con: 2, int: 0, wis: 2, cha: 0 };
-    if (["Rogue"].includes(cls))
-      return { maxHp: 70, ac: 15, str: 1, dex: 3, con: 2, int: 1, wis: 1, cha: 2 };
-    if (["Wizard"].includes(cls))
-      return { maxHp: 60, ac: 13, str: 0, dex: 2, con: 1, int: 3, wis: 1, cha: 0 };
-    if (["Sorcerer","Bard","Warlock"].includes(cls))
-      return { maxHp: 62, ac: 13, str: 0, dex: 2, con: 1, int: 1, wis: 1, cha: 3 };
-    if (["Druid","Cleric"].includes(cls))
-      return { maxHp: 70, ac: 14, str: 1, dex: 2, con: 2, int: 0, wis: 3, cha: 1 };
-    return { maxHp: 70, ac: 14, str: 2, dex: 2, con: 2, int: 1, wis: 1, cha: 1 };
-  };
-
   const startMasterLoadout = async () => {
     if (!masterJoinName.trim() || !masterJoinClass) return;
-    const stats = getMasterDefaultStats(masterJoinClass);
     let classLevels = {};
     let arenaBuffs = {};
     try {
@@ -3259,19 +3242,22 @@ export default function Arena() {
       name:        masterJoinName.trim(),
       image:       null,
       class:       masterJoinClass,
-      stats,
+      stats:       { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
       classLevels,
       arenaBuffs,
       rolledHp:    null,
       hpRerollCount: 0,
     });
+    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
     setPendingWeapons([]);
     setPendingSpells([]);
     setPendingSkills([]);
     setPendingArmor(null);
     setPendingShield(null);
     setMasterJoinSetup(false);
-    setLoadoutPhase("rolling");
+    // Passa per la fase "Caratteristiche" come i giocatori (budget 10 + punti ASI),
+    // invece di assegnare stat preimpostate e saltare la distribuzione dei punti.
+    setLoadoutPhase("stat-assign");
     setArenaView("join");
   };
 
