@@ -421,12 +421,9 @@ const ARENA_ARMORS = {
   // Ranger: solo cuoio borchiato (leggera) + medie — niente cuoio semplice,
   // cuoio borchiato medio o mezza piastra.
   ranger: [..._ARMOR_LIGHT.slice(1), ..._ARMOR_MEDIUM],
-  // Barbarian: solo cuoio semplice + medie + opzione senza armatura (10+DES+COS).
-  // Niente cuoio borchiato (leggero), Cuoio Borchiato (medio) né Mezza Piastre.
+  // Barbarian: SOLO senza armatura (10+DES+COS) — nessuna armatura equipaggiabile.
   barbarian:  [
     { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "💪", info: "Senza armatura · 10+DES+COS", unarmoredDefense: true },
-    ..._ARMOR_LIGHT.slice(0, 1),
-    ..._ARMOR_MEDIUM,
   ],
   monk: [
     { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "🥋", info: "Senza armatura · 10+DES+SAG", unarmoredDefense: true, unarmoredStat: "wis" },
