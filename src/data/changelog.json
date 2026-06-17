@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "42",
+      "date": "2026-06-17",
+      "title": "Arena: i livelli ora danno punti caratteristica (ASI)",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Salire di livello di classe ora concede davvero i punti caratteristica (ASI): in fase di creazione del personaggio il budget non è più fisso a 10, ma sale di +2 per ogni livello-ASI raggiunto dalla classe scelta. I livelli-ASI sono 4·8·12·16·19 per tutte le classi, con i bonus di classe già previsti: Guerriero anche al 6 e al 14, Ladro anche al 10. Chi ha comprato fino al Lv.4 trova quindi 12 punti invece di 10."
+        },
+        {
+          "type": "mechanics",
+          "text": "Il cap per singola caratteristica sale insieme ai punti ASI: resta +3 di base e cresce dell'ammontare dei punti caratteristica maturati (es. +5 al Lv.4). I pulsanti «Scelta AI» e «Random» rispettano il nuovo budget e il nuovo cap."
+        }
+      ]
+    },
+    {
       "version": "41.01",
       "date": "2026-06-15",
       "title": "Arena: AI solo con abilità reali + hover creazione",

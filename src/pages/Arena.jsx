@@ -1177,6 +1177,22 @@ function getProficiencyBonus(snap) {
   const level    = snap?.classLevels?.[classKey] ?? 3;
   return 2 + Math.floor((Math.max(1, level) - 1) / 4);
 }
+// ── PUNTI CARATTERISTICA (ASI) — vedi Arena_class_progress.txt §2E ────────────
+// A ogni livello-ASI il player riceve +2 punti da distribuire alle caratteristiche.
+// Livelli-ASI standard: 4·8·12·16·19. Eccezioni: Guerriero +6/+14, Ladro +10.
+// Si parte da Lv.3, quindi il primo ASI ottenibile è quello del Lv.4.
+const ASI_LEVELS_DEFAULT = [4, 8, 12, 16, 19];
+const ASI_LEVELS_BY_CLASS = {
+  fighter: [4, 6, 8, 12, 14, 16, 19],
+  rogue:   [4, 8, 10, 12, 16, 19],
+};
+const ASI_POINTS_PER_LEVEL = 2;
+// Punti caratteristica maturati da UNA classe al suo livello attuale (default Lv.3).
+function getAsiPoints(classKey, level) {
+  const lv = Math.max(3, level ?? 3);
+  const levels = ASI_LEVELS_BY_CLASS[classKey] || ASI_LEVELS_DEFAULT;
+  return levels.filter(l => l <= lv).length * ASI_POINTS_PER_LEVEL;
+}
 // CD TS = 8 + competenza + mod caratteristica principale del caster
 // (CAR stregone/warlock/bardo/paladino, INT mago, SAG chierico/druido).
 // Formula uniforme per tutti gli incantesimi con TS (controllo, DoT, danno).
@@ -8047,11 +8063,14 @@ export default function Arena() {
 
           {/* ── Fase STAT-ASSIGN: distribuzione punti ── */}
           {loadoutPhase === "stat-assign" && charPreview && (() => {
-            const STAT_BUDGET = 10;
+            const classKey = getClassKey(charPreview.class);
+            const asiBonus = getAsiPoints(classKey, charPreview.classLevels?.[classKey]);
+            const STAT_BUDGET = 10 + asiBonus;   // 10 base + punti caratteristica (ASI) maturati coi livelli
+            const STAT_CAP = 3 + asiBonus;        // cap per stat: +3 base, esteso dai punti ASI
             const spent = Object.values(pendingStats).reduce((a, b) => a + b, 0);
             const remaining = STAT_BUDGET - spent;
             const STAT_LABELS = [["str","FOR"],["dex","DES"],["con","COS"],["int","INT"],["wis","SAG"],["cha","CAR"]];
-            const keyStats = ARENA_KEY_STATS[getClassKey(charPreview.class)] || [];
+            const keyStats = ARENA_KEY_STATS[classKey] || [];
             return (
               <div className="hp-roll-panel">
                 <div className="loadout-char-preview" style={{ justifyContent: "center", marginBottom: 20 }}>
@@ -8065,6 +8084,9 @@ export default function Arena() {
                 </div>
                 <div className="hp-roll-title">Caratteristiche</div>
                 <div className="stat-budget-badge">{remaining > 0 ? `${remaining} punti da assegnare` : "✓ Punti assegnati"}</div>
+                {asiBonus > 0 && (
+                  <div className="stat-assign-hint">🎯 <strong>+{asiBonus} punti caratteristica</strong> dai livelli di {charPreview.class} (cap +{STAT_CAP} per caratteristica).</div>
+                )}
                 <div className="stat-assign-hint">⭐ In <strong>verde</strong> le caratteristiche consigliate per la classe <strong>{charPreview.class}</strong>.</div>
                 <div className="stat-assign-grid">
                   {STAT_LABELS.map(([key, label]) => {
@@ -8084,8 +8106,8 @@ export default function Arena() {
                           <span className="stat-assign-val">{pendingStats[key] >= 0 ? "+" : ""}{pendingStats[key]}</span>
                           <button
                             className="stat-adj-btn"
-                            onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(3, prev[key] + 1) }))}
-                            disabled={pendingStats[key] >= 3 || remaining <= 0}
+                            onClick={() => setPendingStats(prev => ({ ...prev, [key]: Math.min(STAT_CAP, prev[key] + 1) }))}
+                            disabled={pendingStats[key] >= STAT_CAP || remaining <= 0}
                           >+</button>
                         </div>
                         <div className="stat-assign-desc">{STAT_DESCS[key]}</div>
@@ -8098,14 +8120,14 @@ export default function Arena() {
                   <button className="btn-auto-generate" onClick={() => {
                     /* Scelta AI: distribuzione mirata per la classe.
                        Priorità: stat chiave della classe → COS (sopravvivenza) → il resto.
-                       Ogni stat è cappata a +3, budget 10 punti. */
+                       Ogni stat è cappata a STAT_CAP, budget = 10 + punti ASI. */
                     const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
-                    let rem = 10;
+                    let rem = STAT_BUDGET;
                     const seen = new Set();
                     const priority = [...keyStats, "con", "dex", "str", "wis", "cha", "int"]
                       .filter(k => (seen.has(k) ? false : seen.add(k)));
                     for (const k of priority) {
-                      while (rem > 0 && stats[k] < 3) { stats[k]++; rem--; }
+                      while (rem > 0 && stats[k] < STAT_CAP) { stats[k]++; rem--; }
                       if (rem === 0) break;
                     }
                     setPendingStats(stats);
@@ -8113,14 +8135,14 @@ export default function Arena() {
                     🤖 Scelta AI
                   </button>
                   <button className="btn-auto-generate" onClick={() => {
-                    /* distribuisci 10 punti random tra 6 stat, cap a 3 per stat */
+                    /* distribuisci il budget (10 + ASI) random tra 6 stat, cap a STAT_CAP */
                     const stats = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
-                    let remaining = 10;
+                    let remaining = STAT_BUDGET;
                     const keys = Object.keys(stats);
                     while (remaining > 0) {
                       const k = keys[Math.floor(Math.random() * keys.length)];
-                      if (stats[k] < 3) { stats[k]++; remaining--; }
-                      else if (keys.every(kk => stats[kk] >= 3)) break;
+                      if (stats[k] < STAT_CAP) { stats[k]++; remaining--; }
+                      else if (keys.every(kk => stats[kk] >= STAT_CAP)) break;
                     }
                     setPendingStats(stats);
                   }} title="Distribuisce 10 punti casuali">
