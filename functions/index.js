@@ -700,6 +700,51 @@ exports.scribaPreview = onCall(
   }
 );
 
+/**
+ * scribaEdit — il master modifica i testi di un numero (anche già inviato) dalla
+ * pagina /scriba. Salva il nuovo contenuto e RI-RENDERIZZA l'html (pulito) così
+ * l'archivio mostra subito la versione corretta. Le immagini restano invariate.
+ */
+exports.scribaEdit = onCall(
+  { region: "us-central1", timeoutSeconds: 120, memory: "512MiB" },
+  async (request) => {
+    const email = request.auth?.token?.email;
+    if (!email || !SCRIBA_MASTERS.includes(email)) {
+      throw new HttpsError("permission-denied", "Solo il master può modificare Lo Scriba.");
+    }
+    const id = String(request.data?.id || "");
+    const content = request.data?.content;
+    if (!id || !content || typeof content !== "object") {
+      throw new HttpsError("invalid-argument", "Dati mancanti.");
+    }
+    const dbAdmin = admin.firestore();
+    const ref = dbAdmin.collection("newsletters").doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Numero inesistente.");
+    const d = snap.data();
+
+    const str = (x) => String(x ?? "").trim();
+    const art = (a) => ({ headline: str(a?.headline), body: str(a?.body) });
+    const arr = (x) => (Array.isArray(x) ? x.map(art).filter((a) => a.headline || a.body) : []);
+    const clean = {
+      edition_motto: str(content.edition_motto),
+      lead: art(content.lead || {}),
+      dalle_terre: arr(content.dalle_terre),
+      voci_di_taverna: arr(content.voci_di_taverna),
+      listini: arr(content.listini),
+      arena: arr(content.arena),
+      // Metadati illustrazioni invariati (le immagini non si modificano qui).
+      illustrations: Array.isArray(d.content?.illustrations) ? d.content.illustrations : [],
+    };
+    const html = renderScribaHtml({
+      content: clean, edition: d.number, images: d.images || [],
+      unsubUrl: scribaUnsubUrlFor("anteprima"),
+    });
+    await ref.update({ content: clean, html, editedAt: FieldValue.serverTimestamp(), editedBy: email });
+    return { ok: true };
+  },
+);
+
 /** scribaSendNow — invia subito un numero ai giocatori (pulsante "Invia ora" del pannello). */
 exports.scribaSendNow = onCall(
   { region: "us-central1", timeoutSeconds: 300, memory: "512MiB" },

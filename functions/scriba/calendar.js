@@ -52,7 +52,10 @@ const GIORNO_TESTATA = "Voren";
 const SOTTOTITOLO_TESTATA = `La Gazzetta del ${GIORNO_TESTATA}`;
 
 // Ancora: il Numero 1 esce il 10 di Solleone dell'Anno BASE; +2 giorni a numero.
-const ANNO_BASE = 1023;       // (cambialo se il mondo ha un'altra era)
+// L'era conta dalla "Caduta delle Stelle" (la guerra dei serafini; vedi Home).
+const ANNO_BASE = 1582;
+const ERA = "dopo la Caduta delle Stelle";
+const ERA_BREVE = "d.C.S.";
 const MESE_ANCORA = 6;        // Solleone (indice 0-based)
 const GIORNO_ANCORA = 10;
 const PASSO_GIORNI = 2;
@@ -74,10 +77,10 @@ function exanthiaDate(number) {
   };
 }
 
-/** "10 di Solleone · Anno 1023" */
+/** "10 di Solleone · Anno 1582 dopo la Caduta delle Stelle" */
 function exanthiaDateLabel(number) {
   const d = exanthiaDate(number);
-  return `${d.day} di ${d.month} · Anno ${d.year}`;
+  return `${d.day} di ${d.month} · Anno ${d.year} ${ERA}`;
 }
 
 /** Per il raggruppamento dell'archivio: { key ordinabile, label mese }. */
@@ -85,7 +88,7 @@ function exanthiaMonthKey(number) {
   const d = exanthiaDate(number);
   return {
     key: `${String(d.year).padStart(4, "0")}-${String(d.monthIndex + 1).padStart(2, "0")}`,
-    label: `${d.month} · Anno ${d.year}`,
+    label: `${d.month} · Anno ${d.year} ${ERA_BREVE}`,
   };
 }
 
@@ -101,6 +104,7 @@ function exanthiaMonthInfo(number) {
 }
 
 module.exports = {
-  MESI_EXANTHIA, MESI_INFO, GIORNI_SETTIMANA, GIORNO_TESTATA, SOTTOTITOLO_TESTATA, ANNO_BASE,
+  MESI_EXANTHIA, MESI_INFO, GIORNI_SETTIMANA, GIORNO_TESTATA, SOTTOTITOLO_TESTATA,
+  ANNO_BASE, ERA, ERA_BREVE,
   exanthiaDate, exanthiaDateLabel, exanthiaMonthKey, exanthiaMonthInfo,
 };

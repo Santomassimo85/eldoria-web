@@ -14,6 +14,7 @@ import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import sampleIssues from "../data/scribaSample.json";
 import { exanthiaDateLabel, exanthiaMonthKey } from "../data/exanthiaCalendar";
+import ScribaEditModal from "./ScribaEditModal";
 import "./Scriba.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -29,6 +30,7 @@ export default function Scriba() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [term, setTerm] = useState("");
   const [mese, setMese] = useState("");
 
@@ -137,6 +139,15 @@ export default function Scriba() {
               {g.items.map((it) => (
                 <div key={it.id} className="scriba-card-wrap" style={{ position: "relative" }}>
                 {isMaster && !String(it.id).startsWith("sample-") && (
+                  <>
+                  <button
+                    type="button"
+                    className="scriba-edit"
+                    title="Modifica questo numero"
+                    aria-label="Modifica questo numero"
+                    onClick={(e) => { e.stopPropagation(); setEditing(it); }}
+                    style={{ position: "absolute", top: 8, right: 44, zIndex: 2, background: "rgba(201,162,39,.95)", color: "#1c1813", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 15, lineHeight: 1 }}
+                  >✒️</button>
                   <button
                     type="button"
                     className="scriba-del"
@@ -145,6 +156,7 @@ export default function Scriba() {
                     onClick={(e) => { e.stopPropagation(); removeIssue(it); }}
                     style={{ position: "absolute", top: 8, right: 8, zIndex: 2, background: "rgba(138,38,28,.92)", color: "#fff", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 15, lineHeight: 1 }}
                   >🗑</button>
+                  </>
                 )}
                 <button className="scriba-card" type="button" onClick={() => setOpen(it.id)}>
                   {it.images?.[0]?.url ? (
@@ -183,6 +195,10 @@ export default function Scriba() {
             <p className="scriba-empty">Numero non disponibile.</p>
           )}
         </div>
+      )}
+
+      {editing && (
+        <ScribaEditModal issue={editing} onClose={() => setEditing(null)} />
       )}
     </section>
   );
