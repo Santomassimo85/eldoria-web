@@ -109,6 +109,12 @@ export default function Scriba() {
         </p>
       </header>
 
+      {isMaster && !loading && issues.length > 0 && String(issues[0].id).startsWith("sample-") && (
+        <p style={{ background: "#fff6e0", border: "1px solid #e3cf9b", color: "#7a5b12", borderRadius: 8, padding: "10px 14px", margin: "0 0 14px", lineHeight: 1.5 }}>
+          ℹ️ Questi sono <strong>numeri d'esempio</strong> (spariscono al primo numero reale pubblicato). I pulsanti <strong>✒️ Modifica</strong> e <strong>🗑 Elimina</strong> compaiono solo sui numeri veri inviati.
+        </p>
+      )}
+
       {!loading && issues.length > 0 && (
         <div className="scriba-toolbar">
           <input

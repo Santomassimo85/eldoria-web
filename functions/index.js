@@ -585,6 +585,29 @@ const sourceCountsOf = (data) => ({
 });
 
 /**
+ * Prossimo numero d'edizione: "legge l'ultimo giornale e riprende da lì".
+ * = max(numero più alto fra i numeri NON annullati, lastNumber salvato) + 1.
+ * Così resta coerente anche se il master rinumera o cancella numeri a mano.
+ */
+async function nextScribaEdition(dbAdmin) {
+  let maxNum = 0;
+  try {
+    const snap = await dbAdmin.collection("newsletters").get();
+    snap.forEach((doc) => {
+      const d = doc.data();
+      const n = Number(d.number) || 0;
+      if (d.status !== "cancelled" && n > maxNum) maxNum = n;
+    });
+  } catch (e) { console.error("[scriba] nextEdition newsletters:", e.message); }
+  let lastNumber = 0;
+  try {
+    const cfg = await dbAdmin.doc("settings/scriba").get();
+    lastNumber = cfg.data()?.lastNumber || 0;
+  } catch (_) { /* default 0 */ }
+  return Math.max(maxNum, lastNumber) + 1;
+}
+
+/**
  * Costruisce un numero completo: dati → testo (Claude) → 2-3 immagini (Gemini,
  * best-effort) caricate su Storage sotto `scriba/<assetPrefix>/`.
  */
@@ -674,11 +697,7 @@ exports.scribaPreview = onCall(
     const dbAdmin = admin.firestore();
     const days = Number(request.data?.days) || SCRIBA_INTERVAL_DAYS;
 
-    let edition = 1;
-    try {
-      const cfg = await dbAdmin.doc("settings/scriba").get();
-      edition = (cfg.data()?.lastNumber || 0) + 1;
-    } catch (_) { /* default 1 */ }
+    const edition = await nextScribaEdition(dbAdmin);
 
     let built;
     try {
@@ -723,6 +742,14 @@ exports.scribaEdit = onCall(
     if (!snap.exists) throw new HttpsError("not-found", "Numero inesistente.");
     const d = snap.data();
 
+    // Numero modificabile (la data in-world segue il numero). Se non passato o
+    // non valido, resta quello attuale.
+    let number = d.number;
+    if (request.data?.number != null) {
+      const n = Math.floor(Number(request.data.number));
+      if (Number.isFinite(n) && n >= 0) number = n;
+    }
+
     const str = (x) => String(x ?? "").trim();
     const art = (a) => ({ headline: str(a?.headline), body: str(a?.body) });
     const arr = (x) => (Array.isArray(x) ? x.map(art).filter((a) => a.headline || a.body) : []);
@@ -737,10 +764,10 @@ exports.scribaEdit = onCall(
       illustrations: Array.isArray(d.content?.illustrations) ? d.content.illustrations : [],
     };
     const html = renderScribaHtml({
-      content: clean, edition: d.number, images: d.images || [],
+      content: clean, edition: number, images: d.images || [],
       unsubUrl: scribaUnsubUrlFor("anteprima"),
     });
-    await ref.update({ content: clean, html, editedAt: FieldValue.serverTimestamp(), editedBy: email });
+    await ref.update({ number, content: clean, html, editedAt: FieldValue.serverTimestamp(), editedBy: email });
     return { ok: true };
   },
 );
@@ -816,7 +843,7 @@ exports.scribaTick = onSchedule(
     const lastSentMs = cfg.lastSentAt?.toMillis ? cfg.lastSentAt.toMillis() : 0;
     if (lastSentMs && (nowMs - lastSentMs) < intervalDays * 24 * 60 * 60 * 1000) return;
 
-    const edition = (cfg.lastNumber || 0) + 1;
+    const edition = await nextScribaEdition(dbAdmin);
     let built;
     try {
       built = await buildScribaEdition(dbAdmin, { days: intervalDays, assetPrefix: String(edition), edition });
@@ -968,8 +995,7 @@ exports.scribaKickoff = onRequest(
         return;
       }
 
-      const cfg = await dbAdmin.doc("settings/scriba").get();
-      const edition = (cfg.data()?.lastNumber || 0) + 1;
+      const edition = await nextScribaEdition(dbAdmin);
 
       const built = await buildScribaEdition(dbAdmin, { days: SCRIBA_INTERVAL_DAYS, assetPrefix: String(edition), edition });
 

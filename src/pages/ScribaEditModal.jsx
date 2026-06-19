@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
+import { exanthiaDateLabel } from "../data/exanthiaCalendar";
 
 const SECTIONS = [
   { key: "dalle_terre", label: "Dalle Terre" },
@@ -28,6 +29,7 @@ export default function ScribaEditModal({ issue, onClose }) {
     listini: arr(issue.content?.listini),
     arena: arr(issue.content?.arena),
   }));
+  const [number, setNumber] = useState(Number(issue.number) || 0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -41,7 +43,7 @@ export default function ScribaEditModal({ issue, onClose }) {
     setBusy(true); setErr(null);
     try {
       const call = httpsCallable(functions, "scribaEdit", { timeout: 120000 });
-      await call({ id: issue.id, content: c });
+      await call({ id: issue.id, content: c, number });
       onClose(true);
     } catch (e) {
       setErr(e?.message || "Salvataggio non riuscito.");
@@ -78,6 +80,15 @@ export default function ScribaEditModal({ issue, onClose }) {
         </div>
 
         {err && <p style={{ background: "#f6e0dc", color: "#8a261c", padding: "8px 10px", borderRadius: 6 }}>⚠️ {err}</p>}
+
+        <label style={lbl}>Numero del giornale</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <input type="number" min={0} style={{ ...inp, width: 100 }} value={number}
+            onChange={(e) => setNumber(Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
+          <span style={{ color: "#6b5d44", fontStyle: "italic", fontSize: 13 }}>
+            → {exanthiaDateLabel(number)}
+          </span>
+        </div>
 
         <label style={lbl}>Motto del numero</label>
         <input style={{ ...inp, marginBottom: 16, fontStyle: "italic" }} value={c.edition_motto}
