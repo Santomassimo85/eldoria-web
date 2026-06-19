@@ -1,0 +1,379 @@
+/* ============================================================
+   ALMANACCO DEL MONDO — tema "Pergamena Antica"
+   ============================================================ */
+
+.alm-page { --cont-accent: var(--cine-accent); }
+
+/* ---------- HERO ASIMMETRICO ---------- */
+.alm-page .alm-hero {
+  position: relative;
+  min-height: clamp(360px, 62vh, 560px);
+  display: flex; align-items: center;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.alm-page .alm-hero-media { position: absolute; inset: 0; z-index: 0; }
+.alm-page .alm-hero-media img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 70% 30%;
+  filter: sepia(.25) saturate(.9) contrast(1.02);
+  transform: translateY(var(--parallax, 0));
+  will-change: transform;
+}
+.alm-page .alm-hero-wash {
+  position: absolute; inset: 0; z-index: 1;
+  background:
+    linear-gradient(100deg, rgba(247,240,224,.97) 0%, rgba(247,240,224,.78) 40%, rgba(247,240,224,.08) 72%),
+    linear-gradient(0deg, rgba(86,64,30,.25), transparent 40%);
+}
+.alm-page .alm-hero-plate {
+  position: relative; z-index: 2;
+  margin: 0 14px;
+  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 18px;
+  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
+  padding: 22px 20px;
+  animation: alm-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes alm-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+
+.alm-page .alm-hero-seal {
+  display: inline-block; margin-bottom: 10px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .22em; text-transform: uppercase; color: #7a5a22;
+}
+.alm-page .alm-hero-title {
+  margin: 0 0 12px; line-height: .96;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(2.1rem, 7vw, 3.6rem); color: #3a2710;
+}
+.alm-page .alm-hero-tagline {
+  margin: 0 0 16px; max-width: 42ch;
+  color: #5a4a32; font-size: .98rem; line-height: 1.5;
+}
+.alm-page .alm-hero-jump { display: flex; flex-wrap: wrap; gap: 10px; }
+.alm-page .alm-hero-jump a {
+  text-decoration: none;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
+  font-size: .8rem; letter-spacing: .05em;
+  color: #fffdf5; padding: 9px 16px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+  box-shadow: 0 6px 16px -6px rgba(138,90,31,.55);
+  transition: filter .15s ease, transform .15s ease;
+}
+.alm-page .alm-hero-jump a:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+@media (min-width: 860px) {
+  .alm-page .alm-hero-plate { margin: 0 0 0 7vw; max-width: 560px; padding: 36px 34px; }
+}
+
+/* ---------- SEZIONI ---------- */
+.alm-page .alm-section {
+  max-width: 1080px; margin: 40px auto;
+  padding: 0 clamp(16px, 4vw, 30px);
+  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
+}
+.alm-page .alm-sec-head { text-align: center; margin-bottom: 26px; }
+.alm-page .alm-sec-eyebrow {
+  display: inline-block; margin-bottom: 8px; padding: 0 16px; position: relative;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .68rem; letter-spacing: .2em; text-transform: uppercase; color: #8a6a30;
+}
+.alm-page .alm-sec-eyebrow::before,
+.alm-page .alm-sec-eyebrow::after {
+  content: ""; position: absolute; top: 50%; width: 22px; height: 1px;
+  background: color-mix(in srgb, var(--cine-accent) 50%, transparent);
+}
+.alm-page .alm-sec-eyebrow::before { right: 100%; }
+.alm-page .alm-sec-eyebrow::after { left: 100%; }
+.alm-page .alm-sec-title {
+  margin: 0 0 12px;
+  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
+  font-size: clamp(1.6rem, 4.6vw, 2.4rem); color: #3a2710;
+}
+.alm-page .alm-sec-lead {
+  margin: 0 auto; max-width: 60ch;
+  color: #5a4a32; font-size: 1rem; line-height: 1.6;
+}
+.alm-page .alm-sec-lead strong { color: #6a4a18; }
+
+/* ---------- CARD GENERICA ---------- */
+.alm-page .alm-card {
+  background: linear-gradient(135deg, rgba(255,253,245,.97), rgba(245,237,218,.94));
+  border: 1px solid var(--line, #c9b78a);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
+  padding: 20px 22px;
+}
+.alm-page .alm-card-title {
+  margin: 0 0 14px;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: 1.02rem; letter-spacing: .04em; color: #4a3414;
+  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 28%, transparent);
+  padding-bottom: 8px;
+}
+
+/* ---------- CALENDARIO ---------- */
+.alm-page .alm-cal-grid {
+  display: grid; gap: 18px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 760px) {
+  .alm-page .alm-cal-grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; }
+}
+
+.alm-page .alm-days { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.alm-page .alm-day {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(255,255,255,.55);
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 18%, transparent);
+}
+.alm-page .alm-day-num {
+  display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 50%; font-weight: 800; font-size: .82rem;
+  color: #fffdf5; background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+}
+.alm-page .alm-day-name {
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: 1.05rem; color: #3a2710;
+}
+.alm-page .alm-day-pron {
+  font-style: italic; font-size: .82rem; color: #8a7050; letter-spacing: .02em;
+}
+
+/* Legenda stagioni */
+.alm-page .alm-seasons-legend {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+}
+.alm-page .alm-season-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
+  font-size: .76rem; letter-spacing: .03em;
+  color: var(--s-color);
+  background: color-mix(in srgb, var(--s-color) 12%, #fff);
+  border: 1px solid color-mix(in srgb, var(--s-color) 45%, transparent);
+}
+
+.alm-page .alm-months {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+}
+@media (min-width: 560px) { .alm-page .alm-months { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 860px) { .alm-page .alm-months { grid-template-columns: repeat(4, 1fr); } }
+.alm-page .alm-month {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border-radius: 11px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--s-color) 10%, #fff), color-mix(in srgb, var(--s-color) 4%, #fff));
+  border: 1px solid color-mix(in srgb, var(--s-color) 35%, transparent);
+  border-left: 4px solid var(--s-color);
+}
+.alm-page .alm-month-num {
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: .74rem; color: var(--s-color); min-width: 1.2em; text-align: right;
+}
+.alm-page .alm-month-ic { font-size: 1.2rem; line-height: 1; }
+.alm-page .alm-month-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.alm-page .alm-month-name { font-size: .94rem; color: #3a2710; font-weight: 700; }
+.alm-page .alm-month-season {
+  font-size: .68rem; font-weight: 600;
+  color: color-mix(in srgb, var(--s-color) 70%, #5a4a32);
+}
+
+/* ---------- LE VIE DEL MONDO ---------- */
+.alm-page .alm-block {
+  margin: 0 0 22px;
+  background: linear-gradient(135deg, rgba(255,253,245,.96), rgba(245,237,218,.93));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 4px solid var(--cine-accent);
+  border-radius: 14px;
+  box-shadow: 0 10px 26px -16px rgba(86,64,30,.45);
+  padding: 20px 22px;
+}
+.alm-page .alm-block-title {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 12px;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: 1.12rem; color: #3a2710;
+}
+.alm-page .alm-block-num {
+  display: grid; place-items: center; flex: 0 0 auto;
+  width: 30px; height: 30px; border-radius: 50%;
+  font-size: .86rem; font-weight: 900; color: #fffdf5;
+  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+  box-shadow: 0 4px 10px -3px rgba(138,90,31,.5);
+}
+.alm-page .alm-block-note { margin: 0 0 14px; color: #5a4a32; font-size: .94rem; line-height: 1.55; }
+.alm-page .alm-block-note strong { color: #6a4a18; }
+.alm-page .alm-example {
+  margin-top: 14px; margin-bottom: 0; padding: 12px 14px; border-radius: 10px;
+  background: color-mix(in srgb, var(--cine-accent) 7%, #fff);
+  border: 1px dashed color-mix(in srgb, var(--cine-accent) 35%, transparent);
+  font-size: .88rem;
+}
+
+/* Veglie */
+.alm-page .alm-veglie {
+  display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 700px) { .alm-page .alm-veglie { grid-template-columns: repeat(4, 1fr); } }
+.alm-page .alm-veglia {
+  display: flex; flex-direction: column; gap: 3px; text-align: center;
+  padding: 14px 10px; border-radius: 11px;
+  background: rgba(255,255,255,.55);
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 18%, transparent);
+}
+.alm-page .alm-veglia-ic { font-size: 1.5rem; }
+.alm-page .alm-veglia-nome { font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; color: #3a2710; }
+.alm-page .alm-veglia-ore { font-size: .82rem; font-weight: 700; color: var(--cine-accent); }
+.alm-page .alm-veglia-chi { font-size: .78rem; color: #7a6446; line-height: 1.3; }
+
+/* Partenza — trio mini */
+.alm-page .alm-trio { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .alm-page .alm-trio { grid-template-columns: repeat(3, 1fr); align-items: start; } }
+.alm-page .alm-mini {
+  padding: 14px 16px; border-radius: 11px;
+  background: rgba(255,255,255,.5);
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
+}
+.alm-page .alm-mini h4 {
+  margin: 0 0 10px; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: .92rem; letter-spacing: .04em; color: var(--cine-accent);
+}
+.alm-page .alm-defs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.alm-page .alm-defs li, .alm-page .alm-mini p { color: #4a3a24; font-size: .9rem; line-height: 1.45; margin: 0; }
+.alm-page .alm-defs strong, .alm-page .alm-mini strong { color: #3a2710; }
+.alm-page .alm-defs em { color: #9a5a20; font-style: italic; }
+
+/* Ruoli (colorati per --r-color) */
+.alm-page .alm-roles { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 620px) { .alm-page .alm-roles { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 980px) { .alm-page .alm-roles { grid-template-columns: repeat(3, 1fr); } }
+.alm-page .alm-role {
+  padding: 14px 16px; border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--r-color) 9%, #fff), color-mix(in srgb, var(--r-color) 3%, #fff));
+  border: 1px solid color-mix(in srgb, var(--r-color) 32%, transparent);
+  border-top: 4px solid var(--r-color);
+  box-shadow: 0 8px 20px -14px color-mix(in srgb, var(--r-color) 60%, transparent);
+}
+.alm-page .alm-role-head {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 9px; margin-bottom: 10px;
+  padding-bottom: 9px; border-bottom: 1px dashed color-mix(in srgb, var(--r-color) 35%, transparent);
+}
+.alm-page .alm-role-ic { font-size: 1.3rem; line-height: 1; }
+.alm-page .alm-role-name {
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; font-size: 1.05rem;
+  color: color-mix(in srgb, var(--r-color) 78%, #2a1c08);
+}
+.alm-page .alm-role-skill {
+  width: 100%; font-size: .76rem; font-style: italic; color: #8a6a3a;
+}
+.alm-page .alm-role-cosa { margin: 0 0 10px; font-size: .88rem; line-height: 1.45; color: #4a3a24; }
+.alm-page .alm-role-ok, .alm-page .alm-role-ko { margin: 0; font-size: .84rem; line-height: 1.4; }
+.alm-page .alm-role-ok { color: #2f6a44; } .alm-page .alm-role-ok span { font-weight: 800; }
+.alm-page .alm-role-ko { color: #9a4030; margin-top: 6px; } .alm-page .alm-role-ko span { font-weight: 800; }
+
+/* Blocco riservato al Master */
+.alm-page .alm-block--master {
+  background: linear-gradient(135deg, rgba(248,238,232,.97), rgba(240,226,216,.95));
+  border-left-color: #8a3a2a;
+}
+.alm-page .alm-master-tag {
+  margin-left: auto;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
+  font-size: .66rem; letter-spacing: .08em; text-transform: uppercase;
+  color: #fffdf5; padding: 4px 10px; border-radius: 999px;
+  background: linear-gradient(135deg, #a8443a, #7a2c22);
+}
+
+/* Eventi (accordion, colorati per --e-color) */
+.alm-page .alm-eventi { display: grid; gap: 8px; }
+.alm-page .alm-evento {
+  border-radius: 11px; overflow: hidden;
+  background: color-mix(in srgb, var(--e-color) 5%, #fff);
+  border: 1px solid color-mix(in srgb, var(--e-color) 28%, transparent);
+  border-left: 4px solid var(--e-color);
+}
+.alm-page .alm-evento.is-open { box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--e-color) 70%, transparent); }
+.alm-page .alm-evento-head {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border: none; cursor: pointer; text-align: left;
+  background: transparent; font: inherit;
+}
+.alm-page .alm-evento-die {
+  display: grid; place-items: center; flex: 0 0 auto; width: 28px; height: 28px;
+  border-radius: 7px; font-weight: 900; font-size: .88rem; color: #fffdf5;
+  background: var(--e-color);
+}
+.alm-page .alm-evento-ic { font-size: 1.15rem; }
+.alm-page .alm-evento-tipo {
+  flex: 1; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: 1rem; color: color-mix(in srgb, var(--e-color) 72%, #2a1c08);
+}
+.alm-page .alm-evento-caret { font-size: 1.3rem; font-weight: 700; color: var(--e-color); }
+.alm-page .alm-evento-list {
+  list-style: none; margin: 0; padding: 4px 14px 14px;
+  display: grid; gap: 6px;
+  border-top: 1px dashed color-mix(in srgb, var(--e-color) 30%, transparent);
+}
+.alm-page .alm-evento-list li {
+  display: flex; align-items: baseline; gap: 9px;
+  color: #4a3a24; font-size: .9rem; line-height: 1.4;
+}
+.alm-page .alm-evento-subdie {
+  flex: 0 0 auto; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: .78rem; color: var(--e-color); min-width: 1.1em;
+}
+
+/* Callout (sfide / ritmo) */
+.alm-page .alm-duo { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 700px) { .alm-page .alm-duo { grid-template-columns: 1fr 1fr; } }
+.alm-page .alm-callout {
+  margin: 0; padding: 13px 15px; border-radius: 11px;
+  font-size: .9rem; line-height: 1.45; color: #4a3a24;
+  background: rgba(255,255,255,.55);
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 18%, transparent);
+  border-left: 4px solid var(--cine-accent);
+}
+.alm-page .alm-callout strong { color: #3a2710; }
+.alm-page .alm-callout--ok { border-left-color: #3f8a5a; }
+.alm-page .alm-callout--ko { border-left-color: #b05030; }
+
+/* Ricompense */
+.alm-page .alm-rewards { margin: 0; padding-left: 1.3em; display: grid; gap: 7px; }
+.alm-page .alm-rewards li { color: #4a3a24; font-size: .94rem; line-height: 1.45; }
+.alm-page .alm-rewards strong { color: #6a4a18; }
+
+/* Quick reference */
+.alm-page .alm-quick { background: linear-gradient(135deg, rgba(250,243,225,.97), rgba(240,228,200,.95)); }
+.alm-page .alm-quick-steps {
+  margin: 0; padding: 0; list-style: none;
+  display: grid; gap: 8px; grid-template-columns: 1fr;
+  counter-reset: q;
+}
+@media (min-width: 700px) { .alm-page .alm-quick-steps { grid-template-columns: repeat(3, 1fr); } }
+.alm-page .alm-quick-steps li {
+  counter-increment: q;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 9px;
+  background: rgba(255,255,255,.6);
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 16%, transparent);
+  font-size: .9rem; font-weight: 600; color: #4a3414;
+}
+.alm-page .alm-quick-steps li::before {
+  content: counter(q);
+  display: grid; place-items: center; flex: 0 0 auto; width: 24px; height: 24px;
+  border-radius: 50%; font-weight: 900; font-size: .8rem; color: #fffdf5;
+  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+}
+
+/* Riduci movimento */
+@media (prefers-reduced-motion: reduce) {
+  .alm-page .alm-hero-plate,
+  .alm-page .alm-hero-media img { animation: none !important; transform: none !important; }
+}
+
+/* AmbientFX dietro */
+.alm-page > * { position: relative; z-index: 1; }
+.alm-page > .ambient-fx { position: fixed; z-index: 0; }

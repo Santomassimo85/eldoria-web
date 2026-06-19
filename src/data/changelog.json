@@ -1,6 +1,52 @@
 {
   "versions": [
     {
+      "version": "45.01",
+      "date": "2026-06-19",
+      "title": "Almanacco: stagioni a colori e viaggio più chiaro",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Calendario: i dodici mesi ora sono colorati e marcati con icone per stagione (Primavera, Estate, Autunno, Inverno), con legenda dedicata."
+        },
+        {
+          "type": "fix",
+          "text": "Calendario: corretta la durata dell'anno — 12 mesi da 20 giorni (4 settimane da 5 giorni l'uno), 240 giorni complessivi."
+        },
+        {
+          "type": "graphic",
+          "text": "Le Vie del Mondo: i Ruoli di Viaggio sono ora colorati e descritti per esteso (cosa fa il ruolo, cosa succede se riesce e se fallisce)."
+        },
+        {
+          "type": "feature",
+          "text": "Le Vie del Mondo: la sezione «Gli Eventi» con le tabelle 1d6+1d6 è ora riservata ai Master."
+        },
+        {
+          "type": "graphic",
+          "text": "Le Vie del Mondo: testi riscritti in forma più estesa e leggibile (Veglie, scelte di partenza, sfide d'ambiente con esempio, ritmo montaggio/zoom)."
+        }
+      ]
+    },
+    {
+      "version": "45",
+      "date": "2026-06-19",
+      "title": "Almanacco del Mondo — calendario e vie di viaggio",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuova pagina «Almanacco del Mondo» nella sezione Mondo: raccoglie le informazioni di mondo utili al tavolo, divisa in due sezioni."
+        },
+        {
+          "type": "feature",
+          "text": "Sezione I — Calendario di Exanthia: i dodici mesi dell'anno (da Gelalba a Lamafredda) e i cinque giorni della settimana con pronuncia (Aelen, Voren, Tarsen, Doren, Muren)."
+        },
+        {
+          "type": "feature",
+          "text": "Sezione II — «Le Vie del Mondo», il sistema di viaggio: le Quattro Veglie, le scelte di partenza (rotta, passo, provviste), i Ruoli di Viaggio, le tabelle degli eventi (1d6 + 1d6) consultabili a fisarmonica, le Sfide d'Ambiente, montaggio vs zoom, ricompense e una quick reference."
+        }
+      ]
+    },
+    {
       "version": "44.01",
       "date": "2026-06-19",
       "title": "Geo: esportazione dell'elenco luoghi (Master)",

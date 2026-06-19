@@ -27,6 +27,7 @@ import MarketAdmin from "./pages/MarketAdmin";
 import SummaryAdmin from "./pages/SummaryAdmin";
 import LoScribaAdmin from "./pages/LoScribaAdmin";
 import Scriba from "./pages/Scriba";
+import Almanacco from "./pages/Almanacco";
 import SchedaPG from "./pages/SchedaPG";
 import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
@@ -243,6 +244,7 @@ const MOBILE_GROUPS = {
     { to: "/world-map", label: "Mappa" },
     { to: "/Geo", label: "Archivio Geomantico" },
     { to: "/scriba", label: "Lo Scriba" },
+    { to: "/almanacco", label: "Almanacco del Mondo" },
   ]},
   eroi: { icon: "⚔️", label: "Eroi", links: [
     { to: "/party", label: "Party" },
@@ -270,7 +272,7 @@ function MobileBottomNav({ openMenu }) {
 
   const group =
     p === "/" ? "home"
-    : ["/world-map", "/Geo", "/scriba"].includes(p) ? "mondo"
+    : ["/world-map", "/Geo", "/scriba", "/almanacco"].includes(p) ? "mondo"
     : ["/party", "/scheda-pg", "/my-pg", "/npc", "/riassunti"].includes(p) ? "eroi"
     : ["/mercato", "/bacheca", "/crafting", "/ratti-lore", "/cinema", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
     : null;
@@ -559,6 +561,7 @@ export default function App() {
             <NavLink to="/world-map">Mappa</NavLink>
             <NavLink to="/Geo">Archivio Geomatico</NavLink>
             <NavLink to="/scriba">Lo Scriba</NavLink>
+            <NavLink to="/almanacco">Almanacco del Mondo</NavLink>
           </NavDropdown>
 
           <NavDropdown label="Eroi" closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
@@ -603,6 +606,7 @@ export default function App() {
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/scriba" element={<Scriba />} />
+          <Route path="/almanacco" element={<Almanacco />} />
           <Route path="/ratti-lore" element={<RattiLore />} />
           <Route path="/bacheca" element={<Bacheca />} />
           <Route path="/quest/:id" element={<QuestDetail />} />
