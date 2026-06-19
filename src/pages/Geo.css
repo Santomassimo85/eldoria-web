@@ -103,8 +103,10 @@
   font-size: 1.25rem; line-height: 1; color: var(--cine-accent);
 }
 
+.geo-page .geo-export-row {
+  margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
 .geo-page .geo-export-btn {
-  margin-top: 16px;
   display: inline-flex; align-items: center; gap: 7px;
   background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
   color: #fffdf5; border: none; border-radius: 9px; padding: 9px 16px;
@@ -114,6 +116,18 @@
   transition: filter .15s ease, transform .15s ease;
 }
 .geo-page .geo-export-btn:hover { filter: brightness(1.07); transform: translateY(-1px); }
+/* variante secondaria, più piccola: export con descrizioni */
+.geo-page .geo-export-btn--alt {
+  background: transparent;
+  color: var(--cine-accent);
+  padding: 8px 13px; font-size: .72rem;
+  border: 1.5px solid color-mix(in srgb, var(--cine-accent) 55%, transparent);
+  box-shadow: none;
+}
+.geo-page .geo-export-btn--alt:hover {
+  filter: none; transform: translateY(-1px);
+  background: color-mix(in srgb, var(--cine-accent) 12%, transparent);
+}
 
 .geo-page .geo-hero-scroll {
   position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);

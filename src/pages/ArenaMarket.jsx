@@ -700,12 +700,27 @@ const ITEM_FIELDS = [
   { field: "bardNotaDolente", label: "Nota Dolente",         icon: "⚡" },
 ];
 
+// Interpreta l'input monete: "+5" / "-3" = relativo alle monete attuali, "10" = assoluto.
+// Ritorna il NUOVO totale (mai negativo) oppure null se la stringa non è valida.
+function parseCoinInput(raw, current) {
+  const s = String(raw ?? "").trim().replace(/\s+/g, "");
+  if (!s) return null;
+  const m = s.match(/^([+-]?)(\d+)$/);
+  if (!m) return null;
+  const num = parseInt(m[2], 10);
+  if (m[1] === "+") return current + num;
+  if (m[1] === "-") return Math.max(0, current - num);
+  return num; // assoluto
+}
+
 function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
   const [allChars, setAllChars] = useState([]);
   const [editCoins, setEditCoins] = useState({});
   const [editPrices, setEditPrices] = useState({});
   const [editLevels, setEditLevels] = useState({});
   const [expanded, setExpanded] = useState({});
+  const [tab, setTab] = useState("players");      // "players" | "prices"
+  const [playerFilter, setPlayerFilter] = useState("");
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
@@ -717,8 +732,10 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
   }, []);
 
   const saveCoins = async (uid) => {
-    const val = parseInt(editCoins[uid], 10);
-    if (isNaN(val)) return;
+    const char = allChars.find(c => c.uid === uid);
+    const cur = char?.arenaCoins ?? 0;
+    const val = parseCoinInput(editCoins[uid], cur);
+    if (val == null) return;
     await updateDoc(doc(db, "characters", uid), { arenaCoins: val });
     setEditCoins(prev => { const n = { ...prev }; delete n[uid]; return n; });
   };
@@ -754,12 +771,30 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
     });
   };
 
+  const pf = playerFilter.trim().toLowerCase();
+  const filteredChars = allChars.filter(ch => !pf || (ch.name || ch.uid).toLowerCase().includes(pf));
+
   return (
     <div className="am-master-panel">
       <h3 className="am-master-panel-title">🪙 Pannello Master</h3>
 
-      {/* Prezzi oggetti + costo level-up */}
-      <div className="am-price-editor">
+      {/* Schede: separa Giocatori e Prezzi per evitare lo scroll unico */}
+      <div className="am-mp-tabs" role="tablist">
+        <button
+          role="tab"
+          className={`am-mp-tab ${tab === "players" ? "am-mp-tab--active" : ""}`}
+          onClick={() => setTab("players")}
+        >👥 Giocatori <span className="am-mp-tab-count">{allChars.length}</span></button>
+        <button
+          role="tab"
+          className={`am-mp-tab ${tab === "prices" ? "am-mp-tab--active" : ""}`}
+          onClick={() => setTab("prices")}
+        >💰 Prezzi</button>
+      </div>
+
+      {/* ── SCHEDA PREZZI ── */}
+      {tab === "prices" && (
+      <div className="am-mp-section am-price-editor">
         <p className="am-master-note">Prezzi oggetti e costo salita di livello.</p>
 
         <div className="am-price-row">
@@ -773,6 +808,7 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
             placeholder="nuovo costo"
             value={editPrices[LEVEL_UP_KEY] ?? ""}
             onChange={e => setEditPrices(prev => ({ ...prev, [LEVEL_UP_KEY]: e.target.value }))}
+            onKeyDown={e => { if (e.key === "Enter") savePrice(LEVEL_UP_KEY); }}
           />
           <button className="am-coin-save" onClick={() => savePrice(LEVEL_UP_KEY)}>Salva</button>
         </div>
@@ -789,34 +825,55 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
               placeholder="nuovo prezzo"
               value={editPrices[item.key] ?? ""}
               onChange={e => setEditPrices(prev => ({ ...prev, [item.key]: e.target.value }))}
+              onKeyDown={e => { if (e.key === "Enter") savePrice(item.key); }}
             />
             <button className="am-coin-save" onClick={() => savePrice(item.key)}>Salva</button>
           </div>
         ))}
       </div>
+      )}
 
-      {/* Giocatori */}
-      <p className="am-master-note" style={{ marginTop: "18px" }}>Giocatori — monete e livelli classe.</p>
-      <div className="am-coin-list">
-        {allChars.map(ch => {
+      {/* ── SCHEDA GIOCATORI ── */}
+      {tab === "players" && (
+      <div className="am-mp-section">
+        <input
+          className="am-mp-search"
+          type="text"
+          placeholder="🔍 Cerca giocatore…"
+          value={playerFilter}
+          onChange={e => setPlayerFilter(e.target.value)}
+        />
+        <p className="am-master-note">
+          Monete: scrivi un numero per <strong>impostarlo</strong>, oppure <code>+N</code> / <code>−N</code> per
+          <strong> aggiungere o togliere</strong> rispetto alle attuali (es. <code>+5</code>, <code>-3</code>). Invio per salvare.
+        </p>
+        <div className="am-coin-list">
+          {filteredChars.length === 0 ? (
+            <p className="cine-empty" style={{ marginTop: 8 }}>Nessun giocatore trovato.</p>
+          ) : filteredChars.map(ch => {
           const buffsData  = ch.arenaBuffs || {};
           const ownedItems = ITEM_FIELDS.filter(it => (buffsData[it.field] ?? 0) > 0);
           const classLvls  = ch.classLevels ?? {};
           const isOpen     = !!expanded[ch.uid];
+          const cur        = ch.arenaCoins ?? 0;
+          const preview    = parseCoinInput(editCoins[ch.uid], cur);
+          const showPrev   = preview != null && preview !== cur;
 
           return (
             <div key={ch.uid} className="am-coin-row am-coin-row--stacked">
               <div className="am-coin-row-top">
                 <span className="am-coin-name">{ch.name || ch.uid}</span>
-                <span className="am-coin-val">{ch.arenaCoins ?? 0} MA</span>
+                <span className="am-coin-val">{cur} MA</span>
                 <input
                   className="am-coin-input"
-                  type="number"
-                  min={0}
-                  placeholder="monete"
+                  type="text"
+                  inputMode="text"
+                  placeholder="es. +5 / -3 / 10"
                   value={editCoins[ch.uid] ?? ""}
                   onChange={e => setEditCoins(prev => ({ ...prev, [ch.uid]: e.target.value }))}
+                  onKeyDown={e => { if (e.key === "Enter") saveCoins(ch.uid); }}
                 />
+                {showPrev && <span className="am-coin-preview">→ {preview} MA</span>}
                 <button className="am-coin-save" onClick={() => saveCoins(ch.uid)}>Salva</button>
                 <button
                   className="am-coin-save am-btn-toggle"
@@ -848,6 +905,7 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
                           placeholder="lv"
                           value={editLevels[inputKey] ?? ""}
                           onChange={e => setEditLevels(prev => ({ ...prev, [inputKey]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === "Enter") saveClassLevel(ch.uid, cls.key); }}
                         />
                         <button className="am-coin-save" onClick={() => saveClassLevel(ch.uid, cls.key)}>Salva</button>
                       </div>
@@ -873,7 +931,9 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
             </div>
           );
         })}
+        </div>
       </div>
+      )}
     </div>
   );
 }

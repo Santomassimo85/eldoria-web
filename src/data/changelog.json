@@ -1,6 +1,55 @@
 {
   "versions": [
     {
+      "version": "44.02",
+      "date": "2026-06-19",
+      "title": "Geo: export con descrizioni (Master)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nell'Archivio Geomantico, accanto a «Esporta luoghi», il Master ha ora un comando «+ descrizioni»: genera un .txt con nomi e descrizioni complete, città per città, raggruppate per continente (testo ripulito dall'HTML)."
+        }
+      ]
+    },
+    {
+      "version": "45.03",
+      "date": "2026-06-19",
+      "title": "Bottega Arena · Pannello Master riorganizzato",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Pannello Master: il modificatore delle monete giocatore accetta valori relativi. Scrivendo +N o -N le monete vengono aggiunte o sottratte rispetto alle attuali (es. +5, -3); un numero senza segno imposta il totale assoluto. Anteprima del nuovo totale mostrata accanto al campo."
+        },
+        {
+          "type": "graphic",
+          "text": "Pannello Master: prezzi e giocatori separati in due schede («Giocatori» / «Prezzi») per eliminare lo scroll unico; aggiunta barra di ricerca per filtrare i giocatori per nome."
+        },
+        {
+          "type": "feature",
+          "text": "Pannello Master: tasto Invio per salvare al volo monete, prezzi e livelli classe senza cliccare «Salva»."
+        },
+        {
+          "type": "fix",
+          "text": "Bottega Arena: corretto il testo introduttivo della sezione «Scommesse», che era color crema chiaro su riquadro chiaro e risultava illeggibile; ora usa testo scuro come il resto delle card."
+        }
+      ]
+    },
+    {
+      "version": "45.02",
+      "date": "2026-06-19",
+      "title": "Almanacco: pulsanti dell'indice ridisegnati",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Almanacco: i pulsanti «Calendario» e «Le Vie del Mondo» nell'hero sono ora colorati e distinti (verde-acqua e ambra), con testo bianco leggibile e senza più i bordi doppi; risolto il problema del testo oro-su-oro."
+        },
+        {
+          "type": "graphic",
+          "text": "Almanacco: aggiunto un hover ai pulsanti dell'indice con sollevamento, alone colorato e riflesso luminoso che attraversa il bottone."
+        }
+      ]
+    },
+    {
       "version": "45.01",
       "date": "2026-06-19",
       "title": "Almanacco: stagioni a colori e viaggio più chiaro",

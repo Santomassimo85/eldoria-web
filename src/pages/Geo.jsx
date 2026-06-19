@@ -59,7 +59,34 @@ export default function Geo() {
   );
   const activeContinents = continents.filter(c => locsOf(c).length > 0);
 
-  // ── Export TXT (solo master): nomi luoghi raggruppati per continente ──
+  // ── Export TXT (solo master) ──────────────────────────────────────────
+  const downloadTxt = (filename, text) => {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // converte l'HTML della descrizione in testo semplice leggibile
+  const htmlToText = (html) => {
+    if (!html) return "";
+    const withBreaks = String(html)
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|h[1-6]|li|ul|ol)>/gi, "\n")
+      .replace(/<\s*li[^>]*>/gi, "• ");
+    const tmp = document.createElement("div");
+    tmp.innerHTML = withBreaks;
+    return (tmp.textContent || tmp.innerText || "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
+  // 1) Solo i nomi dei luoghi raggruppati per continente
   const exportLocationsTxt = () => {
     const lines = [];
     lines.push("ARCHIVIO GEOMANTICO — Luoghi per continente");
@@ -74,15 +101,33 @@ export default function Geo() {
       list.forEach((name) => lines.push(`- ${name}`));
       lines.push("");
     });
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "luoghi_per_continente.txt";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadTxt("luoghi_per_continente.txt", lines.join("\n"));
+  };
+
+  // 2) Luoghi CON descrizioni, città per città, raggruppati per continente
+  const exportLocationsFullTxt = () => {
+    const lines = [];
+    lines.push("ARCHIVIO GEOMANTICO — Luoghi e descrizioni per continente");
+    lines.push(`Totale luoghi: ${locations.length}`);
+    lines.push("");
+    activeContinents.forEach((cont) => {
+      const list = locsOf(cont)
+        .slice()
+        .sort((a, b) => String(a.name).localeCompare(String(b.name), "it"));
+      lines.push(`==================================================`);
+      lines.push(`CONTINENTE: ${cont} (${list.length})`);
+      lines.push(`==================================================`);
+      lines.push("");
+      list.forEach((loc) => {
+        lines.push(`### ${loc.name || "(senza nome)"}`);
+        const desc = htmlToText(loc.description);
+        lines.push(desc || "(nessuna descrizione)");
+        lines.push("");
+        lines.push("--------------------------------------------------");
+        lines.push("");
+      });
+    });
+    downloadTxt("luoghi_descrizioni_per_continente.txt", lines.join("\n"));
   };
 
   // ── Ricerca: nome luogo / continente / descrizione + filtro continente ──
@@ -119,9 +164,19 @@ export default function Geo() {
             <div><dt>{activeContinents.length === 1 ? "Continente" : "Continenti"}</dt><dd>{activeContinents.length}</dd></div>
           </dl>
           {isMaster && locations.length > 0 && (
-            <button type="button" className="geo-export-btn" onClick={exportLocationsTxt}>
-              ⬇ Esporta luoghi (.txt)
-            </button>
+            <div className="geo-export-row">
+              <button type="button" className="geo-export-btn" onClick={exportLocationsTxt}>
+                ⬇ Esporta luoghi (.txt)
+              </button>
+              <button
+                type="button"
+                className="geo-export-btn geo-export-btn--alt"
+                onClick={exportLocationsFullTxt}
+                title="Esporta nomi e descrizioni, città per città"
+              >
+                📝 + descrizioni
+              </button>
+            </div>
           )}
         </div>
         <a href="#geo-index" className="geo-hero-scroll" aria-label="Scorri all'atlante">
