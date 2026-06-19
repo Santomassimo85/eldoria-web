@@ -59,6 +59,32 @@ export default function Geo() {
   );
   const activeContinents = continents.filter(c => locsOf(c).length > 0);
 
+  // ── Export TXT (solo master): nomi luoghi raggruppati per continente ──
+  const exportLocationsTxt = () => {
+    const lines = [];
+    lines.push("ARCHIVIO GEOMANTICO — Luoghi per continente");
+    lines.push(`Totale luoghi: ${locations.length}`);
+    lines.push("");
+    activeContinents.forEach((cont) => {
+      const list = locsOf(cont)
+        .map((l) => l.name)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "it"));
+      lines.push(`=== ${cont} (${list.length}) ===`);
+      list.forEach((name) => lines.push(`- ${name}`));
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "luoghi_per_continente.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // ── Ricerca: nome luogo / continente / descrizione + filtro continente ──
   const q = query.trim().toLowerCase();
   const matchesLoc = (loc, cont) => {
@@ -92,6 +118,11 @@ export default function Geo() {
             <div><dt>Luoghi</dt><dd>{locations.length}</dd></div>
             <div><dt>{activeContinents.length === 1 ? "Continente" : "Continenti"}</dt><dd>{activeContinents.length}</dd></div>
           </dl>
+          {isMaster && locations.length > 0 && (
+            <button type="button" className="geo-export-btn" onClick={exportLocationsTxt}>
+              ⬇ Esporta luoghi (.txt)
+            </button>
+          )}
         </div>
         <a href="#geo-index" className="geo-hero-scroll" aria-label="Scorri all'atlante">
           <span className="geo-hero-scroll-tx">Scorri</span>

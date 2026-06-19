@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "44.01",
+      "date": "2026-06-19",
+      "title": "Geo: esportazione dell'elenco luoghi (Master)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nell'Archivio Geomantico il Master dispone ora del comando «Esporta luoghi (.txt)»: genera un file di testo con tutti i luoghi raggruppati per continente e ordinati per nome, con il totale per continente. Il comando è visibile solo al Master."
+        }
+      ]
+    },
+    {
       "version": "44",
       "date": "2026-06-19",
       "title": "Lo Scriba — la gazzetta del mondo",
