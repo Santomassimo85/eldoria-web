@@ -1,35 +1,641 @@
-ARCHIVIO GEOMANTICO — Luoghi per continente
+ARCHIVIO GEOMANTICO — Luoghi per continente (descrizione completa)
 Totale luoghi: 27
 
-=== Vathriddon (17) ===
-- Antica Città di Toua
-- Blumwood
-- Boschi Sabbiosi
-- Clan dei Demoni Grigi
-- Clan dei Senza Onore
-- Fiume Liriath
-- Ganno
-- Hakko
-- Havondé
-- Helmvil
-- Il Sacello Antico di Tirrendale
-- Inss
-- Selva Silente
-- Tassio
-- Thelén Dhir
-- Tirrendale
-- Villaggio di Calen
+Documento unico: per ogni luogo, prima la NOTA TOPOGRAFICA (clima, acqua,
+vegetazione, terreno, selvaggina e vocazione di vita, ricavata dalla mappa di
+Exanthia) e poi la LORE estesa (storia, punti d'interesse, locande e figure note).
+Le voci di cui non era leggibile l'etichetta esatta sulla mappa sono segnalate con
+"[stima]".
 
-=== Ehkia (5) ===
-- Altocolle
-- Foresta del tiglio bianco 
-- Nerocastello
-- Nolborg
-- Yotta
 
-=== Ohzkie (5) ===
-- Castello dorato
-- Gossvill
-- Hopecliff
-- Monastero "Monaci delle Sabbie"
-- Torre dell´Arcano
+############################################################
+=== Vathriddon (17) — il continente centrale, il più vasto ===
+############################################################
+Bioma generale: terra estremamente varia. A NORD catene di montagne dalle vette
+innevate con valichi e fortezze scavate nella roccia; al CENTRO un reticolo di grandi
+fiumi e laghi con foreste miste e la capitale; a OVEST una costa fredda e boscosa
+frastagliata da baie e fiordi; a EST e SUD-EST badlands aridi color ocra che sfumano
+nel deserto; a SUD speroni rocciosi e praterie. Acqua, legname e selvaggina abbondanti
+nelle terre centrali; frontiera dura e secca verso oriente.
+
+
+### Tirrendale
+Topografia: Capitale del continente. Sorge sulla foce/delta del fiume principale, su un
+lago interno: città cinta dalle acque, con porto fluviale, ponti e mulini. Intorno
+foreste miste e campi coltivati. Clima temperato umido; pesca abbondante, traffici e
+crocevia commerciale. Cuore politico ed economico di Vathriddon.
+
+Tirrendale, gemma incastonata tra le braccia del mare e l'abbraccio silente del bosco,
+è il cuore pulsante del continente. La città si erge, vetusta e gloriosa, attorno al
+Fiume Tirreno, le cui acque scendono dalle montagne come lacrime primordiali. Narrano
+le saghe e gli antichi tomi che questo fiume fu il primo alito vitale del mondo, nato
+dal dolore e dal sacrificio dei giganti Ny e Ouh: un'aura di sacralità e forza
+ancestrale pervade le sue sponde.
+
+Baluardi e cuori della città:
+- Il Fiume Tirreno (Il Pianto dei Giganti): non solo un confine liquido, ma l'anima
+  stessa di Tirrendale, le sue correnti un perpetuo promemoria dell'equilibrio cosmico.
+- La Rocca Ducale (Maniero Eothen): sorge a mezzogiorno, dimora del nobile Duca Eothen.
+  L'architettura riflette la sua saggezza: il potere risiede nella stabilità, non
+  nell'ostentazione vana.
+- Il Grande Emissario (Il Porto): a levante, vasto porto che è il respiro vitale della
+  città, crocevia di razze e merci.
+- Armonia delle Stirpi: un crogiolo dove Umani, Elfi, Orchi, Nani e molte altre genti
+  si incontrano e convivono.
+
+Voci del passato e del presente:
+- L'Osteria dei Tre Incroci: la locanda più rinomata, edificata sul punto dove tre vie
+  maestre si congiungevano in un umile villaggio.
+- Il Sepolcreto di Illote (a Nord-Ovest): vasto campo santo, dimora eterna del defunto
+  Duca Illote.
+
+
+### Il Sacello Antico di Tirrendale
+Topografia: Antico santuario su altura boscosa nei pressi di Tirrendale, affacciato sul
+fiume. Luogo di culto e pellegrinaggio; bosco ombroso, sorgenti, fauna stanziale. [stima]
+
+Il Sacello Antico è un luogo dove la polvere e il sacro si fondono nel silenzio assoluto
+delle profondità. Non è una semplice raccolta di libri, ma un mausoleo del sapere
+proibito. L'ingresso è una massiccia doppia porta di ferro freddo, incassata nella
+pietra grezza di una cripta; le navate sono strette e i soffitti a volta a crociera così
+bassi da costringere al rispetto. L'aria è densa di pergamena secolare, incenso spento e
+ozono magico; la luce proviene solo da fiammelle azzurre dentro lanterne di ferro
+battuto.
+
+Organizzazione e custodi (disciplina ferrea):
+- Le Ali del Duca: gran parte delle aree sono sigillate da grate d'argento. Solo chi
+  possiede il Sigillo Ducale (o un permesso firmato col sangue dal Duca) può varcarle.
+  I tomi fluttuano su leggii di pietra, incatenati con maglie di Arcanite perché non
+  "scappino" o influenzino la mente di chi passa.
+- Il Presidio dei Maghi Silenti: al centro, davanti ai volumi più pericolosi della
+  Trama, siedono i Maghi Silenti, asceti con le labbra cucite e gli occhi bendati.
+  Percepiscono il mana, non la luce. Davanti a un intruso non autorizzato non parlano:
+  sollevano i bastoni e la realtà attorno al trasgressore inizia a collassare.
+
+Trappole e difese: tentare di rubare o curiosare è un suicidio cerimoniale — nessuno sa
+quante insidie siano nascoste qui.
+
+
+### Fiume Liriath
+Topografia: Il grande fiume che solca il continente da nord a sud-est, alimentato dalle
+nevi dei monti settentrionali. Acque ricche di pesce, guadi, ponti e ponti levatoi; lungo
+le rive prati, canneti e villaggi. Via d'acqua principale per commercio e spostamenti.
+
+Il Liriath non scorre sempre sotto il cielo aperto: nasce tra le rocce spezzate delle
+Montagne Sussurranti, si insinua nella pietra e percorre nel buio un cammino segreto che
+nessun cartografo ha mai tracciato per intero. Le sue acque trasparenti riflettono i
+cristalli luminescenti delle volte, un gioco di riflessi che i nani di Helmvil chiamano
+"le stelle di sotto".
+
+Storia: secondo le cronache naniche, il Liriath fu scoperto durante gli scavi fondatori
+di Helmvil, quando i picconi sfondarono una parete di calcare e trovarono un corso
+d'acqua che pareva non avere né inizio né fine. Per secoli ha alimentato fonderie,
+dissetato gli abitanti e trasportato merci tra i livelli profondi della città. Si dice
+vi nuotino pesci ciechi e argentati, in silenzio da ere immemorabili.
+
+Punti di interesse:
+- Il Guado delle Lanterne: dove il Liriath attraversa il quartiere mercantile di Helmvil;
+  ponti di pietra a ogni livello e lanterne verdi che si riflettono sull'acqua.
+- Le Sorgenti Profonde: nessuno ne ha mai raggiunto l'origine; si tramanda che vi siano
+  antichi sigilli di pietra incisi in una lingua precedente a tutte le lingue note.
+- Lo Sbocco delle Montagne Sussurranti: dove il fiume riemerge, l'acqua porta echi e
+  sussurri indistinti attribuiti agli spiriti della pietra.
+
+
+### Hakko
+Topografia: Borgo del nord montano, addossato alle vette innevate. Clima freddo e
+ventoso, terreno roccioso; legname di conifera, miniere e caccia d'alta quota (capre,
+selvaggina di montagna). [stima]
+
+Piccola cittadina lungo un fiume navigabile, usato per trasportare merci verso
+insediamenti maggiori. Strade di ciottoli grigi, case a due piani in pietra e legno con
+botteghe al pianterreno. È nota per il mercato del pesce e per i tessitori: i teli di
+Hakko, robusti e colorati con tinture locali, sono apprezzati in tutto il continente. La
+vita sociale ruota attorno alla piazza, dove ogni giovedì si tiene il mercato.
+
+Negozi e locande:
+- Il Gancio d'Argento: locanda di Ferran Ulk, pescatore in pensione con un amo tatuato
+  sul collo. Cucina di pesce fluviale e selvaggina, partite a dadi ogni sera.
+- L'Ancora Spezzata: seconda locanda, più economica e rumorosa, gestita da Dori e Pael
+  Sorn.
+- Tessiture di Hakko: il principale negozio di tessuti, dell'artigiana Yela Bront (teli,
+  corde, sacchi, abiti).
+- La Spezieria del Porto: spezie, erbe e rimedi del mezz'elfo viaggiato Omrel; vende
+  pozioni minori.
+- Fabbro e Armaiolo Dox: officina di Dox Harren, attrezzi e riparazioni; rattoppa
+  corazze e affila lame.
+
+
+### Havondé
+Topografia: Cittadina dell'EST, su penisola/isola verde affacciata al mare interno.
+Porto e pesca, prati e campi terrazzati; clima mite costiero. Snodo marittimo verso
+oriente.
+
+Havondé non è un villaggio costruito dagli uomini: è cresciuto dentro la morte di un dio.
+L'enorme teschio di un drago antico, grande come una collina, giace tra le pianure, le
+orbite cave rivolte al cielo. Tra le costole e le cavità ossee una comunità di anime
+semplici e tenaci ha trovato riparo. Nessuno sa quando il drago morì; i più anziani
+parlano di una guerra cosmica la cui fine scosse il mondo per un anno. Gli abitanti non
+usano monete: ogni bene si scambia con un altro, ogni servizio con un favore. Vita povera
+ma onesta.
+
+Punti di interesse:
+- La Grande Cavità Cranica: l'interno del cranio è la piazza centrale (assemblee,
+  mercati di scambio, celebrazioni); al tramonto la pietra ossea filtra una luce dorata.
+- La Taverna delle Costole: tra le costole del drago; non si paga con monete, ma con
+  cibo, lavoro o una storia.
+- Il Banco del Falegname e La Bottega del Pellaio: artigiani che barattano sedie,
+  utensili, cuoio e armature leggere in cambio di cibo, pelli o lavoro.
+- L'Occhio Vuoto: un'orbita del drago, punto d'osservazione sulla pianura; di notte i
+  bambini ci salgono a contare le stelle.
+
+
+### Thelén Dhir
+Topografia: Sito di sapore elfico nell'est: torre di guardia / rovine su altura presso i
+boschi, a dominio delle terre aride sottostanti. Foresta e roccia, acqua scarsa. [stima]
+
+Thelén Dhir non si trova — si viene trovati da essa. La città elfica più importante di
+Vathriddon è nascosta in una foresta così fitta che anche i cartografi più esperti vi si
+sono persi. L'unico modo per raggiungerla è essere invitati, o imbattersi in uno degli
+elfi-guida che solcano i canali nascosti su canoe silenziose. Sorge su un'isola che pare
+galleggiare nel verde, le sue strutture di pietra chiara e legno vivo fuse con la natura
+perché lì sono cresciute. Esiste, dicono gli elfi, da prima che altre razze mettessero
+piede sul continente; non è mai stata conquistata perché nessun esercito è mai riuscito a
+trovarla.
+
+Punti di interesse:
+- La Torre dell'Arcanista: edificio a spirale intrecciato con un albero millenario;
+  l'arcanista tratta coi visitatori a condizioni insolite e criptiche.
+- La Taverna dei Rami Intrecciati: spazio aperto tra gli alberi dove gli elfi bevono
+  vini speziati e idromele; i visitatori sono tollerati se rispettosi.
+- La Fucina del Legno e Ferro: armi e strumenti di qualità superiore, quasi viventi; il
+  fabbro non vende a chiunque.
+- Il Laboratorio del Pellaio: pellami leggeri e resistenti tra i più ricercati.
+- La Sala del Cartografo: mappe antichissime; il cartografo non le vende, le scambia con
+  informazioni geografiche che non possiede.
+- L'Athanor dell'Alchimista: pozioni e veleni senza nome in altre lingue; vende secondo
+  l'umore e la luna.
+
+
+### Selva Silente
+Topografia: Fitta foresta primordiale di conifere, ombrosa e silenziosa. Sottobosco
+umido, ruscelli e radure; selvaggina abbondante (cervi, cinghiali, predatori). Terra di
+cacciatori, taglialegna e creature schive. [stima]
+
+Bosco di conifere alte e antiche, avvolto da uno strato denso di neve che smorza ogni
+suono e da una nebbia bassa che non si dissolve mai. Ciò che la rende straordinaria è il
+silenzio assoluto: niente canti d'uccelli, fruscii o vento; i rari viaggiatori dicono di
+aver sentito solo i propri passi, fino a che anche quelli sembravano svanire. Molti
+tornano cambiati, più riflessivi e poco inclini alle parole. Gli studiosi ipotizzano un
+campo di soppressione acustica di origine antica, forse un rituale dimenticato o una
+creatura silenziosa che vi dimora. I cacciatori la evitano, non per le belve ma per il
+disagio di sentirsi così soli coi propri pensieri.
+
+
+### Blumwood
+Topografia: Bosco rigoglioso di latifoglie e fioriture ("bloom wood"), clima mite e
+suolo fertile. Ruscelli, prati, frutti e cacciagione fitta. Vita agreste e venatoria.
+[stima]
+
+Uno dei villaggi più pittoreschi di Vathriddon: un minuscolo insediamento abitato quasi
+solo da elfi e halfling che convivono in armonia da generazioni, nascosto in una foresta
+di querce e faggi centenari. Gli elfi vivono su piattaforme arboree collegate da ponti di
+corda; gli halfling in tane confortevoli alle radici, con porte rotonde verdi e fiori sui
+davanzali. Un villaggio verticale, su più livelli tra rami e radici. L'economia è raccolta
+di frutti e funghi, orti, artigianato in legno e tessuto: famosi i pupazzi di legno
+intarsiato e i mieli aromatici degli apicoltori halfling. Atmosfera serena, quasi
+fiabesca.
+
+Locande:
+- La Radice Felice: locanda halfling scavata alla base di un faggio enorme, di Molo
+  Goodbarrel, panciuto e rumoroso amante delle storie. Cucina casereccia, birra dolce
+  alla mela.
+- Il Nido di Rami: locanda elfica su una piattaforma tra i rami, di Aerien Lirveth,
+  dalla voce melodiosa. Stanze piccole ed eleganti, colazione con bacche e pane di
+  ghianda.
+
+
+### Boschi Sabbiosi
+Topografia: Boscaglia rada su terreno sabbioso, alla frontiera fra le foreste centrali e
+i badlands ocra dell'est. Querce basse, arbusti e dune fra gli alberi; poca acqua,
+cacciagione minuta (lepri, uccelli). Terra arida e di confine. [stima]
+
+Una delle zone più sinistramente peculiari del continente: una fascia di vegetazione che
+cresce su terreno sabbioso e arido, dove la foresta non dovrebbe esistere. Alberi storti e
+contorti, cortecce pallide che si sgretolano al tocco, radici nude intrecciate come dita
+scheletrite. L'atmosfera è opprimente: una luce giallognola, ombre che paiono muoversi
+senza vento, aria secca e polverosa. I locali lo considerano maledetto: si racconta di
+viandanti persi per giorni, ritrovati senza memoria, e di una presenza antica al centro
+del bosco che non attacca ma confonde e disorienta finché non si cede alla stanchezza.
+
+
+### Clan dei Demoni Grigi
+Topografia: Accampamento di clan su alture rocciose e grigie ai margini delle terre
+aride. Terreno brullo e ventoso, acqua scarsa; economia di razzia, allevamento e caccia
+dura. Insediamento ostile e difensivo. [stima]
+
+I Demoni Grigi sono un clan di orchi dalla pelle grigio scura e dalla corporatura
+poderosa, temuti per la ferocia in battaglia — e per una contraddizione sorprendente: il
+loro insediamento non è un accampamento di guerra ma un villaggio di casette ordinate e
+colorate, giardini curati, mercatini di spezie, bambini che rincorrono galline e anziane
+che tingono stoffe. Il fondatore, lo sciamano Grak il Grigio, decretò che ferocia in
+battaglia e civiltà nel quotidiano sono le due facce del guerriero perfetto. Commerciano
+con Tirrendale (cuoio lavorato, ceramiche smaltate) in cambio di cereali, ferro e stoffe.
+Al centro la Casa del Grigio, sala delle riunioni, con la massima incisa: "La belva
+combatte, il saggio costruisce. Il Demone Grigio fa entrambe le cose."
+
+Locanda:
+- La Pentola Fumante: unica del villaggio, di Nurka, grossa orchessa grigia col grembiule
+  sporco di sugo. Pasti abbondanti; non si parla mai di politica a tavola.
+
+
+### Clan dei Senza Onore
+Topografia: Campo di reietti ai margini selvaggi del continente, fra boscaglia e
+badlands. Terreno povero e disabitato; vita di banda, predazione e sopravvivenza. [stima]
+
+Clan di orchi rossi che porta un peso infamante: secoli fa i loro antenati fuggirono da
+una battaglia cruciale e l'intero clan fu dichiarato senza onore, cacciato dalla comunità
+orchesca. La vergogna non appartiene agli attuali membri, ma per l'antica legge tribale
+"il sangue della codardia si trasmette", e nessun clan rispettabile si associa a loro. I
+discendenti sopravvivono col mercenariato: privi di alleanze, vendono le lame al miglior
+offerente senza distinzione di razza o causa, spietati ma professionali — onorano sempre
+il contratto. Il loro campo è di tende robuste circondate da pali con le teste dei
+taglia-prezzo che tentarono di riscuotere la taglia su di loro. Al centro brucia da
+secoli il Fuoco dell'Infamia, monito perpetuo al tradimento degli antenati.
+
+
+### Antica Città di Toua
+Topografia: Antica città in rovina dell'entroterra, riconquistata dalla foresta. Mura
+crollate, cisterne e sorgenti fra gli alberi; selvaggina annidata fra le rovine. Sito
+storico e pericoloso. [stima]
+
+Rovine silenziose e maestose lungo una scogliera ventosa affacciata su un braccio di mare
+grigio: muri di pietra chiara scolpita, archi spezzati, colonne abbattute e pavimentazioni
+intarsiate. Fu forse la più bella città mai costruita dagli elfi di Vathriddon. Fondata
+oltre tremila anni fa dai Touvari, maestri costruttori e astronomi arcani, al crocevia di
+antiche linee ley, fu per secoli centro di sapere, diplomazia e commercio marittimo. La
+rovina giunse circa mille anni fa, durante il Grande Silenzio: le linee ley collassarono,
+provocando scosse, tempeste soprannaturali e un'ondata di energia caotica che spazzò via
+la popolazione in una notte. Oggi le visitano studiosi e cercatori di tesori; si dice che
+nelle catacombe dormano archivi sigillati dagli ultimi sacerdoti Touvari, e che chi scende
+troppo in profondità raramente torni con la mente integra.
+
+
+### Helmvil
+Topografia: Villaggio fortificato ("helm-vil") presso le vie interne. Campi recintati,
+palizzate, boschi vicini e ruscelli; vita agricola difensiva. [stima]
+(La lore nanica la colloca anche nel cuore delle Montagne Sussurranti: due tradizioni
+sullo stesso nome.)
+
+Helmvil non è solo una città scavata nella roccia: è un prodigio d'ingegneria nanica nel
+cuore delle Montagne Sussurranti, che devono il nome al vento incanalato tra le fenditure,
+un mormorio costante simile a migliaia di voci che complottano. Si sviluppa in verticale
+dentro un immenso camino vulcanico spento.
+- Le Grandi Volte: sale curve, progettate per riflettere i "sussurri" verso i sensori
+  acustici dei nani, che sentivano un nemico avvicinarsi a chilometri.
+- La Cascata d'Argento: un fiume sotterraneo precipita per trecento metri, azionando
+  enormi magli idraulici.
+- Il Quarzo Risonante: pareti venate di quarzo che brilla d'azzurro quando percosso,
+  illuminando le strade senza torce.
+
+L'Abbandono ("Ciò che non ha nome"): due secoli fa, scavando il Settimo Livello, i
+minatori infransero una parete d'ossidiana e liberarono una presenza malevola e
+incorporea. Chi veniva toccato dall'ombra restava pietrificato in un urlo silenzioso, la
+pelle grigia come cenere. In una notte di terrore migliaia di nani perirono; il Re
+Throndunil fece crollare i tunnel principali, sacrificando i suoi guerrieri per far fuggire
+i civili — almeno così si racconta; qualcuno crede che la pazzia avesse colpito il Re.
+Helmvil divenne una necropoli sigillata per duecento anni.
+
+La liberazione: Borin Martelloscuro, veterano brizzolato, radunò nani esiliati e
+avventurieri stranieri e penetrò nelle viscere delle montagne, spezzando i sigilli delle
+sale superiori. Si dice che nel Vortice di Ossidiana abbiano scovato un antico Drago Blu
+in stasi; il fuoco è tornato nelle fucine, ma il mistero su quel drago fa ancora tremare
+chi guarda i lampi azzurri che ora squarciano le vette.
+
+
+### Villaggio di Calen
+Topografia: Villaggio rurale di pianura, fra campi coltivati, ruscelli e prati da
+pascolo. Clima mite; agricoltura, allevamento e caccia stagionale. [stima]
+(La lore lo descrive invece come porto-rifugio costiero tra paludi: tradizione
+alternativa.)
+
+Sull'orlo estremo del continente, dove la terra si frantuma in isolotti fangosi e canali
+ingannevoli, sorge Calen. Un tempo umile insediamento di pescatori di balene, la posizione
+lo rese rifugio perfetto per chiunque avesse un conto in sospeso con la legge. È protetto
+dalle Paludi Salmastre, un labirinto di mangrovie grigie e sabbie mobili dalle maree
+innaturalmente rapide, barriera che per decenni ha tenuto lontane le navi da guerra di
+Tirrendale, incagliate nei bassi fondali e bersaglio dei cecchini locali. Oggi i focolari
+sono spenti: Calen è una città fantasma su palafitte marcescenti, avvolta da una nebbia
+densa che pare pulsare di vita propria; si dice che vi si muovano ombre di marinai mai
+giunti all'aldilà, a guardia di un tesoro che non possono più godere.
+- Il Mercato delle Ombre: spezie rubate ai convogli del sud, mappe proibite, armi d'ebano
+  d'oltreoceano; taverne come "L'Ancora Spezzata" non chiudevano mai.
+- La Guardia delle Paludi: i pirati usavano le "Gusci-di-Noce", barche a fondo piatto e
+  vele scure, per scivolare tra le canne, conoscendo quali acque nascondessero i mostri
+  marini usati come cani da guardia.
+
+
+### Tassio
+Topografia: Borgo presso colline e foreste interne, vicino a corsi d'acqua. Legname,
+caccia e piccoli commerci. [stima]
+
+Piccolo villaggio arroccato tra colline boscose ai margini di una strada secondaria poco
+battuta. Case in pietra grigia e tetto di paglia, poche decine di famiglie: agricoltori,
+allevatori, qualche artigiano. Vive al ritmo lento delle stagioni, lontano dalle grandi
+rotte e dalla politica; gente silenziosa e diffidente con gli stranieri, accogliente con
+chi mostra buone intenzioni. Pur piccolo, offre i servizi essenziali.
+
+Negozi e locande:
+- La Meridiana: locanda e osteria di Pera Voss, robusta e schietta, dai capelli rossi.
+  Punto di ritrovo serale dei villici.
+- Bottega di Senn: forniture generali di Odric Senn, anziano dai baffi bianchi e memoria
+  prodigiosa (attrezzi agricoli, corde, candele, farina, medicamenti base).
+- Il Fabbro di Tassio: officina di Bram Colter, silenzioso ma abilissimo; ripara attrezzi
+  e armi, ferra cavalli, crea oggetti semplici su commissione.
+
+
+### Ganno
+Topografia: Borgo dell'entroterra su via di transito, fra campi e boschi radi. Mercato
+locale, agricoltura e allevamento. [stima]
+
+Villaggio costruito attorno alle rovine di una torre antica, crollata secoli fa (chi dice
+un incendio magico, chi un terremoto). I blocchi di pietra scura sono stati riutilizzati
+per case e muretti, così che l'ombra della torre sia presente ovunque. L'atmosfera è
+vivace e chiassosa, soprattutto per la fama della sua locanda, che richiama bardi da tutto
+il continente. Lo governa il borgomastro Victi Rojas, omone dal naso paonazzo e la risata
+fragorosa, gran frequentatore della locanda; nelle rare occasioni di lucidità mostra però
+un acume politico sorprendente.
+
+Negozi e locande:
+- La Locanda della Quercia: la più rinomata del continente tra bardi e musicanti, di Marta
+  Conti, energica dai capelli corvini. Palco al centro della sala, cucina squisita,
+  cantina leggendaria; Victi Rojas occupa stabilmente il secondo sgabello a sinistra.
+- Il Magazzino di Uldo: emporio di Uldo Prast, halfling con le tasche piene di oggetti di
+  dubbia provenienza.
+- Bottega delle Erbe: erboristeria di Siria Vail, dai modi flemmatici (rimedi, unguenti,
+  pozioni semplici, spezie rare).
+- Stalla e Maniscalco di Ganno: di Korvo, taciturno ma affidabile; accudisce cavalli,
+  ripara carri, vende ferri.
+
+
+### Inss
+Topografia: Piccolo insediamento isolato, avamposto fra le terre selvagge. Poche case,
+terreno aspro, caccia e raccolta di sussistenza. [stima]
+
+Villaggio noto per la straordinaria eterogeneità: a differenza della maggior parte degli
+insediamenti, ospita razze diverse in un equilibrio raro — umani, goblin, mezzelfi, nani
+montanari e qualche lucertoloide del sud, integrati in una comunità che ha imparato a
+valorizzare le differenze. Crocevia di culture e saperi: cucina eclettica, mercato
+settimanale festa di colori e lingue, bambini che parlano due o tre idiomi. È guidato da
+un consiglio di anziani con un rappresentante per ciascuna razza.
+
+Negozi e locande:
+- Le Tre Bandiere: locanda di Torda, goblin di mezza età dall'umorismo pungente; pasti
+  fusion. Il nome viene dalle tre bandiere delle prime razze fondatrici.
+- Bottega Mista di Harren: emporio di Harren Boldo, nano che parla sei lingue e le usa
+  tutte nella stessa frase.
+- La Farmacia di Sshet: erboristeria del lucertoloide Sshet, tranquillo e metodico.
+- Armeria di Dorvak: officina del mezzo-orco silenzioso Dorvak; ripara e vende armi di
+  ogni taglia, adattate a corpi di razze diverse.
+
+
+############################################################
+=== Ehkia (5) — il continente innevato del nord-ovest ===
+############################################################
+Bioma generale: terra glaciale. Distese di tundra bianca, ghiacciai, coste gelate e
+mari freddi; foreste di conifere e tigli innevati. Clima rigido tutto l'anno. Vita
+dura: caccia da pelliccia (alci, lupi, selvaggina artica), pesca nelle acque gelide,
+insediamenti fortificati contro il freddo e la guerra.
+
+
+### Nerocastello
+Topografia: Cupa fortezza di pietra scura su pianura innevata, prossima alla costa gelata.
+Roccaforte militare (sulla mappa segnata da spade incrociate = terra di battaglie). Clima
+glaciale, terreno duro; presidio e potere armato del nord.
+
+Ciò che resta di Nerocastello si erge come una ferita aperta: torri sbrecciate, mura
+annerite dal fuoco e dal tempo, corridoi dove il vento soffia come un lamento. Eppure tra
+le rovine pulsa una vita feroce e indomabile — combattenti, mercanti d'armi e anime che
+hanno scelto la forza come unica legge. Fu un tempo fortezza di una stirpe di guerrieri
+dimenticata; abbandonata per secoli, fu rivendicata da Himkos, un goliath del fuoco dalla
+pelle color brace e gli occhi come carboni, che vi stabilì una sola regola: chiunque sia
+degno può combattere nell'arena, e chi vince abbastanza spesso può restare.
+
+Punti di interesse:
+- L'Arena di Sangue e Cenere: il cuore di Nerocastello, arena all'aperto nel cortile, le
+  pietre macchiate del sangue di ogni razza. Umani, orchi, mezzi demoni e creature
+  selvagge si affrontano; gli spettatori scommettono e talvolta scendono a combattere. Si
+  vince quando l'avversario non si rialza più.
+- La Torre di Himkos: dimora del signore; quando si mostra, cala il silenzio. La sua
+  parola è legge.
+- La Fucina di Brace: il fabbro forgia in un seminterrato surriscaldato armi rozze ma
+  efficaci, con metalli strappati ai caduti dell'arena.
+- Il Rifugio dell'Arcanista: in un angolo dimenticato, un arcanista dall'identità incerta
+  vende incantesimi e oggetti di dubbia provenienza.
+- La Locanda delle Ossa: più una stalla con tetto che una locanda; giacigli di paglia,
+  carne arrostita e birra scura, gestita da una donna ferrea che non sopporta risse fuori
+  dall'arena.
+
+
+### Yotta
+Topografia: Cittadina dai tetti rossi su piana nevosa presso il mare, attraversata da un
+fiume ghiacciato/strada. Acqua vicina, pesca e commercio costiero; clima freddo. Centro
+abitato principale fra le nevi.
+
+Fondata secoli fa dalle menti ingegnose degli gnomi come avamposto fluviale sulle sponde
+di un grande fiume gelato che collega le montagne di nord-est al mare interno. La
+progettarono come città-laboratorio, ricca di meccanismi a vento e mulini idraulici che
+sfruttano le forti correnti: un capolavoro di architettura funzionale.
+
+Struttura e quartieri:
+- Il Porto e il Culto del Vento: cuore pulsante della città. Un tempo, nelle notti di
+  luna piena, vi si offrivano sacrifici umani a Syrael per placare le tempeste; oggi il
+  culto è simbolico e il porto è crocevia di commercio tra i continenti. Si dice che ogni
+  vento porti una lingua diversa e un segreto nuovo.
+- La Cittadella dei Meccanismi: la parte più antica, gnomica; torri a ingranaggi,
+  laboratori e una biblioteca sotterranea di antichi schemi di macchine del vento.
+- Il Ponte del Respiro: colossale ponte fortificato che unisce le due metà della città,
+  decorato con rune elfiche che reagiscono al vento.
+- Il Porto dei Sussurri: zona commerciale; i moli antichi, scolpiti con volti di divinità
+  dimenticate, sussurrano quando il vento cambia.
+- Il Tempio di Syrael: su un'altura a nord, con un'enorme campana eolica che non smette
+  mai di suonare.
+- Le Case del Fiume: quartiere misto di elfi, umani e gnomi, case su palafitte illuminate
+  da lanterne che si spengono solo quando il vento tace.
+
+
+### Nolborg
+Topografia: Insediamento a est di Nerocastello, sulla costa innevata. Borgo-fortezza
+esposto ai venti gelidi; pesca, caccia e difesa. Terreno bianco e roccioso.
+
+Piccola cittadina nel cuore gelido di Ehkia, che pare lottare per non essere inghiottita
+dal bianco perenne. Abbarbicata su una lingua di terra stretta tra due fiumi dalle acque
+gelide, vive in un isolamento rotto solo dal fragore del ghiaccio contro i piloni. Gente
+temprata dal freddo e dal silenzio, case di legno scuro e pietra dai tetti carichi di
+neve; l'atmosfera è quella di un avamposto dimenticato.
+- L'Abbraccio dei Fiumi: i due rami fluviali che si ricongiungono poco distante la
+  difendono e la isolano insieme; l'acqua è risorsa e sfida principale.
+- Il Grande Ponte di Pietra: a sud-ovest, unica via stabile col resto di Ehkia, cordone
+  ombelicale per rifornimenti e viaggiatori.
+- Architettura del Nord: strutture basse e robuste contro i venti delle vette.
+- Avamposto di passaggio: sosta cruciale per ranger e mercanti diretti alle montagne o
+  alla Foresta del Tiglio Bianco.
+- Connessione con l'antico: nelle fondamenta del ponte si dice siano incise rune dedicate
+  a Drokhan, perché la struttura non ceda mai sotto ghiaccio e anni.
+
+
+### Altocolle
+Topografia: Abitato d'altura ("alto colle") nell'interno innevato di Ehkia. Posizione
+elevata e fredda, dominante sulle valli ghiacciate; legname di conifera e caccia di
+montagna. [stima]
+
+Un tempo cuore pulsante della comunità halfling tra le pendici montuose, celebre per i
+tetti di paglia dorata e i camini sempre fumanti di aromi conviviali; oggi è un monumento
+spettrale alla tragedia, ridotto a un guscio carbonizzato dalla furia di un drago anni fa.
+Le travi di quercia e i resti delle abitazioni non si sono mai trasformati del tutto in
+cenere: il fuoco magico del drago brucia ancora con una luce violacea e innaturale,
+alimentato dal mana residuo. È un calore che non scalda, ma consuma lentamente la realtà
+stessa.
+
+
+### Foresta del Tiglio Bianco
+Topografia: Foresta di tigli dalle chiome bianche coperte di neve/brina. Bosco rado e
+luminoso, suolo gelato, ruscelli ghiacciati; selvaggina da pelliccia e legname pregiato.
+Luogo silenzioso e suggestivo.
+
+Custodita gelosamente da secoli, è un santuario vivente dove il tempo segue il ritmo lento
+delle stagioni. Al centro si erge il leggendario Tiglio Bianco, albero colossale la cui
+chioma pare toccare il cielo e le cui radici, secondo le leggende, si diramano sotto
+l'intero mondo come vene per il mana. L'aria è carica di un'essenza balsamica e magica;
+la foresta porta ancora le cicatrici invisibili della "Caduta delle Stelle", e i suoi
+abitanti sono pronti a tutto per evitare che lo squilibrio torni a corrompere il cuore del
+mondo.
+
+I protettori del verde:
+- Le Radici Silenti: clan di elfi e druidi severo e isolazionista, convinto che ogni
+  estraneo sia un portatore di corruzione o un cercatore di Arcanite. Non lasciano
+  oltrepassare i confini e usano la magia della terra di Drokhan per confondere i
+  viaggiatori.
+- I Gufi Bianchi: fedeli alla purezza della natura e allo spirito di Zenara, più aperti
+  al dialogo; credono che la saggezza della foresta vada condivisa per prevenire conflitti,
+  e agiscono come mediatori o oracoli.
+
+
+############################################################
+=== Ohzkie (5) — le terre temperato-aride dell'est ===
+############################################################
+Bioma generale: continente caldo e contrastato. A NORD colline verdi, campi terrazzati
+e vigneti, una foresta dalle chiome chiare e porti affacciati al mare; a SUD una distesa
+sabbiosa quasi desertica. In mare aperto isolotti rocciosi. Vita di agricoltura e
+viticoltura, di marineria e commercio costiero, e di ascesi monastica nelle sabbie.
+
+
+### Gossvill
+Topografia: Cittadina portuale sulla costa nord-occidentale di Ohzkie, con approdo e navi.
+Clima mite marittimo; pesca, commercio e cantieri. Porta d'accesso al continente.
+
+Il tipo di luogo che ti ricorda perché vale la pena viaggiare: un villaggio tranquillo
+dove i vicini si conoscono per nome, i bambini giocano nelle strade di terra battuta e la
+sera si chiude con musica, risate e una pinta al Boccale Ammuffito. Niente gloria, niente
+eroi leggendari — solo gente comune che sa vivere bene. Nessun documento ne registra la
+fondazione: si è formata piano attorno a un pozzo, a un crocevia, a una famiglia che decise
+di restare. La chiesa di Ny (divinità della serenità e del focolare) è l'edificio più
+antico; forse è per la sua benedizione silenziosa che Gossvill, a differenza del resto di
+Ohzkie, è sempre rimasta indenne da guerre e calamità.
+
+Punti di interesse:
+- Il Boccale Ammuffito: la taverna più amata del circondario; la musica non smette mai,
+  birra scura tramandata da generazioni.
+- La Casa di Ny: chiesa dalle pareti bianche e l'altare con un piccolo fuoco sempre acceso;
+  i sacerdoti non fanno prediche, ascoltano e offrono tè caldo.
+- La Fucina del Vecchio Marn: fabbro burbero che forgia ferri, zappe e attrezzi con cura;
+  si dice che le sue lame, per semplici che siano, non si spezzino mai.
+- La Bottega del Falegname: mobili solidi, barili, ruote di carro che durano generazioni.
+
+
+### Hopecliff
+Topografia: Abitato di costa ("rupe della speranza") arroccato su scogliere affacciate al
+mare. Vento, salsedine e terrazze coltivate sul ciglio; pesca e vedetta marittima. [stima]
+
+Sorge sul bordo di una scogliera affacciata su un mare grigio e mosso, dove il vento sa di
+sale e le reti si asciugano tra i pali come bandiere multicolori. Paesino vivace,
+disordinato e meravigliosamente multirazziale: un elfo ripara una rete accanto a un nano
+che sbudella pesci, e a nessuno pare strano. La caccia e la pesca sono le sue leggi; chi
+porta a casa da mangiare è il benvenuto. Nato come avamposto di cacciatori, poi cresciuto
+coi pescatori; le razze si mescolarono senza drammi. Niente nobiltà né signori: comanda chi
+sa fare le cose meglio, posizione che si guadagna ogni giorno.
+
+Punti di interesse:
+- La Locanda del Cigno Infrastagliato: l'insegna mostra un cigno malconcio di cui i locali
+  vanno fierissimi; zuppe di pesce e vista sul mare, storie di tempeste e isole che non
+  esistono sulle carte.
+- Il Mercatino di Pesce e Carne: all'alba cacciatori e pescatori portano il bottino;
+  odore forte, qualità eccellente, prezzi onesti.
+- L'Armaiolo di Hopecliff: vende quel che ha (qualche spada usata, punte di freccia,
+  coltelli da caccia); scelta limitata ma funzionale.
+- La Bottega del Falegname: ripara barche, costruisce casse, forgia manici.
+
+
+### Monastero "Monaci delle Sabbie"
+Topografia: Monastero isolato nella fascia sabbiosa e arida del sud di Ohzkie. Dune, poca
+acqua, caldo secco; comunità ascetica, oasi e carovane. Luogo di ritiro e disciplina.
+
+Perso tra le dune mobili, il Monastero di Ossidiana appare come una torre sottile e
+consunta, le pietre scure levigate da millenni di tempeste di sabbia. A differenza della
+maestosa Torre dell'Arcano, trasuda umiltà solenne: edificio spoglio dove l'unica ricchezza
+è il silenzio. I Monaci delle Sabbie vivono in celle scavate nella roccia, in un'esistenza
+di stenti votata interamente alla trascrizione dei segreti magici. Seguono un credo di
+assoluta devozione e povertà: ogni monaco è una "memoria vivente" che non interpreta le
+pergamene, ma le preserva con precisione maniacale. Si dice che il fondatore fu il primo a
+scorgere la fine del mondo durante la guerra e costruì il monastero per nascondere verità
+troppo pericolose. La Dieta del Deserto: sopravvivono con pochissima acqua e una polvere
+nutritiva ricavata da licheni alimentati dal mana residuo.
+
+
+### Castello Dorato
+Topografia: Castello chiaro/dorato su una piccola isola verdeggiante in mare aperto,
+circondato dalle acque. Clima mite, isolamento difeso dal mare; sede signorile e ricca.
+
+Tra le nebbie eterne e le gelide correnti del Mare Argenteo sorge il leggendario Golden
+Castle, la fortezza che mai conobbe sconfitta. Le mura dorate riflettono la luce anche
+quando il sole non sorge, grazie — dicono le cronache — alla Benedizione del Drago
+Aurexion, il grande drago d'oro che un tempo dimorava sulla vicina Montagna Alata di
+Auramyr.
+- Auramyr, la Montagna Alata: prende il nome dal suo protettore, Aurexion, creatura di
+  luce e saggezza che vegliava sul nord. Donò parte del suo potere agli uomini della
+  valle, che vivevano più a lungo e avevano doti magiche fuori dal comune, purché non
+  brandissero armi contro la sua razza. Quando gli alchimisti della Torre del Richiamo
+  iniziarono a distorcere la magia del vento e del tempo, Aurexion abbandonò la montagna,
+  lasciando una scia di cenere dorata che cade ancora come neve lucente.
+- La Torre del Richiamo e l'Ordine di Aetherion: oggi silenziosa e spezzata, fu il cuore
+  di un ordine di maghi che studiava i "Richiami", risonanze arcane capaci di piegare le
+  leggi naturali; evocarono presenze da altri piani finché il cielo si squarciò e la torre
+  rimase segnata da un vortice perpetuo. Si dice che le loro anime siano ancora
+  intrappolate tra i piani.
+- Il Conte Vaelor D'Auryn, Signore del Castello Dorato: ultimo della stirpe gnomico-elfica
+  dei D'Auryn, costruì il castello sulle rovine di un santuario di Aurexion; si dice che
+  alla prima pietra il vento si fermò. Temuto e rispettato, spietato coi nemici e giusto
+  coi suoi; molti credono avesse stretto un patto con Aurexion, ricevendone la Benedizione
+  del Sole Spezzato. Nessun assedio ha mai oscurato il bagliore del castello.
+
+
+### Torre dell'Arcano
+Topografia: Torre solitaria su isolotti rocciosi battuti dal mare aperto. Roccia nuda,
+onde e vento; luogo di studio arcano, isolato e quasi inaccessibile.
+
+Un monolite di pietra scura che sembra sfidare le leggi della fisica, la cima spesso
+avvolta da nubi cariche di elettricità statica. Nessuno conosce le sue origini, ma la fama
+è legata al mago che vi fondò la più severa scuola di magia del mondo. All'interno il
+silenzio è assoluto: agli studenti è proibito stringere legami o scambiare parola,
+potendo interagire solo coi propri severi mentori. Chi sopravvive a un anno di studi
+affronta l'Esame finale, una prova personale e segreta da scovare nel mondo; il fallimento
+porta spesso alla morte o alla privazione del dono magico. Superarlo conferisce il titolo
+di "Arcanus", quasi nobiliare.
+
+Nell'ombra della torre vivono i Monaci delle Sabbie, ordine ascetico votato al silenzio e
+al servizio dei maghi: comunicano solo con gesti rituali e il fruscio delle pergamene che
+trascrivono incessantemente, custodi di una conoscenza che non possono comprendere né
+divulgare, sotto la protezione della dea Myrhael (Myrhal), custode della trama magica. Si
+mormora che nelle profondità della Torre sia imprigionato un demone dei piani infernali,
+sopravvissuto della Caduta delle Stelle, nato dal sangue di Ouh e incatenato lì dal primo
+Arcanista per estrarne segreti sulla tessitura della realtà.

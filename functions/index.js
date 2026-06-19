@@ -567,6 +567,13 @@ function scribaApproveToken(id) {
 function scribaApproveUrlFor(id) {
   return `${SCRIBA_FN_BASE}/scribaApprove?id=${encodeURIComponent(id)}&t=${scribaApproveToken(id)}`;
 }
+function scribaRegenToken(id) {
+  const secret = scribaSecretParam.value() || "scriba-fallback-secret";
+  return crypto.createHmac("sha256", secret).update("regen:" + String(id)).digest("hex");
+}
+function scribaRegenUrlFor(id) {
+  return `${SCRIBA_FN_BASE}/scribaRegenerate?id=${encodeURIComponent(id)}&t=${scribaRegenToken(id)}`;
+}
 
 const sourceCountsOf = (data) => ({
   dossier: (data.dossierRiservato || []).length,
@@ -641,7 +648,9 @@ async function proposeEditionToMaster(dbAdmin, { edition, built, createdBy = "au
 
   const masterHtml = renderScribaHtml({
     content: built.content, edition, images: built.images,
-    unsubUrl: scribaUnsubUrlFor("anteprima"), approveUrl: scribaApproveUrlFor(docRef.id),
+    unsubUrl: scribaUnsubUrlFor("anteprima"),
+    approveUrl: scribaApproveUrlFor(docRef.id),
+    regenerateUrl: scribaRegenUrlFor(docRef.id),
   });
   await buildGmailTransporter().sendMail({
     to, from: scribaFrom(),
@@ -841,6 +850,49 @@ exports.scribaApprove = onRequest({ region: "us-central1", timeoutSeconds: 300, 
   } catch (e) {
     console.error("[scriba] approve:", e);
     res.status(500).send(page("Errore nell'invio: " + (e.message || e), false));
+  }
+});
+
+/**
+ * scribaRegenerate — il bottone "Non mi piace, scrivine un'altra" nella mail del
+ * direttore. Scarta la bozza corrente (status → cancelled), genera un NUOVO
+ * numero con lo stesso numero d'edizione e lo ripropone al direttore.
+ */
+exports.scribaRegenerate = onRequest({ region: "us-central1", timeoutSeconds: 540, memory: "1GiB" }, async (req, res) => {
+  const page = (msg, ok = true) =>
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Georgia,serif;background:#f4efe3;color:#1c1813;text-align:center;padding:60px 20px;">
+     <h1 style="color:${ok ? "#7a1f12" : "#8a261c"};">Lo Scriba</h1><p style="font-size:18px;line-height:1.5;">${msg}</p></body>`;
+  const id = String(req.query.id || "");
+  const t = String(req.query.t || "");
+  if (!id || !t || t !== scribaRegenToken(id)) {
+    res.status(400).send(page("Link non valido o scaduto.", false));
+    return;
+  }
+  const dbAdmin = admin.firestore();
+  const ref = dbAdmin.collection("newsletters").doc(id);
+  let d;
+  try {
+    const snap = await ref.get();
+    if (!snap.exists) { res.status(404).send(page("Numero inesistente.", false)); return; }
+    d = snap.data();
+  } catch (e) {
+    res.status(500).send(page("Errore di lettura. Riprova.", false));
+    return;
+  }
+  if (d.status === "sent") {
+    res.status(200).send(page(`Il numero ${d.number} è già stato inviato: non posso riscriverlo.`, false));
+    return;
+  }
+  try {
+    // Scarta la bozza rifiutata e generane un'altra con lo stesso numero.
+    await ref.update({ status: "cancelled" });
+    const edition = d.number || 1;
+    const built = await buildScribaEdition(dbAdmin, { days: SCRIBA_INTERVAL_DAYS, assetPrefix: `regen-${edition}`, edition });
+    const r = await proposeEditionToMaster(dbAdmin, { edition, built, createdBy: "regenerate" });
+    res.status(200).send(page(`✓ Ho cestinato quel numero e te ne ho scritto un altro (N. ${r.edition}). Controlla la tua casella: trovi la nuova anteprima con i bottoni per approvarla o farne riscrivere ancora.`));
+  } catch (e) {
+    console.error("[scriba] regenerate:", e);
+    res.status(500).send(page("Errore nella riscrittura: " + (e.message || e), false));
   }
 });
 

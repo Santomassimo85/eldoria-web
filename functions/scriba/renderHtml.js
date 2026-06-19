@@ -79,7 +79,7 @@ function sectionBlock(heading, articles, images = []) {
  * }} args
  * @returns {string} HTML completo
  */
-function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approveUrl = "" }) {
+function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approveUrl = "", regenerateUrl = "" }) {
     // La data è in-world: derivata dal NUMERO del giornale (n.1 = 10 di Solleone),
     // non dalla data reale di spedizione.
     const dateLabel = exanthiaDateLabel(edition);
@@ -98,14 +98,18 @@ function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approv
         : "";
 
     // Banner di approvazione: SOLO nella copia del master (mai ai giocatori).
+    const regenBtn = regenerateUrl
+        ? `<a href="${esc(regenerateUrl)}" style="display:inline-block;background:#3a342b;color:#f4efe3;font-family:${FONT_TITLE};font-weight:700;font-size:14px;letter-spacing:1px;text-decoration:none;padding:12px 22px;border-radius:6px;border:1px solid #c9a227;margin:6px 4px;">🔄 NON MI PIACE, SCRIVINE UN'ALTRA</a>`
+        : "";
     const approveBanner = approveUrl ? `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1c1813;">
     <tr><td align="center" style="padding:18px 16px;">
       <div style="font-family:${FONT_BODY};font-size:13px;color:#f4efe3;padding-bottom:12px;line-height:1.5;">
         📰 <strong>Anteprima per il Direttore</strong> — questo numero NON è ancora stato inviato ai giocatori.<br>
-        Approva qui sotto per spedirlo alla lista. (Questo riquadro non comparirà nella copia dei lettori.)
+        Approva per spedirlo alla lista, oppure fanne riscrivere un altro. (Questo riquadro non comparirà nella copia dei lettori.)
       </div>
-      <a href="${esc(approveUrl)}" style="display:inline-block;background:#c9a227;color:#1c1813;font-family:${FONT_TITLE};font-weight:700;font-size:15px;letter-spacing:1px;text-decoration:none;padding:13px 28px;border-radius:6px;">✓ APPROVA E INVIA AI GIOCATORI</a>
+      <a href="${esc(approveUrl)}" style="display:inline-block;background:#c9a227;color:#1c1813;font-family:${FONT_TITLE};font-weight:700;font-size:15px;letter-spacing:1px;text-decoration:none;padding:13px 26px;border-radius:6px;margin:6px 4px;">✓ APPROVA E INVIA AI GIOCATORI</a>
+      ${regenBtn}
     </td></tr>
   </table>` : "";
 
