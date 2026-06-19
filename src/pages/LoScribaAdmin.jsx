@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { httpsCallable } from "firebase/functions";
 import {
   collection, query, orderBy, onSnapshot,
-  doc, updateDoc, setDoc,
+  doc, updateDoc, setDoc, deleteDoc,
 } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { functions, db } from "../firebase";
@@ -105,6 +105,12 @@ export default function LoScribaAdmin() {
     setMsg({ type: "ok", text: "Bozza annullata: non verrà inviata." });
   });
 
+  const elimina = (e) => run(async () => {
+    if (!window.confirm(`Eliminare definitivamente il Numero ${e.number}?`)) return;
+    await deleteDoc(doc(db, "newsletters", e.id));
+    setMsg({ type: "ok", text: `Numero ${e.number} eliminato.` });
+  });
+
   const btn = (label, onClick, color = "#c9a227", textColor = "#7a1f12") => (
     <button type="button" onClick={onClick} disabled={busy}
       style={{ background: color, color: textColor, border: "none", fontWeight: 700, padding: "9px 14px", borderRadius: 6, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, marginRight: 8 }}>
@@ -119,8 +125,9 @@ export default function LoScribaAdmin() {
           <span className="adm-eyebrow">✦ Redazione ✦</span>
           <h1 className="adm-title">Lo Scriba</h1>
           <p className="adm-sub">
-            La gazzetta esce <strong>da sola ogni 10 giorni</strong>: scritta da Claude, illustrata, e — salvo tuo stop —
-            spedita ai giocatori 24h dopo che ne ricevi l'anteprima.
+            La gazzetta viene <strong>scritta e illustrata da sola ogni 10 giorni</strong> e ti arriva via mail come
+            <strong> bozza da approvare</strong>: parte ai giocatori <strong>solo</strong> quando clicchi
+            «Approva e invia» nella mail (oppure «Invia ora» qui sotto). Nessun invio automatico.
           </p>
         </div>
         <div className="adm-mast-aside">
@@ -143,9 +150,9 @@ export default function LoScribaAdmin() {
       {pending && (
         <div className="adm-tile" style={{ cursor: "default", marginBottom: 22, borderColor: "#b8860b" }}>
           <span className="adm-tile-icon" aria-hidden="true">📰</span>
-          <h3 className="adm-tile-title">Bozza in attesa — N. {pending.number}</h3>
+          <h3 className="adm-tile-title">Bozza in attesa di approvazione — N. {pending.number}</h3>
           <p className="adm-tile-desc">
-            Parte automaticamente fra <strong>{hoursLeft(tsToDate(pending.autoSendAt)) || "—"}</strong> salvo tuo intervento.
+            Approva dal bottone nella mail che hai ricevuto, oppure <strong>Invia ora</strong> qui. Non parte da sola.
           </p>
           <div style={{ marginTop: 12 }}>
             {btn("📤 Invia ora", () => inviaOra(pending.id))}
@@ -186,6 +193,10 @@ export default function LoScribaAdmin() {
               <button type="button" onClick={() => setPreviewHtml(e.html)} disabled={!e.html}
                 style={{ background: "none", border: "1px solid #c9a227", color: "#7a1f12", borderRadius: 5, padding: "5px 10px", cursor: e.html ? "pointer" : "not-allowed", fontWeight: 600 }}>
                 👁 Anteprima
+              </button>
+              <button type="button" onClick={() => elimina(e)} disabled={busy} title="Elimina numero"
+                style={{ background: "none", border: "1px solid #d9b3ac", color: "#8a261c", borderRadius: 5, padding: "5px 9px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
+                🗑
               </button>
             </div>
           );

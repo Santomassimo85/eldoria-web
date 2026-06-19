@@ -556,19 +556,33 @@ function scribaUnsubUrlFor(uid) {
   return `${base}${sep}uid=${encodeURIComponent(uid)}&t=${scribaUnsubToken(uid)}`;
 }
 
+// --- Approvazione: il numero parte SOLO quando il direttore clicca il bottone
+// nella mail. Token HMAC sull'id del numero; base = URL della funzione (progetto
+// fisso, quindi cablata: niente param da valorizzare a ogni deploy).
+const SCRIBA_FN_BASE = "https://us-central1-eldoria-web.cloudfunctions.net";
+function scribaApproveToken(id) {
+  const secret = scribaSecretParam.value() || "scriba-fallback-secret";
+  return crypto.createHmac("sha256", secret).update("approve:" + String(id)).digest("hex");
+}
+function scribaApproveUrlFor(id) {
+  return `${SCRIBA_FN_BASE}/scribaApprove?id=${encodeURIComponent(id)}&t=${scribaApproveToken(id)}`;
+}
+
 const sourceCountsOf = (data) => ({
-  riassunti: data.riassunti.length,
-  arene: data.arene.length,
-  mercatoVenduti: data.mercato.venduti.length,
-  mercatoInVendita: data.mercato.inVendita.length,
+  dossier: (data.dossierRiservato || []).length,
+  arene: (data.arene || []).length,
+  npc: (data.npcNoti || []).length,
+  incarichi: (data.incarichiAperti || []).length,
+  mercatoVenduti: (data.mercato?.venduti || []).length,
+  mercatoInVendita: (data.mercato?.inVendita || []).length,
 });
 
 /**
  * Costruisce un numero completo: dati → testo (Claude) → 2-3 immagini (Gemini,
  * best-effort) caricate su Storage sotto `scriba/<assetPrefix>/`.
  */
-async function buildScribaEdition(dbAdmin, { days, assetPrefix }) {
-  const data = await collectScribaData(dbAdmin, { days });
+async function buildScribaEdition(dbAdmin, { days, assetPrefix, edition = 1 }) {
+  const data = await collectScribaData(dbAdmin, { days, edition });
   const content = await generateScribaContent({ apiKey: anthropicKeyParam.value(), data });
   let images = [];
   try {
@@ -610,8 +624,36 @@ async function sendScribaToPlayers(dbAdmin, editionDoc) {
 }
 
 /**
- * scribaPreview — genera un numero e lo manda in mail SOLO al master che lo
- * richiede (per provare a mano). Salva la bozza con stato "preview".
+ * Salva un numero come BOZZA e ne manda l'anteprima al direttore (master) CON
+ * il bottone di approvazione. NON invia ai giocatori: parte solo al click.
+ * Restituisce { id, edition }.
+ */
+async function proposeEditionToMaster(dbAdmin, { edition, built, createdBy = "auto", to = DM_EMAIL }) {
+  // L'html ARCHIVIATO è la copia pulita (senza bottone): è ciò che vedranno i
+  // lettori e l'archivio. Il bottone esiste solo nella mail al direttore.
+  const cleanHtml = renderScribaHtml({
+    content: built.content, edition, images: built.images, unsubUrl: scribaUnsubUrlFor("anteprima"),
+  });
+  const docRef = await dbAdmin.collection("newsletters").add({
+    number: edition, status: "draft", content: built.content, images: built.images, html: cleanHtml,
+    sources: sourceCountsOf(built.data), createdAt: FieldValue.serverTimestamp(), createdBy,
+  });
+
+  const masterHtml = renderScribaHtml({
+    content: built.content, edition, images: built.images,
+    unsubUrl: scribaUnsubUrlFor("anteprima"), approveUrl: scribaApproveUrlFor(docRef.id),
+  });
+  await buildGmailTransporter().sendMail({
+    to, from: scribaFrom(),
+    subject: `📜 [DA APPROVARE] Lo Scriba N. ${edition} — ${italianDateLabel(edition)}`,
+    html: masterHtml,
+  });
+  return { id: docRef.id, edition };
+}
+
+/**
+ * scribaPreview — genera un numero e lo manda al direttore con il BOTTONE di
+ * approvazione (come l'automatismo). Non invia ai giocatori finché non approvi.
  */
 exports.scribaPreview = onCall(
   { region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
@@ -631,33 +673,21 @@ exports.scribaPreview = onCall(
 
     let built;
     try {
-      built = await buildScribaEdition(dbAdmin, { days, assetPrefix: `preview-${edition}` });
+      built = await buildScribaEdition(dbAdmin, { days, assetPrefix: `preview-${edition}`, edition });
     } catch (e) {
       console.error("[scriba] generazione fallita:", e);
       throw new HttpsError("internal", `Generazione fallita: ${e.message}`);
     }
 
-    const html = renderScribaHtml({
-      content: built.content, edition, images: built.images,
-      unsubUrl: scribaUnsubUrlFor("anteprima"),
-    });
-    const docRef = await dbAdmin.collection("newsletters").add({
-      number: edition, status: "preview", content: built.content, images: built.images, html,
-      sources: sourceCountsOf(built.data), createdAt: FieldValue.serverTimestamp(), createdBy: email,
-    });
-
+    let proposed;
     try {
-      await buildGmailTransporter().sendMail({
-        to: email, from: scribaFrom(),
-        subject: `📜 [ANTEPRIMA] Lo Scriba N. ${edition} — ${italianDateLabel(edition)}`,
-        html,
-      });
+      proposed = await proposeEditionToMaster(dbAdmin, { edition, built, createdBy: email, to: email });
     } catch (e) {
       console.error("[scriba] invio anteprima fallito:", e);
-      throw new HttpsError("internal", `Numero generato (id ${docRef.id}) ma invio mail fallito: ${e.message}`);
+      throw new HttpsError("internal", `Numero generato ma invio mail fallito: ${e.message}`);
     }
 
-    return { ok: true, id: docRef.id, edition, sentTo: email, images: built.images.length, sources: sourceCountsOf(built.data) };
+    return { ok: true, id: proposed.id, edition, sentTo: email, images: built.images.length, sources: sourceCountsOf(built.data) };
   }
 );
 
@@ -690,12 +720,10 @@ exports.scribaSendNow = onCall(
 );
 
 /**
- * scribaTick — il cuore autonomo (gira ogni ora). Senza alcun intervento:
- *  A) se c'è una bozza in attesa e la finestra di revisione è scaduta (o è
- *     stata approvata dal pannello), la invia a tutti i giocatori (modalità A1);
- *  B) altrimenti, se sono passati 10 giorni dall'ultimo numero, ne genera uno
- *     nuovo (testo + immagini), lo salva come bozza e ne manda l'anteprima al
- *     master, programmando l'auto-invio a +24h.
+ * scribaTick — l'automatismo (gira ogni ora). NESSUN timer di auto-invio: quando
+ * è passato l'intervallo dall'ultimo numero e non c'è già una bozza in attesa,
+ * genera il numero e lo manda al DIRETTORE con il bottone di approvazione. Parte
+ * ai giocatori SOLO quando il direttore clicca (scribaApprove).
  */
 exports.scribaTick = onSchedule(
   { schedule: "every 1 hours", timeZone: "Europe/Rome", region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
@@ -704,13 +732,10 @@ exports.scribaTick = onSchedule(
     const cfgRef = dbAdmin.doc("settings/scriba");
     const cfgSnap = await cfgRef.get();
 
-    // Prima esecuzione: crea la config e parte il conto alla rovescia (primo
-    // numero ~10 giorni dopo). Per generarne uno subito, usa scribaPreview.
     if (!cfgSnap.exists) {
       await cfgRef.set({
         enabled: true,
         intervalDays: SCRIBA_INTERVAL_DAYS,
-        reviewHours: SCRIBA_REVIEW_HOURS,
         lastNumber: 0,
         lastSentAt: FieldValue.serverTimestamp(),
       });
@@ -719,70 +744,39 @@ exports.scribaTick = onSchedule(
     }
 
     const cfg = cfgSnap.data();
-    if (cfg.enabled === false) { console.log("[scriba] disattivato (settings/scriba.enabled=false)."); return; }
+    if (cfg.enabled === false) { console.log("[scriba] disattivato."); return; }
 
     const intervalDays = cfg.intervalDays || SCRIBA_INTERVAL_DAYS;
-    const reviewMs = (cfg.reviewHours ?? SCRIBA_REVIEW_HOURS) * 60 * 60 * 1000;
     const nowMs = Date.now();
 
-    // --- A) Bozza in attesa? Gestisci l'auto-invio (A1) ---
+    // C'è già una bozza che aspetta l'approvazione del direttore? Non generarne
+    // un'altra: aspetta che approvi (o annulli dal pannello).
     const pending = await dbAdmin.collection("newsletters")
       .where("status", "in", ["draft", "approved"]).limit(1).get();
     if (!pending.empty) {
-      const docRef = pending.docs[0].ref;
-      const d = pending.docs[0].data();
-      const autoMs = d.autoSendAt?.toMillis ? d.autoSendAt.toMillis() : 0;
-      const due = d.status === "approved" || (autoMs && nowMs >= autoMs);
-      if (!due) { console.log("[scriba] bozza in attesa, finestra di revisione non scaduta."); return; }
-
-      const sent = await sendScribaToPlayers(dbAdmin, d);
-      await docRef.update({ status: "sent", sentAt: FieldValue.serverTimestamp(), recipientCount: sent });
-      await cfgRef.update({ lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp() });
-
-      try {
-        await buildGmailTransporter().sendMail({
-          to: DM_EMAIL, from: scribaFrom(),
-          subject: `✅ Lo Scriba N. ${d.number} inviato a ${sent} lettori`,
-          html: `<p>Il numero ${d.number} de Lo Scriba è stato spedito a ${sent} giocatori.</p>`,
-        });
-      } catch (_) { /* notifica non critica */ }
-      console.log(`[scriba] numero ${d.number} inviato a ${sent} lettori.`);
+      console.log("[scriba] bozza già in attesa di approvazione del direttore.");
       return;
     }
 
-    // --- B) È ora di generare un nuovo numero? ---
+    // È passato l'intervallo dall'ultimo invio?
     const lastSentMs = cfg.lastSentAt?.toMillis ? cfg.lastSentAt.toMillis() : 0;
     if (lastSentMs && (nowMs - lastSentMs) < intervalDays * 24 * 60 * 60 * 1000) return;
 
     const edition = (cfg.lastNumber || 0) + 1;
     let built;
     try {
-      built = await buildScribaEdition(dbAdmin, { days: intervalDays, assetPrefix: String(edition) });
+      built = await buildScribaEdition(dbAdmin, { days: intervalDays, assetPrefix: String(edition), edition });
     } catch (e) {
       console.error("[scriba] generazione automatica fallita:", e);
       return; // riproverà al prossimo tick
     }
 
-    const autoSendAt = new Date(nowMs + reviewMs);
-    const html = renderScribaHtml({
-      content: built.content, edition, images: built.images, unsubUrl: scribaUnsubUrlFor("anteprima"),
-    });
-    await dbAdmin.collection("newsletters").add({
-      number: edition, status: "draft", content: built.content, images: built.images, html,
-      sources: sourceCountsOf(built.data), autoSendAt,
-      createdAt: FieldValue.serverTimestamp(), createdBy: "auto",
-    });
-
     try {
-      await buildGmailTransporter().sendMail({
-        to: DM_EMAIL, from: scribaFrom(),
-        subject: `📜 [BOZZA] Lo Scriba N. ${edition} — parte tra ${cfg.reviewHours ?? SCRIBA_REVIEW_HOURS}h salvo stop`,
-        html,
-      });
+      const r = await proposeEditionToMaster(dbAdmin, { edition, built, createdBy: "auto" });
+      console.log(`[scriba] bozza ${edition} (${r.id}) inviata al direttore per approvazione.`);
     } catch (e) {
-      console.error("[scriba] anteprima al DM fallita:", e.message);
+      console.error("[scriba] proposta al direttore fallita:", e.message);
     }
-    console.log(`[scriba] bozza ${edition} generata; auto-invio previsto ${autoSendAt.toISOString()}.`);
   }
 );
 
@@ -808,12 +802,55 @@ exports.scribaUnsubscribe = onRequest({ region: "us-central1" }, async (req, res
 });
 
 /**
- * scribaKickoff — invio MANUALE del prossimo numero (lancio del DM da riga di
- * comando, protetto da SCRIBA_SECRET). Genera dai dati reali, salva il numero
- * come "sent" e lo spedisce alla lista fissa de Lo Scriba.
+ * scribaApprove — il bottone "Approva e invia" nella mail del direttore. Spedisce
+ * il numero (bozza) alla lista de Lo Scriba e lo marca come inviato. È l'UNICA
+ * via per cui un numero raggiunge i giocatori (nessun timer).
+ */
+exports.scribaApprove = onRequest({ region: "us-central1", timeoutSeconds: 300, memory: "512MiB" }, async (req, res) => {
+  const page = (msg, ok = true) =>
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Georgia,serif;background:#f4efe3;color:#1c1813;text-align:center;padding:60px 20px;">
+     <h1 style="color:${ok ? "#2f5d2a" : "#8a261c"};">Lo Scriba</h1><p style="font-size:18px;line-height:1.5;">${msg}</p></body>`;
+  const id = String(req.query.id || "");
+  const t = String(req.query.t || "");
+  if (!id || !t || t !== scribaApproveToken(id)) {
+    res.status(400).send(page("Link di approvazione non valido o scaduto.", false));
+    return;
+  }
+  const dbAdmin = admin.firestore();
+  const ref = dbAdmin.collection("newsletters").doc(id);
+  let d;
+  try {
+    const snap = await ref.get();
+    if (!snap.exists) { res.status(404).send(page("Numero inesistente.", false)); return; }
+    d = snap.data();
+  } catch (e) {
+    res.status(500).send(page("Errore di lettura. Riprova.", false));
+    return;
+  }
+  if (d.status === "sent") {
+    res.status(200).send(page(`Il numero ${d.number} era già stato inviato. Nessuna azione.`));
+    return;
+  }
+  try {
+    const sent = await sendScribaToPlayers(dbAdmin, d);
+    await ref.update({ status: "sent", sentAt: FieldValue.serverTimestamp(), recipientCount: sent });
+    await dbAdmin.doc("settings/scriba").set(
+      { lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp() }, { merge: true },
+    );
+    res.status(200).send(page(`✓ Numero ${d.number} approvato e inviato a ${sent} lettori. Ora compare nell'archivio.`));
+  } catch (e) {
+    console.error("[scriba] approve:", e);
+    res.status(500).send(page("Errore nell'invio: " + (e.message || e), false));
+  }
+});
+
+/**
+ * scribaKickoff — genera il prossimo numero dai dati reali e lo manda al
+ * DIRETTORE con il bottone di approvazione (NON ai giocatori). Protetto da
+ * SCRIBA_SECRET. Utile per innescare a mano una proposta.
  *   ?secret=...            → obbligatorio
- *   ?dry=1                 → NON invia: restituisce destinatari + anteprima testo
- *   ?recipientsOnly=1      → (con dry) solo l'elenco destinatari, niente generazione
+ *   ?dry=1                 → NON salva/invia: restituisce anteprima testo
+ *   ?recipientsOnly=1      → (con dry) solo l'elenco destinatari finali
  */
 exports.scribaKickoff = onRequest(
   { region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
@@ -837,13 +874,14 @@ exports.scribaKickoff = onRequest(
       const cfg = await dbAdmin.doc("settings/scriba").get();
       const edition = (cfg.data()?.lastNumber || 0) + 1;
 
-      const built = await buildScribaEdition(dbAdmin, { days: SCRIBA_INTERVAL_DAYS, assetPrefix: String(edition) });
+      const built = await buildScribaEdition(dbAdmin, { days: SCRIBA_INTERVAL_DAYS, assetPrefix: String(edition), edition });
 
       if (dry) {
         res.json({
           dry: true, edition, recipients: recipients.map((r) => r.email),
           motto: built.content.edition_motto,
           lead: built.content.lead?.headline,
+          dalle_terre: (built.content.dalle_terre || []).map((a) => a.headline),
           arena: (built.content.arena || []).map((a) => a.headline),
           sources: sourceCountsOf(built.data),
           images: built.images.length,
@@ -851,24 +889,10 @@ exports.scribaKickoff = onRequest(
         return;
       }
 
-      const html = renderScribaHtml({
-        content: built.content, edition, images: built.images,
-        unsubUrl: scribaUnsubUrlFor("anteprima"),
-      });
-      const docRef = await dbAdmin.collection("newsletters").add({
-        number: edition, status: "sent", content: built.content, images: built.images, html,
-        sources: sourceCountsOf(built.data), createdAt: FieldValue.serverTimestamp(),
-        createdBy: "kickoff", sentAt: FieldValue.serverTimestamp(),
-      });
-
-      const sent = await sendScribaToPlayers(dbAdmin, { number: edition, content: built.content, images: built.images });
-      await docRef.update({ recipientCount: sent });
-      await dbAdmin.doc("settings/scriba").set(
-        { lastNumber: edition, lastSentAt: FieldValue.serverTimestamp() },
-        { merge: true },
-      );
-
-      res.json({ ok: true, id: docRef.id, edition, sent, recipients: recipients.map((r) => r.email) });
+      // NON invia ai giocatori: salva la bozza e manda la proposta al direttore
+      // con il bottone di approvazione.
+      const proposed = await proposeEditionToMaster(dbAdmin, { edition, built, createdBy: "kickoff" });
+      res.json({ ok: true, id: proposed.id, edition, proposedTo: DM_EMAIL, willSendTo: recipients.map((r) => r.email) });
     } catch (e) {
       console.error("[scriba] kickoff:", e);
       res.status(500).json({ error: String(e.message || e) });

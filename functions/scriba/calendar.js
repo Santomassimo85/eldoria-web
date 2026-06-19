@@ -23,6 +23,23 @@ const MESI_EXANTHIA = [
   "Lamafredda",// ❄️ Inverno  — Naavir
 ];
 
+// Stagione, festa/clima e divinità tutelare di ciascun mese (materia stagionale
+// per la gazzetta). Indice allineato a MESI_EXANTHIA.
+const MESI_INFO = [
+  { stagione: "Inverno",   festa: "Festa delle Lanterne",   clima: "notti lunghissime, cieli gelidi e limpidi; una lanterna a ogni finestra", divinita: "Ny'El" },
+  { stagione: "Inverno",   festa: "Le Veglie del Focolare", clima: "il mese più buio, ci si chiude in casa per notti di racconti",           divinita: "Ouh'Noct" },
+  { stagione: "Primavera", festa: "Fiera del Primo Fuoco",  clima: "il ghiaccio si rompe, riaprono fucine e mercati",                        divinita: "Vulkar" },
+  { stagione: "Primavera", festa: "",                       clima: "piogge e fiumi gonfi, fango ovunque; i viaggiatori aspettano",           divinita: "Nysia" },
+  { stagione: "Primavera", festa: "Festa della Semina",     clima: "semina e primi verdi",                                                   divinita: "Syrael" },
+  { stagione: "Estate",    festa: "",                       clima: "giornate lunghe e tiepide; il mese dei tribunali all'aperto",            divinita: "Drokhan" },
+  { stagione: "Estate",    festa: "",                       clima: "caldo torrido, notti passate sotto le stelle",                           divinita: "Enoia" },
+  { stagione: "Estate",    festa: "Carnevale delle Maschere", clima: "primi raccolti e baldoria, ci si traveste",                            divinita: "Lirael" },
+  { stagione: "Autunno",   festa: "",                       clima: "nebbie del mattino, l'aria cambia; il mese degli enigmi e dei misteri",  divinita: "Myrhal" },
+  { stagione: "Autunno",   festa: "Festa del Granaio",      clima: "il grande raccolto, tavolate e abbondanza",                              divinita: "Zenara" },
+  { stagione: "Autunno",   festa: "La Notte delle Anime",   clima: "le foglie cadono, si ricordano i morti",                                 divinita: "Kal Durr" },
+  { stagione: "Inverno",   festa: "Le Provviste",           clima: "vento tagliente, macellazione, si fa scorta per l'inverno",              divinita: "Naavir" },
+];
+
 const GIORNI_SETTIMANA = ["Aelen", "Voren", "Tarsen", "Doren", "Muren"];
 
 const GIORNI_PER_MESE = 30;
@@ -72,7 +89,18 @@ function exanthiaMonthKey(number) {
   };
 }
 
+/** Stagione/festa/clima/divinità del mese del numero (per la materia stagionale). */
+function exanthiaMonthInfo(number) {
+  const d = exanthiaDate(number);
+  const info = MESI_INFO[d.monthIndex] || {};
+  return {
+    giorno: d.day, mese: d.month, anno: d.year,
+    stagione: info.stagione || "", festa: info.festa || "",
+    clima: info.clima || "", divinita: info.divinita || "",
+  };
+}
+
 module.exports = {
-  MESI_EXANTHIA, GIORNI_SETTIMANA, GIORNO_TESTATA, SOTTOTITOLO_TESTATA, ANNO_BASE,
-  exanthiaDate, exanthiaDateLabel, exanthiaMonthKey,
+  MESI_EXANTHIA, MESI_INFO, GIORNI_SETTIMANA, GIORNO_TESTATA, SOTTOTITOLO_TESTATA, ANNO_BASE,
+  exanthiaDate, exanthiaDateLabel, exanthiaMonthKey, exanthiaMonthInfo,
 };

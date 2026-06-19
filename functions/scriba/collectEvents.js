@@ -9,6 +9,9 @@
 // Tutte le collection del progetto sono piccole (campagna privata): leggiamo
 // tutto e filtriamo in memoria, così non servono indici compositi.
 
+const { CONTINENTI } = require("./places");
+const { exanthiaMonthInfo } = require("./calendar");
+
 const stripHtml = (html) =>
     String(html ?? "")
         .replace(/<[^>]*>/g, " ")
@@ -43,8 +46,12 @@ async function loadCharacters(db) {
     }
 }
 
-// ── Riassunti di sessione (fonte primaria: il mondo reagisce a questi) ──────
-async function collectSummaries(db, fromMs) {
+// ── Dossier riservato (riassunti di sessione) ───────────────────────────────
+// NON è materiale da pubblicare: serve solo a far conoscere all'agent lo stato
+// del mondo (tensioni, umori, sfondo). Il giornale NON deve raccontare queste
+// vicende né nominare gli avventurieri. Per questo passiamo solo titoli + un
+// sunto BREVE: contesto, non cronaca.
+async function collectDossier(db, fromMs) {
     let docs = [];
     try {
         const snap = await db.collection("summaries").get();
@@ -56,15 +63,36 @@ async function collectSummaries(db, fromMs) {
     docs.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 
     let inWindow = docs.filter((s) => toMillis(s.createdAt) >= fromMs);
-    // Garantiamo materia anche nei periodi tranquilli: almeno i 3 più recenti.
     if (inWindow.length < 3) inWindow = docs.slice(0, 3);
 
     return inWindow.slice(0, 8).map((s) => ({
         titolo: s.title || "Senza titolo",
-        sottotitolo: s.subTitle || "",
-        data: s.date || "",
-        racconto: truncate(stripHtml(s.content), 900),
+        sfondo: truncate(stripHtml(s.content), 320),
     }));
+}
+
+// ── Numero precedente (continuità: il mondo prosegue, non riparte) ──────────
+async function collectPreviousIssue(db, edition) {
+    if (!edition || edition <= 1) return null;
+    let docs = [];
+    try {
+        const snap = await db.collection("newsletters").where("status", "==", "sent").get();
+        docs = snap.docs.map((d) => d.data());
+    } catch (e) {
+        console.error("[scriba] newsletters (prev):", e);
+        return null;
+    }
+    const prev = docs
+        .filter((d) => Number(d.number) < edition)
+        .sort((a, b) => Number(b.number) - Number(a.number))[0];
+    if (!prev || !prev.content) return null;
+    const c = prev.content;
+    const heads = (arr) => (Array.isArray(arr) ? arr.map((a) => a.headline).filter(Boolean) : []);
+    return {
+        numero: prev.number,
+        motto: c.edition_motto || "",
+        titoli: [c.lead?.headline, ...heads(c.dalle_terre), ...heads(c.arena)].filter(Boolean).slice(0, 8),
+    };
 }
 
 // ── Arene / tornei di gladiatori (con RAZZA dei combattenti) ────────────────
@@ -216,33 +244,42 @@ async function collectQuests(db) {
 /**
  * Raccoglie il briefing per Lo Scriba.
  * @param {FirebaseFirestore.Firestore} db
- * @param {{days?: number}} opts
+ * @param {{days?: number, edition?: number}} opts
  */
-async function collectScribaData(db, { days = 10 } = {}) {
+async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
     const toMs = Date.now();
     const fromMs = toMs - days * 24 * 60 * 60 * 1000;
 
     const characters = await loadCharacters(db);
 
-    const [riassunti, arene, mercato, npcs, incarichi] = await Promise.all([
-        collectSummaries(db, fromMs),
+    const [dossier, arene, mercato, npcs, incarichi, numeroPrecedente] = await Promise.all([
+        collectDossier(db, fromMs),
         collectArenas(db, fromMs, characters),
         collectMarket(db, fromMs),
         collectNpcs(db),
         collectQuests(db),
+        collectPreviousIssue(db, edition),
     ]);
 
     return {
         periodoGiorni: days,
-        dal: new Date(fromMs).toISOString(),
-        al: new Date(toMs).toISOString(),
-        riassunti,
+        // Cornice temporale del mondo: stagione, festa e divinità del mese.
+        mese: exanthiaMonthInfo(edition),
+        // Geografia reale: l'ossatura su cui ancorare le notizie.
+        geografia: CONTINENTI,
+        // Cronaca dell'arena (sport): campioni e sfide recenti, da pubblicare.
         arene,
+        // Mercato/aste: da pubblicare in chiave di costume.
         mercato,
-        // Conoscenza del mondo: contesto per coerenza, NON necessariamente da pubblicare.
+        // Anagrafe del reame: usala per coerenza di nomi/razze/luoghi.
         npcNoti: npcs,
         eroiDelReame: summarizeHeroes(characters),
         incarichiAperti: incarichi,
+        // Continuità con l'uscita precedente (titoli, per dare seguito).
+        numeroPrecedente,
+        // DOSSIER RISERVATO: solo per consapevolezza. NON pubblicare, NON citare
+        // gli avventurieri né le loro imprese. Sfondo, non cronaca.
+        dossierRiservato: dossier,
     };
 }
 

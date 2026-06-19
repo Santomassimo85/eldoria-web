@@ -1,32 +1,18 @@
 // functions/scriba/_sampleData.js
-// Dati d'esempio (mimano collectScribaData) per le prove locali dello Scriba.
-// Rispecchiano la forma REALE prodotta da collectEvents.js (con razze, NPC,
-// eroi e incarichi) così l'anteprima locale mostra anche la sezione Arena.
+// Dati d'esempio (mimano collectScribaData NELLA NUOVA FORMA) per le prove
+// locali dello Scriba: mese/stagione, geografia reale, dossier RISERVATO (da
+// NON pubblicare), arena, mercato, anagrafe e numero precedente.
+const { CONTINENTI } = require("./places");
+const { exanthiaMonthInfo } = require("./calendar");
+
 module.exports = {
     periodoGiorni: 10,
-    dal: "(prova)",
-    al: "(prova)",
-    riassunti: [
-        {
-            titolo: "Il crollo del Ponte di Valmorra",
-            sottotitolo: "La compagnia fugge dalle fogne",
-            data: "Recente",
-            racconto:
-                "Gli avventurieri, inseguiti da una banda di contrabbandieri, hanno fatto " +
-                "saltare i piloni del vecchio Ponte di Valmorra per coprirsi la fuga. Il " +
-                "ponte, arteria commerciale tra il quartiere dei conciatori e il mercato " +
-                "basso, è precipitato nel canale. Nessun morto tra i popolani, ma tre " +
-                "carri di merci perduti e il traffico cittadino in ginocchio.",
-        },
-        {
-            titolo: "Patto con la Strega delle Paludi",
-            sottotitolo: "",
-            data: "Recente",
-            racconto:
-                "Per ottenere un antidoto raro, il gruppo ha stretto un patto con Yssolde, " +
-                "la strega che abita le Paludi di Cenere. Si dice abbia chiesto in cambio " +
-                "un favore da riscuotere 'quando le tre lune saranno allineate'.",
-        },
+    mese: exanthiaMonthInfo(1), // Solleone, estate
+    geografia: CONTINENTI,
+    // DOSSIER RISERVATO — solo sfondo, NON pubblicabile (mima i riassunti).
+    dossierRiservato: [
+        { titolo: "Il crollo del Ponte di Valmorra", sfondo: "Una compagnia in fuga dai contrabbandieri ha fatto saltare i piloni del ponte; tre carri di merci perduti." },
+        { titolo: "Patto con la Strega delle Paludi", sfondo: "Per un antidoto, è stato stretto un patto con Yssolde delle Paludi di Cenere." },
     ],
     arene: [
         {
@@ -51,8 +37,8 @@ module.exports = {
         ],
     },
     npcNoti: [
-        { nome: "Maestro Aldwyn", citta: "Capitale dei Sette", fazione: "Ordine del Pentacolo", descrizione: "Anziano arcanista, custode della Torre Sommersa." },
-        { nome: "Bargello Korr", citta: "Mercato Basso", fazione: "Guardia Cittadina", descrizione: "Capo delle guardie, ossessionato dai contrabbandieri." },
+        { nome: "Maestro Aldwyn", citta: "Tirrendale", fazione: "Ordine del Pentacolo", descrizione: "Anziano arcanista, custode del Sacello Antico." },
+        { nome: "Bargello Korr", citta: "Helmvil", fazione: "Guardia Cittadina", descrizione: "Capo delle guardie, ossessionato dai contrabbandieri del Liriath." },
     ],
     eroiDelReame: [
         { nome: "Tanagar", razza: "Umano", ruolo: "guerriero" },
@@ -60,6 +46,7 @@ module.exports = {
         { nome: "Cleofe", razza: "Mezzelfa", ruolo: "ladra" },
     ],
     incarichiAperti: [
-        { titolo: "Recupera il Calice Perduto", zona: "Foresta Sussurrante", difficolta: "Media", ricompensa: "500 monete d'oro", descrizione: "Una reliquia trafugata da una cripta nei boschi.", stato: "available" },
+        { titolo: "Recupera il Calice Perduto", zona: "Selva Silente", difficolta: "Media", ricompensa: "500 monete d'oro", descrizione: "Reliquia trafugata da una cripta.", stato: "available" },
     ],
+    numeroPrecedente: null,
 };

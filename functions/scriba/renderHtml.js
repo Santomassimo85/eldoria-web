@@ -79,7 +79,7 @@ function sectionBlock(heading, articles, images = []) {
  * }} args
  * @returns {string} HTML completo
  */
-function renderScribaHtml({ content, edition, unsubUrl = "", images = [] }) {
+function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approveUrl = "" }) {
     // La data è in-world: derivata dal NUMERO del giornale (n.1 = 10 di Solleone),
     // non dalla data reale di spedizione.
     const dateLabel = exanthiaDateLabel(edition);
@@ -96,6 +96,18 @@ function renderScribaHtml({ content, edition, unsubUrl = "", images = [] }) {
     const unsub = unsubUrl
         ? `Non vuoi più ricevere Lo Scriba? <a href="${esc(unsubUrl)}" style="color:#7a1f12;">Disiscriviti</a>.`
         : "";
+
+    // Banner di approvazione: SOLO nella copia del master (mai ai giocatori).
+    const approveBanner = approveUrl ? `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1c1813;">
+    <tr><td align="center" style="padding:18px 16px;">
+      <div style="font-family:${FONT_BODY};font-size:13px;color:#f4efe3;padding-bottom:12px;line-height:1.5;">
+        📰 <strong>Anteprima per il Direttore</strong> — questo numero NON è ancora stato inviato ai giocatori.<br>
+        Approva qui sotto per spedirlo alla lista. (Questo riquadro non comparirà nella copia dei lettori.)
+      </div>
+      <a href="${esc(approveUrl)}" style="display:inline-block;background:#c9a227;color:#1c1813;font-family:${FONT_TITLE};font-weight:700;font-size:15px;letter-spacing:1px;text-decoration:none;padding:13px 28px;border-radius:6px;">✓ APPROVA E INVIA AI GIOCATORI</a>
+    </td></tr>
+  </table>` : "";
 
     return `<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -120,6 +132,7 @@ function renderScribaHtml({ content, edition, unsubUrl = "", images = [] }) {
 </style>
 <title>Lo Scriba — N. ${edition}</title></head>
 <body style="margin:0;padding:0;background:#ece3d0;">
+  ${approveBanner}
   <table role="presentation" class="sc-outer" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ece3d0;">
     <tr><td align="center" style="padding:24px 12px;">
       <table role="presentation" class="sc-paper" width="620" cellpadding="0" cellspacing="0" border="0" style="width:620px;max-width:100%;background:#f4efe3;border:1px solid #cdbfa3;">

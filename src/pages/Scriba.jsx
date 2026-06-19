@@ -9,11 +9,14 @@
 // (src/data/scribaSample.json) così la pagina è già visibile/recensibile.
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { useAuth } from "../AuthContext";
 import sampleIssues from "../data/scribaSample.json";
 import { exanthiaDateLabel, exanthiaMonthKey } from "../data/exanthiaCalendar";
 import "./Scriba.css";
+
+const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 
 // Le date sono IN-WORLD (calendario di Exanthia), derivate dal NUMERO del
 // giornale: il n.1 esce il 10 di Solleone, +2 giorni a numero.
@@ -21,11 +24,30 @@ const fmtDate = (it) => exanthiaDateLabel(it?.number);
 const monthKey = (it) => exanthiaMonthKey(it?.number);
 
 export default function Scriba() {
+  const { currentUser } = useAuth();
+  const isMaster = currentUser && MASTER_EMAILS.includes(currentUser.email);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(null);
   const [term, setTerm] = useState("");
   const [mese, setMese] = useState("");
+
+  // Solo il master: rimuove un numero dall'archivio (Firestore). Gli esempi
+  // bundlati (id "sample-…") non sono su Firestore, non si eliminano.
+  const removeIssue = async (it) => {
+    if (!isMaster) return;
+    if (String(it.id).startsWith("sample-")) {
+      alert("Questo è un numero d'esempio (non è nell'archivio reale).");
+      return;
+    }
+    if (!window.confirm(`Eliminare il Numero ${it.number} dall'archivio? L'azione è definitiva.`)) return;
+    try {
+      await deleteDoc(doc(db, "newsletters", it.id));
+      if (open === it.id) setOpen(null);
+    } catch (e) {
+      alert("Eliminazione non riuscita: " + (e?.message || e));
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, "newsletters"), where("status", "==", "sent"));
@@ -113,7 +135,18 @@ export default function Scriba() {
             <h2 className="scriba-month-title">{g.label}</h2>
             <div className="scriba-grid">
               {g.items.map((it) => (
-                <button key={it.id} className="scriba-card" type="button" onClick={() => setOpen(it.id)}>
+                <div key={it.id} className="scriba-card-wrap" style={{ position: "relative" }}>
+                {isMaster && !String(it.id).startsWith("sample-") && (
+                  <button
+                    type="button"
+                    className="scriba-del"
+                    title="Elimina questo numero"
+                    aria-label="Elimina questo numero"
+                    onClick={(e) => { e.stopPropagation(); removeIssue(it); }}
+                    style={{ position: "absolute", top: 8, right: 8, zIndex: 2, background: "rgba(138,38,28,.92)", color: "#fff", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 15, lineHeight: 1 }}
+                  >🗑</button>
+                )}
+                <button className="scriba-card" type="button" onClick={() => setOpen(it.id)}>
                   {it.images?.[0]?.url ? (
                     <div className="scriba-card-thumb" style={{ backgroundImage: `url(${it.images[0].url})` }} aria-hidden="true" />
                   ) : (
@@ -131,6 +164,7 @@ export default function Scriba() {
                     <span className="scriba-card-cue">Leggi ›</span>
                   </div>
                 </button>
+                </div>
               ))}
             </div>
           </section>
