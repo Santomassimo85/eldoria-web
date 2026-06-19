@@ -1,6 +1,47 @@
 {
   "versions": [
     {
+      "version": "44",
+      "date": "2026-06-19",
+      "title": "Lo Scriba — la gazzetta del mondo",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Debutta «Lo Scriba», la gazzetta periodica del mondo: un numero illustrato che racconta le conseguenze degli avvenimenti delle ultime giornate, le voci di taverna, i listini del mercato e le cronache dell'Arena Vermiglia. Viene recapitato via posta e resta consultabile nell'archivio alla pagina Lo Scriba (sezione Mondo)."
+        },
+        {
+          "type": "feature",
+          "text": "Le date della gazzetta seguono il calendario di Exanthia: dodici mesi (da Gelalba a Lamafredda), settimana di cinque giorni e l'insegna fissa «La Gazzetta del Voren»."
+        },
+        {
+          "type": "feature",
+          "text": "Ogni numero attinge alla conoscenza completa del reame — figure note, eroi, incarichi aperti e albo dei campioni dell'Arena Vermiglia — per restare coerente con nomi, luoghi e razze. In fondo a ogni gazzetta un collegamento porta all'archivio di tutti i numeri."
+        }
+      ]
+    },
+    {
+      "version": "43.05",
+      "date": "2026-06-18",
+      "title": "TCG: le reazioni emoji sulle carte sono affidabili",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Le emoji di reazione applicate a una carta (pressione prolungata su una creatura avversaria) potevano non comparire sullo schermo dell'altro giocatore: lo snapshot che porta la reazione forza un re-render del tavolo, e il posizionamento dell'emoji veniva calcolato un attimo prima che il layout fosse pronto, facendo «sparire» la reazione. Ora il posizionamento riprova ai frame successivi e, come ultima risorsa, mostra comunque la reazione al centro: l'emoji è sempre visibile a entrambi i giocatori."
+        }
+      ]
+    },
+    {
+      "version": "43.04",
+      "date": "2026-06-18",
+      "title": "Arena: la morte da danno periodico viene registrata",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Quando un combattente veniva abbattuto da un effetto a danno periodico (veleno, sanguinamento, fuoco) all'inizio del proprio turno, il match restava bloccato: gli HP scendevano a 0 ma la sconfitta non veniva dichiarata e il turno non avanzava. Ora il danno periodico chiude correttamente il match dichiarando il vincitore (o, nelle risse a più giocatori, passa il turno al combattente successivo)."
+        }
+      ]
+    },
+    {
       "version": "43.03",
       "date": "2026-06-17",
       "title": "Arena: il Barbaro combatte senza armatura",

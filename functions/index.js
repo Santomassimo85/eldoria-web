@@ -11,6 +11,13 @@ const DM_EMAIL = 'santomassimo85@gmail.com';
 // Le credenziali per l'invio verranno prese dalle variabili d'ambiente
 const gmailEmailParam = defineString("GMAIL_EMAIL");
 const gmailAppPasswordParam = defineString("GMAIL_APP_PASSWORD");
+// Chiave API di Anthropic (Claude) per "Lo Scriba".
+const anthropicKeyParam = defineString("ANTHROPIC_API_KEY");
+// Chiave API di Google Gemini per le illustrazioni de "Lo Scriba".
+const geminiKeyParam = defineString("GEMINI_API_KEY");
+// Segreto per i token di disiscrizione; URL (opzionale) della funzione di disiscrizione.
+const scribaSecretParam = defineString("SCRIBA_SECRET");
+const scribaUnsubUrlParam = defineString("SCRIBA_UNSUB_URL");
 
 // --- RILEVAZIONE AMBIENTE ---
 const isEmulator = process.env.FUNCTIONS_EMULATOR === "true" || process.env.FIREBASE_EMULATOR_HUB;
@@ -503,3 +510,368 @@ exports.pushOnTcgTournamentUpdate = onDocumentUpdated('tcg_tournament/global', a
     });
   }
 });
+
+// ========================================================================
+//  LO SCRIBA — gazzetta periodica del mondo, scritta da Claude
+// ========================================================================
+
+const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https");
+const crypto = require("crypto");
+const { collectScribaData } = require("./scriba/collectEvents");
+const { generateScribaContent } = require("./scriba/prompt");
+const { renderScribaHtml, italianDateLabel } = require("./scriba/renderHtml");
+const { generateIllustrations } = require("./scriba/images");
+const { getScribaRecipients } = require("./scriba/recipients");
+
+// Master + co-master: gli unici che possono pilotare Lo Scriba a mano.
+const SCRIBA_MASTERS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
+const SCRIBA_INTERVAL_DAYS = 10; // cadenza
+const SCRIBA_REVIEW_HOURS = 24;  // finestra di revisione prima dell'auto-invio (A1)
+
+function buildGmailTransporter() {
+  const gmailEmail = gmailEmailParam.value();
+  const gmailAppPassword = gmailAppPasswordParam.value();
+  if (!gmailEmail || !gmailAppPassword) {
+    throw new Error("Credenziali Gmail non configurate.");
+  }
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: gmailEmail, pass: gmailAppPassword },
+  });
+}
+
+function scribaFrom() {
+  return `"Lo Scriba" <${gmailEmailParam.value()}>`;
+}
+
+// --- Disiscrizione: token HMAC + URL (link funzione se configurata, altrimenti mailto) ---
+function scribaUnsubToken(uid) {
+  const secret = scribaSecretParam.value() || "scriba-fallback-secret";
+  return crypto.createHmac("sha256", secret).update(String(uid)).digest("hex");
+}
+function scribaUnsubUrlFor(uid) {
+  const base = (scribaUnsubUrlParam.value() || "").trim();
+  if (!base) return `mailto:${DM_EMAIL}?subject=${encodeURIComponent("Disiscrizione da Lo Scriba")}`;
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}uid=${encodeURIComponent(uid)}&t=${scribaUnsubToken(uid)}`;
+}
+
+const sourceCountsOf = (data) => ({
+  riassunti: data.riassunti.length,
+  arene: data.arene.length,
+  mercatoVenduti: data.mercato.venduti.length,
+  mercatoInVendita: data.mercato.inVendita.length,
+});
+
+/**
+ * Costruisce un numero completo: dati → testo (Claude) → 2-3 immagini (Gemini,
+ * best-effort) caricate su Storage sotto `scriba/<assetPrefix>/`.
+ */
+async function buildScribaEdition(dbAdmin, { days, assetPrefix }) {
+  const data = await collectScribaData(dbAdmin, { days });
+  const content = await generateScribaContent({ apiKey: anthropicKeyParam.value(), data });
+  let images = [];
+  try {
+    images = await generateIllustrations({
+      geminiKey: geminiKeyParam.value(),
+      illustrations: content.illustrations || [],
+      bucket: admin.storage().bucket(),
+      prefix: `scriba/${assetPrefix}`,
+    });
+  } catch (e) {
+    console.error("[scriba] immagini fallite:", e.message);
+  }
+  return { data, content, images };
+}
+
+/** Invia un numero salvato a tutti i giocatori iscritti. Ritorna il conteggio. */
+async function sendScribaToPlayers(dbAdmin, editionDoc) {
+  const recipients = await getScribaRecipients(dbAdmin, admin);
+  if (!recipients.length) return 0;
+  const transporter = buildGmailTransporter();
+  const from = scribaFrom();
+  const subject = `📜 Lo Scriba N. ${editionDoc.number} — ${italianDateLabel(editionDoc.number)}`;
+  let sent = 0;
+  for (const r of recipients) {
+    const html = renderScribaHtml({
+      content: editionDoc.content,
+      edition: editionDoc.number,
+      images: editionDoc.images || [],
+      unsubUrl: scribaUnsubUrlFor(r.uid),
+    });
+    try {
+      await transporter.sendMail({ to: r.email, from, subject, html });
+      sent++;
+    } catch (e) {
+      console.error(`[scriba] invio a ${r.email} fallito:`, e.message);
+    }
+  }
+  return sent;
+}
+
+/**
+ * scribaPreview — genera un numero e lo manda in mail SOLO al master che lo
+ * richiede (per provare a mano). Salva la bozza con stato "preview".
+ */
+exports.scribaPreview = onCall(
+  { region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
+  async (request) => {
+    const email = request.auth?.token?.email;
+    if (!email || !SCRIBA_MASTERS.includes(email)) {
+      throw new HttpsError("permission-denied", "Solo il master può generare Lo Scriba.");
+    }
+    const dbAdmin = admin.firestore();
+    const days = Number(request.data?.days) || SCRIBA_INTERVAL_DAYS;
+
+    let edition = 1;
+    try {
+      const cfg = await dbAdmin.doc("settings/scriba").get();
+      edition = (cfg.data()?.lastNumber || 0) + 1;
+    } catch (_) { /* default 1 */ }
+
+    let built;
+    try {
+      built = await buildScribaEdition(dbAdmin, { days, assetPrefix: `preview-${edition}` });
+    } catch (e) {
+      console.error("[scriba] generazione fallita:", e);
+      throw new HttpsError("internal", `Generazione fallita: ${e.message}`);
+    }
+
+    const html = renderScribaHtml({
+      content: built.content, edition, images: built.images,
+      unsubUrl: scribaUnsubUrlFor("anteprima"),
+    });
+    const docRef = await dbAdmin.collection("newsletters").add({
+      number: edition, status: "preview", content: built.content, images: built.images, html,
+      sources: sourceCountsOf(built.data), createdAt: FieldValue.serverTimestamp(), createdBy: email,
+    });
+
+    try {
+      await buildGmailTransporter().sendMail({
+        to: email, from: scribaFrom(),
+        subject: `📜 [ANTEPRIMA] Lo Scriba N. ${edition} — ${italianDateLabel(edition)}`,
+        html,
+      });
+    } catch (e) {
+      console.error("[scriba] invio anteprima fallito:", e);
+      throw new HttpsError("internal", `Numero generato (id ${docRef.id}) ma invio mail fallito: ${e.message}`);
+    }
+
+    return { ok: true, id: docRef.id, edition, sentTo: email, images: built.images.length, sources: sourceCountsOf(built.data) };
+  }
+);
+
+/** scribaSendNow — invia subito un numero ai giocatori (pulsante "Invia ora" del pannello). */
+exports.scribaSendNow = onCall(
+  { region: "us-central1", timeoutSeconds: 300, memory: "512MiB" },
+  async (request) => {
+    const email = request.auth?.token?.email;
+    if (!email || !SCRIBA_MASTERS.includes(email)) {
+      throw new HttpsError("permission-denied", "Solo il master può inviare Lo Scriba.");
+    }
+    const id = String(request.data?.id || "");
+    if (!id) throw new HttpsError("invalid-argument", "id del numero mancante.");
+
+    const dbAdmin = admin.firestore();
+    const ref = dbAdmin.collection("newsletters").doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Numero inesistente.");
+    const d = snap.data();
+    if (d.status === "sent") throw new HttpsError("failed-precondition", "Numero già inviato.");
+
+    const sent = await sendScribaToPlayers(dbAdmin, d);
+    await ref.update({ status: "sent", sentAt: FieldValue.serverTimestamp(), recipientCount: sent });
+    await dbAdmin.doc("settings/scriba").set(
+      { lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    return { ok: true, sent };
+  }
+);
+
+/**
+ * scribaTick — il cuore autonomo (gira ogni ora). Senza alcun intervento:
+ *  A) se c'è una bozza in attesa e la finestra di revisione è scaduta (o è
+ *     stata approvata dal pannello), la invia a tutti i giocatori (modalità A1);
+ *  B) altrimenti, se sono passati 10 giorni dall'ultimo numero, ne genera uno
+ *     nuovo (testo + immagini), lo salva come bozza e ne manda l'anteprima al
+ *     master, programmando l'auto-invio a +24h.
+ */
+exports.scribaTick = onSchedule(
+  { schedule: "every 1 hours", timeZone: "Europe/Rome", region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
+  async () => {
+    const dbAdmin = admin.firestore();
+    const cfgRef = dbAdmin.doc("settings/scriba");
+    const cfgSnap = await cfgRef.get();
+
+    // Prima esecuzione: crea la config e parte il conto alla rovescia (primo
+    // numero ~10 giorni dopo). Per generarne uno subito, usa scribaPreview.
+    if (!cfgSnap.exists) {
+      await cfgRef.set({
+        enabled: true,
+        intervalDays: SCRIBA_INTERVAL_DAYS,
+        reviewHours: SCRIBA_REVIEW_HOURS,
+        lastNumber: 0,
+        lastSentAt: FieldValue.serverTimestamp(),
+      });
+      console.log("[scriba] config creata. Primo numero tra ~10 giorni.");
+      return;
+    }
+
+    const cfg = cfgSnap.data();
+    if (cfg.enabled === false) { console.log("[scriba] disattivato (settings/scriba.enabled=false)."); return; }
+
+    const intervalDays = cfg.intervalDays || SCRIBA_INTERVAL_DAYS;
+    const reviewMs = (cfg.reviewHours ?? SCRIBA_REVIEW_HOURS) * 60 * 60 * 1000;
+    const nowMs = Date.now();
+
+    // --- A) Bozza in attesa? Gestisci l'auto-invio (A1) ---
+    const pending = await dbAdmin.collection("newsletters")
+      .where("status", "in", ["draft", "approved"]).limit(1).get();
+    if (!pending.empty) {
+      const docRef = pending.docs[0].ref;
+      const d = pending.docs[0].data();
+      const autoMs = d.autoSendAt?.toMillis ? d.autoSendAt.toMillis() : 0;
+      const due = d.status === "approved" || (autoMs && nowMs >= autoMs);
+      if (!due) { console.log("[scriba] bozza in attesa, finestra di revisione non scaduta."); return; }
+
+      const sent = await sendScribaToPlayers(dbAdmin, d);
+      await docRef.update({ status: "sent", sentAt: FieldValue.serverTimestamp(), recipientCount: sent });
+      await cfgRef.update({ lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp() });
+
+      try {
+        await buildGmailTransporter().sendMail({
+          to: DM_EMAIL, from: scribaFrom(),
+          subject: `✅ Lo Scriba N. ${d.number} inviato a ${sent} lettori`,
+          html: `<p>Il numero ${d.number} de Lo Scriba è stato spedito a ${sent} giocatori.</p>`,
+        });
+      } catch (_) { /* notifica non critica */ }
+      console.log(`[scriba] numero ${d.number} inviato a ${sent} lettori.`);
+      return;
+    }
+
+    // --- B) È ora di generare un nuovo numero? ---
+    const lastSentMs = cfg.lastSentAt?.toMillis ? cfg.lastSentAt.toMillis() : 0;
+    if (lastSentMs && (nowMs - lastSentMs) < intervalDays * 24 * 60 * 60 * 1000) return;
+
+    const edition = (cfg.lastNumber || 0) + 1;
+    let built;
+    try {
+      built = await buildScribaEdition(dbAdmin, { days: intervalDays, assetPrefix: String(edition) });
+    } catch (e) {
+      console.error("[scriba] generazione automatica fallita:", e);
+      return; // riproverà al prossimo tick
+    }
+
+    const autoSendAt = new Date(nowMs + reviewMs);
+    const html = renderScribaHtml({
+      content: built.content, edition, images: built.images, unsubUrl: scribaUnsubUrlFor("anteprima"),
+    });
+    await dbAdmin.collection("newsletters").add({
+      number: edition, status: "draft", content: built.content, images: built.images, html,
+      sources: sourceCountsOf(built.data), autoSendAt,
+      createdAt: FieldValue.serverTimestamp(), createdBy: "auto",
+    });
+
+    try {
+      await buildGmailTransporter().sendMail({
+        to: DM_EMAIL, from: scribaFrom(),
+        subject: `📜 [BOZZA] Lo Scriba N. ${edition} — parte tra ${cfg.reviewHours ?? SCRIBA_REVIEW_HOURS}h salvo stop`,
+        html,
+      });
+    } catch (e) {
+      console.error("[scriba] anteprima al DM fallita:", e.message);
+    }
+    console.log(`[scriba] bozza ${edition} generata; auto-invio previsto ${autoSendAt.toISOString()}.`);
+  }
+);
+
+/** scribaUnsubscribe — disiscrive un giocatore (link in fondo alla mail). */
+exports.scribaUnsubscribe = onRequest({ region: "us-central1" }, async (req, res) => {
+  const page = (msg) =>
+    `<!doctype html><meta charset="utf-8"><body style="font-family:Georgia,serif;background:#f4efe3;color:#1c1813;text-align:center;padding:60px 20px;">
+     <h1 style="color:#7a1f12;">Lo Scriba</h1><p style="font-size:18px;">${msg}</p></body>`;
+  const uid = String(req.query.uid || "");
+  const t = String(req.query.t || "");
+  if (!uid || !t || t !== scribaUnsubToken(uid)) {
+    res.status(400).send(page("Link di disiscrizione non valido."));
+    return;
+  }
+  try {
+    await admin.firestore().doc(`characters/${uid}`).set({ newsletterOptIn: false }, { merge: true });
+  } catch (e) {
+    console.error("[scriba] unsubscribe:", e);
+    res.status(500).send(page("Errore momentaneo. Riprova più tardi."));
+    return;
+  }
+  res.status(200).send(page("Sei stato disiscritto da Lo Scriba. Non riceverai più la gazzetta."));
+});
+
+/**
+ * scribaKickoff — invio MANUALE del prossimo numero (lancio del DM da riga di
+ * comando, protetto da SCRIBA_SECRET). Genera dai dati reali, salva il numero
+ * come "sent" e lo spedisce alla lista fissa de Lo Scriba.
+ *   ?secret=...            → obbligatorio
+ *   ?dry=1                 → NON invia: restituisce destinatari + anteprima testo
+ *   ?recipientsOnly=1      → (con dry) solo l'elenco destinatari, niente generazione
+ */
+exports.scribaKickoff = onRequest(
+  { region: "us-central1", timeoutSeconds: 540, memory: "1GiB" },
+  async (req, res) => {
+    const secret = String(req.query.secret || req.get("x-scriba-secret") || "");
+    if (!secret || secret !== scribaSecretParam.value()) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const dbAdmin = admin.firestore();
+    const dry = String(req.query.dry || "") === "1";
+
+    try {
+      const recipients = await getScribaRecipients(dbAdmin, admin);
+
+      if (dry && String(req.query.recipientsOnly || "") === "1") {
+        res.json({ dry: true, count: recipients.length, recipients });
+        return;
+      }
+
+      const cfg = await dbAdmin.doc("settings/scriba").get();
+      const edition = (cfg.data()?.lastNumber || 0) + 1;
+
+      const built = await buildScribaEdition(dbAdmin, { days: SCRIBA_INTERVAL_DAYS, assetPrefix: String(edition) });
+
+      if (dry) {
+        res.json({
+          dry: true, edition, recipients: recipients.map((r) => r.email),
+          motto: built.content.edition_motto,
+          lead: built.content.lead?.headline,
+          arena: (built.content.arena || []).map((a) => a.headline),
+          sources: sourceCountsOf(built.data),
+          images: built.images.length,
+        });
+        return;
+      }
+
+      const html = renderScribaHtml({
+        content: built.content, edition, images: built.images,
+        unsubUrl: scribaUnsubUrlFor("anteprima"),
+      });
+      const docRef = await dbAdmin.collection("newsletters").add({
+        number: edition, status: "sent", content: built.content, images: built.images, html,
+        sources: sourceCountsOf(built.data), createdAt: FieldValue.serverTimestamp(),
+        createdBy: "kickoff", sentAt: FieldValue.serverTimestamp(),
+      });
+
+      const sent = await sendScribaToPlayers(dbAdmin, { number: edition, content: built.content, images: built.images });
+      await docRef.update({ recipientCount: sent });
+      await dbAdmin.doc("settings/scriba").set(
+        { lastNumber: edition, lastSentAt: FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+
+      res.json({ ok: true, id: docRef.id, edition, sent, recipients: recipients.map((r) => r.email) });
+    } catch (e) {
+      console.error("[scriba] kickoff:", e);
+      res.status(500).json({ error: String(e.message || e) });
+    }
+  },
+);

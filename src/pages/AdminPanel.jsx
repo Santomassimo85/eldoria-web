@@ -37,6 +37,7 @@ export default function AdminPanel() {
       items: [
         { icon: "🗺", label: "Geomantia",        desc: "Mappe, lore delle città e ping NPC.",                 path: "/dm-admin/geo" },
         { icon: "📜", label: "Session Summaries",desc: "Log narrativi delle ultime avventure.",               path: "/dm-admin/summaries" },
+        { icon: "✒️", label: "Lo Scriba",        desc: "La gazzetta del mondo: genera un'anteprima.",         path: "/dm-admin/scriba" },
         { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni delle sessioni.",            path: "/dm-admin/videos" },
         { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
         { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",                   path: "/dm-admin/quests" },

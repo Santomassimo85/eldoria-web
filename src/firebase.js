@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 import { getMessaging, isSupported } from "firebase/messaging";
 
 // Legge i valori dal file .env.local
@@ -20,6 +21,8 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+// Cloud Functions callable (regione us-central1, come da deploy).
+export const functions = getFunctions(app, "us-central1");
 
 // Lazy messaging — only initialized when supported (HTTPS + browser support)
 export const getMessagingIfSupported = async () => {

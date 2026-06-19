@@ -6013,6 +6013,15 @@ export default function Arena() {
       });
       const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
       const log = `${icon} ${myName} subisce il ${sourceLabel}: ${poisonDmg} danni [🎲${dice}=${poisonRolls}]!`;
+      // Morte da DoT: se il danno periodico abbatte il giocatore a inizio turno,
+      // chiudi il match (o passa il turno in FFA) come fa un attacco normale.
+      const meAfter = updatedPlayers.find(p => p.id === currentUser.uid);
+      if (meAfter && meAfter.hp <= 0) {
+        const alive = updatedPlayers.filter(p => p.hp > 0);
+        if (alive.length === 1)
+          return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      }
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
@@ -6052,6 +6061,15 @@ export default function Arena() {
       });
       const { players: updatedPlayers, extraLogs } = processWsKnockouts(rawPlayers);
       const log = `${icon} ${myName} subisce il ${sourceLabel}: ${bleedDmg} danni [🎲${dice}=${bleedRolls}]!`;
+      // Morte da DoT: se il sanguinamento abbatte il giocatore a inizio turno,
+      // chiudi il match (o passa il turno in FFA) come fa un attacco normale.
+      const meAfter = updatedPlayers.find(p => p.id === currentUser.uid);
+      if (meAfter && meAfter.hp <= 0) {
+        const alive = updatedPlayers.filter(p => p.hp > 0);
+        if (alive.length === 1)
+          return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
+      }
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
     await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });

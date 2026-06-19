@@ -31,3 +31,9 @@ public/firebase-messaging-sw.js
 # Service account keys — NEVER commit
 scripts/sa.json
 *-firebase-adminsdk-*.json
+# Chiavi Cloud Functions (Anthropic/Gemini/Gmail/Scriba) — mai versionare
+functions/.env.eldoria-web
+functions/scriba/_preview.html
+functions/scriba/_archive_preview.html
+# Cache locale Firebase CLI
+.firebase/

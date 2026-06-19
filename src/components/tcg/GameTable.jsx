@@ -881,15 +881,34 @@ export default function GameTable({
   // l'emoji al centro della carta target (in coord % rispetto al tavolo).
   // Funziona sia per le reazioni mie (eco immediata al click) sia per
   // quelle che arrivano dall'avversario via Firestore.
-  const spawnCardReact = (instId, emoji) => {
+  const spawnCardReact = (instId, emoji, attempt = 0) => {
     const root = tableRef.current;
     if (!root) return;
-    const el = root.querySelector(`[data-inst="${instId}"]`);
     const rect = root.getBoundingClientRect();
-    if (!el || !rect.width) return;
-    const r = el.getBoundingClientRect();
-    const x = ((r.left - rect.left + r.width / 2) / rect.width) * 100;
-    const y = ((r.top - rect.top + r.height / 2) / rect.height) * 100;
+    // Il tavolo non è ancora misurabile (layout non pronto): riprova al frame
+    // successivo invece di perdere la reazione.
+    if (!rect.width) {
+      if (attempt < 6) requestAnimationFrame(() => spawnCardReact(instId, emoji, attempt + 1));
+      return;
+    }
+    const el = root.querySelector(`[data-inst="${instId}"]`);
+    let x, y;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      x = ((r.left - rect.left + r.width / 2) / rect.width) * 100;
+      y = ((r.top - rect.top + r.height / 2) / rect.height) * 100;
+    } else if (attempt < 6) {
+      // La carta bersaglio non è ancora nel DOM (lo snapshot che porta la
+      // reazione provoca un re-render del tavolo: la lookup può girare un
+      // frame prima che il layout sia pronto). Riprova al frame dopo.
+      requestAnimationFrame(() => spawnCardReact(instId, emoji, attempt + 1));
+      return;
+    } else {
+      // Dopo qualche tentativo la carta resta introvabile (rimossa nel
+      // frattempo): mostra comunque la reazione al centro così non va persa.
+      x = 50;
+      y = 50;
+    }
     const id = ++reactSeq.current;
     setCardReacts((arr) => [...arr, { id, emoji, x, y }]);
     setTimeout(

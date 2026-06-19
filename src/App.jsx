@@ -25,6 +25,8 @@ import ItemDetail from "./pages/ItemDetail";
 import AdminPanel from "./pages/AdminPanel";
 import MarketAdmin from "./pages/MarketAdmin";
 import SummaryAdmin from "./pages/SummaryAdmin";
+import LoScribaAdmin from "./pages/LoScribaAdmin";
+import Scriba from "./pages/Scriba";
 import SchedaPG from "./pages/SchedaPG";
 import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
@@ -240,6 +242,7 @@ const MOBILE_GROUPS = {
   mondo: { icon: "🗺️", label: "Mondo", links: [
     { to: "/world-map", label: "Mappa" },
     { to: "/Geo", label: "Archivio Geomantico" },
+    { to: "/scriba", label: "Lo Scriba" },
   ]},
   eroi: { icon: "⚔️", label: "Eroi", links: [
     { to: "/party", label: "Party" },
@@ -267,7 +270,7 @@ function MobileBottomNav({ openMenu }) {
 
   const group =
     p === "/" ? "home"
-    : ["/world-map", "/Geo"].includes(p) ? "mondo"
+    : ["/world-map", "/Geo", "/scriba"].includes(p) ? "mondo"
     : ["/party", "/scheda-pg", "/my-pg", "/npc", "/riassunti"].includes(p) ? "eroi"
     : ["/mercato", "/bacheca", "/crafting", "/ratti-lore", "/cinema", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
     : null;
@@ -555,6 +558,7 @@ export default function App() {
           <NavDropdown label="Mondo" closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/world-map">Mappa</NavLink>
             <NavLink to="/Geo">Archivio Geomatico</NavLink>
+            <NavLink to="/scriba">Lo Scriba</NavLink>
           </NavDropdown>
 
           <NavDropdown label="Eroi" closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
@@ -598,6 +602,7 @@ export default function App() {
           <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
+          <Route path="/scriba" element={<Scriba />} />
           <Route path="/ratti-lore" element={<RattiLore />} />
           <Route path="/bacheca" element={<Bacheca />} />
           <Route path="/quest/:id" element={<QuestDetail />} />
@@ -630,6 +635,7 @@ export default function App() {
           <Route path="/dm-admin/sessions" element={<AdminSessions />} />
           <Route path="/dm-admin/videos" element={<VideoAdmin />} />
           <Route path="/dm-admin/summaries" element={<SummaryAdmin />} />
+          <Route path="/dm-admin/scriba" element={<LoScribaAdmin />} />
           <Route path="/dm-admin/platinum" element={<PlatinumAdmin />} />
           <Route path="/dm-admin/pet-points" element={<PetPointsAdmin />} />
           <Route path="/dm-admin/reputation" element={<ReputationAdmin />} />
