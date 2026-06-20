@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "45.04",
+      "date": "2026-06-20",
+      "title": "Almanacco: «Gli Eventi» visibile a tutti",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Le Vie del Mondo: la sezione «Gli Eventi» (tabelle 1d6 + 1d6) non è più riservata ai Master ed è di nuovo consultabile da tutti i giocatori."
+        }
+      ]
+    },
+    {
       "version": "44.02",
       "date": "2026-06-19",
       "title": "Geo: export con descrizioni (Master)",

@@ -8,14 +8,12 @@
 
 import { useState } from "react";
 import { MESI_EXANTHIA, GIORNI_SETTIMANA, SOTTOTITOLO_TESTATA } from "../data/exanthiaCalendar";
-import { useAuth } from "../AuthContext";
 import "./Almanacco.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/aenlor.png";
-const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 
 // Pronunce dei giorni della settimana (accento tonico in MAIUSCOLO).
 const GIORNI_PRONUNCIA = {
@@ -168,8 +166,6 @@ const EVENTI = [
 
 export default function Almanacco() {
   useParallaxScroll();
-  const { currentUser } = useAuth();
-  const isMaster = currentUser && MASTER_EMAILS.includes(currentUser.email);
   const [openEvento, setOpenEvento] = useState(null);
 
   return (
@@ -350,15 +346,13 @@ export default function Almanacco() {
           </div>
         </div>
 
-        {/* Gli eventi — SOLO MASTER */}
-        {isMaster && (
-          <div className="alm-block alm-block--master">
+        {/* Gli eventi — visibili a tutti */}
+        <div className="alm-block">
             <h3 className="alm-block-title">
               <span className="alm-block-num">4</span> Gli Eventi
-              <span className="alm-master-tag">🔒 Solo Master</span>
             </h3>
             <p className="alm-block-note">
-              Tabelle riservate al DM. Per scegliere cosa succede in una giornata tira
+              Per scegliere cosa succede in una giornata il Master tira
               <strong> 1d6 per il tipo di evento</strong> (le sei categorie qui sotto), poi
               <strong> un altro 1d6</strong> per pescare lo spunto preciso nella sotto-tabella.
               Tocca una categoria per aprirla.
@@ -391,7 +385,6 @@ export default function Almanacco() {
               })}
             </div>
           </div>
-        )}
 
         {/* Sfide d'ambiente */}
         <div className="alm-block">
