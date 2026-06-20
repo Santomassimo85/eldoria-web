@@ -133,7 +133,7 @@ export default function ItemDetail() {
    */
   const handleBuyNow = async () => {
     if (!currentUser || item.saleType !== "fixed" || item.isSold) return;
-    if (!window.confirm(`Comprare ${item.name} per ${item.price} MP?`)) return;
+    if (!window.confirm(`Comprare ${item.name} per ${item.price} Corone?`)) return;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -165,7 +165,7 @@ export default function ItemDetail() {
         transaction.set(notifyRef, {
           userId: currentUser.uid,
           title: "Acquisto Confermato! 🛒",
-          message: `Hai acquistato "${item.name}" per ${item.price} MP. L'oggetto è ora tuo!`,
+          message: `Hai acquistato "${item.name}" per ${item.price} Corone. L'oggetto è ora tuo!`,
           read: false,
           timestamp: serverTimestamp()
         });
@@ -183,7 +183,7 @@ export default function ItemDetail() {
    * Funzione Master: Rimuove una singola offerta, rimborsa e NOTIFICA
    */
   const handleMasterRemoveBid = async (itemId, playerUid, amount) => {
-    if (!window.confirm(`Rimborsare ${amount} MP e inviare notifica a questo player?`)) return;
+    if (!window.confirm(`Rimborsare ${amount} Corone e inviare notifica a questo player?`)) return;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -203,7 +203,7 @@ export default function ItemDetail() {
         transaction.set(notifyRef, {
           userId: playerUid,
           title: "Offerta Rimborsata 💰",
-          message: `La tua offerta per "${item.name}" è stata rimossa dal Master. Ti sono stati rimborsati ${amount} MP.`,
+          message: `La tua offerta per "${item.name}" è stata rimossa dal Master. Ti sono stati rimborsati ${amount} Corone.`,
           read: false,
           timestamp: serverTimestamp()
         });
@@ -233,7 +233,7 @@ export default function ItemDetail() {
         batch.set(notifyRef, {
           userId: uid,
           title: "Asta Annullata 📢",
-          message: `L'asta per "${item.name}" è stata resettata. Ricevi un rimborso di ${amount} MP.`,
+          message: `L'asta per "${item.name}" è stata resettata. Ricevi un rimborso di ${amount} Corone.`,
           read: false,
           timestamp: serverTimestamp()
         });
@@ -277,7 +277,7 @@ export default function ItemDetail() {
         transaction.set(notifyRef, {
           userId: currentUser.uid,
           title: "Offerta Piazzata! 🎲",
-          message: `Hai puntato ${amount} MP per "${item.name}". Incrocia le dita!`,
+          message: `Hai puntato ${amount} Corone per "${item.name}". Incrocia le dita!`,
           read: false,
           timestamp: serverTimestamp()
         });
@@ -346,7 +346,7 @@ export default function ItemDetail() {
               </div>
               <p className="mc-price">
                 <span>{item.saleType === "auction" ? "Base d'asta" : "Prezzo"}</span>
-                <strong>{item.startingBid || item.price} MP</strong>
+                <strong>{item.startingBid || item.price} Corone</strong>
               </p>
               {item.saleType === "auction" && item.endDate && !item.isSold && (
                 <div className="mc-timer">
@@ -375,11 +375,11 @@ export default function ItemDetail() {
                 </div>
                 <div className="mc-stat">
                   <span>Volume totale</span>
-                  <strong>{bidVolume} <small>MP</small></strong>
+                  <strong>{bidVolume} <small>Corone</small></strong>
                 </div>
                 <div className="mc-stat highlight">
                   <span>Offerta più alta</span>
-                  <strong>{bidHighest} <small>MP</small></strong>
+                  <strong>{bidHighest} <small>Corone</small></strong>
                 </div>
               </div>
 
@@ -419,7 +419,7 @@ export default function ItemDetail() {
                               <tr key={uid} className={isTop ? "top-bid" : ""}>
                                 <td className="mc-rank">{idx + 1}</td>
                                 <td><strong>{charName}</strong></td>
-                                <td className="mc-bid-amount">{amount} MP</td>
+                                <td className="mc-bid-amount">{amount} Corone</td>
                                 <td className="mc-bid-time">{ts}</td>
                                 <td>
                                   <button
@@ -445,7 +445,7 @@ export default function ItemDetail() {
           {item.isSold && item.buyerName && (
             <div className="mc-sold-banner">
               💰 Venduto a <strong>{item.buyerName}</strong>
-              {item.finalPrice && <> per <strong>{item.finalPrice} MP</strong></>}
+              {item.finalPrice && <> per <strong>{item.finalPrice} Corone</strong></>}
             </div>
           )}
 
@@ -473,7 +473,7 @@ export default function ItemDetail() {
                 {item.saleType === "auction" ? "Base d'asta" : "Prezzo"}
               </span>
               <span className="ps-price-value">
-                {item.startingBid || item.price}<small> MP</small>
+                {item.startingBid || item.price}<small> Corone</small>
               </span>
             </div>
 
@@ -490,7 +490,7 @@ export default function ItemDetail() {
 
             {!item.isSold && currentUser && (
               item.saleType === "fixed" ? (
-                <button onClick={handleBuyNow} className="ps-buy-btn">⚡ Acquista Ora · {item.price} MP</button>
+                <button onClick={handleBuyNow} className="ps-buy-btn">⚡ Acquista Ora · {item.price} Corone</button>
               ) : (
                 !userBid && statusClass !== "expired-item" && (
                   <form onSubmit={handleSubmitOffer} className="ps-offer-form">
@@ -498,7 +498,7 @@ export default function ItemDetail() {
                       type="number"
                       value={offer}
                       onChange={(e) => setOffer(e.target.value)}
-                      placeholder={`Min ${item.startingBid} MP`}
+                      placeholder={`Min ${item.startingBid} Corone`}
                       min={item.startingBid}
                       required
                     />
@@ -511,7 +511,7 @@ export default function ItemDetail() {
             {userBid && (
               <div className="ps-your-bid">
                 <span className="ps-bid-tag">La tua offerta segreta</span>
-                <strong>{userBid.amount} MP</strong>
+                <strong>{userBid.amount} Corone</strong>
                 <small>L'esito ti arriverà nelle notifiche alla chiusura.</small>
               </div>
             )}

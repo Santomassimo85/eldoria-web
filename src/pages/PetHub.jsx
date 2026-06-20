@@ -69,9 +69,9 @@ function formatPointCap(def) {
   return `max ${def.dailyCap} al giorno`;
 }
 
-/* ── Egg hatch MP drop ──
-   Very small chance for an egg to contain a few Monete di Platino
-   (MP, the premium currency). Chance + amount scale with egg rarity
+/* ── Egg hatch Corone drop ──
+   Very small chance for an egg to contain a few Corone
+   (the premium currency). Chance + amount scale with egg rarity
    so legendary eggs feel rewarding even when the species pull is
    mid-tier. */
 const EGG_MP_DROP = {
@@ -535,7 +535,7 @@ function BestiariaNido({ uid }) {
               <div className="ph-hatch-mp">
                 <span className="ph-hatch-mp-icon">🪙</span>
                 <span>
-                  Hai trovato <strong>{hatchResult.mpFound} MP</strong> dentro l'uovo!
+                  Hai trovato <strong>{hatchResult.mpFound} Corone</strong> dentro l'uovo!
                 </span>
               </div>
             )}

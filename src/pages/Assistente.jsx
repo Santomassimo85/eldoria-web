@@ -54,7 +54,7 @@ async function doOffer(uid, params) {
   if (data.saleType !== "auction") return `⚠️ **${data.name}** non è all'asta: non si possono fare offerte.`;
   const amount = parseInt(params.importo, 10);
   const minBid = data.startingBid || 0;
-  if (!(amount >= minBid)) return `⚠️ L'offerta minima per **${data.name}** è ${minBid} MP.`;
+  if (!(amount >= minBid)) return `⚠️ L'offerta minima per **${data.name}** è ${minBid} Corone.`;
 
   try {
     await runTransaction(db, async (tx) => {
@@ -62,7 +62,7 @@ async function doOffer(uid, params) {
       const itemRef = doc(db, "items", id);
       const charSnap = await tx.get(charRef);
       const plat = charSnap.data()?.platinum || 0;
-      if (plat < amount) throw new Error(`Platino insufficiente: hai ${plat} MP, ne servono ${amount}.`);
+      if (plat < amount) throw new Error(`Corone insufficienti: hai ${plat} Corone, ne servono ${amount}.`);
       const charName = charSnap.data()?.name || "Un eroe";
       tx.update(charRef, { platinum: plat - amount });
       tx.update(itemRef, {
@@ -71,11 +71,11 @@ async function doOffer(uid, params) {
       const notifyRef = doc(collection(db, "notifications"));
       tx.set(notifyRef, {
         userId: uid, title: "Offerta Piazzata! 🎲",
-        message: `Hai puntato ${amount} MP per "${data.name}". Incrocia le dita!`,
+        message: `Hai puntato ${amount} Corone per "${data.name}". Incrocia le dita!`,
         read: false, timestamp: serverTimestamp(),
       });
     });
-    return `✅ Offerta di **${amount} MP** su **${data.name}** piazzata! Il platino è stato bloccato; verrà rimborsato se non vinci l'asta.`;
+    return `✅ Offerta di **${amount} Corone** su **${data.name}** piazzata! Le Corone sono state bloccate; verranno rimborsate se non vinci l'asta.`;
   } catch (e) {
     return `⚠️ ${e.message || "Errore nell'invio dell'offerta."}`;
   }

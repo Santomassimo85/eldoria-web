@@ -1,6 +1,28 @@
 {
   "versions": [
     {
+      "version": "46",
+      "date": "2026-06-20",
+      "title": "La valuta si chiama «Corone»",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "La moneta del reame cambia nome: ovunque comparisse «Monete di Platino» o l'abbreviazione «MP» ora si legge «Corone» — Mercato Nero, schede oggetto e aste, ricompense degli incarichi, saldo nel menu profilo, Tesoreria del Master e premi degli scrigni dei famigli. I saldi e i prezzi restano invariati: cambia solo la dicitura."
+        }
+      ]
+    },
+    {
+      "version": "45.05",
+      "date": "2026-06-20",
+      "title": "Lo Scriba: contatore letture",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Ogni numero de Lo Scriba registra ora le letture: all'apertura di un numero reale da parte di un giocatore il conteggio sale. Sulle carte dell'archivio il Master vede il badge 👁 con le letture totali."
+        }
+      ]
+    },
+    {
       "version": "45.04",
       "date": "2026-06-20",
       "title": "Almanacco: «Gli Eventi» visibile a tutti",

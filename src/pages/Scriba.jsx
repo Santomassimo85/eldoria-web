@@ -9,7 +9,7 @@
 // (src/data/scribaSample.json) così la pagina è già visibile/recensibile.
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, increment } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import sampleIssues from "../data/scribaSample.json";
@@ -65,6 +65,20 @@ export default function Scriba() {
     );
     return () => unsub();
   }, []);
+
+  // Apre un numero e — se è un numero reale (non un esempio) e il lettore non è
+  // il master — conta una lettura su Firestore (campo readCount). Lo stesso
+  // pattern dei Riassunti: il conteggio serve al master per sapere in quanti
+  // hanno letto le cronache.
+  const openIssue = (it) => {
+    setOpen(it.id);
+    if (isMaster) return;
+    if (String(it.id).startsWith("sample-")) return;
+    updateDoc(doc(db, "newsletters", it.id), { readCount: increment(1) }).catch(() => {});
+    setIssues((prev) =>
+      prev.map((x) => (x.id === it.id ? { ...x, readCount: (x.readCount || 0) + 1 } : x)),
+    );
+  };
 
   const opened = useMemo(() => issues.find((i) => i.id === open) || null, [issues, open]);
 
@@ -164,7 +178,10 @@ export default function Scriba() {
                   >🗑</button>
                   </>
                 )}
-                <button className="scriba-card" type="button" onClick={() => setOpen(it.id)}>
+                {isMaster && !String(it.id).startsWith("sample-") && (
+                  <span className="scriba-reads" title="Letture totali">👁 {it.readCount || 0}</span>
+                )}
+                <button className="scriba-card" type="button" onClick={() => openIssue(it)}>
                   {it.images?.[0]?.url ? (
                     <div className="scriba-card-thumb" style={{ backgroundImage: `url(${it.images[0].url})` }} aria-hidden="true" />
                   ) : (

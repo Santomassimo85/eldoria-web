@@ -157,7 +157,7 @@ export default function QuestDetail() {
         <p className="quest-detail-lore">{quest.desc}</p>
 
         <div className="quest-detail-rewards">
-          <strong>Ricompense:</strong> {quest.rewardGold || 0} Platino
+          <strong>Ricompense:</strong> {quest.rewardGold || 0} Corone
           {quest.rewardItem ? `, ${quest.rewardItem}` : ""}
         </div>
 

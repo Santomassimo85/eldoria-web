@@ -133,7 +133,7 @@ function priceStatus(price, rarity) {
 function formatRange(rarity) {
   const r = RARITY_PRICE[rarity];
   if (!r) return null;
-  return r.max == null ? `${r.min}+ MP` : `${r.min}–${r.max} MP`;
+  return r.max == null ? `${r.min}+ Corone` : `${r.min}–${r.max} Corone`;
 }
 
 const initialFormData = {
@@ -226,7 +226,7 @@ function QuickPriceEdit({ item, disabled }) {
           aria-label="Prezzo base"
           title={rangeLabel ? `Range ${item.class}: ${rangeLabel}` : ""}
         />
-        <span className="mkadm-inv-price-suffix">MP {saving ? "…" : justSaved ? "✓" : ""}</span>
+        <span className="mkadm-inv-price-suffix">Corone {saving ? "…" : justSaved ? "✓" : ""}</span>
       </span>
       {rangeLabel && (
         <span
@@ -1123,7 +1123,7 @@ export default function MarketAdmin() {
 
             <div className="mkadm-field-row">
               <div className="mkadm-field">
-                <label>Base d'asta (MP)</label>
+                <label>Base d'asta (Corone)</label>
                 <input
                   className="admin-field-input"
                   type="number"
@@ -1406,7 +1406,7 @@ export default function MarketAdmin() {
               <p className="mkadm-preview-type">{formData.type || "—"}</p>
               <h3 className="mkadm-preview-name">{formData.name || "Nome oggetto"}</h3>
               <p className="mkadm-preview-bid">
-                Base d'asta: <strong>{formData.startingBid || 0} MP</strong>
+                Base d'asta: <strong>{formData.startingBid || 0} Corone</strong>
               </p>
               {formData.endDate && (
                 <p className="mkadm-preview-deadline">

@@ -117,6 +117,26 @@
   box-shadow: 0 8px 22px rgba(28, 24, 19, 0.18);
 }
 
+/* Badge letture (solo master): quanti hanno aperto il numero. */
+.scriba-reads {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(28, 24, 19, 0.82);
+  color: #f4efe3;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .scriba-card-thumb {
   height: 152px;
   background-size: cover;

@@ -78,7 +78,7 @@ export default function PlatinumAdmin() {
         platinum: Number(newBalance),
         lastUpdated: new Date().toISOString()
       });
-      flashStatus('✅ MP aggiornati');
+      flashStatus('✅ Corone aggiornate');
     } catch (error) {
       flashStatus(`❌ Errore: ${error.message}`);
     }
@@ -132,7 +132,7 @@ export default function PlatinumAdmin() {
         lastUpdated: new Date().toISOString()
       });
       setTempBalances(prev => ({ ...prev, [charId]: next }));
-      flashStatus(`✅ MP ${current} → ${next}`);
+      flashStatus(`✅ Corone ${current} → ${next}`);
     } catch (error) {
       flashStatus(`❌ Errore: ${error.message}`);
     }
@@ -145,8 +145,8 @@ export default function PlatinumAdmin() {
       <div className="adm-masthead">
         <div className="adm-mast-main">
           <span className="adm-eyebrow">🪙 Tesoreria</span>
-          <h1 className="adm-title">Monete Platino &amp; TCG</h1>
-          <p className="adm-sub">Aggiorna il saldo di Monete Platino e Monete TCG dei personaggi.</p>
+          <h1 className="adm-title">Corone &amp; Monete TCG</h1>
+          <p className="adm-sub">Aggiorna il saldo di Corone e Monete TCG dei personaggi.</p>
         </div>
         <div className="adm-mast-aside">
           <div className="adm-stat"><span>Personaggi</span><strong>{characters.length}</strong></div>
@@ -198,24 +198,24 @@ export default function PlatinumAdmin() {
                   <div className="pa-col pa-col--mp">
                     <div className="pa-col__head">
                       <span className="pa-col__icon" aria-hidden="true">💰</span>
-                      <span className="pa-col__label">Monete Platino</span>
+                      <span className="pa-col__label">Corone</span>
                       <span className="pa-col__now" title="Totale attuale">{mp}</span>
                     </div>
                     <div className="pa-col__row">
-                      <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustPlatinum(char.id, -10)} title="-10 MP">−10</button>
-                      <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustPlatinum(char.id, -5)} title="-5 MP">−5</button>
+                      <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustPlatinum(char.id, -10)} title="-10 Corone">−10</button>
+                      <button type="button" className="pa-btn pa-btn--minus" onClick={() => adjustPlatinum(char.id, -5)} title="-5 Corone">−5</button>
                       <input
                         type="number"
                         className="pa-input pa-input--mp"
                         value={tempBalances[char.id] ?? ''}
                         onChange={(e) => handleBalanceChange(char.id, e.target.value)}
-                        aria-label="Saldo MP"
+                        aria-label="Saldo Corone"
                       />
-                      <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustPlatinum(char.id, +5)} title="+5 MP">+5</button>
-                      <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustPlatinum(char.id, +10)} title="+10 MP">+10</button>
+                      <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustPlatinum(char.id, +5)} title="+5 Corone">+5</button>
+                      <button type="button" className="pa-btn pa-btn--plus" onClick={() => adjustPlatinum(char.id, +10)} title="+10 Corone">+10</button>
                     </div>
                     <button type="button" className="pa-btn pa-btn--save pa-btn--save-mp" onClick={() => handleSaveBalance(char.id)}>
-                      Salva MP
+                      Salva Corone
                     </button>
                   </div>
 

@@ -175,7 +175,7 @@ export default function LoginDropdown() {
             <div className="ld-stat">
               <span className="ld-stat-icon">💰</span>
               <span className="ld-stat-value">{charData?.platinum ?? charData?.money ?? 0}</span>
-              <span className="ld-stat-label">MP</span>
+              <span className="ld-stat-label">Corone</span>
             </div>
             <div className="ld-stat-divider" />
             <div className="ld-stat">

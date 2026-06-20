@@ -160,14 +160,14 @@ const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliv
             {isSold
               ? (item.buyerName ? `Preso da ${item.buyerName}` : "Venduto")
               : item.saleType === "fixed"
-                ? `${item.price} MP`
-                : `Base ${item.startingBid} MP`}
+                ? `${item.price} Corone`
+                : `Base ${item.startingBid} Corone`}
           </span>
           {!isSold && !isMaster && <span className="ic-open">Apri →</span>}
-          {isMaster && !isSold && topBid > 0 && <span className="ic-topbid">Top {topBid} MP</span>}
+          {isMaster && !isSold && topBid > 0 && <span className="ic-topbid">Top {topBid} Corone</span>}
         </div>
         {userBidObj && !isMaster && (
-          <span className="your-bid-tag">La tua offerta: {userBidObj.amount || userBidObj} MP</span>
+          <span className="your-bid-tag">La tua offerta: {userBidObj.amount || userBidObj} Corone</span>
         )}
 
         {/* ── Pannello Master: offerte + azioni rapide ── */}
@@ -183,7 +183,7 @@ const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliv
                       return (
                         <div key={uid} className="ic-bid-row">
                           <span className="ic-bid-who">{bid?.charName || "Eroe"}</span>
-                          <span className="ic-bid-amount">{amount} MP</span>
+                          <span className="ic-bid-amount">{amount} Corone</span>
                           <button
                             className="ic-bid-refund"
                             title="Rimborsa questa offerta"
@@ -235,7 +235,7 @@ const MarketAdminTable = ({ items, onRemoveBid, onClearAllBids, onDeliver }) => 
         <div className="mat-stat"><span>Aste attive</span><strong>{stats.auctions}</strong></div>
         <div className="mat-stat"><span>Venduti</span><strong>{stats.sold}</strong></div>
         <div className="mat-stat"><span>Offerte tot.</span><strong>{stats.totalBids}</strong></div>
-        <div className="mat-stat highlight"><span>Volume MP</span><strong>{stats.volume}</strong></div>
+        <div className="mat-stat highlight"><span>Volume Corone</span><strong>{stats.volume}</strong></div>
       </div>
 
       {/* Stesse card del mercato + controlli Master rapidi su ognuna */}
@@ -316,7 +316,7 @@ export default function Mercato() {
         transaction.set(winnerNotifyRef, {
           userId: winnerUid,
           title: "Asta Vinta! 🏆",
-          message: `Ottimo lavoro! Hai vinto l'asta per "${item.name}" con un'offerta di ${winnerAmount} MP. Guadagni +1 Punto Ratto!`,
+          message: `Ottimo lavoro! Hai vinto l'asta per "${item.name}" con un'offerta di ${winnerAmount} Corone. Guadagni +1 Punto Ratto!`,
           read: false,
           timestamp: serverTimestamp()
         });
@@ -345,7 +345,7 @@ export default function Mercato() {
             transaction.set(loserNotifyRef, {
               userId: uid,
               title: "Asta Conclusa ⛔",
-              message: `L'asta per "${item.name}" si è conclusa. Non sei il vincitore; i tuoi ${amount} MP sono stati rimborsati nel saldo.`,
+              message: `L'asta per "${item.name}" si è conclusa. Non sei il vincitore; i tuoi ${amount} Corone sono stati rimborsati nel saldo.`,
               read: false,
               timestamp: serverTimestamp()
             });
@@ -360,7 +360,7 @@ export default function Mercato() {
   };
 
   const handleMasterRemoveBid = async (item, playerUid, amount) => {
-    if (!window.confirm(`Rimborsare ${amount} MP e inviare notifica a questo player?`)) return;
+    if (!window.confirm(`Rimborsare ${amount} Corone e inviare notifica a questo player?`)) return;
     try {
       await runTransaction(db, async (transaction) => {
         const charRef = doc(db, "characters", playerUid);
@@ -379,7 +379,7 @@ export default function Mercato() {
         transaction.set(notifyRef, {
           userId: playerUid,
           title: "Offerta Rimborsata 💰",
-          message: `La tua offerta di ${amount} MP per "${item.name}" è stata rimossa dal Master e le monete rimborsate.`,
+          message: `La tua offerta di ${amount} Corone per "${item.name}" è stata rimossa dal Master e le monete rimborsate.`,
           read: false,
           timestamp: serverTimestamp()
         });
@@ -409,7 +409,7 @@ export default function Mercato() {
         batch.set(notifyRef, {
           userId: uid,
           title: "Asta Annullata 📢",
-          message: `L'asta per "${item.name}" è stata resettata dal Master. I tuoi ${amount} MP sono stati rimborsati.`,
+          message: `L'asta per "${item.name}" è stata resettata dal Master. I tuoi ${amount} Corone sono stati rimborsati.`,
           read: false,
           timestamp: serverTimestamp()
         });

@@ -7,11 +7,11 @@ const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/drider.png";
 
 const RATTO_LEVELS = [
   { lv: 0, min: 0, name: "Estraneo", bonus: "Nessun privilegio. Sei solo un altro volto nella massa." },
-  { lv: 1, min: 5, name: "Simpatizzante", bonus: "Sconto di 15 MP sul prossimo acquisto + un regalo (tira 1d100)." },
+  { lv: 1, min: 5, name: "Simpatizzante", bonus: "Sconto di 15 Corone sul prossimo acquisto + un regalo (tira 1d100)." },
   { lv: 2, min: 15, name: "Informatore", bonus: "Accesso a slot mercato segreti (oggetti visibili solo a Lv. 2+)." },
   { lv: 3, min: 30, name: "Ricettatore", bonus: "Acquisto di un 'Boon' (Bonus temporaneo) per una sessione + un regalo (tira 1d100)." },
   { lv: 4, min: 50, name: "Veterano", bonus: "Sblocco di un secondo slot mercato extra per oggetti leggendari." },
-  { lv: 5, min: 80, name: "Ombra di Obia", bonus: "+100 MP, +1 Carisma permanente e l'Occhio dell'Arcano." },
+  { lv: 5, min: 80, name: "Ombra di Obia", bonus: "+100 Corone, +1 Carisma permanente e l'Occhio dell'Arcano." },
   { lv: 6, min: 110, name: "Ratto", bonus: "Coming Soon..." }
 ];
 

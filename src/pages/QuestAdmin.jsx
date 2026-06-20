@@ -427,7 +427,7 @@ export default function QuestAdmin() {
               <label className="qstadm-rewards-label">🏆 Ricompense</label>
               <div className="qstadm-row3">
                 <div className="qstadm-field">
-                  <label>Platino</label>
+                  <label>Corone</label>
                   <input
                     className="admin-field-input"
                     type="number"
@@ -523,7 +523,7 @@ export default function QuestAdmin() {
                 <div className="qstadm-scroll-rewards">
                   <strong>🏆 Ricompensa:</strong>
                   <div className="qstadm-scroll-reward-list">
-                    {formData.rewardGold > 0 && <span>💰 {formData.rewardGold} MP</span>}
+                    {formData.rewardGold > 0 && <span>💰 {formData.rewardGold} Corone</span>}
                     {formData.rewardItem && <span>🎁 {formData.rewardItem}</span>}
                     {formData.rewardOther && <span>✨ {formData.rewardOther}</span>}
                   </div>
