@@ -4,7 +4,7 @@
 
    • Desktop (>1300px): top-bar con nav inline (come oggi, restyle).
    • Mobile/tablet (≤1300px): TOP-BAR (marchio + auth) + BOTTOM-BAR di
-     navigazione (Home · Mondo · Eroi · Gilda · Menu). Le categorie aprono
+     navigazione (Home · Mondo · Biblioteca · Gilda · Menu). Le categorie aprono
      una bottom-sheet; "Menu" apre il drawer completo (tutto il resto).
    • Flottanti (chat/presenza/calendario) riuniti in un dock coerente,
      SEMPRE sopra la bottom-bar, con safe-area iOS.
@@ -125,7 +125,37 @@
 }
 
 /* ============================================================
-   BOTTOM-SHEET di categoria (Mondo / Eroi / Gilda)
+   SIMBOLI RUNICI delle voci di navigazione (al posto delle icone)
+   ============================================================ */
+/* Desktop: rune accanto all'etichetta dei dropdown nella top-bar */
+.nav-rune {
+  display: inline-block;
+  margin-right: 0.42em;
+  font-size: 1.05em;
+  line-height: 1;
+  opacity: 0.62;
+  transform: translateY(0.04em);
+}
+.nav-dd--open .nav-rune,
+.nav-dd-trigger:hover .nav-rune { opacity: 0.95; }
+
+/* Mobile: la rune fa da "icona" nel tab della bottom-bar (no grayscale). */
+.mnav-rune {
+  filter: none !important;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+/* Mobile: rune nell'intestazione della bottom-sheet */
+.mnav-sheet-rune {
+  display: inline-block;
+  margin-right: 0.3em;
+  font-size: 1.15em;
+  vertical-align: -0.06em;
+  opacity: 0.85;
+}
+
+/* ============================================================
+   BOTTOM-SHEET di categoria (Mondo / Biblioteca / Gilda)
    ============================================================ */
 .mnav-backdrop {
   position: fixed; inset: 0; z-index: 1061;

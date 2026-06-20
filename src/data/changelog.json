@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "47",
+      "date": "2026-06-20",
+      "title": "Menu riorganizzato",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Il menu è stato riorganizzato in sezioni più chiare. Nuova sezione «Biblioteca» (Lo Scriba + Riassunti): i Riassunti escono da «Eroi». Nuova sezione «Guide» con Almanacco del Mondo, Crafting e Gilda dei Ratti. «Mondo» resta con Mappa e Archivio Geomantico; «Gilda» con Mercato Nero, Bacheca, Cinema e Feedback."
+        },
+        {
+          "type": "graphic",
+          "text": "Le voci di navigazione usano ora simboli runici al posto delle icone. Sulla barra in basso (mobile) «Biblioteca» prende il posto di «Eroi», che si trova nel Menu."
+        }
+      ]
+    },
+    {
       "version": "46.01",
       "date": "2026-06-20",
       "title": "Lo Scriba: countdown al prossimo numero",

@@ -240,23 +240,17 @@ const MasterPricingLink = ({ closeMenu }) => {
 // esistente (nessun link/route nuovo). "Menu" apre il drawer completo (tutto il
 // resto: Agent, Update, Battaglia, DM Tools, DM Admin).
 const MOBILE_GROUPS = {
-  mondo: { icon: "🗺️", label: "Mondo", links: [
+  mondo: { rune: "ᛗ", label: "Mondo", links: [
     { to: "/world-map", label: "Mappa" },
     { to: "/Geo", label: "Archivio Geomantico" },
-    { to: "/scriba", label: "Lo Scriba" },
-    { to: "/almanacco", label: "Almanacco del Mondo" },
   ]},
-  eroi: { icon: "⚔️", label: "Eroi", links: [
-    { to: "/party", label: "Party" },
-    { to: "/scheda-pg", label: "Scheda PG" },
-    { to: "/npc", label: "NPC" },
+  biblioteca: { rune: "ᛒ", label: "Biblioteca", links: [
+    { to: "/scriba", label: "Lo Scriba" },
     { to: "/riassunti", label: "Riassunti" },
   ]},
-  gilda: { icon: "🏛️", label: "Gilda", links: [
+  gilda: { rune: "ᚷ", label: "Gilda", links: [
     { to: "/mercato", label: "Mercato Nero" },
     { to: "/bacheca", label: "Bacheca" },
-    { to: "/crafting", label: "Crafting" },
-    { to: "/ratti-lore", label: "Gilda dei Ratti" },
     { to: "/cinema", label: "Cinema" },
     { to: "/feedback", label: "Feedback" },
   ]},
@@ -272,9 +266,9 @@ function MobileBottomNav({ openMenu }) {
 
   const group =
     p === "/" ? "home"
-    : ["/world-map", "/Geo", "/scriba", "/almanacco"].includes(p) ? "mondo"
-    : ["/party", "/scheda-pg", "/my-pg", "/npc", "/riassunti"].includes(p) ? "eroi"
-    : ["/mercato", "/bacheca", "/crafting", "/ratti-lore", "/cinema", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
+    : ["/world-map", "/Geo"].includes(p) ? "mondo"
+    : ["/scriba", "/riassunti"].includes(p) ? "biblioteca"
+    : ["/mercato", "/bacheca", "/cinema", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
     : null;
 
   const g = sheet ? MOBILE_GROUPS[sheet] : null;
@@ -286,7 +280,7 @@ function MobileBottomNav({ openMenu }) {
       {g && (
         <div className="mnav-sheet" role="dialog" aria-label={g.label}>
           <span className="mnav-sheet-grip" aria-hidden="true" />
-          <div className="mnav-sheet-head"><span aria-hidden="true">{g.icon}</span> {g.label}</div>
+          <div className="mnav-sheet-head"><span className="mnav-sheet-rune" aria-hidden="true">{g.rune}</span> {g.label}</div>
           <div className="mnav-sheet-links">
             {g.links.map((l) => (
               <NavLink key={l.to} to={l.to} className="mnav-sheet-link" onClick={() => setSheet(null)}>
@@ -299,16 +293,16 @@ function MobileBottomNav({ openMenu }) {
       )}
       <div className="app-bottom-nav" role="navigation" aria-label="Navigazione rapida">
         <NavLink to="/" end className="mnav-tab" onClick={() => setSheet(null)}>
-          <span className="mnav-ic" aria-hidden="true">🏠</span><span className="mnav-lb">Home</span>
+          <span className="mnav-ic mnav-rune" aria-hidden="true">ᚺ</span><span className="mnav-lb">Home</span>
         </NavLink>
         <button type="button" className={`mnav-tab${group === "mondo" || sheet === "mondo" ? " is-active" : ""}`} onClick={() => toggle("mondo")}>
-          <span className="mnav-ic" aria-hidden="true">🗺️</span><span className="mnav-lb">Mondo</span>
+          <span className="mnav-ic mnav-rune" aria-hidden="true">ᛗ</span><span className="mnav-lb">Mondo</span>
         </button>
-        <button type="button" className={`mnav-tab${group === "eroi" || sheet === "eroi" ? " is-active" : ""}`} onClick={() => toggle("eroi")}>
-          <span className="mnav-ic" aria-hidden="true">⚔️</span><span className="mnav-lb">Eroi</span>
+        <button type="button" className={`mnav-tab${group === "biblioteca" || sheet === "biblioteca" ? " is-active" : ""}`} onClick={() => toggle("biblioteca")}>
+          <span className="mnav-ic mnav-rune" aria-hidden="true">ᛒ</span><span className="mnav-lb">Biblioteca</span>
         </button>
         <button type="button" className={`mnav-tab${group === "gilda" || sheet === "gilda" ? " is-active" : ""}`} onClick={() => toggle("gilda")}>
-          <span className="mnav-ic" aria-hidden="true">🏛️</span><span className="mnav-lb">Gilda</span>
+          <span className="mnav-ic mnav-rune" aria-hidden="true">ᚷ</span><span className="mnav-lb">Gilda</span>
         </button>
         <button type="button" className="mnav-tab" onClick={() => { setSheet(null); openMenu(); }}>
           <span className="mnav-ic" aria-hidden="true">☰</span><span className="mnav-lb">Menu</span>
@@ -557,31 +551,37 @@ export default function App() {
           <NavLink to="/assistente" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "#0e4d75", fontWeight: 700 })}>Agent</NavLink>
           <NavLink to="/updates" onClick={closeMenu}>UPDATE</NavLink>
 
-          <NavDropdown label="Mondo" closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛗ</span> Mondo</>} closeAll={closeMenu} id="mondo" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/world-map">Mappa</NavLink>
-            <NavLink to="/Geo">Archivio Geomatico</NavLink>
-            <NavLink to="/scriba">Lo Scriba</NavLink>
-            <NavLink to="/almanacco">Almanacco del Mondo</NavLink>
+            <NavLink to="/Geo">Archivio Geomantico</NavLink>
           </NavDropdown>
 
-          <NavDropdown label="Eroi" closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
-            <NavLink to="/party">Party</NavLink>
-            <NavLink to="/scheda-pg">Scheda PG</NavLink>
-            <NavLink to="/npc">NPC</NavLink>
+          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛒ</span> Biblioteca</>} closeAll={closeMenu} id="biblioteca" openId={openDd} setOpenId={setOpenDd}>
+            <NavLink to="/scriba">Lo Scriba</NavLink>
             <NavLink to="/riassunti">Riassunti</NavLink>
           </NavDropdown>
 
-          <NavDropdown label="Gilda" closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚱ</span> Guide</>} closeAll={closeMenu} id="guide" openId={openDd} setOpenId={setOpenDd}>
+            <NavLink to="/almanacco">Almanacco del Mondo</NavLink>
+            <NavLink to="/crafting">Crafting</NavLink>
+            <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
+          </NavDropdown>
+
+          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛖ</span> Eroi</>} closeAll={closeMenu} id="eroi" openId={openDd} setOpenId={setOpenDd}>
+            <NavLink to="/party">Party</NavLink>
+            <NavLink to="/scheda-pg">Scheda PG</NavLink>
+            <NavLink to="/npc">NPC</NavLink>
+          </NavDropdown>
+
+          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚷ</span> Gilda</>} closeAll={closeMenu} id="gilda" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/mercato">Mercato Nero</NavLink>
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
-            <NavLink to="/crafting">Crafting</NavLink>
-            <NavLink to="/ratti-lore">Gilda dei Ratti</NavLink>
             <NavLink to="/cinema">Cinema</NavLink>
             <NavLink to="/feedback">💬 Feedback</NavLink>
           </NavDropdown>
 
-          <NavDropdown label="Battaglia" closeAll={closeMenu} id="battaglia" openId={openDd} setOpenId={setOpenDd}>
+          <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚦ</span> Battaglia</>} closeAll={closeMenu} id="battaglia" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/arena">Arena</NavLink>
             <NavLink to="/arena-bottega">Bottega Arena</NavLink>
             {/* <NavLink to="/pet">Pet Hub</NavLink> */}
