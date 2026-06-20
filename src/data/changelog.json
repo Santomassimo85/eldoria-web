@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "46.01",
+      "date": "2026-06-20",
+      "title": "Lo Scriba: countdown al prossimo numero",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Sotto la testata de Lo Scriba compare ora un conto alla rovescia al prossimo bollettino (in giorni e ore), con un messaggio in stile pergamena per i lettori. Quando il numero è in arrivo il messaggio diventa «imminente»."
+        },
+        {
+          "type": "fix",
+          "text": "Lo Scriba: corretto il titolo della testata che, sui display grandi, veniva coperto dalla barra di navigazione in alto."
+        }
+      ]
+    },
+    {
       "version": "46",
       "date": "2026-06-20",
       "title": "La valuta si chiama «Corone»",

@@ -10,7 +10,9 @@
   --line: #cdbfa3;
   max-width: 1040px;
   margin: 0 auto;
-  padding: 32px 18px 80px;
+  /* La top-bar è position:fixed → scansala, altrimenti taglia la testata
+     (specie su display grandi col titolo enorme). */
+  padding: calc(var(--navbar-h, 80px) + 30px) 18px 80px;
   font-family: 'Lora', Georgia, "Times New Roman", serif;
 }
 
@@ -44,6 +46,50 @@
   color: var(--muted);
   margin: 0 auto;
   max-width: 560px;
+}
+
+/* ── Countdown al prossimo numero (visibile a tutti) ─────────────────────── */
+.scriba-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: -8px auto 24px;
+  max-width: 620px;
+  padding: 11px 18px;
+  background: linear-gradient(135deg, rgba(255, 253, 245, 0.95), var(--paper2));
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px -12px rgba(86, 64, 30, 0.55);
+}
+.scriba-cd-quill {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+  animation: scriba-quill-bob 3.2s ease-in-out infinite;
+}
+@keyframes scriba-quill-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-3px) rotate(4deg); }
+}
+.scriba-cd-text {
+  margin: 0;
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+  font-size: 0.96rem;
+  line-height: 1.4;
+  color: var(--ink);
+  text-align: center;
+}
+.scriba-cd-text strong {
+  font-style: normal;
+  font-family: 'Cinzel', Georgia, serif;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scriba-cd-quill { animation: none; }
 }
 
 /* ── Toolbar (ricerca + mese) ────────────────────────────────────────────── */

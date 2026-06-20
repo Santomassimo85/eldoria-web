@@ -19,10 +19,30 @@ import "./Scriba.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
 
+// Cadenza reale de Lo Scriba (deve combaciare con SCRIBA_INTERVAL_DAYS lato
+// functions): un nuovo numero ~10 giorni dopo l'ultimo inviato.
+const SCRIBA_INTERVAL_DAYS = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 // Le date sono IN-WORLD (calendario di Exanthia), derivate dal NUMERO del
 // giornale: il n.1 esce il 10 di Solleone, +2 giorni a numero.
 const fmtDate = (it) => exanthiaDateLabel(it?.number);
 const monthKey = (it) => exanthiaMonthKey(it?.number);
+
+// millisecondi del campo sentAt (Timestamp Firestore), 0 se assente.
+const sentAtMs = (it) =>
+  it?.sentAt?.toMillis ? it.sentAt.toMillis()
+  : (typeof it?.sentAt?.seconds === "number" ? it.sentAt.seconds * 1000 : 0);
+
+// "6g 4h" / "4h 12m" — attesa al prossimo numero.
+const fmtRemaining = (ms) => {
+  const totMin = Math.max(0, Math.floor(ms / 60000));
+  const d = Math.floor(totMin / (60 * 24));
+  const h = Math.floor((totMin % (60 * 24)) / 60);
+  if (d > 0) return `${d}g ${h}h`;
+  const m = totMin % 60;
+  return `${h}h ${m}m`;
+};
 
 export default function Scriba() {
   const { currentUser } = useAuth();
@@ -33,6 +53,27 @@ export default function Scriba() {
   const [editing, setEditing] = useState(null);
   const [term, setTerm] = useState("");
   const [mese, setMese] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+
+  // "Orologio" del countdown: si aggiorna ogni minuto (basta per un conto in g/h).
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Data attesa del prossimo numero = ultimo invio REALE + cadenza. È una stima
+  // (dopo la generazione il numero passa dall'approvazione del direttore), ma
+  // basta per dare ai lettori un'attesa scenica.
+  const nextIssueMs = useMemo(() => {
+    let last = 0;
+    for (const it of issues) {
+      if (String(it.id).startsWith("sample-")) continue; // gli esempi non contano
+      const ms = sentAtMs(it);
+      if (ms > last) last = ms;
+    }
+    return last ? last + SCRIBA_INTERVAL_DAYS * DAY_MS : 0;
+  }, [issues]);
+  const countdownMs = nextIssueMs ? nextIssueMs - now : 0;
 
   // Solo il master: rimuove un numero dall'archivio (Firestore). Gli esempi
   // bundlati (id "sample-…") non sono su Firestore, non si eliminano.
@@ -122,6 +163,22 @@ export default function Scriba() {
           L'archivio delle cronache del mondo. Ogni numero pubblicato resta qui, a futura memoria.
         </p>
       </header>
+
+      {nextIssueMs > 0 && (
+        <div className="scriba-countdown" role="status" aria-live="polite">
+          <span className="scriba-cd-quill" aria-hidden="true">🪶</span>
+          {countdownMs > 0 ? (
+            <p className="scriba-cd-text">
+              Lo Scriba intinge la penna… il prossimo bollettino verrà vergato tra{" "}
+              <strong>{fmtRemaining(countdownMs)}</strong>. Pazienza, nobili lettori.
+            </p>
+          ) : (
+            <p className="scriba-cd-text">
+              Lo Scriba sta affilando la penna… il nuovo numero è <strong>imminente</strong>!
+            </p>
+          )}
+        </div>
+      )}
 
       {isMaster && !loading && issues.length > 0 && String(issues[0].id).startsWith("sample-") && (
         <p style={{ background: "#fff6e0", border: "1px solid #e3cf9b", color: "#7a5b12", borderRadius: 8, padding: "10px 14px", margin: "0 0 14px", lineHeight: 1.5 }}>
