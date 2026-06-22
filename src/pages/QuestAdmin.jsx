@@ -19,9 +19,9 @@ import "./admin.css";
 
 const PARTY_ROSTER = {
   AMEA: ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
-  ENOX: ["Temistocle Sottocolle Milo", "Dante", "Roynot", "Vyger", "Timoty Bevibotte", "Alaric Voltasorte"],
+  ENOX: ["Makenna", "Temistocle Sottocolle Milo", "Alaric Voltasorte", "Lael"],
   LAC: ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  LEAF: ["Makenna", "Taaras Stormrage", "Soran", "Zethir"],
+  LEAF: ["Taaras Stormrage", "Soran", "Zethir"],
   ECO: ["Aksel", "Dago", "Ismael Van Dyke"],
 };
 

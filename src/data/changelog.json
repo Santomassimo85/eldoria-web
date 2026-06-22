@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "47.01",
+      "date": "2026-06-22",
+      "title": "Gruppo ENOX: nuova composizione",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Aggiornato il roster del gruppo ENOX: entrano Makenna (Changeling, Ladro) e Lael (Alto Elfo, Mago); escono Dante, Daga e Timoty. Makenna lascia il gruppo LEAF. Le liste di assegnazione delle missioni di gruppo e la pagina Eroi sono allineate al nuovo organico."
+        }
+      ]
+    },
+    {
       "version": "47",
       "date": "2026-06-20",
       "title": "Menu riorganizzato",

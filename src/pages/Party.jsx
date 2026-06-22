@@ -44,13 +44,11 @@ const PARTIES = [
     divider: "/assets/PhotoStory/GruppoMEAA/cultista.png",
     motto: "Nel buio si forgiano i nomi più luminosi",
     members: [
-      // { name: "Roynot",                 race: "Umano",                 class: "Druido",   image: "/assets/player/Roynot.jpg",          hidden: true },
-      { name: "Dante",                  race: "Umano V.",              class: "Ladro",    image: "/assets/player/Dante.png" },
-      // { name: "Vyger",                  race: "Umano",                 class: "Mago",     image: "/assets/player/Vyger.png",           hidden: true },
+      // ex-membri usciti: Dante, Timoty Bevibotte, Daga · storici nascosti: Roynot, Vyger
+      { name: "Makenna",                race: "Changeling",            class: "Ladro",    image: "/assets/player/Makenna.jpeg" },
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
-      { name: "Timoty Bevibotte",       race: "Lightfoot Halfling",    class: "Ladro",    image: "/assets/player/timotyBevibotte.jpeg" },
-      { name: "Alaric Voltasorte",      race: "Halfling",                   class: "Warlock",      image: "/assets/player/alaric.png" },
-      { name: "Daga",                   race: "Satiro",                class: "Paladino",      image: "/assets/player/daga2.jpeg" },
+      { name: "Alaric Voltasorte",      race: "Halfling",              class: "Warlock", image: "/assets/player/alaric.png" },
+      { name: "Lael",                   race: "Alto Elfo",             class: "Mago",     image: "/assets/player/lael.jpg" },
     ],
   },
   {

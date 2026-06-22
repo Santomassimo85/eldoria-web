@@ -1,0 +1,5 @@
+# file a runtime / temporanei dello strumento Obsidian
+obsidian-watch.log
+_sessions-dump.json
+_digests-part*.json
+*.bak

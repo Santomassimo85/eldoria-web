@@ -27,8 +27,8 @@ const canEditSummaries = (user) => !!user && SUMMARY_EDITORS.includes(user.email
 const PARTIES = [
   { key: "AMEA",  label: "AMEA",  color: "#c0392b", roster: "Garroth, Tanagar, Caius, Sylva" },
   { key: "LAC",   label: "LAC",   color: "#2980b9", roster: "Horn, Thoki, Cleofe" },
-  { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Makenna, Zenthir, Taaras" },
-  { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Temistocle, Dante, Timoty, Alaric" },
+  { key: "LEAF",  label: "LEAF",  color: "#27ae60", roster: "Soran, Zenthir, Taaras" },
+  { key: "ENOX",  label: "ENOX",  color: "#8e44ad", roster: "Makenna, Temistocle, Alaric, Lael" },
   { key: "ECO",   label: "ECO",   color: "#0f766e", roster: "Aksel, Dago, Ismael" },
   { key: "Unico", label: "Storia del Mondo", color: "#d4af37", roster: "Cronache globali" },
 ];
