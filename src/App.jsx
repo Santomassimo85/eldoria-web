@@ -48,6 +48,7 @@ import BossTactics from "./pages/tactics/BossTactics";
 import BattleMapEditor from "./pages/tactics/BattleMapEditor";
 import DmTools from "./pages/DmTools";
 import Assistente from "./pages/Assistente";
+import Concilio from "./pages/Concilio";
 // PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
 // imports and the matching nav link / routes below.
 // import PetArena from "./pages/PetArena";
@@ -155,6 +156,7 @@ const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
   if (!isDmUser(currentUser?.email)) return null;
   return (
     <NavDropdown label="DM Tools" closeAll={closeMenu} id="dmtools" openId={openId} setOpenId={setOpenId}>
+      {currentUser?.email === MASTER_EMAIL_UI && <NavLink to="/agenti">🜂 Il Concilio</NavLink>}
       <NavLink to="/dm-admin/genera-npc">Genera NPC</NavLink>
       <NavLink to="/dm-admin/strumenti">Strumenti DM</NavLink>
       <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
@@ -601,6 +603,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/party" element={<Party />} />
           <Route path="/assistente" element={<Assistente />} />
+          <Route path="/agenti" element={<Concilio />} />
           <Route path="/npc" element={<NPC />} />
           <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />

@@ -101,6 +101,22 @@ service cloud.firestore {
       allow write: if isLoggedIn();
     }
 
+    // ── Diario degli agenti (Il Concilio) ────────────────────────────────────
+    // Ogni agente AI scrive qui le sue azioni/ragionamenti. Lettura solo Master
+    // (è un pannello di controllo). Creazione consentita a chi è loggato (es. il
+    // frontend dell'Oracolo che persiste il proprio trace); l'agent server
+    // (Admin SDK, es. Lo Scriba) scrive comunque bypassando le regole.
+    match /agent_logs/{logId} {
+      allow read: if isMaster();
+      allow create: if isLoggedIn();
+      allow update, delete: if isMaster();
+    }
+    // Contatori aggregati per agente (totale, per giorno, ultima cosa generata).
+    match /agent_counters/{agentId} {
+      allow read: if isMaster();
+      allow write: if isLoggedIn();
+    }
+
     // ── Coda oggetti verso Foundry ───────────────────────────────────────────
     // Il sito (Master) crea l'oggetto; la macro Foundry lo legge senza auth
     // (solo API key) e lo marca importato / lo elimina, come fa il sync attore.

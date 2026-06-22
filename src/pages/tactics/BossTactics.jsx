@@ -298,11 +298,17 @@ export default function BossTactics() {
   const defeatBossDoc = defeatBossUnit ? bosses.find((b) => b.id === defeatBossUnit.bossId) : null;
   const defeatBossName = defeatBossUnit?.name || defeatBossDoc?.name || "Il boss";
   const defeatPenalty = defeatBossDoc?.penalties || "";
+  // Reward text (victory screen). Authored on the boss doc in WorldBossAdmin
+  // (`rewards`); resolved client-side like the penalty so every client shows it.
+  const defeatRewards = defeatBossDoc?.rewards || "";
   // Heroes lost if the battle is over by deadline-expiry OR by being wiped out
   // (every hero down). A boss-side victory (enemies wiped) is NOT a hero loss.
   const heroesPresent = (battle?.units || []).some((u) => u.side === "hero");
   const heroesWiped = isOver && heroesPresent && !(battle?.units || []).some((u) => u.side === "hero" && !u.dead);
   const heroesLost = isOver && (battle?.bossExpired || heroesWiped);
+  // Heroes WON if the battle is over and it wasn't a hero loss (enemies wiped /
+  // boss slain). Mirror of `heroesLost` for the victory screen.
+  const heroesWon = isOver && heroesPresent && !heroesLost;
 
   // Boss-fight BGM: looped, low volume, for the whole fight (per-client audio).
   useEffect(() => {
@@ -1272,6 +1278,33 @@ export default function BossTactics() {
               <button className="tac-defeat-close" onClick={endBattle}>⛔ Chiudi e azzera</button>
             )}
             <div className="tac-defeat-press">— LA SCONFITTA È SEGNATA —</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pixel VICTORY SCREEN — the boss has fallen ───────────────────────
+          Mirror of the defeat screen, in green/gold. Lists the rewards
+          authored on the boss doc (rewards). ── */}
+      {heroesWon && (
+        <div className="tac-victory" role="alertdialog" aria-label="Vittoria">
+          <div className="tac-victory-scanlines" />
+          <div className="tac-victory-box">
+            <div className="tac-victory-skull">🏆</div>
+            <h2 className="tac-victory-title">VITTORIA</h2>
+            <p className="tac-victory-sub">GLI EROI HANNO TRIONFATO</p>
+            <p className="tac-victory-flavor">
+              <span className="tac-victory-bossname">{battle?.bossDefeatName || defeatBossName}</span> è caduto. Eldoria è salva… per ora.
+            </p>
+            <div className="tac-victory-reward">
+              <div className="tac-victory-reward-label">✦ RICOMPENSE ✦</div>
+              <div className="tac-victory-reward-text">
+                {battle?.bossRewards || defeatRewards || "Il Master assegnerà le ricompense del trionfo."}
+              </div>
+            </div>
+            {isMaster && (
+              <button className="tac-victory-close" onClick={endBattle}>✔ Chiudi e azzera</button>
+            )}
+            <div className="tac-victory-press">— LA LEGGENDA È SCRITTA —</div>
           </div>
         </div>
       )}

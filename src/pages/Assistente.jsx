@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
+import { logAgent } from "../utils/agentLog";
 import {
   doc, getDoc, setDoc, collection, query, where, getDocs,
   runTransaction, writeBatch, serverTimestamp, increment,
@@ -353,6 +354,10 @@ export default function Assistente() {
     setTrace([]);
     addTrace("🔍", "Invio richiesta…");
 
+    const who = currentUser?.email || currentUser?.uid || "ospite";
+    // Diario "Il Concilio": registra la domanda ricevuta.
+    logAgent("oracolo", "info", `Domanda da ${who}: "${msg.slice(0, 160)}"`, { user: who });
+
     // Conta la consultazione (totale + per giocatore). Fire-and-forget.
     if (currentUser?.uid) {
       setDoc(doc(db, "agent_stats", "global"), {
@@ -376,12 +381,21 @@ export default function Assistente() {
       if (data.error) throw new Error(data.error);
 
       addTrace("✅", "Risposta ricevuta");
+      // Diario: registra gli strumenti consultati (il "ragionamento") e la risposta.
+      if (Array.isArray(data.trace) && data.trace.length) {
+        const tools = data.trace.map(t => t.tool).join(", ");
+        addTrace("🧠", `Strumenti: ${tools}`);
+        logAgent("oracolo", "reason", `Ha consultato: ${tools}`, { user: who, tools: data.trace });
+      }
       if (data.pendingAction) {
         addTrace("⚠️", `Azione in attesa: ${data.pendingAction.type}`);
+        logAgent("oracolo", "action", `Propone azione "${data.pendingAction.type}" (in attesa di conferma)`, { user: who, params: data.pendingAction.params });
         setPendingAction(data.pendingAction);
       }
+      logAgent("oracolo", "success", `Risposta: "${String(data.reply || "").slice(0, 160)}"`, { user: who }, { count: true });
       setMessages(m => [...m, { role: "assistant", content: data.reply, time: now() }]);
     } catch (e) {
+      logAgent("oracolo", "error", e.message, { user: who });
       setMessages(m => [...m, { role: "assistant", content: `⚠️ Errore: ${e.message}`, time: now() }]);
     } finally {
       setLoading(false);
@@ -403,8 +417,10 @@ export default function Assistente() {
       else if (action.type === "accetta_missione") reply = await doAcceptQuest(uid, action.params);
       else throw new Error("Azione non riconosciuta.");
       addTrace("✅", "Azione completata");
+      logAgent("oracolo", "success", `Azione "${action.type}" eseguita`, { user: currentUser?.email || uid, params: action.params });
       setMessages(m => [...m, { role: "assistant", content: reply, time: now() }]);
     } catch (e) {
+      logAgent("oracolo", "error", `Azione "${action?.type}" fallita: ${e.message}`, { user: currentUser?.email });
       setMessages(m => [...m, { role: "assistant", content: `⚠️ Errore: ${e.message}`, time: now() }]);
     } finally {
       setLoading(false);

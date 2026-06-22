@@ -1,6 +1,40 @@
 {
   "versions": [
     {
+      "version": "48.01",
+      "date": "2026-06-22",
+      "title": "World Boss: schermata di vittoria",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Quando il boss viene abbattuto compare ora una schermata di VITTORIA a tutto schermo (verde/oro), speculare a quella di sconfitta, con le ricompense scritte sulla scheda del boss. Prima alla vittoria appariva solo un messaggio temporaneo in chat, mentre la sconfitta aveva già il suo riquadro dedicato."
+        }
+      ]
+    },
+    {
+      "version": "48",
+      "date": "2026-06-22",
+      "title": "Il Concilio: sala di controllo degli agenti AI",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuova pagina «Il Concilio» (riservata al Master) che raccoglie tutti i servitori AI del sito — Oracolo, Lo Scriba, Forgiatore di Volti, Mente del Master, Pennello Arcano e Amanuense d'Obsidian — con tipo (autonomo/reattivo/strumento/sincronia), stato dal vivo, statistiche d'uso e descrizione di cosa fa ciascuno."
+        },
+        {
+          "type": "feature",
+          "text": "Diario degli agenti: ogni agente registra le proprie azioni e i propri ragionamenti in una cronaca consultabile dal vivo. Dal dossier dello Scriba si può generare un'anteprima al volo o mettere in pausa l'automatismo; dall'Oracolo si apre la chat."
+        },
+        {
+          "type": "feature",
+          "text": "Statistiche per agente: quante cose ha generato finora, quante oggi, un grafico degli ultimi 7 giorni, l'ultima cosa prodotta e — per Lo Scriba — l'elenco dei numeri usciti. I conteggi usano contatori aggregati (una mini-scrittura per evento), così non pesano sul database."
+        },
+        {
+          "type": "chore",
+          "text": "L'Oracolo e Lo Scriba ora scrivono il proprio operato nel registro «agent_logs»; aggiunta la relativa regola Firestore (lettura riservata al Master)."
+        }
+      ]
+    },
+    {
       "version": "47.01",
       "date": "2026-06-22",
       "title": "Gruppo ENOX: nuova composizione",

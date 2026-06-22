@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { db } from "./firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { logAgent } from "./utils/agentLog";
 import "./GeneraNPC.css";
 import "./pages/admin.css";
 
@@ -28,8 +29,10 @@ export default function GeneraNPC() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setNpc(data); setStato("");
+      logAgent("genera-npc", "success", `NPC generato: ${data.nome || "senza nome"} (${[data.razza, data.ruolo].filter(Boolean).join(", ")}) — contesto: "${contesto}"`, {}, { count: true });
     } catch (e) {
       setStato("Errore: " + e.message); setErrore(true);
+      logAgent("genera-npc", "error", e.message);
     } finally {
       setLoadingNpc(false);
     }
@@ -47,8 +50,10 @@ export default function GeneraNPC() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setImmagine(data.immagine); setStato("");
+      logAgent("genera-immagine", "success", `Ritratto generato per ${npc.nome || "un NPC"}`, {}, { count: true });
     } catch (e) {
       setStato("Errore: " + e.message); setErrore(true);
+      logAgent("genera-immagine", "error", e.message);
     } finally {
       setLoadingImg(false);
     }

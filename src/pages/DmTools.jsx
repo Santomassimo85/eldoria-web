@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { logAgent } from "../utils/agentLog";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
@@ -46,8 +47,11 @@ export default function DmTools() {
       if (data.error) throw new Error(data.error);
       setOut(data); setMsg("");
       if (tab === "citta" && data.mapPrompt) setMapPrompt(data.mapPrompt);
+      const etichetta = tab === "incontro" ? "Incontro" : tab === "loot" ? "Loot" : "Città";
+      logAgent("dm-tools", "success", `${etichetta} generato (${data.nome || data.titolo || tab})`, { tipo: tab }, { count: true });
     } catch (e) {
       setMsg("Errore: " + e.message);
+      logAgent("dm-tools", "error", e.message, { tipo: tab });
     } finally { setBusy(false); }
   }
 
@@ -62,8 +66,10 @@ export default function DmTools() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setMapImg(data.immagine);
+      logAgent("genera-immagine", "success", `Mappa città generata`, {}, { count: true });
     } catch (e) {
       setMsg("Errore mappa: " + e.message);
+      logAgent("genera-immagine", "error", e.message);
     } finally { setMapBusy(false); }
   }
 

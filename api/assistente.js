@@ -713,6 +713,7 @@ export default async function handler(req, res) {
     let pendingAction = null;
     let usedTools = false;
     let iterations = 0;
+    const trace = []; // strumenti usati, restituiti al frontend per il diario (Il Concilio)
 
     while (iterations < 8) {
       iterations++;
@@ -724,6 +725,7 @@ export default async function handler(req, res) {
       for (const part of toolCalls) {
         const { name, args } = part.functionCall;
         usedTools = true;
+        trace.push({ tool: name, args: args || {} });
 
         // Azioni di scrittura → non eseguire, segnalare al frontend per conferma
         if (name === "fai_offerta" || name === "accetta_missione") {
@@ -764,7 +766,7 @@ export default async function handler(req, res) {
         : "Non sono riuscito a formulare una risposta. Riprova a riformulare la domanda.";
     }
 
-    return res.status(200).json({ reply, pendingAction });
+    return res.status(200).json({ reply, pendingAction, trace });
   } catch (e) {
     return res.status(500).json({ error: "Errore assistente: " + e.message });
   }

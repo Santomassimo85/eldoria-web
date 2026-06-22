@@ -32,6 +32,33 @@ const PLAYER_TURN_DURATION_MS = 3 * 60 * 60 * 1000;
 const BOSS_TURN_DURATION_MS = 1 * 60 * 60 * 1000;
 const BOSS_SYSTEM_UID = "BOSS_MSG";
 
+/**
+ * Diario degli agenti (collezione `agent_logs`, letta da "Il Concilio").
+ * Fire-and-forget: un log non deve mai far fallire l'agente.
+ * level: "info" | "reason" | "action" | "success" | "error"
+ */
+function logAgent(agent, level, text, meta = {}, opts = {}) {
+  const db = admin.firestore();
+  db.collection("agent_logs").add({
+    agent, level,
+    text: String(text || "").slice(0, 1000),
+    meta,
+    ts: FieldValue.serverTimestamp(),
+  }).catch((e) => console.error("[agent_logs]", e.message));
+  if (opts.count) countAgent(agent, text);
+}
+
+/** Incrementa i contatori aggregati di un agente (totale, per giorno, ultima cosa). */
+function countAgent(agent, summary = "") {
+  const today = new Date().toISOString().slice(0, 10);
+  return admin.firestore().collection("agent_counters").doc(agent).set({
+    total: FieldValue.increment(1),
+    byDay: { [today]: FieldValue.increment(1) },
+    lastAt: FieldValue.serverTimestamp(),
+    lastText: String(summary || "").slice(0, 160),
+  }, { merge: true }).catch((e) => console.error("[agent_counters]", e.message));
+}
+
 exports.autoSwitchBossTurn = onSchedule(
     { schedule: "every 1 minutes", timeZone: "Europe/Rome", region: "us-central1" },
     async () => {
@@ -612,10 +639,13 @@ async function nextScribaEdition(dbAdmin) {
  * best-effort) caricate su Storage sotto `scriba/<assetPrefix>/`.
  */
 async function buildScribaEdition(dbAdmin, { days, assetPrefix, edition = 1 }) {
+  logAgent("scriba", "info", `Raccolgo i fatti del mondo per il N. ${edition} (ultimi ${days} giorni)…`);
   const data = await collectScribaData(dbAdmin, { days, edition });
+  logAgent("scriba", "reason", `Scrivo il numero con Claude…`, { fonti: sourceCountsOf(data) });
   const content = await generateScribaContent({ apiKey: anthropicKeyParam.value(), data });
   let images = [];
   try {
+    logAgent("scriba", "reason", `Illustro ${(content.illustrations || []).length} immagini con Gemini…`);
     images = await generateIllustrations({
       geminiKey: geminiKeyParam.value(),
       illustrations: content.illustrations || [],
@@ -624,14 +654,16 @@ async function buildScribaEdition(dbAdmin, { days, assetPrefix, edition = 1 }) {
     });
   } catch (e) {
     console.error("[scriba] immagini fallite:", e.message);
+    logAgent("scriba", "error", `Illustrazioni fallite: ${e.message}`);
   }
+  logAgent("scriba", "success", `Numero N. ${edition} pronto (${images.length} immagini).`, { edition }, { count: true });
   return { data, content, images };
 }
 
 /** Invia un numero salvato a tutti i giocatori iscritti. Ritorna il conteggio. */
 async function sendScribaToPlayers(dbAdmin, editionDoc) {
   const recipients = await getScribaRecipients(dbAdmin, admin);
-  if (!recipients.length) return 0;
+  if (!recipients.length) { logAgent("scriba", "error", `N. ${editionDoc.number}: nessun destinatario iscritto.`); return 0; }
   const transporter = buildGmailTransporter();
   const from = scribaFrom();
   const subject = `📜 Lo Scriba N. ${editionDoc.number} — ${italianDateLabel(editionDoc.number)}`;
@@ -650,6 +682,7 @@ async function sendScribaToPlayers(dbAdmin, editionDoc) {
       console.error(`[scriba] invio a ${r.email} fallito:`, e.message);
     }
   }
+  logAgent("scriba", "success", `N. ${editionDoc.number} inviato a ${sent}/${recipients.length} lettori.`, { edition: editionDoc.number, sent });
   return sent;
 }
 
@@ -680,6 +713,7 @@ async function proposeEditionToMaster(dbAdmin, { edition, built, createdBy = "au
     subject: `📜 [DA APPROVARE] Lo Scriba N. ${edition} — ${italianDateLabel(edition)}`,
     html: masterHtml,
   });
+  logAgent("scriba", "action", `Bozza del N. ${edition} inviata al direttore per approvazione (origine: ${createdBy}).`, { editionId: docRef.id, edition });
   return { id: docRef.id, edition };
 }
 
@@ -849,6 +883,7 @@ exports.scribaTick = onSchedule(
       built = await buildScribaEdition(dbAdmin, { days: intervalDays, assetPrefix: String(edition), edition });
     } catch (e) {
       console.error("[scriba] generazione automatica fallita:", e);
+      logAgent("scriba", "error", `Generazione automatica del N. ${edition} fallita: ${e.message}`);
       return; // riproverà al prossimo tick
     }
 

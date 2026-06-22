@@ -294,6 +294,68 @@
 }
 @keyframes tac-defeat-flash { from { opacity: 0.55; } to { opacity: 1; } }
 
+/* ── Pixel victory screen (the boss has fallen) — green/gold mirror ───────── */
+.tac-victory {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: radial-gradient(circle at center, rgba(8,46,20,0.93) 0%, rgba(0,0,0,0.97) 70%);
+  image-rendering: pixelated;
+  animation: tac-defeat-in 0.5s ease-out both;
+}
+.tac-victory-scanlines {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom,
+    rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.35) 3px, rgba(0,0,0,0.35) 4px);
+}
+.tac-victory-box {
+  position: relative; z-index: 2; max-width: 560px; width: 100%; text-align: center;
+  border: 4px solid #d4af37; background: rgba(0,0,0,0.85);
+  box-shadow: 0 0 0 4px #000, 0 0 28px rgba(212,175,55,0.6);
+  padding: 26px 22px 30px;
+}
+.tac-victory-skull {
+  font-size: clamp(40px, 11vw, 68px); line-height: 1; margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px rgba(212,175,55,0.85));
+  animation: tac-victory-flash 0.9s ease-in-out infinite alternate;
+}
+.tac-victory-title {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(18px, 6vw, 34px);
+  color: #f4d35e; margin: 0 0 8px; letter-spacing: 2px;
+  text-shadow: 3px 3px 0 #000, 0 0 14px rgba(212,175,55,0.7);
+}
+.tac-victory-sub {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(8px, 2.4vw, 12px);
+  color: #cdeccb; margin: 0 0 16px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000;
+}
+.tac-victory-flavor {
+  font-size: clamp(14px, 3.4vw, 18px); color: #e8f0d8;
+  margin: 0 auto 18px; max-width: 460px; line-height: 1.4;
+}
+.tac-victory-bossname { color: #7ad17a; font-weight: bold; }
+.tac-victory-reward {
+  border: 3px solid #d4af37; background: rgba(212,175,55,0.14);
+  padding: 14px 16px; margin: 0 0 16px;
+}
+.tac-victory-reward-label {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(7px, 2vw, 10px);
+  color: #f4d35e; letter-spacing: 1px; margin-bottom: 10px; text-shadow: 1px 1px 0 #000;
+}
+.tac-victory-reward-text {
+  font-size: clamp(15px, 3.8vw, 20px); color: #fff; line-height: 1.4; white-space: pre-wrap;
+}
+.tac-victory-close {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(8px, 2vw, 11px);
+  color: #fff; background: rgba(40,140,60,0.3); border: 2px solid #3fa85a;
+  padding: 8px 14px; margin: 0 0 14px; cursor: pointer;
+}
+.tac-victory-close:hover { background: rgba(40,140,60,0.5); }
+.tac-victory-press {
+  font-family: 'Press Start 2P', monospace; font-size: clamp(7px, 1.8vw, 9px);
+  color: #9cc79c; letter-spacing: 1px;
+  animation: tac-victory-flash 1.2s ease-in-out infinite alternate;
+}
+@keyframes tac-victory-flash { from { opacity: 0.55; } to { opacity: 1; } }
+
 /* ── Action HUD — Final Fantasy Tactics styled command window ────────────── */
 .tac-hud {
   flex: 0 0 auto;
