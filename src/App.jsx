@@ -156,11 +156,27 @@ const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
   if (!isDmUser(currentUser?.email)) return null;
   return (
     <NavDropdown label="DM Tools" closeAll={closeMenu} id="dmtools" openId={openId} setOpenId={setOpenId}>
-      {currentUser?.email === MASTER_EMAIL_UI && <NavLink to="/agenti">🜂 Il Concilio</NavLink>}
       <NavLink to="/dm-admin/genera-npc">Genera NPC</NavLink>
       <NavLink to="/dm-admin/strumenti">Strumenti DM</NavLink>
       <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
     </NavDropdown>
+  );
+};
+
+// --- Link "Agenti" (Il Concilio) — solo Master, voce di primo livello ---
+const ConcilioNavLink = ({ closeMenu }) => {
+  const { currentUser } = useAuth();
+  if (currentUser?.email !== MASTER_EMAIL_UI) return null;
+  return (
+    <NavLink
+      to="/agenti"
+      className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+      onClick={closeMenu}
+      style={{ backgroundColor: "var(--gold)", color: "var(--red)", fontWeight: "bold" }}
+      title="Il Concilio — i tuoi agenti AI"
+    >
+      🜂 AGENTI
+    </NavLink>
   );
 };
 
@@ -592,6 +608,7 @@ export default function App() {
           </NavDropdown>
 
           <DmToolsDropdown closeMenu={closeMenu} openId={openDd} setOpenId={setOpenDd} />
+          <ConcilioNavLink closeMenu={closeMenu} />
           <AdminNavLink closeMenu={closeMenu} />
           <SummaryAdminNavLink closeMenu={closeMenu} />
         </nav>
