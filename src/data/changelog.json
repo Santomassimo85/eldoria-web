@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "49",
+      "date": "2026-06-23",
+      "title": "Arena: azioni che sparivano dopo l'invio",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Corretto un bug per cui un'azione (attacco, incantesimo, cura) mostrava il danno a schermo ma dopo qualche secondo o un refresh risultava non eseguita. Ogni azione riscriveva l'intera lista dei match dall'istantanea locale: con più scontri simultanei (torneo), giocatore e IA insieme o due azioni ravvicinate, una scrittura sovrascriveva quella di un'altra (lost update). Ora ogni azione viene scritta in transazione, rileggendo lo stato aggiornato e modificando solo il proprio match, senza calpestare gli altri."
+        }
+      ]
+    },
+    {
       "version": "48.01",
       "date": "2026-06-22",
       "title": "World Boss: schermata di vittoria",

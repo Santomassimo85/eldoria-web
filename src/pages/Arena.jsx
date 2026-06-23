@@ -2327,6 +2327,62 @@ export default function Arena() {
   // stato stantio e l'azione "non succede nulla" agli occhi dell'utente.
   const actionInFlightRef = useRef(false);
 
+  // ── Commit transazionale dei match ────────────────────────────────────────
+  // BUG storico (lost update): ogni azione scriveva l'INTERO array `matches`
+  // ricalcolato dall'istantanea locale (`arenaMeta`) con
+  // `updateDoc(..., { matches })`. Con più match simultanei (torneo), oppure
+  // giocatore + IA, oppure due azioni ravvicinate, una scrittura sovrascriveva
+  // le modifiche di un'altra partita da uno stato più vecchio: il giocatore
+  // vedeva il danno a schermo e poi — dopo qualche secondo o un refresh —
+  // l'azione "spariva".
+  // FIX: scriviamo dentro una transazione che RILEGGE lo stato fresco da
+  // Firestore e rimpiazza SOLO i match che questa azione ha realmente
+  // toccato (aggiunti/modificati/rimossi), preservando le modifiche concorrenti
+  // agli altri match. `extraFields` per eventuali campi top-level (es. fine torneo).
+  const commitArenaMatches = async (nextMatches, extraFields = null) => {
+    const ref = doc(db, "arena_meta", "global");
+    const base = arenaMeta?.matches || [];
+    const baseStr = new Map(base.map(m => [m.matchId, JSON.stringify(m)]));
+    const nextById = new Map(nextMatches.map(m => [m.matchId, m]));
+    // match aggiunti o modificati da QUESTA azione rispetto alla base locale.
+    // (I match non toccati vengono restituiti per riferimento dai vari .map,
+    //  quindi il confronto sul contenuto li riconosce come invariati.)
+    const changedIds = new Set();
+    for (const m of nextMatches) {
+      const bs = baseStr.get(m.matchId);
+      if (bs === undefined || bs !== JSON.stringify(m)) changedIds.add(m.matchId);
+    }
+    // match rimossi da QUESTA azione (presenti nella base, assenti ora).
+    const removedIds = new Set();
+    for (const m of base) if (!nextById.has(m.matchId)) removedIds.add(m.matchId);
+
+    let merged = nextMatches;
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return; // niente doc: non ricreiamo nulla (come prima)
+      const fresh = snap.data().matches || [];
+      const freshIds = new Set(fresh.map(m => m.matchId));
+      const result = [];
+      // 1) match già sul server: la nostra versione se l'abbiamo toccato,
+      //    altrimenti la versione FRESCA (preserva modifiche concorrenti);
+      //    saltati quelli che questa azione ha rimosso.
+      for (const fm of fresh) {
+        if (removedIds.has(fm.matchId)) continue;
+        result.push(changedIds.has(fm.matchId) ? nextById.get(fm.matchId) : fm);
+      }
+      // 2) match nuovi creati da questa azione (non ancora sul server).
+      for (const m of nextMatches) {
+        if (!freshIds.has(m.matchId)) result.push(m);
+      }
+      merged = result;
+      tx.update(ref, { matches: result, ...(extraFields || {}) });
+    });
+    // Allinea subito lo stato locale al risultato autorevole, così un'azione
+    // immediatamente successiva parte da una base coerente (l'onSnapshot
+    // confermerà lo stesso valore poco dopo).
+    setArenaMeta(prev => (prev ? { ...prev, matches: merged, ...(extraFields || {}) } : prev));
+  };
+
   // Master join setup
   const [masterJoinSetup, setMasterJoinSetup] = useState(false);
   const [masterJoinName, setMasterJoinName]   = useState("");
@@ -2711,7 +2767,7 @@ export default function Arena() {
     );
     if (staleIds.size === 0) return;
     const kept = arenaMeta.matches.filter(m => !staleIds.has(m.matchId));
-    updateDoc(doc(db, "arena_meta", "global"), { matches: kept })
+    commitArenaMatches(kept)
       .catch(e => console.error("prune fun matches error:", e));
   }, [isMaster, arenaMeta?.matches, arenaMeta?.funMatchHistory]);
 
@@ -3059,7 +3115,7 @@ export default function Arena() {
     if (!m || m.kind !== "fun" || m.status !== "open") return;
     if (m.challengerId !== currentUser?.uid && !isMaster) return;
     const updatedMatches = (arenaMeta.matches || []).filter(x => x.matchId !== matchId);
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   const abandonFunMatch = async (matchId) => {
@@ -3079,7 +3135,7 @@ export default function Arena() {
         logs: [...(x.logs || []), `🏳 ${meName} ha abbandonato la sfida.${opponent ? ` 🛡 ${opponent.name} vince.` : ""}`],
       };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   const removeFunMatch = async (matchId) => {
@@ -3087,7 +3143,7 @@ export default function Arena() {
     if (!m || m.kind !== "fun" || m.status !== "finished") return;
     if (!m.players?.some(p => p.id === currentUser?.uid) && !isMaster) return;
     const updatedMatches = (arenaMeta.matches || []).filter(x => x.matchId !== matchId);
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   const toggleWeapon = (item, maxWeapons) => {
@@ -3591,7 +3647,7 @@ export default function Arena() {
         logs:   [...m.logs, `🎲 ${mySnap?.name ?? "?"} tira iniziativa: ${roll}${advTag}`],
       };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── AI auto-actor ────────────────────────────────────────────────────────
@@ -3635,7 +3691,7 @@ export default function Arena() {
         logs: [...x.logs, `🎲 ${aiSnap.name} tira iniziativa: ${roll}`],
       };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // Master AI turn handler — chains heal → first-turn buff → attack → Action
@@ -3734,7 +3790,7 @@ export default function Arena() {
           : {};
         return { ...x, players, logs: [...x.logs, resultLog], ...next };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return; // on pass, the watcher re-fires with pendingControlSave cleared
     }
 
@@ -3781,7 +3837,7 @@ export default function Arena() {
         });
         return { ...x, players, logs: [...x.logs, resultLog] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return; // watcher will re-fire; AI then acts (or ticks poison) next time
     }
 
@@ -3820,7 +3876,7 @@ export default function Arena() {
         }
         return { ...x, players: rawPlayers, logs: [...x.logs, log] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return; // watcher re-fires; AI then takes its action
     }
 
@@ -3857,7 +3913,7 @@ export default function Arena() {
         }
         return { ...x, players: rawPlayers, logs: [...x.logs, log] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -3874,7 +3930,7 @@ export default function Arena() {
         );
         return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, `🌀 ${aiName} è sotto controllo: turno saltato (${remaining} rimanenti).`] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -3909,7 +3965,7 @@ export default function Arena() {
         });
         return { ...x, players, logs: [...x.logs, healLog] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "heal", aiId) });
+      await commitArenaMatches(withArenaFx(updatedMatches, matchId, "heal", aiId));
       return; // next tick of the useEffect will trigger the attack
     }
 
@@ -4261,7 +4317,7 @@ export default function Arena() {
         });
         return { ...x, players, turn: target.id, turnExpiry: expiry, logs: [...x.logs, passLog] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -4445,7 +4501,7 @@ export default function Arena() {
         logs,
       };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // Watcher: schedules AI moves with a small dramatic delay. Only the match's
@@ -4640,7 +4696,7 @@ export default function Arena() {
         if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -4765,7 +4821,7 @@ export default function Arena() {
       // così i DoT (veleno/sanguinamento/fuoco) ticcano UNA volta per turno, non per attacco.
       return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || sneakExpiry) : sneakExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -4795,7 +4851,7 @@ export default function Arena() {
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
         return { ...m, players, turnExpiry: stealthExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -4883,7 +4939,7 @@ export default function Arena() {
         const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
         return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || triboliExpiry) : triboliExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -4920,7 +4976,7 @@ export default function Arena() {
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
         return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: webExpiry, participantsAwarded: pa, logs: [...m.logs, log] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -4962,7 +5018,7 @@ export default function Arena() {
         awardPetPoints(finalM.winner, "arena_tournament", { resourceKey: finalM.matchId });
         return;
       }
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
       return;
     }
 
@@ -5250,7 +5306,7 @@ export default function Arena() {
       });
       return;
     }
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
@@ -5270,7 +5326,7 @@ export default function Arena() {
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: shieldExpiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SCUDO DELLA FEDE (save_faith) — +X a TUTTI i TS per N turni ─────────────
@@ -5294,7 +5350,7 @@ export default function Arena() {
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── AIUTO (dmg_buff) — +X al danno di ogni attacco per N turni ──────────────
@@ -5317,7 +5373,7 @@ export default function Arena() {
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SECONDO RESPIRO (Fighter) ─────────────────────────────────────────────
@@ -5339,7 +5395,7 @@ export default function Arena() {
       const log = { pub: `💨 ${myName} usa Secondo Respiro! Cura 🎲${healRolls}+5=${totalHeal} HP`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SCATTO D'AZIONE (Fighter) ─────────────────────────────────────────────
@@ -5364,7 +5420,7 @@ export default function Arena() {
         // Turn stays on current player → NON rigenerare turnExpiry (i DoT ticcano 1/turno).
         return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: m.turnExpiry || expiry, logs: [...m.logs, log] };
       });
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
     } finally {
       actionInFlightRef.current = false;
     }
@@ -5390,7 +5446,7 @@ export default function Arena() {
       const log = { pub: `🔮 ${myName} invoca ${action.name}! (+${bonusVal} ai ${turnsTxt})`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── CONCENTRAZIONE (Monk · Bonus Action: +2 danni per 2 turni) ────────────
@@ -5410,7 +5466,7 @@ export default function Arena() {
       const log = { pub: `🧘 ${myName} si concentra! +2 danni per 2 turni (bonus action)`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── CURA KI (Monk · Bonus Action: cura 1d8+SAG HP) ────────────────────────
@@ -5436,7 +5492,7 @@ export default function Arena() {
       const log = { pub: `🧘 ${myName} canalizza il Ki! Cura 🎲${healRolls}${sign}${wisMod} SAG = ${totalHeal} HP (bonus action)`, attId: currentUser.uid, ts: new Date().toISOString() };
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── ASSORBIRE DANNI (Monk · Bonus Action: prossimo danno → cura 80%, 1 carica) ──────
@@ -5461,7 +5517,7 @@ export default function Arena() {
       });
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── INVISIBILITÀ (il nemico non può attaccare il prossimo turno) ──────────
@@ -5479,7 +5535,7 @@ export default function Arena() {
       const turnsLog = duration > 1 ? `${duration} turni` : "il prossimo turno";
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `👻 ${myName} svanisce nell'ombra! Il nemico non può attaccare per ${turnsLog}.`] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── ISPIRAZIONE BARDICA (Bonus Action) ─────────────────────────────────────
@@ -5500,7 +5556,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── FURIA (Barbarian · Bonus Action) ───────────────────────────────────────
@@ -5521,7 +5577,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── MARCHIO DEL CACCIATORE (Ranger · BONUS ACTION) ────────────────────────
@@ -5542,7 +5598,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── COMPAGNI ANIMALI (Ranger) ─────────────────────────────────────────────
@@ -5597,7 +5653,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "slash", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "slash", targetId));
   };
 
   const handlePetSpider = async (matchId, targetId, action) => {
@@ -5635,7 +5691,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "poison", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "poison", targetId));
   };
 
   const handlePetEagle = async (matchId, targetId, action) => {
@@ -5665,7 +5721,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "ranged", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "ranged", targetId));
   };
 
   // ── DRAGO DI SMERALDO (Ranger unique) — auto-hit + cura caster ──────────
@@ -5696,7 +5752,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "fire", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "fire", targetId));
   };
 
   // ── DEMONI EVOCATI (Warlock) ─────────────────────────────────────────────
@@ -5732,7 +5788,7 @@ export default function Arena() {
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "fire", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "fire", targetId));
   };
 
   const handleDemonSuccubus = async (matchId, targetId, action) => {
@@ -5768,7 +5824,7 @@ export default function Arena() {
         : `💋 La Succubus di ${myName} ammalia ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 3 turni · svantaggio per 3 turni.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "magic", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "magic", targetId));
   };
 
   const handleDemonGreater = async (matchId, targetId, action) => {
@@ -5796,7 +5852,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "magic", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "magic", targetId));
   };
 
   // ── COSTRUTTI (Artefice) ─────────────────────────────────────────────────
@@ -5825,7 +5881,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "slash", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "slash", targetId));
   };
 
   const handleConstructSnake = async (matchId, targetId, action) => {
@@ -5852,7 +5908,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "poison", targetId) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "poison", targetId));
   };
 
   // ── FORGIA ARMATURA (Artefice) — +2 CA per 2 turni ─────────────────────────
@@ -5869,7 +5925,7 @@ export default function Arena() {
       });
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, `🛠 ${myName} forgia un'armatura sul campo! +2 CA per 2 turni.`] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── FONTE DI MAGIA (Sorcerer) — recupera 2 SLOT condivisi (Lv1/Lv2 a scelta) ──
@@ -5895,7 +5951,7 @@ export default function Arena() {
       const log = `🔮 ${myName} attinge alla Fonte di Magia! Recupera ${bits.join(" e ")}.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
     setShowFontePicker(false);
     setFonteSelected([]);
   };
@@ -5922,7 +5978,7 @@ export default function Arena() {
       if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   const handleMagicalCunning = async (matchId, cunningAction) => {
@@ -5948,7 +6004,7 @@ export default function Arena() {
       const log = `🌀 ${myName} usa Astuzia Magica! Salta il turno e ripristina 1 carica a ogni slot magia.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── RECUPERO ARCANO (Wizard) — ripristina 2 slot lv1 + 1 slot lv2 ──────────
@@ -5972,7 +6028,7 @@ export default function Arena() {
       const log = `📖 ${myName} usa Recupero Arcano! Ripristina: ${restored}`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
     setShowRecuperoPicker(false);
     setRecuperoLv1Selected([]);
     setRecuperoLv2Selected([]);
@@ -6024,7 +6080,7 @@ export default function Arena() {
       }
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── BLEED DOT — sanguinamento (Triboli del Ladro). Stack indipendente dal veleno. ──
@@ -6072,7 +6128,7 @@ export default function Arena() {
       }
       return { ...m, players: updatedPlayers, logs: [...m.logs, log, ...extraLogs] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── AUTO-RISOLUZIONE DOT (veleno / sanguinamento) ──────────────────────────
@@ -6128,7 +6184,7 @@ export default function Arena() {
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     setShowLayOfHandsPicker(false);
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: withArenaFx(updatedMatches, matchId, "heal", currentUser.uid) });
+    await commitArenaMatches(withArenaFx(updatedMatches, matchId, "heal", currentUser.uid));
   };
 
   // ── AID BUFF (Aiuto) — +4 di default, +2 per Chierico/Paladino ──────────────
@@ -6148,7 +6204,7 @@ export default function Arena() {
       const log = `🤝 ${myName} si concentra — +${bonusVal} al prossimo tiro per colpire!`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SAVE BUFF (Assorbire Elementi) — +N ai prossimi M tiri salvezza ──────
@@ -6169,7 +6225,7 @@ export default function Arena() {
       const log = `🔰 ${myName} invoca ${action.name}! +${bonus} ai prossimi ${attacks} TS.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── WEAPON LOCK (Riscaldare Arma) — il nemico non può attaccare con armi per N turni ─
@@ -6195,7 +6251,7 @@ export default function Arena() {
       const log = `🔩 ${myName} arroventa l'arma di ${targetName}! Per ${turns} turni non può usarla.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SELF ADVANTAGE (Benedire) — vantaggio ai propri attacchi per N turni ────
@@ -6217,7 +6273,7 @@ export default function Arena() {
       const log = `✨ ${myName} invoca ${action.name}! Vantaggio ai prossimi ${turns} attacchi.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── DISADVANTAGE ENEMY (Nebbia / Oscurità) — svantaggio agli attacchi del nemico ────
@@ -6239,7 +6295,7 @@ export default function Arena() {
       const log = `🌫 ${myName} oscura ${targetName}! Svantaggio ai suoi tiri per colpire per ${turns} turni.`;
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── EXTRA TURN (Passo Spedito) — la prossima volta che agisci hai 2 azioni ─
@@ -6267,7 +6323,7 @@ export default function Arena() {
         ? { ...m, players: updatedPlayers, logs: [...m.logs, log] }
         : { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── SAVE DOT (Raggio Avvelenato) — TS COS o subisci 2d6/turno per 3 turni ─
@@ -6316,7 +6372,7 @@ export default function Arena() {
         : `⏭ ${myName} salta il turno.`;
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── Salta turno perché sotto controllo (TS controllo fallito) ────────────
@@ -6335,7 +6391,7 @@ export default function Arena() {
       const log = `🌀 ${myName} è sotto controllo e perde il turno (${remaining} turni rimanenti).`;
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── Termina turno volontariamente (Monaco/Ladro doppie armi: salta le azioni rimanenti) ─
@@ -6349,7 +6405,7 @@ export default function Arena() {
       const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Avventuriero";
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} termina il turno volontariamente.`] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── Salta turno (qualsiasi giocatore, qualsiasi tipo di arena) ──────────────
@@ -6387,7 +6443,7 @@ export default function Arena() {
       });
       return { ...m, players, turn: advanceTurn(players, m), turnExpiry: expiry, logs: [...m.logs, `⏭ ${myName} salta il turno.`] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── WILD SHAPE ─────────────────────────────────────────────────────────────
@@ -6424,7 +6480,7 @@ export default function Arena() {
         logs: [...m.logs, `🐾 ${myName} si trasforma in ${form.icon} ${form.name}! [🎲${count}d${sides}=${hpRolls}${gufoNote}] → ${newHp} HP [Usi rimasti: ${newUsesLeft}/1]`] };
     });
     setShowWildPicker(false);
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // Ritornare alla forma umana è l'azione del turno: dopo il ritorno il turno passa.
@@ -6444,7 +6500,7 @@ export default function Arena() {
       return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry,
         logs: [...m.logs, `🧙 ${myName} ritorna alla forma originale (${restoredHp} HP)`] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── CURE ──────────────────────────────────────────────────────────────────
@@ -6691,10 +6747,10 @@ export default function Arena() {
     if (finalM) {
       const champSnap = snapshots[finalM.winner] || {};
       await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished" });
+      await commitArenaMatches(updatedMatches, { tournamentWinner: finalM.winner, phase: "finished" });
       return;
     }
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── CONTROLLO ─────────────────────────────────────────────────────────────
@@ -6864,7 +6920,7 @@ export default function Arena() {
       return { ...m, players: updatedPlayers, logs: [...m.logs, logMsg], ...extraTurn };
     });
 
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── EQUIPAGGIAMENTO ARMI ──────────────────────────────────────────────────
@@ -6881,7 +6937,7 @@ export default function Arena() {
       );
       return { ...m, players: updatedPlayers };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // Cambio arma durante il combat (costa il turno)
@@ -6905,7 +6961,7 @@ export default function Arena() {
       while (updatedPlayers[nextIndex]?.hp <= 0) nextIndex = (nextIndex + 1) % m.players.length;
       return { ...m, players: updatedPlayers, turn: updatedPlayers[nextIndex].id, turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
     });
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── ITEMS — azione gratuita: non consuma azione né bonus action, ma 1 sola per turno ──
@@ -6971,10 +7027,10 @@ export default function Arena() {
     if (finalM) {
       const champSnap = (arenaMeta.characterSnapshots || {})[finalM.winner] || {};
       await sendChampionNotification(finalM.winner, champSnap.name || "Campione", arenaMeta?.prizes || "", updatedMatches);
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches, tournamentWinner: finalM.winner, phase: "finished" });
+      await commitArenaMatches(updatedMatches, { tournamentWinner: finalM.winner, phase: "finished" });
       return;
     }
-    await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+    await commitArenaMatches(updatedMatches);
   };
 
   // ── AUTO-PASS / AUTO-INIT (timer scaduto) ──────────────────────────────────
@@ -7375,7 +7431,7 @@ export default function Arena() {
         awardPetPoints(finalM.winner, "arena_tournament", { resourceKey: finalM.matchId });
         return;
       }
-      await updateDoc(doc(db, "arena_meta", "global"), { matches: updatedMatches });
+      await commitArenaMatches(updatedMatches);
     } catch (e) {
       console.error("masterForceWinner error:", e);
     }
@@ -7902,7 +7958,7 @@ export default function Arena() {
                     if (!window.confirm(`Pulire ${prunable.length} sfida/e libera/e finite dall'arena? I vincitori restano nello storico.`)) return;
                     const prunableIds = new Set(prunable.map(m => m.matchId));
                     const kept = (arenaMeta.matches || []).filter(m => !prunableIds.has(m.matchId));
-                    await updateDoc(doc(db, "arena_meta", "global"), { matches: kept });
+                    await commitArenaMatches(kept);
                   }}
                 >
                   🧹 Pulisci partite finite ({prunable.length})
