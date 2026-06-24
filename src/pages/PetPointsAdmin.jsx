@@ -6,6 +6,7 @@ import { collection, onSnapshot, doc, updateDoc, increment, serverTimestamp, add
 import { PET_SPECIES, RARITY_LABEL, RARITY_COLOR } from '../data/petSpecies';
 import { TYPE_ICON } from '../data/petMoves';
 import { levelFromExp } from '../utils/pet';
+import { isHiddenChar } from '../data/hiddenPlayers';
 import PetAvatar from '../components/PetAvatar';
 import "./admin.css";
 
@@ -27,7 +28,7 @@ export default function PetPointsAdmin() {
   useEffect(() => {
     if (!currentUser) return;
     const unsub = onSnapshot(collection(db, 'characters'), (snap) => {
-      const charList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const charList = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !isHiddenChar(c));
       // Sort: highest pet points first
       charList.sort((a, b) => (b.petPoints || 0) - (a.petPoints || 0));
       setCharacters(charList);

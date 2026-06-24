@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from '../AuthContext';
@@ -17,7 +18,22 @@ export default function NPC() {
   const [query, setQuery] = useState("");
   const [activeCity, setActiveCity] = useState(null);
   const { currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
   useParallaxScroll();
+
+  // Arrivo da un link interattivo (?focus=<slug>): scorri ed evidenzia la scheda
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (!focus || npcs.length === 0) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`npc-card-${focus}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("npc-dossier--focus");
+      setTimeout(() => el.classList.remove("npc-dossier--focus"), 2800);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [searchParams, npcs]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "npcs"), (snap) => {
@@ -128,7 +144,7 @@ export default function NPC() {
             {/* registro delle schede-dossier */}
             <div className="npc-dossier-list">
               {list.map((npc) => (
-                <article key={npc.id} className="npc-dossier">
+                <article key={npc.id} id={`npc-card-${slugify(npc.name)}`} className="npc-dossier">
                   <div className="npc-dossier-portrait">
                     <img
                       src={npc.image || "/assets/player/default.png"}

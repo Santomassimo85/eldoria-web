@@ -12,6 +12,7 @@ import {
   doc, updateDoc, setDoc, onSnapshot, collection,
   serverTimestamp,
 } from "firebase/firestore";
+import { isHiddenChar } from "./data/hiddenPlayers";
 
 // PAGES
 
@@ -390,6 +391,7 @@ function OnlinePresence() {
       const now = Date.now();
       const active = snap.docs
         .map(d => ({ uid: d.id, ...d.data() }))
+        .filter(p => !isHiddenChar(p))
         .filter(p => {
           if (!p.lastSeen) return false;
           const ms = p.lastSeen.toMillis ? p.lastSeen.toMillis() : new Date(p.lastSeen).getTime();

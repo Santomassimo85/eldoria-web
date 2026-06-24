@@ -1,11 +1,13 @@
 // src/pages/Riassunti.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ToggleSection from "./ToggleSection";
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
 import { awardPetPoints } from '../utils/pet';
+import { buildLoreRegistry, linkifyLoreHtml } from '../utils/loreLinks';
 import './Riassunti.css';
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -155,11 +157,14 @@ ${summariesHtml}
 
 export default function Riassunti() {
     const { currentUser } = useAuth();
+    const navigate = useNavigate();
     const isMaster = currentUser?.email === MASTER_EMAIL;
     const [allSummaries, setAllSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState("");
     const [activeGroup, setActiveGroup] = useState(null);
+    // dati per i link interattivi (PG / NPC / città)
+    const [loreData, setLoreData] = useState({ characters: [], npcs: [] });
 
     const recordVisit = async (summaryId) => {
         if (isMaster) return;
@@ -194,6 +199,56 @@ export default function Riassunti() {
         };
         fetchSummaries();
     }, []);
+
+    // --- Dati per i link interattivi: PG (characters), NPC (npcs), città (geo) ---
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                const [charsSnap, npcsSnap, geoSnap] = await Promise.all([
+                    getDocs(collection(db, 'characters')),
+                    getDocs(collection(db, 'npcs')),
+                    getDocs(collection(db, 'geo_archive')),
+                ]);
+                if (!alive) return;
+                const characters = charsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const npcs = npcsSnap.docs.map(d => ({ name: d.data().name }));
+                const cities = geoSnap.docs.map(d => d.data().name).filter(Boolean);
+                setLoreData({ characters, npcs, cities });
+            } catch (_) { /* link interattivi opzionali */ }
+        })();
+        return () => { alive = false; };
+    }, []);
+
+    // registro dei nomi linkabili (ricostruito solo quando cambiano i dati)
+    const loreRegistry = useMemo(
+        () => buildLoreRegistry({
+            characters: loreData.characters,
+            npcs: loreData.npcs,
+            cities: loreData.cities,
+        }),
+        [loreData]
+    );
+
+    // contenuto HTML con i nomi già trasformati in link (memoizzato)
+    const linkedContent = useMemo(() => {
+        const map = {};
+        if (!loreRegistry.regex) return map;
+        for (const s of allSummaries) {
+            if (s.content) map[s.id] = linkifyLoreHtml(s.content, loreRegistry);
+        }
+        return map;
+    }, [allSummaries, loreRegistry]);
+
+    // intercetta i click sui link interattivi e naviga internamente
+    const handleLoreClick = (e) => {
+        const a = e.target.closest('a[data-lore]');
+        if (!a) return;
+        const href = a.getAttribute('data-href');
+        if (!href) return;
+        e.preventDefault();
+        navigate(href);
+    };
 
     // --- Parallax: aggiorna --rs-scroll su scroll, senza re-render (come Arena) ---
     useEffect(() => {
@@ -455,7 +510,9 @@ export default function Riassunti() {
                                                     <h4 className="Obia">{summary.subTitle}</h4>
                                                 )}
                                                 <div
-                                                    dangerouslySetInnerHTML={{ __html: summary.content }}
+                                                    className="rs-summary-html"
+                                                    onClick={handleLoreClick}
+                                                    dangerouslySetInnerHTML={{ __html: linkedContent[summary.id] || summary.content }}
                                                 />
                                                 {Array.isArray(summary.images) && summary.images.length > 0 && (
                                                     <div className="summary-gallery">

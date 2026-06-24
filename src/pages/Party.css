@@ -381,6 +381,63 @@
   display: block; font-family: var(--font-head, "Cinzel"), serif;
   font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: #8a261c; margin-bottom: 2px;
 }
+.party-page .hero-modal-level {
+  display: inline-block; margin: -4px 0 12px;
+  font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .64rem; letter-spacing: .14em; text-transform: uppercase;
+  color: #fffbea; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+  padding: 3px 12px; border-radius: 999px;
+}
+
+/* ── Scheda dal foglio personaggio ── */
+.party-page .hero-modal-sheet {
+  margin: 0 0 14px; padding: 12px; text-align: left;
+  background: color-mix(in srgb, var(--accent) 6%, rgba(255,253,245,.6));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); border-radius: 14px;
+}
+.party-page .hero-modal-vitals {
+  display: flex; gap: 8px; justify-content: center; margin-bottom: 10px;
+}
+.party-page .hero-vital {
+  display: flex; flex-direction: column; align-items: center; min-width: 58px;
+  padding: 6px 10px; border-radius: 10px;
+  background: linear-gradient(180deg, #fffdf5, #f3ead4);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, #c9b78a);
+}
+.party-page .hero-vital b {
+  font-family: var(--font-display, "Cinzel Decorative"), serif; font-size: 1.15rem; color: var(--accent); line-height: 1;
+}
+.party-page .hero-vital i {
+  font-style: normal; font-size: .56rem; letter-spacing: .1em; text-transform: uppercase; color: #8a6f3a; margin-top: 3px;
+}
+.party-page .hero-modal-abilities {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+}
+.party-page .hero-ability {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 2px; border-radius: 9px;
+  background: rgba(255,253,245,.7); border: 1px solid color-mix(in srgb, var(--accent) 16%, #c9b78a);
+}
+.party-page .hero-ability i {
+  font-style: normal; font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .54rem; letter-spacing: .06em; color: #8a261c;
+}
+.party-page .hero-ability b { font-size: 1rem; color: #33281a; line-height: 1; }
+.party-page .hero-ability em { font-style: normal; font-size: .66rem; color: #6a5b41; }
+
+/* ── Biografia ── */
+.party-page .hero-modal-bio {
+  margin: 0 0 14px; padding: 14px 16px; text-align: left;
+  background: color-mix(in srgb, var(--accent) 5%, rgba(255,253,245,.5));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 12px;
+}
+.party-page .hero-modal-bio-label {
+  display: block; font-family: var(--font-head, "Cinzel"), serif;
+  font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: #8a261c; margin-bottom: 6px;
+}
+.party-page .hero-modal-bio p { margin: 0 0 8px; color: #33281a; font-size: .92rem; line-height: 1.55; }
+.party-page .hero-modal-bio p:last-child { margin-bottom: 0; }
+
 .party-page .hero-modal-motto {
   margin: 0; padding: 12px 16px; color: var(--accent); font-style: italic;
   border-left: 3px solid var(--accent); text-align: left;

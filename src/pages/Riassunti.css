@@ -918,3 +918,36 @@
   .rs-group-body { padding: 8px 12px 0; }
   .toggle-title.summaryTitle { padding: 22px 14px 18px !important; min-height: 96px; }
 }
+
+/* ── Link interattivi nei testi (PG / NPC / città) ──────────────────────── */
+.rs-summary-html .lore-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0 1px;
+  border-radius: 3px;
+  background-image: linear-gradient(transparent 62%, color-mix(in srgb, var(--lore-c, #8a5a1a) 30%, transparent) 0);
+  background-size: 100% 100%;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--lore-c, #8a5a1a) 55%, transparent);
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+  white-space: nowrap;
+}
+.rs-summary-html .lore-link:hover,
+.rs-summary-html .lore-link:focus-visible {
+  color: #fffaf0;
+  background-color: var(--lore-c, #8a5a1a);
+  box-shadow: inset 0 -1.5em 0 var(--lore-c, #8a5a1a);
+  outline: none;
+}
+.rs-summary-html .lore-link::before { margin-right: 2px; font-size: .82em; opacity: .85; }
+.rs-summary-html .lore-link--char { --lore-c: #8a261c; }
+.rs-summary-html .lore-link--char::before { content: "⚔"; }
+.rs-summary-html .lore-link--npc  { --lore-c: #2c6a8a; }
+.rs-summary-html .lore-link--npc::before  { content: "☖"; }
+.rs-summary-html .lore-link--city { --lore-c: #1f7a5a; }
+.rs-summary-html .lore-link--city::before { content: "⌖"; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-summary-html .lore-link { transition: none; }
+}

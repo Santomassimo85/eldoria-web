@@ -337,3 +337,19 @@
    ============================================================ */
 .geo-page > * { position: relative; z-index: 1; }
 .geo-page > .ambient-fx { position: fixed; z-index: 0; }
+
+/* ── Evidenziazione luogo al focus (arrivo da link interattivo) ── */
+.geo-page .geo-card-wrapper { scroll-margin-top: 90px; }
+.geo-page .geo-card--focus {
+  animation: geo-focus-pulse 2.8s ease;
+  border-radius: 14px;
+}
+@keyframes geo-focus-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(47,176,136,0); }
+  12%  { box-shadow: 0 0 0 4px rgba(47,176,136,.55); }
+  60%  { box-shadow: 0 0 0 4px rgba(47,176,136,.35); }
+  100% { box-shadow: 0 0 0 0 rgba(47,176,136,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .geo-page .geo-card--focus { animation: none; }
+}

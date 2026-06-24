@@ -15,6 +15,7 @@ import {
   deleteObject,
 } from "firebase/storage";
 import { Link } from "react-router-dom";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import "./admin.css";
 
 const PARTY_ROSTER = {
@@ -148,8 +149,9 @@ export default function QuestAdmin() {
       setCharacters(
         snap.docs.map((d) => ({
           id: d.id,
+          name: d.data().name,
           charName: d.data().name || "Eroe Senza Nome",
-        }))
+        })).filter((c) => !isHiddenChar(c))
       );
     });
     return () => { unsubQ(); unsubC(); };

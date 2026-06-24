@@ -1,9 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import "./Party.css";
 import "../styles/cinematic.css";
+import { db } from "../firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
+import { isHiddenName, isHiddenChar } from "../data/hiddenPlayers";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png";
 
@@ -68,11 +72,48 @@ const PARTIES = [
   },
 ];
 
+/* ── Biografie degli eroi ──────────────────────────────────────────
+   Riempile a piacere: la chiave è il `name` del membro in PARTIES.
+   Una stringa vuota = nessuna biografia mostrata. Accetta più paragrafi
+   separati da una riga vuota (\n\n). */
+const HERO_BIOS = {
+  // Compagnia di Amea
+  "Caius": "",
+  "Garroth": "",
+  "Tanagar": "",
+  "Sylva": "",
+  // Compagnia di Lac
+  "Thoki": "",
+  "Cleofe": "",
+  // Compagnia di Enox
+  "Makenna": "",
+  "Temistocle Sottocolle": "",
+  "Alaric Voltasorte": "",
+  "Lael": "",
+  // Compagnia di Leaf
+  "Soran": "",
+  "Zethir": "",
+  "Aksel": "",
+  "Dago": "",
+};
+
+/* normalizza un nome per il confronto (minuscolo, apostrofi, spazi). */
+const normName = (s) =>
+  String(s ?? "").toLowerCase().replace(/[´`’‘ʼ]/g, "'").replace(/\s+/g, " ").trim();
+/* prima "parola" del nome — per agganciare l'eroe al suo personaggio Firestore. */
+const firstTok = (s) => normName(s).split(/[\s'"\-]+/)[0];
+
+/* abilità mostrate nella scheda (chiave Firestore → etichetta). */
+const ABILITY_LABELS = [
+  ["str", "FOR"], ["dex", "DES"], ["con", "COS"],
+  ["int", "INT"], ["wis", "SAG"], ["cha", "CAR"],
+];
+
 /* helper: filtra i membri visibili di una compagnia secondo la query */
 function membersFor(party, query) {
   const q = query.trim().toLowerCase();
   return party.members
-    .filter((m) => !m.hidden)
+    .filter((m) => !m.hidden && !isHiddenName(m.name))
     .filter((m) => !q || [m.name, m.race, m.class, party.id, party.name]
       .filter(Boolean).join(" ").toLowerCase().includes(q));
 }
@@ -103,7 +144,18 @@ function RosterEntry({ hero, accent, onOpen }) {
 }
 
 /* ── Scheda-pergamena del singolo eroe (modale) ── */
-function HeroModal({ hero, party, onClose }) {
+function HeroModal({ hero, party, char, onClose }) {
+  const bio = (HERO_BIOS[hero.name] || "").trim();
+  const bioParas = bio ? bio.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) : [];
+
+  // Dati "ricchi" presi dal foglio personaggio (se agganciato).
+  const race = char?.race || hero.race;
+  const klass = char?.class || hero.class;
+  const subclass = char?.subclass;
+  const background = char?.background;
+  const level = char?.level;
+  const st = char?.stats || null;
+
   return (
     <div className="hero-modal-overlay" onClick={onClose}>
       <div
@@ -125,10 +177,56 @@ function HeroModal({ hero, party, onClose }) {
           {party.name}
         </span>
         <h3 className="hero-modal-name">{hero.name}</h3>
+        {Number.isFinite(level) && (
+          <span className="hero-modal-level">Livello {level}</span>
+        )}
+
         <div className="hero-modal-meta">
-          <p><strong>Razza:</strong> {hero.race}</p>
-          <p><strong>Classe:</strong> {hero.class}</p>
+          <p><strong>Razza</strong> {race || "—"}</p>
+          <p><strong>Classe</strong> {klass || "—"}</p>
+          {subclass && <p><strong>Sottoclasse</strong> {subclass}</p>}
+          {background && <p><strong>Origine</strong> {background}</p>}
         </div>
+
+        {/* Statistiche dal foglio personaggio */}
+        {st && (
+          <div className="hero-modal-sheet">
+            <div className="hero-modal-vitals">
+              {Number.isFinite(st.hp ?? st.maxHp) && (
+                <span className="hero-vital"><b>{st.hp ?? st.maxHp}</b><i>PF</i></span>
+              )}
+              {Number.isFinite(st.ac) && (
+                <span className="hero-vital"><b>{st.ac}</b><i>CA</i></span>
+              )}
+              {Number.isFinite(st.speed) && (
+                <span className="hero-vital"><b>{st.speed}</b><i>Vel.</i></span>
+              )}
+            </div>
+            <div className="hero-modal-abilities">
+              {ABILITY_LABELS.map(([key, label]) => {
+                const a = st[key];
+                if (!a || !Number.isFinite(a.score)) return null;
+                const mod = Number.isFinite(a.mod) ? a.mod : Math.floor((a.score - 10) / 2);
+                return (
+                  <span key={key} className="hero-ability">
+                    <i>{label}</i>
+                    <b>{a.score}</b>
+                    <em>{mod >= 0 ? `+${mod}` : mod}</em>
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Biografia (riempibile in HERO_BIOS) */}
+        {bioParas.length > 0 && (
+          <div className="hero-modal-bio">
+            <span className="hero-modal-bio-label">Biografia</span>
+            {bioParas.map((p, i) => <p key={i}>{p}</p>)}
+          </div>
+        )}
+
         <p className="hero-modal-motto"><em>«{party.motto}»</em></p>
       </div>
     </div>
@@ -136,9 +234,23 @@ function HeroModal({ hero, party, onClose }) {
 }
 
 /* ── Casata = doppia pagina di manoscritto: marginalia + registro ── */
-function HouseSection({ party, query }) {
+function HouseSection({ party, query, charByName, focusHero, onFocusConsumed }) {
   const [openIdx, setOpenIdx] = useState(null);
   const visibleMembers = membersFor(party, query);
+
+  // Apertura automatica della scheda quando si arriva da un link (?hero=…)
+  useEffect(() => {
+    if (!focusHero) return;
+    const idx = visibleMembers.findIndex((m) => firstTok(m.name) === firstTok(focusHero));
+    if (idx >= 0) {
+      setOpenIdx(idx);
+      onFocusConsumed?.();
+      const el = document.getElementById(`party-${party.id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusHero]);
+
   if (visibleMembers.length === 0) return null;
   const open = openIdx != null ? visibleMembers[openIdx] : null;
 
@@ -168,7 +280,14 @@ function HouseSection({ party, query }) {
         </div>
       </div>
 
-      {open && <HeroModal hero={open} party={party} onClose={() => setOpenIdx(null)} />}
+      {open && (
+        <HeroModal
+          hero={open}
+          party={party}
+          char={charByName?.get(firstTok(open.name)) || null}
+          onClose={() => setOpenIdx(null)}
+        />
+      )}
     </section>
   );
 }
@@ -177,10 +296,32 @@ function HouseSection({ party, query }) {
 export default function Party() {
   const [activeParty, setActiveParty] = useState("all");
   const [query, setQuery] = useState("");
+  const [chars, setChars] = useState([]);
+  const [searchParams] = useSearchParams();
+  const [focusHero, setFocusHero] = useState(() => searchParams.get("hero") || null);
   useParallaxScroll();
 
+  // Foglio personaggi (lettura pubblica) → dati ricchi nella scheda eroe.
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "characters"), (snap) => {
+      setChars(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c) => !isHiddenChar(c)));
+    }, () => {});
+    return () => unsub();
+  }, []);
+
+  // Lookup: prima parola del nome → personaggio Firestore.
+  const charByName = useMemo(() => {
+    const m = new Map();
+    for (const c of chars) {
+      if (!c.name) continue;
+      const key = firstTok(c.name);
+      if (key && !m.has(key)) m.set(key, c);
+    }
+    return m;
+  }, [chars]);
+
   const allMembers = useMemo(
-    () => PARTIES.flatMap((p) => p.members.filter((m) => !m.hidden).map((m) => ({ ...m, party: p.id }))),
+    () => PARTIES.flatMap((p) => p.members.filter((m) => !m.hidden && !isHiddenName(m.name)).map((m) => ({ ...m, party: p.id }))),
     []
   );
 
@@ -273,7 +414,14 @@ export default function Party() {
           <p className="cine-empty">Nessun eroe corrisponde alla ricerca.</p>
         ) : (
           visibleParties.map((p) => (
-            <HouseSection key={p.id} party={p} query={query} />
+            <HouseSection
+              key={p.id}
+              party={p}
+              query={query}
+              charByName={charByName}
+              focusHero={focusHero}
+              onFocusConsumed={() => setFocusHero(null)}
+            />
           ))
         )}
       </div>

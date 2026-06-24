@@ -10,6 +10,7 @@ import {
   marketItemToFormState, marketItemToFoundryPayload,
   resolveFoundryType, resolveFoundryRarity, foundryReadiness,
 } from "../utils/foundryMap";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
@@ -102,7 +103,7 @@ export default function FoundryItemForm() {
   useEffect(() => {
     if (!isMaster) return;
     getDocs(collection(db, "characters")).then(snap => {
-      setChars(snap.docs.map(d => ({ uid: d.id, name: d.data().name || d.id })).filter(c => c.name).sort((a, b) => a.name.localeCompare(b.name)));
+      setChars(snap.docs.map(d => ({ uid: d.id, name: d.data().name || d.id })).filter(c => c.name && !isHiddenChar(c)).sort((a, b) => a.name.localeCompare(b.name)));
     }).catch(() => {});
   }, [isMaster]);
 

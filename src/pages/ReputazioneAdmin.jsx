@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebase";
 import { collection, getDocs, doc, updateDoc, increment } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import "./admin.css";
 
 const RATTO_LEVELS = [
@@ -25,7 +26,7 @@ export default function ReputationAdmin() {
         id: doc.id,
         ...doc.data(),
         rattoPoints: doc.data().rattoPoints || 0,
-      }));
+      })).filter((c) => !isHiddenChar(c));
       setCharacters(chars.sort((a, b) => b.rattoPoints - a.rattoPoints));
     } catch (error) {
       console.error("Errore caricamento PG:", error);

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebase";
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import "../pages/admin.css";
 
 export default function SendNotification() {
@@ -18,7 +19,7 @@ export default function SendNotification() {
       const chars = querySnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name || "Eroe Senza Nome",
-      }));
+      })).filter(c => !isHiddenChar(c));
       chars.sort((a, b) => a.name.localeCompare(b.name));
       setCharacters(chars);
     };

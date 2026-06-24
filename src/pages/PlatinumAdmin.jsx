@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { isHiddenChar } from '../data/hiddenPlayers';
 import "./admin.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -19,7 +20,7 @@ export default function PlatinumAdmin() {
   useEffect(() => {
     if (!currentUser) return;
     const unsub = onSnapshot(collection(db, 'characters'), (snap) => {
-      const charList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const charList = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => !isHiddenChar(c));
       charList.sort((a, b) =>
         (a.name || a.email || a.id).localeCompare(b.name || b.email || b.id)
       );

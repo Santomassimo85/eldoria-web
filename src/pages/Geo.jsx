@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import ToggleSection from "./ToggleSection";
@@ -28,6 +29,21 @@ export default function Geo() {
   const [activeContinent, setActiveContinent] = useState(null);
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
+  const [searchParams] = useSearchParams();
+  const focusSlug = searchParams.get("focus");
+
+  // Arrivo da un link interattivo (?focus=<slug>): scorri ed evidenzia il luogo
+  useEffect(() => {
+    if (!focusSlug || locations.length === 0) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`geo-card-${focusSlug}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("geo-card--focus");
+      setTimeout(() => el.classList.remove("geo-card--focus"), 2800);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [focusSlug, locations]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "geo_archive"), (snap) => {
@@ -277,10 +293,10 @@ export default function Geo() {
             {/* carte d'atlante (accordion) */}
             <div className="geo-grid">
               {locationsInContinent.map((loc) => (
-                <div key={loc.id} className="geo-card-wrapper">
+                <div key={loc.id} id={`geo-card-${slugify(loc.name)}`} className="geo-card-wrapper">
                   <ToggleSection
                     title={loc.name}
-                    defaultOpen={false}
+                    defaultOpen={!!focusSlug && slugify(loc.name) === focusSlug}
                     staticContent={loc.image && (
                       <img src={loc.image} alt={loc.name} className="geo-card-preview" />
                     )}

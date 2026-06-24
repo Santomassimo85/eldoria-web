@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "51",
+      "date": "2026-06-24",
+      "title": "Giocatori nascosti, schede eroe e riassunti interattivi",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "I riassunti diventano interattivi: i nomi di personaggi, NPC e città citati nel testo sono ora link cliccabili che portano direttamente alla scheda corrispondente (Registro delle Compagnie, Schedario dei Volti, Atlante Geomantico), con scorrimento ed evidenziazione della voce di destinazione."
+        },
+        {
+          "type": "feature",
+          "text": "Nel Registro delle Compagnie, toccando un eroe la scheda mostra ora più informazioni: livello, sottoclasse e origine, statistiche (PF, CA, velocità e i sei valori di caratteristica) lette dal foglio del personaggio, più uno spazio dedicato alla biografia."
+        },
+        {
+          "type": "chore",
+          "text": "Alcuni personaggi non più attivi sono stati nascosti dalle liste (pannelli del Master, presenza online, Registro delle Compagnie) senza essere cancellati: i loro dati restano intatti e possono essere ripristinati in qualsiasi momento. Le pagine di gioco (TCG, Arena, World Boss) non sono toccate."
+        }
+      ]
+    },
+    {
       "version": "50.01",
       "date": "2026-06-24",
       "title": "Menu: testo AGENTI e DM ADMIN leggibile",

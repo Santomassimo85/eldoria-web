@@ -3,6 +3,7 @@ import { db } from "../firebase";
 import { collection, onSnapshot, doc, updateDoc, setDoc, getDoc, addDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
 import { Link } from "react-router-dom";
+import { isHiddenChar } from "../data/hiddenPlayers";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
@@ -26,7 +27,7 @@ export default function PlayerSpritesAdmin() {
       setCharacters(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((c) => c.name)
+          .filter((c) => c.name && !isHiddenChar(c))
           .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
       );
     });
