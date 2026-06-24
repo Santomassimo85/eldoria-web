@@ -47,6 +47,11 @@ nav a.active {
 .admin-link, nav a.admin-link { color:#241501 !important; font-family:var(--font-head) !important; text-shadow:none !important; }
 nav a.admin-link:hover { color:#fff5e6 !important; text-shadow:0 1px 3px rgba(0,0,0,.35) !important; }
 
+/* Voci "AGENTI" e "DM ADMIN": sfondo rosso → testo oro chiaro leggibile
+   (vince sul colore scuro ereditato da .admin-link). */
+.admin-link.admin-link-red, nav a.admin-link.admin-link-red { color:#ffe7a8 !important; text-shadow:0 1px 2px rgba(0,0,0,.45) !important; }
+nav a.admin-link.admin-link-red:hover { color:#fff5e6 !important; }
+
 /* Tasto "DM Tools" (dropdown trigger): sfondo azzurro, testo nero.
    Hover: schiarisco il testo mantenendo l'azzurro. */
 .nav-dd-trigger[data-dd="dmtools"] {

@@ -2868,12 +2868,19 @@ export default function Arena() {
     const petAction = (isRangerClass(cls) && pendingPet && RANGER_PETS[pendingPet]) ? RANGER_PETS[pendingPet].action : null;
     const demonAction = (isWarlockClass(cls) && pendingDemon && WARLOCK_DEMONS[pendingDemon]) ? WARLOCK_DEMONS[pendingDemon].action : null;
     const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
+    // Smite scala col livello Paladino (Arena_class_progress.txt): +1 carica al Lv4
+    // e al Lv8 (2→3→4), e dado 3d8 dal Lv19. Senza questo, chi compra i livelli
+    // paga potenziamenti pubblicizzati nel mercato che non arrivavano mai.
+    const palLevel  = charPreview.classLevels?.[getClassKey(charPreview.class)] ?? 3;
+    const smiteUses = 2 + (palLevel >= 4 ? 1 : 0) + (palLevel >= 8 ? 1 : 0);
+    const smiteDice = palLevel >= 19 ? "3d8" : "2d8";
     const finalActions = [
       ...pendingWeapons, ...pendingSpells, ...pendingSkills,
       ...config.autoActions
         .filter(a => !a.requiresBuff || ((charPreview.arenaBuffs || {})[a.requiresBuff] ?? 0) > 0)
         .map(a => {
           if (a.special === "bardic_inspiration") return { ...a, maxUses: Math.max(1, chaScore) };
+          if (a.special === "smite") return { ...a, maxUses: smiteUses, damage: smiteDice, info: `Attacca con arma +${smiteDice} · ${smiteUses} cariche` };
           return a;
         }),
       ...(petAction ? [petAction] : []),
@@ -4642,7 +4649,7 @@ export default function Arena() {
       const equippedNames = myMatchPlayer?.equippedWeaponNames || [];
       const allWeapons = (mySnap?.selectedActions || []).filter(a => a.type === "weapon");
       const weaponAction = allWeapons.find(a => equippedNames.includes(a.name)) || allWeapons[0];
-      if (!weaponAction) return;
+      if (!weaponAction) { alert("⚡ Smite Divino richiede un'arma equipaggiata: equipaggia un'arma e riprova."); return; }
 
       const defMatchPlayer = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
       const shieldSkillBonusDef = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
@@ -4660,7 +4667,7 @@ export default function Arena() {
       const critMult = isCrit ? 2 : 1;
 
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
-      const { total: sDmg, rolls: sRolls } = isHit ? rollDmg("2d8") : { total: 0, rolls: "" };
+      const { total: sDmg, rolls: sRolls } = isHit ? rollDmg(action.damage || "2d8") : { total: 0, rolls: "" };
       const rawSmiteDmg = (wDmg + sDmg + smiteStrMod + readAidDmgBonus(myMatchPlayer)) * critMult;
       const totalDmg = applyBarbarianRageReduction(rawSmiteDmg, defenderSnap, defMatchPlayer, false);
 

@@ -170,7 +170,7 @@ const ConcilioNavLink = ({ closeMenu }) => {
   return (
     <NavLink
       to="/agenti"
-      className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+      className={({ isActive }) => isActive ? "active admin-link admin-link-red" : "admin-link admin-link-red"}
       onClick={closeMenu}
       style={{ backgroundColor: "var(--red)", color: "#ffe7a8", fontWeight: "bold" }}
       title="Il Concilio — i tuoi agenti AI"
@@ -187,7 +187,7 @@ const AdminNavLink = ({ closeMenu }) => {
     return (
       <NavLink
         to="/dm-admin"
-        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+        className={({ isActive }) => isActive ? "active admin-link admin-link-red" : "admin-link admin-link-red"}
         onClick={closeMenu}
         style={{ backgroundColor: "var(--red)", color: "#ffe7a8", fontWeight: "bold" }}
       >

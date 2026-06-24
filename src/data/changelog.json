@@ -1,6 +1,32 @@
 {
   "versions": [
     {
+      "version": "50.01",
+      "date": "2026-06-24",
+      "title": "Menu: testo AGENTI e DM ADMIN leggibile",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Le voci di menu AGENTI e DM ADMIN avevano testo scuro su sfondo rosso, poco leggibile: ora il testo è oro chiaro con leggera ombra. Lo stile dedicato (admin-link-red) vince sul colore scuro ereditato dal resto dei tasti admin."
+        }
+      ]
+    },
+    {
+      "version": "50",
+      "date": "2026-06-23",
+      "title": "Arena: Smite del Paladino e livelli acquistati",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Smite Divino ora scala con il livello del Paladino come promesso nel mercato: cariche 2 → 3 (Lv4) → 4 (Lv8) e dado potenziato a 3d8 dal Lv19. Prima i livelli acquistati non aumentavano le cariche di Smite."
+        },
+        {
+          "type": "fix",
+          "text": "Smite Divino senza un'arma equipaggiata non «spariva» più nel nulla: ora avvisa di equipaggiare un'arma invece di non fare niente. Confermato che il danno dello Smite somma sempre il dado dell'arma equipaggiata più il bonus radiante (2d8/3d8)."
+        }
+      ]
+    },
+    {
       "version": "49",
       "date": "2026-06-23",
       "title": "Arena: azioni che sparivano dopo l'invio",
