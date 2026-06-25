@@ -8,7 +8,7 @@
 // Finché Firestore non ha numeri "sent", mostriamo numeri D'ESEMPIO bundlati
 // (src/data/scribaSample.json) così la pagina è già visibile/recensibile.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, increment } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
@@ -18,6 +18,10 @@ import ScribaEditModal from "./ScribaEditModal";
 import "./Scriba.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
+
+// Video-intro a tutto schermo: si mostra una volta per sessione del browser.
+const SCRIBA_INTRO_SRC = "/assets/scriba-intro.mp4";
+const SCRIBA_INTRO_SEEN = "scribaIntroSeen";
 
 // Cadenza reale de Lo Scriba (deve combaciare con SCRIBA_INTERVAL_DAYS lato
 // functions): un nuovo numero ~10 giorni dopo l'ultimo inviato.
@@ -54,6 +58,34 @@ export default function Scriba() {
   const [term, setTerm] = useState("");
   const [mese, setMese] = useState("");
   const [now, setNow] = useState(() => Date.now());
+
+  // ── Video-intro a tutto schermo (una volta per sessione) ──
+  const [intro, setIntro] = useState(() => {
+    try { return sessionStorage.getItem(SCRIBA_INTRO_SEEN) !== "1"; }
+    catch { return true; }
+  });
+  const [introMuted, setIntroMuted] = useState(true);
+  const introVideoRef = useRef(null);
+
+  const endIntro = () => {
+    try { sessionStorage.setItem(SCRIBA_INTRO_SEEN, "1"); } catch {}
+    setIntro(false);
+  };
+  const toggleIntroMute = () => {
+    const v = introVideoRef.current;
+    if (!v) return;
+    const next = !v.muted;
+    v.muted = next;
+    setIntroMuted(next);
+  };
+
+  // Mentre l'intro è attiva, blocca lo scroll del documento sottostante.
+  useEffect(() => {
+    if (!intro) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [intro]);
 
   // "Orologio" del countdown: si aggiorna ogni minuto (basta per un conto in g/h).
   useEffect(() => {
@@ -156,6 +188,31 @@ export default function Scriba() {
 
   return (
     <section className="scriba-archive">
+      {intro && (
+        <div className="scriba-intro" role="dialog" aria-label="Anteprima de Lo Scriba">
+          <video
+            ref={introVideoRef}
+            className="scriba-intro-video"
+            src={SCRIBA_INTRO_SRC}
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={endIntro}
+            onError={endIntro}
+          />
+          <button
+            type="button"
+            className="scriba-intro-mute"
+            onClick={toggleIntroMute}
+            aria-label={introMuted ? "Attiva audio" : "Disattiva audio"}
+            title={introMuted ? "Attiva audio" : "Disattiva audio"}
+          >
+            {introMuted ? "🔇" : "🔊"}
+          </button>
+        </div>
+      )}
+
       <header className="scriba-mast">
         <span className="scriba-eyebrow">✦ Gazzetta di Exanthia ✦</span>
         <h1 className="scriba-title">Lo Scriba</h1>

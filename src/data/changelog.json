@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "52",
+      "date": "2026-06-25",
+      "title": "Lo Scriba: intro video a tutto schermo",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Aprendo Lo Scriba parte ora un breve video di presentazione a tutto schermo; al termine compare automaticamente l'archivio completo. Il video non ha controlli a parte un pulsante per attivare o disattivare l'audio (parte silenzioso). L'intro si mostra una volta per sessione del browser."
+        },
+        {
+          "type": "feature",
+          "text": "Ogni numero de Lo Scriba inviato via email ha ora in apertura una locandina di presentazione cliccabile: il tocco apre Lo Scriba e fa partire il video di intro."
+        }
+      ]
+    },
+    {
       "version": "51.01",
       "date": "2026-06-25",
       "title": "Riassunti: anteprima rapida al posto del salto di pagina",

@@ -36,6 +36,29 @@ const paragraphs = (body, color = "#2b2620") =>
         .map((p) => `<p style="margin:0 0 13px;font-family:${FONT_BODY};font-size:16px;line-height:1.72;color:${color};">${esc(p).replace(/\n/g, "<br>")}</p>`)
         .join("");
 
+// Locandina-video di presentazione (in cima a OGNI numero). I client di posta
+// non riproducono <video> in modo affidabile (Gmail/Outlook lo rimuovono), così
+// mostriamo un poster cliccabile con un ▶: il tocco apre /scriba, dove il video
+// parte a tutto schermo come intro (solo controllo mute), come sul sito.
+function videoIntroBlock() {
+    const link = `${SITE_URL}/scriba`;
+    const poster = `${SITE_URL}/assets/scriba-intro-poster.jpg`;
+    // NB: l'anti-dark-mode dell'email forza gli sfondi a pergamena chiara, quindi
+    // la barra è in tema chiaro con testo accento rosso (classe .sc-accent, così
+    // resta rosso anche dove la dark-mode riscrive i colori).
+    return `
+      <tr><td style="padding:0 0 4px;">
+        <a href="${link}" target="_blank" style="text-decoration:none;color:inherit;display:block;">
+          <img src="${poster}" alt="Guarda la presentazione de Lo Scriba" width="548" style="display:block;width:100%;max-width:548px;height:auto;border:1px solid #cdbfa3;border-bottom:none;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ece3d0;border:1px solid #cdbfa3;border-top:none;">
+            <tr><td align="center" style="padding:13px 14px;">
+              <span class="sc-accent" style="font-family:${FONT_TITLE};font-weight:700;font-size:15px;letter-spacing:1.5px;color:#7a1f12;">▶&nbsp;&nbsp;Guarda la presentazione</span>
+            </td></tr>
+          </table>
+        </a>
+      </td></tr>`;
+}
+
 function imageBlock(img) {
     if (!img || !img.url) return "";
     return `
@@ -162,6 +185,8 @@ function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approv
           <!-- CORPO -->
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr><td style="padding-top:22px;"></td></tr>
+            ${videoIntroBlock()}
+            <tr><td style="padding-top:18px;"></td></tr>
             ${leadBlock}
             ${sectionBlock("Dalle Terre", content.dalle_terre, byPlace("dalle_terre"))}
             ${sectionBlock("Voci di Taverna", content.voci_di_taverna, byPlace("voci_di_taverna"))}
