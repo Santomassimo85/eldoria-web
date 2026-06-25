@@ -56,6 +56,7 @@ export default function Notifications() {
         <div className="notif-hero-media" aria-hidden="true">
           <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
         </div>
+        
         <div className="notif-hero-wash" aria-hidden="true" />
         <div className="notif-hero-plate">
           <span className="notif-hero-seal">🪶 Corvi messaggeri</span>

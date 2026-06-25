@@ -951,3 +951,111 @@
 @media (prefers-reduced-motion: reduce) {
   .rs-summary-html .lore-link { transition: none; }
 }
+
+/* ── Popup interno: dettaglio PG / NPC / città senza lasciare la pagina ──── */
+.lore-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(28, 18, 8, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: lorePopupFade .18s ease both;
+}
+.lore-popup {
+  --lore-c: #8a5a1a;
+  position: relative;
+  width: min(440px, 100%);
+  max-height: min(86vh, 640px);
+  overflow: auto;
+  background: #f6ecd6;
+  color: #3a2a16;
+  border: 1px solid color-mix(in srgb, var(--lore-c) 45%, #c9b78f);
+  border-top: 5px solid var(--lore-c);
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(40, 26, 8, 0.45);
+  animation: lorePopupRise .2s ease both;
+}
+.lore-popup--char { --lore-c: #8a261c; }
+.lore-popup--npc  { --lore-c: #2c6a8a; }
+.lore-popup--city { --lore-c: #1f7a5a; }
+
+.lore-popup-close {
+  position: absolute;
+  top: .55rem;
+  right: .55rem;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(20, 12, 4, 0.55);
+  color: #fdf6e6;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.lore-popup-close:hover { background: var(--lore-c); }
+
+.lore-popup-img {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-bottom: 3px solid color-mix(in srgb, var(--lore-c) 40%, #c9b78f);
+}
+.lore-popup-body { padding: 1.1rem 1.25rem 1.35rem; }
+
+.lore-popup-kind {
+  display: inline-block;
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--lore-c);
+  margin-bottom: .25rem;
+}
+.lore-popup-name {
+  margin: 0 0 .3rem;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  color: #2c1d0e;
+}
+.lore-popup-meta {
+  margin: 0 0 .6rem;
+  font-weight: 600;
+  color: #6a4f2c;
+}
+.lore-popup-desc {
+  margin: 0 0 1rem;
+  line-height: 1.55;
+  font-size: .95rem;
+  white-space: pre-line;
+}
+.lore-popup-go {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .55rem 1rem;
+  border: 1px solid var(--lore-c);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--lore-c);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+.lore-popup-go:hover { background: var(--lore-c); color: #fdf6e6; }
+
+@keyframes lorePopupFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lorePopupRise {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lore-popup-overlay, .lore-popup { animation: none; }
+}

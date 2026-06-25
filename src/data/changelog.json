@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "51.01",
+      "date": "2026-06-25",
+      "title": "Riassunti: anteprima rapida al posto del salto di pagina",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Toccando un nome cliccabile nei riassunti si apre ora un'anteprima sulla pagina stessa, con immagine, tipologia (personaggio, NPC o luogo) e i dati principali, senza essere portati via dal riassunto. Un pulsante dedicato apre comunque la scheda completa quando serve; l'anteprima si chiude con la X, toccando fuori o con Esc."
+        }
+      ]
+    },
+    {
       "version": "51",
       "date": "2026-06-24",
       "title": "Giocatori nascosti, schede eroe e riassunti interattivi",

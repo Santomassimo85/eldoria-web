@@ -7,7 +7,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
 import { awardPetPoints } from '../utils/pet';
-import { buildLoreRegistry, linkifyLoreHtml } from '../utils/loreLinks';
+import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
 import './Riassunti.css';
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -164,7 +164,9 @@ export default function Riassunti() {
     const [query, setQuery] = useState("");
     const [activeGroup, setActiveGroup] = useState(null);
     // dati per i link interattivi (PG / NPC / città)
-    const [loreData, setLoreData] = useState({ characters: [], npcs: [] });
+    const [loreData, setLoreData] = useState({ characters: [], npcs: [], geo: [] });
+    // entità mostrata nel popup interno (null = chiuso)
+    const [lorePopup, setLorePopup] = useState(null);
 
     const recordVisit = async (summaryId) => {
         if (isMaster) return;
@@ -212,9 +214,9 @@ export default function Riassunti() {
                 ]);
                 if (!alive) return;
                 const characters = charsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                const npcs = npcsSnap.docs.map(d => ({ name: d.data().name }));
-                const cities = geoSnap.docs.map(d => d.data().name).filter(Boolean);
-                setLoreData({ characters, npcs, cities });
+                const npcs = npcsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const geo = geoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setLoreData({ characters, npcs, geo });
             } catch (_) { /* link interattivi opzionali */ }
         })();
         return () => { alive = false; };
@@ -225,10 +227,56 @@ export default function Riassunti() {
         () => buildLoreRegistry({
             characters: loreData.characters,
             npcs: loreData.npcs,
-            cities: loreData.cities,
+            cities: loreData.geo.map(g => g.name).filter(Boolean),
         }),
         [loreData]
     );
+
+    // mappa "chiave normalizzata" → dettagli da mostrare nel popup interno.
+    // Le chiavi combaciano con data-key impostato dai link (loreLinks.norm).
+    const loreDetails = useMemo(() => {
+        const map = new Map();
+        const put = (key, data) => { if (key && !map.has(key)) map.set(key, data); };
+
+        for (const c of loreData.characters) {
+            if (!c?.name) continue;
+            const tok = firstTok(c.name);
+            const meta = [c.race, c.class].filter(Boolean).join(" · ");
+            const data = {
+                type: "char",
+                name: c.name,
+                image: c.image || "/assets/player/default.png",
+                meta: c.level ? `${meta}${meta ? " · " : ""}Liv. ${c.level}` : meta,
+                desc: c.background || "",
+                href: `/party?hero=${encodeURIComponent(tok)}`,
+            };
+            put(norm(c.name), data);
+            put(norm(tok), data);
+        }
+        for (const n of loreData.npcs) {
+            if (!n?.name) continue;
+            put(norm(n.name), {
+                type: "npc",
+                name: n.name,
+                image: n.image || "/assets/player/default.png",
+                meta: [n.faction, n.location].filter(Boolean).join(" · "),
+                desc: n.description || "",
+                href: `/npc?focus=${slugify(n.name)}`,
+            });
+        }
+        for (const g of loreData.geo) {
+            if (!g?.name) continue;
+            put(norm(g.name), {
+                type: "city",
+                name: g.name,
+                image: g.image || "",
+                meta: g.continent || "",
+                desc: g.description || "",
+                href: `/Geo?focus=${slugify(g.name)}`,
+            });
+        }
+        return map;
+    }, [loreData]);
 
     // contenuto HTML con i nomi già trasformati in link (memoizzato)
     const linkedContent = useMemo(() => {
@@ -240,15 +288,29 @@ export default function Riassunti() {
         return map;
     }, [allSummaries, loreRegistry]);
 
-    // intercetta i click sui link interattivi e naviga internamente
+    // intercetta i click sui link interattivi: apre un popup SULLA PAGINA,
+    // senza portare via l'utente. Se non ho dettagli, ripiego sulla navigazione.
     const handleLoreClick = (e) => {
         const a = e.target.closest('a[data-lore]');
         if (!a) return;
-        const href = a.getAttribute('data-href');
-        if (!href) return;
         e.preventDefault();
-        navigate(href);
+        const key = a.getAttribute('data-key');
+        const detail = key && loreDetails.get(key);
+        if (detail) {
+            setLorePopup(detail);
+            return;
+        }
+        const href = a.getAttribute('data-href');
+        if (href) navigate(href);
     };
+
+    // chiusura popup con Esc
+    useEffect(() => {
+        if (!lorePopup) return;
+        const onKey = (e) => { if (e.key === "Escape") setLorePopup(null); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [lorePopup]);
 
     // --- Parallax: aggiorna --rs-scroll su scroll, senza re-render (come Arena) ---
     useEffect(() => {
@@ -542,6 +604,59 @@ export default function Riassunti() {
                         </section>
                     );
                 })
+            )}
+
+            {lorePopup && (
+                <div
+                    className="lore-popup-overlay"
+                    onClick={() => setLorePopup(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={lorePopup.name}
+                >
+                    <div
+                        className={`lore-popup lore-popup--${lorePopup.type}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className="lore-popup-close"
+                            onClick={() => setLorePopup(null)}
+                            aria-label="Chiudi"
+                        >✕</button>
+
+                        {lorePopup.image && (
+                            <img
+                                className="lore-popup-img"
+                                src={lorePopup.image}
+                                alt={lorePopup.name}
+                                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                        )}
+
+                        <div className="lore-popup-body">
+                            <span className="lore-popup-kind">
+                                {lorePopup.type === "char" ? "Personaggio"
+                                    : lorePopup.type === "npc" ? "Personaggio non giocante"
+                                    : "Luogo"}
+                            </span>
+                            <h3 className="lore-popup-name">{lorePopup.name}</h3>
+                            {lorePopup.meta && (
+                                <p className="lore-popup-meta">{lorePopup.meta}</p>
+                            )}
+                            {lorePopup.desc && (
+                                <p className="lore-popup-desc">{stripHtml(lorePopup.desc).trim()}</p>
+                            )}
+                            <button
+                                type="button"
+                                className="lore-popup-go"
+                                onClick={() => { setLorePopup(null); navigate(lorePopup.href); }}
+                            >
+                                Apri la scheda completa →
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </section>
     );

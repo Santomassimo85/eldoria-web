@@ -18,7 +18,6 @@ export const HIDDEN_PLAYER_UIDS = new Set([
   "2TLy9pRAdIUMKW7CZMB00UUA0ZE3", // Roynot
   "687rg1HsmqgQ0X4X1EEIHeBAd9J3", // Cornelius
   "BKIjjWJfOld8gy04qJnxO3sU67K2", // Goran Rosman "Sentenza"
-  "kKhyyCsP1QhMCrsZuwVtUMsfibp1", // Horn
   "o5NrDuH3zdVgW25FzWiby4AyQ612", // Timoty Bevibotte
   "BEctG30gGONN67AkcBV6JhAqF3y1", // Tinkle Muschioverde
   "DUlfCGLTo8PjGD0M9EB3yaIrecC3", // Vyger
@@ -28,7 +27,7 @@ export const HIDDEN_PLAYER_UIDS = new Set([
 // Primo nome (minuscolo) — per le viste hardcoded basate sul nome (es. Party).
 export const HIDDEN_PLAYER_NAMES = new Set([
   "dante", "daga", "ismael", "taaras", "roynot",
-  "cornelius", "goran", "horn", "timoty", "tinkle", "vyger",
+  "cornelius", "goran", "timoty", "tinkle", "vyger",
 ]);
 
 export function isHiddenUid(uid) {

@@ -18,10 +18,10 @@ export const loreSlug = (s) =>
   String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 // chiave di confronto: minuscolo, apostrofi unificati, spazi compattati.
-const norm = (s) =>
+export const norm = (s) =>
   String(s ?? "").toLowerCase().replace(/[’´`ʼ]/g, "'").replace(/\s+/g, " ").trim();
 
-const firstTok = (s) => norm(s).split(/[\s'"\-]+/)[0];
+export const firstTok = (s) => norm(s).split(/[\s'"\-]+/)[0];
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -100,6 +100,7 @@ function replaceInText(textNode, doc, registry) {
     const a = doc.createElement("a");
     a.setAttribute("data-lore", target.type);
     a.setAttribute("data-href", target.href);
+    a.setAttribute("data-key", norm(matched)); // chiave per risolvere i dettagli nel popup
     a.setAttribute("href", "#" + target.href); // fallback non-JS, intercettato al click
     a.className = `lore-link lore-link--${target.type}`;
     a.textContent = matched;
