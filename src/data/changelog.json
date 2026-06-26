@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "54",
+      "date": "2026-06-26",
+      "title": "Oracolo: carte illustrate, letture live e mazzo a scelta",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Le carte dell'Oracolo ora hanno le illustrazioni dei 22 Arcani Maggiori. Alaric può scegliere il dorso del mazzo tra 7 disegni: la sua scelta vale per tutti, ovunque."
+        },
+        {
+          "type": "feature",
+          "text": "Letture in diretta: chi richiede può scegliere una lettura LIVE invece che differita. In diretta il richiedente assiste da spettatore alla mischiata, alla pescata di ogni carta e alla spiegazione in tempo reale; in differita riceve il responso quando è pronto, come prima."
+        },
+        {
+          "type": "mechanics",
+          "text": "Nuovo banco di lettura: Alaric mischia il mazzo e pesca le carte una alla volta (massimo 3), scoprendole a una a una con effetto di pescata dal mazzo. Per ogni carta può scegliere se mostrare il significato al richiedente e aggiungere una nota; in chiusura può lasciare un messaggio dell'Oracolo."
+        }
+      ]
+    },
+    {
       "version": "53",
       "date": "2026-06-26",
       "title": "Nuova pagina: Alaric, l'oracolo bendato (Tarocchi)",

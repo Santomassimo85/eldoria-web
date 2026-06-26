@@ -33,9 +33,24 @@ export const ARCANI = [
   { n: 21, nome: "Il Mondo",               glifo: "XXI",   simbolo: "🌍", dritto: "Completamento, integrazione, viaggio, successo.",            rovescio: "Incompiutezza, mancanza di chiusura, ritardi." },
 ];
 
-// Percorsi immagine (con fallback gestito a runtime via onError).
-export const CARD_BACK_SRC = "/assets/tarocchi/back.png";
-export const cardFaceSrc = (n) => `/assets/tarocchi/${n}.png`;
+// Percorsi immagine. I nomi file sono irregolari (1_.jpg…4_.jpg, back3.png),
+// quindi si usa una mappa esplicita; il fallback è gestito a runtime via onError.
+const FACE_FILE = {
+  0: "0.jpg", 1: "1_.jpg", 2: "2_.jpg", 3: "3_.jpg", 4: "4_.jpg",
+  5: "5.jpg", 6: "6.jpg", 7: "7.jpg", 8: "8.jpg", 9: "9.jpg",
+  10: "10.jpg", 11: "11.jpg", 12: "12.jpg", 13: "13.jpg", 14: "14.jpg",
+  15: "15.jpg", 16: "16.jpg", 17: "17.jpg", 18: "18.jpg", 19: "19.jpg",
+  20: "20.jpg", 21: "21.jpg",
+};
+export const cardFaceSrc = (n) => `/assets/tarocchi/${FACE_FILE[n] || `${n}.jpg`}`;
+
+// I 7 dorsi disponibili (back3 è .png, gli altri .jpg).
+export const CARD_BACKS = ["back1.jpg", "back2.jpg", "back3.png", "back4.jpg", "back5.jpg", "back6.jpg", "back7.jpg"];
+export const DEFAULT_BACK = CARD_BACKS[0];
+export const cardBackSrc = (file) => `/assets/tarocchi/${file || DEFAULT_BACK}`;
+
+// Numero massimo di carte per lettura.
+export const MAX_CARDS = 3;
 
 // Lookup rapido per numero d'Arcano (usato dalla cronologia).
 export const ARCANO_BY_N = Object.fromEntries(ARCANI.map((a) => [a.n, a]));

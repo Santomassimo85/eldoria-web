@@ -313,6 +313,14 @@ service cloud.firestore {
       allow write: if isMaster();
     }
 
+    // Configurazione Oracolo (dorso globale delle carte). Lettura pubblica
+    // (tutti vedono il dorso scelto); scrittura ad ogni loggato — il client
+    // limita il cambio globale al solo Alaric (i Master usano un preview locale).
+    match /settings/oracle {
+      allow read: if true;
+      allow write: if isLoggedIn();
+    }
+
     // ── Lo Scriba (gazzetta) ─────────────────────────────────────────────────
     // Numeri e configurazione: solo il Master li consulta/gestisce dal pannello.
     // L'agent server (Admin SDK) li scrive comunque, bypassando le regole.
