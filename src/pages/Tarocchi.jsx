@@ -305,9 +305,11 @@ export default function Tarocchi() {
   const [inviato, setInviato] = useState(false);
   const [aiFrasi, setAiFrasi] = useState({});     // { [cardIndex]: string[] }
   const [aiLoading, setAiLoading] = useState({}); // { [cardIndex]: bool }
+  const [aiError, setAiError] = useState({});     // { [cardIndex]: string|null }
   const shuffleTimer = useRef(null);
 
-  const realSession = isAlaric && !!activeReq && !sandbox;
+  // Possono evadere richieste reali (e inviare) sia Alaric sia i Master.
+  const realSession = privileged && !!activeReq && !sandbox;
 
   const persist = useCallback(async (patch) => {
     if (!realSession) return;
@@ -316,7 +318,7 @@ export default function Tarocchi() {
 
   const resetBanco = () => {
     setShuffled(false); setShuffling(false); setDrawn([]); setOracleMessage(""); setInviato(false);
-    setAiFrasi({}); setAiLoading({});
+    setAiFrasi({}); setAiLoading({}); setAiError({});
     if (shuffleTimer.current) clearTimeout(shuffleTimer.current);
   };
 
@@ -327,6 +329,7 @@ export default function Tarocchi() {
   const generaFrasi = async (i, card) => {
     const a = ARCANO_BY_N[card.n];
     setAiLoading((s) => ({ ...s, [i]: true }));
+    setAiError((s) => ({ ...s, [i]: null }));
     try {
       const r = await fetch("/api/oracolo-frasi", {
         method: "POST", headers: { "content-type": "application/json" },
@@ -336,9 +339,13 @@ export default function Tarocchi() {
           domanda: activeReq?.question || "", richiedente: activeReq?.requesterName || "",
         }),
       });
+      if (!r.ok) throw new Error("offline");
       const data = await r.json();
-      if (Array.isArray(data.frasi)) setAiFrasi((s) => ({ ...s, [i]: [...(s[i] || []), ...data.frasi] }));
-    } catch { /* ignora */ }
+      if (Array.isArray(data.frasi) && data.frasi.length) setAiFrasi((s) => ({ ...s, [i]: [...(s[i] || []), ...data.frasi] }));
+      else throw new Error("vuoto");
+    } catch {
+      setAiError((s) => ({ ...s, [i]: "IA non raggiungibile qui (attiva solo online). Usa le frasi pronte o scrivi a mano." }));
+    }
     setAiLoading((s) => ({ ...s, [i]: false }));
   };
 
@@ -347,7 +354,7 @@ export default function Tarocchi() {
   const apriRichiesta = (req, live) => {
     setSandbox(false); setActiveReq(req); resetBanco();
     document.getElementById("taro-banco")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (isAlaric && live) {
+    if (live) {
       updateDoc(doc(db, "oracle_readings", req.id), { status: "live", cards: [], shuffled: false, customMessage: "" }).catch(() => {});
       notifyUser(req.requesterUid, "🔮 La lettura sta iniziando", `${myName || "Alaric"} ha avviato la tua lettura in diretta. Apri l'Oracolo per assistere.`);
     }
@@ -525,6 +532,7 @@ export default function Tarocchi() {
                           <button type="button" className="taro-chip-gen" onClick={() => generaFrasi(i, c)} disabled={!!aiLoading[i]}>
                             {aiLoading[i] ? "Genero…" : "Genera con l'IA"}
                           </button>
+                          {aiError[i] && <span className="taro-ai-err">{aiError[i]}</span>}
                         </div>
 
                         <textarea
@@ -552,7 +560,9 @@ export default function Tarocchi() {
           <div className="taro-conclude-row">
             {activeReq ? (
               <button type="button" className="taro-send" onClick={concludi} disabled={!drawn.some((c) => c.revealed)}>
-                Concludi e invia a {activeReq.requesterName.split(" ")[0]}
+                {activeReq.mode === "live"
+                  ? `Concludi e mostra a ${activeReq.requesterName.split(" ")[0]}`
+                  : `Invia il responso a ${activeReq.requesterName.split(" ")[0]}`}
               </button>
             ) : (
               <span className="taro-sandbox-note">Modalità di prova — il responso non viene inviato.</span>
@@ -575,17 +585,16 @@ export default function Tarocchi() {
           <section className="taro-section" aria-label="Richieste">
             <header className="taro-sec-head">
               <span className="taro-sec-eyebrow">Il velo dell'Oracolo</span>
-              <h2 className="taro-sec-title">Richieste {isTester ? "(in sola lettura)" : "in attesa"}</h2>
+              <h2 className="taro-sec-title">Richieste in attesa</h2>
               <p className="taro-sec-lead">
-                {isTester
-                  ? "Sei in modalità prova locale: le richieste reali le gestisce Alaric. Qui sotto puoi provare il banco."
-                  : (pendingReqs.length + liveReqs.length) === 0
-                  ? "Nessun viandante attende un responso, per ora."
+                {(pendingReqs.length + liveReqs.length) === 0
+                  ? "Nessun viandante attende un responso, per ora. Puoi comunque provare il banco qui sotto."
                   : "Scegli chi servire: avvia una lettura live o rispondi a una richiesta differita."}
+                {isTester ? " (Da Master il dorso si cambia solo in anteprima locale.)" : ""}
               </p>
             </header>
 
-            {!isTester && (pendingReqs.length + liveReqs.length) > 0 && (
+            {(pendingReqs.length + liveReqs.length) > 0 && (
               <ul className="taro-queue">
                 {[...liveReqs, ...pendingReqs].map((r) => (
                   <li key={r.id} className={`taro-queue-item${activeReq?.id === r.id ? " is-active" : ""}${r.mode === "live" ? " is-live" : ""}`}>
@@ -604,7 +613,9 @@ export default function Tarocchi() {
               </ul>
             )}
 
-            {isTester && <button type="button" className="taro-draw" onClick={apriSandbox}>Prova il banco (locale)</button>}
+            <div className="taro-sec-foot">
+              <button type="button" className="taro-draw" onClick={apriSandbox}>Prova il banco (locale)</button>
+            </div>
           </section>
 
           {BackPicker}
