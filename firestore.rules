@@ -269,6 +269,25 @@ service cloud.firestore {
       );
     }
 
+    // ── Oracolo bendato (Tarocchi · Alaric) ──────────────────────────────────
+    // Richieste di lettura + responsi. Stile permissivo come tcg_matches:
+    //   read   → ogni loggato (è la cronologia condivisa tra richiedente,
+    //            l'oracolo Alaric e i Master)
+    //   create → solo il richiedente, sul proprio uid, stato 'pending'
+    //   update → ogni loggato (l'oracolo compila il responso; il limite 1/giorno
+    //            e i ruoli sono applicati lato client)
+    //   delete → il richiedente o il Master
+    match /oracle_readings/{readingId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn()
+        && request.resource.data.requesterUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if isLoggedIn();
+      allow delete: if isLoggedIn() && (
+        resource.data.requesterUid == request.auth.uid || isMaster()
+      );
+    }
+
     // ── Notifications ────────────────────────────────────────────────────────
     match /notifications/{msgId} {
       allow read: if isLoggedIn() && (resource.data.userId == request.auth.uid || isMaster());

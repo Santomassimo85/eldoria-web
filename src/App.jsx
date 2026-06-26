@@ -38,6 +38,7 @@ import QuestDetail from "./pages/QuestDetail";
 import ReputationAdmin from "./pages/ReputazioneAdmin";
 import VideoAdmin from "./pages/VideoAdmin";
 import Cinema from "./pages/Cinema";
+import Tarocchi from "./pages/Tarocchi";
 import GeoAdmin from "./pages/GeoAdmin";
 import WorldMap from "./pages/WorldMap";
 import AdminSessions from "./pages/AdminSessions";
@@ -271,6 +272,7 @@ const MOBILE_GROUPS = {
     { to: "/mercato", label: "Mercato Nero" },
     { to: "/bacheca", label: "Bacheca" },
     { to: "/cinema", label: "Cinema" },
+    { to: "/tarocchi", label: "L'Oracolo" },
     { to: "/feedback", label: "Feedback" },
   ]},
 };
@@ -287,7 +289,7 @@ function MobileBottomNav({ openMenu }) {
     p === "/" ? "home"
     : ["/world-map", "/Geo"].includes(p) ? "mondo"
     : ["/scriba", "/riassunti"].includes(p) ? "biblioteca"
-    : ["/mercato", "/bacheca", "/cinema", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
+    : ["/mercato", "/bacheca", "/cinema", "/tarocchi", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
     : null;
 
   const g = sheet ? MOBILE_GROUPS[sheet] : null;
@@ -598,6 +600,7 @@ export default function App() {
             <MasterPricingLink closeMenu={closeMenu} />
             <NavLink to="/bacheca">Bacheca</NavLink>
             <NavLink to="/cinema">Cinema</NavLink>
+            <NavLink to="/tarocchi">🔮 L'Oracolo</NavLink>
             <NavLink to="/feedback">💬 Feedback</NavLink>
           </NavDropdown>
 
@@ -633,6 +636,7 @@ export default function App() {
           <Route path="/bacheca" element={<Bacheca />} />
           <Route path="/quest/:id" element={<QuestDetail />} />
           <Route path="/cinema" element={<Cinema />} />
+          <Route path="/tarocchi" element={<Tarocchi />} />
           <Route path="/my-pg" element={<SchedaPG />} />
           <Route path="/scheda-pg" element={<SchedaPG />} />
           <Route path="/mercato" element={<Mercato />} />

@@ -1,0 +1,350 @@
+/* ============================================================
+   TAROCCHI — "L'Oracolo degli Arcani"
+   Tema Pergamena Antica. Hero a placca + tavolo di lettura con
+   carte vere (dorso/figura) e flip al reveal. Placeholder in CSS
+   finché le immagini non vengono fornite.
+   ============================================================ */
+
+.taro-page { --taro-ink: #33281a; }
+
+/* ── HERO ─────────────────────────────────────────────────── */
+.taro-hero {
+  position: relative;
+  margin: 0 calc(50% - 50vw) 36px;
+  width: 100vw;
+  min-height: 56vh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  isolation: isolate;
+}
+.taro-hero-media { position: absolute; inset: 0; z-index: 0; }
+.taro-hero-media img {
+  width: 100%; height: 116%;
+  object-fit: cover; object-position: center 32%;
+  opacity: 0.78;
+  filter: sepia(0.22) saturate(1.02);
+  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.3px), 0);
+  will-change: transform;
+}
+.taro-hero-wash {
+  position: absolute; inset: 0; z-index: 1;
+  background:
+    radial-gradient(120% 90% at 18% 80%, rgba(20,12,4,.55), transparent 60%),
+    linear-gradient(180deg, rgba(28,18,7,.18) 0%, rgba(28,18,7,.30) 40%,
+      color-mix(in srgb, var(--cine-bg-bot) 84%, transparent) 86%, var(--cine-bg-bot) 100%);
+}
+.taro-hero-plate {
+  position: relative; z-index: 2;
+  max-width: 760px;
+  margin: 0 0 7vh 7vw;
+  padding: 20px 24px;
+  display: flex; align-items: center; gap: 20px;
+  background: linear-gradient(180deg, rgba(251,244,224,.92), rgba(243,234,212,.86));
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--cine-accent);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -24px rgba(40,26,8,.7);
+  backdrop-filter: blur(2px);
+}
+.taro-hero-text { min-width: 0; }
+
+/* ritratto di Alaric (con velo "bendato") */
+.taro-hero-portrait {
+  position: relative; flex: 0 0 auto; margin: 0;
+  width: clamp(84px, 18vw, 130px); aspect-ratio: 1; border-radius: 14px;
+  overflow: hidden; border: 2px solid var(--cine-accent);
+  box-shadow: 0 10px 28px -12px rgba(40,26,8,.6);
+}
+.taro-hero-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; filter: sepia(.12) saturate(1.02); }
+.taro-hero-blind {
+  position: absolute; left: -4%; right: -4%; top: 30%; height: 16%;
+  background: linear-gradient(180deg, rgba(28,20,44,.92), rgba(20,12,36,.96));
+  border-top: 1px solid rgba(230,196,119,.4); border-bottom: 1px solid rgba(230,196,119,.4);
+  transform: rotate(-4deg);
+}
+@media (max-width: 560px) { .taro-hero-plate { flex-direction: column; align-items: flex-start; gap: 12px; } }
+.taro-hero-seal {
+  display: inline-block;
+  font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--arc-deep, #553099); font-weight: 800; margin-bottom: 8px;
+}
+.taro-hero-title {
+  margin: 0 0 10px;
+  font-family: var(--font-title, serif);
+  font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height: .98;
+  background: linear-gradient(180deg, #4a3a22, #7c560f);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.taro-hero-tagline { margin: 0; color: #46382a; font-size: 1.02rem; max-width: 46ch; }
+
+/* ── SEZIONE ──────────────────────────────────────────────── */
+.taro-section { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+.taro-sec-head { text-align: center; margin-bottom: 22px; }
+.taro-sec-eyebrow {
+  display: block; font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--arc-deep, #553099); font-weight: 800;
+}
+.taro-sec-title {
+  margin: 4px 0 6px;
+  font-family: var(--font-title, serif);
+  font-size: clamp(1.7rem, 4vw, 2.6rem);
+  color: var(--amber-deep, #7c560f);
+}
+.taro-sec-lead { margin: 0 auto; max-width: 60ch; color: #5b4a30; }
+
+/* ── COMANDI ──────────────────────────────────────────────── */
+.taro-controls {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 16px; margin: 8px 0 30px;
+}
+.taro-count {
+  display: inline-flex; gap: 4px; padding: 5px;
+  background: #fffdf5; border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: inset 0 1px 4px rgba(86,64,30,.12);
+}
+.taro-count-btn {
+  width: 40px; height: 40px; border: 0; border-radius: 10px; cursor: pointer;
+  background: transparent; color: #6a5b41; font-weight: 800; font-size: 1.05rem;
+  transition: transform .12s, background .2s, color .2s;
+}
+.taro-count-btn:hover { background: rgba(122,79,207,.12); color: var(--taro-ink); }
+.taro-count-btn.is-active {
+  background: linear-gradient(135deg, #b79bf0, #8a63dd 45%, #553099);
+  color: #fff; box-shadow: 0 8px 20px -8px rgba(85,48,153,.7);
+}
+.taro-draw {
+  padding: 12px 26px; border: 0; border-radius: 14px; cursor: pointer;
+  font-weight: 800; font-size: 1rem; letter-spacing: .02em; color: #2a1d02;
+  background: linear-gradient(135deg, #e6c477, #c79a32 45%, #a9781a);
+  box-shadow: 0 12px 30px -10px rgba(169,120,26,.7);
+  transition: transform .12s, box-shadow .2s;
+}
+.taro-draw:hover { transform: translateY(-2px); box-shadow: 0 16px 36px -10px rgba(169,120,26,.8); }
+.taro-draw:active { transform: translateY(0); }
+
+/* ── STATO VUOTO ──────────────────────────────────────────── */
+.taro-empty {
+  text-align: center; color: #8a7a58; padding: 40px 0 60px;
+}
+.taro-empty-glifo {
+  display: block; font-size: 2.6rem; color: var(--arc, #7a4fcf);
+  opacity: .55; margin-bottom: 8px; animation: taro-pulse 3s ease-in-out infinite;
+}
+@keyframes taro-pulse { 0%,100% { opacity:.4 } 50% { opacity:.8 } }
+
+/* ── STESA (griglia di carte) ─────────────────────────────── */
+.taro-spread {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start;
+  gap: clamp(14px, 3vw, 30px); margin: 8px 0 36px;
+}
+.taro-slot { margin: 0; display: flex; flex-direction: column; align-items: center; width: min(220px, 42vw); }
+.taro-role {
+  font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--arc-deep, #553099); font-weight: 800; margin-bottom: 8px; text-align: center;
+}
+
+/* carta 3D flip */
+.taro-card {
+  width: 100%; aspect-ratio: 2 / 3.4; perspective: 1100px;
+}
+.taro-card-inner {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .8s cubic-bezier(.5,.1,.2,1);
+  transition-delay: var(--reveal-delay, 0ms);
+  transform: rotateY(180deg); /* parte dal DORSO */
+}
+.taro-card.is-revealed .taro-card-inner { transform: rotateY(0deg); }
+
+.taro-face {
+  position: absolute; inset: 0;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 36px -16px rgba(40,26,8,.65);
+  background: #fffdf5;
+}
+.taro-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.taro-face--back { transform: rotateY(180deg); }
+.taro-face--front.is-reversed img,
+.taro-face--front.is-reversed .taro-placeholder { transform: rotate(180deg); }
+
+/* placeholder DORSO */
+.taro-placeholder {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; text-align: center; padding: 10px;
+}
+.taro-placeholder--back {
+  background:
+    repeating-linear-gradient(45deg, rgba(85,48,153,.12) 0 8px, transparent 8px 16px),
+    linear-gradient(160deg, #3a2766, #221646 60%, #160e30);
+  border-radius: 13px;
+}
+.taro-placeholder--back .taro-ph-star {
+  font-size: 2.4rem; color: #e6c477;
+  text-shadow: 0 0 18px rgba(230,196,119,.6);
+}
+/* placeholder FIGURA */
+.taro-placeholder--front {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(122,79,207,.16), transparent 60%),
+    linear-gradient(180deg, #fbf4e0, #f0e4c4);
+}
+.taro-ph-glifo {
+  font-family: var(--font-title, serif); font-size: 2.6rem; font-weight: 800;
+  color: var(--amber-deep, #7c560f); line-height: 1;
+}
+.taro-ph-simbolo { font-size: 2.2rem; }
+.taro-ph-nome {
+  font-size: .82rem; font-weight: 700; color: #5b4a30; letter-spacing: .02em;
+}
+
+/* didascalia sotto la carta */
+.taro-caption {
+  margin-top: 12px; text-align: center; max-width: 220px;
+  opacity: 0; transform: translateY(6px);
+  animation: taro-cap-in .5s ease forwards; animation-delay: calc(var(--reveal-delay,0ms) + .6s);
+}
+@keyframes taro-cap-in { to { opacity: 1; transform: translateY(0); } }
+.taro-cap-nome { display: block; font-weight: 800; color: var(--amber-deep, #7c560f); }
+.taro-cap-orient {
+  display: inline-block; margin: 3px 0 6px; font-size: .68rem; font-weight: 800;
+  letter-spacing: .12em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+}
+.taro-cap-orient--dir { background: rgba(47,143,91,.16); color: #2f8f5b; }
+.taro-cap-orient--rov { background: rgba(184,54,42,.16); color: #b8362a; }
+.taro-cap-senso { display: block; font-size: .9rem; color: #5b4a30; line-height: 1.35; }
+
+/* ── RESPONSO ─────────────────────────────────────────────── */
+.taro-responso {
+  max-width: 760px; margin: 8px auto 0;
+  background: linear-gradient(180deg, var(--bg-2, #fbf4e0), #f6eed6);
+  border: 1px solid var(--line); border-top: 3px solid var(--cine-accent);
+  border-radius: 16px; padding: 20px 22px;
+  box-shadow: 0 18px 44px -18px rgba(40,26,8,.5);
+}
+.taro-responso-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 12px;
+}
+.taro-responso-head h3 {
+  margin: 0; font-family: var(--font-title, serif);
+  color: var(--amber-deep, #7c560f); font-size: 1.25rem;
+}
+.taro-copy {
+  border: 1px solid var(--line); background: #fffdf5; color: #6a5b41;
+  padding: 8px 14px; border-radius: 10px; cursor: pointer; font-weight: 700;
+  transition: background .2s, color .2s;
+}
+.taro-copy:hover { background: rgba(122,79,207,.12); color: var(--taro-ink); }
+.taro-responso-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.taro-responso-list li {
+  display: grid; grid-template-columns: 1fr; gap: 2px;
+  padding: 10px 12px; background: #fffdf5; border: 1px solid var(--line-soft, #dccfa6);
+  border-radius: 10px;
+}
+.taro-responso-role {
+  font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--arc-deep, #553099); font-weight: 800;
+}
+.taro-responso-card { font-weight: 800; color: var(--taro-ink); }
+.taro-responso-card em { font-style: normal; font-weight: 700; }
+.taro-responso-card em.dir { color: #2f8f5b; }
+.taro-responso-card em.rov { color: #b8362a; }
+.taro-responso-senso { color: #5b4a30; }
+
+/* ── SEZIONI MULTIPLE (oracolo) ───────────────────────────── */
+.taro-page .taro-section + .taro-section { margin-top: 44px; }
+
+.taro-draw[disabled] { opacity: .5; cursor: not-allowed; filter: grayscale(.4); transform: none; box-shadow: none; }
+.taro-draw--sm { padding: 9px 16px; font-size: .9rem; }
+.taro-send {
+  border: 0; border-radius: 10px; cursor: pointer; font-weight: 800; padding: 8px 16px; color: #fff;
+  background: linear-gradient(135deg, #45b07a, #2f8f5b 55%, #1f6e42);
+  box-shadow: 0 10px 24px -10px rgba(31,110,66,.7);
+}
+.taro-send:hover { filter: brightness(1.06); }
+
+/* coda richieste */
+.taro-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 820px; margin-inline: auto; }
+.taro-queue-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: linear-gradient(180deg, var(--bg-2, #fbf4e0), #f6eed6);
+  border: 1px solid var(--line); border-left: 4px solid var(--crit, #b8362a);
+  border-radius: 14px; padding: 14px 16px;
+}
+.taro-queue-item.is-active { border-left-color: var(--cine-accent); box-shadow: var(--glow-arc); }
+.taro-queue-info { min-width: 0; }
+.taro-queue-name { font-weight: 800; color: var(--amber-deep, #7c560f); margin-right: 8px; }
+.taro-queue-date { font-size: .8rem; color: #8a7a58; }
+.taro-queue-q { margin: 6px 0 0; color: #5b4a30; font-style: italic; }
+.taro-queue-q--none { color: #9a8a6b; }
+
+/* banner lettura attiva */
+.taro-active-banner {
+  position: relative; max-width: 760px; margin: 0 auto 18px; padding: 12px 44px 12px 16px;
+  background: rgba(122,79,207,.12); border: 1px solid rgba(122,79,207,.34);
+  border-radius: 12px; color: var(--arc-deep, #553099); text-align: center;
+}
+.taro-active-banner em { color: #5b4a30; font-style: italic; }
+.taro-active-x {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  border: 0; background: transparent; color: var(--crit, #b8362a); font-size: 1.1rem; cursor: pointer; padding: 6px;
+}
+.taro-responso-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.taro-sent-ok { text-align: center; color: #2f8f5b; font-weight: 700; margin-top: 14px; }
+
+/* pannello richiesta (giocatore) */
+.taro-request { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+.taro-q-input {
+  width: 100%; resize: vertical; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: #fffdf5; color: var(--taro-ink);
+  font-family: inherit; font-size: 1rem;
+}
+.taro-q-input:focus { outline: none; border-color: var(--cine-accent); box-shadow: 0 0 0 3px rgba(122,79,207,.18); }
+.taro-req-state { margin: 0; text-align: center; font-weight: 700; padding: 10px 12px; border-radius: 10px; }
+.taro-req-state--wait { background: rgba(122,79,207,.12); color: var(--arc-deep, #553099); }
+.taro-req-state--limit { background: rgba(169,120,26,.14); color: var(--amber-deep, #7c560f); }
+
+/* cronologia */
+.taro-hist { display: grid; gap: 16px; max-width: 880px; margin-inline: auto; }
+.taro-hist-card {
+  background: linear-gradient(180deg, var(--bg-2, #fbf4e0), #f6eed6);
+  border: 1px solid var(--line); border-top: 3px solid var(--cine-accent);
+  border-radius: 16px; padding: 16px 18px; box-shadow: 0 14px 36px -18px rgba(40,26,8,.4);
+}
+.taro-hist-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.taro-hist-who { display: block; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--arc-deep, #553099); font-weight: 800; }
+.taro-hist-title { font-family: var(--font-title, serif); font-weight: 800; color: var(--amber-deep, #7c560f); font-size: 1.1rem; }
+.taro-hist-date { font-size: .8rem; color: #8a7a58; }
+.taro-hist-q { margin: 8px 0 12px; color: #5b4a30; font-style: italic; }
+.taro-hist-foot { margin-top: 12px; font-size: .82rem; color: #8a7a58; }
+
+/* riga di mini-carte */
+.taro-mini-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.taro-mini { width: 132px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; }
+.taro-mini-role { font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--arc-deep, #553099); font-weight: 800; }
+.taro-mini-fig {
+  width: 100%; aspect-ratio: 2 / 3.2; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--line); box-shadow: 0 8px 20px -12px rgba(40,26,8,.5); background: #fffdf5;
+}
+.taro-mini-fig img { width: 100%; height: 100%; object-fit: cover; }
+.taro-mini-fig.is-reversed img, .taro-mini-fig.is-reversed .taro-mini-ph { transform: rotate(180deg); }
+.taro-mini-ph {
+  width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: linear-gradient(180deg, #fbf4e0, #f0e4c4);
+}
+.taro-mini-ph span { font-family: var(--font-title, serif); font-weight: 800; font-size: 1.5rem; color: var(--amber-deep, #7c560f); }
+.taro-mini-ph b { font-size: 1.4rem; }
+.taro-mini-nome { font-weight: 800; font-size: .8rem; color: var(--amber-deep, #7c560f); }
+.taro-mini-senso { font-size: .76rem; color: #5b4a30; line-height: 1.3; }
+
+/* ── MOBILE ───────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .taro-hero-plate { margin: 0 16px 5vh; }
+  .taro-slot { width: 44vw; }
+  .taro-queue-item { flex-direction: column; align-items: stretch; }
+  .taro-mini { width: 104px; }
+}

@@ -1,6 +1,29 @@
 {
   "versions": [
     {
+      "version": "53",
+      "date": "2026-06-26",
+      "title": "Nuova pagina: Alaric, l'oracolo bendato (Tarocchi)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Aggiunta la pagina dell'Oracolo (Gilda · L'Oracolo). Le letture dei 22 Arcani Maggiori sono affidate al personaggio Alaric, l'oracolo bendato: si estraggono da 1 a 5 carte in stese a tema (Carta del Giorno, Linea del Tempo, Croce dell'Oracolo) e ogni carta esce a sorte dritta o rovesciata, voltandosi dal dorso alla figura con un'animazione di flip."
+        },
+        {
+          "type": "mechanics",
+          "text": "Il banco di lettura è riservato ad Alaric (e ai Master). Gli altri giocatori possono richiedere una lettura: la richiesta invia una notifica push solo ad Alaric, che volta le carte e inoltra il responso al richiedente, anch'egli avvisato con una push. Ogni responso resta poi sempre consultabile nella cronologia dal richiedente, da Alaric e dai Master."
+        },
+        {
+          "type": "balance",
+          "text": "Limite di una sola richiesta di lettura al giorno per giocatore."
+        },
+        {
+          "type": "graphic",
+          "text": "Hero con il ritratto di Alaric e velo sugli occhi. Le carte usano dorso e figura dedicati; finché le immagini definitive non sono caricate viene mostrato un segnaposto con numero romano e simbolo dell'Arcano."
+        }
+      ]
+    },
+    {
       "version": "52",
       "date": "2026-06-25",
       "title": "Lo Scriba: intro video a tutto schermo",
