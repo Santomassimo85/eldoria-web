@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "55",
+      "date": "2026-06-26",
+      "title": "Oracolo: frasi pronte e generazione IA dei responsi",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Per ogni carta scoperta l'Oracolo trova frasi pronte da pronunciare (3 per il significato dritto e 3 per il rovescio): basta un click per assegnarle al richiedente, senza doverle scrivere."
+        },
+        {
+          "type": "feature",
+          "text": "Generazione assistita: un pulsante propone al volo nuove frasi su misura per la carta e la domanda del richiedente. L'Oracolo può comunque scrivere il proprio messaggio a mano in qualsiasi momento."
+        },
+        {
+          "type": "graphic",
+          "text": "Bottoni del banco ridisegnati (rilievo e finitura più curati) e ripuliti dalle icone."
+        }
+      ]
+    },
+    {
       "version": "54",
       "date": "2026-06-26",
       "title": "Oracolo: carte illustrate, letture live e mazzo a scelta",

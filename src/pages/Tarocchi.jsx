@@ -36,6 +36,7 @@ import {
   CARD_BACKS, DEFAULT_BACK, cardBackSrc, cardFaceSrc,
   ORACLE_MASTER_EMAIL, ORACLE_COMASTER_EMAIL, isAlaricName, ALARIC_PORTRAIT,
 } from "../data/tarocchi";
+import { FRASI } from "../data/tarocchiFrasi";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 import "../styles/cinematic.css";
@@ -302,6 +303,8 @@ export default function Tarocchi() {
   const [drawn, setDrawn] = useState([]);
   const [oracleMessage, setOracleMessage] = useState("");
   const [inviato, setInviato] = useState(false);
+  const [aiFrasi, setAiFrasi] = useState({});     // { [cardIndex]: string[] }
+  const [aiLoading, setAiLoading] = useState({}); // { [cardIndex]: bool }
   const shuffleTimer = useRef(null);
 
   const realSession = isAlaric && !!activeReq && !sandbox;
@@ -313,8 +316,33 @@ export default function Tarocchi() {
 
   const resetBanco = () => {
     setShuffled(false); setShuffling(false); setDrawn([]); setOracleMessage(""); setInviato(false);
+    setAiFrasi({}); setAiLoading({});
     if (shuffleTimer.current) clearTimeout(shuffleTimer.current);
   };
+
+  // Frasi pronte (statiche) per la carta nel suo orientamento.
+  const frasiPronte = (card) => (FRASI[card.n]?.[card.rovesciata ? "rovescio" : "dritto"]) || [];
+
+  // Genera al volo 3 frasi con l'IA (Gemini) per la carta scoperta.
+  const generaFrasi = async (i, card) => {
+    const a = ARCANO_BY_N[card.n];
+    setAiLoading((s) => ({ ...s, [i]: true }));
+    try {
+      const r = await fetch("/api/oracolo-frasi", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          carta: a?.nome, orientamento: card.rovesciata ? "rovescio" : "dritto",
+          significato: card.rovesciata ? a?.rovescio : a?.dritto,
+          domanda: activeReq?.question || "", richiedente: activeReq?.requesterName || "",
+        }),
+      });
+      const data = await r.json();
+      if (Array.isArray(data.frasi)) setAiFrasi((s) => ({ ...s, [i]: [...(s[i] || []), ...data.frasi] }));
+    } catch { /* ignora */ }
+    setAiLoading((s) => ({ ...s, [i]: false }));
+  };
+
+  const usaFrase = (i, frase) => mutateCard(i, { note: frase });
 
   const apriRichiesta = (req, live) => {
     setSandbox(false); setActiveReq(req); resetBanco();
@@ -424,7 +452,7 @@ export default function Tarocchi() {
           </button>
         ))}
       </div>
-      {isTester && localBack && <button type="button" className="taro-link-btn" onClick={resetDorsoLocale}>↩ Torna al dorso globale</button>}
+      {isTester && localBack && <button type="button" className="taro-link-btn" onClick={resetDorsoLocale}>Torna al dorso globale</button>}
     </section>
   );
 
@@ -457,9 +485,9 @@ export default function Tarocchi() {
         <div className="taro-deck-col">
           <DeckPile back={effectiveBack} shuffling={shuffling} />
           <div className="taro-deck-actions">
-            <button type="button" className="taro-draw taro-draw--sm" onClick={mischia}>🔀 Mischia</button>
+            <button type="button" className="taro-draw taro-draw--sm" onClick={mischia}>Mischia</button>
             <button type="button" className="taro-draw taro-draw--sm" onClick={pesca} disabled={!shuffled || drawn.length >= MAX_CARDS}>
-              🃏 Pesca {drawn.length > 0 ? `(${drawn.length}/${MAX_CARDS})` : ""}
+              Pesca {drawn.length > 0 ? `(${drawn.length}/${MAX_CARDS})` : ""}
             </button>
           </div>
         </div>
@@ -481,9 +509,27 @@ export default function Tarocchi() {
                           <input type="checkbox" checked={c.showMeaning !== false} onChange={() => toggleMeaning(i)} />
                           Mostra significato
                         </label>
-                        <input
-                          className="taro-tool-note" placeholder="Nota per il richiedente…" value={c.note || ""}
-                          maxLength={160}
+
+                        <div className="taro-frasi">
+                          <span className="taro-frasi-lbl">Frasi pronte</span>
+                          {frasiPronte(c).map((f, k) => (
+                            <button key={`s${k}`} type="button"
+                              className={`taro-chip${c.note === f ? " is-picked" : ""}`}
+                              onClick={() => usaFrase(i, f)}>{f}</button>
+                          ))}
+                          {(aiFrasi[i] || []).map((f, k) => (
+                            <button key={`a${k}`} type="button"
+                              className={`taro-chip taro-chip--ai${c.note === f ? " is-picked" : ""}`}
+                              onClick={() => usaFrase(i, f)}>{f}</button>
+                          ))}
+                          <button type="button" className="taro-chip-gen" onClick={() => generaFrasi(i, c)} disabled={!!aiLoading[i]}>
+                            {aiLoading[i] ? "Genero…" : "Genera con l'IA"}
+                          </button>
+                        </div>
+
+                        <textarea
+                          className="taro-tool-note" placeholder="…oppure scrivi tu la frase" value={c.note || ""}
+                          rows={2} maxLength={240}
                           onChange={(e) => setNota(i, e.target.value)} onBlur={() => flushNota(i)}
                         />
                         <CardExplain card={c} />
@@ -506,7 +552,7 @@ export default function Tarocchi() {
           <div className="taro-conclude-row">
             {activeReq ? (
               <button type="button" className="taro-send" onClick={concludi} disabled={!drawn.some((c) => c.revealed)}>
-                ➤ Concludi e invia a {activeReq.requesterName.split(" ")[0]}
+                Concludi e invia a {activeReq.requesterName.split(" ")[0]}
               </button>
             ) : (
               <span className="taro-sandbox-note">Modalità di prova — il responso non viene inviato.</span>
@@ -551,14 +597,14 @@ export default function Tarocchi() {
                       {r.question ? <p className="taro-queue-q">«{r.question}»</p> : <p className="taro-queue-q taro-queue-q--none">Nessuna domanda scritta.</p>}
                     </div>
                     <button type="button" className="taro-draw taro-draw--sm" onClick={() => apriRichiesta(r, r.mode === "live")}>
-                      {r.mode === "live" ? (r.status === "live" ? "▶ Riprendi" : "▶ Avvia live") : "✦ Leggi"} per {(r.requesterName || "lui").split(" ")[0]}
+                      {r.mode === "live" ? (r.status === "live" ? "Riprendi" : "Avvia live") : "Leggi"} per {(r.requesterName || "lui").split(" ")[0]}
                     </button>
                   </li>
                 ))}
               </ul>
             )}
 
-            {isTester && <button type="button" className="taro-draw" onClick={apriSandbox}>✦ Prova il banco (locale)</button>}
+            {isTester && <button type="button" className="taro-draw" onClick={apriSandbox}>Prova il banco (locale)</button>}
           </section>
 
           {BackPicker}
@@ -625,10 +671,10 @@ export default function Tarocchi() {
               ) : null}
               <div className="taro-mode-row">
                 <button type="button" className="taro-draw taro-draw--live" onClick={() => richiediLettura("live")} disabled={!canRequest}>
-                  🔴 Lettura in diretta
+                  Lettura in diretta
                 </button>
                 <button type="button" className="taro-draw" onClick={() => richiediLettura("deferred")} disabled={!canRequest}>
-                  ✉ Lettura differita
+                  Lettura differita
                 </button>
               </div>
               <p className="taro-mode-hint">In diretta assisti alla pescata in tempo reale (serve essere online insieme). Differita: ricevi il responso quando è pronto.</p>
