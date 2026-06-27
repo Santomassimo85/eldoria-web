@@ -1,17 +1,6 @@
 {
   "versions": [
     {
-      "version": "57.02",
-      "date": "2026-06-27",
-      "title": "Compagnia di Amea: nuovi ritratti",
-      "changes": [
-        {
-          "type": "graphic",
-          "text": "Aggiornati i ritratti di Caius, Garroth e Tanagar nella pagina Eroi (Compagnia di Amea)."
-        }
-      ]
-    },
-    {
       "version": "57.01",
       "date": "2026-06-27",
       "title": "Mercato Nero: tastino «Oggetto da GdR»",
