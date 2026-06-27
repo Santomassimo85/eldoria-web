@@ -145,6 +145,32 @@
 .notifications-page .notification-card-msg { color: #33281a; line-height: 1.55; margin: 0 0 8px; }
 .notifications-page .notification-card-time { color: #9a8a6b; font-style: italic; font-size: 0.78rem; }
 
+/* Pulsante "Apri" — reindirizza alla pagina collegata alla notifica. Grande e
+   ben visibile, così è chiaro dove cliccare. */
+.notifications-page .notification-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 12px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cine-accent, #3f5a7a), var(--cine-accent-2, #5a7ea8));
+  color: #fdf8ec;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -6px rgba(40, 26, 8, 0.55);
+  transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+}
+.notifications-page .notification-card-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+  box-shadow: 0 9px 22px -8px rgba(40, 26, 8, 0.6);
+}
+.notifications-page .notification-card-cta:active { transform: translateY(0); }
+
 .notifications-page .notification-card-delete {
   position: absolute;
   bottom: 12px; right: 12px;

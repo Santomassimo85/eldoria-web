@@ -293,7 +293,8 @@ export default function Tarocchi() {
         notifyUser(
           alaricUid,
           mode === "live" ? "🔮 Richiesta di lettura LIVE" : "🔮 Nuova richiesta all'Oracolo",
-          `${myName || "Un viandante"} chiede una lettura ${mode === "live" ? "in diretta" : "differita"} ad Alaric.`
+          `${myName || "Un viandante"} chiede una lettura ${mode === "live" ? "in diretta" : "differita"} ad Alaric.`,
+          "/tarocchi"
         );
       }
       setQuestion("");
@@ -361,7 +362,7 @@ export default function Tarocchi() {
     document.getElementById("taro-banco")?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (live) {
       updateDoc(doc(db, "oracle_readings", req.id), { status: "live", cards: [], shuffled: false, customMessage: "" }).catch(() => {});
-      notifyUser(req.requesterUid, "🔮 La lettura sta iniziando", `${myName || "Alaric"} ha avviato la tua lettura in diretta. Apri l'Oracolo per assistere.`);
+      notifyUser(req.requesterUid, "🔮 La lettura sta iniziando", `${myName || "Alaric"} ha avviato la tua lettura in diretta. Apri l'Oracolo per assistere.`, "/tarocchi");
     }
   };
   const apriSandbox = () => { setActiveReq(null); setSandbox(true); resetBanco(); document.getElementById("taro-banco")?.scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -406,7 +407,7 @@ export default function Tarocchi() {
           num: drawn.length, steseTitolo: titoloFor(drawn.length),
           answeredAt: serverTimestamp(), answeredByName: myName || "L'Oracolo",
         });
-        notifyUser(activeReq.requesterUid, "🔮 Il tuo responso è pronto", `${myName || "Alaric"} ha voltato le carte per te. Apri l'Oracolo per scoprirlo.`);
+        notifyUser(activeReq.requesterUid, "🔮 Il tuo responso è pronto", `${myName || "Alaric"} ha voltato le carte per te. Premi «Apri l'Oracolo» qui sotto per scoprirlo.`, "/tarocchi");
       } catch (e) { console.warn("[oracolo] concludi:", e); }
     }
     setInviato(true);

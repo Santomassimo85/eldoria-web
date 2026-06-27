@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "56.01",
+      "date": "2026-06-27",
+      "title": "Notifiche: pulsante per aprire la pagina collegata",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Le notifiche che rimandano a una pagina (es. «Il tuo responso è pronto» dell'Oracolo) ora mostrano un pulsante grande «Apri l'Oracolo →» che porta direttamente alla lettura. Prima il messaggio invitava ad aprire la pagina ma non c'era nulla su cui cliccare."
+        }
+      ]
+    },
+    {
       "version": "56",
       "date": "2026-06-27",
       "title": "Lo Scriba: indicazione del direttore e réclame",

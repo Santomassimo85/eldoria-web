@@ -21,14 +21,17 @@ import { db } from "../firebase.js";
 const isRealUid = (uid) =>
   typeof uid === "string" && uid.length > 0 && !uid.startsWith("ai_");
 
-/* Notifica un singolo giocatore. No-op per uid AI / vuoti. */
-export async function notifyUser(uid, title, message) {
+/* Notifica un singolo giocatore. No-op per uid AI / vuoti.
+   `link` (opzionale): rotta interna dove portare il giocatore (es. "/tarocchi"):
+   la pagina /notifications mostra un pulsante "Apri" che ci reindirizza. */
+export async function notifyUser(uid, title, message, link = "") {
   if (!isRealUid(uid)) return;
   const batch = writeBatch(db);
   batch.set(doc(collection(db, "notifications")), {
     userId: uid,
     title: title || "Notifica",
     message: message || "",
+    link: link || null,
     read: false,
     timestamp: serverTimestamp(),
   });
@@ -54,6 +57,7 @@ export async function notifyUsers(entries, title, message) {
       userId: uid,
       title: (typeof e === "object" && e.title) || title || "Notifica",
       message: (typeof e === "object" && e.message) || message || "",
+      link: (typeof e === "object" && e.link) || null,
       read: false,
       timestamp: serverTimestamp(),
     });

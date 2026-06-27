@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
 import {
@@ -15,6 +16,7 @@ const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar3.png";
 export default function Notifications() {
   useParallaxScroll();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [list, setList] = useState([]);
 
   useEffect(() => {
@@ -31,6 +33,16 @@ export default function Notifications() {
 
   const markAsRead = async (id) => {
     await updateDoc(doc(db, "notifications", id), { read: true });
+  };
+
+  // Apre la pagina collegata alla notifica (es. l'Oracolo) segnando il messaggio
+  // come letto. Link interni → router; eventuali URL esterni → nuova scheda.
+  const openLink = (e, n) => {
+    e.stopPropagation();
+    if (!n.link) return;
+    markAsRead(n.id);
+    if (/^https?:\/\//i.test(n.link)) window.open(n.link, "_blank", "noopener");
+    else navigate(n.link);
   };
 
   const deleteNotification = async (e, id) => {
@@ -95,6 +107,14 @@ export default function Notifications() {
             </button>
             <h3 className="notification-card-title">{n.title}</h3>
             <p className="notification-card-msg">{n.message}</p>
+            {n.link && (
+              <button
+                className="notification-card-cta"
+                onClick={(e) => openLink(e, n)}
+              >
+                {n.link === "/tarocchi" ? "Apri l'Oracolo" : "Vai alla pagina"}&nbsp;→
+              </button>
+            )}
             <small className="notification-card-time">
               {n.timestamp?.seconds
                 ? new Date(n.timestamp.seconds * 1000).toLocaleString()
