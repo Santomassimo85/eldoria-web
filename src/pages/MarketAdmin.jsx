@@ -317,8 +317,47 @@ export default function MarketAdmin() {
   const [descSearchQuery, setDescSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [genName, setGenName] = useState(false);     // IA: generazione nome in corso
+  const [genDesc, setGenDesc] = useState(false);     // IA: generazione descrizione in corso
+  const [genError, setGenError] = useState("");      // messaggio errore IA (nome/descr)
   const descRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Genera nome o descrizione DALL'IMMAGINE (vision). Richiede un'immagine caricata.
+  const generaDaImmagine = async (tipo) => {
+    if (!formData.img || uploading || genName || genDesc) return;
+    setGenError("");
+    if (tipo === "nome") setGenName(true); else setGenDesc(true);
+    try {
+      const r = await fetch("/api/genera-oggetto", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tipo,
+          img: formData.img,
+          nome: formData.name,
+          rarita: formData.class,
+          tipoOggetto: formData.type,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || "offline");
+      if (tipo === "nome" && data.nome) {
+        setFormData(prev => ({ ...prev, name: data.nome }));
+      } else if (tipo === "descrizione" && data.descrizione) {
+        setFormData(prev => ({ ...prev, description: data.descrizione }));
+      } else {
+        throw new Error("Risposta IA vuota.");
+      }
+    } catch (err) {
+      setGenError(
+        `Generazione ${tipo} non riuscita (l'IA è attiva solo online). ` +
+        (err?.message && err.message !== "offline" ? err.message : "Riprova o scrivi a mano.")
+      );
+    } finally {
+      if (tipo === "nome") setGenName(false); else setGenDesc(false);
+    }
+  };
 
   const handleImageUpload = async (file) => {
     if (!file) return;
@@ -856,7 +895,18 @@ export default function MarketAdmin() {
 
           <form onSubmit={handleSubmit} className="mkadm-form">
             <div className="mkadm-field">
-              <label>Nome oggetto</label>
+              <div className="mkadm-label-row">
+                <label>Nome oggetto</label>
+                <button
+                  type="button"
+                  className="mkadm-gen-btn"
+                  onClick={() => generaDaImmagine("nome")}
+                  disabled={!formData.img || uploading || genName || genDesc}
+                  title={formData.img ? "Genera il nome dall'immagine" : "Carica prima un'immagine"}
+                >
+                  {genName ? "✦ Genero…" : "✦ Genera nome"}
+                </button>
+              </div>
               <input
                 className="admin-field-input"
                 placeholder="Es. Spada del Tramonto"
@@ -1228,7 +1278,18 @@ export default function MarketAdmin() {
             </div>
 
             <div className="mkadm-field">
-              <label>Descrizione (HTML consentito)</label>
+              <div className="mkadm-label-row">
+                <label>Descrizione (HTML consentito)</label>
+                <button
+                  type="button"
+                  className="mkadm-gen-btn"
+                  onClick={() => generaDaImmagine("descrizione")}
+                  disabled={!formData.img || uploading || genName || genDesc}
+                  title={formData.img ? "Genera la descrizione dall'immagine" : "Carica prima un'immagine"}
+                >
+                  {genDesc ? "✦ Genero…" : "✦ Genera descrizione"}
+                </button>
+              </div>
               <HtmlToolbar textAreaRef={descRef} formData={formData} setFormData={setFormData} fieldName="description" />
               <textarea
                 ref={descRef}
@@ -1238,6 +1299,7 @@ export default function MarketAdmin() {
                 required
                 rows="5"
               />
+              {genError && <p className="mkadm-gen-error">{genError}</p>}
             </div>
 
             {/* ── DATI PER FOUNDRY (import in un clic) ── */}

@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "57",
+      "date": "2026-06-27",
+      "title": "Mercato Nero: nome e descrizione generati dall'immagine",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nel pannello del Mercato Nero compaiono due tastini «✦ Genera nome» e «✦ Genera descrizione» che propongono nome e scheda dell'oggetto leggendo l'immagine caricata. Restano disattivati finché non è presente un'immagine, perché la generazione si basa su di essa."
+        },
+        {
+          "type": "feature",
+          "text": "La descrizione generata segue il formato delle schede oggetto: paragrafo estetico in corsivo seguito da «Proprietà Speciale» con danni, bonus, tiri salvezza e abilità giornaliere, ed eventuale «Maledizione», calibrati sulla rarità. Il Master può comunque scrivere tutto a mano."
+        }
+      ]
+    },
+    {
       "version": "56.01",
       "date": "2026-06-27",
       "title": "Notifiche: pulsante per aprire la pagina collegata",
