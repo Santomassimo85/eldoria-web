@@ -34,7 +34,7 @@ import { notifyUser } from "../utils/notify";
 import {
   ARCANI, ARCANO_BY_N, STESE, MAX_CARDS,
   CARD_BACKS, DEFAULT_BACK, cardBackSrc, cardFaceSrc,
-  ORACLE_MASTER_EMAIL, ORACLE_COMASTER_EMAIL, isAlaricName, ALARIC_PORTRAIT,
+  ORACLE_MASTER_EMAIL, isAlaricName, ALARIC_PORTRAIT,
 } from "../data/tarocchi";
 import { FRASI } from "../data/tarocchiFrasi";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -182,7 +182,13 @@ function ResponsoSalvato({ reading, showRequester }) {
         ))}
       </div>
       {reading.customMessage ? <p className="taro-hist-msg">“{reading.customMessage}”</p> : null}
-      {reading.answeredByName && <footer className="taro-hist-foot">Lettura voltata da <strong>{reading.answeredByName}</strong></footer>}
+      {reading.answeredByName && (
+        <div className="taro-hist-foot">
+          <span className="taro-hist-foot-ribbon">Suggellato dall'Oracolo bendato</span>
+          <span className="taro-hist-foot-name">{reading.answeredByName}</span>
+          <span className="taro-hist-foot-wink">Le carte non mentono mai… ma ogni tanto scherzano. ✦</span>
+        </div>
+      )}
     </article>
   );
 }
@@ -212,9 +218,8 @@ export default function Tarocchi() {
 
   const email = currentUser?.email || "";
   const isMaster = email === ORACLE_MASTER_EMAIL;
-  const isComaster = email === ORACLE_COMASTER_EMAIL;
   const isAlaric = isAlaricName(myName);
-  const isTester = isMaster || isComaster;            // prova locale
+  const isTester = isMaster;                          // prova locale (solo Master)
   const privileged = isAlaric || isTester;
 
   useEffect(() => {

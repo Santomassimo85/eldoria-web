@@ -325,7 +325,23 @@
 .taro-hist-title { font-family: var(--font-title, serif); font-weight: 800; color: var(--amber-deep, #7c560f); font-size: 1.1rem; }
 .taro-hist-date { font-size: .8rem; color: #8a7a58; }
 .taro-hist-q { margin: 8px 0 12px; color: #5b4a30; font-style: italic; }
-.taro-hist-foot { margin-top: 12px; font-size: .82rem; color: #8a7a58; }
+.taro-hist-foot {
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px dashed rgba(124,86,15,.4);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  background: none; /* annulla lo stile globale del tag footer (rosso) */
+}
+.taro-hist-foot-ribbon {
+  font-size: .62rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--amber-deep, #a9781a); font-weight: 800;
+}
+.taro-hist-foot-ribbon::before, .taro-hist-foot-ribbon::after { content: "✦"; margin: 0 .55em; opacity: .55; }
+.taro-hist-foot-name {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 1.16rem; font-weight: 700; color: var(--amber-deep, #7c560f);
+  text-shadow: 0 1px 0 rgba(255,255,255,.55); letter-spacing: .01em;
+}
+.taro-hist-foot-wink { font-size: .72rem; font-style: italic; color: #8a7a58; opacity: .9; }
 
 /* riga di mini-carte */
 .taro-mini-row { display: flex; flex-wrap: wrap; gap: 12px; }

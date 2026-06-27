@@ -56,9 +56,9 @@ export const MAX_CARDS = 3;
 export const ARCANO_BY_N = Object.fromEntries(ARCANI.map((a) => [a.n, a]));
 
 // ── Ruoli dell'Oracolo ──────────────────────────────────────────────────────
-// Privilegiati (pagina completa): il Master, il co-master e il PG Alaric.
+// Privilegiati (pagina completa): il Master e il PG Alaric.
+// Makenna (ripperti96) NON è privilegiata qui: usa l'Oracolo da giocatrice.
 export const ORACLE_MASTER_EMAIL = "santomassimo85@gmail.com";
-export const ORACLE_COMASTER_EMAIL = "ripperti96@gmail.com";
 // Alaric è identificato per NOME personaggio (collection characters).
 export const isAlaricName = (name) => /^\s*alaric/i.test(String(name || ""));
 
