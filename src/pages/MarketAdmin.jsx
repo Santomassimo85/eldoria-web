@@ -319,15 +319,21 @@ export default function MarketAdmin() {
   const [dragOver, setDragOver] = useState(false);
   const [genName, setGenName] = useState(false);     // IA: generazione nome in corso
   const [genDesc, setGenDesc] = useState(false);     // IA: generazione descrizione in corso
-  const [genError, setGenError] = useState("");      // messaggio errore IA (nome/descr)
+  const [genGdr, setGenGdr] = useState(false);       // IA: generazione oggetto "da GdR" in corso
+  const [genError, setGenError] = useState("");      // messaggio errore IA
   const descRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Genera nome o descrizione DALL'IMMAGINE (vision). Richiede un'immagine caricata.
+  const genBusy = genName || genDesc || genGdr;
+
+  // Genera nome / descrizione / oggetto-da-GdR DALL'IMMAGINE (vision).
+  // Richiede un'immagine caricata. tipo: "nome" | "descrizione" | "gdr".
   const generaDaImmagine = async (tipo) => {
-    if (!formData.img || uploading || genName || genDesc) return;
+    if (!formData.img || uploading || genBusy) return;
     setGenError("");
-    if (tipo === "nome") setGenName(true); else setGenDesc(true);
+    if (tipo === "nome") setGenName(true);
+    else if (tipo === "gdr") setGenGdr(true);
+    else setGenDesc(true);
     try {
       const r = await fetch("/api/genera-oggetto", {
         method: "POST",
@@ -344,18 +350,20 @@ export default function MarketAdmin() {
       if (!r.ok || data.error) throw new Error(data.error || "offline");
       if (tipo === "nome" && data.nome) {
         setFormData(prev => ({ ...prev, name: data.nome }));
-      } else if (tipo === "descrizione" && data.descrizione) {
+      } else if ((tipo === "descrizione" || tipo === "gdr") && data.descrizione) {
         setFormData(prev => ({ ...prev, description: data.descrizione }));
       } else {
         throw new Error("Risposta IA vuota.");
       }
     } catch (err) {
       setGenError(
-        `Generazione ${tipo} non riuscita (l'IA è attiva solo online). ` +
+        `Generazione non riuscita (l'IA è attiva solo online). ` +
         (err?.message && err.message !== "offline" ? err.message : "Riprova o scrivi a mano.")
       );
     } finally {
-      if (tipo === "nome") setGenName(false); else setGenDesc(false);
+      if (tipo === "nome") setGenName(false);
+      else if (tipo === "gdr") setGenGdr(false);
+      else setGenDesc(false);
     }
   };
 
@@ -901,7 +909,7 @@ export default function MarketAdmin() {
                   type="button"
                   className="mkadm-gen-btn"
                   onClick={() => generaDaImmagine("nome")}
-                  disabled={!formData.img || uploading || genName || genDesc}
+                  disabled={!formData.img || uploading || genBusy}
                   title={formData.img ? "Genera il nome dall'immagine" : "Carica prima un'immagine"}
                 >
                   {genName ? "✦ Genero…" : "✦ Genera nome"}
@@ -1280,15 +1288,26 @@ export default function MarketAdmin() {
             <div className="mkadm-field">
               <div className="mkadm-label-row">
                 <label>Descrizione (HTML consentito)</label>
-                <button
-                  type="button"
-                  className="mkadm-gen-btn"
-                  onClick={() => generaDaImmagine("descrizione")}
-                  disabled={!formData.img || uploading || genName || genDesc}
-                  title={formData.img ? "Genera la descrizione dall'immagine" : "Carica prima un'immagine"}
-                >
-                  {genDesc ? "✦ Genero…" : "✦ Genera descrizione"}
-                </button>
+                <div className="mkadm-gen-group">
+                  <button
+                    type="button"
+                    className="mkadm-gen-btn"
+                    onClick={() => generaDaImmagine("descrizione")}
+                    disabled={!formData.img || uploading || genBusy}
+                    title={formData.img ? "Genera la descrizione dall'immagine" : "Carica prima un'immagine"}
+                  >
+                    {genDesc ? "✦ Genero…" : "✦ Genera descrizione"}
+                  </button>
+                  <button
+                    type="button"
+                    className="mkadm-gen-btn mkadm-gen-btn-gdr"
+                    onClick={() => generaDaImmagine("gdr")}
+                    disabled={!formData.img || uploading || genBusy}
+                    title={formData.img ? "Genera un oggetto simpatico, inutile in combattimento ma utile al GdR" : "Carica prima un'immagine"}
+                  >
+                    {genGdr ? "🎭 Genero…" : "🎭 Oggetto da GdR"}
+                  </button>
+                </div>
               </div>
               <HtmlToolbar textAreaRef={descRef} formData={formData} setFormData={setFormData} fieldName="description" />
               <textarea

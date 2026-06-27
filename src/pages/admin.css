@@ -1354,6 +1354,8 @@
 }
 .mkadm-gen-btn:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
 .mkadm-gen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.mkadm-gen-group { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.mkadm-gen-btn-gdr { background: linear-gradient(135deg, #b45309, #92400e); }
 .mkadm-gen-error {
   margin: 8px 0 0;
   font-size: 0.82rem;

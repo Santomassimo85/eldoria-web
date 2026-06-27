@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "57.01",
+      "date": "2026-06-27",
+      "title": "Mercato Nero: tastino «Oggetto da GdR»",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nel pannello del Mercato Nero, accanto alla generazione della descrizione, c'è un nuovo tastino «🎭 Oggetto da GdR»: legge l'immagine e propone un oggetto simpatico e di colore, inutile in combattimento ma utile (o spassoso) nel gioco di ruolo, con un'utilità da tavolo e un'eventuale stranezza buffa."
+        }
+      ]
+    },
+    {
       "version": "57",
       "date": "2026-06-27",
       "title": "Mercato Nero: nome e descrizione generati dall'immagine",

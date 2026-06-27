@@ -101,6 +101,26 @@ Regole:
 - Niente backtick, niente \`\`\`html, niente testo fuori dall'HTML. Tono evocativo ma conciso.`;
 };
 
+// Oggetto "da GdR": simpatico, di colore, NON utile in combattimento ma utile
+// (o spassoso) nel gioco di ruolo. Niente danni/CA/iniziativa.
+const PROMPT_GDR = ({ nome, tipoOggetto }) =>
+`Sei il cronista degli oggetti curiosi della campagna fantasy dark "Eldoria" (D&D 5e).
+Osserva ATTENTAMENTE l'immagine e scrivi la scheda di un oggetto SIMPATICO e DI COLORE,
+INUTILE in combattimento ma utile o spassoso nel gioco di ruolo. In ITALIANO.
+${nome ? `L'oggetto si chiama "${nome}".` : ""}
+Indizio sulla categoria: "${tipoOggetto || "?"}".
+
+Restituisci SOLO HTML, con questa struttura:
+1. <p><em>…</em></p> — descrizione estetica e atmosfera: forma, materiali, dettagli visibili nell'immagine, con un tocco di ironia o stranezza. 2-4 frasi.
+2. <p><strong>Utilità da Gioco:</strong> …</p> — a cosa serve fuori dal combattimento: scena sociale, esplorazione, indagine, intrattenimento, piccoli trucchi magici innocui, comodità quotidiane. Può dare al massimo vantaggio a una prova di abilità di tanto in tanto, MAI bonus a danni/CA/iniziativa/TS in battaglia.
+3. Opzionale: <p><strong>Stranezza:</strong> …</p> — un difetto buffo, un effetto collaterale comico o una mania dell'oggetto.
+
+Regole:
+- Niente danni, niente tiri salvezza in combattimento, niente "1 volta al giorno" da arma. È roba da TAVOLO e da interpretazione.
+- Basati su ciò che VEDI nell'immagine; se l'oggetto sembra un'arma, rendilo comunque inoffensivo e ridicolo.
+- Usa SOLO i tag <p>, <em>, <strong>. NON ripetere il nome come titolo.
+- Niente backtick, niente \`\`\`html, niente testo fuori dall'HTML. Tono leggero e divertente.`;
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
@@ -108,15 +128,16 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Chiave Anthropic mancante." });
   if (!img) return res.status(400).json({ error: "Carica prima un'immagine." });
-  if (tipo !== "nome" && tipo !== "descrizione")
-    return res.status(400).json({ error: "Tipo non valido (usa 'nome' o 'descrizione')." });
+  if (tipo !== "nome" && tipo !== "descrizione" && tipo !== "gdr")
+    return res.status(400).json({ error: "Tipo non valido (usa 'nome', 'descrizione' o 'gdr')." });
 
   try {
     const imageBlock = await fetchImageAsBlock(img);
     const isNome = tipo === "nome";
-    const prompt = isNome
-      ? PROMPT_NOME({ rarita, tipoOggetto })
-      : PROMPT_DESC({ nome, rarita, tipoOggetto, plan: planDescription(rarita) });
+    const prompt =
+      isNome          ? PROMPT_NOME({ rarita, tipoOggetto }) :
+      tipo === "gdr"  ? PROMPT_GDR({ nome, tipoOggetto }) :
+                        PROMPT_DESC({ nome, rarita, tipoOggetto, plan: planDescription(rarita) });
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
