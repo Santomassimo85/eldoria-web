@@ -38,21 +38,68 @@ Regole:
 - Coerente con ciò che VEDI nell'immagine.
 - Rispondi SOLO con il nome, senza virgolette, senza punto finale, senza altro testo.`;
 
-const PROMPT_DESC = ({ nome, rarita, tipoOggetto }) =>
-`Sei il cronista degli oggetti magici per la campagna fantasy dark "Eldoria" (D&D 5e).
+// Quante Proprietà Speciali in base alla rarità (con un po' di varietà random).
+// Più l'oggetto è raro, più effetti può avere.
+const PROP_COUNT = {
+  "Comune":      [1, 1],
+  "Non comune":  [1, 1],
+  "Rara":        [1, 2],
+  "Molto rara":  [2, 2],
+  "Leggendaria": [2, 3],
+  "Artefatto":   [3, 3],
+  // legacy
+  "Raro": [1, 2], "Magico": [2, 2], "Epico": [2, 2], "Leggendario": [2, 3],
+};
+
+// Decide, per QUESTA generazione, quante proprietà e quale blocco extra
+// (a volte nessuno). La maledizione è volutamente rara.
+function planDescription(rarita) {
+  const [lo, hi] = PROP_COUNT[rarita] || [1, 2];
+  const propCount = lo + Math.floor(Math.random() * (hi - lo + 1));
+
+  // Blocco extra opzionale, con pesi: spesso nessuno, maledizione rara.
+  const pool = [
+    { kind: "niente",     w: 5 },
+    { kind: "Bonus",      w: 3 },
+    { kind: "Malus",      w: 2 },
+    { kind: "Effetto",    w: 3 },
+    { kind: "Requisiti",  w: 1 },
+    { kind: "Maledizione", w: 1 },
+  ];
+  const total = pool.reduce((s, o) => s + o.w, 0);
+  let roll = Math.random() * total;
+  let extra = "niente";
+  for (const o of pool) { roll -= o.w; if (roll <= 0) { extra = o.kind; break; } }
+
+  return { propCount, extra };
+}
+
+const PROMPT_DESC = ({ nome, rarita, tipoOggetto, plan }) => {
+  const { propCount, extra } = plan;
+  const propLine = propCount === 1
+    ? `2. <p><strong>Proprietà Speciale:</strong> …</p> — UN effetto meccanico coerente con D&D 5e.`
+    : `2. Da 2 a 3 effetti distinti: scrivi ESATTAMENTE ${propCount} paragrafi separati, ciascuno <p><strong>Proprietà Speciale:</strong> …</p>, con effetti DIVERSI tra loro.`;
+  const extraLine = extra === "niente"
+    ? `3. NESSUN blocco aggiuntivo: fermati alle Proprietà Speciali.`
+    : `3. Aggiungi inoltre UN paragrafo <p><strong>${extra}:</strong> …</p> coerente con l'oggetto${extra === "Maledizione" ? " (un effetto negativo che chi lo usa subisce)" : extra === "Malus" ? " (uno svantaggio o penalità d'uso)" : ""}.`;
+
+  return `Sei il cronista degli oggetti magici per la campagna fantasy dark "Eldoria" (D&D 5e).
 Osserva ATTENTAMENTE l'immagine dell'oggetto e scrivi la sua scheda, in ITALIANO.
 ${nome ? `L'oggetto si chiama "${nome}".` : ""}
 Indizi: rarità "${rarita || "?"}", categoria "${tipoOggetto || "?"}".
 
-Restituisci SOLO HTML, con questa struttura esatta:
+Restituisci SOLO HTML, con questa struttura:
 1. <p><em>…</em></p> — descrizione estetica: forma, materiali, colori, dettagli visibili nell'immagine, atmosfera. 2-4 frasi.
-2. <p><strong>Proprietà Speciale:</strong> …</p> — effetti meccanici coerenti con D&D 5e: danni (es. "1d8+1d6 da forza sonora"), bonus a tiri/CA, tiri salvezza con CD, abilità "1 volta al giorno", ecc. Calibra la potenza sulla rarità indicata.
-3. Solo se ha senso, aggiungi UN ulteriore paragrafo tra: <p><strong>Maledizione:</strong> …</p>, <p><strong>Bonus:</strong> …</p> o <p><strong>Requisiti:</strong> …</p>.
+${propLine}
+   Negli effetti usa elementi concreti di D&D 5e: danni (es. "1d8+1d6 da forza sonora"), bonus a tiri/CA, tiri salvezza con CD, abilità "1 volta al giorno", ecc. Calibra la potenza sulla rarità.
+${extraLine}
 
 Regole:
 - Basati su ciò che VEDI: tipo d'arma/armatura/accessorio, elementi magici, simboli.
 - Usa SOLO i tag <p>, <em>, <strong>. NON ripetere il nome dell'oggetto come titolo (è gestito a parte).
+- Rispetta ESATTAMENTE i blocchi richiesti sopra: non aggiungere né togliere sezioni.
 - Niente backtick, niente \`\`\`html, niente testo fuori dall'HTML. Tono evocativo ma conciso.`;
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
@@ -69,7 +116,7 @@ export default async function handler(req, res) {
     const isNome = tipo === "nome";
     const prompt = isNome
       ? PROMPT_NOME({ rarita, tipoOggetto })
-      : PROMPT_DESC({ nome, rarita, tipoOggetto });
+      : PROMPT_DESC({ nome, rarita, tipoOggetto, plan: planDescription(rarita) });
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
