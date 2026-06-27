@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "56",
+      "date": "2026-06-27",
+      "title": "Lo Scriba: indicazione del direttore e réclame",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nel pannello de Lo Scriba il Master può lasciare un'indicazione valida solo per la prossima uscita (dare risalto a un tema, introdurre una vicenda, o chiedere una réclame). L'indicazione si azzera da sola quando il numero parte ai lettori."
+        },
+        {
+          "type": "feature",
+          "text": "Lo Scriba può ora chiudere un numero con una réclame: una locandina pubblicitaria d'epoca incorniciata in fondo alla gazzetta, con illustrazione, titolo e testo in voce col giornale."
+        }
+      ]
+    },
+    {
       "version": "55.01",
       "date": "2026-06-27",
       "title": "Oracolo: corretti i ruoli di accesso",

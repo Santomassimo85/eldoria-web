@@ -71,6 +71,21 @@ async function collectDossier(db, fromMs) {
     }));
 }
 
+// ── Indicazione "una tantum" del direttore (one-shot) ───────────────────────
+// Il master può lasciare un'indicazione per il PROSSIMO numero (campo
+// `nextIssueInput` su settings/scriba). Vale una sola uscita: viene azzerata
+// quando il numero parte ai lettori (approve/sendNow).
+async function loadOneShotDirective(db) {
+    try {
+        const snap = await db.doc("settings/scriba").get();
+        const v = snap.exists ? snap.data().nextIssueInput : "";
+        return String(v || "").trim();
+    } catch (e) {
+        console.error("[scriba] nextIssueInput:", e);
+        return "";
+    }
+}
+
 // ── Numero precedente (continuità: il mondo prosegue, non riparte) ──────────
 async function collectPreviousIssue(db, edition) {
     if (!edition || edition <= 1) return null;
@@ -252,16 +267,20 @@ async function collectScribaData(db, { days = 10, edition = 1 } = {}) {
 
     const characters = await loadCharacters(db);
 
-    const [dossier, arene, mercato, npcs, incarichi, numeroPrecedente] = await Promise.all([
+    const [dossier, arene, mercato, npcs, incarichi, numeroPrecedente, indicazioniRedazione] = await Promise.all([
         collectDossier(db, fromMs),
         collectArenas(db, fromMs, characters),
         collectMarket(db, fromMs),
         collectNpcs(db),
         collectQuests(db),
         collectPreviousIssue(db, edition),
+        loadOneShotDirective(db),
     ]);
 
     return {
+        // Indicazione del direttore valida SOLO per questo numero (può chiedere
+        // una réclame, dare risalto a un tema, ecc.). Vuoto = nessuna direttiva.
+        indicazioniRedazione,
         periodoGiorni: days,
         // Cornice temporale del mondo: stagione, festa e divinità del mese.
         mese: exanthiaMonthInfo(edition),

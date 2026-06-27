@@ -78,6 +78,29 @@ function article(a, { lead = false } = {}) {
       </td></tr>`;
 }
 
+// Réclame (one-shot): locandina pubblicitaria d'epoca, incorniciata, in fondo al
+// numero. Compare solo se il direttore l'ha richiesta (content.advertisement).
+function reclameBlock(adv, image) {
+    if (!adv || (!adv.headline && !adv.body)) return "";
+    const img = image && image.url
+        ? `<tr><td align="center" style="padding:0 0 14px;">
+             <img src="${esc(image.url)}" alt="" width="320" style="display:block;width:62%;max-width:320px;height:auto;border:1px solid #b59b6a;">
+           </td></tr>`
+        : "";
+    return `
+      <tr><td style="padding:30px 0 4px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:2px double #7a1f12;background:#f7f0dc;">
+          <tr><td style="padding:18px 22px 22px;" align="center">
+            <div style="font-family:${FONT_BODY};font-size:11px;letter-spacing:5px;text-transform:uppercase;color:#7a1f12;padding-bottom:10px;">❦ Réclame ❦</div>
+            ${img ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${img}</table>` : ""}
+            <div style="font-family:${FONT_TITLE};font-weight:700;font-size:23px;line-height:1.2;color:#1c1813;letter-spacing:.5px;padding-bottom:10px;">${esc(adv.headline)}</div>
+            ${String(adv.body || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+            .map((p) => `<div style="font-family:${FONT_BODY};font-size:15px;line-height:1.7;color:#2b2620;padding-bottom:8px;">${esc(p).replace(/\n/g, "<br>")}</div>`).join("")}
+          </td></tr>
+        </table>
+      </td></tr>`;
+}
+
 function sectionBlock(heading, articles, images = []) {
     if (!articles || !articles.length) return "";
     const head = `
@@ -192,6 +215,7 @@ function renderScribaHtml({ content, edition, unsubUrl = "", images = [], approv
             ${sectionBlock("Voci di Taverna", content.voci_di_taverna, byPlace("voci_di_taverna"))}
             ${sectionBlock("Listini & Loschi Affari", content.listini, byPlace("listini"))}
             ${sectionBlock(`Dall'${ARENA_HEADING.replace(/^L'/, "")} · Cronache del Sangue`, content.arena, byPlace("arena"))}
+            ${reclameBlock(content.advertisement, byPlace("reclame")[0])}
           </table>
 
           <!-- PIÈ DI PAGINA -->

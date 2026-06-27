@@ -8,7 +8,7 @@
 //  - sfogliare i numeri passati;
 //  - (facoltativo) generare un'anteprima a mano.
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
 import {
   collection, query, orderBy, onSnapshot,
@@ -51,6 +51,8 @@ export default function LoScribaAdmin() {
   const [days, setDays] = useState(10);
   const [msg, setMsg] = useState(null);     // { type, text }
   const [previewHtml, setPreviewHtml] = useState(null);
+  const [oneShot, setOneShot] = useState("");   // indicazione per il prossimo numero
+  const oneShotLoaded = useRef(false);
 
   const isMaster = currentUser && MASTER_EMAILS.includes(currentUser.email);
 
@@ -61,7 +63,11 @@ export default function LoScribaAdmin() {
       setEditions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     }, (e) => setMsg({ type: "err", text: "Lettura numeri: " + e.message }));
     const unsubCfg = onSnapshot(doc(db, "settings", "scriba"), (s) => {
-      if (s.exists()) setEnabled(s.data().enabled !== false);
+      if (!s.exists()) return;
+      setEnabled(s.data().enabled !== false);
+      // Carica l'indicazione una sola volta, per non sovrascrivere ciò che il
+      // master sta scrivendo se nel frattempo arriva un aggiornamento.
+      if (!oneShotLoaded.current) { setOneShot(s.data().nextIssueInput || ""); oneShotLoaded.current = true; }
     });
     return () => { unsub(); unsubCfg(); };
   }, [isMaster]);
@@ -85,6 +91,12 @@ export default function LoScribaAdmin() {
   const toggleEnabled = () => run(async () => {
     await setDoc(doc(db, "settings", "scriba"), { enabled: !enabled }, { merge: true });
     setMsg({ type: "ok", text: !enabled ? "Automatismo ATTIVO: Lo Scriba uscirà da solo." : "Automatismo in PAUSA." });
+  });
+
+  const salvaIndicazione = () => run(async () => {
+    const v = oneShot.trim();
+    await setDoc(doc(db, "settings", "scriba"), { nextIssueInput: v }, { merge: true });
+    setMsg({ type: "ok", text: v ? "Indicazione salvata: varrà SOLO per il prossimo numero generato, poi si azzera all'invio." : "Indicazione rimossa." });
   });
 
   const generaAnteprima = () => run(async () => {
@@ -161,6 +173,28 @@ export default function LoScribaAdmin() {
           </div>
         </div>
       )}
+
+      {/* Indicazione "una tantum" per il prossimo numero */}
+      <div className="adm-tile" style={{ cursor: "default", marginBottom: 18 }}>
+        <span className="adm-tile-icon" aria-hidden="true">🗒️</span>
+        <h3 className="adm-tile-title">Indicazione per il prossimo numero</h3>
+        <p className="adm-tile-desc">
+          Una nota per Lo Scriba che vale <strong>solo per la prossima uscita</strong> (poi si azzera da sola quando il numero parte).
+          Es.: dai risalto a una festa, introduci una disputa, oppure <em>aggiungi una réclame</em> in fondo.
+          Vale per la generazione automatica e per quella manuale qui sotto.
+        </p>
+        <textarea
+          value={oneShot} disabled={busy}
+          onChange={(e) => setOneShot(e.target.value)}
+          rows={4} maxLength={1200}
+          placeholder="Es.: In fondo aggiungi una réclame per il cartomante Alaric, ora a Yotta…"
+          style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid #cdbfa3", borderRadius: 6, resize: "vertical", margin: "4px 0 12px" }}
+        />
+        <div>
+          {btn(busy ? "Salvo…" : "💾 Salva indicazione", salvaIndicazione)}
+          {oneShot && btn("Pulisci", () => setOneShot(""), "#e0d6bf", "#1c1813")}
+        </div>
+      </div>
 
       {/* Generazione manuale (facoltativa) */}
       <div className="adm-tile" style={{ cursor: "default", marginBottom: 26 }}>

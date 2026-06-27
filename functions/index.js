@@ -794,6 +794,11 @@ exports.scribaEdit = onCall(
       voci_di_taverna: arr(content.voci_di_taverna),
       listini: arr(content.listini),
       arena: arr(content.arena),
+      // Réclame (one-shot): modificabile come gli articoli, o assente.
+      advertisement: (() => {
+        const a = art(content.advertisement || d.content?.advertisement || {});
+        return (a.headline || a.body) ? a : null;
+      })(),
       // Metadati illustrazioni invariati (le immagini non si modificano qui).
       illustrations: Array.isArray(d.content?.illustrations) ? d.content.illustrations : [],
     };
@@ -827,7 +832,8 @@ exports.scribaSendNow = onCall(
     const sent = await sendScribaToPlayers(dbAdmin, d);
     await ref.update({ status: "sent", sentAt: FieldValue.serverTimestamp(), recipientCount: sent });
     await dbAdmin.doc("settings/scriba").set(
-      { lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp() },
+      // L'indicazione del direttore è "una tantum": consumata, si azzera.
+      { lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp(), nextIssueInput: FieldValue.delete() },
       { merge: true },
     );
     return { ok: true, sent };
@@ -951,7 +957,8 @@ exports.scribaApprove = onRequest({ region: "us-central1", timeoutSeconds: 300, 
     const sent = await sendScribaToPlayers(dbAdmin, d);
     await ref.update({ status: "sent", sentAt: FieldValue.serverTimestamp(), recipientCount: sent });
     await dbAdmin.doc("settings/scriba").set(
-      { lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp() }, { merge: true },
+      // L'indicazione del direttore è "una tantum": consumata, si azzera.
+      { lastNumber: d.number, lastSentAt: FieldValue.serverTimestamp(), nextIssueInput: FieldValue.delete() }, { merge: true },
     );
     res.status(200).send(page(`✓ Numero ${d.number} approvato e inviato a ${sent} lettori. Ora compare nell'archivio.`));
   } catch (e) {

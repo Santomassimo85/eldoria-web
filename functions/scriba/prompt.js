@@ -57,6 +57,12 @@ SEZIONI DA PRODURRE
 - "listini": 1-2 articoli su mercato, aste, contrabbando, prezzi, in chiave di costume.
 - "arena": la cronaca da "${ARENA_NAME}".
 
+INDICAZIONE DEL DIRETTORE (one-shot)
+- Nei dati puoi trovare "indicazioniRedazione": è un'istruzione del direttore valida SOLO per questo numero. Rispettala con cura (NON viola però la REGOLA NUMERO UNO sul dossier).
+- Se l'indicazione chiede una RÉCLAME / inserzione, compila il campo "advertisement" (titolo + corpo): un annunzio pubblicitario d'epoca, breve, simpatico e in voce col giornale (uno strillo da imbonitore, un invito ai cittadini, un pizzico d'ironia). Va in fondo al numero, come una locandina. Se l'indicazione NON chiede una réclame, lascia "advertisement" vuoto ({"headline":"","body":""}).
+- Per illustrare la réclame, aggiungi UNA voce in "illustrations" con "section":"reclame".
+- Se NON c'è alcuna "indicazioniRedazione", ignora del tutto questo paragrafo e "advertisement".
+
 ILLUSTRAZIONI
 - Scegli da 2 a 3 momenti del numero da illustrare (i più suggestivi, non tutti). Per ciascuno fornisci:
   - "section": a quale sezione appartiene ("lead", "dalle_terre", "voci_di_taverna", "listini" o "arena");
@@ -66,14 +72,21 @@ ILLUSTRAZIONI
 
 FORMATO DI RISPOSTA
 Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza alcun testo prima o dopo, senza blocco di codice, in questa forma esatta:
-{"edition_motto":"breve motto/sottotitolo del numero","lead":{"headline":"...","body":"..."},"dalle_terre":[{"headline":"...","body":"..."}],"voci_di_taverna":[{"headline":"...","body":"..."}],"listini":[{"headline":"...","body":"..."}],"arena":[{"headline":"...","body":"..."}],"illustrations":[{"section":"lead","caption":"...","art_prompt":"..."}]}
+{"edition_motto":"breve motto/sottotitolo del numero","lead":{"headline":"...","body":"..."},"dalle_terre":[{"headline":"...","body":"..."}],"voci_di_taverna":[{"headline":"...","body":"..."}],"listini":[{"headline":"...","body":"..."}],"arena":[{"headline":"...","body":"..."}],"advertisement":{"headline":"","body":""},"illustrations":[{"section":"lead","caption":"...","art_prompt":"..."}]}
 Il campo "body" di ogni articolo è testo semplice di 1-3 paragrafi separati da doppio a-capo (\\n\\n).`;
 
 function buildUserMessage(data) {
     const m = data.mese || {};
+    const direttiva = String(data.indicazioniRedazione || "").trim();
     return [
         `Scrivi il prossimo numero de "Lo Scriba" come un vero quotidiano del mondo. Siamo nel mese di ${m.mese || "?"} (${m.stagione || "?"})${m.festa ? `, periodo della ${m.festa}` : ""}: ${m.clima || ""}.`,
         "",
+        ...(direttiva ? [
+            "★ INDICAZIONE DEL DIRETTORE PER QUESTO NUMERO (rispettala):",
+            direttiva,
+            "(Se chiede una réclame, compila \"advertisement\" e aggiungi un'illustrazione con section \"reclame\". Resta comunque entro la REGOLA NUMERO UNO sul dossier.)",
+            "",
+        ] : []),
         "PROMEMORIA FERREO:",
         "- Il campo \"dossierRiservato\" NON va pubblicato né evocato: è solo sfondo. Niente avventurieri, niente compagnia, niente loro imprese. Se un'idea nasce dal dossier, scartala.",
         "- Genera notizie NUOVE e proprie del mondo (città, autorità, mercati, feste, crimini, misteri), ancorate alla \"geografia\" reale e alla stagione. Dai seguito al \"numeroPrecedente\" dove ha senso: il mondo prosegue.",
@@ -85,7 +98,7 @@ function buildUserMessage(data) {
     ].join("\n");
 }
 
-const SECTIONS = ["lead", "dalle_terre", "voci_di_taverna", "listini", "arena"];
+const SECTIONS = ["lead", "dalle_terre", "voci_di_taverna", "listini", "arena", "reclame"];
 
 /** Estrae il JSON dalla risposta, tollerando eventuali fence ```json o testo attorno. */
 function parseContent(text) {
@@ -110,6 +123,7 @@ function parseContent(text) {
         .filter((i) => i.art_prompt)
         .slice(0, 3);
 
+    const adv = art(obj.advertisement || {});
     return {
         edition_motto: str(obj.edition_motto),
         lead: art(obj.lead || {}),
@@ -117,6 +131,8 @@ function parseContent(text) {
         voci_di_taverna: arr(obj.voci_di_taverna).map(art).filter((a) => a.headline || a.body),
         listini: arr(obj.listini).map(art).filter((a) => a.headline || a.body),
         arena: arr(obj.arena).map(art).filter((a) => a.headline || a.body),
+        // Réclame (one-shot): presente solo se il direttore l'ha chiesta.
+        advertisement: (adv.headline || adv.body) ? adv : null,
         illustrations,
     };
 }
