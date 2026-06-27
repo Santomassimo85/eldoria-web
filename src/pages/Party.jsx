@@ -21,9 +21,9 @@ const PARTIES = [
     divider: "/assets/PhotoStory/GruppoMEAA/SylvaBerserk.png",
     motto: "Il fuoco non chiede permesso",
     members: [
-      { name: "Caius",   race: "Elfo",       class: "Mago",      image: "/assets/player/Caius.jpg" },
-      { name: "Garroth", race: "Mezz'Elfo",  class: "Ranger",    image: "/assets/player/Garroth.jpg" },
-      { name: "Tanagar", race: "Mezz'Orco",  class: "Guerriero", image: "/assets/player/Tanagar.jpg" },
+      { name: "Caius",   race: "Elfo",       class: "Mago",      image: "/assets/player/caius2.jpeg" },
+      { name: "Garroth", race: "Mezz'Elfo",  class: "Ranger",    image: "/assets/player/garroth2.png" },
+      { name: "Tanagar", race: "Mezz'Orco",  class: "Guerriero", image: "/assets/player/Tanagar2.png" },
       { name: "Sylva",   race: "Umana",      class: "Barbaro",   image: "/assets/player/Sylva.png" },
     ],
   },
