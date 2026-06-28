@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "59",
+      "date": "2026-06-28",
+      "title": "Lo Scriba: spunti per il prossimo numero",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nel pannello Lo Scriba (riservato al Master) la vecchia nota singola diventa una lista di «Spunti per il prossimo numero»: si aggiungono e rimuovono note brevi, ognuna salvata subito. Lo Scriba genera il giornale come sempre e include quegli spunti, scrivendoli per esteso e illustrandoli. Valgono solo per la prossima uscita e si azzerano da soli dopo l'invio; se la lista è vuota, libertà totale come prima."
+        }
+      ]
+    },
+    {
       "version": "58",
       "date": "2026-06-28",
       "title": "Mercato Nero: contatore visite (Master)",

@@ -8,7 +8,7 @@
 //  - sfogliare i numeri passati;
 //  - (facoltativo) generare un'anteprima a mano.
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { httpsCallable } from "firebase/functions";
 import {
   collection, query, orderBy, onSnapshot,
@@ -34,6 +34,14 @@ function tsToDate(ts) {
   return new Date(ts);
 }
 
+// Gli "spunti del direttore" vivono come righe puntate dentro un unico campo
+// settings/scriba.nextIssueInput: il backend lo inietta come "INDICAZIONE DEL
+// DIRETTORE" nel prossimo numero e lo AZZERA da solo dopo l'invio (one-shot).
+// Qui sotto li gestiamo come lista, ma sul DB restano quella singola stringa.
+const parseNotes = (raw) =>
+  String(raw || "").split("\n").map((s) => s.replace(/^[-•✦\s]+/, "").trim()).filter(Boolean);
+const joinNotes = (arr) => arr.map((s) => `- ${s}`).join("\n");
+
 function hoursLeft(date) {
   if (!date) return null;
   const ms = date.getTime() - Date.now();
@@ -51,8 +59,8 @@ export default function LoScribaAdmin() {
   const [days, setDays] = useState(10);
   const [msg, setMsg] = useState(null);     // { type, text }
   const [previewHtml, setPreviewHtml] = useState(null);
-  const [oneShot, setOneShot] = useState("");   // indicazione per il prossimo numero
-  const oneShotLoaded = useRef(false);
+  const [notes, setNotes] = useState([]);   // spunti per il prossimo numero
+  const [draft, setDraft] = useState("");   // nuovo spunto in scrittura
 
   const isMaster = currentUser && MASTER_EMAILS.includes(currentUser.email);
 
@@ -63,11 +71,11 @@ export default function LoScribaAdmin() {
       setEditions(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     }, (e) => setMsg({ type: "err", text: "Lettura numeri: " + e.message }));
     const unsubCfg = onSnapshot(doc(db, "settings", "scriba"), (s) => {
-      if (!s.exists()) return;
+      if (!s.exists()) { setEnabled(true); setNotes([]); return; }
       setEnabled(s.data().enabled !== false);
-      // Carica l'indicazione una sola volta, per non sovrascrivere ciò che il
-      // master sta scrivendo se nel frattempo arriva un aggiornamento.
-      if (!oneShotLoaded.current) { setOneShot(s.data().nextIssueInput || ""); oneShotLoaded.current = true; }
+      // La lista è guidata da Firestore: così dopo l'invio (campo azzerato dal
+      // backend) il pannello torna vuoto da solo, senza spunti fantasma.
+      setNotes(parseNotes(s.data().nextIssueInput));
     });
     return () => { unsub(); unsubCfg(); };
   }, [isMaster]);
@@ -93,10 +101,23 @@ export default function LoScribaAdmin() {
     setMsg({ type: "ok", text: !enabled ? "Automatismo ATTIVO: Lo Scriba uscirà da solo." : "Automatismo in PAUSA." });
   });
 
-  const salvaIndicazione = () => run(async () => {
-    const v = oneShot.trim();
-    await setDoc(doc(db, "settings", "scriba"), { nextIssueInput: v }, { merge: true });
-    setMsg({ type: "ok", text: v ? "Indicazione salvata: varrà SOLO per il prossimo numero generato, poi si azzera all'invio." : "Indicazione rimossa." });
+  const persistNotes = (arr) =>
+    setDoc(doc(db, "settings", "scriba"), { nextIssueInput: joinNotes(arr) }, { merge: true });
+
+  const addNote = () => run(async () => {
+    const v = draft.trim();
+    if (!v) return;
+    const next = [...notes, v];
+    setNotes(next); setDraft("");
+    await persistNotes(next);
+    setMsg({ type: "ok", text: "Spunto aggiunto: entrerà nel prossimo numero, poi si azzera da solo dopo l'invio." });
+  });
+
+  const removeNote = (i) => run(async () => {
+    const next = notes.filter((_, idx) => idx !== i);
+    setNotes(next);
+    await persistNotes(next);
+    setMsg({ type: "ok", text: "Spunto rimosso." });
   });
 
   const generaAnteprima = () => run(async () => {
@@ -174,26 +195,48 @@ export default function LoScribaAdmin() {
         </div>
       )}
 
-      {/* Indicazione "una tantum" per il prossimo numero */}
+      {/* Spunti "una tantum" per il prossimo numero */}
       <div className="adm-tile" style={{ cursor: "default", marginBottom: 18 }}>
         <span className="adm-tile-icon" aria-hidden="true">🗒️</span>
-        <h3 className="adm-tile-title">Indicazione per il prossimo numero</h3>
+        <h3 className="adm-tile-title">Spunti per il prossimo numero</h3>
         <p className="adm-tile-desc">
-          Una nota per Lo Scriba che vale <strong>solo per la prossima uscita</strong> (poi si azzera da sola quando il numero parte).
-          Es.: dai risalto a una festa, introduci una disputa, oppure <em>aggiungi una réclame</em> in fondo.
-          Vale per la generazione automatica e per quella manuale qui sotto.
+          Butta giù una nota <strong>breve</strong> (basta il concetto): ci pensa Lo Scriba a scriverla per esteso e a illustrarla,
+          dentro il giornale generato come sempre. Valgono <strong>solo per la prossima uscita</strong> e poi si azzerano da sole.
+          Se non scrivi nulla, <strong>libertà totale</strong> come adesso. Per una <em>réclame</em> in fondo, scrivilo
+          (es. «réclame per il cartomante Alaric, ora a Yotta»).
         </p>
-        <textarea
-          value={oneShot} disabled={busy}
-          onChange={(e) => setOneShot(e.target.value)}
-          rows={4} maxLength={1200}
-          placeholder="Es.: In fondo aggiungi una réclame per il cartomante Alaric, ora a Yotta…"
-          style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid #cdbfa3", borderRadius: 6, resize: "vertical", margin: "4px 0 12px" }}
-        />
-        <div>
-          {btn(busy ? "Salvo…" : "💾 Salva indicazione", salvaIndicazione)}
-          {oneShot && btn("Pulisci", () => setOneShot(""), "#e0d6bf", "#1c1813")}
+
+        {notes.length > 0 ? (
+          <ul style={{ listStyle: "none", padding: 0, margin: "6px 0 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+            {notes.map((n, i) => (
+              <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px", background: "#fffdf7", border: "1px solid #e3d8bf", borderRadius: 6 }}>
+                <span aria-hidden="true" style={{ color: "#b8860b", fontWeight: 700 }}>✦</span>
+                <span style={{ flex: 1, color: "#5a4d36", lineHeight: 1.45 }}>{n}</span>
+                <button type="button" onClick={() => removeNote(i)} disabled={busy} title="Rimuovi spunto"
+                  style={{ background: "none", border: "1px solid #d9b3ac", color: "#8a261c", borderRadius: 5, padding: "2px 8px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style={{ color: "#8a7a5b", fontStyle: "italic", margin: "6px 0 12px" }}>
+            Nessuno spunto: il prossimo numero sarà a totale libertà di Lo Scriba.
+          </p>
+        )}
+
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <textarea
+            value={draft} disabled={busy}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addNote(); } }}
+            rows={2} maxLength={400}
+            placeholder="Es.: a Havondé si cerca un locandiere impazzito per un anello maledetto…"
+            style={{ flex: 1, boxSizing: "border-box", padding: "10px 12px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid #cdbfa3", borderRadius: 6, resize: "vertical" }}
+          />
+          {btn(busy ? "…" : "➕ Aggiungi", addNote)}
         </div>
+        <small style={{ color: "#8a7a5b" }}>Suggerimento: Ctrl/⌘ + Invio per aggiungere in fretta.</small>
       </div>
 
       {/* Generazione manuale (facoltativa) */}
