@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { db } from "./firebase";
+import { db, storage } from "./firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { logAgent } from "./utils/agentLog";
 import { CITIES_HUB } from "./data/citiesHub";
 import "./GeneraNPC.css";
@@ -82,11 +83,23 @@ export default function GeneraNPC() {
     if (!dest.name.trim()) { setStato("Dai un nome all'NPC prima di salvarlo."); setErrore(true); return; }
     setLoadingSave(true); setStato("Salvataggio in corso…"); setErrore(false);
     try {
+      // Il ritratto è un data URL base64 troppo grande per Firestore (limite ~1MB
+      // per documento): va caricato su Storage e nel doc si salva solo l'URL.
+      let imageUrl = immagine || "";
+      if (imageUrl.startsWith("data:")) {
+        setStato("Carico il ritratto…");
+        const safe = (dest.name.trim() || "npc").replace(/[^a-z0-9._-]/gi, "_").slice(0, 36);
+        const path = `npcs/${Date.now()}-${safe}.png`;
+        const ref = storageRef(storage, path);
+        await uploadString(ref, imageUrl, "data_url");
+        imageUrl = await getDownloadURL(ref);
+        setStato("Salvataggio in corso…");
+      }
       // Se è collegato a una città hub, il pin sulla mappa eredita le sue coordinate
       const coords = CITIES_HUB.find((c) => c.name === dest.linkedCity);
       await addDoc(collection(db, "npcs"), {
         name: dest.name.trim(),
-        image: immagine || "",
+        image: imageUrl,
         faction: dest.faction || "",
         location: dest.location || "",
         description: dest.description || "",
