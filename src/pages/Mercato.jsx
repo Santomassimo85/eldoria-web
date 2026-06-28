@@ -11,6 +11,7 @@ import {
   deleteField,
   writeBatch,
   addDoc,
+  setDoc,
   serverTimestamp
 } from "firebase/firestore";
 import "../styles/cinematic.css";
@@ -19,6 +20,9 @@ import useParallaxScroll from "../hooks/useParallaxScroll";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/padithas.png";
+
+// Chiave-giorno locale (YYYY-MM-DD) per le statistiche di visita.
+const todayKey = () => new Date().toLocaleDateString("sv-SE");
 
 const ITEM_TYPES = [
   "Arma", "Armatura", "Accessori", "Artefatto Magico",
@@ -143,6 +147,11 @@ const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliv
             {isSold ? "✅ Venduto" : isAuction ? "🟢 Asta" : "🟢 Fisso"}
           </span>
         )}
+        {isMaster && (
+          <span className="ic-views-badge" title={`Visitato ${item.views || 0} volte`}>
+            👁 {item.views || 0}
+          </span>
+        )}
         {(Number(item.minLevel) || 0) > 0 && (
           <span className="ic-ratto-badge" title={`Riservato dal rango ${rattoLevelName(Number(item.minLevel) || 0)}`}>
             🐀 Lv {Number(item.minLevel) || 0} · {rattoLevelName(Number(item.minLevel) || 0)}
@@ -215,7 +224,7 @@ const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliv
   );
 };
 
-const MarketAdminTable = ({ items, onRemoveBid, onClearAllBids, onDeliver }) => {
+const MarketAdminTable = ({ items, marketStats, onRemoveBid, onClearAllBids, onDeliver }) => {
   const stats = useMemo(() => {
     const total = items.length;
     const sold = items.filter((i) => i.isSold).length;
@@ -228,9 +237,14 @@ const MarketAdminTable = ({ items, onRemoveBid, onClearAllBids, onDeliver }) => 
     return { total, sold, auctions, totalBids, volume };
   }, [items]);
 
+  const visitsToday = marketStats?.days?.[todayKey()] || 0;
+  const visitsTotal = marketStats?.total || 0;
+
   return (
     <div className="market-admin-wrap">
       <div className="mat-stats">
+        <div className="mat-stat visits"><span>👁 Visite oggi</span><strong>{visitsToday}</strong></div>
+        <div className="mat-stat visits"><span>Visite totali</span><strong>{visitsTotal}</strong></div>
         <div className="mat-stat"><span>Oggetti</span><strong>{stats.total}</strong></div>
         <div className="mat-stat"><span>Aste attive</span><strong>{stats.auctions}</strong></div>
         <div className="mat-stat"><span>Venduti</span><strong>{stats.sold}</strong></div>
@@ -262,6 +276,7 @@ export default function Mercato() {
 
   const [items, setItems] = useState([]);
   const [marketConfig, setMarketConfig] = useState(null);
+  const [marketStats, setMarketStats] = useState(null);
   const [userRattoPoints, setUserRattoPoints] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -274,6 +289,9 @@ export default function Mercato() {
     const unsubItems = onSnapshot(collection(db, "items"), (snap) => {
       setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+    const unsubStats = onSnapshot(doc(db, "market_stats", "global"), (snap) =>
+      setMarketStats(snap.exists() ? snap.data() : null)
+    );
 
     let unsubUser = () => {};
     if (currentUser) {
@@ -282,8 +300,23 @@ export default function Mercato() {
       });
     }
 
-    return () => { unsubConfig(); unsubItems(); unsubUser(); };
+    return () => { unsubConfig(); unsubItems(); unsubStats(); unsubUser(); };
   }, [currentUser]);
+
+  // Conta UNA visita al mercato per giocatore al giorno (il Master non conta:
+  // è l'osservatore della statistica). Dedup locale via localStorage.
+  useEffect(() => {
+    if (!currentUser || isMaster) return;
+    const today = todayKey();
+    const key = `mercatoVisit:${today}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+    setDoc(doc(db, "market_stats", "global"), {
+      total: increment(1),
+      days: { [today]: increment(1) },
+      lastVisit: serverTimestamp(),
+    }, { merge: true }).catch(() => { localStorage.removeItem(key); });
+  }, [currentUser, isMaster]);
 
   // FUNZIONE MASTER: CONSEGNA, VINCITORE RANDOM, NOTIFICHE E PUNTI RATTO
   const handleMasterDeliver = async (item) => {
@@ -551,6 +584,7 @@ export default function Mercato() {
       ) : isMaster ? (
         <MarketAdminTable
           items={filteredItems}
+          marketStats={marketStats}
           onRemoveBid={handleMasterRemoveBid}
           onClearAllBids={handleMasterClearAllBids}
           onDeliver={handleMasterDeliver}

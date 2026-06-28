@@ -6,6 +6,7 @@ import {
   doc,
   onSnapshot,
   updateDoc,
+  setDoc,
   deleteField,
   runTransaction,
   increment,
@@ -116,6 +117,18 @@ export default function ItemDetail() {
     });
     return () => unsubscribe();
   }, [id]);
+
+  // Conta UNA visita all'oggetto per giocatore al giorno (il Master non conta:
+  // sta solo ispezionando le statistiche). Dedup locale via localStorage.
+  useEffect(() => {
+    if (!id || !currentUser || isMaster) return;
+    const today = new Date().toLocaleDateString("sv-SE");
+    const key = `itemView:${id}:${today}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+    setDoc(doc(db, "items", id), { views: increment(1) }, { merge: true })
+      .catch(() => { localStorage.removeItem(key); });
+  }, [id, currentUser, isMaster]);
 
   // Tiene aggiornato il rango Ratto del player per il controllo di accesso.
   useEffect(() => {

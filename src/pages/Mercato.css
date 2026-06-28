@@ -528,6 +528,22 @@
 }
 .mercato-page .ic-state-badge.active { color: #8effb4; }
 .mercato-page .ic-state-badge.sold   { color: #ffb3a8; }
+/* Occhio: numero di visite all'oggetto (solo vista Master) */
+.mercato-page .ic-views-badge {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  z-index: 2;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(45, 32, 14, 0.3);
+  background: rgba(45, 32, 14, 0.8);
+  color: #e0ccff;
+  white-space: nowrap;
+}
 .mercato-page .ic-topbid {
   font-family: var(--font-title);
   font-size: 0.72rem;
@@ -625,6 +641,11 @@
 .mercato-page .mat-stat span { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: #6a5b41; }
 .mercato-page .mat-stat strong { font-family: var(--font-title); color: #7c560f; font-size: 1.2rem; }
 .mercato-page .mat-stat.highlight strong { color: #27753f; }
+.mercato-page .mat-stat.visits {
+  background: linear-gradient(135deg, #efe6fb, #f6efe0);
+  border-color: color-mix(in srgb, #7a2e6e 35%, #c9b78a);
+}
+.mercato-page .mat-stat.visits strong { color: #7a2e6e; }
 .mercato-page .market-admin-table-wrap {
   border-radius: var(--cine-radius);
   border: 1px solid color-mix(in srgb, var(--cine-gold) 28%, #c9b78a);

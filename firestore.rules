@@ -308,6 +308,14 @@ service cloud.firestore {
       allow write: if isMaster();
     }
 
+    // Statistiche di visita del mercato (totale + per giorno). Contatore
+    // incrementato dal client a ogni visita; lettura aperta, mostrate solo al
+    // Master. Stesso schema di agent_stats.
+    match /market_stats/{docId} {
+      allow read: if true;
+      allow write: if isLoggedIn();
+    }
+
     match /settings/changelog_hidden {
       allow read: if true;
       allow write: if isMaster();

@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "58",
+      "date": "2026-06-28",
+      "title": "Mercato Nero: contatore visite (Master)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "La vista Master del Mercato Nero mostra due nuovi contatori in cima: «Visite oggi» e «Visite totali». Conta una visita per giocatore al giorno; le aperture del Master non vengono conteggiate."
+        },
+        {
+          "type": "feature",
+          "text": "Ogni scheda oggetto (vista Master) riporta un'icona occhio 👁 con il numero di volte in cui l'oggetto è stato aperto dai giocatori. Anche qui vale una visita per giocatore al giorno."
+        }
+      ]
+    },
+    {
       "version": "57.01",
       "date": "2026-06-27",
       "title": "Mercato Nero: tastino «Oggetto da GdR»",
