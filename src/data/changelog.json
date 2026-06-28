@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "60.01",
+      "date": "2026-06-28",
+      "title": "Generatore NPC: fix salvataggio ritratto",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Risolto l'errore di salvataggio «property image is longer than 1048487 bytes»: il ritratto generato (immagine base64) ora viene caricato su Storage e nel documento NPC si registra solo il suo URL, evitando il limite di 1 MB per documento di Firestore."
+        }
+      ]
+    },
+    {
       "version": "60",
       "date": "2026-06-28",
       "title": "Generatore NPC: scheda d'archivio e città di destinazione",
