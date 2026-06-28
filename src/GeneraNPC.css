@@ -188,6 +188,39 @@
   letter-spacing: 0.03em;
 }
 
+/* ---------- scheda d'archivio (campi modificabili) ---------- */
+.npcgen-archive-hint {
+  color: #6a5b41;
+  font-size: 0.92rem;
+  font-style: italic;
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.npcgen-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+  margin-top: 4px;
+}
+.npcgen-fld { display: flex; flex-direction: column; }
+.npcgen-fld--full { grid-column: 1 / -1; }
+.npcgen-fld .npcgen-label { margin-bottom: 5px; }
+
+/* il <select> riusa .npcgen-input ma serve la freccia e il cursore */
+select.npcgen-input { cursor: pointer; appearance: auto; }
+
+.npcgen-textarea {
+  resize: vertical;
+  min-height: 92px;
+  line-height: 1.55;
+  font-size: 0.98rem;
+}
+
+@media (max-width: 480px) {
+  .npcgen-form-grid { grid-template-columns: 1fr; }
+}
+
 /* ---------- ritratto ---------- */
 .npcgen-img {
   width: 100%;

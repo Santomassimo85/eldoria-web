@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "60",
+      "date": "2026-06-28",
+      "title": "Generatore NPC: scheda d'archivio e città di destinazione",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Dopo aver evocato un NPC, il Generatore mostra una scheda d'archivio modificabile con gli stessi campi del pannello Geo → NPC: nome, fazione/razza, posizione, note e un menu a tendina «Città Hub» con tutte le città salvate. I campi arrivano già precompilati coi dati generati e restano ritoccabili prima del salvataggio."
+        },
+        {
+          "type": "feature",
+          "text": "Scegliendo una città dal menu, l'NPC eredita le coordinate del relativo hub sulla mappa e viene raggruppato sotto quella città in Eroi → NPC (lasciandola vuota finisce tra gli «Erranti»). Il salvataggio scrive nell'anagrafe NPC condivisa, la stessa mostrata nella pagina pubblica."
+        }
+      ]
+    },
+    {
       "version": "59",
       "date": "2026-06-28",
       "title": "Lo Scriba: spunti per il prossimo numero",
