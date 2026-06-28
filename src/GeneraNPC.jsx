@@ -22,6 +22,8 @@ export default function GeneraNPC() {
   const [salvato, setSalvato] = useState(false);
   // Scheda d'archivio modificabile prima del salvataggio (stessi campi di Geo/NPC)
   const [dest, setDest] = useState(initialDest);
+  // Nomi già generati in questa sessione: passati al backend per non ripeterli
+  const [nomiVisti, setNomiVisti] = useState([]);
 
   async function generaNpc() {
     setLoadingNpc(true); setStato("Sto evocando l'NPC…"); setErrore(false);
@@ -30,11 +32,12 @@ export default function GeneraNPC() {
       const r = await fetch("/api/genera-npc", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contesto })
+        body: JSON.stringify({ contesto, evita: nomiVisti })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setNpc(data); setStato("");
+      if (data.nome) setNomiVisti((prev) => [...prev, data.nome].slice(-20));
       // Prefill della scheda d'archivio coi dati generati (il Master può ritoccarli)
       setDest({
         name: data.nome || "",

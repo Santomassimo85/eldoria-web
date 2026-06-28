@@ -16,10 +16,29 @@ export default async function handler(req, res) {
   if (prompt && String(prompt).trim()) {
     finalPrompt = String(prompt).trim();
   } else if (npc && npc.nome) {
-    finalPrompt = `Ritratto fantasy di un personaggio per gioco di ruolo.
+    // Varieta': inquadratura, luce e taglio cambiano ad ogni "genera ritratto".
+    const seme = Math.floor(Math.random() * 1e9);
+    const INQUADRATURE = ["primo piano", "mezzobusto", "ritratto a tre quarti", "piano americano"];
+    const ANGOLI = ["di tre quarti", "frontale", "di profilo", "leggermente dall'alto"];
+    const LUCI = [
+      "luce calda di taverna", "luce fredda lunare", "controluce drammatico",
+      "luce soffusa di candela", "luce diurna naturale", "atmosfera nebbiosa",
+    ];
+    const SFONDI = [
+      "sfondo sfumato neutro", "interno fioco sullo sfondo", "paesaggio sfocato",
+      "muro di pietra appena accennato", "fondale scuro semplice",
+    ];
+    const inq = INQUADRATURE[seme % INQUADRATURE.length];
+    const ang = ANGOLI[(seme >> 2) % ANGOLI.length];
+    const luce = LUCI[(seme >> 4) % LUCI.length];
+    const sfondo = SFONDI[(seme >> 6) % SFONDI.length];
+
+    finalPrompt = `Ritratto fantasy di un personaggio per gioco di ruolo (seme ${seme}).
 Nome: ${npc.nome}. Razza: ${npc.razza}. Ruolo: ${npc.ruolo}.
-Aspetto: ${npc.aspetto}.
-Stile: illustrazione digitale, mezzobusto, sfondo semplice, luce d'atmosfera. Niente testo nell'immagine.`;
+Aspetto fisico (RIPRODUCI FEDELMENTE ogni dettaglio descritto — tatuaggi, cicatrici, colore di occhi/capelli, segni particolari nel punto esatto indicato): ${npc.aspetto}.
+${npc.personalita ? `Carattere da trasmettere nell'espressione: ${npc.personalita}.` : ""}
+Inquadratura: ${inq}, ${ang}. Illuminazione: ${luce}. Sfondo: ${sfondo}.
+Stile: illustrazione fantasy realistica e dettagliata. Una sola persona, niente testo, niente scritte, niente cornici.`;
   } else {
     return res.status(400).json({ error: "Serve un 'prompt' oppure un 'npc'." });
   }
@@ -33,7 +52,10 @@ Stile: illustrazione digitale, mezzobusto, sfondo semplice, luce d'atmosfera. Ni
           "content-type": "application/json",
           "x-goog-api-key": process.env.GEMINI_API_KEY
         },
-        body: JSON.stringify({ contents: [{ parts: [{ text: finalPrompt }] }] })
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: finalPrompt }] }],
+          generationConfig: { temperature: 1 }
+        })
       }
     );
 

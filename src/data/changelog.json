@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "61",
+      "date": "2026-06-28",
+      "title": "Generatore NPC: più varietà in nomi e ritratti",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Premendo «Genera» di nuovo si ottengono davvero NPC nuovi: ogni richiesta usa un seme casuale e temperatura piena, evita i soliti nomi fantasy triti pescando sonorità da origini linguistiche diverse e non ripete i nomi già usciti nella sessione. I dettagli specifici chiesti nel contesto (tatuaggi, cicatrici, segni particolari) vengono comunque rispettati."
+        },
+        {
+          "type": "feature",
+          "text": "Anche il ritratto cambia ad ogni generazione: inquadratura, angolo, luce e sfondo variano in modo casuale, e il prompt ora riproduce fedelmente i dettagli descritti nel punto esatto indicato (es. un tatuaggio sulla guancia) invece di restituire sempre la stessa immagine."
+        }
+      ]
+    },
+    {
       "version": "60.01",
       "date": "2026-06-28",
       "title": "Generatore NPC: fix salvataggio ritratto",
