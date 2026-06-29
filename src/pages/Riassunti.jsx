@@ -190,7 +190,7 @@ export default function Riassunti() {
 
     // Copia negli appunti il link diretto a una memoria, da condividere coi player.
     const copySummaryLink = async (summaryId) => {
-        const url = `${window.location.origin}/riassunti?s=${summaryId}`;
+        const url = `${window.location.origin}/riassunto/${summaryId}`;
         try {
             await navigator.clipboard.writeText(url);
         } catch (_) {

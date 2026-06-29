@@ -1,0 +1,200 @@
+/* src/pages/RiassuntoSingolo.css
+   Pagina a pagina intera per una singola memoria (/riassunto/:id).
+   Riusa i token e gli stili lore/gallery di Riassunti.css. */
+
+.rsx-page {
+  min-height: 100vh;
+  width: 100%;
+  padding: calc(var(--navbar-h, 80px) + 28px) 18px 90px;
+  background:
+    radial-gradient(ellipse 90% 50% at 50% 0%, rgba(169, 120, 26, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 40%, #f4ecd6 0%, #ece0c2 52%, #e6d8b4 100%),
+    #f4ecd6;
+  color: #2a2010;
+  font-family: var(--font-text, "Cardo", serif);
+}
+
+/* "Pergamena" centrale */
+.rsx-scroll {
+  max-width: 760px;
+  margin: 0 auto;
+  background: #fbf4e0;
+  border: 1px solid #c9b78a;
+  border-radius: 16px;
+  padding: 22px 26px 34px;
+  box-shadow: 0 16px 44px rgba(86, 64, 30, 0.20);
+}
+
+/* barra superiore: indietro + copia link */
+.rsx-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.rsx-back {
+  color: #7c560f;
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.rsx-back:hover { text-decoration: underline; }
+.rsx-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #5a3c0a;
+  background: rgba(255, 253, 245, 0.95);
+  border: 1px solid rgba(180, 140, 80, 0.6);
+  border-radius: 12px;
+  padding: 5px 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.rsx-share:hover { background: #fff; border-color: var(--rs-gold, #d4af37); }
+.rsx-share:active { transform: translateY(1px); }
+.rsx-share.is-copied { color: #1f5a1f; border-color: #4a8a4a; background: #eaf6ea; }
+
+/* copertina */
+.rsx-cover {
+  margin: 0 -26px 20px;
+  overflow: hidden;
+  max-height: 340px;
+}
+.rsx-cover img {
+  width: 100%;
+  height: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  display: block;
+}
+
+/* intestazione */
+.rsx-head {
+  text-align: center;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.4);
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+}
+.rsx-eyebrow {
+  display: inline-block;
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #9a6a10;
+  margin-bottom: 10px;
+}
+.rsx-title {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-size: clamp(1.7rem, 5vw, 2.5rem);
+  line-height: 1.15;
+  color: var(--rs-blood, #5a1a1a);
+  margin: 0 0 8px;
+}
+.rsx-date {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9a6a10;
+  margin: 0 0 6px;
+}
+.rsx-sub {
+  font-style: italic;
+  font-weight: 700;
+  color: #6b4f10;
+  margin: 0;
+  font-size: clamp(0.98rem, 2.4vw, 1.12rem);
+}
+.rsx-visits {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #2a1d05;
+  background: linear-gradient(135deg, var(--rs-gold, #d4af37), #e8c766);
+  border-radius: 12px;
+  padding: 2px 10px;
+}
+
+/* corpo del testo */
+.rsx-body {
+  font-size: clamp(0.98rem, 2.1vw, 1.08rem);
+  line-height: 1.9;
+  color: #2a2010;
+}
+.rsx-body p { margin: 0 0 1.1rem; }
+.rsx-body strong { color: var(--rs-blood, #5a1a1a); }
+.rsx-body em { color: #6b4f10; }
+.rsx-body img {
+  width: 100% !important;
+  height: auto;
+  border-radius: 8px !important;
+  margin: 18px 0 !important;
+  display: block;
+  border: 1px solid rgba(180, 140, 80, 0.5);
+}
+/* capolettera sul primo paragrafo */
+.rsx-body > p:first-of-type::first-letter,
+.rsx-body > div:first-of-type > p:first-of-type::first-letter {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-size: 2.8em;
+  line-height: 0.82;
+  float: left;
+  padding: 4px 8px 0 0;
+  color: var(--rs-blood, #5a1a1a);
+}
+
+.rsx-gallery { margin-top: 28px; }
+
+/* piè di pagina */
+.rsx-foot {
+  margin-top: 34px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(180, 140, 80, 0.4);
+  text-align: center;
+}
+.rsx-back-btn {
+  display: inline-block;
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.86rem;
+  letter-spacing: 0.05em;
+  color: #7c560f;
+  text-decoration: none;
+  border: 1px solid rgba(169, 120, 26, 0.55);
+  border-radius: 999px;
+  padding: 9px 20px;
+  transition: background 0.15s;
+}
+.rsx-back-btn:hover { background: rgba(169, 120, 26, 0.12); }
+
+/* memoria mancante */
+.rsx-missing {
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+  background: #fbf4e0;
+  border: 1px solid #c9b78a;
+  border-radius: 16px;
+  padding: 40px 28px;
+  box-shadow: 0 12px 34px rgba(86, 64, 30, 0.18);
+}
+.rsx-missing-seal { font-size: 2.4rem; color: var(--rs-gold, #d4af37); display: block; margin-bottom: 10px; }
+.rsx-missing h1 {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  color: var(--rs-blood, #5a1a1a);
+  font-size: 1.6rem;
+  margin: 0 0 8px;
+}
+.rsx-missing p { color: #6a5b41; margin: 0 0 22px; }
+
+@media (max-width: 480px) {
+  .rsx-page { padding-left: 12px; padding-right: 12px; }
+  .rsx-scroll { padding: 18px 16px 28px; }
+  .rsx-cover { margin-left: -16px; margin-right: -16px; }
+}

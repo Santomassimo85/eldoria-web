@@ -20,6 +20,7 @@ import Home from "./pages/Home";
 import Party from "./pages/Party";
 import Notifications from "./pages/Notifications";
 import Riassunti from "./pages/Riassunti";
+import RiassuntoSingolo from "./pages/RiassuntoSingolo";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/Geo";
 import ItemDetail from "./pages/ItemDetail";
@@ -630,6 +631,7 @@ export default function App() {
           <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
+          <Route path="/riassunto/:id" element={<RiassuntoSingolo />} />
           <Route path="/scriba" element={<Scriba />} />
           <Route path="/almanacco" element={<Almanacco />} />
           <Route path="/ratti-lore" element={<RattiLore />} />
