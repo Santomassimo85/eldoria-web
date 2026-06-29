@@ -165,6 +165,8 @@ export default function Riassunti() {
     const didDeepLink = useRef(false);
     // id del riassunto di cui è stato appena copiato il link (feedback "✓")
     const [copiedId, setCopiedId] = useState(null);
+    // riassunto aperto "in grande" nel popup (null = chiuso)
+    const [enlargedId, setEnlargedId] = useState(null);
     const [allSummaries, setAllSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState("");
@@ -201,6 +203,31 @@ export default function Riassunti() {
         setCopiedId(summaryId);
         setTimeout(() => setCopiedId(c => (c === summaryId ? null : c)), 1800);
     };
+
+    // Apre il riassunto "in grande" nel popup (resta sulla pagina) e conta la lettura.
+    const openEnlarged = (summary) => {
+        setEnlargedId(summary.id);
+        recordVisit(summary.id);
+    };
+
+    // memoria mostrata nel popup
+    const enlarged = useMemo(
+        () => allSummaries.find(s => s.id === enlargedId) || null,
+        [allSummaries, enlargedId]
+    );
+
+    // popup aperto: chiusura con Esc + blocco scroll del documento
+    useEffect(() => {
+        if (!enlargedId) return;
+        const onKey = (e) => { if (e.key === "Escape") setEnlargedId(null); };
+        window.addEventListener("keydown", onKey);
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            window.removeEventListener("keydown", onKey);
+            document.body.style.overflow = prev;
+        };
+    }, [enlargedId]);
 
     // --- Caricamento Riassunti da Firestore ---
     useEffect(() => {
@@ -601,6 +628,15 @@ export default function Riassunti() {
                                                         )}
                                                         <button
                                                             type="button"
+                                                            className="summary-enlarge-btn"
+                                                            title="Apri la memoria in grande"
+                                                            aria-label="Apri la memoria in grande"
+                                                            onClick={(e) => { e.stopPropagation(); openEnlarged(summary); }}
+                                                        >
+                                                            ⛶ Apri
+                                                        </button>
+                                                        <button
+                                                            type="button"
                                                             className={`summary-share-btn${copiedId === summary.id ? " is-copied" : ""}`}
                                                             title="Copia il link diretto a questa memoria"
                                                             aria-label="Copia il link diretto a questa memoria"
@@ -653,6 +689,80 @@ export default function Riassunti() {
                         </section>
                     );
                 })
+            )}
+
+            {enlarged && (
+                <div
+                    className="rs-modal-overlay"
+                    onClick={() => setEnlargedId(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={enlarged.title}
+                >
+                    <div className="rs-modal" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            type="button"
+                            className="rs-modal-close"
+                            onClick={() => setEnlargedId(null)}
+                            aria-label="Chiudi"
+                        >✕</button>
+
+                        <div className="rs-modal-scroll">
+                            {enlarged.coverImage && (
+                                <div className="rs-modal-cover">
+                                    <img
+                                        src={enlarged.coverImage}
+                                        alt={enlarged.title}
+                                        onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
+                                    />
+                                </div>
+                            )}
+                            <span className="rs-modal-eyebrow">
+                                ❦ Cronache di Eldoria{enlarged.party ? ` · Gruppo ${enlarged.party}` : ""}
+                            </span>
+                            <h2 className="rs-modal-title">{enlarged.title || "Senza titolo"}</h2>
+                            {enlarged.date && <p className="rs-modal-date">{enlarged.date}</p>}
+                            {enlarged.subTitle && <p className="rs-modal-sub">{enlarged.subTitle}</p>}
+
+                            <div
+                                className="rs-summary-html rs-modal-body"
+                                onClick={handleLoreClick}
+                                dangerouslySetInnerHTML={{ __html: linkedContent[enlarged.id] || enlarged.content }}
+                            />
+
+                            {Array.isArray(enlarged.images) && enlarged.images.length > 0 && (
+                                <div className="summary-gallery">
+                                    {enlarged.images.map((url, i) => (
+                                        <a
+                                            key={url + i}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="summary-gallery-item"
+                                        >
+                                            <img
+                                                src={url}
+                                                alt={`${enlarged.title} — immagine ${i + 1}`}
+                                                loading="lazy"
+                                                onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }}
+                                            />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="rs-modal-foot">
+                                <button
+                                    type="button"
+                                    className={`summary-share-btn${copiedId === enlarged.id ? " is-copied" : ""}`}
+                                    onClick={() => copySummaryLink(enlarged.id)}
+                                >
+                                    {copiedId === enlarged.id ? "✓ Link copiato" : "🔗 Copia link"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {lorePopup && (

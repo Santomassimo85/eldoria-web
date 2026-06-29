@@ -20,6 +20,15 @@ const slugify = (s) =>
 const stripHtml = (html) =>
     String(html ?? "").replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/gi, " ");
 
+// Le memorie contengono <img> con src RELATIVI (es. "assets/...").
+// Su /riassunto/:id (due segmenti di path) un src relativo verrebbe risolto
+// sotto /riassunto/ e l'immagine si rompe: qui lo riportiamo alla radice.
+const absolutizeAssets = (html) =>
+    String(html ?? "").replace(
+        /(<(?:img|source)\b[^>]*?\bsrc=)(["'])(?!https?:|data:|blob:|\/|#)([^"']*)\2/gi,
+        (_m, pre, q, url) => `${pre}${q}/${url}${q}`
+    );
+
 export default function RiassuntoSingolo() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -130,8 +139,10 @@ export default function RiassuntoSingolo() {
 
     const linkedHtml = useMemo(() => {
         if (!summary?.content) return "";
-        if (!loreRegistry.regex) return summary.content;
-        return linkifyLoreHtml(summary.content, loreRegistry);
+        const base = loreRegistry.regex
+            ? linkifyLoreHtml(summary.content, loreRegistry)
+            : summary.content;
+        return absolutizeAssets(base);
     }, [summary, loreRegistry]);
 
     const handleLoreClick = (e) => {
@@ -248,9 +259,9 @@ export default function RiassuntoSingolo() {
                     </div>
                 )}
 
-                <footer className="rsx-foot">
+                <div className="rsx-foot">
                     <Link to="/riassunti" className="rsx-back-btn">← Torna a tutte le memorie</Link>
-                </footer>
+                </div>
             </article>
 
             {lorePopup && (

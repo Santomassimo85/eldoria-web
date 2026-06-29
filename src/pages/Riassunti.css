@@ -877,6 +877,168 @@
   background: #eaf6ea;
 }
 
+.summary-enlarge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  margin-left: 8px;
+  font-family: var(--font-text);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #2a1d05;
+  background: linear-gradient(135deg, var(--rs-gold, #d4af37), #e8c766);
+  border: 1px solid rgba(180, 140, 80, 0.6);
+  border-radius: 12px;
+  padding: 2px 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.summary-enlarge-btn:hover { filter: brightness(1.06); }
+.summary-enlarge-btn:active { transform: translateY(1px); }
+
+/* ---- POPUP "in grande" (apre la memoria senza cambiare pagina) ---- */
+.rs-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(28, 18, 8, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  animation: rs-modal-fade 0.18s ease-out;
+}
+@keyframes rs-modal-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.rs-modal {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: 90vh;
+  background: #fbf4e0;
+  border: 1px solid #c9b78a;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(20, 12, 4, 0.5);
+  overflow: hidden;
+  animation: rs-modal-pop 0.2s ease-out;
+}
+@keyframes rs-modal-pop {
+  from { transform: translateY(12px) scale(0.985); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.rs-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(180, 140, 80, 0.6);
+  background: rgba(255, 253, 245, 0.92);
+  color: #7c560f;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.rs-modal-close:hover { background: #fff; }
+.rs-modal-close:active { transform: scale(0.95); }
+
+.rs-modal-scroll {
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 26px 26px 30px;
+}
+
+.rs-modal-cover {
+  margin: -26px -26px 18px;
+  max-height: 300px;
+  overflow: hidden;
+}
+.rs-modal-cover img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  display: block;
+}
+
+.rs-modal-eyebrow {
+  display: block;
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #9a6a10;
+  margin-bottom: 8px;
+}
+.rs-modal-title {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-size: clamp(1.5rem, 4.5vw, 2.1rem);
+  line-height: 1.18;
+  color: var(--rs-blood, #5a1a1a);
+  margin: 0 0 8px;
+}
+.rs-modal-date {
+  font-family: var(--font-title, "Cinzel", serif);
+  font-size: 0.76rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #9a6a10;
+  margin: 0 0 6px;
+}
+.rs-modal-sub {
+  font-style: italic;
+  font-weight: 700;
+  color: #6b4f10;
+  margin: 0 0 16px;
+  font-size: clamp(0.96rem, 2.3vw, 1.08rem);
+}
+.rs-modal-body {
+  font-size: clamp(0.96rem, 2vw, 1.05rem);
+  line-height: 1.85;
+  color: #2a2010;
+  border-top: 1px solid rgba(180, 140, 80, 0.4);
+  padding-top: 16px;
+}
+.rs-modal-body p { margin: 0 0 1.05rem; }
+.rs-modal-body strong { color: var(--rs-blood, #5a1a1a); }
+.rs-modal-body em { color: #6b4f10; }
+.rs-modal-body img {
+  width: 100% !important;
+  height: auto;
+  border-radius: 8px !important;
+  margin: 16px 0 !important;
+  display: block;
+  border: 1px solid rgba(180, 140, 80, 0.5);
+}
+.rs-modal-body > p:first-of-type::first-letter,
+.rs-modal-body > div:first-of-type > p:first-of-type::first-letter {
+  font-family: var(--font-title, "Cinzel Decorative", serif);
+  font-size: 2.6em;
+  line-height: 0.85;
+  float: left;
+  padding: 4px 8px 0 0;
+  color: var(--rs-blood, #5a1a1a);
+}
+.rs-modal-foot {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(180, 140, 80, 0.4);
+  text-align: center;
+}
+.rs-modal-foot .summary-share-btn { margin: 0; font-size: 0.84rem; padding: 6px 16px; }
+
+@media (max-width: 480px) {
+  .rs-modal-scroll { padding: 22px 16px 26px; }
+  .rs-modal-cover { margin-left: -16px; margin-right: -16px; }
+}
+
 /* memoria raggiunta da un deep-link: lampeggio dorato per individuarla */
 .summary-card-wrapper.is-deeplinked {
   animation: rs-deeplink-glow 2.4s ease-out 1;
