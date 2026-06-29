@@ -10,7 +10,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc } = req.body || {};
+  const { prompt, npc, stile } = req.body || {};
+
+  // Stili di disegno selezionabili dal Master. La chiave arriva dal frontend
+  // (GeneraNPC.jsx) e qui viene tradotta nella riga di stile del prompt.
+  const STILI = {
+    olio: "Stile: dipinto a olio fantasy realistico e molto dettagliato, pennellate ricche, illuminazione cinematografica, come un'illustrazione classica da manuale di gioco di ruolo.",
+    anime: "Stile: illustrazione anime/manga fantasy, cel-shading netto, linee pulite ed espressive, colori vivaci e saturi, occhi grandi e dettagliati.",
+    acquerello: "Stile: illustrazione ad acquerello fantasy, pennellate morbide e sfumate, bordi delicati che sbavano, colori tenui che si fondono, aspetto dipinto a mano su carta ruvida.",
+    fumetto: "Stile: illustrazione in stile fumetto/comic book occidentale, contorni a inchiostro spessi e marcati, ombreggiatura a campiture nette, colori saturi e alto contrasto.",
+    pixel: "Stile: pixel art in stile RPG retro 16-bit, sprite di personaggio dettagliato, palette di colori limitata, contorni netti, estetica da videogioco classico.",
+  };
+  const stileLinea = STILI[stile] || STILI.olio;
 
   let finalPrompt = "";
   if (prompt && String(prompt).trim()) {
@@ -38,7 +49,7 @@ Nome: ${npc.nome}. Razza: ${npc.razza}. Ruolo: ${npc.ruolo}.
 Aspetto fisico (RIPRODUCI FEDELMENTE ogni dettaglio descritto — tatuaggi, cicatrici, colore di occhi/capelli, segni particolari nel punto esatto indicato): ${npc.aspetto}.
 ${npc.personalita ? `Carattere da trasmettere nell'espressione: ${npc.personalita}.` : ""}
 Inquadratura: ${inq}, ${ang}. Illuminazione: ${luce}. Sfondo: ${sfondo}.
-Stile: illustrazione fantasy realistica e dettagliata. Una sola persona, niente testo, niente scritte, niente cornici.`;
+${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
   } else {
     return res.status(400).json({ error: "Serve un 'prompt' oppure un 'npc'." });
   }

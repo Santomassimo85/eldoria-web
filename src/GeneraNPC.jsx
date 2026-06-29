@@ -10,6 +10,16 @@ import "./pages/admin.css";
 
 const initialDest = { name: "", faction: "", location: "", linkedCity: "", description: "" };
 
+// Stili di disegno per il ritratto. La chiave viene passata al backend
+// (api/genera-immagine.js), che la traduce nella riga di stile del prompt.
+const STILI_DISEGNO = [
+  { key: "olio", label: "🖌️ Pittura a olio", hint: "Realistico, da manuale" },
+  { key: "anime", label: "🌸 Anime / Manga", hint: "Cel-shading, linee pulite" },
+  { key: "acquerello", label: "💧 Acquerello", hint: "Soffuso, dipinto a mano" },
+  { key: "fumetto", label: "✒️ Fumetto", hint: "Inchiostro, alto contrasto" },
+  { key: "pixel", label: "👾 Pixel art", hint: "Retro RPG 16-bit" },
+];
+
 export default function GeneraNPC() {
   const [contesto, setContesto] = useState("taverniere in un porto di Tirrendale");
   const [npc, setNpc] = useState(null);
@@ -24,6 +34,8 @@ export default function GeneraNPC() {
   const [dest, setDest] = useState(initialDest);
   // Nomi già generati in questa sessione: passati al backend per non ripeterli
   const [nomiVisti, setNomiVisti] = useState([]);
+  // Stile di disegno scelto per il ritratto
+  const [stile, setStile] = useState("olio");
 
   async function generaNpc() {
     setLoadingNpc(true); setStato("Sto evocando l'NPC…"); setErrore(false);
@@ -67,7 +79,7 @@ export default function GeneraNPC() {
       const r = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ npc })
+        body: JSON.stringify({ npc, stile })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -186,12 +198,32 @@ export default function GeneraNPC() {
               <img className="npcgen-img" src={immagine} alt={npc.nome} />
             )}
 
+            <p className="npcgen-k">🎨 Stile del disegno</p>
+            <div className="npcgen-styles" role="radiogroup" aria-label="Stile del disegno">
+              {STILI_DISEGNO.map(s => (
+                <button
+                  key={s.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={stile === s.key}
+                  className={`npcgen-style${stile === s.key ? " npcgen-style--on" : ""}`}
+                  onClick={() => setStile(s.key)}
+                  disabled={loadingImg}
+                >
+                  <span className="npcgen-style-label">{s.label}</span>
+                  <span className="npcgen-style-hint">{s.hint}</span>
+                </button>
+              ))}
+            </div>
+
             <button
               className="npcgen-btn npcgen-btn--ghost"
               onClick={generaImmagine}
               disabled={loadingImg}
             >
-              {loadingImg ? "Sto dipingendo…" : "🎨 Genera ritratto"}
+              {loadingImg
+                ? "Sto dipingendo…"
+                : immagine ? "🎨 Rigenera ritratto" : "🎨 Genera ritratto"}
             </button>
 
             {/* ── Scheda d'archivio: stessi campi di Geo/NPC, ritoccabili ── */}

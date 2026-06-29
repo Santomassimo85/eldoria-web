@@ -221,6 +221,48 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
   .npcgen-form-grid { grid-template-columns: 1fr; }
 }
 
+/* ---------- selettore stile del disegno ---------- */
+.npcgen-styles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 9px;
+  margin: 4px 0 4px;
+}
+.npcgen-style {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid #c9b78a;
+  background: #fffdf5;
+  color: #33281a;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, transform 0.1s;
+}
+.npcgen-style:hover:not(:disabled) { border-color: #a9781a; }
+.npcgen-style:active:not(:disabled) { transform: translateY(1px); }
+.npcgen-style:disabled { opacity: 0.55; cursor: default; }
+.npcgen-style--on {
+  border-color: #a9781a;
+  background: rgba(169, 120, 26, 0.14);
+  box-shadow: 0 0 0 2px rgba(169, 120, 26, 0.28) inset;
+}
+.npcgen-style-label {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #7c560f;
+  line-height: 1.2;
+}
+.npcgen-style-hint {
+  font-size: 0.78rem;
+  color: #6a5b41;
+  line-height: 1.25;
+}
+
 /* ---------- ritratto ---------- */
 .npcgen-img {
   width: 100%;
