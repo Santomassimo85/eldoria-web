@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "61.01",
+      "date": "2026-06-29",
+      "title": "Bottega Arena: giocatori inattivi nascosti dal Pannello Master",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Nel Pannello Master della Bottega dell'Arena la lista «Giocatori» non mostra più gli account inattivi/di prova (Cornelius, Daga, Dante, Goran, Horn, Ismael, Roynot, Taaras, Vyger, Tinkle, Timoty e l'account vuoto). I personaggi restano intatti su Firestore: vengono solo filtrati dalla vista."
+        }
+      ]
+    },
+    {
       "version": "61",
       "date": "2026-06-28",
       "title": "Generatore NPC: più varietà in nomi e ritratti",

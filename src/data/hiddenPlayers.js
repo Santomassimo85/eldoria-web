@@ -27,7 +27,7 @@ export const HIDDEN_PLAYER_UIDS = new Set([
 // Primo nome (minuscolo) — per le viste hardcoded basate sul nome (es. Party).
 export const HIDDEN_PLAYER_NAMES = new Set([
   "dante", "daga", "ismael", "taaras", "roynot",
-  "cornelius", "goran", "timoty", "tinkle", "vyger",
+  "cornelius", "goran", "timoty", "tinkle", "vyger", "horn",
 ]);
 
 export function isHiddenUid(uid) {

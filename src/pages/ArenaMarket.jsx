@@ -7,6 +7,7 @@ import "./ArenaMarket.css";
 import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import { isHiddenChar } from "../data/hiddenPlayers";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar2.png";
@@ -724,7 +725,9 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
-      const list = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      const list = snap.docs
+        .map(d => ({ uid: d.id, ...d.data() }))
+        .filter(c => !isHiddenChar({ id: c.uid, name: c.name })); // nascondi i player esclusi
       list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setAllChars(list);
     });
