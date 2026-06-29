@@ -1,7 +1,7 @@
 // src/pages/Riassunti.jsx
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ToggleSection from "./ToggleSection";
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
@@ -159,6 +159,12 @@ export default function Riassunti() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const isMaster = currentUser?.email === MASTER_EMAIL;
+    // Deep-link a un riassunto specifico: /riassunti?s=<id>
+    const [searchParams] = useSearchParams();
+    const targetId = searchParams.get('s');
+    const didDeepLink = useRef(false);
+    // id del riassunto di cui è stato appena copiato il link (feedback "✓")
+    const [copiedId, setCopiedId] = useState(null);
     const [allSummaries, setAllSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState("");
@@ -182,6 +188,20 @@ export default function Riassunti() {
         if (currentUser?.uid) awardPetPoints(currentUser.uid, "summary_read", { resourceKey: summaryId });
     };
 
+    // Copia negli appunti il link diretto a una memoria, da condividere coi player.
+    const copySummaryLink = async (summaryId) => {
+        const url = `${window.location.origin}/riassunti?s=${summaryId}`;
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch (_) {
+            // clipboard non disponibile (http, permessi) → mostra il link da copiare a mano
+            window.prompt("Copia il link a questa memoria:", url);
+            return;
+        }
+        setCopiedId(summaryId);
+        setTimeout(() => setCopiedId(c => (c === summaryId ? null : c)), 1800);
+    };
+
     // --- Caricamento Riassunti da Firestore ---
     useEffect(() => {
         const fetchSummaries = async () => {
@@ -201,6 +221,21 @@ export default function Riassunti() {
         };
         fetchSummaries();
     }, []);
+
+    // --- Deep-link: se l'URL è /riassunti?s=<id>, scorri alla memoria e contala ---
+    useEffect(() => {
+        if (loading || !targetId || didDeepLink.current) return;
+        if (!allSummaries.some(s => s.id === targetId)) return; // id non valido
+        didDeepLink.current = true;
+        // breve attesa perché le card siano nel DOM (la ToggleSection è già aperta
+        // via defaultOpen sotto), poi porta la memoria al centro dello schermo.
+        const t = setTimeout(() => {
+            const el = document.getElementById(`rs-summary-${targetId}`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+            recordVisit(targetId);
+        }, 350);
+        return () => clearTimeout(t);
+    }, [loading, targetId, allSummaries]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // --- Dati per i link interattivi: PG (characters), NPC (npcs), città (geo) ---
     useEffect(() => {
@@ -533,8 +568,13 @@ export default function Riassunti() {
                             <div className="rs-group-body">
                                 <div className="summary-grid">
                                     {summaries.map(summary => (
-                                        <div key={summary.id} className="summary-card-wrapper">
+                                        <div
+                                            key={summary.id}
+                                            id={`rs-summary-${summary.id}`}
+                                            className={`summary-card-wrapper${targetId === summary.id ? " is-deeplinked" : ""}`}
+                                        >
                                             <ToggleSection
+                                                defaultOpen={targetId === summary.id}
                                                 title={
                                                     <>
                                                         {summary.coverImage && (
@@ -559,6 +599,15 @@ export default function Riassunti() {
                                                                 👁 {summary.viewCount || 0}
                                                             </span>
                                                         )}
+                                                        <button
+                                                            type="button"
+                                                            className={`summary-share-btn${copiedId === summary.id ? " is-copied" : ""}`}
+                                                            title="Copia il link diretto a questa memoria"
+                                                            aria-label="Copia il link diretto a questa memoria"
+                                                            onClick={(e) => { e.stopPropagation(); copySummaryLink(summary.id); }}
+                                                        >
+                                                            {copiedId === summary.id ? "✓ Copiato" : "🔗 Link"}
+                                                        </button>
                                                     </>
                                                 }
                                                 titleClass={`summaryTitle ${summary.coverImage ? "has-cover" : ""}`}
