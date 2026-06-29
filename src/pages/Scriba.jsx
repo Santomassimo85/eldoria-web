@@ -87,6 +87,39 @@ export default function Scriba() {
     return () => { document.body.style.overflow = prev; };
   }, [intro]);
 
+  // Avvio robusto + reti di sicurezza per chiudere sempre l'intro.
+  // Alcuni browser mobile (iOS Safari, alcune WebView Android) non avviano
+  // l'autoplay da solo: forziamo play() esplicitamente. Se la riproduzione
+  // non parte o gli eventi onEnded/onError non scattano, un timeout di
+  // fallback chiude comunque l'overlay così il lettore non resta bloccato.
+  useEffect(() => {
+    if (!intro) return;
+    const v = introVideoRef.current;
+    let safety;        // chiude se nulla parte entro qualche secondo
+    let hardStop;      // tetto massimo assoluto, qualunque cosa accada
+
+    const tryPlay = () => {
+      if (!v) return;
+      const p = v.play?.();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          // Autoplay rifiutato dal browser: niente intro, vai all'archivio.
+          endIntro();
+        });
+      }
+    };
+
+    tryPlay();
+    // Se entro 6s il video non ha iniziato a scorrere, chiudi.
+    safety = setTimeout(() => {
+      if (!v || v.currentTime === 0 || v.readyState < 2) endIntro();
+    }, 6000);
+    // Tetto massimo: l'intro non dura mai più di 90s qualunque cosa accada.
+    hardStop = setTimeout(endIntro, 90000);
+
+    return () => { clearTimeout(safety); clearTimeout(hardStop); };
+  }, [intro]);
+
   // "Orologio" del countdown: si aggiorna ogni minuto (basta per un conto in g/h).
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
@@ -197,10 +230,22 @@ export default function Scriba() {
             autoPlay
             muted
             playsInline
+            webkit-playsinline="true"
             preload="auto"
+            disablePictureInPicture
+            controlsList="nodownload noremoteplayback"
             onEnded={endIntro}
             onError={endIntro}
           />
+          <button
+            type="button"
+            className="scriba-intro-close"
+            onClick={endIntro}
+            aria-label="Chiudi l'introduzione"
+            title="Chiudi"
+          >
+            ✕
+          </button>
           <button
             type="button"
             className="scriba-intro-mute"

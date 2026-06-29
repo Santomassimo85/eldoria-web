@@ -41,6 +41,31 @@
 .scriba-intro-mute:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
 .scriba-intro-mute:active { transform: scale(0.96); }
 
+/* X di chiusura: sempre visibile, in alto a destra, sopra al video. */
+.scriba-intro-close {
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 10001;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: background-color .15s ease, transform .15s ease;
+}
+.scriba-intro-close:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
+.scriba-intro-close:active { transform: scale(0.96); }
+
 .scriba-archive {
   --ink: #1c1813;
   --muted: #6b5d44;
