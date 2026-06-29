@@ -17,7 +17,7 @@ const STILI_DISEGNO = [
   { key: "anime", label: "🌸 Anime / Manga", hint: "Cel-shading, linee pulite" },
   { key: "acquerello", label: "💧 Acquerello", hint: "Soffuso, dipinto a mano" },
   { key: "fumetto", label: "✒️ Fumetto", hint: "Inchiostro, alto contrasto" },
-  { key: "pixel", label: "👾 Pixel art", hint: "Retro RPG 16-bit" },
+  { key: "epico", label: "⚔️ Epico", hint: "Dark fantasy cinematografico" },
 ];
 
 export default function GeneraNPC() {

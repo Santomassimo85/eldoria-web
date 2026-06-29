@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     anime: "Stile: illustrazione anime/manga fantasy, cel-shading netto, linee pulite ed espressive, colori vivaci e saturi, occhi grandi e dettagliati.",
     acquerello: "Stile: illustrazione ad acquerello fantasy, pennellate morbide e sfumate, bordi delicati che sbavano, colori tenui che si fondono, aspetto dipinto a mano su carta ruvida.",
     fumetto: "Stile: illustrazione in stile fumetto/comic book occidentale, contorni a inchiostro spessi e marcati, ombreggiatura a campiture nette, colori saturi e alto contrasto.",
-    pixel: "Stile: pixel art in stile RPG retro 16-bit, sprite di personaggio dettagliato, palette di colori limitata, contorni netti, estetica da videogioco classico.",
+    epico: "Stile: arte epica dark fantasy, composizione cinematografica grandiosa, illuminazione drammatica con forte chiaroscuro e bagliori, atmosfera maestosa ed eroica, dettaglio elevato, colori profondi e ricchi, come una key art da poster di film fantasy.",
   };
   const stileLinea = STILI[stile] || STILI.olio;
 
