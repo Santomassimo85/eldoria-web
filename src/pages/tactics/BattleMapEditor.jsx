@@ -31,6 +31,13 @@ const CODE2TERR = {
   n: "snow", "~": "water", l: "lava", c: "acid", ".": "void",
 };
 
+// Tre tagli di mappa selezionabili per la generazione IA (entro i limiti dell'endpoint 8–16).
+const MAP_SIZES = [
+  { key: "S", label: "Piccola", w: 10, h: 10 },
+  { key: "M", label: "Media", w: 13, h: 13 },
+  { key: "L", label: "Grande", w: 16, h: 16 },
+];
+
 export default function BattleMapEditor() {
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -51,6 +58,7 @@ export default function BattleMapEditor() {
   const [newW, setNewW] = useState(12);
   const [newH, setNewH] = useState(12);
   const [mapTheme, setMapTheme] = useState("");   // spunto per la generazione IA
+  const [mapSize, setMapSize] = useState("M");    // taglio scelto per la generazione IA
   const [genning, setGenning] = useState(false);  // generazione mappa in corso
 
   // Enemy placement: live bosses/minions (active only) + the open picker popup.
@@ -295,8 +303,8 @@ export default function BattleMapEditor() {
   const generaMappa = async () => {
     setGenning(true);
     try {
-      const W = Math.max(8, Math.min(MAX_GRID, parseInt(newW) || 12));
-      const H = Math.max(8, Math.min(MAX_GRID, parseInt(newH) || 12));
+      const sz = MAP_SIZES.find((s) => s.key === mapSize) || MAP_SIZES[1];
+      const W = sz.w, H = sz.h;
       const r = await fetch("/api/genera-mappa", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -501,8 +509,19 @@ export default function BattleMapEditor() {
             disabled={genning}
             style={{ flex: 1, minWidth: 160 }}
           />
+          {MAP_SIZES.map((s) => (
+            <button
+              key={s.key}
+              className={`bme-tool ${mapSize === s.key ? "on" : ""}`}
+              onClick={() => setMapSize(s.key)}
+              disabled={genning}
+              title={`${s.w}×${s.h}`}
+            >
+              {s.label} {s.w}×{s.h}
+            </button>
+          ))}
           <button className="bt-primary" onClick={generaMappa} disabled={genning}>
-            {genning ? "✨ L'IA disegna…" : `✨ Genera mappa ${Math.max(8, Math.min(MAX_GRID, parseInt(newW) || 12))}×${Math.max(8, Math.min(MAX_GRID, parseInt(newH) || 12))}`}
+            {genning ? "✨ L'IA disegna…" : "✨ Genera mappa"}
           </button>
         </div>
         <div className="bme-tray-row">

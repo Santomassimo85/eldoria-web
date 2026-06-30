@@ -654,6 +654,11 @@ export default function WorldBossAdmin() {
         penalties: data.penalties || b.penalties,
         actions: sanitizeActions(data.actions, MIN_ACTIONS),
       }));
+      // Genera anche lo sprite pixel-art (vivo) col nome/descrizione appena creati.
+      generateSprite({
+        name: data.name, desc: data.description, dead: false, slotKey: "genNewAlive",
+        apply: (url) => setNewBoss((b) => ({ ...b, imageUrl: url })),
+      });
     } catch (e) {
       alert("Genera boss: " + (e.message || e));
     } finally {
@@ -679,6 +684,11 @@ export default function WorldBossAdmin() {
         ac: data.ac != null ? data.ac : m.ac,
         actions: sanitizeActions(data.actions, 1),
       }));
+      // Genera anche lo sprite pixel-art (vivo) del minion.
+      generateSprite({
+        name: data.name, desc: "", dead: false, slotKey: "genMinionAlive",
+        apply: (url) => setMinionForm((m) => ({ ...m, imageUrl: url })),
+      });
     } catch (e) {
       alert("Genera minion: " + (e.message || e));
     } finally {
@@ -940,7 +950,7 @@ export default function WorldBossAdmin() {
               {genState.boss ? "✨ L'IA forgia…" : "✨ Genera boss con l'IA"}
             </button>
           </div>
-          <small className="wb-ai-hint">Riempie nome, statistiche, azioni e spell. Puoi modificare tutto prima di evocare.</small>
+          <small className="wb-ai-hint">Riempie nome, statistiche, azioni/spell <strong>e genera lo sprite pixel-art</strong> (vivo, senza sfondo). Puoi modificare tutto prima di evocare.</small>
 
           <form onSubmit={handleCreateBoss} className="wb-form">
             <div className="wb-field">
@@ -1153,7 +1163,7 @@ export default function WorldBossAdmin() {
             {genState.minion ? "✨ L'IA crea…" : "✨ Genera minion con l'IA"}
           </button>
         </div>
-        <small className="wb-ai-hint">Riempie il form qui sotto (nome, HP, CA, attacchi): modificalo e salvalo come al solito.</small>
+        <small className="wb-ai-hint">Riempie il form qui sotto (nome, HP, CA, attacchi) <strong>e genera lo sprite pixel-art</strong>: modifica e salva come al solito.</small>
 
         <div className="wb-minion-workshop">
           <form className="wb-minion-form" onSubmit={saveMinion}>
