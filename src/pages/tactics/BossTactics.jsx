@@ -30,7 +30,7 @@ import {
   unitDone, sideAllDone, resetSide, bumpActive, txnBattle, bossAlive,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
-  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice,
+  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice, isAutoHitSpell,
 } from "./battleModel";
 import "./BossTactics.css";
 
@@ -902,35 +902,47 @@ export default function BossTactics() {
   // ── Combat resolution ─────────────────────────────────────────────────────
   const resolveAttack = async (attacker, target, action) => {
     setBusy(true);
-    // High-ground rule: a higher tile grants advantage vs a lower target,
-    // a lower tile imposes disadvantage vs a higher target (any elevation gap).
-    const aElev = tileAt(map, attacker.x, attacker.y)?.elevation || 0;
-    const tElev = tileAt(map, target.x, target.y)?.elevation || 0;
-    const heightCond = aElev > tElev ? "advantage" : aElev < tElev ? "disadvantage" : null;
-    // Combine the attacker's buff/debuff with the height factor (D&D rule:
-    // any advantage + any disadvantage cancel out to a normal roll).
-    const hasAdv = attacker.cond === "advantage" || heightCond === "advantage";
-    const hasDis = attacker.cond === "disadvantage" || heightCond === "disadvantage";
-    const effCond = hasAdv && hasDis ? null : hasAdv ? "advantage" : hasDis ? "disadvantage" : null;
-    // advantage/disadvantage (from buff/debuff or terrain height) → roll 2d20
-    const d1 = rollDie(20);
-    let d = d1, rollNote = `d20(${d1})`;
-    if (effCond) {
-      const d2 = rollDie(20);
-      d = effCond === "advantage" ? Math.max(d1, d2) : Math.min(d1, d2);
-      const src = heightCond ? (effCond === "advantage" ? "⬆vant·alto" : "⬇svan·basso") : (effCond === "advantage" ? "⬆vant" : "⬇svan");
-      rollNote = `${src}[${d1},${d2}]→${d}`;
-    }
-    await showD20Roll(d, { label: `${attacker.name}: ${action.name}` });
+    // Dardo Incantato / Magic Missile: colpisce SEMPRE — niente tiro per colpire,
+    // niente tiro salvezza, niente critico (come in Arena). Salta tutta la fase
+    // di to-hit e applica il danno pieno.
+    const autoHit = isAutoHitSpell(action);
     const bonus = parseInt(String(action.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
-    const total = d + bonus, crit = d === 20;
     const formula = action.damage && action.damage !== "0" ? action.damage : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
-    const hit = crit || total >= target.ac;
-    // Full to-hit breakdown so the maths is verifiable in chat.
+    let hit, crit = false, hitRoll;
+    if (autoHit) {
+      hit = true;
+      hitRoll = `🎯 ${action.name}: colpisce automaticamente (nessun tiro)`;
+    } else {
+      // High-ground rule: a higher tile grants advantage vs a lower target,
+      // a lower tile imposes disadvantage vs a higher target (any elevation gap).
+      const aElev = tileAt(map, attacker.x, attacker.y)?.elevation || 0;
+      const tElev = tileAt(map, target.x, target.y)?.elevation || 0;
+      const heightCond = aElev > tElev ? "advantage" : aElev < tElev ? "disadvantage" : null;
+      // Combine the attacker's buff/debuff with the height factor (D&D rule:
+      // any advantage + any disadvantage cancel out to a normal roll).
+      const hasAdv = attacker.cond === "advantage" || heightCond === "advantage";
+      const hasDis = attacker.cond === "disadvantage" || heightCond === "disadvantage";
+      const effCond = hasAdv && hasDis ? null : hasAdv ? "advantage" : hasDis ? "disadvantage" : null;
+      // advantage/disadvantage (from buff/debuff or terrain height) → roll 2d20
+      const d1 = rollDie(20);
+      let d = d1, rollNote = `d20(${d1})`;
+      if (effCond) {
+        const d2 = rollDie(20);
+        d = effCond === "advantage" ? Math.max(d1, d2) : Math.min(d1, d2);
+        const src = heightCond ? (effCond === "advantage" ? "⬆vant·alto" : "⬇svan·basso") : (effCond === "advantage" ? "⬆vant" : "⬇svan");
+        rollNote = `${src}[${d1},${d2}]→${d}`;
+      }
+      await showD20Roll(d, { label: `${attacker.name}: ${action.name}` });
+      const total = d + bonus;
+      crit = d === 20;
+      hit = crit || total >= target.ac;
+      // Full to-hit breakdown so the maths is verifiable in chat.
+      hitRoll = `🎯 Colpire: ${rollNote} ${bonus >= 0 ? "+" : ""}${bonus} = ${total} vs CA ${target.ac} → ${crit ? "CRITICO 💥" : hit ? "colpito ✅" : "mancato ❌"}`;
+    }
     const entry = {
       type: "action", senderName: attacker.name, actionName: action.name,
       uid: attacker.uid || BOSS_SYSTEM_UID, side: attacker.side, category: action.category || "Attacco",
-      hitRoll: `🎯 Colpire: ${rollNote} ${bonus >= 0 ? "+" : ""}${bonus} = ${total} vs CA ${target.ac} → ${crit ? "CRITICO 💥" : hit ? "colpito ✅" : "mancato ❌"}`,
+      hitRoll,
     };
     // Visual classification (also gates Sneak Attack to weapon hits): melee weapon
     // → slash; ranged weapon → arrow; spell attack → magic bolt.

@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "61.02",
+      "date": "2026-06-30",
+      "title": "World Boss Fight: Dardo Incantato colpisce sempre",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Nel World Boss Fight il Dardo Incantato (Magic Missile) ora colpisce automaticamente, senza tiro per colpire né tiro salvezza e senza critico, infliggendo il danno pieno (es. 3d4) — come già avviene in Arena. Prima passava dalla normale risoluzione d'attacco con tiro per colpire contro la CA, quindi poteva mancare. La gittata dell'incantesimo (6 caselle) resta invariata e ora è riconosciuta anche col nome inglese «Magic Missile»."
+        }
+      ]
+    },
+    {
       "version": "61.01",
       "date": "2026-06-29",
       "title": "Bottega Arena: giocatori inattivi nascosti dal Pannello Master",

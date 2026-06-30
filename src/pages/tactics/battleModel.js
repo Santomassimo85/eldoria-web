@@ -323,7 +323,7 @@ export function actionRange(action) {
   const aoe = spellAoE(action);
   if (aoe) return aoe.range;                 // AoE spells carry their own range
   const t = `${action.name || ""}`.toLowerCase();
-  if (/arco|balestra|long ?bow|short ?bow|crossbow|fionda|sling|dardo|javelin|giavellotto/.test(t)) return 6;
+  if (/arco|balestra|long ?bow|short ?bow|crossbow|fionda|sling|dardo|javelin|giavellotto|magic ?missile|missil/.test(t)) return 6;
   if (detectSpellIntent(action) === "attack" && /trucchett|cantrip|livello|level|raggio|bolt|fire|fulmine|ray|eldritch/.test(`${action.category || ""} ${t}`)) return 6;
   // Healing / support spells: most reach allies at a distance (Healing Word &c.).
   // Touch spells stay adjacent; "ranged" wording reaches far; others get a
@@ -335,6 +335,16 @@ export function actionRange(action) {
     return 6;
   }
   return 1;
+}
+
+// Magic Missile family — these spells hit AUTOMATICALLY: no to-hit roll, no save,
+// and they can't crit. Matched by name so an imported sheet's "Dardo Incantato"
+// (or English "Magic Missile") is handled the same way the Arena resolves it.
+// NB: we require the qualifier ("incantato") so the plain thrown-dart WEAPON
+// named "Dardo" is NOT swept in.
+export function isAutoHitSpell(action) {
+  const t = `${action?.name || ""}`.toLowerCase();
+  return /dard[oi]\s+incantat[oi]|magic\s?missile|missili?\s+magic/.test(t);
 }
 
 // ── Spell save DC (D&D standard: 8 + proficiency + casting-ability mod) ──────
