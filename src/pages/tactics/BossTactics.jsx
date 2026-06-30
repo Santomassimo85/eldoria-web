@@ -30,7 +30,7 @@ import {
   unitDone, sideAllDone, resetSide, bumpActive, txnBattle, bossAlive,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
-  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice, isAutoHitSpell,
+  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice, isAutoHitSpell, magicMissileDarts,
 } from "./battleModel";
 import "./BossTactics.css";
 
@@ -908,6 +908,7 @@ export default function BossTactics() {
     const autoHit = isAutoHitSpell(action);
     const bonus = parseInt(String(action.bonus ?? "").replace(/[^0-9-]/g, "")) || 0;
     const formula = action.damage && action.damage !== "0" ? action.damage : (action.diceNum ? `${action.diceNum}${action.diceType || "d6"}` : "1d6");
+    let hasAdv = false, hasDis = false;   // (terrain/buff) — used by Sneak Attack below
     let hit, crit = false, hitRoll;
     if (autoHit) {
       hit = true;
@@ -920,8 +921,8 @@ export default function BossTactics() {
       const heightCond = aElev > tElev ? "advantage" : aElev < tElev ? "disadvantage" : null;
       // Combine the attacker's buff/debuff with the height factor (D&D rule:
       // any advantage + any disadvantage cancel out to a normal roll).
-      const hasAdv = attacker.cond === "advantage" || heightCond === "advantage";
-      const hasDis = attacker.cond === "disadvantage" || heightCond === "disadvantage";
+      hasAdv = attacker.cond === "advantage" || heightCond === "advantage";
+      hasDis = attacker.cond === "disadvantage" || heightCond === "disadvantage";
       const effCond = hasAdv && hasDis ? null : hasAdv ? "advantage" : hasDis ? "disadvantage" : null;
       // advantage/disadvantage (from buff/debuff or terrain height) → roll 2d20
       const d1 = rollDie(20);
@@ -944,6 +945,34 @@ export default function BossTactics() {
       uid: attacker.uid || BOSS_SYSTEM_UID, side: attacker.side, category: action.category || "Attacco",
       hitRoll,
     };
+    // ── Dardo Incantato / Magic Missile: più dardi indipendenti ───────────────
+    // Spara `count` dardi (3 in 5e), ciascuno un colpo automatico a sé: ogni
+    // dardo lancia la sua animazione (bolt) e fa scendere gli HP, con una breve
+    // pausa fra l'uno e l'altro così si vedono partire tutti e tre.
+    if (autoHit) {
+      const { count, die, bonusEach } = magicMissileDarts(formula);
+      const fxElement = detectElement(action);
+      const from = { x: attacker.x, y: attacker.y };
+      const dartDmgs = Array.from({ length: count }, () => Math.max(0, rollDie(die) + bonusEach));
+      const total = dartDmgs.reduce((a, b) => a + b, 0);
+      let killed = false;
+      for (let i = 0; i < count; i++) {
+        const dmgI = dartDmgs[i];
+        const last = i === count - 1;
+        await txnBattle((us, d) => us.map((u) => {
+          let n = u;
+          if (u.id === target.id) { const hp = Math.max(0, u.hp - dmgI); if (hp <= 0) killed = true; n = { ...n, hp, dead: hp <= 0 }; }
+          if (last && u.id === attacker.id) n = bumpActive({ ...n, hasActed: true, cond: null }, d.round);
+          return n;
+        }), fxStamp("bolt", target.x, target.y, from, fxElement));
+        if (!last) await delay(320);   // lascia respirare l'animazione fra i dardi
+      }
+      entry.damageRoll = `💥 ${count} dardi: ${dartDmgs.join(" + ")} = ${total} a ${target.name}${killed ? " · 💀" : ""}`;
+      await logChat(entry);
+      setBusy(false);
+      await advancePhase();
+      return;
+    }
     // Visual classification (also gates Sneak Attack to weapon hits): melee weapon
     // → slash; ranged weapon → arrow; spell attack → magic bolt.
     const isWeapon = /armi|arma|weapon/.test((action.category || "").toLowerCase());

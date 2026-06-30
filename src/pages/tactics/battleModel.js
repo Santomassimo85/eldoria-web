@@ -347,6 +347,20 @@ export function isAutoHitSpell(action) {
   return /dard[oi]\s+incantat[oi]|magic\s?missile|missili?\s+magic/.test(t);
 }
 
+// Magic Missile fires SEVERAL darts (3 in D&D 5e), each its own auto-hit. Derive
+// how many from the damage formula's dice count: "3d4" or "3d4+3" → 3 darts,
+// defaulting to 3 when unparseable. Each dart rolls one die of that type plus its
+// share of any flat bonus ("3d4+3" → 1d4+1 per dart), so the per-dart total still
+// sums back to the authored formula.
+export function magicMissileDarts(formula) {
+  const m = String(formula || "").replace(/\s/g, "").match(/(\d+)d(\d+)([+-]\d+)?/i);
+  if (!m) return { count: 3, die: 4, bonusEach: 1 }; // 5e default: 3 × (1d4+1)
+  const count = Math.max(1, parseInt(m[1], 10) || 3);
+  const die = parseInt(m[2], 10) || 4;
+  const flat = parseInt(m[3] || "0", 10) || 0;
+  return { count, die, bonusEach: Math.round(flat / count) };
+}
+
 // ── Spell save DC (D&D standard: 8 + proficiency + casting-ability mod) ──────
 // Ability scores are already stored as MODIFIERS (str/dex/… = +3, −1…).
 export const profFromLevel = (lvl) => 2 + Math.floor((Math.max(1, lvl || 1) - 1) / 4);

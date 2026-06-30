@@ -3,11 +3,15 @@
     {
       "version": "61.02",
       "date": "2026-06-30",
-      "title": "World Boss Fight: Dardo Incantato colpisce sempre",
+      "title": "World Boss Fight: Dardo Incantato — colpisce sempre, 3 dardi",
       "changes": [
         {
           "type": "fix",
-          "text": "Nel World Boss Fight il Dardo Incantato (Magic Missile) ora colpisce automaticamente, senza tiro per colpire né tiro salvezza e senza critico, infliggendo il danno pieno (es. 3d4) — come già avviene in Arena. Prima passava dalla normale risoluzione d'attacco con tiro per colpire contro la CA, quindi poteva mancare. La gittata dell'incantesimo (6 caselle) resta invariata e ora è riconosciuta anche col nome inglese «Magic Missile»."
+          "text": "Nel World Boss Fight il Dardo Incantato (Magic Missile) ora colpisce automaticamente, senza tiro per colpire né tiro salvezza e senza critico — come già avviene in Arena. Prima passava dalla normale risoluzione d'attacco con tiro per colpire contro la CA, quindi poteva mancare. La gittata dell'incantesimo (6 caselle) resta invariata e ora è riconosciuta anche col nome inglese «Magic Missile»."
+        },
+        {
+          "type": "mechanics",
+          "text": "Il Dardo Incantato lancia ora 3 dardi distinti: ciascuno è un colpo automatico a sé, con la propria animazione (si vedono partire tutti e tre in sequenza) e il proprio tiro di danno che fa scendere gli HP del bersaglio. Il numero di dardi e il danno per dardo derivano dalla formula della scheda (es. 3d4 → 3 dardi da 1d4; 3d4+3 → 3 dardi da 1d4+1)."
         }
       ]
     },
