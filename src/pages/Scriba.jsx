@@ -186,6 +186,13 @@ export default function Scriba() {
     );
   };
 
+  // Copia il link condivisibile al singolo numero (/giornale/:id).
+  const copyShareLink = async (it) => {
+    const url = `${window.location.origin}/giornale/${it.id}`;
+    try { await navigator.clipboard.writeText(url); alert("Link copiato:\n" + url); }
+    catch (_) { window.prompt("Copia il link a questo numero:", url); }
+  };
+
   const opened = useMemo(() => issues.find((i) => i.id === open) || null, [issues, open]);
 
   // Filtri + raggruppamento per mese.
@@ -319,6 +326,14 @@ export default function Scriba() {
                 <div key={it.id} className="scriba-card-wrap" style={{ position: "relative" }}>
                 {isMaster && !String(it.id).startsWith("sample-") && (
                   <>
+                  <button
+                    type="button"
+                    className="scriba-link"
+                    title="Copia il link condivisibile a questo numero"
+                    aria-label="Copia il link a questo numero"
+                    onClick={(e) => { e.stopPropagation(); copyShareLink(it); }}
+                    style={{ position: "absolute", top: 8, right: 80, zIndex: 2, background: "rgba(28,24,19,.85)", color: "#f4efe3", border: "none", borderRadius: 6, width: 30, height: 30, cursor: "pointer", fontSize: 14, lineHeight: 1 }}
+                  >🔗</button>
                   <button
                     type="button"
                     className="scriba-edit"

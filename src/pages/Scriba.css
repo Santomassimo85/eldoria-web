@@ -342,3 +342,62 @@
   background: #e7e0d0;
   border-radius: 0 0 6px 6px;
 }
+
+/* ── Pagina singola /giornale/:id (deep-link condivisibile) ──────────────── */
+.scriba-single {
+  --ink: #1c1813;
+  --paper: #f4efe3;
+  --accent: #7a1f12;
+  --line: #cdbfa3;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: 'Lora', Georgia, "Times New Roman", serif;
+}
+.scriba-single-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.85rem;
+  padding: calc(var(--navbar-h, 80px) + 8px) 16px 10px;
+  flex: none;
+}
+.scriba-single-label {
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: .03em;
+}
+.scriba-single-back,
+.scriba-single-share {
+  flex: none;
+  background: none;
+  border: 1px solid rgba(244, 239, 227, .45);
+  color: var(--paper);
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.scriba-single-share.is-copied {
+  background: #2f5d2a;
+  border-color: #2f5d2a;
+}
+.scriba-single-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #e7e0d0;
+}
+@media (max-width: 640px) {
+  .scriba-single-label { display: none; }
+}

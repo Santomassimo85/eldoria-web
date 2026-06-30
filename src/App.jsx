@@ -29,6 +29,7 @@ import MarketAdmin from "./pages/MarketAdmin";
 import SummaryAdmin from "./pages/SummaryAdmin";
 import LoScribaAdmin from "./pages/LoScribaAdmin";
 import Scriba from "./pages/Scriba";
+import ScribaSingolo from "./pages/ScribaSingolo";
 import Almanacco from "./pages/Almanacco";
 import SchedaPG from "./pages/SchedaPG";
 import PlatinumAdmin from "./pages/PlatinumAdmin";
@@ -633,6 +634,7 @@ export default function App() {
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/riassunto/:id" element={<RiassuntoSingolo />} />
           <Route path="/scriba" element={<Scriba />} />
+          <Route path="/giornale/:id" element={<ScribaSingolo />} />
           <Route path="/almanacco" element={<Almanacco />} />
           <Route path="/ratti-lore" element={<RattiLore />} />
           <Route path="/bacheca" element={<Bacheca />} />

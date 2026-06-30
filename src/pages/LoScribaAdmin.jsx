@@ -155,6 +155,12 @@ export default function LoScribaAdmin() {
     setMsg({ type: "ok", text: `Numero ${e.number} eliminato.` });
   });
 
+  const copyLink = async (id) => {
+    const url = `${window.location.origin}/giornale/${id}`;
+    try { await navigator.clipboard.writeText(url); setMsg({ type: "ok", text: "Link copiato: " + url }); }
+    catch (_) { window.prompt("Copia il link a questo numero:", url); }
+  };
+
   const togglePick = (id) => setPicked((prev) => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -327,6 +333,10 @@ export default function LoScribaAdmin() {
               <button type="button" onClick={() => setPreviewHtml(e.html)} disabled={!e.html}
                 style={{ background: "none", border: "1px solid #c9a227", color: "#7a1f12", borderRadius: 5, padding: "5px 10px", cursor: e.html ? "pointer" : "not-allowed", fontWeight: 600 }}>
                 👁 Anteprima
+              </button>
+              <button type="button" onClick={() => copyLink(e.id)} title="Copia il link condivisibile a questo numero"
+                style={{ background: "none", border: "1px solid #c9a227", color: "#7a1f12", borderRadius: 5, padding: "5px 10px", cursor: "pointer", fontWeight: 600 }}>
+                🔗 Link
               </button>
               <button type="button" onClick={() => elimina(e)} disabled={busy} title="Elimina numero"
                 style={{ background: "none", border: "1px solid #d9b3ac", color: "#8a261c", borderRadius: 5, padding: "5px 9px", cursor: busy ? "wait" : "pointer", fontWeight: 700 }}>
