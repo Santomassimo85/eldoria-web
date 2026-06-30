@@ -25,6 +25,12 @@ import "./BattleMapEditor.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 
+// Codici terreno compatti usati dall'IA (api/genera-mappa) → chiavi di TERRAINS.
+const CODE2TERR = {
+  g: "grass", s: "stone", a: "sand", d: "dirt", w: "wood",
+  n: "snow", "~": "water", l: "lava", c: "acid", ".": "void",
+};
+
 export default function BattleMapEditor() {
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -44,6 +50,8 @@ export default function BattleMapEditor() {
   const [absElev, setAbsElev] = useState(2);         // target height for the plateau tool
   const [newW, setNewW] = useState(12);
   const [newH, setNewH] = useState(12);
+  const [mapTheme, setMapTheme] = useState("");   // spunto per la generazione IA
+  const [genning, setGenning] = useState(false);  // generazione mappa in corso
 
   // Enemy placement: live bosses/minions (active only) + the open picker popup.
   const [bosses, setBosses] = useState([]);
@@ -282,6 +290,61 @@ export default function BattleMapEditor() {
     setEditingId(null);
     setMapName("Nuova mappa");
   };
+  // Genera una mappa con l'IA (api/genera-mappa) ed espande il formato compatto
+  // (righe di caratteri + cifre quota + prop + spawn) nei tiles dell'editor.
+  const generaMappa = async () => {
+    setGenning(true);
+    try {
+      const W = Math.max(8, Math.min(MAX_GRID, parseInt(newW) || 12));
+      const H = Math.max(8, Math.min(MAX_GRID, parseInt(newH) || 12));
+      const r = await fetch("/api/genera-mappa", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tema: mapTheme, w: W, h: H }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || "Generazione fallita.");
+
+      const gw = Math.max(2, Math.min(MAX_GRID, parseInt(data.w) || W));
+      const gh = Math.max(2, Math.min(MAX_GRID, parseInt(data.h) || H));
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      const elev = Array.isArray(data.elevation) ? data.elevation : [];
+      const tiles = [];
+      for (let y = 0; y < gh; y++) {
+        const trow = String(rows[y] || "");
+        const erow = String(elev[y] || "");
+        for (let x = 0; x < gw; x++) {
+          const terr = CODE2TERR[trow[x]] || "grass";
+          let e = parseInt(erow[x], 10);
+          if (!Number.isFinite(e)) e = 0;
+          tiles.push(makeTile(x, y, terr, Math.max(0, Math.min(MAX_ELEV, e)), null));
+        }
+      }
+      const at = (x, y) => tiles[y * gw + x];
+      for (const p of Array.isArray(data.props) ? data.props : []) {
+        const x = parseInt(p.x, 10), y = parseInt(p.y, 10);
+        if (x >= 0 && y >= 0 && x < gw && y < gh && PROPS[p.p]) at(x, y).prop = p.p;
+      }
+      const setSpawns = (list, side) => {
+        for (const c of Array.isArray(list) ? list : []) {
+          const x = parseInt(Array.isArray(c) ? c[0] : c?.x, 10);
+          const y = parseInt(Array.isArray(c) ? c[1] : c?.y, 10);
+          if (x >= 0 && y >= 0 && x < gw && y < gh) at(x, y).spawn = side;
+        }
+      };
+      setSpawns(data.spawns?.hero, "hero");
+      setSpawns(data.spawns?.enemy, "enemy");
+
+      setMap({ w: gw, h: gh, tiles });
+      setMapName(data.name || "Mappa generata");
+      setEditingId(null);
+    } catch (e) {
+      alert("Genera mappa: " + (e.message || e));
+    } finally {
+      setGenning(false);
+    }
+  };
+
   const saveMap = async () => {
     const payload = { kind: "map", name: mapName || "Mappa", w: map.w, h: map.h, tiles: map.tiles, updatedAt: serverTimestamp() };
     if (editingId) await setDoc(doc(db, "battle_meta", editingId), payload, { merge: true });
@@ -427,6 +490,20 @@ export default function BattleMapEditor() {
           <input type="number" min={2} max={MAX_GRID} value={newW} onChange={(e) => setNewW(e.target.value)} style={{ width: 44 }} />×
           <input type="number" min={2} max={MAX_GRID} value={newH} onChange={(e) => setNewH(e.target.value)} style={{ width: 44 }} />
           <button onClick={newMap}>＋ Crea vuota</button>
+        </div>
+        <div className="bme-tray-row">
+          <span className="bme-label">✨ Genera con l'IA:</span>
+          <input
+            value={mapTheme}
+            onChange={(e) => setMapTheme(e.target.value)}
+            placeholder="Tema (es. cripta in pietra, ghiacciaio, caverna lavica…)"
+            className="bme-name"
+            disabled={genning}
+            style={{ flex: 1, minWidth: 160 }}
+          />
+          <button className="bt-primary" onClick={generaMappa} disabled={genning}>
+            {genning ? "✨ L'IA disegna…" : `✨ Genera mappa ${Math.max(8, Math.min(MAX_GRID, parseInt(newW) || 12))}×${Math.max(8, Math.min(MAX_GRID, parseInt(newH) || 12))}`}
+          </button>
         </div>
         <div className="bme-tray-row">
           <span className="bme-label">Mappe salvate:</span>

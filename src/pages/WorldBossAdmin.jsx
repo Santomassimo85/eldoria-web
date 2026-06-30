@@ -108,6 +108,99 @@ const normalizeBossActions = (boss) => {
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /* ──────────────────────────────────────────────────────────────
+   AI helpers — generazione (boss/minion/sprite) via endpoint Vercel
+   ────────────────────────────────────────────────────────────── */
+const VALID_TYPES = ACTION_TYPES.map((t) => t.value);
+const VALID_DICE = DICE;
+const VALID_SHAPES = AOE_SHAPES.map((s) => s.value);
+const VALID_DMG = DMG_TYPE_OPTIONS.map((d) => d.value);
+const VALID_SAVE = SAVES.map((s) => s.v);
+
+// Normalizza un'azione generata dall'IA contro le enumerazioni valide, così il
+// form resta coerente anche se il modello inventa un valore fuori lista.
+const sanitizeAction = (a = {}, i = 0) => {
+  const base = blankAction(i);
+  return {
+    ...base,
+    type: VALID_TYPES.includes(a.type) ? a.type : "attack",
+    name: String(a.name || "").slice(0, 50),
+    diceNum: clamp(parseInt(a.diceNum) || 1, 1, 12),
+    diceType: VALID_DICE.includes(a.diceType) ? a.diceType : base.diceType,
+    bonus: clamp(parseInt(a.bonus) || 0, -5, 30),
+    acBonus: clamp(parseInt(a.acBonus) || 2, 1, 10),
+    range: clamp(parseInt(a.range) || 1, 1, 12),
+    aoeShape: VALID_SHAPES.includes(a.aoeShape) ? a.aoeShape : "single",
+    aoeSize: clamp(parseInt(a.aoeSize) || 1, 1, 6),
+    dmgType: VALID_DMG.includes(a.dmgType) ? a.dmgType : "",
+    saveAbility: VALID_SAVE.includes(a.saveAbility) ? a.saveAbility : "dex",
+    halfOnSave: a.halfOnSave !== false,
+  };
+};
+
+const sanitizeActions = (arr, min) => {
+  const out = (Array.isArray(arr) ? arr : []).map(sanitizeAction).slice(0, MAX_ACTIONS);
+  while (out.length < min) out.push(blankAction(out.length));
+  return out;
+};
+
+// Prompt per lo sprite pixel-art: soggetto SOLO, su fondo magenta uniforme che
+// poi rimuoviamo lato client (chroma key). Niente sfondo/scena/testo.
+const pixelArtPrompt = (name, desc, dead) => `Pixel art sprite of a single fantasy ${dead ? "defeated/dead " : ""}creature or character for a tactical RPG game.
+Subject: ${name || "fantasy monster"}.${desc ? ` Description: ${desc}.` : ""}
+${dead
+    ? "Pose: defeated — collapsed, lying down, or as a corpse/remains."
+    : "Pose: a SINGLE idle standing pose, full body, three-quarter view facing the viewer."}
+Style: crisp 16-bit pixel art, limited palette, clean hard outlines, NO anti-aliasing, NO blur.
+CRITICAL: render the subject ALONE and centered on a SOLID UNIFORM background of pure magenta (#FF00FF, RGB 255,0,255). The background MUST be one flat magenta color — no gradient, no ground shadow, no scenery, no props. No text, no frame, no border. Only the subject on flat magenta.`;
+
+// Rimuove lo sfondo a tinta unita (magenta) con un flood-fill dai bordi: così
+// non cancella eventuali pixel dello stesso colore "intrappolati" nel soggetto.
+// Ridimensiona a pixel-art (nearest neighbor) e restituisce un Blob PNG.
+const dataUrlToTransparentBlob = (dataUrl) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 256;
+    const scale = img.width > MAX ? MAX / img.width : 1;
+    const w = Math.round(img.width * scale);
+    const hh = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = hh;
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, 0, 0, w, hh);
+
+    const imgData = ctx.getImageData(0, 0, w, hh);
+    const d = imgData.data;
+    const cornerAt = (x, y) => { const i = (y * w + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+    const corners = [cornerAt(0, 0), cornerAt(w - 1, 0), cornerAt(0, hh - 1), cornerAt(w - 1, hh - 1)];
+    const ref = [0, 1, 2].map((k) => Math.round(corners.reduce((a, c) => a + c[k], 0) / corners.length));
+    const TOL2 = 110 * 110;
+    const match = (p) => {
+      const dr = d[p * 4] - ref[0], dg = d[p * 4 + 1] - ref[1], db = d[p * 4 + 2] - ref[2];
+      return dr * dr + dg * dg + db * db <= TOL2;
+    };
+    const visited = new Uint8Array(w * hh);
+    const stack = [];
+    const push = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= hh) return; const p = y * w + x; if (!visited[p]) stack.push(p); };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, hh - 1); }
+    for (let y = 0; y < hh; y++) { push(0, y); push(w - 1, y); }
+    while (stack.length) {
+      const p = stack.pop();
+      if (visited[p]) continue;
+      visited[p] = 1;
+      if (!match(p)) continue;
+      d[p * 4 + 3] = 0;                          // rendi trasparente
+      const x = p % w, y = (p / w) | 0;
+      push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1);
+    }
+    ctx.putImageData(imgData, 0, 0);
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob fallito"))), "image/png");
+  };
+  img.onerror = () => reject(new Error("immagine non caricabile"));
+  img.src = dataUrl;
+});
+
+/* ──────────────────────────────────────────────────────────────
    AoePreview — top-down mini-grid that visualises the tiles an
    action covers. Uses the SAME geometry as the live battle
    (aoeCells / tilesWithinRange) so it is WYSIWYG.
@@ -338,7 +431,7 @@ const ActionEditor = ({ action, idx, onChange, onRemove, canRemove }) => {
 /* ──────────────────────────────────────────────────────────────
    SpriteDropzone — drag & drop slot for a boss sprite
    ────────────────────────────────────────────────────────────── */
-const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, accent = "#d4af37" }) => {
+const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGenerate, generating, accent = "#d4af37" }) => {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = React.useRef(null);
 
@@ -354,14 +447,16 @@ const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, accent
     e.target.value = "";
   };
 
+  const busy = uploading || generating;
+
   return (
     <div
-      className={`wb-drop ${dragOver ? "drag" : ""} ${uploading ? "loading" : ""} ${value ? "filled" : ""}`}
+      className={`wb-drop ${dragOver ? "drag" : ""} ${busy ? "loading" : ""} ${value ? "filled" : ""}`}
       style={{ "--wb-accent": accent }}
       onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      onClick={() => !uploading && inputRef.current?.click()}
+      onClick={() => !busy && inputRef.current?.click()}
     >
       <input
         ref={inputRef}
@@ -370,16 +465,25 @@ const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, accent
         style={{ display: "none" }}
         onChange={handlePick}
       />
-      {uploading ? (
+      {busy ? (
         <div className="wb-drop-state">
           <span className="wb-drop-spinner" />
-          <strong>Forgia in corso…</strong>
+          <strong>{generating ? "L'IA disegna…" : "Forgia in corso…"}</strong>
         </div>
       ) : value ? (
         <>
           <img src={value} alt={label} className="wb-drop-preview" />
           <div className="wb-drop-overlay">
             <span className="wb-drop-overlay-label">{icon} Cambia</span>
+            {onGenerate && (
+              <button
+                type="button"
+                className="wb-drop-gen"
+                onClick={(e) => { e.stopPropagation(); onGenerate(); }}
+              >
+                ✨ Rigenera
+              </button>
+            )}
             {onClear && (
               <button
                 type="button"
@@ -396,6 +500,15 @@ const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, accent
           <span className="wb-drop-icon">{icon}</span>
           <strong>{label}</strong>
           <small>Trascina o clicca</small>
+          {onGenerate && (
+            <button
+              type="button"
+              className="wb-drop-gen"
+              onClick={(e) => { e.stopPropagation(); onGenerate(); }}
+            >
+              ✨ Genera pixel art
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -414,6 +527,11 @@ export default function WorldBossAdmin() {
   const [minions, setMinions] = useState([]);                 // saved minion templates
   const [minionForm, setMinionForm] = useState(blankMinion());
   const [editingMinionId, setEditingMinionId] = useState(null);
+
+  // ── Generazione IA (testo + sprite) ──
+  const [genState, setGenState] = useState({}); // spinner per slot: { boss, minion, genNewAlive, ... }
+  const [bossSpunto, setBossSpunto] = useState("");     // spunto facoltativo per il boss IA
+  const [minionSpunto, setMinionSpunto] = useState(""); // spunto facoltativo per il minion IA
 
   useEffect(() => {
     const unsubBoss = onSnapshot(collection(db, "bosses"), (snap) => {
@@ -482,6 +600,90 @@ export default function WorldBossAdmin() {
     if (!url || !url.includes("firebasestorage.googleapis.com")) return;
     try { await deleteObject(storageRef(storage, url)); }
     catch (err) { console.warn("Storage cleanup skipped:", err.code); }
+  };
+
+  /* ── Generazione IA ── */
+  const uploadBlobToStorage = async (blob) => {
+    const path = `boss-sprites/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-ai.png`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, blob, { contentType: "image/png" });
+    return await getDownloadURL(ref);
+  };
+
+  // Genera uno sprite pixel-art (sfondo rimosso) e lo applia via `apply(url)`.
+  const generateSprite = async ({ name, desc, dead, slotKey, apply }) => {
+    if (!name?.trim()) { alert("Dai prima un nome al soggetto, così l'IA sa cosa disegnare."); return; }
+    setGenState((s) => ({ ...s, [slotKey]: true }));
+    try {
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: pixelArtPrompt(name, desc, dead) }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error || !data.immagine) throw new Error(data.error || "Nessuna immagine ricevuta.");
+      const blob = await dataUrlToTransparentBlob(data.immagine);
+      const url = await uploadBlobToStorage(blob);
+      apply(url);
+    } catch (e) {
+      alert("Generazione sprite fallita: " + (e.message || e));
+    } finally {
+      setGenState((s) => ({ ...s, [slotKey]: false }));
+    }
+  };
+
+  // Genera un BOSS completo e riempie il form della Forgia (tutto editabile).
+  const generaBoss = async () => {
+    setGenState((s) => ({ ...s, boss: true }));
+    try {
+      const r = await fetch("/api/genera-boss", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tipo: "boss", contesto: bossSpunto || newBoss.name || "", evita: bosses.map((b) => b.name).filter(Boolean) }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || "Generazione fallita.");
+      setNewBoss((b) => ({
+        ...b,
+        name: data.name || b.name,
+        maxHp: data.maxHp != null ? String(data.maxHp) : b.maxHp,
+        ac: data.ac != null ? String(data.ac) : b.ac,
+        gradoSfida: data.gradoSfida != null ? String(data.gradoSfida) : b.gradoSfida,
+        description: data.description || b.description,
+        rewards: data.rewards || b.rewards,
+        penalties: data.penalties || b.penalties,
+        actions: sanitizeActions(data.actions, MIN_ACTIONS),
+      }));
+    } catch (e) {
+      alert("Genera boss: " + (e.message || e));
+    } finally {
+      setGenState((s) => ({ ...s, boss: false }));
+    }
+  };
+
+  // Genera un MINION completo e riempie il form della Caserma.
+  const generaMinion = async () => {
+    setGenState((s) => ({ ...s, minion: true }));
+    try {
+      const r = await fetch("/api/genera-boss", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tipo: "minion", contesto: minionSpunto || minionForm.name || "", evita: minions.map((m) => m.name).filter(Boolean) }),
+      });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || "Generazione fallita.");
+      setMinionForm((m) => ({
+        ...m,
+        name: data.name || m.name,
+        hp: data.hp != null ? data.hp : m.hp,
+        ac: data.ac != null ? data.ac : m.ac,
+        actions: sanitizeActions(data.actions, 1),
+      }));
+    } catch (e) {
+      alert("Genera minion: " + (e.message || e));
+    } finally {
+      setGenState((s) => ({ ...s, minion: false }));
+    }
   };
 
   /* ── New boss handlers ── */
@@ -723,8 +925,22 @@ export default function WorldBossAdmin() {
         <section className="wb-forge">
           <div className="wb-section-head">
             <h2>⚒ Forgia della Minaccia</h2>
-            <small>Definisci nome, statistiche e azioni</small>
+            <small>Definisci nome, statistiche e azioni — o lascia fare all'IA</small>
           </div>
+
+          <div className="wb-ai-bar">
+            <input
+              className="admin-field-input"
+              placeholder="Spunto facoltativo (es. drago di ghiaccio dei picchi di Ehkia)"
+              value={bossSpunto}
+              onChange={(e) => setBossSpunto(e.target.value)}
+              disabled={genState.boss}
+            />
+            <button type="button" className="wb-ai-btn" onClick={generaBoss} disabled={genState.boss}>
+              {genState.boss ? "✨ L'IA forgia…" : "✨ Genera boss con l'IA"}
+            </button>
+          </div>
+          <small className="wb-ai-hint">Riempie nome, statistiche, azioni e spell. Puoi modificare tutto prima di evocare.</small>
 
           <form onSubmit={handleCreateBoss} className="wb-form">
             <div className="wb-field">
@@ -873,6 +1089,8 @@ export default function WorldBossAdmin() {
                 icon="🩸"
                 value={newBoss.imageUrl}
                 uploading={uploadState.newAlive}
+                generating={genState.genNewAlive}
+                onGenerate={() => generateSprite({ name: newBoss.name, desc: newBoss.description, dead: false, slotKey: "genNewAlive", apply: (url) => { cleanupStorageUrl(newBoss.imageUrl); setNewBoss((b) => ({ ...b, imageUrl: url })); } })}
                 onFile={onNewAlive}
                 onClear={() => {
                   cleanupStorageUrl(newBoss.imageUrl);
@@ -888,6 +1106,8 @@ export default function WorldBossAdmin() {
                 icon="💀"
                 value={newBoss.deadImageUrl}
                 uploading={uploadState.newDead}
+                generating={genState.genNewDead}
+                onGenerate={() => generateSprite({ name: newBoss.name, desc: newBoss.description, dead: true, slotKey: "genNewDead", apply: (url) => { cleanupStorageUrl(newBoss.deadImageUrl); setNewBoss((b) => ({ ...b, deadImageUrl: url })); } })}
                 onFile={onNewDead}
                 onClear={() => {
                   cleanupStorageUrl(newBoss.deadImageUrl);
@@ -921,6 +1141,20 @@ export default function WorldBossAdmin() {
           <small>Sgherri riutilizzabili — nome, HP, CA e attacchi. Attivali (⚡) per poterli schierare in battaglia.</small>
         </div>
 
+        <div className="wb-ai-bar">
+          <input
+            className="admin-field-input"
+            placeholder="Spunto facoltativo (es. sciame di non-morti striscianti)"
+            value={minionSpunto}
+            onChange={(e) => setMinionSpunto(e.target.value)}
+            disabled={genState.minion}
+          />
+          <button type="button" className="wb-ai-btn" onClick={generaMinion} disabled={genState.minion}>
+            {genState.minion ? "✨ L'IA crea…" : "✨ Genera minion con l'IA"}
+          </button>
+        </div>
+        <small className="wb-ai-hint">Riempie il form qui sotto (nome, HP, CA, attacchi): modificalo e salvalo come al solito.</small>
+
         <div className="wb-minion-workshop">
           <form className="wb-minion-form" onSubmit={saveMinion}>
             <div className="wb-field-row3">
@@ -948,6 +1182,8 @@ export default function WorldBossAdmin() {
                   label="Sprite Vivo" icon="🩸"
                   value={minionForm.imageUrl}
                   uploading={uploadState.minionAlive}
+                  generating={genState.genMinionAlive}
+                  onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: false, slotKey: "genMinionAlive", apply: (url) => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: url })); } })}
                   onFile={onMinionAlive}
                   onClear={() => { cleanupStorageUrl(minionForm.imageUrl); setMinionForm((m) => ({ ...m, imageUrl: "" })); }}
                   accent="#d4af37"
@@ -959,6 +1195,8 @@ export default function WorldBossAdmin() {
                   label="Sprite Morto" icon="🪦"
                   value={minionForm.deadImageUrl}
                   uploading={uploadState.minionDead}
+                  generating={genState.genMinionDead}
+                  onGenerate={() => generateSprite({ name: minionForm.name, desc: "", dead: true, slotKey: "genMinionDead", apply: (url) => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: url })); } })}
                   onFile={onMinionDead}
                   onClear={() => { cleanupStorageUrl(minionForm.deadImageUrl); setMinionForm((m) => ({ ...m, deadImageUrl: "" })); }}
                   accent="#7a0808"
@@ -1110,6 +1348,8 @@ export default function WorldBossAdmin() {
                           icon="🩸"
                           value={editData.imageUrl}
                           uploading={uploadState.editAlive}
+                          generating={genState.genEditAlive}
+                          onGenerate={() => generateSprite({ name: editData.name, desc: editData.description, dead: false, slotKey: "genEditAlive", apply: (url) => { cleanupStorageUrl(editData.imageUrl); setEditData((d) => ({ ...d, imageUrl: url })); } })}
                           onFile={onEditAlive}
                           onClear={() => {
                             cleanupStorageUrl(editData.imageUrl);
@@ -1122,6 +1362,8 @@ export default function WorldBossAdmin() {
                           icon="💀"
                           value={editData.deadImageUrl}
                           uploading={uploadState.editDead}
+                          generating={genState.genEditDead}
+                          onGenerate={() => generateSprite({ name: editData.name, desc: editData.description, dead: true, slotKey: "genEditDead", apply: (url) => { cleanupStorageUrl(editData.deadImageUrl); setEditData((d) => ({ ...d, deadImageUrl: url })); } })}
                           onFile={onEditDead}
                           onClear={() => {
                             cleanupStorageUrl(editData.deadImageUrl);
