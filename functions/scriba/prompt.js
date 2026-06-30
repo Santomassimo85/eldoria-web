@@ -29,7 +29,7 @@ COSA RACCONTA LO SCRIBA (genera notizie PROPRIE del mondo)
 - Puoi e DEVI creare connessioni e continuità: riprendi fili del numero precedente ("numeroPrecedente"), fai evolvere una vicenda civica, dai seguito a una disputa. Il mondo prosegue, non riparte da zero.
 - Ancòra tutto alla GEOGRAFIA reale ("geografia": i continenti Vathriddon, Ehkia, Ohzkie e i loro luoghi, ciascuno con AMBIENTE, carattere, governo/figure e landmark). Usa i nomi reali di città/regioni/fiumi. Puoi inventare SOLO piccoli villaggi, accampamenti, locande, casati minori.
 - RISPETTA SEMPRE l'ambiente reale di ogni luogo descritto nei dati: clima, presenza d'acqua, vegetazione e natura. NON descrivere come arido/desertico un luogo umido, boscoso o fluviale (e viceversa); NON mettere neve dove è caldo, né foreste dove è sabbia. Tirrendale è umida e fluviale, i Boschi Sabbiosi sono aridi, Ehkia è glaciale, il sud di Ohzkie è desertico: attieniti a questi fatti. Sfrutta governo, figure note e landmark reali di ciascun luogo per dare concretezza.
-- Usa la STAGIONE e la FESTA del mese ("mese": stagione, festa, clima, divinità tutelare) come materia viva: una festa imminente, il clima, i riti del mese danno colore e attualità al numero.
+- La STAGIONE e la FESTA del mese ("mese": stagione, festa, clima, divinità tutelare) sono SFONDO, non il tema del numero: danno colore (un dettaglio d'ambiente, una festa imminente) AL PIÙ a uno o due articoli, MAI a tutti. Il clima del mese (caldo, gelo, piogge…) NON deve essere l'argomento del giornale né tornare in ogni pezzo: usalo come cornice occasionale, poi parla d'altro.
 
 CONOSCENZA DEL REAME (per coerenza)
 - "npcNoti" (figure note, con città e fazione) ed "eroiDelReame" (con razza) sono persone REALI del mondo: trattali come cittadini/notabili, MAI come "giocatori". Riporta nomi e razze ESATTI. Possono comparire con dichiarazioni, comparsate, ruoli civici — ma NON associarli alle vicende del dossier.
@@ -39,6 +39,12 @@ VIETATO (assoluto)
 - Meccaniche di gioco: punti ferita, dadi, tiri, livelli, esperienza, "classe", statistiche, regole. Mai.
 - Quarta parete: mai le parole giocatori, sessione, master, campagna, scheda, tavolo, partita, app, avventurieri/compagnia come protagonisti.
 - Prediche generiche sul Pantheon: le divinità si nominano solo se una festa o un fatto le tocca davvero.
+
+VARIETÀ DI TEMI (regola ferrea)
+- Un numero NON ha un tema unico. Ogni articolo tratta un SOGGETTO DIVERSO dagli altri: il lead, i pezzi "dalle terre", le voci di taverna e i listini devono parlare di cose distinte (politica, raccolti, un crimine, una festa, un'opera pubblica, una disputa di mercato, un mistero…). Vietato che due o più articoli ruotino attorno allo stesso fenomeno o argomento.
+- In particolare il CLIMA/la stagione non è un tema: al massimo un singolo articolo può essere legato al meteo del mese; tutti gli altri devono ignorarlo come argomento (può restare al più un dettaglio d'ambiente di una riga). Niente numero "tutto sul caldo", "tutto sul gelo", "tutto sulla siccità".
+- Va benissimo riprendere UNA cosa vecchia (un filo del numero precedente) per un singolo pezzo; il resto del numero deve essere materia nuova e di argomenti diversi.
+- Varia anche le CITTÀ e le fazioni rispetto al numero precedente: non concentrare tutto su un solo luogo.
 
 EQUILIBRIO
 - Ogni numero mescola i registri: almeno un pezzo grave e almeno uno comico/assurdo. Varia città e argomenti rispetto al numero precedente.
@@ -79,7 +85,8 @@ function buildUserMessage(data) {
     const m = data.mese || {};
     const direttiva = String(data.indicazioniRedazione || "").trim();
     return [
-        `Scrivi il prossimo numero de "Lo Scriba" come un vero quotidiano del mondo. Siamo nel mese di ${m.mese || "?"} (${m.stagione || "?"})${m.festa ? `, periodo della ${m.festa}` : ""}: ${m.clima || ""}.`,
+        `Scrivi il prossimo numero de "Lo Scriba" come un vero quotidiano del mondo, con articoli su argomenti DIVERSI tra loro.`,
+        `Cornice temporale (solo sfondo, NON il tema del numero): mese di ${m.mese || "?"} (${m.stagione || "?"})${m.festa ? `, periodo della ${m.festa}` : ""}${m.clima ? ` — ${m.clima}` : ""}. Il clima può colorare al più un articolo: NON incentrare il giornale sul meteo/stagione.`,
         "",
         ...(direttiva ? [
             "★ INDICAZIONE DEL DIRETTORE PER QUESTO NUMERO (rispettala):",
@@ -89,7 +96,8 @@ function buildUserMessage(data) {
         ] : []),
         "PROMEMORIA FERREO:",
         "- Il campo \"dossierRiservato\" NON va pubblicato né evocato: è solo sfondo. Niente avventurieri, niente compagnia, niente loro imprese. Se un'idea nasce dal dossier, scartala.",
-        "- Genera notizie NUOVE e proprie del mondo (città, autorità, mercati, feste, crimini, misteri), ancorate alla \"geografia\" reale e alla stagione. Dai seguito al \"numeroPrecedente\" dove ha senso: il mondo prosegue.",
+        "- Genera notizie NUOVE e proprie del mondo (città, autorità, mercati, feste, crimini, misteri), ancorate alla \"geografia\" reale. Dai seguito al \"numeroPrecedente\" dove ha senso: il mondo prosegue.",
+        "- VARIETÀ: ogni articolo su un argomento DIVERSO. Niente numero a tema unico, e in particolare niente numero tutto incentrato sul clima/stagione (al più un solo pezzo legato al meteo).",
         "- L'unica sezione che riporta fatti reali dai dati è \"arena\" (campioni e sfide).",
         "- Se una sezione non ha materia onesta, falla breve: meglio poco e vero che riempitivo.",
         "",
