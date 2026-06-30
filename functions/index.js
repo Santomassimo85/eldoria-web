@@ -877,7 +877,11 @@ exports.scribaListRegistered = onCall(
       throw new HttpsError("internal", `Lettura utenti fallita: ${e.message}`);
     }
 
-    players.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, "it"));
+    // Prima i player col nome (ordinati per nome), poi chi ha solo la mail.
+    players.sort((a, b) => {
+      if (!!a.name !== !!b.name) return a.name ? -1 : 1;
+      return (a.name || a.email).localeCompare(b.name || b.email, "it");
+    });
     return { players };
   }
 );

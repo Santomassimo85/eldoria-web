@@ -299,7 +299,7 @@ export default function LoScribaAdmin() {
             <option value="">— scegli destinatario ({players.length} registrati) —</option>
             {players.map((p) => (
               <option key={p.uid} value={p.email}>
-                {p.name ? `${p.name} — ${p.email}` : p.email}
+                {p.name ? p.name : p.email}
               </option>
             ))}
           </select>
