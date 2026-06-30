@@ -21,6 +21,10 @@ import {
   TERRAINS, TERRAIN_KEYS, PROPS, MAX_GRID, MAX_ELEV,
 } from "./isoCore";
 import { generateTransparentSpriteDataUrl, propPixelPrompt } from "../../utils/aiSprite";
+import { isHiddenChar } from "../../data/hiddenPlayers";
+
+// Player sempre inclusi nella lista "Inserisci tutti" anche se filtrati altrove.
+const FORCE_PLAYER_EMAILS = ["ale_wolf@icloud.com"];
 import "./BossTactics.css";
 import "./BattleMapEditor.css";
 
@@ -69,6 +73,7 @@ export default function BattleMapEditor() {
   // Enemy placement: live bosses/minions (active only) + the open picker popup.
   const [bosses, setBosses] = useState([]);
   const [minionDefs, setMinionDefs] = useState([]);
+  const [characters, setCharacters] = useState([]); // PG (per posizionare i giocatori)
   const [placePicker, setPlacePicker] = useState(null); // {x,y,sx,sy} cell + screen pos
   const lastPointerRef = useRef({ x: 0, y: 0 });
 
@@ -110,6 +115,20 @@ export default function BattleMapEditor() {
     return onSnapshot(collection(db, "minions"), (snap) =>
       setMinionDefs(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.isActive)));
   }, [isMaster]);
+  useEffect(() => {
+    if (!isMaster) return;
+    return onSnapshot(collection(db, "characters"), (snap) =>
+      setCharacters(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  }, [isMaster]);
+
+  // Lista giocatori per il posizionamento = lista "Corone" (characters non
+  // nascosti, con nome) + i player forzati per email (es. ale_wolf).
+  const players = useMemo(() => {
+    const list = characters.filter((c) =>
+      (c.name && !isHiddenChar(c)) || FORCE_PLAYER_EMAILS.includes((c.email || "").toLowerCase()));
+    list.sort((a, b) => (a.name || a.email || a.id).localeCompare(b.name || b.email || b.id));
+    return list;
+  }, [characters]);
 
   // Genera con l'IA lo sprite (pixel-art, senza sfondo) per un tipo di prop.
   // Uno solo per tipo: vale per TUTTI gli oggetti di quel tipo sulla mappa,
@@ -248,9 +267,37 @@ export default function BattleMapEditor() {
       if (i < 0 || i >= tiles.length) return m;
       const nt = { ...tiles[i] };
       delete nt.unit; delete nt.spawn;
-      if (choice.kind === "spawn") nt.spawn = choice.side;
+      if (choice.kind === "player") nt.unit = { side: "hero", kind: "player", refId: choice.refId };
       else if (choice.kind === "boss" || choice.kind === "minion") nt.unit = { side: "enemy", kind: choice.kind, refId: choice.refId };
       tiles[i] = nt;
+      return { ...m, tiles };
+    });
+    setPlacePicker(null);
+  };
+
+  // "Inserisci tutti": piazza ogni giocatore della lista su una casella libera
+  // e calpestabile (priorità agli spawn eroe, poi dal basso = lato eroi).
+  const placeAllPlayers = () => {
+    if (!players.length) { alert("Nessun giocatore in lista."); return; }
+    setMap((m) => {
+      const tiles = m.tiles.map((t) => ({ ...t }));
+      const free = (t) => TERRAINS[t.terrain]?.walkable && !t.prop && !t.unit;
+      const heroSpawns = tiles.filter((t) => t.spawn === "hero" && free(t));
+      const others = tiles.filter((t) => free(t) && t.spawn !== "hero")
+        .sort((a, b) => b.y - a.y || a.x - b.x);
+      const slots = [...heroSpawns, ...others];
+      let n = 0;
+      players.forEach((c, idx) => {
+        const slot = slots[idx];
+        if (!slot) return;
+        const i = slot.y * m.w + slot.x;
+        tiles[i] = { ...tiles[i], unit: { side: "hero", kind: "player", refId: c.id } };
+        delete tiles[i].spawn;
+        n++;
+      });
+      if (n < players.length) {
+        setTimeout(() => alert(`Piazzati ${n}/${players.length} giocatori (caselle libere finite).`), 0);
+      }
       return { ...m, tiles };
     });
     setPlacePicker(null);
@@ -264,7 +311,12 @@ export default function BattleMapEditor() {
       if (t.unit.kind === "boss") {
         const b = bosses.find((x) => x.id === t.unit.refId);
         out.push({ id: `p-${t.x}-${t.y}`, x: t.x, y: t.y, side: "enemy", name: b?.name || "Boss?",
-          sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || null, hp: b?.maxHp || 1, maxHp: b?.maxHp || 1 });
+          sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || null, hp: b?.maxHp || 1, maxHp: b?.maxHp || 1, size: b?.size || 1 });
+      } else if (t.unit.kind === "player") {
+        const c = characters.find((x) => x.id === t.unit.refId);
+        out.push({ id: `p-${t.x}-${t.y}`, x: t.x, y: t.y, side: "hero", name: c?.name || "Eroe?",
+          sprite: c?.spriteUrl || c?.image || null, deadSprite: c?.deadSpriteUrl || c?.spriteUrl || null,
+          hp: c?.stats?.maxHp || 1, maxHp: c?.stats?.maxHp || 1 });
       } else {
         const mn = minionDefs.find((x) => x.id === t.unit.refId);
         out.push({ id: `p-${t.x}-${t.y}`, x: t.x, y: t.y, side: "enemy", name: mn?.name || "Minion?",
@@ -272,7 +324,7 @@ export default function BattleMapEditor() {
       }
     }
     return out;
-  }, [map, bosses, minionDefs]);
+  }, [map, bosses, minionDefs, characters]);
 
   // Show spawn tiles as coloured markers (blue = hero, red = enemy), plus the
   // live rectangle preview while picking an area.
@@ -450,8 +502,8 @@ export default function BattleMapEditor() {
         </div>
         <div className="bme-group">
           <span className="bme-label">Unità</span>
-          <button className={`bme-tool ${tool.type === "place" ? "on" : ""}`} onClick={() => setTool({ type: "place" })}>📍 Posiziona</button>
-          {tool.type === "place" && <span className="bme-hint">Clicca una casella → scegli boss/minion da inserire</span>}
+          <button className={`bme-tool ${tool.type === "place" ? "on" : ""}`} onClick={() => { setTool({ type: "place" }); setPanelsOpen(false); }}>📍 Posiziona</button>
+          <span className="bme-hint">Clicca una casella → scegli giocatore o nemico (o «Inserisci tutti»)</span>
         </div>
         <div className="bme-group">
           <span className="bme-label">Terreni</span>
@@ -494,12 +546,6 @@ export default function BattleMapEditor() {
               )}
             </div>
           ))}
-        </div>
-        <div className="bme-group">
-          <span className="bme-label">Spawn</span>
-          <button className={`bme-tool ${tool.type === "spawn" && tool.value === "hero" ? "on" : ""}`} onClick={() => setTool({ type: "spawn", value: "hero" })}>🛡 Eroe</button>
-          <button className={`bme-tool ${tool.type === "spawn" && tool.value === "enemy" ? "on" : ""}`} onClick={() => setTool({ type: "spawn", value: "enemy" })}>👹 Nemico</button>
-          <button className={`bme-tool ${tool.type === "spawn" && tool.value === null ? "on" : ""}`} onClick={() => setTool({ type: "spawn", value: null })}>🚫 Togli</button>
         </div>
       </div>
 
@@ -567,44 +613,48 @@ export default function BattleMapEditor() {
               <button onClick={() => setPlacePicker(null)}>✖</button>
             </div>
             <div className="bme-place-quick">
-              <button onClick={() => pickPlace({ kind: "spawn", side: "hero" })}>🛡 Spawn Eroe</button>
-              <button onClick={() => pickPlace({ kind: "spawn", side: "enemy" })}>👹 Spawn Nemico</button>
-              <button className="danger" onClick={() => pickPlace({ kind: "clear" })}>🗑 Svuota</button>
+              <button onClick={placeAllPlayers} title="Inserisci tutti i giocatori della lista">👥 Inserisci tutti i giocatori</button>
+              <button className="danger" onClick={() => pickPlace({ kind: "clear" })}>🗑 Svuota casella</button>
             </div>
 
+            {/* Giocatori (lista Corone) */}
+            <div className="bme-place-label">🛡 Giocatori</div>
+            {players.length === 0 ? (
+              <div className="bme-place-empty">Nessun giocatore in lista.</div>
+            ) : (
+              <div className="bme-place-thumbs">
+                {players.map((c) => (
+                  <button key={c.id} className="bme-thumb" title={c.name || c.email} onClick={() => pickPlace({ kind: "player", refId: c.id })}>
+                    {(c.spriteUrl || c.image)
+                      ? <img src={c.spriteUrl || c.image} alt="" />
+                      : <span className="ph">{(c.name || c.email || "?")[0].toUpperCase()}</span>}
+                    <small>{(c.name || c.email || "?").split(" ")[0]}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Nemici (boss + minion attivi) */}
+            <div className="bme-place-label">👹 Nemici</div>
             {bosses.length === 0 && minionDefs.length === 0 ? (
               <div className="bme-place-empty">
                 Nessun boss/minion <strong>attivo</strong>. Creali e attivali nel pannello Boss.
               </div>
             ) : (
-              <>
-                {bosses.length > 0 && (
-                  <>
-                    <div className="bme-place-label">👑 Boss</div>
-                    <div className="bme-place-thumbs">
-                      {bosses.map((b) => (
-                        <button key={b.id} className="bme-thumb" title={b.name} onClick={() => pickPlace({ kind: "boss", refId: b.id })}>
-                          {b.imageUrl ? <img src={b.imageUrl} alt="" /> : <span className="ph">{(b.name || "?")[0]}</span>}
-                          <small>{b.name}</small>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {minionDefs.length > 0 && (
-                  <>
-                    <div className="bme-place-label">🪓 Minion</div>
-                    <div className="bme-place-thumbs">
-                      {minionDefs.map((m) => (
-                        <button key={m.id} className="bme-thumb" title={m.name} onClick={() => pickPlace({ kind: "minion", refId: m.id })}>
-                          {m.imageUrl ? <img src={m.imageUrl} alt="" /> : <span className="ph">{(m.name || "?")[0]}</span>}
-                          <small>{m.name}</small>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
+              <div className="bme-place-thumbs">
+                {bosses.map((b) => (
+                  <button key={b.id} className="bme-thumb" title={`Boss: ${b.name}`} onClick={() => pickPlace({ kind: "boss", refId: b.id })}>
+                    {b.imageUrl ? <img src={b.imageUrl} alt="" /> : <span className="ph">{(b.name || "?")[0]}</span>}
+                    <small>👑 {b.name}</small>
+                  </button>
+                ))}
+                {minionDefs.map((m) => (
+                  <button key={m.id} className="bme-thumb" title={`Minion: ${m.name}`} onClick={() => pickPlace({ kind: "minion", refId: m.id })}>
+                    {m.imageUrl ? <img src={m.imageUrl} alt="" /> : <span className="ph">{(m.name || "?")[0]}</span>}
+                    <small>{m.name}</small>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </>

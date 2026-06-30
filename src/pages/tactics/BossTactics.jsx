@@ -221,7 +221,7 @@ export default function BossTactics() {
     }
     if (u.kind === "boss") {
       const b = bosses.find((x) => x.id === u.bossId) || bosses[0];
-      return { sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || b?.imageUrl || null, avatar: b?.imageUrl || b?.image || null };
+      return { sprite: b?.imageUrl || null, deadSprite: b?.deadImageUrl || b?.imageUrl || null, avatar: b?.imageUrl || b?.image || null, size: b?.size || 1 };
     }
     // Custom-built minion: alive + "tomba" (dead) sprites from the minions doc.
     if (u.defId) {
@@ -554,18 +554,27 @@ export default function BossTactics() {
   const spawnBattle = async () => {
     const chosenMap = savedMaps.find((x) => x.id === selMapId);
     const m = chosenMap ? { w: chosenMap.w, h: chosenMap.h, tiles: chosenMap.tiles.map((t) => ({ ...t })) } : defaultBattleMap();
-    const chosen = players.filter((p) => selPlayerIds.includes(p.id));
     const u = [];
-    // Heroes go on the painted hero spawns, falling back to a spaced auto-layout.
+    // Giocatori PIAZZATI nell'editor (tile unit side hero): entrano esattamente
+    // dove sono stati messi e hanno priorità sulla selezione manuale.
+    const placedHeroUids = new Set(
+      m.tiles.filter((t) => t.unit?.kind === "player").map((t) => t.unit.refId),
+    );
+    // Heroes selezionati (non già piazzati) vanno sui painted hero spawns, con
+    // fallback a un layout spaziato.
+    const chosen = players.filter((p) => selPlayerIds.includes(p.id) && !placedHeroUids.has(p.id));
     const heroSpawns = m.tiles.filter((t) => t.spawn === "hero").map((t) => ({ x: t.x, y: t.y }));
     const heroAt = (i) => heroSpawns[i] || { x: 1 + (i % 3) * 2, y: 2 + Math.floor(i / 3) * 2 };
     chosen.forEach((c, i) => { const p = heroAt(i); u.push(makePlayerUnit(c, c.id, p.x, p.y)); });
 
-    // Enemies pre-placed in the MAP EDITOR (optional). Any further boss/minion is
-    // added by clicking cells during the deploy phase (see setupAddUnit).
+    // Unità pre-piazzate nella MAP EDITOR (giocatori + nemici). Altri boss/minion
+    // si aggiungono cliccando le celle in fase deploy (vedi setupAddUnit).
     const placed = m.tiles.filter((t) => t.unit);
     placed.forEach((t) => {
-      if (t.unit.kind === "boss") {
+      if (t.unit.kind === "player") {
+        const c = players.find((x) => x.id === t.unit.refId);
+        if (c) u.push(makePlayerUnit(c, c.id, t.x, t.y));
+      } else if (t.unit.kind === "boss") {
         const b = bosses.find((x) => x.id === t.unit.refId);
         if (b) u.push({ ...makeBossUnit(b, t.x, t.y, parseInt(bossDex) || 0), id: `boss-${t.x}-${t.y}` });
       } else {

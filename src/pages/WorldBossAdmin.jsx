@@ -80,11 +80,20 @@ const initialBossState = {
   deadImageUrl: "",
   description: "",
   gradoSfida: "",
+  size: 1,
   expiryDate: "",
   actions: [blankAction(0), blankAction(1)],
 };
 
 const DICE = ["d4", "d6", "d8", "d10", "d12", "d20"];
+
+// Taglia del boss: quante caselle occupa visivamente sulla griglia (NxN).
+const BOSS_SIZES = [
+  { v: 1, label: "Normale (1×1)" },
+  { v: 2, label: "Grande (2×2)" },
+  { v: 3, label: "Enorme (3×3)" },
+  { v: 4, label: "Gargantuesco (4×4)" },
+];
 
 const ACTION_PLACEHOLDERS = [
   "Artiglio del Vuoto",
@@ -854,6 +863,7 @@ export default function WorldBossAdmin() {
         ac: parseInt(newBoss.ac) || 10,
         hp: parseInt(newBoss.maxHp),
         maxHp: parseInt(newBoss.maxHp),
+        size: parseInt(newBoss.size) || 1,
         isActive: false,
         mapX: 50,
         mapY: 50,
@@ -879,6 +889,7 @@ export default function WorldBossAdmin() {
         ...editData,
         ac: parseInt(editData.ac) || 10,
         maxHp: parseInt(editData.maxHp) || 100,
+        size: parseInt(editData.size) || 1,
         hp:
           parseInt(editData.hp) > parseInt(editData.maxHp)
             ? parseInt(editData.maxHp)
@@ -1004,6 +1015,17 @@ export default function WorldBossAdmin() {
                   onChange={(e) => setNewBoss({ ...newBoss, gradoSfida: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="wb-field">
+              <label>📐 Taglia (caselle occupate)</label>
+              <select
+                className="admin-field-input"
+                value={newBoss.size || 1}
+                onChange={(e) => setNewBoss({ ...newBoss, size: parseInt(e.target.value) || 1 })}
+              >
+                {BOSS_SIZES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+              </select>
             </div>
 
             <div className="wb-actions-section">
@@ -1425,6 +1447,13 @@ export default function WorldBossAdmin() {
                         <div className="wb-field">
                           <label>HP correnti</label>
                           <input className="admin-field-input" type="number" value={editData.hp ?? ""} onChange={(e) => setEditData({ ...editData, hp: e.target.value })} />
+                        </div>
+                        <div className="wb-field">
+                          <label>📐 Taglia</label>
+                          <select className="admin-field-input" value={editData.size || 1}
+                            onChange={(e) => setEditData({ ...editData, size: parseInt(e.target.value) || 1 })}>
+                            {BOSS_SIZES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+                          </select>
                         </div>
                       </div>
 

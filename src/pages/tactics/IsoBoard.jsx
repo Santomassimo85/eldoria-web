@@ -394,6 +394,10 @@ export default function IsoBoard({
         const depth = tileDepth(udx, udy);
         const sprite = u.dead ? u.deadSprite || u.sprite : u.sprite;
         const hpPct = u.maxHp ? Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100)) : 100;
+        // Taglia (boss grandi): lo sprite cresce verso l'alto dalla casella
+        // d'ancoraggio (il contenitore tiene i piedi fissi). Base: height 52 / max-width 78.
+        const usz = Math.max(1, Math.min(4, u.size || 1));
+        const sizeStyle = usz > 1 ? { height: 52 * usz, maxWidth: 78 * usz } : null;
 
         return (
           <div
@@ -429,11 +433,11 @@ export default function IsoBoard({
                 className="iso-unit-sprite"
                 src={sprite}
                 alt={u.name}
-                style={{ animationDelay: `${(u.x * 0.3 + u.y * 0.17).toFixed(2)}s`, "--face": facingById[u.id] ?? 1 }}
+                style={{ animationDelay: `${(u.x * 0.3 + u.y * 0.17).toFixed(2)}s`, "--face": facingById[u.id] ?? 1, ...sizeStyle }}
                 draggable={false}
               />
             ) : (
-              <div className="iso-unit-placeholder">
+              <div className="iso-unit-placeholder" style={usz > 1 ? { width: 44 * usz, height: 44 * usz } : null}>
                 {(u.name || "?")[0].toUpperCase()}
               </div>
             )}
