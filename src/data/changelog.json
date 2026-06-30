@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "62",
+      "date": "2026-06-30",
+      "title": "World Boss Fight: gittata incantesimi e azioni bonus",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Corretta la gittata degli incantesimi: gli incantesimi offensivi e di controllo (non armi) ora sono a distanza per impostazione predefinita (6 caselle) invece di richiedere il contatto. Prima molte spell che non rientravano in una breve lista di parole chiave finivano a gittata 1 (adiacente) e risultavano inutilizzabili dalla distanza. Restano a contatto solo gli incantesimi esplicitamente da mischia (Tocco, Contatto, Tocco Vampirico, Shocking Grasp, lame da incantesimo). Le armi da mischia restano adiacenti; quelle ad asta/frusta/tridente hanno portata 2."
+        },
+        {
+          "type": "mechanics",
+          "text": "I potenziamenti che concedono vantaggio ora sono AZIONI BONUS: lanciare un buff su di sé (es. +CA difensivo) o dare vantaggio a un alleato non consuma più l'azione del turno, quindi dopo puoi ancora muoverti e attaccare. Cura e malus al nemico restano azioni normali. Nuovo indicatore «✨ Bonus» nella scheda turno e marcatore ✨ sui pulsanti delle azioni bonus."
+        }
+      ]
+    },
+    {
       "version": "61.02",
       "date": "2026-06-30",
       "title": "World Boss Fight: Dardo Incantato — colpisce sempre, 3 dardi",

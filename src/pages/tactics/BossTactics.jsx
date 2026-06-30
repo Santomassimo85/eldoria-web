@@ -30,7 +30,7 @@ import {
   unitDone, sideAllDone, resetSide, bumpActive, txnBattle, bossAlive,
   PLAYER_PHASE_MS, ENEMY_PHASE_MS,
   rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
-  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice, isAutoHitSpell, magicMissileDarts,
+  spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice, isAutoHitSpell, magicMissileDarts, isBonusAction,
 } from "./battleModel";
 import "./BossTactics.css";
 
@@ -662,7 +662,7 @@ export default function BossTactics() {
     if (!isMaster || !unit?.dead) return;
     if (!window.confirm(`Far rinascere ${unit.name} con tutti i PF?`)) return;
     await txnBattle((us) => us.map((u) => (u.id === unit.id
-      ? { ...u, dead: false, hp: u.maxHp, hasMoved: false, hasActed: false, done: false }
+      ? { ...u, dead: false, hp: u.maxHp, hasMoved: false, hasActed: false, hasBonused: false, done: false }
       : u)));
     await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
       content: `✨ Il Master ha riportato in vita ${unit.name} con tutti i PF!` });
@@ -1026,23 +1026,28 @@ export default function BossTactics() {
     setBusy(false);
     await advancePhase();
   };
+  // Self-buff (mage armor, shield, blur…) is a BONUS action: it sets hasBonused,
+  // NOT hasActed, so the caster can still move + attack this turn.
   const resolveSelfBuff = async (caster, action) => {
     setBusy(true);
-    await txnBattle((us, d) => us.map((u) => (u.id === caster.id ? bumpActive({ ...u, ac: u.ac + 2, hasActed: true }, d.round) : u)),
+    await txnBattle((us, d) => us.map((u) => (u.id === caster.id ? bumpActive({ ...u, ac: u.ac + 2, hasBonused: true }, d.round) : u)),
       fxStamp("shield", caster.x, caster.y));
-    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA` });
+    await logChat({ type: "action", senderName: caster.name, actionName: `${action.name} (Difesa · bonus)`, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: `🛡 +2 CA · azione bonus` });
     setBusy(false);
     await advancePhase();
   };
+  // Granting ADVANTAGE to an ally is a bonus action (doesn't end the turn);
+  // imposing DISADVANTAGE on an enemy is a normal action (spends it).
   const resolveCond = async (caster, target, action, cond) => {
     setBusy(true);
+    const asBonus = cond === "advantage";
     await txnBattle((us, d) => us.map((u) => {
       let n = u;
       if (u.id === target.id) n = { ...n, cond };
-      if (u.id === caster.id) n = bumpActive({ ...n, hasActed: true }, d.round);
+      if (u.id === caster.id) n = bumpActive({ ...n, ...(asBonus ? { hasBonused: true } : { hasActed: true }) }, d.round);
       return n;
     }), fxStamp(cond === "advantage" ? "buff" : "debuff", target.x, target.y));
-    await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio` : `🌑 ${target.name}: svantaggio` });
+    await logChat({ type: "action", senderName: caster.name, actionName: action.name, uid: caster.uid || BOSS_SYSTEM_UID, side: caster.side, category: action.category || "Incantesimo", damageRoll: cond === "advantage" ? `🌟 ${target.name}: vantaggio · azione bonus` : `🌑 ${target.name}: svantaggio` });
     setBusy(false);
     await advancePhase();
   };
@@ -1176,7 +1181,10 @@ export default function BossTactics() {
     if (isMaster && phase === "enemies" && mode === "idle" && u.side === "enemy" && !u.dead) {
       setSelEnemyId(u.id); return;
     }
-    if (!isMyTurn || mode !== "act" || !selAction || activeUnit.hasActed) return;
+    if (!isMyTurn || mode !== "act" || !selAction) return;
+    // Bonus-action buffs are gated by hasBonused (so they stay usable AFTER you
+    // attacked); everything else is gated by the normal action slot (hasActed).
+    if (isBonusAction(selAction) ? activeUnit.hasBonused : activeUnit.hasActed) return;
     // AoE spell aimed at a unit → choose the blast centre on that unit's tile
     // (still requires Conferma; it does not fire on the click).
     const aoe = spellAoE(selAction);
@@ -1204,7 +1212,7 @@ export default function BossTactics() {
   };
 
   const pickAction = (a) => {
-    if (detectSpellIntent(a) === "self_buff") { resolveSelfBuff(activeUnit, a); setMode("idle"); return; }
+    if (detectSpellIntent(a) === "self_buff") { if (activeUnit.hasBonused) return; resolveSelfBuff(activeUnit, a); setMode("idle"); return; }
     setSelAction(a); setMode("act"); setAimHover(null); setAimCenter(null);
   };
 
@@ -1631,10 +1639,11 @@ export default function BossTactics() {
             <div className="tac-hud-meta">
               <span className="tac-hud-name">{activeUnit.name}</span>
               <span className="tac-hud-stats">❤ {activeUnit.hp}/{activeUnit.maxHp} · 🛡 {activeUnit.ac}</span>
-              {/* one move + one action per turn — clearly shown as used/available */}
+              {/* one move + one action + one bonus per turn — shown as used/available */}
               <span className="tac-hud-pips">
                 <span className={`tac-pip ${activeUnit.hasMoved ? "used" : "ok"}`}>👟 {activeUnit.hasMoved ? "fatto" : "Movimento"}</span>
                 <span className={`tac-pip ${activeUnit.hasActed ? "used" : "ok"}`}>⚔ {activeUnit.hasActed ? "fatto" : "Azione"}</span>
+                <span className={`tac-pip ${activeUnit.hasBonused ? "used" : "ok"}`}>✨ {activeUnit.hasBonused ? "fatto" : "Bonus"}</span>
               </span>
             </div>
           </div>
@@ -1676,7 +1685,7 @@ export default function BossTactics() {
                   onClick={() => { setMode("move"); setSelAction(null); }}>
                   👟 Muovi {activeUnit.hasMoved ? "✓" : ""}
                 </button>
-                <button className="tac-act tac-open-actions" disabled={activeUnit.hasActed}
+                <button className="tac-act tac-open-actions" disabled={activeUnit.hasActed && activeUnit.hasBonused}
                   onClick={() => setActionsOpen(true)}>
                   ⚔ Scegli azione ▴
                 </button>
@@ -1711,15 +1720,18 @@ export default function BossTactics() {
                       const k = actionKind(a);
                       const selfBuff = detectSpellIntent(a) === "self_buff";
                       const reach = selfBuff ? 0 : (a.range || actionRange(a));
+                      // Buffs (self/ally advantage) cost the BONUS slot, not the action.
+                      const bonus = isBonusAction(a);
+                      const used = bonus ? activeUnit.hasBonused : activeUnit.hasActed;
                       return (
-                        <button key={i} disabled={activeUnit.hasActed}
+                        <button key={i} disabled={used}
                           className={`tac-act ${k.cls} ${selAction?.name === a.name ? "on" : ""}`}
                           title={a.description || a.name}
                           onClick={() => setPreviewAction(a)}>
                           <span className="tac-act-icon">{k.icon}</span>
-                          <span className="tac-act-name">{a.name}</span>
+                          <span className="tac-act-name">{a.name}{bonus ? " ✨" : ""}</span>
                           {reach > 0 && <span className="tac-act-rng" title={`Raggio ${reach} caselle`}>⟶{reach}</span>}
-                          {activeUnit.hasActed && <span className="tac-act-done">✓</span>}
+                          {used && <span className="tac-act-done">✓</span>}
                         </button>
                       );
                     })}
@@ -1742,7 +1754,9 @@ export default function BossTactics() {
         const aoe = spellAoE(a);
         const dmg = actionDamageText(a);
         const desc = cleanDesc(a.description);
-        const useLabel = selfBuff ? "✅ Usa" : (intent === "heal" || intent === "buff") ? "🎯 Scegli alleato" : "🎯 Scegli bersaglio";
+        const bonus = isBonusAction(a);
+        const used = bonus ? activeUnit.hasBonused : activeUnit.hasActed;
+        const useLabel = selfBuff ? "✅ Usa (bonus)" : (intent === "heal" || intent === "buff") ? `🎯 Scegli alleato${bonus ? " (bonus)" : ""}` : "🎯 Scegli bersaglio";
         const use = () => { setPreviewAction(null); pickAction(a); };
         return (
           <>
@@ -1773,7 +1787,7 @@ export default function BossTactics() {
               </div>
               <div className="tac-preview-buttons">
                 <button className="tac-act tac-cancel" onClick={() => setPreviewAction(null)}>✖ Annulla</button>
-                <button className={`tac-act ${k.cls} tac-preview-use`} disabled={activeUnit.hasActed} onClick={use}>
+                <button className={`tac-act ${k.cls} tac-preview-use`} disabled={used} onClick={use}>
                   {useLabel}
                 </button>
               </div>

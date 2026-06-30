@@ -48,7 +48,7 @@ export const bossAlive = (units = []) => {
 
 // Reset a side's per-round flags — called when that side's phase begins.
 export const resetSide = (units, side) =>
-  units.map((u) => (u.side === side ? { ...u, hasMoved: false, hasActed: false, done: false } : u));
+  units.map((u) => (u.side === side ? { ...u, hasMoved: false, hasActed: false, hasBonused: false, done: false } : u));
 
 // Participation tally: bump a unit's cumulative `actedRounds` the FIRST time it
 // does anything (move OR action) in a given round. Moving AND acting in the same
@@ -318,23 +318,52 @@ export function detectElement(action) {
   return "arcane";
 }
 
-// Default attack range by action name (ranged weapons/cantrips reach further).
+// Default attack range by action name. The guiding rule: WEAPONS are melee
+// unless they're clearly ranged/thrown; SPELLS are ranged unless they're clearly
+// touch/melee. Previously any offensive spell that didn't match a small keyword
+// list fell through to range 1 (adjacent), which left lots of perfectly normal
+// ranged spells unusable from a distance — this fixes that.
 export function actionRange(action) {
   const aoe = spellAoE(action);
   if (aoe) return aoe.range;                 // AoE spells carry their own range
   const t = `${action.name || ""}`.toLowerCase();
-  if (/arco|balestra|long ?bow|short ?bow|crossbow|fionda|sling|dardo|javelin|giavellotto|magic ?missile|missil/.test(t)) return 6;
-  if (detectSpellIntent(action) === "attack" && /trucchett|cantrip|livello|level|raggio|bolt|fire|fulmine|ray|eldritch/.test(`${action.category || ""} ${t}`)) return 6;
-  // Healing / support spells: most reach allies at a distance (Healing Word &c.).
-  // Touch spells stay adjacent; "ranged" wording reaches far; others get a
-  // comfortable default so players aren't forced to stand next to the target.
+  const isWeapon = /armi|arma|weapon/.test(`${action.category || ""}`.toLowerCase());
+
+  // Ranged / thrown weapons and dart-style spells reach across the field.
+  if (/arco|balestra|long ?bow|short ?bow|crossbow|fionda|sling|dardo|javelin|giavellotto|magic ?missile|missil|pistol|fucile|rifle|\bgun\b/.test(t)) return 6;
+
+  // Plain weapons that didn't match a ranged keyword are melee: reach weapons
+  // (polearms / whips / tridents) hit two tiles, everything else is adjacent.
+  if (isWeapon) {
+    if (/lancia|picca|alabarda|frusta|whip|reach|portata|tridente|trident|glaive|halberd|pike/.test(t)) return 2;
+    return 1;
+  }
+
   const intent = detectSpellIntent(action);
+
+  // Healing / support spells: touch stays adjacent; "word/aura/mass" wording
+  // reaches far; everything else gets a comfortable default.
   if (intent === "heal" || intent === "buff") {
     if (/tocco|touch|contatto|imposizione|cure wounds|cura ferite/.test(t)) return 1;
     if (/parola|word|distanza|a distanza|raggio|ranged|aura|massa|\bmass\b|preghiera|benedizione|bless/.test(t)) return 8;
     return 6;
   }
-  return 1;
+
+  // Offensive / control SPELLS (anything not a weapon) are RANGED by default —
+  // most D&D damage cantrips and spells hit at a distance. Only explicit
+  // touch/melee spells stay adjacent (Shocking Grasp, Vampiric Touch, the blade
+  // cantrips, Inflict-style touch spells).
+  if (/\btocco\b|touch|contatto|corpo a corpo|\bmelee\b|lama tonante|booming blade|verdefiamma|green.?flame|folgorante|shocking grasp/.test(t)) return 1;
+  return 6;
+}
+
+// Buffs that grant an advantage — to yourself (mage armor, shield, blur, mirror
+// image…) or to an ally (bless, guidance, heroism…) — are treated as BONUS
+// actions in the boss fight: casting one does NOT spend your action, so you can
+// still move and attack the same turn. Heals and enemy debuffs stay full actions.
+export function isBonusAction(action) {
+  const intent = detectSpellIntent(action);
+  return intent === "self_buff" || intent === "buff";
 }
 
 // Magic Missile family — these spells hit AUTOMATICALLY: no to-hit roll, no save,
