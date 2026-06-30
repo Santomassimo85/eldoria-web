@@ -31,11 +31,11 @@ const CODE2TERR = {
   n: "snow", "~": "water", l: "lava", c: "acid", ".": "void",
 };
 
-// Tre tagli di mappa selezionabili per la generazione IA (entro i limiti dell'endpoint 8–16).
+// Tre tagli di mappa selezionabili per la generazione IA.
 const MAP_SIZES = [
-  { key: "S", label: "Piccola", w: 10, h: 10 },
-  { key: "M", label: "Media", w: 13, h: 13 },
-  { key: "L", label: "Grande", w: 16, h: 16 },
+  { key: "S", label: "Piccola", w: 12, h: 12 },
+  { key: "M", label: "Media", w: 18, h: 18 },
+  { key: "L", label: "Grande", w: 25, h: 25 },
 ];
 
 export default function BattleMapEditor() {
@@ -331,6 +331,8 @@ export default function BattleMapEditor() {
       const at = (x, y) => tiles[y * gw + x];
       for (const p of Array.isArray(data.props) ? data.props : []) {
         const x = parseInt(p.x, 10), y = parseInt(p.y, 10);
+        // Colonne vietate: ignora qualsiasi prop "column" anche se l'IA lo proponesse.
+        if (p.p === "column") continue;
         if (x >= 0 && y >= 0 && x < gw && y < gh && PROPS[p.p]) at(x, y).prop = p.p;
       }
       const setSpawns = (list, side) => {

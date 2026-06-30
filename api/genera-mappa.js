@@ -14,8 +14,8 @@ export default async function handler(req, res) {
 
   const body = req.body || {};
   const seme = Math.floor(Math.random() * 1e9);
-  const w = Math.max(8, Math.min(16, parseInt(body.w) || 12));
-  const h = Math.max(8, Math.min(16, parseInt(body.h) || 12));
+  const w = Math.max(8, Math.min(32, parseInt(body.w) || 12));
+  const h = Math.max(8, Math.min(32, parseInt(body.h) || 12));
   const tema = String(body.tema || body.contesto || "").trim();
 
   const legenda = Object.entries(TERR_CODES).map(([k, v]) => `${k}=${v}`).join(", ");
@@ -30,7 +30,7 @@ REGOLE FERREE:
 - "rows": ESATTAMENTE ${h} stringhe, ognuna di ESATTAMENTE ${w} caratteri. Ogni carattere è un terreno. Legenda: ${legenda}.
 - Usa principalmente terreni transitabili (g,s,a,d,w,n); usa ~ (acqua), l (lava), c (acido) con parsimonia come pericoli; usa . (vuoto/precipizio) solo per bordi o crepacci, MAI tutta la mappa.
 - "elevation": ESATTAMENTE ${h} stringhe di ${w} cifre (0-9), la quota di ogni casella. Tieni il grosso a 0-2, con qualche rialzo (3-5) per collinette/piattaforme. Niente picchi isolati ovunque.
-- "props": pochi (3-10) oggetti che bloccano il passaggio, SOLO con "p" tra: tree, boulder, column. Coordinate dentro la griglia (x 0-${w - 1}, y 0-${h - 1}).
+- "props": pochi (3-10) oggetti che bloccano il passaggio, SOLO con "p" tra: tree, boulder. NON usare MAI "column" (colonne vietate). Coordinate dentro la griglia (x 0-${w - 1}, y 0-${h - 1}).
 - "spawns": 3-6 caselle "hero" su un lato e 3-6 "enemy" sul lato opposto, su terreno transitabile (mai ~,l,c,. e mai su un prop).
 - "name": nome evocativo della mappa, NON italiano-stereotipato.
 
@@ -46,7 +46,7 @@ Coerenza tematica${tema ? ` col tema richiesto: "${tema}"` : " (inventa un ambie
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 3000,
+        max_tokens: 6000,
         temperature: 1,
         messages: [{ role: "user", content: PROMPT }],
       }),
