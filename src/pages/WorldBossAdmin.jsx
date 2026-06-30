@@ -518,6 +518,7 @@ const SpriteDropzone = ({ label, icon, value, uploading, onFile, onClear, onGene
 export default function WorldBossAdmin() {
   const { currentUser } = useAuth();
   const [bosses, setBosses] = useState([]);
+  const [showHidden, setShowHidden] = useState(false); // mostra anche i boss disattivati
   const [newBoss, setNewBoss] = useState(initialBossState);
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -1290,15 +1291,32 @@ export default function WorldBossAdmin() {
       {/* ── BESTIARIO ── */}
       <section className="wb-bestiary">
         <div className="wb-section-head">
-          <h2>🦴 Bestiario ({bosses.length})</h2>
+          <h2>🦴 Bestiario ({bosses.filter((b) => b.isActive).length} attivi)</h2>
           <small>Clicca sulla mappa per riposizionare il ping</small>
+          {bosses.some((b) => !b.isActive) && (
+            <button
+              type="button"
+              className="wb-btn ghost"
+              style={{ marginLeft: "auto" }}
+              onClick={() => setShowHidden((v) => !v)}
+            >
+              {showHidden
+                ? "🙈 Nascondi disattivati"
+                : `👁 Mostra disattivati (${bosses.filter((b) => !b.isActive).length})`}
+            </button>
+          )}
         </div>
 
-        {bosses.length === 0 ? (
-          <p className="wb-empty">Nessuna minaccia evocata. La sala attende il tuo richiamo.</p>
-        ) : (
+        {(() => { const visibleBosses = bosses.filter((b) => showHidden || b.isActive); return (
+          visibleBosses.length === 0 ? (
+            <p className="wb-empty">
+              {bosses.length === 0
+                ? "Nessuna minaccia evocata. La sala attende il tuo richiamo."
+                : "Nessun boss attivo. Premi «Mostra disattivati» per vederli."}
+            </p>
+          ) : (
           <div className="wb-bestiary-grid">
-            {bosses.map((boss) => {
+            {visibleBosses.map((boss) => {
               const isEditing = editingId === boss.id;
               const isDefeated = (boss.hp ?? 0) <= 0;
               const hpPct = boss.maxHp ? Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100)) : 0;
@@ -1478,7 +1496,8 @@ export default function WorldBossAdmin() {
               );
             })}
           </div>
-        )}
+          )
+        ); })()}
       </section>
     </div>
   );

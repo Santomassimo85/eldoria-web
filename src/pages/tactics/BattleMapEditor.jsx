@@ -20,6 +20,7 @@ import {
   makeFlatMap, makeTile, computeBoardMetrics, rotateCoord,
   TERRAINS, TERRAIN_KEYS, PROPS, MAX_GRID, MAX_ELEV,
 } from "./isoCore";
+import { generateTransparentSpriteDataUrl, propPixelPrompt } from "../../utils/aiSprite";
 import "./BossTactics.css";
 import "./BattleMapEditor.css";
 
@@ -48,7 +49,7 @@ export default function BattleMapEditor() {
   const [mapName, setMapName] = useState("Nuova mappa");
   const [editingId, setEditingId] = useState(null);
   const [propSprites, setPropSprites] = useState({});
-  const propFileRefs = useRef({});
+  const [genProp, setGenProp] = useState(null);   // chiave prop in generazione
   // selection mode: "single" paints one tile per click; "rect" picks a
   // rectangular area with two clicks and applies the active tool to all of it.
   const [selMode, setSelMode] = useState("single");
@@ -110,26 +111,19 @@ export default function BattleMapEditor() {
       setMinionDefs(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.isActive)));
   }, [isMaster]);
 
-  // Compress an uploaded image and store it as the sprite for a prop type.
-  const loadPropSprite = (file, key) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = async () => {
-        const MAX_PX = 256;
-        const scale = img.width > MAX_PX ? MAX_PX / img.width : 1;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        await setDoc(doc(db, "battle_meta", "prop_sprites"), { [key]: canvas.toDataURL("image/png") }, { merge: true });
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+  // Genera con l'IA lo sprite (pixel-art, senza sfondo) per un tipo di prop.
+  // Uno solo per tipo: vale per TUTTI gli oggetti di quel tipo sulla mappa,
+  // finché non lo rigeneri.
+  const generaProp = async (key) => {
+    setGenProp(key);
+    try {
+      const url = await generateTransparentSpriteDataUrl(propPixelPrompt(key), { maxPx: 192 });
+      await setDoc(doc(db, "battle_meta", "prop_sprites"), { [key]: url }, { merge: true });
+    } catch (e) {
+      alert("Genera oggetto: " + (e.message || e));
+    } finally {
+      setGenProp(null);
+    }
   };
   const removePropSprite = (key) => setDoc(doc(db, "battle_meta", "prop_sprites"), { [key]: "" }, { merge: true });
 
@@ -481,20 +475,21 @@ export default function BattleMapEditor() {
           <button className={`bme-tool ${tool.type === "prop" && tool.value === null ? "on" : ""}`} onClick={() => setTool({ type: "prop", value: null })}>🚫 Togli</button>
         </div>
         <div className="bme-group">
-          <span className="bme-label">Sprite Prop</span>
+          <span className="bme-label">Sprite Prop <small style={{ opacity: .6, fontWeight: 400 }}>(IA, uguale per tutta la mappa)</small></span>
           {Object.values(PROPS).map((p) => (
             <div key={p.key} className="bme-prop-sprite" title={p.label}>
               <div className="bme-prop-thumb">
-                {propSprites[p.key]
-                  ? <img src={propSprites[p.key]} alt={p.label} />
-                  : <span>{p.emoji}</span>}
+                {genProp === p.key
+                  ? <span>⏳</span>
+                  : propSprites[p.key]
+                    ? <img src={propSprites[p.key]} alt={p.label} />
+                    : <span>{p.emoji}</span>}
               </div>
-              <input
-                ref={(el) => { propFileRefs.current[p.key] = el; }}
-                type="file" accept="image/*" style={{ display: "none" }}
-                onChange={(e) => loadPropSprite(e.target.files[0], p.key)} />
-              <button className="bme-tool" onClick={() => propFileRefs.current[p.key]?.click()}>📁</button>
-              {propSprites[p.key] && (
+              <button className="bme-tool" disabled={genProp === p.key} onClick={() => generaProp(p.key)}
+                title={`Genera lo sprite per ${p.label} (vale per tutti)`}>
+                {genProp === p.key ? "…" : (propSprites[p.key] ? "✨ Rigenera" : "✨ Genera")}
+              </button>
+              {propSprites[p.key] && genProp !== p.key && (
                 <button className="bme-tool" onClick={() => removePropSprite(p.key)}>✖</button>
               )}
             </div>
