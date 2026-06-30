@@ -60,6 +60,10 @@ export default function BattleMapEditor() {
   const [mapTheme, setMapTheme] = useState("");   // spunto per la generazione IA
   const [mapSize, setMapSize] = useState("M");    // taglio scelto per la generazione IA
   const [genning, setGenning] = useState(false);  // generazione mappa in corso
+  // Su mobile la palette+tray coprono lo schermo: di default le nascondiamo
+  // così la mappa è disegnabile; un tasto le mostra/nasconde.
+  const [panelsOpen, setPanelsOpen] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth > 820);
 
   // Enemy placement: live bosses/minions (active only) + the open picker popup.
   const [bosses, setBosses] = useState([]);
@@ -390,7 +394,7 @@ export default function BattleMapEditor() {
   };
 
   return (
-    <div className="tac-screen">
+    <div className={`tac-screen ${panelsOpen ? "" : "bme-collapsed"}`}>
       <div className="tac-topbar">
         <Link to="/dm-admin" className="bme-back">← Admin</Link>
         <span className="tac-title">🗺 Editor Mappe Battaglia</span>
@@ -398,6 +402,20 @@ export default function BattleMapEditor() {
           <span className="bme-placed-count" title="Nemici piazzati sulla mappa">☠ {previewUnits.length}</span>
         )}
         <div className="tac-controls">
+          <button
+            className={`bme-place-quickbtn ${tool.type === "place" ? "on" : ""}`}
+            onClick={() => { setTool({ type: "place" }); setPanelsOpen(false); }}
+            title="Attiva il posizionamento e nascondi il menu: tocca una casella per inserire boss/minion/eroi"
+          >
+            📍 Posiziona
+          </button>
+          <button
+            className={`bme-toggle-panels ${panelsOpen ? "on" : ""}`}
+            onClick={() => setPanelsOpen((o) => !o)}
+            title={panelsOpen ? "Nascondi gli strumenti" : "Mostra gli strumenti"}
+          >
+            {panelsOpen ? "✕ Strumenti" : "🧰 Strumenti"}
+          </button>
           <button onClick={() => zoom(+1)}>＋</button>
           <button onClick={() => zoom(-1)}>－</button>
           <button onClick={rotate} title="Ruota">⟳</button>
