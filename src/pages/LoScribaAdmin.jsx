@@ -61,6 +61,9 @@ export default function LoScribaAdmin() {
   const [previewHtml, setPreviewHtml] = useState(null);
   const [notes, setNotes] = useState([]);   // spunti per il prossimo numero
   const [draft, setDraft] = useState("");   // nuovo spunto in scrittura
+  const [players, setPlayers] = useState([]);     // destinatari registrati (Auth)
+  const [target, setTarget] = useState("");       // email scelta per l'invio mirato
+  const [picked, setPicked] = useState(() => new Set()); // id numeri selezionati
 
   const isMaster = currentUser && MASTER_EMAILS.includes(currentUser.email);
 
@@ -78,6 +81,14 @@ export default function LoScribaAdmin() {
       setNotes(parseNotes(s.data().nextIssueInput));
     });
     return () => { unsub(); unsubCfg(); };
+  }, [isMaster]);
+
+  // Elenco delle email registrate sull'app (per l'invio mirato).
+  useEffect(() => {
+    if (!isMaster) return;
+    httpsCallable(functions, "scribaListRegistered")()
+      .then((res) => setPlayers(res.data?.players || []))
+      .catch((e) => setMsg({ type: "err", text: "Elenco destinatari: " + (e?.message || e) }));
   }, [isMaster]);
 
   if (!isMaster) {
@@ -142,6 +153,23 @@ export default function LoScribaAdmin() {
     if (!window.confirm(`Eliminare definitivamente il Numero ${e.number}?`)) return;
     await deleteDoc(doc(db, "newsletters", e.id));
     setMsg({ type: "ok", text: `Numero ${e.number} eliminato.` });
+  });
+
+  const togglePick = (id) => setPicked((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const inviaMirato = () => run(async () => {
+    if (!target) throw new Error("Scegli un destinatario.");
+    const ids = editions.filter((e) => picked.has(e.id)).map((e) => e.id);
+    if (!ids.length) throw new Error("Seleziona almeno un numero (spunta la casella accanto al numero).");
+    const call = httpsCallable(functions, "scribaSendCustom", { timeout: 300000 });
+    const res = await call({ email: target, ids });
+    const d = res.data || {};
+    setMsg({ type: d.sent ? "ok" : "err", text: `Inviati ${d.sent ?? 0}/${d.total ?? ids.length} numeri a ${target}.` });
+    if (d.sent) setPicked(new Set());
   });
 
   const btn = (label, onClick, color = "#c9a227", textColor = "#7a1f12") => (
@@ -253,6 +281,32 @@ export default function LoScribaAdmin() {
         {btn(busy ? "Lo Scriba sta scrivendo…" : "Genera e mandami l'anteprima", generaAnteprima)}
       </div>
 
+      {/* Invio mirato a un destinatario specifico */}
+      <div className="adm-tile" style={{ cursor: "default", marginBottom: 26 }}>
+        <span className="adm-tile-icon" aria-hidden="true">📧</span>
+        <h3 className="adm-tile-title">Invia a un destinatario specifico</h3>
+        <p className="adm-tile-desc">
+          Manda <strong>uno o più numeri</strong> a <strong>una sola mail</strong> registrata sull'app (es. per recuperare un
+          arretrato). <strong>Spunta i numeri</strong> nell'elenco qui sotto, scegli il destinatario e premi invia.
+          Questo invio <strong>non</strong> cambia lo stato del numero e <strong>non</strong> lo manda agli altri.
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+          <select
+            value={target} disabled={busy}
+            onChange={(e) => setTarget(e.target.value)}
+            style={{ flex: "1 1 280px", minWidth: 220, padding: "8px 10px", fontSize: "0.95rem", fontFamily: "inherit", border: "1px solid #cdbfa3", borderRadius: 6, background: "#fffdf7" }}
+          >
+            <option value="">— scegli destinatario ({players.length} registrati) —</option>
+            {players.map((p) => (
+              <option key={p.uid} value={p.email}>
+                {p.name ? `${p.name} — ${p.email}` : p.email}
+              </option>
+            ))}
+          </select>
+          {btn(busy ? "Invio…" : `📤 Invia i selezionati (${picked.size})`, inviaMirato)}
+        </div>
+      </div>
+
       {/* Archivio numeri */}
       <h2 className="adm-panel-title" style={{ margin: "0 0 12px", fontSize: "0.82rem", letterSpacing: ".16em", textTransform: "uppercase", color: "#8a6212" }}>
         Numeri ({editions.length})
@@ -262,7 +316,10 @@ export default function LoScribaAdmin() {
           const st = STATUS_LABEL[e.status] || { t: e.status, c: "#6b5d44" };
           const motto = e.content?.edition_motto || "";
           return (
-            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "#fffdf7", border: "1px solid #e3d8bf", borderRadius: 6 }}>
+            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: picked.has(e.id) ? "#fbf3da" : "#fffdf7", border: `1px solid ${picked.has(e.id) ? "#c9a227" : "#e3d8bf"}`, borderRadius: 6 }}>
+              <input type="checkbox" checked={picked.has(e.id)} onChange={() => togglePick(e.id)}
+                disabled={!e.html} title={e.html ? "Seleziona per l'invio mirato" : "Numero senza contenuto"}
+                style={{ width: 18, height: 18, cursor: e.html ? "pointer" : "not-allowed" }} />
               <strong style={{ minWidth: 42 }}>N. {e.number}</strong>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: st.c, minWidth: 78 }}>{st.t}</span>
               <span style={{ flex: 1, color: "#6b5d44", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{motto}</span>

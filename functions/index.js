@@ -841,6 +841,109 @@ exports.scribaSendNow = onCall(
 );
 
 /**
+ * scribaListRegistered — elenca TUTTE le email registrate sull'app (Firebase
+ * Auth), arricchite col nome del personaggio quando disponibile. Serve al
+ * pannello per scegliere un destinatario singolo a cui mandare uno o più numeri.
+ */
+exports.scribaListRegistered = onCall(
+  { region: "us-central1", timeoutSeconds: 60, memory: "256MiB" },
+  async (request) => {
+    const email = request.auth?.token?.email;
+    if (!email || !SCRIBA_MASTERS.includes(email)) {
+      throw new HttpsError("permission-denied", "Solo il master può consultare i destinatari.");
+    }
+    const dbAdmin = admin.firestore();
+
+    // Nome PG per uid (più riconoscibile dell'email/displayName).
+    const nameByUid = {};
+    try {
+      const charSnap = await dbAdmin.collection("characters").get();
+      charSnap.forEach((d) => { const n = d.data()?.name; if (n) nameByUid[d.id] = n; });
+    } catch (e) { console.error("[scriba] characters per elenco:", e.message); }
+
+    const players = [];
+    let pageToken;
+    try {
+      do {
+        const res = await admin.auth().listUsers(1000, pageToken);
+        res.users.forEach((u) => {
+          if (!u.email) return;
+          players.push({ uid: u.uid, email: u.email, name: nameByUid[u.uid] || u.displayName || "" });
+        });
+        pageToken = res.pageToken;
+      } while (pageToken);
+    } catch (e) {
+      console.error("[scriba] listUsers:", e.message);
+      throw new HttpsError("internal", `Lettura utenti fallita: ${e.message}`);
+    }
+
+    players.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, "it"));
+    return { players };
+  }
+);
+
+/**
+ * scribaSendCustom — invia uno o più numeri a UNA mail specifica (tra quelle
+ * registrate, o digitata a mano). NON cambia lo stato del numero (non è un
+ * broadcast a tutti): è un invio mirato, ripetibile, che non tocca l'archivio
+ * né la numerazione. Ritorna l'esito per ciascun numero.
+ */
+exports.scribaSendCustom = onCall(
+  { region: "us-central1", timeoutSeconds: 300, memory: "512MiB" },
+  async (request) => {
+    const masterEmail = request.auth?.token?.email;
+    if (!masterEmail || !SCRIBA_MASTERS.includes(masterEmail)) {
+      throw new HttpsError("permission-denied", "Solo il master può inviare Lo Scriba.");
+    }
+    const to = String(request.data?.email || "").trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+      throw new HttpsError("invalid-argument", "Email destinatario non valida.");
+    }
+    const ids = Array.isArray(request.data?.ids) && request.data.ids.length
+      ? request.data.ids.map(String)
+      : (request.data?.id ? [String(request.data.id)] : []);
+    if (!ids.length) throw new HttpsError("invalid-argument", "Nessun numero selezionato.");
+
+    const dbAdmin = admin.firestore();
+
+    // uid (per il link di disiscrizione) se l'email è di un utente registrato.
+    let uid = "anteprima";
+    try {
+      const u = await admin.auth().getUserByEmail(to);
+      if (u?.uid) uid = u.uid;
+    } catch (_) { /* email esterna: link di disiscrizione generico (mailto/anteprima) */ }
+
+    const transporter = buildGmailTransporter();
+    const from = scribaFrom();
+    const results = [];
+    for (const id of ids) {
+      let snap;
+      try { snap = await dbAdmin.collection("newsletters").doc(id).get(); }
+      catch (e) { results.push({ id, ok: false, error: e.message }); continue; }
+      if (!snap.exists) { results.push({ id, ok: false, error: "numero inesistente" }); continue; }
+      const d = snap.data();
+      const html = renderScribaHtml({
+        content: d.content, edition: d.number, images: d.images || [],
+        unsubUrl: scribaUnsubUrlFor(uid),
+      });
+      const subject = `📜 Lo Scriba N. ${d.number} — ${italianDateLabel(d.number)}`;
+      try {
+        await transporter.sendMail({ to, from, subject, html });
+        results.push({ id, number: d.number, ok: true });
+      } catch (e) {
+        console.error(`[scriba] invio mirato a ${to} (N. ${d.number}) fallito:`, e.message);
+        results.push({ id, number: d.number, ok: false, error: e.message });
+      }
+    }
+
+    const sent = results.filter((r) => r.ok).length;
+    logAgent("scriba", sent ? "success" : "error",
+      `Invio mirato a ${to}: ${sent}/${ids.length} numeri.`, { to, sent });
+    return { ok: true, sent, total: ids.length, email: to, results };
+  }
+);
+
+/**
  * scribaTick — l'automatismo (gira ogni ora). NESSUN timer di auto-invio: quando
  * è passato l'intervallo dall'ultimo numero e non c'è già una bozza in attesa,
  * genera il numero e lo manda al DIRETTORE con il bottone di approvazione. Parte
