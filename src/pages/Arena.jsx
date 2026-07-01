@@ -10,6 +10,7 @@ import { useAuth } from "../AuthContext";
 import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
 import { awardPetPoints } from "../utils/pet";
+import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
 import "./Arena.css";
 import "./ArenaHero.css";
 
@@ -166,10 +167,14 @@ const WIZARD_SPELLS = [
   { name: "Invisibilità",          level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "👻", info: "Lv2 · Il nemico non può attaccarti il prossimo turno", special: "invisibility", invisibilityDuration: 1, maxUses: 2 },
   { name: "Cecità/Sordità",        level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
   { name: "Tocco Vampirico",       level: 2, hitBonus: 3, damage: "3d6",   statKey: null, type: "spell", icon: "🩸", info: "Lv2 · Necrotico · cura 1d8 in caso di danno", vampiric: true, vampiricHeal: "1d8", maxUses: 2 },
-  // ── Livello 3 (bloccati fino al Lv5 di classe) ────────────────────────────
-  { name: "Palla di Fuoco",        level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", maxUses: 1 },
-  { name: "Fulmine",               level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", maxUses: 1 },
-  { name: "Contrincantesimo",      level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚫", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
+  // ── Livello 3 (tier 3 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Palla di Fuoco",        level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", reqLevel: 5, maxUses: 1 },
+  { name: "Fulmine",               level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", reqLevel: 5, maxUses: 1 },
+  { name: "Contrincantesimo",      level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚫", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", reqLevel: 5, maxUses: 1 },
+  // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
+  { name: "Tempesta di Ghiaccio",  level: 4, hitBonus: 3, damage: "6d6",   statKey: null, type: "spell", icon: "🌨", info: "Lv4 · Freddo · TS DES", reqLevel: 7, maxUses: 1 },
+  { name: "Porta Dimensionale",    level: 4, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚪", info: "Lv4 · Ti sottrai: il nemico non può colpirti il prossimo turno", special: "invisibility", invisibilityDuration: 1, reqLevel: 7, maxUses: 1 },
+  { name: "Vortice Arcano",        level: 4, hitBonus: 3, damage: "7d6",   statKey: null, type: "spell", icon: "🌀", info: "Lv4 · Forza · TS DES", reqLevel: 7, maxUses: 1 },
 ];
 
 // ── SORCERER SPELLS (Stregone) — pool: 6 trucchetti · 6 lv1 · 5 lv2 (sceglie 4+4+2)
@@ -195,9 +200,13 @@ const SORCERER_SPELLS = [
   { name: "Suggestione",           level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 4 },
   { name: "Nube di Pugnali",       level: 2, hitBonus: 3,  damage: "4d4",   statKey: null, type: "spell", icon: "🗡", info: "Lv2 · Tagliente · colpisce sempre (no tiro)", maxUses: 4 },
   { name: "Cecità/Sordità",        level: 2, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 4 },
-  { name: "Palla di Fuoco",        level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", maxUses: 1 },
-  { name: "Fulmine",               level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", maxUses: 1 },
-  { name: "Paura",                 level: 3, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 1 },
+  { name: "Palla di Fuoco",        level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco", reqLevel: 5, maxUses: 1 },
+  { name: "Fulmine",               level: 3, hitBonus: 3,  damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine", reqLevel: 5, maxUses: 1 },
+  { name: "Paura",                 level: 3, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS o perdi 2 turni", special: "control", reqLevel: 5, maxUses: 1 },
+  // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
+  { name: "Tempesta di Ghiaccio",  level: 4, hitBonus: 3,  damage: "6d6",   statKey: null, type: "spell", icon: "🌨", info: "Lv4 · Freddo · TS DES", reqLevel: 7, maxUses: 1 },
+  { name: "Vortice di Fuoco",      level: 4, hitBonus: 3,  damage: "7d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv4 · Fuoco · TS DES", reqLevel: 7, maxUses: 1 },
+  { name: "Blocca Mostri",         level: 4, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv4 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 7, maxUses: 1 },
 ];
 
 // ── WARLOCK SPELLS (Oscuro Cultore) — pool: 4 trucchetti · 5 lv1 · 4 lv2 (sceglie 2 trucchetti + 2 slot lv1/lv2 misti)
@@ -217,6 +226,13 @@ const WARLOCK_SPELLS = [
   { name: "Blocca Persone",         level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🧊", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Corona della Pazzia",    level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS SAG o attacca sé stesso", special: "corona_pazzia", maxUses: 2 },
   { name: "Oscurità",               level: 2, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌑", info: "Lv2 · Svantaggio ai tiri per colpire del nemico per 3 turni", special: "disadvantage_enemy", disadvantageTurns: 3, maxUses: 2 },
+  // ── Livello 3 (tier 3 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Maledizione del Sangue",  level: 3, hitBonus: 3, damage: "8d6",  statKey: null, type: "spell", icon: "🩸", info: "Lv3 · Necrotico · TS DES", reqLevel: 5, maxUses: 1 },
+  { name: "Paura",                   level: 3, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 5, maxUses: 1 },
+  { name: "Fame dell'Abisso",        level: 3, hitBonus: 3, damage: "5d6",  statKey: null, type: "spell", icon: "🕳", info: "Lv3 · Necrotico · cura 2d6 in caso di danno", vampiric: true, vampiricHeal: "2d6", reqLevel: 5, maxUses: 1 },
+  // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
+  { name: "Bocca dell'Inferno",      level: 4, hitBonus: 3, damage: "8d8",  statKey: null, type: "spell", icon: "🔥", info: "Lv4 · Fuoco · TS DES", reqLevel: 7, maxUses: 1 },
+  { name: "Dominare Mente",          level: 4, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🧠", info: "Lv4 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 7, maxUses: 1 },
 ];
 
 // ── DRUID SPELLS (Druido) — 2 trucchetti · 4 lv1 · 2 lv2
@@ -246,6 +262,13 @@ const DRUID_SPELLS = [
   { name: "Raggio di Luna",     level: 2, hitBonus: 3, damage: "2d10",  statKey: null, type: "spell", icon: "🌙", info: "Lv2 · Radiante", maxUses: 2 },
   { name: "Scorza Coriacea",    level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🪵", info: "Lv2 · +3 CA per 3 turni", special: "shield_buff", maxUses: 2 },
   { name: "Lama di Fiamma",     level: 2, hitBonus: 3, damage: "3d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco", maxUses: 2 },
+  // ── Livello 3 (tier 3 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Convocare Fulmine",  level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv3 · Fulmine · TS DES", reqLevel: 5, maxUses: 1 },
+  { name: "Pelle di Pietra",    level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🪨", info: "Lv3 · +3 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 3, shieldBuffTurns: 3, reqLevel: 5, maxUses: 1 },
+  { name: "Flagello d'Insetti", level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🐝", info: "Lv3 · TS COS · 2d6 veleno a inizio turno per 3 turni", special: "save_dot", saveDotAbility: "con", saveDotDamage: "2d6", saveDotTurns: 3, reqLevel: 5, maxUses: 1 },
+  // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
+  { name: "Colonna di Ghiaccio", level: 4, hitBonus: 3, damage: "7d8",   statKey: null, type: "spell", icon: "🧊", info: "Lv4 · Freddo · TS DES", reqLevel: 7, maxUses: 1 },
+  { name: "Guarigione Naturale", level: 4, hitBonus: 0, damage: "5d8",   statKey: null, type: "spell", icon: "💚", info: "Lv4 · Cura potente · ripristina HP", special: "heal", reqLevel: 7, maxUses: 1 },
 ];
 
 // ── CLERIC SPELLS (Chierico) — 3 trucchetti · 4 lv1 · 2 lv2
@@ -273,6 +296,13 @@ const CLERIC_SPELLS = [
   { name: "Aiuto",                  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +1 al danno per 2 turni", special: "dmg_buff", aidDmgBonus: 1, aidDmgTurns: 2, maxUses: 2 },
   { name: "Cecità/Sordità",         level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🙈", info: "Lv2 · Svantaggio agli attacchi del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 2 },
   { name: "Preghiera di Guarigione",level: 2, hitBonus: 0, damage: "2d8",   statKey: null, type: "spell", icon: "🙏", info: "Lv2 · Cura potente · ripristina HP", special: "heal", maxUses: 2 },
+  // ── Livello 3 (tier 3 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Colonna di Fiamma",      level: 3, hitBonus: 3, damage: "8d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv3 · Radiante · TS DES", reqLevel: 5, maxUses: 1 },
+  { name: "Rinnovamento",           level: 3, hitBonus: 0, damage: "3d8",   statKey: null, type: "spell", icon: "💚", info: "Lv3 · Cura potente · ripristina HP", special: "heal", reqLevel: 5, maxUses: 1 },
+  { name: "Scomunica",              level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕊", info: "Lv3 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 5, maxUses: 1 },
+  // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
+  { name: "Fiamma Accecante",       level: 4, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "☀", info: "Lv4 · Radiante · TS DES", reqLevel: 7, maxUses: 1 },
+  { name: "Guarigione",             level: 4, hitBonus: 0, damage: "5d8",   statKey: null, type: "spell", icon: "✨", info: "Lv4 · Cura potentissima · ripristina HP", special: "heal", reqLevel: 7, maxUses: 1 },
 ];
 
 // ── BARD SPELLS (Bardo) — niente trucchetti · 4 lv1 · 2 lv2
@@ -288,6 +318,13 @@ const BARD_SPELLS = [
   { name: "Invisibilità",               level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "👻", info: "Lv2 · Il nemico non può attaccarti il prossimo turno", special: "invisibility", invisibilityDuration: 1, maxUses: 2 },
   { name: "Suggestione",                level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv2 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 2 },
   { name: "Melodia Curativa",           level: 1, hitBonus: 0, damage: "2d8",   statKey: null, type: "spell", icon: "🎶", info: "Lv1 · Cura · 2d8 + CAR HP", special: "heal", healModStat: "cha", maxUses: 2 },
+  // ── Livello 3 (tier 3 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Dissonanza",                 level: 3, hitBonus: 3, damage: "5d8",   statKey: null, type: "spell", icon: "🎵", info: "Lv3 · Psichico · TS DES", reqLevel: 5, maxUses: 1 },
+  { name: "Paura Ammaliante",           level: 3, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "😱", info: "Lv3 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 5, maxUses: 1 },
+  { name: "Canto Rigenerante",          level: 3, hitBonus: 0, damage: "3d8",   statKey: null, type: "spell", icon: "💗", info: "Lv3 · Cura potente · 3d8 + CAR HP", special: "heal", healModStat: "cha", reqLevel: 5, maxUses: 1 },
+  // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
+  { name: "Confusione",                 level: 4, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv4 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 7, maxUses: 1 },
+  { name: "Guarigione Melodica",        level: 4, hitBonus: 0, damage: "5d8",   statKey: null, type: "spell", icon: "🎶", info: "Lv4 · Cura potentissima · 5d8 + CAR HP", special: "heal", healModStat: "cha", reqLevel: 7, maxUses: 1 },
 ];
 
 // ── PALADIN SPELLS (Paladino) — pool: 3 lv1 · 3 lv2 (sceglie 2+1)
@@ -308,6 +345,9 @@ const RANGER_SPELLS = [
   { name: "Colpo Intralciante",    level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕸", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Nebbia",                level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌫", info: "Lv1 · Svantaggio ai tiri per colpire del nemico per 2 turni", special: "disadvantage_enemy", disadvantageTurns: 2, maxUses: 3 },
   { name: "Passo Spedito",         level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "💨", info: "Lv1 · Bonus action · doppio turno il prossimo turno", special: "extra_turn", bonusAction: true, maxUses: 3 },
+  // ── Livello 2 (tier 2 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Freccia Fulminante",    level: 2, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "🏹", info: "Lv2 · Fulmine · TS DES", reqLevel: 5, maxUses: 2 },
+  { name: "Corteccia Protettiva",  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌿", info: "Lv2 · +2 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 2, shieldBuffTurns: 3, reqLevel: 5, maxUses: 2 },
 ];
 
 // ── ARMI SEMPLICI ──────────────────────────────────────────────────────
@@ -547,6 +587,14 @@ const TRIBOLI_ACTION = {
   maxUses: 2,
 };
 
+// Azione Scaltra (Rogue · Lv4) — Bonus Action: un'azione extra questo turno.
+// Riusa il motore di Scatto d'Azione (special action_surge). 2 cariche.
+const CUNNING_ACTION_ACTION = {
+  name: "Azione Scaltra", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "🏃", info: "Bonus Action · azione extra questo turno · 2 cariche",
+  special: "action_surge", maxUses: 2, bonusAction: true, reqLevel: 4,
+};
+
 // Ispirazione Bardica — cariche = modificatore CAR (impostate dinamicamente al join)
 const BARDIC_INSPIRATION_ACTION = {
   name: "Ispirazione Bardica", hitBonus: 0, damage: "—", statKey: null,
@@ -609,6 +657,14 @@ const KI_HEALING_ACTION = {
   name: "Cura Ki", hitBonus: 0, damage: "1d8", statKey: null,
   type: "skill", icon: "🧘", info: "Bonus Action · cura 1d8+SAG HP · 2 cariche",
   special: "ki_healing", maxUses: 2, bonusAction: true,
+};
+
+// Colpo Stordente (Monk · Lv5) — TS COS (CD 8+comp+DES) o il nemico salta 1 turno.
+// Riusa il meccanismo di controllo (controlLostTurns), TS tirato subito come la Succubus.
+const STUN_STRIKE_ACTION = {
+  name: "Colpo Stordente", hitBonus: 0, damage: "—", statKey: null,
+  type: "skill", icon: "💫", info: "Colpo Stordente · TS COS o il nemico salta 1 turno · 2 cariche",
+  special: "stun_strike", saveAbility: "con", maxUses: 2, reqLevel: 5,
 };
 
 // Marchio del Cacciatore (Ranger) — +3 ai tiri per colpire per 3 turni, 2 cariche · BONUS ACTION
@@ -726,6 +782,9 @@ const ARTIFICER_SPELLS = [
   { name: "Cure Wounds",  level: 1, hitBonus: 0, damage: "1d8",  statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · 1d8 + INT PF", special: "heal", healModStat: "int", maxUses: 3 },
   { name: "Faerie Fire",  level: 1, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🌟", info: "Lv1 · +2 al prossimo tiro per colpire", special: "magic_detect", maxUses: 3 },
   { name: "False Life",   level: 1, hitBonus: 0, damage: "1d4+4",statKey: null, type: "spell", icon: "🩸", info: "Lv1 · Cura · 1d4+4 PF temporanei", special: "heal", maxUses: 3 },
+  // ── Livello 2 (tier 2 · sbloccato al Lv5 di classe) ───────────────────────
+  { name: "Scorching Ray", level: 2, hitBonus: 3, damage: "6d6", statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6) · TS DES", reqLevel: 5, maxUses: 2 },
+  { name: "Force Shield",  level: 2, hitBonus: 0, damage: "—",   statKey: null, type: "spell", icon: "🛡", info: "Lv2 · +2 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 2, shieldBuffTurns: 3, reqLevel: 5, maxUses: 2 },
 ];
 
 // Costrutti — scelti come pet del ranger ma con effetti meccanici diversi
@@ -1174,6 +1233,60 @@ function getProficiencyBonus(snap) {
   const level    = snap?.classLevels?.[classKey] ?? 3;
   return 2 + Math.floor((Math.max(1, level) - 1) / 4);
 }
+// Livello della classe attiva letto dallo snapshot (default Lv.3).
+function getSnapLevel(snap) {
+  const classKey = getClassKey(snap?.class);
+  return snap?.classLevels?.[classKey] ?? 3;
+}
+// Effetto della sottoclasse scelta, letto dallo snapshot (snap.subclass = chiave opzione).
+function getSubclassEffect(snap) {
+  return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
+}
+// ── SCALING PER LIVELLO DI SKILL/CARICHE (Arena_class_progress.txt H4) ────────
+// Attacco Furtivo (Ladro): dadi bonus per livello — 2d6@4 · 3d6@8 · 4d6@11 · 5d6@16 · 6d6@19.
+function sneakAttackDice(level) {
+  const lv = Math.max(3, level ?? 3);
+  if (lv >= 19) return "6d6";
+  if (lv >= 16) return "5d6";
+  if (lv >= 11) return "4d6";
+  if (lv >= 8)  return "3d6";
+  if (lv >= 4)  return "2d6";
+  return "1d6";
+}
+// Furia (Barbaro): bonus al danno per livello — +2 · +3@4 · +4@9 · +6@16.
+function rageDamageBonus(level) {
+  const lv = Math.max(3, level ?? 3);
+  if (lv >= 16) return 6;
+  if (lv >= 9)  return 4;
+  if (lv >= 4)  return 3;
+  return 2;
+}
+// Applica a un'azione automatica lo scaling per livello di cariche/danno (Lv4-8).
+// Usato al momento dell'iscrizione, così i valori scalati entrano nello snapshot
+// e tutto il resto (UI cariche, danno in combattimento) li legge da lì.
+function scaleActionForLevel(action, level, chaScore) {
+  const lv = Math.max(3, level ?? 3);
+  const a = { ...action };
+  if (a.special === "bardic_inspiration") { a.maxUses = Math.max(1, chaScore ?? 1); return a; }
+  if (a.special === "smite") {
+    const uses = 2 + (lv >= 4 ? 1 : 0) + (lv >= 8 ? 1 : 0);
+    const dice = lv >= 19 ? "3d8" : "2d8";
+    a.maxUses = uses; a.damage = dice; a.info = `Attacca con arma +${dice} · ${uses} cariche`; return a;
+  }
+  if (a.special === "sneak_attack") {
+    const dice = sneakAttackDice(lv);
+    a.damage = dice; a.info = `Arma+${dice}+DES · ${a.maxUses} cariche`; return a;
+  }
+  if (a.special === "hunter_mark") {
+    a.maxUses = 2 + (lv >= 4 ? 1 : 0);
+    a.info = `Bonus action · +3 ai tiri per colpire per 3 turni · ${a.maxUses} cariche`; return a;
+  }
+  if (a.name === "Carica")             { a.maxUses = 3 + (lv >= 6 ? 1 : 0); a.info = `2d6+FOR · ${a.maxUses} cariche`; return a; }
+  if (a.name === "Disarmare")          { a.maxUses = 2 + (lv >= 8 ? 1 : 0); return a; }
+  if (a.special === "turbine_lame")    { a.maxUses = 2 + (lv >= 8 ? 1 : 0); a.info = `2 attacchi rapidi · 2d10+FOR+3 · ${a.maxUses} cariche`; return a; }
+  if (a.special === "concentrate_buff"){ a.maxUses = 2 + (lv >= 8 ? 1 : 0); return a; }
+  return a;
+}
 // ── PUNTI CARATTERISTICA (ASI) — vedi Arena_class_progress.txt §2E ────────────
 // A ogni livello-ASI il player riceve +2 punti da distribuire alle caratteristiche.
 // Livelli-ASI standard: 4·8·12·16·19. Eccezioni: Guerriero +6/+14, Ladro +10.
@@ -1475,7 +1588,7 @@ function getFighterStatuses(p) {
   if (p.weaponPoisoned)                     push("wpoison", "🧪", "Arma Avvelenata", "is-buff", "Prossimo colpo: +1d12 veleno");
   if (p.aidBuff)                            push("aid", "🤝", `Aiuto +${readActiveBonus(p.aidBuff, 4)}`, "is-buff", `+${readActiveBonus(p.aidBuff, 4)} al prossimo tiro per colpire`);
   if ((p.aidDmgTurns ?? 0) > 0)             push("aiddmg", "🤝", `Aiuto +${p.aidDmgBonus ?? 1} dmg ${p.aidDmgTurns}t`, "is-buff", `+${p.aidDmgBonus ?? 1} al danno per ${p.aidDmgTurns} turni`);
-  if ((p.rageTurns ?? 0) > 0)               push("rage", "🔥", `Furia +2 ${p.rageTurns}t`, "is-rage", `+2 danni · riduzione danni subiti · ${p.rageTurns} turni`);
+  if ((p.rageTurns ?? 0) > 0)               push("rage", "🔥", `Furia +${p.rageBonus ?? 2} ${p.rageTurns}t`, "is-rage", `+${p.rageBonus ?? 2} danni · riduzione danni subiti · ${p.rageTurns} turni`);
   if ((p.hunterMarkTurns ?? 0) > 0)         push("mark", "🎯", `Marchio ${p.hunterMarkTurns}t`, "is-rage", `+3 al colpire per ${p.hunterMarkTurns} turni`);
 
   // ── Energia / azioni extra ──
@@ -1557,26 +1670,76 @@ const SPELL_LIMITS = {
   generic:  { 0: 1, 1: 1, 2: 1, 3: 0 },
 };
 
+// Archetipi da incantatore (per lo scaling dei limiti spell col livello).
+const FULL_CASTER_KEYS = ["wizard", "sorcerer", "cleric", "druid", "bard"];
+const HALF_CASTER_KEYS = ["paladin", "ranger", "artificer"];
+
 // Limiti spell in funzione del livello — vedi Arena_class_progress.txt 2B/R5.
-// Mago e Stregone (gli unici con incantesimi di tier 3 già nel codice) sbloccano
-// il tier 3 al Lv5 con 1 carica. Le altre classi non hanno ancora contenuti di
-// tier 3 (vedi P1 nel doc), quindi i loro limiti restano invariati.
+// Regola: si PARTE dal baseline di Lv.3 (SPELL_LIMITS) e si AGGIUNGE salendo,
+// non si toglie mai. I tier senza contenuti (es. tier 4 prima del Blocco 2) sono
+// automaticamente azzerati dal clamp in finalizeLoadout, quindi qui possiamo
+// sbloccarli in anticipo senza rischio di soft-lock.
+//   Full caster (Mago/Stregone/Chierico/Druido/Bardo): tier3@Lv5, tier4@Lv7,
+//     +1 trucchetto@Lv5, +1 spell Lv1@Lv8.
+//   Warlock (Pact Magic): tier3@Lv5, tier4@Lv7.
+//   Half caster (Paladino/Ranger/Artefice): tier2@Lv5.
 function spellLimitsForLevel(classKey, level) {
   const base = SPELL_LIMITS[classKey];
   if (!base) return base;
   const lv = Math.max(3, level ?? 3);
-  if (lv >= 5 && (classKey === "wizard" || classKey === "sorcerer")) {
-    return { ...base, 3: Math.max(base[3] ?? 0, 1) };
+  const out = { ...base };
+  const hasCantrips = (base[0] ?? 0) > 0;
+  if (FULL_CASTER_KEYS.includes(classKey)) {
+    if (lv >= 5) { out[3] = Math.max(out[3] ?? 0, 1); if (hasCantrips) out[0] = (out[0] ?? 0) + 1; }
+    if (lv >= 7) { out[3] = Math.max(out[3] ?? 0, 2); out[4] = Math.max(out[4] ?? 0, 1); }
+    if (lv >= 8) { out[1] = (out[1] ?? 0) + 1; }
+  } else if (classKey === "warlock") {
+    if (lv >= 5) out[3] = Math.max(out[3] ?? 0, 1);
+    if (lv >= 7) out[4] = Math.max(out[4] ?? 0, 1);
+  } else if (HALF_CASTER_KEYS.includes(classKey)) {
+    if (lv >= 5) out[2] = Math.max(out[2] ?? 0, 1);
   }
-  return base;
+  return out;
 }
 
+// Rifinitura loadout comune a tutte le classi (hook H1/H2 del doc):
+//  1) filtra spell e autoActions per reqLevel (default 1) ≤ livello di classe;
+//  2) applica i limiti spell scalati per livello (spellLimitsForLevel);
+//  3) CLAMPA ogni tier al numero di spell realmente disponibili di quel tier,
+//     così maxSpells non supera mai il contenuto (niente soft-lock in confirmJoin).
+function finalizeLoadout(cfg, classKey, level) {
+  const lv = Math.max(3, level ?? 3);
+  const spellOptions = (cfg.spellOptions || []).filter(s => (s.reqLevel ?? 1) <= lv);
+  const autoActions  = (cfg.autoActions  || []).filter(a => (a.reqLevel ?? 1) <= lv);
+  const scaled = spellLimitsForLevel(classKey, lv) || cfg.spellLimits || {};
+  const clamped = {};
+  let maxSpells = 0;
+  for (const k of Object.keys(scaled)) {
+    if (k === "nonCantripMax") { clamped[k] = scaled[k]; continue; }
+    const tier  = Number(k);
+    const avail = spellOptions.filter(s => (s.level ?? 0) === tier).length;
+    clamped[k]  = Math.min(scaled[k] ?? 0, avail);
+    maxSpells  += clamped[k];
+  }
+  if (clamped.nonCantripMax != null) {
+    maxSpells = Math.min(maxSpells, (clamped[0] ?? 0) + clamped.nonCantripMax);
+  }
+  return { ...cfg, spellOptions, autoActions, spellLimits: clamped, maxSpells };
+}
+
+// Wrapper: costruisce il loadout grezzo e vi applica reqLevel + scaling limiti
+// (finalizeLoadout). Tutte le chiamate esterne continuano a usare getLoadoutConfig.
 function getLoadoutConfig(charClass, level) {
+  const classKey = getClassKey(charClass);
+  return finalizeLoadout(getRawLoadoutConfig(charClass, level), classKey, level);
+}
+
+function getRawLoadoutConfig(charClass, level) {
   const cls = (charClass || "").toLowerCase();
   const { armorCategory, canHaveShield } = getArmorConfig(cls);
   const sumLimits = (lim) => Object.values(lim).reduce((a, b) => a + b, 0);
-  if (isWizardClass(cls))   { const lim = spellLimitsForLevel("wizard", level);   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: lim,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(lim),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield }; }
-  if (isSorcererClass(cls)) { const lim = spellLimitsForLevel("sorcerer", level); return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: lim, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(lim), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield }; }
+  if (isWizardClass(cls))   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: SPELL_LIMITS.wizard,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.wizard),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION, PATTO_DEMONIACO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
@@ -1584,8 +1747,8 @@ function getLoadoutConfig(charClass, level) {
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION, CUNNING_ACTION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION, SURVIVOR_ACTION, RANGER_VOLLEY_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -2817,6 +2980,7 @@ export default function Arena() {
       arenaBuffs:  d.arenaBuffs  || {},
       arenaTitles: ownedTitles,
       classLevels: d.classLevels || {},
+      arenaSubclass: d.arenaSubclass || {},
       rolledHp:    null,
       hpRerollCount: 0,
     });
@@ -2857,32 +3021,30 @@ export default function Arena() {
     const shieldBonus = pendingShield ? 2 : 0;
     const armorBuffBonus = charPreview.arenaBuffs?.armorBonus ? 1 : 0;
     const unarmoredBonus = pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
-    const finalAc   = pendingArmor.unarmoredDefense
+    // Bonus CA dalla sottoclasse scelta (es. Stile Difesa, Abiurazione…).
+    const subclassKey = charPreview.arenaSubclass?.[getClassKey(charPreview.class)] ?? null;
+    const subclassCa  = getSubclassEffectFor(getClassKey(charPreview.class), subclassKey).ca || 0;
+    const finalAc   = subclassCa + (pendingArmor.unarmoredDefense
       ? pendingArmor.unarmoredMaxStat
         ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
         : 10 + dexMod + unarmoredBonus + shieldBonus + armorBuffBonus
-      : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus;
+      : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus);
 
     const chaScore = charPreview.stats.cha ?? 0;
     const cls = (charPreview.class || "").toLowerCase();
     const petAction = (isRangerClass(cls) && pendingPet && RANGER_PETS[pendingPet]) ? RANGER_PETS[pendingPet].action : null;
     const demonAction = (isWarlockClass(cls) && pendingDemon && WARLOCK_DEMONS[pendingDemon]) ? WARLOCK_DEMONS[pendingDemon].action : null;
     const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
-    // Smite scala col livello Paladino (Arena_class_progress.txt): +1 carica al Lv4
-    // e al Lv8 (2→3→4), e dado 3d8 dal Lv19. Senza questo, chi compra i livelli
-    // paga potenziamenti pubblicizzati nel mercato che non arrivavano mai.
-    const palLevel  = charPreview.classLevels?.[getClassKey(charPreview.class)] ?? 3;
-    const smiteUses = 2 + (palLevel >= 4 ? 1 : 0) + (palLevel >= 8 ? 1 : 0);
-    const smiteDice = palLevel >= 19 ? "3d8" : "2d8";
+    // Scaling per livello di cariche/danno delle abilità automatiche (Smite,
+    // Attacco Furtivo, Marchio, Carica, Disarmare, Turbine, Concentrazione…):
+    // senza questo chi compra i livelli paga potenziamenti pubblicizzati nel
+    // mercato che non arrivavano mai. Vedi scaleActionForLevel.
+    const charLevel = charPreview.classLevels?.[getClassKey(charPreview.class)] ?? 3;
     const finalActions = [
       ...pendingWeapons, ...pendingSpells, ...pendingSkills,
       ...config.autoActions
         .filter(a => !a.requiresBuff || ((charPreview.arenaBuffs || {})[a.requiresBuff] ?? 0) > 0)
-        .map(a => {
-          if (a.special === "bardic_inspiration") return { ...a, maxUses: Math.max(1, chaScore) };
-          if (a.special === "smite") return { ...a, maxUses: smiteUses, damage: smiteDice, info: `Attacca con arma +${smiteDice} · ${smiteUses} cariche` };
-          return a;
-        }),
+        .map(a => scaleActionForLevel(a, charLevel, chaScore)),
       ...(petAction ? [petAction] : []),
       ...(demonAction ? [demonAction] : []),
       ...(constructAction ? [constructAction] : []),
@@ -2895,6 +3057,7 @@ export default function Arena() {
       image:           charPreview.image,
       class:           charPreview.class,
       classLevels:     charPreview.classLevels || {},
+      subclass:        subclassKey,
       stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
       selectedActions: finalActions,
       hasWildShape:    config.hasWildShape,
@@ -3290,12 +3453,14 @@ export default function Arena() {
     if (!masterJoinName.trim() || !masterJoinClass) return;
     let classLevels = {};
     let arenaBuffs = {};
+    let arenaSubclass = {};
     try {
       const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
       if (charSnap.exists()) {
         const d = charSnap.data();
         classLevels = d.classLevels || {};
         arenaBuffs = d.arenaBuffs || {};
+        arenaSubclass = d.arenaSubclass || {};
       }
     } catch { /* ignore */ }
     setCharPreview({
@@ -3305,6 +3470,7 @@ export default function Arena() {
       stats:       { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
       classLevels,
       arenaBuffs,
+      arenaSubclass,
       rolledHp:    null,
       hpRerollCount: 0,
     });
@@ -4349,7 +4515,7 @@ export default function Arena() {
     const effRageTurns       = (buffPatch.rageTurns ?? aiPlayer.rageTurns ?? 0) > 0;
     const effHunterMark      = (buffPatch.hunterMarkTurns ?? aiPlayer.hunterMarkTurns ?? 0) > 0;
     const effAidBonus        = readActiveBonus(buffPatch.aidBuff ?? aiPlayer.aidBuff, 4);
-    const rageDmgBonus       = effRageTurns ? 2 : 0;
+    const rageDmgBonus       = effRageTurns ? rageDamageBonus(getSnapLevel(aiSnap)) : 0;
     const barbarianDmgBonus  = cls.includes("barbar") ? 2 : 0;
     const hunterMarkHitBonus = effHunterMark ? 3 : 0;   // Marchio = +3 AL COLPIRE (come il player)
     // Fighter: crit on 19+ (Critico Migliorato).
@@ -4383,7 +4549,8 @@ export default function Arena() {
     if (isHit) {
       const { total, rolls } = rollDmg(chosen.damage);
       const critMult = isCrit ? 2 : 1;
-      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus) * critMult;
+      const aiSubclassDmg = getSubclassEffect(aiSnap).weaponDmg || 0;
+      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg) * critMult;
       damage = applyBarbarianRageReduction(raw, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
@@ -4740,8 +4907,9 @@ export default function Arena() {
       const isCrit = d20 === 20;
       const critMult = isCrit ? 2 : 1;
 
+      const sneakDiceStr = sneakAttackDice(getSnapLevel(attackerSnap));
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
-      const { total: sneakDmg, rolls: sneakRolls } = isHit ? rollDmg("1d6") : { total: 0, rolls: "" };
+      const { total: sneakDmg, rolls: sneakRolls } = isHit ? rollDmg(sneakDiceStr) : { total: 0, rolls: "" };
       // Sneak Attack: weapon dice + 1d6 sneak dice + DEX mod (no hardcoded +3;
       // weapon formulas no longer have a baked ability mod since the
       // double-count fix).
@@ -5048,7 +5216,7 @@ export default function Arena() {
       : 0;
     const weaponBuff = !isSpellAction && (attackerSnap?.arenaBuffs?.weaponBonus ? 1 : 0);
     const aidBonus           = readActiveBonus(attackerMatchPlayer?.aidBuff, 4);
-    const rageDmgBonus       = !isSpellAction && (attackerMatchPlayer?.rageTurns ?? 0) > 0 ? 2 : 0;
+    const rageDmgBonus       = !isSpellAction && (attackerMatchPlayer?.rageTurns ?? 0) > 0 ? rageDamageBonus(getSnapLevel(attackerSnap)) : 0;
     const barbarianDmgBonus  = !isSpellAction && isBarbarianClass(attackerClassLower) ? 2 : 0;
     const concentrationDmg   = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 2 : 0;
     const bardInspirationActive = !!attackerMatchPlayer?.bardicInspirationActive;
@@ -5153,7 +5321,9 @@ export default function Arena() {
     const spellDealsDmg  = isSpellAction && (action.damage && action.damage !== "—");
     const dmgStatMod     = !isSpellAction ? statMod : (spellDealsDmg ? statMod : 0);
     const aidDmgBonus    = readAidDmgBonus(attackerMatchPlayer); // Aiuto: +X al danno
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
+    const subclassEff = getSubclassEffect(attackerSnap);
+    const subclassDmg = isSpellAction ? (subclassEff.spellDmg || 0) : (subclassEff.weaponDmg || 0);
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     const rageReducedDamage = applyBarbarianRageReduction(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
@@ -5423,7 +5593,7 @@ export default function Arena() {
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
           return { ...p, actionSurgeActive: true, bonusActionUsed: true, actionUsesLeft: newUses };
         });
-        const log = { pub: `⚡ ${myName} attiva Scatto d'Azione! Guadagna un'azione extra.`, attId: currentUser.uid, ts: new Date().toISOString() };
+        const log = { pub: `⚡ ${myName} attiva ${action.name}! Guadagna un'azione extra.`, attId: currentUser.uid, ts: new Date().toISOString() };
         // Turn stays on current player → NON rigenerare turnExpiry (i DoT ticcano 1/turno).
         return { ...m, players: updatedPlayers, turn: currentUser.uid, turnExpiry: m.turnExpiry || expiry, logs: [...m.logs, log] };
       });
@@ -5568,18 +5738,20 @@ export default function Arena() {
 
   // ── FURIA (Barbarian · Bonus Action) ───────────────────────────────────────
   const handleRage = async (matchId, action) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Barbaro";
+    const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+    const myName = mySnap?.name || "Barbaro";
+    const rageBon = rageDamageBonus(getSnapLevel(mySnap));
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const log = `🔥 ${myName} entra in Furia! (+2 danno armi per 3 turni · bonus action)`;
+    const log = `🔥 ${myName} entra in Furia! (+${rageBon} danno armi per 3 turni · bonus action)`;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
         if (p.id !== currentUser.uid) return p;
         const uses = p.actionUsesLeft || {};
         const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-        return { ...p, rageTurns: 3, bonusActionUsed: true, actionUsesLeft: newUses };
+        return { ...p, rageTurns: 3, rageBonus: rageBon, bonusActionUsed: true, actionUsesLeft: newUses };
       });
       // Bonus action: il turno NON avanza.
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
@@ -5796,6 +5968,44 @@ export default function Arena() {
       return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
     });
     await commitArenaMatches(withArenaFx(updatedMatches, matchId, "fire", targetId));
+  };
+
+  // ── COLPO STORDENTE (Monaco · Lv5) — TS COS o il nemico salta 1 turno ───────
+  const handleStunStrike = async (matchId, targetId, action) => {
+    if (actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
+    try {
+      const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
+      const myName = mySnap?.name || "Monaco";
+      const targetSnap = arenaMeta.characterSnapshots?.[targetId];
+      const targetName = targetSnap?.name || "?";
+      const saveAbility = action.saveAbility || "con";
+      const saveDC = 8 + getProficiencyBonus(mySnap) + (mySnap?.stats?.dex ?? 0);
+      const defMod = targetSnap?.stats?.[saveAbility] ?? 0;
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
+      const tsTotal = d20 + defMod;
+      const saved = tsTotal >= saveDC;
+      const updatedMatches = arenaMeta.matches.map(m => {
+        if (m.matchId !== matchId) return m;
+        const updatedPlayers = m.players.map(p => {
+          if (p.id === currentUser.uid) {
+            const uses = p.actionUsesLeft || {};
+            const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
+            return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
+          }
+          if (p.id === targetId && !saved) return { ...p, controlLostTurns: Math.max(p.controlLostTurns ?? 0, 1) };
+          return p;
+        });
+        const log = saved
+          ? `💫 ${myName} tenta un Colpo Stordente su ${targetName} (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} ≥ ${saveDC}) — resiste!`
+          : `💫 ${myName} stordisce ${targetName} con un Colpo Stordente (TS ${SAVE_LABEL[saveAbility]} ${tsTotal} < ${saveDC}) — salta 1 turno!`;
+        return { ...m, players: updatedPlayers, turn: advanceTurn(updatedPlayers, m), turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(), logs: [...m.logs, log] };
+      });
+      await commitArenaMatches(withArenaFx(updatedMatches, matchId, "magic", targetId));
+    } finally {
+      actionInFlightRef.current = false;
+    }
   };
 
   const handleDemonSuccubus = async (matchId, targetId, action) => {
@@ -10468,6 +10678,23 @@ export default function Arena() {
                               </button>
                             );
                           }
+                          if (action.special === "stun_strike") {
+                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
+                            const noUses = usesLeft <= 0;
+                            const blocked = noUses || !chosenTargetId;
+                            return (
+                              <button key={action.name}
+                                className={`btn-action skill ${blocked ? "no-uses" : ""}`}
+                                disabled={blocked}
+                                title={noUses ? "Cariche esaurite" : "TS COS o il nemico salta 1 turno"}
+                                onClick={() => !blocked && handleStunStrike(m.matchId, chosenTargetId, action)}>
+                                <span className="action-icon">{action.icon}</span>
+                                <span className="action-name">{action.name}</span>
+                                <span className="action-dice">{noUses ? "Esaurita" : "TS COS · stun 1t"}</span>
+                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
+                              </button>
+                            );
+                          }
                           if (action.special === "demon_succubus") {
                             const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
                             const noUses = usesLeft <= 0;
@@ -10616,12 +10843,12 @@ export default function Arena() {
                               <button key={action.name}
                                 className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
                                 disabled={blocked}
-                                title={baUsed && !alreadyActive ? "Bonus action già usata questo turno" : alreadyActive ? "Furia già attiva" : noUses ? "Cariche esaurite" : "Bonus action · +2 danno armi per 3 turni"}
+                                title={baUsed && !alreadyActive ? "Bonus action già usata questo turno" : alreadyActive ? "Furia già attiva" : noUses ? "Cariche esaurite" : `Bonus action · +${rageDamageBonus(getSnapLevel(mySnap))} danno armi per 3 turni`}
                                 onClick={() => !blocked && handleRage(m.matchId, action)}>
                                 <span className="bonus-action-tag">⚡ Bonus</span>
                                 <span className="action-icon">{action.icon}</span>
                                 <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.rageTurns} turni` : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "+2 danno · 3 turni"}</span>
+                                <span className="action-dice">{alreadyActive ? `✓ ${myPlayer.rageTurns} turni` : baUsed ? "⚡ Usata" : noUses ? "Esaurita" : `+${rageDamageBonus(getSnapLevel(mySnap))} danno · 3 turni`}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
                               </button>
                             );

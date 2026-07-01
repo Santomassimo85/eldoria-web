@@ -8,6 +8,7 @@ import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import { isHiddenChar } from "../data/hiddenPlayers";
+import { ARENA_SUBCLASSES } from "../data/arenaSubclasses";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar2.png";
@@ -441,6 +442,7 @@ export default function ArenaMarket() {
   const coins    = charData?.arenaCoins ?? 0;
   const buffs    = charData?.arenaBuffs ?? {};
   const classLvls = charData?.classLevels ?? {};
+  const subclasses = charData?.arenaSubclass ?? {};
 
   // ── Ricerca: classi + potenziamenti ──
   const q = query.trim().toLowerCase();
@@ -484,6 +486,26 @@ export default function ArenaMarket() {
     const gotAsi = asiLevels.includes(newLv);
     showMsg(`${cls.name} → Lv.${newLv}! +1 dado PF${gotAsi ? " · +2 punti caratteristica" : ""} (si applicano creando il PG nell'Arena)`);
   };
+
+  // ── Scelta sottoclasse/archetipo (permanente, retroattiva) ─────────────────
+  const chooseSubclass = async (classKey, optionKey) => {
+    if (!currentUser || !charData) return;
+    await updateDoc(doc(db, "characters", currentUser.uid), {
+      [`arenaSubclass.${classKey}`]: optionKey,
+    });
+    const def = ARENA_SUBCLASSES[classKey];
+    const opt = def?.options.find(o => o.key === optionKey);
+    showMsg(`${def?.title || "Scelta"}: ${opt?.label || optionKey} — scelta salvata!`);
+  };
+
+  // Scelte in sospeso: classi possedute che hanno raggiunto il livello della
+  // scelta ma non l'hanno ancora compiuta (retroattivo per chi ha già i livelli).
+  const pendingSubclassChoices = ownedClasses.filter(cls => {
+    const def = ARENA_SUBCLASSES[cls.key];
+    if (!def) return false;
+    const lv = classLvls[cls.key] ?? 3;
+    return lv >= def.reqLevel && !subclasses[cls.key];
+  });
 
   if (!currentUser) {
     return (
@@ -539,6 +561,32 @@ export default function ArenaMarket() {
         <p className="am-classes-sub">
           Ogni classe parte da <strong>Lv.3</strong> — salire di livello costa <strong>{levelUpCost} MA</strong>. Ogni livello sblocca, in base alla classe, <strong>incantesimi, abilità, passive e punti caratteristica</strong> (vedi il <strong>Manuale delle Classi</strong> più in basso), oltre a <strong>+1 dado PF (1d10)+COS</strong> al tiro dei Punti Vita in fase di creazione del PG. Ogni classe ha una progressione separata.
         </p>
+
+        {pendingSubclassChoices.length > 0 && (
+          <div className="am-subclass-pending">
+            <h4 className="am-subclass-pending-title">🎓 Scelte permanenti disponibili</h4>
+            <p className="am-subclass-pending-sub">
+              Hai raggiunto il livello che sblocca una <strong>scelta di archetipo</strong>. È <strong>permanente</strong> (solo il Master può cambiarla) e ne attiva gli effetti in Arena. Scegli:
+            </p>
+            {pendingSubclassChoices.map(cls => {
+              const def = ARENA_SUBCLASSES[cls.key];
+              return (
+                <div key={cls.key} className="am-subclass-row">
+                  <div className="am-subclass-cls">{cls.icon} {cls.name} — <strong>{def.title}</strong></div>
+                  <div className="am-subclass-opts">
+                    {def.options.map(o => (
+                      <button key={o.key} className="am-subclass-opt" title={o.desc}
+                        onClick={() => chooseSubclass(cls.key, o.key)}>
+                        <span className="am-subclass-opt-label">{o.label}</span>
+                        <span className="am-subclass-opt-desc">{o.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {filteredClasses.length === 0 ? (
           <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
         ) : (
@@ -551,6 +599,17 @@ export default function ArenaMarket() {
                 <div className="am-class-icon">{cls.icon}</div>
                 <div className="am-class-name">{cls.name}</div>
                 <div className="am-class-level">Lv. {lv}</div>
+                {(() => {
+                  const def = ARENA_SUBCLASSES[cls.key];
+                  if (!def) return null;
+                  const chosenKey = subclasses[cls.key];
+                  if (chosenKey) {
+                    const opt = def.options.find(o => o.key === chosenKey);
+                    return <div className="am-class-subclass">{def.title}: <strong>{opt?.label || chosenKey}</strong></div>;
+                  }
+                  if (lv >= def.reqLevel) return <div className="am-class-subclass am-class-subclass--pending">⚠ Scegli {def.title} qui sopra ↑</div>;
+                  return <div className="am-class-subclass am-class-subclass--locked">{def.title} · da Lv.{def.reqLevel}</div>;
+                })()}
                 <button
                   className="am-class-lvup-btn"
                   disabled={!canAfford}

@@ -1,6 +1,37 @@
 {
   "versions": [
     {
+      "version": "64",
+      "date": "2026-07-01",
+      "title": "Arena: progressione classi Lv4-8 — incantesimi, abilità, cariche e sottoclassi",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Sistema di scelta dell'archetipo/sottoclasse per ogni classe (Stile di Combattimento, Tradizione Arcana, Origine Stregonesca, Dominio, Circolo, Collegio, Patrono, Specializzazione…). La scelta è PERMANENTE per classe ed è RETROATTIVA: chi ha già raggiunto il livello di sblocco la compie alla prossima apertura della Bottega dell'Arena, tramite un pannello dedicato con la descrizione di ogni opzione. Gli effetti si attivano subito in Arena: gli stili difensivi danno +1/+2 CA, gli stili offensivi +2 al danno con le armi, le tradizioni/origini/domini arcani +1/+2 al danno degli incantesimi. Gli effetti valgono sia per i giocatori sia per gli avversari IA."
+        },
+        {
+          "type": "mechanics",
+          "text": "I limiti di incantesimi equipaggiabili degli incantatori ora crescono con il livello di classe (prima erano costanti). Gli incantatori completi (Mago, Stregone, Chierico, Druido, Bardo) sbloccano un trucchetto aggiuntivo dal Lv5 e un incantesimo di 1° livello aggiuntivo dal Lv8; la struttura per i tier di incantesimo superiori (3°/4°) e per le classi semi-incantatrici è predisposta e si attiverà man mano che i relativi incantesimi vengono aggiunti. Il numero di incantesimi richiesti in fase di iscrizione è automaticamente limitato a quelli realmente disponibili, così non è mai possibile restare bloccati nella selezione."
+        },
+        {
+          "type": "chore",
+          "text": "Introdotta l'infrastruttura di progressione per livello dell'Arena (filtro delle abilità/incantesimi per livello richiesto e scaling dei limiti), base su cui verranno agganciati i nuovi incantesimi, abilità e passive dei livelli 4-8 di tutte le classi."
+        },
+        {
+          "type": "feature",
+          "text": "Nuove abilità di classe dei livelli intermedi. Ladro — Azione Scaltra (dal Lv4): bonus action che concede un'azione extra nel turno (2 cariche). Monaco — Colpo Stordente (dal Lv5): TS Costituzione dell'avversario (CD 8 + competenza + DES del monaco) o salta un turno (2 cariche). Entrambe compaiono automaticamente nel kit quando si raggiunge il livello richiesto."
+        },
+        {
+          "type": "mechanics",
+          "text": "Le abilità marziali ora scalano con il livello di classe, come pubblicizzato nel mercato. Attacco Furtivo del Ladro: 2d6 dal Lv4, 3d6 dal Lv8 (poi 4d6@11, 5d6@16, 6d6@19). Furia del Barbaro: +3 al danno dal Lv4 (poi +4@9, +6@16), con la scritta di stato e i log aggiornati al valore reale. Cariche aggiuntive: Marchio del Cacciatore +1 dal Lv4; Carica del Guerriero +1 dal Lv6; Disarmare, Turbine di Lame e Concentrazione +1 dal Lv8. Lo Smite del Paladino (già scalato) è stato unificato nella stessa logica. Lo scaling vale sia per i giocatori sia per gli avversari controllati dall'IA."
+        },
+        {
+          "type": "feature",
+          "text": "Nuovi incantesimi di alto livello per gli incantatori. Al Lv5 di classe si sblocca il 3° tier di incantesimi anche per Chierico (Colonna di Fiamma, Rinnovamento, Scomunica), Druido (Convocare Fulmine, Pelle di Pietra, Flagello d'Insetti), Bardo (Dissonanza, Paura Ammaliante, Canto Rigenerante) e Warlock (Maledizione del Sangue, Paura, Fame dell'Abisso). Al Lv7 si sblocca il 4° tier per tutti gli incantatori completi e per il Warlock (Mago: Tempesta di Ghiaccio, Porta Dimensionale, Vortice Arcano; Stregone: Tempesta di Ghiaccio, Vortice di Fuoco, Blocca Mostri; Chierico: Fiamma Accecante, Guarigione; Druido: Colonna di Ghiaccio, Guarigione Naturale; Bardo: Confusione, Guarigione Melodica; Warlock: Bocca dell'Inferno, Dominare Mente). I semi-incantatori sbloccano il 2° tier al Lv5: Ranger (Freccia Fulminante, Corteccia Protettiva) e Artefice (Scorching Ray, Force Shield). Gli incantesimi di tier alto hanno poche cariche (1-2) per non sbilanciare il PvP 1v1."
+        }
+      ]
+    },
+    {
       "version": "63.01",
       "date": "2026-07-01",
       "title": "World Boss Fight: Dardo Incantato — numero di dardi dalla descrizione",

@@ -1008,3 +1008,35 @@
   letter-spacing: 0.02em;
 }
 .am-manual-lv-txt { flex: 1; }
+
+/* ── Scelta sottoclasse / archetipo ─────────────────────────────────────── */
+.am-subclass-pending {
+  margin: 14px 0 18px;
+  padding: 14px 16px;
+  border: 2px solid #c8a24a;
+  border-radius: 12px;
+  background: rgba(200, 162, 74, 0.10);
+}
+.am-subclass-pending-title { margin: 0 0 4px; color: #8a5a0e; font-size: 1rem; }
+.am-subclass-pending-sub { margin: 0 0 10px; font-size: 0.82rem; opacity: 0.9; }
+.am-subclass-row { padding: 8px 0; border-top: 1px dashed rgba(138, 90, 14, 0.3); }
+.am-subclass-row:first-of-type { border-top: none; }
+.am-subclass-cls { font-size: 0.9rem; margin-bottom: 6px; }
+.am-subclass-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.am-subclass-opt {
+  flex: 1 1 180px;
+  display: flex; flex-direction: column; gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1.5px solid #b98c2e;
+  border-radius: 9px;
+  background: #fff8e8;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.12s ease;
+}
+.am-subclass-opt:hover { background: #ffedc2; transform: translateY(-1px); }
+.am-subclass-opt-label { font-weight: 700; font-size: 0.85rem; color: #7a4e0a; }
+.am-subclass-opt-desc { font-size: 0.74rem; opacity: 0.85; }
+.am-class-subclass { margin: 2px 0 6px; font-size: 0.72rem; color: #5a3a0a; }
+.am-class-subclass--pending { color: #a11414; font-weight: 700; }
+.am-class-subclass--locked { opacity: 0.55; }
