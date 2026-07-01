@@ -175,6 +175,17 @@ const WIZARD_SPELLS = [
   { name: "Tempesta di Ghiaccio",  level: 4, hitBonus: 3, damage: "6d6",   statKey: null, type: "spell", icon: "🌨", info: "Lv4 · Freddo · TS DES", reqLevel: 7, maxUses: 1 },
   { name: "Porta Dimensionale",    level: 4, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🚪", info: "Lv4 · Ti sottrai: il nemico non può colpirti il prossimo turno", special: "invisibility", invisibilityDuration: 1, reqLevel: 7, maxUses: 1 },
   { name: "Vortice Arcano",        level: 4, hitBonus: 3, damage: "7d6",   statKey: null, type: "spell", icon: "🌀", info: "Lv4 · Forza · TS DES", reqLevel: 7, maxUses: 1 },
+  // ── Tier 5 (Lv9) ─ Tier 6 (Lv11) ─ Tier 7 (Lv13) ─ Tier 8 (Lv15) ─ Tier 9 (Lv17)
+  { name: "Cono di Freddo",        level: 5, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "🧊", info: "Lv5 · Freddo · TS DES", reqLevel: 9, maxUses: 1 },
+  { name: "Telecinesi",            level: 5, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤏", info: "Lv5 · Controllo · TS FOR o perdi 2 turni", special: "control", reqLevel: 9, maxUses: 1 },
+  { name: "Disintegrazione",       level: 6, hitBonus: 3, damage: "10d6+40",statKey: null, type: "spell", icon: "☄", info: "Lv6 · Forza · TS DES", reqLevel: 11, maxUses: 1 },
+  { name: "Globo di Invulnerabilità",level: 6, hitBonus: 0, damage: "—",   statKey: null, type: "spell", icon: "🔵", info: "Lv6 · +5 CA per 2 turni", special: "shield_buff", shieldBuffBonus: 5, shieldBuffTurns: 2, reqLevel: 11, maxUses: 1 },
+  { name: "Dito della Morte",      level: 7, hitBonus: 3, damage: "7d8+30",statKey: null, type: "spell", icon: "💀", info: "Lv7 · Necrotico · TS COS", reqLevel: 13, maxUses: 1 },
+  { name: "Inversione della Gravità",level: 7, hitBonus: 0, damage: "—",   statKey: null, type: "spell", icon: "🌀", info: "Lv7 · Controllo · TS DES o perdi 2 turni", special: "control", reqLevel: 13, maxUses: 1 },
+  { name: "Incenerire",            level: 8, hitBonus: 3, damage: "12d6",  statKey: null, type: "spell", icon: "🔥", info: "Lv8 · Fuoco · TS DES", reqLevel: 15, maxUses: 1 },
+  { name: "Parola del Potere: Stordire",level: 8, hitBonus: 0, damage: "—",statKey: null, type: "spell", icon: "😵", info: "Lv8 · Controllo · TS COS o perdi 2 turni", special: "control", reqLevel: 15, maxUses: 1 },
+  { name: "Meteora",               level: 9, hitBonus: 3, damage: "20d6",  statKey: null, type: "spell", icon: "☄", info: "Lv9 · Fuoco devastante · TS DES", reqLevel: 17, maxUses: 1 },
+  { name: "Parola del Potere: Morte",level: 9, hitBonus: 0, damage: "—",   statKey: null, type: "spell", icon: "☠", info: "Lv9 · Controllo · TS COS o perdi 2 turni", special: "control", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── SORCERER SPELLS (Stregone) — pool: 6 trucchetti · 6 lv1 · 5 lv2 (sceglie 4+4+2)
@@ -207,6 +218,13 @@ const SORCERER_SPELLS = [
   { name: "Tempesta di Ghiaccio",  level: 4, hitBonus: 3,  damage: "6d6",   statKey: null, type: "spell", icon: "🌨", info: "Lv4 · Freddo · TS DES", reqLevel: 7, maxUses: 1 },
   { name: "Vortice di Fuoco",      level: 4, hitBonus: 3,  damage: "7d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv4 · Fuoco · TS DES", reqLevel: 7, maxUses: 1 },
   { name: "Blocca Mostri",         level: 4, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "🧊", info: "Lv4 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 7, maxUses: 1 },
+  // ── Tier 5 (Lv9) → Tier 9 (Lv17) ─────────────────────────────────────────
+  { name: "Cono di Freddo",        level: 5, hitBonus: 3,  damage: "8d8",   statKey: null, type: "spell", icon: "🧊", info: "Lv5 · Freddo · TS DES", reqLevel: 9, maxUses: 1 },
+  { name: "Nube Mortale",          level: 5, hitBonus: 0,  damage: "—",     statKey: null, type: "spell", icon: "☠", info: "Lv5 · TS COS · 3d6 veleno a inizio turno per 3 turni", special: "save_dot", saveDotAbility: "con", saveDotDamage: "3d6", saveDotTurns: 3, reqLevel: 9, maxUses: 1 },
+  { name: "Catena di Fulmini",     level: 6, hitBonus: 3,  damage: "10d8",  statKey: null, type: "spell", icon: "⚡", info: "Lv6 · Fulmine · TS DES", reqLevel: 11, maxUses: 1 },
+  { name: "Disintegrazione",       level: 7, hitBonus: 3,  damage: "10d6+40",statKey: null, type: "spell", icon: "☄", info: "Lv7 · Forza · TS DES", reqLevel: 13, maxUses: 1 },
+  { name: "Tempesta di Fuoco",     level: 8, hitBonus: 3,  damage: "12d6",  statKey: null, type: "spell", icon: "🔥", info: "Lv8 · Fuoco · TS DES", reqLevel: 15, maxUses: 1 },
+  { name: "Desiderio Distruttivo", level: 9, hitBonus: 3,  damage: "18d6",  statKey: null, type: "spell", icon: "🌠", info: "Lv9 · Forza devastante · TS DES", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── WARLOCK SPELLS (Oscuro Cultore) — pool: 4 trucchetti · 5 lv1 · 4 lv2 (sceglie 2 trucchetti + 2 slot lv1/lv2 misti)
@@ -233,6 +251,12 @@ const WARLOCK_SPELLS = [
   // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
   { name: "Bocca dell'Inferno",      level: 4, hitBonus: 3, damage: "8d8",  statKey: null, type: "spell", icon: "🔥", info: "Lv4 · Fuoco · TS DES", reqLevel: 7, maxUses: 1 },
   { name: "Dominare Mente",          level: 4, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "🧠", info: "Lv4 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 7, maxUses: 1 },
+  // ── Tier 5 (Lv9) · Mystic Arcanum tier 6-9 (Lv 11/13/15/17), 1 carica ─────
+  { name: "Piaga Necrotica",         level: 5, hitBonus: 3, damage: "8d8",  statKey: null, type: "spell", icon: "🕷", info: "Lv5 · Necrotico · TS COS", reqLevel: 9, maxUses: 1 },
+  { name: "Cerchio della Morte",     level: 6, hitBonus: 3, damage: "8d6+30",statKey: null, type: "spell", icon: "💀", info: "Arcanum · Necrotico · TS COS", reqLevel: 11, maxUses: 1 },
+  { name: "Dito della Morte",        level: 7, hitBonus: 3, damage: "7d8+30",statKey: null, type: "spell", icon: "☠", info: "Arcanum · Necrotico · TS COS", reqLevel: 13, maxUses: 1 },
+  { name: "Requiem d'Ombra",         level: 8, hitBonus: 3, damage: "12d6", statKey: null, type: "spell", icon: "🌑", info: "Arcanum · Necrotico · TS COS", reqLevel: 15, maxUses: 1 },
+  { name: "Presagio della Fine",     level: 9, hitBonus: 0, damage: "—",    statKey: null, type: "spell", icon: "⌛", info: "Arcanum · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── DRUID SPELLS (Druido) — 2 trucchetti · 4 lv1 · 2 lv2
@@ -269,6 +293,12 @@ const DRUID_SPELLS = [
   // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
   { name: "Colonna di Ghiaccio", level: 4, hitBonus: 3, damage: "7d8",   statKey: null, type: "spell", icon: "🧊", info: "Lv4 · Freddo · TS DES", reqLevel: 7, maxUses: 1 },
   { name: "Guarigione Naturale", level: 4, hitBonus: 0, damage: "5d8",   statKey: null, type: "spell", icon: "💚", info: "Lv4 · Cura potente · ripristina HP", special: "heal", reqLevel: 7, maxUses: 1 },
+  // ── Tier 5 (Lv9) → Tier 9 (Lv17) ─────────────────────────────────────────
+  { name: "Muro di Ghiaccio",    level: 5, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "🧊", info: "Lv5 · Freddo · TS DES", reqLevel: 9, maxUses: 1 },
+  { name: "Muro di Spine",       level: 6, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌵", info: "Lv6 · TS COS · 3d8 perforante a inizio turno per 3 turni", special: "save_dot", saveDotAbility: "con", saveDotDamage: "3d8", saveDotTurns: 3, reqLevel: 11, maxUses: 1 },
+  { name: "Tempesta di Fuoco",   level: 7, hitBonus: 3, damage: "7d10",  statKey: null, type: "spell", icon: "🔥", info: "Lv7 · Fuoco · TS DES", reqLevel: 13, maxUses: 1 },
+  { name: "Sole Bruciante",      level: 8, hitBonus: 3, damage: "12d6",  statKey: null, type: "spell", icon: "☀", info: "Lv8 · Radiante · TS COS", reqLevel: 15, maxUses: 1 },
+  { name: "Tempesta Elementale", level: 9, hitBonus: 3, damage: "15d6",  statKey: null, type: "spell", icon: "🌪", info: "Lv9 · Elementale devastante · TS DES", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── CLERIC SPELLS (Chierico) — 3 trucchetti · 4 lv1 · 2 lv2
@@ -303,6 +333,12 @@ const CLERIC_SPELLS = [
   // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
   { name: "Fiamma Accecante",       level: 4, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "☀", info: "Lv4 · Radiante · TS DES", reqLevel: 7, maxUses: 1 },
   { name: "Guarigione",             level: 4, hitBonus: 0, damage: "5d8",   statKey: null, type: "spell", icon: "✨", info: "Lv4 · Cura potentissima · ripristina HP", special: "heal", reqLevel: 7, maxUses: 1 },
+  // ── Tier 5 (Lv9) → Tier 9 (Lv17) ─────────────────────────────────────────
+  { name: "Fiamma Divina",          level: 5, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "🔥", info: "Lv5 · Radiante · TS DES", reqLevel: 9, maxUses: 1 },
+  { name: "Lama Spirituale",        level: 6, hitBonus: 3, damage: "9d8",   statKey: null, type: "spell", icon: "⚔", info: "Lv6 · Radiante · TS DES", reqLevel: 11, maxUses: 1 },
+  { name: "Rigenerazione",          level: 7, hitBonus: 0, damage: "7d8",   statKey: null, type: "spell", icon: "💗", info: "Lv7 · Cura potentissima · ripristina HP", special: "heal", reqLevel: 13, maxUses: 1 },
+  { name: "Fuoco Sacro Maggiore",   level: 8, hitBonus: 3, damage: "12d6",  statKey: null, type: "spell", icon: "☀", info: "Lv8 · Radiante · TS DES", reqLevel: 15, maxUses: 1 },
+  { name: "Raffica Solare",         level: 9, hitBonus: 3, damage: "16d6",  statKey: null, type: "spell", icon: "🌟", info: "Lv9 · Radiante devastante · TS DES", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── BARD SPELLS (Bardo) — niente trucchetti · 4 lv1 · 2 lv2
@@ -325,6 +361,12 @@ const BARD_SPELLS = [
   // ── Livello 4 (tier 4 · sbloccato al Lv7 di classe) ───────────────────────
   { name: "Confusione",                 level: 4, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌀", info: "Lv4 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 7, maxUses: 1 },
   { name: "Guarigione Melodica",        level: 4, hitBonus: 0, damage: "5d8",   statKey: null, type: "spell", icon: "🎶", info: "Lv4 · Cura potentissima · 5d8 + CAR HP", special: "heal", healModStat: "cha", reqLevel: 7, maxUses: 1 },
+  // ── Tier 5 (Lv9) → Tier 9 (Lv17) ─────────────────────────────────────────
+  { name: "Dominazione",                level: 5, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🕸", info: "Lv5 · Controllo · TS SAG o perdi 2 turni", special: "control", reqLevel: 9, maxUses: 1 },
+  { name: "Eco Dissonante",             level: 6, hitBonus: 3, damage: "9d8",   statKey: null, type: "spell", icon: "🎵", info: "Lv6 · Psichico · TS DES", reqLevel: 11, maxUses: 1 },
+  { name: "Rigenerazione Corale",       level: 7, hitBonus: 0, damage: "7d8",   statKey: null, type: "spell", icon: "💗", info: "Lv7 · Cura potentissima · 7d8 + CAR HP", special: "heal", healModStat: "cha", reqLevel: 13, maxUses: 1 },
+  { name: "Parola del Potere: Stordire",level: 8, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "😵", info: "Lv8 · Controllo · TS COS o perdi 2 turni", special: "control", reqLevel: 15, maxUses: 1 },
+  { name: "Melodia Fatale",             level: 9, hitBonus: 3, damage: "14d6",  statKey: null, type: "spell", icon: "🎼", info: "Lv9 · Psichico devastante · TS SAG", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── PALADIN SPELLS (Paladino) — pool: 3 lv1 · 3 lv2 (sceglie 2+1)
@@ -335,6 +377,10 @@ const PALADIN_SPELLS = [
   { name: "Punizione Marchiante",  level: 2, hitBonus: 3, damage: "2d6",   statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Radiante", maxUses: 2 },
   { name: "Ristorare Inferiore",   level: 2, hitBonus: 0, damage: "1d4+2", statKey: null, type: "spell", icon: "💊", info: "Lv2 · Rimuove veleno/sanguinamento/svantaggio/controllo + cura 1d4+2 HP", special: "heal", cleansesStatuses: true, maxUses: 2 },
   { name: "Aiuto",                 level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🤝", info: "Lv2 · +1 al danno per 2 turni", special: "dmg_buff", aidDmgBonus: 1, aidDmgTurns: 2, maxUses: 2 },
+  // ── Semi-caster: tier 3 (Lv9) · tier 4 (Lv13) · tier 5 (Lv17) ─────────────
+  { name: "Corona di Collera",     level: 3, hitBonus: 3, damage: "4d10",  statKey: null, type: "spell", icon: "👑", info: "Lv3 · Radiante · TS DES", reqLevel: 9,  maxUses: 1 },
+  { name: "Punizione Accecante",   level: 4, hitBonus: 3, damage: "6d8",   statKey: null, type: "spell", icon: "🌟", info: "Lv4 · Radiante · TS COS", reqLevel: 13, maxUses: 1 },
+  { name: "Punizione Devastante",  level: 5, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "⚡", info: "Lv5 · Radiante · TS DES", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── RANGER SPELLS (Ranger) — pool: 6 lv1 (sceglie 3)
@@ -348,6 +394,10 @@ const RANGER_SPELLS = [
   // ── Livello 2 (tier 2 · sbloccato al Lv5 di classe) ───────────────────────
   { name: "Freccia Fulminante",    level: 2, hitBonus: 3, damage: "3d8",   statKey: null, type: "spell", icon: "🏹", info: "Lv2 · Fulmine · TS DES", reqLevel: 5, maxUses: 2 },
   { name: "Corteccia Protettiva",  level: 2, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌿", info: "Lv2 · +2 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 2, shieldBuffTurns: 3, reqLevel: 5, maxUses: 2 },
+  // ── Semi-caster: tier 3 (Lv9) · tier 4 (Lv13) · tier 5 (Lv17) ─────────────
+  { name: "Grandine Fulminante",   level: 3, hitBonus: 3, damage: "5d8",   statKey: null, type: "spell", icon: "🏹", info: "Lv3 · Fulmine · TS DES", reqLevel: 9,  maxUses: 1 },
+  { name: "Pelle di Pietra",       level: 4, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🪨", info: "Lv4 · +3 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 3, shieldBuffTurns: 3, reqLevel: 13, maxUses: 1 },
+  { name: "Tempesta di Frecce",    level: 5, hitBonus: 3, damage: "8d8",   statKey: null, type: "spell", icon: "🌩", info: "Lv5 · Perforante · TS DES", reqLevel: 17, maxUses: 1 },
 ];
 
 // ── ARMI SEMPLICI ──────────────────────────────────────────────────────
@@ -785,6 +835,10 @@ const ARTIFICER_SPELLS = [
   // ── Livello 2 (tier 2 · sbloccato al Lv5 di classe) ───────────────────────
   { name: "Scorching Ray", level: 2, hitBonus: 3, damage: "6d6", statKey: null, type: "spell", icon: "🔥", info: "Lv2 · Fuoco (3 raggi × 2d6) · TS DES", reqLevel: 5, maxUses: 2 },
   { name: "Force Shield",  level: 2, hitBonus: 0, damage: "—",   statKey: null, type: "spell", icon: "🛡", info: "Lv2 · +2 CA per 3 turni", special: "shield_buff", shieldBuffBonus: 2, shieldBuffTurns: 3, reqLevel: 5, maxUses: 2 },
+  // ── Semi-caster: tier 3 (Lv9) · tier 4 (Lv13) · tier 5 (Lv17) ─────────────
+  { name: "Fireball Meccanica", level: 3, hitBonus: 3, damage: "6d6",    statKey: null, type: "spell", icon: "💥", info: "Lv3 · Fuoco · TS DES", reqLevel: 9,  maxUses: 1 },
+  { name: "Cannone ad Acido",   level: 4, hitBonus: 3, damage: "8d8",    statKey: null, type: "spell", icon: "🧪", info: "Lv4 · Acido · TS DES", reqLevel: 13, maxUses: 1 },
+  { name: "Raggio Disintegrante",level: 5, hitBonus: 3, damage: "10d6+20",statKey: null, type: "spell", icon: "🔫", info: "Lv5 · Forza · TS DES", reqLevel: 17, maxUses: 1 },
 ];
 
 // Costrutti — scelti come pet del ranger ma con effetti meccanici diversi
@@ -1673,6 +1727,11 @@ const SPELL_LIMITS = {
 // Archetipi da incantatore (per lo scaling dei limiti spell col livello).
 const FULL_CASTER_KEYS = ["wizard", "sorcerer", "cleric", "druid", "bard"];
 const HALF_CASTER_KEYS = ["paladin", "ranger", "artificer"];
+// Livello di classe che sblocca ogni tier di incantesimo (Arena_class_progress.txt 2B).
+const FULL_CASTER_TIER_UNLOCK = { 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 15, 9: 17 };
+const HALF_CASTER_TIER_UNLOCK = { 2: 5, 3: 9, 4: 13, 5: 17 };
+// Warlock: tier 1-5 come Pact Magic, poi Mystic Arcanum (1 carica) ai tier 6-9.
+const WARLOCK_TIER_UNLOCK     = { 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 15, 9: 17 };
 
 // Limiti spell in funzione del livello — vedi Arena_class_progress.txt 2B/R5.
 // Regola: si PARTE dal baseline di Lv.3 (SPELL_LIMITS) e si AGGIUNGE salendo,
@@ -1689,15 +1748,17 @@ function spellLimitsForLevel(classKey, level) {
   const lv = Math.max(3, level ?? 3);
   const out = { ...base };
   const hasCantrips = (base[0] ?? 0) > 0;
+  const unlock = (map) => { for (const [tier, req] of Object.entries(map)) if (lv >= req) out[tier] = Math.max(out[tier] ?? 0, 1); };
   if (FULL_CASTER_KEYS.includes(classKey)) {
-    if (lv >= 5) { out[3] = Math.max(out[3] ?? 0, 1); if (hasCantrips) out[0] = (out[0] ?? 0) + 1; }
-    if (lv >= 7) { out[3] = Math.max(out[3] ?? 0, 2); out[4] = Math.max(out[4] ?? 0, 1); }
-    if (lv >= 8) { out[1] = (out[1] ?? 0) + 1; }
+    unlock(FULL_CASTER_TIER_UNLOCK);
+    if (lv >= 5 && hasCantrips) out[0] = (base[0] ?? 0) + 1;  // +1 trucchetto
+    if (lv >= 7) out[3] = Math.max(out[3] ?? 0, 2);           // 2° incantesimo di tier 3
+    if (lv >= 8) out[1] = (base[1] ?? 0) + 1;                 // +1 incantesimo Lv1
+    if (lv >= 9) out[2] = (base[2] ?? 0) + 1;                 // +1 incantesimo Lv2
   } else if (classKey === "warlock") {
-    if (lv >= 5) out[3] = Math.max(out[3] ?? 0, 1);
-    if (lv >= 7) out[4] = Math.max(out[4] ?? 0, 1);
+    unlock(WARLOCK_TIER_UNLOCK);
   } else if (HALF_CASTER_KEYS.includes(classKey)) {
-    if (lv >= 5) out[2] = Math.max(out[2] ?? 0, 1);
+    unlock(HALF_CASTER_TIER_UNLOCK);
   }
   return out;
 }
@@ -10435,11 +10496,11 @@ export default function Arena() {
                         const hasPet        = petActions.length > 0;
                         // Se non c'è pet, la sotto-tab attiva ricade sempre su "skill".
                         const abSub = (abilitaSub === "pet" && hasPet) ? "pet" : "skill";
-                        const spellGroups   = [0, 1, 2, 3].map(lvl => ({
+                        const spellGroups   = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(lvl => ({
                           lvl,
                           spells: currentActions.filter(a => a.type === "spell" && a.level === lvl),
                         })).filter(g => g.spells.length > 0);
-                        const LEVEL_LABELS = { 0: "Trucchetti", 1: "Livello 1", 2: "Livello 2", 3: "Livello 3" };
+                        const LEVEL_LABELS = { 0: "Trucchetti", 1: "Livello 1", 2: "Livello 2", 3: "Livello 3", 4: "Livello 4", 5: "Livello 5", 6: "Livello 6", 7: "Livello 7", 8: "Livello 8", 9: "Livello 9" };
 
                         const renderActionBtn = (action) => {
                           if (action.type === "passive") {
