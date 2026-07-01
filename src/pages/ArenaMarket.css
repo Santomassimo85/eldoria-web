@@ -1040,3 +1040,13 @@
 .am-class-subclass { margin: 2px 0 6px; font-size: 0.72rem; color: #5a3a0a; }
 .am-class-subclass--pending { color: #a11414; font-weight: 700; }
 .am-class-subclass--locked { opacity: 0.55; }
+.am-master-subclass-select {
+  margin-left: 6px;
+  padding: 3px 6px;
+  border: 1.5px solid #b98c2e;
+  border-radius: 7px;
+  background: #fff8e8;
+  font-size: 0.74rem;
+  color: #5a3a0a;
+  max-width: 160px;
+}

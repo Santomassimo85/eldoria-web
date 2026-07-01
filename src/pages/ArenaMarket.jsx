@@ -821,6 +821,14 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
     setEditLevels(prev => { const n = { ...prev }; delete n[inputKey]; return n; });
   };
 
+  // Assegna/cambia/azzera la sottoclasse di un giocatore per una classe.
+  // Valore vuoto = azzera (il giocatore rivedrà il prompt di scelta al prossimo accesso).
+  const setMasterSubclass = async (uid, classKey, optionKey) => {
+    await updateDoc(doc(db, "characters", uid), {
+      [`arenaSubclass.${classKey}`]: optionKey || null,
+    });
+  };
+
   const levelDownClass = async (uid, cls) => {
     const char = allChars.find(c => c.uid === uid);
     if (!char) return;
@@ -970,6 +978,19 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
                           onKeyDown={e => { if (e.key === "Enter") saveClassLevel(ch.uid, cls.key); }}
                         />
                         <button className="am-coin-save" onClick={() => saveClassLevel(ch.uid, cls.key)}>Salva</button>
+                        {ARENA_SUBCLASSES[cls.key] && (
+                          <select
+                            className="am-master-subclass-select"
+                            title={`${ARENA_SUBCLASSES[cls.key].title} (Lv.${ARENA_SUBCLASSES[cls.key].reqLevel})`}
+                            value={(ch.arenaSubclass ?? {})[cls.key] ?? ""}
+                            onChange={e => setMasterSubclass(ch.uid, cls.key, e.target.value)}
+                          >
+                            <option value="">— {ARENA_SUBCLASSES[cls.key].title} —</option>
+                            {ARENA_SUBCLASSES[cls.key].options.map(o => (
+                              <option key={o.key} value={o.key}>{o.label}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     );
                   })}

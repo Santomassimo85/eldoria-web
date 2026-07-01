@@ -7,6 +7,10 @@
       "changes": [
         {
           "type": "feature",
+          "text": "Il Master può assegnare, cambiare o azzerare l'archetipo/sottoclasse di un giocatore per ogni classe, dal Pannello Master della Bottega (scheda Giocatori → Classi): un menù a tendina accanto al livello mostra le opzioni della classe. Azzerando la scelta, il giocatore rivedrà il prompt di selezione al prossimo accesso."
+        },
+        {
+          "type": "feature",
           "text": "Nuove passive difensive dei livelli intermedi. Ladro — Schivata Prodigiosa (dal Lv5): −25% ai danni fisici subiti. Monaco e Ladro — Elusione (dal Lv7): −50% ai danni da incantesimo. Paladino — Aura di Protezione (dal Lv6): +CAR (modificatore di Carisma) a tutti i tuoi tiri salvezza, così resisti molto meglio a controllo, veleni ed effetti con TS. Sono passive automatiche: compaiono nel kit al livello richiesto e agiscono da sole."
         },
         {
