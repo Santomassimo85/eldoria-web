@@ -950,7 +950,7 @@ export default function BossTactics() {
     // dardo lancia la sua animazione (bolt) e fa scendere gli HP, con una breve
     // pausa fra l'uno e l'altro così si vedono partire tutti e tre.
     if (autoHit) {
-      const { count, die, bonusEach } = magicMissileDarts(formula);
+      const { count, die, bonusEach } = magicMissileDarts(formula, action.description);
       const fxElement = detectElement(action);
       const from = { x: attacker.x, y: attacker.y };
       const dartDmgs = Array.from({ length: count }, () => Math.max(0, rollDie(die) + bonusEach));

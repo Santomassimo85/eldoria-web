@@ -143,6 +143,10 @@ body.tcg-infight .online-popup {
   border-radius: 50%; animation: tcg-spin 0.9s linear infinite;
 }
 @keyframes tcg-spin { to { transform: rotate(360deg); } }
+/* Bottone per uscire dalle schermate di attesa PvP (mulligan / connessione)
+   dove non c'è ancora il tavolo con il suo pulsante Esci. */
+.tcg-table__abandon { margin-top: 8px; opacity: 0.85; }
+.tcg-table__abandon:hover { opacity: 1; }
 
 /* ============================================================
    MODE SELECT

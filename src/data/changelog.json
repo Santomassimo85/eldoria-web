@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "63.01",
+      "date": "2026-07-01",
+      "title": "World Boss Fight: Dardo Incantato — numero di dardi dalla descrizione",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Il Dardo Incantato (Magic Missile) ora spara sempre il numero di dardi indicato nella DESCRIZIONE dell'incantesimo, sia in italiano che in inglese e anche con parole in mezzo («crei tre dardi lucenti», «you create three glowing darts», «3 dardi»). Prima il numero di dardi veniva dedotto solo dal conteggio dei dadi nella formula di danno: una scheda con danno scritto come «1d4+1» (cioè per singolo dardo) faceva partire un solo dardo invece di tre. Ora la descrizione ha la priorità (e la frase principale «tre dardi» vince sull'eventuale testo di potenziamento «un dardo in più per ogni livello»); il danno viene interpretato correttamente sia come totale («3d4+3» → 1d4+1 a dardo) sia come valore per dardo («1d4+1» → ogni dardo 1d4+1)."
+        },
+        {
+          "type": "fix",
+          "text": "Il riconoscimento del Dardo Incantato come colpo automatico (nessun tiro per colpire, nessun critico) ora considera anche la descrizione dell'azione, non solo il nome: una spell il cui testo descrive un dardo incantato / magic missile viene gestita nel modo corretto anche se rinominata."
+        }
+      ]
+    },
+    {
+      "version": "63",
+      "date": "2026-07-01",
+      "title": "TCG: torneo — vincitore univoco + tasto Abbandona nell'attesa",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Corretto il bug del Torneo che poteva assegnare la vittoria a entrambi i giocatori. La registrazione del risultato nel tabellone ora è transazionale e idempotente: il PRIMO esito registrato per un match è definitivo e non può più essere ribaltato da una segnalazione successiva o divergente (es. dopo una disconnessione incrociata o un doppio «Reclama vittoria»). Prima due client che segnalavano in contemporanea riscrivevano l'intero tabellone da uno snapshot vecchio, con vincitore non deterministico."
+        },
+        {
+          "type": "fix",
+          "text": "Aggiunto un pulsante «Abbandona» alle schermate di attesa delle partite PvP (amichevoli e torneo): «In attesa dell'avversario…», «In attesa che l'avversario decida la sua mano…» e «Connessione alla partita…». Prima, se l'avversario non entrava o non confermava il mulligan, si restava bloccati in quella schermata senza via d'uscita. Nelle amichevoli l'abbandono chiude la partita; nel torneo si torna al tabellone (il match resta gestibile dal Master)."
+        }
+      ]
+    },
+    {
       "version": "62",
       "date": "2026-06-30",
       "title": "World Boss Fight: gittata incantesimi e azioni bonus",

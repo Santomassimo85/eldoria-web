@@ -32,7 +32,7 @@
 
 import {
   doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
-  addDoc, collection,
+  addDoc, collection, runTransaction,
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { createGame } from "./engine.js";
@@ -575,20 +575,43 @@ export async function recreateTournamentMatchDoc(matchId, uid) {
      (es: "R1M2"), perché non esiste un doc su Firestore. */
 export async function reportMatchResult(matchOrEntryId, winnerUid) {
   if (!matchOrEntryId || !winnerUid) return;
-  const t = await getTournamentOnce();
-  if (!t || t.status !== "running") return;
-  const rounds = t.rounds.map((r) => ({
-    ...r,
-    matches: r.matches.map((m) => {
-      if (m.winnerUid) return m;
-      // PvP match: match by Firestore matchId
-      if (m.matchId && m.matchId === matchOrEntryId) return { ...m, winnerUid };
-      // AI match: match by bracket entry id (no Firestore doc)
-      if (!m.matchId && m.vsAi && m.id === matchOrEntryId) return { ...m, winnerUid };
-      return m;
-    }),
-  }));
-  await updateDoc(tref(), { rounds, updatedAt: serverTimestamp() });
+  // Transazione: rilegge il torneo DENTRO la transaction e scrive solo se
+  // la entry non ha ancora un vincitore. Senza questo, due client che
+  // segnalano in concorrenza (o in disaccordo dopo un "Reclama vittoria"/
+  // disconnessione incrociata) generavano una lost-update race: l'ultima
+  // updateDoc riscriveva l'INTERO array rounds partendo da uno snapshot
+  // stale e poteva RIBALTARE il vincitore già registrato → il bracket
+  // sembrava "dare la vittoria a entrambi". Ora il PRIMO risultato
+  // registrato è definitivo e idempotente.
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(tref());
+    if (!snap.exists()) return;
+    const t = snap.data();
+    if (t.status !== "running") return;
+    let matched = false;
+    let alreadyDecided = false;
+    const rounds = (t.rounds || []).map((r) => ({
+      ...r,
+      matches: (r.matches || []).map((m) => {
+        // È la entry giusta? (PvP per matchId Firestore, AI per entry id)
+        const isThis =
+          (m.matchId && m.matchId === matchOrEntryId) ||
+          (!m.matchId && m.vsAi && m.id === matchOrEntryId);
+        if (!isThis) return m;
+        matched = true;
+        // Già deciso (dall'avversario o dal master): NON sovrascrivere.
+        if (m.winnerUid) {
+          alreadyDecided = true;
+          return m;
+        }
+        return { ...m, winnerUid };
+      }),
+    }));
+    // Nessuna scrittura se non ho trovato la entry o era già decisa:
+    // evita conflitti/aborti di transazione inutili.
+    if (!matched || alreadyDecided) return;
+    tx.update(tref(), { rounds, updatedAt: serverTimestamp() });
+  }).catch(() => {});
 }
 
 /* MASTER ONLY: forza un vincitore su un match del round corrente.

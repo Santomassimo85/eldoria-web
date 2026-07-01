@@ -15,6 +15,7 @@ import { buildClassDeck } from "../tcg/cards.js";
 import {
   watchMatch, sideForUid,
   pushMulliganReshuffle, pushMulliganCommit, markMatchStarted, reviveMatch,
+  leaveMatch,
 } from "../tcg/net.js";
 import {
   watchProfile, grantStarter, needsStarter, openPack, saveDeck,
@@ -332,6 +333,28 @@ export default function Tcg() {
     }
   };
 
+  /* Abbandona un match dalle SCHERMATE DI ATTESA (mulligan, "in attesa
+     dell'avversario", "connessione…") dove non c'è ancora il tavolo di
+     gioco e quindi manca il pulsante Esci. Chiude il doc su Firestore
+     (leaveMatch → delete o status "ended") così la lobby non ri-trascina
+     dentro il giocatore, poi torna al bracket (torneo) o al menu.
+     Nota: un match del TORNEO non viene cancellato — verrà risolto dal
+     master (forceFinish) o rigiocato; qui usciamo solo dalla schermata. */
+  const abandonPvp = () => {
+    const back = match?.tournament ? "tournament" : "menu";
+    // Solo i match casual chiudono il doc: quelli del torneo restano nel
+    // bracket in attesa del master / di essere rigiocati.
+    if (matchId && !match?.tournament) leaveMatch(matchId).catch(() => {});
+    stopWatch();
+    setMatch(null);
+    setMatchId(null);
+    if (back === "menu") {
+      goMenu();
+    } else {
+      setScreen(back);
+    }
+  };
+
   /* Entra in un match torneo vs AI: gioco interamente locale (mode=ai).
      Quando finisce, scriviamo il vincitore nel bracket usando l'entry.id
      (non c'è un doc su tcg_matches per questi match). */
@@ -608,6 +631,9 @@ export default function Tcg() {
             <div className="tcg-table tcg-table--loading">
               <div className="tcg-waiting__spinner" />
               <p>In attesa dell'avversario…</p>
+              <button className="tcg-btn tcg-table__abandon" onClick={abandonPvp}>
+                Abbandona
+              </button>
             </div>
           );
         }
@@ -644,6 +670,9 @@ export default function Tcg() {
             <div className="tcg-table tcg-table--loading">
               <div className="tcg-waiting__spinner" />
               <p>Mano confermata. In attesa che l'avversario decida la sua…</p>
+              <button className="tcg-btn tcg-table__abandon" onClick={abandonPvp}>
+                Abbandona
+              </button>
             </div>
           );
         }
@@ -667,6 +696,9 @@ export default function Tcg() {
         <div className="tcg-table tcg-table--loading">
           <div className="tcg-waiting__spinner" />
           <p>Connessione alla partita…</p>
+          <button className="tcg-btn tcg-table__abandon" onClick={abandonPvp}>
+            Abbandona
+          </button>
         </div>
       )}
     </div>

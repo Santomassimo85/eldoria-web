@@ -367,27 +367,59 @@ export function isBonusAction(action) {
 }
 
 // Magic Missile family — these spells hit AUTOMATICALLY: no to-hit roll, no save,
-// and they can't crit. Matched by name so an imported sheet's "Dardo Incantato"
-// (or English "Magic Missile") is handled the same way the Arena resolves it.
+// and they can't crit. Matched on the NAME **or the DESCRIPTION**, so an imported
+// sheet whose spell is called something else but whose text describes il Dardo
+// Incantato / Magic Missile is still resolved the Arena way.
 // NB: we require the qualifier ("incantato") so the plain thrown-dart WEAPON
 // named "Dardo" is NOT swept in.
+const MM_RE = /dard[oi]\s+incantat[oi]|magic\s?missile|missil[ei]?\s+magic/;
 export function isAutoHitSpell(action) {
-  const t = `${action?.name || ""}`.toLowerCase();
-  return /dard[oi]\s+incantat[oi]|magic\s?missile|missili?\s+magic/.test(t);
+  const t = `${action?.name || ""} ${action?.description || ""}`.toLowerCase();
+  return MM_RE.test(t);
 }
 
-// Magic Missile fires SEVERAL darts (3 in D&D 5e), each its own auto-hit. Derive
-// how many from the damage formula's dice count: "3d4" or "3d4+3" → 3 darts,
-// defaulting to 3 when unparseable. Each dart rolls one die of that type plus its
-// share of any flat bonus ("3d4+3" → 1d4+1 per dart), so the per-dart total still
-// sums back to the authored formula.
-export function magicMissileDarts(formula) {
+// Number-word → digit, so "tre dardi" / "three darts" parse like "3 dardi".
+const WORD_NUM = {
+  un: 1, uno: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7,
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+};
+
+// Magic Missile fires SEVERAL darts (3 in D&D 5e), each its own auto-hit. The
+// dart COUNT is read, in order of priority:
+//   1) from the DESCRIPTION ("tre dardi", "3 dardi", "three darts") — questo è
+//      dove la scheda descrive davvero l'incantesimo, quindi vince;
+//   2) altrimenti dal numero di dadi nella formula di danno ("3d4+3" → 3);
+//   3) altrimenti il default 5e di 3.
+// Per-dart damage: se il numero di dadi della formula COINCIDE con i dardi la
+// formula è il TOTALE e va spalmato ("3d4+3" → 1d4+1 a dardo); altrimenti la
+// formula è già PER-DARDO ("1d4+1" con 3 dardi → ogni dardo tira 1d4+1). Così
+// un boss scritto in un modo o nell'altro spara comunque il numero giusto di
+// dardi. `description` è opzionale per retrocompatibilità.
+export function magicMissileDarts(formula, description = "") {
+  const desc = String(description || "").toLowerCase();
+  let count = null;
+  // Numero di dardi dalla descrizione. Il testo (spesso in inglese) recita
+  // "You create three glowing darts…" o "crei tre dardi lucenti…": la parola
+  // numero è separata da "dart"/"dardo" da uno o più aggettivi, quindi
+  // tolleriamo fino a 3 parole in mezzo. Prende la PRIMA occorrenza, così la
+  // frase principale ("three … darts") vince sull'eventuale testo di
+  // potenziamento ("one more dart for each slot level above 1st").
+  const m2 = desc.match(
+    /\b(\d+|un|uno|due|tre|quattro|cinque|sei|sette|one|two|three|four|five|six|seven)\b(?:\s+[a-zàèéìòù]+){0,3}?\s+(?:dard|dart|missil)/
+  );
+  if (m2) {
+    const tok = m2[1];
+    count = /^\d+$/.test(tok) ? (parseInt(tok, 10) || null) : (WORD_NUM[tok] || null);
+  }
   const m = String(formula || "").replace(/\s/g, "").match(/(\d+)d(\d+)([+-]\d+)?/i);
-  if (!m) return { count: 3, die: 4, bonusEach: 1 }; // 5e default: 3 × (1d4+1)
-  const count = Math.max(1, parseInt(m[1], 10) || 3);
+  if (!m) return { count: Math.max(1, count || 3), die: 4, bonusEach: 1 }; // 5e default: 3 × (1d4+1)
+  const diceN = Math.max(1, parseInt(m[1], 10) || 1);
   const die = parseInt(m[2], 10) || 4;
   const flat = parseInt(m[3] || "0", 10) || 0;
-  return { count, die, bonusEach: Math.round(flat / count) };
+  if (!count) count = diceN; // nessuna descrizione → conteggio dadi
+  count = Math.max(1, count);
+  const bonusEach = diceN === count ? Math.round(flat / count) : flat;
+  return { count, die, bonusEach };
 }
 
 // ── Spell save DC (D&D standard: 8 + proficiency + casting-ability mod) ──────
