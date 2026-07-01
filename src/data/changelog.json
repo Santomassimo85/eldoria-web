@@ -7,6 +7,10 @@
       "changes": [
         {
           "type": "feature",
+          "text": "Nuove passive difensive dei livelli intermedi. Ladro — Schivata Prodigiosa (dal Lv5): −25% ai danni fisici subiti. Monaco e Ladro — Elusione (dal Lv7): −50% ai danni da incantesimo. Paladino — Aura di Protezione (dal Lv6): +CAR (modificatore di Carisma) a tutti i tuoi tiri salvezza, così resisti molto meglio a controllo, veleni ed effetti con TS. Sono passive automatiche: compaiono nel kit al livello richiesto e agiscono da sole."
+        },
+        {
+          "type": "feature",
           "text": "Incantesimi di alto livello (tier 5-9) per gli incantatori completi, sbloccati salendo di livello: tier 5 @Lv9, tier 6 @Lv11, tier 7 @Lv13, tier 8 @Lv15, tier 9 @Lv17 (es. Mago: Cono di Freddo, Disintegrazione, Dito della Morte, Incenerire, Meteora; Chierico, Druido, Stregone e Bardo hanno i propri set). I semi-incantatori (Paladino, Ranger, Artefice) sbloccano tier 3 @Lv9, tier 4 @Lv13, tier 5 @Lv17. Il Warlock ottiene il tier 5 @Lv9 e i Mystic Arcanum (tier 6-9) a Lv11/13/15/17. Gli incantesimi di tier alto hanno 1 sola carica per non sbilanciare il PvP. Corretto anche un problema per cui gli incantesimi di tier 4 e superiori non comparivano nel pannello azioni durante il combattimento."
         },
         {

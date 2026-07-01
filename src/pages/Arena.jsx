@@ -606,6 +606,23 @@ const CRITICO_MIGLIORATO_PASSIVE = {
   type: "passive", icon: "💥", info: "Passiva · critico con 19 e 20 (non solo 20)",
 };
 
+// ── Passive difensive Lv5-7 (effetti in applyDefenderDamageMods / defenderSaveMod) ──
+// Schivata Prodigiosa (Ladro Lv5) — −25% ai danni fisici subiti.
+const SCHIVATA_PRODIGIOSA_PASSIVE = {
+  name: "Schivata Prodigiosa", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🌀", info: "Passiva · −25% ai danni fisici subiti", reqLevel: 5,
+};
+// Elusione (Monaco/Ladro Lv7) — −50% ai danni da incantesimo.
+const ELUSIONE_PASSIVE = {
+  name: "Elusione", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "💨", info: "Passiva · −50% ai danni da incantesimo", reqLevel: 7,
+};
+// Aura di Protezione (Paladino Lv6) — +CAR a tutti i tiri salvezza.
+const AURA_PROTEZIONE_PASSIVE = {
+  name: "Aura di Protezione", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "✨", info: "Passiva · +CAR a tutti i tuoi tiri salvezza", reqLevel: 6,
+};
+
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
 const DEATHBLOW_ACTION = {
   name: "Colpo Mortale", hitBonus: 3, damage: "4d6"  , statKey: "dex",
@@ -1226,14 +1243,25 @@ function countDebuffs(p) {
   return n;
 }
 
-// Riduzione danni: il Barbaro in Furia subisce metà danni da armi/skill e -25% dagli incantesimi.
-function applyBarbarianRageReduction(rawDmg, defenderSnap, defenderMatchPlayer, isSpell) {
+// Modificatori di danno del DIFENSORE (chokepoint unico chiamato a ogni colpo):
+//  • Barbaro in Furia: metà danni da armi/skill, −25% dagli incantesimi.
+//  • Ladro · Schivata Prodigiosa (Lv5): −25% ai danni fisici (non incantesimi).
+//  • Elusione (Monaco/Ladro Lv7): −50% ai danni da incantesimo.
+// Le riduzioni si applicano in sequenza (moltiplicative).
+function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSpell) {
   if (rawDmg <= 0) return rawDmg;
+  let dmg = rawDmg;
   const defClass = (defenderSnap?.class || "").toLowerCase();
-  if (!["barbarian","barbaro"].some(c => defClass.includes(c))) return rawDmg;
-  if ((defenderMatchPlayer?.rageTurns ?? 0) <= 0) return rawDmg;
-  if (isSpell) return Math.max(1, Math.floor(rawDmg * 0.75));
-  return Math.floor(rawDmg / 2);
+  const lv = getSnapLevel(defenderSnap);
+  // Barbaro in Furia
+  if (["barbarian","barbaro"].some(c => defClass.includes(c)) && (defenderMatchPlayer?.rageTurns ?? 0) > 0) {
+    dmg = isSpell ? Math.floor(dmg * 0.75) : Math.floor(dmg / 2);
+  }
+  // Ladro · Schivata Prodigiosa (Lv5): danni fisici −25%
+  if (!isSpell && isRogueClass(defClass) && lv >= 5) dmg = Math.floor(dmg * 0.75);
+  // Elusione (Monaco/Ladro Lv7): danni da incantesimo −50%
+  if (isSpell && lv >= 7 && (isMonkClass(defClass) || isRogueClass(defClass))) dmg = Math.floor(dmg * 0.5);
+  return Math.max(1, dmg);
 }
 
 // Titoli cumulativi: legge l'array `arenaTitles` e fa fallback al legacy `arenaTitle` singolo.
@@ -1295,6 +1323,14 @@ function getSnapLevel(snap) {
 // Effetto della sottoclasse scelta, letto dallo snapshot (snap.subclass = chiave opzione).
 function getSubclassEffect(snap) {
   return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
+}
+// Modificatore del tiro salvezza del DIFENSORE, con Aura di Protezione del
+// Paladino (Lv6): +CAR ai propri tiri salvezza (passiva).
+function defenderSaveMod(snap, ability) {
+  const base = snap?.stats?.[ability] ?? 0;
+  const cls = (snap?.class || "").toLowerCase();
+  if (isPaladinClass(cls) && getSnapLevel(snap) >= 6) return base + (snap?.stats?.cha ?? 0);
+  return base;
 }
 // ── SCALING PER LIVELLO DI SKILL/CARICHE (Arena_class_progress.txt H4) ────────
 // Attacco Furtivo (Ladro): dadi bonus per livello — 2d6@4 · 3d6@8 · 4d6@11 · 5d6@16 · 6d6@19.
@@ -1802,14 +1838,14 @@ function getRawLoadoutConfig(charClass, level) {
   if (isWizardClass(cls))   return { weaponOptions: SIMPLE_WEAPONS,        spellOptions: WIZARD_SPELLS,   spellLimits: SPELL_LIMITS.wizard,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.wizard),   autoActions: [RECUPERO_ARCANO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION, PATTO_DEMONIACO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION],  hasWildShape: false, armorCategory, canHaveShield };
+  if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION, AURA_PROTEZIONE_PASSIVE],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION, CUNNING_ACTION_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION, CUNNING_ACTION_ACTION, SCHIVATA_PRODIGIOSA_PASSIVE, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION, SURVIVOR_ACTION, RANGER_VOLLEY_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -4032,7 +4068,7 @@ export default function Arena() {
       const dot     = aiPlayer.pendingSaveDot;
       const ability = dot.ability || "con";
       const dc      = dot.dc || 13;
-      const mod     = aiSnap.stats?.[ability] ?? 0;
+      const mod     = defenderSaveMod(aiSnap, ability);
       const saveBuffActive = (aiPlayer.saveBuffAttacks ?? 0) > 0;
       const saveBuffBonus  = saveBuffActive ? (aiPlayer.saveBuffBonus ?? 0) : 0;
       const d20 = Math.floor(Math.random() * 20) + 1;
@@ -4372,7 +4408,7 @@ export default function Arena() {
               ? `colpisce [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]`
               : `manca [d20 ${d20}+${spellHit}=${totalHit} vs CA ${targetAc}]`;
           } else {
-            const defMod = targetSnap.stats?.[saveAbil] ?? 0;
+            const defMod = defenderSaveMod(targetSnap, saveAbil);
             const d20 = Math.floor(Math.random() * 20) + 1;
             // Etichetta esplicita: è la spell DELL'IA, il bersaglio tira il TS
             // (prima "TS COS · Spell" sembrava legato all'azione precedente del player).
@@ -4612,7 +4648,7 @@ export default function Arena() {
       const critMult = isCrit ? 2 : 1;
       const aiSubclassDmg = getSubclassEffect(aiSnap).weaponDmg || 0;
       const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg) * critMult;
-      damage = applyBarbarianRageReduction(raw, targetSnap, tgtMatchPlayer, false);
+      damage = applyDefenderDamageMods(raw, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
 
@@ -4897,7 +4933,7 @@ export default function Arena() {
       const { total: wDmg, rolls: wRolls } = isHit ? rollDmg(weaponAction.damage) : { total: 0, rolls: "" };
       const { total: sDmg, rolls: sRolls } = isHit ? rollDmg(action.damage || "2d8") : { total: 0, rolls: "" };
       const rawSmiteDmg = (wDmg + sDmg + smiteStrMod + readAidDmgBonus(myMatchPlayer)) * critMult;
-      const totalDmg = applyBarbarianRageReduction(rawSmiteDmg, defenderSnap, defMatchPlayer, false);
+      const totalDmg = applyDefenderDamageMods(rawSmiteDmg, defenderSnap, defMatchPlayer, false);
 
       const smiteExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const hitStr = isHit ? `COLPISCE` : `MANCA`;
@@ -4975,7 +5011,7 @@ export default function Arena() {
       // weapon formulas no longer have a baked ability mod since the
       // double-count fix).
       const rawSneakDmg = (wDmg + sneakDmg + dexMod) * critMult;
-      const totalDmg = applyBarbarianRageReduction(rawSneakDmg, defenderSnap, defMatchPlayer, false);
+      const totalDmg = applyDefenderDamageMods(rawSneakDmg, defenderSnap, defMatchPlayer, false);
 
       const sneakExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
       const critTag = isCrit ? " ★CRITICO★" : "";
@@ -5331,7 +5367,7 @@ export default function Arena() {
           tags.push(`✗${rd}`);
         }
       }
-      const reduced = applyBarbarianRageReduction(total, defenderSnap, defMatchPlayer, false);
+      const reduced = applyDefenderDamageMods(total, defenderSnap, defMatchPlayer, false);
       golemHalved = anyHit && !!defMatchPlayer?.nextHitHalved && reduced > 0;
       damage = golemHalved ? Math.floor(reduced / 2) : reduced;
       isHit  = anyHit;
@@ -5386,7 +5422,7 @@ export default function Arena() {
     const subclassDmg = isSpellAction ? (subclassEff.spellDmg || 0) : (subclassEff.weaponDmg || 0);
     const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
-    const rageReducedDamage = applyBarbarianRageReduction(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
+    const rageReducedDamage = applyDefenderDamageMods(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
     golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
     damage = golemHalved ? Math.floor(rageReducedDamage / 2) : rageReducedDamage;
@@ -5851,14 +5887,14 @@ export default function Arena() {
     const { total: rawDmg, rolls } = rollDmg(action.damage);
     const targetSnapPre = arenaMeta.characterSnapshots?.[targetId];
     const targetMatchPre = myMatch?.players.find(p => p.id === targetId);
-    const dmg = applyBarbarianRageReduction(rawDmg, targetSnapPre, targetMatchPre, false);
+    const dmg = applyDefenderDamageMods(rawDmg, targetSnapPre, targetMatchPre, false);
     const targetName = targetSnapPre?.name || "?";
     // ── TS contro sanguinamento (CD = 8 + competenza + SAG del ranger) ──
     const bleedDice = action.bleedDice || "1d4";
     const bleedTurns = action.bleedTurns ?? 2;
     const saveAbility = action.bleedSaveAbility || "con";
     const saveDC = getSpellSaveDC(mySnap);
-    const tgtMod = targetSnapPre?.stats?.[saveAbility] ?? 0;
+    const tgtMod = defenderSaveMod(targetSnapPre, saveAbility);
     const d20 = Math.floor(Math.random() * 20) + 1;
     await showD20Roll(d20, { label: `TS · ${SAVE_LABEL[saveAbility]} · ${targetName}` });
     const saveTotal = d20 + tgtMod;
@@ -5940,7 +5976,7 @@ export default function Arena() {
     const me = _eagleMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     const { total: rawDmg, rolls } = rollDmg(action.damage);
-    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _eagleMatch?.players.find(p => p.id === targetId), false);
+    const dmg = applyDefenderDamageMods(rawDmg, arenaMeta.characterSnapshots?.[targetId], _eagleMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -5971,7 +6007,7 @@ export default function Arena() {
     const me = _dragoMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
     const { total: rawDmg, rolls } = rollDmg(action.damage);
-    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _dragoMatch?.players.find(p => p.id === targetId), false);
+    const dmg = applyDefenderDamageMods(rawDmg, arenaMeta.characterSnapshots?.[targetId], _dragoMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -6042,7 +6078,7 @@ export default function Arena() {
       const targetName = targetSnap?.name || "?";
       const saveAbility = action.saveAbility || "con";
       const saveDC = 8 + getProficiencyBonus(mySnap) + (mySnap?.stats?.dex ?? 0);
-      const defMod = targetSnap?.stats?.[saveAbility] ?? 0;
+      const defMod = defenderSaveMod(targetSnap, saveAbility);
       const d20 = Math.floor(Math.random() * 20) + 1;
       await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
       const tsTotal = d20 + defMod;
@@ -6075,7 +6111,7 @@ export default function Arena() {
     const targetName = targetSnap?.name || "?";
     const saveAbility = action.saveAbility || "cha";
     const saveDC = action.saveDC ?? 13;
-    const defMod = targetSnap?.stats?.[saveAbility] ?? 0;
+    const defMod = defenderSaveMod(targetSnap, saveAbility);
     const d20 = Math.floor(Math.random() * 20) + 1;
     await showD20Roll(d20, { label: `TS ${SAVE_LABEL[saveAbility]} · ${action.name}` });
     const tsTotal = d20 + defMod;
@@ -6109,7 +6145,7 @@ export default function Arena() {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
     const { total: rawDmg, rolls } = rollDmg(action.damage);
     const _demonMatch = arenaMeta.matches.find(m => m.matchId === matchId);
-    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _demonMatch?.players.find(p => p.id === targetId), false);
+    const dmg = applyDefenderDamageMods(rawDmg, arenaMeta.characterSnapshots?.[targetId], _demonMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -6138,7 +6174,7 @@ export default function Arena() {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
     const { total: rawDmg, rolls } = rollDmg(action.damage);
     const _golemMatch = arenaMeta.matches.find(m => m.matchId === matchId);
-    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _golemMatch?.players.find(p => p.id === targetId), false);
+    const dmg = applyDefenderDamageMods(rawDmg, arenaMeta.characterSnapshots?.[targetId], _golemMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -6166,7 +6202,7 @@ export default function Arena() {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Artefice";
     const { total: rawDmg, rolls } = rollDmg(action.damage);
     const _snakeMatch = arenaMeta.matches.find(m => m.matchId === matchId);
-    const dmg = applyBarbarianRageReduction(rawDmg, arenaMeta.characterSnapshots?.[targetId], _snakeMatch?.players.find(p => p.id === targetId), false);
+    const dmg = applyDefenderDamageMods(rawDmg, arenaMeta.characterSnapshots?.[targetId], _snakeMatch?.players.find(p => p.id === targetId), false);
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetSnap = arenaMeta.characterSnapshots?.[targetId];
@@ -6892,7 +6928,7 @@ export default function Arena() {
       }
     } else {
       // save_half / save_negate: il bersaglio tira il TS nella stat dell'incantesimo.
-      const defMod = defenderSnap?.stats?.[saveAbil] ?? 0;
+      const defMod = defenderSaveMod(defenderSnap, saveAbil);
       const casterHasShield = !!attackerSnap?.hasShield; // scudo del caster → bersaglio salva a VANTAGGIO
       let d20 = Math.floor(Math.random() * 20) + 1;
       if (casterHasShield) { const d20b = Math.floor(Math.random() * 20) + 1; d20 = Math.max(d20, d20b); }
@@ -7536,7 +7572,7 @@ export default function Arena() {
               const { total: baseDmg, rolls: diceRolls } = rollDmg(weapon.damage);
               const critMult = isCrit ? 2 : 1;
               const rawDmg   = (baseDmg + statMod) * critMult;
-              damageDealt    = applyBarbarianRageReduction(rawDmg, targetSnap, targetMatchPlayer, false);
+              damageDealt    = applyDefenderDamageMods(rawDmg, targetSnap, targetMatchPlayer, false);
               const sign     = statMod >= 0 ? "+" : "";
               diceInfo       = ` 🎲${diceRolls}${statMod !== 0 ? `${sign}${statMod}` : ""}${isCrit ? "×2" : ""} = ${damageDealt}`;
             }
