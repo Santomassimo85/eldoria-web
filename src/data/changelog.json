@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "74.02",
+      "date": "2026-07-02",
+      "title": "Cronaca DM: 'Scena diversa' propone scene differenti",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Strumento Cronaca: la generazione del riassunto ora suggerisce più momenti distinti della sessione e il tasto 'Scena diversa' ne propone uno diverso a ogni clic (non più solo varianti della stessa scena)."
+        }
+      ]
+    },
+    {
       "version": "74.01",
       "date": "2026-07-02",
       "title": "Cronaca DM: fix generazione immagini con avatar",

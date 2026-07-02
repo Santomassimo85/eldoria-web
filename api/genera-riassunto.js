@@ -24,10 +24,10 @@ FORMATO
   · <blockquote>…</blockquote> per una profezia o citazione isolata (facoltativo).
   · Puoi aprire la cronaca con un capolettera: avvolgi SOLO la prima lettera del primo paragrafo in <span class="start">L</span>.
   NIENTE <html>, <body>, <script>, immagini, link, o altri stili inline diversi da quelli indicati. Da 4 a 8 paragrafi, coerenti con la mole delle linee guida. Non abusare dell'oro/grassetto: evidenzia solo ciò che conta davvero.
-- "scenePrompt": la descrizione, in INGLESE, della scena PIÙ suggestiva della sessione, pensata per un illustratore (soggetto, ambientazione, atmosfera, luce). Nessun testo o scritta nell'immagine, nessuna cornice.
+- "scenePrompts": un ARRAY di 5 descrizioni, in INGLESE, di 5 MOMENTI DIVERSI e distinti della sessione (NON varianti della stessa scena). Ogni voce è una scena diversa per luogo, azione e personaggi coinvolti (es. un'imboscata nel bosco, un dialogo teso in una sala del trono, la scoperta di una cripta, un duello, una fuga sotto la pioggia…), ciascuna pensata per un illustratore (soggetto, ambientazione, atmosfera, luce). Nessun testo o scritta nell'immagine, nessuna cornice.
 
 Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo, senza backtick, in questa forma esatta:
-{"title":"","subTitle":"","contentHtml":"","scenePrompt":""}`;
+{"title":"","subTitle":"","contentHtml":"","scenePrompts":["","","","",""]}`;
 
 function buildUserMessage({ party, roster, date, linee, seme }) {
   const gruppo = party ? `Gruppo "${party}"${roster ? ` (${roster})` : ""}` : "una compagnia di avventurieri";
@@ -93,11 +93,16 @@ export default async function handler(req, res) {
 
     const testo = (data.content || []).map((b) => b.text || "").join("");
     const out = parseContent(testo);
+    const rawScenes = Array.isArray(out.scenePrompts)
+      ? out.scenePrompts
+      : (out.scenePrompt ? [out.scenePrompt] : []);
+    const scenePrompts = rawScenes.map((s) => String(s || "").trim()).filter(Boolean);
     return res.status(200).json({
       title: String(out.title || "").trim(),
       subTitle: String(out.subTitle || "").trim(),
       contentHtml: String(out.contentHtml || "").trim(),
-      scenePrompt: String(out.scenePrompt || "").trim(),
+      scenePrompts,
+      scenePrompt: scenePrompts[0] || "", // retrocompatibilità
     });
   } catch (e) {
     return res.status(500).json({ error: "Generazione fallita: " + e.message });

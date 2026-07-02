@@ -101,6 +101,7 @@ export default function DmTools() {
   const [scena, setScena]       = useState("");        // prompt scena (modificabile)
   const [imgStyle, setImgStyle] = useState("darkcomic");// stile illustrativo
   const [gallery, setGallery]   = useState([]);        // [{ url:dataURL, cover:bool }]
+  const [sceneIdx, setSceneIdx] = useState(0);         // scorre le scene suggerite
   const [imgBusy, setImgBusy]   = useState(false);
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
@@ -181,7 +182,8 @@ export default function DmTools() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setRiaOut(data);
-      setScena(data.scenePrompt || "");
+      setScena((data.scenePrompts && data.scenePrompts[0]) || data.scenePrompt || "");
+      setSceneIdx(1); // la prossima "scena casuale" pesca la 2ª scena
       setGallery([]);
       setRiaMsg("");
       logAgent("genera-riassunto", "success", `Cronaca generata (${data.title || ria.party})`, { party: ria.party }, { count: true });
@@ -191,12 +193,23 @@ export default function DmTools() {
     } finally { setRiaBusy(false); }
   }
 
+  // ── Cronaca: pesca una scena DIVERSA tra quelle suggerite e la genera ──
+  function scenaCasuale() {
+    const list = (riaOut?.scenePrompts && riaOut.scenePrompts.length)
+      ? riaOut.scenePrompts
+      : (riaOut?.scenePrompt ? [riaOut.scenePrompt] : []);
+    if (!list.length) { generaScena(scena); return; }
+    const picked = list[sceneIdx % list.length];
+    setSceneIdx((i) => i + 1);
+    setScena(picked);       // mostra nel riquadro quale scena è stata scelta
+    generaScena(picked);
+  }
+
   // ── Cronaca: genera una nuova immagine di scena (si accoda alla galleria) ──
-  // usaSuggerita = usa la scena suggerita dall'AI; altrimenti usa il testo scritto.
-  async function generaScena(usaSuggerita) {
-    const base = usaSuggerita ? (riaOut?.scenePrompt || scena) : scena;
-    if (!base.trim()) { setRiaMsg("Descrivi una scena (o usa quella suggerita) per l'immagine."); return; }
-    if (usaSuggerita && riaOut?.scenePrompt) setScena(riaOut.scenePrompt);
+  // scenaText: se fornito usa quello; altrimenti il testo del riquadro.
+  async function generaScena(scenaText) {
+    const base = String(scenaText != null ? scenaText : scena).trim();
+    if (!base) { setRiaMsg("Descrivi una scena (o usa quella suggerita) per l'immagine."); return; }
     setImgBusy(true); setRiaMsg("");
     try {
       // Avatar attivi → data URL (ridotti) da passare come riferimento a Gemini.
@@ -519,11 +532,11 @@ export default function DmTools() {
                 onChange={e => setScena(e.target.value)}
                 placeholder="Descrivi (in inglese) la scena da illustrare, oppure usa quella suggerita dall'AI." />
               <div className="dmt-img-actions">
-                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaScena(true)} disabled={imgBusy}>
-                  {imgBusy ? "Disegno…" : "🎲 Scena casuale"}
+                <button className="npcgen-btn npcgen-btn--ghost" onClick={scenaCasuale} disabled={imgBusy}>
+                  {imgBusy ? "Disegno…" : "🎲 Scena diversa"}
                 </button>
-                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaScena(false)} disabled={imgBusy || !scena.trim()}>
-                  {imgBusy ? "Disegno…" : "🖼 Genera scena"}
+                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaScena()} disabled={imgBusy || !scena.trim()}>
+                  {imgBusy ? "Disegno…" : "🖼 Genera questa scena"}
                 </button>
               </div>
 
