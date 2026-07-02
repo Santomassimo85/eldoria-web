@@ -1,6 +1,59 @@
 {
   "versions": [
     {
+      "version": "67.01",
+      "date": "2026-07-02",
+      "title": "Arena: sblocco iscrizione con armi a due mani",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Selezione equipaggiamento: ora basta almeno un'arma per proseguire con l'iscrizione (il numero di armi resta un massimo, non un obbligo). Prima, scegliendo un'arma a due mani — esclusiva e che occupa entrambe le mani — il contatore restava a 1/2 e bloccava l'invio."
+        }
+      ]
+    },
+    {
+      "version": "67",
+      "date": "2026-07-02",
+      "title": "Arena: passive di classe Lv2-7 (seconda ondata)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Monaco · Movimento Senza Armatura (Lv2): +1 alla Classe Armatura quando il Monaco combatte senz'armatura. Si applica a giocatori e IA."
+        },
+        {
+          "type": "feature",
+          "text": "Barbaro · Istinto Selvaggio (Lv7): il Barbaro tira l'iniziativa con vantaggio; inoltre, mentre è in Furia, i suoi attacchi ignorano ogni svantaggio (accecamento, distanza, debuff). Vale per giocatori e IA."
+        },
+        {
+          "type": "feature",
+          "text": "Barbaro · Furia Bestiale (Lv3): mentre è in Furia, il Barbaro infligge +1 danno per ogni 25% di punti ferita mancanti (fino a +4 quando è quasi morto). Vale per giocatori e IA."
+        }
+      ]
+    },
+    {
+      "version": "66",
+      "date": "2026-07-02",
+      "title": "Arena: passive di classe Lv4-8 (prima ondata)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Ranger · Difesa del Predatore (Lv7): mentre il Marchio del Cacciatore è attivo su un bersaglio, il Ranger subisce 2 danni in meno da ogni colpo. Vale anche per gli avversari controllati dall'IA."
+        },
+        {
+          "type": "feature",
+          "text": "Bardo · Tuttofare (Lv2): +1 a tutti i tiri per colpire e a tutti i tiri salvezza del Bardo, in modo permanente. Si applica ad attacchi con arma, attacchi a incantesimo e difesa dai TS, sia per i giocatori sia per l'IA."
+        },
+        {
+          "type": "feature",
+          "text": "Chierico · Colpo Benedetto (Lv5): le cure e i danni degli incantesimi del Chierico tirano un dado in più (es. 5d8 → 6d8, 8d6 → 9d6). Copre cure, incantesimi a tiro per colpire e incantesimi con tiro salvezza, per giocatori e IA."
+        },
+        {
+          "type": "balance",
+          "text": "Barbaro · Resistenza Ferina (Lv6): la riduzione dei danni fisici in Furia è ora legata al livello. Fino al Lv5 la Furia riduce i danni fisici del 25%; dal Lv6 li dimezza (−50%), come Resistenza Ferina. La riduzione del 25% ai danni da incantesimo in Furia resta invariata a ogni livello."
+        }
+      ]
+    },
+    {
       "version": "65.01",
       "date": "2026-07-02",
       "title": "Arena: tasti Avvicìnati / Allontànati per la distanza",

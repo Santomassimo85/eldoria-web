@@ -595,7 +595,10 @@ function getEffectiveAc(matchPlayer, charSnapshot) {
   // Scudi: ora +1 CA (prima +2). La CA salvata nel personaggio include già +2
   // dello scudo (sia umani che IA), quindi correggiamo di -1 per chi ha scudo.
   const shieldAdj = charSnapshot?.hasShield ? -1 : 0;
-  return baseAc + shieldAdj;
+  // Monaco · Movimento Senza Armatura (Lv2): +1 CA se combatte senz'armatura.
+  const cls = (charSnapshot?.class || "").toLowerCase();
+  const monkAcBonus = (isMonkClass(cls) && getSnapLevel(charSnapshot) >= 2 && charSnapshot?.selectedArmor?.unarmoredDefense) ? 1 : 0;
+  return baseAc + shieldAdj + monkAcBonus;
 }
 
 // Carica del Guerriero — aggiunto automaticamente (max 3 cariche)
@@ -650,6 +653,51 @@ const ELUSIONE_PASSIVE = {
 const AURA_PROTEZIONE_PASSIVE = {
   name: "Aura di Protezione", hitBonus: 0, damage: "—", statKey: null,
   type: "passive", icon: "✨", info: "Passiva · +CAR a tutti i tuoi tiri salvezza", reqLevel: 6,
+};
+
+// ── Passive Lv4-8 Gruppo A (effetti nei chokepoint condivisi player/IA) ──────
+// Difesa del Predatore (Ranger Lv7): mentre hai un bersaglio marchiato, −2 danni
+//   subiti — effetto in applyDefenderDamageMods.
+const DIFESA_PREDATORE_PASSIVE = {
+  name: "Difesa del Predatore", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🛡", info: "Passiva · mentre il Marchio del Cacciatore è attivo, −2 ai danni subiti", reqLevel: 7,
+};
+// Tuttofare (Bardo Lv2): +1 a tutti i tiri per colpire e ai tiri salvezza —
+//   effetto in defenderSaveMod (TS) e nel bonus al colpire (player + IA).
+const TUTTOFARE_PASSIVE = {
+  name: "Tuttofare", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🎲", info: "Passiva · +1 a tutti i tuoi tiri per colpire e ai tiri salvezza", reqLevel: 2,
+};
+// Colpo Benedetto (Chierico Lv5): cure e danni degli incantesimi con +1 dado —
+//   effetto in clericBlessedDice applicato ai tiri di cura/danno degli incantesimi.
+const COLPO_BENEDETTO_PASSIVE = {
+  name: "Colpo Benedetto", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🌟", info: "Passiva · le cure e i danni dei tuoi incantesimi tirano +1 dado", reqLevel: 5,
+};
+// Resistenza Ferina (Barbaro Lv6): in Furia dimezzi i danni fisici. Sotto il Lv6
+//   la Furia riduce solo −25% (vedi applyDefenderDamageMods).
+const RESISTENZA_FERINA_PASSIVE = {
+  name: "Resistenza Ferina", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🐗", info: "Passiva · in Furia dimezzi i danni fisici subiti (prima del Lv6 la Furia riduce del 25%)", reqLevel: 6,
+};
+
+// ── Passive Lv2-8 "Gruppo B" (nuovi hook: CA · iniziativa · svantaggio · danno) ──
+// Movimento Senza Armatura (Monaco Lv2): +1 CA senz'armatura — effetto in getEffectiveAc.
+const MOVIMENTO_SENZA_ARMATURA_PASSIVE = {
+  name: "Movimento Senza Armatura", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🥋", info: "Passiva · +1 CA quando combatti senz'armatura", reqLevel: 2,
+};
+// Istinto Selvaggio (Barbaro Lv7): vantaggio all'iniziativa + niente svantaggio
+//   agli attacchi mentre sei in Furia — effetto in rollInit/aiRollInitiative e nel calcolo dello svantaggio.
+const ISTINTO_SELVAGGIO_PASSIVE = {
+  name: "Istinto Selvaggio", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🐺", info: "Passiva · vantaggio all'iniziativa; in Furia i tuoi attacchi ignorano lo svantaggio", reqLevel: 7,
+};
+// Furia Bestiale (Barbaro Lv3): in Furia +1 danno per ogni 25% di PF mancanti —
+//   effetto in beastRageDamageBonus, sommato ai calcoli danno player/IA.
+const FURIA_BESTIALE_PASSIVE = {
+  name: "Furia Bestiale", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🩸", info: "Passiva · in Furia +1 danno per ogni 25% di PF mancanti (fino a +4)", reqLevel: 3,
 };
 
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
@@ -1282,14 +1330,19 @@ function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSp
   let dmg = rawDmg;
   const defClass = (defenderSnap?.class || "").toLowerCase();
   const lv = getSnapLevel(defenderSnap);
-  // Barbaro in Furia
+  // Barbaro in Furia: danni da incantesimo −25% sempre. Danni fisici −25% di base,
+  // che diventano −50% dal Lv6 (Resistenza Ferina).
   if (["barbarian","barbaro"].some(c => defClass.includes(c)) && (defenderMatchPlayer?.rageTurns ?? 0) > 0) {
-    dmg = isSpell ? Math.floor(dmg * 0.75) : Math.floor(dmg / 2);
+    dmg = isSpell ? Math.floor(dmg * 0.75)
+        : lv >= 6 ? Math.floor(dmg / 2)
+        : Math.floor(dmg * 0.75);
   }
   // Ladro · Schivata Prodigiosa (Lv5): danni fisici −25%
   if (!isSpell && isRogueClass(defClass) && lv >= 5) dmg = Math.floor(dmg * 0.75);
   // Elusione (Monaco/Ladro Lv7): danni da incantesimo −50%
   if (isSpell && lv >= 7 && (isMonkClass(defClass) || isRogueClass(defClass))) dmg = Math.floor(dmg * 0.5);
+  // Ranger · Difesa del Predatore (Lv7): mentre il Marchio del Cacciatore è attivo, −2 danni subiti.
+  if (isRangerClass(defClass) && lv >= 7 && (defenderMatchPlayer?.hunterMarkTurns ?? 0) > 0) dmg = dmg - 2;
   return Math.max(1, dmg);
 }
 
@@ -1358,7 +1411,10 @@ function getSubclassEffect(snap) {
 function defenderSaveMod(snap, ability) {
   const base = snap?.stats?.[ability] ?? 0;
   const cls = (snap?.class || "").toLowerCase();
+  // Paladino · Aura di Protezione (Lv6): +CAR a tutti i tiri salvezza.
   if (isPaladinClass(cls) && getSnapLevel(snap) >= 6) return base + (snap?.stats?.cha ?? 0);
+  // Bardo · Tuttofare (Lv2): +1 a tutti i tiri salvezza.
+  if (isBardClass(cls) && getSnapLevel(snap) >= 2) return base + 1;
   return base;
 }
 // ── SCALING PER LIVELLO DI SKILL/CARICHE (Arena_class_progress.txt H4) ────────
@@ -1379,6 +1435,27 @@ function rageDamageBonus(level) {
   if (lv >= 9)  return 4;
   if (lv >= 4)  return 3;
   return 2;
+}
+// Colpo Benedetto (Chierico Lv5): aggiunge 1 dado alla formula — "8d6"→"9d6",
+// "10d6+40"→"11d6+40". Incrementa solo il primo blocco NdM.
+function addOneDie(diceStr) {
+  if (!diceStr || typeof diceStr !== "string") return diceStr;
+  return diceStr.replace(/(\d+)\s*d\s*(\d+)/i, (_, n, f) => `${parseInt(n, 10) + 1}d${f}`);
+}
+// Se lo snapshot è un Chierico Lv5+, applica Colpo Benedetto alla formula (cure/danni spell).
+function clericBlessedDice(diceStr, snap) {
+  const cls = (snap?.class || "").toLowerCase();
+  return (isClericClass(cls) && getSnapLevel(snap) >= 5) ? addOneDie(diceStr) : diceStr;
+}
+// Furia Bestiale (Barbaro Lv3): in Furia +1 danno per ogni 25% di PF mancanti (0..4).
+function beastRageDamageBonus(snap, matchPlayer) {
+  const cls = (snap?.class || "").toLowerCase();
+  if (!(isBarbarianClass(cls) && getSnapLevel(snap) >= 3)) return 0;
+  if ((matchPlayer?.rageTurns ?? 0) <= 0) return 0;
+  const maxHp = snap?.stats?.maxHp ?? matchPlayer?.maxHp ?? matchPlayer?.hp ?? 1;
+  const hp = matchPlayer?.hp ?? maxHp;
+  const missing = Math.max(0, 1 - hp / Math.max(1, maxHp));
+  return Math.min(4, Math.floor(missing * 4));
 }
 // Applica a un'azione automatica lo scaling per livello di cariche/danno (Lv4-8).
 // Usato al momento dell'iscrizione, così i valori scalati entrano nello snapshot
@@ -1869,13 +1946,13 @@ function getRawLoadoutConfig(charClass, level) {
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION, PATTO_DEMONIACO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION, AURA_PROTEZIONE_PASSIVE],  hasWildShape: false, armorCategory, canHaveShield };
   if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
-  if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
+  if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION, FURIA_BESTIALE_PASSIVE, RESISTENZA_FERINA_PASSIVE, ISTINTO_SELVAGGIO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [COLPO_BENEDETTO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
-  if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION], hasWildShape: false, armorCategory, canHaveShield };
-  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION, TUTTOFARE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION, MOVIMENTO_SENZA_ARMATURA_PASSIVE, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION, CUNNING_ACTION_ACTION, SCHIVATA_PRODIGIOSA_PASSIVE, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
-  if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION, SURVIVOR_ACTION, RANGER_VOLLEY_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION, SURVIVOR_ACTION, RANGER_VOLLEY_ACTION, DIFESA_PREDATORE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (CASTER_CLASSES.some(k => cls.includes(k)))   return { weaponOptions: SIMPLE_WEAPONS, spellOptions: WIZARD_SPELLS, spellLimits: SPELL_LIMITS.generic, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.generic), autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -3134,7 +3211,9 @@ export default function Arena() {
   // ── STEP 3: conferma iscrizione ───────────────────────────────────────────
   const confirmJoin = async () => {
     const config = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
-    if (pendingWeapons.length < config.maxWeapons) return;
+    // Basta almeno un'arma per proseguire (il massimo — es. 2 — è un tetto, non un obbligo:
+    // un'arma a due mani è esclusiva e ne occupa una sola).
+    if (config.maxWeapons > 0 && pendingWeapons.length < 1) return;
     if (pendingSpells.length  < config.maxSpells)  return;
     if (!charPreview.rolledHp) return;
     if (!pendingArmor) return;
@@ -3940,7 +4019,9 @@ export default function Arena() {
   const rollInit = async (matchId) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const dex    = mySnap?.stats?.dex ?? 0;
-    const hasAdv = isRogueClass((mySnap?.class || "").toLowerCase());
+    const _initCls = (mySnap?.class || "").toLowerCase();
+    // Vantaggio iniziativa: Ladro (agilità) o Barbaro Lv7 (Istinto Selvaggio).
+    const hasAdv = isRogueClass(_initCls) || (isBarbarianClass(_initCls) && getSnapLevel(mySnap) >= 7);
     const d20a   = Math.floor(Math.random() * 20) + 1;
     const d20b   = hasAdv ? Math.floor(Math.random() * 20) + 1 : 0;
     const d20    = hasAdv ? Math.max(d20a, d20b) : d20a;
@@ -3986,7 +4067,11 @@ export default function Arena() {
     const aiPlayer = m.players?.find(p => p.id === aiId);
     if (!aiPlayer || aiPlayer.init > 0) return;
     const dex = aiSnap.stats?.dex ?? 0;
-    const d20 = Math.floor(Math.random() * 20) + 1;
+    // Barbaro Lv7 · Istinto Selvaggio: vantaggio all'iniziativa (anche per l'IA).
+    const _aiInitAdv = isBarbarianClass((aiSnap.class || "").toLowerCase()) && getSnapLevel(aiSnap) >= 7;
+    const d20a = Math.floor(Math.random() * 20) + 1;
+    const d20b = _aiInitAdv ? Math.floor(Math.random() * 20) + 1 : 0;
+    const d20 = _aiInitAdv ? Math.max(d20a, d20b) : d20a;
     const roll = d20 + dex;
     const updatedMatches = meta.matches.map(x => {
       if (x.matchId !== matchId) return x;
@@ -4406,7 +4491,7 @@ export default function Arena() {
           aiPatch = { saveBuffAttacks: atk, saveBuffBonus: bonus };
           logMsg = `${sp.icon || "🔰"} ${aiName} lancia ${sp.name} — +${bonus} ai prossimi ${atk} TS.`;
         } else if (_picked.kind === "heal") {
-          const { total: hDice, rolls: hRolls } = rollDmg(sp.damage || "2d8");
+          const { total: hDice, rolls: hRolls } = rollDmg(clericBlessedDice(sp.damage || "2d8", aiSnap));
           const healAmt = Math.max(1, hDice + _spellMod);
           const newHp = Math.min(maxHp, aiPlayer.hp + healAmt);
           aiPatch = { hp: newHp };
@@ -4473,8 +4558,8 @@ export default function Arena() {
               if (newAtk === 0) targetPatch.saveBuffBonus = 0;
             }
           }
-          let { total: dmg } = connected ? rollDmg(sp.damage) : { total: 0 };
-          if (critHit && connected) dmg += rollDmg(sp.damage).total; // crit: dadi raddoppiati
+          let { total: dmg } = connected ? rollDmg(clericBlessedDice(sp.damage, aiSnap)) : { total: 0 };
+          if (critHit && connected) dmg += rollDmg(clericBlessedDice(sp.damage, aiSnap)).total; // crit: dadi raddoppiati
           let raw = connected ? Math.max(0, dmg + _spellMod) : 0;
           if (halfDamage) raw = Math.floor(raw / 2);
           dmgToTarget = raw;
@@ -4676,7 +4761,9 @@ export default function Arena() {
     const aiFarNow          = !m.distanceClosed;
     const aiMeleeFarDisadv  = !aiWpnRanged && aiFarNow && aiTgtHasRanged;
     const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0;
-    const aiHasDisadvantage = readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv;
+    // Barbaro Lv7 · Istinto Selvaggio: in Furia gli attacchi ignorano lo svantaggio (anche l'IA).
+    const _aiRagingNoDisadv = isBarbarianClass(cls) && getSnapLevel(aiSnap) >= 7 && effRageTurns;
+    const aiHasDisadvantage = _aiRagingNoDisadv ? false : (readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv);
     let d20a = Math.floor(Math.random() * 20) + 1;
     if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1;
     let d20b = (aiHasAdvantage || aiHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -4689,7 +4776,8 @@ export default function Arena() {
     const defensiveBonus   = tgtMatchPlayer?.defensiveBonus ?? 0;
     const targetAc = getEffectiveAc(tgtMatchPlayer, targetSnap) + shieldSkillBonus + defensiveBonus;
 
-    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus + hunterMarkHitBonus;
+    const aiJackBonus = isBardClass(cls) && getSnapLevel(aiSnap) >= 2 ? 1 : 0; // Bardo · Tuttofare (Lv2): +1 al colpire
+    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus + hunterMarkHitBonus + aiJackBonus;
     const isCrit   = d20 >= critThresh;
     const isHit    = hitTotal >= targetAc || isCrit;
 
@@ -4699,7 +4787,8 @@ export default function Arena() {
       const { total, rolls } = rollDmg(chosen.damage);
       const critMult = isCrit ? 2 : 1;
       const aiSubclassDmg = getSubclassEffect(aiSnap).weaponDmg || 0;
-      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg) * critMult;
+      const aiBeastRageBonus = beastRageDamageBonus(aiSnap, { ...aiPlayer, ...buffPatch }); // Furia Bestiale (Lv3)
+      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult;
       damage = applyDefenderDamageMods(raw, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
@@ -5405,6 +5494,7 @@ export default function Arena() {
     const attackerTitles     = getSnapTitles(attackerSnap);
     const titleHitCtx        = { classLower: attackerClassLower, isSpellAction, wildShapeForm: attackerMatchPlayer?.wildShape || null, actionDamageType: action?.damageType || null };
     const titleHitBonus      = attackerTitles.reduce((sum, k) => sum + getTitleHitBonus({ titleKey: k, ...titleHitCtx }), 0);
+    const jackOfAllTradesBonus = isBardClass(attackerClassLower) && getSnapLevel(attackerSnap) >= 2 ? 1 : 0; // Bardo · Tuttofare (Lv2): +1 al colpire
     const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0;
     // Scudo + incantesimo da DANNO con tiro per colpire → il lanciatore tira a SVANTAGGIO.
@@ -5414,7 +5504,9 @@ export default function Arena() {
     const defHasRangedWpn    = PLAYER_HAS_RANGED_WEAPON(defMatchPlayer, defenderSnap);
     const isMeleeWeaponAtk   = action.type === "weapon" && !WEAPON_IS_RANGED(action);
     const meleeFarDisadv     = isMeleeWeaponAtk && !_currentMatch?.distanceClosed && defHasRangedWpn;
-    const hasDisadvantage    = readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv;
+    // Barbaro Lv7 · Istinto Selvaggio: in Furia i tuoi attacchi ignorano lo svantaggio.
+    const _ragingNoDisadv = isBarbarianClass(attackerClassLower) && getSnapLevel(attackerSnap) >= 7 && (attackerMatchPlayer?.rageTurns ?? 0) > 0;
+    const hasDisadvantage    = _ragingNoDisadv ? false : (readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv);
     const isFighter = isFighterClass(attackerClassLower);
     // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
     // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
@@ -5439,7 +5531,7 @@ export default function Arena() {
                  : hasDisadvantage && !hasAdvantage ? Math.min(r1, r2) : r1;
         await showD20Roll(rd, { label: `🏹 ${action.name} — Freccia ${i + 1}/${arrows}` });
         const aCrit = rd >= critTh2;
-        const aHitTotal = rd + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
+        const aHitTotal = rd + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus;
         const aHit = aHitTotal >= defAC2 || aCrit;
         if (aHit) {
           anyHit = true;
@@ -5477,7 +5569,7 @@ export default function Arena() {
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
     await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : meleeFarDisadv ? " — a SVANTAGGIO (chiudi la distanza)" : ""}` });
-    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
+    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
     const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
@@ -5486,7 +5578,7 @@ export default function Arena() {
     const critThreshold = isFighter ? 19 : 20; // Critico Migliorato: 19-20 per il guerriero
     const isCrit   = d20 >= critThreshold; // nat 20 (o 19 per fighter) = critico
     isHit    = hitTotal >= defAC || isCrit;
-    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(action.damage) : { total: 0, rolls: "0" };
+    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(isSpellAction ? clericBlessedDice(action.damage, attackerSnap) : action.damage) : { total: 0, rolls: "0" };
     // Critico spells: doppio danno
     const critMult = isCrit ? 2 : 1;
     // Weapon poison bonus
@@ -5504,7 +5596,9 @@ export default function Arena() {
     const aidDmgBonus    = readAidDmgBonus(attackerMatchPlayer); // Aiuto: +X al danno
     const subclassEff = getSubclassEffect(attackerSnap);
     const subclassDmg = isSpellAction ? (subclassEff.spellDmg || 0) : (subclassEff.weaponDmg || 0);
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
+    // Barbaro Lv3 · Furia Bestiale: +1 danno per ogni 25% di PF mancanti mentre è in Furia.
+    const beastRageBonus = !isSpellAction ? beastRageDamageBonus(attackerSnap, attackerMatchPlayer) : 0;
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg + beastRageBonus) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     const rageReducedDamage = applyDefenderDamageMods(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
@@ -6962,7 +7056,8 @@ export default function Arena() {
   const handleHealSpell = async (matchId, action) => {
     const mySnap = arenaMeta.characterSnapshots?.[currentUser.uid];
     const myName = mySnap?.name || "?";
-    const { total: healDice, rolls: healRolls } = rollDmg(action.damage);
+    // Colpo Benedetto (Chierico Lv5): +1 dado alla cura.
+    const { total: healDice, rolls: healRolls } = rollDmg(clericBlessedDice(action.damage, mySnap));
     const useOverride = !!action.healModStat;
     const spellMod = useOverride
       ? (mySnap?.stats?.[action.healModStat] ?? 0)
@@ -7035,7 +7130,9 @@ export default function Arena() {
     const targetMaxHp = defenderSnap?.stats?.maxHp ?? defMatchPlayer?.maxHp ?? defMatchPlayer?.hp ?? 0;
     const targetCurHp = defMatchPlayer?.hp ?? 0;
     const targetIsHurt = targetMaxHp > 0 && targetCurHp < targetMaxHp;
-    const dmgFormula  = (action.damageWhenHurt && targetIsHurt) ? action.damageWhenHurt : action.damage;
+    // Colpo Benedetto (Chierico Lv5): +1 dado al danno degli incantesimi.
+    const dmgFormula  = clericBlessedDice((action.damageWhenHurt && targetIsHurt) ? action.damageWhenHurt : action.damage, attackerSnap);
+    const jackOfAllTradesBonus = isBardClass((attackerSnap?.class || "").toLowerCase()) && getSnapLevel(attackerSnap) >= 2 ? 1 : 0; // Bardo · Tuttofare
     const concentrationDmg = (attackerMatchPlayer?.concentrationTurns ?? 0) > 0 ? 2 : 0;
     const aidDmgBonus = readAidDmgBonus(attackerMatchPlayer); // Aiuto: +X al danno
 
@@ -7054,7 +7151,7 @@ export default function Arena() {
       const targetAc = getEffectiveAc(defMatchPlayer, defenderSnap) + shieldSkillBonusDef + (defMatchPlayer?.defensiveBonus ?? 0);
       const d20 = Math.floor(Math.random() * 20) + 1;
       await showD20Roll(d20, { label: `${attName} tira per colpire · ${action.name}` });
-      const totalHit = d20 + spellHit + aidHit;
+      const totalHit = d20 + spellHit + aidHit + jackOfAllTradesBonus;
       // Gli incantesimi NON fanno critico: nat 20 colpisce sempre, nat 1 manca, ma niente danni raddoppiati.
       connected = d20 === 20 || (d20 !== 1 && totalHit >= targetAc);
       // Stregoneria Innata (spell-attack): d20 naturale 17+ che colpisce → danno +50%.
@@ -8767,7 +8864,8 @@ export default function Arena() {
             const petReady     = !isRanger || !!pendingPet;
             const demonReady   = !isWarlock || !!pendingDemon;
             const constructReady = !isArtificer || !!pendingConstruct;
-            const weaponsLeft  = config.maxWeapons - pendingWeapons.length;
+            // Serve almeno un'arma; il massimo (config.maxWeapons) è solo un tetto.
+            const weaponsLeft  = pendingWeapons.length >= 1 ? 0 : 1;
             const spellsLeft   = config.maxSpells  - pendingSpells.length;
             const armorReady   = !!pendingArmor;
             const totalItems   = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
@@ -8870,7 +8968,7 @@ export default function Arena() {
                 <div className="loadout-section-title">
                   ⚔ {config.maxWeapons === 1 ? "Arma" : "Armi"} — {pendingWeapons.length}/{config.maxWeapons}
                 </div>
-                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).{config.maxWeapons > 1 && <> Un'arma <strong>a due mani da mischia</strong> occupa entrambe le mani (è l'unica impugnabile); una <strong>a distanza</strong> (arco/balestra) può essere affiancata da una sola arma a una mano.</>}</div>
+                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).{config.maxWeapons > 1 && <> Basta <strong>almeno un'arma</strong> per proseguire (massimo {config.maxWeapons}). Un'arma <strong>a due mani da mischia</strong> occupa entrambe le mani (è l'unica impugnabile); una <strong>a distanza</strong> (arco/balestra) può essere affiancata da una sola arma a una mano.</>}</div>
                 <div className="loadout-grid">
                   {(() => {
                     const keyStats = ARENA_KEY_STATS[getClassKey(charPreview.class)] || [];
