@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "65.01",
+      "date": "2026-07-02",
+      "title": "Arena: tasti Avvicìnati / Allontànati per la distanza",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "La gestione della distanza ora ha comandi espliciti. Quando un combattente da mischia è a distanza contro un avversario che lo tiene sotto tiro (arco/balestra/arma da fuoco) e non ha a sua volta un'arma a distanza, le armi da mischia lasciano il posto al tasto \"Avvicìnati\", che chiude la distanza: dal turno seguente attacca in mischia normalmente. Specularmente, chi impugna un'arma a distanza mentre è ingaggiato in mischia trova il tasto \"Allontànati ×N\" al posto dell'arma a distanza, per indietreggiare e riaprire il varco (fino a 3 volte per duello). Avvicinarsi e allontanarsi occupano il turno."
+        }
+      ]
+    },
+    {
       "version": "65",
       "date": "2026-07-02",
       "title": "Arena: meccanica di distanza — le armi a distanza contano",

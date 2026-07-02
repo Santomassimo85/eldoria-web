@@ -5684,6 +5684,46 @@ export default function Arena() {
     await commitArenaMatches(updatedMatches);
   };
 
+  // ── DISTANZA: AVVICÌNATI (melee chiude la distanza; usa il turno) ──────────
+  // Sostituisce le armi da mischia quando sei "sotto tiro" (lontano vs avversario
+  // con arma a distanza e tu senza). Chiude la distanza: dal turno dopo attacchi
+  // in mischia normalmente. Vedi la meccanica implicita in _runAttack/aiTakeAction.
+  const handleMoveClose = async (matchId) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
+    const log = { pub: `⚔️ ${myName} chiude la distanza e ingaggia in mischia.`, attId: currentUser.uid, ts: new Date().toISOString() };
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const updatedPlayers = m.players.map(p =>
+        p.id === currentUser.uid ? { ...p, ...tickEagleEnd(p), defensiveBonus: 0 } : p
+      );
+      return { ...m, players: updatedPlayers, distanceClosed: true, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
+    });
+    await commitArenaMatches(updatedMatches);
+  };
+
+  // ── DISTANZA: ALLONTÀNATI (ranged riapre la distanza, kiting; usa il turno) ──
+  // Sostituisce l'arma a distanza quando sei in mischia, hai un'arma a distanza,
+  // l'avversario no e ti restano cariche di kiting. Riapre la distanza (l'avversario
+  // in mischia dovrà inseguirti a svantaggio) e consuma 1 carica su ARENA_KITE_MAX.
+  const handleMoveAway = async (matchId) => {
+    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
+    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
+    const updatedMatches = arenaMeta.matches.map(m => {
+      if (m.matchId !== matchId) return m;
+      const me = m.players.find(p => p.id === currentUser.uid);
+      const used = me?.kiteChargesUsed ?? 0;
+      if (used >= ARENA_KITE_MAX) return m; // niente cariche → nessun effetto
+      const left = ARENA_KITE_MAX - used - 1;
+      const log = { pub: `🏹 ${myName} indietreggia e mantiene le distanze (${left} rimaste).`, attId: currentUser.uid, ts: new Date().toISOString() };
+      const updatedPlayers = m.players.map(p =>
+        p.id === currentUser.uid ? { ...p, ...tickEagleEnd(p), defensiveBonus: 0, kiteChargesUsed: used + 1 } : p
+      );
+      return { ...m, players: updatedPlayers, distanceClosed: false, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
+    });
+    await commitArenaMatches(updatedMatches);
+  };
+
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
   const handleShieldSkill = async (matchId, action) => {
     const mySnap = (arenaMeta.characterSnapshots || {})[currentUser.uid];
@@ -10656,6 +10696,19 @@ export default function Arena() {
                         const isRangedWeapon = (a) => a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
                         const meleeActions  = currentActions.filter(a => a.type === "weapon" && !isRangedWeapon(a));
                         const rangedActions = currentActions.filter(a => a.type === "weapon" && isRangedWeapon(a));
+                        // ── DISTANZA: tasti Avvicìnati / Allontànati al posto delle armi ──
+                        // mustClose: sei a distanza, l'avversario ti tiene sotto tiro (ha arma a
+                        //   distanza) e tu non hai un'arma a distanza per rispondere → le armi da
+                        //   mischia sono sostituite da "Avvicìnati" (chiudi la distanza).
+                        // canKite: sei in mischia, hai un'arma a distanza, l'avversario no e ti
+                        //   restano cariche → l'arma a distanza è sostituita da "Allontànati".
+                        const _oppSnap          = snapshots[chosenTargetId];
+                        const _iThreatenRanged  = PLAYER_HAS_RANGED_WEAPON(myPlayer, mySnap);
+                        const _oppThreatRanged  = PLAYER_HAS_RANGED_WEAPON(targetMatchPlayer, _oppSnap);
+                        const _distFar          = !m.distanceClosed;
+                        const _kiteLeft         = ARENA_KITE_MAX - (myPlayer?.kiteChargesUsed ?? 0);
+                        const mustClose         = _distFar && _oppThreatRanged && !_iThreatenRanged;
+                        const canKite           = !_distFar && _iThreatenRanged && !_oppThreatRanged && _kiteLeft > 0;
                         const allSkillActions = currentActions.filter(a => (a.type === "skill" || a.type === "passive") && !(action => action.special === "deathblow" && targetHpPct > 20)(a));
                         // Il Ranger ha un compagno: le sue azioni (pet_*) vanno in una sotto-tab dedicata.
                         const isPetAction   = (a) => typeof a.special === "string" && a.special.startsWith("pet_");
@@ -11384,19 +11437,51 @@ export default function Arena() {
 
                         return (
                           <div className="action-groups">
-                            {dock === "attacchi" && meleeActions.length > 0 && (
+                            {dock === "attacchi" && mustClose && (
+                              <div className="action-group">
+                                <div className="action-group-label melee">🏹 Sei a distanza</div>
+                                <div className="action-buttons">
+                                  <button
+                                    className="btn-action move-close"
+                                    title="L'avversario ti tiene sotto tiro. Avvicìnati per ingaggiarlo in mischia: dal turno seguente attacchi normalmente. (usa il turno)"
+                                    onClick={() => handleMoveClose(m.matchId)}
+                                  >
+                                    <span className="action-icon">🏃</span>
+                                    <span className="action-name">Avvicìnati</span>
+                                    <span className="action-dice">Chiudi la distanza</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            {dock === "attacchi" && !mustClose && meleeActions.length > 0 && (
                               <div className="action-group">
                                 <div className="action-group-label melee">⚔ Mischia</div>
                                 <div className="action-buttons">{meleeActions.map(renderActionBtn)}</div>
                               </div>
                             )}
-                            {dock === "attacchi" && rangedActions.length > 0 && (
+                            {dock === "attacchi" && canKite && (
+                              <div className="action-group">
+                                <div className="action-group-label ranged">⚔ In mischia</div>
+                                <div className="action-buttons">
+                                  <button
+                                    className="btn-action move-away"
+                                    title={`Mantieni le distanze: indietreggia e costringi l'avversario a inseguirti (tirerà a svantaggio in mischia). Ancora ${_kiteLeft} volte. (usa il turno)`}
+                                    onClick={() => handleMoveAway(m.matchId)}
+                                  >
+                                    <span className="action-icon">🏹</span>
+                                    <span className="action-name">Allontànati</span>
+                                    <span className="action-dice">Riapri la distanza ×{_kiteLeft}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            {dock === "attacchi" && !canKite && rangedActions.length > 0 && (
                               <div className="action-group">
                                 <div className="action-group-label ranged">🏹 Distanza</div>
                                 <div className="action-buttons">{rangedActions.map(renderActionBtn)}</div>
                               </div>
                             )}
-                            {dock === "attacchi" && meleeActions.length === 0 && rangedActions.length === 0 && (
+                            {dock === "attacchi" && !mustClose && !canKite && meleeActions.length === 0 && rangedActions.length === 0 && (
                               <div className="combat-dock-empty">Nessuna arma disponibile.</div>
                             )}
                             {dock === "magie" && spellGroups.map(({ lvl, spells }) => (

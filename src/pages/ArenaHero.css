@@ -738,6 +738,19 @@
 .arena-page .btn-action.weapon.equipped {
   box-shadow: 0 0 0 2px var(--arena-gold, #d4af37), 0 6px 16px rgba(180, 130, 30, 0.25) !important;
 }
+/* Tasti movimento distanza (Avvicìnati / Allontànati) */
+.arena-page .btn-action.move-close {
+  background: linear-gradient(135deg, rgba(200, 70, 55, 0.22), rgba(200, 70, 55, 0.06)) !important;
+  border-color: rgba(200, 70, 55, 0.5) !important;
+}
+.arena-page .btn-action.move-away {
+  background: linear-gradient(135deg, rgba(55, 110, 190, 0.22), rgba(55, 110, 190, 0.06)) !important;
+  border-color: rgba(55, 110, 190, 0.5) !important;
+}
+.arena-page .btn-action.move-close:hover,
+.arena-page .btn-action.move-away:hover {
+  filter: brightness(1.08);
+}
 .arena-page .btn-action.deathblow-ready {
   background: linear-gradient(135deg, var(--arena-blood, #8a0e0e), #5a0808) !important;
   color: #ffd97a !important;
