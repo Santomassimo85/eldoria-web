@@ -15,7 +15,8 @@ service cloud.firestore {
     function isMaster() {
       return isLoggedIn() && (
         request.auth.uid == "WNXsX7fSY5a3g2VZruYEXgFILOJ3" ||
-        request.auth.token.email == "santomassimo85@gmail.com"
+        request.auth.token.email == "santomassimo85@gmail.com" ||
+        request.auth.token.email == "ripperti96@gmail.com"
       );
     }
     // Può gestire SOLO i riassunti di sessione (collaboratore), oltre al master.

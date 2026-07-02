@@ -2,11 +2,18 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Master + co-master: entrambi hanno pieni poteri DM (upload/eliminazione asset).
+    function isMaster() {
+      return request.auth != null && (
+        request.auth.token.email == "santomassimo85@gmail.com" ||
+        request.auth.token.email == "ripperti96@gmail.com"
+      );
+    }
+
     // Boss sprites — only master can upload, everyone can read
     match /boss-sprites/{file=**} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.auth.token.email == "santomassimo85@gmail.com";
+      allow write: if isMaster();
     }
 
     // Character images — owner can upload their own
@@ -18,38 +25,31 @@ service firebase.storage {
     // Market items — only master can upload/delete, everyone can read
     match /market-items/{file=**} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.auth.token.email == "santomassimo85@gmail.com";
+      allow write: if isMaster();
     }
 
     // Geo archive (location images) — only master can upload/delete, everyone can read
     match /geo-archive/{file=**} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.auth.token.email == "santomassimo85@gmail.com";
+      allow write: if isMaster();
     }
 
     // NPC portraits — only master can upload/delete, everyone can read
     match /npcs/{file=**} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.auth.token.email == "santomassimo85@gmail.com";
+      allow write: if isMaster();
     }
 
     // Session summary covers — master + collaboratore riassunti possono caricare/eliminare, tutti leggono
     match /summaries/{file=**} {
       allow read: if true;
-      allow write: if request.auth != null && (
-                     request.auth.token.email == "santomassimo85@gmail.com" ||
-                     request.auth.token.email == "ripperti96@gmail.com"
-                   );
+      allow write: if isMaster();
     }
 
     // Quest covers — only master can upload/delete, everyone can read
     match /quests/{file=**} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.auth.token.email == "santomassimo85@gmail.com";
+      allow write: if isMaster();
     }
 
     // All other paths: deny by default

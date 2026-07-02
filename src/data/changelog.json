@@ -1,6 +1,67 @@
 {
   "versions": [
     {
+      "version": "69.01",
+      "date": "2026-07-02",
+      "title": "Strumenti DM: pieni permessi al secondo Master",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Il secondo Master ora dispone dei permessi completi sugli Strumenti DM: il salvataggio degli NPC generati (e degli altri asset DM: oggetti, quest, città, archivio geografico, sessioni) non viene più rifiutato dalle regole di sicurezza."
+        }
+      ]
+    },
+    {
+      "version": "69",
+      "date": "2026-07-02",
+      "title": "Arena: le sottoclassi ottengono effetti veri",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Sottoclassi d'Arena: la scelta di sottoclasse ora conferisce effetti di combattimento reali, non più solo un bonus numerico. Gli effetti valgono per giocatori e IA."
+        },
+        {
+          "type": "mechanics",
+          "text": "Guerriero (Tiratore) e Ranger (Tiro con l'Arco): il bonus è ora +2 ai tiri per COLPIRE con le armi a distanza (in precedenza si applicava per errore al danno)."
+        },
+        {
+          "type": "mechanics",
+          "text": "Paladino · Arma Grande: con un'arma a due mani da mischia i risultati di 1 e 2 sui dadi di danno vengono ritirati una volta."
+        },
+        {
+          "type": "mechanics",
+          "text": "Barbaro · Berserker (Frenesia): mentre è in Furia ottiene un attacco extra per turno, oltre al +2 al danno con le armi."
+        },
+        {
+          "type": "mechanics",
+          "text": "Barbaro · Totem (Orso): mentre è in Furia dimezza TUTTI i danni subiti, inclusi quelli da incantesimo (oltre al +1 CA)."
+        },
+        {
+          "type": "mechanics",
+          "text": "Ladro · Assassino: il primo colpo contro un nemico a PF pieni è a vantaggio e, se va a segno, è un critico (Assassinare). Monaco · Ombra: primo colpo a vantaggio contro un nemico a PF pieni."
+        },
+        {
+          "type": "mechanics",
+          "text": "Bardo · Valore e Spada: ottengono l'Attacco Extra (2 attacchi per turno) dal Lv6."
+        },
+        {
+          "type": "mechanics",
+          "text": "Resistenza agli incantesimi (−25% ai danni da incantesimo subiti): Mago · Abiurazione (Scudo Arcano, con +2 CA), Stregone · Draconica, Warlock · Immondo e Warlock · Abissale."
+        }
+      ]
+    },
+    {
+      "version": "68",
+      "date": "2026-07-02",
+      "title": "Arena: Chierico · Colpo Divino (Lv8)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Chierico · Colpo Divino (Lv8): i colpi con arma del Chierico infliggono +1d8 danni radianti. Il bonus si somma al danno dell'attacco (fuori dal moltiplicatore del critico) e vale sia per i giocatori sia per l'IA."
+        }
+      ]
+    },
+    {
       "version": "67.01",
       "date": "2026-07-02",
       "title": "Arena: sblocco iscrizione con armi a due mani",
