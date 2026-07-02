@@ -598,7 +598,9 @@ function getEffectiveAc(matchPlayer, charSnapshot) {
   // Monaco · Movimento Senza Armatura (Lv2): +1 CA se combatte senz'armatura.
   const cls = (charSnapshot?.class || "").toLowerCase();
   const monkAcBonus = (isMonkClass(cls) && getSnapLevel(charSnapshot) >= 2 && charSnapshot?.selectedArmor?.unarmoredDefense) ? 1 : 0;
-  return baseAc + shieldAdj + monkAcBonus;
+  // Barbaro · Attacco Irruento (Lv2): −2 CA mentre è in Furia (abbassa la guardia).
+  const recklessAcPenalty = recklessRaging(charSnapshot, matchPlayer) ? -2 : 0;
+  return baseAc + shieldAdj + monkAcBonus + recklessAcPenalty;
 }
 
 // Carica del Guerriero — aggiunto automaticamente (max 3 cariche)
@@ -674,6 +676,11 @@ const COLPO_BENEDETTO_PASSIVE = {
   name: "Colpo Benedetto", hitBonus: 0, damage: "—", statKey: null,
   type: "passive", icon: "🌟", info: "Passiva · le cure e i danni dei tuoi incantesimi tirano +1 dado", reqLevel: 5,
 };
+// Colpo Divino (Chierico Lv8): +1d8 radiante ai colpi con arma — effetto in divineStrikeBonus.
+const COLPO_DIVINO_PASSIVE = {
+  name: "Colpo Divino", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "☀", info: "Passiva · +1d8 danni radianti ai tuoi colpi con arma", reqLevel: 8,
+};
 // Resistenza Ferina (Barbaro Lv6): in Furia dimezzi i danni fisici. Sotto il Lv6
 //   la Furia riduce solo −25% (vedi applyDefenderDamageMods).
 const RESISTENZA_FERINA_PASSIVE = {
@@ -698,6 +705,26 @@ const ISTINTO_SELVAGGIO_PASSIVE = {
 const FURIA_BESTIALE_PASSIVE = {
   name: "Furia Bestiale", hitBonus: 0, damage: "—", statKey: null,
   type: "passive", icon: "🩸", info: "Passiva · in Furia +1 danno per ogni 25% di PF mancanti (fino a +4)", reqLevel: 3,
+};
+// Attacco Irruento (Barbaro Lv2): +2 al colpire in Furia, −2 CA — effetto in recklessRaging.
+const ATTACCO_IRRUENTO_PASSIVE = {
+  name: "Attacco Irruento", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "💢", info: "Passiva · in Furia +2 ai tiri per colpire, ma −2 CA", reqLevel: 2,
+};
+// Colpi Ki (Monaco Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici — effetto in kiStrikesBypass.
+const COLPI_KI_PASSIVE = {
+  name: "Colpi Ki", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🔆", info: "Passiva · i tuoi colpi in mischia ignorano le riduzioni ai danni fisici del nemico", reqLevel: 6,
+};
+// Risolutezza (Guerriero Lv7): +2 a tutti i tiri salvezza — effetto in defenderSaveMod.
+const RISOLUTEZZA_PASSIVE = {
+  name: "Risolutezza", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🪨", info: "Passiva · +2 a tutti i tuoi tiri salvezza", reqLevel: 7,
+};
+// Infusione (Artefice Lv2): +1 al colpire e +1 al danno con arma — effetto in infusionWeaponBonus.
+const INFUSIONE_PASSIVE = {
+  name: "Infusione", hitBonus: 0, damage: "—", statKey: null,
+  type: "passive", icon: "🔧", info: "Passiva · +1 ai tiri per colpire e +1 al danno con le armi", reqLevel: 2,
 };
 
 // Colpo Mortale (Rogue) — aggiunto automaticamente (max 2 usi, solo ≤20% HP)
@@ -1325,22 +1352,31 @@ function countDebuffs(p) {
 //  • Ladro · Schivata Prodigiosa (Lv5): −25% ai danni fisici (non incantesimi).
 //  • Elusione (Monaco/Ladro Lv7): −50% ai danni da incantesimo.
 // Le riduzioni si applicano in sequenza (moltiplicative).
-function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSpell) {
+function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSpell, bypassPhysicalReduction = false) {
   if (rawDmg <= 0) return rawDmg;
   let dmg = rawDmg;
   const defClass = (defenderSnap?.class || "").toLowerCase();
   const lv = getSnapLevel(defenderSnap);
-  // Barbaro in Furia: danni da incantesimo −25% sempre. Danni fisici −25% di base,
-  // che diventano −50% dal Lv6 (Resistenza Ferina).
+  // Monaco · Colpi Ki (Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici.
+  const physReduction = !bypassPhysicalReduction;
+  const defSubEff = getSubclassEffect(defenderSnap);
+  // Barbaro · Totem (Orso): in Furia dimezza ANCHE i danni da incantesimo (oltre ai fisici).
+  const totemBear = !!defSubEff.rageAllResist;
+  // Barbaro in Furia: danni da incantesimo −25% sempre (−50% col Totem Orso). Danni fisici
+  // −25% di base, −50% dal Lv6 (Resistenza Ferina) o col Totem Orso.
   if (["barbarian","barbaro"].some(c => defClass.includes(c)) && (defenderMatchPlayer?.rageTurns ?? 0) > 0) {
-    dmg = isSpell ? Math.floor(dmg * 0.75)
-        : lv >= 6 ? Math.floor(dmg / 2)
+    dmg = isSpell ? Math.floor(dmg * (totemBear ? 0.5 : 0.75))
+        : !physReduction ? dmg
+        : (lv >= 6 || totemBear) ? Math.floor(dmg / 2)
         : Math.floor(dmg * 0.75);
   }
   // Ladro · Schivata Prodigiosa (Lv5): danni fisici −25%
-  if (!isSpell && isRogueClass(defClass) && lv >= 5) dmg = Math.floor(dmg * 0.75);
+  if (!isSpell && physReduction && isRogueClass(defClass) && lv >= 5) dmg = Math.floor(dmg * 0.75);
   // Elusione (Monaco/Ladro Lv7): danni da incantesimo −50%
   if (isSpell && lv >= 7 && (isMonkClass(defClass) || isRogueClass(defClass))) dmg = Math.floor(dmg * 0.5);
+  // Sottoclasse · resistenza agli incantesimi (Mago Abiurazione, Stregone Draconica,
+  //   Warlock Immondo/Abissale): riduce i danni da incantesimo subiti.
+  if (isSpell && (defSubEff.spellResist || 0) > 0) dmg = Math.floor(dmg * (1 - defSubEff.spellResist));
   // Ranger · Difesa del Predatore (Lv7): mentre il Marchio del Cacciatore è attivo, −2 danni subiti.
   if (isRangerClass(defClass) && lv >= 7 && (defenderMatchPlayer?.hunterMarkTurns ?? 0) > 0) dmg = dmg - 2;
   return Math.max(1, dmg);
@@ -1406,6 +1442,45 @@ function getSnapLevel(snap) {
 function getSubclassEffect(snap) {
   return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
 }
+// Sottoclasse · bonus ai tiri per COLPIRE con armi a distanza (Guerriero "tiratore",
+// Ranger "arco"). Vale solo se l'azione è un attacco con arma a distanza.
+function subclassRangedHit(snap, action, isSpell) {
+  if (isSpell || !action || action.type !== "weapon" || !WEAPON_IS_RANGED(action)) return 0;
+  return getSubclassEffect(snap).rangedHit || 0;
+}
+// Sottoclasse · "primo colpo" contro un bersaglio a PF pieni (apertura del duello):
+//   Ladro "assassino" (vantaggio + critico se va a segno), Monaco "ombra" (vantaggio).
+// Deterministico e senza stato: usa i PF correnti del difensore (pieni = non ancora colpito).
+function subclassFirstStrike(attackerSnap, isSpell, defMatchPlayer, defenderSnap) {
+  if (isSpell) return { adv: false, crit: false };
+  const eff = getSubclassEffect(attackerSnap);
+  if (!eff.firstStrikeAdv) return { adv: false, crit: false };
+  const maxHp = defMatchPlayer?.maxHp ?? defenderSnap?.stats?.maxHp ?? 0;
+  const full  = maxHp > 0 && (defMatchPlayer?.hp ?? 0) >= maxHp;
+  return { adv: full, crit: full && !!eff.assassinate };
+}
+// Sottoclasse (Fase 2) · dado bonus ai danni + Ondata Selvaggia. Restituisce { bonus, tag }.
+//   weaponBonusDie (Artefice "artigliere") / spellBonusDie (Artefice "alchimista"):
+//     dado extra ai danni con arma / incantesimo. wildSurge (Stregone "selvaggia"):
+//     ogni incantesimo a segno ha 1 su 4 di scatenare un'ondata (+2d6).
+function subclassDamageDice(attackerSnap, isSpell) {
+  const eff = getSubclassEffect(attackerSnap);
+  let bonus = 0; const tags = [];
+  const die = isSpell ? eff.spellBonusDie : eff.weaponBonusDie;
+  if (die) { const r = rollDmg(die); bonus += r.total; tags.push(`🎲${die}=${r.total}`); }
+  if (isSpell && eff.wildSurge && (Math.floor(Math.random() * 4) + 1) === 1) {
+    const r = rollDmg("2d6"); bonus += r.total; tags.push(`🎲ondata+${r.total}`);
+  }
+  return { bonus, tag: tags.join(" ") };
+}
+// Sottoclasse (Fase 2) · Presagio (Mago "divinazione"): l'attaccante tira a SVANTAGGIO
+//   quando colpisce un divinatore a PF pieni (il primo colpo "previsto" del duello).
+function subclassForesightDisadv(defenderSnap, defMatchPlayer) {
+  const eff = getSubclassEffect(defenderSnap);
+  if (!eff.foresight) return false;
+  const maxHp = defMatchPlayer?.maxHp ?? defenderSnap?.stats?.maxHp ?? 0;
+  return maxHp > 0 && (defMatchPlayer?.hp ?? 0) >= maxHp;
+}
 // Modificatore del tiro salvezza del DIFENSORE, con Aura di Protezione del
 // Paladino (Lv6): +CAR ai propri tiri salvezza (passiva).
 function defenderSaveMod(snap, ability) {
@@ -1415,6 +1490,8 @@ function defenderSaveMod(snap, ability) {
   if (isPaladinClass(cls) && getSnapLevel(snap) >= 6) return base + (snap?.stats?.cha ?? 0);
   // Bardo · Tuttofare (Lv2): +1 a tutti i tiri salvezza.
   if (isBardClass(cls) && getSnapLevel(snap) >= 2) return base + 1;
+  // Guerriero · Risolutezza (Lv7): +2 a tutti i tiri salvezza.
+  if (isFighterClass(cls) && getSnapLevel(snap) >= 7) return base + 2;
   return base;
 }
 // ── SCALING PER LIVELLO DI SKILL/CARICHE (Arena_class_progress.txt H4) ────────
@@ -1457,13 +1534,44 @@ function beastRageDamageBonus(snap, matchPlayer) {
   const missing = Math.max(0, 1 - hp / Math.max(1, maxHp));
   return Math.min(4, Math.floor(missing * 4));
 }
+// Chierico · Colpo Divino (Lv8): +1d8 radiante ai colpi con arma (non incantesimi).
+function divineStrikeBonus(snap, isSpell) {
+  if (isSpell) return 0;
+  const cls = (snap?.class || "").toLowerCase();
+  if (!(isClericClass(cls) && getSnapLevel(snap) >= 8)) return 0;
+  return rollDmg("1d8").total;
+}
+// Barbaro · Attacco Irruento (Lv2): mentre è in Furia colpisce con più foga (+2 al
+// colpire) ma abbassa la guardia (−2 CA, applicato in getEffectiveAc). Player + IA.
+function recklessRaging(snap, matchPlayer) {
+  const cls = (snap?.class || "").toLowerCase();
+  return isBarbarianClass(cls) && getSnapLevel(snap) >= 2 && (matchPlayer?.rageTurns ?? 0) > 0;
+}
+// Artefice · Infusione (Lv2): potenziamento permanente dell'arma (+1 al colpire e +1 al danno).
+function infusionWeaponBonus(snap) {
+  const cls = (snap?.class || "").toLowerCase();
+  return (isArtificerClass(cls) && getSnapLevel(snap) >= 2) ? 1 : 0;
+}
+// Guerriero · Risolutezza (Lv7): fermezza incrollabile → +2 a tutti i tiri salvezza (in defenderSaveMod).
+// Monaco · Colpi Ki (Lv6): i colpi in mischia contano come magici e ignorano le
+// riduzioni ai danni fisici (Furia, Schivata Prodigiosa, Resistenza Ferina).
+function kiStrikesBypass(snap, isSpell) {
+  if (isSpell) return false;
+  const cls = (snap?.class || "").toLowerCase();
+  return isMonkClass(cls) && getSnapLevel(snap) >= 6;
+}
 // Applica a un'azione automatica lo scaling per livello di cariche/danno (Lv4-8).
 // Usato al momento dell'iscrizione, così i valori scalati entrano nello snapshot
 // e tutto il resto (UI cariche, danno in combattimento) li legge da lì.
 function scaleActionForLevel(action, level, chaScore) {
   const lv = Math.max(3, level ?? 3);
   const a = { ...action };
-  if (a.special === "bardic_inspiration") { a.maxUses = Math.max(1, chaScore ?? 1); return a; }
+  if (a.special === "bardic_inspiration") {
+    // Fonte d'Ispirazione (Bardo Lv5): +1 carica di Ispirazione.
+    a.maxUses = Math.max(1, chaScore ?? 1) + (lv >= 5 ? 1 : 0);
+    if (lv >= 5) a.info = `${a.info || "Ispirazione"} · +1 carica (Fonte d'Ispirazione)`;
+    return a;
+  }
   if (a.special === "smite") {
     const uses = 2 + (lv >= 4 ? 1 : 0) + (lv >= 8 ? 1 : 0);
     const dice = lv >= 19 ? "3d8" : "2d8";
@@ -1645,6 +1753,11 @@ function getMaxActionsPerTurn(snap, matchPlayer) {
       }
     }
   }
+  // Sottoclasse · Bardo Valore/Spada: Attacco Extra (2 azioni) dal Lv6.
+  const subEff = getSubclassEffect(snap);
+  if (subEff.bardExtraAttack && isBardClass(cls) && (snap.classLevels?.[getClassKey(snap.class)] ?? 3) >= 6) base = Math.max(base, 2);
+  // Sottoclasse · Barbaro Berserker: Frenesia — +1 attacco per turno mentre è in Furia.
+  if (subEff.rageExtraAttack && isBarbarianClass(cls) && (matchPlayer?.rageTurns ?? 0) > 0) base += 1;
   if (matchPlayer?.extraTurnActive) base += 1;
   if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
@@ -1945,15 +2058,15 @@ function getRawLoadoutConfig(charClass, level) {
   if (isSorcererClass(cls)) return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: SORCERER_SPELLS, spellLimits: SPELL_LIMITS.sorcerer, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.sorcerer), autoActions: [INNATE_SORCERY_PASSIVE, FONTE_DI_MAGIA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isWarlockClass(cls))  return { weaponOptions: SIMPLE_WEAPONS,         spellOptions: WARLOCK_SPELLS,  spellLimits: SPELL_LIMITS.warlock,  skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.warlock),  autoActions: [MAGICAL_CUNNING_ACTION, PATTO_DEMONIACO_ACTION], hasWildShape: false, armorCategory, canHaveShield };
   if (isPaladinClass(cls))  return { weaponOptions: MARTIAL_WEAPONS,        spellOptions: PALADIN_SPELLS,  spellLimits: SPELL_LIMITS.paladin,  skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.paladin),  autoActions: [SMITE_ACTION, LAY_OF_HANDS_ACTION, AURA_PROTEZIONE_PASSIVE],  hasWildShape: false, armorCategory, canHaveShield };
-  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
-  if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION, FURIA_BESTIALE_PASSIVE, RESISTENZA_FERINA_PASSIVE, ISTINTO_SELVAGGIO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
-  if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [COLPO_BENEDETTO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isFighterClass(cls))  return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SECOND_WIND_ACTION, ACTION_SURGE_ACTION, CHARGE_ACTION, DISARM_ACTION, PRESENZA_POSSENTE_PASSIVE, RISOLUTEZZA_PASSIVE, CRITICO_MIGLIORATO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isBarbarianClass(cls))return { weaponOptions: [...SIMPLE_WEAPONS, ...MARTIAL_WEAPONS], spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [RAGE_ACTION, TURBINE_LAME_ACTION, MIGHTY_STRIKE_ACTION, ATTACCO_IRRUENTO_PASSIVE, FURIA_BESTIALE_PASSIVE, RESISTENZA_FERINA_PASSIVE, ISTINTO_SELVAGGIO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isClericClass(cls))   return { weaponOptions: CLERIC_WEAPON_OPTIONS,  spellOptions: CLERIC_SPELLS,   spellLimits: SPELL_LIMITS.cleric,   skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.cleric),   autoActions: [COLPO_BENEDETTO_PASSIVE, COLPO_DIVINO_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isDruidClass(cls))    return { weaponOptions: DRUID_WEAPON_OPTIONS,   spellOptions: DRUID_SPELLS,    spellLimits: SPELL_LIMITS.druid,    skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.druid),    autoActions: [], hasWildShape: true,  armorCategory, canHaveShield };
   if (isBardClass(cls))     return { weaponOptions: BARD_WEAPON_OPTIONS,    spellOptions: BARD_SPELLS,     spellLimits: SPELL_LIMITS.bard,     skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.bard),     autoActions: [BARDIC_INSPIRATION_ACTION, NOTA_DOLENTE_ACTION, TUTTOFARE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
-  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION, MOVIMENTO_SENZA_ARMATURA_PASSIVE, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
+  if (isMonkClass(cls))     return { weaponOptions: MONK_WEAPON_OPTIONS,     spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 1, maxSpells: 0, autoActions: [CARICA_PUGNI_ACTION, CONCENTRAZIONE_ACTION, ASSORBIRE_DANNI_ACTION, KI_HEALING_ACTION, STUN_STRIKE_ACTION, MOVIMENTO_SENZA_ARMATURA_PASSIVE, COLPI_KI_PASSIVE, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isRogueClass(cls))    return { weaponOptions: ROGUE_WEAPON_OPTIONS,   spellOptions: [],              spellLimits: {},                    skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [SNEAK_ATTACK_ACTION, STEALTH_ACTION, TRIBOLI_ACTION, CUNNING_ACTION_ACTION, SCHIVATA_PRODIGIOSA_PASSIVE, ELUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (isRangerClass(cls))   return { weaponOptions: RANGER_WEAPON_OPTIONS,  spellOptions: RANGER_SPELLS,   spellLimits: SPELL_LIMITS.ranger,   skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.ranger),   autoActions: [HUNTER_MARK_ACTION, SURVIVOR_ACTION, RANGER_VOLLEY_ACTION, DIFESA_PREDATORE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
-  if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION], hasWildShape: false, armorCategory, canHaveShield };
+  if (isArtificerClass(cls))return { weaponOptions: ARTIFICER_WEAPON_OPTIONS, spellOptions: ARTIFICER_SPELLS, spellLimits: SPELL_LIMITS.artificer, skillOptions: [], maxWeapons: 2, maxSpells: sumLimits(SPELL_LIMITS.artificer), autoActions: [FORGIA_ARMATURA_ACTION, INFUSIONE_PASSIVE], hasWildShape: false, armorCategory, canHaveShield };
   if (PHYSICAL_CLASSES.some(k => cls.includes(k))) return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   if (CASTER_CLASSES.some(k => cls.includes(k)))   return { weaponOptions: SIMPLE_WEAPONS, spellOptions: WIZARD_SPELLS, spellLimits: SPELL_LIMITS.generic, skillOptions: [], maxWeapons: 1, maxSpells: sumLimits(SPELL_LIMITS.generic), autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
   return { weaponOptions: MARTIAL_WEAPONS, spellOptions: [], spellLimits: {}, skillOptions: [], maxWeapons: 2, maxSpells: 0, autoActions: [], hasWildShape: false, armorCategory, canHaveShield };
@@ -1965,7 +2078,10 @@ function rollDamageFormula(formula) {
 }
 
 // Returns { total, rolls } where rolls is a display string like "(3+5)=8"
-function rollDmg(formula) {
+function rollDmg(formula, opts = {}) {
+  // opts.rerollMax: ritira UNA volta ogni dado il cui risultato è <= rerollMax
+  //   (Paladino "Arma Grande": reroll di 1-2 sui dadi delle armi a due mani).
+  const rerollMax = opts.rerollMax || 0;
   if (!formula) return { total: 0, rolls: "0" };
   const str = String(formula).trim();
   if (!str || str === "0" || str === "—") return { total: 0, rolls: "0" };
@@ -1984,7 +2100,8 @@ function rollDmg(formula) {
       const diceRolls = [];
       let rolled = 0;
       for (let i = 0; i < num; i++) {
-        const r = Math.floor(Math.random() * sides) + 1;
+        let r = Math.floor(Math.random() * sides) + 1;
+        if (rerollMax > 0 && r <= rerollMax) r = Math.floor(Math.random() * sides) + 1;
         diceRolls.push(r);
         rolled += r;
       }
@@ -4760,10 +4877,11 @@ export default function Arena() {
     const aiTgtHasRanged    = PLAYER_HAS_RANGED_WEAPON(tgtMatchPlayer, targetSnap);
     const aiFarNow          = !m.distanceClosed;
     const aiMeleeFarDisadv  = !aiWpnRanged && aiFarNow && aiTgtHasRanged;
-    const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0;
+    const aiFS            = subclassFirstStrike(aiSnap, false, tgtMatchPlayer, targetSnap); // Ladro "assassino" / Monaco "ombra" (IA)
+    const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0 || aiFS.adv;
     // Barbaro Lv7 · Istinto Selvaggio: in Furia gli attacchi ignorano lo svantaggio (anche l'IA).
     const _aiRagingNoDisadv = isBarbarianClass(cls) && getSnapLevel(aiSnap) >= 7 && effRageTurns;
-    const aiHasDisadvantage = _aiRagingNoDisadv ? false : (readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv);
+    const aiHasDisadvantage = _aiRagingNoDisadv ? false : (readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv || subclassForesightDisadv(targetSnap, tgtMatchPlayer));
     let d20a = Math.floor(Math.random() * 20) + 1;
     if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1;
     let d20b = (aiHasAdvantage || aiHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -4777,18 +4895,23 @@ export default function Arena() {
     const targetAc = getEffectiveAc(tgtMatchPlayer, targetSnap) + shieldSkillBonus + defensiveBonus;
 
     const aiJackBonus = isBardClass(cls) && getSnapLevel(aiSnap) >= 2 ? 1 : 0; // Bardo · Tuttofare (Lv2): +1 al colpire
-    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus + hunterMarkHitBonus + aiJackBonus;
-    const isCrit   = d20 >= critThresh;
+    const aiRangedHitBonus = subclassRangedHit(aiSnap, chosen, false); // Sottoclasse "tiratore"/"arco" (IA)
+    const hitTotal = d20 + (chosen.hitBonus || 0) + statMod + armorPenalty + effAidBonus + hunterMarkHitBonus + aiJackBonus + aiRangedHitBonus;
+    const aiLandsAssassinate = aiFS.crit && hitTotal >= targetAc; // Assassinare (IA)
+    const isCrit   = d20 >= critThresh || aiLandsAssassinate;
     const isHit    = hitTotal >= targetAc || isCrit;
 
     let damage = 0;
     let damageRolls = "0";
     if (isHit) {
-      const { total, rolls } = rollDmg(chosen.damage);
+      const aiRerollMax = (IS_TWO_HANDED_MELEE(chosen) && getSubclassEffect(aiSnap).twoHandReroll) ? 2 : 0; // Arma Grande (IA)
+      const { total, rolls } = rollDmg(chosen.damage, { rerollMax: aiRerollMax });
       const critMult = isCrit ? 2 : 1;
       const aiSubclassDmg = getSubclassEffect(aiSnap).weaponDmg || 0;
+      const aiSubBonus = subclassDamageDice(aiSnap, false).bonus; // Sottoclasse (Fase 2): dado bonus arma (Artigliere) — solo attacchi con arma dell'IA
       const aiBeastRageBonus = beastRageDamageBonus(aiSnap, { ...aiPlayer, ...buffPatch }); // Furia Bestiale (Lv3)
-      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult;
+      const aiDivineStrike = divineStrikeBonus(aiSnap, false); // Chierico Lv8 · Colpo Divino: +1d8 radiante
+      const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult + aiDivineStrike + aiSubBonus;
       damage = applyDefenderDamageMods(raw, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
@@ -4849,6 +4972,19 @@ export default function Arena() {
       aiDistanceLog = `🏹 ${aiSnap.name} indietreggia e mantiene le distanze da ${target.name} (${ARENA_KITE_MAX - aiKiteUsed - 1} rimaste).`;
     }
 
+    // Sottoclasse (Fase 2) · Ritorsione: se l'IA colpisce in MISCHIA un giocatore con una
+    //   sottoclasse difensiva (Tempesta/Battaglia) e il giocatore sopravvive, l'IA subisce danni.
+    const _aiDefRetaliate = getSubclassEffect(targetSnap);
+    // Bilanciamento: la ritorsione scatta solo sul PRIMO attacco del turno (max 1/turno).
+    const aiRetaliateDmg = (isHit && !aiWpnRanged && chosen.type === "weapon" && isFirstAttackThisTurn && _aiDefRetaliate.retaliate && ((tgtMatchPlayer?.hp ?? 0) - damage) > 0)
+      ? rollDmg(_aiDefRetaliate.retaliate).total : 0;
+    const aiRetaliateLog = aiRetaliateDmg > 0
+      ? `${_aiDefRetaliate.retaliateLabel || "⚡ Ritorsione"} — ${target.name} colpisce di rimando ${aiSnap.name} per ${aiRetaliateDmg} danni!`
+      : null;
+    // Monaco · Mano Aperta (IA): colpendo in mischia, il prossimo attacco del bersaglio è a svantaggio.
+    const aiStaggerApplies = isHit && !aiWpnRanged && chosen.type === "weapon" && !!getSubclassEffect(aiSnap).staggerOnHit;
+    const aiStaggerLog = aiStaggerApplies ? `✊ ${aiSnap.name} sbilancia ${target.name}: il suo prossimo attacco è a svantaggio!` : null;
+
     let absorbedLog = null;
     const updatedMatches = meta.matches.map(x => {
       if (x.matchId !== matchId) return x;
@@ -4864,6 +5000,7 @@ export default function Arena() {
               hp: Math.min(tgtMaxHp, (p.hp ?? 0) + heal),
               absorbDamageNext: false,
               ...consumeInvisibility(p),
+              ...(aiStaggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) } : {}),
               stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
             };
           }
@@ -4871,6 +5008,7 @@ export default function Arena() {
             ...p,
             hp: Math.max(0, (p.hp ?? 0) - damage),
             ...consumeInvisibility(p),
+            ...(aiStaggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) } : {}),
             stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
           };
         }
@@ -4903,6 +5041,7 @@ export default function Arena() {
             aiAttacksMade: (p.aiAttacksMade ?? 0) + 1,
             ...(aiKiteInc ? { kiteChargesUsed: (p.kiteChargesUsed ?? 0) + 1 } : {}),
             ...turnEndPatch,
+            ...(aiRetaliateDmg > 0 ? { hp: Math.max(0, (p.hp ?? 0) - aiRetaliateDmg) } : {}),
           };
         }
         return p;
@@ -4912,6 +5051,8 @@ export default function Arena() {
       if (preLog) logs.push(preLog);
       logs.push(attackLog);
       if (absorbedLog) logs.push(absorbedLog);
+      if (aiRetaliateLog) logs.push(aiRetaliateLog);
+      if (aiStaggerLog) logs.push(aiStaggerLog);
       if (aiDistanceLog) logs.push(aiDistanceLog);
       if (alive.length === 1) {
         logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
@@ -5495,8 +5636,14 @@ export default function Arena() {
     const titleHitCtx        = { classLower: attackerClassLower, isSpellAction, wildShapeForm: attackerMatchPlayer?.wildShape || null, actionDamageType: action?.damageType || null };
     const titleHitBonus      = attackerTitles.reduce((sum, k) => sum + getTitleHitBonus({ titleKey: k, ...titleHitCtx }), 0);
     const jackOfAllTradesBonus = isBardClass(attackerClassLower) && getSnapLevel(attackerSnap) >= 2 ? 1 : 0; // Bardo · Tuttofare (Lv2): +1 al colpire
+    const recklessHitBonus   = recklessRaging(attackerSnap, attackerMatchPlayer) ? 2 : 0;          // Barbaro · Attacco Irruento (Lv2): +2 al colpire in Furia
+    const infusionHitBonus   = !isSpellAction ? infusionWeaponBonus(attackerSnap) : 0;             // Artefice · Infusione (Lv2): +1 al colpire con arma
+    const subclassRangedHitBonus = subclassRangedHit(attackerSnap, action, isSpellAction);          // Sottoclasse · Guerriero "tiratore" / Ranger "arco": +colpire a distanza
+    const passiveHitBonus    = recklessHitBonus + infusionHitBonus + subclassRangedHitBonus;
+    const kiBypass           = kiStrikesBypass(attackerSnap, isSpellAction);                       // Monaco · Colpi Ki (Lv6)
     const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
-    const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0;
+    const _firstStrike       = subclassFirstStrike(attackerSnap, isSpellAction, defMatchPlayer, defenderSnap); // Ladro "assassino" / Monaco "ombra": apertura vs bersaglio a PF pieni
+    const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0 || _firstStrike.adv;
     // Scudo + incantesimo da DANNO con tiro per colpire → il lanciatore tira a SVANTAGGIO.
     const casterShieldSpellDisadv = isSpellAction && !!attackerSnap?.hasShield && !!(action.damage && action.damage !== "—");
     // DISTANZA: attacco in mischia mentre si è lontani, contro un avversario che
@@ -5506,7 +5653,7 @@ export default function Arena() {
     const meleeFarDisadv     = isMeleeWeaponAtk && !_currentMatch?.distanceClosed && defHasRangedWpn;
     // Barbaro Lv7 · Istinto Selvaggio: in Furia i tuoi attacchi ignorano lo svantaggio.
     const _ragingNoDisadv = isBarbarianClass(attackerClassLower) && getSnapLevel(attackerSnap) >= 7 && (attackerMatchPlayer?.rageTurns ?? 0) > 0;
-    const hasDisadvantage    = _ragingNoDisadv ? false : (readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv);
+    const hasDisadvantage    = _ragingNoDisadv ? false : (readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv || subclassForesightDisadv(defenderSnap, defMatchPlayer));
     const isFighter = isFighterClass(attackerClassLower);
     // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
     // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
@@ -5531,7 +5678,7 @@ export default function Arena() {
                  : hasDisadvantage && !hasAdvantage ? Math.min(r1, r2) : r1;
         await showD20Roll(rd, { label: `🏹 ${action.name} — Freccia ${i + 1}/${arrows}` });
         const aCrit = rd >= critTh2;
-        const aHitTotal = rd + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus;
+        const aHitTotal = rd + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus + passiveHitBonus;
         const aHit = aHitTotal >= defAC2 || aCrit;
         if (aHit) {
           anyHit = true;
@@ -5569,16 +5716,20 @@ export default function Arena() {
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
     await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : meleeFarDisadv ? " — a SVANTAGGIO (chiudi la distanza)" : ""}` });
-    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus;
+    const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus + passiveHitBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
     const armorForgeBonus  = (defMatchPlayer?.armorForgeTurns ?? 0) > 0 ? 2 : 0;
     const defensiveAcBonus = defMatchPlayer?.defensiveBonus ?? 0;
     const defAC    = getEffectiveAc(defMatchPlayer, defenderSnap) - (shieldLost ? 1 : 0) + shieldSkillBonus + armorForgeBonus + defensiveAcBonus;
     const critThreshold = isFighter ? 19 : 20; // Critico Migliorato: 19-20 per il guerriero
-    const isCrit   = d20 >= critThreshold; // nat 20 (o 19 per fighter) = critico
+    // Ladro · Assassinare: un colpo a segno contro un bersaglio a PF pieni è un critico.
+    const landsAssassinate = _firstStrike.crit && hitTotal >= defAC;
+    const isCrit   = d20 >= critThreshold || landsAssassinate; // nat 20 (o 19 per fighter), o Assassinare
     isHit    = hitTotal >= defAC || isCrit;
-    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(isSpellAction ? clericBlessedDice(action.damage, attackerSnap) : action.damage) : { total: 0, rolls: "0" };
+    // Paladino · Arma Grande: reroll dei risultati 1-2 sui dadi di un'arma a due mani da mischia.
+    const weaponRerollMax = (!isSpellAction && IS_TWO_HANDED_MELEE(action) && getSubclassEffect(attackerSnap).twoHandReroll) ? 2 : 0;
+    const { total: baseDmg, rolls: diceRolls } = isHit ? rollDmg(isSpellAction ? clericBlessedDice(action.damage, attackerSnap) : action.damage, { rerollMax: weaponRerollMax }) : { total: 0, rolls: "0" };
     // Critico spells: doppio danno
     const critMult = isCrit ? 2 : 1;
     // Weapon poison bonus
@@ -5596,11 +5747,18 @@ export default function Arena() {
     const aidDmgBonus    = readAidDmgBonus(attackerMatchPlayer); // Aiuto: +X al danno
     const subclassEff = getSubclassEffect(attackerSnap);
     const subclassDmg = isSpellAction ? (subclassEff.spellDmg || 0) : (subclassEff.weaponDmg || 0);
+    // Sottoclasse (Fase 2): dado bonus ai danni (Artigliere/Alchimista) + Ondata Selvaggia.
+    const { bonus: subclassBonusDmg, tag: subclassBonusTag } = (isHit && !isBlindDebuff) ? subclassDamageDice(attackerSnap, isSpellAction) : { bonus: 0, tag: "" };
     // Barbaro Lv3 · Furia Bestiale: +1 danno per ogni 25% di PF mancanti mentre è in Furia.
     const beastRageBonus = !isSpellAction ? beastRageDamageBonus(attackerSnap, attackerMatchPlayer) : 0;
-    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg + beastRageBonus) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg : 0;
+    // Chierico Lv8 · Colpo Divino: +1d8 radiante ai colpi con arma (fuori dal moltiplicatore critico).
+    const divineStrikeDmg = (isHit && !isBlindDebuff) ? divineStrikeBonus(attackerSnap, isSpellAction) : 0;
+    // Artefice Lv2 · Infusione: +1 al danno con arma.
+    const infusionDmg = !isSpellAction ? infusionWeaponBonus(attackerSnap) : 0;
+    const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg + beastRageBonus + infusionDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg + divineStrikeDmg + subclassBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
-    const rageReducedDamage = applyDefenderDamageMods(rawDamage, defenderSnap, defMatchPlayer, isSpellAction);
+    // Monaco · Colpi Ki (Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici (kiBypass).
+    const rageReducedDamage = applyDefenderDamageMods(rawDamage, defenderSnap, defMatchPlayer, isSpellAction, kiBypass);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
     golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
     damage = golemHalved ? Math.floor(rageReducedDamage / 2) : rageReducedDamage;
@@ -5629,8 +5787,9 @@ export default function Arena() {
       ? ` +${titleHitBonus} ${attackerTitles.filter(k => getTitleHitBonus({ titleKey: k, ...titleHitCtx }) > 0).map(k => ARENA_TITLES[k]?.icon || "♛").join("")}titolo`
       : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
+    const subclassBonusTagStr = subclassBonusTag ? ` | ${subclassBonusTag}` : "";
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${barbDmgTag}${concentrationTag} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${barbDmgTag}${concentrationTag}${subclassBonusTagStr} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
     log = {
@@ -5669,6 +5828,21 @@ export default function Arena() {
       _distanceLog = `🏹 ${attName} indietreggia e mantiene le distanze da ${defName} (${ARENA_KITE_MAX - _kiteUsedNow - 1} rimaste).`;
     }
 
+    // Sottoclasse (Fase 2) · Ritorsione (Chierico Tempesta 2d8, Artefice Battaglia 1d4):
+    //   chi colpisce in MISCHIA un difensore con questo effetto subisce danni di ritorno,
+    //   ma solo se il difensore SOPRAVVIVE al colpo (così si evita il KO reciproco/stallo).
+    const _defRetaliate = getSubclassEffect(defenderSnap);
+    // Bilanciamento: la ritorsione scatta solo sul PRIMO attacco del turno (max 1/turno).
+    const _isFirstHitOfTurn = (attackerMatchPlayer?.multiActionsUsed ?? 0) === 0;
+    const retaliateDmg = (isHit && isMeleeWeaponAtk && _isFirstHitOfTurn && _defRetaliate.retaliate && ((defMatchPlayer?.hp ?? 0) - damage) > 0)
+      ? rollDmg(_defRetaliate.retaliate).total : 0;
+    const retaliateLog = retaliateDmg > 0
+      ? `${_defRetaliate.retaliateLabel || "⚡ Ritorsione"} — ${defName} colpisce di rimando ${attName} per ${retaliateDmg} danni!`
+      : null;
+    // Monaco · Mano Aperta: colpendo in mischia, il prossimo attacco del nemico è a svantaggio.
+    const staggerApplies = isHit && isMeleeWeaponAtk && !!getSubclassEffect(attackerSnap).staggerOnHit;
+    const staggerLog = staggerApplies ? `✊ ${attName} sbilancia ${defName}: il suo prossimo attacco è a svantaggio!` : null;
+
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
     let updatedMatches = arenaMeta.matches.map(m => {
@@ -5677,14 +5851,16 @@ export default function Arena() {
         if (p.id === targetId) {
           // nextHitHalved: una volta consumato dal colpo che ha ricevuto il dimezzamento, lo togliamo.
           const golemConsumed = golemHalved ? { nextHitHalved: false } : {};
+          // Monaco · Mano Aperta: svantaggio al prossimo attacco del bersaglio.
+          const staggerPatch = staggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) } : {};
           if (p.absorbDamageNext && damage > 0) {
             const tgtSnap = (arenaMeta.characterSnapshots || {})[targetId] || {};
             const maxHp = tgtSnap.stats?.maxHp ?? p.maxHp ?? p.hp;
             const heal  = Math.floor(damage * 0.8);
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
-            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           }
-          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
         }
         if (p.id === currentUser.uid) {
           // Magic-detect counter: scala 1 per attacco. Si svuota (spegne il buff) solo a contatore=0.
@@ -5702,6 +5878,8 @@ export default function Arena() {
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
           }
           if (_kiteInc) up.kiteChargesUsed = (p.kiteChargesUsed ?? 0) + 1;
+          // Ritorsione della sottoclasse difensiva (Ira della Tempesta / Difensore d'Acciaio).
+          if (retaliateDmg > 0) up.hp = Math.max(0, (up.hp ?? p.hp) - retaliateDmg);
           return up;
         }
         return { ...p, ...consumeInvisibility(p) };
@@ -5710,7 +5888,7 @@ export default function Arena() {
       const newParticipantsAwarded = _alreadyAwarded
         ? (m.participantsAwarded || [])
         : [...(m.participantsAwarded || []), currentUser.uid];
-      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
+      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(retaliateLog ? [retaliateLog] : []), ...(staggerLog ? [staggerLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
       const alive = updatedPlayers.filter(p => p.hp > 0);
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,

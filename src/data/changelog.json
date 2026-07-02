@@ -1,6 +1,48 @@
 {
   "versions": [
     {
+      "version": "70.01",
+      "date": "2026-07-02",
+      "title": "Arena: sottoclassi Fase 3 — Mano Aperta e cap ritorsione",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Monaco · Mano Aperta (Tecnica della Mano Aperta): oltre al +2 al danno, quando colpisci in mischia sbilanci il nemico e il suo prossimo attacco è a svantaggio. Vale per giocatori e IA."
+        },
+        {
+          "type": "balance",
+          "text": "Ritorsione delle sottoclassi difensive (Chierico Tempesta, Artefice Battaglia): ora scatta al massimo una volta per turno dell'attaccante (solo sul suo primo attacco), per non punire eccessivamente chi ha più attacchi per turno."
+        }
+      ]
+    },
+    {
+      "version": "70",
+      "date": "2026-07-02",
+      "title": "Arena: sottoclassi Fase 2 — reazioni ed effetti condizionali",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Chierico · Tempesta (Ira della Tempesta): chi colpisce il chierico in mischia subisce 2d8 danni da fulmine di ritorno. La ritorsione scatta solo se il chierico sopravvive al colpo. Vale per giocatori e IA."
+        },
+        {
+          "type": "mechanics",
+          "text": "Artefice · Battaglia (Difensore d'Acciaio): +1 CA e chi colpisce l'artefice in mischia subisce 1d4 danni di ritorno (stessa regola della ritorsione)."
+        },
+        {
+          "type": "mechanics",
+          "text": "Mago · Divinazione (Presagio): finché il mago è a PF pieni, il primo attacco nemico contro di lui è a svantaggio."
+        },
+        {
+          "type": "mechanics",
+          "text": "Stregone · Magia Selvaggia (Ondata Selvaggia): ogni incantesimo a segno ha 1 probabilità su 4 di scatenare un'ondata che infligge +2d6 danni."
+        },
+        {
+          "type": "mechanics",
+          "text": "Artefice · Artigliere (Arma da Fuoco Arcana): +1d8 ai danni con le armi. Artefice · Alchimista (Sapiente Alchemico): +1d6 ai danni degli incantesimi."
+        }
+      ]
+    },
+    {
       "version": "69.01",
       "date": "2026-07-02",
       "title": "Strumenti DM: pieni permessi al secondo Master",

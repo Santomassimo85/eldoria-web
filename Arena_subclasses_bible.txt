@@ -1,0 +1,564 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ARENA — BIBBIA DELLE SOTTOCLASSI (D&D 5e → adattamento Arena)                  ║
+║  Documento di progettazione interno (per Claude). NON è UI.                     ║
+║  Scopo: raccogliere le feature REALI di ogni sottoclasse di D&D 5e (2014        ║
+║  PHB/SRD), con livello e numeri esatti, così DOPO potremo implementare le       ║
+║  "vere" sottoclassi nell'Arena (skill attive + passive), non solo il +CA/+danno.║
+║  Fonte dati: dnd5e.wikidot.com (SRD 5.1 / PHB 2014). Ricerca: 2026-07-02.       ║
+║  Compagno di: Arena_class_progress.txt (progressione livelli) e                 ║
+║               src/data/arenaSubclasses.js (stato attuale nel codice).           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────────────────────────────────
+0. COME LEGGERE QUESTO FILE
+────────────────────────────────────────────────────────────────────────────────
+• Ogni classe ha un blocco. Dentro, ogni sottoclasse (con la CHIAVE usata in
+  arenaSubclasses.js) elenca le feature FEDELI a D&D per livello + una nota
+  "ADATTAMENTO ARENA" su come renderla nel motore.
+• "OGGI" = cosa fa già arenaSubclasses.js (solo effetti numerici: ca / weaponDmg
+  / spellDmg, letti da getSubclassEffect in Arena.jsx).
+• I livelli sono quelli di D&D. L'Arena parte da Lv3 e la sottoclasse si sceglie
+  a reqLevel 3; le feature di livello più alto vanno gate con classLevels[key].
+• LEGENDA effetti da implementare:
+    [ATT] = skill/azione attiva (entra nel loadout, ha cariche)
+    [PAS] = passiva automatica (come le passive Lv2-8 già fatte)
+    [MOD] = modificatore numerico (già supportato: ca/weaponDmg/spellDmg)
+    [REA] = reazione (nuovo hook: reagire al colpo/attacco nemico)
+    [CD]  = Channel Divinity (risorsa a cariche condivisa, chierico/paladino)
+
+• HOOK DEL MOTORE già esistenti riutilizzabili (vedi Arena.jsx):
+    - danni +dado / +flat, tiri per colpire +N (passiveHitBonus, subclassDmg)
+    - riduzione danni difensore (applyDefenderDamageMods), bypass (kiBypass)
+    - TS del difensore (defenderSaveMod), CD spell (getSpellSaveDC)
+    - controllo/stun (special "control"), buff CA a tempo (shield_buff*),
+      cura (special "heal"), DoT (save_dot*), vantaggio/svantaggio, invisibilità
+    - Furia/rage, Marchio del Cacciatore, cariche (maxUses), reazioni (nessun
+      hook generico di "reazione" ancora → da creare per [REA]).
+
+────────────────────────────────────────────────────────────────────────────────
+NOTA DI DESIGN PVP 1v1 (da tenere sempre presente adattando)
+────────────────────────────────────────────────────────────────────────────────
+• Molte feature D&D presuppongono più nemici, esplorazione, o riposi. Nell'Arena
+  1v1 a turni vanno tradotte in: bonus al singolo bersaglio, effetti a tempo
+  (turni), cariche per-fight. "1/riposo breve o lungo" → "1/fight" (o 2/fight).
+• Feature di pura utilità fuori combattimento (identità false, copiare spell,
+  parlare con animali, competenze in strumenti) → SOLO flavor, niente codice.
+• Capstone (Lv17-20) e ritorsioni forti: 1 carica/fight per non spezzare il 1v1.
+
+
+════════════════════════════════════════════════════════════════════════════════
+1. GUERRIERO (Fighter)  — chiavi: difesa · duellante · tiratore
+════════════════════════════════════════════════════════════════════════════════
+NB: nel file le opzioni del Guerriero sono STILI DI COMBATTIMENTO (feature D&D di
+Lv1), non un archetipo marziale. Sotto: prima gli Stili (fedeli), poi i due
+archetipi iconici (Champion / Battle Master) come RISERVA se vorremo veri
+archetipi al posto/oltre gli stili.
+
+── STILI DI COMBATTIMENTO (Lv1 in D&D; nell'Arena scelti a Lv3) ──
+• difesa   — Difesa (Defense):   +1 CA mentre indossi un'armatura.        [MOD ca]
+• duellante— Duellante (Dueling): +2 ai DANNI con un'arma da mischia in una sola
+             mano e nessun'altra arma.                                    [MOD weaponDmg]
+• tiratore — Tiro con l'Arco (Archery): +2 ai TIRI PER COLPIRE con armi a distanza.
+             ATTENZIONE: è +colpire, NON +danno.                          [MOD hit]
+  OGGI: difesa=+1 CA (giusto) · duellante=+2 weaponDmg (giusto) ·
+        tiratore=+2 weaponDmg (SBAGLIATO: dovrebbe essere +2 al COLPIRE a distanza).
+  ADATTAMENTO ARENA: aggiungere un campo effect.rangedHit / effect.hitBonus letto
+  nel calcolo di hitTotal (come passiveHitBonus). Duellante andrebbe condizionato
+  ad "arma singola in mischia", Tiratore ad "arma a distanza".
+
+── ARCHETIPO DI RISERVA: Campione (Champion) ──
+• Lv3  Critico Migliorato: critico con 19-20.  → GIÀ nel codice come
+       CRITICO_MIGLIORATO_PASSIVE (Guerriero). [PAS già fatta]
+• Lv7  Atleta Notevole: +½ competenza a prove FOR/DES/COS non competenti (flavor arena).
+• Lv10 Stile di Combattimento #2 (secondo stile).                          [MOD]
+• Lv15 Critico Superiore: critico con 18-20.                              [PAS] (esiste "Critico Superiore" lv15 nella progressione)
+• Lv18 Sopravvissuto: a inizio turno se ≤50% PF curi 5+COS.               [PAS] (già previsto lv18 progressione)
+
+── ARCHETIPO DI RISERVA: Maestro di Battaglia (Battle Master) ──
+• Lv3  Superiorità in Combattimento: 4 dadi d8 (CD 8+comp+FOR/DES). Manovre
+       (spendi 1 dado): es. Trip Attack (TS FOR o prono), Disarming (TS FOR o
+       disarmato), Menacing (TS SAG o spaventato), Riposte (reazione: attacco su
+       chi ti manca), Precision (+dado al colpire), Sweeping (danni a lato).
+       Progressione dadi: Lv3=4d8 · Lv10=5d10 · Lv18=6d12; manovre note 3→5→7→9.
+  ADATTAMENTO ARENA: "dadi di superiorità" = risorsa a cariche (maxUses) tipo i
+  Ki; ogni manovra = una micro-azione. Molte già esistono come skill separate
+  del Guerriero (Disarmare, ecc.). [ATT + REA]
+
+
+════════════════════════════════════════════════════════════════════════════════
+2. PALADINO (Paladin)  — chiavi: difesa · duellante · grandearma
+════════════════════════════════════════════════════════════════════════════════
+NB: anche qui il file usa STILI DI COMBATTIMENTO. In D&D il vero "archetipo" del
+Paladino è il GIURAMENTO SACRO (Lv3): sotto lo do come riserva (Devozione /
+Vendetta), coerente con Arena_class_progress.txt (Lv3 "Giuramento").
+
+── STILI DI COMBATTIMENTO (Lv2 in D&D) ──
+• difesa    — Difesa: +1 CA in armatura.                                  [MOD ca]
+• duellante — Duellante: +2 danni con arma singola in mischia.            [MOD weaponDmg]
+• grandearma— Arma Grande (Great Weapon Fighting): ritira i risultati 1-2 sui dadi
+              di danno di un'arma a due mani (tieni il nuovo tiro).        [MOD dmg-reroll]
+  OGGI: difesa=+1 CA · duellante=+2 · grandearma=+2 weaponDmg (approssimazione).
+  ADATTAMENTO ARENA: Arma Grande → nel rollDmg dell'arma a due mani, reroll di 1-2
+  una volta. Semplice da agganciare a rollDmg quando snap.subclass=="grandearma".
+
+── GIURAMENTO DI RISERVA: Devozione (Oath of Devotion) ──
+• Lv3  CD Arma Sacra: +CAR al colpire (min +1) per alcuni turni.          [ATT/CD]
+• Lv3  CD Scacciare gli Empi: TS SAG o nemico "scacciato" (salta/fugge).  [ATT/CD control]
+• Lv7  Aura di Devozione: immune ad ammaliamento (charme).                [PAS]
+• Lv15 Purezza dello Spirito: svantaggio nemico ad attaccarti (vs certi tipi).[PAS]
+• Lv20 Alone Sacro: aura 30ft, 10 danni radianti/turno ai nemici, 1/fight.[ATT]
+
+── GIURAMENTO DI RISERVA: Vendetta (Oath of Vengeance) ──
+• Lv3  CD Voto di Inimicizia: vantaggio ai TxC contro un bersaglio per N turni.[ATT/CD]
+• Lv3  CD Abiurare Nemico: TS SAG o spaventato + velocità 0 (metà se passa). [ATT/CD control]
+• Lv7  Vendicatore Implacabile: muoviti dopo un attacco di opportunità (poco senso 1v1).
+• Lv15 Anima della Vendetta: reazione = attacco quando il bersaglio del Voto attacca.[REA]
+• Lv20 Angelo Vendicatore: volo + aura di paura 1/fight.                  [ATT]
+  ADATTAMENTO ARENA: il "Voto di Inimicizia" è PERFETTO per il 1v1 (vantaggio sul
+  singolo nemico). Channel Divinity = risorsa a 1-2 cariche/fight condivisa.
+
+
+════════════════════════════════════════════════════════════════════════════════
+3. RANGER  — chiavi: arco · duearmi · difesa
+════════════════════════════════════════════════════════════════════════════════
+NB: STILI DI COMBATTIMENTO (Lv2). Vero archetipo D&D = Ranger Conclave (Lv3):
+Cacciatore / Signore delle Bestie (riserva sotto). Coerente con
+Arena_class_progress.txt (Lv3 "Predatore: Cacciatore / Maestro di Bestie").
+
+── STILI DI COMBATTIMENTO (Lv2) ──
+• arco    — Tiro con l'Arco: +2 al COLPIRE a distanza (NON danni).        [MOD hit]
+• duearmi — Due Armi (Two-Weapon Fighting): aggiungi il mod caratteristica al
+            danno del SECONDO attacco a due armi.                          [MOD dmg]
+• difesa  — Difesa: +1 CA in armatura.                                     [MOD ca]
+  OGGI: arco=+2 weaponDmg (dovrebbe essere +2 COLPIRE) · duearmi=+2 · difesa=+1 CA.
+  ADATTAMENTO ARENA: come il Guerriero, "arco" andrebbe convertito in +colpire.
+
+── ARCHETIPO DI RISERVA: Cacciatore (Hunter) ──
+• Lv3  Preda del Cacciatore (scegli 1):
+        - Uccisore di Colossi: +1d8 danni 1/turno se il bersaglio è sotto i PF max.
+          → nell'Arena il nemico è quasi sempre <max: bonus quasi costante. [PAS]
+        - Uccisore di Giganti: reazione = attacco quando un nemico Grande+ ti colpisce.[REA]
+        - Sfonda-Orde: attacco extra su un 2° nemico (poco senso 1v1).
+• Lv7  Tattiche Difensive (scegli 1): svantaggio agli AdO contro di te /
+        +4 CA contro i colpi successivi dello stesso nemico / vantaggio TS vs paura.[PAS]
+• Lv11 Attacco Multiplo: Scarica (Volley) o Turbinante — colpisce più nemici
+        (nell'Arena = flavor, resta attacco singolo).
+• Lv15 Difesa Superiore (scegli 1): Elusione (TS DES = 0 danni) / Schivata
+        Prodigiosa (reazione: dimezza un colpo) / Resistere alla Marea.
+  ADATTAMENTO ARENA: "Uccisore di Colossi" (+1d8 su bersaglio ferito) è ideale e
+  facile (già c'è beastRageDamageBonus come modello). Difesa=+4 CA temporanea usa
+  già gli hook shield-buff.
+
+── ARCHETIPO DI RISERVA: Signore delle Bestie (Beast Master) ──
+• Lv3  Compagno del Ranger: bestia GS≤1/4, PF = 4×liv ranger, agisce nel tuo turno.
+       → GIÀ c'è il sistema RANGER_PETS (lupo/ragno/aquila/draghetto).
+• Lv7  Addestramento Eccezionale: comandi la bestia come azione bonus; attacchi magici.
+• Lv11 Furia Bestiale: la bestia fa 2 attacchi.                            [ATT/pet]
+• Lv15 Condividere Incantesimi.
+  ADATTAMENTO ARENA: agganciare al sistema pet esistente (potenziare cariche/
+  attacchi del compagno in base a classLevels).
+
+
+════════════════════════════════════════════════════════════════════════════════
+4. BARBARO (Barbarian)  — chiavi: berserker · totem
+════════════════════════════════════════════════════════════════════════════════
+── berserker — Sentiero del Berserker (Path of the Berserker) ──
+• Lv3  Frenesia: mentre sei in Furia, 1 attacco EXTRA come azione bonus ogni turno
+       (in D&D dà sfinimento; nell'Arena ignorare lo sfinimento o costo cariche).[ATT]
+• Lv6  Ira Insensata: immune ad ammaliamento e paura mentre sei in Furia.  [PAS]
+• Lv10 Presenza Intimidatoria: azione, TS SAG (CD 8+comp+CAR) o nemico spaventato.[ATT control]
+• Lv14 Ritorsione: reazione, quando subisci danni in mischia (≤5ft) attacchi subito.[REA]
+  OGGI: berserker = +2 weaponDmg (approssimazione della "pura ferocia").
+  ADATTAMENTO ARENA: Frenesia (attacco bonus in Furia) è forte e tematica; usa gli
+  hook di Furia già presenti. Ritorsione richiede il nuovo hook [REA].
+
+── totem — Guerriero Totemico (Path of the Totem Warrior) ──
+• Lv3  Spirito Totemico (scegli animale), benefici IN FURIA:
+        - Orso: resistenza a TUTTI i danni tranne psichici (fortissimo in 1v1).[PAS]
+        - Aquila: i nemici hanno svantaggio agli AdO; Scatto come azione bonus.
+        - Lupo: alleati con vantaggio in mischia (no senso 1v1).
+• Lv6  Aspetto della Bestia: bonus di utilità (forza di carico, vista, tracce) → flavor.
+• Lv10 Camminatore Spirituale: rituale → flavor.
+• Lv14 Sintonia Totemica (in Furia): Orso = nemici a ≤5ft con svantaggio ad attaccare
+        altri che non sei tu; Aquila = volo; Lupo = azione bonus per far cadere prono.[PAS/ATT]
+  OGGI: totem = +1 CA ("protezione degli spiriti").
+  ADATTAMENTO ARENA: Orso (resistenza quasi totale in Furia) è la scelta "tank"
+  perfetta: aggancia applyDefenderDamageMods potenziando la riduzione in Furia.
+
+
+════════════════════════════════════════════════════════════════════════════════
+5. MONACO (Monk)  — chiavi: manoaperta · ombra
+════════════════════════════════════════════════════════════════════════════════
+── manoaperta — Via della Mano Aperta (Way of the Open Hand) ──
+• Lv3  Tecnica della Mano Aperta: quando colpisci con Raffica di Colpi, imponi 1:
+        TS DES o prono / TS FOR o spinto 15ft / il nemico non può reagire.
+        (CD 8+SAG+comp).                                                  [ATT/control]
+• Lv6  Integrità del Corpo: azione, curi 3×liv monaco PF, 1/riposo (→1/fight).[ATT heal]
+• Lv11 Tranquillità: effetto Santuario a inizio fight (nemico TS o non può attaccarti).[PAS]
+• Lv17 Palmo Vibrante: 3 ki, TS COS o il nemico va a 0 PF; se passa, 10d10 necrotici.[ATT]
+  OGGI: manoaperta = +2 weaponDmg (colpi più forti).
+  ADATTAMENTO ARENA: gli effetti "prono / no-reazione / spinta" e il Palmo Vibrante
+  (già esiste "Palmo Tremante" lv17 nella progressione) usano gli hook control/stun.
+
+── ombra — Via dell'Ombra (Way of Shadow) ──
+• Lv3  Arti Ombra: 2 ki per lanciare Oscurità/Silenzio/Passo senza Tracce; trucchetto
+       Illusione Minore.                                                   [ATT]
+• Lv6  Passo d'Ombra: azione bonus, teletrasporto 60ft + vantaggio al 1° attacco.[ATT]
+• Lv11 Manto d'Ombra: azione, diventi invisibile finché non attacchi/lanci.[ATT] (hook invisibility esiste)
+• Lv17 Opportunista: reazione, attacchi un nemico colpito da un altro (no 1v1).[REA]
+  OGGI: ombra = +1 CA ("ti muovi come un'ombra").
+  ADATTAMENTO ARENA: Passo d'Ombra (teletrasporto + vantaggio) e Manto d'Ombra
+  (invisibilità) si agganciano agli hook di vantaggio/invisibilità già presenti.
+
+
+════════════════════════════════════════════════════════════════════════════════
+6. LADRO (Rogue)  — chiavi: assassino · arguzia
+════════════════════════════════════════════════════════════════════════════════
+NB: "arguzia" (+1 CA, "schivi con eleganza") non è un archetipo canonico secco:
+in D&D corrisponde meglio allo SPADACCINO (Swashbuckler) per il tono. Do sia
+Spadaccino sia Ladro (Thief) come riserva; scegliere in fase di implementazione.
+
+── assassino — Assassino (Assassin) ──
+• Lv3  Assassinare: VANTAGGIO ai TxC contro chi non ha ancora agito nel round; ogni
+       colpo contro un nemico "colto di sorpresa" è CRITICO.              [PAS]
+• Lv9  Competenza da Infiltrato: identità false → flavor.
+• Lv13 Impostore: imitare persone → flavor.
+• Lv17 Colpo Mortale: contro nemico sorpreso, TS COS o RADDOPPI i danni.  [PAS]
+  OGGI: assassino = +2 weaponDmg.
+  ADATTAMENTO ARENA: "Assassinare" → vantaggio + crit garantito al 1° colpo del
+  fight (nell'Arena il primo turno = nemico non ancora agito). Ottimo e tematico.
+
+── arguzia → Spadaccino (Swashbuckler) [proposta] ──
+• Lv3  Gioco di Gambe Elegante: il nemico che attacchi non può farti AdO.
+• Lv3  Audacia Spavalda: +CAR all'iniziativa; Attacco Furtivo SENZA vantaggio in 1v1
+       (basta essere solo tu a ≤5ft dal bersaglio → SEMPRE vero nell'Arena!).[PAS]
+• Lv9  Panache: prova CAR vs SAG; se vinci, il nemico ha svantaggio ad attaccare
+       altri e non fa AdO (in 1v1 ~ debuff).                              [ATT]
+• Lv13 Manovra Elegante: vantaggio alla prossima prova DES/FOR.
+• Lv17 Maestro Duellante: se manchi un TxC, ritiralo con vantaggio, 1/riposo.[REA]
+  ADATTAMENTO ARENA: "Audacia Spavalda" è oro per l'Arena: rende l'Attacco Furtivo
+  del Ladro sempre attivo in 1v1 senza bisogno di vantaggio.
+
+── (alt) Ladro (Thief) ──
+• Lv3  Mani Veloci: Azione Scaltra per Usare Oggetto (già c'è AZIONE_SCALTRA-like).
+• Lv3  Lavoro sui Tetti: arrampicata/salto → flavor.
+• Lv9  Furtività Suprema · Lv13 Usare Congegni Magici → flavor.
+• Lv17 Riflessi del Ladro: DUE turni nel 1° round (secondo a iniziativa −10).[PAS]
+  ADATTAMENTO ARENA: "Riflessi del Ladro" = doppio turno al primo round, fortissimo
+  in 1v1: usare con cautela / solo capstone.
+
+
+════════════════════════════════════════════════════════════════════════════════
+7. MAGO (Wizard)  — chiavi: evocazione · abiurazione · divinazione
+════════════════════════════════════════════════════════════════════════════════
+── evocazione — Scuola dell'Evocazione (School of Evocation) ──
+• Lv2  Plasmare Incantesimi: proteggi alleati dagli AoE (no senso 1v1).
+• Lv6  Trucchetto Potente: se il nemico passa il TS contro un tuo trucchetto,
+       subisce comunque METÀ danno.                                       [PAS]
+• Lv10 Evocazione Potenziata: +INT (min +1) a un tiro danni di ogni incantesimo
+       di evocazione.                                                     [MOD spellDmg]
+• Lv14 Sovraccarico: 1/fight un incantesimo lv1-5 infligge danno MASSIMO.  [ATT]
+  OGGI: evocazione = +2 spellDmg. (Buona approssimazione di "Evocazione Potenziata".)
+  ADATTAMENTO ARENA: +2 spellDmg va bene; "Trucchetto Potente" e "Sovraccarico"
+  aggiungono profondità (mezzo-danno-su-TS-passato, e nova 1/fight).
+
+── abiurazione — Scuola dell'Abiurazione (School of Abjuration) ──
+• Lv2  Guardia Arcana: scudo con PF = (2×liv mago)+INT che assorbe danni; si
+       ricarica lanciando abiurazioni (+2×liv spell).                     [PAS/scudo]
+• Lv6  Guardia Proiettata: reazione, assorbi con lo scudo i danni di un alleato (no 1v1).
+• Lv10 Abiurazione Migliorata: +comp a certe prove (contrincantesimo).
+• Lv14 Resistenza agli Incantesimi: vantaggio TS vs spell + RESISTENZA ai danni da spell.[PAS]
+  OGGI: abiurazione = +2 CA ("scudo arcano"). MA la vera feature è uno SCUDO A PF,
+  non +CA fisso.
+  ADATTAMENTO ARENA: implementare la Guardia Arcana come pool di PF-scudo assorbi-
+  danni a inizio fight (= 2×liv+INT), che si ricarica quando lanci un'abiurazione.
+  Hook nuovo tipo "wardHp" nel matchPlayer. È l'esempio-chiave di "effetto vero".
+
+── divinazione — Scuola della Divinazione (School of Divination) ──
+• Lv2  Presagio: a inizio fight registri 2 tiri di d20; puoi SOSTITUIRE un TxC/TS/
+       prova (tuo o del nemico) con un valore registrato.                 [ATT/1-2 usi]
+• Lv6  Divinazione Esperta: recuperi slot lanciando divinazioni (→ +cariche).
+• Lv10 Il Terzo Occhio: scurovisione/vedere invisibile → flavor.
+• Lv14 Presagio Maggiore: 3 dadi invece di 2.                             [U cariche]
+  OGGI: divinazione = +1 spellDmg (scelta di ripiego, poco tematica).
+  ADATTAMENTO ARENA: Presagio è FORTISSIMO e tematico: 1-2 "gettoni" per fight che
+  forzano un tiro (es. trasforma il TxC nemico in un 1, o il tuo TS in un 20).
+  Nuovo hook: "portentTokens".
+
+
+════════════════════════════════════════════════════════════════════════════════
+8. STREGONE (Sorcerer)  — chiavi: draconica · selvaggia
+════════════════════════════════════════════════════════════════════════════════
+── draconica — Lignaggio Draconico (Draconic Bloodline) ──
+• Lv1  Resilienza Draconica: +1 PF/livello; CA = 13+DES senza armatura.    [PAS/ca+hp]
+• Lv6  Affinità Elementale: +CAR a un tiro danni degli incantesimi del tuo elemento;
+       1 punto stregoneria = resistenza a quell'elemento.                 [MOD spellDmg + PAS]
+• Lv14 Ali di Drago: azione bonus, volo (flavor/utility in 1v1).
+• Lv18 Presenza Draconica: aura di paura, 5 punti, TS SAG o spaventati.    [ATT control]
+  OGGI: draconica = +2 spellDmg (elementali). Buona base ("Affinità Elementale").
+  ADATTAMENTO ARENA: aggiungere la componente difensiva (Resilienza: +PF o +CA
+  senza armatura) per distinguerla, e resistenza elementale a tempo.
+
+── selvaggia — Magia Selvaggia (Wild Magic) ──
+• Lv1  Ondata di Magia Selvaggia: dopo un incantesimo, chance (in D&D: 1 su d20) di
+       un effetto casuale dalla tabella d100 (cure, danni, teletrasporti, ecc.).[PAS/random]
+• Lv1  Mareggiate del Caos: 1/fight vantaggio a un TxC/TS/prova.           [ATT]
+• Lv6  Piegare la Sorte: reazione, spendi punti e ±1d4 a un tiro del nemico.[REA]
+• Lv14 Caos Controllato: tira due volte sulla tabella e scegli.
+• Lv18 Bombardamento Incantato: se ottieni il massimo su un dado di danno, ritiralo
+       e somma (1/turno).                                                 [PAS dmg]
+  OGGI: selvaggia = +1 spellDmg (poco tematico).
+  ADATTAMENTO ARENA: il cuore è l'ONDATA CASUALE: dopo ogni incantesimo, X% di
+  effetto bonus (mini-tabella arena: +danno, cura, stun, autodanno...). Nuovo hook
+  "wildSurge". Molto caratterizzante ma serve una tabella dedicata e bilanciata.
+
+
+════════════════════════════════════════════════════════════════════════════════
+9. WARLOCK  — chiavi: infernale · fatato · abissale
+════════════════════════════════════════════════════════════════════════════════
+(Mappatura: infernale=The Fiend · fatato=The Archfey · abissale=The Great Old One.)
+
+── infernale — Il Immondo (The Fiend) ──
+• Lv1  Benedizione dell'Oscuro: quando porti un nemico a 0 PF, PF temporanei =
+       CAR+liv warlock.                                                   [PAS]
+• Lv6  Fortuna dell'Oscuro: 1/fight +1d10 a una prova o TS.               [ATT]
+• Lv10 Resilienza Immonda: scegli un tipo di danno → resistenza.          [PAS]
+• Lv14 Scaraventare all'Inferno: colpisci e bandisci il nemico 1 turno; se non è
+       immondo, 10d10 psichici. 1/fight.                                  [ATT]
+  OGGI: infernale = +2 spellDmg.
+  ADATTAMENTO ARENA: "Fortuna dell'Oscuro" (1d10 a un TS) e "Resilienza Immonda"
+  (resistenza a un elemento) sono difensivi ideali. Scaraventare = nova/stun 1/fight.
+
+── fatato — L'Arcifatato (The Archfey) ──
+• Lv1  Presenza Fatata: azione, TS SAG o nemico affascinato/spaventato fino a fine
+       tuo prossimo turno. 1/riposo (→1-2/fight).                         [ATT control]
+• Lv6  Fuga Nebbiosa: reazione quando subisci danni, diventi invisibile + teletrasporti.[REA]
+• Lv10 Difese Ammalianti: immune ad ammaliamento; rimandi il charme al mittente.[PAS/REA]
+• Lv14 Delirio Oscuro: TS SAG o affascinato/spaventato 1 min (concentrazione).[ATT control]
+  OGGI: fatato = +2 spellDmg (ripiego).
+  ADATTAMENTO ARENA: è la sottoclasse "CONTROLLO": Presenza Fatata e Delirio usano
+  gli hook control/stun già presenti. Più adatta a paura/charme che a danno.
+
+── abissale — Il Grande Antico (The Great Old One) ──
+• Lv1  Mente Risvegliata: telepatia → flavor.
+• Lv6  Guardia Entropica: reazione, imponi svantaggio a un attacco nemico; se manca,
+       il tuo prossimo attacco ha vantaggio.                             [REA]
+• Lv10 Scudo del Pensiero: resistenza psichica; rifletti i danni psichici subiti.[PAS]
+• Lv14 Creare Schiavo: affascini un umanoide incapacitato → flavor 1v1.
+  OGGI: abissale = +1 CA.
+  ADATTAMENTO ARENA: "Guardia Entropica" (svantaggio a un colpo nemico, 1/fight) è
+  un'ottima difesa attiva; "Scudo del Pensiero" riflette danni.
+
+
+════════════════════════════════════════════════════════════════════════════════
+10. CHIERICO (Cleric)  — chiavi: vita · guerra · tempesta
+════════════════════════════════════════════════════════════════════════════════
+Base Channel Divinity: 1 uso @Lv2, 2 @Lv6, 3 @Lv18 (recupero riposo). Colpo Divino
+di dominio (Vita/Guerra/Tempesta) a Lv8 = +1d8, sale a 2d8 @Lv14 → GIÀ implementato
+in Arena come COLPO_DIVINO_PASSIVE (generico chierico, +1d8 @Lv8).
+
+── vita — Dominio della Vita (Life Domain) ──
+• Lv1  Discepolo della Vita: le cure ripristinano +2+liv spell PF extra.  [PAS heal]
+• Lv2  CD Preservare la Vita: curi 5×liv PF distribuiti (max metà PF).     [ATT/CD heal]
+• Lv6  Guaritore Benedetto: curando altri, curi anche te 2+liv spell.     (poco 1v1)
+• Lv8  Colpo Divino: +1d8 radiante (2d8 @14). [PAS già fatta]
+• Lv17 Guarigione Suprema: le cure usano il massimo dei dadi.             [PAS heal]
+  OGGI: vita = +1 CA (poco tematico).
+  ADATTAMENTO ARENA: Vita = dominio CURA: "Discepolo della Vita" (+PF sulle cure) e
+  "Preservare la Vita" (grossa cura a cariche) usano l'hook heal esistente.
+
+── guerra — Dominio della Guerra (War Domain) ──
+• Lv1  Sacerdote di Guerra: attacco in mischia EXTRA come azione bonus (SAG usi/fight).[ATT]
+• Lv2  CD Colpo Guidato: +10 a un TxC dopo aver tirato.                   [ATT/CD]
+• Lv6  CD Benedizione del Dio della Guerra: reazione, +10 a un TxC.       [REA/CD]
+• Lv8  Colpo Divino: +1d8 (2d8 @14). [PAS già fatta]
+• Lv17 Avatar della Battaglia: resistenza ai danni fisici non magici.     [PAS]
+  OGGI: guerra = +2 weaponDmg. Coerente col tono "chierico picchiatore".
+  ADATTAMENTO ARENA: "Colpo Guidato" (+10 a un colpo, 1-2/fight) è forte e semplice;
+  "Sacerdote di Guerra" = attacco bonus a cariche.
+
+── tempesta — Dominio della Tempesta (Tempest Domain) ──
+• Lv1  Ira della Tempesta: reazione, quando ti colpiscono a ≤5ft, 2d8 fulmine/tuono
+       (TS DES metà).                                                     [REA]
+• Lv2  CD Ira Distruttiva: danno da fulmine/tuono MASSIMO invece di tirare. [ATT/CD]
+• Lv6  Colpo del Fulmine: quando infliggi danni da fulmine, spingi il nemico 10ft.[PAS]
+• Lv8  Colpo Divino: +1d8 tuono (2d8 @14). [PAS già fatta]
+• Lv17 Nato dalla Tempesta: volo (flavor).
+  OGGI: tempesta = +2 spellDmg.
+  ADATTAMENTO ARENA: "Ira della Tempesta" (danno di ritorsione quando colpito) usa
+  l'hook [REA] nuovo; "Ira Distruttiva" massimizza un incantesimo elementale.
+
+
+════════════════════════════════════════════════════════════════════════════════
+11. DRUIDO (Druid)  — chiavi: terra · luna
+════════════════════════════════════════════════════════════════════════════════
+── terra — Circolo della Terra (Circle of the Land) ──
+• Lv2  Trucchetto Bonus + Recupero Naturale (recuperi slot a riposo breve → +cariche).
+• Lv3/5/7/9 Incantesimi del Circolo: spell bonus sempre preparate per tipo di terreno.[MOD spell noti]
+• Lv6  Falcata Silvestre: ignori terreno difficile (flavor).
+• Lv10 Protezione della Natura: immune a veleno/malattia; no charme/paura da fatati/elementali.[PAS]
+• Lv14 Santuario della Natura: bestie/piante TS o non possono attaccarti.  [PAS]
+  OGGI: terra = +2 spellDmg.
+  ADATTAMENTO ARENA: Terra = caster: +spell noti/cariche e immunità di stato (veleno)
+  sono la sua firma. +2 spellDmg è un ok segnaposto.
+
+── luna — Circolo della Luna (Circle of the Moon) ──
+• Lv2  Forma Selvatica da Combattimento: Wild Shape come azione bonus; in forma,
+       spendi slot per curarti 1d8/liv slot. Forme fino a GS1.            [ATT]
+• Lv6  Colpo Primordiale: attacchi in forma contano come magici; GS forme sale
+       (GS = liv/3): Lv6-8→GS2, 9-11→GS3, 12-14→GS4, 15-17→GS5, 18+→GS6.  [PAS/forme]
+• Lv10 Forma Selvatica Elementale: diventi un elementale (GS5).
+• Lv14 Mille Forme: Alterare se stesso a volontà (flavor).
+  OGGI: luna = +2 weaponDmg ("forme selvatiche e armi più forti").
+  ADATTAMENTO ARENA: aggancia il sistema Wild Shape esistente (hasWildShape): la
+  Luna dà forme da combattimento più forti/cure in forma; la Terra resta caster.
+
+
+════════════════════════════════════════════════════════════════════════════════
+12. BARDO (Bard)  — chiavi: sapienza · valore · spada
+════════════════════════════════════════════════════════════════════════════════
+Ispirazione Bardica: d6 @Lv1 · d8 @Lv5 · d10 @Lv10 · d12 @Lv15 (già in progressione).
+
+── sapienza — Collegio del Sapere (College of Lore) ──
+• Lv3  Competenze Bonus (3 abilità) → flavor.
+• Lv3  Parole Taglienti: reazione, spendi Ispirazione e SOTTRAI il dado a un TxC/
+       prova/danno del nemico.                                           [REA]
+• Lv6  Segreti Magici Aggiuntivi: 2 incantesimi da qualsiasi classe.       [MOD spell]
+• Lv14 Abilità Senza Pari: aggiungi Ispirazione a una prova.
+  OGGI: sapienza = +2 spellDmg.
+  ADATTAMENTO ARENA: "Parole Taglienti" (debuff difensivo a reazione) è la firma:
+  spendi una carica di Ispirazione per abbassare un colpo nemico. Serve hook [REA].
+
+── valore — Collegio del Valore (College of Valor) ──
+• Lv3  Competenze Bonus (armature medie, scudi, armi da guerra) → apre armi/armature.
+• Lv3  Ispirazione da Combattimento: chi ha la tua Ispirazione può usarla per +danno
+       o (reazione) +CA.                                                  [MOD/REA]
+• Lv6  Attacco Extra: 2 attacchi.                                         [PAS] (usa EXTRA_ATTACK)
+• Lv14 Magia da Battaglia: dopo aver lanciato un incantesimo, attacco bonus con arma.[ATT]
+  OGGI: valore = +2 weaponDmg.
+  ADATTAMENTO ARENA: Valore = bardo marziale: l'Attacco Extra a Lv6 (già c'è l'hook
+  getMaxActionsPerTurn) lo distingue nettamente dagli altri collegi.
+
+── spada — Collegio delle Spade (College of Swords) ──
+• Lv3  Competenze Bonus + Stile di Combattimento (Duellare/Due Armi).
+• Lv3  Fioritura di Lama: se colpisci, spendi Ispirazione per una fioritura:
+        - Difensiva: +danno = dado Ispirazione e +stesso valore alla TUA CA fino al
+          tuo prossimo turno.
+        - Tagliente: +danno a bersaglio e a un secondo nemico (no 1v1).
+        - Mobile: +danno e spingi il nemico.                             [ATT]
+• Lv6  Attacco Extra: 2 attacchi.                                         [PAS]
+• Lv14 Fioritura del Maestro: tira un d6 al posto di spendere Ispirazione.[U]
+  OGGI: spada = +2 weaponDmg ("danni in mischia").
+  ADATTAMENTO ARENA: le Fioriture sono micro-scelte al colpo (usa Ispirazione come
+  risorsa già esistente). La Difensiva (+danno e +CA) è ottima nel 1v1.
+
+
+════════════════════════════════════════════════════════════════════════════════
+13. ARTEFICE (Artificer)  — chiavi: alchimista · artigliere · battaglia
+════════════════════════════════════════════════════════════════════════════════
+── alchimista — Alchimista (Alchemist) ──
+• Lv3  Elisir Sperimentale: a inizio fight 1 elisir gratis (2@6, 3@15), effetto d6:
+        1 cura 2d4+INT · 2 +velocità · 3 +1 CA · 4 +1d4 a TxC/TS 1min · 5 volo · 6 mutaforma.[ATT]
+• Lv5  Sapiente Alchemico: +INT (min +1) a un tiro di cura o danni acido/fuoco/
+       necrotico/veleno degli incantesimi.                               [MOD spellDmg/heal]
+• Lv9  Reagenti Ristoratori: gli elisir danno anche 2d6+INT PF temporanei.[PAS]
+• Lv15 Maestria Chimica: resistenza acido/veleno; cura potente gratis.     [PAS]
+  OGGI: alchimista = +2 spellDmg.
+  ADATTAMENTO ARENA: l'Elisir (buff/cura a cariche con effetto scelto o casuale) è
+  la firma; "Sapiente Alchemico" = +INT a cura/danni elementali.
+
+── artigliere — Artigliere (Artillerist) ──
+• Lv3  Cannone Esoterico: evochi un cannone (CA18, PF=5×liv), 3 modelli:
+        - Lanciafiamme: cono 15ft, 2d8 fuoco (TS DES metà).
+        - Balista di Forza: 2d8 forza a distanza + spinta 5ft.
+        - Protettore: PF temporanei 1d8+INT a te/alleati.                 [ATT/costrutto]
+• Lv5  Arma da Fuoco Arcana: +1d8 a un tiro danni di un incantesimo lanciato via arma.[MOD]
+• Lv9  Cannone Esplosivo: cannone +1d8 danni; puoi farlo esplodere (3d8 forza area).[U]
+• Lv15 Posizione Fortificata: mezza copertura vicino al cannone; 2 cannoni.[PAS]
+  OGGI: artigliere = +2 weaponDmg (armi da fuoco).
+  ADATTAMENTO ARENA: aggancia il sistema ARTIFICER_CONSTRUCTS esistente: il cannone
+  = costrutto che spara ogni turno (danno scelto per modello).
+
+── battaglia — Fabbro da Battaglia (Battle Smith) ──
+• Lv3  Pronto alla Battaglia: usi INT per colpire/danni con armi magiche.  [MOD]
+• Lv3  Difensore d'Acciaio: costrutto CA15, PF=2+INT+5×liv, attacca (1d8+comp forza),
+       reazione "Deviare" (svantaggio a un colpo contro un ALLEATO).      [ATT/costrutto]
+• Lv9  Scarica Arcana: 1/turno +2d6 forza sul colpo, o cura 2d6.          [MOD/heal]
+• Lv15 Difensore Migliorato: Scarica 4d6; +2 CA al Difensore; Deviare fa danni.[U]
+  OGGI: battaglia = +1 CA ("il costrutto ti difende").
+  ADATTAMENTO ARENA: il Difensore d'Acciaio = costrutto tank (usa il sistema
+  costrutti); "Scarica Arcana" = +2d6 al colpo o cura, a cariche.
+
+
+════════════════════════════════════════════════════════════════════════════════
+14. RIEPILOGO — DOVE STA IL GAP (per quando implementeremo)
+════════════════════════════════════════════════════════════════════════════════
+STATO ATTUALE (arenaSubclasses.js): ogni sottoclasse dà SOLO uno tra
++CA / +weaponDmg / +spellDmg. Il resto (nomi, desc) è flavor scollegato.
+
+CORREZIONI NUMERICHE SUBITO FATTIBILI (senza nuovi hook):
+  • Guerriero "tiratore" e Ranger "arco": convertire +weaponDmg → +COLPIRE a distanza.
+  • Paladino "grandearma": reroll 1-2 sui dadi arma a due mani (aggancio a rollDmg).
+
+NUOVI HOOK DA CREARE (in ordine d'impatto), riusabili da più sottoclassi:
+  A. [REA] Sistema di REAZIONE generico (colpisci/subisci un colpo → effetto):
+     serve a Ritorsione (Barbaro), Ira della Tempesta (Chierico), Anima della
+     Vendetta (Paladino), Parole Taglienti (Bardo Sapere), Guardia Entropica
+     (Warlock), Uccisore di Giganti (Ranger), Opportunista (Monaco).
+  B. Scudo a PF ("wardHp"): Guardia Arcana (Mago Abiurazione) — assorbe danni.
+  C. Gettoni "Presagio" (portentTokens): sostituire/forzare un d20 (Mago Divinazione).
+  D. Resistenza elementale/tipizzata a tempo: Draconica, Immondo, Tempesta.
+  E. Buff/cura a scelta a cariche ("elisir"): Alchimista, Preservare la Vita.
+  F. Ondata casuale ("wildSurge"): Magia Selvaggia — mini-tabella dedicata.
+  G. Potenziamento costrutti/pet per sottoclasse: Artigliere, Battle Smith, Beast Master.
+
+PRINCIPIO: molte feature D&D sono già coperte da hook esistenti (control/stun,
+shield_buff, heal, vantaggio/svantaggio, invisibilità, Furia, Marchio, Extra
+Attack, cariche). La parte "nuova" vera è soprattutto il sistema di REAZIONE (A)
+e i pochi hook difensivi (B-D). Da lì si costruisce quasi tutto.
+
+════════════════════════════════════════════════════════════════════════════════
+15. STATO IMPLEMENTAZIONE (aggiornato 2026-07-02)
+════════════════════════════════════════════════════════════════════════════════
+Tutti gli effetti sono AUTOMATICI/deterministici (nessuna nuova UI, nessuno stato
+che attraversa i turni) → sicuri sul motore asincrono live. Schema effetti in
+src/data/arenaSubclasses.js; wiring in src/pages/Arena.jsx (giocatore + IA).
+
+FASE 1 (changelog v69) — FATTA:
+  • Guerriero/Ranger tiratore/arco → rangedHit (+colpire a distanza, bug fix)
+  • Paladino grandearma → twoHandReroll (reroll 1-2 arma a due mani)
+  • Barbaro berserker → rageExtraAttack (Frenesia) · totem → rageAllResist (Orso)
+  • Ladro assassino / Monaco ombra → firstStrikeAdv (+ assassinate crit) vs PF pieni
+  • Bardo valore/spada → bardExtraAttack (Attacco Extra Lv6)
+  • Abiurazione/Draconica/Immondo/Abissale → spellResist −25% danni da incantesimo
+
+FASE 2 (changelog v70) — FATTA:
+  • Chierico tempesta → retaliate 2d8 (Ira della Tempesta) · Artefice battaglia →
+    retaliate 1d4 (Difensore d'Acciaio). Ritorsione = danni all'attaccante in mischia,
+    SOLO se il difensore sopravvive al colpo (niente KO reciproco/stallo).
+  • Mago divinazione → foresight (1° attacco nemico a svantaggio, difensore a PF pieni)
+  • Stregone selvaggia → wildSurge (1/4 per incantesimo a segno → +2d6)
+  • Artefice artigliere → weaponBonusDie 1d8 · alchimista → spellBonusDie 1d6
+
+FASE 3 (changelog v70.01) — FATTA:
+  • Monaco manoaperta → staggerOnHit (colpo in mischia = svantaggio al prossimo
+    attacco del nemico, riusa attackDisadvantageTurns). Ora nessuna sottoclasse è "vuota".
+  • Bilanciamento: retaliate (Tempesta/Battaglia) limitata a 1 volta per turno
+    dell'attaccante (solo il primo attacco → gate su multiActionsUsed / isFirstAttackThisTurn).
+  • Frenesia (berserker) e Totem Orso: LASCIATI come sono (già limitati dalla durata
+    della Furia). Da rivedere solo se il playtest li mostra troppo forti.
+
+LIMITI NOTI (accettati):
+  • Effetti di INCANTESIMO dell'IA (alchimista/selvaggia quando è l'IA a lanciare)
+    passano da un altro ramo del codice IA e NON ricevono ancora il dado/ondata:
+    valgono comunque per i giocatori e per gli attacchi con arma dell'IA.
+  • "Primo colpo"/"primo attacco" usano i PF pieni come proxy dell'apertura (nessun
+    flag persistente): riattivabili se il bersaglio torna a PF pieni (raro).
+
+RESTA NUMERICO (fedele o segnaposto), nessun effetto extra previsto a breve:
+  • difesa, duellante, duearmi, arguzia, evocazione, fatato, vita, guerra, terra,
+    luna, sapienza. Per la maggior parte il +danno/+CA È l'effetto fedele di D&D
+    (stili di combattimento, +danno di dominio/collegio). Nessuna sottoclasse è
+    più "vuota": tutte danno o un bonus numerico fedele o un effetto dedicato.
+
+FINE DOCUMENTO.
