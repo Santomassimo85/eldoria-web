@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "74.01",
+      "date": "2026-07-02",
+      "title": "Cronaca DM: fix generazione immagini con avatar",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Strumento Cronaca: risolto l'errore di generazione immagine (crash della funzione) e il fatto che comparisse un solo personaggio: ora vengono mostrati tutti i PG del gruppo con i rispettivi avatar, inviati correttamente come riferimento all'illustratore."
+        }
+      ]
+    },
+    {
       "version": "74",
       "date": "2026-07-02",
       "title": "Cronaca DM: immagini con avatar dei personaggi, stili e galleria",

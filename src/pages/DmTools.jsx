@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { db, storage } from "../firebase";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
@@ -8,20 +8,55 @@ import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
 
-// Gruppi di gioco (stesso elenco dello Scriptorium / SummaryAdmin).
+// Gruppi di gioco (chiavi come lo Scriptorium/SummaryAdmin) con i membri e i
+// loro avatar (stessi asset di Party.jsx), usati come riferimento per le immagini.
 const PARTIES = [
-  { key: "AMEA",  label: "AMEA",  roster: "Garroth, Tanagar, Caius, Sylva" },
-  { key: "LAC",   label: "LAC",   roster: "Horn, Thoki, Cleofe" },
-  { key: "LEAF",  label: "LEAF",  roster: "Soran, Zenthir, Taaras" },
-  { key: "ENOX",  label: "ENOX",  roster: "Makenna, Temistocle, Alaric, Lael" },
-  { key: "ECO",   label: "ECO",   roster: "Aksel, Dago, Ismael" },
-  { key: "Unico", label: "Storia del Mondo", roster: "Cronache globali" },
+  { key: "AMEA",  label: "AMEA",  members: [
+    { name: "Garroth", image: "/assets/player/garroth2.png" },
+    { name: "Tanagar", image: "/assets/player/Tanagar2.png" },
+    { name: "Caius",   image: "/assets/player/caius2.jpeg" },
+    { name: "Sylva",   image: "/assets/player/Sylva.png" },
+  ] },
+  { key: "LAC",   label: "LAC",   members: [
+    { name: "Horn",   image: "/assets/player/Horn.jpg" },
+    { name: "Thoki",  image: "/assets/player/Thoki.jpg" },
+    { name: "Cleofe", image: "/assets/player/Cleofe.jpg" },
+  ] },
+  { key: "LEAF",  label: "LEAF",  members: [
+    { name: "Soran",  image: "/assets/player/Soran.png" },
+    { name: "Zethir", image: "/assets/player/Zethir.jpeg" },
+    { name: "Taaras", image: "/assets/player/TaarasStormrage.png" },
+  ] },
+  { key: "ENOX",  label: "ENOX",  members: [
+    { name: "Makenna",    image: "/assets/player/Makenna.jpeg" },
+    { name: "Temistocle", image: "/assets/player/Temistocle.jpeg" },
+    { name: "Alaric",     image: "/assets/player/alaric.png" },
+    { name: "Lael",       image: "/assets/player/lael.jpg" },
+  ] },
+  { key: "ECO",   label: "ECO",   members: [
+    { name: "Aksel", image: "/assets/player/Aksel.png" },
+    { name: "Dago",  image: "/assets/player/dago.jpeg" },
+  ] },
+  { key: "Unico", label: "Storia del Mondo", members: [] },
 ];
-const rosterOf = (key) => PARTIES.find((p) => p.key === key)?.roster || "";
+const membersOf = (key) => PARTIES.find((p) => p.key === key)?.members || [];
+const rosterOf = (key) => membersOf(key).map((m) => m.name).join(", ");
 
-// Nome → prima parola (per abbinare i personaggi Firestore al roster del gruppo).
-const normName = (s) => String(s || "").trim().toLowerCase();
-const firstTok = (s) => normName(s).split(/[\s'"\-]+/)[0];
+// Converte un'immagine (anche asset relativo) in data URL ridotto: così gli
+// avatar viaggiano inline verso l'API (i path relativi non sono scaricabili
+// lato server) e restano leggeri per Gemini.
+async function refToDataUrl(url) {
+  const resp = await fetch(url);
+  const blob = await resp.blob();
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * scale));
+  const h = Math.max(1, Math.round(bmp.height * scale));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  return cv.toDataURL("image/jpeg", 0.85);
+}
 
 // Stili illustrativi selezionabili per le immagini della cronaca.
 const IMG_STYLES = [
@@ -70,36 +105,19 @@ export default function DmTools() {
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [allSummaries, setAllSummaries] = useState([]);
-  const [chars, setChars]       = useState([]);        // characters (per avatar)
-  const [refOff, setRefOff]     = useState({});        // { [charId]: true } = escluso dai riferimenti
+  const [refOff, setRefOff]     = useState({});        // { [name]: true } = escluso dai riferimenti
 
-  // Carica una volta riassunti (numero sessione/ordine) e personaggi (avatar).
+  // Carica una volta l'elenco riassunti (per numero di sessione + ordine).
   useEffect(() => {
     getDocs(collection(db, "summaries"))
       .then((snap) => setAllSummaries(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-      .catch(() => {});
-    getDocs(collection(db, "characters"))
-      .then((snap) => setChars(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
       .catch(() => {});
   }, []);
 
   const sessionNumber = allSummaries.filter((s) => (s.party || "AMEA") === ria.party).length + 1;
 
-  // Personaggi del gruppo selezionato che hanno un avatar (per i riferimenti).
-  const partyChars = useMemo(() => {
-    const tokens = rosterOf(ria.party).split(",").map((t) => firstTok(t)).filter(Boolean);
-    const seen = new Set();
-    return chars.filter((c) => {
-      if (!c?.image || !c?.name) return false;
-      const tok = firstTok(c.name);
-      if (!tokens.includes(tok) || seen.has(tok)) return false;
-      seen.add(tok);
-      return true;
-    });
-  }, [chars, ria.party]);
-
-  // URL degli avatar da usare come riferimento (quelli non esclusi).
-  const refUrls = partyChars.filter((c) => !refOff[c.id]).map((c) => c.image);
+  // Membri del gruppo selezionato = avatar di riferimento per le immagini.
+  const partyChars = membersOf(ria.party);
 
   const resultRef = useRef(null);
   useEffect(() => {
@@ -181,9 +199,15 @@ export default function DmTools() {
     if (usaSuggerita && riaOut?.scenePrompt) setScena(riaOut.scenePrompt);
     setImgBusy(true); setRiaMsg("");
     try {
+      // Avatar attivi → data URL (ridotti) da passare come riferimento a Gemini.
+      const attivi = partyChars.filter((c) => !refOff[c.name]);
+      const refs = [];
+      for (const c of attivi) {
+        try { refs.push(await refToDataUrl(c.image)); } catch { /* avatar saltato */ }
+      }
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: scenePromptFull(base, imgStyle), refs: refUrls })
+        body: JSON.stringify({ prompt: scenePromptFull(base, imgStyle), refs })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -353,7 +377,7 @@ export default function DmTools() {
               <select className="npcgen-input" value={ria.party}
                 onChange={e => { setRia({ ...ria, party: e.target.value }); }}>
                 {PARTIES.map(p => (
-                  <option key={p.key} value={p.key}>{p.key === "Unico" ? p.label : `${p.key} (${p.roster})`}</option>
+                  <option key={p.key} value={p.key}>{p.members.length ? `${p.key} (${rosterOf(p.key)})` : p.label}</option>
                 ))}
               </select>
             </div>
@@ -480,12 +504,12 @@ export default function DmTools() {
                 <small className="dmt-hint">Personaggi da usare come riferimento negli avatar (tocca per includere/escludere):</small>
                 <div className="dmt-ref-row">
                   {partyChars.map((c) => (
-                    <button key={c.id} type="button"
-                      className={"dmt-ref" + (refOff[c.id] ? " off" : "")}
+                    <button key={c.name} type="button"
+                      className={"dmt-ref" + (refOff[c.name] ? " off" : "")}
                       title={c.name}
-                      onClick={() => setRefOff((o) => ({ ...o, [c.id]: !o[c.id] }))}>
+                      onClick={() => setRefOff((o) => ({ ...o, [c.name]: !o[c.name] }))}>
                       <img src={c.image} alt={c.name} onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
-                      <span>{firstTok(c.name)}</span>
+                      <span>{c.name}</span>
                     </button>
                   ))}
                 </div>

@@ -5,6 +5,9 @@
 //   { npc: {...} }     -> costruisce il prompt di un ritratto dall'NPC
 // La chiave Gemini resta qui, nascosta.
 
+// Diamo margine alla funzione (generazione Gemini + eventuali download).
+export const config = { maxDuration: 60 };
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Usa POST" });
@@ -20,6 +23,14 @@ export default async function handler(req, res) {
     const parts = [];
     for (const u of list) {
       try {
+        // Caso comune: il client invia già un data URL (avatar ridotto).
+        const m = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(u);
+        if (m) {
+          parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
+          continue;
+        }
+        // Fallback: URL http(s) assoluto → lo scarichiamo.
+        if (!/^https?:/i.test(u)) continue;
         const resp = await fetch(u);
         if (!resp.ok) continue;
         const buf = Buffer.from(await resp.arrayBuffer());
