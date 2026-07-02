@@ -91,7 +91,7 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
       finalPrompt = `${finalPrompt}\nLe immagini di riferimento allegate mostrano i personaggi protagonisti (volti, capelli, colori, abiti, tratti distintivi): ritrai FEDELMENTE questi stessi personaggi nella scena, mantenendone l'aspetto. Non copiare lo sfondo delle immagini di riferimento, solo i personaggi.`;
     }
     // Le immagini di riferimento vanno PRIMA del testo nelle parts.
-    const parts = [...refParts, { text: finalPrompt }];
+    const reqParts = [...refParts, { text: finalPrompt }];
 
     const r = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
@@ -102,7 +102,7 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
           "x-goog-api-key": process.env.GEMINI_API_KEY
         },
         body: JSON.stringify({
-          contents: [{ parts }],
+          contents: [{ parts: reqParts }],
           generationConfig: { temperature: 1 }
         })
       }
@@ -111,8 +111,8 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
     const data = await r.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
 
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const part = parts.find(p => p.inlineData || p.inline_data);
+    const respParts = data?.candidates?.[0]?.content?.parts || [];
+    const part = respParts.find(p => p.inlineData || p.inline_data);
     const inline = part && (part.inlineData || part.inline_data);
     if (!inline) return res.status(500).json({ error: "Nessuna immagine ricevuta." });
 
