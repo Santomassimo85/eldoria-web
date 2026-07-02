@@ -440,6 +440,35 @@ const MARTIAL_WEAPONS = [
   { name: "Balestra a Mano",     hitBonus: 3, damage: "1d6",  statKey: "dex", type: "weapon", icon: "🏹", twoHanded: false, damageType: "perforante" },
 ];
 
+// ── Helper armi: distingue armi a distanza e armi a due mani da mischia ──────────
+// Un'arma a due mani da MISCHIA impegna entrambe le mani ed è esclusiva (nient'altro
+// impugnabile). Un'arma a due mani a DISTANZA (arco/balestra/fucile) può convivere con
+// una sola arma a una mano.
+const WEAPON_IS_RANGED = (w) => !!w && (
+  w.icon === "🏹" || w.icon === "🔫" ||
+  ["Arco", "Balestra", "Fionda", "Giavellotto", "Dardo"].some(k => (w.name || "").includes(k))
+);
+const IS_TWO_HANDED_MELEE = (w) => !!w && w.twoHanded && !WEAPON_IS_RANGED(w);
+
+// ── MECCANICA DISTANZA (ranged vs melee) ─────────────────────────────────────────
+// Il duello parte "a distanza". Finché è così, chi attacca in MISCHIA contro un
+// avversario che impugna un'arma a DISTANZA tira a SVANTAGGIO (deve chiudere sotto
+// tiro): il colpo in mischia però chiude la distanza (distanceClosed=true). Chi ha
+// un'arma a distanza può "mantenere le distanze" attaccando da lontano: riapre la
+// distanza (kiting) per un numero limitato di volte (ARENA_KITE_MAX). Le armi a
+// distanza e gli incantesimi colpiscono sempre normalmente. La distanza è uno stato
+// del MATCH (m.distanceClosed); le cariche di kiting sono per-giocatore
+// (p.kiteChargesUsed). Vedi handleAttack/_runAttack e aiTakeAction.
+const ARENA_KITE_MAX = 3;
+// Un giocatore "minaccia a distanza" se, tra le armi equipaggiate (o tra tutte se non
+// ne ha ancora equipaggiate), ne ha almeno una a distanza.
+const PLAYER_HAS_RANGED_WEAPON = (matchPlayer, snap) => {
+  const weapons = (snap?.selectedActions || []).filter(a => a.type === "weapon");
+  const eq = matchPlayer?.equippedWeaponNames;
+  const pool = (eq && eq.length) ? weapons.filter(w => eq.includes(w.name)) : weapons;
+  return pool.some(WEAPON_IS_RANGED);
+};
+
 // ── Set armi per classe (derivati dagli array base) ───────────────────────────────
 const _sw = (n) => SIMPLE_WEAPONS.find(w => w.name === n);
 const _mw = (n) => MARTIAL_WEAPONS.find(w => w.name === n);
@@ -3417,8 +3446,18 @@ export default function Arena() {
     setPendingWeapons(prev => {
       const already = prev.find(a => a.name === item.name);
       if (already) return prev.filter(a => a.name !== item.name);
-      if (prev.length >= maxWeapons) return maxWeapons === 1 ? [item] : prev;
-      return [...prev, item];
+      // Arma a due mani da mischia: esclusiva, sostituisce tutta la selezione.
+      if (IS_TWO_HANDED_MELEE(item)) return [item];
+      if (item.twoHanded) {
+        // Arma a due mani a distanza (arco/balestra): al massimo una due mani; può
+        // convivere con armi a una mano, occupando uno slot. Scarta eventuali altre due mani.
+        const oneHanded = prev.filter(a => !a.twoHanded);
+        return [item, ...oneHanded.slice(0, Math.max(0, maxWeapons - 1))];
+      }
+      // Arma a una mano: non può convivere con una due mani da mischia (esclusiva).
+      const base = prev.filter(a => !IS_TWO_HANDED_MELEE(a));
+      if (base.length >= maxWeapons) return maxWeapons === 1 ? [item] : base;
+      return [...base, item];
     });
   };
 
@@ -3490,8 +3529,15 @@ export default function Arena() {
     for (let i = 0; i < count; i++) hp += Math.floor(Math.random() * sides) + 1;
     hp = Math.max(1, hp + (stats.con || 0) * count);
 
-    // armi
-    const weapons = shuffle(config.weaponOptions).slice(0, config.maxWeapons);
+    // armi — una due mani da mischia è esclusiva; una due mani a distanza tollera 1 arma a una mano
+    let weapons = shuffle(config.weaponOptions).slice(0, config.maxWeapons);
+    if (weapons.some(IS_TWO_HANDED_MELEE)) {
+      weapons = [weapons.find(IS_TWO_HANDED_MELEE)];
+    } else if (weapons.filter(w => w.twoHanded).length > 1) {
+      // niente due archi/balestre insieme: tieni una sola arma a due mani + il resto a una mano
+      const first2H = weapons.find(w => w.twoHanded);
+      weapons = [first2H, ...weapons.filter(w => !w.twoHanded)].slice(0, config.maxWeapons);
+    }
     const has2H = weapons.some(w => w.twoHanded);
 
     // incantesimi (rispetta i limiti per livello; il tier 3 è ammesso solo se il
@@ -4623,8 +4669,14 @@ export default function Arena() {
     // Vantaggio/svantaggio: stessa regola del giocatore. Si annullano se entrambi presenti.
     const tgtMatchPlayer  = m.players.find(p => p.id === target.id);
     const aiEagleActive   = (aiPlayer.eagleDebuffTurns ?? 0) > 0;
+    // DISTANZA: l'IA che attacca in mischia mentre è lontana, contro un bersaglio che
+    // impugna un'arma a distanza, tira a svantaggio (e più sotto chiude la distanza).
+    const aiWpnRanged       = WEAPON_IS_RANGED(chosen);
+    const aiTgtHasRanged    = PLAYER_HAS_RANGED_WEAPON(tgtMatchPlayer, targetSnap);
+    const aiFarNow          = !m.distanceClosed;
+    const aiMeleeFarDisadv  = !aiWpnRanged && aiFarNow && aiTgtHasRanged;
     const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0;
-    const aiHasDisadvantage = readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0;
+    const aiHasDisadvantage = readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv;
     let d20a = Math.floor(Math.random() * 20) + 1;
     if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1;
     let d20b = (aiHasAdvantage || aiHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -4694,6 +4746,20 @@ export default function Arena() {
     const effectiveMaxActions = baseMaxActions + (surgePatch.actionSurgeActive ? 1 : 0) + (aiPlayer.actionSurgeActive ? 1 : 0);
     const stayingThisTurn = (usedSoFar + 1) < effectiveMaxActions;
 
+    // ── DISTANZA: chiusura (melee) o kiting (ranged) dopo l'attacco dell'IA ──
+    const aiKiteUsed = aiPlayer.kiteChargesUsed ?? 0;
+    let aiDistancePatch = {};
+    let aiKiteInc = false;
+    let aiDistanceLog = null;
+    if (!aiWpnRanged && aiFarNow && aiTgtHasRanged) {
+      aiDistancePatch = { distanceClosed: true };
+      aiDistanceLog = `⚔️ ${aiSnap.name} chiude la distanza e ingaggia ${target.name} in mischia.`;
+    } else if (aiWpnRanged && !aiFarNow && !aiTgtHasRanged && aiKiteUsed < ARENA_KITE_MAX) {
+      aiDistancePatch = { distanceClosed: false };
+      aiKiteInc = true;
+      aiDistanceLog = `🏹 ${aiSnap.name} indietreggia e mantiene le distanze da ${target.name} (${ARENA_KITE_MAX - aiKiteUsed - 1} rimaste).`;
+    }
+
     let absorbedLog = null;
     const updatedMatches = meta.matches.map(x => {
       if (x.matchId !== matchId) return x;
@@ -4746,6 +4812,7 @@ export default function Arena() {
             ...consumedAid,
             multiActionsUsed: newMultiUsed,
             aiAttacksMade: (p.aiAttacksMade ?? 0) + 1,
+            ...(aiKiteInc ? { kiteChargesUsed: (p.kiteChargesUsed ?? 0) + 1 } : {}),
             ...turnEndPatch,
           };
         }
@@ -4756,12 +4823,13 @@ export default function Arena() {
       if (preLog) logs.push(preLog);
       logs.push(attackLog);
       if (absorbedLog) logs.push(absorbedLog);
+      if (aiDistanceLog) logs.push(aiDistanceLog);
       if (alive.length === 1) {
         logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
-        return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs };
+        return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, ...aiDistancePatch, logs };
       }
       if (stayingThisTurn) {
-        return { ...x, players: rawPlayers, logs };
+        return { ...x, players: rawPlayers, ...aiDistancePatch, logs };
       }
       const human = rawPlayers.find(pp => pp.id !== aiId);
       return {
@@ -4769,6 +4837,7 @@ export default function Arena() {
         players: rawPlayers,
         turn: human.id,
         turnExpiry: new Date(Date.now() + ARENA_TURN_DURATION).toISOString(),
+        ...aiDistancePatch,
         logs,
       };
     });
@@ -4947,6 +5016,9 @@ export default function Arena() {
         ts: new Date().toISOString(),
         attId: currentUser.uid, defId: targetId,
       };
+      // DISTANZA: uno Smite in mischia mentre si è lontani chiude la distanza.
+      const _smiteFar = !arenaMeta.matches.find(mm => mm.matchId === matchId)?.distanceClosed;
+      const _smiteClosePatch = (_smiteFar && !WEAPON_IS_RANGED(weaponAction) && PLAYER_HAS_RANGED_WEAPON(defMatchPlayer, defenderSnap)) ? { distanceClosed: true } : {};
       const updatedMatches = arenaMeta.matches.map(m => {
         if (m.matchId !== matchId) return m;
         const rawPlayers = m.players.map(p => {
@@ -4964,8 +5036,8 @@ export default function Arena() {
         const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
         const alive = players.filter(p => p.hp > 0);
-        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
+        if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, ..._smiteClosePatch, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+        return { ...m, players, turn: advanceTurn(players, m), turnExpiry: smiteExpiry, participantsAwarded: pa, ..._smiteClosePatch, logs: [...m.logs, log, ...extraLogs] };
       });
       await commitArenaMatches(updatedMatches);
       return;
@@ -4990,8 +5062,14 @@ export default function Arena() {
       // Furtività dà vantaggio su TUTTI gli attacchi del Ladro (Attacco Furtivo incluso).
       // Svantaggio: stealth del bersaglio, accecato dall'aquila, o svantaggio agli attacchi (Triboli/Oscurità).
       const sneakEagleActive     = (myMatchPlayer?.eagleDebuffTurns ?? 0) > 0;
+      // DISTANZA: se l'Attacco Furtivo usa un'arma da mischia mentre si è lontani e il
+      // bersaglio impugna un'arma a distanza → svantaggio (e più sotto chiude la distanza).
+      const sneakWpnRanged       = WEAPON_IS_RANGED(weaponAction);
+      const sneakDefRanged       = PLAYER_HAS_RANGED_WEAPON(defMatchPlayer, defenderSnap);
+      const sneakFar             = !arenaMeta.matches.find(mm => mm.matchId === matchId)?.distanceClosed;
+      const sneakMeleeFarDisadv  = !sneakWpnRanged && sneakFar && sneakDefRanged;
       const sneakHasAdvantage    = readStealthAdvTurns(myMatchPlayer) > 0 || (myMatchPlayer?.selfAdvTurns ?? 0) > 0;
-      const sneakHasDisadvantage = readStealthDisadvTurns(defMatchPlayer) > 0 || sneakEagleActive || (myMatchPlayer?.attackDisadvantageTurns ?? 0) > 0;
+      const sneakHasDisadvantage = readStealthDisadvTurns(defMatchPlayer) > 0 || sneakEagleActive || (myMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || sneakMeleeFarDisadv;
       const sneakD20a = Math.floor(Math.random() * 20) + 1;
       const sneakD20b = (sneakHasAdvantage || sneakHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
       // Vantaggio + svantaggio si annullano (regola D&D 5e).
@@ -5051,9 +5129,10 @@ export default function Arena() {
         });
         const { players, extraLogs } = processWsKnockouts(rawPlayers);
         const pa = _alreadyAwarded ? (m.participantsAwarded || []) : [...(m.participantsAwarded || []), currentUser.uid];
+        const _sneakClosePatch = sneakMeleeFarDisadv ? { distanceClosed: true } : {};
         const alive = players.filter(p => p.hp > 0);
         if (alive.length === 1) {
-          return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+          return { ...m, players, status: "finished", winner: alive[0].id, participantsAwarded: pa, ..._sneakClosePatch, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
         }
         // Multi-azione (Monaco x2, Ladro x2): non avanza il turno finché restano azioni.
         const me = m.players.find(p => p.id === currentUser.uid);
@@ -5091,7 +5170,7 @@ export default function Arena() {
         const nextTurn = multiWillStay ? currentUser.uid : advanceTurn(playersWithMultiState, m);
         // Multi-azione: NON rigenerare turnExpiry se il turno resta al giocatore,
       // così i DoT (veleno/sanguinamento/fuoco) ticcano UNA volta per turno, non per attacco.
-      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || sneakExpiry) : sneakExpiry, participantsAwarded: pa, logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: multiWillStay ? (m.turnExpiry || sneakExpiry) : sneakExpiry, participantsAwarded: pa, ..._sneakClosePatch, logs: [...m.logs, log, ...extraLogs] };
       });
       await commitArenaMatches(updatedMatches);
       return;
@@ -5330,7 +5409,12 @@ export default function Arena() {
     const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0;
     // Scudo + incantesimo da DANNO con tiro per colpire → il lanciatore tira a SVANTAGGIO.
     const casterShieldSpellDisadv = isSpellAction && !!attackerSnap?.hasShield && !!(action.damage && action.damage !== "—");
-    const hasDisadvantage    = readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv;
+    // DISTANZA: attacco in mischia mentre si è lontani, contro un avversario che
+    // impugna un'arma a distanza → svantaggio (chiudi sotto tiro).
+    const defHasRangedWpn    = PLAYER_HAS_RANGED_WEAPON(defMatchPlayer, defenderSnap);
+    const isMeleeWeaponAtk   = action.type === "weapon" && !WEAPON_IS_RANGED(action);
+    const meleeFarDisadv     = isMeleeWeaponAtk && !_currentMatch?.distanceClosed && defHasRangedWpn;
+    const hasDisadvantage    = readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv;
     const isFighter = isFighterClass(attackerClassLower);
     // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
     // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
@@ -5392,7 +5476,7 @@ export default function Arena() {
     const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
-    await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : ""}` });
+    await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : meleeFarDisadv ? " — a SVANTAGGIO (chiudi la distanza)" : ""}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
@@ -5475,6 +5559,22 @@ export default function Arena() {
     };
     } // ── fine attacco normale (else di action.multiHit) ──
 
+    // ── DISTANZA: chiusura (melee) o kiting (ranged) dopo l'attacco ──
+    const _wasClosed   = !!_currentMatch?.distanceClosed;
+    const _isRangedWpnAtk = action.type === "weapon" && WEAPON_IS_RANGED(action);
+    const _kiteUsedNow = _myMatchEarly?.kiteChargesUsed ?? 0;
+    let _distancePatch = {};   // patch a livello di match
+    let _kiteInc = false;      // consuma una carica di kiting sull'attaccante
+    let _distanceLog = null;
+    if (isMeleeWeaponAtk && !_wasClosed && defHasRangedWpn) {
+      _distancePatch = { distanceClosed: true };
+      _distanceLog = `⚔️ ${attName} chiude la distanza e ingaggia ${defName} in mischia.`;
+    } else if (_isRangedWpnAtk && _wasClosed && !defHasRangedWpn && _kiteUsedNow < ARENA_KITE_MAX) {
+      _distancePatch = { distanceClosed: false };
+      _kiteInc = true;
+      _distanceLog = `🏹 ${attName} indietreggia e mantiene le distanze da ${defName} (${ARENA_KITE_MAX - _kiteUsedNow - 1} rimaste).`;
+    }
+
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
     let updatedMatches = arenaMeta.matches.map(m => {
@@ -5507,6 +5607,7 @@ export default function Arena() {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
           }
+          if (_kiteInc) up.kiteChargesUsed = (p.kiteChargesUsed ?? 0) + 1;
           return up;
         }
         return { ...p, ...consumeInvisibility(p) };
@@ -5515,11 +5616,11 @@ export default function Arena() {
       const newParticipantsAwarded = _alreadyAwarded
         ? (m.participantsAwarded || [])
         : [...(m.participantsAwarded || []), currentUser.uid];
-      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : [])];
+      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
       const alive = updatedPlayers.filter(p => p.hp > 0);
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
-          participantsAwarded: newParticipantsAwarded,
+          participantsAwarded: newParticipantsAwarded, ..._distancePatch,
           logs: [...allLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       }
       // Multi-azione (Monaco x2, Ladro x2, Scatto d'Azione +1): non avanza il turno finché restano azioni.
@@ -5565,7 +5666,7 @@ export default function Arena() {
       );
       const nextTurn = stayingThisTurn ? currentUser.uid : advanceTurn(playersWithMultiState, m);
       // Multi-azione: turnExpiry stabile se il turno resta al giocatore → i DoT ticcano 1/turno.
-      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: stayingThisTurn ? (m.turnExpiry || newTurnExpiry) : newTurnExpiry, participantsAwarded: newParticipantsAwarded, logs: allLogs };
+      return { ...m, players: playersWithMultiState, turn: nextTurn, turnExpiry: stayingThisTurn ? (m.turnExpiry || newTurnExpiry) : newTurnExpiry, participantsAwarded: newParticipantsAwarded, ..._distancePatch, logs: allLogs };
     });
 
     await awardRoundCoins(updatedMatches);
@@ -8729,13 +8830,19 @@ export default function Arena() {
                 <div className="loadout-section-title">
                   ⚔ {config.maxWeapons === 1 ? "Arma" : "Armi"} — {pendingWeapons.length}/{config.maxWeapons}
                 </div>
-                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).</div>
+                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).{config.maxWeapons > 1 && <> Un'arma <strong>a due mani da mischia</strong> occupa entrambe le mani (è l'unica impugnabile); una <strong>a distanza</strong> (arco/balestra) può essere affiancata da una sola arma a una mano.</>}</div>
                 <div className="loadout-grid">
                   {(() => {
                     const keyStats = ARENA_KEY_STATS[getClassKey(charPreview.class)] || [];
+                    const selMelee2H = pendingWeapons.some(IS_TWO_HANDED_MELEE);
+                    const selAny2H   = pendingWeapons.some(a => a.twoHanded);
                     return config.weaponOptions.map(item => {
                       const isSelected = pendingWeapons.some(a => a.name === item.name);
-                      const isDisabled = !isSelected && pendingWeapons.length >= config.maxWeapons;
+                      const isDisabled = !isSelected && (
+                        selMelee2H                                              // 2H mischia esclusiva: blocca tutto il resto
+                        || (item.twoHanded ? selAny2H                            // una sola arma a due mani ammessa
+                                           : pendingWeapons.length >= config.maxWeapons)
+                      );
                       const isOptimal = !!item.statKey && keyStats.includes(item.statKey);
                       return (
                       <button
@@ -9909,6 +10016,14 @@ export default function Arena() {
                             <span className="cv-orbit o1" aria-hidden="true" />
                             <span className="cv-orbit o2" aria-hidden="true" />
                             <span className="cv-orbit o3" aria-hidden="true" />
+                            {!isFFA && m.status !== "finished" && m.players.some(pl => PLAYER_HAS_RANGED_WEAPON(pl, snapshots[pl.id])) && (
+                              <span
+                                title={m.distanceClosed ? "Combattenti in mischia: gli attacchi ravvicinati sono normali." : "Combattenti a distanza: chi attacca in mischia tira a svantaggio finché non chiude la distanza."}
+                                style={{ marginTop: "0.4rem", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.02em", whiteSpace: "nowrap", padding: "0.12rem 0.45rem", borderRadius: "999px", color: "#fff", background: m.distanceClosed ? "rgba(200,70,55,0.9)" : "rgba(55,110,190,0.9)", boxShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
+                              >
+                                {m.distanceClosed ? "⚔ Mischia" : "🏹 Distanza"}
+                              </span>
+                            )}
                           </div>
                         )}
                         <div className={`fighter-card ${p.id === currentUser?.uid ? "side-you" : "side-foe"} ${isActive ? "active-turn" : (!isDead && m.status === "active" ? "waiting" : "")} ${isDead ? "defeated" : ""}`}>
@@ -9951,6 +10066,17 @@ export default function Arena() {
                             <span className="ministat" title="Iniziativa">⚡ {p.init > 0 ? p.init : "—"}</span>
                             <span className="ministat" title="Livello">⭐ {fLvl}</span>
                           </div>
+
+                          {/* Cariche di kiting (mantieni le distanze) per chi impugna un'arma a distanza */}
+                          {!isDead && m.status === "active" && PLAYER_HAS_RANGED_WEAPON(p, char) && (ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)) > 0 && (
+                            <div
+                              className="fighter-kite"
+                              title={`Mantieni le distanze (kiting): attaccando da lontano riapri la distanza e costringi l'avversario in mischia a tirare a svantaggio. Ancora ${ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)} volte.`}
+                              style={{ fontSize: "0.62rem", fontWeight: 700, color: "#2b5fa8", marginTop: "0.15rem" }}
+                            >
+                              🏹 Distanza ×{ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}
+                            </div>
+                          )}
 
                           {(() => {
                             const statuses = getFighterStatuses(p);
@@ -10479,11 +10605,17 @@ export default function Arena() {
                                   setEquipSelections(prev => {
                                     const cur = prev[m.matchId] !== undefined ? prev[m.matchId] : [];
                                     if (isSel) return { ...prev, [m.matchId]: cur.filter(n => n !== w.name) };
-                                    // 2H: replace all — only this weapon
-                                    if (w.twoHanded) return { ...prev, [m.matchId]: [w.name] };
-                                    // 1H: remove any 2H already selected, then add this
-                                    const no2H = cur.filter(n => !myWeaponActions.find(x => x.name === n)?.twoHanded);
-                                    return { ...prev, [m.matchId]: [...no2H, w.name] };
+                                    const wpn = (n) => myWeaponActions.find(x => x.name === n);
+                                    // 2H da mischia: esclusiva — solo quest'arma
+                                    if (IS_TWO_HANDED_MELEE(w)) return { ...prev, [m.matchId]: [w.name] };
+                                    // 2H a distanza: una sola 2H; convive con le armi a una mano
+                                    if (w.twoHanded) {
+                                      const oneHanded = cur.filter(n => !wpn(n)?.twoHanded);
+                                      return { ...prev, [m.matchId]: [w.name, ...oneHanded] };
+                                    }
+                                    // 1H: rimuove una eventuale 2H da mischia, poi aggiunge
+                                    const noMelee2H = cur.filter(n => !IS_TWO_HANDED_MELEE(wpn(n)));
+                                    return { ...prev, [m.matchId]: [...noMelee2H, w.name] };
                                   });
                                 }}
                               >

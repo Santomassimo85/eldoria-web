@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "65",
+      "date": "2026-07-02",
+      "title": "Arena: meccanica di distanza — le armi a distanza contano",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Introdotta la gestione della distanza nei duelli. Ogni scontro inizia \"a distanza\": finché è così, chi attacca in mischia contro un avversario che impugna un'arma a distanza (arco, balestra, arma da fuoco) tira a SVANTAGGIO, perché deve chiudere sotto tiro. Il colpo in mischia però chiude la distanza: da lì in poi gli attacchi ravvicinati tornano normali. Gli attacchi a distanza e gli incantesimi colpiscono sempre senza penalità."
+        },
+        {
+          "type": "feature",
+          "text": "Kiting (mantenere le distanze): chi impugna un'arma a distanza, attaccando da lontano mentre l'avversario è in mischia, indietreggia e riapre la distanza, costringendo di nuovo l'avversario a tirare a svantaggio. È possibile riaprire la distanza fino a 3 volte per duello (le cariche residue sono mostrate sulla scheda del combattente). Esaurite le cariche, l'avversario in mischia resta ingaggiato. Questo dà alle build a distanza un'identità di controllo del tempo, come contropartita al minor danno e all'impossibilità di usare lo scudo."
+        },
+        {
+          "type": "mechanics",
+          "text": "La regola vale sia per i giocatori sia per l'IA: gli avversari con arco/balestra mantengono le distanze, quelli in mischia chiudono la distanza. Lo stato \"A distanza / Mischia\" è indicato tra i due combattenti e ogni transizione è annotata nel registro di combattimento. Nota: la penalità e la chiusura si applicano agli attacchi con arma e ad Attacco Furtivo/Smite; alcune abilità speciali da mischia restano non influenzate."
+        }
+      ]
+    },
+    {
+      "version": "64.01",
+      "date": "2026-07-02",
+      "title": "Arena: regole di impugnatura per le armi a due mani",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "La selezione delle armi ora rispetta le mani impegnate. Un'arma a due mani da MISCHIA (Spadone, Ascia Bipenne, Maglio, Alabarda, Lancia da Cavaliere, Bastone Ferrato) è esclusiva: occupa entrambe le mani e non consente altre armi. Un'arma a due mani a DISTANZA (Arco, Balestra, arma da fuoco) può invece essere affiancata da una sola arma a una mano, per le classi con due slot arma (Guerriero, Barbaro, Paladino, Ranger, Artefice). Non è più possibile equipaggiare due armi a due mani insieme. La regola vale in fase di iscrizione, nella generazione casuale del personaggio e nel pannello di equipaggiamento in combattimento. Lo scudo resta non selezionabile con qualsiasi arma a due mani, arco compreso."
+        }
+      ]
+    },
+    {
       "version": "64",
       "date": "2026-07-01",
       "title": "Arena: progressione classi Lv4-8 — incantesimi, abilità, cariche e sottoclassi",
