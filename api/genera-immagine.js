@@ -10,7 +10,27 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc, stile } = req.body || {};
+  const { prompt, npc, stile, refs } = req.body || {};
+
+  // Immagini di riferimento (es. avatar dei personaggi): vengono passate a
+  // Gemini come input visivo affinché la scena ritragga fedelmente quei volti.
+  // Le scarichiamo qui e le convertiamo in base64 (inlineData).
+  async function buildRefParts(urls) {
+    const list = Array.isArray(urls) ? urls.filter(Boolean).slice(0, 5) : [];
+    const parts = [];
+    for (const u of list) {
+      try {
+        const resp = await fetch(u);
+        if (!resp.ok) continue;
+        const buf = Buffer.from(await resp.arrayBuffer());
+        if (buf.length > 5 * 1024 * 1024) continue; // salta immagini troppo grandi
+        const mime = resp.headers.get("content-type") || "image/png";
+        if (!mime.startsWith("image/")) continue;
+        parts.push({ inlineData: { mimeType: mime, data: buf.toString("base64") } });
+      } catch { /* riferimento saltato */ }
+    }
+    return parts;
+  }
 
   // Stili di disegno selezionabili dal Master. La chiave arriva dal frontend
   // (GeneraNPC.jsx) e qui viene tradotta nella riga di stile del prompt.
@@ -55,6 +75,13 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
   }
 
   try {
+    const refParts = await buildRefParts(refs);
+    if (refParts.length) {
+      finalPrompt = `${finalPrompt}\nLe immagini di riferimento allegate mostrano i personaggi protagonisti (volti, capelli, colori, abiti, tratti distintivi): ritrai FEDELMENTE questi stessi personaggi nella scena, mantenendone l'aspetto. Non copiare lo sfondo delle immagini di riferimento, solo i personaggi.`;
+    }
+    // Le immagini di riferimento vanno PRIMA del testo nelle parts.
+    const parts = [...refParts, { text: finalPrompt }];
+
     const r = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
       {
@@ -64,7 +91,7 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
           "x-goog-api-key": process.env.GEMINI_API_KEY
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: finalPrompt }] }],
+          contents: [{ parts }],
           generationConfig: { temperature: 1 }
         })
       }

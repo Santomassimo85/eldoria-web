@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { db, storage } from "../firebase";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
@@ -19,9 +19,21 @@ const PARTIES = [
 ];
 const rosterOf = (key) => PARTIES.find((p) => p.key === key)?.roster || "";
 
-// Stile-cornice per la copertina della cronaca (coerente con le memorie esistenti).
-const coverPrompt = (scena) =>
-  `${String(scena || "").trim()}. Epic dark-fantasy chronicle illustration, painterly oil style, cinematic dramatic lighting, rich deep colors, no text, no lettering, no frame.`;
+// Nome → prima parola (per abbinare i personaggi Firestore al roster del gruppo).
+const normName = (s) => String(s || "").trim().toLowerCase();
+const firstTok = (s) => normName(s).split(/[\s'"\-]+/)[0];
+
+// Stili illustrativi selezionabili per le immagini della cronaca.
+const IMG_STYLES = [
+  { key: "darkcomic", label: "Dark Comic", suffix: "Dark-fantasy comic-book / graphic-novel art, bold inked outlines, dramatic cel shading, high-contrast moody lighting, gritty atmosphere, rich saturated accents." },
+  { key: "olio",      label: "Olio epico", suffix: "Epic oil painting, cinematic dramatic lighting, rich painterly brushwork, deep colors, classic fantasy book illustration." },
+  { key: "acquerello", label: "Acquerello", suffix: "Fantasy watercolor illustration, soft blended washes, delicate bleeding edges, luminous muted colors, hand-painted on rough paper." },
+];
+// Compone il prompt scena + stile scelto (coerente con le memorie esistenti).
+const scenePromptFull = (scena, styleKey) => {
+  const s = IMG_STYLES.find((x) => x.key === styleKey) || IMG_STYLES[0];
+  return `${String(scena || "").trim()}. ${s.suffix} No text, no lettering, no speech bubbles, no frame, no border.`;
+};
 
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
@@ -51,21 +63,43 @@ export default function DmTools() {
   const [riaOut, setRiaOut]     = useState(null);   // { title, subTitle, contentHtml, scenePrompt }
   const [riaBusy, setRiaBusy]   = useState(false);
   const [riaMsg, setRiaMsg]     = useState("");
-  const [scena, setScena]       = useState("");     // prompt scena (modificabile)
-  const [riaImg, setRiaImg]     = useState(null);   // data URL copertina
+  const [scena, setScena]       = useState("");        // prompt scena (modificabile)
+  const [imgStyle, setImgStyle] = useState("darkcomic");// stile illustrativo
+  const [gallery, setGallery]   = useState([]);        // [{ url:dataURL, cover:bool }]
   const [imgBusy, setImgBusy]   = useState(false);
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [allSummaries, setAllSummaries] = useState([]);
+  const [chars, setChars]       = useState([]);        // characters (per avatar)
+  const [refOff, setRefOff]     = useState({});        // { [charId]: true } = escluso dai riferimenti
 
-  // Carica una volta l'elenco riassunti (per numero di sessione + ordine).
+  // Carica una volta riassunti (numero sessione/ordine) e personaggi (avatar).
   useEffect(() => {
     getDocs(collection(db, "summaries"))
       .then((snap) => setAllSummaries(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
       .catch(() => {});
+    getDocs(collection(db, "characters"))
+      .then((snap) => setChars(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+      .catch(() => {});
   }, []);
 
   const sessionNumber = allSummaries.filter((s) => (s.party || "AMEA") === ria.party).length + 1;
+
+  // Personaggi del gruppo selezionato che hanno un avatar (per i riferimenti).
+  const partyChars = useMemo(() => {
+    const tokens = rosterOf(ria.party).split(",").map((t) => firstTok(t)).filter(Boolean);
+    const seen = new Set();
+    return chars.filter((c) => {
+      if (!c?.image || !c?.name) return false;
+      const tok = firstTok(c.name);
+      if (!tokens.includes(tok) || seen.has(tok)) return false;
+      seen.add(tok);
+      return true;
+    });
+  }, [chars, ria.party]);
+
+  // URL degli avatar da usare come riferimento (quelli non esclusi).
+  const refUrls = partyChars.filter((c) => !refOff[c.id]).map((c) => c.image);
 
   const resultRef = useRef(null);
   useEffect(() => {
@@ -130,7 +164,7 @@ export default function DmTools() {
       if (data.error) throw new Error(data.error);
       setRiaOut(data);
       setScena(data.scenePrompt || "");
-      setRiaImg(null);
+      setGallery([]);
       setRiaMsg("");
       logAgent("genera-riassunto", "success", `Cronaca generata (${data.title || ria.party})`, { party: ria.party }, { count: true });
     } catch (e) {
@@ -139,8 +173,9 @@ export default function DmTools() {
     } finally { setRiaBusy(false); }
   }
 
-  // ── Cronaca: genera / rifai l'immagine di copertina ──
-  async function generaImmagineScena(usaSuggerita) {
+  // ── Cronaca: genera una nuova immagine di scena (si accoda alla galleria) ──
+  // usaSuggerita = usa la scena suggerita dall'AI; altrimenti usa il testo scritto.
+  async function generaScena(usaSuggerita) {
     const base = usaSuggerita ? (riaOut?.scenePrompt || scena) : scena;
     if (!base.trim()) { setRiaMsg("Descrivi una scena (o usa quella suggerita) per l'immagine."); return; }
     if (usaSuggerita && riaOut?.scenePrompt) setScena(riaOut.scenePrompt);
@@ -148,17 +183,25 @@ export default function DmTools() {
     try {
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: coverPrompt(base) })
+        body: JSON.stringify({ prompt: scenePromptFull(base, imgStyle), refs: refUrls })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
-      setRiaImg(data.immagine);
-      logAgent("genera-immagine", "success", "Copertina cronaca generata", { party: ria.party }, { count: true });
+      // La prima immagine generata diventa copertina di default.
+      setGallery((g) => [...g, { url: data.immagine, cover: g.length === 0 }]);
+      logAgent("genera-immagine", "success", "Immagine cronaca generata", { party: ria.party, stile: imgStyle }, { count: true });
     } catch (e) {
       setRiaMsg("Errore immagine: " + e.message);
       logAgent("genera-immagine", "error", e.message);
     } finally { setImgBusy(false); }
   }
+
+  const setCover = (idx) => setGallery((g) => g.map((im, i) => ({ ...im, cover: i === idx })));
+  const removeImg = (idx) => setGallery((g) => {
+    const next = g.filter((_, i) => i !== idx);
+    if (next.length && !next.some((im) => im.cover)) next[0].cover = true; // garantisci una copertina
+    return next;
+  });
 
   // ── Cronaca: carica nelle Memorie (numero sessione + titolo automatici) ──
   async function caricaRiassunto() {
@@ -166,15 +209,21 @@ export default function DmTools() {
     if (!riaOut.title?.trim()) { setRiaMsg("La cronaca non ha un titolo: rigenera."); return; }
     setSaving(true); setRiaMsg("Carico nelle Memorie…");
     try {
-      // Copertina: il data URL base64 è troppo grande per Firestore → va su Storage.
-      let coverImage = "";
-      if (riaImg && riaImg.startsWith("data:")) {
-        const safe = (riaOut.title.trim() || "cronaca").replace(/[^a-z0-9._-]/gi, "_").slice(0, 36);
-        const path = `summaries/${Date.now()}-${safe}.png`;
+      // Le immagini (data URL base64) sono troppo grandi per Firestore → Storage.
+      const safe = (riaOut.title.trim() || "cronaca").replace(/[^a-z0-9._-]/gi, "_").slice(0, 36);
+      const uploaded = []; // { url, cover }
+      for (let i = 0; i < gallery.length; i++) {
+        const im = gallery[i];
+        if (!im.url?.startsWith("data:")) continue;
+        const path = `summaries/${Date.now()}-${i}-${safe}.png`;
         const sref = storageRef(storage, path);
-        await uploadString(sref, riaImg, "data_url");
-        coverImage = await getDownloadURL(sref);
+        await uploadString(sref, im.url, "data_url");
+        uploaded.push({ url: await getDownloadURL(sref), cover: im.cover });
       }
+      // Copertina = quella scelta (o la prima); il resto va a fine riassunto.
+      const coverEntry = uploaded.find((u) => u.cover) || uploaded[0] || null;
+      const coverImage = coverEntry ? coverEntry.url : "";
+      const images = uploaded.filter((u) => u.url !== coverImage).map((u) => u.url);
       // order globale = max+1 → la cronaca diventa l'ultima sessione del gruppo.
       const maxOrder = allSummaries.reduce((m, s) => Math.max(m, Number(s.order) || 0), 0);
       const order = maxOrder + 1;
@@ -186,7 +235,7 @@ export default function DmTools() {
         date: ria.date || "",
         content: riaOut.contentHtml || "",
         coverImage,
-        images: [],
+        images,
         order,
         generato: true,
         createdAt: new Date().toISOString(),
@@ -407,26 +456,67 @@ export default function DmTools() {
 
           {tab === "cronaca" && riaOut && (
             <div className="npcgen-card dmt-cronaca">
-              {riaImg && <img className="npcgen-img dmt-cronaca-cover" src={riaImg} alt={"Copertina — " + riaOut.title} />}
+              {gallery.find((im) => im.cover) && (
+                <img className="npcgen-img dmt-cronaca-cover" src={gallery.find((im) => im.cover).url} alt={"Copertina — " + riaOut.title} />
+              )}
               <p className="dmt-cronaca-eyebrow">❦ Cronache di Eldoria · Gruppo {ria.party}{ria.date ? ` · ${ria.date}` : ""}</p>
               <p className="npcgen-name">{riaOut.title}</p>
               {riaOut.subTitle && <p className="npcgen-role">{riaOut.subTitle}</p>}
               <hr className="npcgen-divider" />
               <div className="dmt-cronaca-body rs-summary-html" dangerouslySetInnerHTML={{ __html: riaOut.contentHtml }} />
 
-              {/* IMMAGINE DI COPERTINA */}
-              <p className="npcgen-k">Immagine della cronaca</p>
+              {/* IMMAGINI DELLA CRONACA */}
+              <p className="npcgen-k">Immagini della cronaca</p>
+
+              <div className="dmt-style-row">
+                {IMG_STYLES.map((s) => (
+                  <button key={s.key} type="button"
+                    className={"dmt-style" + (imgStyle === s.key ? " on" : "")}
+                    onClick={() => setImgStyle(s.key)}>{s.label}</button>
+                ))}
+              </div>
+
+              {partyChars.length > 0 && (<>
+                <small className="dmt-hint">Personaggi da usare come riferimento negli avatar (tocca per includere/escludere):</small>
+                <div className="dmt-ref-row">
+                  {partyChars.map((c) => (
+                    <button key={c.id} type="button"
+                      className={"dmt-ref" + (refOff[c.id] ? " off" : "")}
+                      title={c.name}
+                      onClick={() => setRefOff((o) => ({ ...o, [c.id]: !o[c.id] }))}>
+                      <img src={c.image} alt={c.name} onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                      <span>{firstTok(c.name)}</span>
+                    </button>
+                  ))}
+                </div>
+              </>)}
+
               <textarea className="npcgen-input dmt-prompt" rows={4} value={scena}
                 onChange={e => setScena(e.target.value)}
                 placeholder="Descrivi (in inglese) la scena da illustrare, oppure usa quella suggerita dall'AI." />
               <div className="dmt-img-actions">
-                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaImmagineScena(true)} disabled={imgBusy}>
+                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaScena(true)} disabled={imgBusy}>
                   {imgBusy ? "Disegno…" : "🎲 Scena casuale"}
                 </button>
-                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaImmagineScena(false)} disabled={imgBusy || !scena.trim()}>
-                  {imgBusy ? "Disegno…" : riaImg ? "↻ Rifai immagine" : "🖼 Genera scena"}
+                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaScena(false)} disabled={imgBusy || !scena.trim()}>
+                  {imgBusy ? "Disegno…" : "🖼 Genera scena"}
                 </button>
               </div>
+
+              {gallery.length > 0 && (
+                <div className="dmt-gallery">
+                  {gallery.map((im, i) => (
+                    <div key={i} className={"dmt-gitem" + (im.cover ? " cover" : "")}>
+                      <img src={im.url} alt={"scena " + (i + 1)} />
+                      <div className="dmt-gitem-actions">
+                        <button type="button" className={"dmt-gcover" + (im.cover ? " on" : "")}
+                          onClick={() => setCover(i)}>{im.cover ? "★ Copertina" : "☆ Copertina"}</button>
+                        <button type="button" className="dmt-grem" onClick={() => removeImg(i)} title="Rimuovi">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* CARICA */}
               <button className="npcgen-btn" style={{ marginTop: 16 }} onClick={caricaRiassunto} disabled={saving || saved}>

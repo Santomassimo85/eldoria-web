@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "74",
+      "date": "2026-07-02",
+      "title": "Cronaca DM: immagini con avatar dei personaggi, stili e galleria",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Strumento Cronaca: le immagini di scena possono usare gli avatar dei personaggi del gruppo come riferimento, così i protagonisti vengono ritratti fedelmente. Si può includere/escludere ogni personaggio."
+        },
+        {
+          "type": "feature",
+          "text": "Strumento Cronaca: scelta dello stile illustrativo tra Dark Comic, Olio epico e Acquerello."
+        },
+        {
+          "type": "feature",
+          "text": "Strumento Cronaca: si possono generare più immagini che vengono raccolte in una galleria a fine riassunto; una sola può essere scelta come copertina."
+        }
+      ]
+    },
+    {
+      "version": "73",
+      "date": "2026-07-02",
+      "title": "World Boss: notifica push al turno degli Eroi",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nella battaglia tattica contro il World Boss, ogni volta che comincia il turno degli Eroi i giocatori ancora vivi ricevono una notifica push. Vale all'inizio della battaglia e a ogni nuovo round quando la fase passa dai nemici agli Eroi, così nessuno perde il proprio turno nel gioco asincrono."
+        }
+      ]
+    },
+    {
       "version": "72.01",
       "date": "2026-07-02",
       "title": "Cronaca DM: correzione modello + formattazione ricca",
