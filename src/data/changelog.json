@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "72.01",
+      "date": "2026-07-02",
+      "title": "Cronaca DM: correzione modello + formattazione ricca",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Strumento Cronaca: risolto l'errore 'modello non più esistente' nella generazione del riassunto."
+        },
+        {
+          "type": "graphic",
+          "text": "Strumento Cronaca: le cronache generate ora usano la formattazione delle Memorie: grassetto per i punti importanti, testo dorato per i dialoghi e i passaggi solenni, sottotitoli di scena e capolettera."
+        }
+      ]
+    },
+    {
       "version": "72",
       "date": "2026-07-02",
       "title": "Strumenti DM: cronaca di sessione assistita",

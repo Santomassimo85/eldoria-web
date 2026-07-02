@@ -15,7 +15,15 @@ VOCE E STILE
 FORMATO
 - "title": un titolo evocativo e memorabile per questa cronaca (breve, senza numeri di sessione).
 - "subTitle": un sottotitolo poetico di una riga, nello spirito di "…dalla penna del Monaco Errante".
-- "contentHtml": la cronaca completa in HTML semplice. USA SOLO questi tag: <p> per i paragrafi, <h3> per eventuali sottotitoli di scena, <blockquote> per una citazione o presagio, <em> e <strong> per enfasi. NIENTE <html>, <body>, <script>, stili inline, immagini o link. Da 4 a 8 paragrafi, coerenti con la mole delle linee guida.
+- "contentHtml": la cronaca completa in HTML, con formattazione ricca ESATTAMENTE come le memorie esistenti. Usa questi tag/stili e NIENT'ALTRO:
+  · <p> per ogni paragrafo.
+  · <b>…</b> per il testo IMPORTANTE (nomi propri di personaggi/luoghi al primo emergere, oggetti chiave, colpi di scena, esiti decisivi).
+  · <span style="color:var(--gold)">…</span> per i DIALOGHI (battute pronunciate) e per i frammenti più solenni o evocativi.
+  · <i>…</i> per pensieri interiori, presagi o enfasi lieve.
+  · <h3 style="color:var(--gold); border-bottom: 1px solid #444; padding-bottom: 5px;">…</h3> per eventuali sottotitoli di scena (usane 0-3, solo se la sessione ha fasi nette).
+  · <blockquote>…</blockquote> per una profezia o citazione isolata (facoltativo).
+  · Puoi aprire la cronaca con un capolettera: avvolgi SOLO la prima lettera del primo paragrafo in <span class="start">L</span>.
+  NIENTE <html>, <body>, <script>, immagini, link, o altri stili inline diversi da quelli indicati. Da 4 a 8 paragrafi, coerenti con la mole delle linee guida. Non abusare dell'oro/grassetto: evidenzia solo ciò che conta davvero.
 - "scenePrompt": la descrizione, in INGLESE, della scena PIÙ suggestiva della sessione, pensata per un illustratore (soggetto, ambientazione, atmosfera, luce). Nessun testo o scritta nell'immagine, nessuna cornice.
 
 Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo, senza backtick, in questa forma esatta:
@@ -73,7 +81,7 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5",
+        model: "claude-opus-4-8",
         max_tokens: 4000,
         temperature: 0.9,
         system: SYSTEM,
