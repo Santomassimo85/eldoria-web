@@ -1,9 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { db, storage } from "../firebase";
+import { collection, doc, setDoc, getDocs } from "firebase/firestore";
+import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { logAgent } from "../utils/agentLog";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
+
+// Gruppi di gioco (stesso elenco dello Scriptorium / SummaryAdmin).
+const PARTIES = [
+  { key: "AMEA",  label: "AMEA",  roster: "Garroth, Tanagar, Caius, Sylva" },
+  { key: "LAC",   label: "LAC",   roster: "Horn, Thoki, Cleofe" },
+  { key: "LEAF",  label: "LEAF",  roster: "Soran, Zenthir, Taaras" },
+  { key: "ENOX",  label: "ENOX",  roster: "Makenna, Temistocle, Alaric, Lael" },
+  { key: "ECO",   label: "ECO",   roster: "Aksel, Dago, Ismael" },
+  { key: "Unico", label: "Storia del Mondo", roster: "Cronache globali" },
+];
+const rosterOf = (key) => PARTIES.find((p) => p.key === key)?.roster || "";
+
+// Stile-cornice per la copertina della cronaca (coerente con le memorie esistenti).
+const coverPrompt = (scena) =>
+  `${String(scena || "").trim()}. Epic dark-fantasy chronicle illustration, painterly oil style, cinematic dramatic lighting, rich deep colors, no text, no lettering, no frame.`;
 
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
@@ -27,6 +45,27 @@ export default function DmTools() {
   const [mapPrompt, setMapPrompt] = useState("");
   const [mapImg,    setMapImg]    = useState(null);
   const [mapBusy,   setMapBusy]   = useState(false);
+
+  // ── Tab "Cronaca" (riassunto di sessione) ──
+  const [ria, setRia]           = useState({ party: "AMEA", date: "", linee: "" });
+  const [riaOut, setRiaOut]     = useState(null);   // { title, subTitle, contentHtml, scenePrompt }
+  const [riaBusy, setRiaBusy]   = useState(false);
+  const [riaMsg, setRiaMsg]     = useState("");
+  const [scena, setScena]       = useState("");     // prompt scena (modificabile)
+  const [riaImg, setRiaImg]     = useState(null);   // data URL copertina
+  const [imgBusy, setImgBusy]   = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+  const [allSummaries, setAllSummaries] = useState([]);
+
+  // Carica una volta l'elenco riassunti (per numero di sessione + ordine).
+  useEffect(() => {
+    getDocs(collection(db, "summaries"))
+      .then((snap) => setAllSummaries(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+      .catch(() => {});
+  }, []);
+
+  const sessionNumber = allSummaries.filter((s) => (s.party || "AMEA") === ria.party).length + 1;
 
   const resultRef = useRef(null);
   useEffect(() => {
@@ -78,6 +117,89 @@ export default function DmTools() {
     setMsg("Prompt copiato.");
   }
 
+  // ── Cronaca: genera / rigenera il riassunto dalle linee guida ──
+  async function generaCronaca() {
+    if (!ria.linee.trim()) { setRiaMsg("Scrivi prima le linee guida della sessione."); return; }
+    setRiaBusy(true); setRiaMsg("Il Monaco Errante sta scrivendo…"); setSaved(false);
+    try {
+      const r = await fetch("/api/genera-riassunto", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ party: ria.party, roster: rosterOf(ria.party), date: ria.date, linee: ria.linee })
+      });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setRiaOut(data);
+      setScena(data.scenePrompt || "");
+      setRiaImg(null);
+      setRiaMsg("");
+      logAgent("genera-riassunto", "success", `Cronaca generata (${data.title || ria.party})`, { party: ria.party }, { count: true });
+    } catch (e) {
+      setRiaMsg("Errore: " + e.message);
+      logAgent("genera-riassunto", "error", e.message, { party: ria.party });
+    } finally { setRiaBusy(false); }
+  }
+
+  // ── Cronaca: genera / rifai l'immagine di copertina ──
+  async function generaImmagineScena(usaSuggerita) {
+    const base = usaSuggerita ? (riaOut?.scenePrompt || scena) : scena;
+    if (!base.trim()) { setRiaMsg("Descrivi una scena (o usa quella suggerita) per l'immagine."); return; }
+    if (usaSuggerita && riaOut?.scenePrompt) setScena(riaOut.scenePrompt);
+    setImgBusy(true); setRiaMsg("");
+    try {
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: coverPrompt(base) })
+      });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setRiaImg(data.immagine);
+      logAgent("genera-immagine", "success", "Copertina cronaca generata", { party: ria.party }, { count: true });
+    } catch (e) {
+      setRiaMsg("Errore immagine: " + e.message);
+      logAgent("genera-immagine", "error", e.message);
+    } finally { setImgBusy(false); }
+  }
+
+  // ── Cronaca: carica nelle Memorie (numero sessione + titolo automatici) ──
+  async function caricaRiassunto() {
+    if (!riaOut || saving) return;
+    if (!riaOut.title?.trim()) { setRiaMsg("La cronaca non ha un titolo: rigenera."); return; }
+    setSaving(true); setRiaMsg("Carico nelle Memorie…");
+    try {
+      // Copertina: il data URL base64 è troppo grande per Firestore → va su Storage.
+      let coverImage = "";
+      if (riaImg && riaImg.startsWith("data:")) {
+        const safe = (riaOut.title.trim() || "cronaca").replace(/[^a-z0-9._-]/gi, "_").slice(0, 36);
+        const path = `summaries/${Date.now()}-${safe}.png`;
+        const sref = storageRef(storage, path);
+        await uploadString(sref, riaImg, "data_url");
+        coverImage = await getDownloadURL(sref);
+      }
+      // order globale = max+1 → la cronaca diventa l'ultima sessione del gruppo.
+      const maxOrder = allSummaries.reduce((m, s) => Math.max(m, Number(s.order) || 0), 0);
+      const order = maxOrder + 1;
+      const docId = `${ria.party}_${Date.now()}`;
+      await setDoc(doc(db, "summaries", docId), {
+        title: riaOut.title.trim(),
+        subTitle: (riaOut.subTitle || "").trim(),
+        party: ria.party,
+        date: ria.date || "",
+        content: riaOut.contentHtml || "",
+        coverImage,
+        images: [],
+        order,
+        generato: true,
+        createdAt: new Date().toISOString(),
+      });
+      // aggiorna la cache locale così il prossimo numero di sessione è corretto
+      setAllSummaries((prev) => [...prev, { id: docId, party: ria.party, order }]);
+      setSaved(true);
+      setRiaMsg(`✅ Sessione #${sessionNumber} del gruppo ${ria.party} archiviata nelle Memorie.`);
+    } catch (e) {
+      setRiaMsg("Errore salvataggio: " + e.message);
+    } finally { setSaving(false); }
+  }
+
   return (
     <div className="npcgen-page">
       <div className="npcgen-inner">
@@ -87,7 +209,7 @@ export default function DmTools() {
 
         {/* TAB */}
         <div className="dmt-tabs">
-          {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"]].map(([id, label]) => (
+          {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"], ["cronaca", "📜 Cronaca"]].map(([id, label]) => (
             <div key={id} className={"dmt-tab" + (tab === id ? " on" : "")}
               onClick={() => { setTab(id); setOut(null); setMsg(""); setMapImg(null); }}>
               {label}
@@ -174,11 +296,46 @@ export default function DmTools() {
           </div>
         </>)}
 
-        <button className="npcgen-btn" style={{ marginTop: 20 }} onClick={generate} disabled={busy}>
-          {busy ? "Sto generando…" : "⚒ Genera"}
-        </button>
+        {/* FORM CRONACA */}
+        {tab === "cronaca" && (<>
+          <div className="dmt-row">
+            <div className="dmt-field">
+              <label className="npcgen-label">Gruppo</label>
+              <select className="npcgen-input" value={ria.party}
+                onChange={e => { setRia({ ...ria, party: e.target.value }); }}>
+                {PARTIES.map(p => (
+                  <option key={p.key} value={p.key}>{p.key === "Unico" ? p.label : `${p.key} (${p.roster})`}</option>
+                ))}
+              </select>
+            </div>
+            <div className="dmt-field">
+              <label className="npcgen-label">Data (in gioco)</label>
+              <input className="npcgen-input" value={ria.date} placeholder="14 di Eldarin 1852"
+                onChange={e => setRia({ ...ria, date: e.target.value })} />
+            </div>
+          </div>
+          <div className="dmt-field">
+            <label className="npcgen-label">Linee guida — cosa è successo nell'ultima sessione</label>
+            <textarea className="npcgen-input" rows={8} value={ria.linee}
+              onChange={e => setRia({ ...ria, linee: e.target.value })}
+              placeholder="Elenca gli eventi salienti: dove sono andati, chi hanno incontrato, cosa hanno scoperto, i colpi di scena, come si è chiusa la sessione… Il Monaco Errante li trasformerà in cronaca." />
+            <small className="dmt-hint">Sessione automatica: <b>#{sessionNumber}</b> del gruppo {ria.party}. Titolo e numero vengono assegnati al momento del caricamento.</small>
+          </div>
+          <button className="npcgen-btn" style={{ marginTop: 20 }} onClick={generaCronaca} disabled={riaBusy}>
+            {riaBusy ? "Sto scrivendo…" : riaOut ? "↻ Rigenera cronaca" : "⚒ Genera cronaca"}
+          </button>
+        </>)}
 
-        <div className={`npcgen-status${msg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{msg}</div>
+        {tab !== "cronaca" && (<>
+          <button className="npcgen-btn" style={{ marginTop: 20 }} onClick={generate} disabled={busy}>
+            {busy ? "Sto generando…" : "⚒ Genera"}
+          </button>
+          <div className={`npcgen-status${msg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{msg}</div>
+        </>)}
+
+        {tab === "cronaca" && riaMsg && (
+          <div className={`npcgen-status${riaMsg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{riaMsg}</div>
+        )}
 
         {/* RISULTATI */}
         <div ref={resultRef} className="dmt-result">
@@ -245,6 +402,36 @@ export default function DmTools() {
                 {mapBusy ? "Sto disegnando la mappa…" : "🗺️ Genera mappa"}
               </button>
               {mapImg && <img className="npcgen-img" src={mapImg} alt={"Mappa di " + out.nome} />}
+            </div>
+          )}
+
+          {tab === "cronaca" && riaOut && (
+            <div className="npcgen-card dmt-cronaca">
+              {riaImg && <img className="npcgen-img dmt-cronaca-cover" src={riaImg} alt={"Copertina — " + riaOut.title} />}
+              <p className="dmt-cronaca-eyebrow">❦ Cronache di Eldoria · Gruppo {ria.party}{ria.date ? ` · ${ria.date}` : ""}</p>
+              <p className="npcgen-name">{riaOut.title}</p>
+              {riaOut.subTitle && <p className="npcgen-role">{riaOut.subTitle}</p>}
+              <hr className="npcgen-divider" />
+              <div className="dmt-cronaca-body rs-summary-html" dangerouslySetInnerHTML={{ __html: riaOut.contentHtml }} />
+
+              {/* IMMAGINE DI COPERTINA */}
+              <p className="npcgen-k">Immagine della cronaca</p>
+              <textarea className="npcgen-input dmt-prompt" rows={4} value={scena}
+                onChange={e => setScena(e.target.value)}
+                placeholder="Descrivi (in inglese) la scena da illustrare, oppure usa quella suggerita dall'AI." />
+              <div className="dmt-img-actions">
+                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaImmagineScena(true)} disabled={imgBusy}>
+                  {imgBusy ? "Disegno…" : "🎲 Scena casuale"}
+                </button>
+                <button className="npcgen-btn npcgen-btn--ghost" onClick={() => generaImmagineScena(false)} disabled={imgBusy || !scena.trim()}>
+                  {imgBusy ? "Disegno…" : riaImg ? "↻ Rifai immagine" : "🖼 Genera scena"}
+                </button>
+              </div>
+
+              {/* CARICA */}
+              <button className="npcgen-btn" style={{ marginTop: 16 }} onClick={caricaRiassunto} disabled={saving || saved}>
+                {saving ? "Carico…" : saved ? "✅ Caricato" : "📤 Carica nelle Memorie"}
+              </button>
             </div>
           )}
 

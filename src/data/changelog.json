@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "72",
+      "date": "2026-07-02",
+      "title": "Strumenti DM: cronaca di sessione assistita",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuovo strumento DM 'Cronaca': si scelgono gruppo e data e si annotano le linee guida di ciò che è accaduto nell'ultima sessione; il Monaco Errante le trasforma in un riassunto completo nello stile delle Memorie esistenti. Incluso il tasto per rigenerare."
+        },
+        {
+          "type": "feature",
+          "text": "Cronaca: copertina generata dall'AI: si può illustrare una scena casuale suggerita dal testo o una scena specifica descritta a mano, con possibilità di rifare l'immagine."
+        },
+        {
+          "type": "feature",
+          "text": "Cronaca: il tasto 'Carica' archivia il riassunto nelle Memorie assegnando automaticamente numero di sessione e titolo."
+        }
+      ]
+    },
+    {
       "version": "71.02",
       "date": "2026-07-02",
       "title": "Arena: fasce di livello più strette",

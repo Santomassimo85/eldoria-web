@@ -64,3 +64,51 @@ textarea.npcgen-input.dmt-prompt {
   padding: 3px 9px;
   font-weight: 600;
 }
+
+/* ---------- tab Cronaca (riassunto di sessione) ---------- */
+.dmt-hint {
+  display: block;
+  margin-top: 8px;
+  color: #6a5b41;
+  font-size: 0.85rem;
+}
+.dmt-hint b { color: #7c560f; }
+
+.dmt-cronaca-cover {
+  width: 100%;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.dmt-cronaca-eyebrow {
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9a7526;
+  margin: 0 0 6px;
+}
+.dmt-cronaca-body {
+  color: #33281a;
+  line-height: 1.7;
+  font-size: 1.02rem;
+}
+.dmt-cronaca-body p { margin: 0 0 1em; }
+.dmt-cronaca-body h3 {
+  color: #7c560f;
+  margin: 1.2em 0 0.4em;
+  font-size: 1.1rem;
+}
+.dmt-cronaca-body blockquote {
+  margin: 1em 0;
+  padding: 4px 0 4px 14px;
+  border-left: 3px solid rgba(169, 120, 26, 0.55);
+  font-style: italic;
+  color: #6a5b41;
+}
+
+.dmt-img-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.dmt-img-actions .npcgen-btn { flex: 1; min-width: 140px; margin-top: 0; }
