@@ -1441,13 +1441,15 @@ function getSnapLevel(snap) {
 // ── FASCE DI LIVELLO DEI TORNEI ──────────────────────────────────────────────
 // Il Master sceglie una fascia quando apre le iscrizioni: si può partecipare SOLO
 // con le classi il cui livello rientra nella fascia (le altre sono annerite/non
-// selezionabili). "1-5" copre di fatto 3-5, perché nell'Arena si parte da Lv.3.
-// Salvata su arena_meta/global come `levelBracket` (chiave); null = tutti i livelli.
+// selezionabili). Fasce strette (3 livelli l'una), a partire da Lv.3 perché
+// nell'Arena si parte da lì. Salvata su arena_meta/global come `levelBracket`
+// (chiave); null = tutti i livelli.
 const ARENA_LEVEL_BRACKETS = [
-  { key: "1-5",   label: "Lv 1-5",   lo: 1,  hi: 5  },
-  { key: "6-9",   label: "Lv 6-9",   lo: 6,  hi: 9  },
-  { key: "10-13", label: "Lv 10-13", lo: 10, hi: 13 },
-  { key: "14-17", label: "Lv 14-17", lo: 14, hi: 17 },
+  { key: "3-5",   label: "Lv 3-5",   lo: 3,  hi: 5  },
+  { key: "6-8",   label: "Lv 6-8",   lo: 6,  hi: 8  },
+  { key: "9-11",  label: "Lv 9-11",  lo: 9,  hi: 11 },
+  { key: "12-14", label: "Lv 12-14", lo: 12, hi: 14 },
+  { key: "15-17", label: "Lv 15-17", lo: 15, hi: 17 },
   { key: "18-20", label: "Lv 18-20", lo: 18, hi: 20 },
 ];
 function getArenaBracket(key) { return ARENA_LEVEL_BRACKETS.find(b => b.key === key) || null; }
@@ -8447,9 +8449,9 @@ export default function Arena() {
 
             <h3 className="arena-info-title">🎚 Fasce di livello del torneo</h3>
             <div className="arena-info-example">
-              <p>Il Master può dividere i tornei per <strong>fascia di livello</strong>: <strong>Lv 1-5, 6-9, 10-13, 14-17, 18-20</strong> (oppure "Tutti i livelli", senza limiti). Serve a evitare che una classe di livello alto affronti una di livello basso.</p>
+              <p>Il Master può dividere i tornei per <strong>fascia di livello</strong>, in scaglioni stretti da 3 livelli: <strong>Lv 3-5, 6-8, 9-11, 12-14, 15-17, 18-20</strong> (oppure "Tutti i livelli", senza limiti). Serve a evitare che una classe di livello alto affronti una di livello basso.</p>
               <p>Con una fascia attiva puoi iscriverti <strong>solo con le classi il cui livello rientra nel range</strong>. Nella scelta della classe, quelle fuori fascia appaiono <strong>annerite e non selezionabili</strong>, con indicato il loro livello. Il livello di una classe è quello che hai acquistato alla Bottega dell'Arena.</p>
-              <p><strong>Nota:</strong> nell'Arena si parte da <strong>Lv 3</strong>, quindi la fascia <strong>1-5</strong> copre di fatto i livelli 3-5. Se non possiedi nessuna classe nel range, non puoi partecipare a quel torneo.</p>
+              <p><strong>Nota:</strong> nell'Arena si parte da <strong>Lv 3</strong>, quindi lo scaglione più basso è <strong>3-5</strong>. Se non possiedi nessuna classe nel range, non puoi partecipare a quel torneo.</p>
             </div>
 
             <h3 className="arena-info-title">⏱ Timer e turni</h3>

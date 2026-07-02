@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "71.02",
+      "date": "2026-07-02",
+      "title": "Arena: fasce di livello più strette",
+      "changes": [
+        {
+          "type": "balance",
+          "text": "Le fasce di livello dei tornei sono ora scaglioni stretti da 3 livelli: Lv 3-5, 6-8, 9-11, 12-14, 15-17, 18-20 (in precedenza erano più ampie). Riduce ulteriormente gli squilibri tra i partecipanti."
+        }
+      ]
+    },
+    {
       "version": "71.01",
       "date": "2026-07-02",
       "title": "Arena: fascia del torneo più visibile + manuale e notifica",
