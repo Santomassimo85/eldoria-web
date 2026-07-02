@@ -1,6 +1,40 @@
 {
   "versions": [
     {
+      "version": "71.01",
+      "date": "2026-07-02",
+      "title": "Arena: fascia del torneo più visibile + manuale e notifica",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "La fascia di livello del torneo è ora mostrata ai giocatori: come pill nell'intestazione dell'Arena e come badge nella schermata d'ingresso (visibile anche a chi è già iscritto)."
+        },
+        {
+          "type": "feature",
+          "text": "L'invito ai Campioni (all'apertura delle iscrizioni) ora indica la fascia di livello del torneo."
+        },
+        {
+          "type": "chore",
+          "text": "Manuale dell'Arena aggiornato con la sezione 'Fasce di livello del torneo'."
+        }
+      ]
+    },
+    {
+      "version": "71",
+      "date": "2026-07-02",
+      "title": "Arena: tornei a fasce di livello",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "I tornei possono ora essere divisi per fascia di livello. Il Master, nelle Opzioni Iscrizioni, sceglie la fascia: Lv 1-5, 6-9, 10-13, 14-17, 18-20 (oppure 'Tutti i livelli' per nessun limite). Serve a evitare che una classe di livello alto affronti una di livello basso."
+        },
+        {
+          "type": "feature",
+          "text": "Iscrizione con fascia attiva: si può partecipare solo con le classi il cui livello rientra nella fascia scelta. Nella scelta della classe, quelle fuori range appaiono annerite e non selezionabili (con l'indicazione del loro livello); anche 'Genera a caso' pesca solo tra le classi ammesse. Nota: nell'Arena si parte da Lv 3, quindi la fascia 1-5 copre di fatto i livelli 3-5."
+        }
+      ]
+    },
+    {
       "version": "70.01",
       "date": "2026-07-02",
       "title": "Arena: sottoclassi Fase 3 — Mano Aperta e cap ritorsione",

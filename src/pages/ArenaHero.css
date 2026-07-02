@@ -6124,3 +6124,63 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(95,2
 }
 
 /* combat v3 — palette oro/bordeaux, dock compatto, abbandono in top bar */
+
+/* ── Tornei a fasce di livello ──────────────────────────────────────────── */
+.arena-page .arune-pill.bracket {
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: #f0dfae;
+}
+.arena-page .class-select-btn--locked,
+.arena-page .class-select-btn--locked:hover {
+  background: linear-gradient(135deg, rgba(20, 16, 14, 0.95), rgba(12, 10, 9, 0.95)) !important;
+  border-color: rgba(120, 90, 50, 0.25) !important;
+  color: rgba(180, 165, 140, 0.35) !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  opacity: 0.55;
+  filter: grayscale(0.65);
+}
+.arena-page .class-select-btn--locked::before { opacity: 0 !important; }
+.arena-page .class-select-lvl {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: rgba(212, 175, 55, 0.5);
+}
+.arena-page .bracket-select-row {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.arena-page .bracket-select-label {
+  font-family: var(--font-title);
+  font-size: 0.9rem;
+  color: #f3e6c8;
+}
+.arena-page .bracket-select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  background: rgba(30, 22, 18, 0.9);
+  color: #f3e6c8;
+  font-size: 0.9rem;
+}
+.arena-page .bracket-select-hint {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+.arena-page .bracket-info-badge {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  background: rgba(212, 175, 55, 0.12);
+  color: #f3e6c8;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}

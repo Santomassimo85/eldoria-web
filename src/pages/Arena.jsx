@@ -1438,6 +1438,28 @@ function getSnapLevel(snap) {
   const classKey = getClassKey(snap?.class);
   return snap?.classLevels?.[classKey] ?? 3;
 }
+// ── FASCE DI LIVELLO DEI TORNEI ──────────────────────────────────────────────
+// Il Master sceglie una fascia quando apre le iscrizioni: si può partecipare SOLO
+// con le classi il cui livello rientra nella fascia (le altre sono annerite/non
+// selezionabili). "1-5" copre di fatto 3-5, perché nell'Arena si parte da Lv.3.
+// Salvata su arena_meta/global come `levelBracket` (chiave); null = tutti i livelli.
+const ARENA_LEVEL_BRACKETS = [
+  { key: "1-5",   label: "Lv 1-5",   lo: 1,  hi: 5  },
+  { key: "6-9",   label: "Lv 6-9",   lo: 6,  hi: 9  },
+  { key: "10-13", label: "Lv 10-13", lo: 10, hi: 13 },
+  { key: "14-17", label: "Lv 14-17", lo: 14, hi: 17 },
+  { key: "18-20", label: "Lv 18-20", lo: 18, hi: 20 },
+];
+function getArenaBracket(key) { return ARENA_LEVEL_BRACKETS.find(b => b.key === key) || null; }
+// Livello di una classe per un personaggio (default 3, come nel resto dell'Arena).
+function classLevelFor(cls, classLevels) { return classLevels?.[getClassKey(cls)] ?? 3; }
+// Una classe è ammessa se il suo livello rientra nella fascia scelta (o se non c'è fascia).
+function classInBracket(cls, classLevels, bracketKey) {
+  const b = getArenaBracket(bracketKey);
+  if (!b) return true;
+  const lvl = classLevelFor(cls, classLevels);
+  return lvl >= b.lo && lvl <= b.hi;
+}
 // Effetto della sottoclasse scelta, letto dallo snapshot (snap.subclass = chiave opzione).
 function getSubclassEffect(snap) {
   return getSubclassEffectFor(getClassKey(snap?.class), snap?.subclass);
@@ -3512,6 +3534,13 @@ export default function Arena() {
       return;
     }
 
+    // Fascia di livello del torneo: la classe scelta deve rientrare nel range.
+    if (!classInBracket(charPreview.class, charPreview.classLevels, arenaMeta.levelBracket)) {
+      const b = getArenaBracket(arenaMeta.levelBracket);
+      alert(`⚠ Questo torneo è riservato alla fascia ${b?.label || ""}. La classe ${charPreview.class} (Lv ${classLevelFor(charPreview.class, charPreview.classLevels)}) è fuori range: scegli una classe idonea.`);
+      return;
+    }
+
     if (arenaMeta?.championsOnly) {
       const isChampion = tournamentHistory.some(t => t.winnerId === currentUser.uid);
       if (!isChampion) {
@@ -3702,7 +3731,14 @@ export default function Arena() {
     const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
     const classPool = MASTER_JOIN_CLASSES.length ? MASTER_JOIN_CLASSES : MASTER_JOIN_CLASSES_BASE;
-    const cls = rnd(classPool);
+    // Fascia di livello del torneo: pesca solo tra le classi ammesse.
+    const bracketKey = loadoutContext === "tournament" ? arenaMeta.levelBracket : null;
+    const eligiblePool = classPool.filter(c => classInBracket(c, charPreview.classLevels, bracketKey));
+    if (!eligiblePool.length) {
+      alert(`Non hai classi nella fascia ${getArenaBracket(bracketKey)?.label || ""} di questo torneo. Sali di livello con una classe di quel range dalla Bottega.`);
+      return;
+    }
+    const cls = rnd(eligiblePool);
     const clsLower = (cls || "").toLowerCase();
     const clsLevel = charPreview.classLevels?.[getClassKey(cls)];
     const config = getLoadoutConfig(cls, clsLevel);
@@ -8246,6 +8282,7 @@ export default function Arena() {
         </div>
         <div className="arena-rune-phasepill">
           {arenaMeta.phase === "registration" && <span className="arune-pill open">● Iscrizioni</span>}
+          {getArenaBracket(arenaMeta.levelBracket) && arenaMeta.phase !== "finished" && <span className="arune-pill bracket" title="Fascia di livello del torneo">🎚 {getArenaBracket(arenaMeta.levelBracket).label}</span>}
           {arenaMeta.phase === "combat" && <span className="arune-pill combat">● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}</span>}
           {arenaMeta.phase === "finished" && <span className="arune-pill finished">● Concluso</span>}
           {arenaMeta.timerPaused && <span className="arune-pill paused" title="Timer in pausa">⏸</span>}
@@ -8408,6 +8445,13 @@ export default function Arena() {
               <li>Oltre al torneo è sempre attiva la <strong>Sfida Libera</strong>: 1v1 amichevoli senza ricompense, utili per allenarti.</li>
             </ul>
 
+            <h3 className="arena-info-title">🎚 Fasce di livello del torneo</h3>
+            <div className="arena-info-example">
+              <p>Il Master può dividere i tornei per <strong>fascia di livello</strong>: <strong>Lv 1-5, 6-9, 10-13, 14-17, 18-20</strong> (oppure "Tutti i livelli", senza limiti). Serve a evitare che una classe di livello alto affronti una di livello basso.</p>
+              <p>Con una fascia attiva puoi iscriverti <strong>solo con le classi il cui livello rientra nel range</strong>. Nella scelta della classe, quelle fuori fascia appaiono <strong>annerite e non selezionabili</strong>, con indicato il loro livello. Il livello di una classe è quello che hai acquistato alla Bottega dell'Arena.</p>
+              <p><strong>Nota:</strong> nell'Arena si parte da <strong>Lv 3</strong>, quindi la fascia <strong>1-5</strong> copre di fatto i livelli 3-5. Se non possiedi nessuna classe nel range, non puoi partecipare a quel torneo.</p>
+            </div>
+
             <h3 className="arena-info-title">⏱ Timer e turni</h3>
             <div className="arena-info-example">
               <p><strong>Iniziativa:</strong> ogni giocatore ha <strong>10 minuti</strong> per tirare la propria iniziativa (d20 + DES; il Ladro tira con vantaggio). Allo scadere il sistema tira automaticamente al posto tuo.</p>
@@ -8417,7 +8461,7 @@ export default function Arena() {
 
             <h3 className="arena-info-title">🧙 Creazione del Personaggio</h3>
             <div className="arena-info-example">
-              <p><strong>1. Classe:</strong> scegli tra le 12 classi (vedi elenco sotto). Ogni classe ha le proprie armi consentite, abilità di classe automatiche, eventuali slot magia e armatura permessa.</p>
+              <p><strong>1. Classe:</strong> scegli tra le 12 classi (vedi elenco sotto). Ogni classe ha le proprie armi consentite, abilità di classe automatiche, eventuali slot magia e armatura permessa. <em>Se il torneo ha una fascia di livello, puoi scegliere solo le classi il cui livello rientra nel range (le altre sono annerite).</em></p>
               <p><strong>2. Caratteristiche:</strong> distribuisci i punti stat (FOR, DES, COS, INT, SAG, CAR). I modificatori si applicano a tiri per colpire, danni, salvezze e CA delle armature leggere/medie.</p>
               <p><strong>3. Equipaggiamento:</strong> scegli armi, armatura, scudo (se la classe lo permette) e oggetti consumabili. Le restrizioni dipendono dalla classe.</p>
               <p><strong>4. HP:</strong> tutte le classi tirano <strong>7d10 + COS×7</strong>. Ogni livello di classe acquistato alla Bottega aggiunge +1d10 al tiro. Hai un numero limitato di reroll.</p>
@@ -8572,7 +8616,7 @@ export default function Arena() {
                               read: false,
                               timestamp: serverTimestamp(),
                               title: "♛ Arena dei Campioni — Iscrizioni Aperte",
-                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!`,
+                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!${getArenaBracket(arenaMeta.levelBracket) ? ` · Fascia di livello del torneo: ${getArenaBracket(arenaMeta.levelBracket).label} (puoi iscriverti solo con classi in questo range).` : ""}`,
                             });
                           } catch (err) { console.error("champion invite:", err); }
                         }
@@ -8583,6 +8627,26 @@ export default function Arena() {
                 />
                 <span>♛ Solo Campioni — solo chi ha già vinto un torneo può iscriversi</span>
               </label>
+              <div className="bracket-select-row">
+                <label className="bracket-select-label" htmlFor="arena-bracket-select">🎚 Fascia di livello del torneo</label>
+                <select
+                  id="arena-bracket-select"
+                  className="bracket-select"
+                  value={arenaMeta.levelBracket || ""}
+                  onChange={async (e) => {
+                    const v = e.target.value || null;
+                    await updateDoc(doc(db, "arena_meta", "global"), { levelBracket: v });
+                  }}
+                >
+                  <option value="">Tutti i livelli (nessun limite)</option>
+                  {ARENA_LEVEL_BRACKETS.map(b => (
+                    <option key={b.key} value={b.key}>{b.label}</option>
+                  ))}
+                </select>
+                <p className="bracket-select-hint">
+                  I giocatori si iscrivono solo con classi il cui livello rientra nella fascia (le altre sono annerite). Impostala prima o durante le iscrizioni.
+                </p>
+              </div>
             </div>
           )}
 
@@ -8866,15 +8930,29 @@ export default function Arena() {
               </div>
               <div className="hp-roll-title">Classe</div>
               <div className="class-select-grid">
-                {MASTER_JOIN_CLASSES.map(cls => (
-                  <button key={cls} className="class-select-btn" onClick={() => {
-                    setCharPreview(prev => ({ ...prev, class: cls }));
-                    setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
-                    setLoadoutPhase("stat-assign");
-                  }}>
-                    {cls}
-                  </button>
-                ))}
+                {MASTER_JOIN_CLASSES.map(cls => {
+                  // Fascia di livello: attiva solo in torneo (non nelle Sfide Libere).
+                  const bracketKey = loadoutContext === "tournament" ? arenaMeta.levelBracket : null;
+                  const allowed = classInBracket(cls, charPreview.classLevels, bracketKey);
+                  const lvl = classLevelFor(cls, charPreview.classLevels);
+                  return (
+                    <button
+                      key={cls}
+                      className={`class-select-btn${allowed ? "" : " class-select-btn--locked"}`}
+                      disabled={!allowed}
+                      title={allowed ? cls : `${cls} è Lv ${lvl}: fuori dalla fascia ${getArenaBracket(bracketKey)?.label || ""} del torneo`}
+                      onClick={() => {
+                        if (!allowed) return;
+                        setCharPreview(prev => ({ ...prev, class: cls }));
+                        setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+                        setLoadoutPhase("stat-assign");
+                      }}
+                    >
+                      {cls}
+                      {!allowed && <span className="class-select-lvl">Lv {lvl}</span>}
+                    </button>
+                  );
+                })}
               </div>
               <button className="btn-join btn-auto-pg" onClick={autoGeneratePg} title="Crea un personaggio completo e casuale, pronto da rivedere">
                 ⚡ Genera a caso
@@ -9562,6 +9640,13 @@ export default function Arena() {
                 <div className="prize-display">
                   <div className="prize-display-label">🏆 Premi in Palio</div>
                   <div className="prize-display-text">{arenaMeta.prizes}</div>
+                </div>
+              )}
+
+              {getArenaBracket(arenaMeta.levelBracket) && (
+                <div className="bracket-info-badge">
+                  🎚 Torneo a fasce di livello — <strong>{getArenaBracket(arenaMeta.levelBracket).label}</strong>
+                  {!isRegistered && !isPending && " · puoi iscriverti solo con le classi in questo range di livello (le altre sono annerite)"}
                 </div>
               )}
 
