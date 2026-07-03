@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor Sessione D&D</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:ital,wght@0,400;0,500;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5efe2;
+  --paper: #fbf6ea;
+  --card: #ffffff;
+  --gold: #b8893a;
+  --gold-dark: #8f6720;
+  --blood: #8b1a1a;
+  --ink: #2a1f15;
+  --ink-dim: #6b5740;
+  --border: rgba(184, 137, 58, 0.35);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.6;
+  padding: 20px 16px 60px;
+}
+
+.wrap { max-width: 1100px; margin: 0 auto; }
+
+.header {
+  text-align: center;
+  padding: 24px;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  background: var(--paper);
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 26px;
+  color: var(--gold-dark);
+  letter-spacing: 2px;
+}
+
+.header .sub {
+  font-style: italic;
+  color: var(--ink-dim);
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 12px 0;
+  margin-bottom: 16px;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+button {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  padding: 8px 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+button:hover {
+  background: var(--gold);
+  color: white;
+}
+button.primary {
+  background: var(--gold);
+  color: white;
+}
+button.danger {
+  border-color: var(--blood);
+  color: var(--blood);
+}
+button.danger:hover {
+  background: var(--blood);
+  color: white;
+}
+button.small {
+  padding: 5px 10px;
+  font-size: 10px;
+}
+
+.editable {
+  outline: none;
+  padding: 4px 6px;
+  border-radius: 3px;
+  transition: background 0.2s;
+  min-height: 1.2em;
+}
+.editable:hover {
+  background: rgba(184, 137, 58, 0.06);
+}
+.editable:focus {
+  background: rgba(184, 137, 58, 0.12);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+.session-title {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  color: var(--gold-dark);
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+.session-sub {
+  font-style: italic;
+  color: var(--ink-dim);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.master-clock {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.master-time {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.master-bar {
+  flex: 1;
+  min-width: 150px;
+  height: 6px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.master-fill {
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+  transition: width 0.4s;
+}
+
+.anel-tracker {
+  background: var(--card);
+  border: 2px solid var(--blood);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.anel-tracker .label {
+  color: var(--blood);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+.anel-count {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  color: var(--ink);
+  padding: 2px 10px;
+  background: var(--paper);
+  border-radius: 3px;
+  min-width: 30px;
+  text-align: center;
+}
+.anel-phase {
+  font-style: italic;
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-family: 'Crimson Pro', serif;
+}
+
+.act {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.act-head {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--paper);
+}
+.act-head:hover { background: rgba(184, 137, 58, 0.08); }
+.act-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+  color: var(--gold-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.act.done .act-num { background: #4a7530; color: white; border-color: #4a7530; }
+.act-title-block { flex: 1; }
+.act-title {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  color: var(--ink);
+  letter-spacing: 0.5px;
+}
+.act-sub {
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-style: italic;
+}
+.act-time {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: var(--gold-dark);
+  font-variant-numeric: tabular-nums;
+}
+.act-body {
+  display: none;
+  padding: 16px 18px;
+  border-top: 1px solid var(--border);
+}
+.act.open .act-body { display: block; }
+
+.timer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--paper);
+  border-radius: 3px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.timer-clock {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+}
+.timer-clock.over { color: var(--blood); }
+.timer-bar {
+  flex: 1;
+  min-width: 100px;
+  height: 4px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+  transition: width 0.3s;
+}
+.timer-fill.over { background: var(--blood); }
+
+.block {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--gold);
+  background: var(--paper);
+  border-radius: 0 3px 3px 0;
+  position: relative;
+}
+.block.scene { border-left-color: var(--gold); }
+.block.danger { border-left-color: var(--blood); background: #fcf2f2; }
+.block.info { border-left-color: #5e3299; background: #f6f1fb; }
+.block.warn { border-left-color: #b56a13; background: #fdf5e8; }
+.block.player { border-left-color: #1f7363; background: #ecf6f2; }
+.block.dialogue {
+  border-left: 4px solid var(--blood);
+  border: 1px solid var(--gold);
+  background: linear-gradient(180deg, rgba(184,137,58,0.08), rgba(184,137,58,0.02));
+  padding: 14px 18px;
+}
+
+.block-label {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--gold-dark);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.block.dialogue .block-label { color: var(--blood); }
+.block.danger .block-label { color: var(--blood); }
+.block.info .block-label { color: #5e3299; }
+.block.warn .block-label { color: #b56a13; }
+.block.player .block-label { color: #1f7363; }
+
+.block-content {
+  font-size: 15px;
+  line-height: 1.65;
+}
+.block.dialogue .block-content {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.block-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: none;
+  gap: 4px;
+}
+.block:hover .block-actions { display: flex; }
+
+.icon-btn {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid var(--border);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--gold); color: white; }
+.icon-btn.del:hover { background: var(--blood); }
+
+.add-block {
+  margin-top: 12px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  text-align: center;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.add-block button {
+  font-size: 10px;
+  padding: 5px 10px;
+}
+
+.notes-area {
+  width: 100%;
+  min-height: 100px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 12px;
+  font-family: 'Crimson Pro', serif;
+  font-size: 15px;
+  border-radius: 4px;
+  resize: vertical;
+  margin-top: 8px;
+}
+
+.section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  margin: 28px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.party-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.party-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+}
+.party-name {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: var(--gold-dark);
+  margin-bottom: 3px;
+}
+.party-role {
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.party-card input {
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  font-family: 'Crimson Pro', serif;
+  font-size: 13px;
+  border-radius: 2px;
+}
+
+.help {
+  background: #fff8e7;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.help strong { color: var(--gold-dark); }
+
+@media (max-width: 600px) {
+  .header h1 { font-size: 20px; }
+  .session-title { font-size: 18px; }
+  .act-head { padding: 12px 14px; gap: 10px; }
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1 contenteditable="true" class="editable">Sessione D&D · Editor</h1>
+    <div class="sub" contenteditable="true">Tocca un blocco per modificarlo. Tutto si salva automaticamente.</div>
+  </div>
+
+  <div class="help">
+    <strong>Come usare:</strong> ogni testo è modificabile (clicca e scrivi). I bottoni nei blocchi: <strong>×</strong> elimina, <strong>↑↓</strong> sposta. Usa la toolbar in alto per esportare o resettare. <strong>Tutto si salva nel browser</strong> automaticamente.
+  </div>
+
+  <div class="toolbar">
+    <button onclick="addAct()" class="primary">+ Nuovo Atto</button>
+    <button onclick="exportData()">⬇ Esporta JSON</button>
+    <button onclick="importData()">⬆ Importa JSON</button>
+    <button onclick="window.print()">🖨 Stampa</button>
+    <button onclick="resetAll()" class="danger">✕ Reset</button>
+  </div>
+
+  <div>
+    <div contenteditable="true" class="editable session-title">Sessione 9 · Le Due Strade</div>
+    <div contenteditable="true" class="editable session-sub">"Ogni strada conduce a Padithas. Tocca solo decidere da quale parte vuoi guardarlo in faccia."</div>
+  </div>
+
+  <div class="master-clock">
+    <span style="font-family:'Cinzel';font-size:11px;letter-spacing:2px;color:var(--gold-dark);">SESSIONE</span>
+    <span class="master-time" id="masterTime">00:00 / 2:30:00</span>
+    <div class="master-bar"><div class="master-fill" id="masterFill"></div></div>
+    <button class="small" onclick="toggleMaster()" id="masterBtn">▶ Avvia</button>
+    <button class="small" onclick="resetMaster()">↻</button>
+  </div>
+
+  <div class="anel-tracker">
+    <span class="label">⚠ ANELLO MALEDETTO · Usi:</span>
+    <button class="small" onclick="changeAnel(-1)">−</button>
+    <span class="anel-count" id="anelCount">0</span>
+    <button class="small" onclick="changeAnel(1)">+</button>
+    <span class="anel-phase" id="anelPhase">Nessun uso</span>
+  </div>
+
+  <div class="section-title">Atti della sessione</div>
+  <div id="acts"></div>
+
+  <div class="section-title">Stato del party</div>
+  <div class="party-grid" id="party"></div>
+
+  <div class="section-title">Appunti veloci</div>
+  <textarea class="notes-area" id="notes" placeholder="Scrivi qui durante la sessione..."></textarea>
+
+</div>
+
+<script>
+// ==================== STATO ====================
+let state = {
+  acts: [],
+  party: [
+    { name: "Temistocle (Milo)", role: "Halfling stregone · magia di fata · Hoppiti", hp: "" },
+    { name: "Alaric", role: "Halfling stregone · patto col Mazziere", hp: "" },
+    { name: "Makenna", role: "Umana · viaggiatrice di un altro mondo · cerca Lira", hp: "" },
+    { name: "Lael", role: "Elfa alta · iniziata Ordine degli Echi", hp: "" }
+  ],
+  notes: "",
+  anel: 0,
+  masterElapsed: 0,
+  masterRunning: false
+};
+
+const BLOCK_TYPES = {
+  scene: { label: "Scena", class: "scene" },
+  info: { label: "Info", class: "info" },
+  danger: { label: "Pericolo", class: "danger" },
+  warn: { label: "Spunti", class: "warn" },
+  player: { label: "Lascia ai PG", class: "player" },
+  dialogue: { label: "Dialogo", class: "dialogue" }
+};
+
+// ==================== CONTENUTO INIZIALE ====================
+const DEFAULT_ACTS = [
+  {
+    n: 1,
+    title: "Viaggio al Nerocastello → Yotta",
+    sub: "Conoscere i nuovi, digerire i vecchi.",
+    min: 30,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "Obiettivo", content: "I quattro PG si conoscono meglio sulla strada per Yotta. Spazio per roleplay. Indizio sottile su Vane. Eventuale uso anello." },
+      { type: "scene", label: "Il giorno dopo", content: 'È mattina al Nerocastello. La città fuma ancora dell\'attacco di ieri. Avete oro nelle tasche, il Diadema del Trionfo, due nuove compagne. È tempo di partire per Yotta.' },
+      { type: "player", label: "Lascia spazio", content: "Salutare Garrokk, comprare cavalli/provviste, eventuale visita all'arena per onorare Daga. Hoppiti valuta Makenna e Lael — accetta Makenna, evita Lael." },
+      { type: "scene", label: "Il villaggio di Bremo", content: "Si fermano alla fontana per abbeverare i cavalli. Un vecchio contadino con cappello di paglia si avvicina." },
+      { type: "dialogue", label: "Vecchio contadino · sospettoso", content: '"Voi siete del Nerocastello, vero? Si vede dalle ferite. Ieri sera è passato di qui un carro nero. Quattro figure incappucciate. Una portava in braccio un ragazzo che non si muoveva. Sono andati a ovest. Verso le Selve di Lannan."' },
+      { type: "warn", label: "Per il DM", content: "Vane sta portando Dante alle Selve di Lannan per curarlo (druido eremita). Hook per quando il giocatore tornerà." }
+    ]
+  },
+  {
+    n: 2,
+    title: "Arrivo a Yotta · locanda Quoben",
+    sub: "Breve respiro prima del duca.",
+    min: 15,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "Obiettivo", content: "Atmosfera. Yotta vista per la prima volta da Makenna e Lael. Pausa breve, poi convocazione dal duca." },
+      { type: "scene", label: "Yotta", content: "Arrivano nel pomeriggio. Statue di pietra che suonano col vento (Syrael). Acquedotto sospeso. Ingegneri al lavoro. Makenna resta a bocca aperta. Lael cataloga tutto." },
+      { type: "dialogue", label: "Vecchio Quoben · sorridente sottovoce", content: '"Bentornati, signori! Vedo che siete in pochi. Non chiedo. Mai chiedo. Le stanze migliori sono pronte. Il duca ha mandato un messaggero stamattina. Vi vuole vedere appena lavate il sangue di dosso."' }
+    ]
+  },
+  {
+    n: 3,
+    title: "Udienza dal duca Leode · le rivelazioni",
+    sub: "Padithas, i Sette, le due missioni.",
+    min: 40,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "Obiettivo", content: "Cuore della sessione. Il duca ascolta poco, ne sa poco (ha solo voci confuse del Nerocastello). I PG raccontano tutto. Il duca poi rivela quello che SA davvero: Padithas è nominato 3 volte in cronache antiche, dei Sette ha solo sentito parlare come di leggenda. Propone due missioni. Lascia decidere ai PG." },
+      { type: "scene", label: "Il palazzo", content: "Sala delle mappe, soffitto basso, odore di cera. Il duca asciutto, 50 anni, capelli grigi, spilla con tre piume intrecciate (Syrael) sul petto. È solo, salvo un piccolo scribano in disparte." },
+      { type: "dialogue", label: "Duca Leode · felice di vederli", content: '"Sono lieto di vedervi vivi, davvero. Mi è arrivata solo una notizia confusa da un cavaliere — tanti morti, l\'arena in subbuglio, qualcosa di brutto è successo. Ma vi vedo qui, e questo è più di quanto sperassi. Siete... tutti?" — guarda i posti vuoti — "Chi non c\'è? Il giovane ladro? La satira? Ditemi tutto. Voglio sapere dall\'inizio."' },
+      { type: "warn", label: "Reazione del duca all'anello", content: "Se i PG menzionano l'anello, il duca si tende ma non lo tocca. \"Tenetelo. È vostro. Ma vi suggerisco di non darlo a nessuno che amate.\"" },
+      { type: "scene", label: "Dopo il loro racconto", content: "Quando i PG hanno finito, il duca si siede. Si versa un bicchiere d'acqua. Lo beve lentamente. Poi parla — quello che sta per dire è la cosa più importante della giornata." },
+      { type: "dialogue", label: "Duca Leode · su Padithas", content: '"Il diavoletto vi ha portato un dono. Il suo padrone si chiama Padithas. Il Piccolo che Ride. Folletto demoniaco di antica fattura. Negli archivi del ducato il suo nome compare tre volte. La prima, nel resoconto di un mercante di Plia che lo vide ridere mentre una bambina annegava in un pozzo, e lui disse: \'Non l\'ho spinta io. Ho solo riso forte.\' La seconda, in una cronaca di Nolborg di settant\'anni fa — un\'intera fucina trovata vuota, gli operai spariti, e sopra l\'incudine principale qualcuno aveva inciso una sola parola: ho riso. La terza, nei diari di un mio antenato — Padithas avrebbe portato un anello a una giovane sposa, e tre anni dopo la donna era invecchiata di sessanta. Era ancora viva. Sorrideva."' },
+      { type: "dialogue", label: "Duca Leode · su chi lo manda", content: '"E Padithas non agisce mai per conto proprio. Le tre cronache concordano su questo: lavora per qualcuno. Sempre. Non si sa per chi. Si dice — e qui entriamo in territorio di leggenda, badate — che esistano sette esseri antichi, più antichi degli dèi, e che alcuni come Padithas li servano. Io non so se esistano davvero. Non ne ho mai trovato prova. Sono storie da fuoco di notte. Ma tre cronache che dicono \'Padithas agiva per ordine di qualcuno\', su tre, mi fanno credere che qualcuno ci sia. Chi sia, non lo so. E penso che a non saperlo, stanotte si dorma meglio."' },
+      { type: "scene", label: "Le due missioni", content: "Il duca apre una mappa. Indica due luoghi del ducato. Le voci negli ultimi mesi sono diventate fatti. Va fatto qualcosa." },
+      { type: "info", label: "MISSIONE A · Plia · Le Catene del Piccolo", content: "Recuperare un antico rituale per intrappolare creature infernali/fatate. Lo conserva nei suoi archivi privati il CONTE COLAN NYX (umano obeso, avido ed egoista, popolo lo odia per le tasse e i suoi capricci). Plia: città lacustre, 2+ giorni a sud-ovest. NON è specifico per Padithas — è generico contro creature come lui. Sperimentale. Potrebbe funzionare. Bonus: Lael ha contatti dell'Ordine a Plia (può aprire qualche porta sociale)." },
+      { type: "info", label: "MISSIONE B · Nolborg · Cultisti", content: "Distruggere o catturare i cultisti scoperti da TARBUNUS (fabbro dragonide, fedele al ducato). Nolborg: 1 giorno a est-sud-est. Tarbunus stava minando ferro nella valle a sud quando ha trovato segni — simboli incisi, fuochi rituali, terra bruciata in modo sbagliato. Bonus: Tarbunus può identificare gli oggetti misteriosi del party (lettera al Custode delle Fiamme Mute, chiave d'ottone 17, guanto col sigillo)." },
+      { type: "dialogue", label: "Duca Leode · al congedo", content: '"Decidete e tornate domani. 300 monete d\'oro a testa per ognuna delle due missioni. L\'altra resterà sul tavolo per dopo, se vorrete tornare. Solo una cosa: Padithas vi ha visto. Se vi avesse voluti morti adesso, lo sareste. Vi sta usando per qualcosa, o vi sta solo... mettendo da parte. Tenete gli occhi aperti. E non fidatevi di nessuno che vi fa un regalo senza chiedere nulla in cambio."' }
+    ]
+  },
+  {
+    n: 4,
+    title: "Yotta · preparativi e decisione",
+    sub: "Mercati, contatti, momenti tra PG.",
+    min: 25,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "Obiettivo", content: "Spazio per il party: discutere, comprare equipaggiamento, contatti, momenti di personaggio." },
+      { type: "player", label: "Discussione PG", content: "Lael probabilmente vota Plia (sapere, contatti). Temistocle e Alaric forse Nolborg (vendetta per Daga + Tarbunus). Makenna osserva. Non forzare." },
+      { type: "scene", label: "Mercato", content: "Pozioni cura (50 mo), bende stregate (40), polvere di rivelazione (80), cappi di seta (20), lanterna a vento di Syrael (100)." },
+      { type: "warn", label: "Eventuale uso anello", content: "Se il PG con l'anello vuole tirare sul prezzo o impressionare un mercante, è il momento. AGGIORNA IL CONTEGGIO." }
+    ]
+  },
+  {
+    n: 5,
+    title: "Partenza · primo segmento di viaggio",
+    sub: "Verso Plia o Nolborg.",
+    min: 30,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "Obiettivo", content: "Far iniziare il viaggio. Piccolo incontro a sapore. Due varianti — usa quella giusta in base alla scelta dei PG." },
+      { type: "scene", label: "VARIANTE A · Per PLIA (sud-ovest, 2+ giorni)", content: "Strada tra colline ondulate e vigneti. Cippo di pietra con preghiere a Syrael. Si fermano per la notte a metà strada." },
+      { type: "dialogue", label: "Mosso Carean · viandante zoppicante (Plia)", content: '"Plia? Ah, Plia. Vi do un consiglio, signori. Il Conte Nyx è un porco. Lo dico chiaro perché tanto lo sapete. Mangia per tre, spende per dieci, e tassa per cento. Il popolo lo odia. Il popolo aiuta chi vuole prenderlo per le palle. Se cercate qualcosa che lui possiede... cercate il suo cuoco. Si chiama Bartol. Quello sa tutto. E parla, se gli offrite oro o vendetta."' },
+      { type: "warn", label: "Segreto di Mosso", content: "Ha un piccolo tatuaggio del Piccolo che Ride sotto il polso destro (Percezione DC 17). Non è un cultista pieno — ricattato/sedotto. Se i PG lo scoprono, sottoplot. Se non lo notano, sparisce al mattino." },
+      { type: "scene", label: "VARIANTE B · Per NOLBORG (est-sud-est, 1 giorno)", content: "Strada in salita, colline aride, poi piane di pietra rossa. Aria più calda nonostante l'altitudine (Nolborg su vena geotermica)." },
+      { type: "dialogue", label: "Vek · apprendista dragonide (Nolborg)", content: '"Voi siete il gruppo che ha mandato il duca? Maestro Tarbunus ha mandato me. Ieri notte abbiamo trovato un altro segno. Un cultista morto vicino alla nostra fucina. Aveva la lingua tagliata. E sulla pelle un marchio fresco — il Piccolo che Ride. Dovete sbrigarvi. Qualcuno sta uccidendo i loro perché parlino di meno."' }
+    ]
+  },
+  {
+    n: 6,
+    title: "Biblioteca di Yotta · ricerca limitata (OPZIONALE)",
+    sub: "Per Lael e Alaric. Solo se vogliono.",
+    min: 20,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "Obiettivo", content: "OPZIONALE. Biblioteca pubblica di Yotta. Due guardie del duca. 1 ora. Max 3 ricerche. INT (Indagare) DC 13." },
+      { type: "scene", label: "La biblioteca", content: "Torre rotonda accanto al palazzo. 4 piani di scaffali curvi. Due guardie del duca alla porta. \"Avete un'ora. Niente esce.\"" },
+      { type: "info", label: "Ricerca 1 · Padithas", content: "Successo: \"Padithas può essere intrappolato ma non ucciso. Solo coloro che lo hanno servito conoscono il vero modo di legarlo — e solo se rinnegano il giuramento.\" Hook per Nolborg (cultista pentito = chiave)." },
+      { type: "info", label: "Ricerca 2 · Su chi muove i fili", content: "Successo: trovano un trattato di teologia che conferma quello che il duca ha accennato — esistono storie su esseri antichi che muovono creature come Padithas, ma sono leggende. Una sola frase notevole: \"Quando il loro nome viene pronunciato, il mondo si curva ad ascoltarlo.\" Tono: leggenda inquietante. (Tu DM sai che esistono. I PG no.)" },
+      { type: "info", label: "Ricerca 3 · Plia (se vanno lì)", content: "Successo: il Conte COLAN NYX colleziona uccelli rari. Voliera al piano superiore del palazzo. Un uccello raro come dono può aprire la porta più di mille monete d'oro." },
+      { type: "info", label: "Ricerca 3-bis · Dragonidi (se vanno a Nolborg)", content: "Successo: \"I dragonidi di stirpe rame, come Tarbunus, sono leali al sangue del giuramento. Una volta dato, mai lo rinnegheranno.\"" }
+    ]
+  },
+  {
+    n: 7,
+    title: "►► IPOTESI A · PLIA · Pronto se vanno qui",
+    sub: "Conte Colan Nyx · Le Catene del Piccolo.",
+    min: 40,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "USA QUESTO ATTO SE I PG VANNO A PLIA", content: "Tutto il materiale per gestire l'arrivo a Plia e l'approccio al Conte. Salta se vanno a Nolborg." },
+      { type: "scene", label: "L'arrivo a Plia", content: "Dopo 2 giorni di viaggio, Plia appare in fondo alla strada — città lacustre costruita su pali di legno scuro sul bordo di un grande lago. Tetti rossi, gabbiani, mercato sull'acqua, e un palazzo bianco e dorato in cima a una collina che domina tutto: il palazzo del Conte. Nei sobborghi, povertà evidente — bambini scalzi, mendicanti, donne che lavano panni nel lago. Nel centro città, ricchezza ostentata. Il contrasto è violento." },
+      { type: "scene", label: "Atmosfera della città", content: "Voci ovunque: il Conte ha aumentato le tasse di nuovo. Il Conte ha comprato un nuovo uccello esotico per la sua voliera. Il Conte non ha invitato nessuno alla festa di sua moglie morta dieci anni fa. La gente lo nomina sputando per terra." },
+      { type: "dialogue", label: "Una mendicante alla porta della città", content: '"Forestieri, eh? Se cercate il Conte, fila lunga. Lui non riceve. Se cercate il suo oro... uguale. Se cercate un letto e una zuppa, andate da Bartol. Cuoco del Conte. Locanda \'La Stella Rossa\' di sera. Lui ascolta. E a volte parla, se gli pagate il vino giusto."' },
+      { type: "info", label: "Le strade per arrivare al Conte (lascia decidere ai PG)", content: "1. CUOCO BARTOL · alla locanda La Stella Rossa la sera. Tradisce il Conte per soldi o per vendetta (gli ha negato un prestito per la moglie malata). Conosce porte segrete e ritmi del palazzo.\n2. VOLIERA · il Conte adora uccelli rari. Un dono raro = udienza facile. C'è un mercante esotico al porto (Vamil) che vende uccelli costosi.\n3. CONTATTO DI LAEL · l'Ordine degli Echi ha un agente locale (Mestra Bel, libraia). Può presentarli come studiosi in visita. Apre porta sociale ma non quella dello studio privato.\n4. FORZA · entrare di notte. Difficile ma possibile. Stealth pesante." },
+      { type: "scene", label: "Il palazzo di Colan Nyx", content: "Bianco e dorato fuori, ma all'interno si sente l'odore di cibo che marcisce nelle dispense, di profumi pesanti, di sudore di servi. Il Conte gira con un piccolo seguito: una segretaria (Drelia, fredda e competente), due guardie del corpo, un cane piccolo e grasso che lui chiama 'Principe'." },
+      { type: "dialogue", label: "Conte Colan Nyx · se ricevuti in udienza", content: '"Mh. Forestieri. Voi avete attraversato due giorni di strada per venire fino a me. Per cosa? Vediamo se mi convincete. Ma sappiate: io non regalo nulla. Mai. E le mie cose, le mie cose le tengo per me. Le mie cose sono mie. Anche le idee che ho dimenticato di aver avuto. Sono mie. Allora — di nuovo. Per cosa?"' },
+      { type: "warn", label: "Come piegarlo · leve possibili", content: "• ORGOGLIO: lodi sincere ma intelligenti, far credere che siano lì per imparare da lui\n• UCCELLO RARO: regalo che lo intriga. Lui aprirà la voliera per mostrarlo, e quella è l'unica volta in cui esce dallo studio\n• OFFERTA INTRIGANTE: oggetti rari (la lettera al Custode delle Fiamme Mute lo affascinerebbe — ma non vorrebbe perdere il libro in cambio)\n• MINACCIA SOTTILE: \"sappiamo cose di te che il popolo non sa ancora\" (rischioso, ha guardie)\n• INFILTRAZIONE: Bartol li introduce di notte attraverso le cucine" },
+      { type: "scene", label: "Lo studio privato del Conte", content: "Tre piani sopra. Porta di quercia con tre serrature. Dentro: scaffali di tomi, vetrinette con curiosità (un teschio cristallino, una piuma di fenice, una mano mummificata), una scrivania immensa. \"Le Catene del Piccolo\" è in uno scaffale alto, rilegato in cuoio nero, senza scritte sul dorso. Una runa appena visibile lo segna." },
+      { type: "info", label: "Trappole nello studio", content: "Se entrano di nascosto: 2 trappole. (1) Pavimento a pressione davanti alla scrivania — campanello d'allarme suona giù dalle guardie. DEX DC 14 per individuare. (2) Scatola di vetro sotto il libro — se sollevato senza disarmare, gas soporifero (COS DC 13 o sonno 1 minuto). Disinnesco DC 15." },
+      { type: "clue", label: "Cosa contengono Le Catene del Piccolo", content: "Trattato in lingua antica (Lael può leggere parzialmente, Alaric con check INT DC 14). Descrive un rituale a 7 fasi: cerchio di sale, 4 candele orientate ai venti, una piuma di Syrael, sangue di chi ha visto in faccia la creatura da intrappolare, una parola da pronunciare nella lingua della creatura. Non è specifico per Padithas. Era usato in antichità contro folletti demoniaci e creature fatate predatori. NON FUNZIONA CONTRO TUTTI — funziona se la creatura non si aspetta il rituale. Surprise factor essenziale." },
+      { type: "info", label: "Possibili complicazioni a Plia", content: "• Bartol viene scoperto dal Conte e ucciso — il party trova il suo corpo prima di arrivare al libro\n• La segretaria Drelia è in realtà un'agente del Piccolo che Ride — depista i PG, ruba il libro per primo\n• Il popolo di Plia, sentendo che dei forestieri sono contro il Conte, propone aiuto in cambio di una sollevazione (i PG NON sono qui per questo, ma è un'opzione)" },
+      { type: "info", label: "Premio e XP", content: "Recupero del libro = missione compiuta. Pagamento del duca: 300 mo a testa. Bonus se prendono il libro senza farsi scoprire: +100 mo. Bonus se preservano la vita di Bartol: respect alleato. XP suggerite: 400 a testa." }
+    ]
+  },
+  {
+    n: 8,
+    title: "►► IPOTESI B · NOLBORG · Pronto se vanno qui",
+    sub: "Tarbunus · l'accampamento del Piccolo.",
+    min: 40,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "info", label: "USA QUESTO ATTO SE I PG VANNO A NOLBORG", content: "Tutto il materiale per gestire l'arrivo a Nolborg e l'attacco all'accampamento. Salta se vanno a Plia." },
+      { type: "scene", label: "L'arrivo a Nolborg", content: "Dopo 1 giorno di viaggio, Nolborg si apre tra le piane di pietra rossa — città-fucina di pietra scura, costruita su una vena geotermica. L'aria è calda anche di sera. Camini fumano ovunque, fuochi accesi a tutte le ore, il rumore costante di martelli che battono. Odore di metallo arroventato, di carbone, di sudore onesto." },
+      { type: "scene", label: "La fucina di Tarbunus", content: "La sua fucina è la più grande della città. Lui è un dragonide di stirpe rame — scaglie color bronzo opaco, occhi gialli, alto 2 metri e mezzo, mani enormi callose. Quando li vede, posa il martello con cura e si pulisce le mani in un panno." },
+      { type: "dialogue", label: "Tarbunus · grave, voce profonda", content: '"Sapevo che il duca vi avrebbe mandati. Vi aspettavo. Vek vi ha detto del cultista morto?" — annuisce alla risposta — "Ce ne sono stati altri due da quando Vek è partito. Uno trovato vicino al fiume con la gola tagliata. Uno appeso a un albero nel suo giardino. Stessi marchi, stesso modo. Qualcuno dentro il loro accampamento li sta pulendo. Forse Padithas stesso. Forse un nemico. Dobbiamo sbrigarci, o quando arriveremo non ci sarà nessuno vivo da interrogare."' },
+      { type: "scene", label: "Identificazione degli oggetti misteriosi (se li mostrano)", content: "Tarbunus li esamina uno per uno. La lettera al Custode delle Fiamme Mute: \"Le Fiamme Mute. Vecchia organizzazione di assassini politici. Pensavo fossero estinti. Stiletto in mano sbagliata cambia un re. Tenete questa lettera segreta.\" La chiave d'ottone numero 17: \"Una chiave di catalogazione gnomica. Numero 17. Apre... una serratura specifica in qualche archivio gnomico. Non so quale. Yotta forse, ma ci sono mille archivi.\" Il guanto col sigillo (occhio chiuso in triangolo): \"Mai visto. Antico, però. Ricamato a mano, costoso. L'occhio chiuso simbolo di vigilanza interna — qualcosa che si guarda dentro più che fuori. Stranissimo.\"" },
+      { type: "scene", label: "Il viaggio all'accampamento", content: "Tarbunus stesso li guida (o manda Vek con loro se preferisce restare in città). Mezza giornata di cammino verso sud — colline che diventano valli, una piccola valle nascosta tra rocce alte. L'aria si fa più ferma. Niente uccelli." },
+      { type: "scene", label: "L'ingresso dell'accampamento", content: "Una piccola caverna naturale ampliata dai cultisti. Davanti all'ingresso, un finto altarino di Syrael (camuffaggio per pellegrini sviati — tre piume intrecciate, ma una è incrinata in modo sbagliato). Dietro all'altarino, un muro che sembra solido ma è ARCANO ILLUSORIO (DC 15 Indagare per vedere la fessura, o tocca per attraversare con CHA save DC 13)." },
+      { type: "info", label: "Composizione del culto (~20 persone)", content: "1 capo · OSTAN VREK (ex sacerdote di Syrael caduto, ora servo di Padithas per rancore)\n2 cultisti anziani (luogotenenti, magia minore)\n12-14 cultisti semplici (combattenti, riti)\n3-4 'marchiati' (fanatici col motto, si suicidano se catturati)\n1-2 piccoli demoni evocati di guardia" },
+      { type: "info", label: "Layout della caverna (per la mappa)", content: "1. INGRESSO con finto altarino + muro arcano illusorio\n2. VESTIBOLO · 2 guardie, porta a rune\n3. SALA DEI NOVIZI · dormitorio rozzo, SCRIGNO NASCOSTO sotto un'asse del pavimento (Indagare DC 13)\n4. SALA DEI RITI · cerchio rituale, altare, MURO ARCANO ILLUSORIO che mostra fine caverna ma dietro c'è il santuario\n5. SANTUARIO DI PADITHAS · altare, simbolo del Piccolo, SCRIGNO PROTETTO (trappola magica DC 15 o glifo di fuoco 3d6) con: anello identico a quello dei PG, lista nomi iniziati nella regione, due CHIAVI D'OTTONE numerate 7 e 23\n6. STANZA DEL CAPO · PORTA SEGRETA dietro un arazzo (Percezione DC 14). Dentro: scrivania, lettere, diario con info sul culto regionale, MISSIVA: \"Plia è informata. Il governante non collabora — ma il suo cuoco sì.\"\n7. CELLA · prigioniero vivo (minatore catturato per errore — liberare per ricompensa)\n8. USCITA SEGRETA · tunnel verso fiume sotterraneo (se l'accampamento li sopraffa, o se vuoi che Ostan scappi)" },
+      { type: "dialogue", label: "Ostan Vrek · se catturato vivo", content: '"Servire Syrael... pregare il vento... il vento non ascolta. Mai ascoltato. Mai. Il Piccolo invece ride sempre. Almeno ride con me. Voi non capite. Voi che credete ancora alle piume intrecciate. Voi siete i fortunati." — poi, se intimidito o convinto a parlare sul rituale per intrappolare Padithas — "Le Catene? Ho sentito parlarne. Funziona se si rinnega il giuramento prima. Io ho rinnegato Syrael, e ora servo lui. Posso rinnegare anche lui, sì... ma quel giorno io morirò della morte che lui mi sceglierà. Sceglierà bene. Lui sceglie sempre bene."' },
+      { type: "warn", label: "I marchiati e il motto", content: "Se i PG catturano un marchiato e lo interrogano, lui pronuncia il motto: \"IL PICCOLO RIDE. NOI SIAMO IL SUO RISO.\" Poi si morde la lingua e muore. Gesto rituale: due dita alla bocca, poi al cuore." },
+      { type: "info", label: "Premio e XP", content: "Distruzione/scoperta dell'accampamento = missione compiuta. Pagamento del duca: 300 mo a testa. Bonus se catturano vivo Ostan: +100 mo + info preziose. Bonus se liberano il minatore: respect a Nolborg. Bottino: armi cultiste (basic), un libretto di rituali (basso valore), le 2 chiavi d'ottone (7 e 23), la missiva su Plia. XP suggerite: 400 a testa." }
+    ]
+  },
+  {
+    n: 9,
+    title: "Chiusura",
+    sub: "Fine sessione.",
+    min: 15,
+    elapsed: 0,
+    done: false,
+    blocks: [
+      { type: "scene", label: "Chiusura · varianti", content: "VARIANTE PLIA: la nave del ritorno li porta lentamente sul lago al tramonto. Hanno il libro. Lael lo apre con cura, accarezza la copertina come uno che ha trovato un amico antico. Da qualche parte, lontano, qualcuno ride.\nVARIANTE NOLBORG: usciti dalla caverna, il sole è basso. Tarbunus aspetta all'imbocco della valle con un boccale d'acqua e un saluto stanco. Da qualche parte, lontano, qualcuno ride.\nFINE SESSIONE 9." },
+      { type: "info", label: "XP base", content: "Roleplay nuovi PG: 150 · Missione completata: 400 · Bonus situazionali (vedi singola ipotesi): variabili · Ricerche biblioteca riuscite: +50 ciascuna · Indizio Vane raccolto a Bremo: +50." }
+    ]
+  }
+];
+
+// ==================== STORAGE ====================
+function save() {
+  try {
+    const data = {
+      ...state,
+      sessionTitle: document.querySelector('.session-title').textContent,
+      sessionSub: document.querySelector('.session-sub').textContent,
+      headerTitle: document.querySelector('.header h1').textContent,
+      headerSub: document.querySelector('.header .sub').textContent
+    };
+    localStorage.setItem('dnd_editor', JSON.stringify(data));
+  } catch(e) { console.error(e); }
+}
+
+// Versione del contenuto. Cambia ogni volta che aggiorno DEFAULT_ACTS.
+const CONTENT_VERSION = "v9.2-plia-nolborg";
+
+function load() {
+  try {
+    const savedVersion = localStorage.getItem('dnd_editor_version');
+    const raw = localStorage.getItem('dnd_editor');
+
+    // Se la versione del contenuto è cambiata, ricarica i nuovi atti
+    // (preservando appunti, party HP e tracker anello)
+    if (savedVersion !== CONTENT_VERSION) {
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          // Preservo solo i dati personalizzati dell'utente
+          state.party = data.party || state.party;
+          state.notes = data.notes || "";
+          state.anel = data.anel || 0;
+          state.masterElapsed = data.masterElapsed || 0;
+        } catch(e) {}
+      }
+      // Ricarico SEMPRE gli atti nuovi
+      state.acts = JSON.parse(JSON.stringify(DEFAULT_ACTS));
+      localStorage.setItem('dnd_editor_version', CONTENT_VERSION);
+      console.log('Contenuto aggiornato alla versione ' + CONTENT_VERSION);
+      return;
+    }
+
+    // Stessa versione: carico tutto normalmente
+    if (raw) {
+      const data = JSON.parse(raw);
+      state.acts = data.acts || DEFAULT_ACTS;
+      state.party = data.party || state.party;
+      state.notes = data.notes || "";
+      state.anel = data.anel || 0;
+      state.masterElapsed = data.masterElapsed || 0;
+      if (data.sessionTitle) document.querySelector('.session-title').textContent = data.sessionTitle;
+      if (data.sessionSub) document.querySelector('.session-sub').textContent = data.sessionSub;
+      if (data.headerTitle) document.querySelector('.header h1').textContent = data.headerTitle;
+      if (data.headerSub) document.querySelector('.header .sub').textContent = data.headerSub;
+    } else {
+      state.acts = JSON.parse(JSON.stringify(DEFAULT_ACTS));
+    }
+  } catch(e) {
+    state.acts = JSON.parse(JSON.stringify(DEFAULT_ACTS));
+  }
+}
+
+// ==================== RENDERING ====================
+function render() {
+  renderActs();
+  renderParty();
+  document.getElementById('notes').value = state.notes;
+  updateAnel();
+  updateMaster();
+}
+
+function renderActs() {
+  const container = document.getElementById('acts');
+  container.innerHTML = '';
+  state.acts.forEach((act, ai) => {
+    const card = document.createElement('div');
+    card.className = 'act' + (act.done ? ' done' : '') + (act.open ? ' open' : '');
+    card.innerHTML = `
+      <div class="act-head" onclick="toggleAct(${ai})">
+        <div class="act-num">${act.n}</div>
+        <div class="act-title-block">
+          <div class="act-title editable" contenteditable="true" onclick="event.stopPropagation()" oninput="updateField(${ai}, 'title', this.textContent)">${act.title}</div>
+          <div class="act-sub editable" contenteditable="true" onclick="event.stopPropagation()" oninput="updateField(${ai}, 'sub', this.textContent)">${act.sub}</div>
+        </div>
+        <div class="act-time">${act.min} min</div>
+      </div>
+      <div class="act-body">
+        <div class="timer-row">
+          <span class="timer-clock" id="clock${ai}">${formatTime(act.min*60 - act.elapsed)}</span>
+          <div class="timer-bar"><div class="timer-fill" id="fill${ai}"></div></div>
+          <button class="small" onclick="startTimer(${ai})">▶</button>
+          <button class="small" onclick="pauseTimer(${ai})">❚❚</button>
+          <button class="small" onclick="markDone(${ai})">✓</button>
+          <button class="small" onclick="editDuration(${ai})">⏱</button>
+          <button class="small danger" onclick="delAct(${ai})">×</button>
+        </div>
+        <div id="blocks${ai}"></div>
+        <div class="add-block">
+          <span style="font-size:11px;color:var(--ink-dim);align-self:center;font-family:'Cinzel';letter-spacing:1px;">AGGIUNGI:</span>
+          ${Object.keys(BLOCK_TYPES).map(t => `<button onclick="addBlock(${ai}, '${t}')">${BLOCK_TYPES[t].label}</button>`).join('')}
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+    renderBlocks(ai);
+    updateTimer(ai);
+  });
+}
+
+function renderBlocks(ai) {
+  const container = document.getElementById('blocks'+ai);
+  container.innerHTML = '';
+  state.acts[ai].blocks.forEach((b, bi) => {
+    const div = document.createElement('div');
+    div.className = 'block ' + (BLOCK_TYPES[b.type]?.class || 'scene');
+    div.innerHTML = `
+      <div class="block-actions">
+        <button class="icon-btn" onclick="moveBlock(${ai},${bi},-1)" title="Su">↑</button>
+        <button class="icon-btn" onclick="moveBlock(${ai},${bi},1)" title="Giù">↓</button>
+        <button class="icon-btn del" onclick="delBlock(${ai},${bi})" title="Elimina">×</button>
+      </div>
+      <div class="block-label">
+        <span contenteditable="true" oninput="updateBlock(${ai},${bi},'label',this.textContent)">${b.label}</span>
+      </div>
+      <div class="block-content editable" contenteditable="true" oninput="updateBlock(${ai},${bi},'content',this.innerHTML)">${b.content}</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderParty() {
+  const container = document.getElementById('party');
+  container.innerHTML = '';
+  state.party.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'party-card';
+    card.innerHTML = `
+      <div class="party-name editable" contenteditable="true" oninput="updateParty(${i}, 'name', this.textContent)">${p.name}</div>
+      <div class="party-role editable" contenteditable="true" oninput="updateParty(${i}, 'role', this.textContent)">${p.role}</div>
+      <input type="text" placeholder="HP / status" value="${p.hp || ''}" oninput="updateParty(${i}, 'hp', this.value)" />
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ==================== AZIONI ====================
+function toggleAct(i) {
+  state.acts[i].open = !state.acts[i].open;
+  renderActs();
+}
+
+function updateField(ai, field, value) {
+  state.acts[ai][field] = value;
+  save();
+}
+
+function updateBlock(ai, bi, field, value) {
+  state.acts[ai].blocks[bi][field] = value;
+  save();
+}
+
+function updateParty(i, field, value) {
+  state.party[i][field] = value;
+  save();
+}
+
+function addAct() {
+  const n = state.acts.length + 1;
+  state.acts.push({
+    n: n,
+    title: `Atto ${n}`,
+    sub: "Sottotitolo",
+    min: 20,
+    elapsed: 0,
+    done: false,
+    open: true,
+    blocks: []
+  });
+  save();
+  renderActs();
+}
+
+function delAct(i) {
+  if (!confirm('Eliminare questo atto?')) return;
+  state.acts.splice(i, 1);
+  state.acts.forEach((a, idx) => a.n = idx + 1);
+  save();
+  renderActs();
+}
+
+function editDuration(i) {
+  const m = prompt('Minuti per questo atto:', state.acts[i].min);
+  if (m !== null) {
+    state.acts[i].min = parseInt(m) || 20;
+    save();
+    renderActs();
+  }
+}
+
+function addBlock(ai, type) {
+  state.acts[ai].blocks.push({
+    type: type,
+    label: BLOCK_TYPES[type].label,
+    content: "Scrivi qui..."
+  });
+  state.acts[ai].open = true;
+  save();
+  renderActs();
+}
+
+function delBlock(ai, bi) {
+  state.acts[ai].blocks.splice(bi, 1);
+  save();
+  renderBlocks(ai);
+}
+
+function moveBlock(ai, bi, dir) {
+  const blocks = state.acts[ai].blocks;
+  const ni = bi + dir;
+  if (ni < 0 || ni >= blocks.length) return;
+  [blocks[bi], blocks[ni]] = [blocks[ni], blocks[bi]];
+  save();
+  renderBlocks(ai);
+}
+
+function markDone(ai) {
+  state.acts[ai].done = !state.acts[ai].done;
+  save();
+  renderActs();
+  if (state.acts[ai].done && ai + 1 < state.acts.length) {
+    state.acts[ai+1].open = true;
+    renderActs();
+  }
+}
+
+// ==================== TIMER ====================
+let timerIntervals = {};
+
+function startTimer(ai) {
+  if (timerIntervals[ai]) return;
+  timerIntervals[ai] = setInterval(() => {
+    state.acts[ai].elapsed++;
+    updateTimer(ai);
+    save();
+  }, 1000);
+}
+
+function pauseTimer(ai) {
+  if (timerIntervals[ai]) {
+    clearInterval(timerIntervals[ai]);
+    delete timerIntervals[ai];
+  }
+}
+
+function updateTimer(ai) {
+  const act = state.acts[ai];
+  const total = act.min * 60;
+  const remaining = total - act.elapsed;
+  const clock = document.getElementById('clock' + ai);
+  const fill = document.getElementById('fill' + ai);
+  if (!clock) return;
+  if (remaining < 0) {
+    clock.textContent = "+" + formatTime(Math.abs(remaining));
+    clock.classList.add('over');
+  } else {
+    clock.textContent = formatTime(remaining);
+    clock.classList.remove('over');
+  }
+  const pct = Math.min(100, (act.elapsed / total) * 100);
+  fill.style.width = pct + '%';
+  fill.classList.toggle('over', act.elapsed > total);
+}
+
+// ==================== MASTER TIMER ====================
+let masterInterval = null;
+function toggleMaster() {
+  const btn = document.getElementById('masterBtn');
+  if (masterInterval) {
+    clearInterval(masterInterval);
+    masterInterval = null;
+    state.masterRunning = false;
+    btn.textContent = '▶ Riprendi';
+  } else {
+    masterInterval = setInterval(() => {
+      state.masterElapsed++;
+      updateMaster();
+      save();
+    }, 1000);
+    state.masterRunning = true;
+    btn.textContent = '❚❚ Pausa';
+  }
+}
+
+function updateMaster() {
+  document.getElementById('masterTime').textContent = formatTime(state.masterElapsed) + ' / 2:30:00';
+  const pct = Math.min(100, (state.masterElapsed / (150*60)) * 100);
+  document.getElementById('masterFill').style.width = pct + '%';
+}
+
+function resetMaster() {
+  if (!confirm('Reset del cronometro?')) return;
+  if (masterInterval) clearInterval(masterInterval);
+  masterInterval = null;
+  state.masterElapsed = 0;
+  state.masterRunning = false;
+  document.getElementById('masterBtn').textContent = '▶ Avvia';
+  updateMaster();
+  save();
+}
+
+// ==================== ANELLO ====================
+function changeAnel(delta) {
+  state.anel = Math.max(0, state.anel + delta);
+  updateAnel();
+  save();
+}
+
+function updateAnel() {
+  document.getElementById('anelCount').textContent = state.anel;
+  const phaseEl = document.getElementById('anelPhase');
+  if (state.anel === 0) phaseEl.textContent = "Nessun uso";
+  else if (state.anel <= 3) phaseEl.textContent = "Fase 1 · sogni inquieti, formicolio notturno";
+  else if (state.anel <= 7) phaseEl.textContent = "Fase 2 · pietra si scurisce, dito perde sensibilità";
+  else phaseEl.textContent = "⚠ Fase 3 · NECROSI · dito che non risponde";
+}
+
+// ==================== UTILITY ====================
+function formatTime(s) {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function exportData() {
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sessione_dnd.json';
+  a.click();
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        state = data;
+        save();
+        location.reload();
+      } catch(e) { alert('File non valido'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function resetAll() {
+  if (!confirm('Sicuro? Tutto verrà cancellato.')) return;
+  localStorage.removeItem('dnd_editor');
+  location.reload();
+}
+
+// ==================== INIT ====================
+load();
+render();
+document.getElementById('notes').addEventListener('input', (e) => {
+  state.notes = e.target.value;
+  save();
+});
+
+// Auto-open primo atto se nessuno è aperto
+if (state.acts.length > 0 && !state.acts.some(a => a.open)) {
+  state.acts[0].open = true;
+  renderActs();
+}
+
+// Riprendi master timer se era attivo
+if (state.masterRunning) {
+  toggleMaster();
+}
+</script>
+</body>
+</html>

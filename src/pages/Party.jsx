@@ -52,6 +52,7 @@ const PARTIES = [
       { name: "Temistocle Sottocolle",  race: "Halfling piede lesto",  class: "Stregone", image: "/assets/player/Temistocle.jpeg" },
       { name: "Alaric Voltasorte",      race: "Halfling",              class: "Warlock", image: "/assets/player/alaric.png" },
       { name: "Lael",                   race: "Alto Elfo",             class: "Mago",     image: "/assets/player/lael.jpg" },
+      { name: "Kael & Mora",                 race: "Hexblood",                class: "??", image: "/assets/player/.png" }, 
     ],
   },
   {

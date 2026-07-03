@@ -1,17 +1,19 @@
 // ================================================================
 // MACRO FOUNDRY: Crea NPC dal sito → Foundry  (Exanthia Web)
 // ================================================================
-// Gemella della macro oggetti, ma per gli ATTORI. Legge la coda
-// `foundry_npc_inbox` su Firestore (gli NPC "preparati" dalla pagina
-// "Prepara NPC → Foundry" sul sito) e li CREA come Attori dnd5e di
-// tipo "npc" nella Directory Attori del mondo.
+// Legge la coda `foundry_npc_inbox` su Firestore (gli NPC "preparati"
+// dalla pagina "Prepara NPC → Foundry" sul sito) e li CREA come Attori
+// dnd5e di tipo "npc" nella Directory Attori del mondo.
 // Dopo aver creato un NPC, lo RIMUOVE dalla coda.
 //
-// USO: lanciala come GM quando vuoi importare gli NPC in coda.
-// (Funziona identica su Foundry online: gira nel tuo browser.)
+// USO:
+//   1) Metti sotto projectId e apiKey (GLI STESSI della macro oggetti).
+//   2) Incolla tutto in una nuova macro di tipo "script" in Foundry.
+//   3) Lanciala come GM: importa gli NPC in coda con nome e ritratto.
+//      (Le stat restano ai default: crea NPC "vuoti" da rifinire a mano.)
 //
-// NB: è una collezione SEPARATA da quella oggetti, così le due macro
-//     non si pestano i piedi. Puoi tenerle entrambe.
+// NB: collezione SEPARATA da quella oggetti, così le due macro non si
+//     pestano i piedi. Puoi tenerle entrambe.
 // ================================================================
 
 // --- CONFIGURAZIONE FIREBASE (uguale all'altra macro) ---
@@ -135,9 +137,9 @@ function buildNpcData(d) {
   for (const d of pending) {
     try {
       const { actor, items } = buildNpcData(d);
-      const created_actor = await Actor.create(actor);
-      if (created_actor && items.length) {
-        await created_actor.createEmbeddedDocuments("Item", items);
+      const createdActor = await Actor.create(actor);
+      if (createdActor && items.length) {
+        await createdActor.createEmbeddedDocuments("Item", items);
       }
       console.log(`[Import NPC] "${d.name}" creato (CA ${actor.system.attributes.ac.flat}, PF ${actor.system.attributes.hp.max}).`);
 
