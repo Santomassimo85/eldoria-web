@@ -32,6 +32,7 @@ import {
   rollDie, rollFormula, rollFormulaParts, detectSpellIntent, detectElement, actionRange, battleActions,
   spellAoE, aoeCells, SAVE_LABEL, sneakAttackDice, isAutoHitSpell, magicMissileDarts, isBonusAction,
 } from "./battleModel";
+import { notifyUsers } from "../../utils/notify";
 import "./BossTactics.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -619,6 +620,25 @@ export default function BossTactics() {
     await logChat({ type: "narrative", senderName: "Master", uid: BOSS_SYSTEM_UID, side: "enemy", content: bossMsg, isSystem: true });
     setBossMsg("");
   };
+  // Uid dei giocatori-eroe ancora vivi (esclude nemici, morti e unità IA).
+  const livingHeroUids = (units) => (units || [])
+    .filter((u) => u.side === "hero" && u.kind === "player" && !u.dead && u.uid)
+    .map((u) => u.uid);
+  // Push agli Eroi quando comincia il loro turno: crea i doc in `notifications`,
+  // che la Cloud Function pushOnNotification trasforma in push su webapp/OS.
+  const notifyHeroesTurn = async (uids, round) => {
+    const entries = [...new Set(uids || [])]
+      .filter((u) => u && u !== BOSS_SYSTEM_UID && !String(u).startsWith("ai_"))
+      .map((uid) => ({
+        uid,
+        title: "⚔️ World Boss — turno degli Eroi",
+        message: round
+          ? `Round ${round}: è il turno degli Eroi nel World Boss. Entra in battaglia e agisci prima che scada il tempo.`
+          : "La battaglia è iniziata: è il turno degli Eroi. Entra in battaglia e agisci prima che scada il tempo.",
+        link: "/world-boss-fight",
+      }));
+    if (entries.length) await notifyUsers(entries);
+  };
   const startFight = async () => {
     // Master kicks the fight straight into round 1 (heroes' phase). No initiative
     // wait — free-order play needs no turn order. Heroes act over the next 3h, in
@@ -629,6 +649,8 @@ export default function BossTactics() {
     });
     await logChat({ type: "narrative", senderName: "SISTEMA", uid: BOSS_SYSTEM_UID, isSystem: true,
       content: `⚔️ La battaglia ha inizio! Turno degli Eroi — avete ${fmtPhase(PLAYER_PHASE_MS)} per agire (in qualsiasi ordine).` });
+    // Avvisa via push tutti gli eroi che è il loro turno.
+    await notifyHeroesTurn(livingHeroUids(battle?.units), 1);
   };
 
   // ── TEST ONLY: master forces which side plays now ─────────────────────────
@@ -647,6 +669,7 @@ export default function BossTactics() {
       content: incoming === "players"
         ? "🛡️ (Test) Turno degli Eroi forzato dal Master."
         : "👹 (Test) Turno dei Nemici forzato dal Master." });
+    if (incoming === "players") await notifyHeroesTurn(livingHeroUids(battle?.units), battle?.round);
   };
 
   // Master: heal every living hero back to full HP in one click (the HP-delta
@@ -713,7 +736,11 @@ export default function BossTactics() {
       const round = incoming === "players" ? (d.round || 1) + 1 : (d.round || 1);
       const ms = incoming === "players" ? PLAYER_PHASE_MS : ENEMY_PHASE_MS;
       tx.update(ref, { units: next, phase: incoming, round, phaseDeadline: Date.now() + ms });
-      return { to: incoming, round, forced: force, hazards };
+      // Eroi vivi all'apertura della loro fase (post-danni da terreno): destinatari della push.
+      const heroUids = incoming === "players"
+        ? next.filter((u) => u.side === "hero" && u.kind === "player" && !u.dead && u.uid).map((u) => u.uid)
+        : [];
+      return { to: incoming, round, forced: force, hazards, heroUids };
     });
     if (!res) return res;            // log OUTSIDE the txn (which may retry)
     if (res.over) {
@@ -730,6 +757,9 @@ export default function BossTactics() {
       content: res.to === "players"
         ? `🛡️ Round ${res.round} — turno degli Eroi (${fmtPhase(PLAYER_PHASE_MS)})${res.forced ? " · tempo nemici scaduto" : ""}`
         : `👹 Turno dei Nemici (${fmtPhase(ENEMY_PHASE_MS)})${res.forced ? " · tempo eroi scaduto" : ""}` });
+    // Push agli Eroi quando comincia il loro turno (solo il client che ha vinto la
+    // transazione arriva qui, quindi la notifica parte una volta sola).
+    if (res.to === "players") await notifyHeroesTurn(res.heroUids, res.round);
     return res;
   };
 
