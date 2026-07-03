@@ -915,20 +915,20 @@ const WARLOCK_DEMONS = {
   },
   succubus: {
     key: "succubus", name: "Succubus", icon: "💋",
-    info: "Ammalia il nemico · TS CAR (CD 13) · fallisce 3t + svantaggio 3t · supera 1t + svantaggio 2t · 2 cariche",
+    info: "Bonus action · Ammalia il nemico · TS CAR (CD 13) · fallisce 3t + svantaggio 3t · supera 1t + svantaggio 2t · 2 cariche",
     action: {
       name: "Bacio della Succubus", hitBonus: 0, damage: "—", statKey: null,
-      type: "skill", icon: "💋", info: "TS CAR (CD 13) · fallisce: salta 3t + svantaggio 3t · supera: salta 1t + svantaggio 2t · 2 cariche",
-      special: "demon_succubus", saveAbility: "cha", saveDC: 13, maxUses: 2,
+      type: "skill", icon: "💋", info: "Bonus Action · TS CAR (CD 13) · fallisce: salta 3t + svantaggio 3t · supera: salta 1t + svantaggio 2t · 2 cariche",
+      special: "demon_succubus", saveAbility: "cha", saveDC: 13, maxUses: 2, bonusAction: true,
     },
   },
   demon: {
     key: "demon", name: "Demone Maggiore", icon: "👹",
-    info: "Drena 2d12 PF dal bersaglio · cura il warlock per la stessa quantità · 2 cariche",
+    info: "Bonus action · Drena 2d12 PF dal bersaglio · cura il warlock per la stessa quantità · 2 cariche",
     action: {
       name: "Drenaggio Demoniaco", hitBonus: 0, damage: "2d12", statKey: null,
-      type: "skill", icon: "👹", info: "2d12 danni auto-hit · cura il warlock per la stessa quantità · 2 cariche",
-      special: "demon_greater", maxUses: 2,
+      type: "skill", icon: "👹", info: "Bonus Action · 2d12 danni auto-hit · cura il warlock per la stessa quantità · 2 cariche",
+      special: "demon_greater", maxUses: 2, bonusAction: true,
     },
   },
 };

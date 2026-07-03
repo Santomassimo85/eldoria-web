@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "82",
+      "date": "2026-07-03",
+      "title": "Arena · Warlock: demoni come bonus action",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Arena: il Warlock ora può evocare Succubus e Demone Maggiore come azione bonus (come già il Mephit e come fa il Ranger con i suoi compagni), tenendo l'azione principale per attaccare o lanciare."
+        }
+      ]
+    },
+    {
       "version": "81",
       "date": "2026-07-03",
       "title": "Immagini dei riassunti: personaggi più fedeli",
