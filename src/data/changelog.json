@@ -1,6 +1,51 @@
 {
   "versions": [
     {
+      "version": "77",
+      "date": "2026-07-03",
+      "title": "Generatore Sessioni DM (strumento interno)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuovo strumento privato del Master: generatore di sessioni per i party (AMEA/LEAF/ENOX). Da un focus e pochi parametri crea la prep completa della sessione in stile 'Cronache', con archivio consultabile per gruppo. Riservato al Master."
+        }
+      ]
+    },
+    {
+      "version": "76",
+      "date": "2026-07-03",
+      "title": "Scriptorium: stili immagine, rigenera e ordine galleria",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Generazione immagini di scena: aggiunta la scelta tra tre stili — Dark fantasy comic, Acquerello, Epico — selezionabile prima di generare."
+        },
+        {
+          "type": "feature",
+          "text": "Il tasto per generare un'immagine di scena è ora anche dentro l'editor del riassunto: si apre il riassunto in modifica e si genera direttamente da lì."
+        },
+        {
+          "type": "feature",
+          "text": "Ogni immagine generata apre un'anteprima 'Tieni / Rigenera': si può confermare, rigenerarne una nuova (scena o stile diversi) o annullare senza salvare. Nella galleria dell'editor ogni immagine ha inoltre un tasto ♻️ per rigenerarla al suo posto."
+        },
+        {
+          "type": "feature",
+          "text": "Le immagini della galleria di un riassunto si possono riordinare con le frecce ◀ ▶; il nuovo ordine viene salvato con 'Salva modifiche'."
+        }
+      ]
+    },
+    {
+      "version": "75",
+      "date": "2026-07-03",
+      "title": "Scriptorium: immagine di scena per ogni riassunto",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nell'archivio dei riassunti (pannello DM) ogni cronaca ha ora un tasto 🎨 che genera un'immagine da un momento a caso del testo e la aggiunge in fondo al riassunto, insieme alle altre. La scena viene illustrata usando gli avatar dei personaggi del gruppo come riferimento."
+        }
+      ]
+    },
+    {
       "version": "74.02",
       "date": "2026-07-02",
       "title": "Cronaca DM: 'Scena diversa' propone scene differenti",

@@ -14,10 +14,12 @@ import {
 import {
   ref as storageRef,
   uploadBytes,
+  uploadString,
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
+import { membersOf } from "../data/partyMembers";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 // Email autorizzate a gestire i riassunti di sessione (master + collaboratore).
@@ -158,7 +160,49 @@ const MultiDropZone = ({ uploading, onFiles, label = "Trascina immagini per la g
 };
 
 const partyColor = (key) => PARTIES.find((p) => p.key === key)?.color || "#888";
+const rosterOf = (key) => PARTIES.find((p) => p.key === key)?.roster || "";
 const stripHtml = (html) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+// Stili disponibili per l'immagine di scena. La chiave viene scelta dal DM
+// prima di generare; il suffisso guida il modello d'immagine.
+const SCENE_STYLES = {
+  comic: {
+    label: "Dark fantasy comic",
+    icon: "🖋",
+    suffix:
+      "Dark-fantasy comic-book / graphic-novel art, bold inked outlines, dramatic cel shading, high-contrast moody lighting, gritty atmosphere, rich saturated accents.",
+  },
+  watercolor: {
+    label: "Acquerello",
+    icon: "🎨",
+    suffix:
+      "Traditional watercolor fantasy illustration, soft flowing washes and bleeding pigments, delicate ink linework, luminous paper grain, muted earthy palette, dreamy hand-painted feel.",
+  },
+  epic: {
+    label: "Epico",
+    icon: "⚔️",
+    suffix:
+      "Epic cinematic fantasy oil painting, sweeping dramatic composition, volumetric god-rays, grand heroic scale, painterly brushwork, rich depth and detail like a classical masterwork.",
+  },
+};
+const styleOf = (key) => SCENE_STYLES[key] || SCENE_STYLES.comic;
+const scenePromptFull = (scena, styleKey) =>
+  `${String(scena || "").trim()}. ${styleOf(styleKey).suffix} No text, no lettering, no speech bubbles, no frame, no border.`;
+
+// Converte un avatar (anche asset relativo) in data URL ridotto: i path
+// relativi non sono scaricabili lato server, così viaggiano inline e leggeri.
+async function refToDataUrl(url) {
+  const resp = await fetch(url);
+  const blob = await resp.blob();
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * scale));
+  const h = Math.max(1, Math.round(bmp.height * scale));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  cv.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  return cv.toDataURL("image/jpeg", 0.85);
+}
 
 export default function SummaryAdmin() {
   const { currentUser } = useAuth();
@@ -176,6 +220,16 @@ export default function SummaryAdmin() {
 
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+
+  // Generazione immagine di scena (per-riassunto): id del riassunto in lavorazione.
+  const [sceneBusyId, setSceneBusyId] = useState(null);
+  // Stile scelto per la generazione (dark fantasy comic · acquerello · epico).
+  const [sceneStyle, setSceneStyle] = useState("comic");
+  // Anteprima "tieni / rigenera": tiene l'immagine generata PRIMA di salvarla.
+  // { summaryId, index (null=accoda / n=sostituisci), scena, dataUrl, style }
+  const [pending, setPending] = useState(null);
+  // Cache degli avatar-riferimento per gruppo (evita di riscaricarli a ogni rigenera).
+  const refsCache = useRef({});
 
   useEffect(() => {
     if (!canEditSummaries(currentUser)) return;
@@ -277,6 +331,17 @@ export default function SummaryAdmin() {
     cleanupStorageUrl(url);
   };
 
+  /* Sposta un'immagine nella galleria (◀ / ▶). dir = -1 sinistra, +1 destra. */
+  const moveGalleryImage = (idx, dir) => {
+    setFormData((d) => {
+      const imgs = [...(d.images || [])];
+      const j = idx + dir;
+      if (j < 0 || j >= imgs.length) return d;
+      [imgs[idx], imgs[j]] = [imgs[j], imgs[idx]];
+      return { ...d, images: imgs };
+    });
+  };
+
   /* ── Form handlers ── */
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -355,6 +420,149 @@ export default function SummaryAdmin() {
     setEditingId(summary.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  /* ── Genera un'immagine da una scena a caso del riassunto ──
+     1) Claude sceglie un momento vivido del testo e ne fa un prompt (EN),
+        coinvolgendo i PG del gruppo. 2) Gemini disegna la scena usando gli
+        avatar del party come riferimento. 3) l'immagine si accoda alle
+        `images` del riassunto (in fondo, con le altre della galleria). */
+  const uploadSceneDataUrl = async (dataUrl) => {
+    const path = `summaries/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-scena.jpg`;
+    const ref = storageRef(storage, path);
+    await uploadString(ref, dataUrl, "data_url");
+    return await getDownloadURL(ref);
+  };
+
+  // Avatar-riferimento dei PG del gruppo (con cache per gruppo).
+  const getPartyRefs = async (party) => {
+    if (refsCache.current[party]) return refsCache.current[party];
+    const refs = [];
+    for (const m of membersOf(party)) {
+      try { refs.push(await refToDataUrl(m.image)); } catch { /* avatar saltato */ }
+    }
+    refsCache.current[party] = refs;
+    return refs;
+  };
+
+  // Pipeline pura: estrae una scena e ne genera il DATA URL (non salva nulla).
+  // Ritorna { scena, dataUrl }. Aggiorna lo status a scopo informativo.
+  const runScenePipeline = async (summary, styleKey) => {
+    const testo = stripHtml(summary.content);
+    if (!testo) throw new Error("Il riassunto non ha testo da illustrare.");
+
+    // 1) Estrai una scena a caso dal testo (prompt in inglese).
+    setStatus("🎬 Estraggo una scena dal riassunto…");
+    const rScena = await fetch("/api/estrai-scena", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        content: testo,
+        roster: rosterOf(summary.party),
+        party: summary.party,
+      }),
+    });
+    const dScena = await rScena.json();
+    if (dScena.error) throw new Error(dScena.error);
+    const scena = String(dScena.scena || "").trim();
+    if (!scena) throw new Error("Nessuna scena estratta.");
+
+    // 2) Avatar dei PG del gruppo → data URL come riferimento visivo.
+    setStatus(`🖌 Disegno la scena (${styleOf(styleKey).label})…`);
+    const refs = await getPartyRefs(summary.party);
+
+    // 3) Genera l'immagine con lo stile scelto.
+    const rImg = await fetch("/api/genera-immagine", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: scenePromptFull(scena, styleKey), refs }),
+    });
+    const dImg = await rImg.json();
+    if (dImg.error) throw new Error(dImg.error);
+    if (!dImg.immagine) throw new Error("Nessuna immagine ricevuta.");
+
+    return { scena, dataUrl: dImg.immagine };
+  };
+
+  // Avvia una generazione → apre l'anteprima "tieni / rigenera".
+  // index null = accoda; numero = sostituirà quella posizione della galleria.
+  const startSceneGeneration = async (summary, index = null) => {
+    if (sceneBusyId || pending) return;
+    setSceneBusyId(summary.id);
+    try {
+      const { scena, dataUrl } = await runScenePipeline(summary, sceneStyle);
+      setPending({ summaryId: summary.id, index, scena, dataUrl, style: sceneStyle });
+      setStatus("");
+    } catch (e) {
+      setStatus(`❌ Errore immagine: ${e.message}`);
+    } finally {
+      setSceneBusyId(null);
+    }
+  };
+
+  // Rigenera l'immagine nell'anteprima (scena e/o stile diversi) senza salvare.
+  const regeneratePending = async () => {
+    if (!pending || sceneBusyId) return;
+    const summary = summaries.find((s) => s.id === pending.summaryId);
+    if (!summary) return;
+    setSceneBusyId(summary.id);
+    try {
+      const { scena, dataUrl } = await runScenePipeline(summary, pending.style);
+      setPending((p) => (p ? { ...p, scena, dataUrl } : p));
+      setStatus("");
+    } catch (e) {
+      setStatus(`❌ Errore immagine: ${e.message}`);
+    } finally {
+      setSceneBusyId(null);
+    }
+  };
+
+  // Conferma l'anteprima: carica su storage e salva (accoda o sostituisce).
+  const commitPending = async () => {
+    if (!pending || sceneBusyId) return;
+    const p = pending;
+    setSceneBusyId(p.summaryId);
+    try {
+      const url = await uploadSceneDataUrl(p.dataUrl);
+      const editingThis = isEditing && editingId === p.summaryId;
+      const summary = summaries.find((s) => s.id === p.summaryId);
+      const base = editingThis
+        ? (formData.images || [])
+        : (Array.isArray(summary?.images) ? summary.images : []);
+
+      let nextImages;
+      if (p.index == null) {
+        nextImages = [...base, url];
+      } else {
+        nextImages = [...base];
+        const old = nextImages[p.index];
+        nextImages[p.index] = url;
+        if (old) cleanupStorageUrl(old); // ripulisci l'immagine sostituita
+      }
+
+      await updateDoc(doc(db, "summaries", p.summaryId), {
+        images: nextImages,
+        updatedAt: new Date().toISOString(),
+      });
+      if (editingThis) setFormData((d) => ({ ...d, images: nextImages }));
+
+      setStatus(`✅ Immagine ${p.index == null ? "aggiunta" : "rigenerata"}${summary ? ` in "${summary.title}"` : ""}.`);
+      setPending(null);
+    } catch (e) {
+      setStatus(`❌ Errore salvataggio: ${e.message}`);
+    } finally {
+      setSceneBusyId(null);
+    }
+  };
+
+  // Scarta l'anteprima senza salvare nulla.
+  const discardPending = () => {
+    if (sceneBusyId) return;
+    setPending(null);
+    setStatus("");
+  };
+
+  // Cambia stile all'interno dell'anteprima (avrà effetto al prossimo "Rigenera").
+  const setPendingStyle = (key) => setPending((p) => (p ? { ...p, style: key } : p));
 
   /* ── Derived data ── */
   const stats = useMemo(() => {
@@ -522,26 +730,91 @@ export default function SummaryAdmin() {
 
             <div className="sumadm-field">
               <label>Galleria immagini (mostrate alla fine del riassunto)</label>
+              {isEditing && editingId && (
+                <div className="sumadm-scene-gen">
+                  <button
+                    type="button"
+                    className="sumadm-btn primary"
+                    disabled={!!sceneBusyId || !!pending}
+                    onClick={() => startSceneGeneration(
+                      summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
+                    )}
+                  >
+                    {sceneBusyId === editingId ? "⏳ Genero…" : `🎨 Genera immagine di scena (${styleOf(sceneStyle).label})`}
+                  </button>
+                  <div className="sumadm-scene-gen-styles">
+                    {Object.entries(SCENE_STYLES).map(([key, s]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`sumadm-style-chip ${sceneStyle === key ? "on" : ""}`}
+                        disabled={!!sceneBusyId || !!pending}
+                        onClick={() => setSceneStyle(key)}
+                      >
+                        <span aria-hidden>{s.icon}</span> {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <small className="sumadm-gallery-hint">
+                    Estrae una scena a caso dal testo e la illustra con i PG del gruppo. Potrai tenerla o rigenerarla.
+                  </small>
+                </div>
+              )}
               <MultiDropZone
                 uploading={galleryUploading}
                 onFiles={onGalleryFiles}
               />
               {(formData.images || []).length > 0 && (
-                <div className="sumadm-gallery-strip">
-                  {formData.images.map((url) => (
-                    <div key={url} className="sumadm-gallery-thumb">
-                      <img src={url} alt="" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
-                      <button
-                        type="button"
-                        className="sumadm-gallery-remove"
-                        title="Rimuovi"
-                        onClick={() => removeGalleryImage(url)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div className="sumadm-gallery-strip">
+                    {formData.images.map((url, i) => (
+                      <div key={url + i} className="sumadm-gallery-thumb">
+                        <img src={url} alt="" onError={(e) => { e.target.src = "/assets/placeholder.jpg"; }} />
+                        <button
+                          type="button"
+                          className="sumadm-gallery-remove"
+                          title="Rimuovi"
+                          onClick={() => removeGalleryImage(url)}
+                        >
+                          ✕
+                        </button>
+                        <div className="sumadm-gallery-order">
+                          <button
+                            type="button"
+                            title="Sposta a sinistra"
+                            disabled={i === 0}
+                            onClick={() => moveGalleryImage(i, -1)}
+                          >
+                            ◀
+                          </button>
+                          <button
+                            type="button"
+                            title="Sposta a destra"
+                            disabled={i === formData.images.length - 1}
+                            onClick={() => moveGalleryImage(i, +1)}
+                          >
+                            ▶
+                          </button>
+                        </div>
+                        {isEditing && editingId && (
+                          <button
+                            type="button"
+                            className="sumadm-gallery-regen"
+                            title="Rigenera questa immagine con l'AI"
+                            disabled={!!sceneBusyId || !!pending}
+                            onClick={() => startSceneGeneration(
+                              summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
+                              i,
+                            )}
+                          >
+                            ♻️
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <small className="sumadm-gallery-hint">Usa ◀ ▶ per l'ordine · ♻️ rigenera con l'AI · l'ordine si salva con “Salva modifiche”.</small>
+                </>
               )}
             </div>
 
@@ -620,6 +893,22 @@ export default function SummaryAdmin() {
           />
         </div>
 
+        <div className="sumadm-style-bar">
+          <span className="sumadm-style-label">🎨 Stile immagini AI</span>
+          <div className="sumadm-style-chips">
+            {Object.entries(SCENE_STYLES).map(([key, s]) => (
+              <button
+                key={key}
+                type="button"
+                className={`sumadm-style-chip ${sceneStyle === key ? "on" : ""}`}
+                onClick={() => setSceneStyle(key)}
+              >
+                <span aria-hidden>{s.icon}</span> {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="sumadm-filter-tabs">
           <button
             className={`sumadm-filter ${filter === "all" ? "on" : ""}`}
@@ -672,6 +961,14 @@ export default function SummaryAdmin() {
                   )}
                 </div>
                 <div className="sumadm-item-actions">
+                  <button
+                    onClick={() => startSceneGeneration(s)}
+                    className="sumadm-icon scene"
+                    title={`Genera un'immagine di scena (${styleOf(sceneStyle).label}) con i PG del gruppo`}
+                    disabled={!!sceneBusyId || !!pending}
+                  >
+                    {sceneBusyId === s.id ? "⏳" : "🎨"}
+                  </button>
                   <button onClick={() => handleEdit(s)} className="sumadm-icon edit" title="Modifica">✎</button>
                   <button onClick={() => handleDelete(s)} className="sumadm-icon danger" title="Elimina">🗑</button>
                 </div>
@@ -680,6 +977,56 @@ export default function SummaryAdmin() {
           </div>
         )}
       </section>
+
+      {/* ── ANTEPRIMA SCENA: tieni / rigenera ── */}
+      {pending && (
+        <div className="sumadm-scene-backdrop" onClick={discardPending}>
+          <div className="sumadm-scene-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="sumadm-scene-head">
+              <h3>{pending.index == null ? "🎨 Nuova immagine di scena" : "♻️ Rigenera immagine"}</h3>
+              <button className="sumadm-scene-x" onClick={discardPending} disabled={!!sceneBusyId} title="Chiudi">✕</button>
+            </div>
+
+            <div className="sumadm-scene-figure">
+              <img src={pending.dataUrl} alt="Anteprima scena generata" />
+              {sceneBusyId && (
+                <div className="sumadm-scene-loading">
+                  <span className="sumadm-drop-spinner" />
+                  <strong>Elaboro…</strong>
+                </div>
+              )}
+            </div>
+
+            {pending.scena && <p className="sumadm-scene-caption">“{pending.scena}”</p>}
+
+            <div className="sumadm-scene-styles">
+              {Object.entries(SCENE_STYLES).map(([key, s]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`sumadm-style-chip ${pending.style === key ? "on" : ""}`}
+                  onClick={() => setPendingStyle(key)}
+                  disabled={!!sceneBusyId}
+                >
+                  <span aria-hidden>{s.icon}</span> {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="sumadm-scene-actions">
+              <button className="sumadm-btn primary" onClick={commitPending} disabled={!!sceneBusyId}>
+                ✅ Tieni
+              </button>
+              <button className="sumadm-btn" onClick={regeneratePending} disabled={!!sceneBusyId}>
+                🔄 Rigenera
+              </button>
+              <button className="sumadm-btn ghost" onClick={discardPending} disabled={!!sceneBusyId}>
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
