@@ -1,3 +1,8 @@
+## FEATURE ATTIVA: Generatore Sessioni DM (2026-07-03)
+- Piano completo + stato: `docs/generate-session/PLAN.md` e `docs/generate-session/progress.md`.
+- Strumento privato (solo master + co-master) per generare/archiviare le prep-sessioni dei party AMEA/LEAF/ENOX con Claude Opus 4.8.
+- Collezione `dm_sessions` (NON la `sessions` esistente = calendario). Isolamento per party sempre. `reference_sessions/*.html` = solo guscio grafico.
+
 ## Regole restyle (sempre valide)
 - Ricolorare = fallire. Ogni pagina cambia STRUTTURA, non solo colori.
 - NON toccare logica/link/route/href. Solo markup + CSS/animazioni.

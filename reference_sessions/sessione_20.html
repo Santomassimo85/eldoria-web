@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sessione XX — Il Sangue di Vethrik</title>
+<style>
+  :root{
+    --bg-deep:#050807;
+    --bg-mid:#0c1110;
+    --bg-soft:#141a18;
+    --gold:#d4a64a;
+    --gold-bright:#f5d77a;
+    --bone:#e8dcc0;
+    --blood:#b8434a;
+    --blood-bright:#d65f6b;
+    --crypt:#5a6b78;
+    --crypt-bright:#8aa0b0;
+    --azure:#5fb3d9;
+    --azure-bright:#8fdfff;
+    --psionic:#9d6fd9;
+    --psionic-bright:#c9a3ff;
+    --leaf:#7ab86a;
+    --leaf-bright:#a8d896;
+    --parchment:#e8dcc0;
+    --text:#cfd6e8;
+    --text-dim:#8a93ad;
+    --border:rgba(212,166,74,0.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  @keyframes blood-flow{0%,100%{opacity:0.4}50%{opacity:0.9}}
+  @keyframes pulse-blood{0%,100%{box-shadow:0 0 22px rgba(184,67,74,0.25)}50%{box-shadow:0 0 42px rgba(184,67,74,0.55)}}
+  @keyframes pulse-gold{0%,100%{box-shadow:0 0 20px rgba(212,166,74,0.2)}50%{box-shadow:0 0 35px rgba(212,166,74,0.5)}}
+  @keyframes pulse-crypt{0%,100%{box-shadow:0 0 22px rgba(90,107,120,0.25)}50%{box-shadow:0 0 42px rgba(138,160,176,0.5)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  body{
+    font-family:Georgia,'Times New Roman',serif;
+    background:var(--bg-deep);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    line-height:1.7;
+    position:relative;
+  }
+
+  .crypt-bg{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(2px 2px at 20% 30%, rgba(184,67,74,0.3), transparent),
+      radial-gradient(1px 1px at 60% 70%, rgba(184,67,74,0.2), transparent),
+      radial-gradient(2px 2px at 80% 20%, rgba(184,67,74,0.3), transparent),
+      radial-gradient(1px 1px at 30% 80%, rgba(212,166,74,0.2), transparent),
+      radial-gradient(1px 1px at 90% 50%, rgba(184,67,74,0.25), transparent),
+      radial-gradient(2px 2px at 10% 60%, rgba(212,166,74,0.2), transparent),
+      linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #0a0606 100%);
+    opacity:0.6;
+    animation: blood-flow 6s ease-in-out infinite;
+  }
+
+  .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 24px 80px}
+
+  header{text-align:center;padding:60px 20px 40px;border-bottom:1px solid var(--border);margin-bottom:50px;position:relative}
+  header::before{content:"⧗";position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:28px;color:var(--crypt);animation:float 5s ease-in-out infinite}
+  .session-num{font-size:14px;letter-spacing:0.5em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;margin-top:30px}
+  h1{font-size:clamp(28px,5vw,48px);font-weight:normal;color:var(--gold-bright);text-shadow:0 0 24px rgba(184,67,74,0.4);margin-bottom:18px;letter-spacing:0.05em}
+  .subtitle{font-style:italic;color:var(--bone);font-size:17px;max-width:720px;margin:0 auto;line-height:1.6}
+  .date-line{margin-top:24px;color:var(--text-dim);font-size:13px;letter-spacing:0.2em;text-transform:uppercase}
+
+  .meta-bar{display:flex;justify-content:center;gap:30px;flex-wrap:wrap;margin:30px 0 50px;padding:20px;background:rgba(20,26,24,0.7);border:1px solid var(--border);border-radius:4px}
+  .meta-item{text-align:center;min-width:120px}
+  .meta-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px}
+  .meta-value{color:var(--gold);font-size:16px}
+
+  .nav-tabs{display:flex;gap:8px;margin-bottom:30px;flex-wrap:wrap;justify-content:center;position:sticky;top:0;background:rgba(5,8,7,0.95);padding:14px;z-index:10;border-radius:4px;border:1px solid var(--border);backdrop-filter:blur(10px)}
+  .tab-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:10px 18px;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:0.05em;transition:all 0.3s;border-radius:2px}
+  .tab-btn:hover{background:rgba(212,166,74,0.1);color:var(--gold-bright);border-color:var(--gold)}
+  .tab-btn.active{background:rgba(212,166,74,0.15);color:var(--gold-bright);border-color:var(--gold);box-shadow:0 0 15px rgba(212,166,74,0.2)}
+  .tab-content{display:none;animation:fadeIn 0.5s}
+  .tab-content.active{display:block}
+
+  .scene{background:linear-gradient(180deg,rgba(20,26,24,0.8),rgba(12,17,16,0.6));border:1px solid var(--border);border-radius:6px;padding:30px;margin-bottom:30px;position:relative;overflow:hidden}
+  .scene::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blood),transparent)}
+  .scene-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px}
+  .scene-title-wrap{display:flex;align-items:center;gap:14px}
+  .scene-num{width:40px;height:40px;border-radius:50%;background:rgba(184,67,74,0.15);border:1px solid var(--blood);display:flex;align-items:center;justify-content:center;color:var(--blood-bright);font-weight:bold;flex-shrink:0}
+  .scene-title{color:var(--gold-bright);font-size:22px;font-weight:normal}
+  .scene-time{background:rgba(184,67,74,0.1);border:1px solid rgba(184,67,74,0.4);color:var(--blood-bright);padding:6px 14px;border-radius:20px;font-size:13px;letter-spacing:0.05em}
+  .scene-desc{color:var(--text);margin-bottom:20px}
+  .scene-section{margin-top:22px}
+  .scene-section-title{color:var(--blood);font-size:14px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .scene-section-title::before{content:"◆";color:var(--gold);font-size:10px}
+  .scene ul{list-style:none;padding-left:0}
+  .scene ul li{padding:8px 0 8px 24px;position:relative;color:var(--text)}
+  .scene ul li::before{content:"›";position:absolute;left:8px;color:var(--gold);font-weight:bold}
+
+  .timer-widget{background:linear-gradient(135deg,rgba(184,67,74,0.1),rgba(214,95,107,0.05));border:1px solid rgba(184,67,74,0.3);border-radius:6px;padding:18px;margin:20px 0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .timer-display{font-family:'Courier New',monospace;font-size:28px;color:var(--blood-bright);font-weight:bold;min-width:110px;text-shadow:0 0 10px rgba(184,67,74,0.4)}
+  .timer-controls{display:flex;gap:8px}
+  .timer-btn{background:rgba(184,67,74,0.15);border:1px solid rgba(184,67,74,0.4);color:var(--blood-bright);padding:8px 16px;cursor:pointer;font-family:inherit;border-radius:3px;font-size:13px;transition:all 0.3s}
+  .timer-btn:hover{background:rgba(184,67,74,0.3)}
+  .timer-label{color:var(--text-dim);font-size:13px;flex:1;min-width:150px}
+
+  .quote{background:rgba(212,166,74,0.05);border-left:3px solid var(--gold);padding:18px 22px;margin:20px 0;font-style:italic;color:var(--parchment);position:relative}
+  .quote::before{content:"❝";position:absolute;top:-10px;left:12px;font-size:36px;color:var(--gold);background:var(--bg-mid);padding:0 8px;line-height:1}
+  .quote-author{display:block;margin-top:10px;font-size:13px;color:var(--gold);font-style:normal;text-align:right}
+
+  .combat-card{background:linear-gradient(180deg,rgba(184,67,74,0.15),rgba(12,17,16,0.6));border:1px solid rgba(184,67,74,0.5);border-radius:6px;padding:20px;margin:16px 0}
+  .combat-card .scene-section-title{color:var(--blood-bright)}
+  .enemy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+  .enemy-card{background:rgba(5,8,7,0.6);border:1px solid rgba(184,67,74,0.3);border-radius:4px;padding:14px}
+  .enemy-name{color:var(--blood-bright);font-weight:bold;margin-bottom:6px}
+  .enemy-stats{font-size:12px;color:var(--text-dim);font-family:'Courier New',monospace}
+
+  .info-box{background:rgba(95,179,217,0.08);border:1px solid rgba(95,179,217,0.3);border-radius:4px;padding:16px 20px;margin:16px 0}
+  .info-box-title{color:var(--azure-bright);font-size:13px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px}
+
+  .crypt-box{background:linear-gradient(135deg,rgba(90,107,120,0.12),rgba(12,17,16,0.6));border:1px solid var(--crypt);border-radius:6px;padding:18px 20px;margin:16px 0;animation:pulse-crypt 5s ease-in-out infinite}
+  .crypt-box-title{color:var(--crypt-bright);font-size:13px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .crypt-box-title::before{content:"⧗";color:var(--crypt);font-size:14px}
+
+  .twist-box{background:linear-gradient(135deg,rgba(184,67,74,0.18),rgba(212,166,74,0.1));border:2px solid var(--gold);border-radius:6px;padding:24px;margin:24px 0;animation:pulse-gold 4s ease-in-out infinite}
+  .twist-label{color:var(--gold-bright);font-size:12px;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:10px;text-align:center}
+  .twist-content{color:var(--parchment);font-size:16px;line-height:1.8}
+
+  .missive-box{background:rgba(232,220,192,0.06);border:1px dashed var(--gold);border-radius:4px;padding:20px 24px;margin:16px auto;max-width:600px;font-family:'Courier New','Georgia',serif;color:var(--bone);font-style:italic;text-align:left;position:relative}
+  .missive-box::before,.missive-box::after{content:"✦";position:absolute;color:var(--gold);font-size:12px}
+  .missive-box::before{top:8px;left:12px}
+  .missive-box::after{bottom:8px;right:12px}
+
+  .npc-card{display:grid;grid-template-columns:60px 1fr;gap:16px;background:rgba(12,17,16,0.5);border:1px solid var(--border);border-radius:4px;padding:14px;margin:12px 0;align-items:center}
+  .npc-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--blood));display:flex;align-items:center;justify-content:center;color:var(--bg-deep);font-weight:bold;font-size:22px}
+  .npc-avatar.crypt{background:linear-gradient(135deg,var(--crypt),var(--bone))}
+  .npc-name{color:var(--gold-bright);font-size:16px;margin-bottom:4px}
+  .npc-role{color:var(--text-dim);font-size:12px;margin-bottom:4px}
+
+  .collapsible{background:rgba(12,17,16,0.6);border:1px solid var(--border);border-radius:4px;margin:12px 0;overflow:hidden}
+  .collapsible-header{padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--gold-bright);transition:background 0.3s;user-select:none}
+  .collapsible-header:hover{background:rgba(212,166,74,0.05)}
+  .collapsible-content{padding:0 18px;max-height:0;overflow:hidden;transition:max-height 0.4s,padding 0.4s}
+  .collapsible.open .collapsible-content{padding:14px 18px;max-height:4000px}
+  .collapsible-arrow{transition:transform 0.3s}
+  .collapsible.open .collapsible-arrow{transform:rotate(90deg)}
+
+  .divider{text-align:center;margin:40px 0;color:var(--gold);font-size:18px;letter-spacing:1em}
+
+  footer{text-align:center;margin-top:60px;padding-top:30px;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px;font-style:italic}
+
+  .key{color:var(--gold-bright);font-weight:bold}
+  .blood-key{color:var(--blood-bright);font-weight:bold}
+  .crypt-key{color:var(--crypt-bright);font-weight:bold}
+  .azure-key{color:var(--azure-bright);font-weight:bold}
+  .psi-key{color:var(--psionic-bright);font-weight:bold}
+  .leaf-key{color:var(--leaf-bright);font-weight:bold}
+
+  @media (max-width:600px){
+    .container{padding:20px 12px}
+    .scene{padding:20px}
+    h1{font-size:28px}
+    .nav-tabs{padding:8px}
+    .tab-btn{padding:8px 12px;font-size:12px}
+    .meta-bar{gap:16px;padding:14px}
+    .meta-item{min-width:90px}
+  }
+</style>
+</head>
+<body>
+
+<div class="crypt-bg"></div>
+
+<div class="container">
+
+  <header>
+    <div class="session-num">Sessione · XX</div>
+    <h1>Il Sangue di Vethrik</h1>
+    <p class="subtitle">"Vi sono tombe che non sono fatte per essere aperte. E vi sono pendoli che non sono fatti per essere ripresi. Ma certi mortali, quando vedono il sangue scorrere nei canali, scelgono comunque di restare."</p>
+    <div class="date-line">Cronache di Obia · Vol. XX · Enoia giorno 26</div>
+  </header>
+
+  <div class="meta-bar">
+    <div class="meta-item"><div class="meta-label">Durata</div><div class="meta-value">~4 ore</div></div>
+    <div class="meta-item"><div class="meta-label">Party</div><div class="meta-value">Tanagar · Caius · Garroth · Lupo</div></div>
+    <div class="meta-item"><div class="meta-label">Luogo</div><div class="meta-value">Catacombe di Whitemoor</div></div>
+    <div class="meta-item"><div class="meta-label">Focus</div><div class="meta-value">Combat + Scoperte</div></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="overview">Panoramica</button>
+    <button class="tab-btn" data-tab="atto1">Atto I · Le Ombre</button>
+    <button class="tab-btn" data-tab="atto2">Atto II · Olwen</button>
+    <button class="tab-btn" data-tab="atto3">Atto III · Il Muro</button>
+    <button class="tab-btn" data-tab="atto4">Atto IV · Il Ritorno</button>
+    <button class="tab-btn" data-tab="loot">Bottino & Indizi</button>
+    <button class="tab-btn" data-tab="dm-notes">Note DM</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tab-content active" id="overview">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">★</div><h2 class="scene-title">Struttura della Sessione</h2></div>
+        <div class="scene-time">~4 ore</div>
+      </div>
+      <p class="scene-desc">Si riprende dal cliffhanger della sessione precedente: il sarcofago di Frate Olwen si sta aprendo lentamente mentre <span class="blood-key">le ombre senza volto</span> sciamano nella sala. Il party deve sopravvivere, recuperare il <span class="key">Pendolo di Vethrik</span>, e — solo dopo — scoprire che la stanza nasconde più di quanto sembri.</p>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Linea Temporale</div>
+        <ul>
+          <li><span class="blood-key">Atto I — Le Ombre & il Sarcofago</span> · 60 min · Fight con tensione doppia</li>
+          <li><span class="blood-key">Atto II — Frate Olwen & il Pendolo</span> · 50 min · Dialogo coi morti, doni, una rivelazione su Tirrendale</li>
+          <li><span class="blood-key">Atto III — Il Muro Magico & la Camera Segreta</span> · 50 min · Arcano, scoperte, la missiva firmata "E."</li>
+          <li><span class="blood-key">Atto IV — Il Ritorno</span> · 60 min · Pianificazione, viaggio, cliffhanger</li>
+        </ul>
+      </div>
+
+      <div class="quote">
+        Le ombre arrivarono dalle pareti, dagli angoli, dai canaletti stessi. Non avevano volti, non avevano occhi. Si muovevano come se la luce le rifiutasse. E sul fondo della sala, ignara di loro, la pietra di un sarcofago continuava ad aprirsi di un dito alla volta — paziente come una madre che apre la porta della camera del figlio addormentato.
+        <span class="quote-author">— L'apertura della sessione</span>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">⚔</div><h2 class="scene-title">Cosa Devono Capire i Giocatori</h2></div>
+      </div>
+      <div class="scene-section">
+        <div class="scene-section-title">Rivelazioni in ordine di importanza</div>
+        <ul>
+          <li>Il <span class="key">Pendolo di Vethrik</span> è recuperabile, ma il sarcofago non era l'unico segreto di questa stanza</li>
+          <li><strong>Frate Olwen</strong>, parlando coi morti, racconta di un <span class="azure-key">tesoro lontano</span> e di un'informazione che <span class="key">li riporta verso Tirrendale</span></li>
+          <li>Dietro un muro magico c'è una <span class="crypt-key">camera segreta</span> con un diario, una missiva, e un secondo oggetto: lo <span class="key">specchio d'argento</span></li>
+          <li>Il diario rivela una frase enigmatica detta da <strong>un serafino ferito</strong> al giovane Olwen: <em>"Hemile mente. I Sei Veli sono divisi. Uno è sotto un albero senza foglie."</em></li>
+          <li>La missiva ordinava di <span class="key">proteggere lo specchio a tutti i costi</span> ed è firmata "<span class="key">E. — Tirrendale</span>"</li>
+          <li>Il viaggio di ritorno alla Torre del Richiamo è <span class="blood-key">un problema concreto</span>: niente portali pronti, devono cavarsela da soli (nave, mago a pagamento, ecc.)</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ATTO I -->
+  <div class="tab-content" id="atto1">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">I</div><h2 class="scene-title">Le Ombre & il Sarcofago</h2></div>
+        <div class="scene-time">60 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="3600">60:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto I — Fight + apertura sarcofago</div>
+      </div>
+
+      <p class="scene-desc">Si riprende esattamente dove la sessione precedente era finita. Tanagar ha appena toccato il sarcofago. I canaletti si sono riempiti di acqua rossa come sangue. La pietra del coperchio vibra. Le ombre arrivano. Il lupo grigio di Garroth ringhia sordamente.</p>
+
+      <div class="combat-card">
+        <div class="scene-section-title">⚔ Combat — Le Ombre del Sangue</div>
+        <p style="margin-bottom:12px">Non sono morti viventi normali. Sono <strong>echi planari</strong> — anime che si sono attaccate al sangue rituale dei canaletti e che adesso si manifestano per <em>contaminare il sarcofago</em>. Se anche una sola di loro tocca il coperchio in apertura, il pendolo all'interno viene <span class="blood-key">corrotto</span> (gancio per dopo).</p>
+
+        <div class="enemy-grid">
+          <div class="enemy-card">
+            <div class="enemy-name">Ombra senza Volto (×5)</div>
+            <div class="enemy-stats">
+              CA 13 · PF 24<br>
+              Tocco gelido +4 (1d6+2 freddo)<br>
+              <em>Sussurro Famelico:</em> chi le sente entro 3m<br>
+              TS Sag CD 12 o "sente un nome" che<br>
+              non vorrebbe sentire (svantaggio 1 turno)<br>
+              <em>Resistenze:</em> danni fisici non magici<br>
+              <em>Vuln:</em> radiante, fuoco<br>
+              <em>Velocità 9m</em> · si fondono nelle pareti
+            </div>
+          </div>
+          <div class="enemy-card" style="border-color:var(--blood);background:rgba(184,67,74,0.1)">
+            <div class="enemy-name">Eco del Vecchio Sangue (×1)</div>
+            <div class="enemy-stats">
+              CA 15 · PF 55<br>
+              Artiglio liquido +5 (2d6+3 freddo +<br>
+              1d4 necrotico)<br>
+              <em>Multiattacco:</em> 2 artigli<br>
+              <em>Bagno di Sangue:</em> 1/scontro, area 3m,<br>
+              TS Cos CD 13 o spaventato 1 turno<br>
+              <em>Priorità:</em> avanza SEMPRE verso il sarcofago,<br>
+              ignora altri bersagli se può
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;padding:14px;background:rgba(184,67,74,0.08);border-radius:4px">
+          <strong style="color:var(--blood-bright)">Meccanica della doppia tensione:</strong> il sarcofago si apre <strong>al ritmo di 3 round</strong> per essere completamente aperto. Ogni round, descrivi quanto il coperchio si è spostato. Le ombre vogliono raggiungerlo. Il party deve <em>scegliere</em>: combattere su tutto il fronte o creare uno scudo davanti al sarcofago?<br><br>
+          <strong>Se un'Ombra tocca il coperchio aperto:</strong> il pendolo dentro viene contaminato. Funzionerà ancora, ma con effetti collaterali (durante il rito del purgatorio: oscillerà più caoticamente, e il party potrebbe finire in una zona "sbagliata" del piano — sidequest extra futura).<br><br>
+          <strong>Se nessuna ombra ci arriva:</strong> il pendolo è puro. Bonus narrativo, niente complicazioni.
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🐺 Il Lupo grigio</div>
+        Il lupo di Garroth combatte al fianco del party. <strong>Statistiche:</strong> CA 13, PF 22, Morso +4 (1d6+2). Vantaggio se almeno un alleato è entro 1,5m dal bersaglio. È spaventato — Garroth deve usare un'azione per "tenerlo calmo" almeno una volta, o il lupo fuggirà.<br><br>
+        <em>Tono narrativo:</em> il lupo ringhia, attacca, ma evidentemente <strong>queste cose non sono nemici naturali</strong>. Lo capisce. Garroth lo capisce attraverso il lupo. Buon momento di sintonia tra ranger e bestia.
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🏺 Il sarcofago si apre</div>
+        Quando la pietra finalmente cede del tutto (3 round dall'inizio del combat, anche se ci sono ancora ombre in giro), la <strong>luce delle torce cambia colore</strong> per un istante — si fa giallo-oro come un'alba. Le ombre rallentano, esitano, e cominciano a <strong>dissolversi</strong> da sole, una per una.<br><br>
+        <em>"Bambini... cosa fate qui?"</em> sussurra una voce che viene dal sarcofago. <strong>Frate Olwen è sveglio.</strong>
+      </div>
+
+      <div class="quote">
+        Le ombre si fermarono, come se avessero udito un padre richiamarle a casa. Una per una si dissolsero, lasciando dietro solo l'odore di sangue secco e una piccola pozza d'acqua rossa sul pavimento. Il sarcofago era aperto. E dentro, lo scheletro di un vecchio monaco le mani giunte sul petto stringeva un piccolo pendolo di ottone che oscillava verso il nulla.
+        <span class="quote-author">— Fine del combat, inizio Atto II</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ATTO II -->
+  <div class="tab-content" id="atto2">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">II</div><h2 class="scene-title">Frate Olwen & il Pendolo</h2></div>
+        <div class="scene-time">50 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="3000">50:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto II — Dialogo con Olwen</div>
+      </div>
+
+      <p class="scene-desc">Lo scheletro nel sarcofago è quello di un <strong>vecchio monaco</strong>, vestito di un saio marrone consumato dal tempo. Le mani giunte sul petto stringono il <span class="key">Pendolo di Vethrik</span>: piccolo, di ottone scuro, con un cristallo nero al centro che oscilla anche da fermo, come se rispondesse a una gravità che gli altri oggetti non percepiscono.</p>
+
+      <div class="crypt-box">
+        <div class="crypt-box-title">Caius parla coi morti</div>
+        Caius è chierico del Ciclo, dominio Tomba. Parlare con un morto recentemente risvegliato è la sua specialità. <strong>Non serve nemmeno un check</strong> — Olwen lo riconosce subito.<br><br>
+        <em>"Ah... un fratello del Ciclo. Vedo il Marchio sotto la tua pelle, ragazzo. Bene. Bene. Sapevo che qualcuno sarebbe venuto. Non sapevo che sarebbe arrivato così presto. O così tardi — il tempo, da morti, fa strani scherzi."</em><br><br>
+        Olwen è gentile, lucido, perfino divertito. Non ha rancore. Vede chiaramente attraverso le orbite vuote.
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🗣 Quello che racconta Olwen — le tre cose</div>
+        <strong>1. Il Pendolo è loro.</strong> <em>"Prendetelo. Io non ne ho più bisogno. Vethrik lo costruì per i vivi che cercano i morti — voi ne avete più diritto di me. Ma sappiate una cosa: il pendolo guarda chi lo guarda. Se uno di voi è marcato dal Ciclo, dopo questo viaggio sarà marcato due volte."</em> Caius prende il pendolo. Si scalda leggermente al suo tocco.<br><br>
+        <strong>2. Un tesoro lontano.</strong> <em>"C'è un calice. Apparteneva al mio ordine, lo chiamavamo 'Il Calice dell'Ultimo Sorso'. È in un eremo a est, alle pendici dei Monti delle Tre Lacrime. Nessuno l'ha più toccato da quando i miei fratelli sono morti. Se lo trovate, è vostro. Caius — è un calice del Ciclo. Tu sai cosa farne. Berlo riempie il bevitore di pace per un giorno. Ne avrete bisogno, immagino."</em><br><br>
+        <strong>3. La cosa importante.</strong> <em>"Quando ero ancora vivo, molti anni fa, ricevetti la visita di un emissario di Tirrendale. Mi portò una missiva — non la mia, la <strong>lettera che protegge lo specchio</strong>. Sì, c'è uno specchio in questa stanza. Lo cercherete dopo. Ma l'emissario mi disse anche qualcos'altro, prima di andarsene. Disse: 'Se mai qualcuno verrà a chiederti del Calice, dell'eremo, o dello specchio — manda quella persona a Tirrendale. Cerca il sigillo. Cerca chi ricorda i Sei Veli.' Poi se ne andò. Non l'ho più rivisto. Ma quel sigillo è ancora a Tirrendale, ragazzi. <strong>Andate.</strong>"</em>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">⚙ Il Pendolo di Vethrik (oggetto-trama)</div>
+        Ottone scuro, lungo 15 cm, con un cristallo nero al centro che oscilla anche da fermo. <strong>Funzione:</strong> serve come "ago della bussola tra i piani" per il rito di Brevak. Senza, il rito sa <em>dove</em> andare ma non <em>quando</em>. Brevak ne aveva uno che si è consumato cercando il fratello.<br><br>
+        <strong>Effetto collaterale (lieve):</strong> chi lo porta sente, ogni tanto, un piccolo "tiro" verso la direzione del piano cui un'anima a lui legata appartiene. Caius lo sentirà più di tutti — il Marchio del Ciclo amplifica la sintonia.
+      </div>
+
+      <div class="quote">
+        <em>"Il Calice... lo Specchio... la lettera... E quel sigillo, ragazzi. Quel sigillo a Tirrendale. È il filo che vi siete dimenticati di seguire. Lo dico con gentilezza, sì? Non vi sto sgridando. Solo... ricordatelo. Tirrendale. Il duca, forse. O chi venne prima di lui. Cercate."</em>
+        <span class="quote-author">— Frate Olwen, prima di tacere di nuovo</span>
+      </div>
+
+      <p style="margin-top:18px">Dopo aver detto questo, Frate Olwen sorride per un attimo (almeno, è quello che sembra — un teschio può solo somigliare a un sorriso, ma il sentimento è chiaro), e <strong>torna nel suo silenzio</strong>. Lo scheletro si compone di nuovo come prima. Le mani giunte. Solo il pendolo manca. Il party deve decidere cosa fare adesso — il sarcofago è aperto, la sala è quieta, ma c'è ancora <em>qualcosa</em> in questa stanza che non hanno scoperto.</p>
+    </div>
+
+  </div>
+
+  <!-- ATTO III -->
+  <div class="tab-content" id="atto3">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">III</div><h2 class="scene-title">Il Muro Magico & la Camera Segreta</h2></div>
+        <div class="scene-time">50 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="3000">50:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto III — Scoperta della camera nascosta</div>
+      </div>
+
+      <p class="scene-desc">In fondo alla sala — l'estremità opposta rispetto a dove sono entrati — c'è una <strong>parete liscia di pietra bianca</strong>. Sembra normalissima. Ma qualcosa in essa non torna. Le incisioni monastiche sulle altre pareti si interrompono di colpo a un metro dal muro, come se l'autore avesse evitato di scriverci sopra. Inoltre, il pavimento di pietra nei pressi è <em>leggermente più scuro</em>, come se ricevesse meno luce di quanta dovrebbe.</p>
+
+      <div class="info-box">
+        <div class="info-box-title">🔍 Come accorgersi del muro magico</div>
+        <strong>Opzione A — Prova attiva:</strong> Arcano CD 14 per riconoscere l'illusione. Caius con la nuova competenza in Religione e Arcano dovrebbe farcela facilmente. Garroth con Percezione può notare l'incongruenza ambientale (CD 12).<br><br>
+        <strong>Opzione B — Fortuna pura:</strong> se nessuno lo nota, dai loro un piccolo segnale: il <strong>lupo</strong> di Garroth si ferma a fissare il muro a lungo, ringhiando piano. O il <strong>pendolo</strong> appena preso da Caius oscilla verso il muro più che in altre direzioni.<br><br>
+        <strong>Come attraversarlo:</strong> basta avvicinarsi e <em>passarci attraverso</em>. È un'illusione fissa, sostenuta dalla magia residua della stanza. Non resiste al contatto fisico — chi sa che c'è, ci passa.
+      </div>
+
+      <div class="crypt-box">
+        <div class="crypt-box-title">La Camera Segreta</div>
+        Attraversato il muro, si trovano in una <strong>stanza piccola, asciutta</strong>, profonda due metri per tre. L'aria sa di pergamena vecchia. Una sola lampada a olio sul tavolo centrale — spenta da due secoli, ma ancora intatta. Sulla parete, scaffali di legno con <strong>libri devozionali</strong> e <strong>rotoli sigillati</strong>. Al centro del tavolo, tre cose poste con cura: un <strong>diario personale</strong> in cuoio marrone, una <strong>pergamena ripiegata e sigillata</strong>, e un <strong>panno di seta nera</strong> che avvolge un piccolo oggetto.
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Cosa contengono le tre cose</div>
+        <ul>
+          <li><strong>Il diario di Olwen</strong> — un secolo di annotazioni quotidiane. Per lo più banali (raccolta del miele, riti monastici, lamentele su un fratello russatore). Ma a <strong>una pagina precisa</strong>, datata 40 anni prima della sua morte, c'è qualcosa di importante (vedi sotto).</li>
+          <li><strong>La pergamena sigillata</strong> — la missiva originale, in pergamena di qualità altissima, sigillata in ceralacca con un'impronta. La lettera che ordinava di proteggere lo specchio (vedi sotto).</li>
+          <li><strong>Il panno di seta nera</strong> — avvolge un piccolo <strong>specchio d'argento</strong> ovale, della grandezza di un palmo, montato su un manico d'osso intagliato. Lo specchio non riflette nulla — è una superficie liscia argentea che sembra <em>aspettare</em> qualcosa.</li>
+        </ul>
+      </div>
+
+      <div class="twist-box">
+        <div class="twist-label">📖 La pagina del Diario</div>
+        <div class="twist-content">
+          <em>"Quaranta anni fa, quando ero ancora giovane e servivo come novizio alla <strong>Torre del Richiamo</strong>, accadde la cosa più strana della mia vita. Una notte d'autunno bussò alla porta del nostro chiostro un <strong>serafino ferito</strong>. Aveva tre ali invece di sei — le altre le aveva perse, non saprei dire come. Sanguinava di una luce azzurra che si spense lentamente nelle ore seguenti.<br><br>
+          Non poteva restare. Lo sapeva. I monaci più anziani lo nascosero nella cella d'infermeria. Mi mandarono a fargli compagnia per la notte — io ero giovane, mi chiamarono perché conoscevo gli antichi sermoni e potevo confortarlo. Lui non rispose ai miei sermoni. Si rivoltò sul fianco e mi guardò a lungo. Poi mi disse, con voce stanca:<br><br>
+          <strong>'Hemile mente. I Sei Veli sono divisi. Uno è sotto un albero senza foglie.'</strong><br><br>
+          Niente di più. Niente di meno. All'alba era sparito. Lasciò solo una piccola macchia di luce azzurra sul lenzuolo, che si dissolse nel sole del mattino.<br><br>
+          Non ho mai capito cosa volesse dire. Ho cercato per anni — Hemile è un nome che si incontra raramente, è un serafino di Ys'aelorn, dicono. Ho letto tutto quello che ho trovato. Ho fatto domande. Nessuno sapeva. Forse era delirante, il poverino. Forse mi ha detto un'ultima profezia che non era per me.<br><br>
+          La scrivo qui perché qualcuno, forse, un giorno la capirà. Io l'ho portata con me per quarant'anni come si porta una pietra in tasca."</em>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">📜 Significato della frase</div>
+        <strong>"I Sei Veli"</strong> è un nome antico che il party non aveva mai sentito. Si riferisce ai <strong>sei Capitani serafini</strong> venduti da Hemile 1852 anni fa. Il fatto che Olwen — un mortale di duecento anni fa — abbia ricevuto questa frase da un altro serafino significa che <strong>la verità su Hemile circolava già, sotterranea, da secoli</strong>. Qualcuno tra i serafini sapeva. Qualcuno cercava di farla emergere — e fu fermato. La frase "uno è sotto un albero senza foglie" è il primo riferimento indiretto a Veladris, anche se il party non lo sa ancora.<br><br>
+        <strong>Per il giocatore:</strong> non spiegare tutto. Lasciali ragionare. Il "Sei Veli" diventerà parte del loro vocabolario.
+      </div>
+
+      <div class="twist-box">
+        <div class="twist-label">📜 La Missiva Sigillata</div>
+        <div class="twist-content">
+          <div class="missive-box">
+            <em>Frate Olwen,<br><br>
+            Vi affido lo Specchio di Wellan. Custoditelo come custodireste la vostra vita — più della vostra vita. È un oggetto raro: permette a chi sa usarlo di <strong>rintracciare un'anima</strong> nel Piano dell'Espiazione. Nelle mani sbagliate è strumento di tortura. Nelle vostre mani, sarà strumento di pace.<br><br>
+            Non parlatene mai. Non mostratelo a nessuno. Quando sentirete venuta l'ora di passare oltre, nascondetelo. Lasciate che qualcuno degno lo trovi.<br><br>
+            Se mai qualcuno verrà a chiedervi dello Specchio, del Calice, o dei Sei Veli — mandatelo qui a Tirrendale. Cercate il sigillo nella vecchia torre del fiume. Là c'è chi ricorda.<br><br>
+            Con la luce che resta,<br>
+            <strong>E.</strong> — Tirrendale</em>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🪞 Lo Specchio d'Argento (Specchio di Wellan)</div>
+        Piccolo, ovale, montato su manico d'osso intagliato. Non riflette il volto di chi lo guarda. <strong>Funzione:</strong> permette di rintracciare un'anima nel Piano dell'Espiazione. Per usarlo bisogna concentrarsi su un nome o un volto, e lo specchio mostra una <em>scena</em> della posizione dell'anima — un dintorno, un oggetto vicino.<br><br>
+        <strong>Come il party lo userà:</strong> nel Piano dell'Espiazione, evocando un'anima qualsiasi, potranno usare lo specchio per "vedere" dove si trovi. Per ora il party non sa <em>chi</em> cercare. Ma Olwen, parlando coi morti, può aver lasciato indizi indiretti che il party può ricostruire.<br><br>
+        <strong>Bonus meccanico (per future sessioni):</strong> quando il party entrerà nel Piano dell'Espiazione, ogni volta che vorranno avvicinarsi a un'anima specifica, tira un d20. <strong>1-7:</strong> si allontanano. <strong>8-14:</strong> nessun progresso. <strong>15+:</strong> si avvicinano. Lo specchio dà <strong>vantaggio</strong> al tiro. Anime conosciute (Pierrot) richiedono CD 12. Anime sconosciute (Veladris) CD 16.
+      </div>
+
+      <p style="margin-top:18px">La missiva è firmata "<strong>E.</strong> — Tirrendale". Il duca attuale si chiama <strong>Eothen</strong>. Coincidenza? Errore? Eothen è anziano, ma 200 anni fa probabilmente non era ancora nato. Quindi è il <em>suo antenato</em>. La famiglia ducale di Tirrendale tramanda qualcosa che ha a che fare con i Sei Veli da almeno due secoli.</p>
+    </div>
+
+  </div>
+
+  <!-- ATTO IV -->
+  <div class="tab-content" id="atto4">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">IV</div><h2 class="scene-title">Il Ritorno (e come?)</h2></div>
+        <div class="scene-time">60 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="3600">60:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto IV — Pianificazione e viaggio</div>
+      </div>
+
+      <p class="scene-desc">Le catacombe sono dietro di loro. Il pendolo è nello zaino di Caius, lo specchio nello zaino di Garroth, il diario in quello di Tanagar. Hanno tre cose preziose. Hanno anche un <strong>problema concreto</strong>: <span class="blood-key">il portale di Brevak era a senso unico</span>. Sono nel continente di Yotta, e la Torre del Richiamo è dall'altra parte del mare.</p>
+
+      <div class="info-box">
+        <div class="info-box-title">🗺 Il problema del ritorno</div>
+        Il party deve trovare un modo per tornare alla Torre del Richiamo. Non c'è una soluzione pronta — devono <strong>cercarla loro</strong>. Opzioni che possono esplorare:<br><br>
+        <strong>1. Via mare</strong> — il porto più vicino è a sud-est. Una nave da Yotta o dal Nerocastello potrebbe portarli vicino alla Torre. <em>Tempo:</em> 2-3 settimane di viaggio. <em>Costo:</em> denaro, e potrebbero incontrare pirati o tempeste.<br>
+        <strong>2. Mago a pagamento</strong> — al Nerocastello c'è una scuola di magia minore. Si dice che alcuni maghi facciano portali per gente che paga bene. <em>Tempo:</em> 1 giorno se trovano il mago giusto. <em>Costo:</em> alto in monete, e bisogna trovare la persona di fiducia.<br>
+        <strong>3. Tornare nelle catacombe</strong> — esplorare se ci sono altri segreti, magari un teletrasporto monastico. <em>Rischio:</em> le ombre potrebbero tornare.<br>
+        <strong>4. Aspettare Brevak</strong> — magari lo gnomo ha modo di riaprire il portale dall'altra parte. <em>Tempo:</em> incerto. <em>Rischio:</em> non sappiamo se sa che hanno il pendolo.
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">💡 Suggerimento DM</div>
+        <strong>Non risolvere tu il problema.</strong> Lascia che i giocatori discutano e scelgano. Se restano bloccati, fornisci piccoli indizi tramite NPC: un pescatore al Nerocastello che parla di una nave in partenza, un cartello in città che annuncia "Servizi Magici", un viandante che ha sentito parlare di un mago a Yotta. Ma <strong>la scelta è loro.</strong>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Possibili sviluppi durante il viaggio di ritorno</div>
+        <ul>
+          <li><strong>Tanagar a Yotta</strong> — incontra vecchi commilitoni? Qualcuno che ricorda di lui come guardia? Possibile RP forte se il giocatore vuole esplorarlo.</li>
+          <li><strong>Caius e il pendolo</strong> — il pendolo oscilla diversamente quando attraversa diversi luoghi. Sente le anime sotterrate sotto le strade. Caius può "leggere" le città in modo nuovo.</li>
+          <li><strong>Garroth e il lupo</strong> — il lupo grigio è ancora con loro? Decide di seguirli sulla nave o resta nelle sue terre? Possibile scena emotiva di addio se il giocatore vuole.</li>
+          <li><strong>Sogno di Tanagar #2</strong> — Zenthos torna. Stavolta non parla. Lo guarda solo, sorridendo. Come a dire <em>"so dove sei. So cosa fai. Ti aspetto."</em></li>
+        </ul>
+      </div>
+
+      <div class="twist-box">
+        <div class="twist-label">⚡ Cliffhanger ⚡</div>
+        <div class="twist-content">
+          Comunque scelgano di tornare — nave, portale, altro — durante una delle notti in cui sono in viaggio, <strong>Caius</strong> ha una sensazione strana. Il <span class="key">pendolo</span> nel suo zaino comincia a oscillare con un ritmo costante, come un metronomo. Verso nord. Verso est. Verso un punto preciso. Lo guarda da vicino: il cristallo nero al centro <em>pulsa</em>.<br><br>
+          Quando posa la mano sul pendolo, sente una <strong>voce</strong>. Non nella testa — nella mano. Una voce sottile, quasi una vibrazione. Dice una parola, una sola, in una lingua che Caius non conosce ma che capisce comunque: <em>"<strong>Veladris</strong>."</em><br><br>
+          Caius solleva lo sguardo. Tanagar e Garroth dormono. Il fuoco del bivacco è basso. Il pendolo nella sua mano ha smesso di oscillare. Punta in una direzione e basta. Verso nord-est, attraverso il mare, oltre le montagne. Verso qualcosa che lo sta chiamando per nome.<br><br>
+          Caius non sa cosa sia "Veladris". Ma sa che lo dovrà scoprire.<br><br>
+          <strong style="color:var(--gold-bright)">Fine sessione.</strong>
+        </div>
+      </div>
+
+      <div class="quote">
+        "Il pendolo di Vethrik fu costruito perché i vivi potessero cercare i morti. Ma certi morti, ogni tanto, cercano i vivi. E quando vi sentono — vi chiamano. Beati coloro che li ascoltano. Più beati ancora coloro che, ascoltati, vanno a cercarli."
+        <span class="quote-author">— Obia, Cronache Vol. XX</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LOOT -->
+  <div class="tab-content" id="loot">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:30px;font-size:28px;font-weight:normal">📦 Bottino & Indizi della Sessione</h2>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🎁</div><h2 class="scene-title">Oggetti Acquisiti</h2></div>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Oggetti-trama principali</div>
+        <ul>
+          <li><span class="key">Pendolo di Vethrik</span> — ottone scuro, cristallo nero che oscilla. Essenziale per il rito di Brevak. Effetto collaterale: oscilla verso le anime sintone con chi lo porta.</li>
+          <li><span class="key">Specchio di Wellan</span> (Specchio d'Argento) — manico d'osso intagliato. Permette di rintracciare un'anima nel Piano dell'Espiazione. Vantaggio ai tiri di "avvicinamento" alle anime nel piano.</li>
+          <li><span class="key">Diario di Frate Olwen</span> — un secolo di annotazioni. La pagina chiave è quella del serafino ferito. Da conservare per future ricerche.</li>
+          <li><span class="key">Missiva sigillata</span> — la lettera firmata "E. — Tirrendale". Prova storica del legame tra la famiglia ducale e i Sei Veli.</li>
+        </ul>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Sidequest aperte</div>
+        <ul>
+          <li><strong>Il Calice dell'Ultimo Sorso</strong> — in un eremo alle pendici dei Monti delle Tre Lacrime, a est. Calice del Ciclo: berlo riempie il bevitore di pace per un giorno. Caius potrebbe interessarsene.</li>
+          <li><strong>Il sigillo nella vecchia torre del fiume di Tirrendale</strong> — luogo specifico indicato da Olwen e dalla missiva. Lì c'è "chi ricorda i Sei Veli". Potrebbe essere il duca Eothen, o qualcuno legato a lui.</li>
+        </ul>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Indizi narrativi conquistati</div>
+        <ul>
+          <li><span class="blood-key">"I Sei Veli"</span> — il nome antico dei Capitani serafini venduti da Hemile. Frase pronunciata da un serafino ferito 200 anni fa. La verità circola sotterranea da secoli.</li>
+          <li><span class="azure-key">"Uno è sotto un albero senza foglie"</span> — primo riferimento indiretto a Veladris (anche se il party non sa ancora il nome).</li>
+          <li><span class="key">Il legame tra Tirrendale e i Sei Veli</span> — la famiglia ducale tramanda un segreto da almeno due secoli.</li>
+          <li><span class="psi-key">Veladris</span> — il pendolo "chiama" questo nome a Caius alla fine della sessione. Il party non sa chi sia, ma adesso ha un nome da cercare.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🧵</div><h2 class="scene-title">Trame collegate</h2></div>
+      </div>
+      <ul>
+        <li><strong>Trama Hemile / Sei Veli:</strong> avanzata in modo grosso. Adesso il party ha conferma storica di un complotto sotterraneo, e un nome da cercare (Veladris).</li>
+        <li><strong>Trama del duca Eothen / arcanite:</strong> riportata in primo piano. Andare a Tirrendale non è più solo un'opzione — è una pista narrativa concreta.</li>
+        <li><strong>Trama del Purgatorio:</strong> stanno per essere pronti. Manca solo il viaggio di ritorno alla Torre.</li>
+        <li><strong>Trama di Tanagar / Zenthos:</strong> latente in questa sessione. Sogni continuano. Si svilupperà nelle prossime.</li>
+        <li><strong>Trama di Garroth / Xylia:</strong> latente. Il lupo è il suo legame attivo per ora.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- DM NOTES -->
+  <div class="tab-content" id="dm-notes">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:30px;font-size:28px;font-weight:normal">📜 Note del Dungeon Master</h2>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">⚙</div><h2 class="scene-title">Pacing</h2></div>
+      </div>
+      <ul>
+        <li><strong>Atto I (60 min):</strong> il fight è il pezzo grosso. Non avere fretta — la doppia tensione (combattere + difendere il sarcofago) richiede tempo per dispiegarsi. Descrivi ogni round il movimento del coperchio.</li>
+        <li><strong>Atto II (50 min):</strong> dialogo. Lascia che Olwen parli con calma, con la sua voce di vecchio monaco gentile. Le tre rivelazioni devono arrivare ben distinte.</li>
+        <li><strong>Atto III (50 min):</strong> esplorazione. Lascia che il party indaghi. Non rivelare subito il muro magico — lascia che lo scoprano.</li>
+        <li><strong>Atto IV (60 min):</strong> il viaggio di ritorno è meno strutturato, più narrativo. Lascia ai giocatori decidere come tornare.</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">⚔</div><h2 class="scene-title">Bilanciamento del Fight</h2></div>
+      </div>
+      <ul>
+        <li>5 Ombre + 1 Eco del Vecchio Sangue è bilanciato su livello 5-6.</li>
+        <li>Se il party è lv 4 o meno: togli 1 Ombra, riduci PF dell'Eco a 40.</li>
+        <li>Se il party è lv 7+: aggiungi 2 Ombre, aumenta PF dell'Eco a 75 e dagli un'azione bonus "Soffio di Sangue" (raggio 3m, 2d6 freddo).</li>
+        <li><strong>Importante:</strong> il sarcofago si apre a un ritmo <em>fisso</em> di 3 round, indipendentemente da cosa fa il party. Non barare su questo — è il countdown del fight.</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🗣</div><h2 class="scene-title">Recitare Olwen</h2></div>
+      </div>
+      <ul>
+        <li><strong>Tono:</strong> vecchio, gentile, lucido. Come un nonno saggio che non si stupisce più di nulla. Parla lento ma chiaro.</li>
+        <li><strong>Frasi di apertura:</strong> "Ah... un fratello del Ciclo." / "Vedo il Marchio sotto la tua pelle, ragazzo."</li>
+        <li><strong>Niente fretta nel dare le tre rivelazioni.</strong> Aspetta che Caius gli chieda. Se non chiede, le offre comunque ma con calma.</li>
+        <li><strong>Quando smette di parlare:</strong> un sorriso che non c'è (è uno scheletro), e poi torna nel sarcofago. Niente di drammatico — è solo "ora vado a dormire di nuovo".</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🔮</div><h2 class="scene-title">Ganci per le prossime sessioni</h2></div>
+      </div>
+      <ul>
+        <li><strong>Tirrendale:</strong> il sigillo nella vecchia torre del fiume. Chi lo custodisce? Probabilmente Eothen o un suo consigliere. Possibile sessione dedicata.</li>
+        <li><strong>Il nome Veladris:</strong> Caius adesso lo conosce. Comincerà a cercarlo. Possibilità di scoprire chi è prima del purgatorio.</li>
+        <li><strong>Il Calice dell'Ultimo Sorso:</strong> sidequest minore ma utile. Buon riempitivo per una sessione più leggera.</li>
+        <li><strong>Le ombre delle catacombe:</strong> chi le ha messe lì? Erano semplici guardiani planari, o c'è qualcuno che voleva impedire al party di prendere il pendolo? Possibile gancio futuro (forse Hemile sta cominciando a sospettare).</li>
+        <li><strong>Brevak:</strong> potrebbe sentire da lontano che il pendolo è stato preso. Magari manda un sogno o un corvo al party con istruzioni. Decidi tu quando reintrodurlo.</li>
+      </ul>
+    </div>
+
+    <div class="quote">
+      Questa sessione fa due cose: chiude un cerchio (recupero del pendolo) e ne apre tre (Tirrendale, Veladris, il Calice). Il party ha più piste di quante possa seguire — il che è buono. Le scelte loro stesse diventano la trama.
+      <span class="quote-author">— Promemoria del DM</span>
+    </div>
+
+  </div>
+
+  <footer>
+    Cronache del Gruppo AMEA · Sessione XX<br>
+    "Il pendolo guarda chi lo guarda."
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const target = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn[data-tab="'+target+'"]').forEach(b => b.classList.add('active'));
+      document.getElementById(target).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', () => header.parentElement.classList.toggle('open'));
+  });
+
+  document.querySelectorAll('.timer-widget').forEach(widget => {
+    const display = widget.querySelector('.timer-display');
+    const duration = parseInt(display.dataset.duration);
+    let remaining = duration;
+    let interval = null;
+    const format = (s) => {
+      const m = Math.floor(s/60), sec = s%60;
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    };
+    const update = () => {
+      display.textContent = format(remaining);
+      if(remaining <= 60) display.style.color = '#f5d77a';
+      if(remaining <= 30) display.style.color = '#b8434a';
+      if(remaining <= 0){
+        clearInterval(interval); interval = null;
+        display.textContent = '00:00';
+        display.style.color = '#b8434a';
+        widget.style.animation = 'pulse-blood 1s ease-in-out 3';
+      }
+    };
+    widget.querySelectorAll('.timer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if(action === 'start' && !interval){
+          interval = setInterval(() => { remaining--; update(); }, 1000);
+        } else if(action === 'pause'){
+          clearInterval(interval); interval = null;
+        } else if(action === 'reset'){
+          clearInterval(interval); interval = null;
+          remaining = duration;
+          display.style.color = '#d65f6b';
+          display.textContent = format(remaining);
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

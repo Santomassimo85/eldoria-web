@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sessione XVII — Il Canto della Corteccia</title>
+<style>
+  :root{
+    --bg-deep:#050d0a;
+    --bg-mid:#0a1812;
+    --bg-soft:#102218;
+    --gold:#d4a64a;
+    --gold-bright:#f5d77a;
+    --leaf:#7ab86a;
+    --leaf-bright:#a8d896;
+    --azure:#5fb3d9;
+    --azure-bright:#8fdfff;
+    --celestial:#a8d8ff;
+    --blood:#b8434a;
+    --psionic:#9d6fd9;
+    --psionic-bright:#c9a3ff;
+    --cycle:#b8c8d8;
+    --bone:#e8dcc0;
+    --parchment:#e8dcc0;
+    --text:#cfd6e8;
+    --text-dim:#8a93ad;
+    --border:rgba(212,166,74,0.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  @keyframes twinkle{0%,100%{opacity:0.3}50%{opacity:1}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @keyframes pulse-gold{0%,100%{box-shadow:0 0 20px rgba(212,166,74,0.2)}50%{box-shadow:0 0 35px rgba(212,166,74,0.5)}}
+  @keyframes pulse-leaf{0%,100%{box-shadow:0 0 22px rgba(122,184,106,0.25)}50%{box-shadow:0 0 42px rgba(168,216,150,0.5)}}
+  @keyframes pulse-psionic{0%,100%{box-shadow:0 0 20px rgba(157,111,217,0.25)}50%{box-shadow:0 0 38px rgba(157,111,217,0.55)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  body{
+    font-family:Georgia,'Times New Roman',serif;
+    background:var(--bg-deep);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    line-height:1.7;
+    position:relative;
+  }
+
+  .leaves{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(2px 2px at 20% 30%, rgba(168,216,150,0.4), transparent),
+      radial-gradient(1px 1px at 60% 70%, rgba(122,184,106,0.3), transparent),
+      radial-gradient(2px 2px at 80% 20%, rgba(168,216,150,0.4), transparent),
+      radial-gradient(1px 1px at 30% 80%, rgba(212,166,74,0.3), transparent),
+      radial-gradient(1px 1px at 90% 50%, rgba(168,216,150,0.4), transparent),
+      radial-gradient(2px 2px at 10% 60%, rgba(122,184,106,0.3), transparent),
+      radial-gradient(1px 1px at 50% 90%, rgba(212,166,74,0.3), transparent),
+      linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 50%, #081610 100%);
+    opacity:0.6;
+  }
+
+  .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 24px 80px}
+
+  header{text-align:center;padding:60px 20px 40px;border-bottom:1px solid var(--border);margin-bottom:50px;position:relative}
+  header::before{content:"❦";position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:28px;color:var(--leaf);animation:float 5s ease-in-out infinite}
+  .session-num{font-size:14px;letter-spacing:0.5em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;margin-top:30px}
+  h1{font-size:clamp(28px,5vw,48px);font-weight:normal;color:var(--gold-bright);text-shadow:0 0 22px rgba(168,216,150,0.3);margin-bottom:18px;letter-spacing:0.05em}
+  .subtitle{font-style:italic;color:var(--bone);font-size:17px;max-width:720px;margin:0 auto;line-height:1.6}
+  .date-line{margin-top:24px;color:var(--text-dim);font-size:13px;letter-spacing:0.2em;text-transform:uppercase}
+
+  .meta-bar{display:flex;justify-content:center;gap:30px;flex-wrap:wrap;margin:30px 0 50px;padding:20px;background:rgba(10,24,18,0.7);border:1px solid var(--border);border-radius:4px}
+  .meta-item{text-align:center;min-width:120px}
+  .meta-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px}
+  .meta-value{color:var(--gold);font-size:16px}
+
+  .nav-tabs{display:flex;gap:8px;margin-bottom:30px;flex-wrap:wrap;justify-content:center;position:sticky;top:0;background:rgba(5,13,10,0.95);padding:14px;z-index:10;border-radius:4px;border:1px solid var(--border);backdrop-filter:blur(10px)}
+  .tab-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:10px 18px;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:0.05em;transition:all 0.3s;border-radius:2px}
+  .tab-btn:hover{background:rgba(212,166,74,0.1);color:var(--gold-bright);border-color:var(--gold)}
+  .tab-btn.active{background:rgba(212,166,74,0.15);color:var(--gold-bright);border-color:var(--gold);box-shadow:0 0 15px rgba(212,166,74,0.2)}
+  .tab-content{display:none;animation:fadeIn 0.5s}
+  .tab-content.active{display:block}
+
+  .scene{background:linear-gradient(180deg,rgba(16,34,24,0.8),rgba(10,18,12,0.6));border:1px solid var(--border);border-radius:6px;padding:30px;margin-bottom:30px;position:relative;overflow:hidden}
+  .scene::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--leaf),transparent)}
+  .scene-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px}
+  .scene-title-wrap{display:flex;align-items:center;gap:14px}
+  .scene-num{width:40px;height:40px;border-radius:50%;background:rgba(122,184,106,0.15);border:1px solid var(--leaf);display:flex;align-items:center;justify-content:center;color:var(--leaf-bright);font-weight:bold;flex-shrink:0}
+  .scene-title{color:var(--gold-bright);font-size:22px;font-weight:normal}
+  .scene-time{background:rgba(122,184,106,0.1);border:1px solid rgba(122,184,106,0.4);color:var(--leaf-bright);padding:6px 14px;border-radius:20px;font-size:13px;letter-spacing:0.05em}
+  .scene-desc{color:var(--text);margin-bottom:20px}
+  .scene-section{margin-top:22px}
+  .scene-section-title{color:var(--leaf);font-size:14px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .scene-section-title::before{content:"◆";color:var(--gold);font-size:10px}
+  .scene ul{list-style:none;padding-left:0}
+  .scene ul li{padding:8px 0 8px 24px;position:relative;color:var(--text)}
+  .scene ul li::before{content:"›";position:absolute;left:8px;color:var(--gold);font-weight:bold}
+
+  .timer-widget{background:linear-gradient(135deg,rgba(122,184,106,0.1),rgba(168,216,150,0.05));border:1px solid rgba(122,184,106,0.3);border-radius:6px;padding:18px;margin:20px 0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .timer-display{font-family:'Courier New',monospace;font-size:28px;color:var(--leaf-bright);font-weight:bold;min-width:110px;text-shadow:0 0 10px rgba(122,184,106,0.4)}
+  .timer-controls{display:flex;gap:8px}
+  .timer-btn{background:rgba(122,184,106,0.15);border:1px solid rgba(122,184,106,0.4);color:var(--leaf-bright);padding:8px 16px;cursor:pointer;font-family:inherit;border-radius:3px;font-size:13px;transition:all 0.3s}
+  .timer-btn:hover{background:rgba(122,184,106,0.3)}
+  .timer-label{color:var(--text-dim);font-size:13px;flex:1;min-width:150px}
+
+  .quote{background:rgba(212,166,74,0.05);border-left:3px solid var(--gold);padding:18px 22px;margin:20px 0;font-style:italic;color:var(--parchment);position:relative}
+  .quote::before{content:"❝";position:absolute;top:-10px;left:12px;font-size:36px;color:var(--gold);background:var(--bg-mid);padding:0 8px;line-height:1}
+  .quote-author{display:block;margin-top:10px;font-size:13px;color:var(--gold);font-style:normal;text-align:right}
+
+  .combat-card{background:linear-gradient(180deg,rgba(184,67,74,0.1),rgba(10,18,12,0.6));border:1px solid rgba(184,67,74,0.4);border-radius:6px;padding:20px;margin:16px 0}
+  .combat-card .scene-section-title{color:var(--blood)}
+  .enemy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+  .enemy-card{background:rgba(5,13,10,0.6);border:1px solid rgba(184,67,74,0.3);border-radius:4px;padding:14px}
+  .enemy-name{color:var(--blood);font-weight:bold;margin-bottom:6px}
+  .enemy-stats{font-size:12px;color:var(--text-dim);font-family:'Courier New',monospace}
+
+  .info-box{background:rgba(122,184,106,0.08);border:1px solid rgba(122,184,106,0.3);border-radius:4px;padding:16px 20px;margin:16px 0}
+  .info-box-title{color:var(--leaf-bright);font-size:13px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px}
+
+  .leaf-box{background:linear-gradient(135deg,rgba(122,184,106,0.12),rgba(10,18,12,0.6));border:1px solid var(--leaf);border-radius:6px;padding:18px 20px;margin:16px 0;animation:pulse-leaf 5s ease-in-out infinite}
+  .leaf-box-title{color:var(--leaf-bright);font-size:13px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .leaf-box-title::before{content:"❦";color:var(--leaf);font-size:14px}
+
+  .psionic-box{background:linear-gradient(135deg,rgba(157,111,217,0.12),rgba(10,18,12,0.6));border:1px solid var(--psionic);border-radius:6px;padding:18px 20px;margin:16px 0;animation:pulse-psionic 5s ease-in-out infinite}
+  .psionic-box-title{color:var(--psionic-bright);font-size:13px;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .psionic-box-title::before{content:"✦";color:var(--psionic);font-size:12px}
+
+  .twist-box{background:linear-gradient(135deg,rgba(122,184,106,0.18),rgba(212,166,74,0.1));border:2px solid var(--gold);border-radius:6px;padding:24px;margin:24px 0;animation:pulse-gold 4s ease-in-out infinite}
+  .twist-label{color:var(--gold-bright);font-size:12px;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:10px;text-align:center}
+  .twist-content{color:var(--parchment);font-size:16px;line-height:1.8}
+
+  .npc-card{display:grid;grid-template-columns:60px 1fr;gap:16px;background:rgba(10,18,12,0.5);border:1px solid var(--border);border-radius:4px;padding:14px;margin:12px 0;align-items:center}
+  .npc-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--leaf));display:flex;align-items:center;justify-content:center;color:var(--bg-deep);font-weight:bold;font-size:22px}
+  .npc-avatar.leaf{background:linear-gradient(135deg,var(--leaf),var(--bone))}
+  .npc-avatar.psi{background:linear-gradient(135deg,var(--psionic),var(--azure))}
+  .npc-name{color:var(--gold-bright);font-size:16px;margin-bottom:4px}
+  .npc-role{color:var(--text-dim);font-size:12px;margin-bottom:4px}
+
+  .watch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+  .watch-card{background:rgba(5,13,10,0.7);border:1px solid var(--border);border-radius:4px;padding:14px;position:relative}
+  .watch-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--leaf))}
+  .watch-card.morning{--accent:#f5d77a}
+  .watch-card.afternoon{--accent:#e8a070}
+  .watch-card.evening{--accent:#9d6fd9}
+  .watch-card.night{--accent:#5fb3d9}
+  .watch-time{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent,var(--leaf));margin-bottom:4px}
+  .watch-name{color:var(--gold-bright);font-size:15px;margin-bottom:6px}
+  .watch-desc{font-size:13px;color:var(--text-dim);line-height:1.5}
+
+  .choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin-top:18px}
+  .choice-card{background:rgba(5,13,10,0.6);border:1px solid var(--border);border-radius:6px;padding:18px;transition:all 0.3s;position:relative;overflow:hidden}
+  .choice-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--gold))}
+  .choice-card:hover{transform:translateY(-4px);border-color:var(--accent,var(--gold))}
+  .choice-card.hopecliff{--accent:#5fb3d9}
+  .choice-card.inss{--accent:#7ab86a}
+  .choice-card.tower{--accent:#9d6fd9}
+  .choice-card.tirrendale{--accent:#d4a64a}
+  .choice-tag{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent,var(--gold));margin-bottom:6px}
+  .choice-name{color:var(--gold-bright);font-size:17px;margin-bottom:10px}
+  .choice-desc{font-size:14px;color:var(--text);line-height:1.6}
+
+  .collapsible{background:rgba(10,18,12,0.6);border:1px solid var(--border);border-radius:4px;margin:12px 0;overflow:hidden}
+  .collapsible-header{padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--gold-bright);transition:background 0.3s;user-select:none}
+  .collapsible-header:hover{background:rgba(212,166,74,0.05)}
+  .collapsible-content{padding:0 18px;max-height:0;overflow:hidden;transition:max-height 0.4s,padding 0.4s}
+  .collapsible.open .collapsible-content{padding:14px 18px;max-height:4000px}
+  .collapsible-arrow{transition:transform 0.3s}
+  .collapsible.open .collapsible-arrow{transform:rotate(90deg)}
+
+  .divider{text-align:center;margin:40px 0;color:var(--gold);font-size:18px;letter-spacing:1em}
+
+  footer{text-align:center;margin-top:60px;padding-top:30px;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px;font-style:italic}
+
+  .key{color:var(--gold-bright);font-weight:bold}
+  .leaf-key{color:var(--leaf-bright);font-weight:bold}
+  .azure-key{color:var(--azure-bright);font-weight:bold}
+  .blood-key{color:var(--blood);font-weight:bold}
+  .psi-key{color:var(--psionic-bright);font-weight:bold}
+
+  @media (max-width:600px){
+    .container{padding:20px 12px}
+    .scene{padding:20px}
+    h1{font-size:28px}
+    .nav-tabs{padding:8px}
+    .tab-btn{padding:8px 12px;font-size:12px}
+    .meta-bar{gap:16px;padding:14px}
+    .meta-item{min-width:90px}
+  }
+</style>
+</head>
+<body>
+
+<div class="leaves"></div>
+
+<div class="container">
+
+  <header>
+    <div class="session-num">Sessione · XVII</div>
+    <h1>Il Canto della Corteccia</h1>
+    <p class="subtitle">"L'Albero non parla. L'Albero ricorda. E chi gli porta una verità, scopre che la verità non era ciò che cercava — ma ciò che lui stesso era diventato per portarla."</p>
+    <div class="date-line">Cronache di Obia · Vol. XIX · Enoia giorno 18-22</div>
+  </header>
+
+  <div class="meta-bar">
+    <div class="meta-item"><div class="meta-label">Durata</div><div class="meta-value">~4 ore</div></div>
+    <div class="meta-item"><div class="meta-label">Party</div><div class="meta-value">Tanagar · Caius · Garroth</div></div>
+    <div class="meta-item"><div class="meta-label">Atti</div><div class="meta-value">5 atti + libera scelta</div></div>
+    <div class="meta-item"><div class="meta-label">Focus</div><div class="meta-value">Aen'thalor & il viaggio</div></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-tab="overview">Panoramica</button>
+    <button class="tab-btn" data-tab="pegno">Atto I · Il Pegno</button>
+    <button class="tab-btn" data-tab="albero">Atto II · Aen'thalor</button>
+    <button class="tab-btn" data-tab="ritorno">Atto III · Il Ritorno</button>
+    <button class="tab-btn" data-tab="travel">Sistema di Viaggio</button>
+    <button class="tab-btn" data-tab="choices">Le Tre Vie</button>
+    <button class="tab-btn" data-tab="purgatorio">Viaggio nel Purgatorio</button>
+    <button class="tab-btn" data-tab="npcs">NPC & Bestiario</button>
+    <button class="tab-btn" data-tab="dm-notes">Note DM</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tab-content active" id="overview">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">★</div><h2 class="scene-title">Struttura della Sessione</h2></div>
+        <div class="scene-time">~4 ore</div>
+      </div>
+      <p class="scene-desc">Si riprende dal cliffhanger: il party è sospeso nel vuoto del portale, e la voce del <span class="leaf-key">Guardiano del Pegno</span> chiede il prezzo. Da qui si apre tutto il viaggio finale verso l'<span class="leaf-key">Albero Primo</span>, l'incisione della verità, la perdita della costola-bussola di Aelthair, e una <span class="key">scelta libera</span> sulla prossima direzione del party.</p>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Linea Temporale</div>
+        <ul>
+          <li><span class="leaf-key">Atto I — Il Pegno</span> · 40 min · Il sacrificio nel vuoto del portale</li>
+          <li><span class="leaf-key">Atto II — Aen'thalor</span> · 70 min · L'arrivo all'Albero, l'incisione, la visione di Tanagar</li>
+          <li><span class="leaf-key">Atto III — Il Ritorno & la Costola Morta</span> · 30 min · Il portale dorato, Aelthair spento</li>
+          <li><span class="leaf-key">Atto IV — Hopecliff & le Tre Vie</span> · 30 min · Riposo, voci di Tirrendale, la scelta</li>
+          <li><span class="leaf-key">Atto V — Il viaggio scelto</span> · 60-80 min · Sistema a Watches + destinazione</li>
+        </ul>
+      </div>
+
+      <div class="quote">
+        Il vuoto del portale pulsava in attesa. La voce che li aveva avvolti restava sospesa, paziente come un usuraio che ha tutto il tempo del mondo. <em>Uno di voi</em>, aveva detto. <em>Uno di voi deve lasciare qui qualcosa che non si può ricomprare.</em> E i tre si guardarono — anche se nel vuoto non c'era nulla da guardare — e capirono che a volte essere compagni significa scegliere chi paga.
+        <span class="quote-author">— L'apertura della sessione</span>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">⚔</div><h2 class="scene-title">Cosa Devono Capire i Giocatori</h2></div>
+      </div>
+      <div class="scene-section">
+        <div class="scene-section-title">Rivelazioni in ordine di importanza</div>
+        <ul>
+          <li>Il <span class="leaf-key">Pegno</span> ha un prezzo reale, non simbolico — chi paga perde qualcosa per sempre</li>
+          <li>L'<span class="leaf-key">incisione</span> sulla corteccia funziona come un patto cosmico: la verità è scolpita in un linguaggio vivo, attraverso la <span class="key">linfa dorata</span></li>
+          <li>Tanagar percepisce <span class="psi-key">qualcosa di violentemente personale</span> sull'Albero — un'eco di Zenthos che NON dovrebbe essere lì (primo grande indizio sul padre)</li>
+          <li>Aelthair è <span class="blood-key">morto</span>: la costola si spegne, devono trovare un altro modo per orientarsi</li>
+          <li>Il party è libero. Possono tornare al duca Eothen di Tirrendale (la missione originaria dell'arcanite è ancora aperta) o continuare con la trama dei Sette</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ATTO I - PEGNO -->
+  <div class="tab-content" id="pegno">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">I</div><h2 class="scene-title">Il Pegno nel Vuoto</h2></div>
+        <div class="scene-time">40 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="2400">40:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto I — Il sacrificio nel vuoto</div>
+      </div>
+
+      <p class="scene-desc">Il party è sospeso nel <span class="azure-key">vuoto del portale</span>: un non-luogo fatto di buio liquido e stelle che non sono stelle. Non c'è gravità. Non c'è terra. Solo loro tre, fluttuanti, e la voce paziente del Guardiano che ha appena chiesto il prezzo.</p>
+
+      <div class="info-box">
+        <div class="info-box-title">🌌 Atmosfera del vuoto</div>
+        Non possono parlarsi normalmente — non c'è aria che porti i suoni. Ma le loro <strong>menti si toccano</strong> in modo strano, come se la barriera dell'individualità si fosse assottigliata. Sentono le emozioni l'uno dell'altro come piccole vibrazioni nell'osso. <em>Decisione narrativa, non tecnica: parlano "telepaticamente" qui dentro, perché il portale lo richiede.</em>
+      </div>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">⚖ La scelta — chi paga?</div>
+        Il Guardiano non si manifesta in forma fisica. Solo la voce, paziente e antica. Le opzioni sul tavolo:<br><br>
+        <strong>Caius</strong> — ha già il <span class="key">Marchio del Ciclo</span> sul braccio. Il Guardiano potrebbe accettarlo come "già pagato" con uno sconto... ma rischia. Caius può <em>offrire un altro ricordo</em>, una capacità minore (-1 a una caratteristica), o un anno di vita. Visto che ha appena rifiutato il sacrificio del non-morto evocato, qui ha l'occasione di scrivere meglio il suo "secondo battito".<br><br>
+        <strong>Tanagar</strong> — il guerriero psionico. Può offrire un <span class="psi-key">frammento della sua memoria psionica</span>: per esempio, dimentica il volto di un compagno morto in una vita precedente. Oppure perde -1 a Forza (la falce di Caius compensa al party).<br><br>
+        <strong>Garroth</strong> — il ranger. Potrebbe offrire il <span class="leaf-key">legame con un animale</span> che ha amato (es. un cane d'infanzia, un cavallo). O un anno di vita (lui è mezz'elfo, ne ha molti). O una capacità sensoriale parziale (es. dell'olfatto fine da ranger — torna alla soglia umana).
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🔥 La via della forza (sconsigliata ma possibile)</div>
+        Se il party rifiuta, il vuoto si <strong>solidifica</strong> attorno a loro: tre figure di nebbia armate (echi del Guardiano) li attaccano. Combattimento di 3-4 round, tre nemici tipo Guardiano del Sale (CA 16, PF 80 ognuno), ma più sfumati e veloci.<br><br>
+        Se vincono, prendono il Pegno con la forza. L'Albero "lo sentirà" — meccanicamente, l'incisione avrà <strong>conseguenze peggiori</strong> nell'Atto II (la corteccia rifiuta una prima volta, devono insistere, e una zona dell'Albero si annerisce).
+      </div>
+
+      <div class="quote">
+        Caius, che aveva già pagato un prezzo grande, fece un passo avanti — anche se nel vuoto non c'erano passi. <em>Posso io pagare anche per loro?</em>, chiese. La voce, paziente, rispose: <em>Puoi pagare doppio. Ma il Pegno non si moltiplica. Si onora. Scegli con cura.</em>
+        <span class="quote-author">— Una possibile scena, se Caius si offre</span>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Una volta pagato</div>
+        <ul>
+          <li>Il Pegno si manifesta tra le mani di chi ha pagato: una <span class="key">piccola sfera</span> di luce e sale che pulsa al ritmo di un cuore lento</li>
+          <li>Il vuoto si chiude. Vengono sputati fuori — su <strong>erba viola</strong>, sotto un cielo che non appartiene a nessun piano conosciuto</li>
+          <li>Davanti a loro, immenso oltre ogni parametro mortale: <span class="leaf-key">Aen'thalor</span></li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ATTO II - ALBERO -->
+  <div class="tab-content" id="albero">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">II</div><h2 class="scene-title">Aen'thalor — L'Albero Primo</h2></div>
+        <div class="scene-time">70 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="4200">70:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto II — L'incisione & la visione</div>
+      </div>
+
+      <p class="scene-desc">Sono in piedi su <span class="leaf-key">erba viola</span>. Il cielo è di tutti i colori contemporaneamente — non in mezzo, ma sovrapposti, come se l'occhio non riuscisse a decidere quale stagione vedere. E davanti a loro, immenso, antico oltre ogni mortale: <span class="leaf-key">Aen'thalor</span>.</p>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">L'Albero — descrizione per i giocatori</div>
+        <em>"Davanti a voi si erge un albero che è più alto di una città. Il tronco è così largo che mille uomini, mani nelle mani, non potrebbero abbracciarlo. La corteccia è ricoperta da <strong>milioni di incisioni</strong>: parole, simboli, date, nomi in lingue che il mondo ha dimenticato e in lingue che non sono ancora state inventate. Le radici si estendono in direzioni che non esistono nello spazio normale — alcune scompaiono nel terreno, altre si tuffano nel cielo, altre semplicemente <strong>non finiscono</strong>. Le foglie sono di tutte le stagioni contemporaneamente: gemme appena nate, fiori bianchi, frutti maturi, foglie morenti, scheletri vegetali. Non c'è suono. Ma l'aria attorno a voi <strong>canta</strong> — una vibrazione bassa, costante, come se l'albero respirasse con polmoni più grandi del vostro mondo."</em>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">📍 Avvicinamento all'Albero</div>
+        Camminano per cinque minuti, e durante ogni passo l'Albero non sembra <em>avvicinarsi</em> — sembra che siano loro a <strong>diventare più piccoli</strong>, finché non si sentono come formiche sotto una cattedrale infinita. Le ferite di Caius (dal Pegno, dal Mondo Rosso) smettono di pulsare. Le emozioni si placano. Sono in un luogo dove anche il dolore deve <em>aspettare il proprio turno</em> per essere sentito.
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Cosa vedono sulla corteccia</div>
+        <ul>
+          <li><strong>Garroth</strong> nota incisioni della guerra di Ny e Ouh, la Caduta delle Stelle, la nascita delle prime tribù. Una storia del mondo scolpita verticalmente, dal basso (passato profondo) verso l'alto (futuro).</li>
+          <li><strong>Caius</strong> trova un'<span class="key">incisione recente</span>: il nome "935" inciso in piccolo, in una lingua arcana morta. Il suo vecchio conclave. <em>Pacatamente sa di essere stato osservato dall'Albero molto prima di sapere che l'Albero esistesse.</em></li>
+          <li><strong>Tanagar</strong> sente <span class="psi-key">qualcosa di vivo</span> sotto la corteccia che gli pulsa contro la mano se l'avvicina troppo. Lo sente come una <em>chiamata</em>, ma non sa di cosa. <strong>Tienila in sospeso — esploderà alla fine dell'incisione.</strong></li>
+          <li>Tutti e tre vedono, all'altezza dei loro occhi, una <span class="key">zona di corteccia liscia</span>, in attesa. È lì che andrà incisa la verità su Hemile.</li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">📜 Come funziona l'incisione (la spiegazione che ti mancava)</div>
+        Il rito è semplice ma carico di solennità. Funziona così:<br><br>
+        <strong>1.</strong> Uno del party (chi ha la lettera — Caius, presumibilmente) si avvicina alla zona liscia.<br>
+        <strong>2.</strong> Posa il <span class="key">seme dorato</span> (la Chiave) contro la corteccia. Il seme aderisce, si scioglie, e <strong>diventa linfa</strong> dorata viva che scorre verso l'alto sulla corteccia, come un piccolo serpente d'oro.<br>
+        <strong>3.</strong> Mentre il seme scorre, il portatore deve <strong>recitare ad alta voce</strong> la lettera di Aelthair. NON va tradotta — va detta nella lingua originale, anche se non si capisce. (Vantaggio per Caius: il Marchio del Ciclo gli dà la capacità di pronunciare lingue sacre.)<br>
+        <strong>4.</strong> Mentre le parole escono, la linfa dorata si <strong>solidifica</strong> in caratteri vivi sulla corteccia. Non come inchiostro: come <em>cicatrici luminose</em> che pulsano debolmente, vive.<br>
+        <strong>5.</strong> Quando l'ultima parola è pronunciata, l'incisione si <strong>sigilla</strong>. Una piccola foglia dorata sboccia accanto all'incisione, segno che l'Albero ha accettato la testimonianza.<br><br>
+        <strong>Da quel momento:</strong> nessun potere al mondo — né serafico, né demoniaco, né dei Sette — può <strong>cancellare</strong> ciò che è inciso. La verità su Hemile è ora <em>permanente nel tessuto del mondo</em>. Hemile non può più sopprimerla. Può solo cercare di impedirne la <strong>diffusione</strong>.
+      </div>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">Il Pegno, durante l'incisione</div>
+        Mentre Caius pronuncia le parole, il <strong>Pegno</strong> che il party ha portato si attiva: la sfera di luce e sale si dissolve gradualmente, alimentando l'incisione. Quando l'ultima parola viene detta, il Pegno è scomparso. Era il <em>combustibile</em> del rito. Per questo l'Albero esige sempre un sacrificio — l'incisione mortale richiede energia mortale.
+      </div>
+
+      <div class="twist-box">
+        <div class="twist-label">⚡ La Visione di Tanagar ⚡</div>
+        <div class="twist-content">
+          Nel momento esatto in cui l'incisione si sigilla, <span class="psi-key">Tanagar</span> sente qualcosa che gli rompe il petto. Una <strong>presenza familiare</strong> che NON dovrebbe essere lì — un'eco psionica che riconosce come propria, ma che <em>non è</em> sua. Cade in ginocchio.<br><br>
+          E sulla corteccia dell'Albero, in una zona vicina al punto appena inciso, <strong>vede</strong>. Una vecchia incisione. Antichissima — forse di mille anni fa. Tre parole, in alto githyanki, una lingua che lui non dovrebbe sapere e tuttavia comprende perfettamente:<br><br>
+          <strong style="color:var(--psionic-bright);font-size:18px">"Zenthos · Patto · Sangue"</strong><br><br>
+          Sotto, in caratteri più piccoli, una data che corrisponde a <strong>l'anno della sua nascita</strong>.<br><br>
+          Non sa cosa significhi. Ma sente, profondo nello stomaco, che <em>quel nome lo riguarda</em>. Lo riguarda intimamente. Quando guarda i compagni, Caius e Garroth — entrambi colpiti dalla solennità dell'incisione appena fatta — non se ne sono accorti. È solo per lui.<br><br>
+          Il giocatore di Tanagar si troverà con un seme che il personaggio non sa ancora come piantare. <strong>Questo è il primo, vero indizio che lui è collegato a uno dei Sette.</strong>
+        </div>
+      </div>
+
+      <div class="psionic-box">
+        <div class="psionic-box-title">Note per gestire la visione di Tanagar</div>
+        <strong>Importante:</strong> dare l'informazione SOLO al giocatore di Tanagar, su biglietto o in chat privata. Gli altri vedono solo Tanagar che si inginocchia. Quando glielo chiedono, lui può scegliere se dire la verità o no — è una decisione del giocatore. Spesso il momento più potente è quando il giocatore di Tanagar <em>tace</em>, e tiene il segreto. <em>Lascia che decida da solo.</em><br><br>
+        Per il futuro: questa visione apre la possibilità che Tanagar cominci a fare ricerche su Zenthos (un nome che non aveva mai sentito). Da qui partirà la sua personale sotto-trama che porterà, sessioni più avanti, al confronto finale col padre segreto.
+      </div>
+
+      <div class="quote">
+        Quando l'ultima parola della lettera fu pronunciata, l'Albero stesso <em>tremò</em>. Non come trema una pianta nel vento: come trema un essere vivo a cui sia stato finalmente concesso di dire ciò che teneva in petto da secoli. E in quel tremore, ogni mortale presente sentì — per un istante — di <em>essere ricordato</em>.
+        <span class="quote-author">— Obia, Cronache Vol. XIX</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ATTO III - RITORNO -->
+  <div class="tab-content" id="ritorno">
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">III</div><h2 class="scene-title">Il Ritorno & la Costola Spenta</h2></div>
+        <div class="scene-time">30 min</div>
+      </div>
+      <div class="timer-widget">
+        <div class="timer-display" data-duration="1800">30:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" data-action="start">▶ Avvia</button>
+          <button class="timer-btn" data-action="pause">⏸ Pausa</button>
+          <button class="timer-btn" data-action="reset">↺ Reset</button>
+        </div>
+        <div class="timer-label">Timer Atto III — Ritorno e perdita di Aelthair</div>
+      </div>
+
+      <p class="scene-desc">Finita l'incisione, l'Albero stesso sembra "esalare". Le foglie sopra il party iniziano a cadere — non foglie autunnali, ma <span class="leaf-key">foglie dorate</span>, piccole, luminose. Una di esse si posa sulla mano di Garroth e si dissolve in polvere d'oro tiepida.</p>
+
+      <div class="info-box">
+        <div class="info-box-title">🌀 Il portale di uscita</div>
+        Una <strong>spirale di luce dorata</strong> si apre sull'erba viola davanti a loro. Non hanno bisogno di una voce che gli dica cosa fare — capiscono. Saltano dentro.<br><br>
+        Il viaggio è breve, ovattato. Quando "riappaiono", sono in piedi sulla <strong>spiaggia di Hopecliff</strong>, vicino al relitto di Aelthair. Il mare è calmo. È mattina presto. Sono passati <strong>3 giorni</strong> da quando erano entrati nel relitto la prima volta — il tempo, ad Aen'thalor, ha le sue regole.
+      </div>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">La Costola si spegne</div>
+        Garroth si tocca lo zaino. La <strong>costola di Aelthair</strong>, che fino a quel momento aveva pulsato debole come una candela alla fine, ora è <em>completamente fredda</em>. La estrae. Bianca. Inerte. Non vibra più, non si scalda. È solo un osso.<br><br>
+        Capiscono. <strong>Aelthair è morto.</strong> Veramente, definitivamente. Il serafino che li aveva mandati in questa missione è finalmente passato oltre — il suo compito era portare la verità all'Albero, e ora che l'hanno portata, lui può andare.<br><br>
+        <em>"Ha aspettato voi per andarsene"</em>, sussurra Caius. Garroth ripone la costola con la delicatezza di chi mette via un cimelio. Sa che non li guiderà più.
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Conseguenze immediate</div>
+        <ul>
+          <li>La <span class="azure-key">colonna di luce sul mare</span> è ormai sparita. Il relitto è solo un relitto. Nessuna magia residua.</li>
+          <li>Le <strong>piume di Aelthair</strong> nello zaino di Garroth sono polvere. Quel poco che resta è un mucchietto bianco che il vento può spazzare via in qualsiasi momento.</li>
+          <li>Tanagar, da quando è uscito da Aen'thalor, <span class="psi-key">non ha più sentito la voce di Zenthos</span>. È tornata, o sta aspettando il momento giusto?</li>
+          <li>Hanno svolto la missione di Aelthair. Ma <strong>non hanno più una guida</strong>. La trama dei Sette è ora una scelta loro, non un imperativo divino.</li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🏘 Verso Hopecliff</div>
+        Camminano fino alla città. È ancora presto, le strade sono semi-vuote. Pescatori al porto, il primo fumo dalle case. Vanno alla locanda del <strong>Ciglio Frastagliato</strong>. Hendrik li accoglie con un cenno (li conosce ormai) e non fa domande quando vede i loro volti. Riposo. Cena. Un letto. Il primo letto vero da molti giorni.<br><br>
+        È durante il pasto serale che <span class="key">il problema della scelta</span> si pone.
+      </div>
+
+      <div class="quote">
+        Mangiavano in silenzio. Caius guardava la propria mano sinistra, dove il Marchio scorreva piano sotto la pelle. Garroth fissava l'osso bianco di Aelthair sul tavolo come si fissa la lapide di un amico. Tanagar non guardava nulla — guardava dentro. E nessuno dei tre aveva ancora la voglia di dire ad alta voce ciò che tutti sapevano: <em>ora dobbiamo decidere noi cosa fare.</em>
+        <span class="quote-author">— A cena, al Ciglio Frastagliato</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TRAVEL SYSTEM -->
+  <div class="tab-content" id="travel">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:14px;font-size:28px;font-weight:normal">🧭 Sistema di Viaggio · Le Quattro Veglie</h2>
+    <p style="text-align:center;color:var(--text-dim);font-style:italic;margin-bottom:30px;max-width:740px;margin-left:auto;margin-right:auto">Un sistema semplice per dare ritmo ai viaggi senza scivolare in ore di "intanto camminate". Ogni giornata di viaggio si divide in quattro fasce di 6 ore. In ognuna, accade qualcosa.</p>
+
+    <div class="info-box">
+      <div class="info-box-title">⚙ Come funziona</div>
+      Ogni giorno di viaggio = <strong>4 Veglie</strong> (Mattino, Pomeriggio, Sera, Notte). All'inizio di ogni Veglia, il DM tira un <strong>d20</strong> sulla tabella eventi del territorio. Ogni Veglia produce:<br><br>
+      <strong>1.</strong> <em>Un evento</em> (incontro, scoperta, scena breve)<br>
+      <strong>2.</strong> <em>Un check del party</em> (qualcuno fa la guardia, qualcuno foraggia, qualcuno orienta)<br>
+      <strong>3.</strong> <em>Progresso sul viaggio</em> (es. 25% del tragitto)<br><br>
+      In media, un viaggio da Hopecliff a Inss richiede <strong>2 giorni = 8 Veglie</strong>. Da Hopecliff a Tirrendale (sud-ovest), <strong>4 giorni = 16 Veglie</strong>.
+    </div>
+
+    <div class="watch-grid">
+      <div class="watch-card morning">
+        <div class="watch-time">Veglia I</div>
+        <div class="watch-name">Mattino</div>
+        <div class="watch-desc">Dalle 6 alle 12. La luce è chiara, le strade visibili. Buon momento per scoperte e incontri civili. Incontri probabili: viaggiatori, mercanti, pattuglie. Tempo per Indagare, Persuadere.</div>
+      </div>
+      <div class="watch-card afternoon">
+        <div class="watch-time">Veglia II</div>
+        <div class="watch-name">Pomeriggio</div>
+        <div class="watch-desc">Dalle 12 alle 18. Calore, stanchezza, attraversamenti pesanti. Incontri probabili: animali selvatici, terreni difficili, anomalie ambientali. Tempo per Sopravvivenza, Atletica.</div>
+      </div>
+      <div class="watch-card evening">
+        <div class="watch-time">Veglia III</div>
+        <div class="watch-name">Sera</div>
+        <div class="watch-desc">Dalle 18 alle 24. La luce muore, il bosco si trasforma. Incontri probabili: predatori, briganti, segni soprannaturali. Tempo per Percezione, Furtività, accendere fuoco.</div>
+      </div>
+      <div class="watch-card night">
+        <div class="watch-time">Veglia IV</div>
+        <div class="watch-name">Notte</div>
+        <div class="watch-desc">Dalle 24 alle 6. Riposo, ma non per tutti. Turni di guardia (uno ogni 2 ore). Incontri probabili: agguati, sogni profetici, presenze. Tempo per Intuizione, sogni narrativi.</div>
+      </div>
+    </div>
+
+    <div class="divider">✦ ✦ ✦</div>
+
+    <h3 style="color:var(--gold-bright);text-align:center;font-size:20px;margin-bottom:18px;font-weight:normal">Tabella Eventi · Strada Hopecliff → Inss (8 Veglie)</h3>
+
+    <div class="collapsible">
+      <div class="collapsible-header"><span>📋 Tabella d20 (8 esempi tirabili)</span><span class="collapsible-arrow">›</span></div>
+      <div class="collapsible-content">
+        <p><strong>1-3</strong> · <em>Strada tranquilla.</em> Progresso normale, nessun incontro. Tempo per il party di parlare tra sé (occasione per RP libero).</p>
+        <p><strong>4-5</strong> · <em>Carovana mercantile.</em> Un piccolo gruppo di carri diretti a Inss. Possono accompagnare il party. Pettegolezzi su Inss (le rune di Vorn, il nuovo borgomastro Aldric).</p>
+        <p><strong>6-7</strong> · <em>Pattuglia di Tirrendale.</em> Tre guardie a cavallo li riconoscono. <em>"Voi siete del gruppo di Caius e Tanagar? Il duca Eothen vi cerca. Sono passate molte settimane."</em> Possono ignorarli o farsi consegnare un messaggio.</p>
+        <p><strong>8-9</strong> · <em>Lupi del Tiglio.</em> 3 lupi affamati attaccano. Combattimento veloce. <em>(CA 13, PF 16, morso +4, 1d6+2)</em></p>
+        <p><strong>10-11</strong> · <em>L'eremita cieco.</em> Un vecchio seduto su una pietra, gli occhi bianchi. (NON è Zenthos questa volta — è solo un cieco vero, ma Tanagar non può non notare la coincidenza). Vende pane secco per due monete. Conosce le strade meglio di chiunque.</p>
+        <p><strong>12-13</strong> · <em>Pioggia improvvisa.</em> Devono trovare riparo. Sopravvivenza CD 12 per trovare una grotta asciutta. Se fallita, perdono tempo (la Veglia successiva è "ritardo").</p>
+        <p><strong>14-15</strong> · <em>Caravan vagabondo · druidi.</em> Un piccolo gruppo di druidi del Tiglio Bianco viaggia verso est. Garroth viene <strong>osservato a lungo</strong> da una di loro — una donna anziana dai capelli bianchi. <em>(Primo seme di Xylia, vedi scheda NPC.)</em></p>
+        <p><strong>16-17</strong> · <em>Cadavere recente.</em> Un viandante morto sulla strada. Caius può parlare coi morti (con il dominio Grave: bonus). Il morto dice di essere stato ucciso da "ombre con tre occhi". Mistero da archiviare.</p>
+        <p><strong>18-19</strong> · <em>Sogno notturno (solo Veglia IV).</em> Uno dei PG sogna. Tirate per scegliere chi (o decidete narrativamente). Il sogno è breve, evocativo, futuro-vago. Vedi <em>Sogni Narrativi</em> sotto.</p>
+        <p><strong>20</strong> · <em>Incontro raro.</em> Un singolo viandante, mantellato, su un cavallo nero. Si ferma, guarda il party in silenzio per 30 secondi, e prosegue senza una parola. <em>(È un agente di Krag-Dor — Caius lo riconoscerebbe se non fosse troppo lontano. Lascia il dubbio.)</em></p>
+      </div>
+    </div>
+
+    <div class="collapsible">
+      <div class="collapsible-header"><span>💭 Sogni Narrativi (banca di 5 sogni da pescare)</span><span class="collapsible-arrow">›</span></div>
+      <div class="collapsible-content">
+        <p><strong>Sogno di Tanagar #1:</strong> <em>"Sei in un palazzo di vetro sospeso tra le stelle. Davanti a te, un trono vuoto. Sul braccio del trono, un guanto di pelle nera. Lo riconosci, anche se non lo hai mai visto. È stato fatto per la tua mano."</em></p>
+        <p><strong>Sogno di Caius #1:</strong> <em>"Sei seduto su una panchina in un campo. Accanto a te c'è un bambino — sei tu da piccolo. Il bambino tiene in mano una clessidra. Ti guarda e dice: 'Sai cos'è il tempo, vero? È quello che mamma stava aspettando.'"</em></p>
+        <p><strong>Sogno di Garroth #1:</strong> <em>"Sei in una foresta di tigli bianchi. Davanti a te, una donna anziana ti porge un'ampolla con dentro un singolo capello rosso. Dice: 'Quando lo troverai, saprai cosa fare.' Tu non sai chi sia, ma ti fidi di lei come ti fideresti di una madre."</em></p>
+        <p><strong>Sogno comune (raro):</strong> <em>"Tutti e tre vi trovate sotto un drago rosso che brucia il cielo. Il drago vi guarda — non con fame, ma con stanchezza. Una scaglia gli cade dal collo e atterra ai vostri piedi. È pesante come dieci uomini."</em> (Primo seme della trama del drago.)</p>
+        <p><strong>Sogno di Caius #2:</strong> <em>"Vedi un volto familiare. Aurel — il tuo vecchio amico del gruppo 935. Ti sorride. Ma quando apre la bocca per parlare, escono solo corvi neri."</em> (Primo seme di Krag-Dor.)</p>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">⏱ Suggerimento pratico al tavolo</div>
+      Non tirare il d20 per ogni Veglia se i giocatori sembrano stanchi. Salta a 2-3 Veglie significative per giornata, descrivi il resto in narrazione veloce ("Il giorno passa senza eventi notevoli"). L'importante è dare <strong>almeno un evento per giornata di viaggio</strong>, così il viaggio non sembra "salto temporale".
+    </div>
+
+  </div>
+
+  <!-- LE TRE VIE -->
+  <div class="tab-content" id="choices">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:14px;font-size:28px;font-weight:normal">🛤 Le Tre Vie · La Scelta del Party</h2>
+    <p style="text-align:center;color:var(--text-dim);font-style:italic;margin-bottom:30px;max-width:740px;margin-left:auto;margin-right:auto">Tornati a Hopecliff, il party ha portato a termine la missione di Aelthair. Non sono più legati a una guida divina. Hanno una libera scelta su come continuare. Ecco le opzioni concrete da presentare loro a cena.</p>
+
+    <div class="choice-grid">
+
+      <div class="choice-card hopecliff">
+        <div class="choice-tag">Opzione 1</div>
+        <h3 class="choice-name">⚓ Restare a Hopecliff</h3>
+        <p class="choice-desc">Riposare. Sistemare le ferite. Riorganizzare l'equipaggiamento. Caius può "settare" meglio il dominio della Tomba (allenamenti spirituali, libri di Religione che Hendrik gli può procurare). Garroth visita la sua casa. Tanagar passeggia, fissa il mare.<br><br>
+        <strong>Eventi possibili:</strong> Hendrik gli racconta di un mercante "strano" passato di recente che chiedeva di loro. Un anello (quello di Cornelius) potrebbe rivelare qualcosa se Caius lo "legge" coi nuovi sensi divini.</p>
+      </div>
+
+      <div class="choice-card inss">
+        <div class="choice-tag">Opzione 2</div>
+        <h3 class="choice-name">🏘 Andare a Inss</h3>
+        <p class="choice-desc">Una città-borgo a est, sul fiume, ai bordi della Foresta del Tiglio Bianco. 2 giorni di viaggio. Conosciuta per il borgomastro <strong>Aldric</strong> (in viaggio di nozze con la moglie <strong>Lyenna</strong>), per la locanda di <strong>Durgik Boccafuoco</strong>, per le rune luminescenti del capitano della guardia <strong>Vorn Segno Antico</strong>, e per l'alchimista enigmatico <strong>Zahn l'Oscurato</strong>.<br><br>
+        <strong>Perché andare:</strong> Inss è vicina al <strong>Tiglio Bianco</strong> — territorio di <span class="leaf-key">Xylia</span>, una dei Sette. Garroth potrebbe trovarci la propria pista (vedi NPC). Inoltre Zahn potrebbe avere informazioni o pozioni utili per Caius.</p>
+      </div>
+
+      <div class="choice-card tower">
+        <div class="choice-tag">Opzione 3 · Nuova</div>
+        <h3 class="choice-name">🗝 Verso il Piano dell'Espiazione</h3>
+        <p class="choice-desc">Tornare alla <strong>Torre del Richiamo</strong> — non per essere cacciati come prima, ma per onorare il <em>vecchio patto di Aelthair</em>. Il serafino aveva promesso di aiutarli a entrare nel <strong>Piano dell'Espiazione</strong> (il purgatorio) in cambio della verità portata all'Albero. Lui è morto, ma il patto sopravvive.<br><br>
+        <strong>Chi li accoglierà:</strong> i monaci silenziosi questa volta non li respingono — vedono il <span class="key">Marchio del Ciclo</span> sul braccio di Caius e li conducono nei sotterranei. Lì incontrano <strong>Brevak Tinwhistle</strong>, vecchio mago gnomo, planologo, custode dei rituali per attraversare le soglie tra i piani.<br><br>
+        <strong>Lo scopo:</strong> placare l'anima inquieta di <strong>Pierrot</strong> (lo scheletro Ratto, sess. 13), e trovare — secondo Brevak — un'altra anima molto importante che giace nel purgatorio.</p>
+      </div>
+
+      <div class="choice-card tirrendale">
+        <div class="choice-tag">Opzione 4 · (latente)</div>
+        <h3 class="choice-name">⚜ Tornare a Tirrendale</h3>
+        <p class="choice-desc">La missione originaria. Hanno lasciato la città quasi <strong>un mese fa</strong>, mandati dal duca <strong>Eothen</strong> a cercare l'arcanite scomparsa. Da allora hanno trovato <em>molto</em> più di quel che cercavano — ma il duca non lo sa. 4 giorni di viaggio a sud-ovest.<br><br>
+        <strong>Tensione narrativa:</strong> Eothen potrebbe averli dati per morti. Oppure potrebbe averli fatti cercare. La pattuglia incontrata durante il viaggio (vedi tabella) suggerisce la seconda. <em>Tornare ora significa scegliere di rendere conto a un potere mortale, dopo essere stati nei piani divini.</em></p>
+      </div>
+
+    </div>
+
+    <div class="info-box" style="margin-top:24px">
+      <div class="info-box-title">💡 Suggerimento DM</div>
+      <strong>Non forzare una scelta.</strong> Presenta le opzioni a cena, attraverso un dialogo naturale. Esempi:<br><br>
+      • <em>Hendrik:</em> "Ho sentito che a Inss c'è il nuovo borgomastro. Pare buono. Pare che organizzino una festa di nozze postuma — il borgomastro è tornato da poco col viaggio di nozze."<br>
+      • <em>Pattuglia di Tirrendale (se incontrata):</em> "Il duca vi cerca. È preoccupato."<br>
+      • <em>Garroth, di sera al fuoco:</em> "Ho fatto un sogno strano stanotte. Una donna tra i tigli bianchi."<br><br>
+      Lascia che i giocatori discutano e scelgano. Se vacillano, chiedi loro: <em>"Cosa cerca il vostro personaggio adesso? Riposo? Risposte? Pace?"</em>
+    </div>
+
+    <div class="divider">✦ ✦ ✦</div>
+
+    <h3 style="color:var(--gold-bright);text-align:center;font-size:20px;margin-bottom:18px;font-weight:normal">Atto V · Esecuzione del viaggio scelto</h3>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">V</div><h2 class="scene-title">Il viaggio (60-80 min)</h2></div>
+      </div>
+      <p class="scene-desc">A seconda della scelta, l'Atto V cambia. Usa il <strong>sistema delle Veglie</strong> (vedi scheda) per dare ritmo. Sotto, i punti chiave per ogni destinazione.</p>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Se vanno a Inss</div>
+        <ul>
+          <li>2 giorni di viaggio = 8 Veglie. Tira 3-5 eventi sulla tabella.</li>
+          <li>L'evento "Druidi del Tiglio Bianco" (#14-15) <strong>deve</strong> uscire — se non esce dal d20, fallo accadere narrativamente la seconda sera. È la prima semina di <span class="leaf-key">Xylia</span>.</li>
+          <li>Arrivo a Inss alla terza sera. Locanda del Corno Spezzato, Durgik Boccafuoco li accoglie con un brindisi. Possono parlare con Vorn Segno Antico (le rune brillano di più quando Caius si avvicina — riconoscono il Marchio). Zahn l'Oscurato compare la mattina dopo, di sua iniziativa.</li>
+        </ul>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Se restano a Hopecliff</div>
+        <ul>
+          <li>Atto V si trasforma in <strong>tempo libero strutturato</strong>: scene brevi, una per PG.</li>
+          <li><strong>Caius</strong> "legge" l'anello di Cornelius con i sensi divini. Scopre che è un'<em>anello del messaggero della Lunga Veglia</em> — un piccolo culto monastico di cui Cornelius faceva parte prima delle Fucine Nere. <em>Dove sono andati i monaci? Dove è andato lui?</em></li>
+          <li><strong>Garroth</strong> visita una vecchia conoscente: una druidessa nascosta che vive ai margini di Hopecliff. Lei lo guarda a lungo e dice: <em>"C'è una donna del Tiglio che ti cerca da molto. Forse è arrivato il momento."</em> (Seme di Xylia anche qui.)</li>
+          <li><strong>Tanagar</strong> sente di nuovo la voce di Zenthos, finalmente. Ma diversa — più <strong>fredda</strong>. <em>"Ti ho perso per qualche giorno. Non succederà più."</em> Lascia il giocatore con un brivido.</li>
+        </ul>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Se vanno alla Torre del Richiamo (Piano dell'Espiazione)</div>
+        <ul>
+          <li>Viaggio breve (1 giorno, 4 Veglie) per arrivare alla Torre. Tira 1-2 eventi.</li>
+          <li>All'arrivo: stavolta i monaci NON li respingono. Uno di loro nota il <strong>Marchio del Ciclo</strong> sul braccio di Caius e si inchina lievemente. Vengono condotti nei sotterranei.</li>
+          <li>Incontrano <strong>Brevak Tinwhistle</strong>, vecchio gnomo mago e planologo. Lui accoglie il loro arrivo come fosse "atteso da decenni".</li>
+          <li>Da qui parte un <strong>viaggio in tre tappe</strong> verso il Piano dell'Espiazione. <em>Tutti i dettagli sono nella scheda dedicata "Il Viaggio nel Purgatorio".</em></li>
+        </ul>
+        <div style="text-align:center;margin-top:14px">
+          <button class="tab-btn" data-tab="purgatorio" style="border-color:var(--gold);color:var(--gold-bright)">→ Vai alla scheda del Viaggio nel Purgatorio</button>
+        </div>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Se vanno a Tirrendale</div>
+        <ul>
+          <li>4 giorni di viaggio = 16 Veglie. Tira 6-8 eventi. Più lungo, più rischioso.</li>
+          <li>Arrivati a Tirrendale, ricevuti dal duca <strong>Eothen</strong>. Conversazione formale ma tesa. Eothen vuole sapere dove sono stati. Dell'arcanite originale (la missione che gli ha dato un mese fa) ne sanno qualcosa, ma il quadro è cambiato.</li>
+          <li>Eothen è un duca anziano, paterno, leale alla Corona ma in difficoltà economiche. Se gli raccontano tutto, può <strong>credergli</strong> o <strong>non credergli</strong>. Test di Persuasione (CD variabile).</li>
+          <li>Questa via apre la possibilità di trasformare la verità di Hemile in una <strong>questione politica</strong>: Eothen è un alleato influente, ma fragile.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PURGATORIO -->
+  <div class="tab-content" id="purgatorio">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:14px;font-size:28px;font-weight:normal">🗝 Il Viaggio nel Piano dell'Espiazione</h2>
+    <p style="text-align:center;color:var(--text-dim);font-style:italic;margin-bottom:30px;max-width:740px;margin-left:auto;margin-right:auto">Il vecchio patto di Aelthair vive ancora. Tre tappe — un rituale, una palude liminale, una soglia di pietra — per attraversare il velo e dare pace a un'anima inquieta.</p>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🏛</div><h2 class="scene-title">L'arrivo alla Torre — Brevak Tinwhistle</h2></div>
+      </div>
+
+      <p class="scene-desc">Stavolta i monaci silenziosi non li respingono. Uno di loro nota il <span class="key">Marchio del Ciclo</span> sotto la pelle di Caius, e con un cenno li conduce nei <strong>sotterranei della Torre</strong> — un dedalo di stanze rivestite di libri, candele basse, e un'aria che sa di carta vecchia e magia stanca.</p>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">Brevak Tinwhistle, il planologo</div>
+        Un <strong>vecchio gnomo</strong> sui 250 anni, basso anche per la sua razza, con una folta barba grigia raccolta in <em>due trecce</em> intrecciate con piccoli ossicini di topo. Indossa una <strong>berretta di velluto verde-muschio</strong> che non si toglie mai (nemmeno per mangiare). Gli occhi sono <em>vivissimi</em>, di un castano caldo. Le mani piccole sono macchiate d'inchiostro permanente.<br><br>
+        Vive da decenni come "ospite tollerato" dei monaci, in cambio del voto di parlare sempre <strong>a voce bassa</strong>. È un <em>planologo</em> — studioso dei viaggi tra piani — e ha passato la vita a mappare i confini del Piano dell'Espiazione, perché ci ha perso il <strong>fratello Brevor</strong> che non è mai tornato. Cerca ancora oggi tracce di lui.<br><br>
+        <strong>Voce:</strong> nasale, leggermente rauca, parla in fretta quando si entusiasma e si ferma di colpo quando ricorda di dover sussurrare. Si scusa spesso ("scusatemi, scusatemi, sì, dove ero rimasto").
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🗣 Il primo incontro</div>
+        Brevak li accoglie come fossero attesi da decenni. <em>"Aelthair... oh, l'Aelthair! Sapete, lo conoscevo. Lui mi ha mandato un sogno tre notti fa per dirmi che sareste arrivati. Diceva di avervi promesso qualcosa. Diceva: 'falli passare, Brevak, falli passare se loro vogliono'."</em><br><br>
+        Spiega il patto: <strong>Aelthair aveva offerto di guidarli nel Piano dell'Espiazione</strong> in cambio della verità portata all'Albero. Ora che il serafino è morto, il patto passa a chi sa custodirlo — Brevak è quello "chi". Lui può aprire la soglia, ma il viaggio dovranno farlo loro tre soli.<br><br>
+        <strong>Perché entrare:</strong> per <em>dare pace a un'anima</em>. Brevak ha "sentito" attraverso i suoi strumenti che c'è uno spirito particolarmente inquieto nel piano — uno dei <strong>Ratti della Caduta delle Stelle</strong>. Pierrot. L'anima dello scheletro che Caius aveva fatto parlare nella caverna marina è bloccata: troppo ferita per andare oltre, troppo richiamata per tornare indietro. E mentre cercano lui, troveranno qualcun altro — qualcuno di molto importante che giace lì da molto tempo.
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">⚙ Cosa serve per il rito</div>
+        Brevak elenca i <strong>tre componenti rituali</strong>:<br><br>
+        <strong>1.</strong> <em>Una lacrima di chi ha perso qualcuno.</em> Caius ce l'ha già — il ricordo di sua madre (sacrificio del Pegno alla sessione 15). Brevak la "estrae" toccandogli la fronte con uno strumento di vetro: una piccola goccia opalescente che cade in una fiala.<br>
+        <strong>2.</strong> <em>Una goccia di sangue di chi non è morto ma dovrebbe esserlo.</em> Garroth — il ranger che è stato un orso, e che porta tracce di magia trasformante (la sessione 14, quando si è trasformato per salvare il party). Lui dovrebbe essere morto da tempo, salvato da un dono che sfida il Ciclo. Brevak gli punge il polpastrello e raccoglie la goccia.<br>
+        <strong>3.</strong> <em>Una moneta da pagare al traghettatore.</em> Brevak chiede: <em>"Avete qualcosa che il purgatorio riconoscerebbe come moneta?"</em> — la <span class="key">moneta nera</span> trovata sotto la lingua del cadavere di Aelthair (sessione 14) è perfetta. Pagamento da un assassino che ora paga al cancello.
+      </div>
+
+      <div class="twist-box">
+        <div class="twist-label">⚠ MANCA UN OGGETTO ⚠</div>
+        <div class="twist-content">
+          Brevak si gratta la barba, imbarazzato. <em>"C'è... ah, sì, c'è una cosa che non ho. Non posso aprire la soglia senza. Il <strong>Pendolo di Vethrik</strong>. È l'ago della bussola tra i piani — senza, il rito sa dove andare ma non quando. Io ne avevo uno. Si è consumato anni fa, cercando mio fratello. Per il vostro viaggio ne serve uno nuovo. E... beh. Sono cinque al mondo, ne restano forse uno solo. So dove dovrebbe essere. Ma è lontano. Molto lontano."</em><br><br>
+          Estrae una vecchia mappa pieghevole, ingiallita, e indica un punto a <strong>nord-ovest</strong>: <span class="key">le Catacombe di Whitemoor</span>. Cinque o sei giorni di viaggio da Hopecliff.<br><br>
+          <em>"L'ultimo Pendolo è nella tomba di Frate Olwen, un monaco-orafo morto due secoli fa. Lo usava per parlare coi morti dei pellegrini. Quando morì se lo portò nella tomba — non aveva nessuno a cui lasciarlo. Le catacombe sono abbandonate da decenni, ma... beh. Lo dico onestamente, ragazzi: non sono andato a prenderlo io perché sono troppo vecchio per quel viaggio. E ho paura di morire prima di sapere se mio fratello sta bene."</em>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider">✦ ✦ ✦</div>
+
+    <!-- TAPPA 0 - WHITEMOOR -->
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">0</div><h2 class="scene-title">Tappa 0 — Le Catacombe di Whitemoor</h2></div>
+        <div class="scene-time">60 min</div>
+      </div>
+
+      <p class="scene-desc">Prima del rito vero, il party deve viaggiare a nord-ovest per recuperare il <span class="key">Pendolo di Vethrik</span> dalla tomba di Frate Olwen. <strong>5-6 giorni di viaggio</strong> (usare il sistema delle Veglie, ~20 Veglie totali — il DM può condensare a 4-6 eventi significativi). Attraversano boschi, paludi minori, e finalmente le colline calcaree di Whitemoor.</p>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">Le Catacombe di Whitemoor</div>
+        Un <strong>cimitero monastico abbandonato</strong> da due secoli. Tagliato direttamente nella roccia bianca delle colline calcaree: scale che scendono nel ventre della terra, corridoi lunghi rivestiti di loculi, una vecchia cappella interna con un altare crollato. L'aria sa di calcare e di tempo. Le pareti sono incise con <em>versetti monastici del Ciclo</em>, devozioni a Kal-Durr (Frate Olwen e il suo ordine erano devoti del Custode dell'Orologio Muto).
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Cosa trovano dentro</div>
+        <ul>
+          <li><strong>I tombaroli.</strong> Una piccola banda di 4-5 banditi ha scoperto le catacombe da poco. Stanno saccheggiando i loculi. Possono essere combattuti, ingannati, o usati come informatori (sanno la disposizione delle stanze).</li>
+          <li><strong>I non-morti minori.</strong> Residui di rituali monastici falliti — 3-4 scheletri inquieti che vagano nei corridoi. Caius con il dominio Tomba può <strong>placarli con un gesto</strong> (canalizzare divinità → ripristina l'ordine del Ciclo, gli scheletri si dissolvono in polvere). Funziona perfettamente: è letteralmente il suo lavoro.</li>
+          <li><strong>La tomba sigillata di Frate Olwen.</strong> Una camera laterale chiusa da una porta di pietra incisa con una clessidra. <em>Si apre solo al crepuscolo</em> — quando la luce esterna che filtra dalla feritoia raggiunge un certo angolo, la sabbia in una conchiglia di marmo si equilibra e il sigillo cede. Il party deve aspettare (o trovare un modo magico per simulare il crepuscolo).</li>
+        </ul>
+      </div>
+
+      <div class="combat-card">
+        <div class="scene-section-title">⚔ Tombaroli (combat opzionale)</div>
+        <div class="enemy-grid">
+          <div class="enemy-card">
+            <div class="enemy-name">Capo Tombarolo (×1)</div>
+            <div class="enemy-stats">
+              CA 14 · PF 35<br>
+              Scimitarra +5 (1d6+3)<br>
+              Balestra leggera +4 (1d8+2)<br>
+              Multiattacco: 2 attacchi
+            </div>
+          </div>
+          <div class="enemy-card">
+            <div class="enemy-name">Tombarolo (×3-4)</div>
+            <div class="enemy-stats">
+              CA 12 · PF 18<br>
+              Pugnale +3 (1d4+1)<br>
+              Codardi: fuggono sotto 6 PF
+            </div>
+          </div>
+        </div>
+        <p style="margin-top:10px;font-style:italic;color:var(--text-dim)">Combattimento veloce 2-3 round. Se il party li lascia vivi, possono diventare informatori utili per il futuro.</p>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">⚰ Dentro la tomba di Frate Olwen</div>
+        Una piccola stanza circolare, illuminata da un raggio di luce che entra dalla feritoia. Al centro, una <strong>bara di marmo aperta</strong>: dentro, lo scheletro di Frate Olwen, vestito di un saio marrone consumato, le mani giunte sul petto. Tra le dita ossute, il <span class="key">Pendolo di Vethrik</span>: un piccolo oggetto di ottone scuro con un cristallo nero che oscilla anche da fermo.<br><br>
+        <strong>Se Caius parla coi morti</strong> (dominio Tomba): lo scheletro risponde con voce monastica e gentile. <em>"Cercatore del Ciclo... riconosco il Marchio. Prendete il Pendolo. Io non ne ho più bisogno. Vethrik lo costruì per i vivi che cercano i morti — voi ne avete più diritto di me. Ma sappiate questa cosa: il pendolo oscilla anche per voi. Se uno di voi è marcato dal Ciclo, dopo questo viaggio sarà marcato due volte. Il pendolo guarda chi lo guarda."</em><br><br>
+        <strong>Bonus narrativo:</strong> Frate Olwen dà a Caius una <em>benedizione minore</em>. Un d4 bonus a un solo tiro futuro a scelta, durante il viaggio al purgatorio. Lo "spende" quando vuole.
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🧭 Tornare a Brevak</div>
+        Il viaggio di ritorno (altri 5-6 giorni) può essere narrato più rapidamente — il party ha l'oggetto, il viaggio è familiare ormai. Tira 2-3 eventi rapidi sulle Veglie. Una volta tornati alla Torre, Brevak prende il pendolo e <strong>piange</strong>: <em>"Pensavo di non rivederne mai più uno. Grazie. Possiamo iniziare il rito."</em>
+      </div>
+    </div>
+
+    <!-- TAPPA 1 -->
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">1</div><h2 class="scene-title">Tappa I — Il Rituale della Soglia</h2></div>
+        <div class="scene-time">40 min</div>
+      </div>
+
+      <p class="scene-desc">Brevak li conduce nella <strong>Sala del Cerchio</strong> — la stanza più profonda della Torre. Un pavimento di pietra bianca con un cerchio inciso nel centro, candele basse, e tre piccole conche di pietra disposte ai vertici di un triangolo. Lo gnomo posa una conca con la <span class="key">lacrima</span>, una con la <span class="key">goccia di sangue</span>, una con la <span class="key">moneta nera</span>.</p>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Lo svolgimento del rito</div>
+        <ul>
+          <li>Brevak comincia a sussurrare in <strong>gnomico antico</strong>. La sua voce diventa stranamente più profonda mentre canta. Le candele si abbassano fino a essere solo brace.</li>
+          <li>I tre componenti nelle conche si <strong>illuminano</strong> di colori diversi: la lacrima azzurra, il sangue verde-foresta, la moneta di un nero che assorbe la luce.</li>
+          <li>Al centro del cerchio si apre una <strong>fessura verticale</strong> nell'aria — non un portale, una <em>crepa</em>. Si vede attraverso a un altro luogo: una <strong>palude grigia</strong> sotto un cielo di latte.</li>
+        </ul>
+      </div>
+
+      <div class="combat-card">
+        <div class="scene-section-title">⚔ Combat opzionale — Le Larve dell'Anticamera</div>
+        <p style="margin-bottom:12px">Mentre il rito raggiunge il suo apice, presenze attratte dal richiamo tentano di <strong>varcare la crepa al contrario</strong>: piccole anime parassite che vivono nel velo tra i piani. Vogliono entrare a Eldoria.</p>
+        <div class="enemy-grid">
+          <div class="enemy-card">
+            <div class="enemy-name">Larva del Velo (×3)</div>
+            <div class="enemy-stats">
+              CA 12 · PF 22<br>
+              Tocco gelido +4 (1d6+2 freddo)<br>
+              <em>Sussurro Famelico:</em> chi le sente entro 6m<br>
+              TS Sag CD 12 o "ricorda" un proprio morto<br>
+              e perde 1 azione bonus al prossimo turno<br>
+              <em>Resistenze:</em> danni fisici non magici<br>
+              <em>Vuln:</em> radiante, fuoco
+            </div>
+          </div>
+        </div>
+        <p style="margin-top:12px;font-style:italic;color:var(--text-dim)">Brevak NON combatte — sta tenendo il rito. Se interrotto, la crepa si chiude e bisogna ricominciare da capo (e ridare i componenti, che vengono consumati). Quindi proteggerlo è priorità. 3-4 round di combat veloce.</p>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🌀 Attraversare la crepa</div>
+        Quando le Larve sono sconfitte e il rito completato, Brevak fa cenno al party di entrare. <em>"Devo restare. Se entro anch'io, gli spiriti mi riconoscono e si appiccicano. Vi aspetto qui. Per voi, ci sono massimo 24 ore al di là. Dopo, la crepa si chiude e... non posso aprirla di nuovo per molto tempo."</em><br><br>
+        Il party varca la fessura. Sentono la temperatura cambiare di colpo — più fredda, ma di un freddo strano, come se la <em>memoria di calore</em> si raffreddasse, non la carne. Sono nella Palude di Aetherghast.
+      </div>
+    </div>
+
+    <!-- TAPPA 2 -->
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">2</div><h2 class="scene-title">Tappa II — La Palude di Aetherghast</h2></div>
+        <div class="scene-time">50 min</div>
+      </div>
+
+      <p class="scene-desc">La <span class="leaf-key">Palude di Aetherghast</span> è il luogo dove Eldoria e il Piano dell'Espiazione si <strong>toccano</strong>. Esiste in entrambi i mondi contemporaneamente — i contadini della costa danese ne hanno sentito parlare, ma chi entra dal lato mortale di solito non torna. Il party entra dal lato planare, che è più stabile.</p>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">Descrizione del luogo</div>
+        Una distesa infinita di <strong>acqua grigia</strong> ferma, profonda al ginocchio, da cui spuntano alberi morti i cui rami sembrano braccia. Il cielo è del colore del latte. Non c'è vento — eppure l'acqua si <em>increspa</em> ogni tanto, come se qualcosa di grande nuotasse sotto. Il silenzio è denso. Quando parlano, le loro voci suonano <strong>ovattate</strong>, come parlare sotto una coperta.<br><br>
+        Sulla riva da cui sono entrati c'è un piccolo sentiero di pietre piatte che si addentra nella palude. Brevak ha detto di seguirlo. <em>"Ovunque vada quel sentiero, va anche voi. Non lasciatelo. Mai. L'acqua qui non bagna i piedi. Bagna i ricordi."</em>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Eventi durante l'attraversamento (scegline 3)</div>
+        <ul>
+          <li><strong>La Nebbia dei Ricordi Recenti.</strong> Una nebbia bassa avvolge il sentiero per circa 10 minuti. Mentre la attraversano, ognuno dei PG perde un <em>ricordo recente</em>: non importante, ma minore (es. cosa ha mangiato a colazione, il nome di un mercante incontrato, il colore dei capelli di un viandante). Effetto narrativo: lieve disorientamento.</li>
+          <li><strong>Le Larve del Vuoto Affamato.</strong> 2 Larve del Velo (stesse stat di Tappa I) ne attaccano una. Tentano di rubare un'identità: TS Sag CD 13 o perdono temporaneamente il proprio nome per 1 ora (svantaggio a tutte le prove sociali).</li>
+          <li><strong>Un'isola di Memoria.</strong> Una piccola isola di erba secca emerge dall'acqua, e sopra c'è un oggetto familiare a uno dei PG (es. il giocattolo d'infanzia di Garroth, un libro di Caius, l'arma di un compagno morto di Tanagar). Se lo prendono, perdono un'altra goccia di memoria. Se lo lasciano, sentono una <em>voce dietro di loro</em> sussurrare "grazie".</li>
+          <li><strong>Il Riflesso di Garroth.</strong> <span class="leaf-key">Solo per Garroth.</span> Mentre cammina vicino a una pozza più chiara, si china a guardare e vede non se stesso ma una <strong>donna elfica</strong> dai capelli bianchi che lo fissa. Lei sorride, porta un dito alle labbra (silenzio), e scompare. <em>(È Xylia. Primo contatto visuale diretto.)</em></li>
+          <li><strong>Il Cadavere Galleggiante.</strong> Un cadavere fluttua a faccia in giù vicino al sentiero. Indossa abiti di un'epoca passata. Se lo girano: ha il volto di <em>Brevor, fratello di Brevak</em>. Se lo riportano alla soglia... non possono. La palude lo "tira" indietro. Possono però <strong>prendergli un piccolo medaglione dal collo</strong> — da consegnare a Brevak al ritorno. Momento commovente per dopo.</li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">⚙ Meccanica del "perdere ricordi"</div>
+        Nella palude i PG <strong>perdono piccoli ricordi non importanti</strong>. Effetto puramente narrativo — non scendono di livello, non perdono spell. Ma da DM puoi usarlo: la prossima sessione, se un giocatore prova a citare un dettaglio "minore" del passato, può rispondergli "Non te lo ricordi più. Era restato nella palude." Crea un senso di costo permanente.<br><br>
+        <strong>Non toccare ricordi importanti</strong> (madre, amici morti, eventi traumatici significativi). Quelli sono fuori scala.
+      </div>
+
+      <p style="margin-top:14px">Dopo circa due ore di cammino nella palude, il sentiero di pietre piatte sale gradualmente. L'acqua cede il passo a una pietra bianca, lavorata. Davanti a loro, sull'orizzonte, vedono <strong>una struttura</strong>: la Soglia.</p>
+    </div>
+
+    <!-- TAPPA 3 -->
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">3</div><h2 class="scene-title">Tappa III — La Soglia Liminale</h2></div>
+        <div class="scene-time">40 min</div>
+      </div>
+
+      <p class="scene-desc">La <span class="key">Soglia</span> è una distesa di pietra bianca lavorata dal vento — perfettamente piana, perfettamente vuota. Al centro, un'unica <strong>porta di pietra alta tre metri</strong>, scolpita con simboli antichi. Sta in piedi <em>senza muri intorno</em>. Sembra una stranezza geometrica — eppure è solida, reale, e attraversabile solo dalla parte giusta.</p>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">Il Guardiano della Soglia</div>
+        Davanti alla porta, seduto su un piccolo sgabello di pietra che non c'era un istante prima, c'è un essere. Umanoide, ma sfocato — come una figura disegnata a matita e poi sfumata. Indossa una <strong>maschera bianca senza tratti</strong> (né occhi, né bocca). Tiene in mano una <strong>bilancia di legno</strong> con due piatti.<br><br>
+        Quando il party si avvicina, parla. La voce è gentile, quasi educata, come quella di un bibliotecario stanco.<br><br>
+        <em>"Salve. Per attraversare devo farvi tre domande. Una per ciascuno. Non c'è risposta giusta o sbagliata, in senso assoluto. Valuto la <strong>sincerità</strong>. Mi mentite, vi rispedisco indietro. Mi rispondete davvero — entrate. Va bene?"</em>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">⚖ Le Tre Domande</div>
+        Brevak ha avvertito: il guardiano <em>legge l'anima, non le parole</em>. Non si può barare. La maschera "vede" cosa il PG sta pensando mentre risponde. Le domande sono <strong>personali</strong> e adattate a ogni PG. Esempi:<br><br>
+        <strong>A Caius:</strong> <em>"Hai un Marchio. Lo so. Ma dimmi una cosa, custode della tomba: <strong>credi davvero in quel che fai</strong>? O credi solo che ci sia un dio dietro di te?"</em><br>
+        Risposta giusta: l'onestà. Anche un "non lo so ancora" sincero funziona.<br><br>
+        <strong>A Tanagar:</strong> <em>"Senti una voce dentro di te. Non quella della tua coscienza — un'altra. Mi sbaglio?"</em><br>
+        Risposta giusta: ammettere la verità. Negare = svantaggio al passaggio.<br><br>
+        <strong>A Garroth:</strong> <em>"Hai paura di qualcosa. Da molto tempo. Da molto prima che incontrassi questi due. Mi dici cos'è?"</em><br>
+        Risposta giusta: una paura vera, anche piccola. Una falsa "io non ho paure" = rispedito indietro.
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🚪 Se passano (probabile)</div>
+        Il guardiano si alza. Posa la bilancia. La porta di pietra <strong>si apre</strong> da sola, mostrando un corridoio di pietra bianca che porta a un cielo grigio chiarissimo. <em>"Avete 18 ore di mondo mortale. Dopo, la porta si chiude e dovrete restare. Buona ricerca."</em>
+      </div>
+
+      <div class="combat-card">
+        <div class="scene-section-title">⚔ Se MENTONO o falliscono (combat opzionale)</div>
+        <p style="margin-bottom:12px">Il guardiano si alza, e la sua maschera diventa improvvisamente <em>nera</em>. La sua forma sfocata si solidifica in un <strong>essere armato</strong>. La bilancia diventa una spada.</p>
+        <div class="enemy-grid">
+          <div class="enemy-card" style="border-color:var(--gold)">
+            <div class="enemy-name" style="color:var(--gold-bright)">Guardiano della Verità Negata</div>
+            <div class="enemy-stats">
+              CA 17 · PF 95<br>
+              Spada di Verità +6 (2d8+3 + 2d6 psichico)<br>
+              <em>Multiattacco:</em> 2 attacchi<br>
+              <em>Riflesso del Falso:</em> chi gli mente o<br>
+              attacca dopo aver mentito ha svantaggio<br>
+              ai TS Sag mentre lo combatte<br>
+              <em>Vulnerabilità:</em> nessuna<br>
+              <em>Immunità:</em> psichico
+            </div>
+          </div>
+        </div>
+        <p style="margin-top:14px"><strong>Soluzione alternativa:</strong> se durante il combat un PG <em>confessa</em> la menzogna originale, il guardiano si <strong>ferma di colpo</strong> e dice: <em>"Ah. Bene. Allora potete passare."</em> La porta si apre. La sincerità è sempre la chiave. Non c'è bisogno di ucciderlo.</p>
+      </div>
+    </div>
+
+    <div class="divider">✦ ✦ ✦</div>
+
+    <!-- DENTRO IL PURGATORIO -->
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">⧗</div><h2 class="scene-title">Dentro il Piano dell'Espiazione</h2></div>
+      </div>
+
+      <p class="scene-desc">Varcata la porta, si trovano in un <strong>vasto altopiano grigio</strong>. Il cielo è uniformemente bianco-latte. Non c'è sole, non c'è ombra. Migliaia di figure umanoidi vagano lentamente, ognuna <em>persa nella propria memoria</em>. Alcune sussurrano. Alcune piangono. Alcune ridono di qualcosa di invisibile. Tutte sono <strong>traslucide</strong>, come acquerelli stinti.</p>
+
+      <div class="leaf-box">
+        <div class="leaf-box-title">Effetti del piano sul party</div>
+        <ul style="list-style:none;padding:0">
+          <li style="padding:6px 0"><strong>Caius:</strong> il Marchio del Ciclo è considerato un <em>passaporto personale di Kal-Durr</em>. Le anime gli si avvicinano spontaneamente — alcune per parlare, alcune per chiedere giudizio. <span class="key">Vantaggio sociale</span> nel piano. <span class="blood-key">Svantaggio fisico:</span> è il "bocconcino", se qualcosa di ostile esiste qui, lo cerca per primo.</li>
+          <li style="padding:6px 0"><strong>Tanagar:</strong> <span class="psi-key">non sente più la voce di Zenthos.</span> Per la prima volta da settimane è veramente solo nella propria testa. Può essere liberatorio o terrificante — gioca su come reagisce il giocatore.</li>
+          <li style="padding:6px 0"><strong>Garroth:</strong> i suoi sensi da ranger sono attutiti — non c'è natura "viva" qui, solo memoria di natura. Si sente cieco rispetto al solito. Però <em>vede meglio le emozioni delle anime</em>, come se le sue capacità si fossero spostate verso il sociale.</li>
+        </ul>
+      </div>
+
+      <div class="scene-section">
+        <div class="scene-section-title">Trovare Pierrot</div>
+        <ul>
+          <li>Camminano per circa un'ora tra le anime. Brevak ha dato a Caius una <strong>piccola bussola d'ottone</strong> che vibra quando si avvicina a uno spirito segnato (Pierrot lo è — è morto e parlato due volte, ha "doppia firma").</li>
+          <li>La bussola li guida a un punto preciso dell'altopiano. Lì trovano una <strong>figura piccola, tarchiata</strong>, seduta su una roccia, che parla da sola. È un vecchio dall'aspetto rude — <em>un Ratto, riconoscibile dall'armatura logora che porta ancora addosso</em>.</li>
+          <li><strong>Pierrot</strong> li riconosce. <em>"Voi. Vi ricordo. Mi avete fatto parlare quando il mio osso era ancora sopra la sabbia. Bene, bene. Sono ancora qui. Non posso passare. Mi richiamate troppo. Mi tirate come una corda."</em></li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">🕊 Come placare Pierrot</div>
+        Caius può "tagliare la corda" che lega l'anima a Eldoria con un piccolo rito (il <strong>dominio della Tomba</strong> è perfetto per questo — è letteralmente la sua funzione). Servono parole sincere: <em>"Pierrot, ti rilascio. Hai detto la verità, e la verità ora vive senza di te. Vai."</em><br><br>
+        Quando il rito è completo, Pierrot sorride. <em>"Grazie, ragazzi. Grazie."</em> Poi, prima di dissolversi, aggiunge: <em>"Una cosa ancora. Più in là, verso ovest, c'è uno che ha aspettato me. Uno dei Capitani, sapete. Hemile non lo ha venduto del tutto: ha mandato la sua anima qui, in punizione personale. Lo trovate sotto un albero senza foglie. Si chiama <strong>Veladris</strong>. Diteagli che il vento conosce ancora il suo nome."</em><br><br>
+        Si dissolve. Una piccola foglia di carta vecchia rimane al suo posto: il <strong>sigillo del Ratto</strong>. Caius la prende — sarà un oggetto-trama futuro.
+      </div>
+
+      <div class="twist-box">
+        <div class="twist-label">⚡ Veladris ⚡</div>
+        <div class="twist-content">
+          Più a ovest, sotto l'<strong>unico albero senza foglie</strong> visibile in tutta la pianura, c'è una figura ammantata. È un <strong>serafino</strong> — un Capitano serafino, di un Coro alto. Non ha più le ali, gliele hanno strappate molto tempo fa. È inginocchiato a pregare in una lingua che non si è mai sentita da queste parti.<br><br>
+          Quando il party si avvicina, alza la testa. Il suo volto è bellissimo e devastato. Riconosce qualcosa in Caius (forse il Marchio? Forse altro?) e <strong>sorride</strong>.<br><br>
+          <em>"Mortali. Finalmente. Ho aspettato a lungo. Mi chiamo Veladris. Sono uno dei sei capitani che Hemile ha venduto ai demoni 1852 anni fa. Non sono morto come gli altri. Hemile è stato peggio con me — ha mandato me qui, condannandomi all'espiazione per crimini che non avevo commesso. È stata la sua personale crudeltà. Ditemi, vi prego: la verità è uscita?"</em><br><br>
+          Se gli rispondono di sì (l'incisione sull'Albero): Veladris piange di sollievo. <em>"Allora c'è ancora speranza. Ascoltate: io sono testimone. Posso uscire da qui, se mi guidate. Posso testimoniare davanti a Ys'aelorn. Posso rompere il regno di Hemile dall'interno. Ma serve la vostra mano. Volete aiutarmi?"</em><br><br>
+          <strong style="color:var(--gold-bright)">QUESTO È IL GANCIO TRAMA PIÙ GROSSO DELLA CAMPAGNA.</strong> Veladris vivo + testimone vivente = la condanna di Hemile. Ma riportarlo nel mondo dei vivi è un'impresa di parecchie sessioni.
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">⏱ Il ritorno</div>
+        Le 18 ore stanno per finire. Il party deve tornare alla Soglia. Se vogliono portare Veladris con loro: <strong>impossibile in questa sessione</strong>. Devono fare ricerche, raccogliere oggetti, forse parlare con Brevak — preparare un secondo viaggio futuro per estrarlo. Veladris lo capisce. <em>"Tornate quando potete. Io aspetto. Aspettare è la mia condanna."</em><br><br>
+        Tornano alla Soglia. Il Guardiano li lascia uscire senza domande questa volta. Attraversano la Palude all'inverso (eventi più rapidi questa volta). Brevak li accoglie nella Sala del Cerchio, esausto ma vivo.<br><br>
+        <strong>Se gli portano il medaglione del fratello Brevor:</strong> il vecchio gnomo lo prende in mano, lo guarda a lungo, e per la prima volta in decenni <em>piange</em>. Senza un suono. Dopo qualche minuto, dice solo: <em>"Grazie. Ora so dov'è. È libero da tempo, in realtà. Solo io ero rimasto indietro."</em>
+      </div>
+
+      <div class="quote">
+        Veladris li aveva guardati uscire con la stessa pazienza con cui si guarda un'alba dopo un secolo di notte. Sapeva che sarebbero tornati. Non perché lo avessero promesso — ma perché certi gesti, una volta cominciati, non si possono lasciare a metà. E mentre la porta si chiudeva, sotto l'albero senza foglie il Capitano serafino sussurrò una parola che nessuno udì: <em>"Hemile. Sto arrivando."</em>
+        <span class="quote-author">— Obia, Cronache Vol. XIX</span>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">📋</div><h2 class="scene-title">Riassunto bottino & ganci dal Purgatorio</h2></div>
+      </div>
+      <ul>
+        <li><span class="key">Sigillo del Ratto</span> — la "carta" che Pierrot ha lasciato. Oggetto-trama, può sbloccare l'accesso a luoghi/persone legate ai Ratti della Caduta delle Stelle.</li>
+        <li><span class="key">Medaglione di Brevor</span> — se l'hanno preso, regalo per Brevak. Lo gnomo da quel momento <em>diventa un alleato permanente</em> del party.</li>
+        <li><span class="key">Bussola d'Ottone</span> — Brevak la lascia loro. Reagisce a "spiriti segnati" del Piano dell'Espiazione. Possono usarla per altri viaggi futuri.</li>
+        <li><span class="key">Conoscenza di Veladris</span> — il Capitano serafino è vivo (in senso planare) e testimoniabile. Riportarlo a Eldoria è la nuova grande missione.</li>
+        <li><span class="psi-key">Tanagar e il silenzio</span> — sa ora che esiste un luogo dove Zenthos non lo può raggiungere. Potrebbe volerci tornare in futuro.</li>
+        <li><span class="leaf-key">Garroth e Xylia</span> — primo contatto visivo diretto. Il filo si stringe.</li>
+        <li><span class="key">Brevak alleato</span> — il vecchio gnomo è ora un NPC ricorrente che può aiutarli con questioni planari.</li>
+      </ul>
+    </div>
+
+  </div>
+  <div class="tab-content" id="npcs">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:30px;font-size:28px;font-weight:normal">👥 NPC della Sessione</h2>
+
+    <div class="divider">✦ I VOLTI DI INSS ✦</div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">D</div>
+      <div>
+        <div class="npc-name">Durgik Boccafuoco</div>
+        <div class="npc-role">Locandiere & Bardo · Locanda del Corno Spezzato</div>
+        <div style="font-size:13px;color:var(--text-dim)">Nano, testa rasata con rune incise sul cranio, lunga barba rossa intrecciata con perle d'argento. Suona il liuto ogni sera con bravura sorprendente. Ricorda ogni viaggiatore. Spilorcio ma onesto. <em>Voce:</em> calda, ridanciana, con accento del nord nanico.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">V</div>
+      <div>
+        <div class="npc-name">Vorn Segno Antico</div>
+        <div class="npc-role">Capitano della Guardia · Guardiani della Runa</div>
+        <div style="font-size:13px;color:var(--text-dim)">Guerriero massiccio, corpo coperto di <strong>tatuaggi runici blu luminescenti</strong>. Ogni runa è un patto con uno spirito ancestrale. Le rune <strong>brillano di più</strong> quando si avvicina a chi porta un Marchio divino (Caius). Diffidente, taciturno, ma fedele al borgomastro Aldric. <em>Possibile gancio:</em> sa qualcosa sui draghi (le rune del suo dorso provengono da scaglie).</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">Z</div>
+      <div>
+        <div class="npc-name">Zahn l'Oscurato</div>
+        <div class="npc-role">Alchimista Senza Origini · Venditore di pozioni e distillati</div>
+        <div style="font-size:13px;color:var(--text-dim)">Porta una mascherina dorata che copre metà del viso. Gli <strong>occhi viola</strong> rivelano un intelletto acutissimo. Studia ogni liquido come se contenesse risposte. Vende pozioni rare a prezzi non economici. <em>Mistero:</em> nessuno sa da dove venga, e quando gli chiedono dell'origine cambia abilmente discorso.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">A</div>
+      <div>
+        <div class="npc-name">Aldric, Borgomastro di Inss</div>
+        <div class="npc-role">Umano, recente sposo · in viaggio di nozze fino al prossimo mese</div>
+        <div style="font-size:13px;color:var(--text-dim)">Sui 40 anni, capelli scuri brizzolati alle tempie, riservato e amato dal popolo. Ha sposato <strong>Lyenna</strong>, una giovane mercante di tessuti del sud. Sono partiti per la costa orientale due settimane fa. Il party non lo incontra in questa sessione, ma la sua assenza si nota — è il borgomastro nuovo, la città lo aspetta. <em>Seme:</em> un giorno ci sarà bisogno di lui, e potrebbe non essere a Inss.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">V</div>
+      <div>
+        <div class="npc-name">Veladris</div>
+        <div class="npc-role">Capitano Serafino · prigioniero del Piano dell'Espiazione</div>
+        <div style="font-size:13px;color:var(--text-dim)">Uno dei sei Capitani serafini venduti da Hemile 1852 anni fa. A differenza degli altri, NON è stato dato ai demoni — Hemile lo ha mandato qui per crudeltà personale, condannandolo a un'espiazione eterna per crimini non commessi. Ali strappate. Bellissimo e devastato. <strong>È un testimone vivente.</strong> Se il party riesce a estrarlo dal purgatorio in future sessioni, può testimoniare a Ys'aelorn e <strong>rovinare Hemile dall'interno</strong>. <em>Massimo gancio narrativo della campagna.</em></div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">P</div>
+      <div>
+        <div class="npc-name">Pierrot (anima placata)</div>
+        <div class="npc-role">Vecchio Ratto della Caduta delle Stelle · spirito del Purgatorio</div>
+        <div style="font-size:13px;color:var(--text-dim)">Lo scheletro che Caius aveva fatto parlare nella caverna marina (sess. 13). Anima bloccata nel purgatorio perché "richiamata troppo" tra i due mondi. Caius lo libera col rito del dominio Tomba. Prima di dissolversi indica la posizione di Veladris. Lascia il <strong>Sigillo del Ratto</strong> come dono. <em>Funzione narrativa:</em> conclusione del cerchio aperto nella sessione 13.</div>
+      </div>
+    </div>
+
+    <div class="divider">✦ I LEGAMI DEL PARTY ✦</div>
+
+    <div class="npc-card">
+      <div class="npc-avatar leaf">B</div>
+      <div>
+        <div class="npc-name">Brevak Tinwhistle</div>
+        <div class="npc-role">Mago Gnomo · Planologo · Custode dei rituali liminali</div>
+        <div style="font-size:13px;color:var(--text-dim)">Vecchio gnomo di 250 anni, barba grigia a due trecce con piccole ossa di topo intrecciate, berretta verde-muschio. Vive nei sotterranei della Torre del Richiamo. Cerca da decenni il fratello <strong>Brevor</strong>, perso nel Piano dell'Espiazione. Eredita il vecchio patto di Aelthair. Diventa alleato permanente se gli portano il medaglione del fratello. <em>Tono:</em> nasale, ridanciano, sussurra. Tema di Brevak = curiosità + lutto trattenuto.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar leaf">X</div>
+      <div>
+        <div class="npc-name">Xylia la Senza Tempo</div>
+        <div class="npc-role">Sovrano III · Elfa Alta · Maga Illusionista · Foresta del Tiglio Bianco</div>
+        <div style="font-size:13px;color:var(--text-dim)">Non si manifesta direttamente in questa sessione, ma le sue <strong>tracce</strong> sono ovunque per Garroth: una druidessa che lo guarda troppo a lungo, un sogno con una donna tra i tigli, un capello rosso in un'ampolla, una voce che sussurra <em>"quando lo troverai, saprai cosa fare"</em>.<br><br><strong>Il suo gioco lungo:</strong> ha tentato secoli fa di liberare un drago dalla maledizione e ha fallito. Ora vede in Garroth qualcuno che <em>forse</em> può fare ciò che lei non è riuscita. Lo sta guidando verso il <strong>Drago Rosso del Boschetto Bruciato</strong>. Non glielo dirà mai apertamente. Lascia che lui creda di scegliere.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar psi">Z</div>
+      <div>
+        <div class="npc-name">Zenthos l'Etereo (assente fisicamente)</div>
+        <div class="npc-role">Sovrano IV · Padre segreto di Tanagar</div>
+        <div style="font-size:13px;color:var(--text-dim)">L'incisione vista da Tanagar all'Albero Primo è il primo, <strong>vero</strong> indizio del suo legame. La voce torna in vari momenti — più fredda dopo Aen'thalor (Zenthos lo ha "perso" per qualche giorno e ora lo guarda con più attenzione). <em>Strategia:</em> seminare lentamente la verità nelle prossime 4-6 sessioni, lasciando che sia Tanagar a indovinare prima che il padre si presenti di persona.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">K</div>
+      <div>
+        <div class="npc-name">Krag-Dor (Aurel Than Beamrunel)</div>
+        <div class="npc-role">Sovrano VII · ex-amico di Caius · Corvo di Ferro</div>
+        <div style="font-size:13px;color:var(--text-dim)">In questa sessione: solo accenni. Il viandante mantellato nella tabella eventi (#20) è un suo agente. Il sogno di Caius con "Aurel che apre la bocca e ne escono corvi" è il primo seme diretto. <em>Strategia:</em> Krag-Dor è il nemico più personale per Caius, ma la rivelazione completa che "il vero Aurel è prigioniero dentro un demone" arriverà molto dopo, idealmente in un momento di estrema tensione emotiva.</div>
+      </div>
+    </div>
+
+    <div class="divider">✦ ALTRI ✦</div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">E</div>
+      <div>
+        <div class="npc-name">Duca Eothen di Tirrendale</div>
+        <div class="npc-role">Signore di Tirrendale · committente originario</div>
+        <div style="font-size:13px;color:var(--text-dim)">Anziano, paterno, integro ma in difficoltà economiche. Li ha mandati a cercare l'arcanite scomparsa quasi un mese fa. Probabilmente li dà per morti, ma li sta cercando con pattuglie. Se tornano, vorrà sapere tutto — e la sua reazione sarà cruciale per il futuro politico del party.</div>
+      </div>
+    </div>
+
+    <div class="npc-card">
+      <div class="npc-avatar">H</div>
+      <div>
+        <div class="npc-name">Hendrik</div>
+        <div class="npc-role">Locandiere del Ciglio Frastagliato · Hopecliff</div>
+        <div style="font-size:13px;color:var(--text-dim)">Volto familiare, sempre più affezionato al party. Sa che sono "diventati qualcosa" — non chiede dettagli. Offre stanza, cibo, conforto. <em>Possibile gancio futuro:</em> Hendrik ha un passato militare di cui non parla, e potrebbe avere informazioni sul duca Eothen.</div>
+      </div>
+    </div>
+
+    <div class="divider">✦ BESTIARIO MINIMO ✦</div>
+
+    <div class="collapsible">
+      <div class="collapsible-header"><span>🐺 Lupi del Tiglio (evento viaggio #8-9)</span><span class="collapsible-arrow">›</span></div>
+      <div class="collapsible-content">
+        <p><strong>Lupo del Tiglio × 3</strong> — CA 13, PF 16, Morso +4 (1d6+2 + presa: TS Forza CD 11 o prono). Branco: vantaggio se almeno un alleato entro 1,5m dal bersaglio. Combattimento veloce, 2-3 round.</p>
+      </div>
+    </div>
+
+    <div class="collapsible">
+      <div class="collapsible-header"><span>👻 Echi del Guardiano (combat opzionale nel vuoto)</span><span class="collapsible-arrow">›</span></div>
+      <div class="collapsible-content">
+        <p><strong>Eco del Guardiano × 3</strong> — CA 16, PF 80, Lama di Nebbia +6 (2d8+3 forza), <em>Resistenza:</em> danni fisici non magici. <em>Immunità:</em> psichico. Solo se il party rifiuta il Pegno.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DM NOTES -->
+  <div class="tab-content" id="dm-notes">
+
+    <h2 style="color:var(--gold-bright);text-align:center;margin-bottom:30px;font-size:28px;font-weight:normal">📜 Note del Dungeon Master</h2>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">⚙</div><h2 class="scene-title">Pacing & Ritmo</h2></div>
+      </div>
+      <ul>
+        <li><strong>Atto I (40 min)</strong> — Il Pegno è una scena di dialogo + scelta morale. Niente fretta. Lascia che i PG discutano. Se vacillano, fai parlare il Guardiano: <em>"Il tempo nel vuoto non si misura. Ho aspettato eternità per pegni più piccoli del vostro."</em></li>
+        <li><strong>Atto II (70 min)</strong> — Cuore della sessione. Descrivi l'Albero LENTAMENTE. Spendi 5 minuti su come appare. L'incisione è il momento epico — usa una voce solenne, leggi la lettera ad alta voce. La visione di Tanagar è un biglietto privato.</li>
+        <li><strong>Atto III (30 min)</strong> — Transizione. La costola che si spegne è il momento elegiaco. Hopecliff è ritorno alla normalità.</li>
+        <li><strong>Atto IV (30 min)</strong> — Dialogo a cena. Lascia che i giocatori scelgano. Non forzare.</li>
+        <li><strong>Atto V (60-80 min)</strong> — Il viaggio scelto. Usa le Veglie, ma adatta. Se i giocatori sono stanchi, condensa.</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🎭</div><h2 class="scene-title">La visione di Tanagar — gestione</h2></div>
+      </div>
+      <ul>
+        <li><strong>SOLO al giocatore di Tanagar.</strong> Bigliettino, chat privata, fuori dal tavolo. Mai a voce alta.</li>
+        <li>Il testo da dargli: <em>"Mentre l'incisione si sigilla, senti qualcosa rompersi nel petto. Sulla corteccia, in una zona vicina al punto che Caius ha appena inciso, vedi un'incisione antichissima. Tre parole in alto githyanki — una lingua che non dovresti conoscere ma che capisci perfettamente: <strong>Zenthos · Patto · Sangue</strong>. Sotto, una data. È l'anno della tua nascita. Non sai cosa significhi. Ma sai che ti riguarda."</em></li>
+        <li><strong>Lascia che il giocatore decida cosa fare</strong>. Può tacere, può chiedere ai compagni, può scrivere su un foglio per riferire dopo. Tutte le scelte sono valide.</li>
+        <li>Se chiede al DM "cosa significa?": rispondi <em>"Non lo sai. Ma lo sentirai di nuovo."</em> Non rivelare ancora che Zenthos è suo padre.</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🌳</div><h2 class="scene-title">Spiegare l'incisione ai giocatori</h2></div>
+      </div>
+      <ul>
+        <li>Prima di farla, leggi loro a voce alta la sezione dell'incisione (la trovi nell'Atto II). È un rito — devono capire la solennità.</li>
+        <li>Chiedi a Caius (o a chi tiene la lettera): <em>"Sei pronto? Posa il seme. Poi recita."</em> Poi LEGGI tu, ad alta voce, la lettera decifrata di Aelthair. Dramma teatrale.</li>
+        <li>Quando finisci, descrivi l'incisione che si sigilla, la foglia dorata che sboccia, e il Pegno che scompare. <em>"È fatto. La verità è ora parte del mondo. Nessuno può cancellarla."</em></li>
+        <li>QUI è dove inserisci la visione di Tanagar (bigliettino).</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🧭</div><h2 class="scene-title">Il sistema delle Veglie — consigli pratici</h2></div>
+      </div>
+      <ul>
+        <li><strong>Non tirare per ogni Veglia.</strong> Per ogni giornata di viaggio, scegli 2-3 Veglie significative e descrivi le altre in poche frasi.</li>
+        <li><strong>Tieni la tabella sotto mano</strong> ma sentiti libero di inventare se nessun evento del d20 ti convince.</li>
+        <li>Per ogni Veglia che giochi davvero, chiedi a UN PG cosa sta facendo (foraggiare, fare la guardia, leggere, riflettere). Anche solo per 30 secondi di RP.</li>
+        <li>I <strong>sogni notturni</strong> sono uno strumento potente — usali con parsimonia, 1 ogni 2-3 sessioni di viaggio.</li>
+      </ul>
+    </div>
+
+    <div class="scene">
+      <div class="scene-header">
+        <div class="scene-title-wrap"><div class="scene-num">🔮</div><h2 class="scene-title">Ganci per le prossime sessioni</h2></div>
+      </div>
+      <ul>
+        <li><strong>Tanagar e il nome:</strong> "Zenthos · Patto · Sangue". Da qui partono le sue ricerche. Può chiedere a NPC dotti (Caius con Religione, Zahn l'alchimista a Inss, libri antichi). La risposta vera arriverà solo quando incontrerà Zenthos in persona.</li>
+        <li><strong>Garroth e Xylia:</strong> i sogni dei tigli bianchi, la druidessa, la donna anziana. Tutti convergono verso un viaggio a Inss / Tiglio Bianco / Drago Rosso. Pianifica una sessione "Drago" tra 4-6 sessioni.</li>
+        <li><strong>Caius e Krag-Dor:</strong> sogni con Aurel, il viandante mantellato. Krag-Dor è il villain personale di Caius. Cresci la tensione lentamente.</li>
+        <li><strong>L'anello di Cornelius:</strong> se Caius lo "legge" a Hopecliff, scopre il culto della Lunga Veglia. Pista futura.</li>
+        <li><strong>Eothen e l'arcanite:</strong> la missione originale non è stata dimenticata. Prima o poi torneranno a Tirrendale, e il duca avrà bisogno di risposte. <em>L'arcanite scomparsa potrebbe essere collegata ai Sette.</em></li>
+        <li><strong>Hemile:</strong> non l'hanno incontrato. Lo faranno. La verità è incisa, e Hemile non può cancellarla — quindi cambierà strategia. Sospetta che presto si presenti come "alleato".</li>
+      </ul>
+    </div>
+
+    <div class="quote">
+      Questa sessione fa una cosa che le precedenti non hanno fatto: <em>lascia i giocatori liberi</em>. La trama imposta da Aelthair è chiusa. Il futuro è loro. Da DM, il tuo lavoro qui è seminare opzioni e lasciar germogliare la curiosità. Non spingere. Aspetta.
+      <span class="quote-author">— Promemoria del DM</span>
+    </div>
+
+  </div>
+
+  <footer>
+    Cronache del Gruppo AMEA · Sessione XVII<br>
+    "L'Albero non parla. L'Albero ricorda."
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const target = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn[data-tab="'+target+'"]').forEach(b => b.classList.add('active'));
+      document.getElementById(target).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', () => header.parentElement.classList.toggle('open'));
+  });
+
+  document.querySelectorAll('.timer-widget').forEach(widget => {
+    const display = widget.querySelector('.timer-display');
+    const duration = parseInt(display.dataset.duration);
+    let remaining = duration;
+    let interval = null;
+    const format = (s) => {
+      const m = Math.floor(s/60), sec = s%60;
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    };
+    const update = () => {
+      display.textContent = format(remaining);
+      if(remaining <= 60) display.style.color = '#f5d77a';
+      if(remaining <= 30) display.style.color = '#b8434a';
+      if(remaining <= 0){
+        clearInterval(interval); interval = null;
+        display.textContent = '00:00';
+        display.style.color = '#b8434a';
+        widget.style.animation = 'pulse-leaf 1s ease-in-out 3';
+      }
+    };
+    widget.querySelectorAll('.timer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        if(action === 'start' && !interval){
+          interval = setInterval(() => { remaining--; update(); }, 1000);
+        } else if(action === 'pause'){
+          clearInterval(interval); interval = null;
+        } else if(action === 'reset'){
+          clearInterval(interval); interval = null;
+          remaining = duration;
+          display.style.color = '#a8d896';
+          display.textContent = format(remaining);
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

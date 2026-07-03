@@ -21,6 +21,9 @@ import Party from "./pages/Party";
 import Notifications from "./pages/Notifications";
 import Riassunti from "./pages/Riassunti";
 import RiassuntoSingolo from "./pages/RiassuntoSingolo";
+import SessionsArchive from "./pages/SessionsArchive";
+import SessionDetail from "./pages/SessionDetail";
+import GenerateSession from "./pages/GenerateSession";
 import Mercato from "./pages/Mercato";
 import Geo from "./pages/Geo";
 import ItemDetail from "./pages/ItemDetail";
@@ -633,6 +636,9 @@ export default function App() {
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
           <Route path="/riassunto/:id" element={<RiassuntoSingolo />} />
+          <Route path="/sessions/:party" element={<SessionsArchive />} />
+          <Route path="/sessions/:party/:number" element={<SessionDetail />} />
+          <Route path="/dm/generate-session" element={<GenerateSession />} />
           <Route path="/scriba" element={<Scriba />} />
           <Route path="/giornale/:id" element={<ScribaSingolo />} />
           <Route path="/almanacco" element={<Almanacco />} />

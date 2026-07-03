@@ -359,6 +359,18 @@ service cloud.firestore {
       allow write: if canEditSummaries();
       allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount']);
     }
+    // ── Generatore Sessioni DM (privato, solo master) ───────────────────────
+    // Sessioni HTML generate/archiviate — SOLO master/co-master. NON è la
+    // collezione `sessions` (quella è il calendario). Isolamento per party
+    // applicato lato client (ogni query filtra per `party`).
+    match /dm_sessions/{docId} {
+      allow read, write: if isMaster();
+    }
+    // Config dei party (AMEA/LEAF/ENOX): personaggi, mondo, citazione, attivo.
+    match /parties/{partyId} {
+      allow read, write: if isMaster();
+    }
+
     match /messages/{msgId}       { allow create: if isLoggedIn(); allow read, write: if isMaster(); }
     match /party_tracks/{partyId} { allow read, write: if isLoggedIn(); }
     match /rolls/{rollId}         { allow read, create: if isLoggedIn(); }
