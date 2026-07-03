@@ -24,7 +24,6 @@ const PARTIES = [
       { name: "Caius",   race: "Elfo",       class: "Mago",      image: "/assets/player/caius2.jpeg" },
       { name: "Garroth", race: "Mezz'Elfo",  class: "Ranger",    image: "/assets/player/garroth2.png" },
       { name: "Tanagar", race: "Mezz'Orco",  class: "Guerriero", image: "/assets/player/Tanagar2.png" },
-      { name: "Sylva",   race: "Umana",      class: "Barbaro",   image: "/assets/player/Sylva.png" },
     ],
   },
   {
@@ -81,7 +80,6 @@ const HERO_BIOS = {
   "Caius": "",
   "Garroth": "",
   "Tanagar": "",
-  "Sylva": "",
   // Compagnia di Lac
   "Thoki": "",
   "Cleofe": "",

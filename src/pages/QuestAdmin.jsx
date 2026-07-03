@@ -22,8 +22,7 @@ const PARTY_ROSTER = {
   AMEA: ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
   ENOX: ["Makenna", "Temistocle Sottocolle Milo", "Alaric Voltasorte", "Lael"],
   LAC: ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  LEAF: ["Taaras Stormrage", "Soran", "Zethir"],
-  ECO: ["Aksel", "Dago", "Ismael Van Dyke"],
+  LEAF: ["Soran", "Zethir", "Aksel", "Dago"],
 };
 
 const PARTY_COLORS = {
@@ -31,7 +30,6 @@ const PARTY_COLORS = {
   ENOX: "#8e44ad",
   LAC: "#2980b9",
   LEAF: "#27ae60",
-  ECO: "#0f766e",
 };
 
 const DIFFICULTIES = [
@@ -231,7 +229,7 @@ export default function QuestAdmin() {
     if (uploading) return;
     setLoading(true);
     try {
-      const isParty = ["AMEA", "ENOX", "LAC", "LEAF", "ECO"].includes(formData.targetCharacter);
+      const isParty = ["AMEA", "ENOX", "LAC", "LEAF"].includes(formData.targetCharacter);
       const payload = {
         ...formData,
         sender,
@@ -308,7 +306,7 @@ export default function QuestAdmin() {
   }, [quests, filterDiff, filterTarget, search]);
 
   const previewDiff = diffMeta(formData.diff);
-  const isPartyTarget = ["AMEA", "ENOX", "LAC", "LEAF", "ECO"].includes(formData.targetCharacter);
+  const isPartyTarget = ["AMEA", "ENOX", "LAC", "LEAF"].includes(formData.targetCharacter);
 
   return (
     <section className="admin-quest-page qstadm">
@@ -472,7 +470,6 @@ export default function QuestAdmin() {
                   <option value="ENOX">Solo Party ENOX</option>
                   <option value="LAC">Solo Party LAC</option>
                   <option value="LEAF">Solo Party LEAF</option>
-                  <option value="ECO">Solo Party ECO</option>
                 </optgroup>
                 <optgroup label="👤 Personaggi">
                   {characters.map((char) => (

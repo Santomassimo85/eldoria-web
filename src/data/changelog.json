@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "79",
+      "date": "2026-07-03",
+      "title": "Composizione dei gruppi allineata",
+      "changes": [
+        {
+          "type": "chore",
+          "text": "Aggiornata la composizione reale dei gruppi in tutta l'app: Sylva non fa più parte di AMEA; LEAF ora è Soran, Zethir, Aksel e Dago; il gruppo ECO è stato accorpato. Allineate pagina Compagnie, bacheca, assistente e strumenti del Master."
+        }
+      ]
+    },
+    {
       "version": "78",
       "date": "2026-07-03",
       "title": "Scriptorium: scene più varie + generazione copertina",

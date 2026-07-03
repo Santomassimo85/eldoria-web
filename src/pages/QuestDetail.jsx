@@ -16,8 +16,7 @@ const PARTY_ROSTER = {
   "AMEA": ["Tanagar", "Garroth", "Caius Maxis-Richtofen"],
   "ENOX": ["Makenna", "Temistocle Sottocolle Milo", "Alaric Voltasorte", "Lael"],
   "LAC":  ["Horn", "Thinkle Muschioverde", "Cleofe"],
-  "LEAF": ["Taaras Stormrage", "Soran", "Zethir"],
-  "ECO":  ["Aksel", "Dago", "Ismael Van Dyke"],
+  "LEAF": ["Soran", "Zethir", "Aksel", "Dago"],
 };
 
 const getPartyByCharName = (name) => {

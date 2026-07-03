@@ -15,7 +15,6 @@ const PARTIES = [
     { name: "Garroth", image: "/assets/player/garroth2.png" },
     { name: "Tanagar", image: "/assets/player/Tanagar2.png" },
     { name: "Caius",   image: "/assets/player/caius2.jpeg" },
-    { name: "Sylva",   image: "/assets/player/Sylva.png" },
   ] },
   { key: "LAC",   label: "LAC",   members: [
     { name: "Horn",   image: "/assets/player/Horn.jpg" },
@@ -25,17 +24,14 @@ const PARTIES = [
   { key: "LEAF",  label: "LEAF",  members: [
     { name: "Soran",  image: "/assets/player/Soran.png" },
     { name: "Zethir", image: "/assets/player/Zethir.jpeg" },
-    { name: "Taaras", image: "/assets/player/TaarasStormrage.png" },
+    { name: "Aksel",  image: "/assets/player/Aksel.png" },
+    { name: "Dago",   image: "/assets/player/dago.jpeg" },
   ] },
   { key: "ENOX",  label: "ENOX",  members: [
     { name: "Makenna",    image: "/assets/player/Makenna.jpeg" },
     { name: "Temistocle", image: "/assets/player/Temistocle.jpeg" },
     { name: "Alaric",     image: "/assets/player/alaric.png" },
     { name: "Lael",       image: "/assets/player/lael.jpg" },
-  ] },
-  { key: "ECO",   label: "ECO",   members: [
-    { name: "Aksel", image: "/assets/player/Aksel.png" },
-    { name: "Dago",  image: "/assets/player/dago.jpeg" },
   ] },
   { key: "Unico", label: "Storia del Mondo", members: [] },
 ];
