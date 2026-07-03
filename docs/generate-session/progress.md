@@ -7,7 +7,7 @@ Piano completo: `./PLAN.md`. Aggiornare questo file alla fine di ogni fase (`/cl
 - [x] **Fase B** — Dettaglio `/sessions/:party/:number` (HTML in iframe srcDoc isolato + summary di riferimento) + tile nel pannello DM
 - [x] **Fase C** — Endpoint `/api/generate-session` (streaming, maxDuration 60, opus-4-8) + prompt engineering + plumbing client (streamGenerateSession/parseGenerated/loadPartyContext)
 - [x] **Fase D** — Frontend `/dm/generate-session` (selettore party + form + checkbox PG + anteprima iframe streaming + salva) + tile pannello DM
-- [ ] **Fase E** — Test: genera Sessione XXI di AMEA + misura latenza (decide piano B timeout)
+- [~] **Fase E** — IN TEST: deployata su Vercel (commit 46992bb). Da fare: generare Sessione XXI AMEA dal vivo e misurare latenza/timeout 60s.
 
 ## Decisioni bloccate
 - Collezione = `dm_sessions` (la `sessions` esistente = calendario, NON toccare).
