@@ -1050,3 +1050,13 @@
   color: #5a3a0a;
   max-width: 160px;
 }
+.am-master-subclass-locked {
+  margin-left: 6px;
+  padding: 3px 6px;
+  border: 1.5px dashed #c9b48a;
+  border-radius: 7px;
+  background: #f4ecdb;
+  font-size: 0.72rem;
+  color: #9a8253;
+  white-space: nowrap;
+}

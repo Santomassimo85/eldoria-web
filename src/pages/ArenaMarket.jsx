@@ -96,6 +96,35 @@ export const ARENA_CLASSES = [
   { key: "artificer", name: "Artefice",   icon: "⚙️", hiddenUnlessOwned: "classArtificer" },
 ];
 
+// Nome di classe del PG → chiave d'arena (stessi alias di getClassKey in Arena.jsx).
+// Ritorna null se la classe non è riconosciuta (così non "attiva" per errore una
+// classe qualsiasi).
+function classKeyOf(charClass) {
+  const cls = (charClass || "").toLowerCase();
+  if (["barbarian", "barbaro"].some(c => cls.includes(c)))          return "barbarian";
+  if (["fighter", "guerriero", "warrior"].some(c => cls.includes(c))) return "fighter";
+  if (["paladin", "paladino"].some(c => cls.includes(c)))           return "paladin";
+  if (["ranger", "cacciatore"].some(c => cls.includes(c)))          return "ranger";
+  if (["bard", "bardo"].some(c => cls.includes(c)))                 return "bard";
+  if (["cleric", "chierico"].some(c => cls.includes(c)))            return "cleric";
+  if (["druid", "druido"].some(c => cls.includes(c)))               return "druid";
+  if (["monk", "monaco"].some(c => cls.includes(c)))                return "monk";
+  if (["rogue", "ladro"].some(c => cls.includes(c)))                return "rogue";
+  if (["warlock"].some(c => cls.includes(c)))                       return "warlock";
+  if (["wizard", "mago"].some(c => cls.includes(c)))                return "wizard";
+  if (["sorcerer", "stregone"].some(c => cls.includes(c)))          return "sorcerer";
+  if (["artificer", "artefice"].some(c => cls.includes(c)))         return "artificer";
+  return null;
+}
+
+// Una classe è "attiva" per un PG solo se è la sua classe principale OPPURE se ci
+// ha investito livelli (voce esplicita in classLevels). Le classi mai prese non
+// offrono la scelta di sottoclasse, anche se il livello base (3) supererebbe il
+// requisito. → "solo per la classe per cui si ha quel livello".
+function classEngaged(clsKey, charClass, classLevels) {
+  return classKeyOf(charClass) === clsKey || (classLevels?.[clsKey] != null);
+}
+
 const LEVEL_UP_KEY = "level_up_cost";
 const LEVEL_UP_DEFAULT = 10;
 
@@ -503,6 +532,8 @@ export default function ArenaMarket() {
   const pendingSubclassChoices = ownedClasses.filter(cls => {
     const def = ARENA_SUBCLASSES[cls.key];
     if (!def) return false;
+    // Solo per la classe principale del PG o per una in cui ha investito livelli.
+    if (!classEngaged(cls.key, charData?.class, classLvls)) return false;
     const lv = classLvls[cls.key] ?? 3;
     return lv >= def.reqLevel && !subclasses[cls.key];
   });
@@ -607,6 +638,8 @@ export default function ArenaMarket() {
                     const opt = def.options.find(o => o.key === chosenKey);
                     return <div className="am-class-subclass">{def.title}: <strong>{opt?.label || chosenKey}</strong></div>;
                   }
+                  const engaged = classEngaged(cls.key, charData?.class, classLvls);
+                  if (!engaged) return <div className="am-class-subclass am-class-subclass--locked">{def.title} · prendi livelli in questa classe</div>;
                   if (lv >= def.reqLevel) return <div className="am-class-subclass am-class-subclass--pending">⚠ Scegli {def.title} qui sopra ↑</div>;
                   return <div className="am-class-subclass am-class-subclass--locked">{def.title} · da Lv.{def.reqLevel}</div>;
                 })()}
@@ -978,19 +1011,34 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
                           onKeyDown={e => { if (e.key === "Enter") saveClassLevel(ch.uid, cls.key); }}
                         />
                         <button className="am-coin-save" onClick={() => saveClassLevel(ch.uid, cls.key)}>Salva</button>
-                        {ARENA_SUBCLASSES[cls.key] && (
-                          <select
-                            className="am-master-subclass-select"
-                            title={`${ARENA_SUBCLASSES[cls.key].title} (Lv.${ARENA_SUBCLASSES[cls.key].reqLevel})`}
-                            value={(ch.arenaSubclass ?? {})[cls.key] ?? ""}
-                            onChange={e => setMasterSubclass(ch.uid, cls.key, e.target.value)}
-                          >
-                            <option value="">— {ARENA_SUBCLASSES[cls.key].title} —</option>
-                            {ARENA_SUBCLASSES[cls.key].options.map(o => (
-                              <option key={o.key} value={o.key}>{o.label}</option>
-                            ))}
-                          </select>
-                        )}
+                        {ARENA_SUBCLASSES[cls.key] && (() => {
+                          const sdef = ARENA_SUBCLASSES[cls.key];
+                          const curVal = (ch.arenaSubclass ?? {})[cls.key] ?? "";
+                          // Sbloccata solo se il PG ha davvero quella classe a reqLevel.
+                          // Se c'è già un valore (dati vecchi) mostro comunque il select
+                          // così il Master può correggerlo/azzerarlo.
+                          const unlocked = classEngaged(cls.key, ch.class, classLvls) && lv >= sdef.reqLevel;
+                          if (!unlocked && !curVal) {
+                            return (
+                              <span className="am-master-subclass-locked" title={`${sdef.title} · richiede la classe a Lv.${sdef.reqLevel}`}>
+                                🔒 {sdef.title}
+                              </span>
+                            );
+                          }
+                          return (
+                            <select
+                              className="am-master-subclass-select"
+                              title={`${sdef.title} (Lv.${sdef.reqLevel})`}
+                              value={curVal}
+                              onChange={e => setMasterSubclass(ch.uid, cls.key, e.target.value)}
+                            >
+                              <option value="">— {sdef.title} —</option>
+                              {sdef.options.map(o => (
+                                <option key={o.key} value={o.key}>{o.label}</option>
+                              ))}
+                            </select>
+                          );
+                        })()}
                       </div>
                     );
                   })}

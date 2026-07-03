@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "83",
+      "date": "2026-07-03",
+      "title": "Arena · Sottoclassi solo per la classe giusta",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Arena: la scelta della sottoclasse/archetipo ora è offerta solo per la classe principale del personaggio o per le classi in cui ha effettivamente preso livelli, e solo al raggiungimento del livello richiesto. Le classi mai giocate non propongono più la scelta. Stesso vincolo anche nel pannello Master: il selettore della sottoclasse resta bloccato finché il personaggio non ha davvero quella classe al livello previsto."
+        }
+      ]
+    },
+    {
       "version": "82",
       "date": "2026-07-03",
       "title": "Arena · Warlock: demoni come bonus action",
