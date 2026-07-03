@@ -127,6 +127,15 @@ service cloud.firestore {
       allow update, delete: if true;  // la macro marca "imported"/elimina (non autenticata)
     }
 
+    // ── Coda NPC verso Foundry ───────────────────────────────────────────────
+    // Stesso schema della coda oggetti, ma per gli Attori (NPC). Collezione
+    // separata così la macro oggetti non tocca gli NPC e viceversa.
+    match /foundry_npc_inbox/{docId} {
+      allow read: if true;            // la macro Foundry NPC legge la coda
+      allow create: if isMaster();    // solo il Master, dal sito
+      allow update, delete: if true;  // la macro marca "imported"/elimina (non autenticata)
+    }
+
     // ── Characters & sheets ──────────────────────────────────────────────────
     // Writes intentionally open because the Pet system needs to write to the
     // opponent's character doc when a battle resolves.

@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "80",
+      "date": "2026-07-03",
+      "title": "NPC → Foundry (strumento Master)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nuovo strumento del Master 'Prepara NPC → Foundry': si selezionano uno, più o tutti gli NPC dell'anagrafe e si mettono in coda; una macro dedicata su Foundry li crea come Attori non giocanti (CA, PF, salvezze e azione inclusi). Coda separata da quella degli oggetti."
+        }
+      ]
+    },
+    {
       "version": "79",
       "date": "2026-07-03",
       "title": "Composizione dei gruppi allineata",

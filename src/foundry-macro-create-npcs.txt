@@ -1,0 +1,136 @@
+// ================================================================
+// MACRO FOUNDRY: Crea NPC dal sito → Foundry  (Exanthia Web)
+// ================================================================
+// Gemella della macro oggetti, ma per gli ATTORI. Legge la coda
+// `foundry_npc_inbox` su Firestore (gli NPC "preparati" dalla pagina
+// "Prepara NPC → Foundry" sul sito) e li CREA come Attori dnd5e di
+// tipo "npc" nella Directory Attori del mondo.
+// Dopo aver creato un NPC, lo RIMUOVE dalla coda.
+//
+// USO: lanciala come GM quando vuoi importare gli NPC in coda.
+// (Funziona identica su Foundry online: gira nel tuo browser.)
+//
+// NB: è una collezione SEPARATA da quella oggetti, così le due macro
+//     non si pestano i piedi. Puoi tenerle entrambe.
+// ================================================================
+
+// --- CONFIGURAZIONE FIREBASE (uguale all'altra macro) ---
+const FIREBASE_CONFIG = {
+  projectId: "TUO_PROJECT_ID",
+  apiKey:    "TUA_API_KEY"
+};
+
+const BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
+
+// ----------------------------------------------------------------
+// HELPER: converte un valore Firestore REST in JS semplice
+// ----------------------------------------------------------------
+function val(v) {
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.integerValue !== undefined) return Number(v.integerValue);
+  if (v.doubleValue !== undefined) return Number(v.doubleValue);
+  if (v.booleanValue !== undefined) return v.booleanValue;
+  if (v.nullValue !== undefined) return null;
+  if (v.timestampValue !== undefined) return v.timestampValue;
+  if (v.mapValue) return obj(v.mapValue.fields || {});
+  if (v.arrayValue) return (v.arrayValue.values || []).map(val);
+  return null;
+}
+function obj(fields) {
+  const o = {};
+  for (const [k, v] of Object.entries(fields)) o[k] = val(v);
+  return o;
+}
+
+const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// ----------------------------------------------------------------
+// HELPER: costruisce i dati dell'Attore NPC dnd5e dal doc del sito
+// ----------------------------------------------------------------
+function buildNpcData(d) {
+  const ac = Number.isFinite(d.ac) ? d.ac : 10;
+  const hp = Number.isFinite(d.hp) ? d.hp : 10;
+
+  // Biografia: descrizione + salvezze + fazione/luogo.
+  const bioParts = [];
+  if (d.biography) bioParts.push(`<p>${esc(d.biography).replace(/\n/g, "<br>")}</p>`);
+  if (d.saves)     bioParts.push(`<p><strong>Tiri salvezza:</strong> ${esc(d.saves)}</p>`);
+  if (d.faction)   bioParts.push(`<p><strong>Fazione/Razza:</strong> ${esc(d.faction)}</p>`);
+  if (d.location)  bioParts.push(`<p><strong>Luogo:</strong> ${esc(d.location)}</p>`);
+  const bioHtml = bioParts.join("");
+
+  const system = {
+    attributes: {
+      ac: { flat: ac, calc: "flat" },
+      hp: { value: hp, max: hp }
+    },
+    details: {
+      biography: { value: bioHtml, public: "" }
+    }
+  };
+
+  const out = { name: d.name || "NPC", type: "npc", system };
+  if (d.img && /^https?:\/\//i.test(d.img)) out.img = d.img;
+
+  // L'azione descritta diventa un talento/feature sull'NPC.
+  const items = [];
+  if (d.action) {
+    items.push({
+      name: "Azione",
+      type: "feat",
+      system: { description: { value: `<p>${esc(d.action).replace(/\n/g, "<br>")}</p>` } }
+    });
+  }
+  return { actor: out, items };
+}
+
+// ----------------------------------------------------------------
+// MAIN
+// ----------------------------------------------------------------
+(async () => {
+  ui.notifications.info("Importazione NPC dal sito in corso…");
+
+  // 1) leggi la coda
+  let docs = [];
+  try {
+    const res = await fetch(`${BASE}/foundry_npc_inbox?key=${FIREBASE_CONFIG.apiKey}&pageSize=200`);
+    const data = await res.json();
+    docs = (data.documents || []).map(doc => ({
+      _path: doc.name,
+      _id: doc.name.split("/").pop(),
+      ...obj(doc.fields || {})
+    }));
+  } catch (e) {
+    ui.notifications.error("Errore lettura coda Firestore.");
+    console.error(e);
+    return;
+  }
+
+  const pending = docs.filter(d => d.status === "pending");
+  if (!pending.length) {
+    ui.notifications.info("Nessun NPC in coda.");
+    return;
+  }
+
+  let created = 0, skipped = 0;
+  for (const d of pending) {
+    try {
+      const { actor, items } = buildNpcData(d);
+      const created_actor = await Actor.create(actor);
+      if (created_actor && items.length) {
+        await created_actor.createEmbeddedDocuments("Item", items);
+      }
+      console.log(`[Import NPC] "${d.name}" creato (CA ${actor.system.attributes.ac.flat}, PF ${actor.system.attributes.hp.max}).`);
+
+      // 2) rimuovi dalla coda
+      await fetch(`https://firestore.googleapis.com/v1/${d._path}?key=${FIREBASE_CONFIG.apiKey}`, { method: "DELETE" });
+      created++;
+    } catch (e) {
+      console.error(`[Import NPC] Errore su "${d.name}":`, e);
+      ui.notifications.error(`Errore su "${d.name}": ${e.message || e}`);
+      skipped++;
+    }
+  }
+
+  ui.notifications.info(`✅ Creati ${created} NPC${skipped ? `, ${skipped} saltati` : ""}.`);
+})();

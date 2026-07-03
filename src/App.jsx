@@ -67,6 +67,7 @@ import PetPointsAdmin from "./pages/PetPointsAdmin";
 import NPC from "./pages/NPC";
 import GeneraNPC from "./GeneraNPC";
 import FoundryItemForm from "./pages/FoundryItemForm";
+import FoundryNpcForm from "./pages/FoundryNpcForm";
 import Feedback from "./pages/Feedback";
 import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
@@ -166,6 +167,7 @@ const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
       <NavLink to="/dm-admin/genera-npc">Genera NPC</NavLink>
       <NavLink to="/dm-admin/strumenti">Strumenti DM</NavLink>
       <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
+      <NavLink to="/dm-admin/foundry-npc">NPC → Foundry</NavLink>
     </NavDropdown>
   );
 };
@@ -668,6 +670,7 @@ export default function App() {
           <Route path="/dm-admin/genera-npc" element={<GeneraNPC />} />
           <Route path="/dm-admin/strumenti" element={<DmTools />} />
           <Route path="/dm-admin/foundry-item" element={<FoundryItemForm />} />
+          <Route path="/dm-admin/foundry-npc" element={<FoundryNpcForm />} />
           <Route path="/dm-admin" element={<AdminPanel />} />
           <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />
