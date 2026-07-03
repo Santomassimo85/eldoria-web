@@ -43,6 +43,8 @@ export default function AdminPanel() {
         { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni delle sessioni.",            path: "/dm-admin/videos" },
         { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
         { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",                   path: "/dm-admin/quests" },
+        { icon: "🧙", label: "NPC → Foundry",    desc: "Prepara e invia gli NPC creati a Foundry.",           path: "/dm-admin/foundry-npc" },
+        { icon: "🎁", label: "Oggetto → Foundry",desc: "Invia un oggetto a Foundry.",                         path: "/dm-admin/foundry-item" },
       ],
     },
     {
