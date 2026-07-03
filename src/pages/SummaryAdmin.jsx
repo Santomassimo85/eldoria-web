@@ -433,6 +433,13 @@ export default function SummaryAdmin() {
     return await getDownloadURL(ref);
   };
 
+  const uploadCoverDataUrl = async (dataUrl) => {
+    const path = `summaries/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-copertina.jpg`;
+    const ref = storageRef(storage, path);
+    await uploadString(ref, dataUrl, "data_url");
+    return await getDownloadURL(ref);
+  };
+
   // Avatar-riferimento dei PG del gruppo (con cache per gruppo).
   const getPartyRefs = async (party) => {
     if (refsCache.current[party]) return refsCache.current[party];
@@ -444,14 +451,16 @@ export default function SummaryAdmin() {
     return refs;
   };
 
-  // Pipeline pura: estrae una scena e ne genera il DATA URL (non salva nulla).
+  // Pipeline pura: estrae un soggetto e ne genera il DATA URL (non salva nulla).
+  // mode "scene" (varia inquadratura/PG) oppure "cover" (key art evocativa, no PG ref).
   // Ritorna { scena, dataUrl }. Aggiorna lo status a scopo informativo.
-  const runScenePipeline = async (summary, styleKey) => {
+  const runScenePipeline = async (summary, styleKey, mode = "scene") => {
     const testo = stripHtml(summary.content);
     if (!testo) throw new Error("Il riassunto non ha testo da illustrare.");
+    const isCover = mode === "cover";
 
-    // 1) Estrai una scena a caso dal testo (prompt in inglese).
-    setStatus("🎬 Estraggo una scena dal riassunto…");
+    // 1) Estrai il soggetto dal testo (prompt in inglese).
+    setStatus(isCover ? "🎬 Scelgo il soggetto della copertina…" : "🎬 Estraggo una scena dal riassunto…");
     const rScena = await fetch("/api/estrai-scena", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -459,16 +468,18 @@ export default function SummaryAdmin() {
         content: testo,
         roster: rosterOf(summary.party),
         party: summary.party,
+        mode,
       }),
     });
     const dScena = await rScena.json();
     if (dScena.error) throw new Error(dScena.error);
     const scena = String(dScena.scena || "").trim();
-    if (!scena) throw new Error("Nessuna scena estratta.");
+    if (!scena) throw new Error("Nessun soggetto estratto.");
 
-    // 2) Avatar dei PG del gruppo → data URL come riferimento visivo.
-    setStatus(`🖌 Disegno la scena (${styleOf(styleKey).label})…`);
-    const refs = await getPartyRefs(summary.party);
+    // 2) Riferimenti: gli avatar dei PG servono solo alle SCENE (per la
+    //    somiglianza). La copertina è key art evocativa → nessun riferimento PG.
+    setStatus(`🖌 Disegno ${isCover ? "la copertina" : "la scena"} (${styleOf(styleKey).label})…`);
+    const refs = isCover ? [] : await getPartyRefs(summary.party);
 
     // 3) Genera l'immagine con lo stile scelto.
     const rImg = await fetch("/api/genera-immagine", {
@@ -483,14 +494,14 @@ export default function SummaryAdmin() {
     return { scena, dataUrl: dImg.immagine };
   };
 
-  // Avvia una generazione → apre l'anteprima "tieni / rigenera".
+  // Avvia una generazione di SCENA → apre l'anteprima "tieni / rigenera".
   // index null = accoda; numero = sostituirà quella posizione della galleria.
   const startSceneGeneration = async (summary, index = null) => {
     if (sceneBusyId || pending) return;
     setSceneBusyId(summary.id);
     try {
-      const { scena, dataUrl } = await runScenePipeline(summary, sceneStyle);
-      setPending({ summaryId: summary.id, index, scena, dataUrl, style: sceneStyle });
+      const { scena, dataUrl } = await runScenePipeline(summary, sceneStyle, "scene");
+      setPending({ summaryId: summary.id, target: "gallery", mode: "scene", index, scena, dataUrl, style: sceneStyle });
       setStatus("");
     } catch (e) {
       setStatus(`❌ Errore immagine: ${e.message}`);
@@ -499,14 +510,29 @@ export default function SummaryAdmin() {
     }
   };
 
-  // Rigenera l'immagine nell'anteprima (scena e/o stile diversi) senza salvare.
+  // Avvia una generazione di COPERTINA → anteprima "tieni / rigenera".
+  const startCoverGeneration = async (summary) => {
+    if (sceneBusyId || pending) return;
+    setSceneBusyId(summary.id);
+    try {
+      const { scena, dataUrl } = await runScenePipeline(summary, sceneStyle, "cover");
+      setPending({ summaryId: summary.id, target: "cover", mode: "cover", index: null, scena, dataUrl, style: sceneStyle });
+      setStatus("");
+    } catch (e) {
+      setStatus(`❌ Errore copertina: ${e.message}`);
+    } finally {
+      setSceneBusyId(null);
+    }
+  };
+
+  // Rigenera l'immagine nell'anteprima (soggetto e/o stile diversi) senza salvare.
   const regeneratePending = async () => {
     if (!pending || sceneBusyId) return;
     const summary = summaries.find((s) => s.id === pending.summaryId);
     if (!summary) return;
     setSceneBusyId(summary.id);
     try {
-      const { scena, dataUrl } = await runScenePipeline(summary, pending.style);
+      const { scena, dataUrl } = await runScenePipeline(summary, pending.style, pending.mode || "scene");
       setPending((p) => (p ? { ...p, scena, dataUrl } : p));
       setStatus("");
     } catch (e) {
@@ -516,15 +542,31 @@ export default function SummaryAdmin() {
     }
   };
 
-  // Conferma l'anteprima: carica su storage e salva (accoda o sostituisce).
+  // Conferma l'anteprima: carica su storage e salva.
+  // target "cover" → imposta la copertina; "gallery" → accoda/sostituisce in galleria.
   const commitPending = async () => {
     if (!pending || sceneBusyId) return;
     const p = pending;
     setSceneBusyId(p.summaryId);
     try {
-      const url = await uploadSceneDataUrl(p.dataUrl);
       const editingThis = isEditing && editingId === p.summaryId;
       const summary = summaries.find((s) => s.id === p.summaryId);
+
+      if (p.target === "cover") {
+        const url = await uploadCoverDataUrl(p.dataUrl);
+        const oldCover = editingThis ? formData.coverImage : summary?.coverImage;
+        await updateDoc(doc(db, "summaries", p.summaryId), {
+          coverImage: url,
+          updatedAt: new Date().toISOString(),
+        });
+        if (oldCover) cleanupStorageUrl(oldCover); // ripulisci la vecchia copertina
+        if (editingThis) setFormData((d) => ({ ...d, coverImage: url }));
+        setStatus(`✅ Copertina generata${summary ? ` per "${summary.title}"` : ""}.`);
+        setPending(null);
+        return;
+      }
+
+      const url = await uploadSceneDataUrl(p.dataUrl);
       const base = editingThis
         ? (formData.images || [])
         : (Array.isArray(summary?.images) ? summary.images : []);
@@ -706,6 +748,19 @@ export default function SummaryAdmin() {
                 value={formData.coverImage}
                 onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
               />
+              {isEditing && editingId && (
+                <button
+                  type="button"
+                  className="sumadm-btn primary"
+                  style={{ marginTop: 10 }}
+                  disabled={!!sceneBusyId || !!pending}
+                  onClick={() => startCoverGeneration(
+                    summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
+                  )}
+                >
+                  {sceneBusyId === editingId ? "⏳ Genero…" : `🖼 Genera copertina AI (${styleOf(sceneStyle).label})`}
+                </button>
+              )}
             </div>
 
             <div className="sumadm-field">
@@ -983,7 +1038,7 @@ export default function SummaryAdmin() {
         <div className="sumadm-scene-backdrop" onClick={discardPending}>
           <div className="sumadm-scene-modal" onClick={(e) => e.stopPropagation()}>
             <div className="sumadm-scene-head">
-              <h3>{pending.index == null ? "🎨 Nuova immagine di scena" : "♻️ Rigenera immagine"}</h3>
+              <h3>{pending.target === "cover" ? "🖼 Copertina della sessione" : pending.index == null ? "🎨 Nuova immagine di scena" : "♻️ Rigenera immagine"}</h3>
               <button className="sumadm-scene-x" onClick={discardPending} disabled={!!sceneBusyId} title="Chiudi">✕</button>
             </div>
 

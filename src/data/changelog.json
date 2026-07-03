@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "78",
+      "date": "2026-07-03",
+      "title": "Scriptorium: scene più varie + generazione copertina",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Le immagini di scena ora variano davvero: a ogni generazione cambia il tipo di inquadratura (un singolo personaggio, tutto il gruppo, un combattimento, un luogo, una creatura, un momento di scoperta…) invece di ripetere sempre gli stessi soggetti e personaggi."
+        },
+        {
+          "type": "feature",
+          "text": "Aggiunto il tasto per generare la COPERTINA del riassunto (nell'editor): usa un prompt dedicato che crea una key art evocativa della sessione — un evento chiave, un luogo o una creatura incontrata — invece di un ritratto del gruppo."
+        }
+      ]
+    },
+    {
       "version": "77",
       "date": "2026-07-03",
       "title": "Generatore Sessioni DM (strumento interno)",
