@@ -13,7 +13,22 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Usa POST" });
   }
 
-  const { prompt, npc, stile, refs } = req.body || {};
+  const { prompt, npc, stile, refs, characters } = req.body || {};
+
+  // Nota di proporzioni corporee dedotta dalla razza (per non disegnare tutti
+  // uguali: halfling bassissimi, mezz'orchi alti e possenti, ecc.).
+  function raceHint(race) {
+    const r = String(race || "").toLowerCase();
+    if (/halfling|gnom/.test(r)) return "molto basso e minuto, circa 1 metro";
+    if (/nano|dwarf/.test(r)) return "basso, tozzo e robusto";
+    if (/mezz'?orco|orc/.test(r)) return "alto, muscoloso e possente, tratti orcheschi";
+    if (/shadar/.test(r)) return "elfo dell'ombra: pelle pallida/cinerea, aspetto etereo e cupo, orecchie a punta";
+    if (/mezz'?elfo|half.?elf/.test(r)) return "corporatura umana slanciata, orecchie lievemente a punta";
+    if (/elfo|elf/.test(r)) return "alto e slanciato, lineamenti fini, orecchie a punta";
+    if (/changeling/.test(r)) return "corporatura umana androgina, lineamenti pallidi";
+    if (/umano|human/.test(r)) return "corporatura umana normale";
+    return "";
+  }
 
   // Immagini di riferimento (es. avatar dei personaggi): vengono passate a
   // Gemini come input visivo affinché la scena ritragga fedelmente quei volti.
@@ -88,7 +103,22 @@ ${stileLinea} Una sola persona, niente testo, niente scritte, niente cornici.`;
   try {
     const refParts = await buildRefParts(refs);
     if (refParts.length) {
-      finalPrompt = `${finalPrompt}\nLe immagini di riferimento allegate mostrano i personaggi protagonisti (volti, capelli, colori, abiti, tratti distintivi): ritrai FEDELMENTE questi stessi personaggi nella scena, mantenendone l'aspetto. Non copiare lo sfondo delle immagini di riferimento, solo i personaggi.`;
+      const chars = Array.isArray(characters) ? characters : [];
+      let castBlock = "";
+      if (chars.length) {
+        const lines = chars.slice(0, refParts.length).map((c, i) => {
+          const hint = raceHint(c.race);
+          const rc = [c.race, c.class].filter(Boolean).join(", ");
+          return `${i + 1}) ${c.name || "personaggio"}${rc ? ` — ${rc}` : ""}${hint ? ` (${hint})` : ""}.`;
+        });
+        castBlock = `Le immagini di riferimento allegate corrispondono, NELL'ORDINE, a questi personaggi:\n${lines.join("\n")}\n`;
+      }
+      finalPrompt = `${finalPrompt}
+${castBlock}ISTRUZIONI SUI RIFERIMENTI (IMPORTANTISSIMO):
+- Usa ogni immagine di riferimento SOLO per il VOLTO e l'aspetto del rispettivo personaggio (lineamenti, capelli, colori, tratti distintivi, stile dell'abbigliamento). NON scambiare abiti, armi o tratti tra personaggi diversi: ognuno mantiene i propri.
+- Le immagini di riferimento sono ritratti/primi piani: NON copiarne la posa, l'inquadratura, l'espressione o l'azione (es. NON disegnare archi tesi, armi sguainate o pose da combattimento solo perché compaiono nel ritratto). Dai a ciascun personaggio una posa NATURALE e coerente con la scena descritta.
+- Rispetta razza e classe di ciascun personaggio per proporzioni, corporatura e abbigliamento (es. un halfling è molto più basso di un mezz'orco). Mantieni le proporzioni corrette tra i personaggi.
+- Non riprodurre lo sfondo dei riferimenti: conta solo l'identità dei personaggi.`;
     }
     // Le immagini di riferimento vanno PRIMA del testo nelle parts.
     const reqParts = [...refParts, { text: finalPrompt }];

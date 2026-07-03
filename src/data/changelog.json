@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "81",
+      "date": "2026-07-03",
+      "title": "Immagini dei riassunti: personaggi più fedeli",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Migliorata la generazione delle immagini di scena: ora si attiene ai personaggi effettivamente citati nel riassunto (se non ne cita nessuno, usa tutto il gruppo), rispetta razza, classe e proporzioni di ciascuno (basta halfling giganti o mezz'orchi bassi) e non scambia più abiti tra un personaggio e l'altro."
+        },
+        {
+          "type": "graphic",
+          "text": "Gli avatar dei personaggi vengono usati solo come riferimento per il volto/aspetto, mai per la posa: niente più pose copiate dai ritratti (es. archi tesi immotivati), ma pose naturali coerenti con la scena."
+        }
+      ]
+    },
+    {
       "version": "80",
       "date": "2026-07-03",
       "title": "NPC → Foundry (strumento Master)",

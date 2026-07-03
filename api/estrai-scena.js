@@ -15,15 +15,22 @@ Given the text of an EXISTING session chronicle, pick ONE vivid, visually striki
 
 You will receive a COMPOSITION BRIEF telling you what KIND of shot to compose THIS time (a single character, the whole party, a fight, a quiet beat, an environment, a creature/NPC, a discovery…). Follow it. VARY the subject every time — do NOT keep defaulting to the same characters or the same kind of moment.
 
+CHARACTER SELECTION (important)
+- Feature ONLY the party characters that are actually mentioned/involved in the chosen moment of the chronicle text. Use their exact names (the cast is provided below with race and class).
+- If the chosen moment does not clearly involve any specific character (or you cannot tell), feature the WHOLE group.
+- For pure environment/creature shots, characters may be absent (empty list).
+- Never invent characters not in the cast list.
+
 RULES
 - Describe ONE scene only: subject, setting, action, mood, lighting, framing. 2 to 4 sentences.
-- Feature only the party characters that fit the brief AND are actually present in the text (use their names, provided below). Never invent characters not in the text. For environment/creature shots, characters may be small in frame or absent.
+- When you name a character, describe them consistent with their race and class (e.g. a halfling is very short; a half-orc is tall and muscular; a mage wears arcane robes, a ranger wears leathers).
 - Stay faithful to what the chronicle says: do not add major events that are not implied.
 - Never mention players, dice, sessions, rules, hit points or game mechanics. No fourth wall.
 - The image must contain no text, lettering, speech bubbles, frames or borders.
 
 Reply with ONLY a valid JSON object, no prose, no backticks, in this exact form:
-{"scena":""}`;
+{"scena":"", "personaggi":[]}
+where "personaggi" lists the exact names of the cast members featured in the scene (empty if none).`;
 
 const COVER_SYSTEM = `You are the cover-art director for the "Chronicles of Eldoria".
 Given the text of an EXISTING session chronicle, choose the SINGLE most iconic, emblematic subject that best represents THIS session as its COVER: an important event that happened, a striking place they visited, or a memorable being/creature/artifact they encountered. It must evoke the session at a glance.
@@ -35,7 +42,8 @@ RULES
 - The image must contain no text, lettering, frames or borders.
 
 Reply with ONLY a valid JSON object, no prose, no backticks, in this exact form:
-{"scena":""}`;
+{"scena":"", "personaggi":[]}
+(for a cover, "personaggi" is normally empty — the subject is the session's icon, not the roster.)`;
 
 // Tipi di inquadratura per la modalità scena (scelta random a ogni chiamata).
 const SHOTS = [
@@ -55,40 +63,53 @@ function parseScene(text) {
   const b = t.lastIndexOf("}");
   if (a !== -1 && b !== -1 && b > a) t = t.slice(a, b + 1);
   try {
-    return String(JSON.parse(t).scena || "").trim();
+    const o = JSON.parse(t);
+    return {
+      scena: String(o.scena || "").trim(),
+      personaggi: Array.isArray(o.personaggi) ? o.personaggi.map((s) => String(s || "").trim()).filter(Boolean) : [],
+    };
   } catch {
-    return String(text || "").replace(/```json|```/g, "").trim();
+    return { scena: String(text || "").replace(/```json|```/g, "").trim(), personaggi: [] };
   }
 }
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { content, roster, party, mode } = req.body || {};
+  const { content, roster, party, mode, members } = req.body || {};
   const testo = String(content || "").trim();
   if (!testo) return res.status(400).json({ error: "Serve il testo del riassunto." });
+
+  // Cast con razza/classe (preferito); fallback alla vecchia stringa `roster`.
+  const cast = Array.isArray(members) && members.length
+    ? members.map((m) => `${m.name}${m.race || m.class ? ` (${[m.race, m.class].filter(Boolean).join(", ")})` : ""}`).join("; ")
+    : String(roster || "");
 
   const isCover = mode === "cover";
   const seme = Math.floor(Math.random() * 1e9);
 
   // Brief di composizione random (solo per le scene): tipo di shot + su chi
   // eventualmente concentrarsi, così le immagini variano davvero.
+  const names = Array.isArray(members) && members.length
+    ? members.map((m) => m.name).filter(Boolean)
+    : String(roster || "").split(",").map((s) => s.trim()).filter(Boolean);
+
   let brief = "";
   if (!isCover) {
     const shot = SHOTS[Math.floor(Math.random() * SHOTS.length)];
-    const names = String(roster || "").split(",").map((s) => s.trim()).filter(Boolean);
     let who = "";
     if (names.length) {
       const r = Math.random();
-      if (r < 0.5) who = `If characters fit the shot, center it on: ${names[Math.floor(Math.random() * names.length)]}.`;
-      else if (r < 0.8) who = "If characters fit the shot, show the whole group together.";
+      if (r < 0.5) who = `Prefer a moment that involves: ${names[Math.floor(Math.random() * names.length)]} (only if the chronicle supports it).`;
+      else if (r < 0.8) who = "Prefer a moment with the whole group together (only if the chronicle supports it).";
       else who = "Prefer an environment/creature framing with characters minimal or absent.";
     }
-    brief = `COMPOSITION BRIEF for THIS image: ${shot}. ${who}`.trim();
+    brief = `COMPOSITION BRIEF for THIS image: ${shot}. ${who} Remember: only feature characters actually involved in the chosen moment; if none, feature the whole group.`.trim();
   }
 
   const userMsg = [
-    party ? `Group "${party}"${roster ? ` — characters: ${roster}` : ""}.` : "",
+    party ? `Group "${party}".` : "",
+    cast ? `CAST (name — race, class): ${cast}.` : "",
     `Random seed ${seme}: use it to pick a DIFFERENT subject each time you are asked, even for the same chronicle.`,
     brief,
     "",
@@ -116,9 +137,9 @@ export default async function handler(req, res) {
     if (data.error) return res.status(500).json({ error: data.error.message });
 
     const testoOut = (data.content || []).map((b) => b.text || "").join("");
-    const scena = parseScene(testoOut);
+    const { scena, personaggi } = parseScene(testoOut);
     if (!scena) return res.status(500).json({ error: "Nessun soggetto estratto." });
-    return res.status(200).json({ scena });
+    return res.status(200).json({ scena, personaggi });
   } catch (e) {
     return res.status(500).json({ error: "Estrazione fallita: " + e.message });
   }

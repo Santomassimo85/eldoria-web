@@ -439,16 +439,14 @@ export default function SummaryAdmin() {
     return await getDownloadURL(ref);
   };
 
-  // Avatar-riferimento dei PG del gruppo (con cache per gruppo).
-  const getPartyRefs = async (party) => {
-    if (refsCache.current[party]) return refsCache.current[party];
-    const refs = [];
-    for (const m of membersOf(party)) {
-      try { refs.push(await refToDataUrl(m.image)); } catch { /* avatar saltato */ }
-    }
-    refsCache.current[party] = refs;
-    return refs;
+  // Avatar → data URL con cache per URL immagine.
+  const refToDataUrlCached = async (url) => {
+    if (refsCache.current[url]) return refsCache.current[url];
+    const d = await refToDataUrl(url);
+    refsCache.current[url] = d;
+    return d;
   };
+  const norm = (s) => String(s || "").toLowerCase().split(/[\s'"´`-]+/)[0];
 
   // Pipeline pura: estrae un soggetto e ne genera il DATA URL (non salva nulla).
   // mode "scene" (varia inquadratura/PG) oppure "cover" (key art evocativa, no PG ref).
@@ -457,16 +455,17 @@ export default function SummaryAdmin() {
     const testo = stripHtml(summary.content);
     if (!testo) throw new Error("Il riassunto non ha testo da illustrare.");
     const isCover = mode === "cover";
+    const groupMembers = membersOf(summary.party); // [{name,race,class,image}]
 
-    // 1) Estrai il soggetto dal testo (prompt in inglese).
+    // 1) Estrai il soggetto dal testo + CHI è nella scena (prompt in inglese).
     setStatus(isCover ? "🎬 Scelgo il soggetto della copertina…" : "🎬 Estraggo una scena dal riassunto…");
     const rScena = await fetch("/api/estrai-scena", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         content: testo,
-        roster: rosterOf(summary.party),
         party: summary.party,
+        members: groupMembers.map((m) => ({ name: m.name, race: m.race, class: m.class })),
         mode,
       }),
     });
@@ -475,16 +474,30 @@ export default function SummaryAdmin() {
     const scena = String(dScena.scena || "").trim();
     if (!scena) throw new Error("Nessun soggetto estratto.");
 
-    // 2) Riferimenti: gli avatar dei PG servono solo alle SCENE (per la
-    //    somiglianza). La copertina è key art evocativa → nessun riferimento PG.
+    // 2) Personaggi in scena → SOLO i loro avatar+dati (allineati per ordine).
+    //    Copertina = nessun riferimento PG. Se il modello non cita nessuno del
+    //    gruppo, non forziamo avatar (potrebbe essere un ambiente/creatura;
+    //    il caso "nessuno citato → tutto il gruppo" lo gestisce estrai-scena).
     setStatus(`🖌 Disegno ${isCover ? "la copertina" : "la scena"} (${styleOf(styleKey).label})…`);
-    const refs = isCover ? [] : await getPartyRefs(summary.party);
+    const refs = [];
+    const characters = [];
+    if (!isCover) {
+      const wanted = Array.isArray(dScena.personaggi) ? dScena.personaggi : [];
+      const featured = groupMembers.filter((m) => wanted.some((w) => norm(w) === norm(m.name)));
+      for (const m of featured) {
+        if (!m.image) continue;
+        try {
+          refs.push(await refToDataUrlCached(m.image));
+          characters.push({ name: m.name, race: m.race, class: m.class });
+        } catch { /* avatar saltato: salto anche i dati per restare allineato */ }
+      }
+    }
 
     // 3) Genera l'immagine con lo stile scelto.
     const rImg = await fetch("/api/genera-immagine", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: scenePromptFull(scena, styleKey), refs }),
+      body: JSON.stringify({ prompt: scenePromptFull(scena, styleKey), refs, characters }),
     });
     const dImg = await rImg.json();
     if (dImg.error) throw new Error(dImg.error);
