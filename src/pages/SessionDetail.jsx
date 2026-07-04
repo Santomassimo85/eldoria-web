@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { partyById } from "../data/parties";
 import { loadSession } from "../utils/dmSessions";
+import { withSessionRuntime } from "../utils/sessionRuntime";
 import "./admin.css";
 
 const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -83,11 +84,13 @@ export default function SessionDetail() {
             </div>
           )}
 
-          {/* HTML pieno della sessione, isolato in iframe (CSS/JS della sessione
-              non interferiscono con l'app; gli script interni — tab, timer — girano). */}
+          {/* HTML pieno della sessione, isolato in iframe. Gli script della
+              sessione vengono sostituiti dal runtime dell'app (withSessionRuntime):
+              tab/step, collassabili e timer funzionano anche se l'HTML generato
+              è arrivato troncato senza il blocco <script> finale. */}
           <iframe
             title={`Sessione ${session.sessionNumber} — ${party.id}`}
-            srcDoc={session.htmlContent || "<p>Nessun contenuto.</p>"}
+            srcDoc={withSessionRuntime(session.htmlContent || "<p>Nessun contenuto.</p>")}
             sandbox="allow-scripts allow-popups"
             style={{
               width: "100%",

@@ -8,6 +8,7 @@ import {
   getDocs,
   getDoc,
   setDoc,
+  deleteDoc,
   query,
   where,
   serverTimestamp,
@@ -46,6 +47,11 @@ export async function loadSessions(party) {
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .sort((a, b) => (a.sessionNumber || 0) - (b.sessionNumber || 0));
+}
+
+// Elimina definitivamente una sessione generata (party + numero).
+export async function deleteSession(party, sessionNumber) {
+  await deleteDoc(doc(db, SESSIONS, sessionDocId(party, sessionNumber)));
 }
 
 // Una singola sessione per party + numero.

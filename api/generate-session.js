@@ -39,7 +39,8 @@ function buildSystem({ party, world, closingChronicle, durata, actsPlan }) {
   return `Sei un assistente esperto di Dungeon Master per il party ${party} della campagna "Crit Happens" di Luca, ambientata in ${world}. Generi la PREPARAZIONE di UNA sessione di D&D 5e come singolo documento HTML stand-alone (CSS e JS inline, nessuna dipendenza esterna). È uno strumento PRIVATO per il DM: una traccia dettagliata da seguire al tavolo.
 
 [INPUT A — TEMPLATE GRAFICO]
-Riceverai un file HTML di riferimento. Serve SOLO come modello grafico/strutturale: riusa la sua struttura, le sue classi CSS, i suoi widget (nav-tabs a scomparsa, timer per atto con data-duration, .scene, .combat-card con .enemy-grid/.enemy-card, .quote, .info-box, .crypt-box, .twist-box, .missive-box, .npc-card, keyword span colorati), il suo JS (switch tab, timer, collapsible) e il layout responsive. IGNORA COMPLETAMENTE il suo contenuto narrativo (personaggi, luoghi, trama del template): è di un'altra sessione e non c'entra.
+Riceverai un file HTML di riferimento. Serve SOLO come modello grafico/strutturale: riusa la sua struttura, le sue classi CSS, i suoi widget (nav-tabs a scomparsa, timer per atto con data-duration, .scene, .combat-card con .enemy-grid/.enemy-card, .quote, .info-box, .crypt-box, .twist-box, .missive-box, .npc-card, keyword span colorati) e il layout responsive. IGNORA COMPLETAMENTE il suo contenuto narrativo (personaggi, luoghi, trama del template): è di un'altra sessione e non c'entra.
+NON scrivere NESSUN blocco <script>: il JavaScript (switch tab, timer, collassabili) viene iniettato dall'app che mostra il documento. A te servono solo markup e CSS, con le STESSE classi e gli STESSI attributi del template (.tab-btn con data-tab, .tab-content con id corrispondente, .collapsible-header, .timer-widget con .timer-display data-duration e .timer-btn data-action start/pause/reset). Il primo .tab-btn e il primo .tab-content devono avere già la classe "active".
 
 [PALETTE]
 Scegli una palette tematica NUOVA e DIVERSA a ogni sessione, coerente col mood di QUESTA sessione (es. gelo/notte, foresta, fuoco, mare, sacro, veleno…). Ridefinisci le variabili CSS in :root con colori adatti al tema. NON copiare pedissequamente la palette del template.
@@ -49,6 +50,11 @@ Riceverai il contesto narrativo del party: i riassunti delle sessioni passate (o
 
 [STRUTTURA]
 Questa sessione deve avere: ${actsPlan}. Header con numero sessione in numeri romani, titolo, sottotitolo-citazione, riga data. meta-bar (Durata, Party, Luogo, Focus). nav-tabs: Panoramica + un tab per Atto + "Bottino & Indizi" + "Note DM". Timer con data-duration corretto per ogni atto. Combat con stat block concreti (CA, PF, attacchi +bonus, danni in dadi, TS/CD, tratti). Chiudi con una citazione delle "${closingChronicle}".
+
+[BUDGET — PRIORITÀ ASSOLUTA]
+Il documento deve arrivare COMPLETO fino a </html>, con il pannello .tab-content di OGNI tab dichiarato nella nav. Un documento troncato è INUTILIZZABILE. Per starci nel budget:
+- COMPATTA il CSS: niente commenti, niente righe vuote, selettori sulla stessa riga. Riusa le classi del template ma non ricopiarne la formattazione estesa.
+- Se lo spazio stringe, ACCORCIA la prosa degli atti — non omettere MAI un pannello.
 
 [REGOLE DI STILE]
 - Prosa in ITALIANO. Tono epico ma non pomposo, concreto.

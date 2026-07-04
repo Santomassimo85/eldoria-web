@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
 import { loadPartyContext, streamGenerateSession, saveSession } from "../utils/dmSessions";
+import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
 
 const DM_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -85,7 +86,12 @@ export default function GenerateSession() {
       const result = await streamGenerateSession(payload, (_chunk, full) => setProgress(full.length));
       if (!result.html || !result.html.includes("<")) throw new Error("Output non valido (nessun HTML).");
       setGenerated(result);
-      setStatus("✅ Sessione generata. Controlla l'anteprima e salva.");
+      const comp = sessionCompleteness(result.html);
+      if (!comp.complete) {
+        setStatus(`⚠️ Generazione probabilmente TRONCATA (${comp.panes}/${comp.tabs || "?"} sezioni con contenuto). Meglio rigenerare, magari con durata più corta.`);
+      } else {
+        setStatus("✅ Sessione generata. Controlla l'anteprima e salva.");
+      }
     } catch (err) {
       setStatus(`❌ ${err.message || err}`);
     } finally {
@@ -225,7 +231,7 @@ export default function GenerateSession() {
             <>
               <iframe
                 title="Anteprima sessione"
-                srcDoc={generated.html}
+                srcDoc={withSessionRuntime(generated.html)}
                 sandbox="allow-scripts allow-popups"
                 style={{ width: "100%", height: "70vh", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 12, background: "#050807" }}
               />

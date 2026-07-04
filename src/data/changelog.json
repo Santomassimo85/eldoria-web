@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "87.01",
+      "date": "2026-07-04",
+      "title": "Arena · tasto Hub più visibile",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Il tasto \"‹ Hub\" delle viste interne diventa una pillola fluttuante a colori accesi (cyan/viola/magenta), volutamente estranea alla palette dorata della pagina, con dondolio e alone pulsante per essere sempre ben visibile."
+        }
+      ]
+    },
+    {
       "version": "87",
       "date": "2026-07-04",
       "title": "Arena · viste interne omogenee alla Locandina",
@@ -35,6 +46,10 @@
         {
           "type": "feature",
           "text": "Archivio sessioni per party: aggiunto il cestino su ogni scheda per eliminare definitivamente una sessione generata (con conferma)."
+        },
+        {
+          "type": "fix",
+          "text": "Sessioni generate con HTML troncato: i tab senza sezione vengono disabilitati con spiegazione al passaggio del mouse, e il generatore avvisa in anteprima quando il documento è incompleto, prima del salvataggio. Il prompt di generazione ora impone CSS compatto e completezza di tutte le sezioni."
         }
       ]
     },

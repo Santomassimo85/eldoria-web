@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { partyById, PARTIES } from "../data/parties";
-import { ensureParties, loadSessions } from "../utils/dmSessions";
+import { ensureParties, loadSessions, deleteSession } from "../utils/dmSessions";
 import "./admin.css";
 
 // Solo master + co-master (strumento privato).
@@ -17,6 +17,28 @@ export default function SessionsArchive() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDelete = async (e, s) => {
+    // Il cestino vive dentro la card-Link: niente navigazione al dettaglio.
+    e.preventDefault();
+    e.stopPropagation();
+    if (deletingId) return;
+    const ok = window.confirm(
+      `Eliminare definitivamente la Sessione #${s.sessionNumber}` +
+      `${s.title ? ` — "${s.title}"` : ""} di ${party.id}?`
+    );
+    if (!ok) return;
+    setDeletingId(s.id);
+    try {
+      await deleteSession(party.id, s.sessionNumber);
+      setSessions((prev) => prev.filter((x) => x.id !== s.id));
+    } catch (err) {
+      setError(err.message || String(err));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!isDmUser(currentUser?.email) || !party) return;
@@ -101,8 +123,24 @@ export default function SessionsArchive() {
               key={s.id}
               to={`/sessions/${party.id.toLowerCase()}/${s.sessionNumber}`}
               className="sumadm-item"
-              style={{ "--party-color": party.color, textDecoration: "none" }}
+              style={{ "--party-color": party.color, textDecoration: "none", position: "relative" }}
             >
+              <button
+                type="button"
+                title={`Elimina Sessione #${s.sessionNumber}`}
+                aria-label={`Elimina Sessione #${s.sessionNumber}`}
+                onClick={(e) => handleDelete(e, s)}
+                disabled={deletingId === s.id}
+                style={{
+                  position: "absolute", top: 10, right: 10, zIndex: 2,
+                  background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.18)",
+                  borderRadius: 8, padding: "4px 8px", cursor: "pointer",
+                  fontSize: "0.9rem", lineHeight: 1,
+                  opacity: deletingId === s.id ? 0.5 : 1,
+                }}
+              >
+                {deletingId === s.id ? "…" : "🗑"}
+              </button>
               <div className="sumadm-item-body">
                 <span className="sumadm-item-order">#{s.sessionNumber}</span>
                 <h4 className="sumadm-item-title">{s.title || "(senza titolo)"}</h4>
