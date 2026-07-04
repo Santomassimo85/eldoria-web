@@ -487,3 +487,46 @@
   }
   .amc-mast { margin-top: 12px; }
 }
+
+/* ── Danno tipizzato (armi) + Resistenze (armature/oggetti) — creazione ── */
+.am-cat-field--full { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
+
+.am-cat-dmg-list { display: flex; flex-direction: column; gap: 8px; }
+.am-cat-dmg-row { display: flex; gap: 8px; align-items: center; }
+.am-cat-dmg-dice { flex: 0 0 90px; }
+.am-cat-dmg-type { flex: 1; min-width: 0; }
+.am-cat-dmg-del {
+  flex: 0 0 auto; border-radius: 0; cursor: pointer;
+  background: rgba(120, 20, 20, 0.35); color: #ffd7c9;
+  border: 1px solid rgba(212, 88, 66, 0.5); padding: 6px 10px; font-weight: 700;
+}
+.am-cat-dmg-del:hover { background: rgba(150, 30, 30, 0.5); }
+.am-cat-dmg-add {
+  align-self: flex-start; margin-top: 2px; cursor: pointer; border-radius: 0;
+  background: rgba(236, 212, 135, 0.12); color: #ffd98a;
+  border: 1px solid rgba(236, 212, 135, 0.45); padding: 7px 14px;
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.78rem; font-weight: 700;
+}
+.am-cat-dmg-add:hover { background: rgba(236, 212, 135, 0.22); }
+
+.am-cat-resist { display: flex; flex-direction: column; gap: 8px; }
+.am-cat-resist-hint { font-size: 0.78rem; color: rgba(240, 226, 190, 0.75); }
+.am-cat-resist-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 6px;
+}
+.am-cat-resist-chip {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 0;
+  background: rgba(10, 8, 6, 0.55); border: 1px solid rgba(236, 212, 135, 0.28);
+  color: rgba(240, 226, 190, 0.85); padding: 7px 9px; text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.am-cat-resist-chip:hover { border-color: rgba(236, 212, 135, 0.6); }
+.am-cat-resist-icon { font-size: 1rem; }
+.am-cat-resist-lab { flex: 1; min-width: 0; font-size: 0.82rem; }
+.am-cat-resist-lvl { font-weight: 800; font-size: 0.82rem; color: rgba(216, 205, 179, 0.55); }
+.am-cat-resist-chip--resist { border-color: rgba(90, 200, 160, 0.6); background: rgba(30, 70, 55, 0.35); }
+.am-cat-resist-chip--resist .am-cat-resist-lvl { color: #86efac; }
+.am-cat-resist-chip--immune { border-color: rgba(120, 200, 255, 0.6); background: rgba(30, 55, 80, 0.4); }
+.am-cat-resist-chip--immune .am-cat-resist-lvl { color: #7dd3fc; }
+.am-cat-resist-chip--vuln { border-color: rgba(212, 88, 66, 0.6); background: rgba(80, 22, 18, 0.4); }
+.am-cat-resist-chip--vuln .am-cat-resist-lvl { color: #ff9a7a; }

@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "version": "89",
+      "date": "2026-07-04",
+      "title": "Arena · danni elementali e resistenze nella Bottega",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Creazione armi con danno multi-componente tipizzato: il Master può comporre un'arma con più dadi e tipi diversi (es. 2d6 tagliente + 1d8 fuoco). 13 tipi disponibili: 3 fisici (tagliente/perforante/contundente) + elementali (fuoco, freddo, fulmine, tuono, acido, veleno, radiante, necrotico, psichico, forza)."
+        },
+        {
+          "type": "feature",
+          "text": "Armature e oggetti possono concedere resistenze per tipo di danno, con controllo completo per il Master: Resistenza (danno dimezzato), Immunità (nessun danno) o Vulnerabilità (danno raddoppiato) su ciascun tipo. Le resistenze da oggetto sono passive e sempre attive nei fight di torneo."
+        },
+        {
+          "type": "mechanics",
+          "text": "Il motore di combattimento applica i danni per tipo: ogni componente elementale dell'arma è tirato a parte e le resistenze del bersaglio lo riducono (o amplificano) prima delle riduzioni di classe. Vale per attacchi con arma, IA e raffiche. Le armi e le armature senza tipi elementali si comportano esattamente come prima."
+        }
+      ]
+    },
+    {
+      "version": "88",
+      "date": "2026-07-04",
+      "title": "Il Concilio: La Tesoreria (strumento interno)",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nella sala del Concilio arriva La Tesoreria: contatori e grafici del consumo API Claude degli ultimi 30 giorni — spesa totale e odierna in dollari, token totali e odierni, spesa giornaliera, token al giorno (input/output) e ripartizione per modello. Dati dai registri ufficiali Anthropic (Usage & Cost API), visibili solo al Master."
+        }
+      ]
+    },
+    {
       "version": "87.02",
       "date": "2026-07-04",
       "title": "Generatore Sessioni DM: stop alle generazioni troncate",

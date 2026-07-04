@@ -12,6 +12,7 @@ import DieIcon from "../components/DieIcon";
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
 import { currentWeekKey } from "../data/arenaWeek";
+import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps } from "../data/arenaDamageTypes";
 import "./Arena.css";
 import "./ArenaHero.css";
 import "./ArenaBill.css";
@@ -1201,32 +1202,44 @@ function resolveMarketGear(arenaWeekly) {
   if (!arenaWeekly || arenaWeekly.weekKey !== currentWeekKey()) return null;
   const purchases = arenaWeekly.purchases || [];
   if (!purchases.length) return null;
-  const gear = { acBonus: 0, actions: [], consumables: [] };
+  const gear = { acBonus: 0, actions: [], consumables: [], resist: {} };
   purchases.forEach(pu => {
     const p = pu.payload || {};
     const qty = Math.max(1, pu.qty || 1);
     switch (pu.category) {
       case "armor":
         gear.acBonus += (p.acBonus || 0) * qty;
+        if (p.resist) mergeResistMaps(gear.resist, p.resist);
         break;
-      case "weapon":
+      case "weapon": {
+        // Componenti di danno tipizzati: nuovo schema `components:[{dice,type}]`,
+        // con fallback all'arma legacy `{dice,dmgBonus,ranged}` (un solo tipo).
+        const comps = (Array.isArray(p.components) && p.components.length)
+          ? p.components.filter(c => c && c.dice)
+          : [{ dice: `${p.dice || "1d6"}${p.dmgBonus ? `+${p.dmgBonus}` : ""}`, type: p.ranged ? "perforante" : "tagliente" }];
+        const [primary, ...extra] = comps;
+        const compLabel = comps.map(c => `${c.dice} ${DAMAGE_TYPE_MAP[c.type]?.label || c.type}`).join(" + ");
         gear.actions.push({
           name: pu.name, type: "weapon", icon: pu.icon || "⚔",
           hitBonus: 3 + (p.hitBonus || 0),
-          damage: `${p.dice || "1d6"}${p.dmgBonus ? `+${p.dmgBonus}` : ""}`,
+          damage: primary.dice,
           statKey: p.ranged ? "dex" : "str",
           twoHanded: false, ranged: !!p.ranged,
-          damageType: p.ranged ? "perforante" : "tagliente",
-          info: `Bottega settimanale · ${p.dice}${p.dmgBonus ? `+${p.dmgBonus}` : ""} danni`,
+          damageType: primary.type,
+          extraDamage: extra.map(c => ({ dice: c.dice, type: c.type })),
+          info: `Bottega settimanale · ${compLabel}`,
           fromMarket: true,
         });
         break;
+      }
       case "spell": {
         const sp = (MARKET_SPELL_LISTS[p.spellClass] || []).find(s => s.name === p.spellName);
         if (sp) gear.actions.push({ ...sp, fromMarket: true });
         break;
       }
       case "item": {
+        // Oggetti che concedono resistenze passive (sempre attive nel torneo).
+        if (p.resist) mergeResistMaps(gear.resist, p.resist);
         const uses = Math.max(1, p.uses || 1) * qty;
         if (p.effect === "buff") {
           const amt = p.buffAmount || 1;
@@ -1245,7 +1258,7 @@ function resolveMarketGear(arenaWeekly) {
           } else {
             gear.actions.push({ ...base, special: "magic_detect", buffBonus: amt, buffAttacks: turns, info: `Bottega · +${amt} ai prossimi ${turns} attacchi` });
           }
-        } else {
+        } else if (p.effect === "heal" || p.effect === "damage") {
           gear.consumables.push({
             key: `mk_${pu.itemId}`, name: pu.name, icon: pu.icon || "🎒",
             effect: p.effect === "damage" ? "damage" : "heal",
@@ -1255,6 +1268,7 @@ function resolveMarketGear(arenaWeekly) {
               : `Cura ${p.dice || "2d8"} · azione gratuita (Bottega)`,
           });
         }
+        // effect "resist"/assente → solo resistenza passiva (già aggregata sopra)
         break;
       }
       case "pet":
@@ -1273,7 +1287,7 @@ function resolveMarketGear(arenaWeekly) {
         break;
     }
   });
-  return (gear.acBonus || gear.actions.length || gear.consumables.length) ? gear : null;
+  return (gear.acBonus || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length) ? gear : null;
 }
 
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
@@ -1475,6 +1489,33 @@ function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSp
   // Ranger · Difesa del Predatore (Lv7): mentre il Marchio del Cacciatore è attivo, −2 danni subiti.
   if (isRangerClass(defClass) && lv >= 7 && (defenderMatchPlayer?.hunterMarkTurns ?? 0) > 0) dmg = dmg - 2;
   return Math.max(1, dmg);
+}
+
+// ── DANNO TIPIZZATO + RESISTENZE (Bottega) ─────────────────────────────────
+// Applica le resistenze del bersaglio PER TIPO di danno, PRIMA delle riduzioni
+// di classe (applyDefenderDamageMods). L'arma può avere componenti elementali
+// extra (`action.extraDamage: [{dice,type}]`) oltre al danno primario fisico.
+//   • primaryRaw: danno primario già calcolato (dado+mod+bonus, ×crit).
+//   • Il tipo primario (action.damageType) conta come "tagliente/…"; le
+//     resistenze del bersaglio (snap.marketResist) lo riducono. Gli incantesimi
+//     NON portano un tipo strutturato → nessuna resistenza tipizzata sul primario.
+//   • Ogni componente extra è tirato ora, ×crit, e ridotto per il suo tipo.
+// Ritorna { total, parts } dove parts elenca i componenti elementali applicati.
+function applyTypedDamage(primaryRaw, action, critMult, defenderSnap, isSpell) {
+  const resist = defenderSnap?.marketResist || {};
+  const primaryType = (!isSpell && action?.damageType) ? action.damageType : null;
+  let total = primaryRaw * (primaryType ? damageMultiplier(primaryType, resist) : 1);
+  const parts = [];
+  for (const comp of (action?.extraDamage || [])) {
+    if (!comp?.dice) continue;
+    const rolled = Math.round((rollDamageFormula(comp.dice) || 0) * (critMult || 1));
+    if (rolled <= 0) continue;
+    const mult = damageMultiplier(comp.type, resist);
+    const fin  = Math.round(rolled * mult);
+    total += fin;
+    parts.push({ type: comp.type, amount: fin, raw: rolled, resisted: mult !== 1 });
+  }
+  return { total: Math.max(0, Math.round(total)), parts };
 }
 
 // Titoli cumulativi: legge l'array `arenaTitles` e fa fallback al legacy `arenaTitle` singolo.
@@ -3530,6 +3571,9 @@ export default function Arena() {
       // Consumabili della Bottega settimanale (solo torneo): definizioni portate
       // nello snapshot così il fight li risolve senza dipendere dal catalogo.
       marketConsumables: marketGear?.consumables || [],
+      // Resistenze per tipo di danno (armature/oggetti della Bottega, solo torneo):
+      // { [tipoDanno]: "resist" | "immune" | "vuln" }. Lette in applyTypedDamage.
+      marketResist: marketGear?.resist || {},
     };
 
     // ── Branch: Arena Libera (Sfida) ──────────────────────────────────────
@@ -5056,7 +5100,9 @@ export default function Arena() {
       const aiBeastRageBonus = beastRageDamageBonus(aiSnap, { ...aiPlayer, ...buffPatch }); // Furia Bestiale (Lv3)
       const aiDivineStrike = divineStrikeBonus(aiSnap, false); // Chierico Lv8 · Colpo Divino: +1d8 radiante
       const raw = (total + statMod + rageDmgBonus + barbarianDmgBonus + aiSubclassDmg + aiBeastRageBonus) * critMult + aiDivineStrike + aiSubBonus;
-      damage = applyDefenderDamageMods(raw, targetSnap, tgtMatchPlayer, false);
+      // Bottega: componenti elementali dell'arma IA + resistenze del bersaglio.
+      const aiTyped = applyTypedDamage(raw, chosen, critMult, targetSnap, false);
+      damage = applyDefenderDamageMods(aiTyped.total, targetSnap, tgtMatchPlayer, false);
       damageRolls = rolls;
     }
 
@@ -5834,7 +5880,8 @@ export default function Arena() {
           tags.push(`✗${rd}`);
         }
       }
-      const reduced = applyDefenderDamageMods(total, defenderSnap, defMatchPlayer, false);
+      const volleyTyped = applyTypedDamage(total, action, 1, defenderSnap, false);
+      const reduced = applyDefenderDamageMods(volleyTyped.total, defenderSnap, defMatchPlayer, false);
       golemHalved = anyHit && !!defMatchPlayer?.nextHitHalved && reduced > 0;
       damage = golemHalved ? Math.floor(reduced / 2) : reduced;
       isHit  = anyHit;
@@ -5902,7 +5949,9 @@ export default function Arena() {
     const rawDamage = (isHit && !isBlindDebuff) ? (baseDmg + dmgStatMod + weaponBuff + rageDmgBonus + barbarianDmgBonus + concentrationDmg + aidDmgBonus + subclassDmg + beastRageBonus + infusionDmg) * critMult + poisonBonusDmg + pattoBonusDmg + stormBonusDmg + divineStrikeDmg + subclassBonusDmg : 0;
     // Furia del Barbaro: dimezza i danni subiti da armi e skill (non da incantesimi).
     // Monaco · Colpi Ki (Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici (kiBypass).
-    const rageReducedDamage = applyDefenderDamageMods(rawDamage, defenderSnap, defMatchPlayer, isSpellAction, kiBypass);
+    // Bottega: componenti di danno elementali dell'arma + resistenze del bersaglio.
+    const typedDmg = applyTypedDamage(rawDamage, action, critMult, defenderSnap, isSpellAction);
+    const rageReducedDamage = applyDefenderDamageMods(typedDmg.total, defenderSnap, defMatchPlayer, isSpellAction, kiBypass);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
     golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
     damage = golemHalved ? Math.floor(rageReducedDamage / 2) : rageReducedDamage;
@@ -5932,8 +5981,12 @@ export default function Arena() {
       : "";
     const critDmgNote    = isCrit ? ` ×2` : "";
     const subclassBonusTagStr = subclassBonusTag ? ` | ${subclassBonusTag}` : "";
+    // Bottega: componenti elementali dell'arma applicati (con marcatore se resistiti).
+    const elementalTag   = (typedDmg.parts || [])
+      .map(pt => ` | ${DAMAGE_TYPE_MAP[pt.type]?.icon || "✦"}${DAMAGE_TYPE_MAP[pt.type]?.label || pt.type} ${pt.resisted ? `${pt.raw}→` : ""}${pt.amount}`)
+      .join("");
     const dmgBreakdown   = (isHit && !isBlindDebuff)
-      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${barbDmgTag}${concentrationTag}${subclassBonusTagStr} = ${damage}]`
+      ? ` [danni: 🎲${diceRolls}${dmgModPart}${critDmgNote}${poisonTag}${pattoTag}${stormTag}${rageTag}${barbDmgTag}${concentrationTag}${subclassBonusTagStr}${elementalTag} = ${damage}]`
       : "";
     const hitBreakdown = `🎲d20=${d20}${critTag}${advantageTag} +${action.hitBonus} hit${statPart}${spellModPart}${penPart}${aidPart}${inspirationTag}${magicDetTag}${hunterMarkTag}${blindPenTag}${titleTag} = ${hitTotal} vs CA ${defAC}`;
     log = {

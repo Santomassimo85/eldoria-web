@@ -6,6 +6,7 @@ import {
   CLERIC_SPELLS, BARD_SPELLS, PALADIN_SPELLS, RANGER_SPELLS, ARTIFICER_SPELLS,
 } from "../pages/Arena";
 import { weekEndLabel } from "../data/arenaWeek";
+import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS } from "../data/arenaDamageTypes";
 
 // ── Catalogo del Master (collection `arena_market_items`) ────────────────────
 // Ogni creazione resta salvata per sempre e può essere rimessa in vetrina in
@@ -52,19 +53,29 @@ const EMPTY_FORM = {
   buffType: "hit", buffAmount: "1", buffTurns: "3",
   // spell
   spellClass: "wizard", spellName: "",
-  // arma
+  // arma — danno multi-componente tipizzato (+ legacy dmgBonus per retro-compat edit)
   hitBonus: "0", dmgBonus: "0", ranged: false,
-  // armatura
+  weaponComponents: [{ dice: "1d8", type: "tagliente" }],
+  // armatura / oggetto — resistenze per tipo: { [tipo]: "resist"|"immune"|"vuln" }
   acBonus: "1",
+  resist: {},
   // pet
   autoHit: false, petHitBonus: "3",
 };
 
 // Riassunto leggibile dell'effetto (usato nelle card e come descrizione automatica).
+export function resistSummary(resist) {
+  if (!resist || !Object.keys(resist).length) return "";
+  return Object.entries(resist)
+    .map(([type, lvl]) => `${DAMAGE_TYPE_MAP[type]?.icon || ""}${DAMAGE_TYPE_MAP[type]?.label || type} ${RESIST_LEVELS[lvl]?.short || ""}`)
+    .join(" · ");
+}
+
 export function marketItemSummary(it) {
   const p = it.payload || {};
   switch (it.category) {
     case "item":
+      if (p.effect === "resist") return `Resistenze passive: ${resistSummary(p.resist)}`;
       if (p.effect === "heal")   return `Cura ${p.dice} · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
       if (p.effect === "damage") return `${p.dice} danni al bersaglio · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
       return `${BUFF_TYPES.find(b => b.key === p.buffType)?.label || "Bonus"} +${p.buffAmount}${p.buffTurns > 0 ? ` per ${p.buffTurns} turni` : " per tutto il fight"} · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight`;
@@ -73,10 +84,16 @@ export function marketItemSummary(it) {
       const sp = src?.spells.find(s => s.name === p.spellName);
       return `${src?.label || p.spellClass} · ${p.spellName}${sp?.info ? ` — ${sp.info}` : ""}`;
     }
-    case "weapon":
-      return `${p.dice} danni${+p.hitBonus ? ` · +${p.hitBonus} colpire` : ""}${+p.dmgBonus ? ` · +${p.dmgBonus} danni` : ""} · ${p.ranged ? "distanza" : "mischia"}`;
-    case "armor":
-      return `+${p.acBonus} Classe Armatura`;
+    case "weapon": {
+      const comps = (Array.isArray(p.components) && p.components.length)
+        ? p.components.map(c => `${c.dice} ${DAMAGE_TYPE_MAP[c.type]?.label || c.type}`).join(" + ")
+        : `${p.dice} danni${+p.dmgBonus ? `+${p.dmgBonus}` : ""}`;
+      return `${comps}${+p.hitBonus ? ` · +${p.hitBonus} colpire` : ""} · ${p.ranged ? "distanza" : "mischia"}`;
+    }
+    case "armor": {
+      const r = resistSummary(p.resist);
+      return `+${p.acBonus} Classe Armatura${r ? ` · Resist: ${r}` : ""}`;
+    }
     case "pet":
       return `Azione bonus: ${p.effect === "heal" ? `cura ${p.dice}` : `${p.dice} danni${p.autoHit ? " auto-hit" : ""}`} · max ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight`;
     default:
@@ -111,6 +128,52 @@ export default function ArenaMarketCatalog() {
     setForm(prev => ({ ...prev, [field]: val }));
   };
 
+  // Componenti di danno dell'arma (dado + tipo)
+  const setComp = (i, field, val) => setForm(prev => ({
+    ...prev,
+    weaponComponents: prev.weaponComponents.map((c, idx) => idx === i ? { ...c, [field]: val } : c),
+  }));
+  const addComp = () => setForm(prev => ({
+    ...prev,
+    weaponComponents: [...prev.weaponComponents, { dice: "1d6", type: "fuoco" }],
+  }));
+  const removeComp = (i) => setForm(prev => ({
+    ...prev,
+    weaponComponents: prev.weaponComponents.filter((_, idx) => idx !== i),
+  }));
+
+  // Resistenze: clic su un tipo per ciclare — → Resistenza → Immunità → Vulnerabilità → —
+  const cycleResist = (type) => setForm(prev => {
+    const order = [undefined, "resist", "immune", "vuln"];
+    const next = order[(order.indexOf(prev.resist[type]) + 1) % order.length];
+    const r = { ...prev.resist };
+    if (next) r[type] = next; else delete r[type];
+    return { ...prev, resist: r };
+  });
+  const renderResistEditor = () => (
+    <div className="am-cat-resist">
+      <span className="am-cat-resist-hint">Resistenze per tipo — clic per ciclare: — → 🛡 Resistenza (½) → 🚫 Immunità (0) → 💥 Vulnerabilità (×2)</span>
+      <div className="am-cat-resist-grid">
+        {DAMAGE_TYPES.map(t => {
+          const lvl = form.resist[t.key];
+          const info = lvl ? RESIST_LEVELS[lvl] : null;
+          return (
+            <button
+              type="button" key={t.key}
+              className={`am-cat-resist-chip${lvl ? ` am-cat-resist-chip--${lvl}` : ""}`}
+              onClick={() => cycleResist(t.key)}
+              title={info ? info.label : "Nessuna"}
+            >
+              <span className="am-cat-resist-icon">{t.icon}</span>
+              <span className="am-cat-resist-lab">{t.label}</span>
+              <span className="am-cat-resist-lvl">{info ? `${info.icon}${info.short}` : "—"}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const activeCount = items.filter(i => i.active).length;
   const spellOptions = useMemo(() => SPELL_SOURCES[form.spellClass]?.spells ?? [], [form.spellClass]);
 
@@ -121,6 +184,11 @@ export default function ArenaMarketCatalog() {
     const uses = Math.max(1, parseInt(form.uses, 10) || 1);
     switch (cat) {
       case "item":
+        if (form.effect === "resist") {
+          // Oggetto di sola resistenza passiva (sempre attiva nel torneo).
+          if (!Object.keys(form.resist || {}).length) return null;
+          return { effect: "resist", resist: form.resist };
+        }
         if (form.effect === "buff") {
           return {
             effect: "buff",
@@ -135,16 +203,23 @@ export default function ArenaMarketCatalog() {
       case "spell":
         if (!form.spellName) return null;
         return { spellClass: form.spellClass, spellName: form.spellName };
-      case "weapon":
-        if (!DICE_RE.test(form.dice)) return null;
+      case "weapon": {
+        // Danno multi-componente tipizzato: ogni componente = { dice, type }.
+        const comps = (form.weaponComponents || [])
+          .filter(c => c && DICE_RE.test((c.dice || "").trim()))
+          .map(c => ({ dice: c.dice.trim(), type: c.type || "tagliente" }));
+        if (!comps.length) return null;
         return {
-          dice: form.dice,
+          components: comps,
           hitBonus: parseInt(form.hitBonus, 10) || 0,
-          dmgBonus: parseInt(form.dmgBonus, 10) || 0,
           ranged: !!form.ranged,
         };
+      }
       case "armor":
-        return { acBonus: Math.max(1, parseInt(form.acBonus, 10) || 1) };
+        return {
+          acBonus: Math.max(1, parseInt(form.acBonus, 10) || 1),
+          ...(Object.keys(form.resist || {}).length ? { resist: form.resist } : {}),
+        };
       case "pet":
         if (!DICE_RE.test(form.dice)) return null;
         return {
@@ -215,7 +290,11 @@ export default function ArenaMarketCatalog() {
       hitBonus: String(p.hitBonus ?? 0),
       dmgBonus: String(p.dmgBonus ?? 0),
       ranged: !!p.ranged,
+      weaponComponents: (Array.isArray(p.components) && p.components.length)
+        ? p.components.map(c => ({ dice: c.dice, type: c.type || "tagliente" }))
+        : [{ dice: p.dice || "1d8", type: p.ranged ? "perforante" : "tagliente" }],
       acBonus: String(p.acBonus ?? 1),
+      resist: p.resist || {},
       autoHit: !!p.autoHit,
       petHitBonus: String(p.hitBonus ?? 3),
     });
@@ -295,13 +374,22 @@ export default function ArenaMarketCatalog() {
                   <option value="heal">Cura</option>
                   <option value="damage">Danno</option>
                   <option value="buff">Bonus</option>
+                  <option value="resist">Resistenza</option>
                 </select>
               </label>
-              {form.effect !== "buff" && (
+              {form.effect !== "buff" && form.effect !== "resist" && (
                 <label className="am-cat-field am-cat-field--sm">
                   <span>Dadi (es. 2d8, 3d6+2)</span>
                   <input className="am-coin-input" type="text" value={form.dice} onChange={set("dice")} />
                 </label>
+              )}
+              {form.effect === "resist" && (
+                <div className="am-cat-field am-cat-field--full">
+                  {renderResistEditor()}
+                  <p className="am-master-note am-cat-note">
+                    Resistenza <strong>passiva</strong>: sempre attiva nei fight di torneo finché possiedi l'oggetto della settimana.
+                  </p>
+                </div>
               )}
               {form.effect === "buff" && (<>
                 <label className="am-cat-field am-cat-field--sm">
@@ -319,10 +407,12 @@ export default function ArenaMarketCatalog() {
                   <input className="am-coin-input" type="number" min={0} value={form.buffTurns} onChange={set("buffTurns")} />
                 </label>
               </>)}
-              <label className="am-cat-field am-cat-field--sm">
-                <span>Usi per fight</span>
-                <input className="am-coin-input" type="number" min={1} value={form.uses} onChange={set("uses")} />
-              </label>
+              {form.effect !== "resist" && (
+                <label className="am-cat-field am-cat-field--sm">
+                  <span>Usi per fight</span>
+                  <input className="am-coin-input" type="number" min={1} value={form.uses} onChange={set("uses")} />
+                </label>
+              )}
             </div>
           )}
 
@@ -354,17 +444,29 @@ export default function ArenaMarketCatalog() {
 
           {cat === "weapon" && (
             <div className="am-cat-grid">
-              <label className="am-cat-field am-cat-field--sm">
-                <span>Dadi danno (es. 1d10)</span>
-                <input className="am-coin-input" type="text" value={form.dice} onChange={set("dice")} />
-              </label>
+              <div className="am-cat-field am-cat-field--full">
+                <span>Componenti di danno (dado + tipo) — es. 2d6 Tagliente + 1d8 Fuoco</span>
+                <div className="am-cat-dmg-list">
+                  {(form.weaponComponents || []).map((c, i) => (
+                    <div className="am-cat-dmg-row" key={i}>
+                      <input
+                        className="am-coin-input am-cat-dmg-dice" type="text" placeholder="2d6"
+                        value={c.dice} onChange={e => setComp(i, "dice", e.target.value)}
+                      />
+                      <select className="am-coin-input am-cat-dmg-type" value={c.type} onChange={e => setComp(i, "type", e.target.value)}>
+                        {DAMAGE_TYPES.map(t => <option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
+                      </select>
+                      {form.weaponComponents.length > 1 && (
+                        <button type="button" className="am-cat-dmg-del" onClick={() => removeComp(i)} title="Rimuovi componente">✕</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button type="button" className="am-cat-dmg-add" onClick={addComp}>+ Aggiungi componente di danno</button>
+              </div>
               <label className="am-cat-field am-cat-field--sm">
                 <span>Bonus colpire (+N)</span>
                 <input className="am-coin-input" type="number" value={form.hitBonus} onChange={set("hitBonus")} />
-              </label>
-              <label className="am-cat-field am-cat-field--sm">
-                <span>Bonus danni (+N)</span>
-                <input className="am-coin-input" type="number" value={form.dmgBonus} onChange={set("dmgBonus")} />
               </label>
               <label className="am-cat-field am-cat-check">
                 <input type="checkbox" checked={form.ranged} onChange={set("ranged")} />
@@ -379,6 +481,9 @@ export default function ArenaMarketCatalog() {
                 <span>Bonus CA (+N)</span>
                 <input className="am-coin-input" type="number" min={1} value={form.acBonus} onChange={set("acBonus")} />
               </label>
+              <div className="am-cat-field am-cat-field--full">
+                {renderResistEditor()}
+              </div>
             </div>
           )}
 
