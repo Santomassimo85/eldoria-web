@@ -47,6 +47,169 @@ function clockTime(date) {
   return date.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+// ── Tesoreria: consumo token e spesa API Claude (Admin API Anthropic) ───────
+const fmtTok = (n) => {
+  if (!n) return "0";
+  if (n >= 1e6) return (n / 1e6).toLocaleString("it-IT", { maximumFractionDigits: 1 }) + " M";
+  if (n >= 1000) return Math.round(n / 1000).toLocaleString("it-IT") + " k";
+  return n.toLocaleString("it-IT");
+};
+const fmtUsd = (cents) =>
+  "$ " + ((cents || 0) / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const shortModel = (m) => String(m).replace(/^claude-/, "").replace(/-\d{8}$/, "");
+
+// Colori serie (validati per contrasto e daltonismo su fondo pergamena):
+// input = blu, output = ambra; la spesa (una sola serie) usa il bronzo del tema.
+const C_IN = "#3b6ea5";
+const C_OUT = "#c47d1f";
+
+function TesoreriaClaude() {
+  const [state, setState] = useState({ status: "loading" });
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/claude-usage");
+        const j = await r.json();
+        if (!alive) return;
+        if (j.error) setState({ status: "error", msg: j.error });
+        else if (j.configured === false) setState({ status: "unconfigured" });
+        else setState({ status: "ok", data: j });
+      } catch (e) {
+        if (alive) setState({ status: "error", msg: e.message || String(e) });
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  if (state.status === "loading") {
+    return <section className="conc-tes"><h2>🪙 La Tesoreria</h2><p className="conc-empty">Consulto i registri di Anthropic…</p></section>;
+  }
+  if (state.status === "unconfigured") {
+    return (
+      <section className="conc-tes">
+        <h2>🪙 La Tesoreria</h2>
+        <div className="conc-tes-setup">
+          <p><b>Chiave Admin mancante.</b> Per vedere token e spesa delle chiamate API serve una <em>Admin API key</em> di Anthropic (diversa dalla chiave normale):</p>
+          <ol>
+            <li>Nel <a href="https://platform.claude.com/settings/admin-keys" target="_blank" rel="noreferrer">Claude Console → Settings → Admin keys</a> crea una chiave <code>sk-ant-admin01-…</code>. Serve un account con <b>Organizzazione</b> (Console → Settings → Organization): per gli account individuali l'Admin API non è disponibile.</li>
+            <li>Su Vercel aggiungi la variabile d'ambiente <code>ANTHROPIC_ADMIN_KEY</code> con quella chiave e rideploya.</li>
+          </ol>
+        </div>
+      </section>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <section className="conc-tes">
+        <h2>🪙 La Tesoreria</h2>
+        <p className="conc-empty">Registri non raggiungibili: {state.msg}. {window.location.hostname === "localhost" ? "In locale l'endpoint /api non gira: guarda la pagina deployata su Vercel." : ""}</p>
+      </section>
+    );
+  }
+
+  const { days, totals } = state.data;
+  const today = new Date().toISOString().slice(0, 10);
+  const dToday = days.find((d) => d.date === today);
+  const maxCost = Math.max(1, ...days.map((d) => d.costCents || 0));
+  const maxTok = Math.max(1, ...days.map((d) => (d.tokensIn || 0) + (d.tokensOut || 0)));
+  const models = Object.entries(totals.byModel || {})
+    .map(([m, t]) => ({ m, tok: t.in + t.out + t.cache5m + t.cache1h, ...t }))
+    .sort((a, b) => b.estCents - a.estCents);
+  const maxModelCents = Math.max(1, ...models.map((x) => x.estCents));
+
+  return (
+    <section className="conc-tes">
+      <h2>🪙 La Tesoreria</h2>
+      <p className="conc-tes-sub">Token e spesa delle chiamate API Claude — ultimi 30 giorni, dai registri ufficiali Anthropic (ritardo ~5 minuti).</p>
+
+      {/* Contatori */}
+      <div className="conc-tes-tiles">
+        <div className="conc-tes-tile">
+          <b>{fmtUsd(totals.costCents)}</b>
+          <span>spesa 30 giorni{totals.costEstimated ? " (stima)" : ""}</span>
+        </div>
+        <div className="conc-tes-tile">
+          <b>{fmtTok(totals.tokensIn + totals.tokensOut)}</b>
+          <span>token 30 giorni</span>
+        </div>
+        <div className="conc-tes-tile">
+          <b>{fmtUsd(dToday?.costCents)}</b>
+          <span>spesa oggi</span>
+        </div>
+        <div className="conc-tes-tile">
+          <b>{fmtTok((dToday?.tokensIn || 0) + (dToday?.tokensOut || 0))}</b>
+          <span>token oggi</span>
+        </div>
+      </div>
+
+      <div className="conc-tes-charts">
+        {/* Spesa giornaliera */}
+        <div className="conc-tes-chart">
+          <h3>Spesa giornaliera (USD)</h3>
+          <div className="conc-tes-bars">
+            {days.map((d, i) => (
+              <div key={d.date} className="conc-tes-col"
+                title={`${d.date} — ${fmtUsd(d.costCents)}`}>
+                <div className="conc-tes-stack">
+                  <i style={{ height: `${Math.round(((d.costCents || 0) / maxCost) * 100)}%`, background: "var(--gold-deep)" }} />
+                </div>
+                <small>{i % 5 === 0 || i === days.length - 1 ? d.date.slice(8) : ""}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Token giornalieri: input + output impilati */}
+        <div className="conc-tes-chart">
+          <h3>Token al giorno</h3>
+          <div className="conc-tes-legend">
+            <span><i style={{ background: C_IN }} /> Input (incl. scrittura cache)</span>
+            <span><i style={{ background: C_OUT }} /> Output</span>
+          </div>
+          <div className="conc-tes-bars">
+            {days.map((d, i) => {
+              const tot = (d.tokensIn || 0) + (d.tokensOut || 0);
+              return (
+                <div key={d.date} className="conc-tes-col"
+                  title={`${d.date} — input ${fmtTok(d.tokensIn)} · output ${fmtTok(d.tokensOut)} · cache letta ${fmtTok(d.cacheRead)}`}>
+                  <div className="conc-tes-stack">
+                    <i style={{ height: `${Math.round(((d.tokensOut || 0) / maxTok) * 100)}%`, background: C_OUT }} />
+                    <i style={{ height: `${Math.round(((d.tokensIn || 0) / maxTok) * 100)}%`, background: C_IN }} />
+                  </div>
+                  <small>{i % 5 === 0 || i === days.length - 1 ? d.date.slice(8) : ""}</small>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Ripartizione per modello */}
+      {models.length > 0 && (
+        <div className="conc-tes-models">
+          <h3>Per modello (30 giorni)</h3>
+          {models.map((x) => (
+            <div key={x.m} className="conc-tes-model"
+              title={`input ${fmtTok(x.in)} · output ${fmtTok(x.out)} · cache letta ${fmtTok(x.cacheRead)}`}>
+              <code>{shortModel(x.m)}</code>
+              <div className="conc-tes-model-bar">
+                <i style={{ width: `${Math.max(2, Math.round((x.estCents / maxModelCents) * 100))}%` }} />
+              </div>
+              <span>{fmtTok(x.tok + x.cacheRead)} tok · ~{fmtUsd(x.estCents)}</span>
+            </div>
+          ))}
+          <p className="conc-tes-note">
+            Il costo per modello è calcolato dal listino sui token consumati; il totale di spesa
+            {totals.costEstimated ? " è anch'esso una stima (cost report non disponibile)." : " viene invece dal report di fatturazione Anthropic."}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Concilio() {
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -199,6 +362,9 @@ export default function Concilio() {
           );
         })}
       </div>
+
+      {/* TESORERIA — token & spesa API Claude */}
+      <TesoreriaClaude />
 
       {/* FEED GLOBALE */}
       <section className="conc-feed">

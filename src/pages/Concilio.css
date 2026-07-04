@@ -186,3 +186,72 @@
   .conc-log-time{ display:none; }
 }
 @media(prefers-reduced-motion:reduce){ .conc *{animation:none!important;transition:none!important} }
+
+/* ── TESORERIA — token & spesa API Claude ── */
+.conc-tes{ margin:0 0 44px; }
+.conc-tes h2{
+  font-family:var(--font-title),'Cinzel',serif; color:var(--red); font-size:20px;
+  letter-spacing:.06em; margin:0 0 4px; border-bottom:2px solid var(--line); padding-bottom:8px;
+}
+.conc-tes-sub{ font-size:13px; color:var(--muted); margin:8px 0 16px; }
+
+.conc-tes-setup{
+  background:linear-gradient(180deg,#fdf7e6,var(--panel)); border:1px dashed var(--gold);
+  border-radius:12px; padding:14px 18px; font-size:14px; line-height:1.55;
+}
+.conc-tes-setup ol{ margin:8px 0 0; padding-left:20px; }
+.conc-tes-setup code{ background:var(--panel2); padding:1px 6px; border-radius:5px; font-size:12.5px; }
+.conc-tes-setup a{ color:var(--gold-deep); }
+
+/* contatori */
+.conc-tes-tiles{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px; margin-bottom:18px;
+}
+.conc-tes-tile{
+  background:linear-gradient(180deg,#fdf7e6,var(--panel)); border:1px solid var(--line);
+  border-radius:12px; padding:12px 14px; text-align:center;
+  box-shadow:0 2px 8px rgba(86,64,30,.06);
+}
+.conc-tes-tile b{
+  display:block; font-family:var(--font-title),'Cinzel',serif; font-size:22px;
+  color:var(--gold-deep); line-height:1.1;
+}
+.conc-tes-tile span{ font-size:11.5px; color:var(--muted); letter-spacing:.03em; }
+
+/* grafici a barre */
+.conc-tes-charts{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media (max-width:840px){ .conc-tes-charts{ grid-template-columns:1fr; } }
+.conc-tes-chart{
+  background:linear-gradient(180deg,#fdf7e6,var(--panel)); border:1px solid var(--line);
+  border-radius:12px; padding:12px 14px 8px;
+}
+.conc-tes-chart h3, .conc-tes-models h3{
+  font-family:var(--font-title),'Cinzel',serif; font-size:14px; color:var(--ink);
+  margin:0 0 8px; letter-spacing:.04em;
+}
+.conc-tes-legend{ display:flex; gap:14px; font-size:11.5px; color:var(--muted); margin-bottom:8px; flex-wrap:wrap; }
+.conc-tes-legend i{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+
+.conc-tes-bars{ display:flex; align-items:flex-end; gap:3px; height:110px; }
+.conc-tes-col{ flex:1; min-width:0; display:flex; flex-direction:column; justify-content:flex-end; height:100%; cursor:default; }
+.conc-tes-col:hover .conc-tes-stack i{ filter:brightness(1.18); }
+.conc-tes-stack{ display:flex; flex-direction:column; justify-content:flex-end; flex:1; gap:2px; }
+.conc-tes-stack i{ display:block; border-radius:3px 3px 0 0; min-height:1px; }
+.conc-tes-col small{ font-size:9px; color:var(--muted); text-align:center; height:12px; line-height:12px; }
+
+/* ripartizione per modello */
+.conc-tes-models{ margin-top:16px; }
+.conc-tes-model{
+  display:grid; grid-template-columns:170px 1fr auto; align-items:center; gap:10px;
+  padding:5px 0; border-bottom:1px dashed var(--line); font-size:12.5px;
+}
+.conc-tes-model code{ font-size:12px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.conc-tes-model-bar{ height:10px; background:var(--panel2); border-radius:5px; overflow:hidden; }
+.conc-tes-model-bar i{ display:block; height:100%; background:var(--gold); border-radius:5px; }
+.conc-tes-model > span{ color:var(--muted); white-space:nowrap; }
+@media (max-width:560px){
+  .conc-tes-model{ grid-template-columns:110px 1fr; }
+  .conc-tes-model > span{ grid-column:1 / -1; text-align:right; }
+}
+.conc-tes-note{ font-size:11.5px; color:var(--muted); margin:10px 0 0; font-style:italic; }
