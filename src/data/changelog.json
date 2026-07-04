@@ -1,6 +1,29 @@
 {
   "versions": [
     {
+      "version": "85",
+      "date": "2026-07-04",
+      "title": "Arena · Locandina del Colosseo e regole ripulite",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Nuova struttura per la pagina Arena: via l'hub a riquadri, arriva la \"Locandina del Colosseo\" — masthead a manifesto con tabellone dello stato (fase, sfidanti, campioni, premio) e il Programma della Serata a righe numerate, con accesso diretto alla Bottega Settimanale. Il richiamo alla sfida in corso diventa lo striscione MAIN EVENT."
+        },
+        {
+          "type": "mechanics",
+          "text": "Rimosse le fasce di livello dei tornei: senza livelli non servono più — tutte le classi sono sempre ammesse. Tolti il selettore della fascia dal pannello Master, i vincoli all'iscrizione e le classi annerite nella scelta."
+        },
+        {
+          "type": "mechanics",
+          "text": "Ritirati gli archetipi/sottoclassi: il kit base è la sola classe al Livello 3 e ogni vantaggio viene dagli acquisti settimanali. Rimossa la scelta (e la gestione Master) dalla Bottega; gli effetti degli archetipi già scelti non si applicano più nei fight."
+        },
+        {
+          "type": "chore",
+          "text": "Regole & Classi aggiornate al nuovo sistema: via i riferimenti a livelli acquistabili, fasce e attacchi extra da livello alto; aggiunta la sezione sulla Bottega Settimanale."
+        }
+      ]
+    },
+    {
       "version": "84",
       "date": "2026-07-04",
       "title": "Arena · Bottega Settimanale",

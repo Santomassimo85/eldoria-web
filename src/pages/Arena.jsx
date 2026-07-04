@@ -14,6 +14,7 @@ import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses"
 import { currentWeekKey } from "../data/arenaWeek";
 import "./Arena.css";
 import "./ArenaHero.css";
+import "./ArenaBill.css";
 
 // ── VFX d'Arena: classifica l'effetto pixelato dal testo della voce di log ──
 // Riusa gli effetti del World Boss (/public/animations/*). Nessuna modifica ai
@@ -3469,9 +3470,11 @@ export default function Arena() {
     const shieldBonus = pendingShield ? 2 : 0;
     const armorBuffBonus = charPreview.arenaBuffs?.armorBonus ? 1 : 0;
     const unarmoredBonus = pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
-    // Bonus CA dalla sottoclasse scelta (es. Stile Difesa, Abiurazione…).
-    const subclassKey = charPreview.arenaSubclass?.[getClassKey(charPreview.class)] ?? null;
-    const subclassCa  = getSubclassEffectFor(getClassKey(charPreview.class), subclassKey).ca || 0;
+    // Sottoclassi RITIRATE con la riforma Bottega settimanale: il kit base è la
+    // sola classe Lv.3, ogni bonus arriva dagli acquisti in vetrina. Forzare
+    // null qui spegne tutti gli effetti (getSubclassEffect legge snap.subclass).
+    const subclassKey = null;
+    const subclassCa  = 0;
     const finalAc   = marketAcBonus + subclassCa + (pendingArmor.unarmoredDefense
       ? pendingArmor.unarmoredMaxStat
         ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
@@ -3646,13 +3649,7 @@ export default function Arena() {
       return;
     }
 
-    // Fascia di livello del torneo: la classe scelta deve rientrare nel range.
-    if (!classInBracket(charPreview.class, charPreview.classLevels, arenaMeta.levelBracket)) {
-      const b = getArenaBracket(arenaMeta.levelBracket);
-      alert(`⚠ Questo torneo è riservato alla fascia ${b?.label || ""}. La classe ${charPreview.class} (Lv ${classLevelFor(charPreview.class, charPreview.classLevels)}) è fuori range: scegli una classe idonea.`);
-      return;
-    }
-
+    // (Le fasce di livello non esistono più: tutti combattono base Lv.3.)
     if (arenaMeta?.championsOnly) {
       const isChampion = tournamentHistory.some(t => t.winnerId === currentUser.uid);
       if (!isChampion) {
@@ -3842,15 +3839,9 @@ export default function Arena() {
     const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
     const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
+    // Niente più fasce di livello: tutte le classi sono base Lv.3 e ammesse.
     const classPool = MASTER_JOIN_CLASSES.length ? MASTER_JOIN_CLASSES : MASTER_JOIN_CLASSES_BASE;
-    // Fascia di livello del torneo: pesca solo tra le classi ammesse.
-    const bracketKey = loadoutContext === "tournament" ? arenaMeta.levelBracket : null;
-    const eligiblePool = classPool.filter(c => classInBracket(c, charPreview.classLevels, bracketKey));
-    if (!eligiblePool.length) {
-      alert(`Non hai classi nella fascia ${getArenaBracket(bracketKey)?.label || ""} di questo torneo.`);
-      return;
-    }
-    const cls = rnd(eligiblePool);
+    const cls = rnd(classPool);
     const clsLower = (cls || "").toLowerCase();
     const clsLevel = charPreview.classLevels?.[getClassKey(cls)];
     const config = getLoadoutConfig(cls, clsLevel);
@@ -8460,32 +8451,34 @@ export default function Arena() {
       })()}
 
       {/* ════════════════════════════════════════════════════════════
-          ARENA REDESIGN — Hub a riquadri (Bento) + viste "a fuoco".
-          Anima "Pietra & Rune": fondo dungeon, rune che pulsano,
-          metallo graffiato, luci reattive. Niente più lungo scroll.
+          ARENA REDESIGN 2 — "Locandina del Colosseo".
+          Struttura a manifesto: masthead asimmetrico con tabellone
+          delle quote, poi il PROGRAMMA DELLA SERATA a righe numerate
+          (niente più griglia di card). Le viste interne restano.
           ════════════════════════════════════════════════════════════ */}
 
-      {/* Atmosfera: rune nordiche (Elder Futhark) fluttuanti — puramente decorativo */}
-      <div className="arena-rune-ambient" aria-hidden="true">
-        <span className="arune a1" /><span className="arune a2" /><span className="arune a3" />
-        <span className="arune a4" /><span className="arune a5" /><span className="arune a6" />
-        <span className="arune a7" /><span className="arune a8" /><span className="arune a9" />
-        <span className="arune a10" /><span className="arune a11" /><span className="arune a12" />
-      </div>
-
-      {/* Header inciso nella pietra — il "back" è il FAB fisso qui sotto */}
-      <header className="arena-rune-header" id="arena-hero-top">
-        <span className="arena-rune-header-spacer" aria-hidden="true" />
-        <div className="arena-rune-titlewrap">
-          <span className="arena-rune-eyebrow">Cronache di Exanthia</span>
-          <h1 className="arena-rune-title" data-text="Arena dei Campioni">Arena dei Campioni</h1>
+      {/* Masthead a manifesto: brand a sinistra, tabellone a destra */}
+      <header className="arena-bill-mast" id="arena-hero-top">
+        <div className="abm-brand">
+          <span className="abm-eyebrow">Cronache di Exanthia · Grande Colosseo</span>
+          <h1 className="abm-title">Arena<br />dei Campioni</h1>
+          <p className="abm-tag">Nessun livello, nessun archetipo: solo la tua classe, l'astuzia e il bottino della settimana.</p>
         </div>
-        <div className="arena-rune-phasepill">
-          {arenaMeta.phase === "registration" && <span className="arune-pill open">● Iscrizioni</span>}
-          {getArenaBracket(arenaMeta.levelBracket) && arenaMeta.phase !== "finished" && <span className="arune-pill bracket" title="Fascia di livello del torneo">🎚 {getArenaBracket(arenaMeta.levelBracket).label}</span>}
-          {arenaMeta.phase === "combat" && <span className="arune-pill combat">● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}</span>}
-          {arenaMeta.phase === "finished" && <span className="arune-pill finished">● Concluso</span>}
-          {arenaMeta.timerPaused && <span className="arune-pill paused" title="Timer in pausa">⏸</span>}
+        <div className="abm-board" role="status" aria-label="Stato dell'Arena">
+          <div className="abm-board-row abm-board-phase">
+            {arenaMeta.phase === "registration" && <span className="arune-pill open">● Iscrizioni aperte</span>}
+            {arenaMeta.phase === "combat" && <span className="arune-pill combat">● {finalMatch ? "Finale" : `Round ${arenaMeta.currentRound || 1}`}</span>}
+            {arenaMeta.phase === "finished" && <span className="arune-pill finished">● Concluso</span>}
+            {arenaMeta.timerPaused && <span className="arune-pill paused" title="Timer in pausa">⏸ In pausa</span>}
+          </div>
+          <div className="abm-board-row"><span className="abm-board-lab">Sfidanti</span><span className="abm-board-dots" aria-hidden="true" /><span className="abm-board-val">{arenaMeta.participants?.length || 0}</span></div>
+          <div className="abm-board-row"><span className="abm-board-lab">Campioni</span><span className="abm-board-dots" aria-hidden="true" /><span className="abm-board-val">{champions.length}</span></div>
+          {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
+            <div className="abm-board-row abm-board-warn"><span className="abm-board-lab">♛ Solo Campioni</span></div>
+          )}
+          {arenaMeta.prizes && arenaMeta.prizes.trim() && (
+            <div className="abm-board-row abm-board-prize"><span className="abm-board-lab">🏆 In palio</span><span className="abm-board-prizetxt">{arenaMeta.prizes}</span></div>
+          )}
         </div>
       </header>
 
@@ -8503,102 +8496,75 @@ export default function Arena() {
         </button>
       )}
 
-      {/* ════════ HUB BENTO — la landing senza scroll ════════ */}
+      {/* ════════ PROGRAMMA DELLA SERATA — landing a manifesto ════════ */}
       {arenaView === "hub" && (() => {
-        const partCount = arenaMeta.participants?.length || 0;
         const hasBracket = (arenaMeta.phase === "combat" || arenaMeta.phase === "finished") && tournamentMatches.length > 0;
         const hasMyActive = currentUser && (arenaMeta.matches || []).some(m =>
           ((m.kind === "fun") || arenaMeta.phase === "combat") &&
           m.players?.some(p => p.id === currentUser?.uid) && m.status !== "open");
         const showBet = arenaMeta.phase === "combat" && currentUser && (!isRegistered || isMaster);
+        // Voci del programma: numerale romano + titolo + nota, come una locandina.
+        const program = [
+          {
+            key: "join", title: "Entra in Lizza",
+            sub: arenaMeta.phase === "registration" ? (isRegistered ? "Sei iscritto ✓" : isPending ? "In attesa di approvazione…" : "Crea il tuo campione — classi base Lv.3") : "Iscrizioni chiuse · prova l'Arena Libera",
+            onClick: () => {
+              if (arenaMeta.phase === "registration") { if (!isMaster) openLoadoutPicker(); else setArenaView("master"); }
+              else setArenaView("libera");
+            },
+          },
+          {
+            key: "bracket", title: "Tabellone",
+            sub: hasBracket ? "Segui gli scontri live" : "Nessun torneo in corso",
+            disabled: !hasBracket,
+            onClick: () => { if (hasBracket) { setArenaView("bracket"); setBracketModalOpen(true); } },
+          },
+          {
+            key: "bottega", title: "Bottega Settimanale",
+            sub: "Oggetti, spell, armi e pet in vendita fino a domenica — solo tornei",
+            href: "/arena-bottega",
+          },
+          { key: "libera", title: "Arena Libera", sub: "Sfide 1v1 d'allenamento, senza bonus della Bottega", onClick: () => setArenaView("libera") },
+          { key: "albo", title: "Albo dei Campioni", sub: `${champions.length} ${champions.length === 1 ? "eroe" : "eroi"} nella leggenda`, onClick: () => setArenaView("albo") },
+          { key: "regole", title: "Regole & Classi", sub: "Come funziona l'Arena", onClick: () => setArenaView("regole") },
+          { key: "dadi", title: "I Tuoi Dadi", sub: `${DICE_SKINS.find((s) => s.id === diceSkinId)?.label || "Oro Antico"} · cambia colore`, onClick: () => setDicePickerOpen(true) },
+          ...(showBet ? [{ key: "bet", title: "Scommesse", sub: "Punta le tue Monete Arena sui duellanti", onClick: () => setBettingDrawerOpen(true) }] : []),
+          ...(isMaster ? [{ key: "master", title: "Pannello Master", sub: "Gestisci l'Arena", onClick: () => setArenaView("master") }] : []),
+        ];
+        const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
         return (
-          <div className="arena-hub">
-            {/* Riga di stato viva */}
-            <div className="arena-hub-status">
-              <div className="ahs-cell"><span className="ahs-val">{partCount}</span><span className="ahs-lab">Sfidanti</span></div>
-              <div className="ahs-cell"><span className="ahs-val">{champions.length}</span><span className="ahs-lab">Campioni</span></div>
-              {arenaMeta.championsOnly && arenaMeta.phase !== "finished" && (
-                <div className="ahs-cell ahs-warn"><span className="ahs-prize-ico">♛</span><span className="ahs-prize-txt">Solo Campioni</span></div>
-              )}
-              {arenaMeta.prizes && arenaMeta.prizes.trim() && (
-                <div className="ahs-cell ahs-prize"><span className="ahs-prize-ico">🏆</span><span className="ahs-prize-txt">{arenaMeta.prizes}</span></div>
-              )}
-            </div>
-
-            {/* Tua sfida in corso — richiamo prioritario */}
+          <div className="arena-bill">
+            {/* MAIN EVENT — la tua sfida in corso, come striscione del match clou */}
             {hasMyActive && (
-              <button type="button" className={`arena-hub-mymatch${isMyTurnInActive ? " your-turn" : ""}`} onClick={() => setCombatModalOpen(true)}>
-                <span className="ahmm-ico" aria-hidden="true">⚔</span>
-                <span className="ahmm-txt">{isMyTurnInActive ? "È IL TUO TURNO — entra nel combattimento" : "Hai una sfida in corso — guarda il combattimento"}</span>
-                <span className="ahmm-go" aria-hidden="true">›</span>
+              <button type="button" className={`arena-bill-mainevent${isMyTurnInActive ? " your-turn" : ""}`} onClick={() => setCombatModalOpen(true)}>
+                <span className="abme-tag">Main Event</span>
+                <span className="abme-txt">{isMyTurnInActive ? "È IL TUO TURNO — entra nel combattimento" : "Hai una sfida in corso — guarda il combattimento"}</span>
+                <span className="abme-go" aria-hidden="true">›</span>
               </button>
             )}
 
-            {/* Griglia Bento */}
-            <div className="arena-bento">
-              <button type="button" className="bento-card bc-join bento-wide" onClick={() => {
-                if (arenaMeta.phase === "registration") { if (!isMaster) openLoadoutPicker(); else setArenaView("master"); }
-                else setArenaView("libera");
-              }}>
-                <span className="bento-rune" aria-hidden="true">⚔</span>
-                <span className="bento-title">Entra in Lizza</span>
-                <span className="bento-sub">{arenaMeta.phase === "registration" ? (isRegistered ? "Sei iscritto ✓" : isPending ? "In attesa di approvazione…" : "Crea il tuo campione") : "Iscrizioni chiuse · prova l'Arena Libera"}</span>
-                <span className="bento-glow" aria-hidden="true" />
-              </button>
-
-              <button type="button" className={`bento-card bc-bracket bento-wide${hasBracket ? "" : " bento-off"}`} onClick={() => { if (hasBracket) { setArenaView("bracket"); setBracketModalOpen(true); } }} disabled={!hasBracket}>
-                <span className="bento-rune" aria-hidden="true">🏆</span>
-                <span className="bento-title">Tabellone</span>
-                <span className="bento-sub">{hasBracket ? "Segui gli scontri live" : "Nessun torneo in corso"}</span>
-                <span className="bento-glow" aria-hidden="true" />
-              </button>
-
-              <button type="button" className="bento-card bc-libera" onClick={() => setArenaView("libera")}>
-                <span className="bento-rune" aria-hidden="true">🗡</span>
-                <span className="bento-title">Arena Libera</span>
-                <span className="bento-sub">Sfide 1v1 d'allenamento</span>
-                <span className="bento-glow" aria-hidden="true" />
-              </button>
-
-              <button type="button" className="bento-card bc-albo" onClick={() => setArenaView("albo")}>
-                <span className="bento-rune" aria-hidden="true">♛</span>
-                <span className="bento-title">Albo dei Campioni</span>
-                <span className="bento-sub">{champions.length} {champions.length === 1 ? "eroe nella leggenda" : "eroi nella leggenda"}</span>
-                <span className="bento-glow" aria-hidden="true" />
-              </button>
-
-              <button type="button" className="bento-card bc-regole" onClick={() => setArenaView("regole")}>
-                <span className="bento-rune" aria-hidden="true">📜</span>
-                <span className="bento-title">Regole &amp; Classi</span>
-                <span className="bento-sub">Come funziona l'Arena</span>
-                <span className="bento-glow" aria-hidden="true" />
-              </button>
-
-              <button type="button" className="bento-card bc-dadi" onClick={() => setDicePickerOpen(true)}>
-                <span className="bento-rune" aria-hidden="true">🎲</span>
-                <span className="bento-title">I Tuoi Dadi</span>
-                <span className="bento-sub">{DICE_SKINS.find((s) => s.id === diceSkinId)?.label || "Oro Antico"} · cambia colore</span>
-                <span className="bento-glow" aria-hidden="true" />
-              </button>
-
-              {showBet && (
-                <button type="button" className="bento-card bc-bet" onClick={() => setBettingDrawerOpen(true)}>
-                  <span className="bento-rune" aria-hidden="true">🎲</span>
-                  <span className="bento-title">Scommesse</span>
-                  <span className="bento-sub">Punta sui duellanti</span>
-                  <span className="bento-glow" aria-hidden="true" />
-                </button>
-              )}
-
-              {isMaster && (
-                <button type="button" className="bento-card bc-master" onClick={() => setArenaView("master")}>
-                  <span className="bento-rune" aria-hidden="true">⚜</span>
-                  <span className="bento-title">Pannello Master</span>
-                  <span className="bento-sub">Gestisci l'Arena</span>
-                  <span className="bento-glow" aria-hidden="true" />
-                </button>
-              )}
-            </div>
+            {/* Programma della serata: righe numerate stile locandina */}
+            <nav className="arena-bill-program" aria-label="Programma dell'Arena">
+              <div className="abp-head"><span className="abp-head-rule" aria-hidden="true" />Programma della Serata<span className="abp-head-rule" aria-hidden="true" /></div>
+              {program.map((row, i) => {
+                const inner = (<>
+                  <span className="abp-num" aria-hidden="true">{ROMAN[i] || i + 1}</span>
+                  <span className="abp-main">
+                    <span className="abp-title">{row.title}</span>
+                    <span className="abp-sub">{row.sub}</span>
+                  </span>
+                  <span className="abp-go" aria-hidden="true">›</span>
+                </>);
+                if (row.href) {
+                  return <a key={row.key} className="abp-row" href={row.href}>{inner}</a>;
+                }
+                return (
+                  <button key={row.key} type="button" className={`abp-row${row.disabled ? " abp-row--off" : ""}`} disabled={row.disabled} onClick={row.onClick}>
+                    {inner}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
         );
       })()}
@@ -8645,11 +8611,11 @@ export default function Arena() {
               <li>Oltre al torneo è sempre attiva la <strong>Sfida Libera</strong>: 1v1 amichevoli senza ricompense, utili per allenarti.</li>
             </ul>
 
-            <h3 className="arena-info-title">🎚 Fasce di livello del torneo</h3>
+            <h3 className="arena-info-title">🛍 Bottega Settimanale</h3>
             <div className="arena-info-example">
-              <p>Il Master può dividere i tornei per <strong>fascia di livello</strong>, in scaglioni stretti da 3 livelli: <strong>Lv 3-5, 6-8, 9-11, 12-14, 15-17, 18-20</strong> (oppure "Tutti i livelli", senza limiti). Serve a evitare che una classe di livello alto affronti una di livello basso.</p>
-              <p>Con una fascia attiva puoi iscriverti <strong>solo con le classi il cui livello rientra nel range</strong>. Nella scelta della classe, quelle fuori fascia appaiono <strong>annerite e non selezionabili</strong>, con indicato il loro livello. Il livello di una classe è quello che hai acquistato alla Bottega dell'Arena.</p>
-              <p><strong>Nota:</strong> nell'Arena si parte da <strong>Lv 3</strong>, quindi lo scaglione più basso è <strong>3-5</strong>. Se non possiedi nessuna classe nel range, non puoi partecipare a quel torneo.</p>
+              <p>Tutti combattono con le <strong>classi base al Livello 3</strong>: non esistono livelli da comprare né archetipi. L'unico vantaggio si conquista alla <strong>Bottega Settimanale</strong>, dove il Master mette in vendita <strong>oggetti, incantesimi, armi, armature e pet</strong>.</p>
+              <p>Ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>, poi torni al kit base e la vetrina si rinnova. I potenziamenti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte alla pari, col solo kit base.</p>
+              <p>In fight: gli <strong>oggetti</strong> sono azioni gratuite (1/turno), le <strong>spell</strong> comprate si aggiungono alle tue azioni con le loro cariche, <strong>armi e armature</strong> si sommano a equipaggiamento e CA, i <strong>pet</strong> agiscono come azione bonus con usi limitati.</p>
             </div>
 
             <h3 className="arena-info-title">⏱ Timer e turni</h3>
@@ -8661,17 +8627,17 @@ export default function Arena() {
 
             <h3 className="arena-info-title">🧙 Creazione del Personaggio</h3>
             <div className="arena-info-example">
-              <p><strong>1. Classe:</strong> scegli tra le 12 classi (vedi elenco sotto). Ogni classe ha le proprie armi consentite, abilità di classe automatiche, eventuali slot magia e armatura permessa. <em>Se il torneo ha una fascia di livello, puoi scegliere solo le classi il cui livello rientra nel range (le altre sono annerite).</em></p>
+              <p><strong>1. Classe:</strong> scegli tra le 12 classi (vedi elenco sotto), tutte <strong>base Livello 3</strong>. Ogni classe ha le proprie armi consentite, abilità di classe automatiche, eventuali slot magia e armatura permessa.</p>
               <p><strong>2. Caratteristiche:</strong> distribuisci i punti stat (FOR, DES, COS, INT, SAG, CAR). I modificatori si applicano a tiri per colpire, danni, salvezze e CA delle armature leggere/medie.</p>
               <p><strong>3. Equipaggiamento:</strong> scegli armi, armatura, scudo (se la classe lo permette) e oggetti consumabili. Le restrizioni dipendono dalla classe.</p>
-              <p><strong>4. HP:</strong> tutte le classi tirano <strong>7d10 + COS×7</strong>. Ogni livello di classe acquistato alla Bottega aggiunge +1d10 al tiro. Hai un numero limitato di reroll.</p>
+              <p><strong>4. HP:</strong> tutte le classi tirano <strong>7d10 + COS×7</strong>. Hai un numero limitato di reroll.</p>
               <p><strong>Nota:</strong> il personaggio Arena è separato dalla tua scheda principale e non influenza la campagna.</p>
             </div>
 
             <h3 className="arena-info-title">🎲 Come si combatte — attacchi e armi</h3>
             <div className="arena-info-example">
               <p><strong>Attacco con arma:</strong> d20 + bonus arma + FOR (mischia) o DES (distanza/finezza) vs CA del bersaglio. Se il totale è ≥ CA colpisci: danno dell'arma + modificatore. <em>Critico</em> su 20 naturale: dadi del danno ×2.</p>
-              <p><strong>Attacchi per turno:</strong> <strong>Monaco e Ladro</strong> attaccano <strong>2 volte</strong> a turno. <strong>Guerriero, Barbaro, Paladino e Ranger</strong> ottengono l'<strong>Attacco Extra al Lv.5</strong> (2 attacchi); il Guerriero sale a 3 al Lv.11 e a 4 al Lv.20. Le altre classi attaccano <strong>1 volta</strong> (più eventuali bonus action). Scatto d'Azione (Guerriero) e Passo Spedito (Ranger) concedono un'azione extra.</p>
+              <p><strong>Attacchi per turno:</strong> <strong>Monaco e Ladro</strong> attaccano <strong>2 volte</strong> a turno; le altre classi attaccano <strong>1 volta</strong> (più eventuali bonus action). Scatto d'Azione (Guerriero) e Passo Spedito (Ranger) concedono un'azione extra.</p>
               <p><strong>Combattere a due armi (Ladro):</strong> il Ladro colpisce una volta <strong>per mano</strong>, quindi servono <strong>due armi diverse equipaggiate</strong> — la stessa arma non può essere usata due volte nello stesso turno.</p>
               <p><strong>Cambio arma:</strong> impugnare un'arma <strong>non</strong> equipaggiata <strong>costa il turno</strong>; dal turno dopo puoi attaccare con la nuova arma. Le armi a due mani disattivano lo scudo.</p>
               <p><strong>Arma incandescente</strong> (Riscaldare Arma / Disarmare): arroventa <strong>solo l'arma attualmente equipaggiata</strong> del bersaglio per alcuni turni. Se hai un'altra arma riposta puoi impugnarla e combattere comunque.</p>
@@ -8718,10 +8684,9 @@ export default function Arena() {
             <h3 className="arena-info-title">🧪 Oggetti Consumabili</h3>
             <ul className="arena-info-list">
               <li><strong>🧪 Pozione di Cura</strong> — 2d12 HP, consuma il turno.</li>
-              <li><strong>💚 Pozione di Cura Media</strong> — 2d8 HP (acquistabile in Bottega), consuma il turno.</li>
               <li><strong>💣 Bomba</strong> — 2d6 danni al bersaglio, consuma il turno.</li>
               <li><strong>☠ Pozione di Veleno</strong> — applica 1d6 veleno al bersaglio per il turno successivo.</li>
-              <li>Gli oggetti acquistati in Bottega vengono aggiunti al loadout per il torneo successivo.</li>
+              <li>Gli oggetti comprati alla <strong>Bottega Settimanale</strong> compaiono nello zaino nei fight di torneo, con i loro usi, fino a domenica alle 24:00.</li>
             </ul>
 
             <h3 className="arena-info-title">🪙 Monete Arena (MA)</h3>
@@ -8729,7 +8694,7 @@ export default function Arena() {
               <li><strong>+5 MA</strong> per aver partecipato a un match dell'Arena (al primo turno giocato).</li>
               <li><strong>+7 MA</strong> per ogni round vinto.</li>
               <li><strong>+30 MA</strong> se vinci il torneo (in aggiunta ai +7 della finale).</li>
-              <li>Spendile alla <strong>Bottega dell'Arena</strong> per pozioni, livelli di classe extra e oggetti speciali da usare nei prossimi tornei.</li>
+              <li>Spendile alla <strong>Bottega Settimanale</strong>: oggetti, incantesimi, armi, armature e pet validi fino a domenica sera, solo nei tornei.</li>
             </ul>
 
             <h3 className="arena-info-title">💰 Sistema Scommesse</h3>
@@ -8816,7 +8781,7 @@ export default function Arena() {
                               read: false,
                               timestamp: serverTimestamp(),
                               title: "♛ Arena dei Campioni — Iscrizioni Aperte",
-                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!${getArenaBracket(arenaMeta.levelBracket) ? ` · Fascia di livello del torneo: ${getArenaBracket(arenaMeta.levelBracket).label} (puoi iscriverti solo con classi in questo range).` : ""}`,
+                              message: `Solo i Campioni possono entrare. Hai già vinto ${c.wins} ${c.wins === 1 ? "torneo" : "tornei"}: dimostra ancora il tuo valore!`,
                             });
                           } catch (err) { console.error("champion invite:", err); }
                         }
@@ -8827,26 +8792,6 @@ export default function Arena() {
                 />
                 <span>♛ Solo Campioni — solo chi ha già vinto un torneo può iscriversi</span>
               </label>
-              <div className="bracket-select-row">
-                <label className="bracket-select-label" htmlFor="arena-bracket-select">🎚 Fascia di livello del torneo</label>
-                <select
-                  id="arena-bracket-select"
-                  className="bracket-select"
-                  value={arenaMeta.levelBracket || ""}
-                  onChange={async (e) => {
-                    const v = e.target.value || null;
-                    await updateDoc(doc(db, "arena_meta", "global"), { levelBracket: v });
-                  }}
-                >
-                  <option value="">Tutti i livelli (nessun limite)</option>
-                  {ARENA_LEVEL_BRACKETS.map(b => (
-                    <option key={b.key} value={b.key}>{b.label}</option>
-                  ))}
-                </select>
-                <p className="bracket-select-hint">
-                  I giocatori si iscrivono solo con classi il cui livello rientra nella fascia (le altre sono annerite). Impostala prima o durante le iscrizioni.
-                </p>
-              </div>
             </div>
           )}
 
@@ -9130,29 +9075,20 @@ export default function Arena() {
               </div>
               <div className="hp-roll-title">Classe</div>
               <div className="class-select-grid">
-                {MASTER_JOIN_CLASSES.map(cls => {
-                  // Fascia di livello: attiva solo in torneo (non nelle Sfide Libere).
-                  const bracketKey = loadoutContext === "tournament" ? arenaMeta.levelBracket : null;
-                  const allowed = classInBracket(cls, charPreview.classLevels, bracketKey);
-                  const lvl = classLevelFor(cls, charPreview.classLevels);
-                  return (
-                    <button
-                      key={cls}
-                      className={`class-select-btn${allowed ? "" : " class-select-btn--locked"}`}
-                      disabled={!allowed}
-                      title={allowed ? cls : `${cls} è Lv ${lvl}: fuori dalla fascia ${getArenaBracket(bracketKey)?.label || ""} del torneo`}
-                      onClick={() => {
-                        if (!allowed) return;
-                        setCharPreview(prev => ({ ...prev, class: cls }));
-                        setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
-                        setLoadoutPhase("stat-assign");
-                      }}
-                    >
-                      {cls}
-                      {!allowed && <span className="class-select-lvl">Lv {lvl}</span>}
-                    </button>
-                  );
-                })}
+                {MASTER_JOIN_CLASSES.map(cls => (
+                  <button
+                    key={cls}
+                    className="class-select-btn"
+                    title={cls}
+                    onClick={() => {
+                      setCharPreview(prev => ({ ...prev, class: cls }));
+                      setPendingStats({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
+                      setLoadoutPhase("stat-assign");
+                    }}
+                  >
+                    {cls}
+                  </button>
+                ))}
               </div>
               <button className="btn-join btn-auto-pg" onClick={autoGeneratePg} title="Crea un personaggio completo e casuale, pronto da rivedere">
                 ⚡ Genera a caso
@@ -9843,12 +9779,6 @@ export default function Arena() {
                 </div>
               )}
 
-              {getArenaBracket(arenaMeta.levelBracket) && (
-                <div className="bracket-info-badge">
-                  🎚 Torneo a fasce di livello — <strong>{getArenaBracket(arenaMeta.levelBracket).label}</strong>
-                  {!isRegistered && !isPending && " · puoi iscriverti solo con le classi in questo range di livello (le altre sono annerite)"}
-                </div>
-              )}
 
               <p className="join-sub">
                 {isRegistered

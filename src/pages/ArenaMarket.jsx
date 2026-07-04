@@ -8,7 +8,6 @@ import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import { isHiddenChar } from "../data/hiddenPlayers";
-import { ARENA_SUBCLASSES } from "../data/arenaSubclasses";
 import ArenaMarketCatalog, { MARKET_CATEGORIES, marketItemSummary } from "../components/ArenaMarketCatalog";
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 
@@ -37,34 +36,6 @@ export const ARENA_CLASSES = [
   { key: "druid",     name: "Druido",     icon: "🌿" },
   { key: "artificer", name: "Artefice",   icon: "⚙️", hiddenUnlessOwned: "classArtificer" },
 ];
-
-// Nome di classe del PG → chiave d'arena (stessi alias di getClassKey in Arena.jsx).
-// Ritorna null se la classe non è riconosciuta (così non "attiva" per errore una
-// classe qualsiasi).
-function classKeyOf(charClass) {
-  const cls = (charClass || "").toLowerCase();
-  if (["barbarian", "barbaro"].some(c => cls.includes(c)))          return "barbarian";
-  if (["fighter", "guerriero", "warrior"].some(c => cls.includes(c))) return "fighter";
-  if (["paladin", "paladino"].some(c => cls.includes(c)))           return "paladin";
-  if (["ranger", "cacciatore"].some(c => cls.includes(c)))          return "ranger";
-  if (["bard", "bardo"].some(c => cls.includes(c)))                 return "bard";
-  if (["cleric", "chierico"].some(c => cls.includes(c)))            return "cleric";
-  if (["druid", "druido"].some(c => cls.includes(c)))               return "druid";
-  if (["monk", "monaco"].some(c => cls.includes(c)))                return "monk";
-  if (["rogue", "ladro"].some(c => cls.includes(c)))                return "rogue";
-  if (["warlock"].some(c => cls.includes(c)))                       return "warlock";
-  if (["wizard", "mago"].some(c => cls.includes(c)))                return "wizard";
-  if (["sorcerer", "stregone"].some(c => cls.includes(c)))          return "sorcerer";
-  if (["artificer", "artefice"].some(c => cls.includes(c)))         return "artificer";
-  return null;
-}
-
-// Una classe è "attiva" per un PG solo se è la sua classe principale OPPURE se
-// ci aveva investito in passato (voce esplicita in classLevels, dati legacy).
-// Le classi mai prese non offrono la scelta di sottoclasse.
-function classEngaged(clsKey, charClass, classLevels) {
-  return classKeyOf(charClass) === clsKey || (classLevels?.[clsKey] != null);
-}
 
 const CAT_META = Object.fromEntries(MARKET_CATEGORIES.map(c => [c.key, c]));
 
@@ -107,8 +78,6 @@ export default function ArenaMarket() {
 
   const coins      = charData?.arenaCoins ?? 0;
   const buffs      = charData?.arenaBuffs ?? {};
-  const classLvls  = charData?.classLevels ?? {};
-  const subclasses = charData?.arenaSubclass ?? {};
 
   // ── Settimana corrente: acquisti validi fino a domenica ore 24:00 ──────────
   const weekKey = currentWeekKey();
@@ -166,26 +135,6 @@ export default function ArenaMarket() {
     showMsg(`Acquistato: ${item.name}! Valido fino a ${weekEndLabel(weekKey)} · solo tornei.`);
   };
 
-  // ── Scelta sottoclasse/archetipo (permanente, retroattiva) ─────────────────
-  const chooseSubclass = async (classKey, optionKey) => {
-    if (!currentUser || !charData) return;
-    await updateDoc(doc(db, "characters", currentUser.uid), {
-      [`arenaSubclass.${classKey}`]: optionKey,
-    });
-    const def = ARENA_SUBCLASSES[classKey];
-    const opt = def?.options.find(o => o.key === optionKey);
-    showMsg(`${def?.title || "Scelta"}: ${opt?.label || optionKey} — scelta salvata!`);
-  };
-
-  // Scelte in sospeso: classi "attive" che non hanno ancora scelto l'archetipo
-  // (tutte le classi sono Lv.3, che è anche il livello richiesto dalla scelta).
-  const pendingSubclassChoices = ownedClasses.filter(cls => {
-    const def = ARENA_SUBCLASSES[cls.key];
-    if (!def) return false;
-    if (!classEngaged(cls.key, charData?.class, classLvls)) return false;
-    return !subclasses[cls.key];
-  });
-
   if (!currentUser) {
     return (
       <div className="cine-page am-page" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
@@ -234,41 +183,14 @@ export default function ArenaMarket() {
         </div>
       )}
 
-      {/* ── CLASSI ARENA ── */}
+      {/* ── CLASSI ARENA (solo informativo: tutte base Lv.3) ── */}
       {showClasses && (
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
-          Tutti i personaggi sono <strong>base Livello 3</strong>: i livelli non si comprano più.
-          A fare la differenza sono la <strong>scelta dell'archetipo</strong> (gratuita e permanente)
-          e gli <strong>acquisti settimanali</strong> della vetrina qui sotto.
+          Tutti combattono con le <strong>classi base al Livello 3</strong>: niente livelli, niente archetipi.
+          L'unico modo per potenziarsi è la <strong>vetrina settimanale</strong> qui sotto.
         </p>
-
-        {pendingSubclassChoices.length > 0 && (
-          <div className="am-subclass-pending">
-            <h4 className="am-subclass-pending-title">🎓 Scelte permanenti disponibili</h4>
-            <p className="am-subclass-pending-sub">
-              Puoi compiere una <strong>scelta di archetipo</strong>. È <strong>permanente</strong> (solo il Master può cambiarla) e ne attiva gli effetti in Arena. Scegli:
-            </p>
-            {pendingSubclassChoices.map(cls => {
-              const def = ARENA_SUBCLASSES[cls.key];
-              return (
-                <div key={cls.key} className="am-subclass-row">
-                  <div className="am-subclass-cls">{cls.icon} {cls.name} — <strong>{def.title}</strong></div>
-                  <div className="am-subclass-opts">
-                    {def.options.map(o => (
-                      <button key={o.key} className="am-subclass-opt" title={o.desc}
-                        onClick={() => chooseSubclass(cls.key, o.key)}>
-                        <span className="am-subclass-opt-label">{o.label}</span>
-                        <span className="am-subclass-opt-desc">{o.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
         {filteredClasses.length === 0 ? (
           <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
         ) : (
@@ -278,18 +200,6 @@ export default function ArenaMarket() {
               <div className="am-class-icon">{cls.icon}</div>
               <div className="am-class-name">{cls.name}</div>
               <div className="am-class-level">Lv. 3</div>
-              {(() => {
-                const def = ARENA_SUBCLASSES[cls.key];
-                if (!def) return null;
-                const chosenKey = subclasses[cls.key];
-                if (chosenKey) {
-                  const opt = def.options.find(o => o.key === chosenKey);
-                  return <div className="am-class-subclass">{def.title}: <strong>{opt?.label || chosenKey}</strong></div>;
-                }
-                const engaged = classEngaged(cls.key, charData?.class, classLvls);
-                if (!engaged) return <div className="am-class-subclass am-class-subclass--locked">{def.title} · solo per la tua classe</div>;
-                return <div className="am-class-subclass am-class-subclass--pending">⚠ Scegli {def.title} qui sopra ↑</div>;
-              })()}
             </div>
           ))}
         </div>
@@ -310,7 +220,7 @@ export default function ArenaMarket() {
           <li>⚔️ <strong>Armi e armature</strong>: si aggiungono al tuo equipaggiamento e alla tua CA.</li>
           <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
         </ul>
-        <p className="am-manual-note">ℹ️ Le abilità di classe, gli incantesimi base e gli archetipi restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
+        <p className="am-manual-note">ℹ️ Le abilità e gli incantesimi base della tua classe restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
       </div>
 
       <div className="am-how">
@@ -478,14 +388,6 @@ function MasterCoinPanel() {
     await updateDoc(doc(db, "characters", uid), { [`arenaBuffs.${field}`]: 0 });
   };
 
-  // Assegna/cambia/azzera la sottoclasse di un giocatore per una classe.
-  // Valore vuoto = azzera (il giocatore rivedrà il prompt di scelta al prossimo accesso).
-  const setMasterSubclass = async (uid, classKey, optionKey) => {
-    await updateDoc(doc(db, "characters", uid), {
-      [`arenaSubclass.${classKey}`]: optionKey || null,
-    });
-  };
-
   // ── Reset stagione: azzera le MA e i potenziamenti legacy di TUTTI ─────────
   // (gli acquisti settimanali correnti NON vengono toccati: scadono da soli).
   const resetSeason = async () => {
@@ -528,7 +430,6 @@ function MasterCoinPanel() {
           ) : filteredChars.map(ch => {
           const buffsData  = ch.arenaBuffs || {};
           const ownedItems = ITEM_FIELDS.filter(it => (buffsData[it.field] ?? 0) > 0);
-          const classLvls  = ch.classLevels ?? {};
           const cur        = ch.arenaCoins ?? 0;
           const preview    = parseCoinInput(editCoins[ch.uid], cur);
           const showPrev   = preview != null && preview !== cur;
@@ -562,32 +463,6 @@ function MasterCoinPanel() {
                   ))}
                 </div>
               )}
-
-              {/* Sottoclassi (permanenti) */}
-              <div className="am-master-classes">
-                {ARENA_CLASSES.filter(cls => ARENA_SUBCLASSES[cls.key]).map(cls => {
-                  const sdef = ARENA_SUBCLASSES[cls.key];
-                  const curVal = (ch.arenaSubclass ?? {})[cls.key] ?? "";
-                  const unlocked = classEngaged(cls.key, ch.class, classLvls);
-                  if (!unlocked && !curVal) return null;
-                  return (
-                    <div key={cls.key} className="am-master-class-row">
-                      <span className="am-master-class-label">{cls.icon} {cls.name}</span>
-                      <select
-                        className="am-master-subclass-select"
-                        title={sdef.title}
-                        value={curVal}
-                        onChange={e => setMasterSubclass(ch.uid, cls.key, e.target.value)}
-                      >
-                        <option value="">— {sdef.title} —</option>
-                        {sdef.options.map(o => (
-                          <option key={o.key} value={o.key}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })}
-              </div>
 
               {ownedItems.length > 0 && (
                 <div className="am-owned-items">
