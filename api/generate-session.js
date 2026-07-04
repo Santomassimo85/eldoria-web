@@ -13,7 +13,9 @@
 // Output: stream di testo plain col formato:
 //   ---HTML---\n<!DOCTYPE html>…\n---SUMMARY---\n{ "panoramica","bottino","ganciAperti" }
 
-export const config = { maxDuration: 60 };
+// 300s: con Fluid Compute (default Vercel dal 2025) anche il piano Hobby li
+// supporta. I 60s precedenti uccidevano lo stream a metà → sessioni troncate.
+export const config = { maxDuration: 300 };
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-8";
 
@@ -141,7 +143,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 8000,
+        max_tokens: 12000,
         stream: true,
         system,
         messages: [{ role: "user", content: userMsg }],

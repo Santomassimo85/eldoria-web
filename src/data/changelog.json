@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "87.02",
+      "date": "2026-07-04",
+      "title": "Generatore Sessioni DM: stop alle generazioni troncate",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "La generazione delle sessioni veniva interrotta dal limite di 60 secondi del server e i documenti arrivavano incompleti. Il tempo massimo sale a 300 secondi e il budget di testo aumenta: le sessioni ora arrivano intere, con tutte le sezioni."
+        }
+      ]
+    },
+    {
       "version": "87.01",
       "date": "2026-07-04",
       "title": "Arena · tasto Hub più visibile",
