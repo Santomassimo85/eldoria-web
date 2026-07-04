@@ -1,0 +1,230 @@
+================================================================================
+ARENA — INVENTARIO COMPLETO (snapshot 2026-07-04, pre-riforma market settimanale)
+Riferimento rapido per creare oggetti/spell/armi/pet nel nuovo Arena Market.
+Backup codice: backup/arena-pre-market-2026-07-04/
+================================================================================
+
+--------------------------------------------------------------------------------
+1. CLASSI BASE (tutte Lv.3, 13 classi)
+--------------------------------------------------------------------------------
+fighter, barbarian, paladin, rogue, ranger, monk, wizard, sorcerer, warlock,
+bard, cleric, druid, artificer (nascosta se non sbloccata con buff classArtificer)
+
+HP base: 7d10 al Lv.3 + mod COS per dado (funz. getHpDice, Arena.jsx:1983)
+Attacchi/turno: monk e rogue = 2; gli altri = 1 (getMaxActionsPerTurn :1760)
+
+--------------------------------------------------------------------------------
+2. SKILL / CAPACITÀ DI CLASSE (autoActions — NON TOCCARE, restano il kit base)
+--------------------------------------------------------------------------------
+FIGHTER:   Secondo Respiro (cura 1d12+5, 3 usi) · Scatto d'Azione (bonus action,
+           azione extra) · Carica (2d6+FOR, 3 usi) · Disarmare (blocca arma 3t) ·
+           Presenza Possente (passiva, reroll 1 naturale) · Risolutezza (passiva
+           +2 TS, Lv7) · Critico Migliorato (passiva, crit 19-20)
+BARBARIAN: Furia (bonus action, +2 danni arma 3t, 4 usi) · Turbine di Lame
+           (2 colpi 2d10) · Attacco Poderoso (2d8 + vantaggio) · Attacco Irruento
+           (passiva) · Furia Bestiale (passiva) · Resistenza Ferina (passiva Lv6) ·
+           Istinto Selvaggio (passiva Lv7)
+PALADIN:   Smite Divino (arma +2d8) · Lay of Hands (bonus action, pool cura =
+           maxHp/3) · Aura di Protezione (passiva Lv6)
+CLERIC:    Colpo Benedetto (passiva Lv5, +1 dado a cure/spell) · Colpo Divino
+           (passiva Lv8, +1d8 radioso)
+MONK:      Carica di Pugni (2×2d6) · Concentrazione (bonus action +2 dmg) ·
+           Assorbire Danni (bonus action) · Cura Ki (bonus action, cura) ·
+           Colpo Stordente (Lv5) · Movimento Senza Armatura (passiva) · Colpi Ki
+           (passiva Lv6) · Elusione (passiva Lv7)
+           [pugno base 2d4+DES; con buff monkPunchD8 → 3d4+DES]
+ROGUE:     Attacco Furtivo (arma +1d6) · Furtività (vantaggio) · Triboli ·
+           Azione Scaltra (bonus action, Lv4) · Schivata Prodigiosa (passiva Lv5) ·
+           Elusione (passiva Lv7)
+RANGER:    Marchio del Cacciatore (bonus action, +3 hit 3t) · Sopravvissuto
+           (vantaggio su sé) · Raffica Letale (3 frecce) · Difesa del Predatore
+           (passiva Lv7) · + PET (v. sez. 5)
+BARD:      Ispirazione Bardica (bonus action +1d6) · Nota Dolente (gated dal
+           market: 3d6 fulmine + vantaggio 2t, 2 usi) · Tuttofare (passiva)
+WIZARD:    Recupero Arcano
+SORCERER:  Stregoneria Innata (passiva) · Fonte di Magia
+           [slot condivisi: 4 per livello incantesimo, SORC_SLOTS_MAX]
+WARLOCK:   Astuzia Magica · Patto Demoniaco · + DEMONE (v. sez. 5)
+ARTIFICER: Forgia Armatura · Infusione (passiva Lv2) · + COSTRUTTO (v. sez. 5)
+DRUID:     Forma Selvatica — forme: lupo / orso / ragno (WILD_SHAPES :557)
+
+--------------------------------------------------------------------------------
+3. SPELL ESISTENTI PER CLASSE (definite in Arena.jsx, riusabili nel market)
+--------------------------------------------------------------------------------
+WIZARD (:147)
+  Cantrip: Dardo di Fuoco 1d10 · Tocco Gelido 1d8 · Spruzzo Velenoso 1d12 ·
+           Scossa Folgorante 1d8 · Raggio di Gelo 1d8 · Lama Vorticosa 1d8
+  Lv1:  Dardo Incantato 3d4 auto-hit · Mani Brucianti 3d6 · Scudo (+1 CA 3t) ·
+        Sonno (controllo) · Colpo Cromatico 3d8 · Onda Tonante 2d8 ·
+        Raggio Avvelenato 2d6 DoT · Assorbire Elementi (+3 TS)
+  Lv2:  Raggio Rovente 6d6 · Frantumare 3d8 · Invisibilità · Cecità/Sordità
+        (svantaggio 2t) · Tocco Vampirico 3d6+cura
+  Lv3+: Palla di Fuoco 8d6 · Fulmine 8d6 · Contrincantesimo · Tempesta di
+        Ghiaccio · Porta Dimensionale · Vortice Arcano · Cono di Freddo ·
+        Telecinesi · Disintegrazione · Globo di Invulnerabilità · Dito della
+        Morte · Inversione della Gravità · Incenerire · Parola del Potere:
+        Stordire · Meteora · Parola del Potere: Morte
+
+SORCERER (:196)
+  Cantrip (illimitati): Fire Bolt · Scossa Folgorante · Gelidito · Spruzzo
+        Velenoso · Tocco Gelido · Raggio di Gelo
+  Lv1:  Mani Brucianti · Dardo Incantato · Colpo Cromatico · Scudo ·
+        Charme su Persone · Sonno
+  Lv2:  Raggio Rovente · Frantumare · Suggestione · Nube di Pugnali ·
+        Cecità/Sordità
+  Lv3+: Palla di Fuoco · Fulmine · Paura · Tempesta di Ghiaccio · Vortice di
+        Fuoco · Blocca Mostri · Cono di Freddo · Nube Mortale · Catena di
+        Fulmini · Disintegrazione · Tempesta di Fuoco · Desiderio Distruttivo
+
+WARLOCK (:231)
+  Cantrip: Deflagrazione Occulta · Rintocco Funebre · Spruzzo Velenoso
+  Lv1:  Braccia di Hadar · Malocchio · Scudo · Rappresaglia Infernale ·
+        Charme su Persone
+  Lv2:  Frantumare · Blocca Persone · Corona della Pazzia · Oscurità
+  Lv3+: Maledizione del Sangue · Paura · Fame dell'Abisso · Bocca dell'Inferno ·
+        Dominare Mente · Piaga Necrotica · Cerchio della Morte · Dito della
+        Morte · Requiem d'Ombra · Presagio della Fine
+
+DRUID (:263)
+  Cantrip: Frusta di Spine · Produrre Fiamma · Spruzzo Velenoso · Infestazione ·
+        Morso di Gelo · Schianto di Tuono · Guida · Resistenza
+  Lv1:  Cura Ferite · Parola Guaritrice · Onda Tonante · Intralciare · Luci
+        Fatate · Coltello di Ghiaccio · Charme · Assorbire Elementi
+  Lv2:  Riscaldare Arma · Frantumare · Blocca Persone · Raggio di Luna · Scorza
+        Coriacea · Lama di Fiamma
+  Lv3+: Convocare Fulmine · Pelle di Pietra · Flagello d'Insetti · Colonna di
+        Ghiaccio · Guarigione Naturale · Muro di Ghiaccio · Muro di Spine ·
+        Tempesta di Fuoco · Sole Bruciante · Tempesta Elementale
+
+CLERIC (:305)
+  Cantrip: Fiamma Sacra · Rintocco dei Morti · Parola di Splendore ·
+        Infestazione · Guida · Resistenza
+  Lv1:  Cura Ferite · Parola Guaritrice · Dardo Guidato · Infliggi Ferite ·
+        Scudo della Fede · Comando · Disgrazia · Benedire
+  Lv2:  Arma Spirituale · Ristorare Inferiore · Blocca Persone · Aiuto ·
+        Cecità/Sordità · Preghiera di Guarigione
+  Lv3+: Colonna di Fiamma · Rinnovamento · Scomunica · Fiamma Accecante ·
+        Guarigione · Fiamma Divina · Lama Spirituale · Rigenerazione ·
+        Fuoco Sacro Maggiore · Raffica Solare
+
+BARD (:345)
+  Lv1:  Parola Guaritrice · Charme · Risata Incontenibile · Individuazione del
+        Magico · Melodia Curativa
+  Lv2:  Frastornare · Cecità/Sordità · Invisibilità · Suggestione
+  Lv3+: (vedi definizioni in Arena.jsx)
+
+PALADIN (:373) — semi-caster
+  Lv1: Cura Ferite · Punizione Travolgente · Comando
+  Lv2: Punizione Marchiante · Ristorare Inferiore · Aiuto
+  Lv3+: Corona di Collera · Punizione Accecante · Punizione Devastante
+
+RANGER (:387) — semi-caster
+  Lv1: Cura Ferite · Intralciare · Grandine di Spine · Colpo Intralciante ·
+       Nebbia · Passo Spedito (BONUS ACTION, turno extra)
+  Lv2: Freccia Fulminante · Corteccia Protettiva
+  Lv3+: Grandine Fulminante · Pelle di Pietra · Tempesta di Frecce
+
+ARTIFICER (:945)
+  Cantrip: Acid Splash · Fire Bolt · Frost Bite · Resistance
+  Lv1: Grease · Cure Wounds · Faerie Fire · False Life
+  Lv2: Scorching Ray · Force Shield
+  Lv3+: Fireball Meccanica · Cannone ad Acido · Raggio Disintegrante
+
+Tag "special" già gestiti dal motore (riusabili per nuove spell/oggetti):
+  shield_buff · heal · control · save_dot · disadvantage_enemy · invisibility ·
+  save_buff · save_faith · dmg_buff · magic_detect · weapon_lock · vampiric ·
+  corona_pazzia · extra_turn
+
+--------------------------------------------------------------------------------
+4. OGGETTI / CONSUMABILI IN COMBATTIMENTO (ARENA_ITEMS, Arena.jsx:1177)
+--------------------------------------------------------------------------------
+pozione_cura        — cura 2d12
+pozione_cura_media  — cura 2d8 (solo da shop)
+bomba               — 2d6 danni al bersaglio
+pozione_veleno      — 1d6 veleno (DoT)
+Uso: azione GRATUITA, max 1 oggetto/turno (flag itemUsedThisTurn), cariche in
+itemUsesLeft. L'AI usa le pozioni da sola.
+
+--------------------------------------------------------------------------------
+5. PET / EVOCAZIONI (tutti bonus action, tranne costrutti = azione normale)
+--------------------------------------------------------------------------------
+RANGER — RANGER_PETS (:864):    lupo · ragno · aquila · Draghetto di Smeraldo
+                                (drago = richiede buff rangerUniquePet: 2d6
+                                auto-hit, 2 cariche)
+WARLOCK — WARLOCK_DEMONS (:905): mephit · succubus · demone maggiore
+ARTIFICER — ARTIFICER_CONSTRUCTS (:966): golem · serpente (azione normale)
+Pattern: azione con bonusAction:true, handler che NON avanza il turno e setta
+bonusActionUsed. È il modello da seguire per i pet acquistabili nel market.
+
+--------------------------------------------------------------------------------
+6. SOTTOCLASSI (arenaSubclasses.js — gratuite, permanenti, reqLevel 3)
+--------------------------------------------------------------------------------
+Tutte le classi hanno 2-3 opzioni (es. Fighter "Stile di Combattimento":
+Difesa {ca:+1} / Duellante {weaponDmg:+2} / Tiratore {rangedHit:+2}).
+Solo il Master può cambiarle una volta scelte. Bibbia: Arena_subclasses_bible.txt
+
+--------------------------------------------------------------------------------
+7. MARKET ATTUALE (SHOP_ITEMS — verrà sostituito dalla vetrina settimanale)
+--------------------------------------------------------------------------------
+Pozione di Cura Media 💚   3 MA   10 cariche, cura 2d8         (healingPotions)
+Arma +1 ⚔️                 6 MA   +1 hit / +1 danno            (weaponBonus)
+Armatura +1 🛡️             6 MA   +1 CA                        (armorBonus)
+Draghetto di Smeraldo 🐉 150 MA   4° pet ranger, 2d6 auto-hit  (rangerUniquePet)
+Pugno Potenziato 👊      100 MA   pugno monaco 3d4+DES         (monkPunchD8)
+Nota Dolente ⚡           400 MA   skill bardo 3d6+vantaggio    (bardNotaDolente)
+Classe: Artefice ⚙️       200 MA   sblocca la classe            (classArtificer)
++ Lv.Up: 10 MA a livello (VERRÀ RIMOSSO con la riforma)
++ Scelta sottoclasse: gratis (RESTA)
+
+--------------------------------------------------------------------------------
+8. VALUTA E DATI
+--------------------------------------------------------------------------------
+Valuta: Monete Arena (MA), campo characters/{uid}.arenaCoins
+Guadagni reali (codice): +5 MA partecipazione match torneo · +7 MA vittoria
+round · +30 MA vittoria torneo · scommesse x2 (arena_bets). Arena Libera: 0 MA.
+(NB: il testo del market dice 1/2/5 — da correggere col nuovo manuale.)
+
+Dati Firestore:
+  characters/{uid}: arenaCoins, arenaBuffs{...}, classLevels{...},
+                    arenaSubclass{...}, titles[]
+  arena_meta/global: torneo, matches[], characterSnapshots{uid}
+  arena_config/shop: override prezzi del Master
+  arena_tournament_history, arena_bets
+
+--------------------------------------------------------------------------------
+9. MODALITÀ MATCH (per il gating "solo tornei")
+--------------------------------------------------------------------------------
+Torneo:  kind "group"/"final" (matchId GA_R1_M0...), loadoutContext "tournament"
+Libera:  kind "fun" (matchId FUN_...)
+AI:      kind "fun" + ai:true (matchId FUN_AI_...)
+Selettore usato ovunque: m.kind !== "fun" = torneo.
+I titoli sono già gated solo-torneo (Arena.jsx:3416) → stesso pattern per gli
+acquisti settimanali.
+
+================================================================================
+ADDENDUM — RIFORMA BOTTEGA SETTIMANALE (implementata il 2026-07-04, changelog v84)
+================================================================================
+- NIENTE PIÙ LIVELLI: tutti i personaggi sono base Lv.3 (l'Arena forza
+  classLevels vuoto all'iscrizione; ogni lettura fa "?? 3"). La sezione 7
+  (vecchio market) e i riferimenti ai Lv.Up qui sopra sono STORICI.
+- CATALOGO MASTER: collection `arena_market_items` — crei oggetti/spell/armi/
+  armature/pet dal pannello "Catalogo Settimanale" nella Bottega; restano
+  salvati per sempre; flag `active` = in vetrina questa settimana.
+- ACQUISTI GIOCATORE: characters/{uid}.arenaWeekly = { weekKey (lunedì della
+  settimana, ora italiana), purchases[] con payload fotografato }. Validi fino
+  a DOMENICA 24:00, poi scadono da soli (nessun cron). SOLO TORNEI.
+- IN COMBATTIMENTO (resolveMarketGear in Arena.jsx):
+  * armor  -> bonus CA sommato all'iscrizione
+  * weapon -> azione arma extra (flag ranged supportato)
+  * spell  -> riferimento alle liste di classe esistenti (sez. 3), aggiunta
+              alle azioni con le sue cariche, anche fuori classe
+  * item   -> heal/damage = consumabile azione gratuita (chiavi mk_<id>);
+              buff = azione con special esistente: hit->magic_detect,
+              dmg->dmg_buff, ca->shield_buff, ts->save_faith (turni 0 = 99)
+  * pet    -> azione bonus special "pet_market": danno (auto-hit o d20+bonus
+              vs CA) oppure cura sul padrone, max usi deciso dal Master
+- RESET STAGIONE: bottone nel Pannello Master del market che azzera arenaCoins
+  e arenaBuffs (potenziamenti vecchi) di tutti. I vecchi buff restano
+  funzionanti finché il bottone non viene premuto.
+- Guadagni MA reali (invariati): +5 fight torneo, +7 round vinto, +30 torneo.
+================================================================================

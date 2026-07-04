@@ -11,7 +11,6 @@ import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
-import { currentWeekKey } from "../data/arenaWeek";
 import "./Arena.css";
 import "./ArenaHero.css";
 
@@ -145,7 +144,7 @@ function ArenaModal({ open, onClose, title, children, variant = "modal", classNa
 }
 
 // ── WIZARD SPELLS (Mago) — pool: 6 trucchetti · 8 lv1 · 5 lv2 · 3 lv3 (sceglie 3+4+2)
-export const WIZARD_SPELLS = [
+const WIZARD_SPELLS = [
   // ── Trucchetti ──────────────────────────────────────────────────────────────
   { name: "Dardo di Fuoco",        level: 0, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
   { name: "Tocco Gelido",          level: 0, hitBonus: 3, damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Necrotico", maxUses: 4 },
@@ -194,7 +193,7 @@ export const WIZARD_SPELLS = [
 // le spell Lv1/Lv2 consumano un pool CONDIVISO di 4 slot per livello — vedi
 // spendSpellUse/readSpellSlots. Il maxUses=4 sulle spell con livello serve
 // solo come denominatore del badge in UI (= SORC_SLOTS_MAX).
-export const SORCERER_SPELLS = [
+const SORCERER_SPELLS = [
   { name: "Dardo di Fuoco",        level: 0, hitBonus: 3,  damage: "1d10",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco · illimitato" },
   { name: "Scossa Folgorante",     level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "⚡",  info: "Trucchetto · Fulmine · illimitato" },
   { name: "Gelidito",              level: 0, hitBonus: 3,  damage: "1d8",   statKey: null, type: "spell", icon: "❄",  info: "Trucchetto · Freddo · illimitato" },
@@ -229,7 +228,7 @@ export const SORCERER_SPELLS = [
 ];
 
 // ── WARLOCK SPELLS (Oscuro Cultore) — pool: 4 trucchetti · 5 lv1 · 4 lv2 (sceglie 2 trucchetti + 2 slot lv1/lv2 misti)
-export const WARLOCK_SPELLS = [
+const WARLOCK_SPELLS = [
   // ── Trucchetti ──────────────────────────────────────────────────────────────
   { name: "Deflagrazione Occulta",  level: 0, hitBonus: 3, damage: "1d10", statKey: null, type: "spell", icon: "🟣", info: "Trucchetto · Forza", maxUses: 4 },
   { name: "Rintocco Funebre",       level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "🔔", info: "Trucchetto · Necrotico · 1d8 (1d12 se nemico ferito)", damageWhenHurt: "1d12", maxUses: 4 },
@@ -261,7 +260,7 @@ export const WARLOCK_SPELLS = [
 ];
 
 // ── DRUID SPELLS (Druido) — 2 trucchetti · 4 lv1 · 2 lv2
-export const DRUID_SPELLS = [
+const DRUID_SPELLS = [
   // ── Trucchetti ──────────────────────────────────────────────────────────────
   { name: "Frusta di Spine",    level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🌿", info: "Trucchetto · Perforante", maxUses: 4 },
   { name: "Produrre Fiamma",    level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
@@ -303,7 +302,7 @@ export const DRUID_SPELLS = [
 ];
 
 // ── CLERIC SPELLS (Chierico) — 3 trucchetti · 4 lv1 · 2 lv2
-export const CLERIC_SPELLS = [
+const CLERIC_SPELLS = [
   // ── Trucchetti ──────────────────────────────────────────────────────────────
   { name: "Fiamma Sacra",       level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "✨", info: "Trucchetto · Radiante", maxUses: 4 },
   { name: "Rintocco dei Morti", level: 0, hitBonus: 3, damage: "1d8",  statKey: null, type: "spell", icon: "💀", info: "Trucchetto · Necrotico", maxUses: 4 },
@@ -343,7 +342,7 @@ export const CLERIC_SPELLS = [
 ];
 
 // ── BARD SPELLS (Bardo) — niente trucchetti · 4 lv1 · 2 lv2
-export const BARD_SPELLS = [
+const BARD_SPELLS = [
   // ── Livello 1 ──────────────────────────────────────────────────────────────
   { name: "Parola Guaritrice",          level: 1, hitBonus: 0, damage: "1d4",   statKey: null, type: "spell", icon: "💙", info: "Lv1 · Cura rapida · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Charme su Persone",          level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🫦", info: "Lv1 · Controllo · TS SAG o perdi 2 turni", special: "control", maxUses: 3 },
@@ -371,7 +370,7 @@ export const BARD_SPELLS = [
 ];
 
 // ── PALADIN SPELLS (Paladino) — pool: 3 lv1 · 3 lv2 (sceglie 2+1)
-export const PALADIN_SPELLS = [
+const PALADIN_SPELLS = [
   { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8",   statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Punizione Travolgente", level: 1, hitBonus: 3, damage: "1d6",   statKey: null, type: "spell", icon: "⚡", info: "Lv1 · Radiante bonus", maxUses: 3 },
   { name: "Comando",               level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "📞", info: "Lv1 · Controllo · TS o perdi 2 turni", special: "control", maxUses: 3 },
@@ -385,7 +384,7 @@ export const PALADIN_SPELLS = [
 ];
 
 // ── RANGER SPELLS (Ranger) — pool: 6 lv1 (sceglie 3)
-export const RANGER_SPELLS = [
+const RANGER_SPELLS = [
   { name: "Cura Ferite",           level: 1, hitBonus: 0, damage: "1d8",   statKey: null, type: "spell", icon: "💚", info: "Lv1 · Cura · ripristina HP", special: "heal", maxUses: 3 },
   { name: "Intralciare",           level: 1, hitBonus: 0, damage: "—",     statKey: null, type: "spell", icon: "🌱", info: "Lv1 · Controllo · TS FOR o perdi 2 turni", special: "control", maxUses: 3 },
   { name: "Grandine di Spine",     level: 1, hitBonus: 3, damage: "1d10",  statKey: null, type: "spell", icon: "🌵", info: "Lv1 · Perforante · bonus attacco ranged", maxUses: 3 },
@@ -446,7 +445,6 @@ const MARTIAL_WEAPONS = [
 // impugnabile). Un'arma a due mani a DISTANZA (arco/balestra/fucile) può convivere con
 // una sola arma a una mano.
 const WEAPON_IS_RANGED = (w) => !!w && (
-  w.ranged === true || // armi della Bottega settimanale (flag esplicito)
   w.icon === "🏹" || w.icon === "🔫" ||
   ["Arco", "Balestra", "Fionda", "Giavellotto", "Dardo"].some(k => (w.name || "").includes(k))
 );
@@ -944,7 +942,7 @@ const ARTIFICER_RANGED = [
 const ARTIFICER_WEAPON_OPTIONS = [...SIMPLE_WEAPONS, ...ARTIFICER_RANGED];
 
 // Spells: 4 cantrips, 4 lv1 — il giocatore sceglie 2 + 3
-export const ARTIFICER_SPELLS = [
+const ARTIFICER_SPELLS = [
   // ── Cantrips ──
   { name: "Acid Splash", level: 0, hitBonus: 3, damage: "1d6",  statKey: null, type: "spell", icon: "🧪", info: "Trucchetto · Acido", maxUses: 4 },
   { name: "Fire Bolt",   level: 0, hitBonus: 3, damage: "1d10", statKey: null, type: "spell", icon: "🔥", info: "Trucchetto · Fuoco", maxUses: 4 },
@@ -1182,98 +1180,6 @@ const ARENA_ITEMS = [
   { key: "bomba",               name: "Bomba",                  icon: "💣", info: "2d6 danni al bersaglio · azione gratuita",   damage: "2d6"  },
   { key: "pozione_veleno",      name: "Pozione di Veleno",      icon: "☠",  info: "1d6 veleno al bersaglio il prossimo turno",   damage: "1d6"  },
 ];
-
-// ── BOTTEGA SETTIMANALE (market Arena) ───────────────────────────────────────
-// Gli acquisti settimanali (characters.arenaWeekly) valgono SOLO nei tornei e
-// scadono la domenica alle 24:00: weekKey = lunedì della settimana corrente,
-// quindi a settimana nuova gli acquisti vecchi semplicemente non contano più.
-// Qui vengono tradotti in pezzi di loadout: azioni (spell/armi/buff/pet),
-// bonus CA e consumabili. Le spell sono RIFERIMENTI alle liste di classe già
-// esistenti, per cui qualunque vendita del Master è già funzionante nel motore.
-const MARKET_SPELL_LISTS = {
-  wizard: WIZARD_SPELLS, sorcerer: SORCERER_SPELLS, warlock: WARLOCK_SPELLS,
-  druid: DRUID_SPELLS, cleric: CLERIC_SPELLS, bard: BARD_SPELLS,
-  paladin: PALADIN_SPELLS, ranger: RANGER_SPELLS, artificer: ARTIFICER_SPELLS,
-};
-
-function resolveMarketGear(arenaWeekly) {
-  if (!arenaWeekly || arenaWeekly.weekKey !== currentWeekKey()) return null;
-  const purchases = arenaWeekly.purchases || [];
-  if (!purchases.length) return null;
-  const gear = { acBonus: 0, actions: [], consumables: [] };
-  purchases.forEach(pu => {
-    const p = pu.payload || {};
-    const qty = Math.max(1, pu.qty || 1);
-    switch (pu.category) {
-      case "armor":
-        gear.acBonus += (p.acBonus || 0) * qty;
-        break;
-      case "weapon":
-        gear.actions.push({
-          name: pu.name, type: "weapon", icon: pu.icon || "⚔",
-          hitBonus: 3 + (p.hitBonus || 0),
-          damage: `${p.dice || "1d6"}${p.dmgBonus ? `+${p.dmgBonus}` : ""}`,
-          statKey: p.ranged ? "dex" : "str",
-          twoHanded: false, ranged: !!p.ranged,
-          damageType: p.ranged ? "perforante" : "tagliente",
-          info: `Bottega settimanale · ${p.dice}${p.dmgBonus ? `+${p.dmgBonus}` : ""} danni`,
-          fromMarket: true,
-        });
-        break;
-      case "spell": {
-        const sp = (MARKET_SPELL_LISTS[p.spellClass] || []).find(s => s.name === p.spellName);
-        if (sp) gear.actions.push({ ...sp, fromMarket: true });
-        break;
-      }
-      case "item": {
-        const uses = Math.max(1, p.uses || 1) * qty;
-        if (p.effect === "buff") {
-          const amt = p.buffAmount || 1;
-          const turns = (p.buffTurns | 0) > 0 ? (p.buffTurns | 0) : 99; // 0 = tutto il fight
-          const base = {
-            name: pu.name, type: "skill", icon: pu.icon || "🎒",
-            hitBonus: 0, damage: "—", statKey: null,
-            maxUses: uses, fromMarket: true,
-          };
-          if (p.buffType === "ac") {
-            gear.actions.push({ ...base, special: "shield_buff", shieldBuffBonus: amt, shieldBuffTurns: turns, info: `Bottega · +${amt} CA per ${turns} turni` });
-          } else if (p.buffType === "ts") {
-            gear.actions.push({ ...base, special: "save_faith", saveFaithBonus: amt, saveFaithTurns: turns, info: `Bottega · +${amt} a tutti i TS per ${turns} turni` });
-          } else if (p.buffType === "dmg") {
-            gear.actions.push({ ...base, special: "dmg_buff", aidDmgBonus: amt, aidDmgTurns: turns, info: `Bottega · +${amt} al danno per ${turns} turni` });
-          } else {
-            gear.actions.push({ ...base, special: "magic_detect", buffBonus: amt, buffAttacks: turns, info: `Bottega · +${amt} ai prossimi ${turns} attacchi` });
-          }
-        } else {
-          gear.consumables.push({
-            key: `mk_${pu.itemId}`, name: pu.name, icon: pu.icon || "🎒",
-            effect: p.effect === "damage" ? "damage" : "heal",
-            dice: p.dice || "2d8", uses,
-            info: p.effect === "damage"
-              ? `${p.dice || "2d8"} danni al bersaglio · azione gratuita (Bottega)`
-              : `Cura ${p.dice || "2d8"} · azione gratuita (Bottega)`,
-          });
-        }
-        break;
-      }
-      case "pet":
-        gear.actions.push({
-          name: pu.name, type: "skill", special: "pet_market", bonusAction: true,
-          icon: pu.icon || "🐾", hitBonus: p.hitBonus || 0, statKey: null,
-          damage: p.dice || "2d6", autoHit: !!p.autoHit,
-          petEffect: p.effect === "heal" ? "heal" : "damage",
-          maxUses: Math.max(1, p.uses || 1) * qty, fromMarket: true,
-          info: p.effect === "heal"
-            ? `Bonus action · cura ${p.dice || "2d6"}`
-            : `Bonus action · ${p.dice || "2d6"} danni${p.autoHit ? " auto-hit" : ""}`,
-        });
-        break;
-      default:
-        break;
-    }
-  });
-  return (gear.acBonus || gear.actions.length || gear.consumables.length) ? gear : null;
-}
 
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
@@ -3417,11 +3323,8 @@ export default function Arena() {
       stats:       { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
       arenaBuffs:  d.arenaBuffs  || {},
       arenaTitles: ownedTitles,
-      // Riforma Bottega settimanale: i livelli non si comprano più — tutti i
-      // personaggi sono base Lv.3 (classLevels vuoto → ogni lettura fa `?? 3`).
-      classLevels: {},
+      classLevels: d.classLevels || {},
       arenaSubclass: d.arenaSubclass || {},
-      arenaWeekly: d.arenaWeekly || null,
       rolledHp:    null,
       hpRerollCount: 0,
     });
@@ -3458,11 +3361,6 @@ export default function Arena() {
     const totalItemsJoin = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
     if (totalItemsJoin < 1) return;
 
-    // ── Bottega settimanale: gli acquisti valgono SOLO nei tornei (le Sfide
-    // Libere e i match AI restano col kit base, come i titoli). ──
-    const marketGear = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly) : null;
-    const marketAcBonus = marketGear?.acBonus || 0;
-
     // Calcolo CA finale: base + DES (cappato) + scudo; se senza armatura (barbaro): 10+DES+COS
     const dexMod    = charPreview.stats.dex ?? 0;
     const conMod    = charPreview.stats.con ?? 0;
@@ -3472,7 +3370,7 @@ export default function Arena() {
     // Bonus CA dalla sottoclasse scelta (es. Stile Difesa, Abiurazione…).
     const subclassKey = charPreview.arenaSubclass?.[getClassKey(charPreview.class)] ?? null;
     const subclassCa  = getSubclassEffectFor(getClassKey(charPreview.class), subclassKey).ca || 0;
-    const finalAc   = marketAcBonus + subclassCa + (pendingArmor.unarmoredDefense
+    const finalAc   = subclassCa + (pendingArmor.unarmoredDefense
       ? pendingArmor.unarmoredMaxStat
         ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
         : 10 + dexMod + unarmoredBonus + shieldBonus + armorBuffBonus
@@ -3497,11 +3395,6 @@ export default function Arena() {
       ...(demonAction ? [demonAction] : []),
       ...(constructAction ? [constructAction] : []),
     ];
-    // Azioni della Bottega settimanale (spell/armi/buff/pet acquistati): niente
-    // doppioni per nome (una spell già selezionata non viene aggiunta due volte).
-    (marketGear?.actions || []).forEach(a => {
-      if (!finalActions.some(b => b.name === a.name)) finalActions.push(a);
-    });
     const selectedItemKeys = Object.entries(pendingItemCounts)
       .flatMap(([k, n]) => Array(n).fill(k))
       .filter(k => !ARENA_ITEMS.find(i => i.key === k)?.shopOnly);
@@ -3524,9 +3417,6 @@ export default function Arena() {
       selectedPet:     petAction ? pendingPet : null,
       selectedDemon:   demonAction ? pendingDemon : null,
       selectedConstruct: constructAction ? pendingConstruct : null,
-      // Consumabili della Bottega settimanale (solo torneo): definizioni portate
-      // nello snapshot così il fight li risolve senza dipendere dal catalogo.
-      marketConsumables: marketGear?.consumables || [],
     };
 
     // ── Branch: Arena Libera (Sfida) ──────────────────────────────────────
@@ -3847,7 +3737,7 @@ export default function Arena() {
     const bracketKey = loadoutContext === "tournament" ? arenaMeta.levelBracket : null;
     const eligiblePool = classPool.filter(c => classInBracket(c, charPreview.classLevels, bracketKey));
     if (!eligiblePool.length) {
-      alert(`Non hai classi nella fascia ${getArenaBracket(bracketKey)?.label || ""} di questo torneo.`);
+      alert(`Non hai classi nella fascia ${getArenaBracket(bracketKey)?.label || ""} di questo torneo. Sali di livello con una classe di quel range dalla Bottega.`);
       return;
     }
     const cls = rnd(eligiblePool);
@@ -3938,18 +3828,16 @@ export default function Arena() {
 
   const startMasterLoadout = async () => {
     if (!masterJoinName.trim() || !masterJoinClass) return;
+    let classLevels = {};
     let arenaBuffs = {};
     let arenaSubclass = {};
-    let arenaWeekly = null;
-    // Riforma Bottega settimanale: livelli non più acquistabili → tutti Lv.3.
-    const classLevels = {};
     try {
       const charSnap = await getDoc(doc(db, "characters", currentUser.uid));
       if (charSnap.exists()) {
         const d = charSnap.data();
+        classLevels = d.classLevels || {};
         arenaBuffs = d.arenaBuffs || {};
         arenaSubclass = d.arenaSubclass || {};
-        arenaWeekly = d.arenaWeekly || null;
       }
     } catch { /* ignore */ }
     setCharPreview({
@@ -3960,7 +3848,6 @@ export default function Arena() {
       classLevels,
       arenaBuffs,
       arenaSubclass,
-      arenaWeekly,
       rolledHp:    null,
       hpRerollCount: 0,
     });
@@ -4063,8 +3950,6 @@ export default function Arena() {
     (snap.selectedItemKeys || []).forEach(k => { itemUses[k] = (itemUses[k] || 0) + 1; });
     const shopPotions = snap.arenaBuffs?.healingPotions ?? 0;
     if (shopPotions > 0) itemUses["pozione_cura_media"] = shopPotions;
-    // Consumabili della Bottega settimanale (presenti solo negli snapshot torneo).
-    (snap.marketConsumables || []).forEach(c => { itemUses[c.key] = Math.max(1, c.uses ?? 1); });
     const lockedClass = (snap.class || "").toLowerCase().trim();
     const layOfHandsPool = isPaladinClass(lockedClass) ? Math.floor(startHp / 3) : 0;
     // Embed `class` so the tournament class is locked at match-build time and
@@ -6597,72 +6482,6 @@ export default function Arena() {
     await commitArenaMatches(withArenaFx(updatedMatches, matchId, "fire", targetId));
   };
 
-  // ── PET DELLA BOTTEGA SETTIMANALE (market) — bonus action generica ────────
-  // Definito dai dati del catalogo: danno (auto-hit o tiro per colpire contro
-  // la CA effettiva) oppure cura sul padrone. Stesso pattern dei pet Ranger:
-  // consuma la bonus action, il turno NON avanza.
-  const handleMarketPet = async (matchId, targetId, action) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
-    const _mkMatch = arenaMeta.matches.find(m => m.matchId === matchId);
-    const me = _mkMatch?.players.find(p => p.id === currentUser.uid);
-    if (me?.bonusActionUsed) { alert("⚠ Hai già usato una bonus action questo turno."); return; }
-    const isHeal = action.petEffect === "heal";
-    if (!isHeal && !targetId) return;
-
-    if (isHeal) {
-      const { total: heal, rolls } = rollDmg(action.damage || "2d6");
-      const updatedMatches = arenaMeta.matches.map(m => {
-        if (m.matchId !== matchId) return m;
-        const updatedPlayers = m.players.map(p => {
-          if (p.id !== currentUser.uid) return p;
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          const maxHp = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? p.hp;
-          return { ...p, hp: Math.min(maxHp, (p.hp || 0) + heal), bonusActionUsed: true, actionUsesLeft: newUses };
-        });
-        const log = `${action.icon} ${action.name} di ${myName} lo cura 🎲(${rolls})=${heal} HP! · bonus action`;
-        // Bonus action: il turno NON avanza.
-        return { ...m, players: updatedPlayers, logs: [...m.logs, log] };
-      });
-      await commitArenaMatches(updatedMatches);
-      return;
-    }
-
-    // Danno: eventuale tiro per colpire contro la CA effettiva del bersaglio.
-    const targetSnap   = arenaMeta.characterSnapshots?.[targetId];
-    const targetPlayer = _mkMatch?.players.find(p => p.id === targetId);
-    let missed = false, d20 = 0;
-    if (!action.autoHit) {
-      d20 = Math.floor(Math.random() * 20) + 1;
-      const targetAc = getEffectiveAc(targetPlayer, targetSnap);
-      missed = (d20 + (action.hitBonus || 0)) < targetAc;
-    }
-    const { total: rawDmg, rolls } = rollDmg(action.damage || "2d6");
-    const dmg = missed ? 0 : applyDefenderDamageMods(rawDmg, targetSnap, targetPlayer, false);
-    const updatedMatches = arenaMeta.matches.map(m => {
-      if (m.matchId !== matchId) return m;
-      const targetName = targetSnap?.name || "?";
-      const rawPlayers = m.players.map(p => {
-        if (p.id === currentUser.uid) {
-          const uses = p.actionUsesLeft || {};
-          const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
-        }
-        if (p.id === targetId && !missed) return { ...p, hp: Math.max(0, p.hp - dmg) };
-        return p;
-      });
-      const { players, extraLogs } = processWsKnockouts(rawPlayers);
-      const log = missed
-        ? `${action.icon} ${action.name} di ${myName} manca ${targetName} (🎲${d20}+${action.hitBonus || 0}) · bonus action`
-        : `${action.icon} ${action.name} di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni! · bonus action`;
-      const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
-      // Bonus action: il turno NON avanza.
-      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
-    });
-    await commitArenaMatches(missed ? updatedMatches : withArenaFx(updatedMatches, matchId, "slash", targetId));
-  };
-
   // ── DEMONI EVOCATI (Warlock) ─────────────────────────────────────────────
   const handleDemonMephit = async (matchId, targetId, action) => {
     const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "Warlock";
@@ -7915,11 +7734,8 @@ export default function Arena() {
 
   // ── ITEMS — azione gratuita: non consuma azione né bonus action, ma 1 sola per turno ──
   const useItem = async (matchId, itemKey, targetId) => {
-    const mySnapItems = (arenaMeta.characterSnapshots || {})[currentUser.uid];
-    const myName  = mySnapItems?.name || "?";
-    // Oggetti base + consumabili della Bottega settimanale (chiavi "mk_…").
-    const marketItem = (mySnapItems?.marketConsumables || []).find(i => i.key === itemKey) || null;
-    const item    = ARENA_ITEMS.find(i => i.key === itemKey) || marketItem;
+    const myName  = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
+    const item    = ARENA_ITEMS.find(i => i.key === itemKey);
     if (!item) return;
     const myMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
@@ -7945,14 +7761,6 @@ export default function Arena() {
             log = { pub: `🧪 ${myName} usa Pozione di Cura [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · azione gratuita`, ts: _itemTs };
             return { ...p, hp: newHp, itemUsesLeft: newUses, itemUsedThisTurn: true };
           }
-          // Consumabile-cura della Bottega settimanale: stesso schema della pozione.
-          if (marketItem && marketItem.effect === "heal") {
-            const { total: heal, rolls: healRolls } = rollDmg(marketItem.dice || "2d8");
-            const maxHp = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? 70;
-            const newHp = Math.min(maxHp, (p.hp || 0) + heal);
-            log = { pub: `${marketItem.icon} ${myName} usa ${marketItem.name} [🎲${healRolls}=${heal}] — recupera ${heal} HP (${newHp} HP) · azione gratuita`, ts: _itemTs };
-            return { ...p, hp: newHp, itemUsesLeft: newUses, itemUsedThisTurn: true };
-          }
           if (itemKey === "pozione_veleno") {
             return { ...p, itemUsesLeft: newUses, itemUsedThisTurn: true };
           }
@@ -7961,12 +7769,6 @@ export default function Arena() {
         if (itemKey === "bomba" && p.id === targetId) {
           const { total: dmg, rolls: bombRolls } = rollDmg("2d6");
           log = { pub: `💣 ${myName} lancia una Bomba su ${p.name} [🎲${bombRolls}=${dmg}] — ${dmg} danni! · azione gratuita`, ts: _itemTs };
-          return { ...p, hp: Math.max(0, p.hp - dmg) };
-        }
-        // Consumabile-danno della Bottega settimanale: stesso schema della bomba.
-        if (marketItem && marketItem.effect === "damage" && p.id === targetId) {
-          const { total: dmg, rolls: mkRolls } = rollDmg(marketItem.dice || "2d6");
-          log = { pub: `${marketItem.icon} ${myName} usa ${marketItem.name} su ${p.name} [🎲${mkRolls}=${dmg}] — ${dmg} danni! · azione gratuita`, ts: _itemTs };
           return { ...p, hp: Math.max(0, p.hp - dmg) };
         }
         if (itemKey === "pozione_veleno" && p.id === targetId) {
@@ -11254,7 +11056,7 @@ export default function Arena() {
                         const targetMaxHp = Math.max(1, targetMatchPlayer?.maxHp ?? snapshots[chosenTargetId]?.stats?.maxHp ?? 70);
                         const targetHpPct = targetMatchPlayer ? (targetMatchPlayer.hp / targetMaxHp) * 100 : 100;
                         // ── Raggruppa azioni per categoria ────────────────────
-                        const isRangedWeapon = (a) => a.ranged === true || a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
+                        const isRangedWeapon = (a) => a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
                         const meleeActions  = currentActions.filter(a => a.type === "weapon" && !isRangedWeapon(a));
                         const rangedActions = currentActions.filter(a => a.type === "weapon" && isRangedWeapon(a));
                         // ── DISTANZA: tasti Avvicìnati / Allontànati al posto delle armi ──
@@ -11427,26 +11229,6 @@ export default function Arena() {
                                 <span className="action-name">{action.name}</span>
                                 <span className="action-dice">{baUsed ? "⚡ Usata" : noUses ? "Esaurita" : "1d8+SAG cura"}</span>
                                 {usesLeft !== null && <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>}
-                              </button>
-                            );
-                          }
-                          if (action.special === "pet_market") {
-                            const usesLeft = (myPlayer?.actionUsesLeft?.[action.name] ?? action.maxUses);
-                            const noUses = usesLeft <= 0;
-                            const baUsed = !!myPlayer?.bonusActionUsed;
-                            const isHealPet = action.petEffect === "heal";
-                            const blocked = noUses || baUsed || (!isHealPet && !chosenTargetId);
-                            return (
-                              <button key={action.name}
-                                className={`btn-action skill bonus-action ${blocked ? "no-uses" : ""}`}
-                                disabled={blocked}
-                                title={baUsed ? "Bonus action già usata questo turno" : noUses ? "Cariche esaurite" : action.info}
-                                onClick={() => !blocked && handleMarketPet(m.matchId, isHealPet ? null : chosenTargetId, action)}>
-                                <span className="bonus-action-tag">⚡ Bonus</span>
-                                <span className="action-icon">{action.icon}</span>
-                                <span className="action-name">{action.name}</span>
-                                <span className="action-dice">{baUsed ? "⚡ Usata" : noUses ? "Esaurito" : isHealPet ? `💚 ${action.damage}` : `${action.damage}${action.autoHit ? " auto" : ""}`}</span>
-                                <span className={`action-uses-badge ${noUses ? "empty" : ""}`}>{usesLeft}/{action.maxUses}</span>
                               </button>
                             );
                           }
@@ -12159,9 +11941,7 @@ export default function Arena() {
                     {/* ── Oggetti (Azione Gratuita · 1/turno) — scheda "Oggetti" del dock ── */}
                     {dock === "oggetti" && !needsEquip && !hasPendingSave && !isEntangled && !showWildPicker && (() => {
                       const myItemKeys = arenaMeta.characterSnapshots?.[currentUser?.uid]?.selectedItemKeys || [];
-                      // Consumabili della Bottega settimanale (solo snapshot torneo).
-                      const myMarketItems = arenaMeta.characterSnapshots?.[currentUser?.uid]?.marketConsumables || [];
-                      if (myItemKeys.length === 0 && myMarketItems.length === 0) return <div className="combat-dock-empty">Nessun oggetto nello zaino.</div>;
+                      if (myItemKeys.length === 0) return <div className="combat-dock-empty">Nessun oggetto nello zaino.</div>;
                       const myItemUsesLeft = myPlayer?.itemUsesLeft || {};
                       const itemCountsInSnap = {};
                       myItemKeys.forEach(k => { itemCountsInSnap[k] = (itemCountsInSnap[k] || 0) + 1; });
@@ -12182,25 +11962,6 @@ export default function Arena() {
                                 disabled={disabled}
                                 title={titleStr}
                                 onClick={() => useItem(m.matchId, key, needsTarget ? chosenTargetId : null)}>
-                                <span className="bonus-action-tag">🆓 Gratis</span>
-                                <span className="item-icon">{item.icon}</span>
-                                <span className="item-name">{item.name}</span>
-                                <span className="item-uses">{itemUsed ? "⏳" : `${uses}/${total}`}</span>
-                              </button>
-                            );
-                          })}
-                          {myMarketItems.map(item => {
-                            const uses  = myItemUsesLeft[item.key] ?? (item.uses ?? 0);
-                            const total = item.uses ?? 1;
-                            const needsTarget = item.effect === "damage";
-                            const disabled    = uses <= 0 || (needsTarget && !chosenTargetId) || itemUsed;
-                            const titleStr = itemUsed ? "Oggetto già usato questo turno" : `${item.info} · azione gratuita (1/turno)`;
-                            return (
-                              <button key={item.key}
-                                className={`btn-item bonus-action ${uses <= 0 || itemUsed ? "no-uses" : ""}`}
-                                disabled={disabled}
-                                title={titleStr}
-                                onClick={() => useItem(m.matchId, item.key, needsTarget ? chosenTargetId : null)}>
                                 <span className="bonus-action-tag">🆓 Gratis</span>
                                 <span className="item-icon">{item.icon}</span>
                                 <span className="item-name">{item.name}</span>

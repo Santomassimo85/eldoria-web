@@ -1,6 +1,33 @@
 {
   "versions": [
     {
+      "version": "84",
+      "date": "2026-07-04",
+      "title": "Arena · Bottega Settimanale",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Bottega dell'Arena completamente rinnovata: i livelli non si acquistano più, tutti i personaggi combattono con le classi base al Livello 3. Al loro posto arriva la Vetrina della Settimana: oggetti, incantesimi, armi, armature e pet messi in vendita dal Master e acquistabili con le Monete Arena."
+        },
+        {
+          "type": "mechanics",
+          "text": "Gli acquisti della Bottega valgono dal momento dell'acquisto fino alla domenica alle 24:00: il lunedì tutti tornano al kit base e la vetrina si rinnova. I potenziamenti acquistati funzionano esclusivamente nei tornei — Sfide Libere e match contro l'IA si giocano col solo kit base."
+        },
+        {
+          "type": "mechanics",
+          "text": "In combattimento (solo tornei): gli oggetti acquistati si usano come azione gratuita (1 per turno) per cure, danni o bonus temporanei; gli incantesimi comprati si aggiungono alle azioni con le loro cariche, anche fuori dalla propria classe; armi e armature comprate si sommano a equipaggiamento e CA; i pet della Bottega agiscono come azione bonus con un numero massimo di usi per fight."
+        },
+        {
+          "type": "balance",
+          "text": "Corretta la tabella dei guadagni di Monete Arena mostrata in Bottega: +5 MA per fight di torneo disputato, +7 MA per round vinto, +30 MA per la vittoria del torneo (i valori reali già assegnati dal gioco)."
+        },
+        {
+          "type": "chore",
+          "text": "Rimossi dalla Bottega il Lv. Up e i vecchi potenziamenti permanenti. La scelta gratuita dell'archetipo di classe resta invariata."
+        }
+      ]
+    },
+    {
       "version": "83",
       "date": "2026-07-03",
       "title": "Arena · Sottoclassi solo per la classe giusta",

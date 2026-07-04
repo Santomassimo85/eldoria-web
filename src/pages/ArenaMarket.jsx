@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
-import { doc, collection, onSnapshot, updateDoc, setDoc, increment } from "firebase/firestore";
+import { doc, collection, onSnapshot, updateDoc, increment } from "firebase/firestore";
 import "../styles/cinematic.css";
 import "./ArenaMarket.css";
 import AmbientFX from "../components/AmbientFX";
@@ -9,76 +9,18 @@ import CineToolbar from "../components/CineToolbar";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import { isHiddenChar } from "../data/hiddenPlayers";
 import { ARENA_SUBCLASSES } from "../data/arenaSubclasses";
+import ArenaMarketCatalog, { MARKET_CATEGORIES, marketItemSummary } from "../components/ArenaMarketCatalog";
+import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar2.png";
 
-const SHOP_ITEMS = [
-  {
-    key: "pozione_cura_media",
-    name: "Pozione di Cura Media",
-    description: "Ogni acquisto fornisce 10 cariche (10 pozioni): nel fight ciascuna cura 2d8 PF. Le cariche non usate in un fight restano disponibili.",
-    icon: "💚",
-    price: 3,
-    field: "healingPotions",
-    addAmount: 10,
-    max: 90,
-  },
-  {
-    key: "arma_plus1",
-    name: "Arma +1",
-    description: "+1 ai tiri per colpire e +1 ai danni con arma. Permanente.",
-    icon: "⚔️",
-    price: 6,
-    field: "weaponBonus",
-    max: 1,
-  },
-  {
-    key: "armatura_plus1",
-    name: "Armatura +1",
-    description: "+1 alla Classe Armatura per tutta la durata del torneo.",
-    icon: "🛡️",
-    price: 6,
-    field: "armorBonus",
-    max: 1,
-  },
-  {
-    key: "ranger_unique_pet",
-    name: "Draghetto di Smeraldo (Ranger)",
-    description: "Compagno unico: 2d6 danni auto-hit · 2 cariche. Disponibile come 4° pet nel loadout Ranger.",
-    icon: "🐉",
-    price: 150,
-    field: "rangerUniquePet",
-    max: 1,
-  },
-  {
-    key: "monk_punch_d8",
-    name: "Pugno Potenziato (Monaco)",
-    description: "Sostituisce il Pugno del Monaco: infligge 3d4+DES invece di 2d4+DES. Permanente.",
-    icon: "👊",
-    price: 100,
-    field: "monkPunchD8",
-    max: 1,
-  },
-  {
-    key: "bard_nota_dolente",
-    name: "Nota Dolente (Bardo)",
-    description: "Sblocca l'abilità Nota Dolente: 3d6 danni da fulmine + vantaggio al bardo per 2 turni · 2 cariche per fight. In combattimento è disponibile solo al Bardo.",
-    icon: "⚡",
-    price: 400,
-    field: "bardNotaDolente",
-    max: 1,
-  },
-  {
-    key: "class_artificer",
-    name: "Classe: Artefice",
-    description: "Sblocca la classe Artefice (rifle, pistola, costrutti, Forgia Armatura). Visibile solo a chi l'ha acquistata.",
-    icon: "⚙️",
-    price: 200,
-    field: "classArtificer",
-    max: 1,
-  },
-];
+// ── BOTTEGA SETTIMANALE ───────────────────────────────────────────────────────
+// I livelli NON si comprano più: tutti i personaggi sono base Lv.3. Il Master
+// mette in vetrina le creazioni del catalogo (`arena_market_items.active`);
+// i giocatori le comprano con le Monete Arena e le tengono dal momento
+// dell'acquisto fino a DOMENICA ORE 24:00 (poi tutto torna base e la vetrina
+// si rinnova). Gli acquisti valgono SOLO nei tornei.
 
 export const ARENA_CLASSES = [
   { key: "fighter",   name: "Guerriero",  icon: "⚔️" },
@@ -117,316 +59,14 @@ function classKeyOf(charClass) {
   return null;
 }
 
-// Una classe è "attiva" per un PG solo se è la sua classe principale OPPURE se ci
-// ha investito livelli (voce esplicita in classLevels). Le classi mai prese non
-// offrono la scelta di sottoclasse, anche se il livello base (3) supererebbe il
-// requisito. → "solo per la classe per cui si ha quel livello".
+// Una classe è "attiva" per un PG solo se è la sua classe principale OPPURE se
+// ci aveva investito in passato (voce esplicita in classLevels, dati legacy).
+// Le classi mai prese non offrono la scelta di sottoclasse.
 function classEngaged(clsKey, charClass, classLevels) {
   return classKeyOf(charClass) === clsKey || (classLevels?.[clsKey] != null);
 }
 
-const LEVEL_UP_KEY = "level_up_cost";
-const LEVEL_UP_DEFAULT = 10;
-
-// Livelli-ASI (punti caratteristica) — coerenti con Arena.jsx / Arena_class_progress.txt §2E.
-const ASI_LEVELS_DEFAULT = [4, 8, 12, 16, 19];
-const ASI_LEVELS_BY_CLASS = {
-  fighter: [4, 6, 8, 12, 14, 16, 19],
-  rogue:   [4, 8, 10, 12, 16, 19],
-};
-
-// ── MANUALE: progressione di livello per classe (Lv 1→20) ────────────────────
-// SOLO informativo: cosa sblocca ogni classe salendo di livello. Non è
-// acquistabile né funzionale da qui — serve a far capire ai player cosa otterranno.
-// 🎯 = punti caratteristica (ASI). Indice 0 = Lv 1.
-const CLASS_PROGRESSION = {
-  fighter: [
-    "Secondo Respiro (cura) e Carica (2d6+FOR)",
-    "Scatto d'Azione: un'azione extra nel turno",
-    "Stile di Combattimento: Difesa / Duellante / Tiratore",
-    "🎯 +2 punti caratteristica · Disarmare il nemico",
-    "Attacco Extra: 2 attacchi per turno",
-    "🎯 +2 punti caratteristica · Presenza Possente (ritira l'1 a colpire)",
-    "Risolutezza: ritira un tiro salvezza fallito (1/fight)",
-    "🎯 +2 punti caratteristica · più cariche alle abilità",
-    "Indomito: la prima volta che cadi a 0 PF resti a 1 (1/fight)",
-    "Secondo Stile di Combattimento",
-    "Attacco Extra: 3 attacchi per turno",
-    "🎯 +2 punti caratteristica · Critico Migliorato (critico con 19-20)",
-    "Colpo Stordente: TS o il nemico salta un turno",
-    "🎯 +2 punti caratteristica · Disarmare migliorato",
-    "Critico Superiore: critico con 18-19-20",
-    "🎯 +2 punti caratteristica",
-    "Colpo d'Ascia Devastante: 6d6+FOR, ignora metà CA",
-    "Sopravvissuto: ti curi a inizio turno sotto metà PF",
-    "🎯 +2 punti caratteristica",
-    "Attacco Extra: 4 attacchi per turno",
-  ],
-  barbarian: [
-    "Furia (+danno per turni) e Attacco Poderoso",
-    "Attacco Irruento: colpisci con vantaggio rischiando",
-    "Furia Bestiale: più danno quanto più sei ferito",
-    "🎯 +2 punti caratteristica · Furia +3 al danno",
-    "Attacco Extra: 2 attacchi per turno · Turbine di Lame",
-    "Resistenza Ferina: in Furia dimezzi i danni fisici",
-    "Istinto Selvaggio: vantaggio all'iniziativa",
-    "🎯 +2 punti caratteristica · +1 carica Turbine di Lame",
-    "Furia +4 al danno · 5 cariche di Furia",
-    "Urlo di Guerra: indebolisce i tiri del nemico",
-    "Furia Implacabile: resti a 1 PF con un TS COS",
-    "🎯 +2 punti caratteristica · più cariche",
-    "Turbine di Lame: 3 colpi",
-    "Caccia Spietata: +danno contro nemici sotto metà PF",
-    "Furia Persistente: non scade finché ci sono nemici",
-    "🎯 +2 punti caratteristica · Furia +6 al danno",
-    "6 cariche di Furia · più cariche skill",
-    "Forza Indomabile: ritiri i TS FOR/COS falliti",
-    "🎯 +2 punti caratteristica · Attacco Poderoso 3d8",
-    "Campione Primordiale: inizi già in Furia, +3 danno",
-  ],
-  monk: [
-    "Carica di Pugni · 2 attacchi base",
-    "Concentrazione (+danno) · Difesa senza armatura (+1 CA)",
-    "Deviare Colpi: riduci il prossimo colpo subìto",
-    "🎯 +2 punti caratteristica · Assorbire Danni",
-    "Colpo Stordente (TS o salta turno) · Carica di Pugni 3 colpi",
-    "Cura Ki · i pugni contano come magici",
-    "Elusione: TS DES superato = nessun danno",
-    "🎯 +2 punti caratteristica · +1 carica Concentrazione",
-    "Carica di Pugni 4 colpi · +1 carica Cura Ki",
-    "Purezza del Corpo: immune a veleno e sanguinamento",
-    "Raffica Tempestosa: 3 attacchi a mani nude in un'azione",
-    "🎯 +2 punti caratteristica · più cariche ki",
-    "Lingua di Sole e Luna: i colpi ignorano le resistenze",
-    "Anima di Diamante: ritiri un TS fallito a turno",
-    "Cura Ki 2d8+SAG",
-    "🎯 +2 punti caratteristica",
-    "Palmo Tremante: 6d10 ritardati con TS COS",
-    "Corpo Vuoto: invisibile e resistente per 1 turno (1/fight)",
-    "🎯 +2 punti caratteristica · Raffica +1 colpo",
-    "Perfezione Interiore: recuperi una carica ki a inizio turno",
-  ],
-  rogue: [
-    "Attacco Furtivo (1d6) · 2 azioni base",
-    "Furtività (vantaggio) · Azione Scaltra (azione extra)",
-    "Triboli · Maestria (Inganno o Agilità)",
-    "🎯 +2 punti caratteristica · Attacco Furtivo 2d6",
-    "Schivata Prodigiosa: dimezzi un colpo a turno",
-    "+1 carica Attacco Furtivo · seconda Maestria",
-    "Elusione: TS DES superato = nessun danno",
-    "🎯 +2 punti caratteristica · Attacco Furtivo 3d6",
-    "Colpo Mortale: esecuzione sotto il 20% PF",
-    "🎯 +2 punti caratteristica · Talento Affidabile",
-    "Attacco Furtivo 4d6 · +1 carica Triboli",
-    "🎯 +2 punti caratteristica · +1 carica Azione Scaltra",
-    "Schivata Migliorata: schivi due volte a turno",
-    "Veleno da Lama: +2d6 veleno per 3 colpi",
-    "Sensi Acuti: non puoi essere colto di sorpresa né accecato",
-    "🎯 +2 punti caratteristica · Attacco Furtivo 5d6",
-    "+1 carica Colpo Mortale · soglia esecuzione 25% PF",
-    "Elusività: i nemici non hanno mai vantaggio su di te",
-    "🎯 +2 punti caratteristica · Attacco Furtivo 6d6",
-    "Colpo di Fortuna: trasformi un mancato in critico (1/fight)",
-  ],
-  paladin: [
-    "Smite Divino · Lay of Hands (cura dalla pozza)",
-    "Incantesimi tier 1 · Stile di Combattimento",
-    "Salute Divina (immune a malattia/veleno) · Giuramento",
-    "🎯 +2 punti caratteristica · +1 carica Smite",
-    "Attacco Extra: 2 attacchi · Incantesimi tier 2",
-    "Aura di Protezione: +CAR ai tuoi tiri salvezza",
-    "Aura del Giuramento",
-    "🎯 +2 punti caratteristica · +1 carica Smite",
-    "Incantesimi tier 3 · Smite Tremante (TS o salta turno)",
-    "Aura di Coraggio: immune a paura e controllo mentale",
-    "Smite Migliorato: +1d8 radiante a ogni colpo",
-    "🎯 +2 punti caratteristica · Lay of Hands più grande",
-    "Incantesimi tier 4",
-    "Tocco Purificante: Lay of Hands rimuove un debuff",
-    "Aure potenziate",
-    "🎯 +2 punti caratteristica · più cariche",
-    "Incantesimi tier 5",
-    "Aure sempre attive",
-    "🎯 +2 punti caratteristica · Smite 3d8",
-    "Avatar del Giuramento: forma potenziata (1/fight)",
-  ],
-  ranger: [
-    "Marchio del Cacciatore · Compagno Animale",
-    "Incantesimi tier 1 · Stile di Combattimento",
-    "Archetipo: Cacciatore o Maestro di Bestie",
-    "🎯 +2 punti caratteristica · +1 carica Marchio",
-    "Attacco Extra: 2 attacchi · Incantesimi tier 2",
-    "+1 carica pet · Marchio dura più a lungo",
-    "Difesa del Predatore: meno danni col bersaglio marchiato",
-    "🎯 +2 punti caratteristica · +1 carica pet",
-    "Incantesimi tier 3 · Raffica di Frecce",
-    "Mimetismo: parti furtivo a inizio fight",
-    "Marchio Furioso: bonus aumentato e si sposta da solo",
-    "🎯 +2 punti caratteristica · +1 carica Raffica",
-    "Incantesimi tier 4",
-    "Svanire: non bersagliabile per 1 turno (1/fight)",
-    "Pet Superiore: il compagno raddoppia i danni",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 5",
-    "Sensi Ferini: immune ad accecamento e furtività nemica",
-    "🎯 +2 punti caratteristica · Marchio +1d10",
-    "Nemico Mortale: critico 19-20 e ignori metà CA sul marchiato",
-  ],
-  wizard: [
-    "Incantesimi tier 1 · Recupero Arcano",
-    "Tradizione Arcana: Evocazione / Abiurazione / Divinazione",
-    "Incantesimi tier 2",
-    "🎯 +2 punti caratteristica · +1 trucchetto",
-    "Incantesimi tier 3 (Palla di Fuoco, Fulmine…)",
-    "Bonus avanzato della tua scuola",
-    "Incantesimi tier 4",
-    "🎯 +2 punti caratteristica · +1 carica incantesimi",
-    "Incantesimi tier 5",
-    "Maestria Trucchetti: i trucchetti fanno più danno",
-    "Incantesimi tier 6",
-    "🎯 +2 punti caratteristica · +1 incantesimo noto",
-    "Incantesimi tier 7",
-    "Bonus finale della tua scuola",
-    "Incantesimi tier 8",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 9 (Meteora, Parola del Potere…)",
-    "Maestria Incantesimi: un incantesimo a costo zero",
-    "🎯 +2 punti caratteristica · +1 incantesimo alto",
-    "Firma Magica: 2 incantesimi a cariche illimitate",
-  ],
-  sorcerer: [
-    "Incantesimi tier 1 · Stregoneria Innata · Fonte di Magia",
-    "Origine: Draconica o Magia Selvaggia",
-    "Incantesimi tier 2 · Metamagia: Spell Gemella",
-    "🎯 +2 punti caratteristica · +1 trucchetto",
-    "Incantesimi tier 3 · Metamagia: Spell Potenziata",
-    "Bonus avanzato d'Origine",
-    "Incantesimi tier 4",
-    "🎯 +2 punti caratteristica · +1 carica Fonte di Magia",
-    "Incantesimi tier 5",
-    "Metamagia: Spell Rapida (lancio come bonus action)",
-    "Incantesimi tier 6",
-    "🎯 +2 punti caratteristica · +1 carica metamagia",
-    "Incantesimi tier 7",
-    "Bonus finale d'Origine",
-    "Incantesimi tier 8",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 9",
-    "Restauro Stregonesco: recuperi cariche col tempo",
-    "🎯 +2 punti caratteristica · +1 incantesimo alto",
-    "Restauro Arcano: inizi con cariche extra",
-  ],
-  warlock: [
-    "Incantesimi tier 1 · Astuzia Magica · Patto Demoniaco",
-    "Suppliche Occulte (a scelta)",
-    "Dono del Patto: Lama / Tomo / Catena",
-    "🎯 +2 punti caratteristica · +1 trucchetto",
-    "Incantesimi tier 3 · (Patto della Lama) Attacco Extra",
-    "Seconda Supplica",
-    "Incantesimi tier 4",
-    "🎯 +2 punti caratteristica · +1 carica Patto Demoniaco",
-    "Incantesimi tier 5",
-    "Terza Supplica",
-    "Arcano Mistico: un incantesimo tier 6 (1/fight)",
-    "🎯 +2 punti caratteristica · +1 carica demone",
-    "Arcano Mistico: tier 7 (1/fight)",
-    "Potere supremo del tuo Patto",
-    "Arcano Mistico: tier 8 (1/fight)",
-    "🎯 +2 punti caratteristica",
-    "Arcano Mistico: tier 9 (1/fight)",
-    "+1 carica Astuzia Magica",
-    "🎯 +2 punti caratteristica · Patto Demoniaco potenziato",
-    "Maestro Occulto: ricarichi tutti gli incantesimi bassi (1/fight)",
-  ],
-  cleric: [
-    "Incantesimi tier 1 (cura, danno radiante/necrotico)",
-    "Incanalare Divinità: Dominio Vita / Guerra / Morte",
-    "Incantesimi tier 2",
-    "🎯 +2 punti caratteristica · +1 trucchetto",
-    "Incantesimi tier 3 · cure e danni potenziati",
-    "Bonus di Dominio · +1 carica Incanalare",
-    "Incantesimi tier 4",
-    "🎯 +2 punti caratteristica · Colpo Divino (+1d8 radiante)",
-    "Incantesimi tier 5",
-    "Intervento Divino: effetto miracoloso casuale",
-    "Incantesimi tier 6",
-    "🎯 +2 punti caratteristica · +1 carica Incanalare",
-    "Incantesimi tier 7",
-    "Bonus finale di Dominio",
-    "Incantesimi tier 8",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 9",
-    "Incanalare Divinità a uso illimitato",
-    "🎯 +2 punti caratteristica · +1 incantesimo alto",
-    "Intervento Divino garantito (1/fight)",
-  ],
-  druid: [
-    "Incantesimi tier 1",
-    "Forma Selvatica · Circolo: Terra o Luna",
-    "Incantesimi tier 2",
-    "🎯 +2 punti caratteristica · Forma Selvatica migliorata",
-    "Incantesimi tier 3",
-    "Bonus di Circolo",
-    "Incantesimi tier 4",
-    "🎯 +2 punti caratteristica · +1 carica Forma Selvatica",
-    "Incantesimi tier 5",
-    "Anima Selvatica: immune a veleno/malattia",
-    "Incantesimi tier 6",
-    "🎯 +2 punti caratteristica · +1 carica incantesimi",
-    "Incantesimi tier 7",
-    "Bonus finale di Circolo",
-    "Incantesimi tier 8",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 9",
-    "Forma Selvatica a cariche illimitate",
-    "🎯 +2 punti caratteristica · +1 incantesimo alto",
-    "Arcidruido: Forma Selvatica gratis, trucchetti illimitati",
-  ],
-  bard: [
-    "Ispirazione Bardica (cariche = CAR)",
-    "Tuttofare: +1 a tutti i tiri",
-    "Incantesimi tier 2 · Collegio: Sapienza / Valore / Spada",
-    "🎯 +2 punti caratteristica · +1 carica Ispirazione",
-    "Fonte d'Ispirazione (ricarica) · Incantesimi tier 3",
-    "Bonus di Collegio · Nota Dolente (se sbloccata)",
-    "Incantesimi tier 4",
-    "🎯 +2 punti caratteristica · Ispirazione 1d8",
-    "Incantesimi tier 5 · Canto del Riposo (cura)",
-    "Magia Segreta: 2 incantesimi di altre classi · Ispirazione 1d10",
-    "Incantesimi tier 6",
-    "🎯 +2 punti caratteristica · +1 carica incantesimi",
-    "Incantesimi tier 7",
-    "Bonus finale di Collegio",
-    "Incantesimi tier 8 · Ispirazione 1d12",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 9",
-    "Più cariche di Magia Segreta",
-    "🎯 +2 punti caratteristica · +1 incantesimo alto",
-    "Ispirazione Superiore: cariche piene a ogni fight",
-  ],
-  artificer: [
-    "Incantesimi tier 1 e trucchetti · Forgia Armatura",
-    "Infusione: potenzia la tua arma",
-    "Costrutto (golem/serpente) · Specialista: Alchimista / Artigliere / Battaglia",
-    "🎯 +2 punti caratteristica · +1 carica Forgia Armatura",
-    "Incantesimi tier 2 · Attacco Extra o +1 costrutto",
-    "Bonus di specializzazione",
-    "Spruzzo di Schegge: l'arma da fuoco colpisce ad area",
-    "🎯 +2 punti caratteristica · +1 carica Infusione",
-    "Incantesimi tier 3",
-    "Maestro di Infusioni: 2 infusioni insieme",
-    "Oggetto Mirabile: effetto a scelta (cura/scudo/danno)",
-    "🎯 +2 punti caratteristica · +1 carica costrutto",
-    "Incantesimi tier 4",
-    "Bonus finale di specializzazione",
-    "Costrutto Superiore: raddoppia i danni",
-    "🎯 +2 punti caratteristica",
-    "Incantesimi tier 5",
-    "Genio Magico: 4 infusioni",
-    "🎯 +2 punti caratteristica · +1 carica Oggetto Mirabile",
-    "Soul of Artifice: il costrutto ti rialza a 1 PF (1/fight)",
-  ],
-};
+const CAT_META = Object.fromEntries(MARKET_CATEGORIES.map(c => [c.key, c]));
 
 export default function ArenaMarket() {
   useParallaxScroll();
@@ -434,7 +74,7 @@ export default function ArenaMarket() {
   const [charData, setCharData] = useState(null);
   const [arenaMeta, setArenaMeta] = useState(null);
   const [message, setMessage] = useState(null);
-  const [customPrices, setCustomPrices] = useState({});
+  const [marketItems, setMarketItems] = useState([]);
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState(null); // null | "classes" | "items"
 
@@ -455,29 +95,34 @@ export default function ArenaMarket() {
     return () => unsub();
   }, []);
 
+  // Catalogo del Master: in vetrina solo gli articoli attivi.
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "arena_config", "shop"), snap => {
-      if (snap.exists()) setCustomPrices(snap.data().prices ?? {});
+    const unsub = onSnapshot(collection(db, "arena_market_items"), snap => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.name || "").localeCompare(b.name || ""));
+      setMarketItems(list);
     });
     return () => unsub();
   }, []);
 
-  const effectiveItems = SHOP_ITEMS.map(item => ({
-    ...item,
-    price: customPrices[item.key] ?? item.price,
-  }));
-
-  const levelUpCost = customPrices[LEVEL_UP_KEY] ?? LEVEL_UP_DEFAULT;
-  const coins    = charData?.arenaCoins ?? 0;
-  const buffs    = charData?.arenaBuffs ?? {};
-  const classLvls = charData?.classLevels ?? {};
+  const coins      = charData?.arenaCoins ?? 0;
+  const buffs      = charData?.arenaBuffs ?? {};
+  const classLvls  = charData?.classLevels ?? {};
   const subclasses = charData?.arenaSubclass ?? {};
 
-  // ── Ricerca: classi + potenziamenti ──
+  // ── Settimana corrente: acquisti validi fino a domenica ore 24:00 ──────────
+  const weekKey = currentWeekKey();
+  const weekly  = (charData?.arenaWeekly?.weekKey === weekKey) ? charData.arenaWeekly : { weekKey, purchases: [] };
+  const weeklyPurchases = weekly.purchases || [];
+  const ownedQty = (itemId) => weeklyPurchases.find(p => p.itemId === itemId)?.qty ?? 0;
+
+  const vetrinaItems = marketItems.filter(it => it.active);
+
+  // ── Ricerca: classi + vetrina ──
   const q = query.trim().toLowerCase();
   const ownedClasses = ARENA_CLASSES.filter(cls => !cls.hiddenUnlessOwned || (buffs[cls.hiddenUnlessOwned] ?? 0) > 0);
   const filteredClasses = ownedClasses.filter(cls => !q || cls.name.toLowerCase().includes(q));
-  const filteredItems = effectiveItems.filter(it => !q || `${it.name} ${it.description}`.toLowerCase().includes(q));
+  const filteredItems = vetrinaItems.filter(it => !q || `${it.name} ${it.description || ""} ${marketItemSummary(it)}`.toLowerCase().includes(q));
   const showClasses = activeCat !== "items";
   const showItems   = activeCat !== "classes";
   const showInfo    = activeCat == null && q === "";
@@ -485,35 +130,40 @@ export default function ArenaMarket() {
 
   const showMsg = (text, type = "ok") => {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => setMessage(null), 3500);
   };
 
-  const buyItem = async (item) => {
+  // ── Acquisto settimanale ────────────────────────────────────────────────────
+  const buyMarketItem = async (item) => {
     if (!currentUser || !charData) return;
     if (coins < item.price) { showMsg("Monete insufficienti.", "err"); return; }
-    const currentVal = buffs[item.field] ?? 0;
-    if (currentVal >= item.max) { showMsg("Hai già questo potenziamento al massimo.", "err"); return; }
-    const updates = {
-      arenaCoins: increment(-item.price),
-      [`arenaBuffs.${item.field}`]: increment(item.addAmount ?? 1),
-    };
-    await updateDoc(doc(db, "characters", currentUser.uid), updates);
-    showMsg(`Acquistato: ${item.name}!`);
-  };
+    const maxPerWeek = Math.max(1, item.maxPerWeek ?? 1);
+    const cur = ownedQty(item.id);
+    if (cur >= maxPerWeek) { showMsg("Hai già raggiunto il massimo per questa settimana.", "err"); return; }
 
-  const levelUpClass = async (cls) => {
-    if (!currentUser || !charData) return;
-    if (coins < levelUpCost) { showMsg("Monete Arena insufficienti.", "err"); return; }
-    const currentLv = classLvls[cls.key] ?? 3;
-    const newLv = currentLv + 1;
+    // L'acquisto viene FOTOGRAFATO (payload incluso): anche se il Master poi
+    // modifica o toglie l'articolo dal catalogo, quanto comprato resta valido
+    // fino alla scadenza della settimana.
+    const existing = weeklyPurchases.find(p => p.itemId === item.id);
+    const purchases = existing
+      ? weeklyPurchases.map(p => p.itemId === item.id ? { ...p, qty: (p.qty || 1) + 1 } : p)
+      : [...weeklyPurchases, {
+          itemId: item.id,
+          name: item.name,
+          icon: item.icon || CAT_META[item.category]?.icon || "🎁",
+          category: item.category,
+          price: item.price,
+          maxPerWeek,
+          payload: item.payload || {},
+          qty: 1,
+          boughtAt: new Date().toISOString(),
+        }];
+
     await updateDoc(doc(db, "characters", currentUser.uid), {
-      arenaCoins: increment(-levelUpCost),
-      [`classLevels.${cls.key}`]: newLv,
+      arenaCoins: increment(-item.price),
+      arenaWeekly: { weekKey, purchases },
     });
-    // PF (+1 dado) e punti caratteristica si applicano alla creazione del PG nell'Arena.
-    const asiLevels = ASI_LEVELS_BY_CLASS[cls.key] || ASI_LEVELS_DEFAULT;
-    const gotAsi = asiLevels.includes(newLv);
-    showMsg(`${cls.name} → Lv.${newLv}! +1 dado PF${gotAsi ? " · +2 punti caratteristica" : ""} (si applicano creando il PG nell'Arena)`);
+    showMsg(`Acquistato: ${item.name}! Valido fino a ${weekEndLabel(weekKey)} · solo tornei.`);
   };
 
   // ── Scelta sottoclasse/archetipo (permanente, retroattiva) ─────────────────
@@ -527,15 +177,13 @@ export default function ArenaMarket() {
     showMsg(`${def?.title || "Scelta"}: ${opt?.label || optionKey} — scelta salvata!`);
   };
 
-  // Scelte in sospeso: classi possedute che hanno raggiunto il livello della
-  // scelta ma non l'hanno ancora compiuta (retroattivo per chi ha già i livelli).
+  // Scelte in sospeso: classi "attive" che non hanno ancora scelto l'archetipo
+  // (tutte le classi sono Lv.3, che è anche il livello richiesto dalla scelta).
   const pendingSubclassChoices = ownedClasses.filter(cls => {
     const def = ARENA_SUBCLASSES[cls.key];
     if (!def) return false;
-    // Solo per la classe principale del PG o per una in cui ha investito livelli.
     if (!classEngaged(cls.key, charData?.class, classLvls)) return false;
-    const lv = classLvls[cls.key] ?? 3;
-    return lv >= def.reqLevel && !subclasses[cls.key];
+    return !subclasses[cls.key];
   });
 
   if (!currentUser) {
@@ -558,9 +206,10 @@ export default function ArenaMarket() {
         <div className="am-hero-plate">
           <span className="am-hero-seal">⚔ Arena dei Campioni</span>
           <h1 className="am-hero-title">Bottega<br />dell'Arena</h1>
-          <p className="am-hero-tagline">Spendi le tue Monete Arena per potenziamenti esclusivi.</p>
+          <p className="am-hero-tagline">La vetrina cambia ogni settimana: ciò che compri vale fino a domenica sera, solo nei tornei.</p>
           <dl className="am-hero-stats">
             <div><dt>Monete Arena</dt><dd>🪙 {coins}</dd></div>
+            <div><dt>Scadenza acquisti</dt><dd>⏳ {weekEndLabel(weekKey)}</dd></div>
           </dl>
         </div>
       </section>
@@ -569,8 +218,8 @@ export default function ArenaMarket() {
       <CineToolbar
         query={query}
         onQuery={setQuery}
-        placeholder="Cerca una classe o un potenziamento…"
-        chips={[{ key: "classes", label: "⚔ Classi" }, { key: "items", label: "🛡 Potenziamenti" }]}
+        placeholder="Cerca una classe o un articolo in vetrina…"
+        chips={[{ key: "classes", label: "⚔ Classi" }, { key: "items", label: "🛍 Vetrina" }]}
         activeChip={activeCat}
         onChip={setActiveCat}
         allLabel="Tutto"
@@ -590,14 +239,16 @@ export default function ArenaMarket() {
       <div className="am-classes-section">
         <h3 className="am-how-title">Classi Arena</h3>
         <p className="am-classes-sub">
-          Ogni classe parte da <strong>Lv.3</strong> — salire di livello costa <strong>{levelUpCost} MA</strong>. Ogni livello sblocca, in base alla classe, <strong>incantesimi, abilità, passive e punti caratteristica</strong> (vedi il <strong>Manuale delle Classi</strong> più in basso), oltre a <strong>+1 dado PF (1d10)+COS</strong> al tiro dei Punti Vita in fase di creazione del PG. Ogni classe ha una progressione separata.
+          Tutti i personaggi sono <strong>base Livello 3</strong>: i livelli non si comprano più.
+          A fare la differenza sono la <strong>scelta dell'archetipo</strong> (gratuita e permanente)
+          e gli <strong>acquisti settimanali</strong> della vetrina qui sotto.
         </p>
 
         {pendingSubclassChoices.length > 0 && (
           <div className="am-subclass-pending">
             <h4 className="am-subclass-pending-title">🎓 Scelte permanenti disponibili</h4>
             <p className="am-subclass-pending-sub">
-              Hai raggiunto il livello che sblocca una <strong>scelta di archetipo</strong>. È <strong>permanente</strong> (solo il Master può cambiarla) e ne attiva gli effetti in Arena. Scegli:
+              Puoi compiere una <strong>scelta di archetipo</strong>. È <strong>permanente</strong> (solo il Master può cambiarla) e ne attiva gli effetti in Arena. Scegli:
             </p>
             {pendingSubclassChoices.map(cls => {
               const def = ARENA_SUBCLASSES[cls.key];
@@ -622,38 +273,25 @@ export default function ArenaMarket() {
           <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
         ) : (
         <div className="am-classes-grid">
-          {filteredClasses.map(cls => {
-            const lv = classLvls[cls.key] ?? 3;
-            const canAfford = coins >= levelUpCost;
-            return (
-              <div key={cls.key} className={`am-class-card ${canAfford ? "am-class-card--affordable" : ""}`}>
-                <div className="am-class-icon">{cls.icon}</div>
-                <div className="am-class-name">{cls.name}</div>
-                <div className="am-class-level">Lv. {lv}</div>
-                {(() => {
-                  const def = ARENA_SUBCLASSES[cls.key];
-                  if (!def) return null;
-                  const chosenKey = subclasses[cls.key];
-                  if (chosenKey) {
-                    const opt = def.options.find(o => o.key === chosenKey);
-                    return <div className="am-class-subclass">{def.title}: <strong>{opt?.label || chosenKey}</strong></div>;
-                  }
-                  const engaged = classEngaged(cls.key, charData?.class, classLvls);
-                  if (!engaged) return <div className="am-class-subclass am-class-subclass--locked">{def.title} · prendi livelli in questa classe</div>;
-                  if (lv >= def.reqLevel) return <div className="am-class-subclass am-class-subclass--pending">⚠ Scegli {def.title} qui sopra ↑</div>;
-                  return <div className="am-class-subclass am-class-subclass--locked">{def.title} · da Lv.{def.reqLevel}</div>;
-                })()}
-                <button
-                  className="am-class-lvup-btn"
-                  disabled={!canAfford}
-                  onClick={() => levelUpClass(cls)}
-                  title={canAfford ? `Sali a Lv.${lv + 1} (${levelUpCost} MA)` : "Monete insufficienti"}
-                >
-                  ▲ Lv. Up
-                </button>
-              </div>
-            );
-          })}
+          {filteredClasses.map(cls => (
+            <div key={cls.key} className="am-class-card">
+              <div className="am-class-icon">{cls.icon}</div>
+              <div className="am-class-name">{cls.name}</div>
+              <div className="am-class-level">Lv. 3</div>
+              {(() => {
+                const def = ARENA_SUBCLASSES[cls.key];
+                if (!def) return null;
+                const chosenKey = subclasses[cls.key];
+                if (chosenKey) {
+                  const opt = def.options.find(o => o.key === chosenKey);
+                  return <div className="am-class-subclass">{def.title}: <strong>{opt?.label || chosenKey}</strong></div>;
+                }
+                const engaged = classEngaged(cls.key, charData?.class, classLvls);
+                if (!engaged) return <div className="am-class-subclass am-class-subclass--locked">{def.title} · solo per la tua classe</div>;
+                return <div className="am-class-subclass am-class-subclass--pending">⚠ Scegli {def.title} qui sopra ↑</div>;
+              })()}
+            </div>
+          ))}
         </div>
         )}
       </div>
@@ -661,48 +299,27 @@ export default function ArenaMarket() {
 
       {showInfo && (<>
       <div className="am-how am-class-manual">
-        <h3 className="am-how-title">📖 Manuale delle Classi — Progressione (Lv 3→20)</h3>
-        <p className="am-classes-sub" style={{ marginBottom: "10px" }}>
-          Tutti i personaggi partono da <strong>Livello 3</strong>. Salire di livello sblocca, a seconda della classe,
-          <strong> incantesimi di tier superiore, abilità attive, passive</strong> e <strong>punti caratteristica</strong>.
-          Ogni classe ha la <strong>sua progressione separata</strong>: livelli e sblocchi di una classe non valgono per le altre.
-        </p>
+        <h3 className="am-how-title">📖 Come funziona la Bottega Settimanale</h3>
         <ul className="am-how-list" style={{ marginBottom: "12px" }}>
-          <li>🎯 <strong>Punti caratteristica</strong>: ai livelli <strong>4, 8, 12, 16, 19</strong> ricevi <strong>+2 punti</strong> da assegnare (+2 a una caratteristica oppure +1 a due). Il <strong>Guerriero</strong> li riceve anche a 6 e 14, il <strong>Ladro</strong> anche a 10.</li>
-          <li>📈 <strong>Bonus di competenza</strong>: +2 (Lv 1-4) · +3 (5-8) · +4 (9-12) · +5 (13-16) · +6 (17-20).</li>
-          <li>✨ <strong>Incantesimi</strong>: i lanciatori sbloccano tier sempre più alti man mano che salgono.</li>
+          <li>🗓 Ogni settimana il Master rinnova la <strong>vetrina</strong>: oggetti, incantesimi, armi, armature e pet.</li>
+          <li>🪙 Compri con le <strong>Monete Arena</strong>. Ogni articolo può avere un <strong>massimo di acquisti a settimana</strong>.</li>
+          <li>⏳ Tutto ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>. Il lunedì torni <strong>base</strong> (classi Lv.3) e puoi comprare le novità.</li>
+          <li>🏟 Gli acquisti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte col kit base.</li>
+          <li>🎒 <strong>Oggetti</strong>: azione gratuita, 1 per turno (cure, danni o bonus temporanei).</li>
+          <li>✨ <strong>Incantesimi</strong>: si aggiungono alle tue azioni con le loro cariche, anche fuori dalla tua classe.</li>
+          <li>⚔️ <strong>Armi e armature</strong>: si aggiungono al tuo equipaggiamento e alla tua CA.</li>
+          <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
         </ul>
-        <p className="am-manual-note">ℹ️ Le capacità ai livelli più alti vengono introdotte in modo graduale.</p>
-        <div className="am-manual-classes">
-          {ownedClasses.map(cls => (
-            <details key={cls.key} className="am-manual-class">
-              <summary className="am-manual-class-summary">
-                <span className="am-manual-class-icon">{cls.icon}</span>
-                <span className="am-manual-class-name">{cls.name}</span>
-                <span className="am-manual-class-hint">Lv 1→20 ▾</span>
-              </summary>
-              <ol className="am-manual-levels">
-                {(CLASS_PROGRESSION[cls.key] || []).map((txt, i) => {
-                  const isAsi = txt.startsWith("🎯");
-                  return (
-                    <li key={i} className={`am-manual-level ${isAsi ? "am-manual-level--asi" : ""}`}>
-                      <span className="am-manual-lv">Lv {i + 1}</span>
-                      <span className="am-manual-lv-txt">{txt}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </details>
-          ))}
-        </div>
+        <p className="am-manual-note">ℹ️ Le abilità di classe, gli incantesimi base e gli archetipi restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>
       </div>
 
       <div className="am-how">
         <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
         <ul className="am-how-list">
-          <li>🪙 <strong>+1 MA</strong> per aver partecipato a un torneo</li>
-          <li>🪙 <strong>+2 MA</strong> per ogni round vinto</li>
-          <li>🪙 <strong>+5 MA</strong> se vinci il torneo</li>
+          <li>🪙 <strong>+5 MA</strong> per ogni fight di torneo disputato</li>
+          <li>🪙 <strong>+7 MA</strong> per ogni round vinto</li>
+          <li>🪙 <strong>+30 MA</strong> se vinci il torneo</li>
+          <li>🎲 Le <strong>scommesse</strong> vinte pagano il doppio della puntata</li>
         </ul>
       </div>
 
@@ -733,42 +350,64 @@ export default function ArenaMarket() {
       </div>
 
       {showItems && (<>
-      {/* ── RUBRICA: Potenziamenti ── */}
+      {/* ── RUBRICA: Vetrina della settimana ── */}
       <div className="am-rubric">
         <span className="am-rubric-eyebrow">Armeria del Campione</span>
-        <h2 className="am-rubric-title">Potenziamenti</h2>
-        <p className="am-rubric-sub">Pozioni, armi e doni unici per dominare l'Arena.</p>
+        <h2 className="am-rubric-title">Vetrina della Settimana</h2>
+        <p className="am-rubric-sub">Gli acquisti valgono fino a <strong>{weekEndLabel(weekKey)}</strong> · solo nei tornei.</p>
       </div>
 
       <div className="cine-wrap am-body">
+
+      {/* ── I MIEI ACQUISTI ── */}
+      {weeklyPurchases.length > 0 && (
+        <div className="am-weekly-owned">
+          <h3 className="am-how-title">🎒 I tuoi acquisti della settimana</h3>
+          <div className="am-weekly-owned-list">
+            {weeklyPurchases.map(p => (
+              <div key={p.itemId} className="am-weekly-owned-row">
+                <span className="am-weekly-owned-icon">{p.icon}</span>
+                <span className="am-weekly-owned-name">{p.name}{(p.qty || 1) > 1 ? ` ×${p.qty}` : ""}</span>
+                <span className="am-weekly-owned-cat">{CAT_META[p.category]?.icon} {CAT_META[p.category]?.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="am-manual-note">⏳ Validi fino a <strong>{weekEndLabel(weekKey)}</strong>, poi tornerai al kit base. Solo tornei.</p>
+        </div>
+      )}
+
       {filteredItems.length === 0 ? (
-        <p className="cine-empty">Nessun potenziamento corrisponde alla ricerca.</p>
+        <p className="cine-empty">{q ? "Nessun articolo corrisponde alla ricerca." : "La vetrina di questa settimana è ancora vuota: torna a trovarci!"}</p>
       ) : (
       <div className="am-grid">
         {filteredItems.map(item => {
-          const owned = buffs[item.field] ?? 0;
-          const maxed = owned >= item.max;
+          const maxPerWeek = Math.max(1, item.maxPerWeek ?? 1);
+          const owned = ownedQty(item.id);
+          const maxed = owned >= maxPerWeek;
           const canAfford = coins >= item.price;
+          const cat = CAT_META[item.category];
           return (
-            <div key={item.key} className={`am-card ${maxed ? "am-card--maxed" : canAfford ? "am-card--affordable" : ""}`}>
+            <div key={item.id} className={`am-card ${maxed ? "am-card--maxed" : canAfford ? "am-card--affordable" : ""}`}>
+              <div className="am-card-cat">{cat?.icon} {cat?.label}</div>
               <div className="am-card-icon">{item.icon}</div>
               <div className="am-card-name">{item.name}</div>
-              <div className="am-card-desc">{item.description}</div>
+              <div className="am-card-desc">{item.description || marketItemSummary(item)}</div>
               <div className="am-card-price">
                 <span className="am-coin-icon">🪙</span>
                 <span>{item.price} MA</span>
+                {maxPerWeek > 1 && <span className="am-card-max"> · max {maxPerWeek}/sett.</span>}
               </div>
               {owned > 0 && (
                 <div className="am-owned-badge">
-                  {maxed ? "✔ Posseduto" : `Hai: ${owned}`}
+                  {maxed ? `✔ Tuo (${owned}/${maxPerWeek})` : `Hai: ${owned}/${maxPerWeek}`}
                 </div>
               )}
               <button
                 className="am-buy-btn"
-                onClick={() => buyItem(item)}
+                onClick={() => buyMarketItem(item)}
                 disabled={maxed || !canAfford}
               >
-                {maxed ? "Già acquistato" : !canAfford ? "Monete insufficienti" : "Acquista"}
+                {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : "Acquista"}
               </button>
             </div>
           );
@@ -776,13 +415,16 @@ export default function ArenaMarket() {
       </div>
       )}
 
-      {isMaster && <MasterCoinPanel effectiveItems={effectiveItems} levelUpCost={levelUpCost} arenaMeta={arenaMeta} />}
+      {isMaster && <ArenaMarketCatalog />}
+      {isMaster && <MasterCoinPanel />}
       </div>
       </>)}
     </div>
   );
 }
 
+// Potenziamenti LEGACY (vecchia Bottega): non più in vendita, ma finché il
+// Master non li azzera restano sui personaggi. Da qui può rimuoverli.
 const ITEM_FIELDS = [
   { field: "weaponBonus",     label: "Arma +1",              icon: "⚔️" },
   { field: "armorBonus",      label: "Armatura +1",          icon: "🛡️" },
@@ -806,14 +448,11 @@ function parseCoinInput(raw, current) {
   return num; // assoluto
 }
 
-function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
+function MasterCoinPanel() {
   const [allChars, setAllChars] = useState([]);
   const [editCoins, setEditCoins] = useState({});
-  const [editPrices, setEditPrices] = useState({});
-  const [editLevels, setEditLevels] = useState({});
-  const [expanded, setExpanded] = useState({});
-  const [tab, setTab] = useState("players");      // "players" | "prices"
   const [playerFilter, setPlayerFilter] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
@@ -839,21 +478,6 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
     await updateDoc(doc(db, "characters", uid), { [`arenaBuffs.${field}`]: 0 });
   };
 
-  const savePrice = async (key) => {
-    const val = parseInt(editPrices[key], 10);
-    if (isNaN(val) || val < 0) return;
-    await setDoc(doc(db, "arena_config", "shop"), { prices: { [key]: val } }, { merge: true });
-    setEditPrices(prev => { const n = { ...prev }; delete n[key]; return n; });
-  };
-
-  const saveClassLevel = async (uid, classKey) => {
-    const inputKey = `${uid}_${classKey}`;
-    const val = parseInt(editLevels[inputKey], 10);
-    if (isNaN(val) || val < 3) return;
-    await updateDoc(doc(db, "characters", uid), { [`classLevels.${classKey}`]: val });
-    setEditLevels(prev => { const n = { ...prev }; delete n[inputKey]; return n; });
-  };
-
   // Assegna/cambia/azzera la sottoclasse di un giocatore per una classe.
   // Valore vuoto = azzera (il giocatore rivedrà il prompt di scelta al prossimo accesso).
   const setMasterSubclass = async (uid, classKey, optionKey) => {
@@ -862,16 +486,18 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
     });
   };
 
-  const levelDownClass = async (uid, cls) => {
-    const char = allChars.find(c => c.uid === uid);
-    if (!char) return;
-    const currentLv = (char.classLevels ?? {})[cls.key] ?? 3;
-    if (currentLv <= 3) return;
-    // I PF e i punti caratteristica derivano dal livello in fase di creazione PG,
-    // quindi basta abbassare il livello: niente più bonus piatto da scalare.
-    await updateDoc(doc(db, "characters", uid), {
-      [`classLevels.${cls.key}`]: currentLv - 1,
-    });
+  // ── Reset stagione: azzera le MA e i potenziamenti legacy di TUTTI ─────────
+  // (gli acquisti settimanali correnti NON vengono toccati: scadono da soli).
+  const resetSeason = async () => {
+    if (!window.confirm(`Azzerare le Monete Arena e i potenziamenti VECCHI (Arma +1, Draghetto, ecc.) di TUTTI i ${allChars.length} giocatori? Gli acquisti settimanali in corso non vengono toccati.`)) return;
+    setResetting(true);
+    try {
+      for (const ch of allChars) {
+        await updateDoc(doc(db, "characters", ch.uid), { arenaCoins: 0, arenaBuffs: {} });
+      }
+    } finally {
+      setResetting(false);
+    }
   };
 
   const pf = playerFilter.trim().toLowerCase();
@@ -879,65 +505,8 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
 
   return (
     <div className="am-master-panel">
-      <h3 className="am-master-panel-title">🪙 Pannello Master</h3>
+      <h3 className="am-master-panel-title">🪙 Pannello Master — Giocatori</h3>
 
-      {/* Schede: separa Giocatori e Prezzi per evitare lo scroll unico */}
-      <div className="am-mp-tabs" role="tablist">
-        <button
-          role="tab"
-          className={`am-mp-tab ${tab === "players" ? "am-mp-tab--active" : ""}`}
-          onClick={() => setTab("players")}
-        >👥 Giocatori <span className="am-mp-tab-count">{allChars.length}</span></button>
-        <button
-          role="tab"
-          className={`am-mp-tab ${tab === "prices" ? "am-mp-tab--active" : ""}`}
-          onClick={() => setTab("prices")}
-        >💰 Prezzi</button>
-      </div>
-
-      {/* ── SCHEDA PREZZI ── */}
-      {tab === "prices" && (
-      <div className="am-mp-section am-price-editor">
-        <p className="am-master-note">Prezzi oggetti e costo salita di livello.</p>
-
-        <div className="am-price-row">
-          <span className="am-price-icon">📈</span>
-          <span className="am-price-name">Costo Lv. Up (tutte le classi)</span>
-          <span className="am-price-current">{levelUpCost} MA</span>
-          <input
-            className="am-coin-input"
-            type="number"
-            min={0}
-            placeholder="nuovo costo"
-            value={editPrices[LEVEL_UP_KEY] ?? ""}
-            onChange={e => setEditPrices(prev => ({ ...prev, [LEVEL_UP_KEY]: e.target.value }))}
-            onKeyDown={e => { if (e.key === "Enter") savePrice(LEVEL_UP_KEY); }}
-          />
-          <button className="am-coin-save" onClick={() => savePrice(LEVEL_UP_KEY)}>Salva</button>
-        </div>
-
-        {effectiveItems.map(item => (
-          <div key={item.key} className="am-price-row">
-            <span className="am-price-icon">{item.icon}</span>
-            <span className="am-price-name">{item.name}</span>
-            <span className="am-price-current">{item.price} MA</span>
-            <input
-              className="am-coin-input"
-              type="number"
-              min={0}
-              placeholder="nuovo prezzo"
-              value={editPrices[item.key] ?? ""}
-              onChange={e => setEditPrices(prev => ({ ...prev, [item.key]: e.target.value }))}
-              onKeyDown={e => { if (e.key === "Enter") savePrice(item.key); }}
-            />
-            <button className="am-coin-save" onClick={() => savePrice(item.key)}>Salva</button>
-          </div>
-        ))}
-      </div>
-      )}
-
-      {/* ── SCHEDA GIOCATORI ── */}
-      {tab === "players" && (
       <div className="am-mp-section">
         <input
           className="am-mp-search"
@@ -950,6 +519,9 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
           Monete: scrivi un numero per <strong>impostarlo</strong>, oppure <code>+N</code> / <code>−N</code> per
           <strong> aggiungere o togliere</strong> rispetto alle attuali (es. <code>+5</code>, <code>-3</code>). Invio per salvare.
         </p>
+        <button className="am-coin-save am-season-reset" disabled={resetting} onClick={resetSeason}>
+          {resetting ? "⏳ Reset in corso…" : "🧹 Azzera MA + potenziamenti vecchi (TUTTI)"}
+        </button>
         <div className="am-coin-list">
           {filteredChars.length === 0 ? (
             <p className="cine-empty" style={{ marginTop: 8 }}>Nessun giocatore trovato.</p>
@@ -957,10 +529,10 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
           const buffsData  = ch.arenaBuffs || {};
           const ownedItems = ITEM_FIELDS.filter(it => (buffsData[it.field] ?? 0) > 0);
           const classLvls  = ch.classLevels ?? {};
-          const isOpen     = !!expanded[ch.uid];
           const cur        = ch.arenaCoins ?? 0;
           const preview    = parseCoinInput(editCoins[ch.uid], cur);
           const showPrev   = preview != null && preview !== cur;
+          const weeklyList = (ch.arenaWeekly?.weekKey === currentWeekKey()) ? (ch.arenaWeekly.purchases || []) : [];
 
           return (
             <div key={ch.uid} className="am-coin-row am-coin-row--stacked">
@@ -978,72 +550,44 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
                 />
                 {showPrev && <span className="am-coin-preview">→ {preview} MA</span>}
                 <button className="am-coin-save" onClick={() => saveCoins(ch.uid)}>Salva</button>
-                <button
-                  className="am-coin-save am-btn-toggle"
-                  onClick={() => setExpanded(prev => ({ ...prev, [ch.uid]: !isOpen }))}
-                >
-                  {isOpen ? "▲ Classi" : "▼ Classi"}
-                </button>
               </div>
 
-              {isOpen && (
-                <div className="am-master-classes">
-                  {ARENA_CLASSES.map(cls => {
-                    const lv = classLvls[cls.key] ?? 3;
-                    const inputKey = `${ch.uid}_${cls.key}`;
-                    return (
-                      <div key={cls.key} className="am-master-class-row">
-                        <span className="am-master-class-label">{cls.icon} {cls.name}</span>
-                        <span className="am-class-lv-badge">Lv. {lv}</span>
-                        <button
-                          className="am-coin-save am-lvdown-btn"
-                          title={`Scendi a Lv.${lv - 1}`}
-                          disabled={lv <= 3}
-                          onClick={() => levelDownClass(ch.uid, cls)}
-                        >−</button>
-                        <input
-                          className="am-coin-input am-coin-input--sm"
-                          type="number"
-                          min={3}
-                          placeholder="lv"
-                          value={editLevels[inputKey] ?? ""}
-                          onChange={e => setEditLevels(prev => ({ ...prev, [inputKey]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === "Enter") saveClassLevel(ch.uid, cls.key); }}
-                        />
-                        <button className="am-coin-save" onClick={() => saveClassLevel(ch.uid, cls.key)}>Salva</button>
-                        {ARENA_SUBCLASSES[cls.key] && (() => {
-                          const sdef = ARENA_SUBCLASSES[cls.key];
-                          const curVal = (ch.arenaSubclass ?? {})[cls.key] ?? "";
-                          // Sbloccata solo se il PG ha davvero quella classe a reqLevel.
-                          // Se c'è già un valore (dati vecchi) mostro comunque il select
-                          // così il Master può correggerlo/azzerarlo.
-                          const unlocked = classEngaged(cls.key, ch.class, classLvls) && lv >= sdef.reqLevel;
-                          if (!unlocked && !curVal) {
-                            return (
-                              <span className="am-master-subclass-locked" title={`${sdef.title} · richiede la classe a Lv.${sdef.reqLevel}`}>
-                                🔒 {sdef.title}
-                              </span>
-                            );
-                          }
-                          return (
-                            <select
-                              className="am-master-subclass-select"
-                              title={`${sdef.title} (Lv.${sdef.reqLevel})`}
-                              value={curVal}
-                              onChange={e => setMasterSubclass(ch.uid, cls.key, e.target.value)}
-                            >
-                              <option value="">— {sdef.title} —</option>
-                              {sdef.options.map(o => (
-                                <option key={o.key} value={o.key}>{o.label}</option>
-                              ))}
-                            </select>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })}
+              {/* Acquisti settimanali correnti (sola lettura: scadono da soli) */}
+              {weeklyList.length > 0 && (
+                <div className="am-weekly-owned-list am-weekly-owned-list--mp">
+                  {weeklyList.map(p => (
+                    <span key={p.itemId} className="am-mp-weekly-chip" title={`${p.name} · ${p.price} MA`}>
+                      {p.icon} {p.name}{(p.qty || 1) > 1 ? ` ×${p.qty}` : ""}
+                    </span>
+                  ))}
                 </div>
               )}
+
+              {/* Sottoclassi (permanenti) */}
+              <div className="am-master-classes">
+                {ARENA_CLASSES.filter(cls => ARENA_SUBCLASSES[cls.key]).map(cls => {
+                  const sdef = ARENA_SUBCLASSES[cls.key];
+                  const curVal = (ch.arenaSubclass ?? {})[cls.key] ?? "";
+                  const unlocked = classEngaged(cls.key, ch.class, classLvls);
+                  if (!unlocked && !curVal) return null;
+                  return (
+                    <div key={cls.key} className="am-master-class-row">
+                      <span className="am-master-class-label">{cls.icon} {cls.name}</span>
+                      <select
+                        className="am-master-subclass-select"
+                        title={sdef.title}
+                        value={curVal}
+                        onChange={e => setMasterSubclass(ch.uid, cls.key, e.target.value)}
+                      >
+                        <option value="">— {sdef.title} —</option>
+                        {sdef.options.map(o => (
+                          <option key={o.key} value={o.key}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
 
               {ownedItems.length > 0 && (
                 <div className="am-owned-items">
@@ -1051,7 +595,7 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
                     <button
                       key={it.field}
                       className="am-remove-item-btn"
-                      title={`Rimuovi ${it.label}`}
+                      title={`Rimuovi ${it.label} (potenziamento vecchio)`}
                       onClick={() => removeItem(ch.uid, it.field)}
                     >
                       {it.icon} {it.label} ✕
@@ -1064,7 +608,6 @@ function MasterCoinPanel({ effectiveItems, levelUpCost, arenaMeta }) {
         })}
         </div>
       </div>
-      )}
     </div>
   );
 }
