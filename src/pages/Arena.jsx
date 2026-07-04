@@ -10555,7 +10555,7 @@ export default function Arena() {
                             {!isFFA && m.status !== "finished" && m.players.some(pl => PLAYER_HAS_RANGED_WEAPON(pl, snapshots[pl.id])) && (
                               <span
                                 title={m.distanceClosed ? "Combattenti in mischia: gli attacchi ravvicinati sono normali." : "Combattenti a distanza: chi attacca in mischia tira a svantaggio finché non chiude la distanza."}
-                                style={{ marginTop: "0.4rem", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.02em", whiteSpace: "nowrap", padding: "0.12rem 0.45rem", borderRadius: "999px", color: "#fff", background: m.distanceClosed ? "rgba(200,70,55,0.9)" : "rgba(55,110,190,0.9)", boxShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
+                                style={{ marginTop: "0.4rem", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.02em", whiteSpace: "nowrap", padding: "0.12rem 0.45rem", borderRadius: "999px", color: "#fff", background: m.distanceClosed ? "rgba(200,70,55,0.9)" : "rgba(146,64,14,0.9)", boxShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
                               >
                                 {m.distanceClosed ? "⚔ Mischia" : "🏹 Distanza"}
                               </span>
@@ -10608,7 +10608,7 @@ export default function Arena() {
                             <div
                               className="fighter-kite"
                               title={`Mantieni le distanze (kiting): attaccando da lontano riapri la distanza e costringi l'avversario in mischia a tirare a svantaggio. Ancora ${ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)} volte.`}
-                              style={{ fontSize: "0.62rem", fontWeight: 700, color: "#2b5fa8", marginTop: "0.15rem" }}
+                              style={{ fontSize: "0.62rem", fontWeight: 700, color: "#ffd98a", marginTop: "0.15rem" }}
                             >
                               🏹 Distanza ×{ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}
                             </div>

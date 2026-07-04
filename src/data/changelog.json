@@ -1,6 +1,44 @@
 {
   "versions": [
     {
+      "version": "87",
+      "date": "2026-07-04",
+      "title": "Arena · viste interne omogenee alla Locandina",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Le viste \"Arena Libera\", \"Albo dei Campioni\" e \"Pannello Master\" adottano la stessa identità dell'hub Arena: via le schede arrotondate con alone, spazio a strisce a doppio filetto dorato, riquadri e pulsanti squadrati a timbro, badge e icone ad angoli vivi."
+        },
+        {
+          "type": "graphic",
+          "text": "Pannello Master: Ricompensa e Registro del Lanista diventano manifesti a doppio filetto, il pulsante Salva è un timbro dorato, le schede Titoli/Statistiche perdono gli angoli tondi e i badge colorati."
+        },
+        {
+          "type": "fix",
+          "text": "Albo dei Campioni: la Sala dei Campioni non era più allineata al banner (restava incollata a sinistra e più stretta). Ora banner e Sala hanno la stessa larghezza e sono centrati."
+        },
+        {
+          "type": "graphic",
+          "text": "Palette dell'Arena schiarita: l'oro dei filetti, bordi, numeri e accenti passa a una tonalità più chiara e i testi sono più luminosi per una lettura netta sul fondo scuro. Corretti anche i trofei della Ricompensa, che restavano virati al verde."
+        }
+      ]
+    },
+    {
+      "version": "86.01",
+      "date": "2026-07-04",
+      "title": "Generatore Sessioni DM: step interattivi e cancellazione",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Le sessioni generate tornano interattive: tab degli atti, riquadri collassabili e timer ora funzionano sempre, sia nell'anteprima del generatore sia nella pagina della sessione salvata. Il JavaScript dei widget viene iniettato dall'app, quindi anche le sessioni salvate con l'HTML troncato rispondono ai clic."
+        },
+        {
+          "type": "feature",
+          "text": "Archivio sessioni per party: aggiunto il cestino su ogni scheda per eliminare definitivamente una sessione generata (con conferma)."
+        }
+      ]
+    },
+    {
       "version": "86",
       "date": "2026-07-04",
       "title": "Tutta l'Arena in stile Locandina del Colosseo",

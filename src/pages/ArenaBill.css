@@ -14,8 +14,8 @@
   max-width: 1060px;
   margin: 18px auto 10px;
   padding: 26px 22px 22px;
-  border-top: 3px double rgba(212, 175, 55, 0.55);
-  border-bottom: 3px double rgba(212, 175, 55, 0.55);
+  border-top: 3px double rgba(236, 212, 135, 0.55);
+  border-bottom: 3px double rgba(236, 212, 135, 0.55);
   position: relative;
 }
 .arena-bill-mast::before,
@@ -23,7 +23,7 @@
   content: "✦";
   position: absolute;
   top: -14px;
-  color: #d4af37;
+  color: #ecd487;
   font-size: 0.9rem;
 }
 .arena-bill-mast::before { left: 8px; }
@@ -36,7 +36,7 @@
   font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.75);
+  color: rgba(240, 226, 190, 0.75);
   margin-bottom: 10px;
 }
 .abm-title {
@@ -47,21 +47,21 @@
   color: #f0e3c2;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.65), 0 0 34px rgba(212, 175, 55, 0.18);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.65), 0 0 34px rgba(236, 212, 135, 0.18);
 }
 .abm-tag {
   margin: 0;
   max-width: 46ch;
   font-size: 0.95rem;
   line-height: 1.5;
-  color: rgba(222, 210, 182, 0.85);
+  color: rgba(238, 230, 212, 0.85);
   font-style: italic;
 }
 
 /* Tabellone delle quote: righe etichetta ..... valore */
 .abm-board {
   align-self: center;
-  border: 1px solid rgba(212, 175, 55, 0.4);
+  border: 1px solid rgba(236, 212, 135, 0.4);
   background: rgba(10, 8, 6, 0.55);
   padding: 14px 16px;
   display: flex;
@@ -81,12 +81,12 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.8);
+  color: rgba(240, 226, 190, 0.8);
   white-space: nowrap;
 }
 .abm-board-dots {
   flex: 1;
-  border-bottom: 1px dotted rgba(212, 175, 55, 0.45);
+  border-bottom: 1px dotted rgba(236, 212, 135, 0.45);
   transform: translateY(-3px);
 }
 .abm-board-val {
@@ -155,10 +155,10 @@
   font-weight: 800;
   letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.7);
+  color: rgba(240, 226, 190, 0.7);
   white-space: nowrap;
 }
-.abp-head-rule { flex: 1; border-bottom: 1px solid rgba(212, 175, 55, 0.35); }
+.abp-head-rule { flex: 1; border-bottom: 1px solid rgba(236, 212, 135, 0.35); }
 
 .abp-row {
   display: flex;
@@ -168,7 +168,7 @@
   padding: 16px 10px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+  border-bottom: 1px solid rgba(236, 212, 135, 0.22);
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -176,7 +176,7 @@
   transition: background 0.18s ease, padding-left 0.18s ease;
 }
 .abp-row:hover:not(:disabled) {
-  background: linear-gradient(90deg, rgba(212, 175, 55, 0.08), transparent 70%);
+  background: linear-gradient(90deg, rgba(236, 212, 135, 0.08), transparent 70%);
   padding-left: 18px;
 }
 .abp-row:hover:not(:disabled) .abp-go { transform: translateX(4px); color: #ffd98a; }
@@ -187,9 +187,9 @@
   font-family: var(--font-title, serif);
   font-size: 1.9rem;
   line-height: 1;
-  color: rgba(212, 175, 55, 0.85);
+  color: rgba(236, 212, 135, 0.85);
   text-align: center;
-  border-right: 1px solid rgba(212, 175, 55, 0.3);
+  border-right: 1px solid rgba(236, 212, 135, 0.3);
   padding-right: 14px;
 }
 .abp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -200,10 +200,10 @@
   color: #f0e3c2;
   letter-spacing: 0.03em;
 }
-.abp-sub { font-size: 0.85rem; color: rgba(212, 199, 171, 0.75); }
+.abp-sub { font-size: 0.85rem; color: rgba(232, 222, 200, 0.75); }
 .abp-go {
   font-size: 1.6rem;
-  color: rgba(212, 175, 55, 0.6);
+  color: rgba(236, 212, 135, 0.6);
   transition: transform 0.18s ease, color 0.18s ease;
 }
 
@@ -229,8 +229,8 @@
 .arena-page .master-panel {
   background: transparent !important;
   border: none !important;
-  border-top: 3px double rgba(212, 175, 55, 0.5) !important;
-  border-bottom: 3px double rgba(212, 175, 55, 0.5) !important;
+  border-top: 3px double rgba(236, 212, 135, 0.5) !important;
+  border-bottom: 3px double rgba(236, 212, 135, 0.5) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   max-width: 920px;
@@ -244,7 +244,7 @@
   font-weight: 800;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.7);
+  color: rgba(240, 226, 190, 0.7);
   margin-bottom: 6px;
 }
 .arena-page .master-panel-title {
@@ -258,7 +258,7 @@
 
 /* colonne Approvati / In Attesa come registro a righe puntinate */
 .arena-page .master-sections {
-  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  border-top: 1px solid rgba(236, 212, 135, 0.3);
   padding-top: 14px;
 }
 .arena-page .col-label {
@@ -266,22 +266,22 @@
   font-weight: 800 !important;
   letter-spacing: 0.22em !important;
   text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.75) !important;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  color: rgba(240, 226, 190, 0.75) !important;
+  border-bottom: 1px solid rgba(236, 212, 135, 0.3);
   padding-bottom: 6px;
 }
 .arena-page .participant-tag,
 .arena-page .approval-row {
   background: transparent !important;
   border: none !important;
-  border-bottom: 1px dotted rgba(212, 175, 55, 0.3) !important;
+  border-bottom: 1px dotted rgba(236, 212, 135, 0.3) !important;
   border-radius: 0 !important;
   padding: 8px 4px !important;
 }
 
 /* pulsanti come timbri: squadrati, maiuscoletto */
 .arena-page .master-actions {
-  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  border-top: 1px solid rgba(236, 212, 135, 0.3);
   margin-top: 18px;
   padding-top: 16px;
   justify-content: center;
@@ -303,7 +303,7 @@
 /* ricompensa + pannelli modali richiamati: cornice a filetto squadrata */
 .arena-page .arena-reward-panel {
   background: transparent !important;
-  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  border: 1px solid rgba(236, 212, 135, 0.4) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   max-width: 920px;
@@ -317,7 +317,7 @@
 }
 .arena-page .master-join-setup {
   background: rgba(10, 8, 6, 0.5) !important;
-  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  border: 1px solid rgba(236, 212, 135, 0.35) !important;
   border-radius: 0 !important;
 }
 
@@ -326,8 +326,8 @@
 .arena-page .join-zone {
   background: transparent !important;
   border: none !important;
-  border-top: 3px double rgba(212, 175, 55, 0.55) !important;
-  border-bottom: 3px double rgba(212, 175, 55, 0.55) !important;
+  border-top: 3px double rgba(236, 212, 135, 0.55) !important;
+  border-bottom: 3px double rgba(236, 212, 135, 0.55) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   max-width: 920px;
@@ -343,7 +343,7 @@
   font-weight: 800 !important;
   letter-spacing: 0.3em !important;
   text-transform: uppercase;
-  color: rgba(226, 205, 156, 0.85) !important;
+  color: rgba(240, 226, 190, 0.85) !important;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -352,7 +352,7 @@
 .arena-page .hp-roll-title::after {
   content: "";
   flex: 1;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+  border-bottom: 1px solid rgba(236, 212, 135, 0.35);
 }
 
 /* Bottoni classe / azioni: timbri squadrati serif */
@@ -383,7 +383,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.arena-page .loadout-avatar { border-radius: 0 !important; border: 1px solid rgba(212, 175, 55, 0.5) !important; }
+.arena-page .loadout-avatar { border-radius: 0 !important; border: 1px solid rgba(236, 212, 135, 0.5) !important; }
 
 /* Pannelli interni della selezione (armi/spell/armature/oggetti) squadrati */
 .arena-page .join-zone .loadout-section,
@@ -393,4 +393,312 @@
 .arena-page .join-zone .armor-option,
 .arena-page .join-zone .item-option {
   border-radius: 0 !important;
+}
+
+/* ══ LAYER 10 — TUTTE le viste interne in linguaggio Locandina ══
+   Regole & Classi, Arena Libera, Albo, modali (tabellone/combat/scommesse):
+   cornici a filetto squadrate, titoli serif maiuscoli con filetti laterali. */
+
+/* Titoli di sezione: stesso trattamento del "Programma della Serata" */
+.arena-page .arena-info-title,
+.arena-page .fun-arena-lobby-title,
+.arena-page .champion-label {
+  font-family: var(--font-title, serif) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.22em !important;
+  text-transform: uppercase;
+  color: rgba(240, 226, 190, 0.9) !important;
+}
+.arena-page .fun-arena-title {
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em !important;
+  color: #f0e3c2 !important;
+}
+.arena-page .fun-arena-subtitle { color: rgba(232, 222, 200, 0.75) !important; font-style: italic; }
+
+/* Cornici delle viste: squadrate, pietra scura, filetto dorato */
+.arena-page .arena-info-section,
+.arena-page .arena-info-example,
+.arena-page .fun-arena-section,
+.arena-page .fun-arena-lobby,
+.arena-page .fun-challenge-row,
+.arena-page .champion-banner {
+  border-radius: 0 !important;
+  background: rgba(10, 8, 6, 0.5) !important;
+  border: 1px solid rgba(236, 212, 135, 0.35) !important;
+  box-shadow: none !important;
+}
+.arena-page .arena-info-section {
+  border: none !important;
+  border-top: 3px double rgba(236, 212, 135, 0.5) !important;
+  border-bottom: 3px double rgba(236, 212, 135, 0.5) !important;
+  background: transparent !important;
+  max-width: 920px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.arena-page .champion-banner {
+  border-top: 3px double rgba(236, 212, 135, 0.55) !important;
+  border-bottom: 3px double rgba(236, 212, 135, 0.55) !important;
+  border-left: none !important;
+  border-right: none !important;
+  background: transparent !important;
+}
+.arena-page .champion-name {
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #f0e3c2 !important;
+}
+
+/* Bottoni delle viste: timbri squadrati */
+.arena-page .btn-fun-create,
+.arena-page .btn-fun-accept,
+.arena-page .btn-fun-cancel {
+  border-radius: 0 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Modali (portal su body, NIENTE prefisso .arena-page): tabellone, combat,
+   scommesse, titoli, dadi — cornice a filetto squadrata e testata serif */
+.arena-modal-dialog {
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, #16110d, #100c0a) !important;
+  border: 1px solid rgba(236, 212, 135, 0.45) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75) !important;
+}
+.arena-modal-header { border-bottom: 1px solid rgba(236, 212, 135, 0.3) !important; }
+.arena-modal-title {
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.18em !important;
+  color: #f0e3c2 !important;
+}
+@media (max-width: 600px) {
+  /* su mobile il modale resta a fogliata piena: mantieni gli angoli alti morbidi */
+  body .arena-modal-dialog { border-radius: 14px 14px 0 0 !important; }
+}
+
+/* ── Sala dei Campioni: registro dorato, niente teal né angoli tondi ── */
+.arena-page .hall-of-champions {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  max-width: 920px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.arena-page .hall-toggle {
+  border-radius: 0 !important;
+  background: rgba(10, 8, 6, 0.55) !important;
+  border: 1px solid rgba(236, 212, 135, 0.45) !important;
+  color: #ffd98a !important;
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.16em !important;
+  box-shadow: none !important;
+}
+.arena-page .hall-count { color: rgba(240, 226, 190, 0.75) !important; }
+.arena-page .hall-body {
+  background: rgba(10, 8, 6, 0.4) !important;
+  border: 1px solid rgba(236, 212, 135, 0.3) !important;
+  border-top: none !important;
+  border-radius: 0 !important;
+}
+.arena-page .hall-row {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px dotted rgba(236, 212, 135, 0.3) !important;
+  box-shadow: none !important;
+}
+.arena-page .hall-name { font-family: var(--font-title, serif) !important; color: #f0e3c2 !important; letter-spacing: 0.05em; }
+.arena-page .hall-class { color: rgba(232, 222, 200, 0.7) !important; }
+.arena-page .hall-rank { color: rgba(236, 212, 135, 0.85) !important; font-family: var(--font-title, serif) !important; }
+.arena-page .hall-wins-num { color: #ffd98a !important; }
+.arena-page .hall-wins-label { color: rgba(216, 205, 179, 0.65) !important; }
+.arena-page .hall-avatar { border-radius: 0 !important; border: 1px solid rgba(236, 212, 135, 0.5) !important; }
+.arena-page .hall-empty { color: rgba(216, 205, 179, 0.6) !important; }
+
+/* ── FAB "‹ Hub": timbro dorato squadrato, niente pillola teal ── */
+.arena-page .arena-hub-fab {
+  border-radius: 0 !important;
+  background: rgba(20, 16, 12, 0.92) !important;
+  border: 1px solid rgba(236, 212, 135, 0.55) !important;
+  color: #ffd98a !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6) !important;
+}
+.arena-page .arena-hub-fab:hover { background: rgba(236, 212, 135, 0.18) !important; }
+
+/* ── Banner campione: dettagli dorati ── */
+.arena-page .champion-prize {
+  border-radius: 0 !important;
+  background: rgba(236, 212, 135, 0.1) !important;
+  border: 1px solid rgba(236, 212, 135, 0.45) !important;
+  color: #f0e3c2 !important;
+}
+.arena-page .last-champion-avatar { border-radius: 0 !important; border: 1px solid rgba(236, 212, 135, 0.5) !important; }
+.arena-page .champion-crown { color: #ffd98a !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYER 11 — PANNELLO MASTER a "Locandina" (omogeneità con l'hub · 2026-07-04)
+   Il LAYER 8/9 "Pietra & Rune" (ArenaHero.css) impone card arrotondate 18px con
+   glow tramite `body .arena-page.arena-page .X` (specificità 0,3,1). Per vincere
+   uso lo STESSO prefisso: ArenaBill.css è caricato DOPO ArenaHero.css → a parità
+   di specificità vince l'ordine sorgente. Il remap ha già scaldato i colori:
+   qui tocco SOLO la struttura → angoli vivi, doppio filetto, timbri squadrati.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Reward + Master panel: da card arrotondata glow → striscia a manifesto */
+body .arena-page.arena-page .master-panel,
+body .arena-page.arena-page .arena-reward-panel {
+  background: transparent !important;
+  border: none !important;
+  border-top: 3px double rgba(236, 212, 135, 0.5) !important;
+  border-bottom: 3px double rgba(236, 212, 135, 0.5) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  max-width: 920px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+/* niente shimmer superiore: il doppio filetto è già la cornice */
+body .arena-page.arena-page .master-panel::before { display: none !important; }
+
+/* Sotto-riquadri della vista master → squadrati (angoli vivi) */
+body .arena-page.arena-page .prize-editor,
+body .arena-page.arena-page .master-sections,
+body .arena-page.arena-page .master-col,
+body .arena-page.arena-page .master-join-setup,
+body .arena-page.arena-page .champions-only-toggle,
+body .arena-page.arena-page .arena-reward-textarea,
+body .arena-page.arena-page .arena-reward-text {
+  border-radius: 0 !important;
+}
+
+/* Strumenti master (Titoli / Statistiche): da card arrotondata → timbro squadrato */
+body .arena-page.arena-page .arena-modal-trigger {
+  border-radius: 0 !important;
+  background: rgba(10, 8, 6, 0.5) !important;
+  border: 1px solid rgba(236, 212, 135, 0.35) !important;
+  box-shadow: none !important;
+}
+body .arena-page.arena-page .arena-modal-trigger:hover {
+  border-color: rgba(236, 212, 135, 0.7) !important;
+  background: rgba(236, 212, 135, 0.08) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+body .arena-page.arena-page .arena-modal-trigger-icon { border-radius: 0 !important; }
+
+/* Bottoni del Master come timbri: angoli vivi, maiuscoletto */
+body .arena-page.arena-page .master-actions [class*="btn-"],
+body .arena-page.arena-page .arena-reward-save {
+  border-radius: 0 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+/* "💾 Salva" ricompensa: da verde acceso → timbro dorato del manifesto */
+body .arena-page.arena-page .arena-reward-save {
+  background: linear-gradient(135deg, #e3c558 0%, #b8892a 100%) !important;
+  border: 1px solid #f0dfae !important;
+  color: #241c05 !important;
+  box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYER 12 — ARENA LIBERA + ALBO in "Locandina" (omogeneità con l'hub · 2026-07-04)
+   Stesso prefisso `body .arena-page.arena-page` per battere il LAYER 8/9 di
+   ArenaHero.css. Solo struttura: angoli vivi, filetti, larghezza e centratura
+   coerenti con le altre viste (920px). I colori sono già caldi dal remap.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── ARENA LIBERA ─────────────────────────────────────────────────────────── */
+/* Sezione + lobby + storico + righe: da card arrotondata glow → filetto squadrato */
+body .arena-page.arena-page .fun-arena-section,
+body .arena-page.arena-page .fun-arena-lobby,
+body .arena-page.arena-page .fun-arena-history,
+body .arena-page.arena-page .fun-challenge-row,
+body .arena-page.arena-page .fun-history-row,
+body .arena-page.arena-page .fun-arena-empty {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+/* larghezza/centratura coerenti con master & albo */
+body .arena-page.arena-page .fun-arena-section,
+body .arena-page.arena-page .fun-arena-lobby,
+body .arena-page.arena-page .fun-arena-history,
+body .arena-page.arena-page .fun-arena-empty {
+  width: 100% !important;
+  max-width: 920px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  align-self: center !important;
+}
+/* icona ⚔, tag "Allenamento", badge live, avatar, tag "Hard": timbri squadrati */
+body .arena-page.arena-page .fun-arena-icon,
+body .arena-page.arena-page .fun-arena-title-tag,
+body .arena-page.arena-page .fun-arena-live-badge,
+body .arena-page.arena-page .fun-challenge-avatar,
+body .arena-page.arena-page .btn-fun-ai-tag {
+  border-radius: 0 !important;
+}
+/* bottoni sfida come timbri squadrati maiuscoli (colore già caldo) */
+body .arena-page.arena-page .btn-fun-create,
+body .arena-page.arena-page .btn-fun-ai,
+body .arena-page.arena-page .btn-fun-accept,
+body .arena-page.arena-page .btn-fun-cancel,
+body .arena-page.arena-page .btn-fun-remove {
+  border-radius: 0 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── ALBO DEI CAMPIONI ────────────────────────────────────────────────────── */
+/* Banner + Sala: stessa larghezza, CENTRATI (fix Sala incollata a sinistra).
+   NB: il banner "Ultimo Campione" è .champion-banner.last-champion → nel LAYER 8
+   ha specificità 0,4,1, quindi replico il compound per vincere su bordo/raggio. */
+body .arena-page.arena-page .champion-banner,
+body .arena-page.arena-page .champion-banner.last-champion,
+body .arena-page.arena-page .hall-of-champions {
+  width: 100% !important;
+  max-width: 920px !important;
+  margin: 18px auto !important;
+  align-self: center !important;
+}
+/* Banner campione = striscia a manifesto (doppio filetto dorato, trasparente, no glow) */
+body .arena-page.arena-page .champion-banner,
+body .arena-page.arena-page .champion-banner.last-champion {
+  background: transparent !important;
+  border: none !important;
+  border-top: 3px double rgba(236, 212, 135, 0.5) !important;
+  border-bottom: 3px double rgba(236, 212, 135, 0.5) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+body .arena-page.arena-page .champion-banner::before { display: none !important; }
+/* Sala dei Campioni: riquadro/righe/avatar/toggle/premio ad angoli vivi */
+body .arena-page.arena-page .hall-of-champions {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+body .arena-page.arena-page .champion-prize,
+body .arena-page.arena-page .hall-toggle,
+body .arena-page.arena-page .hall-body,
+body .arena-page.arena-page .hall-row,
+body .arena-page.arena-page .hall-avatar,
+body .arena-page.arena-page .hall-wins {
+  border-radius: 0 !important;
+}
+
+/* Trofei 🏆 della Ricompensa: il LAYER 8 li virava al verde con hue-rotate(135deg)
+   (un filtro, non un colore → sopravvissuto al remap). Tolgo la rotazione: l'emoji
+   torna oro naturale, coerente con la palette schiarita. */
+body .arena-page.arena-page .arena-reward-deco {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5)) !important;
 }
