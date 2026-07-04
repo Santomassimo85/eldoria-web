@@ -218,7 +218,8 @@
   }
   .abm-tag { margin: 0 auto; }
   .abm-board { max-width: 420px; width: 100%; margin: 0 auto; }
-  .arena-bill { padding: 4px 10px 80px; }
+  /* spazio per la bottom-bar mobile + safe-area iOS */
+  .arena-bill { padding: 4px 10px calc(var(--bottomnav-h, 64px) + 40px + env(safe-area-inset-bottom, 0px)); }
   .abp-num { flex-basis: 44px; font-size: 1.4rem; padding-right: 10px; }
   .abp-title { font-size: 1.05rem; }
   .abp-sub { font-size: 0.78rem; }

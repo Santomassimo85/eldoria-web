@@ -8543,8 +8543,10 @@ export default function Arena() {
               </button>
             )}
 
-            {/* Programma della serata: righe numerate stile locandina */}
-            <nav className="arena-bill-program" aria-label="Programma dell'Arena">
+            {/* Programma della serata: righe numerate stile locandina.
+                NB: <div role="navigation">, NON <nav> — shell.css trasforma ogni
+                <nav> nel drawer di sito (nascosto sotto i 1300px, !important). */}
+            <div role="navigation" className="arena-bill-program" aria-label="Programma dell'Arena">
               <div className="abp-head"><span className="abp-head-rule" aria-hidden="true" />Programma della Serata<span className="abp-head-rule" aria-hidden="true" /></div>
               {program.map((row, i) => {
                 const inner = (<>
@@ -8564,7 +8566,7 @@ export default function Arena() {
                   </button>
                 );
               })}
-            </nav>
+            </div>
           </div>
         );
       })()}

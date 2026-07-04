@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "85.01",
+      "date": "2026-07-04",
+      "title": "Arena · Programma visibile su smartphone",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Arena: il Programma della Serata non compariva sotto i 1300px di larghezza (smartphone e tablet) perché ereditava lo stile del menu laterale del sito. Ora le voci sono sempre visibili e il fondo pagina lascia spazio alla barra di navigazione inferiore (safe-area iOS inclusa)."
+        }
+      ]
+    },
+    {
       "version": "85",
       "date": "2026-07-04",
       "title": "Arena · Locandina del Colosseo e regole ripulite",
