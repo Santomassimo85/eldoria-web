@@ -224,3 +224,99 @@
   .abp-title { font-size: 1.05rem; }
   .abp-sub { font-size: 0.78rem; }
 }
+
+/* ══ REGISTRO DEL LANISTA — re-skin del Pannello Master (vista "master") ══ */
+.arena-page .master-panel {
+  background: transparent !important;
+  border: none !important;
+  border-top: 3px double rgba(212, 175, 55, 0.5) !important;
+  border-bottom: 3px double rgba(212, 175, 55, 0.5) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  max-width: 920px;
+  margin: 18px auto !important;
+  padding: 22px 16px 26px !important;
+}
+.master-mast { text-align: center; margin-bottom: 16px; }
+.master-mast-eyebrow {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(226, 205, 156, 0.7);
+  margin-bottom: 6px;
+}
+.arena-page .master-panel-title {
+  text-align: center;
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.14em !important;
+  color: #f0e3c2 !important;
+  margin: 0 !important;
+}
+
+/* colonne Approvati / In Attesa come registro a righe puntinate */
+.arena-page .master-sections {
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  padding-top: 14px;
+}
+.arena-page .col-label {
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.22em !important;
+  text-transform: uppercase;
+  color: rgba(226, 205, 156, 0.75) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding-bottom: 6px;
+}
+.arena-page .participant-tag,
+.arena-page .approval-row {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px dotted rgba(212, 175, 55, 0.3) !important;
+  border-radius: 0 !important;
+  padding: 8px 4px !important;
+}
+
+/* pulsanti come timbri: squadrati, maiuscoletto */
+.arena-page .master-actions {
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
+  margin-top: 18px;
+  padding-top: 16px;
+  justify-content: center;
+}
+.arena-page .master-actions button,
+.arena-page .btn-master-join,
+.arena-page .btn-start-tournament,
+.arena-page .btn-advance-round,
+.arena-page .btn-bench-all,
+.arena-page .btn-clear-waiting,
+.arena-page .btn-timer-pause,
+.arena-page .btn-timer-play,
+.arena-page .btn-reset {
+  border-radius: 0 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ricompensa + pannelli modali richiamati: cornice a filetto squadrata */
+.arena-page .arena-reward-panel {
+  background: transparent !important;
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  max-width: 920px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.arena-page .arena-modal-trigger {
+  border-radius: 0 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.arena-page .master-join-setup {
+  background: rgba(10, 8, 6, 0.5) !important;
+  border: 1px solid rgba(212, 175, 55, 0.35) !important;
+  border-radius: 0 !important;
+}

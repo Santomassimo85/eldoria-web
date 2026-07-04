@@ -4,6 +4,7 @@ import { db } from "../firebase";
 import { doc, collection, onSnapshot, updateDoc, increment } from "firebase/firestore";
 import "../styles/cinematic.css";
 import "./ArenaMarket.css";
+import "./ArenaMarketCatalogo.css";
 import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -12,7 +13,6 @@ import ArenaMarketCatalog, { MARKET_CATEGORIES, marketItemSummary } from "../com
 import { currentWeekKey, weekEndLabel } from "../data/arenaWeek";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar2.png";
 
 // ── BOTTEGA SETTIMANALE ───────────────────────────────────────────────────────
 // I livelli NON si comprano più: tutti i personaggi sono base Lv.3. Il Master
@@ -146,22 +146,19 @@ export default function ArenaMarket() {
   return (
     <div className="cine-page am-page cine-compact" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
       <AmbientFX variant="fire" />
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-bottega a sinistra ── */}
-      <section className="am-hero" aria-label="Bottega dell'Arena">
-        <div className="am-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+      {/* ── MASTHEAD "CATALOGO D'ASTA": frontespizio tipografico a doppi filetti,
+            in dialogo con la Locandina del Colosseo della pagina Arena ── */}
+      <header className="amc-mast" aria-label="Bottega dell'Arena">
+        <span className="amc-mast-eyebrow">Grande Colosseo · Catalogo d'Asta della Settimana</span>
+        <h1 className="amc-mast-title">Bottega dell'Arena</h1>
+        <p className="amc-mast-sub">
+          La vetrina si rinnova ogni settimana: ciò che compri vale fino a <strong>{weekEndLabel(weekKey)}</strong>, solo nei tornei.
+        </p>
+        <div className="amc-mast-plates">
+          <div className="amc-plate"><span className="amc-plate-lab">Le tue Monete Arena</span><span className="amc-plate-val">🪙 {coins}</span></div>
+          <div className="amc-plate"><span className="amc-plate-lab">Scadenza acquisti</span><span className="amc-plate-val">⏳ {weekEndLabel(weekKey)}</span></div>
         </div>
-        <div className="am-hero-wash" aria-hidden="true" />
-        <div className="am-hero-plate">
-          <span className="am-hero-seal">⚔ Arena dei Campioni</span>
-          <h1 className="am-hero-title">Bottega<br />dell'Arena</h1>
-          <p className="am-hero-tagline">La vetrina cambia ogni settimana: ciò che compri vale fino a domenica sera, solo nei tornei.</p>
-          <dl className="am-hero-stats">
-            <div><dt>Monete Arena</dt><dd>🪙 {coins}</dd></div>
-            <div><dt>Scadenza acquisti</dt><dd>⏳ {weekEndLabel(weekKey)}</dd></div>
-          </dl>
-        </div>
-      </section>
+      </header>
 
       {/* ── RICERCA ── */}
       <CineToolbar
@@ -183,24 +180,22 @@ export default function ArenaMarket() {
         </div>
       )}
 
-      {/* ── CLASSI ARENA (solo informativo: tutte base Lv.3) ── */}
+      {/* ── CLASSI ARENA (fregio informativo: tutte base Lv.3) ── */}
       {showClasses && (
-      <div className="am-classes-section">
-        <h3 className="am-how-title">Classi Arena</h3>
-        <p className="am-classes-sub">
+      <div className="amc-classes">
+        <div className="amc-sect-head"><span className="amc-sect-rule" aria-hidden="true" />Le Classi del Colosseo<span className="amc-sect-rule" aria-hidden="true" /></div>
+        <p className="amc-classes-sub">
           Tutti combattono con le <strong>classi base al Livello 3</strong>: niente livelli, niente archetipi.
           L'unico modo per potenziarsi è la <strong>vetrina settimanale</strong> qui sotto.
         </p>
         {filteredClasses.length === 0 ? (
           <p className="cine-empty">Nessuna classe corrisponde alla ricerca.</p>
         ) : (
-        <div className="am-classes-grid">
+        <div className="amc-class-strip">
           {filteredClasses.map(cls => (
-            <div key={cls.key} className="am-class-card">
-              <div className="am-class-icon">{cls.icon}</div>
-              <div className="am-class-name">{cls.name}</div>
-              <div className="am-class-level">Lv. 3</div>
-            </div>
+            <span key={cls.key} className="amc-class-chip">
+              <span className="amc-class-chip-ico">{cls.icon}</span> {cls.name} <em>Lv.3</em>
+            </span>
           ))}
         </div>
         )}
@@ -260,65 +255,61 @@ export default function ArenaMarket() {
       </div>
 
       {showItems && (<>
-      {/* ── RUBRICA: Vetrina della settimana ── */}
-      <div className="am-rubric">
-        <span className="am-rubric-eyebrow">Armeria del Campione</span>
-        <h2 className="am-rubric-title">Vetrina della Settimana</h2>
-        <p className="am-rubric-sub">Gli acquisti valgono fino a <strong>{weekEndLabel(weekKey)}</strong> · solo nei tornei.</p>
-      </div>
-
+      {/* ── VETRINA A LOTTI: registro d'asta, non più griglia di card ── */}
       <div className="cine-wrap am-body">
+      <div className="amc-sect-head amc-sect-head--lots"><span className="amc-sect-rule" aria-hidden="true" />Vetrina della Settimana<span className="amc-sect-rule" aria-hidden="true" /></div>
+      <p className="amc-sect-note">Gli acquisti valgono fino a <strong>{weekEndLabel(weekKey)}</strong> · solo nei tornei.</p>
 
-      {/* ── I MIEI ACQUISTI ── */}
+      {/* ── RICEVUTA: i tuoi acquisti della settimana ── */}
       {weeklyPurchases.length > 0 && (
-        <div className="am-weekly-owned">
-          <h3 className="am-how-title">🎒 I tuoi acquisti della settimana</h3>
-          <div className="am-weekly-owned-list">
-            {weeklyPurchases.map(p => (
-              <div key={p.itemId} className="am-weekly-owned-row">
-                <span className="am-weekly-owned-icon">{p.icon}</span>
-                <span className="am-weekly-owned-name">{p.name}{(p.qty || 1) > 1 ? ` ×${p.qty}` : ""}</span>
-                <span className="am-weekly-owned-cat">{CAT_META[p.category]?.icon} {CAT_META[p.category]?.label}</span>
-              </div>
-            ))}
-          </div>
-          <p className="am-manual-note">⏳ Validi fino a <strong>{weekEndLabel(weekKey)}</strong>, poi tornerai al kit base. Solo tornei.</p>
+        <div className="amc-receipt">
+          <div className="amc-receipt-title">🧾 Ricevuta della settimana</div>
+          {weeklyPurchases.map(p => (
+            <div key={p.itemId} className="amc-receipt-row">
+              <span className="amc-receipt-name">{p.icon} {p.name}</span>
+              <span className="amc-receipt-dots" aria-hidden="true" />
+              <span className="amc-receipt-qty">{(p.qty || 1) > 1 ? `×${p.qty}` : "✓"}</span>
+            </div>
+          ))}
+          <div className="amc-receipt-foot">⏳ Valida fino a <strong>{weekEndLabel(weekKey)}</strong>, poi si torna al kit base · solo tornei.</div>
         </div>
       )}
 
       {filteredItems.length === 0 ? (
         <p className="cine-empty">{q ? "Nessun articolo corrisponde alla ricerca." : "La vetrina di questa settimana è ancora vuota: torna a trovarci!"}</p>
       ) : (
-      <div className="am-grid">
-        {filteredItems.map(item => {
+      <div className="amc-lots">
+        {filteredItems.map((item, i) => {
+          const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"];
           const maxPerWeek = Math.max(1, item.maxPerWeek ?? 1);
           const owned = ownedQty(item.id);
           const maxed = owned >= maxPerWeek;
           const canAfford = coins >= item.price;
           const cat = CAT_META[item.category];
           return (
-            <div key={item.id} className={`am-card ${maxed ? "am-card--maxed" : canAfford ? "am-card--affordable" : ""}`}>
-              <div className="am-card-cat">{cat?.icon} {cat?.label}</div>
-              <div className="am-card-icon">{item.icon}</div>
-              <div className="am-card-name">{item.name}</div>
-              <div className="am-card-desc">{item.description || marketItemSummary(item)}</div>
-              <div className="am-card-price">
-                <span className="am-coin-icon">🪙</span>
-                <span>{item.price} MA</span>
-                {maxPerWeek > 1 && <span className="am-card-max"> · max {maxPerWeek}/sett.</span>}
+            <div key={item.id} className={`amc-lot ${maxed ? "amc-lot--maxed" : canAfford ? "amc-lot--affordable" : ""}`}>
+              <div className="amc-lot-side">
+                <span className="amc-lot-num">Lotto {ROMAN[i] || i + 1}</span>
+                <span className="amc-lot-icon" aria-hidden="true">{item.icon}</span>
               </div>
-              {owned > 0 && (
-                <div className="am-owned-badge">
-                  {maxed ? `✔ Tuo (${owned}/${maxPerWeek})` : `Hai: ${owned}/${maxPerWeek}`}
+              <div className="amc-lot-main">
+                <div className="amc-lot-name">
+                  {item.name}
+                  <span className="amc-lot-cat">{cat?.icon} {cat?.label}</span>
+                  {owned > 0 && <span className="amc-lot-owned">{maxed ? `✔ Tuo (${owned}/${maxPerWeek})` : `Hai ${owned}/${maxPerWeek}`}</span>}
                 </div>
-              )}
-              <button
-                className="am-buy-btn"
-                onClick={() => buyMarketItem(item)}
-                disabled={maxed || !canAfford}
-              >
-                {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : "Acquista"}
-              </button>
+                <div className="amc-lot-desc">{item.description || marketItemSummary(item)}</div>
+              </div>
+              <div className="amc-lot-buy">
+                <span className="amc-lot-price">🪙 {item.price} MA{maxPerWeek > 1 && <em> · max {maxPerWeek}/sett.</em>}</span>
+                <button
+                  className="am-buy-btn"
+                  onClick={() => buyMarketItem(item)}
+                  disabled={maxed || !canAfford}
+                >
+                  {maxed ? "Massimo settimanale" : !canAfford ? "Monete insufficienti" : "Acquista"}
+                </button>
+              </div>
             </div>
           );
         })}

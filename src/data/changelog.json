@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "86",
+      "date": "2026-07-04",
+      "title": "Bottega a Catalogo d'Asta e Registro del Lanista",
+      "changes": [
+        {
+          "type": "graphic",
+          "text": "Bottega dell'Arena ridisegnata come \"Catalogo d'Asta del Colosseo\": via l'hero fotografico e la griglia di card — arrivano il frontespizio tipografico a doppi filetti con targhe Monete/Scadenza, la vetrina a Lotti numerati in stile registro d'asta, il fregio delle classi a medaglioni e la Ricevuta della settimana per gli acquisti fatti."
+        },
+        {
+          "type": "graphic",
+          "text": "Pannello del Master dell'Arena rivestito da \"Registro del Lanista\": intestazione a manifesto, elenchi Approvati/In Attesa a righe puntinate da registro, pulsanti squadrati a timbro e cornici a filetto per ricompensa e pannelli. Stessa cura per i pannelli Master della Bottega."
+        }
+      ]
+    },
+    {
       "version": "85.01",
       "date": "2026-07-04",
       "title": "Arena · Programma visibile su smartphone",

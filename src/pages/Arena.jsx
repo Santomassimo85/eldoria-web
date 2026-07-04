@@ -8759,7 +8759,10 @@ export default function Arena() {
       {/* ── VISTA MASTER: pannello del Master + strumenti ── */}
       {arenaView === "master" && isMaster && (
         <div id="arena-master-panel" className="master-panel">
-          <h3 className="master-panel-title"><span className="master-crown">♛</span> Pannello del Master</h3>
+          <div className="master-mast">
+            <span className="master-mast-eyebrow">Registro del Lanista</span>
+            <h3 className="master-panel-title"><span className="master-crown">♛</span> Pannello del Master</h3>
+          </div>
 
           {arenaMeta.phase === "registration" && (
             <div className="prize-editor">
