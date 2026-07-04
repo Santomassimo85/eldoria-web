@@ -1,56 +1,96 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   BOTTEGA — "CATALOGO D'ASTA DEL COLOSSEO" (2026-07-04)
-   Frontespizio tipografico a doppi filetti + vetrina a LOTTI numerati +
-   ricevuta settimanale. Importato DOPO ArenaMarket.css → vince in cascata.
-   Tema chiaro Pergamena, in dialogo con la Locandina scura della pagina Arena.
+   BOTTEGA — SKIN "LOCANDINA DEL COLOSSEO" (scura, 2026-07-04)
+   Stessa identità della landing Arena: pietra scura, doppi filetti dorati,
+   titoli serif in maiuscolo, righe a registro con puntinati. Importato DOPO
+   ArenaMarket.css e vince su cinematic.css (tema chiaro) per la sola Bottega.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Frontespizio ── */
+/* ── Pagina: pietra scura al posto della pergamena ── */
+.cine-page.am-page {
+  background-image:
+    radial-gradient(circle, rgba(212, 175, 55, 0.05) 1px, transparent 1.6px),
+    radial-gradient(circle at 15% 8%, rgba(212, 175, 55, 0.08), transparent 40%),
+    radial-gradient(circle at 85% 92%, rgba(120, 20, 20, 0.12), transparent 45%),
+    linear-gradient(180deg, #16110d 0%, #100c0a 45%, #14100c 100%);
+  background-size: 26px 26px, auto, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  color: #d8cdb3;
+}
+.am-page .am-login-notice { color: #d8cdb3; }
+
+/* ── Toolbar di ricerca (cine) in scuro ── */
+.am-page .cine-toolbar { background: transparent; border-color: rgba(212, 175, 55, 0.3); }
+.am-page .cine-search-input {
+  background: rgba(10, 8, 6, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #f0e3c2;
+  border-radius: 0;
+}
+.am-page .cine-search-input::placeholder { color: rgba(216, 205, 179, 0.5); }
+.am-page .cine-search-icon { color: rgba(212, 175, 55, 0.7); }
+.am-page .cine-chips button,
+.am-page .cine-chip {
+  background: rgba(10, 8, 6, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #d8cdb3;
+  border-radius: 0;
+}
+.am-page .cine-chips button.active,
+.am-page .cine-chips button[aria-pressed="true"],
+.am-page .cine-chip.active {
+  background: rgba(212, 175, 55, 0.18);
+  color: #ffd98a;
+  border-color: rgba(212, 175, 55, 0.7);
+}
+.am-page .cine-result-count { color: rgba(216, 205, 179, 0.65); }
+.am-page .cine-empty { color: rgba(216, 205, 179, 0.6); }
+
+/* ── Frontespizio: identico linguaggio del masthead Arena ── */
 .amc-mast {
-  max-width: 900px;
-  margin: 26px auto 8px;
+  max-width: 1060px;
+  margin: 18px auto 8px;
   padding: 26px 18px 24px;
   text-align: center;
-  border-top: 3px double rgba(130, 10, 10, 0.45);
-  border-bottom: 3px double rgba(130, 10, 10, 0.45);
+  border-top: 3px double rgba(212, 175, 55, 0.55);
+  border-bottom: 3px double rgba(212, 175, 55, 0.55);
   position: relative;
 }
 .amc-mast::before,
 .amc-mast::after {
-  content: "❖";
+  content: "✦";
   position: absolute;
-  top: -13px;
-  color: #820a0a;
-  font-size: 0.85rem;
-  background: transparent;
+  top: -14px;
+  color: #d4af37;
+  font-size: 0.9rem;
 }
-.amc-mast::before { left: 10px; }
-.amc-mast::after { right: 10px; }
+.amc-mast::before { left: 8px; }
+.amc-mast::after { right: 8px; }
 
 .amc-mast-eyebrow {
   display: block;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: #92400e;
+  color: rgba(226, 205, 156, 0.75);
   margin-bottom: 10px;
 }
 .amc-mast-title {
   font-family: var(--font-title, serif);
-  font-size: clamp(2.2rem, 6vw, 3.8rem);
-  line-height: 1;
+  font-size: clamp(2.2rem, 6vw, 3.9rem);
+  line-height: 0.96;
   margin: 0 0 10px;
-  color: #820a0a;
+  color: #f0e3c2;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.65), 0 0 34px rgba(212, 175, 55, 0.18);
 }
 .amc-mast-sub {
   margin: 0 auto 16px;
   max-width: 56ch;
   font-size: 0.95rem;
   font-style: italic;
-  color: #6a5b41;
+  color: rgba(222, 210, 182, 0.85);
 }
 .amc-mast-plates {
   display: flex;
@@ -63,51 +103,51 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 18px;
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(10, 8, 6, 0.55);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
 }
 .amc-plate-lab {
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #92400e;
+  color: rgba(226, 205, 156, 0.8);
 }
 .amc-plate-val {
   font-family: var(--font-title, serif);
   font-size: 1.15rem;
   font-weight: 700;
-  color: #3d2f16;
+  color: #f0e3c2;
 }
 
-/* ── Intestazioni di sezione a filetto ── */
+/* ── Intestazioni di sezione a filetto (stile "Programma della Serata") ── */
 .amc-sect-head {
   display: flex;
   align-items: center;
   gap: 14px;
   margin: 26px 0 6px;
-  font-family: var(--font-title, serif);
-  font-size: 1.05rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.26em;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: #820a0a;
+  color: rgba(226, 205, 156, 0.7);
   white-space: nowrap;
 }
-.amc-sect-rule { flex: 1; border-bottom: 1px solid rgba(130, 10, 10, 0.3); }
+.amc-sect-rule { flex: 1; border-bottom: 1px solid rgba(212, 175, 55, 0.35); }
 .amc-sect-note {
   text-align: center;
   font-size: 0.85rem;
-  color: #6a5b41;
+  color: rgba(216, 205, 179, 0.7);
   margin: 0 0 16px;
 }
 
-/* ── Fregio classi: chips inline, non più griglia di card ── */
+/* ── Fregio classi ── */
 .amc-classes { max-width: 900px; margin: 0 auto; padding: 0 16px; }
 .amc-classes-sub {
   text-align: center;
   font-size: 0.9rem;
-  color: #5f5138;
+  color: rgba(216, 205, 179, 0.75);
   max-width: 62ch;
   margin: 4px auto 14px;
 }
@@ -123,18 +163,17 @@
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  border: 1px solid rgba(130, 10, 10, 0.3);
-  border-radius: 999px;
-  background: #fdfaf3;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(10, 8, 6, 0.55);
   font-size: 0.85rem;
   font-weight: 600;
-  color: #3d2f16;
+  color: #e6dcc2;
 }
 .amc-class-chip em {
   font-style: normal;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #92400e;
+  color: rgba(255, 217, 138, 0.9);
 }
 .amc-class-chip-ico { font-size: 1rem; }
 
@@ -143,17 +182,18 @@
   max-width: 460px;
   margin: 6px auto 22px;
   padding: 14px 18px;
-  border: 1.5px dashed rgba(22, 101, 52, 0.5);
-  background: rgba(22, 101, 52, 0.04);
+  border: 1.5px dashed rgba(212, 175, 55, 0.45);
+  background: rgba(10, 8, 6, 0.5);
 }
 .amc-receipt-title {
   font-family: var(--font-title, serif);
   font-weight: 800;
   font-size: 0.95rem;
-  letter-spacing: 0.08em;
-  color: #166534;
+  letter-spacing: 0.1em;
+  color: #ffd98a;
   text-align: center;
   margin-bottom: 10px;
+  text-transform: uppercase;
 }
 .amc-receipt-row {
   display: flex;
@@ -161,36 +201,36 @@
   gap: 8px;
   padding: 3px 0;
   font-size: 0.9rem;
-  color: #2f3c2f;
+  color: #e6dcc2;
 }
 .amc-receipt-name { font-weight: 600; }
-.amc-receipt-dots { flex: 1; border-bottom: 1px dotted rgba(22, 101, 52, 0.45); transform: translateY(-3px); }
-.amc-receipt-qty { font-weight: 700; color: #166534; }
+.amc-receipt-dots { flex: 1; border-bottom: 1px dotted rgba(212, 175, 55, 0.4); transform: translateY(-3px); }
+.amc-receipt-qty { font-weight: 700; color: #ffd98a; }
 .amc-receipt-foot {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px dashed rgba(22, 101, 52, 0.35);
+  border-top: 1px dashed rgba(212, 175, 55, 0.3);
   font-size: 0.76rem;
-  color: #4b5a4b;
+  color: rgba(216, 205, 179, 0.65);
   text-align: center;
 }
 
-/* ── Vetrina a LOTTI: registro d'asta ── */
+/* ── Vetrina a LOTTI: righe come il Programma della Serata ── */
 .amc-lots {
   max-width: 900px;
   margin: 0 auto 30px;
-  border-top: 1px solid rgba(130, 10, 10, 0.25);
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
 }
 .amc-lot {
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 16px 10px;
-  border-bottom: 1px solid rgba(130, 10, 10, 0.25);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
   transition: background 0.18s ease;
 }
-.amc-lot--affordable:hover { background: linear-gradient(90deg, rgba(212, 175, 55, 0.1), transparent 70%); }
-.amc-lot--maxed { opacity: 0.72; }
+.amc-lot--affordable:hover { background: linear-gradient(90deg, rgba(212, 175, 55, 0.08), transparent 70%); }
+.amc-lot--maxed { opacity: 0.6; }
 
 .amc-lot-side {
   flex: 0 0 84px;
@@ -198,7 +238,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  border-right: 1px solid rgba(130, 10, 10, 0.2);
+  border-right: 1px solid rgba(212, 175, 55, 0.3);
   padding-right: 14px;
 }
 .amc-lot-num {
@@ -206,7 +246,7 @@
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #92400e;
+  color: rgba(212, 175, 55, 0.85);
   white-space: nowrap;
 }
 .amc-lot-icon { font-size: 1.9rem; line-height: 1; }
@@ -214,35 +254,34 @@
 .amc-lot-main { flex: 1; min-width: 0; }
 .amc-lot-name {
   font-family: var(--font-title, serif);
-  font-size: 1.12rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: #3d2f16;
+  color: #f0e3c2;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  letter-spacing: 0.03em;
 }
 .amc-lot-cat {
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #92400e;
-  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #ffd98a;
+  border: 1px solid rgba(212, 175, 55, 0.45);
   background: rgba(212, 175, 55, 0.1);
-  border-radius: 999px;
   padding: 2px 9px;
 }
 .amc-lot-owned {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #166534;
-  border: 1px solid rgba(22, 101, 52, 0.4);
-  background: rgba(22, 101, 52, 0.07);
-  border-radius: 999px;
+  color: #9fd6a4;
+  border: 1px solid rgba(110, 200, 120, 0.45);
+  background: rgba(40, 90, 50, 0.25);
   padding: 2px 9px;
 }
-.amc-lot-desc { font-size: 0.86rem; color: #5f5138; margin-top: 4px; }
+.amc-lot-desc { font-size: 0.86rem; color: rgba(212, 199, 171, 0.75); margin-top: 4px; }
 
 .amc-lot-buy {
   flex: 0 0 auto;
@@ -255,28 +294,180 @@
   font-family: var(--font-title, serif);
   font-size: 1rem;
   font-weight: 700;
-  color: #92400e;
+  color: #ffd98a;
   white-space: nowrap;
 }
-.amc-lot-price em { font-style: normal; font-size: 0.72rem; color: #6a5b41; }
+.amc-lot-price em { font-style: normal; font-size: 0.72rem; color: rgba(216, 205, 179, 0.65); }
 
-/* ── Pannelli Master della Bottega: registro a filetti (re-skin) ── */
-.am-master-panel,
-.am-catalog {
-  border: none !important;
-  border-top: 3px double rgba(130, 10, 10, 0.45) !important;
-  border-bottom: 3px double rgba(130, 10, 10, 0.45) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+/* Bottone Acquista a "timbro" dorato */
+.am-page .am-buy-btn {
+  border-radius: 0;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  background: rgba(212, 175, 55, 0.14);
+  color: #ffd98a;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  padding: 8px 16px;
+  cursor: pointer;
 }
-.am-master-panel-title {
-  text-align: center;
-  font-size: 1.05rem !important;
-  letter-spacing: 0.22em !important;
+.am-page .am-buy-btn:hover:not(:disabled) { background: rgba(212, 175, 55, 0.3); }
+.am-page .am-buy-btn:disabled {
+  opacity: 0.45;
+  border-color: rgba(212, 175, 55, 0.3);
+  color: rgba(216, 205, 179, 0.6);
+  cursor: default;
+}
+
+/* ── Messaggi ── */
+.am-page .am-message {
+  background: rgba(40, 90, 50, 0.3);
+  border: 1px solid rgba(110, 200, 120, 0.5);
+  color: #cfe8d2;
+  border-radius: 0;
+}
+.am-page .am-message--err {
+  background: rgba(120, 20, 20, 0.35);
+  border-color: rgba(212, 88, 66, 0.55);
+  color: #ffd0c2;
+}
+
+/* ── Sezioni informative (Come funziona / MA / Scommesse) ── */
+.am-page .am-how {
+  background: rgba(10, 8, 6, 0.5);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 0;
+  color: #d8cdb3;
+}
+.am-page .am-how-title {
+  color: #ffd98a;
+  font-family: var(--font-title, serif);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.am-page .am-how-list li,
+.am-page .am-classes-sub { color: rgba(216, 205, 179, 0.85); }
+.am-page .am-how-list li strong,
+.am-page .am-classes-sub strong,
+.am-page .amc-classes-sub strong,
+.am-page .amc-sect-note strong,
+.am-page .amc-mast-sub strong { color: #ffd98a; }
+.am-page .am-manual-note { color: rgba(216, 205, 179, 0.65); }
+.am-page .am-bet-table {
+  background: rgba(10, 8, 6, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 0;
+}
+.am-page .am-bet-table-title { color: #ffd98a; }
+.am-page .am-bet-row { color: #e6dcc2; border-color: rgba(212, 175, 55, 0.2); }
+.am-page .am-bet-stake, .am-page .am-bet-win { color: #f0e3c2; }
+.am-page .am-bet-profit { color: #9fd6a4; }
 
-/* ── Mobile: i lotti si impilano ── */
+/* ── Pannelli Master (Catalogo + Giocatori): registro scuro a doppi filetti ── */
+.am-page .am-master-panel {
+  border: none;
+  border-top: 3px double rgba(212, 175, 55, 0.5);
+  border-bottom: 3px double rgba(212, 175, 55, 0.5);
+  border-radius: 0;
+  background: transparent;
+}
+.am-page .am-master-panel-title {
+  text-align: center;
+  color: #f0e3c2;
+  font-family: var(--font-title, serif);
+  font-size: 1.05rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.am-page .am-master-note { color: rgba(216, 205, 179, 0.7); }
+.am-page .am-master-note strong, .am-page .am-master-note code { color: #ffd98a; }
+
+.am-page .am-mp-tabs { border-color: rgba(212, 175, 55, 0.3); }
+.am-page .am-mp-tab {
+  background: rgba(10, 8, 6, 0.5);
+  border-color: rgba(212, 175, 55, 0.35);
+  color: #d8cdb3;
+  border-radius: 0;
+}
+.am-page .am-mp-tab--active {
+  background: rgba(212, 175, 55, 0.16);
+  color: #ffd98a;
+  border-color: rgba(212, 175, 55, 0.6);
+}
+.am-page .am-mp-tab-count { background: rgba(212, 175, 55, 0.2); color: #ffd98a; }
+
+.am-page .am-coin-input,
+.am-page .am-mp-search,
+.am-page .am-cat-textarea,
+.am-page select.am-coin-input {
+  background: rgba(10, 8, 6, 0.65);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #f0e3c2;
+  border-radius: 0;
+}
+.am-page .am-coin-input::placeholder,
+.am-page .am-mp-search::placeholder { color: rgba(216, 205, 179, 0.45); }
+.am-page select.am-coin-input option { background: #16110d; color: #f0e3c2; }
+
+.am-page .am-coin-save {
+  border-radius: 0;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.12);
+  color: #ffd98a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.am-page .am-coin-save:hover { background: rgba(212, 175, 55, 0.28); }
+.am-page .am-cat-cancel { border-color: rgba(160, 160, 160, 0.4); background: rgba(120, 120, 120, 0.12); color: #cfc6b4; }
+.am-page .am-cat-del, .am-page .am-remove-item-btn, .am-page .am-season-reset {
+  background: rgba(120, 20, 20, 0.25);
+  border-color: rgba(212, 88, 66, 0.5);
+  color: #ffb4a0;
+  border-radius: 0;
+}
+.am-page .am-cat-toggle--on {
+  background: rgba(40, 90, 50, 0.3);
+  border-color: rgba(110, 200, 120, 0.5);
+  color: #9fd6a4;
+}
+
+.am-page .am-coin-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dotted rgba(212, 175, 55, 0.3);
+  border-radius: 0;
+}
+.am-page .am-coin-name { color: #e6dcc2; }
+.am-page .am-coin-val { color: #ffd98a; }
+.am-page .am-coin-preview { color: #9fd6a4; }
+.am-page .am-mp-weekly-chip {
+  color: #9fd6a4;
+  background: rgba(40, 90, 50, 0.22);
+  border-color: rgba(110, 200, 120, 0.4);
+}
+
+.am-page .am-cat-form {
+  border: 1px dashed rgba(212, 175, 55, 0.4);
+  background: rgba(10, 8, 6, 0.4);
+  border-radius: 0;
+}
+.am-page .am-cat-field > span { color: rgba(226, 205, 156, 0.8); }
+.am-page .am-cat-check > span { color: #e6dcc2; }
+.am-page .am-cat-group-title { color: #ffd98a; }
+.am-page .am-cat-row {
+  background: rgba(10, 8, 6, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 0;
+}
+.am-page .am-cat-row--active {
+  border-color: rgba(110, 200, 120, 0.5);
+  background: rgba(40, 90, 50, 0.18);
+}
+.am-page .am-cat-row-name { color: #f0e3c2; }
+.am-page .am-cat-row-price { color: #ffd98a; }
+.am-page .am-cat-row-sum { color: rgba(212, 199, 171, 0.7); }
+
+/* ── Mobile ── */
 @media (max-width: 640px) {
   .amc-lot { flex-wrap: wrap; gap: 10px 14px; }
   .amc-lot-side {

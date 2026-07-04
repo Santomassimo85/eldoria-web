@@ -320,3 +320,77 @@
   border: 1px solid rgba(212, 175, 55, 0.35) !important;
   border-radius: 0 !important;
 }
+
+/* ══ ENTRA IN LIZZA — creazione PG in stile Locandina (manifesto) ══ */
+/* Il contenitore diventa un foglio di manifesto: doppi filetti, niente card */
+.arena-page .join-zone {
+  background: transparent !important;
+  border: none !important;
+  border-top: 3px double rgba(212, 175, 55, 0.55) !important;
+  border-bottom: 3px double rgba(212, 175, 55, 0.55) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  max-width: 920px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Titoli di fase come intestazioni del Programma */
+.arena-page .hp-roll-title {
+  text-align: center;
+  font-family: var(--font-title, serif) !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3em !important;
+  text-transform: uppercase;
+  color: rgba(226, 205, 156, 0.85) !important;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.arena-page .hp-roll-title::before,
+.arena-page .hp-roll-title::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+/* Bottoni classe / azioni: timbri squadrati serif */
+.arena-page .class-select-btn {
+  border-radius: 0 !important;
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.arena-page .btn-join,
+.arena-page .btn-cancel-loadout,
+.arena-page .btn-auto-pg,
+.arena-page .btn-auto-generate,
+.arena-page .hp-roll-buttons button,
+.arena-page .stat-assign-grid button {
+  border-radius: 0 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.arena-page .stat-budget-badge,
+.arena-page .stat-assign-hint {
+  border-radius: 0 !important;
+}
+
+/* Avatar e nome come frontespizio */
+.arena-page .loadout-char-name {
+  font-family: var(--font-title, serif) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.arena-page .loadout-avatar { border-radius: 0 !important; border: 1px solid rgba(212, 175, 55, 0.5) !important; }
+
+/* Pannelli interni della selezione (armi/spell/armature/oggetti) squadrati */
+.arena-page .join-zone .loadout-section,
+.arena-page .join-zone .loadout-group,
+.arena-page .join-zone .weapon-option,
+.arena-page .join-zone .spell-option,
+.arena-page .join-zone .armor-option,
+.arena-page .join-zone .item-option {
+  border-radius: 0 !important;
+}
