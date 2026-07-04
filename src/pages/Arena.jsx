@@ -8994,6 +8994,43 @@ export default function Arena() {
             }}>↺ Reset</button>
           </div>
 
+          {/* ── Zona Reset avanzato: azzeramenti globali (irreversibili) ── */}
+          <div className="master-actions master-reset-zone">
+            <button className="btn-reset" onClick={async () => {
+              if (!window.confirm("Azzerare i TITOLI VINTI di TUTTI i personaggi? Operazione irreversibile.")) return;
+              try {
+                const snap = await getDocs(collection(db, "characters"));
+                const targets = snap.docs.filter(d => (d.data().arenaTitles?.length) || d.data().arenaTitle);
+                for (const d of targets) {
+                  await updateDoc(doc(db, "characters", d.id), { arenaTitles: [], arenaTitle: null });
+                }
+                // Pulisce anche i titoli indossati negli snapshot del torneo in corso.
+                const snaps = arenaMeta.characterSnapshots || {};
+                const metaPatch = {};
+                Object.keys(snaps).forEach(uid => {
+                  if ((snaps[uid]?.titles?.length) || snaps[uid]?.title) {
+                    metaPatch[`characterSnapshots.${uid}.titles`] = [];
+                    metaPatch[`characterSnapshots.${uid}.title`] = null;
+                  }
+                });
+                if (Object.keys(metaPatch).length) await updateDoc(doc(db, "arena_meta", "global"), metaPatch);
+                alert(`Titoli vinti azzerati per ${targets.length} personagg${targets.length === 1 ? "io" : "i"}.`);
+              } catch (e) { console.error("clear titles:", e); alert("Errore azzeramento titoli: " + e.message); }
+            }}>🏷 Azzera titoli vinti (tutti)</button>
+
+            <button className="btn-reset" onClick={async () => {
+              if (!window.confirm("Azzerare gli ACQUISTI della Bottega di TUTTI i giocatori (arenaWeekly)? Operazione irreversibile.")) return;
+              try {
+                const snap = await getDocs(collection(db, "characters"));
+                const targets = snap.docs.filter(d => d.data().arenaWeekly);
+                for (const d of targets) {
+                  await updateDoc(doc(db, "characters", d.id), { arenaWeekly: null });
+                }
+                alert(`Acquisti Bottega azzerati per ${targets.length} giocator${targets.length === 1 ? "e" : "i"}.`);
+              } catch (e) { console.error("clear purchases:", e); alert("Errore azzeramento acquisti: " + e.message); }
+            }}>🧹 Azzera acquisti Bottega (tutti)</button>
+          </div>
+
           {masterJoinSetup && arenaMeta.phase === "registration" && (
             <div className="master-join-setup">
               <h4 className="master-join-setup-title">Crea il tuo personaggio</h4>
@@ -9308,6 +9345,10 @@ export default function Arena() {
           {/* ── Fase SELECTING: equipaggiamento ── */}
           {loadoutPhase === "selecting" && charPreview && (() => {
             const config       = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
+            // Bottega settimanale (solo torneo): risolvo gli acquisti così da MOSTRARLI
+            // nel loadout (armi comprate visibili nel tab Armi, resto come riepilogo).
+            const marketGear    = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly) : null;
+            const marketWeapons = (marketGear?.actions || []).filter(a => a.type === "weapon");
             const isRanger     = isRangerClass((charPreview.class || "").toLowerCase());
             const isWarlock    = isWarlockClass((charPreview.class || "").toLowerCase());
             const isArtificer  = isArtificerClass((charPreview.class || "").toLowerCase());
@@ -9453,6 +9494,24 @@ export default function Arena() {
                     });
                   })()}
                 </div>
+                {marketWeapons.length > 0 && (<>
+                  <div className="loadout-section-title" style={{ marginTop: 16 }}>🛒 Dalla Bottega — già equipaggiate</div>
+                  <div className="loadout-section-hint">Le armi comprate in vetrina sono <strong>sempre equipaggiate nei tornei</strong>, in aggiunta alle armi della classe.</div>
+                  <div className="loadout-grid">
+                    {marketWeapons.map(w => (
+                      <div key={w.name} className="loadout-item weapon selected market-weapon">
+                        <span className="loadout-item-icon">{w.icon}</span>
+                        <span className="loadout-item-name">{w.name}</span>
+                        <span className="loadout-item-damage">
+                          {w.damage}{(w.extraDamage || []).map(c => ` + ${c.dice} ${c.type}`).join("")}
+                        </span>
+                        {w.damageType && <span className={`loadout-item-dmgtype dt-${w.damageType}`}>{w.damageType}</span>}
+                        <span className="loadout-item-info">🛒 Bottega</span>
+                        <span className="loadout-check">✓</span>
+                      </div>
+                    ))}
+                  </div>
+                </>)}
                 </>)}
 
                 {/* ── TAB MAGIE: Incantesimi + Abilità ── */}

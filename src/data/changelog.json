@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "89.01",
+      "date": "2026-07-04",
+      "title": "Arena · acquisti visibili nel loadout + reset del Master",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Le armi comprate in Bottega ora compaiono nella schermata di equipaggiamento (tab Armi), marcate 🛒 Bottega e già equipaggiate, così si vede chiaramente cosa si porta in torneo."
+        },
+        {
+          "type": "feature",
+          "text": "Pannello Master: nuova zona di reset avanzato con \"Azzera titoli vinti (tutti)\" e \"Azzera acquisti Bottega (tutti)\", entrambi con conferma, in aggiunta al Reset del torneo."
+        }
+      ]
+    },
+    {
       "version": "89",
       "date": "2026-07-04",
       "title": "Arena · danni elementali e resistenze nella Bottega",
