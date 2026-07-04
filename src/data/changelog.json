@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "89.02",
+      "date": "2026-07-04",
+      "title": "Arena · contatore vittorie per giocatore",
+      "changes": [
+        {
+          "type": "feature",
+          "text": "Nel Pannello Master (lista giocatori) ogni giocatore mostra ora un contatore 🏆 con le vittorie ai tornei dell'Arena."
+        },
+        {
+          "type": "feature",
+          "text": "Nuovo strumento Master \"Azzera vincitori Arena (tutti)\": svuota la Sala dei Campioni e riporta a zero i contatori vittorie, con conferma."
+        }
+      ]
+    },
+    {
       "version": "89.01",
       "date": "2026-07-04",
       "title": "Arena · acquisti visibili nel loadout + reset del Master",

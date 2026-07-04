@@ -354,6 +354,7 @@ function MasterCoinPanel() {
   const [editCoins, setEditCoins] = useState({});
   const [playerFilter, setPlayerFilter] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [winsByUid, setWinsByUid] = useState({});
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
@@ -362,6 +363,16 @@ function MasterCoinPanel() {
         .filter(c => !isHiddenChar({ id: c.uid, name: c.name })); // nascondi i player esclusi
       list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       setAllChars(list);
+    });
+    return () => unsub();
+  }, []);
+
+  // Vittorie all'Arena per giocatore (derivate dallo storico tornei).
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "arena_tournament_history"), snap => {
+      const m = {};
+      snap.docs.forEach(d => { const w = d.data().winnerId; if (w) m[w] = (m[w] || 0) + 1; });
+      setWinsByUid(m);
     });
     return () => unsub();
   }, []);
@@ -430,6 +441,7 @@ function MasterCoinPanel() {
             <div key={ch.uid} className="am-coin-row am-coin-row--stacked">
               <div className="am-coin-row-top">
                 <span className="am-coin-name">{ch.name || ch.uid}</span>
+                <span className="am-coin-wins" title="Vittorie all'Arena">🏆 {winsByUid[ch.uid] || 0}</span>
                 <span className="am-coin-val">{cur} MA</span>
                 <input
                   className="am-coin-input"

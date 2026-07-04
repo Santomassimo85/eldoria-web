@@ -530,3 +530,12 @@
 .am-cat-resist-chip--immune .am-cat-resist-lvl { color: #7dd3fc; }
 .am-cat-resist-chip--vuln { border-color: rgba(212, 88, 66, 0.6); background: rgba(80, 22, 18, 0.4); }
 .am-cat-resist-chip--vuln .am-cat-resist-lvl { color: #ff9a7a; }
+
+/* Contatore vittorie all'Arena per giocatore (Pannello Master) */
+.am-coin-wins {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffd98a;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}

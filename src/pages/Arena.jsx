@@ -9029,6 +9029,18 @@ export default function Arena() {
                 alert(`Acquisti Bottega azzerati per ${targets.length} giocator${targets.length === 1 ? "e" : "i"}.`);
               } catch (e) { console.error("clear purchases:", e); alert("Errore azzeramento acquisti: " + e.message); }
             }}>🧹 Azzera acquisti Bottega (tutti)</button>
+
+            <button className="btn-reset" onClick={async () => {
+              if (!window.confirm("Azzerare TUTTI i vincitori dell'Arena? La Sala dei Campioni e i contatori vittorie tornano a zero. Operazione irreversibile.")) return;
+              try {
+                const snap = await getDocs(collection(db, "arena_tournament_history"));
+                for (const d of snap.docs) { await deleteDoc(doc(db, "arena_tournament_history", d.id)); }
+                if (arenaMeta.tournamentWinner) {
+                  await updateDoc(doc(db, "arena_meta", "global"), { tournamentWinner: null });
+                }
+                alert(`Azzerati ${snap.docs.length} record di vittoria dell'Arena.`);
+              } catch (e) { console.error("clear winners:", e); alert("Errore azzeramento vincitori: " + e.message); }
+            }}>🏆 Azzera vincitori Arena (tutti)</button>
           </div>
 
           {masterJoinSetup && arenaMeta.phase === "registration" && (
