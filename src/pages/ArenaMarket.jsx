@@ -355,6 +355,8 @@ function MasterCoinPanel() {
   const [playerFilter, setPlayerFilter] = useState("");
   const [resetting, setResetting] = useState(false);
   const [winsByUid, setWinsByUid] = useState({});
+  const [giveAll, setGiveAll] = useState("");   // MA da dare a tutti in un colpo
+  const [giving, setGiving] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "characters"), snap => {
@@ -401,6 +403,24 @@ function MasterCoinPanel() {
     await updateDoc(doc(db, "characters", uid), { arenaWeekly: { weekKey: aw.weekKey, purchases } });
   };
 
+  // ── Dai N Monete Arena a TUTTI ────────────────────────────────────────────
+  // Aggiunge (o toglie, se negativo) N MA a ogni giocatore rispetto alle attuali.
+  const giveCoinsToAll = async () => {
+    const n = parseInt(String(giveAll).trim(), 10);
+    if (!Number.isFinite(n) || n === 0) return;
+    if (!window.confirm(`${n > 0 ? "Dare" : "Togliere"} ${Math.abs(n)} Monete Arena a TUTTI i ${allChars.length} giocatori?`)) return;
+    setGiving(true);
+    try {
+      for (const ch of allChars) {
+        const next = Math.max(0, (ch.arenaCoins ?? 0) + n);
+        await updateDoc(doc(db, "characters", ch.uid), { arenaCoins: next });
+      }
+      setGiveAll("");
+    } finally {
+      setGiving(false);
+    }
+  };
+
   // ── Reset stagione: azzera le MA e i potenziamenti legacy di TUTTI ─────────
   // (gli acquisti settimanali correnti NON vengono toccati: scadono da soli).
   const resetSeason = async () => {
@@ -434,6 +454,24 @@ function MasterCoinPanel() {
           Monete: scrivi un numero per <strong>impostarlo</strong>, oppure <code>+N</code> / <code>−N</code> per
           <strong> aggiungere o togliere</strong> rispetto alle attuali (es. <code>+5</code>, <code>-3</code>). Invio per salvare.
         </p>
+        <div className="am-give-all">
+          <input
+            className="am-coin-input am-give-all-input"
+            type="text"
+            inputMode="numeric"
+            placeholder="es. 10 (o -5)"
+            value={giveAll}
+            onChange={e => setGiveAll(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") giveCoinsToAll(); }}
+          />
+          <button
+            className="am-coin-save am-give-all-btn"
+            disabled={giving || !String(giveAll).trim()}
+            onClick={giveCoinsToAll}
+          >
+            {giving ? "⏳ In corso…" : "🪙 Dai MA a TUTTI"}
+          </button>
+        </div>
         <button className="am-coin-save am-season-reset" disabled={resetting} onClick={resetSeason}>
           {resetting ? "⏳ Reset in corso…" : "🧹 Azzera MA + potenziamenti vecchi (TUTTI)"}
         </button>

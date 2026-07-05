@@ -1226,6 +1226,15 @@
 .am-mp-weekly-x { font-weight: 700; opacity: 0.7; }
 .am-mp-weekly-chip--removable:hover .am-mp-weekly-x { opacity: 1; }
 
+.am-give-all {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.am-give-all-input { max-width: 130px; }
+.am-give-all-btn { white-space: nowrap; }
+
 .am-season-reset {
   display: block;
   margin: 4px 0 12px;
