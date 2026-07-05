@@ -106,6 +106,12 @@ export default function ArenaMarket() {
   // ── Acquisto settimanale ────────────────────────────────────────────────────
   const buyMarketItem = async (item) => {
     if (!currentUser || !charData) return;
+    // Acquisti consentiti prima dell'inizio del torneo e nelle pause Bottega tra
+    // i round (fase "shopping"). Durante un round in combattimento sono bloccati.
+    if (!isMaster && arenaMeta?.phase === "combat") {
+      showMsg("Torneo in corso: potrai acquistare nella pausa Bottega tra un round e l'altro.", "err");
+      return;
+    }
     if (coins < item.price) { showMsg("Monete insufficienti.", "err"); return; }
     const maxPerWeek = Math.max(1, item.maxPerWeek ?? 1);
     const cur = ownedQty(item.id);
@@ -180,6 +186,12 @@ export default function ArenaMarket() {
       />
 
       <div className="cine-wrap am-body">
+      {/* Stato acquisti in base alla fase del torneo. */}
+      {arenaMeta?.phase === "shopping" ? (
+        <div className="am-message">🛒 Pausa Bottega aperta: acquista e ri-equipaggiati, il prossimo round parte allo scadere del tempo.</div>
+      ) : (!isMaster && arenaMeta?.phase === "combat") ? (
+        <div className="am-message am-message--err">⚔ Torneo in corso: gli acquisti riaprono nella pausa Bottega tra un round e l'altro.</div>
+      ) : null}
       {message && (
         <div className={`am-message ${message.type === "err" ? "am-message--err" : ""}`}>
           {message.text}

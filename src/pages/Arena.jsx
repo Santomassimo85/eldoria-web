@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../AuthContext";
 import { showD20Roll, DICE_SKINS, setDiceSkin } from "../components/DiceRoll";
 import DieIcon from "../components/DieIcon";
+import TimerDisplay from "../components/TimerDisplay";
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
 import { currentWeekKey } from "../data/arenaWeek";
@@ -3171,6 +3172,9 @@ export default function Arena() {
   // funAcceptMatchId: null se sto creando una sfida, matchId se sto accettando.
   // aiMatchPending: true se il loadout sta preparando una sfida contro l'IA.
   const [loadoutContext, setLoadoutContext] = useState("tournament");
+  // reloadoutMode: il partecipante sta ri-equipaggiando durante la finestra di
+  // shopping (classe/caratteristiche/HP bloccati; cambia solo equip + acquisti).
+  const [reloadoutMode, setReloadoutMode] = useState(false);
   const [funAcceptMatchId, setFunAcceptMatchId] = useState(null);
   const [aiMatchPending, setAiMatchPending] = useState(false);
 
@@ -3321,13 +3325,25 @@ export default function Arena() {
     if (participants.length === 0) return;
     const winnerSnap = snaps[winnerId] || {};
     const winnerClass = (winnerSnap.class || "").toLowerCase().trim();
+    // 2° classificato = l'altro finalista.
+    const finalM = matches.find(m => m.kind === "final" && m.winner);
+    const runnerUpId = (finalM?.players || []).map(p => p.id).find(id => id && id !== winnerId) || null;
+    const runnerUpSnap = runnerUpId ? (snaps[runnerUpId] || {}) : {};
+    // Numero torneo progressivo (1-based) e premi configurati per posizione.
+    const tournamentNumber = (tournamentHistory?.length || 0) + 1;
+    const prizeConfig = arenaMeta?.prizeConfig || null;
     try {
       await addDoc(collection(db, "arena_tournament_history"), {
         ts: serverTimestamp(),
+        tournamentNumber,
         winnerId: winnerId || null,
         winnerName: winnerSnap.name || null,
         winnerImage: winnerSnap.image || null,
         winnerClass: winnerClass || null,
+        runnerUpId,
+        runnerUpName: runnerUpSnap.name || null,
+        runnerUpClass: (runnerUpSnap.class || "").toLowerCase().trim() || null,
+        prizeConfig,
         participants,
       });
     } catch (e) {
@@ -3467,6 +3483,34 @@ export default function Arena() {
       image: c.image || profileLookup[c.uid]?.image || null,
     }))
   , [championsRaw, profileLookup]);
+
+  // Classifica generale a punti: vittoria +3, 2° posto +2, partecipazione +1.
+  // Visibile a tutti; sommata su tutti i tornei archiviati.
+  const arenaLeaderboard = useMemo(() => {
+    const map = {};
+    const bump = (uid, name, pts) => {
+      if (!uid) return;
+      if (!map[uid]) map[uid] = { uid, name: name || null, points: 0, wins: 0, seconds: 0, plays: 0 };
+      map[uid].points += pts;
+      if (name && !map[uid].name) map[uid].name = name;
+    };
+    for (const t of tournamentHistory) {
+      const winner = t.winnerId, runnerUp = t.runnerUpId;
+      (t.participants || []).forEach(p => {
+        if (!p?.uid) return;
+        if (p.uid === winner)        { bump(p.uid, p.name, 3); map[p.uid].wins++; }
+        else if (p.uid === runnerUp) { bump(p.uid, p.name, 2); map[p.uid].seconds++; }
+        else                         { bump(p.uid, p.name, 1); }
+        map[p.uid].plays++;
+      });
+      // Vincitore/2° non sempre presenti in participants (safety).
+      if (winner && !(t.participants || []).some(p => p.uid === winner)) { bump(winner, t.winnerName, 3); map[winner].wins++; map[winner].plays++; }
+      if (runnerUp && !(t.participants || []).some(p => p.uid === runnerUp)) { bump(runnerUp, t.runnerUpName, 2); map[runnerUp].seconds++; map[runnerUp].plays++; }
+    }
+    return Object.values(map)
+      .map(e => ({ ...e, name: e.name || profileLookup[e.uid]?.name || null }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins);
+  }, [tournamentHistory, profileLookup]);
 
   const mostRecentChampion = useMemo(() => {
     const enrich = (champ) => champ ? {
@@ -3663,6 +3707,43 @@ export default function Arena() {
     setArenaView("join");
   };
 
+  // Ri-equipaggiamento durante la finestra di shopping (torneo in corso).
+  // Classe, caratteristiche e HP restano BLOCCATI dal torneo: si ripescano
+  // dallo snapshot esistente; si possono ricomprare/riequipaggiare armi, magie,
+  // oggetti e acquisti della Bottega per il round successivo.
+  const openReloadout = async () => {
+    const snap = arenaMeta?.characterSnapshots?.[currentUser.uid];
+    if (!snap) { alert("Non risulti iscritto al torneo in corso."); return; }
+    let arenaWeekly = null, ownedTitles = [];
+    try {
+      const cs = await getDoc(doc(db, "characters", currentUser.uid));
+      if (cs.exists()) { const d = cs.data(); arenaWeekly = d.arenaWeekly || null; ownedTitles = getCharTitles(d); }
+    } catch { /* ignore */ }
+    setCharPreview({
+      name: snap.name, image: snap.image || null,
+      class: snap.class,
+      stats: { ...(snap.stats || {}) },     // caratteristiche bloccate
+      arenaBuffs: snap.arenaBuffs || {},
+      arenaTitles: ownedTitles,
+      classLevels: snap.classLevels || {},
+      arenaSubclass: {},
+      arenaWeekly,
+      rolledHp: snap.stats?.maxHp ?? null,   // HP bloccato dal torneo
+      hpRerollCount: 99,
+    });
+    setPendingStats({ ...(snap.stats || {}) });
+    setPendingWeapons([]); setPendingSpells([]); setPendingSkills([]);
+    setPendingArmor(null); setPendingShield(null);
+    setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0 });
+    setPendingMarketSel({});
+    setPendingTitle((snap.titles && snap.titles[0]) || null);
+    setPendingPet(null); setPendingDemon(null); setPendingConstruct(null);
+    setLoadoutContext("tournament");
+    setReloadoutMode(true);
+    setLoadoutPhase("selecting");
+    setArenaView("join");
+  };
+
   // ── STEP 3: tira HP (+CON per dado) ──────────────────────────────────────
   const rollHp = () => {
     const { count, sides } = getHpDice(charPreview.class, charPreview.classLevels);
@@ -3771,6 +3852,25 @@ export default function Arena() {
       // { [tipoDanno]: "resist" | "immune" | "vuln" }. Lette in applyTypedDamage.
       marketResist: marketGear?.resist || {},
     };
+
+    // ── Branch: ri-equipaggiamento durante lo shopping (torneo in corso) ───
+    // Aggiorna lo snapshot del partecipante e ricostruisce il suo posto nel
+    // round in coda, così gli acquisti fatti ora valgono dal prossimo round.
+    if (reloadoutMode) {
+      const mergedSnaps = { ...(arenaMeta?.characterSnapshots || {}), [currentUser.uid]: snapshot };
+      const updates = { [`characterSnapshots.${currentUser.uid}`]: snapshot };
+      const pend = arenaMeta?.pendingNextMatches;
+      if (Array.isArray(pend) && pend.length) {
+        updates.pendingNextMatches = pend.map(m =>
+          (m.players || []).some(p => p.id === currentUser.uid)
+            ? { ...m, players: m.players.map(p => p.id === currentUser.uid ? buildPlayerForMatch(currentUser.uid, mergedSnaps) : p) }
+            : m
+        );
+      }
+      await updateDoc(doc(db, "arena_meta", "global"), updates);
+      cancelLoadout();
+      return;
+    }
 
     // ── Branch: Arena Libera (Sfida) ──────────────────────────────────────
     if (loadoutContext === "fun") {
@@ -3921,6 +4021,7 @@ export default function Arena() {
     setPendingTitle(null);
     setLoadoutTab("weapons");
     setLoadoutContext("tournament");
+    setReloadoutMode(false);
     setFunAcceptMatchId(null);
     setAiMatchPending(false);
     setArenaView("hub");
@@ -4444,25 +4545,51 @@ export default function Arena() {
     }
   };
 
-  // Promozione MANUALE del round in coda (override del Master, salta l'attesa).
-  const promotePendingRoundNow = async () => {
-    const pending = arenaMeta?.pendingNextMatches;
-    if (!pending || pending.length === 0) {
-      // Nessun round in coda: prova l'avanzamento classico (fallback).
-      return advanceRound();
-    }
-    const existing = arenaMeta?.matches || [];
-    const existingIds = new Set(existing.map(m => m.matchId));
-    const toAdd = pending.filter(m => !existingIds.has(m.matchId));
-    await updateDoc(doc(db, "arena_meta", "global"), {
-      matches: [...existing, ...toAdd],
-      currentRound: arenaMeta?.pendingNextRound || (arenaMeta?.currentRound || 1) + 1,
-      phase: "combat",
-      shopEndsAt: null,
-      pendingNextMatches: null,
-      pendingNextRound: null,
+  // Promuove il round in coda (spostamento dati, con lock a transazione così
+  // client e Cloud Function non creano doppioni). Idempotente: se la fase non è
+  // più "shopping" non fa nulla.
+  const commitPendingPromotion = async () => {
+    const ref = doc(db, "arena_meta", "global");
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const d = snap.data();
+      if (d.phase !== "shopping") return;
+      const pending = Array.isArray(d.pendingNextMatches) ? d.pendingNextMatches : [];
+      const existing = Array.isArray(d.matches) ? d.matches : [];
+      const existingIds = new Set(existing.map(m => m.matchId));
+      const toAdd = pending.filter(m => !existingIds.has(m.matchId));
+      tx.update(ref, {
+        matches: [...existing, ...toAdd],
+        currentRound: d.pendingNextRound || (d.currentRound || 1) + 1,
+        phase: "combat",
+        shopEndsAt: null,
+        pendingNextMatches: null,
+        pendingNextRound: null,
+      });
     });
   };
+
+  // Override MANUALE del Master ("avanza ora", salta l'attesa dell'ora).
+  const promotePendingRoundNow = async () => {
+    if (!(arenaMeta?.pendingNextMatches?.length)) return advanceRound();
+    await commitPendingPromotion();
+  };
+
+  // Auto-avanzamento lato client: quando l'ora di shopping scade, il primo
+  // client con l'Arena aperta promuove il round (la Cloud Function fa lo stesso
+  // come rete di sicurezza; la transazione impedisce doppioni).
+  useEffect(() => {
+    if (arenaMeta?.phase !== "shopping" || !arenaMeta?.shopEndsAt) return;
+    const endMs = new Date(arenaMeta.shopEndsAt).getTime();
+    const tick = () => {
+      if (Date.now() >= endMs) commitPendingPromotion().catch(e => console.error("[arena] auto-promote:", e));
+    };
+    tick();
+    const id = setInterval(tick, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arenaMeta?.phase, arenaMeta?.shopEndsAt]);
 
   const startTournament = async () => {
     if ((arenaMeta.participants || []).length < 2) return alert("Minimo 2 partecipanti!");
@@ -8890,6 +9017,28 @@ export default function Arena() {
               </button>
             )}
 
+            {/* PAUSA BOTTEGA — finestra di acquisti tra un round e l'altro */}
+            {arenaMeta.phase === "shopping" && (
+              <div className="arena-shop-banner">
+                <div className="arena-shop-banner-head">
+                  <span className="arena-shop-banner-tag">🛒 Pausa Bottega</span>
+                  <TimerDisplay expiryDate={arenaMeta.shopEndsAt} />
+                </div>
+                <p className="arena-shop-banner-txt">
+                  Round completato. Hai 1 ora per acquistare al Mercato Arena e ri-equipaggiarti: il prossimo round parte in automatico allo scadere del tempo.
+                </p>
+                <div className="arena-shop-banner-actions">
+                  <a className="arena-shop-btn" href="/arena-bottega">🛍 Vai al Mercato</a>
+                  {(arenaMeta.participants || []).includes(currentUser?.uid) && (
+                    <button type="button" className="arena-shop-btn" onClick={openReloadout}>⚙ Aggiorna assetto</button>
+                  )}
+                  {isMaster && (
+                    <button type="button" className="arena-shop-btn arena-shop-btn--master" onClick={promotePendingRoundNow}>⏭ Avanza ora</button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Programma della serata: righe numerate stile locandina.
                 NB: <div role="navigation">, NON <nav> — shell.css trasforma ogni
                 <nav> nel drawer di sito (nascosto sotto i 1300px, !important). */}
@@ -9140,6 +9289,41 @@ export default function Arena() {
             }
           }}
         />
+      )}
+
+      {/* CLASSIFICA GENERALE A PUNTI (visibile a tutti) */}
+      {arenaLeaderboard.length > 0 && (
+        <div className="arena-leaderboard" style={{ marginTop: 24 }}>
+          <h3 className="arena-info-title">🏅 Classifica Generale <small style={{ fontWeight: 400 }}>(vittoria +3 · 2° posto +2 · partecipazione +1)</small></h3>
+          <ol className="arena-lead-list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {arenaLeaderboard.map((e, i) => (
+              <li key={e.uid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: e.uid === currentUser?.uid ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.04)", marginBottom: 6 }}>
+                <span style={{ width: 26, textAlign: "center", fontWeight: 700, opacity: 0.8 }}>{i + 1}</span>
+                <span style={{ flex: 1, fontWeight: 600 }}>{e.name || "—"}</span>
+                <span style={{ fontSize: "0.8rem", opacity: 0.75 }}>🏆 {e.wins} · 🥈 {e.seconds} · 🎟 {e.plays}</span>
+                <span style={{ fontWeight: 800, minWidth: 54, textAlign: "right" }}>{e.points} pt</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {/* STORICO TORNEI NUMERATI (solo Master) */}
+      {isMaster && tournamentHistory.length > 0 && (
+        <div className="arena-tourney-log" style={{ marginTop: 24 }}>
+          <h3 className="arena-info-title">📜 Storico Tornei <small style={{ fontWeight: 400 }}>(dettaglio premi)</small></h3>
+          {[...tournamentHistory]
+            .sort((a, b) => (b.tournamentNumber || 0) - (a.tournamentNumber || 0) || ((b.ts?.toMillis?.() || 0) - (a.ts?.toMillis?.() || 0)))
+            .map(t => (
+              <div key={t.id} style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.04)", marginBottom: 8 }}>
+                <div style={{ fontWeight: 800, marginBottom: 4 }}>Torneo #{t.tournamentNumber || "?"}</div>
+                <div>🥇 1°: <strong>{t.winnerName || "—"}</strong>{t.winnerClass ? ` · ${t.winnerClass}` : ""}</div>
+                <div>🥈 2°: {t.runnerUpName || "—"}{t.runnerUpClass ? ` · ${t.runnerUpClass}` : ""}</div>
+                <div style={{ fontSize: "0.85rem", opacity: 0.85 }}>👥 {(t.participants || []).map(p => p.name).filter(Boolean).join(", ") || "—"}</div>
+                {formatPrizeConfig(t.prizeConfig) && <div style={{ fontSize: "0.85rem", marginTop: 2 }}>🎁 {formatPrizeConfig(t.prizeConfig)}</div>}
+              </div>
+            ))}
+        </div>
       )}
       </>)}
 

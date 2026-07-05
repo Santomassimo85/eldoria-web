@@ -747,3 +747,61 @@ body .arena-page.arena-page .hall-wins {
 body .arena-page.arena-page .arena-reward-deco {
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5)) !important;
 }
+
+/* ── Pausa Bottega: banner della finestra di acquisti tra i round ────────── */
+.arena-shop-banner {
+  margin: 12px 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.12), rgba(0, 0, 0, 0.25));
+  box-shadow: inset 0 0 24px rgba(212, 175, 55, 0.08);
+}
+.arena-shop-banner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.arena-shop-banner-tag {
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #f0d485;
+}
+.arena-shop-banner-head .timer-countdown-text {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #ffe7a8;
+}
+.arena-shop-banner-txt {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+.arena-shop-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.arena-shop-btn {
+  appearance: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4e6c0;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.arena-shop-btn:hover { background: rgba(212, 175, 55, 0.18); }
+.arena-shop-btn--master {
+  border-color: rgba(192, 57, 43, 0.7);
+  background: rgba(192, 57, 43, 0.22);
+  color: #ffd9d2;
+}
