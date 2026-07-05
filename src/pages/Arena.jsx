@@ -1409,6 +1409,7 @@ function formatPrizeConfig(cfg) {
 
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
+const ARENA_SHOP_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora di acquisti tra un round e l'altro
 const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
 
 // Smite del Paladino — aggiunto automaticamente (max 2 usi)
@@ -3152,6 +3153,11 @@ export default function Arena() {
     // immediatamente successiva parte da una base coerente (l'onSnapshot
     // confermerà lo stesso valore poco dopo).
     setArenaMeta(prev => (prev ? { ...prev, matches: merged, ...(extraFields || {}) } : prev));
+    // Se questa commit ha completato un round di torneo, apre in automatico la
+    // finestra di acquisti (salta se la commit era la chiusura del torneo).
+    if (!extraFields?.phase && !extraFields?.tournamentWinner) {
+      try { await maybeOpenShoppingWindow(merged); } catch (e) { console.error("[arena] shopping window:", e); }
+    }
   };
 
   // Master join setup
@@ -4374,6 +4380,88 @@ export default function Arena() {
     const a = roundRobinSchedule(arenaMeta.groupA || []).length;
     const b = roundRobinSchedule(arenaMeta.groupB || []).length;
     return Math.max(a, b);
+  };
+
+  // ── Finestre di acquisto tra i round ─────────────────────────────────────
+  // Pre-calcola i match del round successivo a partire dallo stato corrente,
+  // così l'avanzamento automatico (Cloud Function) è solo uno spostamento dati.
+  // Restituisce { matches, round } oppure null se non c'è un round successivo.
+  const computePendingRound = (matches, cr) => {
+    const totalGroupRounds = groupRoundsTotal();
+    const snapshots = arenaMeta?.characterSnapshots || {};
+    const finalExists = (matches || []).some(m => m.kind === "final");
+    if (cr < totalGroupRounds) {
+      const next = cr + 1;
+      const more = [
+        ...buildGroupRoundMatches("A", next, snapshots),
+        ...buildGroupRoundMatches("B", next, snapshots),
+      ];
+      if (more.length === 0) return null;
+      return { matches: more, round: next };
+    }
+    if (finalExists) return null;
+    const standA = computeGroupStandings("A", matches);
+    const standB = computeGroupStandings("B", matches);
+    const winnerA = standA[0]?.uid, winnerB = standB[0]?.uid;
+    if (!winnerA || !winnerB) return null;
+    return { matches: [buildFinalMatch(winnerA, winnerB, snapshots)], round: cr };
+  };
+
+  // Apre la finestra di shopping SE la commit ha appena completato il round
+  // corrente (tutti i match di gruppo del round finiti) e c'è un round dopo.
+  const maybeOpenShoppingWindow = async (matches) => {
+    const meta = arenaMeta;
+    if (!meta) return;
+    if (meta.phase !== "combat") return;          // solo durante un torneo attivo
+    if (meta.tournamentWinner) return;
+    if (meta.pendingNextMatches) return;          // già in shopping/pending
+    const cr = meta.currentRound || 1;
+    const roundGroup = (matches || []).filter(m => m.kind === "group" && typeof m.matchId === "string" && m.matchId.includes(`_R${cr}_`));
+    if (roundGroup.length === 0) return;
+    if (!roundGroup.every(m => m.status === "finished")) return;
+    const pending = computePendingRound(matches, cr);
+    if (!pending || pending.matches.length === 0) return;
+    const existingIds = new Set((matches || []).map(m => m.matchId));
+    if (pending.matches.some(m => existingIds.has(m.matchId))) return;
+
+    const shopEndsAt = new Date(Date.now() + ARENA_SHOP_DURATION).toISOString();
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      phase: "shopping",
+      shopEndsAt,
+      pendingNextMatches: pending.matches,
+      pendingNextRound: pending.round,
+    });
+    // Avvisa i partecipanti che possono spendere le Monete Arena.
+    const parts = (meta.participants || []).filter(Boolean);
+    for (const uid of parts) {
+      try {
+        await addDoc(collection(db, "notifications"), {
+          userId: uid, read: false, timestamp: serverTimestamp(),
+          title: "🛒 Bottega Arena aperta",
+          message: "Hai 1 ora per acquistare al Mercato Arena prima del prossimo round. Spendi le tue Monete Arena!",
+        });
+      } catch { /* uid senza doc: ignora */ }
+    }
+  };
+
+  // Promozione MANUALE del round in coda (override del Master, salta l'attesa).
+  const promotePendingRoundNow = async () => {
+    const pending = arenaMeta?.pendingNextMatches;
+    if (!pending || pending.length === 0) {
+      // Nessun round in coda: prova l'avanzamento classico (fallback).
+      return advanceRound();
+    }
+    const existing = arenaMeta?.matches || [];
+    const existingIds = new Set(existing.map(m => m.matchId));
+    const toAdd = pending.filter(m => !existingIds.has(m.matchId));
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      matches: [...existing, ...toAdd],
+      currentRound: arenaMeta?.pendingNextRound || (arenaMeta?.currentRound || 1) + 1,
+      phase: "combat",
+      shopEndsAt: null,
+      pendingNextMatches: null,
+      pendingNextRound: null,
+    });
   };
 
   const startTournament = async () => {

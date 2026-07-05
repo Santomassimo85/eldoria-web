@@ -160,6 +160,79 @@ exports.cleanupExpiredSessions = onSchedule(
     },
 );
 
+// ── ARENA · reset settimanale delle Monete Arena ────────────────────────────
+// Lunedì 00:01 (Europe/Rome): ogni personaggio riparte con 60 Monete Arena.
+// È un "portafoglio settimanale": il saldo viene IMPOSTATO a 60 (non sommato),
+// così le vincite/avanzi della settimana precedente si azzerano. Gli acquisti
+// del market scadono già da soli la domenica 24:00 (chiave-settimana lato client).
+const ARENA_WEEKLY_COINS = 60;
+exports.arenaWeeklyReset = onSchedule(
+    { schedule: "1 0 * * 1", timeZone: "Europe/Rome", region: "us-central1" },
+    async () => {
+        const dbAdmin = admin.firestore();
+        try {
+            const snap = await dbAdmin.collection("characters").get();
+            if (snap.empty) { console.log("⏸ arenaWeeklyReset: nessun personaggio."); return; }
+            // Batch da 500 (limite Firestore).
+            let batch = dbAdmin.batch();
+            let n = 0, total = 0;
+            for (const d of snap.docs) {
+                batch.update(d.ref, { arenaCoins: ARENA_WEEKLY_COINS });
+                n++; total++;
+                if (n === 500) { await batch.commit(); batch = dbAdmin.batch(); n = 0; }
+            }
+            if (n > 0) await batch.commit();
+            console.log(`🪙 arenaWeeklyReset: ${total} personaggi riportati a ${ARENA_WEEKLY_COINS} Monete Arena.`);
+        } catch (err) {
+            console.error("❌ arenaWeeklyReset fallita:", err);
+        }
+    },
+);
+
+// ── ARENA · avanzamento automatico del round dopo la finestra di shopping ────
+// Ogni minuto: se l'Arena è in fase "shopping" e l'ora di acquisti è scaduta,
+// promuove i match del round successivo (GIÀ pre-calcolati dal client in
+// `pendingNextMatches`). La funzione fa solo uno SPOSTAMENTO di dati: nessuna
+// logica di combattimento vive qui, così non può divergere dal client.
+exports.arenaAutoAdvance = onSchedule(
+    { schedule: "every 1 minutes", timeZone: "Europe/Rome", region: "us-central1" },
+    async () => {
+        const dbAdmin = admin.firestore();
+        const ref = dbAdmin.doc("arena_meta/global");
+        try {
+            await dbAdmin.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                if (!snap.exists) return;
+                const data = snap.data();
+                if (data.phase !== "shopping") return;
+                if (!data.shopEndsAt) return;
+                const endMs = data.shopEndsAt.toMillis
+                    ? data.shopEndsAt.toMillis()
+                    : new Date(data.shopEndsAt).getTime();
+                if (Date.now() < endMs) return;
+
+                const pending = data.pendingNextMatches;
+                if (!Array.isArray(pending) || pending.length === 0) {
+                    // Niente da promuovere: chiudi comunque la fase shopping.
+                    tx.update(ref, { phase: "combat", shopEndsAt: null, pendingNextMatches: null, pendingNextRound: null });
+                    return;
+                }
+                const existing = Array.isArray(data.matches) ? data.matches : [];
+                tx.update(ref, {
+                    matches: [...existing, ...pending],
+                    currentRound: data.pendingNextRound || (data.currentRound || 1) + 1,
+                    phase: "combat",
+                    shopEndsAt: null,
+                    pendingNextMatches: null,
+                    pendingNextRound: null,
+                });
+            });
+        } catch (err) {
+            console.error("❌ arenaAutoAdvance fallita:", err);
+        }
+    },
+);
+
 // --- FUNZIONE PRINCIPALE ---
 exports.notifyMasterOnBid = onDocumentUpdated('items/{itemId}', async (event) => {
         const itemId = event.params.itemId;

@@ -100,7 +100,7 @@ const buildCityHtml = (c) => {
 const MAP_STYLES = [
   { key: "antica",     label: "Cartografia antica", suffix: "Hand-drawn antique cartography, aged parchment texture, ink linework with soft watercolor washes, muted sepia and earth tones, old-world map feel." },
   { key: "realistica", label: "Vista realistica",   suffix: "Realistic top-down bird's-eye rendering, detailed rooftops and terrain, soft natural daylight, semi-photographic painterly finish." },
-  { key: "inchiostro", label: "Inchiostro B&N",     suffix: "Black and white ink illustration, fine cross-hatching, high contrast, classic RPG rulebook line-art map, monochrome, no color." },
+  { key: "vivida",     label: "Miniatura vivida",   suffix: "Lush, vividly colored fantasy map illustration, luminous saturated colors, vibrant emerald greens, deep blues and warm ochres, rich painterly detail, glowing storybook atmosphere." },
   { key: "colorata",   label: "Fantasy colorata",   suffix: "Vibrant colored fantasy game map, clean stylized shapes, saturated palette, crisp digital illustration, boardgame-style clarity." },
 ];
 const COVER_STYLES = [
