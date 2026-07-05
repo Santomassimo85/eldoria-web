@@ -122,9 +122,15 @@ export default function GenerateSession() {
     return <p style={{ textAlign: "center", paddingTop: 100 }}>Accesso negato: solo DM.</p>;
   }
 
+  // Il co-master non ha accesso alla Console del Master (/dm-admin): per lui il
+  // back-link torna alla home invece di finire su una pagina "Accesso negato".
+  const isPrimaryMaster = currentUser?.email === "santomassimo85@gmail.com";
+  const backTo = isPrimaryMaster ? "/dm-admin" : "/";
+  const backLabel = isPrimaryMaster ? "← Console del Master" : "← Torna alla home";
+
   return (
     <section className="admin-summary-page sumadm">
-      <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
+      <Link to={backTo} className="adm-back">{backLabel}</Link>
 
       <header className="sumadm-hero">
         <div className="sumadm-hero-titles">

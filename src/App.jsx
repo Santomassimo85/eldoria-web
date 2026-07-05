@@ -230,6 +230,14 @@ const SummaryAdminNavLink = ({ closeMenu }) => {
       >
         MARKET
       </NavLink>
+      <NavLink
+        to="/dm/generate-session"
+        className={({ isActive }) => isActive ? "active admin-link" : "admin-link"}
+        onClick={closeMenu}
+        style={linkStyle}
+      >
+        GENERA SESSIONE
+      </NavLink>
     </>
   );
 };
