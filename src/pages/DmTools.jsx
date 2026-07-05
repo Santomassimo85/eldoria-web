@@ -66,6 +66,40 @@ const scenePromptFull = (scena, styleKey) => {
   return `${String(scena || "").trim()}. ${s.suffix} No text, no lettering, no speech bubbles, no frame, no border.`;
 };
 
+const CONTINENTI = ["Vathriddon", "Ehkia", "Ohzkie"];
+
+// Prompt di default per la COPERTINA del luogo (vista scenografica, NON una mappa).
+const cityCoverPrompt = (c) => {
+  if (!c) return "";
+  const firstLine = String(c.descrizione || "").split(/(?<=[.!?])\s/)[0] || "";
+  return `Establishing wide landscape shot of ${c.nome || "a settlement"}, a ${c.dimensione || "town"} — ${c.carattere || ""}. ${firstLine} Epic fantasy oil painting, cinematic dramatic lighting, rich painterly brushwork, deep atmospheric colors. No text, no lettering, no map, no grid, no frame, no border.`;
+};
+
+// Compone la descrizione HTML del luogo (stessa resa dell'Atlante — geo_archive).
+const buildCityHtml = (c) => {
+  const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const field = (label, val) => (val ? `<p><strong>${label}:</strong> ${esc(val)}</p>` : "");
+  const parts = [];
+  if (c.descrizione) parts.push(`<p>${esc(c.descrizione)}</p>`);
+  parts.push(field("Dimensione", c.dimensione));
+  parts.push(field("Carattere", c.carattere));
+  parts.push(field("Governo", c.capo ? `${c.governo} — ${c.capo}` : c.governo));
+  parts.push(field("Difesa", c.difesa));
+  parts.push(field("Religione", c.religione));
+  parts.push(field("Economia", c.economia));
+  if ((c.luoghi || []).length) {
+    parts.push("<p><strong>Luoghi notevoli</strong></p><ul>");
+    c.luoghi.forEach((l) => parts.push(`<li><strong>${esc(l.nome)}</strong> — ${esc(l.tipo)}: ${esc(l.descrizione)}</li>`));
+    parts.push("</ul>");
+  }
+  if ((c.ganci || []).length) {
+    parts.push("<p><strong>Ganci narrativi</strong></p><ul>");
+    c.ganci.forEach((g) => parts.push(`<li>${esc(g)}</li>`));
+    parts.push("</ul>");
+  }
+  return parts.filter(Boolean).join("\n");
+};
+
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
    Incontri, Loot, Città (descrizione + mappa AI).
@@ -88,6 +122,15 @@ export default function DmTools() {
   const [mapPrompt, setMapPrompt] = useState("");
   const [mapImg,    setMapImg]    = useState(null);
   const [mapBusy,   setMapBusy]   = useState(false);
+
+  // ── Città: continente, copertina (NON è la mappa) e salvataggio nell'Atlante ──
+  const [cityContinent, setCityContinent] = useState("Vathriddon");
+  const [coverPrompt,   setCoverPrompt]   = useState("");
+  const [coverImg,      setCoverImg]      = useState(null);
+  const [coverBusy,     setCoverBusy]     = useState(false);
+  const [citySaving,    setCitySaving]    = useState(false);
+  const [citySaved,     setCitySaved]     = useState(false);
+  const [cityMsg,       setCityMsg]       = useState("");
 
   // ── Tab "Cronaca" (riassunto di sessione) ──
   const [ria, setRia]           = useState({ party: "AMEA", date: "", linee: "" });
@@ -125,6 +168,7 @@ export default function DmTools() {
 
   async function generate() {
     setBusy(true); setMsg("Sto generando…"); setOut(null); setMapImg(null); setMapPrompt("");
+    setCoverImg(null); setCoverPrompt(""); setCitySaved(false); setCityMsg("");
     const input = tab === "incontro" ? enc : tab === "loot" ? loot : city;
     try {
       const r = await fetch(API, {
@@ -134,7 +178,10 @@ export default function DmTools() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setOut(data); setMsg("");
-      if (tab === "citta" && data.mapPrompt) setMapPrompt(data.mapPrompt);
+      if (tab === "citta") {
+        if (data.mapPrompt) setMapPrompt(data.mapPrompt);
+        setCoverPrompt(cityCoverPrompt(data));
+      }
       const etichetta = tab === "incontro" ? "Incontro" : tab === "loot" ? "Loot" : "Città";
       logAgent("dm-tools", "success", `${etichetta} generato (${data.nome || data.titolo || tab})`, { tipo: tab }, { count: true });
     } catch (e) {
@@ -164,6 +211,70 @@ export default function DmTools() {
   function copyPrompt() {
     navigator.clipboard?.writeText(mapPrompt);
     setMsg("Prompt copiato.");
+  }
+
+  // Scarica la mappa generata (NON viene salvata online: serve al Master su Foundry).
+  function scaricaMappa() {
+    if (!mapImg) return;
+    const a = document.createElement("a");
+    a.href = mapImg;
+    a.download = `mappa-${(out?.nome || "citta").replace(/\s+/g, "_")}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // Genera la COPERTINA del luogo (immagine scenografica, diversa dalla mappa).
+  async function generaCopertina() {
+    if (!coverPrompt.trim()) return;
+    setCoverBusy(true); setCoverImg(null); setCityMsg("");
+    try {
+      const r = await fetch("/api/genera-immagine", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: coverPrompt })
+      });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setCoverImg(data.immagine);
+      setCitySaved(false);
+      logAgent("genera-immagine", "success", "Copertina città generata", {}, { count: true });
+    } catch (e) {
+      setCityMsg("Errore copertina: " + e.message);
+      logAgent("genera-immagine", "error", e.message);
+    } finally { setCoverBusy(false); }
+  }
+
+  // Salva il luogo generato nell'Atlante (geo_archive), nel continente scelto.
+  // La copertina (se generata) viene caricata su Storage; la mappa NON viene salvata.
+  async function salvaCitta() {
+    if (!out || tab !== "citta" || citySaving) return;
+    if (!out.nome?.trim()) { setCityMsg("La città non ha un nome: rigenera."); return; }
+    setCitySaving(true); setCityMsg("Salvo nell'Atlante…");
+    try {
+      let imageUrl = "";
+      if (coverImg?.startsWith("data:")) {
+        const safe = (out.nome.trim() || "luogo").replace(/[^a-z0-9._-]/gi, "_").slice(0, 36);
+        const path = `geo-archive/${Date.now()}-${safe}.png`;
+        const sref = storageRef(storage, path);
+        await uploadString(sref, coverImg, "data_url");
+        imageUrl = await getDownloadURL(sref);
+      }
+      const docId = out.nome.trim().replace(/\s+/g, "_").toLowerCase();
+      await setDoc(doc(db, "geo_archive", docId), {
+        name: out.nome.trim(),
+        image: imageUrl,
+        description: buildCityHtml(out),
+        continent: cityContinent,
+        pointsOfInterest: [],
+        generato: true,
+        createdAt: new Date().toISOString(),
+      });
+      setCitySaved(true);
+      setCityMsg(`✅ "${out.nome.trim()}" salvato in ${cityContinent} (Atlante dei Mondi).`);
+      logAgent("dm-tools", "success", `Luogo salvato nell'Atlante (${out.nome.trim()} · ${cityContinent})`, {}, { count: true });
+    } catch (e) {
+      setCityMsg("Errore salvataggio: " + e.message);
+    } finally { setCitySaving(false); }
   }
 
   // ── Cronaca: genera / rigenera il riassunto dalle linee guida ──
@@ -293,7 +404,7 @@ export default function DmTools() {
         <div className="dmt-tabs">
           {[["incontro", "⚔️ Incontri"], ["loot", "💰 Loot"], ["citta", "🏰 Città"], ["cronaca", "📜 Cronaca"]].map(([id, label]) => (
             <div key={id} className={"dmt-tab" + (tab === id ? " on" : "")}
-              onClick={() => { setTab(id); setOut(null); setMsg(""); setMapImg(null); }}>
+              onClick={() => { setTab(id); setOut(null); setMsg(""); setMapImg(null); setCoverImg(null); setCitySaved(false); setCityMsg(""); }}>
               {label}
             </div>
           ))}
@@ -477,13 +588,43 @@ export default function DmTools() {
                 <p className="npcgen-k">Ganci narrativi</p>
                 {out.ganci.map((g, i) => <p className="npcgen-v" key={i}>• {g}</p>)}
               </>)}
-              <p className="npcgen-k">Prompt mappa (modificabile)</p>
+              <p className="npcgen-k">Mappa per Foundry <small>(non viene salvata: scaricala tu)</small></p>
               <textarea className="npcgen-input dmt-prompt" rows={8} value={mapPrompt} onChange={e => setMapPrompt(e.target.value)} />
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 10 }} onClick={copyPrompt}>📋 Copia prompt</button>
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaMappa} disabled={mapBusy}>
                 {mapBusy ? "Sto disegnando la mappa…" : "🗺️ Genera mappa"}
               </button>
-              {mapImg && <img className="npcgen-img" src={mapImg} alt={"Mappa di " + out.nome} />}
+              {mapImg && <>
+                <img className="npcgen-img" src={mapImg} alt={"Mappa di " + out.nome} />
+                <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={scaricaMappa}>⬇️ Scarica mappa</button>
+              </>}
+
+              <hr className="npcgen-divider" />
+
+              {/* ── SALVATAGGIO NELL'ATLANTE ── */}
+              <p className="npcgen-k">Copertina del luogo <small>(immagine mostrata nell'Atlante — non è la mappa)</small></p>
+              <textarea className="npcgen-input dmt-prompt" rows={4} value={coverPrompt} onChange={e => setCoverPrompt(e.target.value)}
+                placeholder="Descrizione (in inglese) della copertina scenografica del luogo." />
+              <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaCopertina} disabled={coverBusy || !coverPrompt.trim()}>
+                {coverBusy ? "Sto disegnando la copertina…" : "🖼 Genera copertina"}
+              </button>
+              {coverImg && <img className="npcgen-img" src={coverImg} alt={"Copertina di " + out.nome} />}
+
+              <div className="dmt-row" style={{ marginTop: 12 }}>
+                <div className="dmt-field">
+                  <label className="npcgen-label">Continente</label>
+                  <select className="npcgen-input" value={cityContinent} onChange={e => setCityContinent(e.target.value)}>
+                    {CONTINENTI.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button className="npcgen-btn" style={{ marginTop: 12 }} onClick={salvaCitta} disabled={citySaving || citySaved}>
+                {citySaving ? "Salvo…" : citySaved ? "✅ Salvato nell'Atlante" : "💾 Salva luogo nell'Atlante"}
+              </button>
+              {cityMsg && (
+                <div className={`npcgen-status${cityMsg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{cityMsg}</div>
+              )}
             </div>
           )}
 
