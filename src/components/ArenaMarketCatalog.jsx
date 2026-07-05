@@ -437,7 +437,9 @@ export default function ArenaMarketCatalog() {
               </label>
               <p className="am-master-note am-cat-note">
                 La spell viene aggiunta alle azioni del compratore per i fight del torneo, con le sue
-                cariche standard, qualunque sia la sua classe.
+                cariche standard, qualunque sia la sua classe. <strong>Acquistandola si ottiene
+                automaticamente lo slot di quel livello</strong>: è lanciabile anche se è di livello
+                alto e il personaggio (base Lv.3) non lo sbloccherebbe normalmente.
               </p>
             </div>
           )}

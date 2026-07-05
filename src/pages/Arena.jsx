@@ -9909,6 +9909,7 @@ export default function Arena() {
                   <div className="loadout-section-hint">
                     Ciò che hai comprato in vetrina <strong>non è equipaggiato in automatico</strong>: tocca le carte
                     <strong> viola</strong> qui sotto per <strong>indossarle in questo torneo</strong>. Quello che non scegli resta a magazzino fino a fine settimana.
+                    Le <strong>spell</strong> comprate includono già lo <strong>slot del loro livello</strong>: sono lanciabili anche se di livello alto.
                   </div>
                   <div className="loadout-grid">
                     {weeklyPurchases.map(pu => {
