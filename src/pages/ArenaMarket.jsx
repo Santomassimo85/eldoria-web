@@ -390,6 +390,17 @@ function MasterCoinPanel() {
     await updateDoc(doc(db, "characters", uid), { [`arenaBuffs.${field}`]: 0 });
   };
 
+  // Rimuove un acquisto settimanale di un giocatore (Master): toglie la riga
+  // dagli `arenaWeekly.purchases` della settimana corrente. Non tocca le monete.
+  const removeWeeklyPurchase = async (uid, itemId, name) => {
+    const char = allChars.find(c => c.uid === uid);
+    const aw = char?.arenaWeekly;
+    if (!aw || aw.weekKey !== currentWeekKey()) return;
+    if (!window.confirm(`Rimuovere "${name}" dagli acquisti della settimana di questo giocatore?`)) return;
+    const purchases = (aw.purchases || []).filter(p => p.itemId !== itemId);
+    await updateDoc(doc(db, "characters", uid), { arenaWeekly: { weekKey: aw.weekKey, purchases } });
+  };
+
   // ── Reset stagione: azzera le MA e i potenziamenti legacy di TUTTI ─────────
   // (gli acquisti settimanali correnti NON vengono toccati: scadono da soli).
   const resetSeason = async () => {
@@ -456,13 +467,18 @@ function MasterCoinPanel() {
                 <button className="am-coin-save" onClick={() => saveCoins(ch.uid)}>Salva</button>
               </div>
 
-              {/* Acquisti settimanali correnti (sola lettura: scadono da soli) */}
+              {/* Acquisti settimanali correnti — il Master può rimuoverli (✕). */}
               {weeklyList.length > 0 && (
                 <div className="am-weekly-owned-list am-weekly-owned-list--mp">
                   {weeklyList.map(p => (
-                    <span key={p.itemId} className="am-mp-weekly-chip" title={`${p.name} · ${p.price} MA`}>
-                      {p.icon} {p.name}{(p.qty || 1) > 1 ? ` ×${p.qty}` : ""}
-                    </span>
+                    <button
+                      key={p.itemId}
+                      className="am-mp-weekly-chip am-mp-weekly-chip--removable"
+                      title={`Rimuovi "${p.name}" dagli acquisti della settimana`}
+                      onClick={() => removeWeeklyPurchase(ch.uid, p.itemId, p.name)}
+                    >
+                      {p.icon} {p.name}{(p.qty || 1) > 1 ? ` ×${p.qty}` : ""} <span className="am-mp-weekly-x">✕</span>
+                    </button>
                   ))}
                 </div>
               )}

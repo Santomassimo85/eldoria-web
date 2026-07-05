@@ -6087,6 +6087,28 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(236,
   box-shadow: 0 0 0 1.5px rgba(95, 224, 160, 0.4), 0 0 16px -2px rgba(95, 224, 160, 0.5) !important;
 }
 
+/* ── BOTTEGA: acquisti settimanali opt-in — colore VIOLA vivido, distinto
+   dall'oro delle scelte normali e dal verde dei consigli, così saltano
+   all'occhio come "extra da indossare se vuoi" ── */
+.arena-page .loadout-item.market-pick {
+  background: linear-gradient(135deg, rgba(160, 74, 255, 0.14), rgba(120, 40, 210, 0.10)) !important;
+  border: 1.5px solid rgba(199, 125, 255, 0.7) !important;
+  box-shadow: 0 0 0 1px rgba(199, 125, 255, 0.35), 0 0 18px -4px rgba(180, 90, 255, 0.55) !important;
+}
+.arena-page .loadout-item.market-pick:hover {
+  border-color: #d8a6ff !important;
+  background: linear-gradient(135deg, rgba(180, 90, 255, 0.24), rgba(130, 50, 220, 0.18)) !important;
+  box-shadow: 0 0 0 1.5px rgba(216, 166, 255, 0.6), 0 6px 20px -4px rgba(180, 90, 255, 0.6) !important;
+}
+.arena-page .loadout-item.market-pick.selected {
+  background: linear-gradient(135deg, rgba(190, 100, 255, 0.34), rgba(140, 55, 230, 0.28)) !important;
+  border-color: #e0b4ff !important;
+  box-shadow: 0 0 0 2px rgba(216, 166, 255, 0.85), 0 0 26px -3px rgba(190, 100, 255, 0.75) !important;
+}
+.arena-page .loadout-item.market-pick .loadout-check {
+  color: #e9c8ff !important;
+}
+
 /* risultato del tiro HP: dorato leggibile (prima rosso su scuro) */
 .arena-page .hp-rolled-result {
   background: none !important;

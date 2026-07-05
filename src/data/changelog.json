@@ -1,6 +1,25 @@
 {
   "versions": [
     {
+      "version": "90",
+      "date": "2026-07-05",
+      "title": "Arena · gli acquisti della Bottega si equipaggiano a scelta",
+      "changes": [
+        {
+          "type": "mechanics",
+          "text": "Ciò che si compra in Bottega non è più equipaggiato in automatico. Nella schermata di iscrizione al torneo compare la scheda \"🛒 Bottega\" con gli acquisti della settimana come carte viola: il giocatore tocca quelle che vuole indossare per quel torneo, il resto resta a magazzino fino a fine settimana."
+        },
+        {
+          "type": "mechanics",
+          "text": "La CA d'anteprima nel loadout tiene ora conto dei bonus armatura della Bottega selezionati."
+        },
+        {
+          "type": "feature",
+          "text": "Pannello Master: gli acquisti settimanali di ciascun giocatore sono ora rimovibili singolarmente (tocca la voce con la ✕, con conferma), oltre all'azzeramento globale già presente."
+        }
+      ]
+    },
+    {
       "version": "89.02",
       "date": "2026-07-04",
       "title": "Arena · contatore vittorie per giocatore",
