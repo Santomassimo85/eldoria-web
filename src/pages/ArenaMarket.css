@@ -1214,6 +1214,56 @@
 }
 .am-weekly-owned-list--mp { margin: 6px 0 2px; }
 
+/* ── Tastino "Hub": torna all'Arena, coerente col FAB dorato delle viste Arena ── */
+.am-page .am-hub-fab {
+  position: fixed;
+  top: 112px;
+  left: clamp(10px, 2vw, 22px);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 20px 11px 15px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e3c558 0%, #ecd487 38%, #ffd86a 100%);
+  border: 2px solid #fff3c4;
+  color: #171207;
+  text-decoration: none;
+  font-family: var(--font-title, serif);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 8px 22px rgba(0, 0, 0, 0.5),
+    0 0 18px 1px rgba(236, 212, 135, 0.8),
+    0 0 34px 4px rgba(255, 216, 106, 0.55);
+  transition: transform 0.18s cubic-bezier(.2, .8, .2, 1), box-shadow 0.25s, filter 0.25s;
+}
+.am-page .am-hub-fab:hover {
+  transform: translateX(-3px) scale(1.06);
+  border-color: #ffffff;
+  filter: brightness(1.1) saturate(1.15);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.8),
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    0 0 30px 3px rgba(236, 212, 135, 1),
+    0 0 60px 12px rgba(255, 216, 106, 0.9);
+}
+.am-page .am-hub-fab:active { transform: translateX(-1px) scale(0.98); }
+.am-hub-fab-arrow { font-size: 1.3rem; line-height: 1; color: #171207; }
+.am-hub-fab-label { font-weight: 800; }
+@media (max-width: 560px) {
+  .am-page .am-hub-fab {
+    top: calc(var(--navbar-h, 80px) + 14px);
+    padding: 8px 14px 8px 11px;
+    font-size: 0.66rem;
+  }
+}
+
 /* Chip acquisto settimanale rimovibile dal Master (bottone) */
 .am-mp-weekly-chip--removable {
   cursor: pointer;

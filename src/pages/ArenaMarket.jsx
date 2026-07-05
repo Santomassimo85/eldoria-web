@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
 import { doc, collection, onSnapshot, updateDoc, increment } from "firebase/firestore";
@@ -146,6 +147,11 @@ export default function ArenaMarket() {
   return (
     <div className="cine-page am-page cine-compact" style={{ "--cine-accent": "#8a0e0e", "--cine-accent-2": "#c0392b" }}>
       <AmbientFX variant="fire" />
+      {/* Tastino Hub: torna all'Arena (coerente col FAB delle altre viste Arena) */}
+      <Link to="/arena" className="am-hub-fab" aria-label="Torna all'Arena" title="Torna all'Arena">
+        <span className="am-hub-fab-arrow" aria-hidden="true">‹</span>
+        <span className="am-hub-fab-label">Hub</span>
+      </Link>
       {/* ── MASTHEAD "CATALOGO D'ASTA": frontespizio tipografico a doppi filetti,
             in dialogo con la Locandina del Colosseo della pagina Arena ── */}
       <header className="amc-mast" aria-label="Bottega dell'Arena">
