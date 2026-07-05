@@ -491,6 +491,10 @@
 /* ── Danno tipizzato (armi) + Resistenze (armature/oggetti) — creazione ── */
 .am-cat-field--full { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
 
+.am-cat-slotcost { display: flex; gap: 10px; flex-wrap: wrap; }
+.am-cat-slotcost-item { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; }
+.am-cat-slotcost-item .am-coin-input { width: 70px; }
+
 .am-cat-dmg-list { display: flex; flex-direction: column; gap: 8px; }
 .am-cat-dmg-row { display: flex; gap: 8px; align-items: center; }
 .am-cat-dmg-dice { flex: 0 0 90px; }

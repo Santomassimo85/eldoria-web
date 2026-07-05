@@ -1209,7 +1209,16 @@ function describeMarketPurchase(pu) {
       return "⚔ Arma · " + comps.map(c => `${c.dice}${c.type ? ` ${c.type}` : ""}`).join(" + ");
     }
     case "armor":  return `🛡 Armatura · +${p.acBonus || 0} CA`;
-    case "spell":  return `✨ Incantesimo · ${p.spellName || ""}`;
+    case "spell": {
+      const parts = [`📜 ${p.spellName || "Scroll"}`];
+      parts.push(`${p.charges || 1} caric${(p.charges || 1) === 1 ? "a" : "he"}`);
+      if (p.castStat) parts.push(`usa ${SAVE_LABEL[p.castStat] || p.castStat.toUpperCase()}`);
+      const cost = p.slotCost || {};
+      const costStr = Object.entries(cost).filter(([, n]) => n > 0)
+        .map(([l, n]) => `−${n} slot Lv${l}`).join(" · ");
+      if (costStr) parts.push(costStr);
+      return parts.join(" · ");
+    }
     case "pet":    return p.effect === "heal" ? `🐾 Pet · cura ${p.dice || "2d6"}` : `🐾 Pet · ${p.dice || "2d6"} danni`;
     case "item":
       if (p.effect === "buff")   return "🎒 Oggetto · potenziamento temporaneo";
@@ -1258,8 +1267,14 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         break;
       }
       case "spell": {
+        // Spell scroll: cariche e caratteristica di lancio decise dal Master.
         const sp = (MARKET_SPELL_LISTS[p.spellClass] || []).find(s => s.name === p.spellName);
-        if (sp) gear.actions.push({ ...sp, fromMarket: true });
+        if (sp) gear.actions.push({
+          ...sp,
+          maxUses: Math.max(1, (p.charges || sp.maxUses || 1)) * qty,
+          ...(p.castStat ? { statKey: p.castStat } : {}),
+          fromMarket: true, isScroll: true,
+        });
         break;
       }
       case "item": {
@@ -1315,40 +1330,54 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
   return (gear.acBonus || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length) ? gear : null;
 }
 
-// Livello dell'incantesimo di un acquisto (0 se non trovato).
-function marketSpellLevel(pu) {
-  if (!pu || pu.category !== "spell") return 0;
-  const sp = (MARKET_SPELL_LISTS[pu.payload?.spellClass] || []).find(s => s.name === pu.payload?.spellName);
-  return sp?.level ?? 0;
+// ── SPELL SCROLL (Bottega) ────────────────────────────────────────────────
+// Uno "spell scroll" è una spell della Bottega con: cariche (charges),
+// caratteristica di lancio (castStat) e un COSTO in spell slot di classe
+// (slotCost = { livello: quantità }) che il giocatore paga SOLO se lo equipaggia.
+
+// Somma degli spell slot persi (per livello) dagli scroll EQUIPAGGIATI.
+function scrollSlotLossFor(purchases, selectedIds) {
+  const loss = {};
+  (purchases || []).forEach(p => {
+    if (p.category !== "spell") return;
+    if (selectedIds && !(selectedIds.has ? selectedIds.has(p.itemId) : selectedIds[p.itemId])) return;
+    const cost = p.payload?.slotCost || {};
+    Object.entries(cost).forEach(([lvl, n]) => { loss[lvl] = (loss[lvl] || 0) + (Number(n) || 0); });
+  });
+  return loss;
 }
 
-// Quante spell di livello ALTO (3+) il giocatore possiede nella Bottega di
-// questa settimana. Ogni spell alta comprata "costa" 1 slot per livello alle
-// spell di classe selezionabili (vedi applyMarketSpellPenalty).
-function countMarketHighSpells(arenaWeekly) {
-  if (!arenaWeekly || arenaWeekly.weekKey !== currentWeekKey()) return 0;
-  return (arenaWeekly.purchases || []).reduce(
-    (n, p) => n + (marketSpellLevel(p) >= 3 ? 1 : 0), 0
-  );
-}
-
-// Applica la penalità: −`reduction` a OGNI livello dei limiti spell di classe
-// (mai sotto 0) e ricalcola maxSpells. Se reduction=0 ritorna il config invariato.
-function applyMarketSpellPenalty(config, reduction) {
-  if (!reduction || !config) return config;
+// Applica il costo in slot ai limiti spell di CLASSE: per ogni livello sottrae
+// gli slot persi (mai sotto 0), aggiorna nonCantripMax e ricalcola maxSpells.
+function applySlotLoss(config, loss) {
+  if (!config || !loss || !Object.keys(loss).length) return config;
   const src = config.spellLimits || {};
   const limits = {};
   let maxSpells = 0;
   for (const k of Object.keys(src)) {
     if (k === "nonCantripMax") { limits[k] = src[k]; continue; }
-    limits[k] = Math.max(0, (src[k] ?? 0) - reduction);
+    limits[k] = Math.max(0, (src[k] ?? 0) - (loss[k] || 0));
     maxSpells += limits[k];
   }
   if (limits.nonCantripMax != null) {
-    limits.nonCantripMax = Math.max(0, limits.nonCantripMax - reduction);
+    const nonCantripLoss = Object.entries(loss).reduce((s, [l, n]) => s + (Number(l) >= 1 ? n : 0), 0);
+    limits.nonCantripMax = Math.max(0, (src.nonCantripMax ?? 0) - nonCantripLoss);
     maxSpells = Math.min(maxSpells, (limits[0] ?? 0) + limits.nonCantripMax);
   }
   return { ...config, spellLimits: limits, maxSpells };
+}
+
+// Taglia le spell di classe già scelte che eccedono i limiti (dopo aver
+// equipaggiato uno scroll che toglie slot): tiene le prime N di ogni livello.
+function trimSpellsToLimits(spells, limits) {
+  const seen = {};
+  return (spells || []).filter(sp => {
+    const lvl = sp.level ?? 0;
+    seen[lvl] = seen[lvl] || 0;
+    const cap = limits?.[lvl] ?? 0;
+    if (seen[lvl] < cap) { seen[lvl]++; return true; }
+    return false;
+  });
 }
 
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
@@ -3557,10 +3586,6 @@ export default function Arena() {
   // ── STEP 3: conferma iscrizione ───────────────────────────────────────────
   const confirmJoin = async () => {
     const rawConfig = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
-    // Penalità Bottega (solo torneo): ogni spell Lv3+ posseduta toglie 1 slot
-    // per livello alle spell di classe — il requisito minimo scende di conseguenza.
-    const spellPenalty = loadoutContext === "tournament" ? countMarketHighSpells(charPreview.arenaWeekly) : 0;
-    const config = applyMarketSpellPenalty(rawConfig, spellPenalty);
 
     // ── Bottega settimanale: gli acquisti valgono SOLO nei tornei (le Sfide
     // Libere e i match AI restano col kit base, come i titoli) e SOLO se il
@@ -3569,6 +3594,10 @@ export default function Arena() {
     const marketGear = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
     const marketAcBonus = marketGear?.acBonus || 0;
     const marketHasWeapon = (marketGear?.actions || []).some(a => a.type === "weapon");
+    // Spell scroll equipaggiati (solo torneo): tolgono spell slot di classe.
+    const scrollLoss = loadoutContext === "tournament"
+      ? scrollSlotLossFor(charPreview.arenaWeekly?.purchases, marketSel) : {};
+    const config = applySlotLoss(rawConfig, scrollLoss);
 
     // Basta almeno un'arma per proseguire (il massimo — es. 2 — è un tetto, non un obbligo:
     // un'arma a due mani è esclusiva e ne occupa una sola). Anche un'arma comprata conta.
@@ -9439,22 +9468,34 @@ export default function Arena() {
               ? (charPreview.arenaWeekly.purchases || []) : [];
             const marketByCat  = { weapon: [], spell: [], item: [], armor: [], pet: [] };
             weeklyPurchases.forEach(p => { if (marketByCat[p.category]) marketByCat[p.category].push(p); });
-            // Penalità: ogni spell Lv3+ posseduta toglie 1 slot per livello alle
-            // spell di CLASSE selezionabili (config effettivo usato sotto).
-            const spellPenalty = countMarketHighSpells(charPreview.arenaWeekly);
-            const config       = applyMarketSpellPenalty(rawConfig, spellPenalty);
             const marketSel     = new Set(Object.keys(pendingMarketSel).filter(k => pendingMarketSel[k]));
+            // Spell slot persi dagli scroll EQUIPAGGIATI → limiti spell di classe effettivi.
+            const scrollLoss   = scrollSlotLossFor(weeklyPurchases, pendingMarketSel);
+            const config       = applySlotLoss(rawConfig, scrollLoss);
             const marketGear    = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
             const marketAcBonus = marketGear?.acBonus || 0;
             // Card opt-in della Bottega (colore viola) per una categoria: riusata in ogni tab.
             const toggleMarket = (id) => setPendingMarketSel(prev => ({ ...prev, [id]: !prev[id] }));
+            // Toggle di uno SCROLL: dopo aver cambiato la selezione, ricalcola gli slot
+            // persi e taglia le spell di classe in eccesso (limiti = base ridotti).
+            const toggleMarketScroll = (pu) => {
+              const nextSel = { ...pendingMarketSel, [pu.itemId]: !pendingMarketSel[pu.itemId] };
+              const loss = scrollSlotLossFor(weeklyPurchases, nextSel);
+              const newLimits = applySlotLoss(rawConfig, loss).spellLimits;
+              setPendingSpells(spells => trimSpellsToLimits(spells, newLimits));
+              setPendingMarketSel(nextSel);
+            };
             const renderMarketCards = (cat, title, verb) => {
               const list = marketByCat[cat] || [];
               if (!list.length) return null;
+              const isScrollCat = cat === "spell";
               return (
                 <>
                   <div className="loadout-section-title loadout-market-head" style={{ marginTop: 16 }}>🛒 {title}</div>
-                  <div className="loadout-section-hint">Acquisti della settimana — <strong>tocca per {verb}</strong> (facoltativo, in aggiunta al kit di classe). Le carte <strong>viola</strong> sono le tue della Bottega.</div>
+                  <div className="loadout-section-hint">{isScrollCat
+                    ? <>Spell scroll comprati — <strong>tocca per equipaggiarlo</strong>. Attenzione: ogni scroll può <strong>togliere spell slot di classe</strong> (indicato sulla carta).</>
+                    : <>Acquisti della settimana — <strong>tocca per {verb}</strong> (facoltativo, in aggiunta al kit di classe). Le carte <strong>viola</strong> sono le tue della Bottega.</>}
+                  </div>
                   <div className="loadout-grid">
                     {list.map(pu => {
                       const isSel = !!pendingMarketSel[pu.itemId];
@@ -9464,7 +9505,7 @@ export default function Arena() {
                           key={pu.itemId}
                           type="button"
                           className={`loadout-item market-pick ${isSel ? "selected" : ""}`}
-                          onClick={() => toggleMarket(pu.itemId)}
+                          onClick={() => isScrollCat ? toggleMarketScroll(pu) : toggleMarket(pu.itemId)}
                         >
                           <span className="loadout-item-icon">{pu.icon}</span>
                           <span className="loadout-item-name">{pu.name}{qty > 1 ? ` ×${qty}` : ""}</span>
@@ -9631,10 +9672,11 @@ export default function Arena() {
 
                 {/* ── TAB MAGIE: Incantesimi + Abilità ── */}
                 {activeTab === "magic" && (<>
-                {spellPenalty > 0 && config.spellOptions.length > 0 && (
+                {Object.keys(scrollLoss).length > 0 && config.spellOptions.length > 0 && (
                   <div className="loadout-market-penalty">
-                    ⚠ Possiedi <strong>{spellPenalty}</strong> incantesim{spellPenalty === 1 ? "o" : "i"} di <strong>livello 3+</strong> dalla Bottega:
-                    gli incantesimi di <strong>classe</strong> selezionabili sono ridotti di <strong>{spellPenalty}</strong> per ogni livello.
+                    📜 Scroll equipaggiati: stai rinunciando a {Object.entries(scrollLoss).filter(([, n]) => n > 0)
+                      .map(([l, n]) => `${n} slot di Livello ${l}`).join(" · ")}.
+                    Gli incantesimi di <strong>classe</strong> selezionabili qui sotto sono già aggiornati.
                   </div>
                 )}
                 {/* Sezione Incantesimi — raggruppati per livello */}

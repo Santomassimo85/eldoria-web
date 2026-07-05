@@ -15,12 +15,24 @@ import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS } from "../data/arenaDamag
 // nei tornei — l'iniezione nel combattimento avviene in Arena.jsx.
 
 export const MARKET_CATEGORIES = [
-  { key: "item",   label: "Oggetto",  icon: "🎒" },
-  { key: "spell",  label: "Spell",    icon: "✨" },
-  { key: "weapon", label: "Arma",     icon: "⚔️" },
-  { key: "armor",  label: "Armatura", icon: "🛡️" },
-  { key: "pet",    label: "Pet",      icon: "🐾" },
+  { key: "item",   label: "Oggetto",      icon: "🎒" },
+  { key: "spell",  label: "Spell Scroll", icon: "📜" },
+  { key: "weapon", label: "Arma",         icon: "⚔️" },
+  { key: "armor",  label: "Armatura",     icon: "🛡️" },
+  { key: "pet",    label: "Pet",          icon: "🐾" },
 ];
+
+// Caratteristiche di lancio selezionabili per uno spell scroll.
+const CAST_STATS = [
+  { key: "int", label: "Intelligenza (INT)" },
+  { key: "wis", label: "Saggezza (SAG)" },
+  { key: "cha", label: "Carisma (CAR)" },
+  { key: "dex", label: "Destrezza (DES)" },
+  { key: "con", label: "Costituzione (COS)" },
+  { key: "str", label: "Forza (FOR)" },
+];
+// Livelli di spell slot che uno scroll può togliere.
+const SCROLL_SLOT_LEVELS = [1, 2, 3];
 
 // Le spell acquistabili sono SOLO quelle già esistenti nel motore dell'Arena:
 // si salva un riferimento {spellClass, spellName} e il fight le risolve dalle
@@ -51,8 +63,9 @@ const EMPTY_FORM = {
   // oggetto / pet
   effect: "heal", dice: "2d8", uses: "1",
   buffType: "hit", buffAmount: "1", buffTurns: "3",
-  // spell
+  // spell scroll
   spellClass: "wizard", spellName: "",
+  charges: "1", castStat: "int", slotCost: {}, // slotCost: { livello: quantità }
   // arma — danno multi-componente tipizzato (+ legacy dmgBonus per retro-compat edit)
   hitBonus: "0", dmgBonus: "0", ranged: false,
   weaponComponents: [{ dice: "1d8", type: "tagliente" }],
@@ -82,7 +95,11 @@ export function marketItemSummary(it) {
     case "spell": {
       const src = SPELL_SOURCES[p.spellClass];
       const sp = src?.spells.find(s => s.name === p.spellName);
-      return `${src?.label || p.spellClass} · ${p.spellName}${sp?.info ? ` — ${sp.info}` : ""}`;
+      const bits = [`📜 ${p.spellName}`, `${p.charges ?? 1} caric${(p.charges ?? 1) === 1 ? "a" : "he"}`];
+      if (p.castStat) bits.push(`usa ${p.castStat.toUpperCase()}`);
+      const cost = Object.entries(p.slotCost || {}).filter(([, n]) => n > 0).map(([l, n]) => `−${n} slot Lv${l}`).join(" · ");
+      if (cost) bits.push(cost);
+      return `${bits.join(" · ")}${sp?.info ? ` — ${sp.info}` : ""}`;
     }
     case "weapon": {
       const comps = (Array.isArray(p.components) && p.components.length)
@@ -200,9 +217,21 @@ export default function ArenaMarketCatalog() {
         }
         if (!DICE_RE.test(form.dice)) return null;
         return { effect: form.effect, dice: form.dice, uses };
-      case "spell":
+      case "spell": {
         if (!form.spellName) return null;
-        return { spellClass: form.spellClass, spellName: form.spellName };
+        const slotCost = {};
+        Object.entries(form.slotCost || {}).forEach(([lvl, n]) => {
+          const v = parseInt(n, 10) || 0;
+          if (v > 0) slotCost[lvl] = v;
+        });
+        return {
+          spellClass: form.spellClass,
+          spellName: form.spellName,
+          charges: Math.max(1, parseInt(form.charges, 10) || 1),
+          castStat: form.castStat || "int",
+          ...(Object.keys(slotCost).length ? { slotCost } : {}),
+        };
+      }
       case "weapon": {
         // Danno multi-componente tipizzato: ogni componente = { dice, type }.
         const comps = (form.weaponComponents || [])
@@ -287,6 +316,9 @@ export default function ArenaMarketCatalog() {
       buffTurns: String(p.buffTurns ?? 3),
       spellClass: p.spellClass || "wizard",
       spellName: p.spellName || "",
+      charges: String(p.charges ?? 1),
+      castStat: p.castStat || "int",
+      slotCost: Object.fromEntries(Object.entries(p.slotCost || {}).map(([l, n]) => [l, String(n)])),
       hitBonus: String(p.hitBonus ?? 0),
       dmgBonus: String(p.dmgBonus ?? 0),
       ranged: !!p.ranged,
@@ -435,13 +467,37 @@ export default function ArenaMarketCatalog() {
                   ))}
                 </select>
               </label>
+              <label className="am-cat-field am-cat-field--sm">
+                <span>Cariche (usi per fight)</span>
+                <input className="am-coin-input" type="number" min={1} value={form.charges} onChange={set("charges")} />
+              </label>
+              <label className="am-cat-field am-cat-field--sm">
+                <span>Caratteristica per usarlo</span>
+                <select className="am-coin-input" value={form.castStat} onChange={set("castStat")}>
+                  {CAST_STATS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                </select>
+              </label>
+              <div className="am-cat-field am-cat-field--full">
+                <span>Spell slot di classe persi equipaggiando lo scroll (0 = nessuno)</span>
+                <div className="am-cat-slotcost">
+                  {SCROLL_SLOT_LEVELS.map(lvl => (
+                    <label key={lvl} className="am-cat-slotcost-item">
+                      <span>Livello {lvl}</span>
+                      <input
+                        className="am-coin-input"
+                        type="number" min={0} max={4}
+                        value={form.slotCost[lvl] ?? "0"}
+                        onChange={e => setForm(prev => ({ ...prev, slotCost: { ...prev.slotCost, [lvl]: e.target.value } }))}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
               <p className="am-master-note am-cat-note">
-                La spell viene aggiunta alle azioni del compratore per i fight del torneo, con le sue
-                cariche standard, qualunque sia la sua classe. <strong>Acquistandola si ottiene
-                automaticamente lo slot di quel livello</strong>: è lanciabile anche se è di livello
-                alto e il personaggio (base Lv.3) non lo sbloccherebbe normalmente.
-                ⚠️ Se è di <strong>livello 3+</strong>, chi la possiede avrà <strong>1 incantesimo di classe in meno
-                per ogni livello</strong> (bilanciamento automatico).
+                <strong>Spell scroll</strong>: si aggiunge alle azioni del compratore per i fight del torneo con le
+                <strong> cariche</strong> indicate e usa la <strong>caratteristica</strong> scelta per il tiro. È lanciabile
+                anche se di livello alto. Se imposti degli <strong>spell slot persi</strong>, chi lo <strong>equipaggia</strong>
+                rinuncia a quegli slot di classe di quei livelli (es. −1 Lv2 e −1 Lv3).
               </p>
             </div>
           )}
