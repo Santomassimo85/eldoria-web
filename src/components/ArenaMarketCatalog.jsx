@@ -70,7 +70,7 @@ const EMPTY_FORM = {
   hitBonus: "0", dmgBonus: "0", ranged: false,
   weaponComponents: [{ dice: "1d8", type: "tagliente" }],
   // armatura / oggetto — resistenze per tipo: { [tipo]: "resist"|"immune"|"vuln" }
-  acBonus: "1",
+  acFixed: "12",
   resist: {},
   // pet
   autoHit: false, petHitBonus: "3",
@@ -109,7 +109,7 @@ export function marketItemSummary(it) {
     }
     case "armor": {
       const r = resistSummary(p.resist);
-      return `+${p.acBonus} Classe Armatura${r ? ` · Resist: ${r}` : ""}`;
+      return `CA fissa ${p.acFixed ?? p.acBonus ?? 0}${r ? ` · Resist: ${r}` : ""}`;
     }
     case "pet":
       return `Azione bonus: ${p.effect === "heal" ? `cura ${p.dice}` : `${p.dice} danni${p.autoHit ? " auto-hit" : ""}`} · max ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight`;
@@ -247,7 +247,7 @@ export default function ArenaMarketCatalog() {
       }
       case "armor":
         return {
-          acBonus: Math.max(1, parseInt(form.acBonus, 10) || 1),
+          acFixed: Math.max(1, parseInt(form.acFixed, 10) || 12),
           ...(Object.keys(form.resist || {}).length ? { resist: form.resist } : {}),
         };
       case "pet":
@@ -327,7 +327,7 @@ export default function ArenaMarketCatalog() {
       weaponComponents: (Array.isArray(p.components) && p.components.length)
         ? p.components.map(c => ({ dice: c.dice, type: c.type || "tagliente" }))
         : [{ dice: p.dice || "1d8", type: p.ranged ? "perforante" : "tagliente" }],
-      acBonus: String(p.acBonus ?? 1),
+      acFixed: String(p.acFixed ?? p.acBonus ?? 12),
       resist: p.resist || {},
       autoHit: !!p.autoHit,
       petHitBonus: String(p.hitBonus ?? 3),
@@ -544,10 +544,14 @@ export default function ArenaMarketCatalog() {
           {cat === "armor" && (
             <div className="am-cat-grid">
               <label className="am-cat-field am-cat-field--sm">
-                <span>Bonus CA (+N)</span>
-                <input className="am-coin-input" type="number" min={1} value={form.acBonus} onChange={set("acBonus")} />
+                <span>Classe Armatura totale (CA fissa)</span>
+                <input className="am-coin-input" type="number" min={1} value={form.acFixed} onChange={set("acFixed")} />
               </label>
               <div className="am-cat-field am-cat-field--full">
+                <p className="am-master-note am-cat-note" style={{ marginTop: 0 }}>
+                  Chi la indossa avrà <strong>esattamente questa CA</strong> (non si somma DES, scudo o altro).
+                  Sostituisce l'armatura base ed è esclusiva.
+                </p>
                 {renderResistEditor()}
               </div>
             </div>

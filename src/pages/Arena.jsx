@@ -1208,7 +1208,7 @@ function describeMarketPurchase(pu) {
         : [{ dice: `${p.dice || "1d6"}${p.dmgBonus ? `+${p.dmgBonus}` : ""}`, type: p.ranged ? "perforante" : "tagliente" }];
       return "⚔ Arma · " + comps.map(c => `${c.dice}${c.type ? ` ${c.type}` : ""}`).join(" + ");
     }
-    case "armor":  return `🛡 Armatura · +${p.acBonus || 0} CA`;
+    case "armor":  return `🛡 Armatura · CA fissa ${p.acFixed ?? p.acBonus ?? 0}`;
     case "spell": {
       const parts = [`📜 ${p.spellName || "Scroll"}`];
       parts.push(`${p.charges || 1} caric${(p.charges || 1) === 1 ? "a" : "he"}`);
@@ -1236,15 +1236,19 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
   let purchases = arenaWeekly.purchases || [];
   if (selectedIds) purchases = purchases.filter(p => selectedIds.has(p.itemId));
   if (!purchases.length) return null;
-  const gear = { acBonus: 0, actions: [], consumables: [], resist: {} };
+  const gear = { acBonus: 0, fixedAc: null, actions: [], consumables: [], resist: {} };
   purchases.forEach(pu => {
     const p = pu.payload || {};
     const qty = Math.max(1, pu.qty || 1);
     switch (pu.category) {
-      case "armor":
-        gear.acBonus += (p.acBonus || 0) * qty;
+      case "armor": {
+        // Armatura della Bottega = CA FISSA (sostituisce l'armatura base, non
+        // si somma nulla). Solo una può essere equipaggiata (esclusività in UI).
+        const fx = p.acFixed ?? p.acBonus ?? 0;
+        gear.fixedAc = gear.fixedAc == null ? fx : Math.max(gear.fixedAc, fx);
         if (p.resist) mergeResistMaps(gear.resist, p.resist);
         break;
+      }
       case "weapon": {
         // Componenti di danno tipizzati: nuovo schema `components:[{dice,type}]`,
         // con fallback all'arma legacy `{dice,dmgBonus,ranged}` (un solo tipo).
@@ -1327,7 +1331,7 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         break;
     }
   });
-  return (gear.acBonus || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length) ? gear : null;
+  return (gear.acBonus || gear.fixedAc != null || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length) ? gear : null;
 }
 
 // ── SPELL SCROLL (Bottega) ────────────────────────────────────────────────
@@ -3592,8 +3596,8 @@ export default function Arena() {
     // giocatore li ha scelti nel loadout (default: nessuno equipaggiato). ──
     const marketSel  = new Set(Object.keys(pendingMarketSel).filter(k => pendingMarketSel[k]));
     const marketGear = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
-    const marketAcBonus = marketGear?.acBonus || 0;
     const marketHasWeapon = (marketGear?.actions || []).some(a => a.type === "weapon");
+    const marketFixedAc = marketGear?.fixedAc ?? null;   // armatura Bottega = CA fissa
     // Spell scroll equipaggiati (solo torneo): tolgono spell slot di classe.
     const scrollLoss = loadoutContext === "tournament"
       ? scrollSlotLossFor(charPreview.arenaWeekly?.purchases, marketSel) : {};
@@ -3604,7 +3608,7 @@ export default function Arena() {
     if (config.maxWeapons > 0 && pendingWeapons.length < 1 && !marketHasWeapon) return;
     if (pendingSpells.length  < config.maxSpells)  return;
     if (!charPreview.rolledHp) return;
-    if (!pendingArmor) return;
+    if (!pendingArmor && marketFixedAc == null) return; // serve un'armatura (base o Bottega)
     const totalItemsJoin = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
     if (totalItemsJoin < 1) return;
 
@@ -3613,17 +3617,20 @@ export default function Arena() {
     const conMod    = charPreview.stats.con ?? 0;
     const shieldBonus = pendingShield ? 2 : 0;
     const armorBuffBonus = charPreview.arenaBuffs?.armorBonus ? 1 : 0;
-    const unarmoredBonus = pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
     // Sottoclassi RITIRATE con la riforma Bottega settimanale: il kit base è la
     // sola classe Lv.3, ogni bonus arriva dagli acquisti in vetrina. Forzare
     // null qui spegne tutti gli effetti (getSubclassEffect legge snap.subclass).
     const subclassKey = null;
     const subclassCa  = 0;
-    const finalAc   = marketAcBonus + subclassCa + (pendingArmor.unarmoredDefense
-      ? pendingArmor.unarmoredMaxStat
-        ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
-        : 10 + dexMod + unarmoredBonus + shieldBonus + armorBuffBonus
-      : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus);
+    // Armatura della Bottega: CA FISSA (non si somma nulla: né DES, né scudo, né buff).
+    const unarmoredBonus = pendingArmor?.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
+    const finalAc   = marketFixedAc != null
+      ? marketFixedAc
+      : subclassCa + (pendingArmor.unarmoredDefense
+        ? pendingArmor.unarmoredMaxStat
+          ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
+          : 10 + dexMod + unarmoredBonus + shieldBonus + armorBuffBonus
+        : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus);
 
     const chaScore = charPreview.stats.cha ?? 0;
     const cls = (charPreview.class || "").toLowerCase();
@@ -9473,7 +9480,6 @@ export default function Arena() {
             const scrollLoss   = scrollSlotLossFor(weeklyPurchases, pendingMarketSel);
             const config       = applySlotLoss(rawConfig, scrollLoss);
             const marketGear    = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
-            const marketAcBonus = marketGear?.acBonus || 0;
             // Card opt-in della Bottega (colore viola) per una categoria: riusata in ogni tab.
             const toggleMarket = (id) => setPendingMarketSel(prev => ({ ...prev, [id]: !prev[id] }));
             // Toggle di uno SCROLL: dopo aver cambiato la selezione, ricalcola gli slot
@@ -9484,6 +9490,20 @@ export default function Arena() {
               const newLimits = applySlotLoss(rawConfig, loss).spellLimits;
               setPendingSpells(spells => trimSpellsToLimits(spells, newLimits));
               setPendingMarketSel(nextSel);
+            };
+            // Armatura della Bottega: CA fissa ed ESCLUSIVA (una sola, e disattiva
+            // le armature base). Equipaggiarla libera l'armatura base e lo scudo.
+            const marketFixedAc = marketGear?.fixedAc ?? null;
+            const hasMarketArmor = marketFixedAc != null;
+            const toggleMarketArmor = (pu) => {
+              const turningOn = !pendingMarketSel[pu.itemId];
+              setPendingMarketSel(prev => {
+                const next = { ...prev };
+                marketByCat.armor.forEach(a => { next[a.itemId] = false; }); // esclusività
+                next[pu.itemId] = turningOn;
+                return next;
+              });
+              if (turningOn) { setPendingArmor(null); setPendingShield(null); }
             };
             const renderMarketCards = (cat, title, verb) => {
               const list = marketByCat[cat] || [];
@@ -9539,7 +9559,7 @@ export default function Arena() {
             const marketHasWeapon = (marketGear?.actions || []).some(a => a.type === "weapon");
             const weaponsLeft  = (pendingWeapons.length >= 1 || marketHasWeapon) ? 0 : 1;
             const spellsLeft   = config.maxSpells  - pendingSpells.length;
-            const armorReady   = !!pendingArmor;
+            const armorReady   = !!pendingArmor || hasMarketArmor;
             const totalItems   = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
             const isReady      = weaponsLeft === 0 && spellsLeft === 0 && armorReady && totalItems >= 1 && petReady && demonReady && constructReady;
             const btnParts     = [];
@@ -9554,13 +9574,16 @@ export default function Arena() {
             // Calcolo CA anteprima
             const dexMod   = charPreview.stats.dex ?? 0;
             const conMod   = charPreview.stats.con ?? 0;
-            const previewAc = (pendingArmor
-              ? pendingArmor.unarmoredDefense
-                ? pendingArmor.unarmoredMaxStat
-                  ? 10 + Math.max(dexMod, conMod) + (pendingShield ? 1 : 0)
-                  : 10 + dexMod + (pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod) + (pendingShield ? 1 : 0)
-                : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + (pendingShield ? 1 : 0)
-              : charPreview.stats.ac) + marketAcBonus;
+            // Armatura market = CA fissa (ignora DES/scudo); altrimenti calcolo normale.
+            const previewAc = hasMarketArmor
+              ? marketFixedAc
+              : (pendingArmor
+                ? pendingArmor.unarmoredDefense
+                  ? pendingArmor.unarmoredMaxStat
+                    ? 10 + Math.max(dexMod, conMod) + (pendingShield ? 1 : 0)
+                    : 10 + dexMod + (pendingArmor.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod) + (pendingShield ? 1 : 0)
+                  : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + (pendingShield ? 1 : 0)
+                : charPreview.stats.ac);
 
             // Scudo disabilitato se c'è un'arma a 2 mani selezionata
             const has2HWeapon  = pendingWeapons.some(w => w.twoHanded);
@@ -9581,7 +9604,7 @@ export default function Arena() {
             const LOADOUT_TABS = [
               { key: "weapons", icon: "⚔", label: config.maxWeapons === 1 ? "Arma" : "Armi", count: `${pendingWeapons.length}/${config.maxWeapons}`, done: weaponsLeft === 0 },
               ...(hasMagic ? [{ key: "magic", icon: "✨", label: (config.spellOptions.length > 0 || marketByCat.spell.length > 0) ? "Magie" : "Abilità", count: config.spellOptions.length > 0 ? `${pendingSpells.length}/${config.maxSpells}` : null, done: spellsLeft === 0 }] : []),
-              { key: "armor", icon: "🛡", label: "Difesa", count: pendingArmor ? "✓" : null, done: armorReady },
+              { key: "armor", icon: "🛡", label: "Difesa", count: (pendingArmor || hasMarketArmor) ? "✓" : null, done: armorReady },
               ...(hasCompanion ? [{ key: "companion", icon: companionMeta.icon, label: companionMeta.label, count: companionMeta.done ? "✓" : null, done: companionMeta.done }] : []),
               { key: "items", icon: "🎒", label: "Oggetti", count: `${totalItems}/2`, done: totalItems >= 1 },
               ...(showTitleTab ? [{ key: "title", icon: "♛", label: "Titolo", count: pendingTitle ? "✓" : null, done: true }] : []),
@@ -9794,8 +9817,11 @@ export default function Arena() {
                 {activeTab === "armor" && (<>
                 {/* ── Sezione Armatura ── */}
                 <div className="loadout-section-title">
-                  🛡 Armatura — {pendingArmor ? `✓ ${pendingArmor.name}` : "nessuna selezionata"}
+                  🛡 Armatura — {hasMarketArmor ? "✓ Armatura della Bottega (CA fissa)" : pendingArmor ? `✓ ${pendingArmor.name}` : "nessuna selezionata"}
                 </div>
+                {hasMarketArmor && (
+                  <div className="loadout-section-hint">Hai equipaggiato un'<strong>armatura della Bottega</strong> (CA fissa): le armature base sono disattivate. Deselezionala qui sotto per riabilitarle.</div>
+                )}
                 <div className="loadout-grid armor-grid">
                   {(ARENA_ARMORS[config.armorCategory] || []).map(armor => {
                     const isSelected = pendingArmor?.name === armor.name;
@@ -9809,7 +9835,8 @@ export default function Arena() {
                     return (
                       <button
                         key={armor.name}
-                        className={`loadout-item armor ${isSelected ? "selected" : ""}`}
+                        disabled={hasMarketArmor}
+                        className={`loadout-item armor ${isSelected ? "selected" : ""} ${hasMarketArmor ? "disabled" : ""}`}
                         onClick={() => { setPendingArmor(armor); if (shieldLocked) setPendingShield(null); }}
                       >
                         <span className="loadout-item-icon">{armor.icon}</span>
@@ -9867,7 +9894,30 @@ export default function Arena() {
                     🐾 Avrai accesso alla <strong>Forma Selvatica</strong> durante il combattimento.
                   </div>
                 )}
-                {renderMarketCards("armor", "Armature della Bottega", "indossarla")}
+                {marketByCat.armor.length > 0 && (<>
+                  <div className="loadout-section-title loadout-market-head" style={{ marginTop: 16 }}>🛒 Armature della Bottega</div>
+                  <div className="loadout-section-hint">Hanno una <strong>CA fissa</strong> e <strong>sostituiscono</strong> l'armatura base (che si disattiva). Una sola alla volta.</div>
+                  <div className="loadout-grid armor-grid">
+                    {marketByCat.armor.map(pu => {
+                      const isSel = !!pendingMarketSel[pu.itemId];
+                      const fx = pu.payload?.acFixed ?? pu.payload?.acBonus ?? 0;
+                      return (
+                        <button
+                          key={pu.itemId}
+                          type="button"
+                          className={`loadout-item armor market-pick ${isSel ? "selected" : ""}`}
+                          onClick={() => toggleMarketArmor(pu)}
+                        >
+                          <span className="loadout-item-icon">{pu.icon}</span>
+                          <span className="loadout-item-name">{pu.name}</span>
+                          <span className="loadout-item-damage">CA <strong>{fx}</strong> fissa</span>
+                          <span className="loadout-item-info">{isSel ? "✓ Indossata" : "Tocca per indossarla"}</span>
+                          {isSel && <span className="loadout-check">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>)}
                 </>)}
 
                 {/* ── TAB ALLEATO: Compagno / Demone / Costrutto ── */}
