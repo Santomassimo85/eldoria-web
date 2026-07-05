@@ -72,7 +72,7 @@ const CONTINENTI = ["Vathriddon", "Ehkia", "Ohzkie"];
 const cityCoverPrompt = (c) => {
   if (!c) return "";
   const firstLine = String(c.descrizione || "").split(/(?<=[.!?])\s/)[0] || "";
-  return `Establishing wide landscape shot of ${c.nome || "a settlement"}, a ${c.dimensione || "town"} — ${c.carattere || ""}. ${firstLine} Epic fantasy oil painting, cinematic dramatic lighting, rich painterly brushwork, deep atmospheric colors. No text, no lettering, no map, no grid, no frame, no border.`;
+  return `Establishing wide landscape shot of ${c.nome || "a settlement"}, a ${c.dimensione || "town"} — ${c.carattere || ""}. ${firstLine}`.trim();
 };
 
 // Compone la descrizione HTML del luogo (stessa resa dell'Atlante — geo_archive).
@@ -92,13 +92,24 @@ const buildCityHtml = (c) => {
     c.luoghi.forEach((l) => parts.push(`<li><strong>${esc(l.nome)}</strong> — ${esc(l.tipo)}: ${esc(l.descrizione)}</li>`));
     parts.push("</ul>");
   }
-  if ((c.ganci || []).length) {
-    parts.push("<p><strong>Ganci narrativi</strong></p><ul>");
-    c.ganci.forEach((g) => parts.push(`<li>${esc(g)}</li>`));
-    parts.push("</ul>");
-  }
+  // NB: i "ganci narrativi" NON vengono salvati (solo a schermo per il Master).
   return parts.filter(Boolean).join("\n");
 };
+
+// 4 stili per la MAPPA (cartografica) e 4 per la COPERTINA (illustrazione scenografica).
+const MAP_STYLES = [
+  { key: "antica",     label: "Cartografia antica", suffix: "Hand-drawn antique cartography, aged parchment texture, ink linework with soft watercolor washes, muted sepia and earth tones, old-world map feel." },
+  { key: "realistica", label: "Vista realistica",   suffix: "Realistic top-down bird's-eye rendering, detailed rooftops and terrain, soft natural daylight, semi-photographic painterly finish." },
+  { key: "inchiostro", label: "Inchiostro B&N",     suffix: "Black and white ink illustration, fine cross-hatching, high contrast, classic RPG rulebook line-art map, monochrome, no color." },
+  { key: "colorata",   label: "Fantasy colorata",   suffix: "Vibrant colored fantasy game map, clean stylized shapes, saturated palette, crisp digital illustration, boardgame-style clarity." },
+];
+const COVER_STYLES = [
+  { key: "olio",       label: "Olio epico",   suffix: "Epic oil painting, cinematic dramatic lighting, rich painterly brushwork, deep colors, classic fantasy book illustration." },
+  { key: "darkcomic",  label: "Dark Comic",   suffix: "Dark-fantasy comic-book / graphic-novel art, bold inked outlines, dramatic cel shading, high-contrast moody lighting, gritty atmosphere." },
+  { key: "acquerello", label: "Acquerello",   suffix: "Fantasy watercolor illustration, soft blended washes, delicate bleeding edges, luminous muted colors, hand-painted on rough paper." },
+  { key: "concept",    label: "Concept art",  suffix: "Cinematic concept art, wide establishing vista, atmospheric depth, volumetric light, highly detailed digital matte painting." },
+];
+const styleSuffix = (list, key) => (list.find((s) => s.key === key) || list[0]).suffix;
 
 /* ============================================================
    Strumenti DM — un'unica pagina con 3 strumenti:
@@ -128,6 +139,8 @@ export default function DmTools() {
   const [coverPrompt,   setCoverPrompt]   = useState("");
   const [coverImg,      setCoverImg]      = useState(null);
   const [coverBusy,     setCoverBusy]     = useState(false);
+  const [mapStyle,      setMapStyle]      = useState("antica");
+  const [coverStyle,    setCoverStyle]    = useState("olio");
   const [citySaving,    setCitySaving]    = useState(false);
   const [citySaved,     setCitySaved]     = useState(false);
   const [cityMsg,       setCityMsg]       = useState("");
@@ -194,9 +207,10 @@ export default function DmTools() {
     if (!mapPrompt.trim()) return;
     setMapBusy(true); setMapImg(null);
     try {
+      const fullPrompt = `${mapPrompt.trim()}. ${styleSuffix(MAP_STYLES, mapStyle)} No text, no lettering, no labels, no grid, no border.`;
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: mapPrompt })
+        body: JSON.stringify({ prompt: fullPrompt })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -229,9 +243,10 @@ export default function DmTools() {
     if (!coverPrompt.trim()) return;
     setCoverBusy(true); setCoverImg(null); setCityMsg("");
     try {
+      const fullPrompt = `${coverPrompt.trim()}. ${styleSuffix(COVER_STYLES, coverStyle)} No text, no lettering, no map, no grid, no frame, no border.`;
       const r = await fetch("/api/genera-immagine", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: coverPrompt })
+        body: JSON.stringify({ prompt: fullPrompt })
       });
       const data = await r.json();
       if (data.error) throw new Error(data.error);
@@ -590,6 +605,13 @@ export default function DmTools() {
               </>)}
               <p className="npcgen-k">Mappa per Foundry <small>(non viene salvata: scaricala tu)</small></p>
               <textarea className="npcgen-input dmt-prompt" rows={8} value={mapPrompt} onChange={e => setMapPrompt(e.target.value)} />
+              <div className="dmt-style-row">
+                {MAP_STYLES.map((s) => (
+                  <button key={s.key} type="button"
+                    className={"dmt-style" + (mapStyle === s.key ? " on" : "")}
+                    onClick={() => setMapStyle(s.key)}>{s.label}</button>
+                ))}
+              </div>
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 10 }} onClick={copyPrompt}>📋 Copia prompt</button>
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaMappa} disabled={mapBusy}>
                 {mapBusy ? "Sto disegnando la mappa…" : "🗺️ Genera mappa"}
@@ -605,6 +627,13 @@ export default function DmTools() {
               <p className="npcgen-k">Copertina del luogo <small>(immagine mostrata nell'Atlante — non è la mappa)</small></p>
               <textarea className="npcgen-input dmt-prompt" rows={4} value={coverPrompt} onChange={e => setCoverPrompt(e.target.value)}
                 placeholder="Descrizione (in inglese) della copertina scenografica del luogo." />
+              <div className="dmt-style-row">
+                {COVER_STYLES.map((s) => (
+                  <button key={s.key} type="button"
+                    className={"dmt-style" + (coverStyle === s.key ? " on" : "")}
+                    onClick={() => setCoverStyle(s.key)}>{s.label}</button>
+                ))}
+              </div>
               <button className="npcgen-btn npcgen-btn--ghost" style={{ marginTop: 8 }} onClick={generaCopertina} disabled={coverBusy || !coverPrompt.trim()}>
                 {coverBusy ? "Sto disegnando la copertina…" : "🖼 Genera copertina"}
               </button>
