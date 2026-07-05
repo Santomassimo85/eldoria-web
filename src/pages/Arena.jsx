@@ -1212,7 +1212,7 @@ function describeMarketPurchase(pu) {
     case "spell": {
       const parts = [`📜 ${p.spellName || "Scroll"}`];
       parts.push(`${p.charges || 1} caric${(p.charges || 1) === 1 ? "a" : "he"}`);
-      if (p.castStat) parts.push(`usa ${SAVE_LABEL[p.castStat] || p.castStat.toUpperCase()}`);
+      if (p.castStat) parts.push(`usa ${SAVE_LABEL[p.castStat] || p.castStat.toUpperCase()}${p.castStatMin > 0 ? ` ≥ ${p.castStatMin}` : ""}`);
       const cost = p.slotCost || {};
       const costStr = Object.entries(cost).filter(([, n]) => n > 0)
         .map(([l, n]) => `−${n} slot Lv${l}`).join(" · ");
@@ -9500,17 +9500,26 @@ export default function Arena() {
                     {list.map(pu => {
                       const isSel = !!pendingMarketSel[pu.itemId];
                       const qty = pu.qty || 1;
+                      // Requisito di caratteristica (solo scroll): il punteggio del
+                      // player in quella stat deve essere ≥ al minimo richiesto.
+                      const reqStat = isScrollCat ? pu.payload?.castStat : null;
+                      const reqMin  = isScrollCat ? (pu.payload?.castStatMin || 0) : 0;
+                      const playerStatVal = reqStat ? (charPreview.stats?.[reqStat] ?? 0) : 0;
+                      const locked  = reqMin > 0 && !isSel && playerStatVal < reqMin;
                       return (
                         <button
                           key={pu.itemId}
                           type="button"
-                          className={`loadout-item market-pick ${isSel ? "selected" : ""}`}
-                          onClick={() => isScrollCat ? toggleMarketScroll(pu) : toggleMarket(pu.itemId)}
+                          disabled={locked}
+                          className={`loadout-item market-pick ${isSel ? "selected" : ""} ${locked ? "disabled" : ""}`}
+                          onClick={() => { if (locked) return; isScrollCat ? toggleMarketScroll(pu) : toggleMarket(pu.itemId); }}
                         >
                           <span className="loadout-item-icon">{pu.icon}</span>
                           <span className="loadout-item-name">{pu.name}{qty > 1 ? ` ×${qty}` : ""}</span>
                           <span className="loadout-item-damage">{describeMarketPurchase(pu)}</span>
-                          <span className="loadout-item-info">{isSel ? "✓ Equipaggiato" : "Tocca per usarlo"}</span>
+                          <span className="loadout-item-info">{locked
+                            ? `🔒 Richiede ${SAVE_LABEL[reqStat] || (reqStat || "").toUpperCase()} ≥ ${reqMin} (tu ${playerStatVal >= 0 ? "+" : ""}${playerStatVal})`
+                            : isSel ? "✓ Equipaggiato" : "Tocca per usarlo"}</span>
                           {isSel && <span className="loadout-check">✓</span>}
                         </button>
                       );

@@ -65,7 +65,7 @@ const EMPTY_FORM = {
   buffType: "hit", buffAmount: "1", buffTurns: "3",
   // spell scroll
   spellClass: "wizard", spellName: "",
-  charges: "1", castStat: "int", slotCost: {}, // slotCost: { livello: quantità }
+  charges: "1", castStat: "int", castStatMin: "0", slotCost: {}, // slotCost: { livello: quantità }
   // arma — danno multi-componente tipizzato (+ legacy dmgBonus per retro-compat edit)
   hitBonus: "0", dmgBonus: "0", ranged: false,
   weaponComponents: [{ dice: "1d8", type: "tagliente" }],
@@ -96,7 +96,7 @@ export function marketItemSummary(it) {
       const src = SPELL_SOURCES[p.spellClass];
       const sp = src?.spells.find(s => s.name === p.spellName);
       const bits = [`📜 ${p.spellName}`, `${p.charges ?? 1} caric${(p.charges ?? 1) === 1 ? "a" : "he"}`];
-      if (p.castStat) bits.push(`usa ${p.castStat.toUpperCase()}`);
+      if (p.castStat) bits.push(`usa ${p.castStat.toUpperCase()}${p.castStatMin > 0 ? ` ≥ ${p.castStatMin}` : ""}`);
       const cost = Object.entries(p.slotCost || {}).filter(([, n]) => n > 0).map(([l, n]) => `−${n} slot Lv${l}`).join(" · ");
       if (cost) bits.push(cost);
       return `${bits.join(" · ")}${sp?.info ? ` — ${sp.info}` : ""}`;
@@ -229,6 +229,7 @@ export default function ArenaMarketCatalog() {
           spellName: form.spellName,
           charges: Math.max(1, parseInt(form.charges, 10) || 1),
           castStat: form.castStat || "int",
+          castStatMin: Math.max(0, parseInt(form.castStatMin, 10) || 0),
           ...(Object.keys(slotCost).length ? { slotCost } : {}),
         };
       }
@@ -318,6 +319,7 @@ export default function ArenaMarketCatalog() {
       spellName: p.spellName || "",
       charges: String(p.charges ?? 1),
       castStat: p.castStat || "int",
+      castStatMin: String(p.castStatMin ?? 0),
       slotCost: Object.fromEntries(Object.entries(p.slotCost || {}).map(([l, n]) => [l, String(n)])),
       hitBonus: String(p.hitBonus ?? 0),
       dmgBonus: String(p.dmgBonus ?? 0),
@@ -476,6 +478,10 @@ export default function ArenaMarketCatalog() {
                 <select className="am-coin-input" value={form.castStat} onChange={set("castStat")}>
                   {CAST_STATS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                 </select>
+              </label>
+              <label className="am-cat-field am-cat-field--sm">
+                <span>Punteggio minimo richiesto (0 = nessun requisito)</span>
+                <input className="am-coin-input" type="number" min={0} value={form.castStatMin} onChange={set("castStatMin")} />
               </label>
               <div className="am-cat-field am-cat-field--full">
                 <span>Spell slot di classe persi equipaggiando lo scroll (0 = nessuno)</span>
