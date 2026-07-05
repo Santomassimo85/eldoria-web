@@ -12,29 +12,38 @@ export default function AdminSessions() {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "sessions"), (snapshot) => {
-      setActiveSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const now = Date.now();
+      const sessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Elimina automaticamente le sessioni la cui data/ora è già passata.
+      sessions.forEach(s => {
+        const ts = s.date ? new Date(s.date).getTime() : NaN;
+        if (!Number.isNaN(ts) && ts < now) {
+          deleteDoc(doc(db, "sessions", s.id)).catch(() => {});
+        }
+      });
+      // Mostra solo le sessioni ancora future.
+      setActiveSessions(sessions.filter(s => {
+        const ts = s.date ? new Date(s.date).getTime() : NaN;
+        return Number.isNaN(ts) || ts >= now;
+      }));
     });
     return () => unsubscribe();
   }, []);
 
   const saveSession = async () => {
-    if (!date) return alert("Per favore, seleziona una data e un orario.");
+    if (!date) return;
     try {
       await setDoc(doc(db, "sessions", party), { date, updatedAt: new Date().toISOString() });
-      alert(`Sessione per il party ${party} salvata con successo!`);
     } catch (e) {
-      alert("Errore nel salvataggio: " + e.message);
+      console.error("Errore nel salvataggio della sessione:", e);
     }
   };
 
   const deleteSession = async (id) => {
-    if (window.confirm(`Vuoi davvero eliminare la sessione di ${id}?`)) {
-      try {
-        await deleteDoc(doc(db, "sessions", id));
-        alert("Sessione eliminata.");
-      } catch (e) {
-        alert("Errore nell'eliminazione: " + e.message);
-      }
+    try {
+      await deleteDoc(doc(db, "sessions", id));
+    } catch (e) {
+      console.error("Errore nell'eliminazione della sessione:", e);
     }
   };
 

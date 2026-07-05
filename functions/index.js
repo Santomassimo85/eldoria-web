@@ -132,6 +132,34 @@ exports.autoSwitchBossTurn = onSchedule(
     },
 );
 
+// Pulisce automaticamente le sessioni del calendario la cui data/ora è già passata.
+// Gira ogni ora: scorre la collection "sessions" ed elimina i documenti scaduti,
+// così spariscono anche dal calendario dei giocatori senza intervento del Master.
+exports.cleanupExpiredSessions = onSchedule(
+    { schedule: "every 60 minutes", timeZone: "Europe/Rome", region: "us-central1" },
+    async () => {
+        const dbAdmin = admin.firestore();
+        const nowMs = Date.now();
+        try {
+            const snap = await dbAdmin.collection("sessions").get();
+            const expired = snap.docs.filter((d) => {
+                const date = d.data().date;
+                if (!date) return false;
+                const ts = new Date(date).getTime();
+                return !Number.isNaN(ts) && ts < nowMs;
+            });
+            if (expired.length === 0) {
+                console.log("⏸ cleanupExpiredSessions: nessuna sessione scaduta.");
+                return;
+            }
+            await Promise.all(expired.map((d) => d.ref.delete()));
+            console.log(`🧹 cleanupExpiredSessions: eliminate ${expired.length} sessioni scadute (${expired.map((d) => d.id).join(", ")}).`);
+        } catch (err) {
+            console.error("❌ cleanupExpiredSessions fallita:", err);
+        }
+    },
+);
+
 // --- FUNZIONE PRINCIPALE ---
 exports.notifyMasterOnBid = onDocumentUpdated('items/{itemId}', async (event) => {
         const itemId = event.params.itemId;
