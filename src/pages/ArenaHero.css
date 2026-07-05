@@ -6108,6 +6108,25 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(236,
 .arena-page .loadout-item.market-pick .loadout-check {
   color: #e9c8ff !important;
 }
+/* Intestazione delle sezioni Bottega dentro le tab (tono viola coerente con le carte) */
+.arena-page .loadout-section-title.loadout-market-head {
+  color: #e0b4ff !important;
+  border-top: 1px dashed rgba(199, 125, 255, 0.4);
+  padding-top: 12px;
+}
+/* Avviso penalità spell (possiedi una spell Lv3+ → meno spell di classe) */
+.arena-page .loadout-market-penalty {
+  margin: 4px 0 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #ffe4b0 !important;
+  background: linear-gradient(135deg, rgba(180, 90, 255, 0.16), rgba(120, 40, 210, 0.12));
+  border: 1px solid rgba(199, 125, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(199, 125, 255, 0.15);
+}
+.arena-page .loadout-market-penalty strong { color: #ffd97a !important; }
 
 /* risultato del tiro HP: dorato leggibile (prima rosso su scuro) */
 .arena-page .hp-rolled-result {

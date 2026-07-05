@@ -440,6 +440,8 @@ export default function ArenaMarketCatalog() {
                 cariche standard, qualunque sia la sua classe. <strong>Acquistandola si ottiene
                 automaticamente lo slot di quel livello</strong>: è lanciabile anche se è di livello
                 alto e il personaggio (base Lv.3) non lo sbloccherebbe normalmente.
+                ⚠️ Se è di <strong>livello 3+</strong>, chi la possiede avrà <strong>1 incantesimo di classe in meno
+                per ogni livello</strong> (bilanciamento automatico).
               </p>
             </div>
           )}

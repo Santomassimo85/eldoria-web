@@ -1315,6 +1315,42 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
   return (gear.acBonus || gear.actions.length || gear.consumables.length || Object.keys(gear.resist).length) ? gear : null;
 }
 
+// Livello dell'incantesimo di un acquisto (0 se non trovato).
+function marketSpellLevel(pu) {
+  if (!pu || pu.category !== "spell") return 0;
+  const sp = (MARKET_SPELL_LISTS[pu.payload?.spellClass] || []).find(s => s.name === pu.payload?.spellName);
+  return sp?.level ?? 0;
+}
+
+// Quante spell di livello ALTO (3+) il giocatore possiede nella Bottega di
+// questa settimana. Ogni spell alta comprata "costa" 1 slot per livello alle
+// spell di classe selezionabili (vedi applyMarketSpellPenalty).
+function countMarketHighSpells(arenaWeekly) {
+  if (!arenaWeekly || arenaWeekly.weekKey !== currentWeekKey()) return 0;
+  return (arenaWeekly.purchases || []).reduce(
+    (n, p) => n + (marketSpellLevel(p) >= 3 ? 1 : 0), 0
+  );
+}
+
+// Applica la penalità: −`reduction` a OGNI livello dei limiti spell di classe
+// (mai sotto 0) e ricalcola maxSpells. Se reduction=0 ritorna il config invariato.
+function applyMarketSpellPenalty(config, reduction) {
+  if (!reduction || !config) return config;
+  const src = config.spellLimits || {};
+  const limits = {};
+  let maxSpells = 0;
+  for (const k of Object.keys(src)) {
+    if (k === "nonCantripMax") { limits[k] = src[k]; continue; }
+    limits[k] = Math.max(0, (src[k] ?? 0) - reduction);
+    maxSpells += limits[k];
+  }
+  if (limits.nonCantripMax != null) {
+    limits.nonCantripMax = Math.max(0, limits.nonCantripMax - reduction);
+    maxSpells = Math.min(maxSpells, (limits[0] ?? 0) + limits.nonCantripMax);
+  }
+  return { ...config, spellLimits: limits, maxSpells };
+}
+
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
 const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
@@ -3520,15 +3556,11 @@ export default function Arena() {
 
   // ── STEP 3: conferma iscrizione ───────────────────────────────────────────
   const confirmJoin = async () => {
-    const config = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
-    // Basta almeno un'arma per proseguire (il massimo — es. 2 — è un tetto, non un obbligo:
-    // un'arma a due mani è esclusiva e ne occupa una sola).
-    if (config.maxWeapons > 0 && pendingWeapons.length < 1) return;
-    if (pendingSpells.length  < config.maxSpells)  return;
-    if (!charPreview.rolledHp) return;
-    if (!pendingArmor) return;
-    const totalItemsJoin = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
-    if (totalItemsJoin < 1) return;
+    const rawConfig = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
+    // Penalità Bottega (solo torneo): ogni spell Lv3+ posseduta toglie 1 slot
+    // per livello alle spell di classe — il requisito minimo scende di conseguenza.
+    const spellPenalty = loadoutContext === "tournament" ? countMarketHighSpells(charPreview.arenaWeekly) : 0;
+    const config = applyMarketSpellPenalty(rawConfig, spellPenalty);
 
     // ── Bottega settimanale: gli acquisti valgono SOLO nei tornei (le Sfide
     // Libere e i match AI restano col kit base, come i titoli) e SOLO se il
@@ -3536,6 +3568,16 @@ export default function Arena() {
     const marketSel  = new Set(Object.keys(pendingMarketSel).filter(k => pendingMarketSel[k]));
     const marketGear = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
     const marketAcBonus = marketGear?.acBonus || 0;
+    const marketHasWeapon = (marketGear?.actions || []).some(a => a.type === "weapon");
+
+    // Basta almeno un'arma per proseguire (il massimo — es. 2 — è un tetto, non un obbligo:
+    // un'arma a due mani è esclusiva e ne occupa una sola). Anche un'arma comprata conta.
+    if (config.maxWeapons > 0 && pendingWeapons.length < 1 && !marketHasWeapon) return;
+    if (pendingSpells.length  < config.maxSpells)  return;
+    if (!charPreview.rolledHp) return;
+    if (!pendingArmor) return;
+    const totalItemsJoin = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
+    if (totalItemsJoin < 1) return;
 
     // Calcolo CA finale: base + DES (cappato) + scudo; se senza armatura (barbaro): 10+DES+COS
     const dexMod    = charPreview.stats.dex ?? 0;
@@ -9388,15 +9430,54 @@ export default function Arena() {
 
           {/* ── Fase SELECTING: equipaggiamento ── */}
           {loadoutPhase === "selecting" && charPreview && (() => {
-            const config       = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
-            // Bottega settimanale (solo torneo): elenco degli acquisti disponibili da
-            // equipaggiare (tab "Bottega"). Sono opt-in: il giocatore sceglie quali usare.
+            const rawConfig    = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
+            // Bottega settimanale (solo torneo): acquisti disponibili, raggruppati
+            // per categoria e mostrati come opzioni OPT-IN nella tab pertinente
+            // (armi→Armi, spell→Magie, oggetti→Oggetti, armature→Difesa, pet→Oggetti).
             const weeklyPurchases = (loadoutContext === "tournament"
               && charPreview.arenaWeekly?.weekKey === currentWeekKey())
               ? (charPreview.arenaWeekly.purchases || []) : [];
+            const marketByCat  = { weapon: [], spell: [], item: [], armor: [], pet: [] };
+            weeklyPurchases.forEach(p => { if (marketByCat[p.category]) marketByCat[p.category].push(p); });
+            // Penalità: ogni spell Lv3+ posseduta toglie 1 slot per livello alle
+            // spell di CLASSE selezionabili (config effettivo usato sotto).
+            const spellPenalty = countMarketHighSpells(charPreview.arenaWeekly);
+            const config       = applyMarketSpellPenalty(rawConfig, spellPenalty);
             const marketSel     = new Set(Object.keys(pendingMarketSel).filter(k => pendingMarketSel[k]));
             const marketGear    = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
             const marketAcBonus = marketGear?.acBonus || 0;
+            // Card opt-in della Bottega (colore viola) per una categoria: riusata in ogni tab.
+            const toggleMarket = (id) => setPendingMarketSel(prev => ({ ...prev, [id]: !prev[id] }));
+            const renderMarketCards = (cat, title, verb) => {
+              const list = marketByCat[cat] || [];
+              if (!list.length) return null;
+              return (
+                <>
+                  <div className="loadout-section-title loadout-market-head" style={{ marginTop: 16 }}>🛒 {title}</div>
+                  <div className="loadout-section-hint">Acquisti della settimana — <strong>tocca per {verb}</strong> (facoltativo, in aggiunta al kit di classe). Le carte <strong>viola</strong> sono le tue della Bottega.</div>
+                  <div className="loadout-grid">
+                    {list.map(pu => {
+                      const isSel = !!pendingMarketSel[pu.itemId];
+                      const qty = pu.qty || 1;
+                      return (
+                        <button
+                          key={pu.itemId}
+                          type="button"
+                          className={`loadout-item market-pick ${isSel ? "selected" : ""}`}
+                          onClick={() => toggleMarket(pu.itemId)}
+                        >
+                          <span className="loadout-item-icon">{pu.icon}</span>
+                          <span className="loadout-item-name">{pu.name}{qty > 1 ? ` ×${qty}` : ""}</span>
+                          <span className="loadout-item-damage">{describeMarketPurchase(pu)}</span>
+                          <span className="loadout-item-info">{isSel ? "✓ Equipaggiato" : "Tocca per usarlo"}</span>
+                          {isSel && <span className="loadout-check">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            };
             const isRanger     = isRangerClass((charPreview.class || "").toLowerCase());
             const isWarlock    = isWarlockClass((charPreview.class || "").toLowerCase());
             const isArtificer  = isArtificerClass((charPreview.class || "").toLowerCase());
@@ -9404,7 +9485,9 @@ export default function Arena() {
             const demonReady   = !isWarlock || !!pendingDemon;
             const constructReady = !isArtificer || !!pendingConstruct;
             // Serve almeno un'arma; il massimo (config.maxWeapons) è solo un tetto.
-            const weaponsLeft  = pendingWeapons.length >= 1 ? 0 : 1;
+            // Anche un'arma comprata in Bottega ed equipaggiata conta come arma valida.
+            const marketHasWeapon = (marketGear?.actions || []).some(a => a.type === "weapon");
+            const weaponsLeft  = (pendingWeapons.length >= 1 || marketHasWeapon) ? 0 : 1;
             const spellsLeft   = config.maxSpells  - pendingSpells.length;
             const armorReady   = !!pendingArmor;
             const totalItems   = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
@@ -9434,7 +9517,8 @@ export default function Arena() {
             const shieldLocked = has2HWeapon;
 
             // ── Struttura a TAB: una categoria per scheda, niente scroll infinito ──
-            const hasMagic     = config.spellOptions.length > 0 || (config.skillOptions?.length > 0);
+            // La tab Magie appare anche se la classe non è caster ma ha spell comprate in Bottega.
+            const hasMagic     = config.spellOptions.length > 0 || (config.skillOptions?.length > 0) || marketByCat.spell.length > 0;
             const hasCompanion = isRanger || isWarlock || isArtificer;
             const companionMeta = isRanger
               ? { icon: "🐾", label: "Compagno", done: petReady }
@@ -9446,11 +9530,10 @@ export default function Arena() {
             const showTitleTab = loadoutContext === "tournament" && ownedTitles.length > 0;
             const LOADOUT_TABS = [
               { key: "weapons", icon: "⚔", label: config.maxWeapons === 1 ? "Arma" : "Armi", count: `${pendingWeapons.length}/${config.maxWeapons}`, done: weaponsLeft === 0 },
-              ...(hasMagic ? [{ key: "magic", icon: "✨", label: config.spellOptions.length > 0 ? "Magie" : "Abilità", count: config.spellOptions.length > 0 ? `${pendingSpells.length}/${config.maxSpells}` : null, done: spellsLeft === 0 }] : []),
+              ...(hasMagic ? [{ key: "magic", icon: "✨", label: (config.spellOptions.length > 0 || marketByCat.spell.length > 0) ? "Magie" : "Abilità", count: config.spellOptions.length > 0 ? `${pendingSpells.length}/${config.maxSpells}` : null, done: spellsLeft === 0 }] : []),
               { key: "armor", icon: "🛡", label: "Difesa", count: pendingArmor ? "✓" : null, done: armorReady },
               ...(hasCompanion ? [{ key: "companion", icon: companionMeta.icon, label: companionMeta.label, count: companionMeta.done ? "✓" : null, done: companionMeta.done }] : []),
               { key: "items", icon: "🎒", label: "Oggetti", count: `${totalItems}/2`, done: totalItems >= 1 },
-              ...(weeklyPurchases.length > 0 ? [{ key: "market", icon: "🛒", label: "Bottega", count: marketSel.size > 0 ? `${marketSel.size}` : null, done: true }] : []),
               ...(showTitleTab ? [{ key: "title", icon: "♛", label: "Titolo", count: pendingTitle ? "✓" : null, done: true }] : []),
             ];
             const activeTab = LOADOUT_TABS.some(t => t.key === loadoutTab) ? loadoutTab : LOADOUT_TABS[0].key;
@@ -9543,15 +9626,17 @@ export default function Arena() {
                     });
                   })()}
                 </div>
-                {weeklyPurchases.some(p => p.category === "weapon") && (
-                  <div className="loadout-section-hint" style={{ marginTop: 14 }}>
-                    🛒 Hai armi acquistate in <strong>Bottega</strong>: le trovi nella scheda <strong>Bottega</strong> qui sopra e le equipaggi se vuoi (in aggiunta a queste).
-                  </div>
-                )}
+                {renderMarketCards("weapon", "Armi della Bottega", "impugnarla")}
                 </>)}
 
                 {/* ── TAB MAGIE: Incantesimi + Abilità ── */}
                 {activeTab === "magic" && (<>
+                {spellPenalty > 0 && config.spellOptions.length > 0 && (
+                  <div className="loadout-market-penalty">
+                    ⚠ Possiedi <strong>{spellPenalty}</strong> incantesim{spellPenalty === 1 ? "o" : "i"} di <strong>livello 3+</strong> dalla Bottega:
+                    gli incantesimi di <strong>classe</strong> selezionabili sono ridotti di <strong>{spellPenalty}</strong> per ogni livello.
+                  </div>
+                )}
                 {/* Sezione Incantesimi — raggruppati per livello */}
                 {config.spellOptions.length > 0 && (() => {
                   const LEVEL_LABELS = { 0: "Trucchetti", 1: "Livello 1", 2: "Livello 2", 3: "Livello 3", 4: "Livello 4", 5: "Livello 5", 6: "Livello 6", 7: "Livello 7", 8: "Livello 8", 9: "Livello 9" };
@@ -9636,6 +9721,7 @@ export default function Arena() {
                     </div>
                   </>
                 )}
+                {renderMarketCards("spell", "Incantesimi della Bottega", "lanciarlo")}
                 </>)}
 
                 {/* Abilità automatiche (Smite Paladino) — incluse nel tab Armi */}
@@ -9730,6 +9816,7 @@ export default function Arena() {
                     🐾 Avrai accesso alla <strong>Forma Selvatica</strong> durante il combattimento.
                   </div>
                 )}
+                {renderMarketCards("armor", "Armature della Bottega", "indossarla")}
                 </>)}
 
                 {/* ── TAB ALLEATO: Compagno / Demone / Costrutto ── */}
@@ -9851,6 +9938,9 @@ export default function Arena() {
                   );
                 })()}
 
+                {renderMarketCards("item", "Oggetti della Bottega", "usarlo")}
+                {renderMarketCards("pet", "Pet della Bottega", "evocarlo")}
+
                 {/* Preview selezione */}
                 {(pendingWeapons.length > 0 || pendingSpells.length > 0) && (
                   <div className="loadout-selected-preview">
@@ -9896,36 +9986,6 @@ export default function Arena() {
                           <span className="loadout-item-icon">{t.icon}</span>
                           <span className="loadout-item-name">{t.name}</span>
                           <span className="loadout-item-damage title-bonus">{t.short}</span>
-                          {isSelected && <span className="loadout-check">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>)}
-
-                {/* ── TAB BOTTEGA: acquisti settimanali da equipaggiare (opt-in) ── */}
-                {activeTab === "market" && (<>
-                  <div className="loadout-section-title">🛒 Bottega — {marketSel.size}/{weeklyPurchases.length} equipaggiati</div>
-                  <div className="loadout-section-hint">
-                    Ciò che hai comprato in vetrina <strong>non è equipaggiato in automatico</strong>: tocca le carte
-                    <strong> viola</strong> qui sotto per <strong>indossarle in questo torneo</strong>. Quello che non scegli resta a magazzino fino a fine settimana.
-                    Le <strong>spell</strong> comprate includono già lo <strong>slot del loro livello</strong>: sono lanciabili anche se di livello alto.
-                  </div>
-                  <div className="loadout-grid">
-                    {weeklyPurchases.map(pu => {
-                      const isSelected = !!pendingMarketSel[pu.itemId];
-                      const qty = pu.qty || 1;
-                      return (
-                        <button
-                          key={pu.itemId}
-                          type="button"
-                          className={`loadout-item market-pick ${isSelected ? "selected" : ""}`}
-                          onClick={() => setPendingMarketSel(prev => ({ ...prev, [pu.itemId]: !prev[pu.itemId] }))}
-                        >
-                          <span className="loadout-item-icon">{pu.icon}</span>
-                          <span className="loadout-item-name">{pu.name}{qty > 1 ? ` ×${qty}` : ""}</span>
-                          <span className="loadout-item-damage">{describeMarketPurchase(pu)}</span>
-                          <span className="loadout-item-info">{isSelected ? "✓ Equipaggiato" : "Tocca per usarlo"}</span>
                           {isSelected && <span className="loadout-check">✓</span>}
                         </button>
                       );
