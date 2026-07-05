@@ -210,9 +210,10 @@ export default function ArenaMarket() {
           <li>🪙 Compri con le <strong>Monete Arena</strong>. Ogni articolo può avere un <strong>massimo di acquisti a settimana</strong>.</li>
           <li>⏳ Tutto ciò che compri vale <strong>dal momento dell'acquisto fino a domenica alle 24:00</strong>. Il lunedì torni <strong>base</strong> (classi Lv.3) e puoi comprare le novità.</li>
           <li>🏟 Gli acquisti funzionano <strong>solo nei tornei</strong>: nelle Sfide Libere e contro l'IA si combatte col kit base.</li>
+          <li>🛒 <strong>Non è tutto equipaggiato in automatico!</strong> All'iscrizione al torneo, nella scheda <strong>«Bottega»</strong> del loadout, scegli tu cosa indossare toccando le <strong>carte viola</strong>. Ciò che non scegli resta a magazzino fino a fine settimana.</li>
           <li>🎒 <strong>Oggetti</strong>: azione gratuita, 1 per turno (cure, danni o bonus temporanei).</li>
           <li>✨ <strong>Incantesimi</strong>: si aggiungono alle tue azioni con le loro cariche, anche fuori dalla tua classe. <strong>Comprando la spell ottieni automaticamente lo slot del suo livello</strong>: puoi lanciarla anche se è di livello alto (non serve sbloccarlo).</li>
-          <li>⚔️ <strong>Armi e armature</strong>: si aggiungono al tuo equipaggiamento e alla tua CA.</li>
+          <li>⚔️ <strong>Armi e armature</strong>: si aggiungono al tuo equipaggiamento e alla tua CA (il bonus armatura si vede nell'anteprima CA del loadout).</li>
           <li>🐾 <strong>Pet</strong>: agiscono come <strong>azione bonus</strong> nel tuo turno, con un numero massimo di usi per fight.</li>
         </ul>
         <p className="am-manual-note">ℹ️ Le abilità e gli incantesimi base della tua classe restano sempre tuoi: la Bottega aggiunge, non sostituisce.</p>

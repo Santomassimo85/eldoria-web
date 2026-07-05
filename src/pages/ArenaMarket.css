@@ -921,13 +921,14 @@
 .am-page > .cine-side-nav { z-index: 95; }
 
 /* ── Manuale delle Classi (solo informativo) ───────────────────────────── */
-/* Manuale e scommesse vivono in box chiari (.am-how): forza testo scuro
-   (la pagina di default ha testo crema chiaro, illeggibile su sfondo chiaro). */
-.am-page .am-how .am-classes-sub { color: #4a3f2f; }
-.am-page .am-how .am-how-list li { color: #3a3a3a; }
+/* I box .am-how sono su SFONDO SCURO (override in ArenaMarketCatalogo.css):
+   il testo va CHIARO/crema, non scuro, altrimenti è illeggibile. */
+.am-page .am-how .am-classes-sub { color: rgba(240, 228, 200, 0.9); }
+.am-page .am-how .am-how-list li { color: rgba(238, 226, 200, 0.92); }
+.am-page .am-how .am-how-list li strong { color: #ffe6a6; }
 .am-class-manual .am-manual-note {
   font-size: 0.78rem;
-  color: #6e5320;
+  color: rgba(230, 216, 184, 0.8);
   margin: 0 0 12px;
   font-style: italic;
 }
