@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, getDocs } from "firebase/firestore";
 import ToggleSection from "./ToggleSection";
 import { useAuth } from "../AuthContext";
 import GeoAdmin from "./GeoAdmin";
 import { awardPetPoints } from "../utils/pet";
+import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok, loreSlug } from "../utils/loreLinks";
 import './Geo.css';
 import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
@@ -19,6 +20,14 @@ const CONTINENT_IMAGES = {
   Ohzkie: "/assets/PhotoStory/GruppoLAC/zombie_fungo.png",
 };
 const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+// HTML → testo semplice (per l'anteprima nel popup interattivo)
+const stripHtml = (html) => {
+  if (!html) return "";
+  const tmp = typeof document !== "undefined" ? document.createElement("div") : null;
+  if (!tmp) return String(html).replace(/<[^>]*>/g, " ");
+  tmp.innerHTML = String(html).replace(/<\s*br\s*\/?>/gi, "\n").replace(/<\/(p|div|h[1-6]|li)>/gi, "\n");
+  return (tmp.textContent || tmp.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+};
 
 export default function Geo() {
   useParallaxScroll();
@@ -30,7 +39,100 @@ export default function Geo() {
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === "santomassimo85@gmail.com";
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const focusSlug = searchParams.get("focus");
+
+  // ── Link interattivi: PG (characters) + NPC (npcs); le città sono i `locations` ──
+  const [lore, setLore] = useState({ characters: [], npcs: [] });
+  const [lorePopup, setLorePopup] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [charsSnap, npcsSnap] = await Promise.all([
+          getDocs(collection(db, "characters")),
+          getDocs(collection(db, "npcs")),
+        ]);
+        if (!alive) return;
+        setLore({
+          characters: charsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+          npcs: npcsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        });
+      } catch (_) { /* i link interattivi sono opzionali */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Registro dei nomi linkabili (PG, NPC, città = i luoghi dell'Atlante)
+  const loreRegistry = useMemo(
+    () => buildLoreRegistry({
+      characters: lore.characters,
+      npcs: lore.npcs,
+      cities: locations.map((l) => l.name).filter(Boolean),
+    }),
+    [lore, locations]
+  );
+
+  // "chiave normalizzata" → dettagli mostrati nel popup interno
+  const loreDetails = useMemo(() => {
+    const map = new Map();
+    const put = (key, data) => { if (key && !map.has(key)) map.set(key, data); };
+    for (const c of lore.characters) {
+      if (!c?.name) continue;
+      const tok = firstTok(c.name);
+      const meta = [c.race, c.class].filter(Boolean).join(" · ");
+      const data = {
+        type: "char", name: c.name,
+        image: c.image || "/assets/player/default.png",
+        meta: c.level ? `${meta}${meta ? " · " : ""}Liv. ${c.level}` : meta,
+        desc: c.background || "",
+        href: `/party?hero=${encodeURIComponent(tok)}`,
+      };
+      put(norm(c.name), data); put(norm(tok), data);
+    }
+    for (const n of lore.npcs) {
+      if (!n?.name) continue;
+      put(norm(n.name), {
+        type: "npc", name: n.name,
+        image: n.image || "/assets/player/default.png",
+        meta: [n.faction, n.location].filter(Boolean).join(" · "),
+        desc: n.description || "",
+        href: `/npc?focus=${loreSlug(n.name)}`,
+      });
+    }
+    for (const g of locations) {
+      if (!g?.name) continue;
+      put(norm(g.name), {
+        type: "city", name: g.name,
+        image: g.image || "",
+        meta: g.continent || "",
+        desc: g.description || "",
+        href: `/Geo?focus=${loreSlug(g.name)}`,
+      });
+    }
+    return map;
+  }, [lore, locations]);
+
+  // Click su un link interattivo → apre il popup sulla pagina (o naviga)
+  const handleLoreClick = (e) => {
+    const a = e.target.closest("a[data-lore]");
+    if (!a) return;
+    e.preventDefault();
+    const key = a.getAttribute("data-key");
+    const detail = key && loreDetails.get(key);
+    if (detail) { setLorePopup(detail); return; }
+    const href = a.getAttribute("data-href");
+    if (href) navigate(href);
+  };
+
+  // chiusura popup con Esc
+  useEffect(() => {
+    if (!lorePopup) return;
+    const onKey = (e) => { if (e.key === "Escape") setLorePopup(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lorePopup]);
 
   // Arrivo da un link interattivo (?focus=<slug>): scorri ed evidenzia il luogo
   useEffect(() => {
@@ -311,7 +413,8 @@ export default function Geo() {
                     )}
                     <div
                       className="geo-description"
-                      dangerouslySetInnerHTML={{ __html: loc.description }}
+                      onClick={handleLoreClick}
+                      dangerouslySetInnerHTML={{ __html: linkifyLoreHtml(loc.description, loreRegistry) }}
                     />
                   </ToggleSection>
                 </div>
@@ -320,6 +423,58 @@ export default function Geo() {
           </section>
         );
       })}
+
+      {/* ── Popup interattivo: dettaglio PG / NPC / città senza lasciare la pagina ── */}
+      {lorePopup && (
+        <div
+          className="lore-popup-overlay"
+          onClick={() => setLorePopup(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lorePopup.name}
+        >
+          <div
+            className={`lore-popup lore-popup--${lorePopup.type}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="lore-popup-close"
+              onClick={() => setLorePopup(null)}
+              aria-label="Chiudi"
+            >✕</button>
+
+            {lorePopup.image && (
+              <img
+                className="lore-popup-img"
+                src={lorePopup.image}
+                alt={lorePopup.name}
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            )}
+
+            <div className="lore-popup-body">
+              <span className="lore-popup-kind">
+                {lorePopup.type === "char" ? "Personaggio"
+                  : lorePopup.type === "npc" ? "Personaggio non giocante"
+                  : "Luogo"}
+              </span>
+              <h3 className="lore-popup-name">{lorePopup.name}</h3>
+              {lorePopup.meta && <p className="lore-popup-meta">{lorePopup.meta}</p>}
+              {lorePopup.desc && (
+                <p className="lore-popup-desc">{stripHtml(lorePopup.desc).trim()}</p>
+              )}
+              <button
+                type="button"
+                className="lore-popup-go"
+                onClick={() => { setLorePopup(null); navigate(lorePopup.href); }}
+              >
+                Apri la scheda completa →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
