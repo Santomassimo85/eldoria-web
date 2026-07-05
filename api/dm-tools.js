@@ -30,13 +30,11 @@ DIVINITÀ MALVAGIE:
 - Malakhia — Oblio, Follia, Vuoto cosmico. Nichilisti che distruggono storia e templi.
 `;
 
-const MAP_TEMPLATE = `Mappa fantasy di una città vista dall'alto (top-down), stile illustrazione cartografica da manuale di gioco di ruolo. Vista a volo d'uccello leggermente inclinata.
-CITTÀ: [NOME] — [DIMENSIONE]
-INSEDIAMENTO: [FORTIFICAZIONE], [POSIZIONE]
-CARATTERE: [CARATTERE]
-ELEMENTI: isolati di edifici con tetti coerenti e strade che si connettono davvero; piazza centrale e edificio principale; [ELEMENTI SPECIFICI: mura e porte / porto e moli / ponti sul fiume]; vegetazione e terreno naturale intorno.
-STILE: [PALETTE COLORI], luce diffusa, texture pittorica da mappa disegnata a mano, nessun testo o etichetta, nessuna griglia, bordi che sfumano nel terreno.
-INQUADRATURA: intera città visibile, centrata, formato quadrato.`;
+const MAP_TEMPLATE = `Strict top-down orthographic battle map of the settlement [NOME] ([DIMENSIONE]), bird's-eye view seen straight from directly above at 90°, NO perspective, NO tilt, NO horizon — like a game master's tabletop map for Foundry VTT.
+LAYOUT (must be readable and specific to THIS town, not generic): [DESCRIZIONE LAYOUT — dove passa la strada/il fiume principale, dov'è la piazza, dove sorgono i quartieri, cosa c'è ai bordi]. Streets actually connect building to building; blocks of houses with consistent rooftops; a clearly recognisable central square with the main building ([EDIFICIO PRINCIPALE]).
+KEY LANDMARKS to draw as distinct, identifiable buildings placed around the map: [LUOGHI NOTEVOLI — elenca i 3-5 edifici principali di questa città].
+SETTLEMENT FEATURES: [ELEMENTI SPECIFICI: mura e porte / porto e moli / ponti sul fiume / campi coltivati / bosco]. Natural terrain and vegetation around the edges, fading softly into the border.
+INQUADRATURA: whole settlement fully visible and centred, square format. No text, no letters, no labels, no legend, no grid lines, no compass.`;
 
 function buildPrompt(tipo, input) {
   const i = input || {};
@@ -73,15 +71,34 @@ Descrizioni brevi (1-2 frasi). Rarità tra: comune, non comune, raro, molto raro
   }
 
   // citta
+  const dim = (i.dimensione || "cittadina").toLowerCase();
+  const isBig = dim.includes("città") || dim.includes("citta") || dim.includes("metropoli");
+
+  // NPC già creati dal Master in questa località (passati dal client).
+  const npcs = Array.isArray(i.npcs) ? i.npcs.filter(n => n && n.name) : [];
+  const npcBlock = npcs.length
+    ? `\nPERSONAGGI GIÀ ESISTENTI E CANONICI IN QUESTA LOCALITÀ (creati dal Master — sono la VERITÀ ufficiale, NON inventarne altri che li contraddicano):
+${npcs.map(n => `- ${n.name}${n.location ? ` — ${n.location}` : ""}${n.faction ? ` (${n.faction})` : ""}${n.description ? `: ${String(n.description).slice(0, 300)}` : ""}`).join("\n")}
+REGOLE OBBLIGATORIE su questi personaggi:
+• Se tra loro c'è un sovrano/governatore/sindaco/capo, USA IL SUO NOME nei campi "governo" e "capo". NON inventare un altro capo (niente "un re" generico se qui c'è già un nome).
+• Se ci sono locandieri, mercanti, sacerdoti, capitani, ecc., inseriscili nei "luoghi" pertinenti (taverne, botteghe, templi, caserme) citandoli per nome.
+• Puoi aggiungere altri luoghi/personaggi minori inventati, ma SOLO se non contraddicono quelli sopra.\n`
+    : "";
+
   return `Sei il generatore di insediamenti per la campagna fantasy Eldoria.
 Crea una città/villaggio ricca e giocabile.
-CONTESTO: nome "${i.nome || "(inventa un nome adatto a Eldoria)"}", dimensione "${i.dimensione || "cittadina"}", carattere "${i.carattere || "borgo di passaggio"}".${i.note ? `\nDETTAGLI EXTRA DEL MASTER: "${i.note}"` : ""}
-
+CONTESTO: nome "${i.nome || "(inventa un nome adatto a Eldoria)"}", dimensione "${i.dimensione || "cittadina"}", carattere "${i.carattere || "borgo di passaggio"}".${i.note ? `\nDETTAGLI EXTRA DEL MASTER (rispettali): "${i.note}"` : ""}
+${npcBlock}
 RELIGIONE: scegli TU, in autonomia e in modo coerente col carattere della città, cosa si venera, SCEGLIENDO SOLO da questo pantheon di Eldoria. Una città può: seguire una sola divinità, più culti insieme, ospitare una setta malvagia (magari segreta), oppure essere in gran parte atea/non credente. Spiega templi, culti dominanti ed eventuali tensioni religiose.
 PANTHEON:${PANTHEON}
 
+DIFESA — REGOLA IMPORTANTE:
+${isBig
+  ? `Questa è una città grande: compila il campo "difesa" ma resta VAGO e atmosferico, MAI numeri precisi. Descrivi il TIPO di forza, non quanti sono. Esempi di tono giusto: "una guarnigione ben addestrata presidia le mura e le porte", "una robusta guardia cittadina pattuglia i quartieri, affiancata da mercenari nei momenti di tensione". VIETATO scrivere conteggi tipo "12 soldati", "200 guardie".`
+  : `Questo insediamento è piccolo (villaggio/cittadina): LASCIA il campo "difesa" come stringa vuota "". Non elencare guardie o soldati. Al massimo un accenno alla protezione può stare dentro la "descrizione" in modo vago (es. "pochi uomini di guardia", "una milizia raccogliticcia"), MAI numeri.`}
+
 Scrivi una descrizione LUNGA ed evocativa nel campo "descrizione" (almeno 5-6 frasi).
-Compila "mapPrompt" partendo ESATTAMENTE da questo modello, sostituendo i campi tra parentesi quadre con i tratti di QUESTA città (elementi e palette coerenti):
+Compila "mapPrompt" partendo ESATTAMENTE da questo modello, sostituendo OGNI campo tra parentesi quadre con i tratti REALI di QUESTA città: il layout deve rispecchiare la descrizione e i luoghi notevoli che hai scritto sopra (stessa piazza, stesse strade, stessi edifici), NON un impianto generico. Cita nel mapPrompt i luoghi notevoli veri.
 ${MAP_TEMPLATE}
 
 Rispondi SOLO con questo JSON, senza testo prima/dopo, senza backtick:

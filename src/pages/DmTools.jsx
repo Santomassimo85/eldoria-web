@@ -182,7 +182,29 @@ export default function DmTools() {
   async function generate() {
     setBusy(true); setMsg("Sto generando…"); setOut(null); setMapImg(null); setMapPrompt("");
     setCoverImg(null); setCoverPrompt(""); setCitySaved(false); setCityMsg("");
-    const input = tab === "incontro" ? enc : tab === "loot" ? loot : city;
+    let input = tab === "incontro" ? enc : tab === "loot" ? loot : city;
+    // Città: allega gli NPC già creati in questa località, così Claude usa i
+    // personaggi salvati (re, locandieri, ecc.) invece di inventarli.
+    if (tab === "citta" && city.nome?.trim()) {
+      try {
+        const snap = await getDocs(collection(db, "npcs"));
+        const target = city.nome.trim().toLowerCase();
+        const found = snap.docs.map((d) => d.data()).filter((n) => {
+          const lc = (n.linkedCity || "").trim().toLowerCase();
+          const loc = (n.location || "").trim().toLowerCase();
+          return (lc && lc === target) || (loc && loc.includes(target)) || (target && (n.description || "").toLowerCase().includes(target));
+        }).map((n) => ({
+          name: n.name || "",
+          location: n.location || "",
+          faction: n.faction || "",
+          description: n.description || "",
+        }));
+        if (found.length) {
+          input = { ...city, npcs: found };
+          setMsg(`Sto generando… (uso ${found.length} PNG già salvati in ${city.nome.trim()})`);
+        }
+      } catch { /* se il fetch NPC fallisce, genera comunque senza */ }
+    }
     try {
       const r = await fetch(API, {
         method: "POST", headers: { "content-type": "application/json" },
@@ -587,7 +609,7 @@ export default function DmTools() {
               <hr className="npcgen-divider" />
               <p className="npcgen-v">{out.descrizione}</p>
               <p className="npcgen-k">Governo</p><p className="npcgen-v">{out.governo}{out.capo ? ` — ${out.capo}` : ""}</p>
-              <p className="npcgen-k">Difesa</p><p className="npcgen-v">{out.difesa}</p>
+              {out.difesa && <><p className="npcgen-k">Difesa</p><p className="npcgen-v">{out.difesa}</p></>}
               <p className="npcgen-k">Religione</p><p className="npcgen-v">{out.religione}</p>
               <p className="npcgen-k">Economia</p><p className="npcgen-v">{out.economia}</p>
               {(out.luoghi || []).length > 0 && (<>
