@@ -1384,6 +1384,29 @@ function trimSpellsToLimits(spells, limits) {
   });
 }
 
+// ── PREMI ARENA (strutturati) ────────────────────────────────────────────
+// Corone = valuta mercato nero (campo `platinum`), Monete Arena = `arenaCoins`,
+// perks = vantaggi sessioni live (testo, assegnati a mano dal Master).
+function prizeTierToStr(t) {
+  return {
+    crowns: t?.crowns != null && t.crowns !== "" ? String(t.crowns) : "",
+    coins:  t?.coins  != null && t.coins  !== "" ? String(t.coins)  : "",
+    perks:  t?.perks || "",
+  };
+}
+function formatPrizeConfig(cfg) {
+  if (!cfg) return "";
+  const line = (label, t) => {
+    if (!t) return null;
+    const bits = [];
+    if (t.crowns) bits.push(`👑 ${t.crowns}`);
+    if (t.coins)  bits.push(`🪙 ${t.coins}`);
+    if (t.perks && String(t.perks).trim()) bits.push(String(t.perks).trim());
+    return bits.length ? `${label} ${bits.join(" · ")}` : null;
+  };
+  return [line("🥇", cfg.first), line("🥈", cfg.second), line("🎟", cfg.participant)].filter(Boolean).join("   ");
+}
+
 const ARENA_INITIATIVE_DURATION = 10 * 60 * 1000;      // 10 minuti per tirare iniziativa
 const ARENA_TURN_DURATION       = 1 * 60 * 60 * 1000;  // 1 ora per fare la propria azione
 const FUN_MATCH_PRUNE_GRACE_MS  = 10 * 60 * 1000;      // attesa prima di rimuovere una Sfida Libera finita+archiviata
@@ -2806,6 +2829,13 @@ export default function Arena() {
   const { currentUser } = useAuth();
   const [arenaMeta, setArenaMeta]             = useState(null);
   const [prizeText, setPrizeText]             = useState("");
+  // Premi strutturati: Corone (mercato nero = platinum), Monete Arena, e
+  // vantaggi sessioni live (testo, NON distribuito in automatico). Tre fasce.
+  const [prizeConfig, setPrizeConfig]         = useState({
+    first:       { crowns: "", coins: "", perks: "" },
+    second:      { crowns: "", coins: "", perks: "" },
+    participant: { crowns: "", coins: "", perks: "" },
+  });
   const [selectedTargets, setSelectedTargets] = useState({});
   const [tournamentHistory, setTournamentHistory] = useState([]);
   const [profileLookup, setProfileLookup]     = useState({});
@@ -3156,6 +3186,48 @@ export default function Arena() {
     } catch { /* NPC o doc mancante: ignora */ }
   };
 
+  // Corone del mercato nero (campo `platinum`).
+  const awardCrowns = async (uid, amount) => {
+    if (!amount) return;
+    try {
+      await updateDoc(doc(db, "characters", uid), { platinum: increment(amount) });
+    } catch { /* NPC o doc mancante: ignora */ }
+  };
+
+  // Distribuzione automatica dei premi a fine torneo: 1° posto, 2° posto e
+  // partecipanti ricevono Corone + Monete Arena; i vantaggi live restano un
+  // testo informativo (li applica il Master a mano). Gira una sola volta,
+  // dentro sendChampionNotification (l'incoronazione avviene una sola volta).
+  const distributeArenaPrizes = async (winnerId, matchesOverride) => {
+    const cfg = arenaMeta?.prizeConfig;
+    if (!cfg) return;
+    const matches = matchesOverride || arenaMeta?.matches || [];
+    const finalM = matches.find(m => m.kind === "final" && m.winner);
+    const runnerUpId = (finalM?.players || []).map(p => p.id).find(id => id && id !== winnerId) || null;
+    const participants = (arenaMeta?.participants || []).filter(Boolean);
+    const targets = [...new Set([winnerId, runnerUpId, ...participants].filter(Boolean))];
+    const bucketOf = (uid) => uid === winnerId ? "first" : uid === runnerUpId ? "second" : "participant";
+    const placeLabel = { first: "1° posto", second: "2° posto", participant: "partecipazione" };
+    for (const uid of targets) {
+      const tier = cfg[bucketOf(uid)] || {};
+      const crowns = Math.max(0, parseInt(tier.crowns, 10) || 0);
+      const coins  = Math.max(0, parseInt(tier.coins, 10) || 0);
+      const perks  = (tier.perks || "").trim();
+      if (crowns) await awardCrowns(uid, crowns);
+      if (coins)  await awardArenaCoins(uid, coins);
+      const gained = [];
+      if (crowns) gained.push(`👑 ${crowns} Corone`);
+      if (coins)  gained.push(`🪙 ${coins} Monete Arena`);
+      if (perks)  gained.push(`🎁 ${perks}`);
+      if (!gained.length) continue;
+      await addDoc(collection(db, "notifications"), {
+        userId: uid, read: false, timestamp: serverTimestamp(),
+        title: "🏆 Premi dell'Arena",
+        message: `Ricompensa Arena (${placeLabel[bucketOf(uid)]}): ${gained.join(" · ")}.${perks ? " I vantaggi per le sessioni live te li applicherà il Master." : ""}`,
+      });
+    }
+  };
+
   const awardRoundCoins = async (updatedMatches) => {
     for (const m of updatedMatches) {
       const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
@@ -3303,7 +3375,15 @@ export default function Arena() {
       if (snap.exists()) {
         const data = snap.data();
         setArenaMeta(data);
-        if (isMaster) setPrizeText(data.prizes || "");
+        if (isMaster) {
+          setPrizeText(data.prizes || "");
+          const pc = data.prizeConfig || {};
+          setPrizeConfig({
+            first:       prizeTierToStr(pc.first),
+            second:      prizeTierToStr(pc.second),
+            participant: prizeTierToStr(pc.participant),
+          });
+        }
       }
       /* Niente auto-setDoc: se il doc è temporaneamente assente (race con
          cache offline o emulator restart) NON ricreiamo nulla per non
@@ -4123,8 +4203,23 @@ export default function Arena() {
   };
 
   // ── MASTER helpers ─────────────────────────────────────────────────────────
+  const setPrizeField = (tier, field, val) =>
+    setPrizeConfig(prev => ({ ...prev, [tier]: { ...prev[tier], [field]: val } }));
+
   const savePrizes = async () => {
-    await updateDoc(doc(db, "arena_meta", "global"), { prizes: prizeText });
+    const toNum = (t) => ({
+      crowns: Math.max(0, parseInt(t.crowns, 10) || 0),
+      coins:  Math.max(0, parseInt(t.coins, 10) || 0),
+      perks:  (t.perks || "").trim(),
+    });
+    await updateDoc(doc(db, "arena_meta", "global"), {
+      prizes: prizeText,
+      prizeConfig: {
+        first:       toNum(prizeConfig.first),
+        second:      toNum(prizeConfig.second),
+        participant: toNum(prizeConfig.participant),
+      },
+    });
   };
 
   const approveParticipant = async (uid) => {
@@ -4390,6 +4485,7 @@ export default function Arena() {
       read: false, timestamp: serverTimestamp(),
     });
     await awardArenaCoins(winnerId, 30);
+    await distributeArenaPrizes(winnerId, matchesOverride);
     await resolveTournamentBets(winnerId, winnerName);
     await archiveTournament(winnerId, undefined, undefined, matchesOverride);
     const winnerSnap = (arenaMeta?.characterSnapshots || {})[winnerId] || {};
@@ -8745,13 +8841,53 @@ export default function Arena() {
                 <textarea
                   className="arena-reward-textarea"
                   rows={2}
-                  placeholder="Descrivi la ricompensa che vedranno tutti i giocatori…"
+                  placeholder="Nota generale sulla ricompensa (facoltativa, la vedono tutti nell'hub)…"
                   value={prizeText}
                   onChange={e => setPrizeText(e.target.value)}
                 />
-                <button className="arena-reward-save" onClick={savePrizes}>💾 Salva</button>
+                {/* ── Premi strutturati per fascia (distribuiti in automatico a fine Arena, tranne i vantaggi live) ── */}
+                <div className="arena-prize-tiers">
+                  {[
+                    { key: "first",       label: "🥇 1° posto" },
+                    { key: "second",      label: "🥈 2° posto" },
+                    { key: "participant", label: "🎟 Partecipanti" },
+                  ].map(t => (
+                    <div key={t.key} className="arena-prize-tier">
+                      <div className="arena-prize-tier-label">{t.label}</div>
+                      <div className="arena-prize-tier-fields">
+                        <label className="arena-prize-field">
+                          <span>👑 Corone</span>
+                          <input type="number" min={0} inputMode="numeric"
+                            value={prizeConfig[t.key].crowns}
+                            onChange={e => setPrizeField(t.key, "crowns", e.target.value)} />
+                        </label>
+                        <label className="arena-prize-field">
+                          <span>🪙 Monete Arena</span>
+                          <input type="number" min={0} inputMode="numeric"
+                            value={prizeConfig[t.key].coins}
+                            onChange={e => setPrizeField(t.key, "coins", e.target.value)} />
+                        </label>
+                        <label className="arena-prize-field arena-prize-field--wide">
+                          <span>🎁 Vantaggi sessioni live (a mano)</span>
+                          <input type="text"
+                            placeholder="es. un favore dal DM, +1 tiro fortuna…"
+                            value={prizeConfig[t.key].perks}
+                            onChange={e => setPrizeField(t.key, "perks", e.target.value)} />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="arena-reward-hint">
+                  Corone e Monete Arena vengono <strong>assegnate in automatico a fine Arena</strong> (1°, 2° e partecipanti).
+                  I <strong>vantaggi sessioni live</strong> sono solo un promemoria: li applichi tu.
+                </p>
+                <button className="arena-reward-save" onClick={savePrizes}>💾 Salva premi</button>
+                {formatPrizeConfig(arenaMeta.prizeConfig) && (
+                  <p className="arena-reward-current">Premi impostati: <strong>{formatPrizeConfig(arenaMeta.prizeConfig)}</strong></p>
+                )}
                 {arenaMeta.prizes && arenaMeta.prizes.trim() && (
-                  <p className="arena-reward-current">In palio ora: <strong>{arenaMeta.prizes}</strong></p>
+                  <p className="arena-reward-current">Nota: <strong>{arenaMeta.prizes}</strong></p>
                 )}
               </div>
             ) : (
@@ -10116,10 +10252,13 @@ export default function Arena() {
               <div className="join-icon">⚔</div>
               <h2 className="join-title">Entra nell'Arena</h2>
 
-              {arenaMeta.prizes && (
+              {(arenaMeta.prizes || formatPrizeConfig(arenaMeta.prizeConfig)) && (
                 <div className="prize-display">
                   <div className="prize-display-label">🏆 Premi in Palio</div>
-                  <div className="prize-display-text">{arenaMeta.prizes}</div>
+                  {formatPrizeConfig(arenaMeta.prizeConfig) && (
+                    <div className="prize-display-text">{formatPrizeConfig(arenaMeta.prizeConfig)}</div>
+                  )}
+                  {arenaMeta.prizes && <div className="prize-display-text">{arenaMeta.prizes}</div>}
                 </div>
               )}
 

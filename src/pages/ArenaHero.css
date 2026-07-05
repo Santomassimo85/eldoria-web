@@ -6108,6 +6108,60 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(236,
 .arena-page .loadout-item.market-pick .loadout-check {
   color: #e9c8ff !important;
 }
+/* ── Editor premi strutturati (Pannello Master) ── */
+.arena-page .arena-prize-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0;
+}
+.arena-page .arena-prize-tier {
+  border: 1px solid rgba(236, 212, 135, 0.28);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.arena-page .arena-prize-tier-label {
+  font-weight: 800;
+  color: #ffe6a6 !important;
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+.arena-page .arena-prize-tier-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.arena-page .arena-prize-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.76rem;
+  color: #f3e6c8 !important;
+  flex: 1 1 120px;
+}
+.arena-page .arena-prize-field--wide { flex: 2 1 220px; }
+.arena-page .arena-prize-field input {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(236, 212, 135, 0.35) !important;
+  border-radius: 6px !important;
+  color: #fff7e6 !important;
+  padding: 7px 9px !important;
+  font-size: 0.9rem !important;
+}
+.arena-page .arena-prize-field input:focus {
+  outline: none;
+  border-color: #ffd97a !important;
+  box-shadow: 0 0 0 2px rgba(255, 217, 122, 0.3) !important;
+}
+.arena-page .arena-reward-hint {
+  font-size: 0.78rem;
+  color: rgba(240, 228, 200, 0.8) !important;
+  margin: 6px 0 10px;
+  line-height: 1.45;
+}
+.arena-page .arena-reward-hint strong { color: #ffe6a6 !important; }
+
 /* Intestazione delle sezioni Bottega dentro le tab (tono viola coerente con le carte) */
 .arena-page .loadout-section-title.loadout-market-head {
   color: #e0b4ff !important;
