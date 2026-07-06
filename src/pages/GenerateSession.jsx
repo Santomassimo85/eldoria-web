@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
-import { loadPartyContext, streamGenerateSession, saveSession } from "../utils/dmSessions";
+import { loadPartyContext, streamGenerateSession, saveSession, readPartyRecap } from "../utils/dmSessions";
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
 
@@ -40,6 +40,10 @@ export default function GenerateSession() {
   const [generated, setGenerated] = useState(null); // { html, summary }
   const [saving, setSaving] = useState(false);
 
+  const [recap, setRecap] = useState(null); // [{ sessionNumber, title, bullets }]
+  const [recapBusy, setRecapBusy] = useState(false);
+  const [recapErr, setRecapErr] = useState("");
+
   const chars = useMemo(() => charactersOf(partyId), [partyId]);
 
   const pickParty = (id) => {
@@ -47,6 +51,24 @@ export default function GenerateSession() {
     setInvolved(charactersOf(id)); // di default tutti i PG del gruppo
     setGenerated(null);
     setStatus("");
+    setRecap(null);
+    setRecapErr("");
+  };
+
+  const handleReadRecap = async () => {
+    if (recapBusy) return;
+    setRecapBusy(true);
+    setRecapErr("");
+    setRecap(null);
+    try {
+      const r = await readPartyRecap(party.id);
+      if (r.length === 0) setRecapErr("Nessun riassunto registrato per questo gruppo.");
+      else setRecap(r);
+    } catch (err) {
+      setRecapErr(err.message || String(err));
+    } finally {
+      setRecapBusy(false);
+    }
   };
 
   const toggleChar = (name) =>
@@ -155,6 +177,36 @@ export default function GenerateSession() {
             {p.id} · {p.world}
           </button>
         ))}
+      </div>
+
+      {/* Leggi i riassunti del gruppo → bullet cronologici */}
+      <div className="sumadm-recap">
+        <div className="sumadm-recap-head">
+          <div>
+            <strong>📖 Cosa è successo finora · {party.name}</strong>
+            <small> — bullet point delle sessioni passate, in ordine cronologico</small>
+          </div>
+          <button type="button" className="sumadm-btn ghost" onClick={handleReadRecap} disabled={recapBusy}>
+            {recapBusy ? "⏳ Leggo i riassunti…" : recap ? "🔄 Rileggi" : "📖 Leggi"}
+          </button>
+        </div>
+
+        {recapErr && <p className="sumadm-recap-empty">{recapErr}</p>}
+
+        {recap && recap.length > 0 && (
+          <ol className="sumadm-recap-list">
+            {recap.map((it, i) => (
+              <li key={`${it.sessionNumber ?? i}`} className="sumadm-recap-item">
+                <div className="sumadm-recap-sess">
+                  Sessione {it.sessionNumber ?? "?"}{it.title ? ` · ${it.title}` : ""}
+                </div>
+                <ul>
+                  {it.bullets.map((b, j) => <li key={j}>{b}</li>)}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       {status && (

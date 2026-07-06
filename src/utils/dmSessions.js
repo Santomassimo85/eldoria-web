@@ -97,6 +97,36 @@ export async function loadPartyContext(party) {
   };
 }
 
+// "Leggi i riassunti": prende il contesto del party (gli stessi riassunti usati per
+// generare) e li condensa in bullet point brevi, per sessione, in ordine cronologico.
+// Ritorna [{ sessionNumber, title, bullets: [...] }].
+export async function readPartyRecap(party) {
+  const ctx = await loadPartyContext(party);
+  const summaries = (ctx.pastSummaries || []).map((s) => {
+    const text =
+      typeof s.summary === "string"
+        ? s.summary
+        : [
+            s.summary?.panoramica,
+            s.summary?.bottino && `Bottino: ${s.summary.bottino}`,
+            s.summary?.ganciAperti && `Ganci aperti: ${s.summary.ganciAperti}`,
+          ]
+            .filter(Boolean)
+            .join(" — ");
+    return { sessionNumber: s.sessionNumber, title: s.title || "", text };
+  });
+  if (summaries.length === 0) return [];
+
+  const resp = await fetch("/api/recap-bullets", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ party, summaries }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  return Array.isArray(data.recap) ? data.recap : [];
+}
+
 // Divide l'output del modello nei marker ---HTML--- / ---SUMMARY---.
 export function parseGenerated(text) {
   const t = String(text || "");
