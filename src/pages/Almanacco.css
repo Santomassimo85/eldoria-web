@@ -463,6 +463,32 @@
 .alm-page .alm-callout--ok { border-left-color: #3f8a5a; }
 .alm-page .alm-callout--ko { border-left-color: #b05030; }
 
+/* La Scala dello Sfinimento */
+.alm-page .alm-block-num--warn {
+  background: linear-gradient(135deg, #c47328, #7a231c);
+  box-shadow: 0 4px 10px -3px rgba(122,35,28,.5);
+}
+.alm-page .alm-sfin { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.alm-page .alm-sfin-row {
+  display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 13px;
+  padding: 9px 13px; border-radius: 10px;
+  background: color-mix(in srgb, var(--sf) 7%, #fff);
+  border: 1px solid color-mix(in srgb, var(--sf) 30%, transparent);
+  border-left: 4px solid var(--sf);
+}
+.alm-page .alm-sfin-lv {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 900; font-size: .9rem;
+  color: #fffdf5; background: var(--sf);
+}
+.alm-page .alm-sfin-eff { color: #4a3a24; font-size: .92rem; line-height: 1.4; }
+.alm-page .alm-sfin-row.is-death {
+  background: color-mix(in srgb, var(--sf) 12%, #fff);
+}
+.alm-page .alm-sfin-row.is-death .alm-sfin-eff {
+  font-weight: 800; letter-spacing: .03em; color: #7a231c; text-transform: uppercase; font-size: .86rem;
+}
+
 /* Ricompense */
 .alm-page .alm-rewards { margin: 0; padding-left: 1.3em; display: grid; gap: 7px; }
 .alm-page .alm-rewards li { color: #4a3a24; font-size: .94rem; line-height: 1.45; }

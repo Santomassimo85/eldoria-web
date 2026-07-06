@@ -88,10 +88,10 @@ const RUOLI = [
     ko: "Niente da mangiare o cibo avariato: nessun rifornimento quel giorno.",
   },
   {
-    nome: "Sentinella", ic: "🛡️", color: "#7a5aa8", ab: "Percezione passiva", passivo: true,
-    cosa: "Monta la guardia di notte. Non tira un dado: si confronta la sua Percezione passiva con i pericoli notturni.",
-    ok: "Se la Percezione passiva è alta, sente arrivare il pericolo: il gruppo non viene colto di sorpresa.",
-    ko: "Se qualcosa la supera, l'attacco arriva nel sonno: il gruppo parte svantaggiato.",
+    nome: "Sentinella", ic: "🛡️", color: "#7a5aa8", ab: "Percezione passiva + 1d20 (stanchezza)",
+    cosa: "Monta la guardia di notte. La Percezione passiva fa da baseline, ma ogni notte tira anche 1d20 di stanchezza: se esce basso, il sonno ha la meglio anche su una guardia attenta.",
+    ok: "Resta vigile (d20 alto) e la sua passiva basta: sente arrivare il pericolo, il gruppo non viene colto di sorpresa.",
+    ko: "Colpo di sonno (1–5 al d20) o pericolo più furtivo della sua passiva: l'attacco arriva nel sonno, il gruppo parte svantaggiato.",
   },
   {
     nome: "Cronista / Morale", ic: "🎺", color: "#b5453a", ab: "Intrattenere / Persuasione",
@@ -194,8 +194,8 @@ const TIRI = [
   {
     ic: "🛡️", chi: "La Sentinella", chiTag: "giocatori",
     quando: "Di notte",
-    tiro: "Nessun dado — Percezione passiva",
-    scopo: "La sua Percezione passiva si confronta col pericolo notturno e decide se il gruppo viene colto di sorpresa.",
+    tiro: "1d20 stanchezza + Percezione passiva",
+    scopo: "Con 1–5 al d20 si assopisce e il gruppo è colto di sorpresa; altrimenti la sua passiva si confronta col pericolo notturno.",
   },
 ];
 
@@ -205,6 +205,16 @@ const TIRO_TAG = {
   master:    { label: "Master",    color: "#a8443a" },
   gruppo:    { label: "Gruppo",    color: "#4f9a4f" },
 };
+
+// ── La Scala dello Sfinimento: effetti cumulativi per livello ──────────────
+const SFINIMENTO = [
+  { lv: 1, col: "#d8a93a", eff: "Svantaggio alle prove di caratteristica" },
+  { lv: 2, col: "#cf8f2f", eff: "Velocità dimezzata" },
+  { lv: 3, col: "#c47328", eff: "Svantaggio ai tiri per colpire e ai tiri salvezza" },
+  { lv: 4, col: "#b85528", eff: "Massimo dei punti ferita dimezzato" },
+  { lv: 5, col: "#a83a28", eff: "Velocità ridotta a 0" },
+  { lv: 6, col: "#7a231c", eff: "Morte" },
+];
 
 export default function Almanacco() {
   useParallaxScroll();
@@ -516,6 +526,25 @@ export default function Almanacco() {
             <li>Piccolo <strong>loot</strong> o <strong>materiali da crafting</strong>.</li>
             <li><strong>Lore a rate</strong>, sbloccata man mano col livello.</li>
           </ul>
+        </div>
+
+        {/* La Scala dello Sfinimento */}
+        <div className="alm-block">
+          <h3 className="alm-block-title"><span className="alm-block-num alm-block-num--warn">⚠</span> La Scala dello Sfinimento</h3>
+          <p className="alm-block-note">
+            Correre col <strong>Passo Forzato</strong> o restare a <strong>provviste 0</strong> fa
+            accumulare livelli di <strong>Sfinimento</strong>. Gli effetti sono <strong>cumulativi</strong>:
+            chi è al livello 3 subisce anche quelli dell'1 e del 2. Un <strong>riposo lungo</strong> con
+            cibo e acqua a sufficienza toglie <strong>1 livello</strong>.
+          </p>
+          <ol className="alm-sfin">
+            {SFINIMENTO.map((s) => (
+              <li key={s.lv} className={`alm-sfin-row${s.lv === 6 ? " is-death" : ""}`} style={{ "--sf": s.col }}>
+                <span className="alm-sfin-lv">{s.lv}</span>
+                <span className="alm-sfin-eff">{s.eff}</span>
+              </li>
+            ))}
+          </ol>
         </div>
 
         {/* Quick reference */}
