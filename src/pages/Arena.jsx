@@ -509,8 +509,8 @@ const WIZARD_WEAPON_OPTIONS  = [_sw("Bastone Ferrato"), _sw("Daga")].filter(Bool
 // ── ARMATURE — hitPenalty: malus ai tiri per colpire (più è pesante, più rallenta) ──
 const _ARMOR_LIGHT = [
   // { name: "Vesti Imbottite",            baseAc: 11, maxDex: 99, hitPenalty:  0, icon: "🧥", info: "Leggera · +DES pieno · ±0 attacco" },
-  { name: "Armatura di cuoio",          baseAc: 11, maxDex: 99, hitPenalty:  0, icon: "👘", info: "Leggera · +DES pieno · ±0 attacco" },
-  { name: "Armatura di cuoio borchiato",baseAc: 12, maxDex: 99, hitPenalty:  0, icon: "👘", info: "Leggera · +DES pieno · ±0 attacco" },
+  { name: "Armatura di cuoio",          baseAc: 11, maxDex: 99, hitPenalty:  0, icon: "👘", info: "Leggera · +DES pieno · ±0 attacco · 🔥 rischio Bruciatura dalle magie di fuoco" },
+  { name: "Armatura di cuoio borchiato",baseAc: 12, maxDex: 99, hitPenalty:  0, icon: "👘", info: "Leggera · +DES pieno · ±0 attacco · 🔥 rischio Bruciatura dalle magie di fuoco" },
 ];
 const _ARMOR_MEDIUM = [
   { name: "Pelliccia Rinforzata", baseAc: 12, maxDex: 2, hitPenalty:  0, icon: "🦺", info: "Media · +DES max 2 · ±0 attacco" },
@@ -522,21 +522,21 @@ const _ARMOR_MEDIUM_STUDDED = [
   { name: "Mezza Piastre",   baseAc: 15, maxDex: 2, hitPenalty: -1, icon: "⚙", info: "Borchiata · +DES max 2 · −2 attacco" },
 ];
 const ARENA_ARMORS = {
-  caster:        [{ name: "Tunica", baseAc: 12, maxDex: 99, hitPenalty: 0, icon: "👘", info: "Caster · +DES pieno · ±0 attacco" }],
+  caster:        [{ name: "Tunica", baseAc: 12, maxDex: 99, hitPenalty: 0, icon: "👘", info: "Caster · +DES pieno · ±0 attacco · 🔥 rischio Bruciatura dalle magie di fuoco" }],
   light:         _ARMOR_LIGHT,
   medium:        _ARMOR_MEDIUM,
   mediumStudded: _ARMOR_MEDIUM_STUDDED,
   heavy: [
-    { name: "Cotta ad Anelli",    baseAc: 15, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco" },
+    { name: "Cotta ad Anelli",    baseAc: 15, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco · ⚡ debole a fulmine/tuono" },
     // { name: "Cotta di Maglia",    baseAc: 20, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
-    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco" },
-    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
+    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty: -1, icon: "🛡", info: "Pesante · senza DES · −1 attacco · ⚡ debole a fulmine/tuono" },
+    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco · ⚡ debole a fulmine/tuono" },
   ],
   // Guerriero: addestrato alle pesanti — niente Cotta ad Anelli e
   // Armatura a Placche SENZA malus al colpire. Il paladino resta su "heavy".
   heavyFighter: [
-    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty:  0, icon: "🛡", info: "Pesante · senza DES · ±0 attacco" },
-    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco" },
+    { name: "Armatura a Placche", baseAc: 16, maxDex: 0, hitPenalty:  0, icon: "🛡", info: "Pesante · senza DES · ±0 attacco · ⚡ debole a fulmine/tuono" },
+    { name: "Piastre Intere",     baseAc: 17, maxDex: 0, hitPenalty: -2, icon: "🛡", info: "Pesante · senza DES · −2 attacco · ⚡ debole a fulmine/tuono" },
   ],
   // Druido: leggere + medie, niente metalli
   druid:      [..._ARMOR_LIGHT, ..._ARMOR_MEDIUM],
@@ -547,13 +547,13 @@ const ARENA_ARMORS = {
   ranger: [..._ARMOR_LIGHT.slice(1), ..._ARMOR_MEDIUM],
   // Barbarian: SOLO senza armatura (10+DES+COS) — nessuna armatura equipaggiabile.
   barbarian:  [
-    { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "💪", info: "Senza armatura · 10+DES+COS", unarmoredDefense: true },
+    { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "💪", info: "Senza armatura · 10+DES+COS · ⚡ +1 iniziativa", unarmoredDefense: true },
   ],
   monk: [
-    { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "🥋", info: "Senza armatura · 10+DES+SAG", unarmoredDefense: true, unarmoredStat: "wis" },
+    { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "🥋", info: "Senza armatura · 10+DES+SAG · ⚡ +1 iniziativa", unarmoredDefense: true, unarmoredStat: "wis" },
   ],
   sorcerer: [
-    { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "✨", info: "Senza armatura · 10+max(COS,DES)", unarmoredDefense: true, unarmoredMaxStat: true },
+    { name: "Senza Armatura", baseAc: 10, maxDex: 99, hitPenalty: 0, icon: "✨", info: "Senza armatura · 10+max(COS,DES) · ⚡ +1 iniziativa", unarmoredDefense: true, unarmoredMaxStat: true },
   ],
 };
 
@@ -9306,7 +9306,7 @@ export default function Arena() {
 
             <h3 className="arena-info-title">⏱ Timer e turni</h3>
             <div className="arena-info-example">
-              <p><strong>Iniziativa:</strong> ogni giocatore ha <strong>10 minuti</strong> per tirare la propria iniziativa (d20 + DES; il Ladro tira con vantaggio). Allo scadere il sistema tira automaticamente al posto tuo.</p>
+              <p><strong>Iniziativa:</strong> ogni giocatore ha <strong>10 minuti</strong> per tirare la propria iniziativa (d20 + DES; il Ladro tira con vantaggio, chi combatte <strong>senza armatura</strong> ottiene <strong>+1</strong>). Allo scadere il sistema tira automaticamente al posto tuo.</p>
               <p><strong>Turno di azione:</strong> ogni giocatore ha <strong>1 ora</strong> per agire nel proprio turno. Se non agisci, parte un <strong>attacco automatico</strong> con l'arma equipaggiata sul primo bersaglio vivo (oppure posizione difensiva se non hai armi).</p>
               <p><strong>Pausa:</strong> solo il Master può sospendere i timer con il pulsante "⏸ Pausa Timer". Alla ripresa i turn-expiry vengono shiftati in avanti del tempo trascorso, così nessuno viene penalizzato.</p>
             </div>
@@ -9328,7 +9328,7 @@ export default function Arena() {
               <p><strong>Cambio arma:</strong> impugnare un'arma <strong>non</strong> equipaggiata <strong>costa il turno</strong>; dal turno dopo puoi attaccare con la nuova arma. Le armi a due mani disattivano lo scudo.</p>
               <p><strong>Arma incandescente</strong> (Riscaldare Arma / Disarmare): arroventa <strong>solo l'arma attualmente equipaggiata</strong> del bersaglio per alcuni turni. Se hai un'altra arma riposta puoi impugnarla e combattere comunque.</p>
               <p><strong>Azione bonus:</strong> molte abilità di classe (Furia, Marchio, Lay of Hands, Cura Ki, Ispirazione Bardica…) sono <strong>bonus action</strong>: puoi usarle nello stesso turno di un attacco. Anche usare un <strong>oggetto</strong> (pozioni, bomba) è un'<strong>azione gratuita</strong> e non consuma l'attacco.</p>
-              <p><strong>Armature:</strong> le pesanti hanno CA fissa alta ma penalità ai tiri per colpire. Le leggere/medie sommano DES (con cap) alla CA base; alcune classi usano una difesa senz'armatura (Monaco 10+DES+SAG, Barbaro 10+DES+COS).</p>
+              <p><strong>Armature:</strong> le pesanti hanno CA fissa alta ma penalità ai tiri per colpire. Le leggere/medie sommano DES (con cap) alla CA base; alcune classi usano una difesa senz'armatura (Monaco 10+DES+SAG, Barbaro 10+DES+COS). <strong>Ogni tipo di armatura ha ora resistenze e debolezze elementali</strong> — vedi la sezione dedicata più sotto.</p>
               <p className="arena-info-shield-note">
                 <span className="arena-info-shield-badge">🛡 SCUDI — NUOVE REGOLE</span>
                 Lo scudo ora dà <strong>+1 CA</strong> (prima +2). <strong>MA</strong> ingombra il lanciatore: se un <strong>caster impugna uno scudo</strong>, i suoi <strong>incantesimi da DANNO</strong> sono ostacolati — tira <strong>a svantaggio</strong> i colpi a tiro-per-colpire, e i bersagli tirano il <strong>Tiro Salvezza con vantaggio</strong>. Gli incantesimi di <em>controllo</em> non sono toccati.
@@ -9349,6 +9349,19 @@ export default function Arena() {
               </ul>
               <p><strong>Controllo</strong> (Sonno, Blocca Persone, Charme…): il bersaglio tira il TS indicato o <strong>perde 2 turni</strong>, con un nuovo tiro a ogni turno per liberarsi. <strong>Veleno/effetti nel tempo:</strong> TS a inizio turno per ridurre i danni continuati.</p>
               <p><strong>Difese contro i TS:</strong> <em>Assorbire Elementi</em> dà +3 ai prossimi 3 TS; <em>Scudo della Fede</em> (chierico &amp; affini) dà <strong>+2 a TUTTI i TS per 2 turni</strong>. <strong>Aiuto</strong>: +1 al danno per 2 turni.</p>
+            </div>
+
+            <h3 className="arena-info-title">🔥❄ Resistenze &amp; Debolezze Elementali</h3>
+            <div className="arena-info-example">
+              <p>Il tipo di armatura non è più solo una questione di CA: reagisce alle magie elementali. Queste regole valgono <strong>in tutti i fight</strong> (tornei, Sfide Libere e contro l'IA).</p>
+              <ul className="arena-info-list">
+                <li><strong>⚡ Senza armatura → +1 iniziativa.</strong> Chi combatte senza armatura è più reattivo e tira l'iniziativa con un bonus di +1.</li>
+                <li><strong>🛡 Armatura pesante → debole a fulmine e tuono.</strong> Contro le magie di <strong>fulmine/tuono</strong>, chi ti attacca tira <strong>per colpire con vantaggio</strong> e tu tiri i <strong>Tiri Salvezza con svantaggio</strong>. Il metallo attira e conduce la scarica.</li>
+                <li><strong>🔥 Fuoco su armatura leggera/di pelle o forma animale → Bruciatura.</strong> Se indossi un'<strong>armatura leggera</strong> (cuoio, tunica) o sei un druido in <strong>Forma Selvaggia</strong> e subisci danni da una <strong>magia di fuoco</strong>, hai il <strong>25%</strong> di prendere <strong>Bruciatura</strong>: prendi fuoco e subisci <strong>1d4 danni a inizio turno per 2 turni</strong>.</li>
+                <li><strong>🧊 Freddo → Congelato.</strong> Chiunque subisca danni da una <strong>magia di ghiaccio</strong> ha il <strong>25%</strong> di restare <strong>Congelato</strong>: <strong>svantaggio al prossimo tiro per colpire</strong>.</li>
+              </ul>
+              <p>Bruciatura e Congelato si curano come gli altri effetti nel tempo (es. <em>Ristorare Inferiore</em>). Ogni stato attivo è mostrato con il proprio <strong>badge dedicato</strong> sulla card del combattente, così capisci sempre cosa hai addosso.</p>
+              <p><strong>Bottega — Oggetti Malus:</strong> tra i consumabili il Master può mettere in vendita <strong>oggetti malus</strong>, che come una Bomba sono azioni gratuite ma invece del danno infliggono al nemico uno svantaggio a scelta: <strong>svantaggio ai tiri per colpire, sanguinamento, veleno, Bruciatura o Congelato</strong>.</p>
             </div>
 
             <h3 className="arena-info-title">🛡 Le 12 Classi</h3>
@@ -10388,10 +10401,19 @@ export default function Arena() {
                       ? armor.unarmoredMaxStat ? 10 + Math.max(dex, con) : 10 + dex + (armor.unarmoredStat ? (charPreview.stats[armor.unarmoredStat] ?? 0) : con)
                       : armor.baseAc + dexContrib;
                     const hasHitPenalty = armor.hitPenalty < 0;
+                    // Nota elementale (resistenze/debolezze) coerente col motore.
+                    const elemNote = armor.maxDex === 0
+                      ? { t: "⚡ debole a fulmine/tuono", c: "weak" }
+                      : armor.unarmoredDefense
+                      ? { t: "⚡ +1 iniziativa", c: "good" }
+                      : armor.maxDex === 99
+                      ? { t: "🔥 rischio Bruciatura", c: "weak" }
+                      : null;
                     return (
                       <button
                         key={armor.name}
                         disabled={hasMarketArmor}
+                        title={armor.info}
                         className={`loadout-item armor ${isSelected ? "selected" : ""} ${hasMarketArmor ? "disabled" : ""}`}
                         onClick={() => { setPendingArmor(armor); if (shieldLocked) setPendingShield(null); }}
                       >
@@ -10407,6 +10429,9 @@ export default function Arena() {
                         </span>
                         {hasHitPenalty && (
                           <span className="armor-hit-penalty">⚔ attacco {armor.hitPenalty}</span>
+                        )}
+                        {elemNote && (
+                          <span className={`armor-elem-note armor-elem-${elemNote.c}`}>{elemNote.t}</span>
                         )}
                         {isSelected && <span className="loadout-check">✓</span>}
                       </button>

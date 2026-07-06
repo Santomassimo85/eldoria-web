@@ -2769,6 +2769,18 @@
   letter-spacing: 0.03em;
 }
 
+.armor-elem-note {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 0.62rem;
+  font-weight: 700;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+}
+.armor-elem-note.armor-elem-weak { color: #b8531f; }
+.armor-elem-note.armor-elem-good { color: #1f7a4d; }
+
 .loadout-check {
   position: absolute;
   top: 4px;
