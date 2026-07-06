@@ -67,7 +67,7 @@ const stripHtml = (html) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g
 //  1) recap REALI dalla collezione esistente `summaries` (continuità dal giorno 1)
 //  2) summary delle sessioni già generate in `dm_sessions`
 //  + HTML intero dell'ultima sessione generata ("dove sono ora").
-export async function loadPartyContext(party) {
+export async function loadPartyContext(party, { summaryCap = 1500 } = {}) {
   // 1) recap dalla collezione `summaries` (quella dello Scriptorium), per party
   let recaps = [];
   try {
@@ -78,7 +78,7 @@ export async function loadPartyContext(party) {
       .map((s) => ({
         sessionNumber: s.order,
         title: s.title,
-        summary: stripHtml(s.content).slice(0, 1500),
+        summary: stripHtml(s.content).slice(0, summaryCap),
       }));
   } catch { /* se la collezione non è leggibile, prosegui senza */ }
 
@@ -101,7 +101,9 @@ export async function loadPartyContext(party) {
 // generare) e li condensa in bullet point brevi, per sessione, in ordine cronologico.
 // Ritorna [{ sessionNumber, title, bullets: [...] }].
 export async function readPartyRecap(party) {
-  const ctx = await loadPartyContext(party);
+  // Per la lettura vogliamo il testo quasi integrale dei riassunti (non il cap
+  // ristretto usato in generazione), altrimenti il modello vede solo l'inizio.
+  const ctx = await loadPartyContext(party, { summaryCap: 12000 });
   const summaries = (ctx.pastSummaries || []).map((s) => {
     const text =
       typeof s.summary === "string"
