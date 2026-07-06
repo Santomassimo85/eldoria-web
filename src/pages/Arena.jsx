@@ -3029,6 +3029,9 @@ export default function Arena() {
   // Loadout — "idle" | "class-select" | "stat-assign" | "rolling" | "selecting"
   const [loadoutPhase, setLoadoutPhase]     = useState("idle");
   const [charPreview, setCharPreview]       = useState(null);
+  // Personaggi d'Arena salvati dal giocatore (2 slot): build completo pronto da
+  // ripescare all'iscrizione al torneo. Caricati dalla scheda in openLoadoutPicker.
+  const [savedArenaChars, setSavedArenaChars] = useState([null, null]);
   const [pendingStats, setPendingStats]     = useState({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
   const [pendingWeapons, setPendingWeapons] = useState([]);
   const [pendingSpells, setPendingSpells]   = useState([]);
@@ -3892,6 +3895,8 @@ export default function Arena() {
     }
     const d = charSnap.data();
     const ownedTitles = getCharTitles(d);
+    // Slot dei PG salvati (max 2): mostrati nella scelta classe per un caricamento rapido.
+    setSavedArenaChars(Array.isArray(d.arenaSavedChars) ? [d.arenaSavedChars[0] ?? null, d.arenaSavedChars[1] ?? null] : [null, null]);
     // Pre-seleziono il titolo solo se ne possiede esattamente uno (zero attrito);
     // con più titoli la scelta resta esplicita.
     setPendingTitle(ownedTitles.length === 1 ? ownedTitles[0] : null);
@@ -3920,6 +3925,91 @@ export default function Arena() {
     setFunAcceptMatchId(null);
     setLoadoutPhase("class-select");
     setArenaView("join");
+  };
+
+  // ── PG salvati (2 slot) ─────────────────────────────────────────────────────
+  // Il build salvato contiene classe + caratteristiche + HP tirato + loadout base
+  // (armi, magie, abilità, armatura, scudo, oggetti, pet/demone/costrutto, titolo).
+  // NON include gli acquisti della Bottega (settimanali, si riscelgono ogni torneo).
+  const buildSavedCharPayload = () => JSON.parse(JSON.stringify({
+    label:     `${charPreview.name || "PG"} · ${charPreview.class}`,
+    savedAt:   new Date().toISOString(),
+    class:     charPreview.class,
+    stats:     { ...charPreview.stats },
+    rolledHp:  charPreview.rolledHp,
+    weapons:   pendingWeapons || [],
+    spells:    pendingSpells || [],
+    skills:    pendingSkills || [],
+    armor:     pendingArmor || null,
+    shield:    pendingShield || null,
+    itemCounts: { ...pendingItemCounts },
+    pet:       pendingPet || null,
+    demon:     pendingDemon || null,
+    construct: pendingConstruct || null,
+    title:     pendingTitle || null,
+  }));
+
+  const saveArenaCharToSlot = async (slot) => {
+    if (!charPreview?.class || !charPreview?.rolledHp) { alert("Completa prima il personaggio (classe, caratteristiche e HP)."); return; }
+    const next = [savedArenaChars[0] ?? null, savedArenaChars[1] ?? null];
+    if (next[slot] && !window.confirm(`Sovrascrivere lo slot ${slot + 1} (${next[slot].label})?`)) return;
+    next[slot] = buildSavedCharPayload();
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next });
+      setSavedArenaChars(next);
+      alert(`✅ Personaggio salvato nello slot ${slot + 1}.`);
+    } catch (e) { console.error("saveArenaCharToSlot", e); alert("Salvataggio non riuscito."); }
+  };
+
+  const deleteSavedArenaChar = async (slot) => {
+    const sc = savedArenaChars[slot];
+    if (!sc || !window.confirm(`Eliminare il PG salvato nello slot ${slot + 1} (${sc.label})?`)) return;
+    const next = [savedArenaChars[0] ?? null, savedArenaChars[1] ?? null];
+    next[slot] = null;
+    try {
+      await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next });
+      setSavedArenaChars(next);
+    } catch (e) { console.error("deleteSavedArenaChar", e); }
+  };
+
+  // Carica un PG salvato: identità (nome/immagine/buff/titoli/Bottega) sempre dalla
+  // scheda attuale; build (classe/stat/HP/loadout) dallo slot. Salta la creazione.
+  const loadSavedArenaChar = async (slot) => {
+    const sc = savedArenaChars[slot];
+    if (!sc) return;
+    let base = {};
+    try { const cs = await getDoc(doc(db, "characters", currentUser.uid)); if (cs.exists()) base = cs.data(); } catch { /* ignore */ }
+    const ownedTitles = getCharTitles(base);
+    setCharPreview({
+      name:        base.name || "Avventuriero",
+      image:       base.image || null,
+      class:       sc.class,
+      stats:       { ...(sc.stats || {}) },
+      arenaBuffs:  base.arenaBuffs || {},
+      arenaTitles: ownedTitles,
+      classLevels: {},
+      arenaSubclass: base.arenaSubclass || {},
+      arenaWeekly: base.arenaWeekly || null,
+      rolledHp:    sc.rolledHp ?? null,
+      hpRerollCount: 99,   // HP salvato: niente re-roll
+    });
+    setPendingStats({ ...(sc.stats || {}) });
+    setPendingWeapons(sc.weapons || []);
+    setPendingSpells(sc.spells || []);
+    setPendingSkills(sc.skills || []);
+    setPendingArmor(sc.armor || null);
+    setPendingShield(sc.shield || null);
+    setPendingItemCounts({ pozione_cura: 0, bomba: 0, pozione_veleno: 0, ...(sc.itemCounts || {}) });
+    setPendingPet(sc.pet || null);
+    setPendingDemon(sc.demon || null);
+    setPendingConstruct(sc.construct || null);
+    setPendingTitle((sc.title && ownedTitles.includes(sc.title)) ? sc.title : null);
+    setPendingMarketSel({});   // Bottega: si riseleziona (catalogo settimanale)
+    setLoadoutContext("tournament");
+    setReloadoutMode(false);
+    setFunAcceptMatchId(null);
+    setLoadoutTab("weapons");
+    setLoadoutPhase("selecting");
   };
 
   // Ri-equipaggiamento durante la finestra di shopping (torneo in corso).
@@ -10034,6 +10124,29 @@ export default function Arena() {
                   <div className="loadout-char-class">Scegli la tua classe</div>
                 </div>
               </div>
+              {(savedArenaChars[0] || savedArenaChars[1]) && (
+                <div className="saved-chars-block">
+                  <div className="hp-roll-title">💾 I tuoi PG salvati</div>
+                  <div className="saved-chars-grid">
+                    {[0, 1].map(i => {
+                      const sc = savedArenaChars[i];
+                      if (!sc) return <div key={i} className="saved-char-card saved-char-empty">Slot {i + 1}<span>vuoto</span></div>;
+                      return (
+                        <div key={i} className="saved-char-card">
+                          <div className="saved-char-slot">Slot {i + 1}</div>
+                          <div className="saved-char-name">{sc.label}</div>
+                          <div className="saved-char-meta">❤ {sc.rolledHp} HP</div>
+                          <div className="saved-char-actions">
+                            <button className="btn-join" onClick={() => loadSavedArenaChar(i)}>Carica</button>
+                            <button className="saved-char-del" title="Elimina" onClick={() => deleteSavedArenaChar(i)}>🗑</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="saved-chars-hint">…oppure crea un nuovo personaggio scegliendo la classe qui sotto.</div>
+                </div>
+              )}
               <div className="hp-roll-title">Classe</div>
               <div className="class-select-grid">
                 {MASTER_JOIN_CLASSES.map(cls => (
@@ -10851,6 +10964,18 @@ export default function Arena() {
                 </>)}
 
                 </div>{/* /loadout-tab-body */}
+
+                {loadoutContext === "tournament" && !reloadoutMode && (
+                  <div className="loadout-save-row">
+                    <span className="loadout-save-label">💾 Salva questo PG (per i prossimi tornei):</span>
+                    <button type="button" className="btn-save-slot" onClick={() => saveArenaCharToSlot(0)}>
+                      Slot 1{savedArenaChars[0] ? " ✎" : ""}
+                    </button>
+                    <button type="button" className="btn-save-slot" onClick={() => saveArenaCharToSlot(1)}>
+                      Slot 2{savedArenaChars[1] ? " ✎" : ""}
+                    </button>
+                  </div>
+                )}
 
                 {/* ── Footer fisso: annulla + azione intelligente ── */}
                 <div className="loadout-actions loadout-actions--sticky">
