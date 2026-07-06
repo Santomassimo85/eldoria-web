@@ -206,6 +206,14 @@ const TIRO_TAG = {
   gruppo:    { label: "Gruppo",    color: "#4f9a4f" },
 };
 
+// ── Recap lampo: cosa succede in una giornata, in 4 passi semplicissimi ────
+const RECAP = [
+  { ic: "🗺️", k: "Scegliete",  t: "la strada e l'andatura" },
+  { ic: "🎲", k: "Ognuno",     t: "fa la sua mossa, con un tiro" },
+  { ic: "🎯", k: "Il Master",  t: "fa capitare qualcosa" },
+  { ic: "🎬", k: "Giocate",    t: "la scena, poi al giorno dopo" },
+];
+
 // ── La Scala dello Sfinimento: effetti cumulativi per livello ──────────────
 const SFINIMENTO = [
   { lv: 1, col: "#d8a93a", eff: "Svantaggio alle prove di caratteristica" },
@@ -314,10 +322,29 @@ export default function Almanacco() {
           <p className="alm-sec-lead">
             Il modo in cui giochiamo gli spostamenti tra una meta e l'altra, senza ridurli a un
             «arrivate dopo tre giorni». La regola d'oro: <strong>ogni giornata di viaggio contiene
-            una decisione e una scoperta</strong>. Sotto trovi prima <strong>chi tira e cosa</strong>,
-            poi il dettaglio di ogni pezzo.
+            una decisione e una scoperta</strong>. Sotto trovi prima il <strong>recap lampo</strong>,
+            poi <strong>chi tira e cosa</strong>, infine il dettaglio.
           </p>
         </header>
+
+        {/* ── RECAP LAMPO — il senso del viaggio in 4 passi ── */}
+        <div className="alm-recap">
+          <span className="alm-recap-badge">⚡ In due parole</span>
+          <p className="alm-recap-lead">
+            Il viaggio è un <strong>mini-gioco a giornate</strong>: invece di dire soltanto «arrivate
+            dopo tre giorni», <strong>ogni giorno</strong> il gruppo decide come procedere, ognuno fa
+            la sua mossa e succede qualcosa. Si gioca il momento importante e si passa al giorno dopo.
+          </p>
+          <ol className="alm-recap-steps">
+            {RECAP.map((r, i) => (
+              <li key={i}>
+                <span className="alm-recap-ic" aria-hidden="true">{r.ic}</span>
+                <span className="alm-recap-txt"><b>{r.k}</b> {r.t}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="alm-recap-foot">Tutto il resto della pagina serve solo ad approfondire questi quattro passi.</p>
+        </div>
 
         {/* ── LO SPECCHIETTO DEI TIRI — chi tira, quando, cosa, perché ── */}
         <div className="alm-tiri" aria-label="Chi tira e cosa">

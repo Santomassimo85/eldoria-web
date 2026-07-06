@@ -281,6 +281,57 @@
   font-size: .88rem;
 }
 
+/* Recap lampo — il senso del viaggio in 4 passi, linguaggio semplice */
+.alm-page .alm-recap {
+  margin: 0 0 24px; padding: 20px 22px; border-radius: 16px;
+  background: linear-gradient(135deg, #fff6e2, #f6e7c2);
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 5px solid var(--cine-accent);
+  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
+}
+.alm-page .alm-recap-badge {
+  display: inline-block; margin-bottom: 12px; padding: 5px 14px; border-radius: 999px;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: #fffdf5;
+  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+  box-shadow: 0 4px 10px -3px rgba(138,90,31,.45);
+}
+.alm-page .alm-recap-lead {
+  margin: 0 0 16px; max-width: 72ch;
+  color: #4a3a24; font-size: 1.02rem; line-height: 1.6;
+}
+.alm-page .alm-recap-lead strong { color: #6a4a18; }
+
+.alm-page .alm-recap-steps {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 10px; grid-template-columns: 1fr;
+}
+@media (min-width: 760px) { .alm-page .alm-recap-steps { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+.alm-page .alm-recap-steps li {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px; border-radius: 12px;
+  background: rgba(255,255,255,.66);
+  border: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
+}
+/* freccia di collegamento tra i passi (solo desktop) */
+@media (min-width: 760px) {
+  .alm-page .alm-recap-steps li:not(:last-child)::after {
+    content: "→"; position: absolute; right: -15px; top: 50%; transform: translateY(-50%);
+    font-size: 1.15rem; font-weight: 700; z-index: 2;
+    color: color-mix(in srgb, var(--cine-accent) 60%, transparent);
+  }
+}
+.alm-page .alm-recap-ic { font-size: 1.7rem; line-height: 1; flex: 0 0 auto; }
+.alm-page .alm-recap-txt { font-size: .9rem; line-height: 1.32; color: #4a3a24; }
+.alm-page .alm-recap-txt b {
+  display: block; color: #3a2710;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; font-size: .96rem;
+}
+.alm-page .alm-recap-foot {
+  margin: 14px 0 0; font-size: .84rem; font-style: italic; color: #7a6446;
+}
+
 /* Lo specchietto dei tiri (chi tira, quando, cosa, perché) */
 .alm-page .alm-tiri {
   margin: 0 0 26px;
