@@ -13,9 +13,10 @@
 // Output: stream di testo plain col formato:
 //   ---HTML---\n<!DOCTYPE html>…\n---SUMMARY---\n{ "panoramica","bottino","ganciAperti" }
 
-// 300s: con Fluid Compute (default Vercel dal 2025) anche il piano Hobby li
-// supporta. I 60s precedenti uccidevano lo stream a metà → sessioni troncate.
-export const config = { maxDuration: 300 };
+// 800s: tetto massimo del piano Vercel Pro (con Fluid Compute). Serve tempo:
+// una sessione completa e ricca può richiedere svariati minuti di generazione.
+// Su Hobby Vercel ricappa automaticamente a 300s (nessun errore, solo meno tempo).
+export const config = { maxDuration: 800 };
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-8";
 
@@ -189,7 +190,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 16000,
+        max_tokens: 32000, // Opus 4.8 arriva a 128K; 32K ≈ 120KB HTML = sessione molto ricca
         stream: true,
         system,
         messages: [{ role: "user", content: userMsg }],
