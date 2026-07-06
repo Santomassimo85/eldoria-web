@@ -6190,11 +6190,15 @@ export default function Arena() {
   };
 
   // Watcher: schedules AI moves with a small dramatic delay. Only the match's
-  // aiOwnerId runs this so two open browsers don't double-act.
+  // aiOwnerId runs this so two open browsers non-double-act.
+  // NB: solo le Sfide Libere contro l'IA (kind "fun") sono pilotate dal client.
+  // I PG-bot di RISERVA del torneo (kind group/final) sono guidati lato server
+  // dalla Cloud Function `arenaBotTurns`, così vanno avanti anche senza pagine aperte.
   useEffect(() => {
     if (!arenaMeta?.matches || !currentUser) return;
     const myAiMatches = arenaMeta.matches.filter(m =>
       m.ai === true &&
+      m.kind === "fun" &&
       m.aiOwnerId === currentUser.uid &&
       (m.status === "initiative" || m.status === "active")
     );

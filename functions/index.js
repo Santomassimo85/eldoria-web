@@ -233,6 +233,21 @@ exports.arenaAutoAdvance = onSchedule(
     },
 );
 
+// ── ARENA · turni automatici dei PG-bot di riserva ─────────────────────────
+// Ogni minuto: risolve iniziativa e turno dei PG-bot di riserva del torneo, così
+// combattono anche senza pagine aperte. Le Sfide Libere vs IA restano client-side.
+const { runArenaBotTurns } = require("./arena/botTurns");
+exports.arenaBotTurns = onSchedule(
+    { schedule: "every 1 minutes", timeZone: "Europe/Rome", region: "us-central1" },
+    async () => {
+        try {
+            await runArenaBotTurns(admin);
+        } catch (err) {
+            console.error("❌ arenaBotTurns fallita:", err);
+        }
+    },
+);
+
 // --- FUNZIONE PRINCIPALE ---
 exports.notifyMasterOnBid = onDocumentUpdated('items/{itemId}', async (event) => {
         const itemId = event.params.itemId;
