@@ -163,8 +163,10 @@ export function marketItemSummary(it) {
       const r = resistSummary(p.resist);
       return `CA fissa ${p.acFixed ?? p.acBonus ?? 0}${r ? ` · Resist: ${r}` : ""}`;
     }
-    case "pet":
-      return `Azione bonus: ${p.effect === "heal" ? `cura ${p.dice}` : `${p.dice} danni${p.autoHit ? " auto-hit" : ""}`} · max ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight`;
+    case "pet": {
+      const petOnHitPart = p.onHit?.length ? ` · impatto: ${effectsSummary(p.onHit)}` : "";
+      return `Azione bonus: ${p.effect === "heal" ? `cura ${p.dice}` : `${p.dice} danni${p.autoHit ? " auto-hit" : ""}`} · max ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight${petOnHitPart}`;
+    }
     default:
       return "";
   }
@@ -385,15 +387,19 @@ export default function ArenaMarketCatalog() {
           acFixed: Math.max(1, parseInt(form.acFixed, 10) || 12),
           ...(Object.keys(form.resist || {}).length ? { resist: form.resist } : {}),
         };
-      case "pet":
+      case "pet": {
         if (!DICE_RE.test(form.dice)) return null;
+        const isDmgPet = form.effect !== "heal";
+        const petOnHit = isDmgPet ? normalizeFormEffects(form.weaponOnHit, true) : [];
         return {
           effect: form.effect === "heal" ? "heal" : "damage",
           dice: form.dice,
           autoHit: !!form.autoHit,
           hitBonus: parseInt(form.petHitBonus, 10) || 0,
           uses, // max azioni bonus per fight, deciso dal Master
+          ...(petOnHit.length ? { onHit: petOnHit } : {}),
         };
+      }
       default:
         return null;
     }
@@ -784,6 +790,11 @@ export default function ArenaMarketCatalog() {
                 Il pet agisce come <strong>azione bonus</strong> nel turno del compratore (stesso
                 funzionamento dei pet del Ranger), per il numero massimo di usi indicato.
               </p>
+              {form.effect === "damage" && renderEffectsEditor("weaponOnHit", {
+                withChance: true,
+                title: "➕ Effetti all'impatto del pet (quando colpisce, con probabilità)",
+                hint: "Es. il pet avvelena o incendia il bersaglio quando lo colpisce. Malus al nemico / bonus a te, con la % di attivazione.",
+              })}
             </div>
           )}
 

@@ -1325,18 +1325,23 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         // effect "resist"/assente senza effetti → solo resistenza passiva (già aggregata sopra)
         break;
       }
-      case "pet":
+      case "pet": {
+        // Effetti all'impatto del pet (solo pet da danno): malus al nemico / bonus a sé.
+        const petOnHit = p.effect === "heal" ? [] : normalizeMarketEffects(p.onHit).map(e => ({ ...e, chance: e.chance != null ? e.chance : 100 }));
+        const petOnHitInfo = petOnHit.length ? ` · impatto: ${marketEffectsInfo(petOnHit)}` : "";
         gear.actions.push({
           name: pu.name, type: "skill", special: "pet_market", bonusAction: true,
           icon: pu.icon || "🐾", hitBonus: p.hitBonus || 0, statKey: null,
           damage: p.dice || "2d6", autoHit: !!p.autoHit,
           petEffect: p.effect === "heal" ? "heal" : "damage",
+          ...(petOnHit.length ? { onHit: petOnHit } : {}),
           maxUses: Math.max(1, p.uses || 1) * qty, fromMarket: true,
           info: p.effect === "heal"
             ? `Bonus action · cura ${p.dice || "2d6"}`
-            : `Bonus action · ${p.dice || "2d6"} danni${p.autoHit ? " auto-hit" : ""}`,
+            : `Bonus action · ${p.dice || "2d6"} danni${p.autoHit ? " auto-hit" : ""}${petOnHitInfo}`,
         });
         break;
+      }
       default:
         break;
     }
@@ -7321,6 +7326,11 @@ export default function Arena() {
     }
     const { total: rawDmg, rolls } = rollDmg(action.damage || "2d6");
     const dmg = missed ? 0 : applyDefenderDamageMods(rawDmg, targetSnap, targetPlayer, false);
+    // Effetti all'impatto del pet della Bottega (malus al nemico / bonus al padrone, con %).
+    const _petOnHit = (!missed && dmg > 0 && Array.isArray(action.onHit) && action.onHit.length)
+      ? applyMarketEffects(action.onHit, me, targetPlayer, true)
+      : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
+    const petOnHitLog = _petOnHit.logs.length ? `${action.icon} ${action.name} all'impatto → ${_petOnHit.logs.join(" · ")}` : null;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const targetName = targetSnap?.name || "?";
@@ -7328,9 +7338,14 @@ export default function Arena() {
         if (p.id === currentUser.uid) {
           const uses = p.actionUsesLeft || {};
           const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? action.maxUses) - 1) };
-          return { ...p, bonusActionUsed: true, actionUsesLeft: newUses };
+          let hp = p.hp;
+          if (_petOnHit.selfHeal > 0) {
+            const mx = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? p.hp;
+            hp = Math.min(mx, (p.hp || 0) + _petOnHit.selfHeal);
+          }
+          return { ...p, hp, ..._petOnHit.selfPatch, bonusActionUsed: true, actionUsesLeft: newUses };
         }
-        if (p.id === targetId && !missed) return { ...p, hp: Math.max(0, p.hp - dmg) };
+        if (p.id === targetId && !missed) return { ...p, hp: Math.max(0, p.hp - dmg - _petOnHit.enemyDmg), ..._petOnHit.enemyPatch };
         return p;
       });
       const { players, extraLogs } = processWsKnockouts(rawPlayers);
@@ -7338,9 +7353,9 @@ export default function Arena() {
         ? `${action.icon} ${action.name} di ${myName} manca ${targetName} (🎲${d20}+${action.hitBonus || 0}) · bonus action`
         : `${action.icon} ${action.name} di ${myName} colpisce ${targetName} 🎲(${rolls})=${dmg} danni! · bonus action`;
       const alive = players.filter(p => p.hp > 0);
-      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
+      if (alive.length === 1) return { ...m, players, status: "finished", winner: alive[0].id, logs: [...m.logs, log, ...(petOnHitLog ? [petOnHitLog] : []), ...extraLogs, `🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`] };
       // Bonus action: il turno NON avanza.
-      return { ...m, players, logs: [...m.logs, log, ...extraLogs] };
+      return { ...m, players, logs: [...m.logs, log, ...(petOnHitLog ? [petOnHitLog] : []), ...extraLogs] };
     });
     await commitArenaMatches(missed ? updatedMatches : withArenaFx(updatedMatches, matchId, "slash", targetId));
   };
