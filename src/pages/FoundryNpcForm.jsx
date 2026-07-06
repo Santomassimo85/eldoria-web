@@ -27,6 +27,12 @@ const numOf = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+// Continenti del mondo (i luoghi senza `continent` sono Vathriddon, come nell'Atlante).
+const CONTINENTS = ["Vathriddon", "Ehkia", "Ohzkie"];
+const OTHER = "Altrove";
+const norm = (s) => String(s ?? "").trim().toLowerCase();
+const cityOf = (n) => String(n.location || n.linkedCity || "").trim();
+
 export default function FoundryNpcForm() {
   const { currentUser } = useAuth();
   const isMaster = currentUser?.email === MASTER_EMAIL;
@@ -35,6 +41,9 @@ export default function FoundryNpcForm() {
   const [pending, setPending] = useState([]);
   const [sel, setSel] = useState(() => new Set());
   const [q, setQ] = useState("");
+  const [continent, setContinent] = useState(null); // null = tutti
+  const [city, setCity] = useState(null);            // null = tutte
+  const [places, setPlaces] = useState([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -57,14 +66,72 @@ export default function FoundryNpcForm() {
     return () => unsub();
   }, [isMaster]);
 
+  // Luoghi dell'Atlante (live): servono per mappare città → continente.
+  useEffect(() => {
+    if (!isMaster) return;
+    const unsub = onSnapshot(collection(db, "geo_archive"), (snap) => {
+      setPlaces(snap.docs.map((d) => d.data()));
+    });
+    return () => unsub();
+  }, [isMaster]);
+
   const pendingIds = useMemo(() => new Set(pending.map((p) => p.sourceNpcId).filter(Boolean)), [pending]);
+
+  // Mappa città (normalizzata) → continente. I luoghi senza continente = Vathriddon.
+  const cityToContinent = useMemo(() => {
+    const m = new Map();
+    for (const g of places) {
+      if (!g?.name) continue;
+      m.set(norm(g.name), g.continent || "Vathriddon");
+    }
+    return m;
+  }, [places]);
+
+  const continentOf = useMemo(() => (n) => {
+    const c = cityOf(n);
+    if (!c) return OTHER;
+    return cityToContinent.get(norm(c)) || OTHER;
+  }, [cityToContinent]);
+
+  // Continenti effettivamente presenti tra gli NPC, con conteggio (per le chip).
+  const continentChips = useMemo(() => {
+    const count = {};
+    for (const n of npcs) { const c = continentOf(n); count[c] = (count[c] || 0) + 1; }
+    const ordered = [...CONTINENTS, OTHER].filter((c) => count[c]);
+    return ordered.map((c) => ({ key: c, n: count[c] }));
+  }, [npcs, continentOf]);
+
+  // Città disponibili nella select (rispettano il continente scelto).
+  const cityOptions = useMemo(() => {
+    const count = new Map();
+    for (const n of npcs) {
+      if (continent && continentOf(n) !== continent) continue;
+      const c = cityOf(n); if (!c) continue;
+      count.set(c, (count.get(c) || 0) + 1);
+    }
+    return [...count.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [npcs, continent, continentOf]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return npcs;
-    return npcs.filter((n) =>
-      `${n.name} ${n.faction} ${n.location} ${n.linkedCity}`.toLowerCase().includes(s));
-  }, [npcs, q]);
+    return npcs.filter((n) => {
+      if (continent && continentOf(n) !== continent) return false;
+      if (city && norm(cityOf(n)) !== norm(city)) return false;
+      if (s && !`${n.name} ${n.faction} ${n.location} ${n.linkedCity}`.toLowerCase().includes(s)) return false;
+      return true;
+    });
+  }, [npcs, q, continent, city, continentOf]);
+
+  // NPC filtrati raggruppati per città (organizzazione visiva).
+  const groups = useMemo(() => {
+    const m = new Map();
+    for (const n of filtered) {
+      const c = cityOf(n) || "— Senza luogo —";
+      if (!m.has(c)) m.set(c, []);
+      m.get(c).push(n);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
 
   if (!isMaster) {
     return <div className="npcgen-page"><div className="npcgen-inner"><h1 className="npcgen-title">Riservato al Master</h1></div></div>;
@@ -77,6 +144,13 @@ export default function FoundryNpcForm() {
   });
   const selectAll = () => setSel(new Set(filtered.map((n) => n.id)));
   const clearSel = () => setSel(new Set());
+  const selectCity = (list) => setSel((prev) => {
+    const next = new Set(prev);
+    list.forEach((n) => next.add(n.id));
+    return next;
+  });
+  const setContinentFilter = (c) => { setContinent(c); setCity(null); };
+  const resetFilters = () => { setContinent(null); setCity(null); setQ(""); };
 
   const buildPayload = (n) => ({
     status: "pending",
@@ -137,19 +211,56 @@ export default function FoundryNpcForm() {
           macro NPC su Foundry per crearli come Attori (non giocanti).
         </p>
 
-        {/* Barra selezione */}
+        {/* Intestazione + conteggio */}
         <div className="fdy-import-head" style={{ marginTop: 6 }}>
           <span className="fdy-import-title">👥 Anagrafe NPC</span>
-          <span className="fdy-import-count">{filtered.length} · selezionati {sel.size}</span>
+          <span className="fdy-import-count">{filtered.length} di {npcs.length} · selezionati {sel.size}</span>
         </div>
-        <input
-          className="npcgen-input"
-          placeholder="🔎 Cerca un NPC per nome, fazione o luogo…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <div className="dmt-row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          <button type="button" className="npcgen-btn npcgen-btn--ghost fdy-mini" onClick={selectAll}>Seleziona tutti ({filtered.length})</button>
+
+        {/* Toolbar filtri: ricerca · continente · città */}
+        <div className="fdy-filters">
+          <input
+            className="npcgen-input fdy-search"
+            placeholder="🔎 Cerca per nome, fazione o luogo…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <div className="fdy-chips" role="group" aria-label="Filtro per continente">
+            <button type="button" className={`fdy-chip${continent == null ? " is-on" : ""}`} onClick={() => setContinentFilter(null)}>
+              🌍 Tutti <span className="fdy-chip-n">{npcs.length}</span>
+            </button>
+            {continentChips.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                className={`fdy-chip${continent === c.key ? " is-on" : ""}`}
+                onClick={() => setContinentFilter(continent === c.key ? null : c.key)}
+              >
+                {c.key} <span className="fdy-chip-n">{c.n}</span>
+              </button>
+            ))}
+          </div>
+          <div className="fdy-filter-right">
+            <select
+              className="fdy-select"
+              value={city || ""}
+              onChange={(e) => setCity(e.target.value || null)}
+              aria-label="Filtro per città"
+            >
+              <option value="">🏙️ Tutte le città{cityOptions.length ? ` (${cityOptions.length})` : ""}</option>
+              {cityOptions.map(([name, n]) => (
+                <option key={name} value={name}>{name} ({n})</option>
+              ))}
+            </select>
+            {(continent || city || q) && (
+              <button type="button" className="fdy-clear" onClick={resetFilters}>✕ Azzera</button>
+            )}
+          </div>
+        </div>
+
+        {/* Azioni di selezione */}
+        <div className="dmt-row" style={{ gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+          <button type="button" className="npcgen-btn npcgen-btn--ghost fdy-mini" onClick={selectAll} disabled={filtered.length === 0}>Seleziona tutti ({filtered.length})</button>
           <button type="button" className="npcgen-btn npcgen-btn--ghost fdy-mini" onClick={clearSel} disabled={sel.size === 0}>Deseleziona</button>
           <button type="button" className="npcgen-btn" onClick={queueSelected} disabled={busy || sel.size === 0}>
             {busy ? "Invio…" : `📦 Prepara ${sel.size || ""} per Foundry`}
@@ -157,34 +268,70 @@ export default function FoundryNpcForm() {
         </div>
         <div className={`npcgen-status${msg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{msg}</div>
 
-        {/* Lista NPC con checkbox */}
-        <div className="fdy-import-list" style={{ marginTop: 10 }}>
-          {filtered.length === 0 && <p className="npcgen-v">Nessun NPC nell'anagrafe.</p>}
-          {filtered.map((n) => {
-            const already = pendingIds.has(n.id);
-            const checked = sel.has(n.id);
+        {/* NPC raggruppati per città, in griglia di card */}
+        <div className="fdy-npc-groups">
+          {npcs.length === 0 && <p className="npcgen-v">Nessun NPC nell'anagrafe.</p>}
+          {npcs.length > 0 && filtered.length === 0 && <p className="npcgen-v">Nessun NPC corrisponde ai filtri.</p>}
+          {groups.map(([cityName, list]) => {
+            const cont = list[0] ? continentOf(list[0]) : OTHER;
             return (
-              <div className="fdy-row" key={n.id} style={checked ? { outline: "2px solid var(--red, #b03030)", outlineOffset: -2 } : {}}>
-                <label style={{ display: "flex", alignItems: "center", paddingLeft: 6, cursor: "pointer" }}>
-                  <input type="checkbox" checked={checked} onChange={() => toggle(n.id)} />
-                </label>
-                <img className="fdy-thumb" src={n.image || "/assets/placeholder.jpg"} alt=""
-                  onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }} />
-                <div className="fdy-row-main">
-                  <div className="fdy-row-name">{n.name || "(senza nome)"}</div>
-                  <div className="fdy-row-meta">
-                    {n.faction && <span className="npcgen-chip dmt-pill">{n.faction}</span>}
-                    {(n.location || n.linkedCity) && <span className="npcgen-chip dmt-pill">📍 {n.location || n.linkedCity}</span>}
-                    <span className="npcgen-chip dmt-pill">CA {numOf(n.statblock?.CA) ?? "—"} · PF {numOf(n.statblock?.PF) ?? "—"}</span>
-                    {already && <span className="npcgen-chip dmt-pill" title="Già presente nella coda">⏳ in coda</span>}
-                  </div>
-                </div>
-                <div className="fdy-row-actions">
-                  <button type="button" className="npcgen-btn fdy-mini" disabled={busy} onClick={() => queueOne(n)}>
-                    📦 Coda
+              <section className="fdy-npc-group" key={cityName}>
+                <header className="fdy-npc-grouphead">
+                  <span className="fdy-npc-city">📍 {cityName}</span>
+                  <span className="fdy-npc-cont">{cont}</span>
+                  <span className="fdy-npc-gcount">{list.length}</span>
+                  <button type="button" className="npcgen-btn npcgen-btn--ghost fdy-mini fdy-npc-selcity" onClick={() => selectCity(list)}>
+                    Seleziona città
                   </button>
+                </header>
+                <div className="fdy-npc-grid">
+                  {list.map((n) => {
+                    const already = pendingIds.has(n.id);
+                    const checked = sel.has(n.id);
+                    return (
+                      <div
+                        className={`fdy-npc-card${checked ? " is-checked" : ""}`}
+                        key={n.id}
+                        onClick={() => toggle(n.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(n.id); } }}
+                      >
+                        <input
+                          type="checkbox"
+                          className="fdy-npc-check"
+                          checked={checked}
+                          onChange={() => toggle(n.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Seleziona ${n.name || "NPC"}`}
+                        />
+                        <img
+                          className="fdy-npc-img"
+                          src={n.image || "/assets/placeholder.jpg"}
+                          alt=""
+                          onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
+                        />
+                        <div className="fdy-npc-body">
+                          <div className="fdy-npc-name">{n.name || "(senza nome)"}</div>
+                          <div className="fdy-npc-meta">
+                            {n.faction && <span className="npcgen-chip dmt-pill">{n.faction}</span>}
+                            <span className="npcgen-chip dmt-pill">CA {numOf(n.statblock?.CA) ?? "—"} · PF {numOf(n.statblock?.PF) ?? "—"}</span>
+                            {already && <span className="npcgen-chip dmt-pill" title="Già presente nella coda">⏳ in coda</span>}
+                          </div>
+                          <button
+                            type="button"
+                            className="npcgen-btn fdy-mini fdy-npc-queue"
+                            disabled={busy}
+                            onClick={(e) => { e.stopPropagation(); queueOne(n); }}
+                          >
+                            📦 Coda
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
