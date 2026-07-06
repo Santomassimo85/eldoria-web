@@ -97,9 +97,10 @@ export async function loadPartyContext(party, { summaryCap = 1500 } = {}) {
   };
 }
 
-// "Leggi i riassunti": prende il contesto del party (gli stessi riassunti usati per
-// generare) e li condensa in bullet point brevi, per sessione, in ordine cronologico.
-// Ritorna [{ sessionNumber, title, bullets: [...] }].
+// "Leggi i riassunti": legge TUTTI i riassunti del party e restituisce
+//   { recent: [{ sessionNumber, title, bullets }], topics: [{ label, note }] }
+// - recent = fast recap delle ultime 3 sessioni;
+// - topics = fili/temi importanti cliccabili (da far tornare in una nuova sessione).
 export async function readPartyRecap(party) {
   // Per la lettura vogliamo il testo quasi integrale dei riassunti (non il cap
   // ristretto usato in generazione), altrimenti il modello vede solo l'inizio.
@@ -117,7 +118,7 @@ export async function readPartyRecap(party) {
             .join(" — ");
     return { sessionNumber: s.sessionNumber, title: s.title || "", text };
   });
-  if (summaries.length === 0) return [];
+  if (summaries.length === 0) return { recent: [], topics: [] };
 
   const resp = await fetch("/api/recap-bullets", {
     method: "POST",
@@ -126,7 +127,10 @@ export async function readPartyRecap(party) {
   });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
-  return Array.isArray(data.recap) ? data.recap : [];
+  return {
+    recent: Array.isArray(data.recent) ? data.recent : [],
+    topics: Array.isArray(data.topics) ? data.topics : [],
+  };
 }
 
 // Divide l'output del modello nei marker ---HTML--- / ---SUMMARY---.

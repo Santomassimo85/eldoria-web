@@ -50,6 +50,9 @@ Scegli una palette tematica NUOVA e DIVERSA a ogni sessione, coerente col mood d
 [CONTINUITÀ — INPUT B]
 Riceverai il contesto narrativo del party: i riassunti delle sessioni passate (ordine cronologico) e l'HTML dell'ultima sessione. Usali per garantire continuità: riprendi ganci aperti, NPC, luoghi, oggetti e cliffhanger. NON contraddire la storia. Se non c'è contesto passato, tratta questa come una sessione d'apertura coerente col mondo.
 
+[FILI DA RIPRENDERE]
+Il DM può indicarti dei "fili" della campagna che vuole far tornare in QUESTA sessione (es. "Il Corvo", "La Mummia"). Se presenti, DEVI intrecciarli nella trama in modo naturale e sensato — non forzato, non tutti in blocco: falli riemergere con tempismo (un ricomparire, una rivelazione, una conseguenza) coerente con dove si trovano i personaggi e con la loro storia passata. Ogni filo indicato deve avere un momento riconoscibile nella sessione.
+
 [STRUTTURA]
 Questa sessione deve avere: ${actsPlan}. Header con numero sessione in numeri romani, titolo, sottotitolo-citazione, riga data. meta-bar (Durata, Party, Luogo, Focus). nav-tabs: Panoramica + un tab per Atto + "Bottino & Indizi" + "Note DM". Timer con data-duration corretto per ogni atto. Combat con stat block concreti (CA, PF, attacchi +bonus, danni in dadi, TS/CD, tratti). Chiudi con una citazione delle "${closingChronicle}".
 
@@ -89,6 +92,10 @@ function buildUserMessage(b) {
     ? String(b.lastSessionHtml).slice(0, 24000) // cap input per latenza
     : "(nessuna sessione precedente)";
 
+  const threads = Array.isArray(b.resumeThreads) && b.resumeThreads.length
+    ? b.resumeThreads.map((t) => `• ${t.label}${t.note ? ` — ${t.note}` : ""}`).join("\n")
+    : "";
+
   return `RICHIESTA DEL DM per la Sessione ${roman} (numero ${b.sessionNumber}) del party ${b.party}.
 
 Mondo: ${b.world}
@@ -102,6 +109,9 @@ ${b.focus || "(libero — proponi tu uno sviluppo coerente con la continuità)"}
 
 NOTE AGGIUNTIVE DEL DM:
 ${b.note || "(nessuna)"}
+
+FILI DELLA CAMPAGNA DA FAR TORNARE IN QUESTA SESSIONE (intrecciali con tempismo, in modo naturale):
+${threads || "(nessuno indicato)"}
 
 ========================================
 [INPUT A] TEMPLATE GRAFICO (usa SOLO la forma, ignora il contenuto):

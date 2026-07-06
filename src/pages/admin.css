@@ -3657,6 +3657,42 @@
   margin: 2px 0;
 }
 
+/* Fili della campagna → chip cliccabili */
+.sumadm-topics {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.5);
+}
+.sumadm-topics-lead {
+  font-size: 0.9rem;
+  color: #6a5a34;
+  margin-bottom: 10px;
+}
+.sumadm-topics-lead strong { color: #5a3a12; }
+.sumadm-topics-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sumadm-chip {
+  background: #fdfbf3;
+  border: 1.5px solid rgba(130, 10, 10, 0.3);
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-family: var(--font-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.sumadm-chip:hover { transform: translateY(-1px); filter: brightness(1.04); }
+.sumadm-chip.on { font-weight: 600; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12); }
+.sumadm-topics-hint {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #7a1010;
+  font-style: italic;
+}
+
 .sumadm-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

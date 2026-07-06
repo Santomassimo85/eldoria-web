@@ -1,44 +1,60 @@
 // api/recap-bullets.js
-// "Leggi i riassunti": condensa i riassunti delle sessioni passate di UN party in
-// bullet point brevi e in ordine cronologico, così il DM sa cosa è successo prima e
-// può scrivere il focus della nuova sessione. Strumento privato (solo master) —
-// l'autorizzazione è lato client/rotta. La chiave Anthropic resta qui (Vercel).
+// "Leggi i riassunti": legge TUTTI i riassunti di UN party e restituisce
+//   1) un FAST RECAP delle ultime 3 sessioni (pochi bullet brevissimi);
+//   2) i TEMI/FILI importanti dell'intera campagna, come voci cliccabili
+//      ("Il Corvo", "La Mummia"…), ciascuna con una nota che spiega cos'è.
+// Cliccando una voce nel client, quel filo viene passato al generatore perché
+// torni nella sessione in scrittura. Strumento privato (solo master).
 //
 // Input (POST JSON):
 //   party           // discriminante (solo per contesto nel prompt)
 //   summaries[]     // [{ sessionNumber, title, text }] in ordine cronologico
 //
-// Output (JSON): { recap: [{ sessionNumber, title, bullets: ["…", "…"] }] }
+// Output (JSON):
+//   { recent: [{ sessionNumber, title, bullets: ["…"] }],
+//     topics: [{ label: "Il Corvo", note: "…" }] }
 
 // Opus + molti riassunti può superare i timeout brevi: Fluid Compute permette 300s.
 export const config = { maxDuration: 300 };
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-8";
 
-const SYSTEM = `Sei l'archivista del Dungeon Master. Ricevi i riassunti delle sessioni passate di UN gruppo di gioco, in ordine cronologico. Per ogni sessione ricostruisci lo SVOLGIMENTO completo della trama, così che il DM possa ricordare cosa è successo e riprendere il filo.
+const SYSTEM = `Sei l'archivista del Dungeon Master. Ricevi TUTTI i riassunti delle sessioni passate di UN gruppo di gioco, in ordine cronologico. Produci due cose distinte.
 
-COSA SCRIVERE
-- Per ogni sessione, da 5 a 10 bullet: uno SCORRIMENTO cronologico degli eventi di quella sessione, dall'inizio alla fine, come un resoconto passo-passo.
-- Ogni bullet è una frase COMPLETA e ARTICOLATA (indicativamente 20-35 parole) che si capisce da sola, con contesto e conseguenza — non un'etichetta telegrafica.
-- Racconta TUTTO ciò che ha peso sulla trama, non solo i combattimenti: spostamenti e viaggi (dove sono andati, dove sono tornati), scene sociali (chiacchierate in taverna, trattative, litigi, decisioni prese insieme), incontri con PNG (nome, ruolo, cosa si sono detti), scoperte e indizi, oggetti/bottino, patti e promesse, e naturalmente scontri con il loro esito. Se sono tornati a Nolborg e hanno parlato in taverna, DEVE comparire.
-- Segui l'ordine reale dei fatti dentro la sessione. Collega gli eventi tra loro quando serve alla continuità.
+PARTE 1 — FAST RECAP DELLE ULTIME 3 SESSIONI
+- Prendi SOLO le 3 sessioni più recenti (i numeri più alti). Se ce ne sono meno di 3, usa quelle che ci sono.
+- Per ognuna, da 2 a 4 bullet BREVISSIMI (max ~15 parole), giusto l'essenziale per ricordare cosa è successo: dove sono, cosa hanno fatto, cosa è rimasto in sospeso.
+- Ordine cronologico (dalla meno recente delle tre alla più recente).
 
-COSA EVITARE
-- Non ridurre la sessione ai soli combattimenti: i momenti di viaggio e di dialogo sono importanti quanto le battaglie.
-- Niente meccaniche pure (tiri, PF, iniziativa) se non hanno conseguenze narrative; niente riempitivi d'atmosfera fini a sé stessi.
-- Non inventare: se un dettaglio non è nel riassunto, non aggiungerlo.
-- Mantieni RIGOROSAMENTE l'ordine cronologico delle sessioni; nomi propri e termini di gioco esatti come nel testo.
+PARTE 2 — TEMI E FILI DELLA CAMPAGNA (voci cliccabili)
+- Scorri TUTTE le sessioni ed estrai gli elementi RICORRENTI o IMPORTANTI che meritano di poter tornare in una sessione futura: PNG chiave, creature/nemici memorabili, misteri irrisolti, oggetti/artefatti, luoghi cardine, fazioni, promesse/debiti aperti, minacce incombenti.
+- Ogni voce ha:
+  · una ETICHETTA breve e riconoscibile, come la userebbe il DM al tavolo (es. "Il Corvo", "La Mummia", "Il Pendolo di Vethrik", "Olwen", "Il debito coi Cacciatori del Sale").
+  · una NOTA di una riga che spiega cos'è, il suo stato attuale e perché è rilevante — così chi genera la sessione sa come reintegrarlo con senso.
+- Da 6 a 14 voci, le più significative. Niente doppioni. Metti prima le più importanti/aperte.
+- Non inventare: usa solo ciò che compare nei riassunti; nomi ed etichette esatti come nel testo.
 
-Scrivi in ITALIANO, in terza persona, con frasi scorrevoli e ben formate (punteggiatura inclusa).
+Scrivi in ITALIANO. Non aggiungere altro testo.
 
-FORMATO DI OUTPUT (testo semplice, NIENTE JSON, niente backtick, niente altro testo):
-Per ogni sessione, una riga di intestazione che inizia con "## " seguita da numero, una barra "|" e il titolo, poi una riga per bullet che inizia con "- ".
-Esempio ESATTO della forma (contenuto illustrativo):
-## 12 | Il Ponte di Vethrik
-- Il gruppo lascia le rovine all'alba e viaggia due giorni lungo il fiume prima di rientrare a Nolborg per rifornirsi e cercare informazioni.
-- In taverna, davanti a un boccale, discutono a lungo sul da farsi e decidono di dare la caccia al Pendolo, nonostante i dubbi di Caius.
-- Incontrano Olwen, mercante di reliquie, che rivela l'esistenza del Pendolo ma pretende in cambio un favore ancora da definire, aprendo un debito con lui.
-- Nella cripta allagata affrontano i guardiani non-morti e recuperano il Pendolo di Vethrik, che reagisce alla presenza di Caius suggerendo un legame di sangue.`;
+FORMATO DI OUTPUT ESATTO (testo semplice, NIENTE JSON, niente backtick):
+=== RECENTI ===
+## <numero> | <titolo>
+- <bullet breve>
+- <bullet breve>
+## <numero> | <titolo>
+- <bullet breve>
+=== TEMI ===
+* <Etichetta> :: <nota di una riga>
+* <Etichetta> :: <nota di una riga>
+
+Esempio illustrativo della forma:
+=== RECENTI ===
+## 32 | La Cripta del Sale
+- Tornano a Nolborg e si riforniscono in taverna
+- Scoprono che la Mummia è sfuggita al sigillo
+=== TEMI ===
+* Il Corvo :: uccello che pedina il gruppo dalla sessione 8, forse spia di un negromante ancora ignoto
+* La Mummia :: guardiana risvegliata nella cripta, ora libera e a caccia del Pendolo`;
 
 function buildUserMessage({ party, summaries }) {
   const blocks = (summaries || [])
@@ -51,33 +67,50 @@ function buildUserMessage({ party, summaries }) {
     .join("\n\n");
   return `Gruppo: ${party || "—"}.
 
-Ecco i riassunti delle sessioni passate, in ordine cronologico. Estrai i bullet come da istruzioni.
+Ecco TUTTI i riassunti delle sessioni passate, in ordine cronologico. Produci il FAST RECAP delle ultime 3 e i TEMI come da istruzioni.
 
 ${blocks}`;
 }
 
-// Parsa il formato a righe "## n | titolo" + "- bullet". Robusto ai troncamenti:
-// una risposta tagliata a metà perde al più l'ultimo bullet, non l'intero recap.
-function parseRecap(text) {
-  const lines = String(text || "").replace(/```/g, "").split(/\r?\n/);
-  const recap = [];
+// Parsa il formato a righe in due sezioni (=== RECENTI === / === TEMI ===).
+// Robusto ai troncamenti: una risposta tagliata perde al più l'ultima voce.
+function parseOutput(text) {
+  const clean = String(text || "").replace(/```/g, "");
+  const lines = clean.split(/\r?\n/);
+  const recent = [];
+  const topics = [];
+  let section = "recent"; // default: se manca l'header, trattiamo come recap
   let cur = null;
+
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
-    const head = line.match(/^#{1,3}\s*(\d+)?\s*\|?\s*(.*)$/);
-    if (line.startsWith("#")) {
-      if (cur && cur.bullets.length) recap.push(cur);
-      const num = head && head[1] ? Number(head[1]) : null;
-      const title = head ? String(head[2] || "").replace(/^\|\s*/, "").trim() : "";
-      cur = { sessionNumber: num, title, bullets: [] };
-      continue;
+    if (/^={2,}\s*RECENTI/i.test(line)) { section = "recent"; continue; }
+    if (/^={2,}\s*TEMI/i.test(line)) { section = "topics"; continue; }
+
+    if (section === "recent") {
+      if (line.startsWith("#")) {
+        if (cur && cur.bullets.length) recent.push(cur);
+        const head = line.match(/^#{1,3}\s*(\d+)?\s*\|?\s*(.*)$/);
+        const num = head && head[1] ? Number(head[1]) : null;
+        const title = head ? String(head[2] || "").replace(/^\|\s*/, "").trim() : "";
+        cur = { sessionNumber: num, title, bullets: [] };
+        continue;
+      }
+      const bullet = line.replace(/^[-–•]\s*/, "").trim();
+      if (bullet && cur) cur.bullets.push(bullet);
+    } else {
+      // Voce tema: "* Etichetta :: nota"  (accetta anche "- Etichetta :: nota")
+      const item = line.replace(/^[*\-–•]\s*/, "").trim();
+      if (!item) continue;
+      const sep = item.indexOf("::");
+      const label = (sep >= 0 ? item.slice(0, sep) : item).trim();
+      const note = sep >= 0 ? item.slice(sep + 2).trim() : "";
+      if (label) topics.push({ label, note });
     }
-    const bullet = line.replace(/^[-*•]\s*/, "").trim();
-    if (bullet && cur) cur.bullets.push(bullet);
   }
-  if (cur && cur.bullets.length) recap.push(cur);
-  return recap;
+  if (cur && cur.bullets.length) recent.push(cur);
+  return { recent, topics };
 }
 
 export default async function handler(req, res) {
@@ -99,7 +132,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 8000,
+        max_tokens: 5000,
         system: SYSTEM,
         messages: [{ role: "user", content: buildUserMessage({ party, summaries }) }],
       }),
@@ -109,15 +142,23 @@ export default async function handler(req, res) {
     if (data.error) return res.status(500).json({ error: data.error.message });
 
     const testo = (data.content || []).map((b) => b.text || "").join("");
-    const recap = parseRecap(testo)
+    const parsed = parseOutput(testo);
+    const recent = parsed.recent
       .map((it) => ({
         sessionNumber: it.sessionNumber,
         title: it.title,
         bullets: it.bullets.map((x) => String(x || "").trim()).filter(Boolean),
       }))
-      .filter((it) => it.bullets.length > 0);
-    if (recap.length === 0) return res.status(500).json({ error: "Il modello non ha restituito bullet leggibili. Riprova." });
-    return res.status(200).json({ recap });
+      .filter((it) => it.bullets.length > 0)
+      .slice(-3);
+    const topics = parsed.topics
+      .map((t) => ({ label: String(t.label || "").trim(), note: String(t.note || "").trim() }))
+      .filter((t) => t.label);
+
+    if (recent.length === 0 && topics.length === 0) {
+      return res.status(500).json({ error: "Il modello non ha restituito nulla di leggibile. Riprova." });
+    }
+    return res.status(200).json({ recent, topics });
   } catch (e) {
     return res.status(500).json({ error: "Lettura fallita: " + e.message });
   }

@@ -40,9 +40,10 @@ export default function GenerateSession() {
   const [generated, setGenerated] = useState(null); // { html, summary }
   const [saving, setSaving] = useState(false);
 
-  const [recap, setRecap] = useState(null); // [{ sessionNumber, title, bullets }]
+  const [recap, setRecap] = useState(null); // { recent: [...], topics: [...] }
   const [recapBusy, setRecapBusy] = useState(false);
   const [recapErr, setRecapErr] = useState("");
+  const [selectedTopics, setSelectedTopics] = useState([]); // etichette dei fili da riprendere
 
   const chars = useMemo(() => charactersOf(partyId), [partyId]);
 
@@ -53,6 +54,7 @@ export default function GenerateSession() {
     setStatus("");
     setRecap(null);
     setRecapErr("");
+    setSelectedTopics([]);
   };
 
   const handleReadRecap = async () => {
@@ -60,16 +62,23 @@ export default function GenerateSession() {
     setRecapBusy(true);
     setRecapErr("");
     setRecap(null);
+    setSelectedTopics([]);
     try {
       const r = await readPartyRecap(party.id);
-      if (r.length === 0) setRecapErr("Nessun riassunto registrato per questo gruppo.");
-      else setRecap(r);
+      if (r.recent.length === 0 && r.topics.length === 0) {
+        setRecapErr("Nessun riassunto registrato per questo gruppo.");
+      } else {
+        setRecap(r);
+      }
     } catch (err) {
       setRecapErr(err.message || String(err));
     } finally {
       setRecapBusy(false);
     }
   };
+
+  const toggleTopic = (label) =>
+    setSelectedTopics((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
 
   const toggleChar = (name) =>
     setInvolved((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
@@ -103,6 +112,10 @@ export default function GenerateSession() {
         templateHtml,
         pastSummaries: ctx.pastSummaries,
         lastSessionHtml: ctx.lastSessionHtml,
+        // Fili scelti dai chip "Fili della campagna": vanno reintrodotti in modo sensato.
+        resumeThreads: (recap?.topics || [])
+          .filter((t) => selectedTopics.includes(t.label))
+          .map((t) => ({ label: t.label, note: t.note })),
       };
 
       const result = await streamGenerateSession(payload, (_chunk, full) => setProgress(full.length));
@@ -179,12 +192,12 @@ export default function GenerateSession() {
         ))}
       </div>
 
-      {/* Leggi i riassunti del gruppo → bullet cronologici */}
+      {/* Leggi i riassunti del gruppo → fast recap + fili cliccabili */}
       <div className="sumadm-recap">
         <div className="sumadm-recap-head">
           <div>
             <strong>📖 Cosa è successo finora · {party.name}</strong>
-            <small> — bullet point delle sessioni passate, in ordine cronologico</small>
+            <small> — recap veloce delle ultime 3 sessioni + fili da riprendere</small>
           </div>
           <button type="button" className="sumadm-btn ghost" onClick={handleReadRecap} disabled={recapBusy}>
             {recapBusy ? "⏳ Leggo i riassunti…" : recap ? "🔄 Rileggi" : "📖 Leggi"}
@@ -193,9 +206,9 @@ export default function GenerateSession() {
 
         {recapErr && <p className="sumadm-recap-empty">{recapErr}</p>}
 
-        {recap && recap.length > 0 && (
+        {recap && recap.recent.length > 0 && (
           <ol className="sumadm-recap-list">
-            {recap.map((it, i) => (
+            {recap.recent.map((it, i) => (
               <li key={`${it.sessionNumber ?? i}`} className="sumadm-recap-item">
                 <div className="sumadm-recap-sess">
                   Sessione {it.sessionNumber ?? "?"}{it.title ? ` · ${it.title}` : ""}
@@ -206,6 +219,36 @@ export default function GenerateSession() {
               </li>
             ))}
           </ol>
+        )}
+
+        {recap && recap.topics.length > 0 && (
+          <div className="sumadm-topics">
+            <div className="sumadm-topics-lead">
+              🧵 <strong>Fili della campagna</strong> — clicca quelli che vuoi far tornare in questa sessione
+            </div>
+            <div className="sumadm-topics-chips">
+              {recap.topics.map((t) => {
+                const on = selectedTopics.includes(t.label);
+                return (
+                  <button
+                    key={t.label}
+                    type="button"
+                    title={t.note || ""}
+                    className={`sumadm-chip ${on ? "on" : ""}`}
+                    onClick={() => toggleTopic(t.label)}
+                    style={on ? { background: party.color, borderColor: party.color, color: "#fff" } : { borderColor: party.color, color: party.color }}
+                  >
+                    {on ? "✓ " : ""}{t.label}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedTopics.length > 0 && (
+              <p className="sumadm-topics-hint">
+                {selectedTopics.length} filo/i verranno reintrodotti nella sessione generata.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
