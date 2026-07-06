@@ -23,8 +23,14 @@ REGOLE
 - Nomi propri e termini di gioco vanno riportati esatti come nel testo.
 - Scrivi in ITALIANO, telegrafico, senza punteggiatura finale.
 
-Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo, senza backtick, in questa forma esatta:
-{"recap":[{"sessionNumber":0,"title":"","bullets":["",""]}]}`;
+FORMATO DI OUTPUT (testo semplice, NIENTE JSON, niente backtick, niente altro testo):
+Per ogni sessione, una riga di intestazione che inizia con "## " seguita da numero, una barra "|" e il titolo, poi una riga per bullet che inizia con "- ".
+Esempio ESATTO della forma:
+## 12 | Il Ponte di Vethrik
+- Incontrano il mercante Olwen, alleato
+- Recuperano il Pendolo di Vethrik
+## 13 | La Torre Sommersa
+- Il patto con Olwen salta, ora ostile`;
 
 function buildUserMessage({ party, summaries }) {
   const blocks = (summaries || [])
@@ -42,25 +48,28 @@ Ecco i riassunti delle sessioni passate, in ordine cronologico. Estrai i bullet 
 ${blocks}`;
 }
 
-// Estrae il JSON tollerando fence o testo attorno, e chiude un JSON troncato.
-function parseContent(text) {
-  let t = String(text || "").replace(/```json|```/g, "").trim();
-  const start = t.indexOf("{");
-  const end = t.lastIndexOf("}");
-  if (start !== -1 && end !== -1 && end > start) t = t.slice(start, end + 1);
-  try {
-    return JSON.parse(t);
-  } catch {
-    const cut = Math.max(t.lastIndexOf("],"), t.lastIndexOf("]}"));
-    if (cut > 0) {
-      let p = t.substring(0, cut + 1);
-      const openO = (p.match(/\{/g) || []).length - (p.match(/\}/g) || []).length;
-      const openA = (p.match(/\[/g) || []).length - (p.match(/\]/g) || []).length;
-      p += "]".repeat(Math.max(0, openA)) + "}".repeat(Math.max(0, openO));
-      return JSON.parse(p);
+// Parsa il formato a righe "## n | titolo" + "- bullet". Robusto ai troncamenti:
+// una risposta tagliata a metà perde al più l'ultimo bullet, non l'intero recap.
+function parseRecap(text) {
+  const lines = String(text || "").replace(/```/g, "").split(/\r?\n/);
+  const recap = [];
+  let cur = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const head = line.match(/^#{1,3}\s*(\d+)?\s*\|?\s*(.*)$/);
+    if (line.startsWith("#")) {
+      if (cur && cur.bullets.length) recap.push(cur);
+      const num = head && head[1] ? Number(head[1]) : null;
+      const title = head ? String(head[2] || "").replace(/^\|\s*/, "").trim() : "";
+      cur = { sessionNumber: num, title, bullets: [] };
+      continue;
     }
-    throw new Error("JSON non interpretabile.");
+    const bullet = line.replace(/^[-*•]\s*/, "").trim();
+    if (bullet && cur) cur.bullets.push(bullet);
   }
+  if (cur && cur.bullets.length) recap.push(cur);
+  return recap;
 }
 
 export default async function handler(req, res) {
@@ -82,7 +91,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 3000,
+        max_tokens: 4000,
         system: SYSTEM,
         messages: [{ role: "user", content: buildUserMessage({ party, summaries }) }],
       }),
@@ -92,18 +101,14 @@ export default async function handler(req, res) {
     if (data.error) return res.status(500).json({ error: data.error.message });
 
     const testo = (data.content || []).map((b) => b.text || "").join("");
-    const out = parseContent(testo);
-    const recap = Array.isArray(out.recap)
-      ? out.recap
-          .map((it) => ({
-            sessionNumber: it.sessionNumber,
-            title: String(it.title || "").trim(),
-            bullets: (Array.isArray(it.bullets) ? it.bullets : [])
-              .map((x) => String(x || "").trim())
-              .filter(Boolean),
-          }))
-          .filter((it) => it.bullets.length > 0)
-      : [];
+    const recap = parseRecap(testo)
+      .map((it) => ({
+        sessionNumber: it.sessionNumber,
+        title: it.title,
+        bullets: it.bullets.map((x) => String(x || "").trim()).filter(Boolean),
+      }))
+      .filter((it) => it.bullets.length > 0);
+    if (recap.length === 0) return res.status(500).json({ error: "Il modello non ha restituito bullet leggibili. Riprova." });
     return res.status(200).json({ recap });
   } catch (e) {
     return res.status(500).json({ error: "Lettura fallita: " + e.message });
