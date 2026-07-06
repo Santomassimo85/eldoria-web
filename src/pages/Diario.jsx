@@ -98,8 +98,10 @@ export default function Diario() {
         if (!alive) return;
         setCharName(name);
         setOwnParty(party);
-        // il player parte sul PROPRIO gruppo; il master sul primo disponibile
-        setViewParty(party !== "Senza Gruppo" ? party : PARTY_ORDER[0]);
+        // il player parte sul PROPRIO gruppo; il master parte da "Tutti" (vede tutto)
+        setViewParty(
+          party !== "Senza Gruppo" ? party : (isMaster ? "ALL" : PARTY_ORDER[0])
+        );
       } finally {
         if (alive) setReady(true);
       }
@@ -107,15 +109,14 @@ export default function Diario() {
     return () => { alive = false; };
   }, [currentUser]);
 
-  /* 2) Ascolta le voci del gruppo in vista. */
+  /* 2) Ascolta le voci del gruppo in vista ("ALL" = tutti i gruppi, solo master). */
   useEffect(() => {
     if (!viewParty || viewParty === "Senza Gruppo") { setNotes([]); setLoadingNotes(false); return; }
     setLoadingNotes(true);
-    const q = query(
-      collection(db, "diary_notes"),
-      where("party", "==", viewParty),
-      orderBy("createdAt", "desc"),
-    );
+    const base = collection(db, "diary_notes");
+    const q = viewParty === "ALL"
+      ? query(base, orderBy("createdAt", "desc"))
+      : query(base, where("party", "==", viewParty), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setNotes(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoadingNotes(false);
@@ -123,8 +124,10 @@ export default function Diario() {
     return () => unsub();
   }, [viewParty]);
 
-  /* Chi può scrivere nel gruppo in vista? Il membro nel proprio gruppo, o il master ovunque. */
-  const canPost = isMaster || (ownParty !== "Senza Gruppo" && ownParty === viewParty);
+  /* Chi può scrivere nel gruppo in vista? Il membro nel proprio gruppo, o il master
+     in un gruppo specifico. Nella vista "Tutti" non si scrive (nessun party target). */
+  const isAllView = viewParty === "ALL";
+  const canPost = !isAllView && (isMaster || (ownParty !== "Senza Gruppo" && ownParty === viewParty));
   const meta = PARTY_META[viewParty] || null;
 
   const addNote = async (e) => {
@@ -208,7 +211,12 @@ export default function Diario() {
       <header className="diario-hero">
         <p className="diario-eyebrow"><span aria-hidden="true">ᛒ</span> Cronache del gruppo</p>
         <h1 className="diario-title">Diario di Bordo</h1>
-        {meta && (
+        {isAllView ? (
+          <p className="diario-sub">
+            <span className="diario-seal" style={{ background: "#7c560f" }}>✶</span>
+            Tutti i gruppi · <em>vista del Master</em>
+          </p>
+        ) : meta && (
           <p className="diario-sub">
             <span className="diario-seal" style={{ background: meta.color }}>{meta.rune}</span>
             {meta.label} · <em>{meta.world}</em>
@@ -225,6 +233,17 @@ export default function Diario() {
       {/* ── Selettore gruppi: solo Master/co-master ──────────────────── */}
       {isMaster && (
         <div className="diario-tabs" role="tablist" aria-label="Gruppi">
+          <button
+            key="ALL"
+            role="tab"
+            aria-selected={isAllView}
+            className={"diario-tab" + (isAllView ? " is-active" : "")}
+            style={{ "--tab-color": "#7c560f" }}
+            onClick={() => setViewParty("ALL")}
+          >
+            <span className="diario-tab-rune" aria-hidden="true">✶</span>
+            Tutti
+          </button>
           {PARTY_ORDER.map((p) => (
             <button
               key={p}
@@ -262,6 +281,10 @@ export default function Diario() {
             </button>
           </div>
         </form>
+      ) : isAllView ? (
+        <p className="diario-readonly">
+          Stai leggendo <strong>tutti i gruppi</strong>. Scegli un gruppo qui sopra per aggiungere una voce.
+        </p>
       ) : (
         <p className="diario-readonly">
           Puoi consultare questo diario, ma solo i membri del gruppo possono aggiungere voci.
@@ -290,6 +313,13 @@ export default function Diario() {
                       </span>
                       <div className="diario-entry-body">
                         <div className="diario-entry-head">
+                          {isAllView && n.party && PARTY_META[n.party] && (
+                            <span
+                              className="diario-group-chip"
+                              style={{ background: PARTY_META[n.party].color }}
+                              title={PARTY_META[n.party].label}
+                            >{n.party}</span>
+                          )}
                           <span className="diario-author">{n.authorName || "Anonimo"}</span>
                           <span className="diario-when">
                             {fmtTime(n.createdAt) || "in salvataggio…"}
