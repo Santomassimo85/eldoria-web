@@ -1258,6 +1258,9 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
           : [{ dice: `${p.dice || "1d6"}${p.dmgBonus ? `+${p.dmgBonus}` : ""}`, type: p.ranged ? "perforante" : "tagliente" }];
         const [primary, ...extra] = comps;
         const compLabel = comps.map(c => `${c.dice} ${DAMAGE_TYPE_MAP[c.type]?.label || c.type}`).join(" + ");
+        // Effetti all'impatto: malus al nemico / bonus a sé, ognuno con la sua probabilità.
+        const onHit = normalizeMarketEffects(p.onHit).map(e => ({ ...e, chance: e.chance != null ? e.chance : 100 }));
+        const onHitInfo = onHit.length ? ` · impatto: ${marketEffectsInfo(onHit)}` : "";
         gear.actions.push({
           name: pu.name, type: "weapon", icon: pu.icon || "⚔",
           hitBonus: 3 + (p.hitBonus || 0),
@@ -1266,7 +1269,8 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
           twoHanded: !!p.twoHanded, ranged: !!p.ranged,
           damageType: primary.type,
           extraDamage: extra.map(c => ({ dice: c.dice, type: c.type })),
-          info: `Bottega settimanale · ${compLabel}`,
+          ...(onHit.length ? { onHit } : {}),
+          info: `Bottega settimanale · ${compLabel}${onHitInfo}`,
           fromMarket: true,
         });
         break;
@@ -1286,7 +1290,9 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
         // Oggetti che concedono resistenze passive (sempre attive nel torneo).
         if (p.resist) mergeResistMaps(gear.resist, p.resist);
         const uses = Math.max(1, p.uses || 1) * qty;
-        if (p.effect === "buff") {
+        const extras = normalizeMarketEffects(p.extras);
+        // BONUS puro senza extra → resta un'abilità attivabile (comportamento storico).
+        if (p.effect === "buff" && extras.length === 0) {
           const amt = p.buffAmount || 1;
           const turns = (p.buffTurns | 0) > 0 ? (p.buffTurns | 0) : 99; // 0 = tutto il fight
           const base = {
@@ -1303,30 +1309,20 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
           } else {
             gear.actions.push({ ...base, special: "magic_detect", buffBonus: amt, buffAttacks: turns, info: `Bottega · +${amt} ai prossimi ${turns} attacchi` });
           }
-        } else if (p.effect === "heal" || p.effect === "damage") {
-          gear.consumables.push({
-            key: `mk_${pu.itemId}`, name: pu.name, icon: pu.icon || "🎒",
-            effect: p.effect === "damage" ? "damage" : "heal",
-            dice: p.dice || "2d8", uses,
-            info: p.effect === "damage"
-              ? `${p.dice || "2d8"} danni al bersaglio · azione gratuita (Bottega)`
-              : `Cura ${p.dice || "2d8"} · azione gratuita (Bottega)`,
-          });
-        } else if (p.effect === "malus") {
-          const mt = MALUS_TYPE_MAP[p.malusType] || MALUS_TYPE_MAP.disadvantage;
-          const dicePart  = mt.needsDice  ? ` ${p.malusDice || "1d6"}/turno` : "";
-          const turnsPart = mt.needsTurns ? ` per ${Math.max(1, p.malusTurns || 2)} turni` : "";
-          gear.consumables.push({
-            key: `mk_${pu.itemId}`, name: pu.name, icon: pu.icon || "🎒",
-            effect: "malus",
-            malusType: mt.key,
-            malusDice: p.malusDice || "1d6",
-            malusTurns: Math.max(1, p.malusTurns || 2),
-            uses,
-            info: `${mt.icon} ${malusTypeLabel(mt.key)}${dicePart}${turnsPart} al bersaglio · azione gratuita (Bottega)`,
-          });
+        } else {
+          // Effetto primario (cura/danno/malus/bonus) + eventuali extra → consumabile
+          // MULTI-EFFETTO applicato all'uso (azione gratuita). Resist resta passivo.
+          const effects = [primaryToEffect(p), ...extras].filter(Boolean);
+          if (effects.length) {
+            gear.consumables.push({
+              key: `mk_${pu.itemId}`, name: pu.name, icon: pu.icon || "🎒",
+              effects, uses,
+              needsTarget: effectsHaveEnemyTarget(effects),
+              info: `${marketEffectsInfo(effects)} · azione gratuita (Bottega)`,
+            });
+          }
         }
-        // effect "resist"/assente → solo resistenza passiva (già aggregata sopra)
+        // effect "resist"/assente senza effetti → solo resistenza passiva (già aggregata sopra)
         break;
       }
       case "pet":
@@ -1579,6 +1575,84 @@ function clearDebuffs(p) {
 function disadvTag(label, icon = "🌫", cls = "is-debuff") {
   return { attackDisadvantageLabel: label, attackDisadvantageIcon: icon, attackDisadvantageCls: cls };
 }
+
+// ── EFFETTI COMPONIBILI (Bottega) ──────────────────────────────────────────
+// Oggetti e armi possono portare PIÙ effetti insieme (danno, cura, bonus, malus).
+// Routing automatico: cura/bonus → chi lo usa/impugna (self); danno/malus → nemico.
+const MARKET_BUFF_LABEL = { hit: "colpire", dmg: "danno", ac: "CA", ts: "TS" };
+// Patch di un bonus a sé stessi (instantaneo), per tipo.
+function buffPatchFor(buffType, amount, turns) {
+  const amt = Math.max(1, parseInt(amount, 10) || 1);
+  const tn  = Math.max(1, parseInt(turns, 10) || 1);
+  switch (buffType) {
+    case "ac":  return { shieldSkillTurns: tn, shieldSkillBonus: amt };
+    case "ts":  return { saveFaithTurns: tn, saveFaithBonus: amt };
+    case "dmg": return { aidDmgTurns: tn, aidDmgBonus: amt };
+    case "hit": return { magicDetectActive: amt, magicDetectAttacks: tn };
+    default:    return {};
+  }
+}
+// Patch di un malus sul bersaglio, per tipo (riusata da oggetti/armi/regole).
+function malusPatchFor(mt, dice, turns, p) {
+  const tn = Math.max(1, parseInt(turns, 10) || 1);
+  const dc = dice || "1d6";
+  switch (mt) {
+    case "disadvantage": return { attackDisadvantageTurns: Math.max(p?.attackDisadvantageTurns ?? 0, tn), ...disadvTag("Svantaggio") };
+    case "freeze":       return { attackDisadvantageTurns: Math.max(p?.attackDisadvantageTurns ?? 0, 1), ...disadvTag("Congelato", "🧊", "is-frost") };
+    case "bleed":        return { bleedDoT: true, bleedDoTTurns: Math.max(p?.bleedDoTTurns ?? 0, tn), bleedDoTDice: dc, bleedDoTSourceLabel: "sanguinamento", bleedDoTNoun: "sanguinante", bleedDoTIcon: "🩸" };
+    case "poison":       return { poisonDoT: true, poisonDoTTurns: Math.max(p?.poisonDoTTurns ?? 0, tn), poisonDoTDice: dc, poisonDoTSourceLabel: "veleno", poisonDoTNoun: "avvelenato", poisonDoTIcon: "☠" };
+    case "burn":         return { poisonDoT: true, poisonDoTTurns: Math.max(p?.poisonDoTTurns ?? 0, tn), poisonDoTDice: dc, poisonDoTSourceLabel: "bruciatura", poisonDoTNoun: "in fiamme", poisonDoTIcon: "🔥" };
+    default:             return {};
+  }
+}
+// Un effetto colpisce il nemico? (danno/malus). Cura/bonus vanno su di sé.
+function effectHitsEnemy(e) { return e && (e.kind === "damage" || e.kind === "malus"); }
+function effectsHaveEnemyTarget(effects) { return (effects || []).some(effectHitsEnemy); }
+// Applica una lista di effetti. Ritorna { selfPatch, enemyPatch, selfHeal, enemyDmg, logs }.
+// useChance=true (armi): ogni effetto con `chance`<100 tira per attivarsi.
+function applyMarketEffects(effects, selfP, enemyP, useChance) {
+  let selfPatch = {}, enemyPatch = {}, selfHeal = 0, enemyDmg = 0;
+  const logs = [];
+  for (const e of (effects || [])) {
+    if (!e || !e.kind) continue;
+    if (useChance && e.chance != null && e.chance < 100 && (Math.random() * 100) >= e.chance) continue;
+    if (e.kind === "heal") {
+      const { total } = rollDmg(e.dice || "2d8"); selfHeal += total; logs.push(`💚 +${total} HP`);
+    } else if (e.kind === "damage") {
+      const { total } = rollDmg(e.dice || "2d6"); enemyDmg += total; logs.push(`💥 ${total} danni`);
+    } else if (e.kind === "buff") {
+      selfPatch = { ...selfPatch, ...buffPatchFor(e.buffType, e.buffAmount, e.buffTurns) };
+      logs.push(`✨ +${e.buffAmount} ${MARKET_BUFF_LABEL[e.buffType] || "bonus"} ${Math.max(1, e.buffTurns || 1)}t`);
+    } else if (e.kind === "malus") {
+      enemyPatch = { ...enemyPatch, ...malusPatchFor(e.malusType, e.malusDice, e.malusTurns, { ...enemyP, ...enemyPatch }) };
+      logs.push(`☠ ${malusTypeLabel(e.malusType)}`);
+    }
+  }
+  return { selfPatch, enemyPatch, selfHeal, enemyDmg, logs };
+}
+// Converte l'effetto primario di un oggetto Bottega nella forma {kind,...} (null = resist/passivo).
+function primaryToEffect(p) {
+  switch (p.effect) {
+    case "heal":   return { kind: "heal", dice: p.dice || "2d8" };
+    case "damage": return { kind: "damage", dice: p.dice || "2d6" };
+    case "buff":   return { kind: "buff", buffType: p.buffType || "hit", buffAmount: p.buffAmount || 1, buffTurns: p.buffTurns || 3 };
+    case "malus":  return { kind: "malus", malusType: p.malusType || "disadvantage", malusDice: p.malusDice || "1d6", malusTurns: p.malusTurns || 2 };
+    default:       return null; // resist → passivo, non on-use
+  }
+}
+function normalizeMarketEffects(arr) {
+  return (Array.isArray(arr) ? arr : []).filter(e => e && ["heal", "damage", "buff", "malus"].includes(e.kind));
+}
+function marketEffectsInfo(effects) {
+  return (effects || []).map(e => {
+    if (e.kind === "heal")   return `cura ${e.dice || "2d8"}`;
+    if (e.kind === "damage") return `${e.dice || "2d6"} danni`;
+    if (e.kind === "buff")   return `+${e.buffAmount || 1} ${MARKET_BUFF_LABEL[e.buffType] || "bonus"} ${Math.max(1, e.buffTurns || 1)}t`;
+    if (e.kind === "malus")  return `${malusTypeLabel(e.malusType)}${e.chance != null && e.chance < 100 ? ` ${e.chance}%` : ""}`;
+    return "";
+  }).filter(Boolean).join(" · ");
+}
+
 // Quanti debuff attivi ha il personaggio (per loggare se Ristorare ha pulito qualcosa).
 function countDebuffs(p) {
   let n = 0;
@@ -5710,6 +5784,11 @@ export default function Arena() {
     // Monaco · Mano Aperta (IA): colpendo in mischia, il prossimo attacco del bersaglio è a svantaggio.
     const aiStaggerApplies = isHit && !aiWpnRanged && chosen.type === "weapon" && !!getSubclassEffect(aiSnap).staggerOnHit;
     const aiStaggerLog = aiStaggerApplies ? `✊ ${aiSnap.name} sbilancia ${target.name}: il suo prossimo attacco è a svantaggio!` : null;
+    // Arma della Bottega dell'IA con effetti all'impatto (malus al giocatore / bonus a sé).
+    const _aiOnHit = (isHit && damage > 0 && Array.isArray(chosen.onHit) && chosen.onHit.length)
+      ? applyMarketEffects(chosen.onHit, aiPlayer, tgtMatchPlayer, true)
+      : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
+    const aiOnHitLog = _aiOnHit.logs.length ? `⚔️ ${chosen.name} all'impatto → ${_aiOnHit.logs.join(" · ")}` : null;
 
     let absorbedLog = null;
     const updatedMatches = meta.matches.map(x => {
@@ -5732,9 +5811,10 @@ export default function Arena() {
           }
           return {
             ...p,
-            hp: Math.max(0, (p.hp ?? 0) - damage),
+            hp: Math.max(0, (p.hp ?? 0) - damage - _aiOnHit.enemyDmg),
             ...consumeInvisibility(p),
             ...(aiStaggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) } : {}),
+            ..._aiOnHit.enemyPatch,
             stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
           };
         }
@@ -5758,6 +5838,9 @@ export default function Arena() {
           };
           // Use up aidBuff after the swing it powered.
           const consumedAid = effAidBonus ? { aidBuff: false } : {};
+          const _aiMax = aiSnap?.stats?.maxHp ?? p.maxHp ?? (p.hp ?? 0);
+          const _aiBaseHp = aiRetaliateDmg > 0 ? Math.max(0, (p.hp ?? 0) - aiRetaliateDmg) : (p.hp ?? 0);
+          const _aiFinalHp = _aiOnHit.selfHeal > 0 ? Math.min(_aiMax, _aiBaseHp + _aiOnHit.selfHeal) : _aiBaseHp;
           return {
             ...p,
             ...buffPatch,
@@ -5767,7 +5850,8 @@ export default function Arena() {
             aiAttacksMade: (p.aiAttacksMade ?? 0) + 1,
             ...(aiKiteInc ? { kiteChargesUsed: (p.kiteChargesUsed ?? 0) + 1 } : {}),
             ...turnEndPatch,
-            ...(aiRetaliateDmg > 0 ? { hp: Math.max(0, (p.hp ?? 0) - aiRetaliateDmg) } : {}),
+            ..._aiOnHit.selfPatch,
+            ...((aiRetaliateDmg > 0 || _aiOnHit.selfHeal > 0) ? { hp: _aiFinalHp } : {}),
           };
         }
         return p;
@@ -5779,6 +5863,7 @@ export default function Arena() {
       if (absorbedLog) logs.push(absorbedLog);
       if (aiRetaliateLog) logs.push(aiRetaliateLog);
       if (aiStaggerLog) logs.push(aiStaggerLog);
+      if (aiOnHitLog) logs.push(aiOnHitLog);
       if (aiDistanceLog) logs.push(aiDistanceLog);
       if (alive.length === 1) {
         logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
@@ -6579,6 +6664,11 @@ export default function Arena() {
     // Regole elementali base: fuoco → Bruciatura (pelle/forma animale), freddo → Congelato.
     const _elemStatus = elementalOnHitStatus(action, isSpellAction, defenderSnap, defMatchPlayer, damage, isHit);
     const elementalLog = _elemStatus.note ? `${defName} — ${_elemStatus.note}` : null;
+    // Arma della Bottega con effetti all'impatto (malus al nemico / bonus a te, con % propria).
+    const _onHit = (isHit && damage > 0 && !isSpellAction && Array.isArray(action.onHit) && action.onHit.length)
+      ? applyMarketEffects(action.onHit, attackerMatchPlayer, defMatchPlayer, true)
+      : { selfPatch: {}, enemyPatch: {}, selfHeal: 0, enemyDmg: 0, logs: [] };
+    const onHitLog = _onHit.logs.length ? `⚔️ ${action.name} all'impatto → ${_onHit.logs.join(" · ")}` : null;
 
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
@@ -6597,7 +6687,7 @@ export default function Arena() {
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
             return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           }
-          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          return { ...p, hp: Math.max(0, p.hp - damage - _onHit.enemyDmg), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, ..._onHit.enemyPatch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
         }
         if (p.id === currentUser.uid) {
           // Magic-detect counter: scala 1 per attacco. Si svuota (spegne il buff) solo a contatore=0.
@@ -6610,6 +6700,14 @@ export default function Arena() {
           // Timer turn-based (Furia/Hunter Mark/Scudo/Patto/Forgia/Concentr/Aquila):
           // NON decrementati qui — si decrementano a fine turno (turnEndDecays).
           const up = { ...p, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...selfAdvPatch };
+          // Bonus/cura all'impatto dell'arma della Bottega (a chi la impugna).
+          if (_onHit.selfHeal > 0 || Object.keys(_onHit.selfPatch).length) {
+            Object.assign(up, _onHit.selfPatch);
+            if (_onHit.selfHeal > 0) {
+              const _atkMax = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? p.maxHp ?? (up.hp ?? p.hp);
+              up.hp = Math.min(_atkMax, (up.hp ?? p.hp) + _onHit.selfHeal);
+            }
+          }
           if (action.maxUses !== undefined) {
             const prev = p.actionUsesLeft ?? {};
             up.actionUsesLeft = { ...prev, [action.name]: Math.max(0, (prev[action.name] ?? action.maxUses) - 1) };
@@ -6625,7 +6723,7 @@ export default function Arena() {
       const newParticipantsAwarded = _alreadyAwarded
         ? (m.participantsAwarded || [])
         : [...(m.participantsAwarded || []), currentUser.uid];
-      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(retaliateLog ? [retaliateLog] : []), ...(staggerLog ? [staggerLog] : []), ...(elementalLog ? [elementalLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
+      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(retaliateLog ? [retaliateLog] : []), ...(staggerLog ? [staggerLog] : []), ...(elementalLog ? [elementalLog] : []), ...(onHitLog ? [onHitLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
       const alive = updatedPlayers.filter(p => p.hp > 0);
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
@@ -8514,6 +8612,14 @@ export default function Arena() {
     const me = myMatch?.players.find(p => p.id === currentUser.uid);
     if (me?.itemUsedThisTurn) { alert("⚠ Hai già usato un oggetto questo turno."); return; }
 
+    // Consumabile MULTI-EFFETTO della Bottega (nuovo schema `effects`): i tiri di
+    // cura/danno si risolvono UNA volta qui, così self e nemico restano coerenti.
+    const enemyName = myMatch?.players.find(p => p.id === targetId)?.name || "il nemico";
+    const meMaxHp   = (arenaMeta.characterSnapshots?.[currentUser.uid]?.stats?.maxHp) ?? me?.maxHp ?? 70;
+    const composite = marketItem?.effects
+      ? applyMarketEffects(marketItem.effects, me, myMatch?.players.find(p => p.id === targetId), false)
+      : null;
+
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
 
@@ -8545,7 +8651,18 @@ export default function Arena() {
           if (itemKey === "pozione_veleno") {
             return { ...p, itemUsesLeft: newUses, itemUsedThisTurn: true };
           }
+          // Consumabile MULTI-EFFETTO: cura + bonus su di sé (danno/malus sul nemico sotto).
+          if (composite) {
+            const newHp = Math.min(meMaxHp, (p.hp || 0) + composite.selfHeal);
+            const tgtPart = effectsHaveEnemyTarget(marketItem.effects) ? ` su ${enemyName}` : "";
+            log = { pub: `${marketItem.icon} ${myName} usa ${marketItem.name}${tgtPart} — ${composite.logs.join(" · ")} · azione gratuita`, ts: _itemTs };
+            return { ...p, hp: newHp, ...composite.selfPatch, itemUsesLeft: newUses, itemUsedThisTurn: true };
+          }
           return { ...p, itemUsesLeft: newUses, itemUsedThisTurn: true };
+        }
+        // Consumabile MULTI-EFFETTO: danno + malus sul nemico.
+        if (composite && p.id === targetId) {
+          return { ...p, hp: Math.max(0, p.hp - composite.enemyDmg), ...composite.enemyPatch };
         }
         if (itemKey === "bomba" && p.id === targetId) {
           const { total: dmg, rolls: bombRolls } = rollDmg("2d6");
@@ -13050,7 +13167,7 @@ export default function Arena() {
                           {myMarketItems.map(item => {
                             const uses  = myItemUsesLeft[item.key] ?? (item.uses ?? 0);
                             const total = item.uses ?? 1;
-                            const needsTarget = item.effect === "damage" || item.effect === "malus";
+                            const needsTarget = item.needsTarget ?? (item.effect === "damage" || item.effect === "malus");
                             const disabled    = uses <= 0 || (needsTarget && !chosenTargetId) || itemUsed;
                             const titleStr = itemUsed ? "Oggetto già usato questo turno" : `${item.info} · azione gratuita (1/turno)`;
                             return (

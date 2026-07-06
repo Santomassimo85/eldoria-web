@@ -65,6 +65,9 @@ const EMPTY_FORM = {
   buffType: "hit", buffAmount: "1", buffTurns: "3",
   // oggetto malus (svantaggio inflitto al nemico)
   malusType: "disadvantage", malusDice: "1d6", malusTurns: "2",
+  // effetti aggiuntivi componibili
+  itemExtras: [],   // oggetto: applicati all'uso (cura/bonus a te, danno/malus al nemico)
+  weaponOnHit: [],  // arma: applicati all'impatto, ognuno con la sua % (chance)
   // spell scroll
   spellClass: "wizard", spellName: "",
   charges: "1", castStat: "int", castStatMin: "0", slotCost: {}, // slotCost: { livello: quantità }
@@ -86,20 +89,60 @@ export function resistSummary(resist) {
     .join(" · ");
 }
 
+const BUFF_SHORT = { hit: "colpire", dmg: "danno", ac: "CA", ts: "TS" };
+// Riassunto leggibile di una lista di effetti componibili (extra / all'impatto).
+export function effectsSummary(list) {
+  return (list || []).map(e => {
+    if (e.kind === "heal")   return `cura ${e.dice}`;
+    if (e.kind === "damage") return `${e.dice} danni`;
+    if (e.kind === "buff")   return `+${e.buffAmount} ${BUFF_SHORT[e.buffType] || "bonus"} ${e.buffTurns}t`;
+    if (e.kind === "malus")  { const m = MALUS_TYPE_MAP[e.malusType]; return `${m?.icon || ""}${m?.label || e.malusType}${e.chance != null && +e.chance < 100 ? ` ${e.chance}%` : ""}`; }
+    return "";
+  }).filter(Boolean).join(" + ");
+}
+
+// Converte gli effetti del form (stringhe) nella forma salvata; scarta i dadi non validi.
+function normalizeFormEffects(list, withChance) {
+  return (list || []).map(e => {
+    const base = { kind: e.kind };
+    if (e.kind === "damage" || e.kind === "heal") base.dice = (e.dice || "").trim();
+    else if (e.kind === "buff") {
+      base.buffType = e.buffType || "hit";
+      base.buffAmount = Math.max(1, parseInt(e.buffAmount, 10) || 1);
+      base.buffTurns = Math.max(1, parseInt(e.buffTurns, 10) || 1);
+    } else if (e.kind === "malus") {
+      const m = MALUS_TYPE_MAP[e.malusType] || MALUS_TYPE_MAP.disadvantage;
+      base.malusType = m.key;
+      if (m.needsDice) base.malusDice = (e.malusDice || "1d4").trim();
+      base.malusTurns = m.needsTurns ? Math.max(1, parseInt(e.malusTurns, 10) || 2) : 1;
+    }
+    if (withChance) base.chance = Math.min(100, Math.max(1, parseInt(e.chance, 10) || 100));
+    return base;
+  }).filter(e => {
+    if (e.kind === "damage" || e.kind === "heal") return DICE_RE.test(e.dice || "");
+    if (e.kind === "malus" && e.malusDice != null) return DICE_RE.test(e.malusDice);
+    return e.kind === "buff" || e.kind === "malus";
+  });
+}
+
 export function marketItemSummary(it) {
   const p = it.payload || {};
   switch (it.category) {
-    case "item":
-      if (p.effect === "resist") return `Resistenze passive: ${resistSummary(p.resist)}`;
-      if (p.effect === "heal")   return `Cura ${p.dice} · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
-      if (p.effect === "damage") return `${p.dice} danni al bersaglio · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
-      if (p.effect === "malus") {
+    case "item": {
+      const extrasPart = p.extras?.length ? ` + ${effectsSummary(p.extras)}` : "";
+      const usesPart = ` · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
+      if (p.effect === "resist") return `Resistenze passive: ${resistSummary(p.resist)}${extrasPart}`;
+      let base;
+      if (p.effect === "heal")        base = `Cura ${p.dice}`;
+      else if (p.effect === "damage") base = `${p.dice} danni al bersaglio`;
+      else if (p.effect === "malus") {
         const mt = MALUS_TYPE_MAP[p.malusType] || MALUS_TYPE_MAP.disadvantage;
-        const dicePart  = mt.needsDice  ? ` ${p.malusDice || "1d6"}/turno` : "";
-        const turnsPart = mt.needsTurns ? ` per ${p.malusTurns || 2} turni` : "";
-        return `${mt.icon} ${mt.label}${dicePart}${turnsPart} al bersaglio · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
+        base = `${mt.icon} ${mt.label}${mt.needsDice ? ` ${p.malusDice || "1d6"}/turno` : ""}${mt.needsTurns ? ` per ${p.malusTurns || 2} turni` : ""} al bersaglio`;
+      } else {
+        base = `${BUFF_TYPES.find(b => b.key === p.buffType)?.label || "Bonus"} +${p.buffAmount}${p.buffTurns > 0 ? ` per ${p.buffTurns} turni` : " per tutto il fight"}`;
       }
-      return `${BUFF_TYPES.find(b => b.key === p.buffType)?.label || "Bonus"} +${p.buffAmount}${p.buffTurns > 0 ? ` per ${p.buffTurns} turni` : " per tutto il fight"} · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight`;
+      return `${base}${extrasPart}${usesPart}`;
+    }
     case "spell": {
       const src = SPELL_SOURCES[p.spellClass];
       const sp = src?.spells.find(s => s.name === p.spellName);
@@ -113,7 +156,8 @@ export function marketItemSummary(it) {
       const comps = (Array.isArray(p.components) && p.components.length)
         ? p.components.map(c => `${c.dice} ${DAMAGE_TYPE_MAP[c.type]?.label || c.type}`).join(" + ")
         : `${p.dice} danni${+p.dmgBonus ? `+${p.dmgBonus}` : ""}`;
-      return `${comps}${+p.hitBonus ? ` · +${p.hitBonus} colpire` : ""} · ${p.ranged ? "distanza" : "mischia"} · ${p.twoHanded ? "due mani" : "una mano"}`;
+      const onHitPart = p.onHit?.length ? ` · impatto: ${effectsSummary(p.onHit)}` : "";
+      return `${comps}${+p.hitBonus ? ` · +${p.hitBonus} colpire` : ""} · ${p.ranged ? "distanza" : "mischia"} · ${p.twoHanded ? "due mani" : "una mano"}${onHitPart}`;
     }
     case "armor": {
       const r = resistSummary(p.resist);
@@ -199,6 +243,68 @@ export default function ArenaMarketCatalog() {
     </div>
   );
 
+  // ── Effetti componibili (lista di più cose: danno/cura/bonus/malus) ─────────
+  const blankEffect = (withChance) => ({
+    kind: "malus", dice: "1d6",
+    buffType: "hit", buffAmount: "1", buffTurns: "3",
+    malusType: "bleed", malusDice: "1d4", malusTurns: "2",
+    ...(withChance ? { chance: "100" } : {}),
+  });
+  const addEffect = (field, withChance) => setForm(prev => ({ ...prev, [field]: [...(prev[field] || []), blankEffect(withChance)] }));
+  const removeEffect = (field, i) => setForm(prev => ({ ...prev, [field]: prev[field].filter((_, idx) => idx !== i) }));
+  const setEffect = (field, i, key, val) => setForm(prev => ({
+    ...prev, [field]: prev[field].map((e, idx) => idx === i ? { ...e, [key]: val } : e),
+  }));
+  const EFFECT_KINDS = [
+    { key: "damage", label: "Danno (al nemico)" },
+    { key: "heal",   label: "Cura (a te)" },
+    { key: "buff",   label: "Bonus (a te)" },
+    { key: "malus",  label: "Malus (al nemico)" },
+  ];
+  const renderEffectsEditor = (field, { withChance = false, title, hint }) => (
+    <div className="am-cat-field am-cat-field--full">
+      <span>{title}</span>
+      {hint && <span className="am-cat-resist-hint">{hint}</span>}
+      <div className="am-cat-dmg-list">
+        {(form[field] || []).map((e, i) => (
+          <div className="am-cat-eff-row" key={i}>
+            <select className="am-coin-input am-cat-eff-kind" value={e.kind} onChange={ev => setEffect(field, i, "kind", ev.target.value)}>
+              {EFFECT_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
+            </select>
+            {(e.kind === "damage" || e.kind === "heal") && (
+              <input className="am-coin-input am-cat-eff-fld" type="text" placeholder="2d6" value={e.dice} onChange={ev => setEffect(field, i, "dice", ev.target.value)} />
+            )}
+            {e.kind === "buff" && (<>
+              <select className="am-coin-input am-cat-eff-fld" value={e.buffType} onChange={ev => setEffect(field, i, "buffType", ev.target.value)}>
+                {BUFF_TYPES.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
+              </select>
+              <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title="Entità (+N)" value={e.buffAmount} onChange={ev => setEffect(field, i, "buffAmount", ev.target.value)} />
+              <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title="Turni" value={e.buffTurns} onChange={ev => setEffect(field, i, "buffTurns", ev.target.value)} />
+            </>)}
+            {e.kind === "malus" && (<>
+              <select className="am-coin-input am-cat-eff-fld" value={e.malusType} onChange={ev => setEffect(field, i, "malusType", ev.target.value)}>
+                {MALUS_TYPES.map(m => <option key={m.key} value={m.key}>{m.icon} {m.label}</option>)}
+              </select>
+              {MALUS_TYPE_MAP[e.malusType]?.needsDice && (
+                <input className="am-coin-input am-cat-eff-sm" type="text" title="Danno/turno" placeholder="1d4" value={e.malusDice} onChange={ev => setEffect(field, i, "malusDice", ev.target.value)} />
+              )}
+              {MALUS_TYPE_MAP[e.malusType]?.needsTurns && (
+                <input className="am-coin-input am-cat-eff-sm" type="number" min={1} title="Turni" value={e.malusTurns} onChange={ev => setEffect(field, i, "malusTurns", ev.target.value)} />
+              )}
+            </>)}
+            {withChance && (
+              <span className="am-cat-eff-chance">
+                <input className="am-coin-input am-cat-eff-sm" type="number" min={1} max={100} title="Probabilità %" value={e.chance} onChange={ev => setEffect(field, i, "chance", ev.target.value)} />%
+              </span>
+            )}
+            <button type="button" className="am-cat-dmg-del" onClick={() => removeEffect(field, i)} title="Rimuovi effetto">✕</button>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="am-cat-dmg-add" onClick={() => addEffect(field, withChance)}>+ Aggiungi effetto</button>
+    </div>
+  );
+
   const activeCount = items.filter(i => i.active).length;
   const spellOptions = useMemo(() => SPELL_SOURCES[form.spellClass]?.spells ?? [], [form.spellClass]);
 
@@ -208,11 +314,14 @@ export default function ArenaMarketCatalog() {
   const buildPayload = () => {
     const uses = Math.max(1, parseInt(form.uses, 10) || 1);
     switch (cat) {
-      case "item":
+      case "item": {
+        // Effetto primario + eventuali effetti aggiuntivi componibili (extras).
+        const extras = normalizeFormEffects(form.itemExtras, false);
+        const extrasP = extras.length ? { extras } : {};
         if (form.effect === "resist") {
-          // Oggetto di sola resistenza passiva (sempre attiva nel torneo).
-          if (!Object.keys(form.resist || {}).length) return null;
-          return { effect: "resist", resist: form.resist };
+          // Resistenza passiva (+ eventuali extra on-use).
+          if (!Object.keys(form.resist || {}).length && !extras.length) return null;
+          return { effect: "resist", ...(Object.keys(form.resist || {}).length ? { resist: form.resist } : {}), ...extrasP };
         }
         if (form.effect === "buff") {
           return {
@@ -221,6 +330,7 @@ export default function ArenaMarketCatalog() {
             buffAmount: Math.max(1, parseInt(form.buffAmount, 10) || 1),
             buffTurns: Math.max(0, parseInt(form.buffTurns, 10) || 0), // 0 = tutto il fight
             uses,
+            ...extrasP,
           };
         }
         if (form.effect === "malus") {
@@ -233,10 +343,12 @@ export default function ArenaMarketCatalog() {
             ...(meta.needsDice ? { malusDice: form.malusDice } : {}),
             malusTurns: meta.needsTurns ? Math.max(1, parseInt(form.malusTurns, 10) || 2) : 1,
             uses,
+            ...extrasP,
           };
         }
         if (!DICE_RE.test(form.dice)) return null;
-        return { effect: form.effect, dice: form.dice, uses };
+        return { effect: form.effect, dice: form.dice, uses, ...extrasP };
+      }
       case "spell": {
         if (!form.spellName) return null;
         const slotCost = {};
@@ -259,11 +371,13 @@ export default function ArenaMarketCatalog() {
           .filter(c => c && DICE_RE.test((c.dice || "").trim()))
           .map(c => ({ dice: c.dice.trim(), type: c.type || "tagliente" }));
         if (!comps.length) return null;
+        const onHit = normalizeFormEffects(form.weaponOnHit, true);
         return {
           components: comps,
           hitBonus: parseInt(form.hitBonus, 10) || 0,
           ranged: !!form.ranged,
           twoHanded: !!form.twoHanded,
+          ...(onHit.length ? { onHit } : {}),
         };
       }
       case "armor":
@@ -349,6 +463,17 @@ export default function ArenaMarketCatalog() {
       dmgBonus: String(p.dmgBonus ?? 0),
       ranged: !!p.ranged,
       twoHanded: !!p.twoHanded,
+      itemExtras: (p.extras || []).map(e => ({
+        kind: e.kind, dice: e.dice || "1d6",
+        buffType: e.buffType || "hit", buffAmount: String(e.buffAmount ?? 1), buffTurns: String(e.buffTurns ?? 3),
+        malusType: e.malusType || "bleed", malusDice: e.malusDice || "1d4", malusTurns: String(e.malusTurns ?? 2),
+      })),
+      weaponOnHit: (p.onHit || []).map(e => ({
+        kind: e.kind, dice: e.dice || "1d6",
+        buffType: e.buffType || "hit", buffAmount: String(e.buffAmount ?? 1), buffTurns: String(e.buffTurns ?? 3),
+        malusType: e.malusType || "bleed", malusDice: e.malusDice || "1d4", malusTurns: String(e.malusTurns ?? 2),
+        chance: String(e.chance ?? 100),
+      })),
       weaponComponents: (Array.isArray(p.components) && p.components.length)
         ? p.components.map(c => ({ dice: c.dice, type: c.type || "tagliente" }))
         : [{ dice: p.dice || "1d8", type: p.ranged ? "perforante" : "tagliente" }],
@@ -499,6 +624,10 @@ export default function ArenaMarketCatalog() {
                   <input className="am-coin-input" type="number" min={1} value={form.uses} onChange={set("uses")} />
                 </label>
               )}
+              {renderEffectsEditor("itemExtras", {
+                title: "➕ Effetti aggiuntivi (applicati insieme quando usi l'oggetto)",
+                hint: "Cura e Bonus vanno a te, Danno e Malus al nemico. Aggiungine quanti vuoi.",
+              })}
             </div>
           )}
 
@@ -598,6 +727,11 @@ export default function ArenaMarketCatalog() {
                 <strong>Due mani</strong>: se è da <strong>mischia</strong> impegna entrambe le mani e <strong>disattiva lo scudo</strong>
                 (e sblocca il reroll dei dadi bassi del Paladino con Arma Grande). Le armi a distanza a due mani (archi/balestre) restano tali.
               </p>
+              {renderEffectsEditor("weaponOnHit", {
+                withChance: true,
+                title: "➕ Effetti all'impatto (a ogni colpo a segno, con probabilità)",
+                hint: "Malus al nemico (avvelena, sanguina…) o Bonus a te. Imposta la % di attivazione per ciascuno.",
+              })}
             </div>
           )}
 

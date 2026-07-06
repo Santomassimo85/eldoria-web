@@ -513,6 +513,13 @@
 }
 .am-cat-dmg-add:hover { background: rgba(236, 212, 135, 0.22); }
 
+/* Righe di effetti componibili (extra oggetto / all'impatto arma) */
+.am-cat-eff-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.am-cat-eff-kind { flex: 0 0 150px; }
+.am-cat-eff-fld  { flex: 1 1 120px; min-width: 0; }
+.am-cat-eff-sm   { flex: 0 0 64px; }
+.am-cat-eff-chance { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: #ffd98a; }
+
 .am-cat-resist { display: flex; flex-direction: column; gap: 8px; }
 .am-cat-resist-hint { font-size: 0.78rem; color: rgba(240, 226, 190, 0.75); }
 .am-cat-resist-grid {
