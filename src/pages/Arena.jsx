@@ -13,7 +13,7 @@ import TimerDisplay from "../components/TimerDisplay";
 import { awardPetPoints } from "../utils/pet";
 import { ARENA_SUBCLASSES, getSubclassEffectFor } from "../data/arenaSubclasses";
 import { currentWeekKey } from "../data/arenaWeek";
-import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps } from "../data/arenaDamageTypes";
+import { DAMAGE_TYPE_MAP, damageMultiplier, mergeResistMaps, MALUS_TYPE_MAP, malusTypeLabel } from "../data/arenaDamageTypes";
 import "./Arena.css";
 import "./ArenaHero.css";
 import "./ArenaBill.css";
@@ -1312,6 +1312,19 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
               ? `${p.dice || "2d8"} danni al bersaglio · azione gratuita (Bottega)`
               : `Cura ${p.dice || "2d8"} · azione gratuita (Bottega)`,
           });
+        } else if (p.effect === "malus") {
+          const mt = MALUS_TYPE_MAP[p.malusType] || MALUS_TYPE_MAP.disadvantage;
+          const dicePart  = mt.needsDice  ? ` ${p.malusDice || "1d6"}/turno` : "";
+          const turnsPart = mt.needsTurns ? ` per ${Math.max(1, p.malusTurns || 2)} turni` : "";
+          gear.consumables.push({
+            key: `mk_${pu.itemId}`, name: pu.name, icon: pu.icon || "🎒",
+            effect: "malus",
+            malusType: mt.key,
+            malusDice: p.malusDice || "1d6",
+            malusTurns: Math.max(1, p.malusTurns || 2),
+            uses,
+            info: `${mt.icon} ${malusTypeLabel(mt.key)}${dicePart}${turnsPart} al bersaglio · azione gratuita (Bottega)`,
+          });
         }
         // effect "resist"/assente → solo resistenza passiva (già aggregata sopra)
         break;
@@ -1635,6 +1648,76 @@ function applyTypedDamage(primaryRaw, action, critMult, defenderSnap, isSpell) {
     parts.push({ type: comp.type, amount: fin, raw: rolled, resisted: mult !== 1 });
   }
   return { total: Math.max(0, Math.round(total)), parts };
+}
+
+// ── RESISTENZE / REGOLE ELEMENTALI BASE ────────────────────────────────────
+// Regole del mondo valide in TUTTI i fight dell'Arena (sfide, IA, tornei):
+//  • Senza armatura → +1 iniziativa.
+//  • Armatura pesante vs spell fulmine/tuono → chi ti attacca tira per colpire
+//    a vantaggio e tu tiri i TS a svantaggio contro quel tipo.
+//  • Fuoco su armatura di pelle/leggera o forma animale (druido) → probabilità
+//    di "Bruciatura" (in fiamme 2 turni, DoT).
+//  • Freddo → probabilità di "Congelato" (svantaggio al prossimo tiro per colpire).
+const ELEM_BURN_CHANCE   = 0.25;   // fuoco → Bruciatura
+const ELEM_FREEZE_CHANCE = 0.25;   // freddo → Congelato
+const ELEM_BURN_TURNS    = 2;
+const ELEM_BURN_DICE     = "1d4";
+const _ELEM_KEYS = ["fuoco", "freddo", "fulmine", "tuono"];
+
+// Elemento di un'azione. Le armi/skill possono avere `damageType` strutturato;
+// le spell no → si deduce dal testo (`info`/nome). Fallback: componenti extra.
+function actionElement(action) {
+  if (!action) return null;
+  if (_ELEM_KEYS.includes(action.damageType)) return action.damageType;
+  const hay = `${action.info || ""} ${action.name || ""}`.toLowerCase();
+  if (/fuoc|fiamm|brucia|incener|infern|meteora|brac|rogo|ardent/.test(hay)) return "fuoco";
+  if (/fredd|ghiacc|\bgelo\b|congel|brina|glacial/.test(hay))               return "freddo";
+  if (/fulmin|saett|folgor|elettr/.test(hay))                                return "fulmine";
+  if (/tuono|tonant|boato|fragore/.test(hay))                                return "tuono";
+  for (const c of (action.extraDamage || [])) if (_ELEM_KEYS.includes(c?.type)) return c.type;
+  return null;
+}
+
+// Classe di peso dell'armatura equipaggiata, letta dallo snapshot.selectedArmor.
+function isHeavyArmor(snap) { return snap?.selectedArmor?.maxDex === 0; }
+function isLightArmor(snap) { const a = snap?.selectedArmor; return !!a && !a.unarmoredDefense && a.maxDex === 99; }
+function isNoArmor(snap)    { const a = snap?.selectedArmor; return !a || a.unarmoredDefense === true; }
+// Vulnerabile al fuoco: armatura leggera/di pelle, oppure druido in forma animale.
+function isFireVulnerable(snap, matchPlayer) { return isLightArmor(snap) || !!matchPlayer?.wildShape; }
+// L'attaccante tira per colpire a vantaggio se il bersaglio è in armatura pesante
+// e l'azione è di tipo fulmine/tuono.
+function heavyElemAttackAdv(action, defenderSnap) {
+  const el = actionElement(action);
+  return (el === "fulmine" || el === "tuono") && isHeavyArmor(defenderSnap);
+}
+
+// Applica le regole elementali "on hit" al bersaglio colpito da danno.
+// Ritorna { patch, note }: `patch` va fuso nel patch del difensore, `note` è
+// una riga di log (o null). La Bruciatura riusa lo slot DoT del veleno (come il
+// Mephit di Fiamma); il Congelato riusa lo svantaggio ai tiri per colpire.
+function elementalOnHitStatus(action, isSpell, defenderSnap, defMatchPlayer, damage, isHit) {
+  if (!isHit || damage <= 0 || !isSpell) return { patch: {}, note: null };
+  const el = actionElement(action);
+  if (el === "fuoco" && isFireVulnerable(defenderSnap, defMatchPlayer) && Math.random() < ELEM_BURN_CHANCE) {
+    return {
+      patch: {
+        poisonDoT: true,
+        poisonDoTTurns: Math.max(defMatchPlayer?.poisonDoTTurns ?? 0, ELEM_BURN_TURNS),
+        poisonDoTDice: ELEM_BURN_DICE,
+        poisonDoTSourceLabel: "bruciatura",
+        poisonDoTNoun: "in fiamme",
+        poisonDoTIcon: "🔥",
+      },
+      note: "🔥 prende fuoco — Bruciatura!",
+    };
+  }
+  if (el === "freddo" && Math.random() < ELEM_FREEZE_CHANCE) {
+    return {
+      patch: { attackDisadvantageTurns: Math.max(defMatchPlayer?.attackDisadvantageTurns ?? 0, 1) },
+      note: "🧊 Congelato — svantaggio al prossimo tiro per colpire!",
+    };
+  }
+  return { patch: {}, note: null };
 }
 
 // Titoli cumulativi: legge l'array `arenaTitles` e fa fallback al legacy `arenaTitle` singolo.
@@ -4751,9 +4834,10 @@ export default function Arena() {
     const d20a   = Math.floor(Math.random() * 20) + 1;
     const d20b   = hasAdv ? Math.floor(Math.random() * 20) + 1 : 0;
     const d20    = hasAdv ? Math.max(d20a, d20b) : d20a;
-    const roll   = d20 + dex;
+    const noArmorInit = isNoArmor(mySnap) ? 1 : 0; // Senza armatura → +1 iniziativa
+    const roll   = d20 + dex + noArmorInit;
     await showD20Roll(d20, { label: "Iniziativa" });
-    const advTag = hasAdv ? ` 🌟vant.[${d20a},${d20b}]` : "";
+    const advTag = `${hasAdv ? ` 🌟vant.[${d20a},${d20b}]` : ""}${noArmorInit ? " +1 senz'armatura" : ""}`;
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p =>
@@ -4798,7 +4882,8 @@ export default function Arena() {
     const d20a = Math.floor(Math.random() * 20) + 1;
     const d20b = _aiInitAdv ? Math.floor(Math.random() * 20) + 1 : 0;
     const d20 = _aiInitAdv ? Math.max(d20a, d20b) : d20a;
-    const roll = d20 + dex;
+    const noArmorInit = isNoArmor(aiSnap) ? 1 : 0; // Senza armatura → +1 iniziativa
+    const roll = d20 + dex + noArmorInit;
     const updatedMatches = meta.matches.map(x => {
       if (x.matchId !== matchId) return x;
       const updatedPlayers = x.players.map(p =>
@@ -4928,7 +5013,11 @@ export default function Arena() {
       const mod     = defenderSaveMod(aiSnap, ability);
       const saveBuffActive = (aiPlayer.saveBuffAttacks ?? 0) > 0;
       const saveBuffBonus  = saveBuffActive ? (aiPlayer.saveBuffBonus ?? 0) : 0;
-      const d20 = Math.floor(Math.random() * 20) + 1;
+      // Armatura pesante → TS a svantaggio contro spell fulmine/tuono.
+      const _elemDisadv = isHeavyArmor(aiSnap) && ["fulmine", "tuono"].includes(dot.element);
+      const _d20a = Math.floor(Math.random() * 20) + 1;
+      const _d20b = _elemDisadv ? Math.floor(Math.random() * 20) + 1 : 0;
+      const d20 = _elemDisadv ? Math.min(_d20a, _d20b) : _d20a;
       const lbl = SAVE_LABEL[ability] || ability.toUpperCase();
       await showD20Roll(d20, { label: `${aiName} tira il proprio TS · ${lbl}` });
       const total = d20 + mod + saveBuffBonus;
@@ -5204,6 +5293,7 @@ export default function Arena() {
         let dmgToTarget = 0;
         let aiPatch = {};
         let healFxTargetId = null; // se valorizzato → VFX cura pixelata su quel player
+        let spellElemNote = null;  // Bruciatura/Congelato da magia elementale dell'IA
         const targetPatch = {};
 
         if (_picked.kind === "shield_buff") {
@@ -5241,6 +5331,7 @@ export default function Arena() {
             turns: sp.saveDotTurns ?? 3,
             name: sp.name,
             icon: sp.icon,
+            element: actionElement(sp),
           };
           logMsg = `${sp.icon || "🤢"} ${aiName} lancia ${sp.name} su ${target.name} → TS ${SAVE_LABEL[saveAbility]} (CD ${dotDC}) richiesto!`;
         } else if (_picked.kind === "save_damage") {
@@ -5256,8 +5347,12 @@ export default function Arena() {
             const spellHit = getSpellAttackBonus(aiSnap);
             const shieldDef = (_tgtMP?.shieldSkillTurns ?? 0) > 0 ? (_tgtMP?.shieldSkillBonus ?? 3) : 0;
             const targetAc = getEffectiveAc(_tgtMP, targetSnap) + shieldDef + (_tgtMP?.defensiveBonus ?? 0);
-            const d20 = Math.floor(Math.random() * 20) + 1;
-            await showD20Roll(d20, { label: `${aiName} tira per colpire · ${sp.name}` });
+            // Armatura pesante vs fulmine/tuono → l'attaccante tira a vantaggio.
+            const _advAI = heavyElemAttackAdv(sp, targetSnap);
+            const _r1 = Math.floor(Math.random() * 20) + 1;
+            const _r2 = _advAI ? Math.floor(Math.random() * 20) + 1 : 0;
+            const d20 = _advAI ? Math.max(_r1, _r2) : _r1;
+            await showD20Roll(d20, { label: `${aiName} tira per colpire · ${sp.name}${_advAI ? " (vantaggio)" : ""}` });
             const totalHit = d20 + spellHit;
             // Niente critico sugli incantesimi: nat 20 colpisce, nat 1 manca, ma danni mai raddoppiati.
             connected = d20 === 20 || (d20 !== 1 && totalHit >= targetAc);
@@ -5289,6 +5384,10 @@ export default function Arena() {
           let raw = connected ? Math.max(0, dmg + _spellMod) : 0;
           if (halfDamage) raw = Math.floor(raw / 2);
           dmgToTarget = raw;
+          // Regole elementali base: magia di fuoco/ghiaccio dell'IA → Bruciatura/Congelato.
+          const _spellElem = elementalOnHitStatus(sp, true, targetSnap, _tgtMP, dmgToTarget, connected);
+          Object.assign(targetPatch, _spellElem.patch);
+          if (_spellElem.note) spellElemNote = `${target.name} — ${_spellElem.note}`;
           logMsg = connected
             ? `✨ ${aiName} → ${sp.icon || "✨"} ${sp.name}: ${outLog} su ${target.name} — ${dmgToTarget} danni.`
             : `✨ ${aiName} → ${sp.name}: ${outLog} su ${target.name} — nessun danno.`;
@@ -5367,6 +5466,7 @@ export default function Arena() {
           const alive = rawPlayers.filter(pp => pp.hp > 0);
           const logs = [...x.logs, logMsg];
           if (spellAbsorbedLog) logs.push(spellAbsorbedLog);
+          if (spellElemNote) logs.push(spellElemNote);
           if (alive.length === 1) {
             logs.push(`🏆 ${alive[0].name.toUpperCase()} È IL VINCITORE!`);
             return { ...x, players: rawPlayers, status: "finished", winner: alive[0].id, logs };
@@ -5487,7 +5587,7 @@ export default function Arena() {
     const aiFarNow          = !m.distanceClosed;
     const aiMeleeFarDisadv  = !aiWpnRanged && aiFarNow && aiTgtHasRanged;
     const aiFS            = subclassFirstStrike(aiSnap, false, tgtMatchPlayer, targetSnap); // Ladro "assassino" / Monaco "ombra" (IA)
-    const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0 || aiFS.adv;
+    const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0 || aiFS.adv || heavyElemAttackAdv(chosen, targetSnap);
     // Barbaro Lv7 · Istinto Selvaggio: in Furia gli attacchi ignorano lo svantaggio (anche l'IA).
     const _aiRagingNoDisadv = isBarbarianClass(cls) && getSnapLevel(aiSnap) >= 7 && effRageTurns;
     const aiHasDisadvantage = _aiRagingNoDisadv ? false : (readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv || subclassForesightDisadv(targetSnap, tgtMatchPlayer));
@@ -6254,7 +6354,7 @@ export default function Arena() {
     const kiBypass           = kiStrikesBypass(attackerSnap, isSpellAction);                       // Monaco · Colpi Ki (Lv6)
     const defMatchPlayer     = arenaMeta.matches.find(m => m.matchId === matchId)?.players.find(p => p.id === targetId);
     const _firstStrike       = subclassFirstStrike(attackerSnap, isSpellAction, defMatchPlayer, defenderSnap); // Ladro "assassino" / Monaco "ombra": apertura vs bersaglio a PF pieni
-    const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0 || _firstStrike.adv;
+    const hasAdvantage       = readStealthAdvTurns(attackerMatchPlayer) > 0 || (attackerMatchPlayer?.selfAdvTurns ?? 0) > 0 || _firstStrike.adv || heavyElemAttackAdv(action, defenderSnap);
     // Scudo + incantesimo da DANNO con tiro per colpire → il lanciatore tira a SVANTAGGIO.
     const casterShieldSpellDisadv = isSpellAction && !!attackerSnap?.hasShield && !!(action.damage && action.damage !== "—");
     // DISTANZA: attacco in mischia mentre si è lontani, contro un avversario che
@@ -6460,6 +6560,9 @@ export default function Arena() {
     // Monaco · Mano Aperta: colpendo in mischia, il prossimo attacco del nemico è a svantaggio.
     const staggerApplies = isHit && isMeleeWeaponAtk && !!getSubclassEffect(attackerSnap).staggerOnHit;
     const staggerLog = staggerApplies ? `✊ ${attName} sbilancia ${defName}: il suo prossimo attacco è a svantaggio!` : null;
+    // Regole elementali base: fuoco → Bruciatura (pelle/forma animale), freddo → Congelato.
+    const _elemStatus = elementalOnHitStatus(action, isSpellAction, defenderSnap, defMatchPlayer, damage, isHit);
+    const elementalLog = _elemStatus.note ? `${defName} — ${_elemStatus.note}` : null;
 
     const newTurnExpiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
     let absorbedLog = null;
@@ -6476,9 +6579,9 @@ export default function Arena() {
             const maxHp = tgtSnap.stats?.maxHp ?? p.maxHp ?? p.hp;
             const heal  = Math.floor(damage * 0.8);
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
-            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+            return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           }
-          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          return { ...p, hp: Math.max(0, p.hp - damage), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
         }
         if (p.id === currentUser.uid) {
           // Magic-detect counter: scala 1 per attacco. Si svuota (spegne il buff) solo a contatore=0.
@@ -6506,7 +6609,7 @@ export default function Arena() {
       const newParticipantsAwarded = _alreadyAwarded
         ? (m.participantsAwarded || [])
         : [...(m.participantsAwarded || []), currentUser.uid];
-      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(retaliateLog ? [retaliateLog] : []), ...(staggerLog ? [staggerLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
+      const allLogs = [...m.logs, log, ...extraLogs, ...(absorbedLog ? [absorbedLog] : []), ...(retaliateLog ? [retaliateLog] : []), ...(staggerLog ? [staggerLog] : []), ...(elementalLog ? [elementalLog] : []), ...(_distanceLog ? [_distanceLog] : [])];
       const alive = updatedPlayers.filter(p => p.hp > 0);
       if (alive.length === 1) {
         return { ...m, players: updatedPlayers, status: "finished", winner: alive[0].id,
@@ -7758,7 +7861,7 @@ export default function Arena() {
             const newUses = { ...uses, [action.name]: Math.max(0, (uses[action.name] ?? (action.maxUses || 1)) - 1) };
             return { ...p, ...tickEagleEnd(p), actionUsesLeft: newUses };
           }
-          if (p.id === targetId) return { ...p, pendingSaveDot: { ability, dc, dice: action.saveDotDamage || "2d6", turns: action.saveDotTurns ?? 3, name: action.name, icon: action.icon } };
+          if (p.id === targetId) return { ...p, pendingSaveDot: { ability, dc, dice: action.saveDotDamage || "2d6", turns: action.saveDotTurns ?? 3, name: action.name, icon: action.icon, element: actionElement(action) } };
           return p;
         });
         const nextIndex = (m.players.findIndex(p => p.id === m.turn) + 1) % m.players.length;
@@ -8223,8 +8326,12 @@ export default function Arena() {
     const saveBuffActive = (myPlayer?.saveBuffAttacks ?? 0) > 0;
     const saveBuffBonus  = saveBuffActive ? (myPlayer?.saveBuffBonus ?? 0) : 0;
     const saveFaithBonus = readSaveFaithBonus(myPlayer); // Scudo della Fede: +X a TUTTI i TS
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    await showD20Roll(d20, { label: `TS · ${SAVE_LABEL[effectiveAbility] || (effectiveAbility || "").toUpperCase()}` });
+    // Armatura pesante → TS a svantaggio contro spell fulmine/tuono (percorso TS-DoT).
+    const _elemDisadv = isSaveDot && isHeavyArmor(mySnap) && ["fulmine", "tuono"].includes(myPlayer?.pendingSaveDot?.element);
+    const _d20a = Math.floor(Math.random() * 20) + 1;
+    const _d20b = _elemDisadv ? Math.floor(Math.random() * 20) + 1 : 0;
+    const d20 = _elemDisadv ? Math.min(_d20a, _d20b) : _d20a;
+    await showD20Roll(d20, { label: `TS · ${SAVE_LABEL[effectiveAbility] || (effectiveAbility || "").toUpperCase()}${_elemDisadv ? " (svantaggio · armatura pesante)" : ""}` });
     const mod = mySnap?.stats?.[effectiveAbility] ?? 0;
     const dc  = isControl ? ctrlDC : isSaveDot ? dotDC : 15;
     const total = d20 + mod + saveBuffBonus + saveFaithBonus;
@@ -8434,6 +8541,29 @@ export default function Arena() {
           log = { pub: `${marketItem.icon} ${myName} usa ${marketItem.name} su ${p.name} [🎲${mkRolls}=${dmg}] — ${dmg} danni! · azione gratuita`, ts: _itemTs };
           return { ...p, hp: Math.max(0, p.hp - dmg) };
         }
+        // Consumabile-MALUS della Bottega settimanale: infligge uno svantaggio al bersaglio.
+        if (marketItem && marketItem.effect === "malus" && p.id === targetId) {
+          const mt    = marketItem.malusType || "disadvantage";
+          const turns = Math.max(1, marketItem.malusTurns || 2);
+          const dice  = marketItem.malusDice || "1d6";
+          const meta  = MALUS_TYPE_MAP[mt] || MALUS_TYPE_MAP.disadvantage;
+          let patch = {};
+          if (mt === "disadvantage") {
+            patch = { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, turns) };
+          } else if (mt === "freeze") {
+            patch = { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) };
+          } else if (mt === "bleed") {
+            patch = { bleedDoT: true, bleedDoTTurns: Math.max(p.bleedDoTTurns ?? 0, turns), bleedDoTDice: dice, bleedDoTSourceLabel: "sanguinamento", bleedDoTNoun: "sanguinante", bleedDoTIcon: "🩸" };
+          } else if (mt === "poison") {
+            patch = { poisonDoT: true, poisonDoTTurns: Math.max(p.poisonDoTTurns ?? 0, turns), poisonDoTDice: dice, poisonDoTSourceLabel: "veleno", poisonDoTNoun: "avvelenato", poisonDoTIcon: "☠" };
+          } else if (mt === "burn") {
+            patch = { poisonDoT: true, poisonDoTTurns: Math.max(p.poisonDoTTurns ?? 0, turns), poisonDoTDice: dice, poisonDoTSourceLabel: "bruciatura", poisonDoTNoun: "in fiamme", poisonDoTIcon: "🔥" };
+          }
+          const dicePart  = meta.needsDice  ? ` ${dice}/turno` : "";
+          const turnsPart = meta.needsTurns ? ` per ${turns} turni` : "";
+          log = { pub: `${marketItem.icon} ${myName} usa ${marketItem.name} su ${p.name} — ${meta.icon} ${meta.label}${dicePart}${turnsPart}! · azione gratuita`, ts: _itemTs };
+          return { ...p, ...patch };
+        }
         if (itemKey === "pozione_veleno" && p.id === targetId) {
           log = { pub: `☠ ${myName} lancia Pozione di Veleno su ${p.name} — subirà 1d6 veleno al prossimo turno! · azione gratuita`, ts: _itemTs };
           return { ...p, poisonDoT: true };
@@ -8502,8 +8632,9 @@ export default function Arena() {
             const d20a = Math.floor(Math.random() * 20) + 1;
             const d20b = hasAdv ? Math.floor(Math.random() * 20) + 1 : 0;
             const d20 = hasAdv ? Math.max(d20a, d20b) : d20a;
-            const roll = d20 + dex;
-            const advTag = hasAdv ? ` 🌟vant.[${d20a},${d20b}]` : "";
+            const noArmorInit = isNoArmor(snapshots[p.id]) ? 1 : 0; // Senza armatura → +1 iniziativa
+            const roll = d20 + dex + noArmorInit;
+            const advTag = `${hasAdv ? ` 🌟vant.[${d20a},${d20b}]` : ""}${noArmorInit ? " +1 senz'armatura" : ""}`;
             newLogs.push(`🎲 ${snapshots[p.id]?.name || p.name} tira iniziativa (automatico): ${roll}${advTag}`);
             return { ...p, init: roll };
           });
@@ -12877,7 +13008,7 @@ export default function Arena() {
                           {myMarketItems.map(item => {
                             const uses  = myItemUsesLeft[item.key] ?? (item.uses ?? 0);
                             const total = item.uses ?? 1;
-                            const needsTarget = item.effect === "damage";
+                            const needsTarget = item.effect === "damage" || item.effect === "malus";
                             const disabled    = uses <= 0 || (needsTarget && !chosenTargetId) || itemUsed;
                             const titleStr = itemUsed ? "Oggetto già usato questo turno" : `${item.info} · azione gratuita (1/turno)`;
                             return (

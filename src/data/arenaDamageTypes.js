@@ -31,6 +31,19 @@ export function damageTypeIcon(key) {
   return DAMAGE_TYPE_MAP[key]?.icon || "";
 }
 
+// ── MALUS (Bottega) ─────────────────────────────────────────────────────────
+// Oggetti "malus": consumabili che infliggono uno svantaggio al nemico (azione
+// gratuita). Ogni tipo dice quali campi servono nel form del Master.
+export const MALUS_TYPES = [
+  { key: "disadvantage", label: "Svantaggio ai tiri per colpire",    icon: "🌫", needsDice: false, needsTurns: true },
+  { key: "bleed",        label: "Sanguinamento",                     icon: "🩸", needsDice: true,  needsTurns: true },
+  { key: "poison",       label: "Veleno",                            icon: "☠",  needsDice: true,  needsTurns: true },
+  { key: "burn",         label: "Bruciatura (in fiamme)",            icon: "🔥", needsDice: true,  needsTurns: true },
+  { key: "freeze",       label: "Congelato (svantaggio 1 attacco)",  icon: "🧊", needsDice: false, needsTurns: false },
+];
+export const MALUS_TYPE_MAP = Object.fromEntries(MALUS_TYPES.map((m) => [m.key, m]));
+export function malusTypeLabel(key) { return MALUS_TYPE_MAP[key]?.label || key || ""; }
+
 // Livelli di resistenza selezionabili dal Master (full control).
 export const RESIST_LEVELS = {
   resist: { key: "resist", label: "Resistenza", short: "½",  mult: 0.5, icon: "🛡", priority: 2 },

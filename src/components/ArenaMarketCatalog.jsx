@@ -6,7 +6,7 @@ import {
   CLERIC_SPELLS, BARD_SPELLS, PALADIN_SPELLS, RANGER_SPELLS, ARTIFICER_SPELLS,
 } from "../pages/Arena";
 import { weekEndLabel } from "../data/arenaWeek";
-import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS } from "../data/arenaDamageTypes";
+import { DAMAGE_TYPES, DAMAGE_TYPE_MAP, RESIST_LEVELS, MALUS_TYPES, MALUS_TYPE_MAP } from "../data/arenaDamageTypes";
 
 // ── Catalogo del Master (collection `arena_market_items`) ────────────────────
 // Ogni creazione resta salvata per sempre e può essere rimessa in vetrina in
@@ -63,6 +63,8 @@ const EMPTY_FORM = {
   // oggetto / pet
   effect: "heal", dice: "2d8", uses: "1",
   buffType: "hit", buffAmount: "1", buffTurns: "3",
+  // oggetto malus (svantaggio inflitto al nemico)
+  malusType: "disadvantage", malusDice: "1d6", malusTurns: "2",
   // spell scroll
   spellClass: "wizard", spellName: "",
   charges: "1", castStat: "int", castStatMin: "0", slotCost: {}, // slotCost: { livello: quantità }
@@ -91,6 +93,12 @@ export function marketItemSummary(it) {
       if (p.effect === "resist") return `Resistenze passive: ${resistSummary(p.resist)}`;
       if (p.effect === "heal")   return `Cura ${p.dice} · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
       if (p.effect === "damage") return `${p.dice} danni al bersaglio · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
+      if (p.effect === "malus") {
+        const mt = MALUS_TYPE_MAP[p.malusType] || MALUS_TYPE_MAP.disadvantage;
+        const dicePart  = mt.needsDice  ? ` ${p.malusDice || "1d6"}/turno` : "";
+        const turnsPart = mt.needsTurns ? ` per ${p.malusTurns || 2} turni` : "";
+        return `${mt.icon} ${mt.label}${dicePart}${turnsPart} al bersaglio · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight · azione gratuita`;
+      }
       return `${BUFF_TYPES.find(b => b.key === p.buffType)?.label || "Bonus"} +${p.buffAmount}${p.buffTurns > 0 ? ` per ${p.buffTurns} turni` : " per tutto il fight"} · ${p.uses} us${p.uses === 1 ? "o" : "i"} per fight`;
     case "spell": {
       const src = SPELL_SOURCES[p.spellClass];
@@ -215,6 +223,18 @@ export default function ArenaMarketCatalog() {
             uses,
           };
         }
+        if (form.effect === "malus") {
+          const mt = MALUS_TYPE_MAP[form.malusType] ? form.malusType : "disadvantage";
+          const meta = MALUS_TYPE_MAP[mt];
+          if (meta.needsDice && !DICE_RE.test(form.malusDice)) return null;
+          return {
+            effect: "malus",
+            malusType: mt,
+            ...(meta.needsDice ? { malusDice: form.malusDice } : {}),
+            malusTurns: meta.needsTurns ? Math.max(1, parseInt(form.malusTurns, 10) || 2) : 1,
+            uses,
+          };
+        }
         if (!DICE_RE.test(form.dice)) return null;
         return { effect: form.effect, dice: form.dice, uses };
       case "spell": {
@@ -315,6 +335,9 @@ export default function ArenaMarketCatalog() {
       buffType: p.buffType || "hit",
       buffAmount: String(p.buffAmount ?? 1),
       buffTurns: String(p.buffTurns ?? 3),
+      malusType: p.malusType || "disadvantage",
+      malusDice: p.malusDice || "1d6",
+      malusTurns: String(p.malusTurns ?? 2),
       spellClass: p.spellClass || "wizard",
       spellName: p.spellName || "",
       charges: String(p.charges ?? 1),
@@ -409,14 +432,41 @@ export default function ArenaMarketCatalog() {
                   <option value="damage">Danno</option>
                   <option value="buff">Bonus</option>
                   <option value="resist">Resistenza</option>
+                  <option value="malus">Malus (svantaggio al nemico)</option>
                 </select>
               </label>
-              {form.effect !== "buff" && form.effect !== "resist" && (
+              {form.effect !== "buff" && form.effect !== "resist" && form.effect !== "malus" && (
                 <label className="am-cat-field am-cat-field--sm">
                   <span>Dadi (es. 2d8, 3d6+2)</span>
                   <input className="am-coin-input" type="text" value={form.dice} onChange={set("dice")} />
                 </label>
               )}
+              {form.effect === "malus" && (<>
+                <label className="am-cat-field am-cat-field--sm">
+                  <span>Tipo di malus</span>
+                  <select className="am-coin-input" value={form.malusType} onChange={set("malusType")}>
+                    {MALUS_TYPES.map(mt => <option key={mt.key} value={mt.key}>{mt.icon} {mt.label}</option>)}
+                  </select>
+                </label>
+                {MALUS_TYPE_MAP[form.malusType]?.needsDice && (
+                  <label className="am-cat-field am-cat-field--sm">
+                    <span>Danno/turno (es. 1d6)</span>
+                    <input className="am-coin-input" type="text" value={form.malusDice} onChange={set("malusDice")} />
+                  </label>
+                )}
+                {MALUS_TYPE_MAP[form.malusType]?.needsTurns && (
+                  <label className="am-cat-field am-cat-field--sm">
+                    <span>Turni</span>
+                    <input className="am-coin-input" type="number" min={1} value={form.malusTurns} onChange={set("malusTurns")} />
+                  </label>
+                )}
+                <div className="am-cat-field am-cat-field--full">
+                  <p className="am-master-note am-cat-note" style={{ marginTop: 0 }}>
+                    Oggetto <strong>malus</strong>: azione gratuita che infligge lo svantaggio scelto al bersaglio
+                    (come una Bomba, ma con un effetto negativo invece del danno diretto).
+                  </p>
+                </div>
+              </>)}
               {form.effect === "resist" && (
                 <div className="am-cat-field am-cat-field--full">
                   {renderResistEditor()}
