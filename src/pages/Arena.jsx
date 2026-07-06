@@ -1723,18 +1723,21 @@ function applyDefenderDamageMods(rawDmg, defenderSnap, defenderMatchPlayer, isSp
 function applyTypedDamage(primaryRaw, action, critMult, defenderSnap, isSpell) {
   const resist = defenderSnap?.marketResist || {};
   const primaryType = (!isSpell && action?.damageType) ? action.damageType : null;
-  let total = primaryRaw * (primaryType ? damageMultiplier(primaryType, resist) : 1);
+  const primaryMult = primaryType ? damageMultiplier(primaryType, resist) : 1;
+  let total = primaryRaw * primaryMult;
+  let resisted = primaryMult < 1; // resistenza/immunità sul tipo primario
   const parts = [];
   for (const comp of (action?.extraDamage || [])) {
     if (!comp?.dice) continue;
     const rolled = Math.round((rollDamageFormula(comp.dice) || 0) * (critMult || 1));
     if (rolled <= 0) continue;
     const mult = damageMultiplier(comp.type, resist);
+    if (mult < 1) resisted = true;
     const fin  = Math.round(rolled * mult);
     total += fin;
     parts.push({ type: comp.type, amount: fin, raw: rolled, resisted: mult !== 1 });
   }
-  return { total: Math.max(0, Math.round(total)), parts };
+  return { total: Math.max(0, Math.round(total)), parts, resisted };
 }
 
 // ── RESISTENZE / REGOLE ELEMENTALI BASE ────────────────────────────────────
@@ -3419,6 +3422,14 @@ export default function Arena() {
     }
   };
 
+  // Ricompense Monete Arena assegnate LIVE a fine di ogni round di torneo, così i
+  // player possono spenderle alla Bottega prima del round successivo. Gira una sola
+  // volta per match (guardia justFinished, dal client che chiude il round).
+  //   • 5 MA per fight concluso (anche a chi perde)
+  //   • +10 al vincitore del round
+  //   • +5 se vince con >70% HP  ·  +3 se vince con >40% HP  (si sommano)
+  //   • +5 se vince in meno di 8 attacchi (attacchi del vincitore)
+  //   • +4 a chiunque (vincitore o perdente) abbia resistito ≥2 volte a un colpo
   const awardRoundCoins = async (updatedMatches) => {
     for (const m of updatedMatches) {
       const prev = arenaMeta?.matches?.find(x => x.matchId === m.matchId);
@@ -3430,13 +3441,36 @@ export default function Arena() {
             if (p?.id) awardPetPoints(p.id, "arena_libera", { resourceKey: m.matchId });
           }
         }
-        continue; // Arena Libera: nessuna ricompensa MA
+        continue; // Arena Libera / Sfida IA: nessuna ricompensa MA
       }
-      if (justFinished && m.winner) {
-        await awardArenaCoins(m.winner, 7);
-        // 🐣 pet system: +3 points to the winner of a tournament round
-        awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
+      if (!justFinished || !m.winner) continue;
+
+      const players = (m.players || []).filter(p => p?.id);
+      const winner  = players.find(p => p.id === m.winner);
+      const winnerMaxHp = winner?.maxHp || 1;
+      const winnerHpPct = (winner?.hp ?? 0) / winnerMaxHp;
+      const winnerAttacks = winner?.attacksMade ?? 0;
+
+      for (const p of players) {
+        const isWinner = p.id === m.winner;
+        let coins = 5;                          // fight concluso (anche se perde)
+        const bits = ["+5 fight concluso"];
+        if (isWinner) {
+          coins += 10; bits.push("+10 round vinto");
+          if (winnerHpPct > 0.70) { coins += 5; bits.push("+5 oltre 70% HP"); }
+          if (winnerHpPct > 0.40) { coins += 3; bits.push("+3 oltre 40% HP"); }
+          if (winnerAttacks < 8)  { coins += 5; bits.push("+5 vittoria lampo (<8 attacchi)"); }
+        }
+        if ((p.resistProcs ?? 0) >= 2) { coins += 4; bits.push("+4 resistenze (×2 colpi)"); }
+        await awardArenaCoins(p.id, coins);
+        await addDoc(collection(db, "notifications"), {
+          userId: p.id, read: false, timestamp: serverTimestamp(),
+          title: isWinner ? "🏆 Round vinto — Monete Arena" : "⚔️ Round concluso — Monete Arena",
+          message: `🪙 ${bits.join(" · ")} = ${coins} Monete Arena. Spendile alla Bottega prima del prossimo round!`,
+        });
       }
+      // 🐣 pet system: +3 points to the winner of a tournament round
+      awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
     }
   };
 
@@ -6019,7 +6053,7 @@ export default function Arena() {
     // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
-    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 5);
+    // Le Monete Arena si assegnano ora a FINE round (awardRoundCoins), non al primo turno.
 
     // Penalità ai tiri per colpire basata sull'armatura dell'attaccante
     const armorPenalty = attackerSnap?.selectedArmor?.hitPenalty ?? 0;
@@ -6478,7 +6512,7 @@ export default function Arena() {
     const isFighter = isFighterClass(attackerClassLower);
     // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
     // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
-    let damage, isHit, golemHalved = false, log;
+    let damage, isHit, golemHalved = false, log, _hitResisted = false;
     if (action.multiHit) {
       // ── RAFFICA LETALE: N frecce, ognuna col proprio tiro per colpire e danno ──
       const arrows = action.multiHit;
@@ -6512,6 +6546,7 @@ export default function Arena() {
         }
       }
       const volleyTyped = applyTypedDamage(total, action, 1, defenderSnap, false);
+      _hitResisted = volleyTyped.resisted;
       const reduced = applyDefenderDamageMods(volleyTyped.total, defenderSnap, defMatchPlayer, false);
       golemHalved = anyHit && !!defMatchPlayer?.nextHitHalved && reduced > 0;
       damage = golemHalved ? Math.floor(reduced / 2) : reduced;
@@ -6582,6 +6617,7 @@ export default function Arena() {
     // Monaco · Colpi Ki (Lv6): i colpi in mischia ignorano le riduzioni ai danni fisici (kiBypass).
     // Bottega: componenti di danno elementali dell'arma + resistenze del bersaglio.
     const typedDmg = applyTypedDamage(rawDamage, action, critMult, defenderSnap, isSpellAction);
+    _hitResisted = typedDmg.resisted;
     const rageReducedDamage = applyDefenderDamageMods(typedDmg.total, defenderSnap, defMatchPlayer, isSpellAction, kiBypass);
     // Golem dell'Artefice: il prossimo colpo ricevuto dalla vittima è dimezzato.
     golemHalved = isHit && !!defMatchPlayer?.nextHitHalved && rageReducedDamage > 0;
@@ -6696,7 +6732,7 @@ export default function Arena() {
             absorbedLog = `🌀 ${p.name} assorbe il colpo e si cura di ${heal} HP!`;
             return { ...p, hp: Math.min(maxHp, p.hp + heal), absorbDamageNext: false, blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
           }
-          return { ...p, hp: Math.max(0, p.hp - damage - _onHit.enemyDmg), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, ..._onHit.enemyPatch, stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
+          return { ...p, hp: Math.max(0, p.hp - damage - _onHit.enemyDmg), blindDebuff: isBlindDebuff && isHit ? true : (p.blindDebuff ?? false), ...consumeInvisibility(p), ...golemConsumed, ...staggerPatch, ..._elemStatus.patch, ..._onHit.enemyPatch, resistProcs: (p.resistProcs ?? 0) + (isHit && _hitResisted ? 1 : 0), stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1) };
         }
         if (p.id === currentUser.uid) {
           // Magic-detect counter: scala 1 per attacco. Si svuota (spegne il buff) solo a contatore=0.
@@ -6708,7 +6744,7 @@ export default function Arena() {
           const selfAdvPatch = action.grantsAdvTurns ? { selfAdvTurns: action.grantsAdvTurns } : {};
           // Timer turn-based (Furia/Hunter Mark/Scudo/Patto/Forgia/Concentr/Aquila):
           // NON decrementati qui — si decrementano a fine turno (turnEndDecays).
-          const up = { ...p, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...selfAdvPatch };
+          const up = { ...p, defensiveBonus: 0, weaponPoisoned: false, aidBuff: false, bonusActionUsed: false, itemUsedThisTurn: false, bardicInspirationActive: false, magicDetectActive: newMd, magicDetectAttacks: newMdAtk, attacksMade: (p.attacksMade ?? 0) + 1, ...consumeInvisibility(p), stealthAdvTurns: Math.max(0, readStealthAdvTurns(p) - 1), ...selfAdvPatch };
           // Bonus/cura all'impatto dell'arma della Bottega (a chi la impugna).
           if (_onHit.selfHeal > 0 || Object.keys(_onHit.selfPatch).length) {
             Object.assign(up, _onHit.selfPatch);
@@ -8211,7 +8247,7 @@ export default function Arena() {
     // 1 moneta al primo attacco del giocatore in questo match (escluse Sfide Libere)
     const _currentMatch = arenaMeta.matches.find(m => m.matchId === matchId);
     const _alreadyAwarded = (_currentMatch?.participantsAwarded || []).includes(currentUser.uid);
-    if (!_alreadyAwarded && _currentMatch?.kind !== "fun") await awardArenaCoins(currentUser.uid, 5);
+    // Le Monete Arena si assegnano ora a FINE round (awardRoundCoins), non al primo turno.
 
     // ── Meccanica ufficiale D&D 5e per nome: attack / save_half / save_negate / auto ──
     // La CD dei TS dipende dalla classe del lanciatore; il bonus al colpire degli
@@ -9526,10 +9562,13 @@ export default function Arena() {
 
             <h3 className="arena-info-title">🪙 Monete Arena (MA)</h3>
             <ul className="arena-info-list">
-              <li><strong>+5 MA</strong> per aver partecipato a un match dell'Arena (al primo turno giocato).</li>
-              <li><strong>+7 MA</strong> per ogni round vinto.</li>
-              <li><strong>+30 MA</strong> se vinci il torneo (in aggiunta ai +7 della finale).</li>
-              <li>Spendile alla <strong>Bottega Settimanale</strong>: oggetti, incantesimi, armi, armature e pet validi fino a domenica sera, solo nei tornei.</li>
+              <li><strong>+5 MA</strong> per ogni fight di torneo concluso, anche se perdi.</li>
+              <li><strong>+10 MA</strong> per ogni round vinto.</li>
+              <li><strong>+5 MA</strong> se vinci con oltre il 70% degli HP e <strong>+3 MA</strong> se vinci con oltre il 40% (si sommano: chi chiude sopra il 70% prende entrambi).</li>
+              <li><strong>+5 MA</strong> se chiudi il round in meno di 8 attacchi.</li>
+              <li><strong>+4 MA</strong> se durante il round una tua resistenza scatta almeno 2 volte (anche di striscio).</li>
+              <li><strong>+30 MA</strong> se vinci il torneo (in aggiunta ai premi dei round).</li>
+              <li>Le Monete arrivano <strong>subito a fine round</strong>: spendile alla <strong>Bottega Settimanale</strong> (oggetti, incantesimi, armi, armature e pet validi fino a domenica sera, solo nei tornei) prima del round successivo.</li>
             </ul>
 
             <h3 className="arena-info-title">💰 Sistema Scommesse</h3>

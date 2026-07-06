@@ -242,9 +242,13 @@ export default function ArenaMarket() {
       <div className="am-how">
         <h3 className="am-how-title">Come guadagnare Monete Arena</h3>
         <ul className="am-how-list">
-          <li>🪙 <strong>+5 MA</strong> per ogni fight di torneo disputato</li>
-          <li>🪙 <strong>+7 MA</strong> per ogni round vinto</li>
+          <li>🪙 <strong>+5 MA</strong> per ogni fight di torneo concluso (anche se perdi)</li>
+          <li>🪙 <strong>+10 MA</strong> per ogni round vinto</li>
+          <li>🪙 <strong>+5 MA</strong> se vinci con oltre il 70% di HP · <strong>+3 MA</strong> se vinci con oltre il 40% (si sommano)</li>
+          <li>🪙 <strong>+5 MA</strong> se vinci il round in meno di 8 attacchi</li>
+          <li>🪙 <strong>+4 MA</strong> se una tua resistenza scatta almeno 2 volte nel round</li>
           <li>🪙 <strong>+30 MA</strong> se vinci il torneo</li>
+          <li>💡 Le Monete arrivano <strong>subito a fine round</strong>: spendile alla Bottega prima del successivo</li>
           <li>🎲 Le <strong>scommesse</strong> vinte pagano il doppio della puntata</li>
         </ul>
       </div>
