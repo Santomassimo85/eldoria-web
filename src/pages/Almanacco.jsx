@@ -88,7 +88,7 @@ const RUOLI = [
     ko: "Niente da mangiare o cibo avariato: nessun rifornimento quel giorno.",
   },
   {
-    nome: "Sentinella", ic: "🛡️", color: "#7a5aa8", ab: "Percezione passiva",
+    nome: "Sentinella", ic: "🛡️", color: "#7a5aa8", ab: "Percezione passiva", passivo: true,
     cosa: "Monta la guardia di notte. Non tira un dado: si confronta la sua Percezione passiva con i pericoli notturni.",
     ok: "Se la Percezione passiva è alta, sente arrivare il pericolo: il gruppo non viene colto di sorpresa.",
     ko: "Se qualcosa la supera, l'attacco arriva nel sonno: il gruppo parte svantaggiato.",
@@ -163,6 +163,48 @@ const EVENTI = [
     ],
   },
 ];
+
+// ── Lo specchietto dei tiri: chi tira, quando, cosa, a cosa serve ──────────
+// È la risposta rapida alla domanda «che tiri vanno fatti e chi li fa».
+const TIRI = [
+  {
+    ic: "🎲", chi: "Ogni giocatore", chiTag: "giocatori",
+    quando: "1 volta al giorno, nel proprio Ruolo",
+    tiro: "Abilità del suo Ruolo",
+    scopo: "Costruisce la scena del giorno: chi guida, chi esplora, chi caccia, chi tiene il morale. Vedi la tabella dei Ruoli.",
+  },
+  {
+    ic: "🎯", chi: "Il Master", chiTag: "master",
+    quando: "1 volta al giorno",
+    tiro: "1d6 + 1d6",
+    scopo: "Il 1º d6 sceglie il tipo di evento, il 2º d6 pesca lo spunto preciso. Vedi la tabella degli Eventi.",
+  },
+  {
+    ic: "🌊", chi: "Tutto il gruppo", chiTag: "gruppo",
+    quando: "Solo se l'evento del giorno è una Sfida d'Ambiente",
+    tiro: "Un'abilità diversa a testa · CD 12–15",
+    scopo: "3 successi = superata; 3 fallimenti prima = passate comunque, ma pagando un prezzo.",
+  },
+  {
+    ic: "⏱️", chi: "Tutto il gruppo", chiTag: "gruppo",
+    quando: "Solo con Passo Forzato, a fine giornata",
+    tiro: "Tiro Salvezza su Costituzione",
+    scopo: "Chi fallisce prende 1 livello di Sfinimento (il prezzo per correre).",
+  },
+  {
+    ic: "🛡️", chi: "La Sentinella", chiTag: "giocatori",
+    quando: "Di notte",
+    tiro: "Nessun dado — Percezione passiva",
+    scopo: "La sua Percezione passiva si confronta col pericolo notturno e decide se il gruppo viene colto di sorpresa.",
+  },
+];
+
+// Etichetta colorata per «chi» tira.
+const TIRO_TAG = {
+  giocatori: { label: "Giocatore", color: "#3f7fb5" },
+  master:    { label: "Master",    color: "#a8443a" },
+  gruppo:    { label: "Gruppo",    color: "#4f9a4f" },
+};
 
 export default function Almanacco() {
   useParallaxScroll();
@@ -257,12 +299,41 @@ export default function Almanacco() {
           <span className="alm-sec-eyebrow">Sezione II · Sistema di Viaggio</span>
           <h2 className="alm-sec-title">🜂 Le Vie del Mondo</h2>
           <p className="alm-sec-lead">
-            È il modo in cui giochiamo gli spostamenti tra una meta e l'altra, senza ridurli a un
-            semplice «arrivate dopo tre giorni». La regola d'oro: <strong>ogni giornata di viaggio
-            deve contenere una decisione e una scoperta</strong>. Tutto ciò che segue serve solo a
-            rendere automatica questa regola.
+            Il modo in cui giochiamo gli spostamenti tra una meta e l'altra, senza ridurli a un
+            «arrivate dopo tre giorni». La regola d'oro: <strong>ogni giornata di viaggio contiene
+            una decisione e una scoperta</strong>. Sotto trovi prima <strong>chi tira e cosa</strong>,
+            poi il dettaglio di ogni pezzo.
           </p>
         </header>
+
+        {/* ── LO SPECCHIETTO DEI TIRI — chi tira, quando, cosa, perché ── */}
+        <div className="alm-tiri" aria-label="Chi tira e cosa">
+          <h3 className="alm-tiri-title">📋 Lo specchietto dei tiri</h3>
+          <p className="alm-tiri-sub">
+            Tutto il viaggio si regge su pochissimi tiri. Ecco chi li fa e quando — il resto della
+            pagina serve solo ad approfondirli.
+          </p>
+          <div className="alm-tiri-table">
+            <div className="alm-tiri-head" aria-hidden="true">
+              <span>Chi</span><span>Quando</span><span>Cosa tira</span><span>A cosa serve</span>
+            </div>
+            {TIRI.map((t, i) => {
+              const tag = TIRO_TAG[t.chiTag];
+              return (
+                <div key={i} className="alm-tiri-row" style={{ "--t-color": tag.color }}>
+                  <span className="alm-tiri-chi">
+                    <span className="alm-tiri-ic" aria-hidden="true">{t.ic}</span>
+                    <span className="alm-tiri-name">{t.chi}</span>
+                    <span className="alm-tiri-badge">{tag.label}</span>
+                  </span>
+                  <span className="alm-tiri-cell" data-label="Quando">{t.quando}</span>
+                  <span className="alm-tiri-cell alm-tiri-dado" data-label="Cosa tira">{t.tiro}</span>
+                  <span className="alm-tiri-cell" data-label="A cosa serve">{t.scopo}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Le Quattro Veglie */}
         <div className="alm-block">
@@ -336,7 +407,7 @@ export default function Almanacco() {
                 <div className="alm-role-head">
                   <span className="alm-role-ic" aria-hidden="true">{r.ic}</span>
                   <span className="alm-role-name">{r.nome}</span>
-                  <span className="alm-role-skill">tira: {r.ab}</span>
+                  <span className="alm-role-skill">{r.passivo ? `non tira — ${r.ab}` : `tira: ${r.ab}`}</span>
                 </div>
                 <p className="alm-role-cosa">{r.cosa}</p>
                 <p className="alm-role-ok"><span aria-hidden="true">✓ Riesce</span> — {r.ok}</p>

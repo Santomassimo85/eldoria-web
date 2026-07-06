@@ -252,6 +252,61 @@
   font-size: .88rem;
 }
 
+/* Lo specchietto dei tiri (chi tira, quando, cosa, perché) */
+.alm-page .alm-tiri {
+  margin: 0 0 26px;
+  background: linear-gradient(135deg, rgba(250,243,225,.97), rgba(242,231,205,.95));
+  border: 1px solid var(--line, #c9b78a);
+  border-left: 4px solid var(--cine-accent);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
+  padding: 20px 22px;
+}
+.alm-page .alm-tiri-title {
+  margin: 0 0 6px; font-family: var(--font-head, "Cinzel"), serif; font-weight: 800;
+  font-size: 1.18rem; color: #3a2710;
+}
+.alm-page .alm-tiri-sub { margin: 0 0 16px; color: #5a4a32; font-size: .92rem; line-height: 1.5; }
+
+.alm-page .alm-tiri-table { --tiri-cols: 1fr; display: grid; gap: 8px; }
+.alm-page .alm-tiri-head {
+  display: grid; grid-template-columns: var(--tiri-cols); gap: 14px;
+  padding: 0 14px 7px;
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 800; font-size: .7rem;
+  letter-spacing: .1em; text-transform: uppercase; color: #8a6a30;
+  border-bottom: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+}
+.alm-page .alm-tiri-row {
+  display: grid; grid-template-columns: var(--tiri-cols); gap: 14px; align-items: start;
+  padding: 12px 14px; border-radius: 11px;
+  background: rgba(255,255,255,.6);
+  border: 1px solid color-mix(in srgb, var(--t-color) 26%, transparent);
+  border-left: 4px solid var(--t-color);
+}
+.alm-page .alm-tiri-chi { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.alm-page .alm-tiri-ic { font-size: 1.2rem; line-height: 1; }
+.alm-page .alm-tiri-name { font-weight: 800; color: #3a2710; font-size: .92rem; }
+.alm-page .alm-tiri-badge {
+  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700; font-size: .6rem;
+  letter-spacing: .06em; text-transform: uppercase; color: #fffdf5;
+  padding: 2px 8px; border-radius: 999px; background: var(--t-color);
+}
+.alm-page .alm-tiri-cell { color: #4a3a24; font-size: .86rem; line-height: 1.42; }
+.alm-page .alm-tiri-dado { font-weight: 700; color: color-mix(in srgb, var(--t-color) 80%, #2a1c08); }
+
+@media (min-width: 820px) {
+  .alm-page .alm-tiri-table { --tiri-cols: 200px 1.05fr 1.15fr 1.55fr; }
+}
+/* mobile: niente intestazione, ogni cella si etichetta da sola */
+@media (max-width: 819px) {
+  .alm-page .alm-tiri-head { display: none; }
+  .alm-page .alm-tiri-row { gap: 7px; }
+  .alm-page .alm-tiri-cell::before {
+    content: attr(data-label) " · ";
+    font-weight: 800; color: #8a6a30; font-size: .76rem;
+  }
+}
+
 /* Veglie */
 .alm-page .alm-veglie {
   display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr);
