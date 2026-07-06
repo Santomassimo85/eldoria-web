@@ -279,6 +279,25 @@ service cloud.firestore {
       );
     }
 
+    // ── Diario di Bordo (diario collaborativo di gruppo) ─────────────────────
+    //   read   → ogni loggato (il filtro per party è lato client, come dm_sessions)
+    //   create → solo l'autore, sul proprio uid, con testo valido e party noto
+    //   delete → l'autore o il Master
+    //   update → nessuno (le voci sono immutabili)
+    match /diary_notes/{docId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 4000
+        && request.resource.data.party in ["AMEA", "LEAF", "ENOX", "LAC"];
+      allow update: if false;
+      allow delete: if isLoggedIn() && (
+        resource.data.authorUid == request.auth.uid || isMaster()
+      );
+    }
+
     // ── Oracolo bendato (Tarocchi · Alaric) ──────────────────────────────────
     // Richieste di lettura + responsi. Stile permissivo come tcg_matches:
     //   read   → ogni loggato (è la cronologia condivisa tra richiedente,

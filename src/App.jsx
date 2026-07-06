@@ -37,6 +37,7 @@ import Almanacco from "./pages/Almanacco";
 import SchedaPG from "./pages/SchedaPG";
 import PlatinumAdmin from "./pages/PlatinumAdmin";
 import RattiLore from "./pages/RattiLore";
+import Diario from "./pages/Diario";
 import Bacheca from "./pages/Bacheca";
 import QuestAdmin from "./pages/QuestAdmin";
 import QuestDetail from "./pages/QuestDetail";
@@ -282,6 +283,7 @@ const MOBILE_GROUPS = {
   biblioteca: { rune: "ᛒ", label: "Biblioteca", links: [
     { to: "/scriba", label: "Lo Scriba" },
     { to: "/riassunti", label: "Riassunti" },
+    { to: "/diario", label: "Diario di Bordo" },
   ]},
   gilda: { rune: "ᚷ", label: "Gilda", links: [
     { to: "/mercato", label: "Mercato Nero" },
@@ -303,7 +305,7 @@ function MobileBottomNav({ openMenu }) {
   const group =
     p === "/" ? "home"
     : ["/world-map", "/Geo"].includes(p) ? "mondo"
-    : ["/scriba", "/riassunti"].includes(p) ? "biblioteca"
+    : ["/scriba", "/riassunti", "/diario"].includes(p) ? "biblioteca"
     : ["/mercato", "/bacheca", "/cinema", "/tarocchi", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
     : null;
 
@@ -596,6 +598,7 @@ export default function App() {
           <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᛒ</span> Biblioteca</>} closeAll={closeMenu} id="biblioteca" openId={openDd} setOpenId={setOpenDd}>
             <NavLink to="/scriba">Lo Scriba</NavLink>
             <NavLink to="/riassunti">Riassunti</NavLink>
+            <NavLink to="/diario">Diario di Bordo</NavLink>
           </NavDropdown>
 
           <NavDropdown label={<><span className="nav-rune" aria-hidden="true">ᚱ</span> Guide</>} closeAll={closeMenu} id="guide" openId={openDd} setOpenId={setOpenDd}>
@@ -645,6 +648,7 @@ export default function App() {
           <Route path="/world-map" element={<WorldMap />} />
           <Route path="/Geo" element={<Geo />} />
           <Route path="/riassunti" element={<Riassunti />} />
+          <Route path="/diario" element={<Diario />} />
           <Route path="/riassunto/:id" element={<RiassuntoSingolo />} />
           <Route path="/sessions/:party" element={<SessionsArchive />} />
           <Route path="/sessions/:party/:number" element={<SessionDetail />} />
