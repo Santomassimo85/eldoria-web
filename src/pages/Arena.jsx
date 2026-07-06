@@ -4990,6 +4990,8 @@ export default function Arena() {
           userId: uid, read: false, timestamp: serverTimestamp(),
           title: "🛒 Bottega Arena aperta",
           message: "Hai 1 ora per acquistare al Mercato Arena prima del prossimo round. Spendi le tue Monete Arena!",
+          // solo campanella: il push lo manda pushOnArenaUpdate (evita il doppio push)
+          silent: true,
         });
       } catch { /* uid senza doc: ignora */ }
     }

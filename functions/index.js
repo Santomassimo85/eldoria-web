@@ -397,6 +397,9 @@ async function getAllUids() {
 exports.pushOnNotification = onDocumentCreated('notifications/{id}', async (event) => {
   const data = event.data?.data();
   if (!data?.userId) return;
+  // Voci solo-campanella: il push per queste lo manda un'altra funzione
+  // (es. Bottega Arena → pushOnArenaUpdate), così evitiamo il doppio push.
+  if (data.silent) return;
   await sendPush({
     uids: [data.userId],
     title: data.title || "Crit Happens",
@@ -522,6 +525,20 @@ exports.pushOnArenaUpdate = onDocumentUpdated('arena_meta/global', async (event)
       body: `${winnerName} ha vinto il torneo!`,
       url: "/arena",
       tag: `tournament-end-${after.tournamentWinner}`,
+    });
+  }
+
+  // Round completato → si apre la finestra Bottega (1h). Avvisa i partecipanti
+  // reali (i bot ai_* non hanno token). Push affidabile lato server: arriva a
+  // tutti indipendentemente da quale client ha chiuso l'ultimo match del round.
+  if (before.phase !== "shopping" && after.phase === "shopping") {
+    const uids = (after.participants || []).filter(id => id && !String(id).startsWith("ai_"));
+    await sendPush({
+      uids,
+      title: "🛒 Bottega Arena aperta!",
+      body: "Il round è concluso: hai 1 ora per fare acquisti al Mercato Arena prima del prossimo round.",
+      url: "/arena",
+      tag: `arena-shop-R${after.currentRound || ""}`,
     });
   }
 
