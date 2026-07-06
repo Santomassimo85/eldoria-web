@@ -3013,6 +3013,20 @@ function MasterCoinEditor() {
 // Numero di slot per i PG d'Arena salvati (build pronti da ripescare all'iscrizione).
 const SAVED_ARENA_SLOTS = 4;
 
+// Numero di slot "PG di Riserva" del Master: bot pronti a entrare quando il numero
+// di iscritti al torneo è dispari (ne viene pescato uno a caso e inserito).
+const MASTER_RESERVE_SLOTS = 4;
+
+// Archetipo IA dedotto dalla classe: guida alcune euristiche del motore IA quando
+// pilota un PG di riserva creato dal Master (fallback: fighter-plate).
+const ARENA_ARCHETYPE_BY_CLASS = {
+  fighter: "fighter-plate", barbarian: "barbarian-axe", ranger: "ranger-longbow",
+  rogue: "rogue-twin", monk: "rogue-twin", paladin: "paladin-sword-shield",
+  wizard: "wizard-fire", sorcerer: "wizard-fire", warlock: "wizard-fire",
+  bard: "wizard-fire", druid: "ranger-longbow", cleric: "paladin-sword-shield",
+  artificer: "fighter-plate",
+};
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 export default function Arena() {
   const { currentUser } = useAuth();
@@ -3035,6 +3049,8 @@ export default function Arena() {
   // Personaggi d'Arena salvati dal giocatore (4 slot): build completo pronto da
   // ripescare all'iscrizione al torneo. Caricati dalla scheda in openLoadoutPicker.
   const [savedArenaChars, setSavedArenaChars] = useState(() => Array(SAVED_ARENA_SLOTS).fill(null));
+  // Slot riserva del Master attualmente in creazione (0..3) o null se non in modalità riserva.
+  const [reserveSlotTarget, setReserveSlotTarget] = useState(null);
   const [pendingStats, setPendingStats]     = useState({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
   const [pendingWeapons, setPendingWeapons] = useState([]);
   const [pendingSpells, setPendingSpells]   = useState([]);
@@ -3409,6 +3425,7 @@ export default function Arena() {
     const bucketOf = (uid) => uid === winnerId ? "first" : uid === runnerUpId ? "second" : "participant";
     const placeLabel = { first: "1° posto", second: "2° posto", participant: "partecipazione" };
     for (const uid of targets) {
+      if (isAiId(uid)) continue;   // i PG-bot di riserva non ricevono premi
       const tier = cfg[bucketOf(uid)] || {};
       const crowns = Math.max(0, parseInt(tier.crowns, 10) || 0);
       const coins  = Math.max(0, parseInt(tier.coins, 10) || 0);
@@ -3458,6 +3475,7 @@ export default function Arena() {
       const winnerAttacks = winner?.attacksMade ?? 0;
 
       for (const p of players) {
+        if (isAiId(p.id)) continue;             // i PG-bot di riserva non guadagnano Monete Arena
         const isWinner = p.id === m.winner;
         let coins = 5;                          // fight concluso (anche se perde)
         const bits = ["+5 fight concluso"];
@@ -3475,8 +3493,8 @@ export default function Arena() {
           message: `🪙 ${bits.join(" · ")} = ${coins} Monete Arena. Spendile alla Bottega prima del prossimo round!`,
         });
       }
-      // 🐣 pet system: +3 points to the winner of a tournament round
-      awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
+      // 🐣 pet system: +3 points to the winner of a tournament round (mai ai bot)
+      if (!isAiId(m.winner)) awardPetPoints(m.winner, "arena_round", { resourceKey: m.matchId });
     }
   };
 
@@ -4015,6 +4033,110 @@ export default function Arena() {
     setLoadoutPhase("selecting");
   };
 
+  // ── PG di Riserva del Master (4 slot) ───────────────────────────────────────
+  // Bot completi pronti a entrare quando gli iscritti sono dispari. Vengono creati
+  // con lo stesso flusso di loadout dei giocatori (classe → stat → HP → equip), poi
+  // salvati come snapshot IA-ready in arena_meta.masterReserves.
+  const masterReserves = arenaMeta?.masterReserves || [];
+
+  // Apre il flusso di creazione loadout in modalità "riserva" per lo slot indicato.
+  const openReserveCreate = async (slot) => {
+    await openLoadoutPicker();               // imposta lo stato base + context "tournament"
+    setLoadoutContext("reserve");            // sovrascrive: siamo in creazione riserva
+    setReserveSlotTarget(slot);
+    // Il bot non usa titoli/Bottega: nome generico, portrait vuoto (lo si rinomina al salvataggio).
+    setCharPreview(prev => prev ? { ...prev, name: "🎭 Campione di Riserva", image: null, arenaTitles: [] } : prev);
+    setPendingTitle(null);
+  };
+
+  // Costruisce lo snapshot IA-ready dal loadout corrente (senza acquisti Bottega:
+  // i bot non fanno shopping). Rispecchia la costruzione snapshot di confirmJoin.
+  const buildReserveSnapshot = (name) => {
+    const cls = (charPreview.class || "").toLowerCase();
+    const config = getLoadoutConfig(charPreview.class, charPreview.classLevels?.[getClassKey(charPreview.class)]);
+    const dexMod = charPreview.stats.dex ?? 0;
+    const conMod = charPreview.stats.con ?? 0;
+    const shieldBonus = pendingShield ? 2 : 0;
+    const armorBuffBonus = charPreview.arenaBuffs?.armorBonus ? 1 : 0;
+    const unarmoredBonus = pendingArmor?.unarmoredStat ? (charPreview.stats[pendingArmor.unarmoredStat] ?? 0) : conMod;
+    const finalAc = pendingArmor.unarmoredDefense
+      ? (pendingArmor.unarmoredMaxStat
+          ? 10 + Math.max(conMod, dexMod) + shieldBonus + armorBuffBonus
+          : 10 + dexMod + unarmoredBonus + shieldBonus + armorBuffBonus)
+      : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + shieldBonus + armorBuffBonus;
+    const chaScore  = charPreview.stats.cha ?? 0;
+    const charLevel = charPreview.classLevels?.[getClassKey(charPreview.class)] ?? 3;
+    const petAction       = (isRangerClass(cls) && pendingPet && RANGER_PETS[pendingPet]) ? RANGER_PETS[pendingPet].action : null;
+    const demonAction     = (isWarlockClass(cls) && pendingDemon && WARLOCK_DEMONS[pendingDemon]) ? WARLOCK_DEMONS[pendingDemon].action : null;
+    const constructAction = (isArtificerClass(cls) && pendingConstruct && ARTIFICER_CONSTRUCTS[pendingConstruct]) ? ARTIFICER_CONSTRUCTS[pendingConstruct].action : null;
+    const finalActions = [
+      ...pendingWeapons, ...pendingSpells, ...pendingSkills,
+      ...config.autoActions
+        .filter(a => !a.requiresBuff || ((charPreview.arenaBuffs || {})[a.requiresBuff] ?? 0) > 0)
+        .map(a => scaleActionForLevel(a, charLevel, chaScore)),
+      ...(petAction ? [petAction] : []),
+      ...(demonAction ? [demonAction] : []),
+      ...(constructAction ? [constructAction] : []),
+    ];
+    const selectedItemKeys = Object.entries(pendingItemCounts)
+      .flatMap(([k, n]) => Array(n).fill(k))
+      .filter(k => !ARENA_ITEMS.find(i => i.key === k)?.shopOnly);
+    return JSON.parse(JSON.stringify({
+      name,
+      image:           null,
+      class:           charPreview.class,
+      classLevels:     charPreview.classLevels || {},
+      subclass:        null,
+      stats:           { ...charPreview.stats, maxHp: charPreview.rolledHp, ac: finalAc },
+      selectedActions: finalActions,
+      hasWildShape:    config.hasWildShape,
+      hasShield:       pendingShield,
+      selectedArmor:   pendingArmor,
+      selectedItemKeys,
+      arenaBuffs:      {},
+      titles:          [],
+      selectedPet:     petAction ? pendingPet : null,
+      selectedDemon:   demonAction ? pendingDemon : null,
+      selectedConstruct: constructAction ? pendingConstruct : null,
+      marketConsumables: [],
+      marketResist:    {},
+      isAi:            true,
+      aiArchetype:     ARENA_ARCHETYPE_BY_CLASS[cls] || "fighter-plate",
+      label:           `${name} · ${charPreview.class}`,
+      rolledHp:        charPreview.rolledHp,
+    }));
+  };
+
+  const saveReserveToSlot = async () => {
+    if (reserveSlotTarget == null) return;
+    if (!charPreview?.class || !charPreview?.rolledHp || !pendingArmor) {
+      alert("Completa prima il PG (classe, caratteristiche, HP e un'armatura).");
+      return;
+    }
+    const totalItems = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
+    if (totalItems < 1) { alert("Serve almeno un oggetto."); return; }
+    const defName = charPreview.name && charPreview.name !== "🎭 Campione di Riserva" ? charPreview.name : `Riserva ${reserveSlotTarget + 1}`;
+    const name = (window.prompt("Nome del PG di Riserva (bot):", defName) || defName).trim();
+    const next = Array.from({ length: MASTER_RESERVE_SLOTS }, (_, i) => masterReserves[i] ?? null);
+    next[reserveSlotTarget] = buildReserveSnapshot(name);
+    try {
+      await updateDoc(doc(db, "arena_meta", "global"), { masterReserves: next });
+      alert(`✅ PG di Riserva salvato nello slot ${reserveSlotTarget + 1}.`);
+      setReserveSlotTarget(null);
+      cancelLoadout();
+    } catch (e) { console.error("saveReserveToSlot", e); alert("Salvataggio non riuscito."); }
+  };
+
+  const deleteReserve = async (slot) => {
+    const r = masterReserves[slot];
+    if (!r || !window.confirm(`Eliminare il PG di Riserva nello slot ${slot + 1} (${r.label || r.name})?`)) return;
+    const next = Array.from({ length: MASTER_RESERVE_SLOTS }, (_, i) => masterReserves[i] ?? null);
+    next[slot] = null;
+    try {
+      await updateDoc(doc(db, "arena_meta", "global"), { masterReserves: next });
+    } catch (e) { console.error("deleteReserve", e); }
+  };
+
   // Ri-equipaggiamento durante la finestra di shopping (torneo in corso).
   // Classe, caratteristiche e HP restano BLOCCATI dal torneo: si ripescano
   // dallo snapshot esistente; si possono ricomprare/riequipaggiare armi, magie,
@@ -4332,6 +4454,7 @@ export default function Arena() {
     setReloadoutMode(false);
     setFunAcceptMatchId(null);
     setAiMatchPending(false);
+    setReserveSlotTarget(null);
     setArenaView("hub");
   };
 
@@ -4727,11 +4850,29 @@ export default function Arena() {
     return { id, name: snap.name || "Sconosciuto", class: lockedClass, hp: startHp, maxHp: startHp, init: 0, itemUsesLeft: itemUses, layOfHandsPool };
   };
 
+  // Riconosce i PG-bot (riserve del Master o IA delle Sfide) dal prefisso dell'id.
+  const isAiId = (id) => typeof id === "string" && id.startsWith(AI_BOT_PREFIX);
+
+  // Se un match contiene un PG-bot (snapshot.isAi o id AI), lo marca con i campi
+  // ai/aiId/aiOwnerId così il watcher IA — in mano al Master — ne pilota il turno
+  // automaticamente, esattamente come per le Sfide contro l'IA.
+  const withAiFlags = (match, snapshots) => {
+    const aiP = (match.players || []).find(p => snapshots[p.id]?.isAi || isAiId(p.id));
+    if (!aiP) return match;
+    return {
+      ...match,
+      ai: true,
+      aiId: aiP.id,
+      aiOwnerId: arenaMeta?.masterUid || currentUser?.uid,
+      aiArchetype: snapshots[aiP.id]?.aiArchetype || "fighter-plate",
+    };
+  };
+
   const buildGroupRoundMatches = (group, round, snapshots) => {
     const ids = group === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
     const schedule = roundRobinSchedule(ids);
     const pairs = schedule[round - 1] || [];
-    return pairs.map((pair, idx) => ({
+    return pairs.map((pair, idx) => withAiFlags({
       matchId: `G${group}_R${round}_M${idx}`,
       kind: "group",
       group,
@@ -4739,10 +4880,10 @@ export default function Arena() {
       status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
       logs:   ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [],
       isFFA:  false,
-    }));
+    }, snapshots));
   };
 
-  const buildFinalMatch = (winnerA, winnerB, snapshots) => ({
+  const buildFinalMatch = (winnerA, winnerB, snapshots) => withAiFlags({
     matchId: "FINAL_M0",
     kind: "final",
     group: null,
@@ -4750,7 +4891,7 @@ export default function Arena() {
     status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
     logs:   ["🏆 La Finale ha inizio!"], winner: null, participantsAwarded: [],
     isFFA:  false,
-  });
+  }, snapshots);
 
   const computeGroupStandings = (group, matches) => {
     const ids = group === "A" ? (arenaMeta.groupA || []) : (arenaMeta.groupB || []);
@@ -4901,31 +5042,51 @@ export default function Arena() {
 
   const startTournament = async () => {
     if ((arenaMeta.participants || []).length < 2) return alert("Minimo 2 partecipanti!");
-    const shuffled = [...arenaMeta.participants].sort(() => Math.random() - 0.5);
+
+    // ── Numero dispari → pesca un PG di Riserva del Master e inseriscilo ──────
+    // Il bot combatte pilotato dal motore IA (di proprietà del Master). Se non
+    // ci sono riserve configurate si procede come prima (qualcuno salta un turno).
+    let participants = [...arenaMeta.participants];
+    const baseSnaps = arenaMeta.characterSnapshots || {};
+    const injected = {}; // { [botId]: snapshot } da scrivere in characterSnapshots
+    if (participants.length % 2 === 1) {
+      const reserves = (arenaMeta.masterReserves || []).filter(Boolean);
+      if (reserves.length) {
+        const pick = reserves[Math.floor(Math.random() * reserves.length)];
+        const botId = `${AI_BOT_PREFIX}RESERVE_${Date.now()}`;
+        injected[botId] = pick;
+        participants.push(botId);
+      } else {
+        const go = window.confirm("Il numero di iscritti è DISPARI e non hai creato PG di Riserva: qualcuno salterà dei turni (bye). Vuoi procedere lo stesso?\n\n(Annulla = torna indietro e crea un PG di Riserva nel pannello Master.)");
+        if (!go) return;
+      }
+    }
+
+    const snapshots = { ...baseSnaps, ...injected };
+    const shuffled = [...participants].sort(() => Math.random() - 0.5);
     const half = Math.ceil(shuffled.length / 2);
     const groupA = shuffled.slice(0, half);
     const groupB = shuffled.slice(half);
-    const snapshots = arenaMeta.characterSnapshots || {};
     const existingFun = (arenaMeta.matches || []).filter(m => m.kind === "fun");
     // Generate round 1 group matches (need groupA/groupB temporarily applied to local ref)
     const scheduleA = roundRobinSchedule(groupA);
     const scheduleB = roundRobinSchedule(groupB);
     const r1Matches = [];
     (scheduleA[0] || []).forEach((pair, idx) => {
-      r1Matches.push({
+      r1Matches.push(withAiFlags({
         matchId: `GA_R1_M${idx}`, kind: "group", group: "A",
         players: pair.map(id => buildPlayerForMatch(id, snapshots)),
         status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
-      });
+      }, snapshots));
     });
     (scheduleB[0] || []).forEach((pair, idx) => {
-      r1Matches.push({
+      r1Matches.push(withAiFlags({
         matchId: `GB_R1_M${idx}`, kind: "group", group: "B",
         players: pair.map(id => buildPlayerForMatch(id, snapshots)),
         status: "initiative", turn: null, turnExpiry: new Date(Date.now() + ARENA_INITIATIVE_DURATION).toISOString(),
         logs: ["⚔️ Il match ha inizio!"], winner: null, participantsAwarded: [], isFFA: false,
-      });
+      }, snapshots));
     });
     // Edge case: a group with a single player has no matches in round 1; if both groups generated nothing,
     // jump straight to the final between the two lone players.
@@ -4933,9 +5094,15 @@ export default function Arena() {
     if (r1Matches.length === 0 && groupA.length === 1 && groupB.length === 1) {
       initialMatches = [...existingFun, buildFinalMatch(groupA[0], groupB[0], snapshots)];
     }
+    // Snapshot dei bot iniettati → characterSnapshots (per il fight e le schede).
+    const snapWrites = {};
+    Object.entries(injected).forEach(([botId, snap]) => { snapWrites[`characterSnapshots.${botId}`] = snap; });
     await updateDoc(doc(db, "arena_meta", "global"), {
       matches: initialMatches, phase: "combat", currentRound: 1, tournamentWinner: null,
       groupA, groupB,
+      participants,               // include l'eventuale bot di riserva iniettato
+      masterUid: currentUser.uid, // chi pilota i PG-bot durante il torneo
+      ...snapWrites,
     });
   };
 
@@ -9840,6 +10007,36 @@ export default function Arena() {
           </div>
 
 
+          {arenaMeta.phase === "registration" && (
+            <div className="reserve-panel">
+              <div className="reserve-panel-title">🎭 PG di Riserva <span>— bot inseriti quando gli iscritti sono dispari (ne entra 1 a caso)</span></div>
+              <div className="reserve-slots-grid">
+                {Array.from({ length: MASTER_RESERVE_SLOTS }, (_, i) => i).map(i => {
+                  const r = masterReserves[i];
+                  if (r) {
+                    return (
+                      <div key={i} className={`reserve-slot reserve-slot--filled reserve-slot--${i}`}>
+                        <div className="reserve-slot-idx">Riserva {i + 1}</div>
+                        <div className="reserve-slot-name">{r.name}</div>
+                        <div className="reserve-slot-meta">{r.class} · ❤ {r.rolledHp ?? r.stats?.maxHp} · 🛡 {r.stats?.ac}</div>
+                        <div className="reserve-slot-actions">
+                          <button className="reserve-slot-recreate" onClick={() => openReserveCreate(i)}>Ricrea</button>
+                          <button className="reserve-slot-del" title="Elimina" onClick={() => deleteReserve(i)}>🗑</button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button key={i} className={`reserve-slot reserve-slot--empty reserve-slot--${i}`} onClick={() => openReserveCreate(i)}>
+                      <span className="reserve-slot-plus">＋</span>
+                      <span className="reserve-slot-idx">Crea Riserva {i + 1}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="master-actions">
             {arenaMeta.phase === "registration" && !isRegistered && !isPending && (
               <button className="btn-master-join" onClick={() => { setMasterJoinSetup(v => !v); setMasterJoinName(""); setMasterJoinClass(""); }}>
@@ -10127,7 +10324,12 @@ export default function Arena() {
                   <div className="loadout-char-class">Scegli la tua classe</div>
                 </div>
               </div>
-              {savedArenaChars.some(Boolean) && (
+              {loadoutContext === "reserve" && (
+                <div className="reserve-create-banner">
+                  🎭 Stai creando un <strong>PG di Riserva</strong> (Slot {(reserveSlotTarget ?? 0) + 1}) — un bot che entrerà automaticamente quando gli iscritti sono in numero dispari.
+                </div>
+              )}
+              {loadoutContext !== "reserve" && savedArenaChars.some(Boolean) && (
                 <div className="saved-chars-block">
                   <div className="hp-roll-title">💾 I tuoi PG salvati</div>
                   <div className="saved-chars-grid">
@@ -10984,9 +11186,15 @@ export default function Arena() {
                   <button className="btn-cancel-loadout" onClick={cancelLoadout}>Annulla</button>
                   <button
                     className={`btn-join ${isReady ? "" : "btn-join--incomplete"}`}
-                    onClick={() => { if (isReady) confirmJoin(); else setLoadoutTab(firstIncompleteTab); }}
+                    onClick={() => {
+                      if (!isReady) { setLoadoutTab(firstIncompleteTab); return; }
+                      if (loadoutContext === "reserve") saveReserveToSlot();
+                      else confirmJoin();
+                    }}
                   >
-                    {footerBtnText}
+                    {loadoutContext === "reserve"
+                      ? (isReady ? `🎭 Salva Riserva (Slot ${(reserveSlotTarget ?? 0) + 1})` : footerBtnText)
+                      : footerBtnText}
                   </button>
                 </div>
               </div>

@@ -10,27 +10,35 @@
 //
 // Output (JSON): { recap: [{ sessionNumber, title, bullets: ["…", "…"] }] }
 
-const MODEL = "claude-haiku-4-5";
+// Opus + molti riassunti può superare i timeout brevi: Fluid Compute permette 300s.
+export const config = { maxDuration: 300 };
 
-const SYSTEM = `Sei l'archivista del Dungeon Master. Ricevi i riassunti delle sessioni passate di UN gruppo di gioco, in ordine cronologico. Il tuo compito è estrarne SOLO le informazioni che al DM servono per preparare la sessione successiva.
+const MODEL = process.env.CLAUDE_MODEL || "claude-opus-4-8";
 
-REGOLE
-- Per ogni sessione produci pochi bullet BREVISSIMI (max 8-12 parole ciascuno), da 1 a 4 per sessione.
-- Includi SOLO cose che pesano sulla continuità: PNG incontrati (con nome), luoghi raggiunti, oggetti/bottino chiave, patti/promesse, minacce e nemici, misteri aperti, cliffhanger, decisioni importanti del gruppo.
-- ESCLUDI atmosfera, prosa, dettagli irrilevanti, combattimenti di passaggio senza conseguenze.
-- Mantieni RIGOROSAMENTE l'ordine cronologico delle sessioni.
-- Se una sessione non ha nulla di rilevante, dai un solo bullet essenziale.
-- Nomi propri e termini di gioco vanno riportati esatti come nel testo.
-- Scrivi in ITALIANO, telegrafico, senza punteggiatura finale.
+const SYSTEM = `Sei l'archivista del Dungeon Master. Ricevi i riassunti delle sessioni passate di UN gruppo di gioco, in ordine cronologico. Il tuo compito è estrarne, per ogni sessione, i punti che al DM servono davvero per preparare e ricordare la trama in vista della sessione successiva.
+
+COSA SCRIVERE
+- Per ogni sessione, da 3 a 6 bullet. Ognuno è una frase COMPLETA e ARTICOLATA (indicativamente 15-30 parole): non un'etichetta telegrafica, ma un punto che si capisce da solo.
+- Ogni bullet deve dare CONTESTO e CONSEGUENZA, non solo il fatto nudo. Non "Incontrano Olwen", ma "Incontrano Olwen, mercante di reliquie a Tirrendale, che offre informazioni sul sigillo in cambio di un favore ancora da riscuotere". Spiega chi/cosa, perché conta e cosa lascia in sospeso.
+- Copri: PNG incontrati (nome, ruolo, rapporto col gruppo), luoghi raggiunti e cosa vi è successo, oggetti/bottino chiave e a chi servono, patti/promesse/debiti, minacce e nemici (con il loro obiettivo), misteri e domande aperte, cliffhanger e decisioni pesanti del gruppo.
+- Preferisci pochi bullet densi a molti frammenti. Collega i fatti tra loro quando è utile alla continuità (es. un oggetto che serve a sciogliere un mistero introdotto prima).
+
+COSA EVITARE
+- Niente prosa d'atmosfera, descrizioni sensoriali o riempitivi: resta concreto e utile al tavolo.
+- Niente meccaniche pure (tiri, PF, iniziativa) se non hanno conseguenze narrative.
+- Non inventare: se un dettaglio non è nel riassunto, non aggiungerlo.
+- Mantieni RIGOROSAMENTE l'ordine cronologico delle sessioni; nomi propri e termini di gioco esatti come nel testo.
+
+Scrivi in ITALIANO, in terza persona, con frasi scorrevoli e ben formate (punteggiatura inclusa).
 
 FORMATO DI OUTPUT (testo semplice, NIENTE JSON, niente backtick, niente altro testo):
 Per ogni sessione, una riga di intestazione che inizia con "## " seguita da numero, una barra "|" e il titolo, poi una riga per bullet che inizia con "- ".
-Esempio ESATTO della forma:
+Esempio ESATTO della forma (contenuto illustrativo):
 ## 12 | Il Ponte di Vethrik
-- Incontrano il mercante Olwen, alleato
-- Recuperano il Pendolo di Vethrik
+- Il gruppo stringe un'alleanza fragile con Olwen, mercante di reliquie di Tirrendale, che rivela l'esistenza del Pendolo ma pretende in cambio un favore ancora da definire.
+- Recuperano il Pendolo di Vethrik dalla cripta allagata: l'artefatto reagisce alla presenza di Caius, suggerendo un legame di sangue tutto da chiarire.
 ## 13 | La Torre Sommersa
-- Il patto con Olwen salta, ora ostile`;
+- Il patto con Olwen salta quando scoprono che vendeva le loro tracce ai Cacciatori del Sale: ora è un nemico attivo che conosce i loro piani.`;
 
 function buildUserMessage({ party, summaries }) {
   const blocks = (summaries || [])
@@ -91,7 +99,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4000,
+        max_tokens: 6000,
         system: SYSTEM,
         messages: [{ role: "user", content: buildUserMessage({ party, summaries }) }],
       }),
