@@ -2382,6 +2382,7 @@
 .fighter-status.is-poison  { color: #2a6b2a; background: rgba(110, 200, 120, 0.14); border-color: rgba(110, 200, 120, 0.45); }
 .fighter-status.is-bleed   { color: #8a1020; background: rgba(200, 30, 50, 0.14);  border-color: rgba(200, 30, 50, 0.45); }
 .fighter-status.is-fire    { color: #9a3a05; background: rgba(240, 120, 30, 0.16); border-color: rgba(240, 120, 30, 0.5); }
+.fighter-status.is-frost   { color: #0d5b78; background: rgba(60, 170, 220, 0.16); border-color: rgba(60, 170, 220, 0.5); }
 .fighter-status.is-debuff  { color: #4a4030; background: rgba(120, 110, 90, 0.18); border-color: rgba(120, 110, 90, 0.45); }
 .fighter-status.is-control { color: #552a2a; background: rgba(178, 58, 44, 0.14); border-color: rgba(178, 58, 44, 0.45); }
 .fighter-status.is-shield  { color: #7a5a1a; background: rgba(236, 212, 135, 0.14); border-color: rgba(236, 212, 135, 0.45); }
@@ -8518,6 +8519,7 @@
 .arena-combat-dialog .fighter-status.is-poison  { color: #9fd6a4; background: rgba(110, 200, 120, 0.22); border-color: rgba(110, 200, 120, 0.5); }
 .arena-combat-dialog .fighter-status.is-bleed   { color: #f6a6b0; background: rgba(200, 40, 60, 0.22);  border-color: rgba(200, 40, 60, 0.5); }
 .arena-combat-dialog .fighter-status.is-fire    { color: #f8c189; background: rgba(240, 120, 30, 0.22); border-color: rgba(240, 120, 30, 0.55); }
+.arena-combat-dialog .fighter-status.is-frost   { color: #9fe0f4; background: rgba(60, 170, 220, 0.22); border-color: rgba(60, 170, 220, 0.55); }
 .arena-combat-dialog .fighter-status.is-debuff  { color: #dad2bd; background: rgba(150, 140, 110, 0.22); border-color: rgba(150, 140, 110, 0.45); }
 .arena-combat-dialog .fighter-status.is-control { color: #ffb4a0; background: rgba(178, 58, 44, 0.22);  border-color: rgba(178, 58, 44, 0.5); }
 .arena-combat-dialog .fighter-status.is-shield  { color: #ffd98a; background: rgba(236, 212, 135, 0.2);   border-color: rgba(236, 212, 135, 0.5); }

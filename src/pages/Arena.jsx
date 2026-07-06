@@ -1561,7 +1561,7 @@ function clearDebuffs(p) {
     poisonDoT: false, poisonDoTTurns: 0, poisonDoTDice: null, poisonDoTSourceLabel: null, poisonDoTNoun: null, poisonDoTIcon: null,
     bleedDoT: false, bleedDoTTurns: 0, bleedDoTDice: null, bleedDoTSourceLabel: null, bleedDoTNoun: null, bleedDoTIcon: null,
     // Svantaggio / accecamento / disarmo / furtività-debuff
-    attackDisadvantageTurns: 0,
+    attackDisadvantageTurns: 0, attackDisadvantageLabel: null, attackDisadvantageIcon: null, attackDisadvantageCls: null,
     blindDebuff: false, eagleDebuffTurns: 0,
     weaponLockTurns: 0, weaponLockNames: null,
     stealthDisadvTurns: 0,
@@ -1572,6 +1572,12 @@ function clearDebuffs(p) {
     // Tiri salvezza in sospeso
     pendingConSave: null, pendingDexSave: null, pendingSaveDot: null,
   };
+}
+// Etichetta dedicata per il badge di svantaggio: così si distingue "🧊 Congelato",
+// "🙈 Cecità", "💫 Sbilanciato", "🪤 Triboli"… anche se il meccanismo (svantaggio
+// ai tiri per colpire) è identico. Fallback nel badge: "🌫 Svantaggio".
+function disadvTag(label, icon = "🌫", cls = "is-debuff") {
+  return { attackDisadvantageLabel: label, attackDisadvantageIcon: icon, attackDisadvantageCls: cls };
 }
 // Quanti debuff attivi ha il personaggio (per loggare se Ristorare ha pulito qualcosa).
 function countDebuffs(p) {
@@ -1713,7 +1719,10 @@ function elementalOnHitStatus(action, isSpell, defenderSnap, defMatchPlayer, dam
   }
   if (el === "freddo" && Math.random() < ELEM_FREEZE_CHANCE) {
     return {
-      patch: { attackDisadvantageTurns: Math.max(defMatchPlayer?.attackDisadvantageTurns ?? 0, 1) },
+      patch: {
+        attackDisadvantageTurns: Math.max(defMatchPlayer?.attackDisadvantageTurns ?? 0, 1),
+        ...disadvTag("Congelato", "🧊", "is-frost"),
+      },
       note: "🧊 Congelato — svantaggio al prossimo tiro per colpire!",
     };
   }
@@ -2241,7 +2250,13 @@ function getFighterStatuses(p) {
   if (p.entangled)                          push("entangled", "🕸", "Intrappolato", "is-control");
   if ((p.controlLostTurns ?? 0) > 0)        push("control", "🌀", `Controllo ${p.controlLostTurns}t`, "is-control", "Sotto controllo: salta il turno");
   if ((p.weaponLockTurns ?? 0) > 0)         push("wlock", "🔩", `Arma Bloccata ${p.weaponLockTurns}t`, "is-control");
-  if ((p.attackDisadvantageTurns ?? 0) > 0) push("disadv", "🌫", `Svantaggio ${p.attackDisadvantageTurns}t`, "is-debuff", "Svantaggio agli attacchi");
+  if ((p.attackDisadvantageTurns ?? 0) > 0) {
+    // Etichetta/icona dedicate: es. "🧊 Congelato" invece del generico "🌫 Svantaggio".
+    const dLabel = p.attackDisadvantageLabel || "Svantaggio";
+    const dIcon  = p.attackDisadvantageIcon  || "🌫";
+    const dCls   = p.attackDisadvantageCls   || "is-debuff";
+    push("disadv", dIcon, `${dLabel} ${p.attackDisadvantageTurns}t`, dCls, `${dLabel} — svantaggio ai tiri per colpire`);
+  }
   if (p.blindDebuff)                        push("blind", "🙈", "Accecato −3", "is-debuff");
 
   // ── Buff difensivi ──
@@ -5711,7 +5726,7 @@ export default function Arena() {
               hp: Math.min(tgtMaxHp, (p.hp ?? 0) + heal),
               absorbDamageNext: false,
               ...consumeInvisibility(p),
-              ...(aiStaggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) } : {}),
+              ...(aiStaggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1), ...disadvTag("Sbilanciato", "💫") } : {}),
               stealthDisadvTurns: Math.max(0, readStealthDisadvTurns(p) - 1),
             };
           }
@@ -6176,6 +6191,7 @@ export default function Arena() {
           if (p.id === targetId) return {
             ...p,
             attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, turns),
+            ...disadvTag("Triboli", "🪤"),
             bleedDoT: true,
             bleedDoTTurns: Math.max(p.bleedDoTTurns ?? 0, bleedTurns),
             bleedDoTDice: bleedDice,
@@ -6573,7 +6589,7 @@ export default function Arena() {
           // nextHitHalved: una volta consumato dal colpo che ha ricevuto il dimezzamento, lo togliamo.
           const golemConsumed = golemHalved ? { nextHitHalved: false } : {};
           // Monaco · Mano Aperta: svantaggio al prossimo attacco del bersaglio.
-          const staggerPatch = staggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) } : {};
+          const staggerPatch = staggerApplies ? { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1), ...disadvTag("Sbilanciato", "💫") } : {};
           if (p.absorbDamageNext && damage > 0) {
             const tgtSnap = (arenaMeta.characterSnapshots || {})[targetId] || {};
             const maxHp = tgtSnap.stats?.maxHp ?? p.maxHp ?? p.hp;
@@ -7330,6 +7346,7 @@ export default function Arena() {
           ...p,
           controlLostTurns: lostTurns,
           attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, disadvantageT),
+          ...disadvTag("Ammaliato", "💋"),
         };
         return p;
       });
@@ -7799,7 +7816,7 @@ export default function Arena() {
     const updatedMatches = arenaMeta.matches.map(m => {
       if (m.matchId !== matchId) return m;
       const updatedPlayers = m.players.map(p => {
-        if (p.id === targetId) return { ...p, attackDisadvantageTurns: turns };
+        if (p.id === targetId) return { ...p, attackDisadvantageTurns: turns, ...disadvTag(action.name || "Svantaggio", action.icon || "🌫") };
         if (p.id === currentUser.uid) {
           return { ...p, ...tickEagleEnd(p), ...spendSpellUse(p, mySnap, action) };
         }
@@ -8549,9 +8566,9 @@ export default function Arena() {
           const meta  = MALUS_TYPE_MAP[mt] || MALUS_TYPE_MAP.disadvantage;
           let patch = {};
           if (mt === "disadvantage") {
-            patch = { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, turns) };
+            patch = { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, turns), ...disadvTag("Svantaggio") };
           } else if (mt === "freeze") {
-            patch = { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1) };
+            patch = { attackDisadvantageTurns: Math.max(p.attackDisadvantageTurns ?? 0, 1), ...disadvTag("Congelato", "🧊", "is-frost") };
           } else if (mt === "bleed") {
             patch = { bleedDoT: true, bleedDoTTurns: Math.max(p.bleedDoTTurns ?? 0, turns), bleedDoTDice: dice, bleedDoTSourceLabel: "sanguinamento", bleedDoTNoun: "sanguinante", bleedDoTIcon: "🩸" };
           } else if (mt === "poison") {
