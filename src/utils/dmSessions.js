@@ -63,6 +63,44 @@ export async function loadSession(party, sessionNumber) {
 
 const stripHtml = (html) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
+// Riferimento del mondo condiviso: le città (geo_archive) e gli NPC (npcs) già
+// esistenti, in forma COMPATTA, così il generatore può riusarli invece di
+// inventarne di nuovi ed essere preciso ("nella città X c'è l'arcanista Y").
+// Non è specifico per party: sono dati di mondo. Ritorna { cities, npcs }.
+export async function loadWorldReference() {
+  const [citySnap, npcSnap] = await Promise.all([
+    getDocs(collection(db, "geo_archive")).catch(() => null),
+    getDocs(collection(db, "npcs")).catch(() => null),
+  ]);
+
+  const cities = citySnap
+    ? citySnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .map((c) => ({
+          name: c.name || "",
+          continent: c.continent || "",
+          desc: stripHtml(c.description).slice(0, 400),
+        }))
+        .filter((c) => c.name)
+        .sort((a, b) => a.name.localeCompare(b.name, "it"))
+    : [];
+
+  const npcs = npcSnap
+    ? npcSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .map((n) => ({
+          name: n.name || "",
+          faction: n.faction || "",
+          city: (n.linkedCity || n.location || "").trim(),
+          desc: stripHtml(n.description).slice(0, 240),
+        }))
+        .filter((n) => n.name)
+        .sort((a, b) => a.city.localeCompare(b.city, "it") || a.name.localeCompare(b.name, "it"))
+    : [];
+
+  return { cities, npcs };
+}
+
 // Contesto narrativo del party per la generazione (Input B):
 //  1) recap REALI dalla collezione esistente `summaries` (continuità dal giorno 1)
 //  2) summary delle sessioni già generate in `dm_sessions`

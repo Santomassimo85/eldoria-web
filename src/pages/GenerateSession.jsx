@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
-import { loadPartyContext, streamGenerateSession, saveSession, readPartyRecap } from "../utils/dmSessions";
+import { loadPartyContext, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference } from "../utils/dmSessions";
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
 
@@ -94,8 +94,11 @@ export default function GenerateSession() {
     try {
       // Template grafico [A] — caricato solo qui (chunk separato).
       const templateHtml = (await import("../../reference_sessions/sessione_20.html?raw")).default;
-      // Contesto narrativo [B].
-      const ctx = await loadPartyContext(party.id);
+      // Contesto narrativo [B] + riferimento mondo [C] (città + NPC esistenti).
+      const [ctx, world] = await Promise.all([
+        loadPartyContext(party.id),
+        loadWorldReference(),
+      ]);
 
       setStatus("✍️ Genero la sessione (streaming)…");
       const payload = {
@@ -116,6 +119,9 @@ export default function GenerateSession() {
         resumeThreads: (recap?.topics || [])
           .filter((t) => selectedTopics.includes(t.label))
           .map((t) => ({ label: t.label, note: t.note })),
+        // [C] Mondo esistente: città (Geo) + NPC per riuso e precisione.
+        worldCities: world.cities,
+        worldNpcs: world.npcs,
       };
 
       const result = await streamGenerateSession(payload, (_chunk, full) => setProgress(full.length));

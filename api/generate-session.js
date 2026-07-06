@@ -53,6 +53,13 @@ Riceverai il contesto narrativo del party: i riassunti delle sessioni passate (o
 [FILI DA RIPRENDERE]
 Il DM può indicarti dei "fili" della campagna che vuole far tornare in QUESTA sessione (es. "Il Corvo", "La Mummia"). Se presenti, DEVI intrecciarli nella trama in modo naturale e sensato — non forzato, non tutti in blocco: falli riemergere con tempismo (un ricomparire, una rivelazione, una conseguenza) coerente con dove si trovano i personaggi e con la loro storia passata. Ogni filo indicato deve avere un momento riconoscibile nella sessione.
 
+[MONDO ESISTENTE — INPUT C]
+Riceverai l'elenco delle CITTÀ/LUOGHI e degli NPC che già esistono nel mondo (archivio geografico + anagrafe). REGOLE:
+- RIUSA i luoghi e gli NPC esistenti ogni volta che è plausibile, invece di inventarne di nuovi. La coerenza col mondo già scritto viene prima dell'originalità.
+- Sii PRECISO: se ambienti una scena in una città presente nell'elenco, usa i suoi NPC reali (nome, ruolo, fazione) e i dettagli della sua descrizione. Es.: se in quella città vive un arcanista o un re già schedati, sono LORO a comparire, con i loro nomi esatti.
+- Puoi creare un nuovo luogo/NPC SOLO se la trama lo richiede davvero e nessuno di quelli esistenti è adatto; in tal caso rendilo coerente col mondo.
+- Non contraddire descrizioni, ruoli o fazioni degli elementi esistenti. Nomi esatti come nell'elenco.
+
 [STRUTTURA]
 Questa sessione deve avere: ${actsPlan}. Header con numero sessione in numeri romani, titolo, sottotitolo-citazione, riga data. meta-bar (Durata, Party, Luogo, Focus). nav-tabs: Panoramica + un tab per Atto + "Bottino & Indizi" + "Note DM". Timer con data-duration corretto per ogni atto. Combat con stat block concreti (CA, PF, attacchi +bonus, danni in dadi, TS/CD, tratti). Chiudi con una citazione delle "${closingChronicle}".
 
@@ -96,6 +103,28 @@ function buildUserMessage(b) {
     ? b.resumeThreads.map((t) => `• ${t.label}${t.note ? ` — ${t.note}` : ""}`).join("\n")
     : "";
 
+  const cities = Array.isArray(b.worldCities) && b.worldCities.length
+    ? b.worldCities.map((c) => `• ${c.name}${c.continent ? ` (${c.continent})` : ""}${c.desc ? `: ${c.desc}` : ""}`).join("\n")
+    : "(nessuna città in archivio)";
+
+  // NPC raggruppati per città per rendere evidenti i legami luogo→personaggi.
+  const npcList = Array.isArray(b.worldNpcs) ? b.worldNpcs : [];
+  const npcByCity = npcList.reduce((acc, n) => {
+    const key = n.city || "Erranti / senza sede";
+    (acc[key] = acc[key] || []).push(n);
+    return acc;
+  }, {});
+  const npcs = Object.keys(npcByCity).length
+    ? Object.keys(npcByCity)
+        .map((city) => {
+          const rows = npcByCity[city]
+            .map((n) => `   - ${n.name}${n.faction ? ` [${n.faction}]` : ""}${n.desc ? `: ${n.desc}` : ""}`)
+            .join("\n");
+          return `📍 ${city}:\n${rows}`;
+        })
+        .join("\n")
+    : "(nessun NPC in anagrafe)";
+
   return `RICHIESTA DEL DM per la Sessione ${roman} (numero ${b.sessionNumber}) del party ${b.party}.
 
 Mondo: ${b.world}
@@ -123,6 +152,13 @@ ${past}
 
 [INPUT B-b] HTML DELL'ULTIMA SESSIONE (contesto dettagliato "dove sono ora"):
 ${lastHtml}
+
+========================================
+[INPUT C-1] CITTÀ E LUOGHI ESISTENTI (riusali, non inventarne di nuovi se puoi):
+${cities}
+
+[INPUT C-2] NPC ESISTENTI, per città (usa i loro nomi e ruoli esatti quando ambienti lì):
+${npcs}
 
 ========================================
 Genera ora la Sessione ${roman} nel formato richiesto (---HTML--- poi ---SUMMARY---).`;
