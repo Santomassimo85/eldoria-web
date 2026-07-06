@@ -189,7 +189,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 12000,
+        max_tokens: 16000,
         stream: true,
         system,
         messages: [{ role: "user", content: userMsg }],
@@ -201,13 +201,15 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: `Upstream ${upstream.status}: ${errTxt.slice(0, 300)}` });
     }
 
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("X-Accel-Buffering", "no");
-
+    // Leggiamo in STREAMING da Anthropic (la connessione resta viva durante la
+    // generazione lunga), ma verso il client accumuliamo e rispondiamo UNA
+    // volta sola in JSON: lo streaming Node→browser su Vercel viene reciso dopo
+    // pochi KB ("network error"). Stesso schema degli altri endpoint che vanno.
     const reader = upstream.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
+    let full = "";
+    let streamErr = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -223,17 +225,18 @@ export default async function handler(req, res) {
         try {
           const ev = JSON.parse(data);
           if (ev.type === "content_block_delta" && ev.delta?.text) {
-            res.write(ev.delta.text);
+            full += ev.delta.text;
           } else if (ev.type === "error") {
-            res.write(`\n[[STREAM_ERROR]] ${ev.error?.message || "errore"}`);
+            streamErr = ev.error?.message || "errore di streaming upstream";
           }
         } catch { /* riga SSE non-JSON: ignora */ }
       }
     }
-    res.end();
+
+    if (!full) return res.status(502).json({ error: streamErr || "Nessun contenuto generato." });
+    return res.status(200).json({ text: full, ...(streamErr ? { warning: streamErr } : {}) });
   } catch (e) {
-    // Se non abbiamo ancora scritto l'header di stream, rispondi JSON.
     if (!res.headersSent) return res.status(500).json({ error: "Generazione fallita: " + e.message });
-    try { res.write(`\n[[STREAM_ERROR]] ${e.message}`); res.end(); } catch { /* noop */ }
+    try { res.end(); } catch { /* noop */ }
   }
 }

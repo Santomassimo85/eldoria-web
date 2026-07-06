@@ -100,7 +100,7 @@ export default function GenerateSession() {
         loadWorldReference(),
       ]);
 
-      setStatus("✍️ Genero la sessione (streaming)…");
+      setStatus("✍️ Genero la sessione… può richiedere 1–3 minuti, attendi senza ricaricare.");
       const payload = {
         party: party.id,
         world: party.world,

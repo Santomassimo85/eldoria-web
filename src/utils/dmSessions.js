@@ -198,31 +198,21 @@ export function parseGenerated(text) {
   return { html, summary };
 }
 
-// Chiama /api/generate-session in streaming. onChunk(chunkText, fullText) per
-// l'avanzamento live. Ritorna { html, summary }.
+// Chiama /api/generate-session. L'endpoint accumula tutto lato server (lo
+// streaming Node→browser su Vercel viene reciso dopo pochi KB) e risponde con
+// un JSON unico { text }. onChunk(fullText, fullText) è chiamato una volta a
+// fine generazione, per aggiornare il contatore. Ritorna { html, summary }.
 export async function streamGenerateSession(payload, onChunk) {
   const resp = await fetch("/api/generate-session", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!resp.ok || !resp.body) {
-    let msg = `HTTP ${resp.status}`;
-    try { const j = await resp.json(); if (j.error) msg = j.error; } catch { /* noop */ }
-    throw new Error(msg);
-  }
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let full = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    full += chunk;
-    if (onChunk) onChunk(chunk, full);
-  }
-  const errIdx = full.indexOf("[[STREAM_ERROR]]");
-  if (errIdx >= 0) throw new Error(full.slice(errIdx + "[[STREAM_ERROR]]".length).trim() || "Errore di streaming");
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  const full = data.text || "";
+  if (!full) throw new Error("Nessun contenuto generato.");
+  if (onChunk) onChunk(full, full);
   return parseGenerated(full);
 }
 
