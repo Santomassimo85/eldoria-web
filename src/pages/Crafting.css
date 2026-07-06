@@ -938,3 +938,109 @@
   font-size: 1rem;
   letter-spacing: 0.06em;
 }
+
+/* ============================================================
+   RECAP LAMPO — il crafting in 3 mosse (linguaggio semplice)
+   ============================================================ */
+.cr-page .cr-recap-sec { margin-top: 26px; margin-bottom: 26px; }
+.cr-page .cr-recap {
+  background: rgba(255,250,235,.97);
+  border: 1px solid rgba(180,140,80,.45);
+  border-left: 5px solid var(--cine-accent);
+  border-radius: 16px; padding: 20px 22px;
+  box-shadow: 0 14px 34px -18px rgba(0,0,0,.5);
+}
+.cr-page .cr-recap-badge {
+  display: inline-block; margin-bottom: 12px; padding: 5px 14px; border-radius: 999px;
+  font-family: var(--font-title, "Cinzel"), serif; font-weight: 800;
+  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: #fffdf5;
+  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
+}
+.cr-page .cr-recap-lead { margin: 0 0 16px; max-width: 74ch; color: #3a2f1c; font-size: 1.02rem; line-height: 1.6; }
+.cr-page .cr-recap-lead strong { color: #8a3a1a; }
+.cr-page .cr-recap-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .cr-page .cr-recap-steps { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
+.cr-page .cr-recap-steps li {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px; border-radius: 12px;
+  background: #fbf3df; border: 1px solid rgba(180,140,80,.4);
+}
+@media (min-width: 720px) {
+  .cr-page .cr-recap-steps li:not(:last-child)::after {
+    content: "→"; position: absolute; right: -16px; top: 50%; transform: translateY(-50%);
+    font-size: 1.2rem; font-weight: 700; color: color-mix(in srgb, var(--cine-accent) 65%, transparent);
+  }
+}
+.cr-page .cr-recap-ic { font-size: 1.7rem; line-height: 1; flex: 0 0 auto; }
+.cr-page .cr-recap-txt { font-size: .92rem; line-height: 1.3; color: #3a2f1c; }
+.cr-page .cr-recap-txt b { display: block; color: #2d2418; font-family: var(--font-title, "Cinzel"), serif; font-weight: 800; }
+
+/* ============================================================
+   CHI TIRA / QUANDO / PERCHÉ (capitolo II)
+   ============================================================ */
+.cr-page .cr-whoroll { display: grid; gap: 12px; grid-template-columns: 1fr; margin: 0 0 20px; }
+@media (min-width: 640px) { .cr-page .cr-whoroll { grid-template-columns: repeat(3, 1fr); } }
+.cr-page .cr-whoroll-cell {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px 16px; border-radius: 12px;
+  background: rgba(255,250,235,.96); border: 1px solid rgba(180,140,80,.42);
+  border-top: 4px solid var(--cine-accent);
+}
+.cr-page .cr-whoroll-ic { font-size: 1.5rem; line-height: 1; }
+.cr-page .cr-whoroll-k { font-family: var(--font-title, "Cinzel"), serif; font-weight: 800; font-size: .96rem; color: #8a3a1a; }
+.cr-page .cr-whoroll-t { font-size: .9rem; line-height: 1.42; color: #3a2f1c; }
+
+/* voce ★ del sommario */
+.cr-page .cr-index-num--star { color: #b08820; }
+
+/* ============================================================
+   SPECCHIETTO — CRAFTING LIBERO (oggetti fuori tabella)
+   ============================================================ */
+.cr-page .cr-libero {
+  background: linear-gradient(135deg, rgba(255,250,235,.98), rgba(246,236,192,.96));
+  border: 1px solid rgba(180,140,80,.5);
+  border-left: 5px solid #b08820;
+  border-radius: 16px; padding: 22px 24px;
+  box-shadow: 0 14px 34px -18px rgba(0,0,0,.5);
+}
+.cr-page .cr-libero-badge {
+  display: inline-block; margin-bottom: 10px; padding: 5px 14px; border-radius: 999px;
+  font-family: var(--font-title, "Cinzel"), serif; font-weight: 800;
+  font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: #fffdf5;
+  background: linear-gradient(135deg, #b08820, #8a6410);
+}
+.cr-page .cr-libero-title {
+  margin: 0 0 10px; font-family: var(--font-title, "Cinzel"), serif; font-weight: 900;
+  font-size: clamp(1.3rem, 3.6vw, 1.85rem); color: #7a5310;
+}
+.cr-page .cr-libero-lead { margin: 0 0 18px; max-width: 78ch; color: #3a2f1c; font-size: 1rem; line-height: 1.6; }
+.cr-page .cr-libero-lead strong { color: #8a3a1a; }
+.cr-page .cr-libero-usi { display: grid; gap: 10px; grid-template-columns: 1fr; margin: 0 0 18px; }
+@media (min-width: 640px) { .cr-page .cr-libero-usi { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 980px) { .cr-page .cr-libero-usi { grid-template-columns: repeat(4, 1fr); } }
+.cr-page .cr-libero-uso {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: 11px;
+  background: rgba(255,255,255,.6); border: 1px solid rgba(180,140,80,.4);
+}
+.cr-page .cr-libero-uso span { font-size: 1.4rem; line-height: 1; flex: 0 0 auto; }
+.cr-page .cr-libero-uso p { margin: 0; font-size: .86rem; line-height: 1.32; color: #3a2f1c; }
+.cr-page .cr-libero-steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: lib; display: grid; gap: 8px; }
+.cr-page .cr-libero-steps li {
+  counter-increment: lib; display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 14px; border-radius: 10px;
+  background: rgba(255,255,255,.5); border: 1px solid rgba(180,140,80,.35);
+  font-size: .92rem; line-height: 1.42; color: #3a2f1c;
+}
+.cr-page .cr-libero-steps li::before {
+  content: counter(lib); flex: 0 0 auto;
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  font-weight: 900; font-size: .8rem; color: #fffdf5;
+  background: linear-gradient(135deg, #b08820, #8a6410);
+}
+.cr-page .cr-libero-foot {
+  margin: 0; padding: 12px 15px; border-radius: 10px;
+  background: color-mix(in srgb, #b08820 12%, #fff);
+  border: 1px dashed rgba(176,136,32,.5);
+  font-size: .9rem; font-style: italic; color: #6a4a10;
+}

@@ -26,6 +26,34 @@ const CARATTERISTICA_LABEL = {
   MAG: "Magica",
 };
 
+// ── Recap lampo: il crafting in 3 mosse, linguaggio semplice ────────────────
+const RECAP_STEPS = [
+  { ic: "🛠️", k: "Scegli", t: "cosa vuoi creare" },
+  { ic: "🎲", k: "Tira", t: "1d20 + i tuoi bonus" },
+  { ic: "✨", k: "Il totale", t: "decide la qualità" },
+];
+
+// ── Chi tira e perché ───────────────────────────────────────────────────────
+const CHI_TIRA = [
+  { ic: "🙋", k: "Chi tira", t: "Il giocatore che ha la professione — l'artigiano. Il DM non tira: dà il via e decide i dettagli." },
+  { ic: "⏰", k: "Quando", t: "Ogni volta che crea, ripara o migliora qualcosa. Un tiro per oggetto." },
+  { ic: "🎯", k: "Perché", t: "Il risultato del d20 decide la qualità di ciò che esce, da Scarso a Perfetto." },
+];
+
+// ── Crafting Libero: usi tipici + procedura ─────────────────────────────────
+const LIBERO_USI = [
+  { ic: "🆕", t: "Inventare un oggetto che non è nelle tabelle" },
+  { ic: "🔧", t: "Riparare un oggetto rotto (torna Comune/Raro)" },
+  { ic: "⬆️", t: "Migliorare o incantare la tua roba (sali di un grado)" },
+  { ic: "🎨", t: "Qualsiasi cosa sensata per la tua arte" },
+];
+const LIBERO_STEPS = [
+  "Descrivi cosa vuoi ottenere e parlane col DM.",
+  "Il DM fissa materiali, tempo e la qualità-obiettivo (il grado a cui punti).",
+  "Tiri come sempre: 1d20 + Mod Caratteristica + Bonus Strumenti.",
+  "Il risultato decide com'è venuto, da Scarso a Perfetto — come per gli oggetti in tabella.",
+];
+
 export default function Crafting() {
   useParallaxScroll();
   const [filter, setFilter] = useState("all");
@@ -68,12 +96,33 @@ export default function Crafting() {
         <ol className="cr-index-list">
           <li><a href="#cr-pregiature"><span className="cr-index-num">I</span> Le Cinque Pregiature</a></li>
           <li><a href="#cr-tiro"><span className="cr-index-num">II</span> Il Tiro di Pregiatura</a></li>
+          <li><a href="#cr-libero"><span className="cr-index-num cr-index-num--star">★</span> Crafting Libero</a></li>
           <li><a href="#cr-materiali"><span className="cr-index-num">III</span> Materiali, Tempo, Costi</a></li>
           <li><a href="#cr-sentiero"><span className="cr-index-num">IV</span> Il Sentiero del Maestro</a></li>
           <li><a href="#cr-professioni"><span className="cr-index-num">V</span> Le 10 Professioni</a></li>
           <li><a href="#cr-esempi"><span className="cr-index-num">VI</span> Esempi di Gioco</a></li>
         </ol>
       </nav>
+
+      {/* ── RECAP LAMPO — il crafting in 3 mosse ── */}
+      <section className="cr-section cr-recap-sec">
+        <div className="cr-recap">
+          <span className="cr-recap-badge">⚡ In due parole</span>
+          <p className="cr-recap-lead">
+            Creare un oggetto è <strong>un tiro solo</strong>: scegli cosa fare, tiri <strong>1d20</strong> e
+            sommi i tuoi bonus. Più alto è il totale, più l'oggetto è pregiato — da <strong>Scarso</strong> a
+            <strong> Perfetto</strong>. Tira il giocatore; il DM dà il via e decide i dettagli.
+          </p>
+          <ol className="cr-recap-steps">
+            {RECAP_STEPS.map((r, i) => (
+              <li key={i}>
+                <span className="cr-recap-ic" aria-hidden="true">{r.ic}</span>
+                <span className="cr-recap-txt"><b>{r.k}</b> {r.t}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
 
       {/* ── PREGIATURE LADDER ───────────────────────────── */}
       <section id="cr-pregiature" className="cr-section" data-chapter="I">
@@ -98,6 +147,18 @@ export default function Crafting() {
       {/* ── FORMULA + CARATTERISTICHE ───────────────────── */}
       <section id="cr-tiro" className="cr-section" data-chapter="II">
         <h2 className="cr-section-title">🎲 Il Tiro di Pregiatura</h2>
+        <p className="cr-section-sub">Un unico tiro decide la qualità di ciò che crei. Ecco chi lo fa e perché.</p>
+
+        <div className="cr-whoroll">
+          {CHI_TIRA.map((c, i) => (
+            <div key={i} className="cr-whoroll-cell">
+              <span className="cr-whoroll-ic" aria-hidden="true">{c.ic}</span>
+              <span className="cr-whoroll-k">{c.k}</span>
+              <span className="cr-whoroll-t">{c.t}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="cr-formula-box">
           <div className="cr-formula-eyebrow">FORMULA</div>
           <div className="cr-formula">
@@ -108,8 +169,9 @@ export default function Crafting() {
             <span className="cr-formula-piece">Bonus Strumenti</span>
           </div>
           <p className="cr-formula-note">
-            La caratteristica varia per professione. Il bonus di competenza si applica solo se il PG
-            è competente negli strumenti della professione.
+            La <strong>Caratteristica</strong> cambia con la professione (es. Fabbro = Forza, Alchimista =
+            Intelligenza). Il <strong>Bonus Strumenti</strong> (competenza) si aggiunge solo se il PG è
+            competente negli strumenti di quella professione.
           </p>
         </div>
 
@@ -133,6 +195,39 @@ export default function Crafting() {
               <span className="cr-modifier-eff">{m.effetto}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── SPECCHIETTO: CRAFTING LIBERO (oggetti fuori tabella) ── */}
+      <section id="cr-libero" className="cr-section">
+        <div className="cr-libero">
+          <span className="cr-libero-badge">✨ Regola d'oro</span>
+          <h2 className="cr-libero-title">Vuoi creare qualcosa che non è in tabella?</h2>
+          <p className="cr-libero-lead">
+            Le tabelle sono solo <strong>esempi</strong>. Se vuoi inventare un oggetto nuovo, riparare o
+            potenziare la tua roba, o fare qualsiasi cosa sensata per la tua professione,
+            <strong> puoi farlo</strong>. Non serve che sia scritto da qualche parte.
+          </p>
+
+          <div className="cr-libero-usi">
+            {LIBERO_USI.map((u, i) => (
+              <div key={i} className="cr-libero-uso">
+                <span aria-hidden="true">{u.ic}</span>
+                <p>{u.t}</p>
+              </div>
+            ))}
+          </div>
+
+          <ol className="cr-libero-steps">
+            {LIBERO_STEPS.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ol>
+
+          <p className="cr-libero-foot">
+            Regola d'oro: se è coerente con la tua arte, il DM può sempre dire «sì, tira». La qualità la
+            decidono i dadi, non l'elenco.
+          </p>
         </div>
       </section>
 
