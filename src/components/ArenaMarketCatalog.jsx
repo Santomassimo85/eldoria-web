@@ -69,7 +69,7 @@ const EMPTY_FORM = {
   spellClass: "wizard", spellName: "",
   charges: "1", castStat: "int", castStatMin: "0", slotCost: {}, // slotCost: { livello: quantità }
   // arma — danno multi-componente tipizzato (+ legacy dmgBonus per retro-compat edit)
-  hitBonus: "0", dmgBonus: "0", ranged: false,
+  hitBonus: "0", dmgBonus: "0", ranged: false, twoHanded: false,
   weaponComponents: [{ dice: "1d8", type: "tagliente" }],
   // armatura / oggetto — resistenze per tipo: { [tipo]: "resist"|"immune"|"vuln" }
   acFixed: "12",
@@ -113,7 +113,7 @@ export function marketItemSummary(it) {
       const comps = (Array.isArray(p.components) && p.components.length)
         ? p.components.map(c => `${c.dice} ${DAMAGE_TYPE_MAP[c.type]?.label || c.type}`).join(" + ")
         : `${p.dice} danni${+p.dmgBonus ? `+${p.dmgBonus}` : ""}`;
-      return `${comps}${+p.hitBonus ? ` · +${p.hitBonus} colpire` : ""} · ${p.ranged ? "distanza" : "mischia"}`;
+      return `${comps}${+p.hitBonus ? ` · +${p.hitBonus} colpire` : ""} · ${p.ranged ? "distanza" : "mischia"} · ${p.twoHanded ? "due mani" : "una mano"}`;
     }
     case "armor": {
       const r = resistSummary(p.resist);
@@ -263,6 +263,7 @@ export default function ArenaMarketCatalog() {
           components: comps,
           hitBonus: parseInt(form.hitBonus, 10) || 0,
           ranged: !!form.ranged,
+          twoHanded: !!form.twoHanded,
         };
       }
       case "armor":
@@ -347,6 +348,7 @@ export default function ArenaMarketCatalog() {
       hitBonus: String(p.hitBonus ?? 0),
       dmgBonus: String(p.dmgBonus ?? 0),
       ranged: !!p.ranged,
+      twoHanded: !!p.twoHanded,
       weaponComponents: (Array.isArray(p.components) && p.components.length)
         ? p.components.map(c => ({ dice: c.dice, type: c.type || "tagliente" }))
         : [{ dice: p.dice || "1d8", type: p.ranged ? "perforante" : "tagliente" }],
@@ -588,6 +590,14 @@ export default function ArenaMarketCatalog() {
                 <input type="checkbox" checked={form.ranged} onChange={set("ranged")} />
                 <span>Arma a distanza</span>
               </label>
+              <label className="am-cat-field am-cat-check">
+                <input type="checkbox" checked={form.twoHanded} onChange={set("twoHanded")} />
+                <span>Arma a due mani</span>
+              </label>
+              <p className="am-master-note am-cat-note am-cat-field--full">
+                <strong>Due mani</strong>: se è da <strong>mischia</strong> impegna entrambe le mani e <strong>disattiva lo scudo</strong>
+                (e sblocca il reroll dei dadi bassi del Paladino con Arma Grande). Le armi a distanza a due mani (archi/balestre) restano tali.
+              </p>
             </div>
           )}
 

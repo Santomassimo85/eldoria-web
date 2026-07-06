@@ -1263,7 +1263,7 @@ function resolveMarketGear(arenaWeekly, selectedIds) {
           hitBonus: 3 + (p.hitBonus || 0),
           damage: primary.dice,
           statKey: p.ranged ? "dex" : "str",
-          twoHanded: false, ranged: !!p.ranged,
+          twoHanded: !!p.twoHanded, ranged: !!p.ranged,
           damageType: primary.type,
           extraDamage: extra.map(c => ({ dice: c.dice, type: c.type })),
           info: `Bottega settimanale · ${compLabel}`,
