@@ -3737,14 +3737,15 @@ export default function Arena() {
       const winner = t.winnerId, runnerUp = t.runnerUpId;
       (t.participants || []).forEach(p => {
         if (!p?.uid) return;
+        if (p.uid.startsWith(AI_BOT_PREFIX)) return;   // i PG-bot di riserva non entrano in classifica
         if (p.uid === winner)        { bump(p.uid, p.name, 3); map[p.uid].wins++; }
         else if (p.uid === runnerUp) { bump(p.uid, p.name, 2); map[p.uid].seconds++; }
         else                         { bump(p.uid, p.name, 1); }
         map[p.uid].plays++;
       });
-      // Vincitore/2° non sempre presenti in participants (safety).
-      if (winner && !(t.participants || []).some(p => p.uid === winner)) { bump(winner, t.winnerName, 3); map[winner].wins++; map[winner].plays++; }
-      if (runnerUp && !(t.participants || []).some(p => p.uid === runnerUp)) { bump(runnerUp, t.runnerUpName, 2); map[runnerUp].seconds++; map[runnerUp].plays++; }
+      // Vincitore/2° non sempre presenti in participants (safety); mai i bot.
+      if (winner && !winner.startsWith(AI_BOT_PREFIX) && !(t.participants || []).some(p => p.uid === winner)) { bump(winner, t.winnerName, 3); map[winner].wins++; map[winner].plays++; }
+      if (runnerUp && !runnerUp.startsWith(AI_BOT_PREFIX) && !(t.participants || []).some(p => p.uid === runnerUp)) { bump(runnerUp, t.runnerUpName, 2); map[runnerUp].seconds++; map[runnerUp].plays++; }
     }
     return Object.values(map)
       .map(e => ({ ...e, name: e.name || profileLookup[e.uid]?.name || null }))
