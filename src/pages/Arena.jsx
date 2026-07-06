@@ -564,9 +564,11 @@ const WILD_SHAPES = {
     name: "Lupo", icon: "🐺",
     ac: 14,
     hpDice: { count: 3, sides: 12 },
+    // Zanne e artigli laceranti: ogni colpo del Lupo ha il 20% di causare
+    // sanguinamento (1d4/turno per 2 turni) — riusa il sistema `onHit`.
     actions: [
-      { name: "Artiglio", damage: "1d6"  , statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3 },
-      { name: "Morso",    damage: "1d6"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3 },
+      { name: "Artiglio", damage: "1d6"  , statKey: "str", type: "weapon", icon: "🐾", hitBonus: 3, onHit: [{ kind: "malus", malusType: "bleed", malusDice: "1d4", malusTurns: 2, chance: 20 }] },
+      { name: "Morso",    damage: "1d6"  , statKey: "str", type: "weapon", icon: "🦷", hitBonus: 3, onHit: [{ kind: "malus", malusType: "bleed", malusDice: "1d4", malusTurns: 2, chance: 20 }] },
     ],
   },
   bear: {
@@ -2208,6 +2210,8 @@ function getMaxActionsPerTurn(snap, matchPlayer) {
   if (subEff.bardExtraAttack && isBardClass(cls) && (snap.classLevels?.[getClassKey(snap.class)] ?? 3) >= 6) base = Math.max(base, 2);
   // Sottoclasse · Barbaro Berserker: Frenesia — +1 attacco per turno mentre è in Furia.
   if (subEff.rageExtraAttack && isBarbarianClass(cls) && (matchPlayer?.rageTurns ?? 0) > 0) base += 1;
+  // Druido · Forma di Orso: attacco multiplo naturale (morso + artiglio) → 2 attacchi.
+  if (matchPlayer?.wildShape === "bear") base = Math.max(base, 2);
   if (matchPlayer?.extraTurnActive) base += 1;
   if (matchPlayer?.actionSurgeActive) base += 1;
   return base;
@@ -9507,7 +9511,7 @@ export default function Arena() {
               <p><strong>Mago (Wizard)</strong> — Armi semplici, 1 arma, abito da mago (no armatura, no scudo). Slot magia ampi. <em>Skill:</em> Recupero Arcano (ripristina 2 slot lv1 + 1 slot lv2).</p>
               <p><strong>Stregone (Sorcerer)</strong> — Armi semplici, 1 arma, no armatura, no scudo. <strong>Slot in stile D&D:</strong> trucchetti <strong>illimitati</strong>; <strong>4 slot di Livello 1</strong> e <strong>4 slot di Livello 2</strong> condivisi fra tutte le spell di quel livello (4 lanci totali per livello, con qualunque combinazione). <em>Skill:</em> Stregoneria Innata (passiva: se il nemico tira ≤7 sul TS contro le tue spell, o se tiri 17+ naturale con uno spell-attack, i danni aumentano del 50%), Fonte di Magia (recupera 2 slot a scelta · 2 cariche).</p>
               <p><strong>Warlock</strong> — Armi semplici, 1 arma, armatura leggera, no scudo. <em>Skill:</em> Magical Cunning (salta turno → +1 carica a ogni slot, 2 cariche), Patto Demoniaco (sacrifica 1d4 HP → +1d12 alle spell per 3T).</p>
-              <p><strong>Druido (Druid)</strong> — Armi druido, 1 arma, armatura druidica + scudo di legno. Spell druido. <em>Skill:</em> Forma Selvaggia (Wild Shape, trasformazione con HP propri).</p>
+              <p><strong>Druido (Druid)</strong> — Armi druido, 1 arma, armatura druidica + scudo di legno. Spell druido. <em>Skill:</em> Forma Selvaggia (Wild Shape, trasformazione con HP propri). <strong>Orso</strong>: attacco multiplo naturale — <strong>2 attacchi</strong> a turno (morso + artiglio). <strong>Lupo</strong>: ogni colpo ha il <strong>20%</strong> di causare <strong>sanguinamento</strong> (1d4/turno per 2 turni).</p>
               <p><strong>Chierico (Cleric)</strong> — Armi cleric, 1 arma, armatura leggera/media + scudo. Slot magia (cura, buff, danni divini). <em>Spell chiave:</em> Scudo della Fede (+2 a TUTTI i TS per 2T), Aiuto (+1 al danno per 2T).</p>
               <p><strong>Bardo (Bard)</strong> — Armi bardo, 1 arma, armatura leggera, no scudo. Spell bardo. <em>Skill:</em> Ispirazione Bardica (+1d6 al prossimo TPC alleato, cariche = CAR, bonus action).</p>
             </div>
