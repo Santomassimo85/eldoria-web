@@ -113,6 +113,35 @@
   padding: 0 clamp(16px, 4vw, 30px);
   scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
 }
+
+/* ---------- BANDE DI SEZIONE (sfondi diversi per separare le sezioni) ---------- */
+/* La banda va a tutta larghezza; il contenuto resta centrato dall'inner wrapper
+   (niente 100vw: così non compare mai lo scroll orizzontale su desktop/iOS). */
+.alm-page .alm-band {
+  max-width: none; margin: 0;
+  padding: clamp(34px, 5vw, 60px) clamp(16px, 4vw, 30px);
+  position: relative;
+}
+.alm-page .alm-band-inner { max-width: 1080px; margin: 0 auto; }
+
+/* Calendario → banda fredda (verde-salvia), richiama il pulsante teal dell'indice */
+.alm-page .alm-band--cal {
+  background:
+    radial-gradient(130% 80% at 50% 0%, rgba(79,154,138,.10), transparent 62%),
+    linear-gradient(180deg, #e9f1ec 0%, #dee9e1 100%);
+  border-bottom: 1px solid rgba(63,120,110,.30);
+}
+/* Le Vie del Mondo → banda calda (sabbia/ambra), richiama il pulsante ambra */
+.alm-page .alm-band--travel {
+  background:
+    radial-gradient(130% 80% at 50% 0%, rgba(200,140,50,.13), transparent 62%),
+    linear-gradient(180deg, #f6ecd3 0%, #efe0bd 100%);
+  border-top: 2px solid rgba(176,120,40,.38);
+}
+/* accento dell'occhiello coerente con la banda */
+.alm-page .alm-band--cal .alm-sec-eyebrow { color: #3f7f72; }
+.alm-page .alm-band--cal .alm-sec-eyebrow::before,
+.alm-page .alm-band--cal .alm-sec-eyebrow::after { background: rgba(63,120,110,.5); }
 .alm-page .alm-sec-head { text-align: center; margin-bottom: 26px; }
 .alm-page .alm-sec-eyebrow {
   display: inline-block; margin-bottom: 8px; padding: 0 16px; position: relative;

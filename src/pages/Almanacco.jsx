@@ -235,7 +235,8 @@ export default function Almanacco() {
       </section>
 
       {/* ════════ SEZIONE 1 — CALENDARIO ════════ */}
-      <section id="alm-calendario" className="alm-section" aria-label="Calendario di Exanthia">
+      <section id="alm-calendario" className="alm-section alm-band alm-band--cal" aria-label="Calendario di Exanthia">
+        <div className="alm-band-inner">
         <header className="alm-sec-head">
           <span className="alm-sec-eyebrow">Sezione I · Il Computo del Tempo</span>
           <h2 className="alm-sec-title">Il Calendario di Exanthia</h2>
@@ -291,10 +292,12 @@ export default function Almanacco() {
             })}
           </ol>
         </article>
+        </div>
       </section>
 
       {/* ════════ SEZIONE 2 — LE VIE DEL MONDO ════════ */}
-      <section id="alm-viaggio" className="alm-section" aria-label="Le Vie del Mondo">
+      <section id="alm-viaggio" className="alm-section alm-band alm-band--travel" aria-label="Le Vie del Mondo">
+        <div className="alm-band-inner">
         <header className="alm-sec-head">
           <span className="alm-sec-eyebrow">Sezione II · Sistema di Viaggio</span>
           <h2 className="alm-sec-title">🜂 Le Vie del Mondo</h2>
@@ -526,6 +529,7 @@ export default function Almanacco() {
             <li>Giocate la scena (zoom) o saltate (montaggio)</li>
             <li>Aggiornate progresso e provviste</li>
           </ol>
+        </div>
         </div>
       </section>
     </section>
