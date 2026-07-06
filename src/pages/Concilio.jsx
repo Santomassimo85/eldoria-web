@@ -63,8 +63,17 @@ const shortModel = (m) => String(m).replace(/^claude-/, "").replace(/-\d{8}$/, "
 const C_IN = "#3b6ea5";
 const C_OUT = "#c47d1f";
 
+// Componenti di spesa (cosa, esattamente, costa) — colori validati sul tema.
+const COMP_META = [
+  { key: "output",     label: "Output",         desc: "il testo che il modello scrive — la voce più cara (output ≈ 5× l'input)", c: C_OUT },
+  { key: "input",      label: "Input (nuovo)",  desc: "i token del prompt non ancora in cache", c: C_IN },
+  { key: "cacheWrite", label: "Scrittura cache", desc: "salvare il contesto per riusarlo (una tantum, ~1,25–2× l'input)", c: "#6a8f4f" },
+  { key: "cacheRead",  label: "Lettura cache",   desc: "contesto riletto dalla cache — ~10× più economico dell'input", c: "#9a86c4" },
+];
+
 function TesoreriaClaude() {
   const [state, setState] = useState({ status: "loading" });
+  const [win, setWin] = useState(7); // finestra attiva: 7 o 30 giorni
 
   useEffect(() => {
     let alive = true;
@@ -112,27 +121,60 @@ function TesoreriaClaude() {
   const { days, totals } = state.data;
   const today = new Date().toISOString().slice(0, 10);
   const dToday = days.find((d) => d.date === today);
-  const maxCost = Math.max(1, ...days.map((d) => d.costCents || 0));
-  const maxTok = Math.max(1, ...days.map((d) => (d.tokensIn || 0) + (d.tokensOut || 0)));
-  const models = Object.entries(totals.byModel || {})
+
+  // ── Finestra scelta (7 o 30 giorni): tutto è ricalcolato dai giorni ─────────
+  const wdays = days.slice(-win);
+  const winLabel = win === 7 ? "7 giorni" : "30 giorni";
+  const blankComp = () => ({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 });
+  const agg = wdays.reduce((a, d) => {
+    a.tokensIn += d.tokensIn || 0;
+    a.tokensOut += d.tokensOut || 0;
+    a.cacheRead += d.cacheRead || 0;
+    a.costCents += d.costCents || 0;
+    if (d.comp) for (const k of Object.keys(a.comp)) a.comp[k] += d.comp[k] || 0;
+    for (const [m, t] of Object.entries(d.models || {})) {
+      if (!a.byModel[m]) a.byModel[m] = { in: 0, out: 0, cacheRead: 0, cache5m: 0, cache1h: 0, estCents: 0 };
+      const x = a.byModel[m];
+      x.in += t.in || 0; x.out += t.out || 0; x.cacheRead += t.cacheRead || 0;
+      x.cache5m += t.cache5m || 0; x.cache1h += t.cache1h || 0; x.estCents += t.estCents || 0;
+    }
+    return a;
+  }, { tokensIn: 0, tokensOut: 0, cacheRead: 0, costCents: 0, comp: blankComp(), byModel: {} });
+
+  const maxCost = Math.max(1, ...wdays.map((d) => d.costCents || 0));
+  const maxTok = Math.max(1, ...wdays.map((d) => (d.tokensIn || 0) + (d.tokensOut || 0)));
+  const models = Object.entries(agg.byModel)
     .map(([m, t]) => ({ m, tok: t.in + t.out + t.cache5m + t.cache1h, ...t }))
     .sort((a, b) => b.estCents - a.estCents);
   const maxModelCents = Math.max(1, ...models.map((x) => x.estCents));
 
+  const compTotal = COMP_META.reduce((s, c) => s + (agg.comp[c.key] || 0), 0) || 1;
+  const pct = (v) => Math.round((v / compTotal) * 100);
+  const compRows = COMP_META
+    .map((c) => ({ ...c, cents: agg.comp[c.key] || 0 }))
+    .sort((a, b) => b.cents - a.cents);
+  const dateStep = win === 7 ? 1 : 5; // etichette asse: ogni giorno (7gg) o ogni 5 (30gg)
+
   return (
     <section className="conc-tes">
-      <h2>🪙 La Tesoreria</h2>
-      <p className="conc-tes-sub">Token e spesa delle chiamate API Claude — ultimi 30 giorni, dai registri ufficiali Anthropic (ritardo ~5 minuti).</p>
+      <div className="conc-tes-toprow">
+        <h2>🪙 La Tesoreria</h2>
+        <div className="conc-tes-winsel" role="tablist" aria-label="Periodo">
+          <button role="tab" aria-selected={win === 7}  className={win === 7 ? "on" : ""}  onClick={() => setWin(7)}>7 giorni</button>
+          <button role="tab" aria-selected={win === 30} className={win === 30 ? "on" : ""} onClick={() => setWin(30)}>30 giorni</button>
+        </div>
+      </div>
+      <p className="conc-tes-sub">Token e spesa delle chiamate API Claude — dai registri ufficiali Anthropic (ritardo ~5 minuti).</p>
 
-      {/* Contatori */}
+      {/* Contatori del periodo scelto + oggi */}
       <div className="conc-tes-tiles">
         <div className="conc-tes-tile">
-          <b>{fmtUsd(totals.costCents)}</b>
-          <span>spesa 30 giorni{totals.costEstimated ? " (stima)" : ""}</span>
+          <b>{fmtUsd(agg.costCents)}</b>
+          <span>spesa {winLabel}{totals.costEstimated ? " (stima)" : ""}</span>
         </div>
         <div className="conc-tes-tile">
-          <b>{fmtTok(totals.tokensIn + totals.tokensOut)}</b>
-          <span>token 30 giorni</span>
+          <b>{fmtTok(agg.tokensIn + agg.tokensOut)}</b>
+          <span>token {winLabel}</span>
         </div>
         <div className="conc-tes-tile">
           <b>{fmtUsd(dToday?.costCents)}</b>
@@ -144,18 +186,40 @@ function TesoreriaClaude() {
         </div>
       </div>
 
+      {/* COSA consuma i soldi: ripartizione per componente */}
+      <div className="conc-tes-comp">
+        <h3>Cosa consuma i soldi ({winLabel})</h3>
+        <div className="conc-tes-compbar" title="Ripartizione stimata della spesa">
+          {compRows.filter((c) => c.cents > 0).map((c) => (
+            <i key={c.key} style={{ width: `${pct(c.cents)}%`, background: c.c }}
+              title={`${c.label}: ${fmtUsd(c.cents)} (${pct(c.cents)}%)`} />
+          ))}
+        </div>
+        <ul className="conc-tes-complist">
+          {compRows.map((c) => (
+            <li key={c.key}>
+              <span className="conc-tes-compdot" style={{ background: c.c }} />
+              <span className="conc-tes-compname">{c.label}</span>
+              <span className="conc-tes-compdesc">{c.desc}</span>
+              <b>{fmtUsd(c.cents)}</b>
+              <span className="conc-tes-comppct">{pct(c.cents)}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="conc-tes-charts">
         {/* Spesa giornaliera */}
         <div className="conc-tes-chart">
           <h3>Spesa giornaliera (USD)</h3>
           <div className="conc-tes-bars">
-            {days.map((d, i) => (
+            {wdays.map((d, i) => (
               <div key={d.date} className="conc-tes-col"
                 title={`${d.date} — ${fmtUsd(d.costCents)}`}>
                 <div className="conc-tes-stack">
                   <i style={{ height: `${Math.round(((d.costCents || 0) / maxCost) * 100)}%`, background: "var(--gold-deep)" }} />
                 </div>
-                <small>{i % 5 === 0 || i === days.length - 1 ? d.date.slice(8) : ""}</small>
+                <small>{i % dateStep === 0 || i === wdays.length - 1 ? d.date.slice(8) : ""}</small>
               </div>
             ))}
           </div>
@@ -169,19 +233,16 @@ function TesoreriaClaude() {
             <span><i style={{ background: C_OUT }} /> Output</span>
           </div>
           <div className="conc-tes-bars">
-            {days.map((d, i) => {
-              const tot = (d.tokensIn || 0) + (d.tokensOut || 0);
-              return (
-                <div key={d.date} className="conc-tes-col"
-                  title={`${d.date} — input ${fmtTok(d.tokensIn)} · output ${fmtTok(d.tokensOut)} · cache letta ${fmtTok(d.cacheRead)}`}>
-                  <div className="conc-tes-stack">
-                    <i style={{ height: `${Math.round(((d.tokensOut || 0) / maxTok) * 100)}%`, background: C_OUT }} />
-                    <i style={{ height: `${Math.round(((d.tokensIn || 0) / maxTok) * 100)}%`, background: C_IN }} />
-                  </div>
-                  <small>{i % 5 === 0 || i === days.length - 1 ? d.date.slice(8) : ""}</small>
+            {wdays.map((d, i) => (
+              <div key={d.date} className="conc-tes-col"
+                title={`${d.date} — input ${fmtTok(d.tokensIn)} · output ${fmtTok(d.tokensOut)} · cache letta ${fmtTok(d.cacheRead)}`}>
+                <div className="conc-tes-stack">
+                  <i style={{ height: `${Math.round(((d.tokensOut || 0) / maxTok) * 100)}%`, background: C_OUT }} />
+                  <i style={{ height: `${Math.round(((d.tokensIn || 0) / maxTok) * 100)}%`, background: C_IN }} />
                 </div>
-              );
-            })}
+                <small>{i % dateStep === 0 || i === wdays.length - 1 ? d.date.slice(8) : ""}</small>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -189,7 +250,7 @@ function TesoreriaClaude() {
       {/* Ripartizione per modello */}
       {models.length > 0 && (
         <div className="conc-tes-models">
-          <h3>Per modello (30 giorni)</h3>
+          <h3>Per modello ({winLabel})</h3>
           {models.map((x) => (
             <div key={x.m} className="conc-tes-model"
               title={`input ${fmtTok(x.in)} · output ${fmtTok(x.out)} · cache letta ${fmtTok(x.cacheRead)}`}>
@@ -201,7 +262,7 @@ function TesoreriaClaude() {
             </div>
           ))}
           <p className="conc-tes-note">
-            Il costo per modello è calcolato dal listino sui token consumati; il totale di spesa
+            La ripartizione per componente e per modello è stimata dal listino sui token consumati; il totale di spesa
             {totals.costEstimated ? " è anch'esso una stima (cost report non disponibile)." : " viene invece dal report di fatturazione Anthropic."}
           </p>
         </div>

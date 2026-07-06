@@ -38,15 +38,20 @@ function priceFor(model) {
   const m = String(model || "");
   return PRICING.find((p) => p.match.test(m)) || { in: 5, out: 25 };
 }
-function estimateCents(model, t) {
+// Spesa (in centesimi USD) suddivisa per COSA la genera, così la UI può dire
+// esattamente quanto pesano input, output e cache. La somma = estimateCents().
+function componentCents(model, t) {
   const p = priceFor(model);
-  const usd =
-    (t.in / 1e6) * p.in +
-    (t.out / 1e6) * p.out +
-    (t.cacheRead / 1e6) * p.in * 0.1 +
-    (t.cache5m / 1e6) * p.in * 1.25 +
-    (t.cache1h / 1e6) * p.in * 2;
-  return usd * 100;
+  return {
+    input:      (t.in / 1e6) * p.in * 100,
+    output:     (t.out / 1e6) * p.out * 100,
+    cacheWrite: ((t.cache5m / 1e6) * p.in * 1.25 + (t.cache1h / 1e6) * p.in * 2) * 100,
+    cacheRead:  (t.cacheRead / 1e6) * p.in * 0.1 * 100,
+  };
+}
+function estimateCents(model, t) {
+  const c = componentCents(model, t);
+  return c.input + c.output + c.cacheWrite + c.cacheRead;
 }
 
 // GET paginato su un endpoint del report (segue next_page).
@@ -125,26 +130,38 @@ export default async function handler(req, res) {
 
     // ── Aggregati ──────────────────────────────────────────────────────────
     const list = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-    const totals = { tokensIn: 0, tokensOut: 0, cacheRead: 0, costCents: 0, byModel: {} };
+    const totals = {
+      tokensIn: 0, tokensOut: 0, cacheRead: 0, costCents: 0, byModel: {},
+      byComponent: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+    };
     for (const d of list) {
       d.tokensIn = 0; d.tokensOut = 0; d.cacheRead = 0;
+      d.comp = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }; // spesa stimata per componente (centesimi)
       let estCents = 0;
       for (const [model, t] of Object.entries(d.models)) {
         d.tokensIn += t.in + t.cache5m + t.cache1h;
         d.tokensOut += t.out;
         d.cacheRead += t.cacheRead;
-        estCents += estimateCents(model, t);
+        const c = componentCents(model, t);
+        d.comp.input += c.input; d.comp.output += c.output;
+        d.comp.cacheWrite += c.cacheWrite; d.comp.cacheRead += c.cacheRead;
+        t.estCents = c.input + c.output + c.cacheWrite + c.cacheRead; // per-modello, per-giorno
+        estCents += t.estCents;
         if (!totals.byModel[model]) totals.byModel[model] = { ...blank(), estCents: 0 };
         const m = totals.byModel[model];
         m.in += t.in; m.out += t.out; m.cacheRead += t.cacheRead;
         m.cache5m += t.cache5m; m.cache1h += t.cache1h;
-        m.estCents += estimateCents(model, t);
+        m.estCents += t.estCents;
       }
       if (d.costCents == null) d.costCents = Math.round(estCents * 100) / 100;
       totals.tokensIn += d.tokensIn;
       totals.tokensOut += d.tokensOut;
       totals.cacheRead += d.cacheRead;
       totals.costCents += d.costCents;
+      totals.byComponent.input += d.comp.input;
+      totals.byComponent.output += d.comp.output;
+      totals.byComponent.cacheWrite += d.comp.cacheWrite;
+      totals.byComponent.cacheRead += d.comp.cacheRead;
     }
     totals.costEstimated = costEstimated;
 
