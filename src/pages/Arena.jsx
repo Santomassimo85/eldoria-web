@@ -3010,6 +3010,9 @@ function MasterCoinEditor() {
   );
 }
 
+// Numero di slot per i PG d'Arena salvati (build pronti da ripescare all'iscrizione).
+const SAVED_ARENA_SLOTS = 4;
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 export default function Arena() {
   const { currentUser } = useAuth();
@@ -3029,9 +3032,9 @@ export default function Arena() {
   // Loadout — "idle" | "class-select" | "stat-assign" | "rolling" | "selecting"
   const [loadoutPhase, setLoadoutPhase]     = useState("idle");
   const [charPreview, setCharPreview]       = useState(null);
-  // Personaggi d'Arena salvati dal giocatore (2 slot): build completo pronto da
+  // Personaggi d'Arena salvati dal giocatore (4 slot): build completo pronto da
   // ripescare all'iscrizione al torneo. Caricati dalla scheda in openLoadoutPicker.
-  const [savedArenaChars, setSavedArenaChars] = useState([null, null]);
+  const [savedArenaChars, setSavedArenaChars] = useState(() => Array(SAVED_ARENA_SLOTS).fill(null));
   const [pendingStats, setPendingStats]     = useState({ str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 });
   const [pendingWeapons, setPendingWeapons] = useState([]);
   const [pendingSpells, setPendingSpells]   = useState([]);
@@ -3896,7 +3899,7 @@ export default function Arena() {
     const d = charSnap.data();
     const ownedTitles = getCharTitles(d);
     // Slot dei PG salvati (max 2): mostrati nella scelta classe per un caricamento rapido.
-    setSavedArenaChars(Array.isArray(d.arenaSavedChars) ? [d.arenaSavedChars[0] ?? null, d.arenaSavedChars[1] ?? null] : [null, null]);
+    setSavedArenaChars(Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => (Array.isArray(d.arenaSavedChars) ? (d.arenaSavedChars[i] ?? null) : null)));
     // Pre-seleziono il titolo solo se ne possiede esattamente uno (zero attrito);
     // con più titoli la scelta resta esplicita.
     setPendingTitle(ownedTitles.length === 1 ? ownedTitles[0] : null);
@@ -3951,7 +3954,7 @@ export default function Arena() {
 
   const saveArenaCharToSlot = async (slot) => {
     if (!charPreview?.class || !charPreview?.rolledHp) { alert("Completa prima il personaggio (classe, caratteristiche e HP)."); return; }
-    const next = [savedArenaChars[0] ?? null, savedArenaChars[1] ?? null];
+    const next = Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => savedArenaChars[i] ?? null);
     if (next[slot] && !window.confirm(`Sovrascrivere lo slot ${slot + 1} (${next[slot].label})?`)) return;
     next[slot] = buildSavedCharPayload();
     try {
@@ -3964,7 +3967,7 @@ export default function Arena() {
   const deleteSavedArenaChar = async (slot) => {
     const sc = savedArenaChars[slot];
     if (!sc || !window.confirm(`Eliminare il PG salvato nello slot ${slot + 1} (${sc.label})?`)) return;
-    const next = [savedArenaChars[0] ?? null, savedArenaChars[1] ?? null];
+    const next = Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => savedArenaChars[i] ?? null);
     next[slot] = null;
     try {
       await updateDoc(doc(db, "characters", currentUser.uid), { arenaSavedChars: next });
@@ -10124,11 +10127,11 @@ export default function Arena() {
                   <div className="loadout-char-class">Scegli la tua classe</div>
                 </div>
               </div>
-              {(savedArenaChars[0] || savedArenaChars[1]) && (
+              {savedArenaChars.some(Boolean) && (
                 <div className="saved-chars-block">
                   <div className="hp-roll-title">💾 I tuoi PG salvati</div>
                   <div className="saved-chars-grid">
-                    {[0, 1].map(i => {
+                    {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => {
                       const sc = savedArenaChars[i];
                       if (!sc) return <div key={i} className="saved-char-card saved-char-empty">Slot {i + 1}<span>vuoto</span></div>;
                       return (
@@ -10968,12 +10971,11 @@ export default function Arena() {
                 {loadoutContext === "tournament" && !reloadoutMode && (
                   <div className="loadout-save-row">
                     <span className="loadout-save-label">💾 Salva questo PG (per i prossimi tornei):</span>
-                    <button type="button" className="btn-save-slot" onClick={() => saveArenaCharToSlot(0)}>
-                      Slot 1{savedArenaChars[0] ? " ✎" : ""}
-                    </button>
-                    <button type="button" className="btn-save-slot" onClick={() => saveArenaCharToSlot(1)}>
-                      Slot 2{savedArenaChars[1] ? " ✎" : ""}
-                    </button>
+                    {Array.from({ length: SAVED_ARENA_SLOTS }, (_, i) => i).map(i => (
+                      <button key={i} type="button" className="btn-save-slot" onClick={() => saveArenaCharToSlot(i)}>
+                        Slot {i + 1}{savedArenaChars[i] ? " ✎" : ""}
+                      </button>
+                    ))}
                   </div>
                 )}
 
