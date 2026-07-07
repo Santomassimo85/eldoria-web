@@ -54,6 +54,7 @@ import ArenaMarket from "./pages/ArenaMarket";
 import BossTactics from "./pages/tactics/BossTactics";
 import BattleMapEditor from "./pages/tactics/BattleMapEditor";
 import DmTools from "./pages/DmTools";
+import DmToolsHub from "./pages/DmToolsHub";
 import Assistente from "./pages/Assistente";
 import Concilio from "./pages/Concilio";
 // PET SYSTEM — temporarily disabled. Re-enable by uncommenting these
@@ -158,17 +159,14 @@ const FoundryItemNavLink = ({ closeMenu }) => {
   return <NavLink to="/dm-admin/foundry-item" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--red)", fontWeight: 700 })}>Oggetto → Foundry</NavLink>;
 };
 
-// --- Menu raggruppato "DM Tools" (master + co-master) ---
-const DmToolsDropdown = ({ closeMenu, openId, setOpenId }) => {
+// --- "DM Tools" (master + co-master): pagina rapida con Agenti + invii a Foundry ---
+const DmToolsNavButton = ({ closeMenu }) => {
   const { currentUser } = useAuth();
   if (!isDmUser(currentUser?.email)) return null;
   return (
-    <NavDropdown label="DM Tools" closeAll={closeMenu} id="dmtools" openId={openId} setOpenId={setOpenId}>
-      <NavLink to="/dm-admin/genera-npc">Genera NPC</NavLink>
-      <NavLink to="/dm-admin/strumenti">Strumenti DM</NavLink>
-      <NavLink to="/dm-admin/foundry-item">Oggetto → Foundry</NavLink>
-      <NavLink to="/dm-admin/foundry-npc">NPC → Foundry</NavLink>
-    </NavDropdown>
+    <NavLink to="/dm-tools" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? "#fff" : "var(--red)", fontWeight: 700 })}>
+      DM Tools
+    </NavLink>
   );
 };
 
@@ -189,10 +187,10 @@ const ConcilioNavLink = ({ closeMenu }) => {
   );
 };
 
-// --- Componente Link Admin Condizionale ---
+// --- Componente Link Admin Condizionale (master + co-master) ---
 const AdminNavLink = ({ closeMenu }) => {
   const { currentUser } = useAuth();
-  if (currentUser?.email === MASTER_EMAIL_UI) {
+  if (isDmUser(currentUser?.email)) {
     return (
       <NavLink
         to="/dm-admin"
@@ -629,10 +627,8 @@ export default function App() {
             <NavLink to="/world-boss-fight">World Fight</NavLink>
           </NavDropdown>
 
-          <DmToolsDropdown closeMenu={closeMenu} openId={openDd} setOpenId={setOpenDd} />
-          <ConcilioNavLink closeMenu={closeMenu} />
+          <DmToolsNavButton closeMenu={closeMenu} />
           <AdminNavLink closeMenu={closeMenu} />
-          <SummaryAdminNavLink closeMenu={closeMenu} />
         </nav>
       </header>
       )}
@@ -683,6 +679,7 @@ export default function App() {
           <Route path="/dm-admin/foundry-item" element={<FoundryItemForm />} />
           <Route path="/dm-admin/foundry-npc" element={<FoundryNpcForm />} />
           <Route path="/dm-admin" element={<AdminPanel />} />
+          <Route path="/dm-tools" element={<DmToolsHub />} />
           <Route path="/dm-admin/world-boss" element={<WorldBossAdmin />} />
           <Route path="/dm-admin/quests" element={<QuestAdmin />} />
           <Route path="/dm-admin/market" element={<MarketAdmin />} />

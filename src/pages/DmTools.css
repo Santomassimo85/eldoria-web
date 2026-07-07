@@ -32,25 +32,6 @@
   box-shadow: 0 3px 12px rgba(86, 64, 30, 0.18);
 }
 
-/* ---------- hub: launcher di tutti gli strumenti ---------- */
-.dmt-hub { margin: 6px 0 4px; }
-.dmt-hub-group { margin-bottom: 22px; }
-.dmt-hub-label {
-  margin: 0 0 12px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #8a6212;
-}
-/* riusa le tessere di admin.css (.adm-tiles/.adm-tile) già importate;
-   qui solo una griglia un filo più compatta dentro il generatore */
-.dmt-hub .adm-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-}
-
 /* ---------- form ---------- */
 .dmt-field { margin-top: 16px; }
 .dmt-row { display: flex; gap: 10px; }
