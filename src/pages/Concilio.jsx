@@ -15,7 +15,7 @@ import { db, functions } from "../firebase";
 import { AGENTS, KIND_META } from "../data/agentsRegistry";
 import "./Concilio.css";
 
-import { isDmUser } from "../utils/dmAccess";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 const LEVEL_META = {
   info:    { icon: "•",  c: "#6a5b41" },
@@ -273,7 +273,7 @@ function TesoreriaClaude() {
 
 export default function Concilio() {
   const { currentUser } = useAuth();
-  const isMaster = isDmUser(currentUser?.email);
+  const isMaster = currentUser?.email === MASTER_EMAIL;
 
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState(null);

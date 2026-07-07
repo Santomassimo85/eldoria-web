@@ -1,13 +1,14 @@
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
-import { isDmUser } from "../utils/dmAccess";
 import "./admin.css";
 
 export default function AdminPanel() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  if (!currentUser || !isDmUser(currentUser.email)) {
+  const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return (
       <section className="adm" style={{ "--cine-accent": "#8a261c", "--cine-accent-2": "#c0392b" }}>
         <div className="adm-masthead">
@@ -21,25 +22,14 @@ export default function AdminPanel() {
     );
   }
 
-  // Pannelli raggruppati per area, con icona — console del Master.
-  // Contiene TUTTO tranne gli Agenti (che vivono nella pagina "DM Tools").
+  // Pannelli raggruppati per area, con icona — nuova console del Master.
   const GROUPS = [
-    {
-      label: "Generazione & Foundry",
-      items: [
-        { icon: "🎲", label: "Genera Sessione",  desc: "Crea la prep di una sessione con l'AI (+ archivio), per party.", path: "/dm/generate-session" },
-        { icon: "🧙", label: "Genera NPC",       desc: "Crea un PNG con ritratto AI.",                        path: "/dm-admin/genera-npc" },
-        { icon: "⚔️", label: "Strumenti DM",     desc: "Genera incontri, bottino, città e cronache.",         path: "/dm-admin/strumenti" },
-        { icon: "🧝", label: "NPC → Foundry",    desc: "Prepara e invia gli NPC creati a Foundry.",           path: "/dm-admin/foundry-npc" },
-        { icon: "🎁", label: "Oggetto → Foundry",desc: "Invia un oggetto a Foundry.",                         path: "/dm-admin/foundry-item" },
-      ],
-    },
     {
       label: "Economia & Gilda",
       items: [
         { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",                 path: "/dm-admin/market" },
         { icon: "🐀", label: "Rat Reputation",   desc: "Gradi e lealtà dei player alla Gilda di Obia.",       path: "/dm-admin/reputation" },
-        { icon: "🪙", label: "Corone",           desc: "Saldo Corone dei personaggi.",                        path: "/dm-admin/platinum" },
+        { icon: "🪙", label: "Corone",   desc: "Saldo Corone dei personaggi.",                path: "/dm-admin/platinum" },
       ],
     },
     {
@@ -51,6 +41,8 @@ export default function AdminPanel() {
         { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni delle sessioni.",            path: "/dm-admin/videos" },
         { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
         { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",                   path: "/dm-admin/quests" },
+        { icon: "🧙", label: "NPC → Foundry",    desc: "Prepara e invia gli NPC creati a Foundry.",           path: "/dm-admin/foundry-npc" },
+        { icon: "🎁", label: "Oggetto → Foundry",desc: "Invia un oggetto a Foundry.",                         path: "/dm-admin/foundry-item" },
       ],
     },
     {
@@ -59,7 +51,6 @@ export default function AdminPanel() {
         { icon: "👹", label: "World Boss Fight", desc: "Crea boss, attivali e gestisci gli HP live.",         path: "/dm-admin/world-boss" },
         { icon: "🧝", label: "Sprite Personaggi",desc: "Sprite di PG e minion per il Boss Fight.",            path: "/dm-admin/player-sprites" },
         { icon: "🗺", label: "Editor Mappe",     desc: "Mappe tattiche: terreni, quote, ostacoli, spawn.",    path: "/dm-admin/battle-maps" },
-        { icon: "🐾", label: "Pet Points",       desc: "Punti e gestione dei compagni.",                      path: "/dm-admin/pet-points" },
       ],
     },
     {
