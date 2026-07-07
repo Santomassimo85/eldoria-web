@@ -4516,10 +4516,10 @@ body .arena-bet-fab:hover {
   display: flex;
   gap: 6px;
   padding: 12px 14px;
-  background: linear-gradient(180deg, rgba(28, 11, 11, 0.97), rgba(22, 9, 9, 0.9));
+  /* Sfondo OPACO (niente backdrop-filter): il blur su elementi sticky causa
+     freeze/jank dello scroll su Safari iOS. */
+  background: #1b0a0a;
   border-bottom: 1px solid rgba(236, 212, 135, 0.25);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -4597,10 +4597,9 @@ body .arena-bet-fab:hover {
   gap: 12px;
   margin: 0 !important;
   padding: 14px 20px;
-  background: linear-gradient(0deg, rgba(28, 11, 11, 0.98), rgba(22, 9, 9, 0.9));
+  /* Sfondo OPACO (niente backdrop-filter): evita il freeze dello scroll su iOS. */
+  background: #1b0a0a;
   border-top: 1px solid rgba(236, 212, 135, 0.25);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 .arena-page .loadout-actions--sticky .btn-cancel-loadout { flex: 0 0 auto; }
 .arena-page .loadout-actions--sticky .btn-join { flex: 1; }
@@ -6419,3 +6418,39 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(236,
 .arena-page .loadout-panel--reloadout .reloadout-banner-txt { color: #4a3620 !important; opacity: 1 !important; }
 .arena-page .loadout-panel--reloadout .reloadout-banner-lock { color: #4a3620 !important; background: rgba(0, 0, 0, 0.05) !important; border-color: rgba(198, 158, 70, 0.5) !important; }
 .arena-page .loadout-panel--reloadout .reloadout-banner-head .timer-countdown-text { color: #a8600c !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADOUT — leggibilita' delle card (nome/danno/proprieta') e mobile.
+   Le proprieta' di armi/armature (loadout-item-info/damage) non devono restare
+   sbiadite: la base le mette a opacity 0.5/0.6, qui le riportiamo piene (il colore
+   gia' fornisce il tono muto). Su smartphone: font piu' grandi + griglia a 2 col.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.arena-page .loadout-item-damage { opacity: 1 !important; }
+.arena-page .loadout-item-info   { opacity: 1 !important; }
+
+@media (max-width: 640px) {
+  /* 2 colonne larghe invece di ~3 strette: il testo ha spazio per leggersi */
+  .arena-page .loadout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+  .arena-page .loadout-item { padding: 11px 9px !important; gap: 4px !important; }
+  .arena-page .loadout-item-icon   { font-size: 1.4rem !important; }
+  .arena-page .loadout-item-name   { font-size: 0.84rem !important; line-height: 1.25 !important; }
+  .arena-page .loadout-item-damage { font-size: 0.75rem !important; opacity: 1 !important; }
+  .arena-page .loadout-item-info   { font-size: 0.72rem !important; opacity: 1 !important; font-style: normal !important; line-height: 1.35 !important; }
+  .arena-page .loadout-item-dmgtype { font-size: 0.64rem !important; padding: 1px 6px !important; }
+  .arena-page .loadout-section-title { font-size: 0.86rem !important; }
+  .arena-page .loadout-section-hint  { font-size: 0.8rem !important; line-height: 1.45 !important; }
+  /* Stepper quantita' oggetti: tocco piu' comodo */
+  .arena-page .item-counter-btn { min-width: 36px !important; min-height: 36px !important; font-size: 1.15rem !important; }
+  .arena-page .item-counter-val { font-size: 1.05rem !important; min-width: 24px; text-align: center; }
+  /* Etichette tab un filo piu' grandi */
+  .arena-page .loadout-tab-label { font-size: 0.62rem !important; }
+  .arena-page .loadout-tab-icon  { font-size: 1.25rem !important; }
+}
+
+/* Footer azioni loadout: su mobile la bottom-bar fissa (z alto) copriva il tasto
+   di conferma. Lo alziamo sopra la barra + safe-area iOS. */
+@media (max-width: 1300px) {
+  .arena-page .loadout-actions--sticky {
+    bottom: calc(var(--bottomnav-h, 64px) + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
