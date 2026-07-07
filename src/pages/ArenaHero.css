@@ -6279,3 +6279,143 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(236,
   font-size: 0.85rem;
   line-height: 1.4;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RI-EQUIPAGGIAMENTO — tema CHIARO e VIVACE (solo pannello reloadout).
+   Scoped a .loadout-panel--reloadout: NON tocca il loadout d'iscrizione (scuro).
+   Ogni testo e' ricalibrato per leggersi su fondo chiaro (niente chiaro-su-chiaro).
+   Selettori con .loadout-panel--reloadout hanno specificita' maggiore: battono i !important.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.arena-page .loadout-panel--reloadout {
+  background: linear-gradient(160deg, #fff9ef 0%, #fdeecb 100%) !important;
+  border: 1px solid rgba(198, 158, 70, 0.55) !important;
+  border-top: 3px solid var(--arena-gold, #ecd487) !important;
+  color: #3a2416 !important;
+  box-shadow: 0 10px 34px rgba(60, 30, 10, 0.28) !important;
+}
+
+/* Header personaggio: fascia calda chiara */
+.arena-page .loadout-panel--reloadout .loadout-char-preview--top {
+  background: linear-gradient(180deg, #fff3d6, #ffe7b4) !important;
+  border-bottom: 1px solid rgba(198, 158, 70, 0.5) !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-char-name  { color: #8a1f1f !important; }
+.arena-page .loadout-panel--reloadout .loadout-char-class { color: #9a5a12 !important; opacity: 1 !important; }
+.arena-page .loadout-panel--reloadout .loadout-char-stats { color: #5a4632 !important; }
+.arena-page .loadout-panel--reloadout .loadout-char-stats strong { color: #8a1f1f !important; }
+.arena-page .loadout-panel--reloadout .loadout-avatar { border-color: rgba(198, 158, 70, 0.7) !important; }
+
+/* Barra schede + schede */
+.arena-page .loadout-panel--reloadout .loadout-tabs {
+  background: linear-gradient(180deg, #fff3d6, #ffedc4) !important;
+  border-bottom: 1px solid rgba(198, 158, 70, 0.5) !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-tab {
+  background: #fffdf7 !important;
+  border: 1px solid rgba(198, 158, 70, 0.5) !important;
+  color: #6a4a1a !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-tab:hover { background: #fff4d8 !important; }
+.arena-page .loadout-panel--reloadout .loadout-tab-count  { color: #a8600c !important; }
+.arena-page .loadout-panel--reloadout .loadout-tab-status { color: rgba(90, 70, 40, 0.45) !important; }
+.arena-page .loadout-panel--reloadout .loadout-tab.done {
+  background: #e7f7ec !important;
+  border-color: rgba(46, 158, 99, 0.6) !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-tab.done .loadout-tab-status { color: #1f8a4a !important; }
+.arena-page .loadout-panel--reloadout .loadout-tab.active {
+  background: linear-gradient(135deg, #ffe08a, #f2c645) !important;
+  border-color: #d8a520 !important;
+  color: #5a3a08 !important;
+  box-shadow: 0 0 0 2px rgba(216, 165, 32, 0.4), 0 6px 16px rgba(120, 80, 10, 0.25) !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-tab.active .loadout-tab-label { color: #5a3a08 !important; }
+.arena-page .loadout-panel--reloadout .loadout-tab.active.done .loadout-tab-status { color: #1f8a4a !important; }
+
+/* Titoli e testi di sezione */
+.arena-page .loadout-panel--reloadout .loadout-section-title { color: #8a1f1f !important; border-bottom-color: rgba(198, 158, 70, 0.4) !important; }
+.arena-page .loadout-panel--reloadout .loadout-section-hint  { color: #4a6a3a !important; }
+.arena-page .loadout-panel--reloadout .loadout-section-hint strong { color: #2f8a45 !important; }
+.arena-page .loadout-panel--reloadout .loadout-optional { color: #7a6a4a !important; }
+
+/* Card opzione: fondo chiaro tinto + testo scuro leggibile */
+.arena-page .loadout-panel--reloadout .loadout-item { background: #fffaf0 !important; border: 1px solid rgba(198, 158, 70, 0.5) !important; color: #3a2416 !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.weapon { background: #fdeaea !important; border-color: rgba(192, 57, 43, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.spell  { background: #fbf1cf !important; border-color: rgba(201, 164, 73, 0.6) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.armor,
+.arena-page .loadout-panel--reloadout .loadout-item.item-slot { background: #f6edcf !important; border-color: rgba(201, 164, 73, 0.55) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item:hover:not(.disabled) { filter: brightness(0.97) !important; box-shadow: 0 4px 12px rgba(90, 50, 10, 0.16) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.weapon.selected { background: #fbd6d6 !important; border-color: #c0392b !important; box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.35) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.spell.selected  { background: #f6e5a4 !important; border-color: #c9a449 !important; box-shadow: 0 0 0 2px rgba(201, 164, 73, 0.4) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.armor.selected,
+.arena-page .loadout-panel--reloadout .loadout-item.item-slot.selected { background: #f0e0a0 !important; border-color: #c9a449 !important; box-shadow: 0 0 0 2px rgba(201, 164, 73, 0.45) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.weapon.optimal { border-color: #2f9e63 !important; box-shadow: 0 0 0 1.5px rgba(47, 158, 99, 0.35), 0 0 14px -3px rgba(47, 158, 99, 0.45) !important; }
+.arena-page .loadout-panel--reloadout .loadout-optimal-tag { color: #1f8a4a !important; text-shadow: none !important; }
+
+/* Testi dentro le card */
+.arena-page .loadout-panel--reloadout .loadout-item-name { color: #3a2416 !important; }
+.arena-page .loadout-panel--reloadout .loadout-item-damage,
+.arena-page .loadout-panel--reloadout .loadout-item-info,
+.arena-page .loadout-panel--reloadout .armor-dex-cap,
+.arena-page .loadout-panel--reloadout .armor-no-dex { color: #6a5640 !important; }
+.arena-page .loadout-panel--reloadout .loadout-item-dmgtype { color: #5a4632 !important; background: rgba(0, 0, 0, 0.05) !important; border-color: rgba(0, 0, 0, 0.25) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item-dmgtype.dt-contundente { color: #8a5a12 !important; border-color: rgba(138, 90, 18, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item-dmgtype.dt-tagliente   { color: #a52a2a !important; border-color: rgba(165, 42, 42, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .loadout-item-dmgtype.dt-perforante  { color: #9a3a1a !important; border-color: rgba(154, 58, 26, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .loadout-check { color: #1f8a4a !important; }
+.arena-page .loadout-panel--reloadout .spell-uses-tag { color: #a8600c !important; }
+.arena-page .loadout-panel--reloadout .armor-hit-penalty { color: #a52a2a !important; }
+.arena-page .loadout-panel--reloadout .spell-level-header,
+.arena-page .loadout-panel--reloadout .spell-level-count { color: #6a5640 !important; }
+.arena-page .loadout-panel--reloadout .spell-level-locked-note { color: #8a7a5a !important; }
+
+/* Scudo + stepper quantita' oggetti */
+.arena-page .loadout-panel--reloadout .loadout-shield-btn { background: #fffaf0 !important; border: 1px solid rgba(198, 158, 70, 0.55) !important; color: #4a3620 !important; }
+.arena-page .loadout-panel--reloadout .loadout-shield-btn.selected { background: #f0e0a0 !important; border-color: #c9a449 !important; color: #5a3a08 !important; }
+.arena-page .loadout-panel--reloadout .item-counter-val { color: #3a2416 !important; }
+.arena-page .loadout-panel--reloadout .item-counter-btn { background: #fff3d6 !important; border: 1px solid rgba(198, 158, 70, 0.6) !important; color: #6a4a1a !important; }
+
+/* Carte Bottega (viola) su fondo chiaro */
+.arena-page .loadout-panel--reloadout .loadout-item.market-pick {
+  background: linear-gradient(135deg, rgba(160, 74, 255, 0.12), rgba(120, 40, 210, 0.08)) !important;
+  border: 1.5px solid rgba(150, 80, 220, 0.7) !important;
+  box-shadow: 0 0 0 1px rgba(150, 80, 220, 0.25) !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-item.market-pick.selected {
+  background: linear-gradient(135deg, rgba(170, 90, 245, 0.24), rgba(130, 55, 220, 0.18)) !important;
+  border-color: #8a2fc0 !important;
+  box-shadow: 0 0 0 2px rgba(138, 47, 192, 0.5) !important;
+}
+.arena-page .loadout-panel--reloadout .loadout-item.market-pick .loadout-check { color: #7a2fb0 !important; }
+.arena-page .loadout-panel--reloadout .loadout-section-title.loadout-market-head { color: #7a2fb0 !important; border-top-color: rgba(138, 47, 192, 0.4) !important; }
+.arena-page .loadout-panel--reloadout .loadout-market-penalty { color: #5a3a08 !important; background: rgba(150, 80, 220, 0.10) !important; border-color: rgba(138, 47, 192, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .loadout-market-penalty strong { color: #8a1f1f !important; }
+
+/* Tab Titolo */
+.arena-page .loadout-panel--reloadout .loadout-title-hint { color: #6a5640 !important; }
+.arena-page .loadout-panel--reloadout .loadout-item.title-opt .title-bonus { color: #1f8a4a !important; }
+.arena-page .loadout-panel--reloadout .loadout-title-tag { background: rgba(201, 164, 73, 0.2) !important; border-color: rgba(201, 164, 73, 0.6) !important; color: #6a4a1a !important; }
+
+/* Blocco Abilita' Speciali */
+.arena-page .loadout-panel--reloadout .loadout-auto-block { background: #fff6e0 !important; border-color: rgba(198, 158, 70, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .loadout-auto-tag { background: rgba(201, 164, 73, 0.12) !important; border-color: rgba(201, 164, 73, 0.4) !important; }
+.arena-page .loadout-panel--reloadout .loadout-auto-name { color: #8a1f1f !important; }
+.arena-page .loadout-panel--reloadout .loadout-auto-dmg  { color: #a52a2a !important; }
+.arena-page .loadout-panel--reloadout .loadout-auto-info { color: #5a4632 !important; }
+
+/* Footer azioni */
+.arena-page .loadout-panel--reloadout .loadout-actions--sticky {
+  background: linear-gradient(0deg, #fff3d6, #ffedc4) !important;
+  border-top: 1px solid rgba(198, 158, 70, 0.5) !important;
+}
+
+/* Banner "Ri-equipaggiamento" su fondo chiaro */
+.arena-page .loadout-panel--reloadout .reloadout-banner {
+  background: linear-gradient(180deg, #fff2cf, #ffe6ac) !important;
+  border: 1px solid rgba(198, 158, 70, 0.6) !important;
+  box-shadow: inset 0 0 18px rgba(201, 164, 73, 0.12) !important;
+}
+.arena-page .loadout-panel--reloadout .reloadout-banner-tag { color: #8a5a08 !important; }
+.arena-page .loadout-panel--reloadout .reloadout-banner-txt { color: #4a3620 !important; opacity: 1 !important; }
+.arena-page .loadout-panel--reloadout .reloadout-banner-lock { color: #4a3620 !important; background: rgba(0, 0, 0, 0.05) !important; border-color: rgba(198, 158, 70, 0.5) !important; }
+.arena-page .loadout-panel--reloadout .reloadout-banner-head .timer-countdown-text { color: #a8600c !important; }

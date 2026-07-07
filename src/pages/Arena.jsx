@@ -10735,7 +10735,7 @@ export default function Arena() {
               : "Vai alla sezione mancante →";
 
             return (
-              <div className="loadout-panel loadout-panel--tabbed">
+              <div className={`loadout-panel loadout-panel--tabbed${reloadoutMode ? " loadout-panel--reloadout" : ""}`}>
                 {/* ── Banner RI-EQUIPAGGIAMENTO: chiarisce cosa è bloccato e cosa no ── */}
                 {reloadoutMode && (
                   <div className="reloadout-banner">
