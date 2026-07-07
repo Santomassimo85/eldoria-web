@@ -461,11 +461,12 @@ const IS_TWO_HANDED_MELEE = (w) => !!w && w.twoHanded && !WEAPON_IS_RANGED(w);
 //   • MELEE sotto tiro (nessuna arma a distanza): può CARICARE — attacca in mischia a
 //     SVANTAGGIO e chiude la distanza — oppure AVVICINARSI (chiude senza attaccare).
 //   • RANGED in mischia (l'avversario non ha armi a distanza): "TIRO IN ARRETRAMENTO"
-//     — il tiro fa danno E riapre la distanza, ma l'avversario tenuto in mischia
-//     sferra un COLPO D'OPPORTUNITÀ al tiratore (computeOpportunityAttack). È il prezzo
-//     del kiting: nessun tetto di cariche, il freno è il colpo subìto.
+//     — il tiro fa danno E riapre la distanza, ma è a SVANTAGGIO (spari indietreggiando)
+//     e consuma 1 carica di kiting. Le cariche sono limitate (ARENA_KITE_MAX per match,
+//     per-giocatore in p.kiteChargesUsed): esaurite, resti in mischia e spari normale.
 // Le armi a distanza e gli incantesimi colpiscono sempre normalmente. La distanza è
 // uno stato del MATCH (m.distanceClosed). Vedi _runAttack e aiTakeAction.
+const ARENA_KITE_MAX = 4;
 // Un giocatore "minaccia a distanza" se, tra le armi equipaggiate (o tra tutte se non
 // ne ha ancora equipaggiate), ne ha almeno una a distanza.
 const PLAYER_HAS_RANGED_WEAPON = (matchPlayer, snap) => {
@@ -474,29 +475,6 @@ const PLAYER_HAS_RANGED_WEAPON = (matchPlayer, snap) => {
   const pool = (eq && eq.length) ? weapons.filter(w => eq.includes(w.name)) : weapons;
   return pool.some(WEAPON_IS_RANGED);
 };
-
-// ── COLPO D'OPPORTUNITÀ ──────────────────────────────────────────────────────
-// Quando un tiratore ARRETRA (kiting: spara e riapre la distanza), l'avversario
-// tenuto in mischia gli sferra un colpo gratuito con la sua arma da mischia
-// principale. È il prezzo del kiting (sostituisce il vecchio tetto a 3 cariche):
-// un tiro d'attacco + un colpo subìto. Ritorna { dmg, hit, crit, roll, ac,
-// weaponName }; dmg 0 se l'avversario non ha un'arma da mischia o manca il colpo.
-function computeOpportunityAttack(meleeSnap, meleeMatchPlayer, kiterSnap, kiterMatchPlayer) {
-  const weapons = (meleeSnap?.selectedActions || []).filter(a => a.type === "weapon" && !WEAPON_IS_RANGED(a));
-  const eq = meleeMatchPlayer?.equippedWeaponNames;
-  const pool = (eq && eq.length) ? weapons.filter(w => eq.includes(w.name)) : weapons;
-  const wpn = pool[0] || weapons[0];
-  if (!wpn) return { dmg: 0, hit: false };
-  const statMod = meleeSnap?.stats?.[wpn.statKey] ?? 0;
-  const d20     = Math.floor(Math.random() * 20) + 1;
-  const crit    = d20 === 20;
-  const toHit   = d20 + (wpn.hitBonus || 0) + statMod;
-  const ac      = getEffectiveAc(kiterMatchPlayer, kiterSnap);
-  if (!crit && toHit < ac) return { dmg: 0, hit: false, roll: d20, ac, weaponName: wpn.name };
-  const rolled = rollDmg(wpn.damage).total;
-  const dmg = Math.max(1, Math.round((rolled + statMod) * (crit ? 2 : 1)));
-  return { dmg, hit: true, crit, roll: d20, ac, weaponName: wpn.name };
-}
 
 // ── Set armi per classe (derivati dagli array base) ───────────────────────────────
 const _sw = (n) => SIMPLE_WEAPONS.find(w => w.name === n);
@@ -6005,11 +5983,13 @@ export default function Arena() {
     const aiTgtHasRanged    = PLAYER_HAS_RANGED_WEAPON(tgtMatchPlayer, targetSnap);
     const aiFarNow          = !m.distanceClosed;
     const aiMeleeFarDisadv  = !aiWpnRanged && aiFarNow && aiTgtHasRanged;
+    // Tiro in arretramento IA (kiting): spara indietreggiando → svantaggio + 1 carica.
+    const aiWillKite        = aiWpnRanged && !aiFarNow && !aiTgtHasRanged && (aiPlayer.kiteChargesUsed ?? 0) < ARENA_KITE_MAX;
     const aiFS            = subclassFirstStrike(aiSnap, false, tgtMatchPlayer, targetSnap); // Ladro "assassino" / Monaco "ombra" (IA)
     const aiHasAdvantage  = readStealthAdvTurns(aiPlayer) > 0 || (aiPlayer.selfAdvTurns ?? 0) > 0 || aiFS.adv || heavyElemAttackAdv(chosen, targetSnap);
     // Barbaro Lv7 · Istinto Selvaggio: in Furia gli attacchi ignorano lo svantaggio (anche l'IA).
     const _aiRagingNoDisadv = isBarbarianClass(cls) && getSnapLevel(aiSnap) >= 7 && effRageTurns;
-    const aiHasDisadvantage = _aiRagingNoDisadv ? false : (readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv || subclassForesightDisadv(targetSnap, tgtMatchPlayer));
+    const aiHasDisadvantage = _aiRagingNoDisadv ? false : (readStealthDisadvTurns(tgtMatchPlayer) > 0 || aiEagleActive || (aiPlayer.attackDisadvantageTurns ?? 0) > 0 || aiMeleeFarDisadv || aiWillKite || subclassForesightDisadv(targetSnap, tgtMatchPlayer));
     let d20a = Math.floor(Math.random() * 20) + 1;
     if (d20a === 1 && isFighter) d20a = Math.floor(Math.random() * 20) + 1;
     let d20b = (aiHasAdvantage || aiHasDisadvantage) ? Math.floor(Math.random() * 20) + 1 : 0;
@@ -6092,18 +6072,14 @@ export default function Arena() {
     let aiDistancePatch = {};
     let aiKiteInc = false;
     let aiDistanceLog = null;
-    let aiOppAtk = { dmg: 0 };   // colpo d'opportunità subìto dall'IA quando arretra
     if (!aiWpnRanged && aiFarNow && aiTgtHasRanged) {
       aiDistancePatch = { distanceClosed: true };
       aiDistanceLog = `⚔️ ${aiSnap.name} carica, chiude la distanza e ingaggia ${target.name} in mischia.`;
-    } else if (aiWpnRanged && !aiFarNow && !aiTgtHasRanged) {
+    } else if (aiWillKite) {
       aiDistancePatch = { distanceClosed: false };
       aiKiteInc = true;
-      const _tgtSurvives = ((tgtMatchPlayer?.hp ?? 0) - damage) > 0;
-      if (_tgtSurvives) aiOppAtk = computeOpportunityAttack(targetSnap, tgtMatchPlayer, aiSnap, aiPlayer);
-      aiDistanceLog = aiOppAtk.dmg > 0
-        ? `🏹 ${aiSnap.name} spara e arretra — 🗡️ colpo d'opportunità di ${target.name}: ${aiOppAtk.dmg} danni.`
-        : `🏹 ${aiSnap.name} spara e arretra${_tgtSurvives ? `, ${target.name} manca il colpo d'opportunità.` : "."}`;
+      const _left = ARENA_KITE_MAX - (aiPlayer.kiteChargesUsed ?? 0) - 1;
+      aiDistanceLog = `🏹 ${aiSnap.name} spara indietreggiando e riapre la distanza da ${target.name} (${_left} ${_left === 1 ? "carica" : "cariche"} rimaste).`;
     }
 
     // Sottoclasse (Fase 2) · Ritorsione: se l'IA colpisce in MISCHIA un giocatore con una
@@ -6173,8 +6149,7 @@ export default function Arena() {
           // Use up aidBuff after the swing it powered.
           const consumedAid = effAidBonus ? { aidBuff: false } : {};
           const _aiMax = aiSnap?.stats?.maxHp ?? p.maxHp ?? (p.hp ?? 0);
-          const _aiSelfDmg = aiRetaliateDmg + (aiOppAtk.dmg || 0); // ritorsione + colpo d'opportunità (kiting)
-          const _aiBaseHp = _aiSelfDmg > 0 ? Math.max(0, (p.hp ?? 0) - _aiSelfDmg) : (p.hp ?? 0);
+          const _aiBaseHp = aiRetaliateDmg > 0 ? Math.max(0, (p.hp ?? 0) - aiRetaliateDmg) : (p.hp ?? 0);
           const _aiFinalHp = _aiOnHit.selfHeal > 0 ? Math.min(_aiMax, _aiBaseHp + _aiOnHit.selfHeal) : _aiBaseHp;
           return {
             ...p,
@@ -6186,7 +6161,7 @@ export default function Arena() {
             ...(aiKiteInc ? { kiteChargesUsed: (p.kiteChargesUsed ?? 0) + 1 } : {}),
             ...turnEndPatch,
             ..._aiOnHit.selfPatch,
-            ...((_aiSelfDmg > 0 || _aiOnHit.selfHeal > 0) ? { hp: _aiFinalHp } : {}),
+            ...((aiRetaliateDmg > 0 || _aiOnHit.selfHeal > 0) ? { hp: _aiFinalHp } : {}),
           };
         }
         return p;
@@ -6802,9 +6777,14 @@ export default function Arena() {
     const defHasRangedWpn    = PLAYER_HAS_RANGED_WEAPON(defMatchPlayer, defenderSnap);
     const isMeleeWeaponAtk   = action.type === "weapon" && !WEAPON_IS_RANGED(action);
     const meleeFarDisadv     = isMeleeWeaponAtk && !_currentMatch?.distanceClosed && defHasRangedWpn;
+    const _isRangedWpnAtk    = action.type === "weapon" && WEAPON_IS_RANGED(action);
+    // Tiro in arretramento (kiting): spari da vicino mentre indietreggi → SVANTAGGIO
+    // e consumi 1 carica (finché ne restano). Riapre la distanza (vedi blocco DISTANZA).
+    const _willKite          = _isRangedWpnAtk && !!_currentMatch?.distanceClosed && !defHasRangedWpn
+                                 && (attackerMatchPlayer?.kiteChargesUsed ?? 0) < ARENA_KITE_MAX;
     // Barbaro Lv7 · Istinto Selvaggio: in Furia i tuoi attacchi ignorano lo svantaggio.
     const _ragingNoDisadv = isBarbarianClass(attackerClassLower) && getSnapLevel(attackerSnap) >= 7 && (attackerMatchPlayer?.rageTurns ?? 0) > 0;
-    const hasDisadvantage    = _ragingNoDisadv ? false : (readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv || subclassForesightDisadv(defenderSnap, defMatchPlayer));
+    const hasDisadvantage    = _ragingNoDisadv ? false : (readStealthDisadvTurns(defMatchPlayer) > 0 || eagleActive || (attackerMatchPlayer?.attackDisadvantageTurns ?? 0) > 0 || casterShieldSpellDisadv || meleeFarDisadv || _willKite || subclassForesightDisadv(defenderSnap, defMatchPlayer));
     const isFighter = isFighterClass(attackerClassLower);
     // Variabili condivise col blocco di finalizzazione più sotto: l'attacco normale
     // (else) e la Raffica Letale a più frecce (if) le riempiono entrambi.
@@ -6868,7 +6848,7 @@ export default function Arena() {
     const d20      = hasAdvantage && !hasDisadvantage ? Math.max(d20a, d20b)
                    : hasDisadvantage && !hasAdvantage ? Math.min(d20a, d20b)
                    : d20a;
-    await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : meleeFarDisadv ? " — a SVANTAGGIO (chiudi la distanza)" : ""}` });
+    await showD20Roll(d20, { label: `${isSpellAction ? action.name : `Attacco · ${action.name}`}${casterShieldSpellDisadv ? " — a SVANTAGGIO (tuo scudo)" : meleeFarDisadv ? " — a SVANTAGGIO (chiudi la distanza)" : _willKite ? " — a SVANTAGGIO (spari arretrando)" : ""}` });
     const hitTotal = d20 + (action.hitBonus || 0) + statMod + armorPenalty + weaponBuff + aidBonus + inspirationBonus + magicDetectBonus + hunterMarkBonus + blindDebuffPenalty + titleHitBonus + jackOfAllTradesBonus + passiveHitBonus;
     const shieldLost       = defenderSnap?.hasShield && defMatchPlayer?.shieldSuppressed;
     const shieldSkillBonus = (defMatchPlayer?.shieldSkillTurns ?? 0) > 0 ? (defMatchPlayer?.shieldSkillBonus ?? 3) : 0;
@@ -6972,26 +6952,20 @@ export default function Arena() {
     };
     } // ── fine attacco normale (else di action.multiHit) ──
 
-    // ── DISTANZA: chiusura (melee) o kiting (ranged) dopo l'attacco ──
+    // ── DISTANZA: chiusura (melee, Carica) o kiting (ranged, Tiro in arretramento) ──
     const _wasClosed   = !!_currentMatch?.distanceClosed;
-    const _isRangedWpnAtk = action.type === "weapon" && WEAPON_IS_RANGED(action);
     let _distancePatch = {};   // patch a livello di match
-    let _kiteInc = false;      // conteggio informativo dei kiting dell'attaccante
+    let _kiteInc = false;      // consuma 1 carica di kiting sull'attaccante
     let _distanceLog = null;
-    let _oppAtk = { dmg: 0 };  // colpo d'opportunità subìto dall'attaccante (kiting)
     if (isMeleeWeaponAtk && !_wasClosed && defHasRangedWpn) {
       _distancePatch = { distanceClosed: true };
       _distanceLog = `⚔️ ${attName} carica, chiude la distanza e ingaggia ${defName} in mischia.`;
-    } else if (_isRangedWpnAtk && _wasClosed && !defHasRangedWpn) {
-      // Tiro in arretramento: spari e riapri la distanza; il difensore in mischia
-      // ti sferra un colpo d'opportunità (solo se sopravvive al tuo tiro).
+    } else if (_willKite) {
+      // Tiro in arretramento: il tiro (già a svantaggio) riapre la distanza e consuma 1 carica.
       _distancePatch = { distanceClosed: false };
       _kiteInc = true;
-      const _defSurvives = ((defMatchPlayer?.hp ?? 0) - damage) > 0;
-      if (_defSurvives) _oppAtk = computeOpportunityAttack(defenderSnap, defMatchPlayer, attackerSnap, attackerMatchPlayer);
-      _distanceLog = _oppAtk.dmg > 0
-        ? `🏹 ${attName} spara e arretra — 🗡️ colpo d'opportunità di ${defName}: ${_oppAtk.dmg} danni.`
-        : `🏹 ${attName} spara e arretra${_defSurvives ? `, ${defName} manca il colpo d'opportunità.` : "."}`;
+      const _left = ARENA_KITE_MAX - (attackerMatchPlayer?.kiteChargesUsed ?? 0) - 1;
+      _distanceLog = `🏹 ${attName} spara indietreggiando e riapre la distanza da ${defName} (${_left} ${_left === 1 ? "carica" : "cariche"} rimaste).`;
     }
 
     // Sottoclasse (Fase 2) · Ritorsione (Chierico Tempesta 2d8, Artefice Battaglia 1d4):
@@ -7062,8 +7036,6 @@ export default function Arena() {
           if (_kiteInc) up.kiteChargesUsed = (p.kiteChargesUsed ?? 0) + 1;
           // Ritorsione della sottoclasse difensiva (Ira della Tempesta / Difensore d'Acciaio).
           if (retaliateDmg > 0) up.hp = Math.max(0, (up.hp ?? p.hp) - retaliateDmg);
-          // Colpo d'opportunità del difensore quando arretri (kiting).
-          if (_oppAtk.dmg > 0) up.hp = Math.max(0, (up.hp ?? p.hp) - _oppAtk.dmg);
           return up;
         }
         return { ...p, ...consumeInvisibility(p) };
@@ -7160,7 +7132,7 @@ export default function Arena() {
 
   // NB: il "kiting" non è più un'azione a sé (Allontànati): è fuso nel tiro a
   // distanza quando sei in mischia (vedi _runAttack/aiTakeAction → "Tiro in
-  // arretramento"), col colpo d'opportunità come prezzo. Nessun tetto di cariche.
+  // arretramento"): il tiro è a svantaggio e consuma 1 carica (max ARENA_KITE_MAX).
 
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
   const handleShieldSkill = async (matchId, action) => {
@@ -12108,14 +12080,14 @@ export default function Arena() {
                             <span className="ministat" title="Livello">⭐ {fLvl}</span>
                           </div>
 
-                          {/* Tiratore: può sparare arretrando (riapre la distanza, subisce un colpo d'opportunità) */}
-                          {!isDead && m.status === "active" && PLAYER_HAS_RANGED_WEAPON(p, char) && (
+                          {/* Cariche di arretramento (kiting): sparare da vicino arretrando è a svantaggio e consuma 1 carica */}
+                          {!isDead && m.status === "active" && PLAYER_HAS_RANGED_WEAPON(p, char) && (ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)) > 0 && (
                             <div
                               className="fighter-kite"
-                              title="Tiratore: attaccando da vicino puoi sparare e arretrare (riapri la distanza; l'avversario ti dà un colpo d'opportunità)."
+                              title={`Tiratore: da vicino puoi sparare arretrando (tiro a svantaggio, riapre la distanza). Cariche di arretramento rimaste: ${ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}.`}
                               style={{ fontSize: "0.62rem", fontWeight: 700, color: "#ffd98a", marginTop: "0.15rem" }}
                             >
-                              🏹 Tiro in arretramento
+                              🏹 Arretramento ×{ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}
                             </div>
                           )}
 
@@ -12701,15 +12673,16 @@ export default function Arena() {
                         // mustClose: sei a distanza, l'avversario ti tiene sotto tiro (ha arma a
                         //   distanza) e tu no → puoi CARICARE (attacchi in mischia a svantaggio e
                         //   chiudi) oppure AVVICINARTI (chiudi senza attaccare, opzione sicura).
-                        // canKite: sei in mischia, hai un'arma a distanza e l'avversario no → i tuoi
-                        //   tiri diventano "in arretramento": fai danno e riapri la distanza, ma
-                        //   l'avversario ti dà un colpo d'opportunità.
+                        // canKite: sei in mischia, hai un'arma a distanza, l'avversario no e ti
+                        //   restano cariche → i tuoi tiri diventano "in arretramento": fai danno a
+                        //   SVANTAGGIO, riapri la distanza e consumi 1 carica (max ARENA_KITE_MAX).
                         const _oppSnap          = snapshots[chosenTargetId];
                         const _iThreatenRanged  = PLAYER_HAS_RANGED_WEAPON(myPlayer, mySnap);
                         const _oppThreatRanged  = PLAYER_HAS_RANGED_WEAPON(targetMatchPlayer, _oppSnap);
                         const _distFar          = !m.distanceClosed;
+                        const _kiteLeft         = ARENA_KITE_MAX - (myPlayer?.kiteChargesUsed ?? 0);
                         const mustClose         = _distFar && _oppThreatRanged && !_iThreatenRanged;
-                        const canKite           = !_distFar && _iThreatenRanged && !_oppThreatRanged;
+                        const canKite           = !_distFar && _iThreatenRanged && !_oppThreatRanged && _kiteLeft > 0;
                         const allSkillActions = currentActions.filter(a => (a.type === "skill" || a.type === "passive") && !(action => action.special === "deathblow" && targetHpPct > 20)(a));
                         // Il Ranger ha un compagno: le sue azioni (pet_*) vanno in una sotto-tab dedicata.
                         const isPetAction   = (a) => typeof a.special === "string" && a.special.startsWith("pet_");
@@ -13488,10 +13461,10 @@ export default function Arena() {
                             {dock === "attacchi" && rangedActions.length > 0 && (
                               <div className="action-group">
                                 <div className={`action-group-label ranged${canKite ? " kite" : ""}`}>
-                                  {canKite ? "🏹 Tiro in arretramento" : "🏹 Distanza"}
+                                  {canKite ? `🏹 Tiro in arretramento ×${_kiteLeft}` : "🏹 Distanza"}
                                 </div>
                                 {canKite && (
-                                  <div className="action-group-hint">Spari e riapri la distanza: l'avversario dovrà inseguirti a svantaggio, ma ti dà un colpo d'opportunità mentre arretri.</div>
+                                  <div className="action-group-hint">Spari a <strong>svantaggio</strong> e riapri la distanza (l'avversario dovrà inseguirti). Ti restano <strong>{_kiteLeft}</strong> {_kiteLeft === 1 ? "carica" : "cariche"} di arretramento.</div>
                                 )}
                                 <div className="action-buttons">{rangedActions.map(renderActionBtn)}</div>
                               </div>
