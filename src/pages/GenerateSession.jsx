@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { PARTIES, partyById, charactersOf } from "../data/parties";
-import { loadPartyContext, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference, ensureParties, loadSessions, deleteSession } from "../utils/dmSessions";
+import { loadPartyContext, streamGenerateSession, saveSession, readPartyRecap, loadWorldReference } from "../utils/dmSessions";
 import { withSessionRuntime, sessionCompleteness } from "../utils/sessionRuntime";
 import "./admin.css";
 
@@ -23,20 +23,9 @@ function toRoman(num) {
 export default function GenerateSession() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  // La stessa pagina serve sia /dm/generate-session (tab "nuova") sia
-  // /sessions/:party (tab "archivio"): l'archivio è una scheda, non una pagina a sé.
-  const { party: partyParam } = useParams();
-  const initialParty = partyById(partyParam || "AMEA")?.id || "AMEA";
 
-  const [tab, setTab] = useState(partyParam ? "archivio" : "nuova"); // "nuova" | "archivio"
-  const [partyId, setPartyId] = useState(initialParty);
+  const [partyId, setPartyId] = useState("AMEA");
   const party = partyById(partyId);
-
-  // ── Archivio sessioni generate (ex SessionsArchive) ──
-  const [sessions, setSessions] = useState([]);
-  const [archiveLoading, setArchiveLoading] = useState(false);
-  const [archiveError, setArchiveError] = useState("");
-  const [deletingId, setDeletingId] = useState(null);
 
   const [sessionNumber, setSessionNumber] = useState("");
   const [suggestedTitle, setSuggestedTitle] = useState("");
@@ -57,46 +46,6 @@ export default function GenerateSession() {
   const [selectedTopics, setSelectedTopics] = useState([]); // etichette dei fili da riprendere
 
   const chars = useMemo(() => charactersOf(partyId), [partyId]);
-
-  // Carica l'archivio quando la scheda "Archivio" è attiva o cambia party.
-  useEffect(() => {
-    if (tab !== "archivio" || !isDmUser(currentUser?.email) || !party) return;
-    let alive = true;
-    (async () => {
-      setArchiveLoading(true);
-      setArchiveError("");
-      try {
-        await ensureParties(); // seed idempotente della config party
-        const list = await loadSessions(party.id);
-        if (alive) setSessions(list);
-      } catch (e) {
-        if (alive) setArchiveError(e.message || String(e));
-      } finally {
-        if (alive) setArchiveLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [tab, partyId, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleDeleteSession = async (e, s) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (deletingId) return;
-    const ok = window.confirm(
-      `Eliminare definitivamente la Sessione #${s.sessionNumber}` +
-      `${s.title ? ` — "${s.title}"` : ""} di ${party.id}?`
-    );
-    if (!ok) return;
-    setDeletingId(s.id);
-    try {
-      await deleteSession(party.id, s.sessionNumber);
-      setSessions((prev) => prev.filter((x) => x.id !== s.id));
-    } catch (err) {
-      setArchiveError(err.message || String(err));
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   const pickParty = (id) => {
     setPartyId(id);
@@ -214,37 +163,23 @@ export default function GenerateSession() {
     return <p style={{ textAlign: "center", paddingTop: 100 }}>Accesso negato: solo DM.</p>;
   }
 
+  // Il co-master non ha accesso alla Console del Master (/dm-admin): per lui il
+  // back-link torna alla home invece di finire su una pagina "Accesso negato".
+  const isPrimaryMaster = currentUser?.email === "santomassimo85@gmail.com";
+  const backTo = isPrimaryMaster ? "/dm-admin" : "/";
+  const backLabel = isPrimaryMaster ? "← Console del Master" : "← Torna alla home";
+
   return (
     <section className="admin-summary-page sumadm">
-      <Link to="/dm-admin/strumenti" className="adm-back">← Strumenti DM</Link>
+      <Link to={backTo} className="adm-back">{backLabel}</Link>
 
       <header className="sumadm-hero">
         <div className="sumadm-hero-titles">
           <span className="adm-eyebrow">🎲 Strumento DM · privato</span>
           <h1 className="sumadm-title">Generatore di Sessioni</h1>
-          <p className="sumadm-sub">Genera la prep di una sessione nello stile delle Cronache, e sfoglia l'archivio — per party.</p>
+          <p className="sumadm-sub">Genera la prep di una sessione nello stile delle Cronache, per party.</p>
         </div>
       </header>
-
-      {/* Schede: Nuova sessione · Archivio */}
-      <div className="sumadm-filter-tabs" style={{ marginBottom: 14 }}>
-        <button
-          type="button"
-          className={`sumadm-filter ${tab === "nuova" ? "on" : ""}`}
-          onClick={() => setTab("nuova")}
-          style={tab === "nuova" ? { background: "#8a6212", borderColor: "#8a6212", color: "#fff" } : { borderColor: "#8a6212", color: "#8a6212" }}
-        >
-          ✨ Nuova sessione
-        </button>
-        <button
-          type="button"
-          className={`sumadm-filter ${tab === "archivio" ? "on" : ""}`}
-          onClick={() => setTab("archivio")}
-          style={tab === "archivio" ? { background: "#8a6212", borderColor: "#8a6212", color: "#fff" } : { borderColor: "#8a6212", color: "#8a6212" }}
-        >
-          📖 Archivio {sessions.length > 0 && tab === "archivio" ? `(${sessions.length})` : ""}
-        </button>
-      </div>
 
       {/* Selettore party */}
       <div className="sumadm-filter-tabs" style={{ marginBottom: 18 }}>
@@ -263,7 +198,6 @@ export default function GenerateSession() {
         ))}
       </div>
 
-      {tab === "nuova" && (<>
       {/* Leggi i riassunti del gruppo → fast recap + fili cliccabili */}
       <div className="sumadm-recap">
         <div className="sumadm-recap-head">
@@ -420,60 +354,6 @@ export default function GenerateSession() {
           )}
         </aside>
       </div>
-      </>)}
-
-      {/* ── ARCHIVIO — sessioni generate del gruppo selezionato ── */}
-      {tab === "archivio" && (
-        <>
-          {archiveError && <div className="admin-status-err">❌ {archiveError}</div>}
-          {archiveLoading ? (
-            <p className="sumadm-empty">Caricamento sessioni…</p>
-          ) : sessions.length === 0 ? (
-            <p className="sumadm-empty">
-              Nessuna sessione archiviata per {party.id}. Generane una dalla scheda{" "}
-              <button type="button" className="sumadm-btn ghost" onClick={() => setTab("nuova")}>✨ Nuova sessione</button>.
-            </p>
-          ) : (
-            <div className="sumadm-grid">
-              {sessions.map((s) => (
-                <Link
-                  key={s.id}
-                  to={`/sessions/${party.id.toLowerCase()}/${s.sessionNumber}`}
-                  className="sumadm-item"
-                  style={{ "--party-color": party.color, textDecoration: "none", position: "relative" }}
-                >
-                  <button
-                    type="button"
-                    title={`Elimina Sessione #${s.sessionNumber}`}
-                    aria-label={`Elimina Sessione #${s.sessionNumber}`}
-                    onClick={(e) => handleDeleteSession(e, s)}
-                    disabled={deletingId === s.id}
-                    style={{
-                      position: "absolute", top: 10, right: 10, zIndex: 2,
-                      background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.18)",
-                      borderRadius: 8, padding: "4px 8px", cursor: "pointer",
-                      fontSize: "0.9rem", lineHeight: 1,
-                      opacity: deletingId === s.id ? 0.5 : 1,
-                    }}
-                  >
-                    {deletingId === s.id ? "…" : "🗑"}
-                  </button>
-                  <div className="sumadm-item-body">
-                    <span className="sumadm-item-order">#{s.sessionNumber}</span>
-                    <h4 className="sumadm-item-title">{s.title || "(senza titolo)"}</h4>
-                    {s.summary?.panoramica && (
-                      <p className="sumadm-item-snippet">
-                        {String(s.summary.panoramica).slice(0, 120)}
-                        {String(s.summary.panoramica).length > 120 ? "…" : ""}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </section>
   );
 }
