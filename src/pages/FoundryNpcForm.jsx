@@ -19,6 +19,8 @@ import "./admin.css";
    ============================================================ */
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+// Il co-master può usare l'invio a Foundry (le rules lo consentono già: isMaster()).
+const CO_MASTER_EMAIL = "ripperti96@gmail.com";
 
 // Estrae il primo numero da un valore (CA/PF possono essere "15" o "15 (cuoio)").
 const numOf = (v) => {
@@ -35,7 +37,7 @@ const cityOf = (n) => String(n.location || n.linkedCity || "").trim();
 
 export default function FoundryNpcForm() {
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = currentUser?.email === MASTER_EMAIL || currentUser?.email === CO_MASTER_EMAIL;
 
   const [npcs, setNpcs] = useState([]);
   const [pending, setPending] = useState([]);

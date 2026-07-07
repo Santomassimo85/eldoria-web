@@ -24,6 +24,8 @@ import "./admin.css";
    ============================================================ */
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
+// Il co-master può usare l'invio a Foundry (le rules lo consentono già: isMaster()).
+const CO_MASTER_EMAIL = "ripperti96@gmail.com";
 
 const FOUNDRY_TYPES = [
   { v: "weapon", label: "Arma" },
@@ -93,7 +95,7 @@ export default function FoundryItemForm() {
   const [soldFilter, setSoldFilter] = useState("all");   // all | available | sold
   const [buyerFilter, setBuyerFilter] = useState("all"); // acquirente (solo venduti)
 
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = currentUser?.email === MASTER_EMAIL || currentUser?.email === CO_MASTER_EMAIL;
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const toggleProp = (p) => setF(s => ({
     ...s, properties: s.properties.includes(p) ? s.properties.filter(x => x !== p) : [...s.properties, p],
