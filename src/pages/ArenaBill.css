@@ -891,3 +891,97 @@ body .arena-page.arena-page .arena-reward-deco {
   background: rgba(0, 0, 0, 0.22);
   border: 1px dashed rgba(212, 175, 55, 0.35);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   "LE MIE GESTA" — statistiche giocatore + vista globale Master
+   ══════════════════════════════════════════════════════════════ */
+.arena-gesta { margin-top: 8px; }
+.gesta-head { margin-bottom: 14px; }
+.gesta-title { margin: 0 0 4px; font-size: 1.35rem; font-weight: 900; letter-spacing: 0.01em; }
+.gesta-sub { margin: 0; opacity: 0.85; font-size: 0.9rem; }
+
+.gesta-controls {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.gesta-ranges, .gesta-scope { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.gesta-range, .gesta-scope-btn {
+  appearance: none; cursor: pointer;
+  padding: 7px 13px; border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f0e2bd; font-weight: 700; font-size: 0.82rem;
+}
+.gesta-range:hover, .gesta-scope-btn:hover { background: rgba(212, 175, 55, 0.14); }
+.gesta-range.active, .gesta-scope-btn.active {
+  background: linear-gradient(180deg, #f0d485, #d4af37);
+  border-color: rgba(212, 175, 55, 0.9);
+  color: #2a1c05; font-weight: 900;
+}
+
+.gesta-empty {
+  padding: 22px 16px; text-align: center; opacity: 0.8;
+  border: 1px dashed rgba(212, 175, 55, 0.35); border-radius: 12px;
+}
+
+/* Riquadri statistici (stat tiles) */
+.gesta-tiles {
+  display: grid; gap: 10px; margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+.gesta-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 14px 10px; border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(0, 0, 0, 0.22);
+}
+.gesta-tile.gt-gold {
+  border-color: rgba(212, 175, 55, 0.7);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.16), rgba(0, 0, 0, 0.2));
+}
+.gt-num { font-size: 1.55rem; font-weight: 900; line-height: 1; color: #ffe7a8; }
+.gt-lab { font-size: 0.72rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Card grafico */
+.gesta-chart-card {
+  padding: 16px; margin-bottom: 16px; border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: rgba(0, 0, 0, 0.18);
+}
+.gesta-card-title { margin: 0 0 12px; font-size: 1rem; font-weight: 800; }
+.gesta-chart-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+
+.stats-donut { width: 168px; height: 168px; flex: 0 0 auto; }
+.stats-donut-num { font-size: 34px; font-weight: 900; fill: #ffe7a8; }
+.stats-donut-sub { font-size: 13px; fill: #d8c79a; }
+
+.gesta-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 240px; min-width: 220px; }
+.gesta-legend-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.86rem;
+}
+.gesta-legend-row:last-child { border-bottom: 0; }
+.gl-dot { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
+.gl-ico { flex: 0 0 auto; }
+.gl-name { font-weight: 700; flex: 1 1 auto; }
+.gl-uses { opacity: 0.85; white-space: nowrap; }
+.gl-uses em { opacity: 0.7; font-style: normal; }
+.gl-wl { opacity: 0.8; white-space: nowrap; min-width: 78px; text-align: right; }
+
+/* Classifica giocatori (vista globale) */
+.gesta-players { list-style: none; margin: 0; padding: 0; }
+.gesta-player-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 9px; margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.04); font-size: 0.88rem;
+}
+.gp-rank { width: 22px; text-align: center; font-weight: 800; opacity: 0.75; }
+.gp-name { flex: 1 1 auto; font-weight: 700; }
+.gp-stat { white-space: nowrap; opacity: 0.85; font-size: 0.82rem; }
+
+@media (max-width: 560px) {
+  .gesta-chart-row { justify-content: center; }
+  .gp-stat { font-size: 0.76rem; }
+}

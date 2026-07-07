@@ -9606,6 +9606,7 @@ export default function Arena() {
             href: "/arena-bottega",
           },
           { key: "libera", title: "Arena Libera", sub: "Sfide 1v1 d'allenamento, senza bonus della Bottega", onClick: () => setArenaView("libera") },
+          { key: "gesta", title: "Le Mie Gesta", sub: "Classi giocate, vittorie e statistiche nel tempo", onClick: () => setArenaView("gesta") },
           { key: "albo", title: "Albo dei Campioni", sub: `${champions.length} ${champions.length === 1 ? "eroe" : "eroi"} nella leggenda`, onClick: () => setArenaView("albo") },
           { key: "regole", title: "Regole & Classi", sub: "Come funziona l'Arena", onClick: () => setArenaView("regole") },
           { key: "dadi", title: "I Tuoi Dadi", sub: `${DICE_SKINS.find((s) => s.id === diceSkinId)?.label || "Oro Antico"} · cambia colore`, onClick: () => setDicePickerOpen(true) },
@@ -9874,6 +9875,14 @@ export default function Arena() {
       )}
 
       {/* ── VISTA ALBO: campione attuale + Sala dei Campioni ── */}
+      {arenaView === "gesta" && (
+        <ArenaGestaView
+          tournamentHistory={tournamentHistory}
+          currentUid={currentUser?.uid}
+          isMaster={isMaster}
+        />
+      )}
+
       {arenaView === "albo" && (<>
       {/* CHAMPION BANNER */}
       {arenaMeta.phase === "finished" && arenaMeta.tournamentWinner && (
@@ -13684,6 +13693,272 @@ const CLASS_ICONS = {
   cleric: "✨", chierico: "✨",
   bard: "🎵", bardo: "🎵",
 };
+
+// Colore per classe (grafici Gesta). Chiave = classe lowercase (IT o EN).
+const CLASS_COLORS = {
+  fighter: "#c0392b", guerriero: "#c0392b",
+  barbarian: "#8e44ad", barbaro: "#8e44ad",
+  paladin: "#d4af37", paladino: "#d4af37",
+  ranger: "#27ae60", pattugliatore: "#27ae60",
+  monk: "#16a085", monaco: "#16a085",
+  rogue: "#7f8c8d", ladro: "#7f8c8d",
+  wizard: "#2980b9", mago: "#2980b9",
+  sorcerer: "#e67e22", stregone: "#e67e22",
+  warlock: "#9b59b6",
+  druid: "#2ecc71", druido: "#2ecc71",
+  cleric: "#f1c40f", chierico: "#f1c40f",
+  bard: "#e84393", bardo: "#e84393",
+};
+const classColor = (cls) => CLASS_COLORS[(cls || "").toLowerCase().trim()] || "#8a7a4f";
+const capClass   = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+// Ciambella SVG leggera (nessuna dipendenza): segmenti proporzionali.
+function StatsDonut({ segments, size = 168, thickness = 28, centerNum, centerSub }) {
+  const total = segments.reduce((a, s) => a + (s.value || 0), 0);
+  const r = (size - thickness) / 2;
+  const circ = 2 * Math.PI * r;
+  let acc = 0;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="stats-donut" role="img" aria-label="Distribuzione classi">
+      <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.22)" strokeWidth={thickness} />
+        {total > 0 && segments.map((s, i) => {
+          const len = (s.value / total) * circ;
+          const seg = (
+            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none"
+              stroke={s.color} strokeWidth={thickness}
+              strokeDasharray={`${len} ${circ - len}`} strokeDashoffset={-acc} />
+          );
+          acc += len;
+          return seg;
+        })}
+      </g>
+      <text x="50%" y="46%" textAnchor="middle" className="stats-donut-num">{centerNum}</text>
+      {centerSub && <text x="50%" y="61%" textAnchor="middle" className="stats-donut-sub">{centerSub}</text>}
+    </svg>
+  );
+}
+
+const GESTA_RANGES = [
+  { key: "7",   label: "7 giorni",  days: 7 },
+  { key: "30",  label: "30 giorni", days: 30 },
+  { key: "90",  label: "90 giorni", days: 90 },
+  { key: "all", label: "Sempre",    days: null },
+];
+
+// ── "Le Mie Gesta": riepilogo statistico del giocatore (classi, vittorie, W/L)
+// filtrabile per periodo; il Master può passare alla vista globale (tutti).
+// Fonte unica: arena_tournament_history (già in stato del genitore). ──
+function ArenaGestaView({ tournamentHistory, currentUid, isMaster }) {
+  const [rangeKey, setRangeKey] = useState("30");
+  const [scope, setScope]       = useState("me"); // "me" | "global" (solo master)
+  const range = GESTA_RANGES.find(r => r.key === rangeKey) || GESTA_RANGES[1];
+
+  const dataset = useMemo(() => {
+    const cutoff = range.days ? Date.now() - range.days * 86400000 : 0;
+    return (tournamentHistory || []).filter(t => {
+      const ms = t.ts?.toMillis ? t.ts.toMillis() : (t.ts?.seconds ? t.ts.seconds * 1000 : 0);
+      return ms >= cutoff;
+    });
+  }, [tournamentHistory, range.days]);
+
+  // Riepilogo personale
+  const me = useMemo(() => {
+    let tournaments = 0, won = 0, mW = 0, mL = 0;
+    const perClass = {};
+    dataset.forEach(t => {
+      const p = (t.participants || []).find(x => x.uid === currentUid);
+      if (!p) return;
+      tournaments++;
+      if (t.winnerId === currentUid) won++;
+      const w = p.matchWins || 0, l = p.matchLosses || 0;
+      mW += w; mL += l;
+      const cls = (p.class || "").toLowerCase().trim();
+      if (cls) {
+        perClass[cls] = perClass[cls] || { uses: 0, wins: 0, losses: 0 };
+        perClass[cls].uses++; perClass[cls].wins += w; perClass[cls].losses += l;
+      }
+    });
+    const classes = Object.entries(perClass)
+      .map(([cls, v]) => ({ cls, ...v }))
+      .sort((a, b) => b.uses - a.uses || b.wins - a.wins);
+    const tot = mW + mL;
+    return { tournaments, won, mW, mL, winrate: tot ? (mW / tot) * 100 : 0, classes };
+  }, [dataset, currentUid]);
+
+  // Aggregato globale (tutti i giocatori) — solo Master
+  const glob = useMemo(() => {
+    const perClass = {}, perPlayer = {};
+    let parts = 0, matches = 0;
+    dataset.forEach(t => {
+      (t.participants || []).forEach(p => {
+        const cls = (p.class || "").toLowerCase().trim();
+        const w = p.matchWins || 0, l = p.matchLosses || 0;
+        parts++; matches += w + l;
+        if (cls) {
+          perClass[cls] = perClass[cls] || { uses: 0, wins: 0, matches: 0 };
+          perClass[cls].uses++; perClass[cls].wins += w; perClass[cls].matches += w + l;
+        }
+        if (p.uid) {
+          perPlayer[p.uid] = perPlayer[p.uid] || { uid: p.uid, name: p.name || "—", plays: 0, won: 0, mW: 0, mL: 0 };
+          perPlayer[p.uid].plays++; perPlayer[p.uid].mW += w; perPlayer[p.uid].mL += l;
+        }
+      });
+      if (t.winnerId && perPlayer[t.winnerId]) perPlayer[t.winnerId].won++;
+    });
+    const classes = Object.entries(perClass).map(([cls, v]) => ({
+      cls, uses: v.uses, wins: v.wins, matches: v.matches,
+      usage:   parts ? (v.uses / parts) * 100 : 0,
+      winrate: v.matches ? (v.wins / v.matches) * 100 : 0,
+    })).sort((a, b) => b.uses - a.uses || b.wins - a.wins);
+    const players = Object.values(perPlayer)
+      .sort((a, b) => b.won - a.won || b.mW - a.mW).slice(0, 10);
+    return { classes, players, tournaments: dataset.length, parts, matches, activePlayers: Object.keys(perPlayer).length };
+  }, [dataset]);
+
+  const periodTxt = range.days ? `ultimi ${range.label}` : "di sempre";
+
+  return (
+    <div className="arena-gesta">
+      <header className="gesta-head">
+        <h2 className="gesta-title">{scope === "global" ? "🌍 Gesta di Tutti" : "⚔ Le Mie Gesta"}</h2>
+        <p className="gesta-sub">Classi giocate, vittorie e statistiche · {periodTxt}.</p>
+      </header>
+
+      <div className="gesta-controls">
+        <div className="gesta-ranges" role="tablist" aria-label="Periodo">
+          {GESTA_RANGES.map(r => (
+            <button key={r.key} type="button"
+              className={`gesta-range ${rangeKey === r.key ? "active" : ""}`}
+              onClick={() => setRangeKey(r.key)}>{r.label}</button>
+          ))}
+        </div>
+        {isMaster && (
+          <div className="gesta-scope" role="tablist" aria-label="Ambito">
+            <button type="button" className={`gesta-scope-btn ${scope === "me" ? "active" : ""}`} onClick={() => setScope("me")}>👤 Io</button>
+            <button type="button" className={`gesta-scope-btn ${scope === "global" ? "active" : ""}`} onClick={() => setScope("global")}>🌍 Tutti</button>
+          </div>
+        )}
+      </div>
+
+      {scope === "me" ? (
+        me.tournaments === 0 ? (
+          <p className="gesta-empty">Nessun torneo disputato in questo periodo. Allarga l'intervallo o scendi in campo!</p>
+        ) : (
+          <>
+            <div className="gesta-tiles">
+              <div className="gesta-tile"><span className="gt-num">{me.tournaments}</span><span className="gt-lab">Tornei</span></div>
+              <div className="gesta-tile gt-gold"><span className="gt-num">{me.won}</span><span className="gt-lab">Tornei vinti</span></div>
+              <div className="gesta-tile"><span className="gt-num">{me.mW}</span><span className="gt-lab">Match vinti</span></div>
+              <div className="gesta-tile"><span className="gt-num">{me.mL}</span><span className="gt-lab">Match persi</span></div>
+              <div className="gesta-tile"><span className="gt-num">{me.winrate.toFixed(0)}%</span><span className="gt-lab">Win rate</span></div>
+            </div>
+
+            <div className="gesta-chart-card">
+              <h3 className="gesta-card-title">🎭 Le classi che hai giocato</h3>
+              <div className="gesta-chart-row">
+                <StatsDonut
+                  segments={me.classes.map(c => ({ value: c.uses, color: classColor(c.cls) }))}
+                  centerNum={me.classes.length}
+                  centerSub={me.classes.length === 1 ? "classe" : "classi"}
+                />
+                <ul className="gesta-legend">
+                  {me.classes.map(c => {
+                    const tot = c.wins + c.losses;
+                    return (
+                      <li key={c.cls} className="gesta-legend-row">
+                        <span className="gl-dot" style={{ background: classColor(c.cls) }} />
+                        <span className="gl-ico">{CLASS_ICONS[c.cls] || "❔"}</span>
+                        <span className="gl-name">{capClass(c.cls)}</span>
+                        <span className="gl-uses">{c.uses}× {c.uses === 1 ? "torneo" : "tornei"}</span>
+                        <span className="gl-wl">{c.wins}V–{c.losses}S{tot ? ` · ${((c.wins / tot) * 100).toFixed(0)}%` : ""}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </>
+        )
+      ) : (
+        glob.parts === 0 ? (
+          <p className="gesta-empty">Nessun torneo archiviato in questo periodo.</p>
+        ) : (
+          <>
+            <div className="gesta-tiles">
+              <div className="gesta-tile"><span className="gt-num">{glob.tournaments}</span><span className="gt-lab">Tornei</span></div>
+              <div className="gesta-tile"><span className="gt-num">{glob.activePlayers}</span><span className="gt-lab">Giocatori</span></div>
+              <div className="gesta-tile"><span className="gt-num">{glob.parts}</span><span className="gt-lab">Partecipazioni</span></div>
+              <div className="gesta-tile"><span className="gt-num">{glob.matches}</span><span className="gt-lab">Match giocati</span></div>
+            </div>
+
+            <div className="gesta-chart-card">
+              <h3 className="gesta-card-title">🏹 Classi più usate</h3>
+              <div className="gesta-chart-row">
+                <StatsDonut
+                  segments={glob.classes.map(c => ({ value: c.uses, color: classColor(c.cls) }))}
+                  centerNum={glob.parts}
+                  centerSub="scelte"
+                />
+                <ul className="gesta-legend">
+                  {glob.classes.map(c => (
+                    <li key={c.cls} className="gesta-legend-row">
+                      <span className="gl-dot" style={{ background: classColor(c.cls) }} />
+                      <span className="gl-ico">{CLASS_ICONS[c.cls] || "❔"}</span>
+                      <span className="gl-name">{capClass(c.cls)}</span>
+                      <span className="gl-uses">{c.usage.toFixed(0)}% <em>({c.uses})</em></span>
+                      <span className="gl-wl">win {c.winrate.toFixed(0)}%</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="gesta-chart-card">
+              <h3 className="gesta-card-title">📊 Uso e vittorie per classe</h3>
+              <div className="class-stats-list">
+                {glob.classes.map((row, i) => (
+                  <div key={row.cls} className="class-stats-row">
+                    <div className="class-stats-rank">#{i + 1}</div>
+                    <div className="class-stats-icon">{CLASS_ICONS[row.cls] || "❔"}</div>
+                    <div className="class-stats-name">{capClass(row.cls)}</div>
+                    <div className="class-stats-bars">
+                      <div className="class-stats-bar-row">
+                        <span className="class-stats-bar-label">Uso</span>
+                        <div className="class-stats-bar-track"><div className="class-stats-bar-fill usage" style={{ width: `${row.usage}%` }} /></div>
+                        <span className="class-stats-bar-val">{row.usage.toFixed(0)}%</span>
+                      </div>
+                      <div className="class-stats-bar-row">
+                        <span className="class-stats-bar-label">Win</span>
+                        <div className="class-stats-bar-track"><div className="class-stats-bar-fill winrate" style={{ width: `${row.winrate}%` }} /></div>
+                        <span className="class-stats-bar-val">{row.winrate.toFixed(0)}% <em>({row.wins}/{row.matches})</em></span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="gesta-chart-card">
+              <h3 className="gesta-card-title">🏆 Giocatori più vincenti</h3>
+              <ol className="gesta-players">
+                {glob.players.map((p, i) => (
+                  <li key={p.uid} className="gesta-player-row">
+                    <span className="gp-rank">{i + 1}</span>
+                    <span className="gp-name">{p.name}</span>
+                    <span className="gp-stat">🏆 {p.won}</span>
+                    <span className="gp-stat">⚔ {p.mW}V–{p.mL}S</span>
+                    <span className="gp-stat">🎟 {p.plays}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </>
+        )
+      )}
+    </div>
+  );
+}
 
 function HallOfChampions({ champions, isMaster, onRemove }) {
   const [open, setOpen] = useState(false);
