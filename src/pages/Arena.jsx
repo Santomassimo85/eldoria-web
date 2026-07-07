@@ -10351,7 +10351,9 @@ export default function Arena() {
       {/* ── VISTA JOIN: creazione personaggio / iscrizione ── */}
       {arenaView === "join" && (
         (arenaMeta.phase === "registration" && (!isMaster || loadoutPhase !== "idle")) ||
-        (loadoutContext === "fun" && loadoutPhase !== "idle")
+        (loadoutContext === "fun" && loadoutPhase !== "idle") ||
+        // Ri-equipaggiamento tra i round: la fase è "shopping"/"combat", non "registration".
+        (reloadoutMode && loadoutPhase === "selecting")
       ) && (
         <div id="arena-loadout" className={`join-zone ${loadoutContext === "fun" ? "join-zone-fun" : ""}`}>
 
