@@ -130,7 +130,7 @@ const TOOL_GROUPS = [
     { icon: "🧙", label: "Genera NPC",       desc: "Crea un PNG con ritratto AI.",           path: "/dm-admin/genera-npc" },
     { icon: "🧝", label: "NPC → Foundry",    desc: "Invia gli NPC creati a Foundry.",        path: "/dm-admin/foundry-npc" },
     { icon: "🎁", label: "Oggetto → Foundry",desc: "Invia un oggetto a Foundry.",            path: "/dm-admin/foundry-item" },
-    { icon: "🎲", label: "Genera Sessione",  desc: "Prep di sessione con l'AI, per party.",  path: "/dm/generate-session" },
+    { icon: "🎲", label: "Genera Sessione",  desc: "Prep di sessione con l'AI + archivio, per party.", path: "/dm/generate-session" },
   ]},
   { label: "Economia & Gilda", items: [
     { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",    path: "/dm-admin/market" },
@@ -140,7 +140,6 @@ const TOOL_GROUPS = [
   { label: "Mondo & Cronache", items: [
     { icon: "🗺", label: "Geomantia",        desc: "Mappe, lore delle città e ping NPC.",    path: "/dm-admin/geo" },
     { icon: "📜", label: "Session Summaries",desc: "Log narrativi delle avventure.",         path: "/dm-admin/summaries" },
-    { icon: "📖", label: "Sessioni DM",      desc: "Archivio delle prep-sessioni.",          path: "/sessions/amea" },
     { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni.",              path: "/dm-admin/videos" },
     { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",        path: "/dm-admin/sessions" },
     { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",      path: "/dm-admin/quests" },

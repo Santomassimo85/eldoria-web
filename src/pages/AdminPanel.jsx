@@ -37,8 +37,6 @@ export default function AdminPanel() {
       items: [
         { icon: "🗺", label: "Geomantia",        desc: "Mappe, lore delle città e ping NPC.",                 path: "/dm-admin/geo" },
         { icon: "📜", label: "Session Summaries",desc: "Log narrativi delle ultime avventure.",               path: "/dm-admin/summaries" },
-        { icon: "🎲", label: "Genera Sessione",  desc: "Crea la prep di una sessione con l'AI, per party.",    path: "/dm/generate-session" },
-        { icon: "📖", label: "Sessioni DM",      desc: "Archivio delle prep-sessioni generate, per party.",   path: "/sessions/amea" },
         { icon: "✒️", label: "Lo Scriba",        desc: "La gazzetta del mondo: genera un'anteprima.",         path: "/dm-admin/scriba" },
         { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni delle sessioni.",            path: "/dm-admin/videos" },
         { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",                     path: "/dm-admin/sessions" },
