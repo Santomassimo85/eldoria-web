@@ -24,7 +24,7 @@ import { aoeCells, DMG_TYPE_OPTIONS } from "./tactics/battleModel";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
-import { isDmUser } from "../utils/dmAccess";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 const MIN_ACTIONS = 2;
 const MAX_ACTIONS = 5;
@@ -928,7 +928,7 @@ export default function WorldBossAdmin() {
     defeated: bosses.filter((b) => (b.hp ?? 0) <= 0).length,
   }), [bosses]);
 
-  if (!currentUser || !isDmUser(currentUser.email)) {
+  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <div className="denied">Accesso Negato.</div>;
   }
 

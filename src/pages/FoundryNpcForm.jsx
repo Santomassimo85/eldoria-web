@@ -18,7 +18,7 @@ import "./admin.css";
    Coda separata da quella oggetti (foundry_inbox) apposta.
    ============================================================ */
 
-import { isDmUser } from "../utils/dmAccess";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 // Estrae il primo numero da un valore (CA/PF possono essere "15" o "15 (cuoio)").
 const numOf = (v) => {
@@ -35,7 +35,7 @@ const cityOf = (n) => String(n.location || n.linkedCity || "").trim();
 
 export default function FoundryNpcForm() {
   const { currentUser } = useAuth();
-  const isMaster = isDmUser(currentUser?.email);
+  const isMaster = currentUser?.email === MASTER_EMAIL;
 
   const [npcs, setNpcs] = useState([]);
   const [pending, setPending] = useState([]);

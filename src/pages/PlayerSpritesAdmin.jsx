@@ -7,7 +7,7 @@ import { isHiddenChar } from "../data/hiddenPlayers";
 import "./admin.css";
 import "./WorldBossAdmin.css";
 
-import { isDmUser } from "../utils/dmAccess";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 export default function PlayerSpritesAdmin() {
   const { currentUser } = useAuth();
@@ -185,7 +185,7 @@ export default function PlayerSpritesAdmin() {
     setArenaBg(null);
   };
 
-  if (!currentUser || !isDmUser(currentUser.email)) {
+  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <div className="denied">Accesso Negato.</div>;
   }
 

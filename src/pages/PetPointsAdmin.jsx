@@ -10,7 +10,7 @@ import { isHiddenChar } from '../data/hiddenPlayers';
 import PetAvatar from '../components/PetAvatar';
 import "./admin.css";
 
-import { isDmUser } from "../utils/dmAccess";
+const MASTER_EMAIL = "santomassimo85@gmail.com";
 
 /* Quick-grant chips visible inline on each row */
 const QUICK_AMOUNTS = [+5, +10, +25, +50, -5, -10];
@@ -47,7 +47,7 @@ export default function PetPointsAdmin() {
     return () => unsub();
   }, [currentUser]);
 
-  if (!currentUser || !isDmUser(currentUser.email)) {
+  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
     return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
   }
 
