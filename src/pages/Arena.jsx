@@ -9511,6 +9511,26 @@ export default function Arena() {
         );
       })()}
 
+      {/* ── Richiamo FLOTTANTE Pausa Bottega — sempre visibile per i partecipanti,
+            in qualunque vista dell'Arena, finché la finestra di shopping è aperta.
+            Apre direttamente il ri-equipaggiamento (classe/stat/HP bloccati). ── */}
+      {arenaMeta.phase === "shopping" && !myActiveMatchId
+        && (arenaMeta.participants || []).includes(currentUser?.uid) && (
+        <button
+          type="button"
+          className="arena-shop-fab"
+          onClick={openReloadout}
+          aria-label="Pausa Bottega — aggiorna il tuo assetto per il prossimo round"
+          title="Pausa Bottega — aggiorna il tuo assetto"
+        >
+          <span className="arena-shop-fab-ico" aria-hidden="true">⚙</span>
+          <span className="arena-shop-fab-body">
+            <span className="arena-shop-fab-title">Pausa Bottega</span>
+            <span className="arena-shop-fab-sub">Aggiorna assetto · <TimerDisplay expiryDate={arenaMeta.shopEndsAt} /></span>
+          </span>
+        </button>
+      )}
+
       {/* ════════════════════════════════════════════════════════════
           ARENA REDESIGN 2 — "Locandina del Colosseo".
           Struttura a manifesto: masthead asimmetrico con tabellone
@@ -9606,19 +9626,20 @@ export default function Arena() {
 
             {/* PAUSA BOTTEGA — finestra di acquisti tra un round e l'altro */}
             {arenaMeta.phase === "shopping" && (
-              <div className="arena-shop-banner">
+              <div className="arena-shop-banner arena-shop-banner--pulse">
                 <div className="arena-shop-banner-head">
-                  <span className="arena-shop-banner-tag">🛒 Pausa Bottega</span>
+                  <span className="arena-shop-banner-tag">🛒 Pausa Bottega — riequipaggiati!</span>
                   <TimerDisplay expiryDate={arenaMeta.shopEndsAt} />
                 </div>
                 <p className="arena-shop-banner-txt">
-                  Round completato. Hai 1 ora per acquistare al Mercato Arena e ri-equipaggiarti: il prossimo round parte in automatico allo scadere del tempo.
+                  Round completato. Prima del prossimo round puoi <strong>comprare al Mercato</strong> e poi
+                  {" "}<strong>cambiare armi, incantesimi, armatura, pet e oggetti</strong>. Il round parte da solo allo scadere del tempo.
                 </p>
                 <div className="arena-shop-banner-actions">
-                  <a className="arena-shop-btn" href="/arena-bottega">🛍 Vai al Mercato</a>
                   {(arenaMeta.participants || []).includes(currentUser?.uid) && (
-                    <button type="button" className="arena-shop-btn" onClick={openReloadout}>⚙ Aggiorna assetto</button>
+                    <button type="button" className="arena-shop-btn arena-shop-btn--primary" onClick={openReloadout}>⚙ Aggiorna il mio assetto</button>
                   )}
+                  <a className="arena-shop-btn" href="/arena-bottega">🛍 Vai al Mercato</a>
                   {isMaster && (
                     <button type="button" className="arena-shop-btn arena-shop-btn--master" onClick={promotePendingRoundNow}>⏭ Avanza ora</button>
                   )}
@@ -10681,13 +10702,29 @@ export default function Arena() {
             const activeTab = LOADOUT_TABS.some(t => t.key === loadoutTab) ? loadoutTab : LOADOUT_TABS[0].key;
             const firstIncompleteTab = (LOADOUT_TABS.find(t => !t.done) || LOADOUT_TABS[0]).key;
             const footerBtnText = isReady
-              ? "✓ Invia Iscrizione"
+              ? (reloadoutMode ? "✓ Conferma nuovo assetto" : "✓ Invia Iscrizione")
               : activeTab === firstIncompleteTab
               ? `Mancano: ${btnParts.join(" + ")}`
               : "Vai alla sezione mancante →";
 
             return (
               <div className="loadout-panel loadout-panel--tabbed">
+                {/* ── Banner RI-EQUIPAGGIAMENTO: chiarisce cosa è bloccato e cosa no ── */}
+                {reloadoutMode && (
+                  <div className="reloadout-banner">
+                    <div className="reloadout-banner-head">
+                      <span className="reloadout-banner-tag">⚙ Ri-equipaggiamento tra i round</span>
+                      {arenaMeta?.shopEndsAt && <TimerDisplay expiryDate={arenaMeta.shopEndsAt} />}
+                    </div>
+                    <p className="reloadout-banner-txt">
+                      Prepara l'assetto per il <strong>prossimo round</strong>. Cambia pure
+                      {" "}<strong>armi, incantesimi, armatura, compagno e oggetti</strong> — e attiva i nuovi acquisti della Bottega.
+                    </p>
+                    <p className="reloadout-banner-lock">
+                      🔒 Restano bloccati dal torneo: <strong>classe</strong>, <strong>caratteristiche</strong> e <strong>HP</strong>. Non puoi cambiare classe a torneo iniziato.
+                    </p>
+                  </div>
+                )}
                 {/* Anteprima personaggio — intestazione verticale a tutta larghezza */}
                 <div className="loadout-char-preview loadout-char-preview--top">
                   {charPreview.image && (
