@@ -3151,7 +3151,32 @@ export default function Arena() {
   const [reactCooldownUntil, setReactCooldownUntil] = useState(0);
   const [reactPickerMatch, setReactPickerMatch] = useState(null);
   const REACT_COOLDOWN_MS = 20000;
+  const REACT_SHOW_MS = 2800; // durata a schermo dell'emoji (≈ animazione CSS)
   const ARENA_REACTIONS = ["😂", "🔥", "👏", "😱", "💀", "👑", "🤡", "🫡", "😎", "🤝"];
+
+  // Reazioni mostrate LOCALMENTE: la visibilità parte dall'ARRIVO sul proprio client
+  // (timer locale), NON dall'orologio del mittente. Così lo skew tra i due orologi non
+  // può "mangiare" la finestra e ENTRAMBI i giocatori la vedono per l'intera durata.
+  const [liveReacts, setLiveReacts] = useState([]);
+  const seenReactIdsRef = useRef(new Set());
+  const reactInitRef = useRef(false);
+  useEffect(() => {
+    const list = arenaMeta?.reactions || [];
+    // Al primo caricamento non riprodurre le reazioni già presenti nel documento.
+    if (!reactInitRef.current) {
+      reactInitRef.current = true;
+      list.forEach(r => r.id && seenReactIdsRef.current.add(r.id));
+      return;
+    }
+    const now = Date.now();
+    const fresh = list.filter(r => r.id && !seenReactIdsRef.current.has(r.id) && (now - (r.ts || 0)) < 10000);
+    if (fresh.length === 0) return;
+    fresh.forEach(r => {
+      seenReactIdsRef.current.add(r.id);
+      setTimeout(() => setLiveReacts(prev => prev.filter(x => x.id !== r.id)), REACT_SHOW_MS);
+    });
+    setLiveReacts(prev => [...prev, ...fresh.map(r => ({ id: r.id, matchId: r.matchId, uid: r.uid, emoji: r.emoji }))]);
+  }, [arenaMeta?.reactions]);
   const sendArenaReaction = async (matchId, emoji) => {
     if (!currentUser) return;
     const now = Date.now();
@@ -12112,9 +12137,9 @@ export default function Arena() {
                             </button>
                           )}
 
-                          {/* reazioni fluttuanti sopra questo combattente */}
-                          {(arenaMeta.reactions || [])
-                            .filter(r => r.matchId === m.matchId && r.uid === p.id && (Date.now() - (r.ts || 0)) < 2400)
+                          {/* reazioni fluttuanti sopra questo combattente (timer locale: entrambi le vedono) */}
+                          {liveReacts
+                            .filter(r => r.matchId === m.matchId && r.uid === p.id)
                             .map(r => (
                               <span key={r.id} className="arena-fight-react" aria-hidden="true">{r.emoji}</span>
                             ))}

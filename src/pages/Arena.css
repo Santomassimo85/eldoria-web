@@ -1423,20 +1423,27 @@
 .arena-fight-react {
   position: absolute;
   left: 50%;
-  top: 52%;
+  top: 44%;
   transform: translate(-50%, -50%);
-  font-size: clamp(30px, 4vw, 46px);
+  font-size: clamp(40px, 5.5vw, 62px);
+  line-height: 1;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(18, 12, 6, 0.85);
+  border: 2px solid rgba(236, 212, 135, 0.9);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.65), 0 0 22px rgba(236, 212, 135, 0.4);
   pointer-events: none;
-  z-index: 30;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
-  animation: arena-fight-react 2.2s ease-out forwards;
+  z-index: 60;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+  animation: arena-fight-react 2.7s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
   will-change: transform, opacity;
 }
 @keyframes arena-fight-react {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(.4) rotate(-10deg); }
-  15%  { opacity: 1; transform: translate(-50%, -95%) scale(1.25) rotate(6deg); }
-  70%  { opacity: 1; transform: translate(-50%, -140%) scale(1) rotate(-2deg); }
-  100% { opacity: 0; transform: translate(-50%, -165%) scale(.9) rotate(0); }
+  10%  { opacity: 1; transform: translate(-50%, -95%) scale(1.35) rotate(6deg); }
+  20%  { opacity: 1; transform: translate(-50%, -110%) scale(1.1) rotate(-3deg); }
+  86%  { opacity: 1; transform: translate(-50%, -150%) scale(1.05) rotate(0); }
+  100% { opacity: 0; transform: translate(-50%, -172%) scale(.95) rotate(0); }
 }
 
 .arena-react-bar {
