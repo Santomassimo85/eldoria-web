@@ -456,15 +456,16 @@ const WEAPON_IS_RANGED = (w) => !!w && (
 const IS_TWO_HANDED_MELEE = (w) => !!w && w.twoHanded && !WEAPON_IS_RANGED(w);
 
 // ── MECCANICA DISTANZA (ranged vs melee) ─────────────────────────────────────────
-// Il duello parte "a distanza". Finché è così, chi attacca in MISCHIA contro un
-// avversario che impugna un'arma a DISTANZA tira a SVANTAGGIO (deve chiudere sotto
-// tiro): il colpo in mischia però chiude la distanza (distanceClosed=true). Chi ha
-// un'arma a distanza può "mantenere le distanze" attaccando da lontano: riapre la
-// distanza (kiting) per un numero limitato di volte (ARENA_KITE_MAX). Le armi a
-// distanza e gli incantesimi colpiscono sempre normalmente. La distanza è uno stato
-// del MATCH (m.distanceClosed); le cariche di kiting sono per-giocatore
-// (p.kiteChargesUsed). Vedi handleAttack/_runAttack e aiTakeAction.
-const ARENA_KITE_MAX = 3;
+// Il duello parte "a distanza" (m.distanceClosed=false). Contro un avversario che
+// impugna un'arma a DISTANZA, chi è in mischia ha due scelte:
+//   • MELEE sotto tiro (nessuna arma a distanza): può CARICARE — attacca in mischia a
+//     SVANTAGGIO e chiude la distanza — oppure AVVICINARSI (chiude senza attaccare).
+//   • RANGED in mischia (l'avversario non ha armi a distanza): "TIRO IN ARRETRAMENTO"
+//     — il tiro fa danno E riapre la distanza, ma l'avversario tenuto in mischia
+//     sferra un COLPO D'OPPORTUNITÀ al tiratore (computeOpportunityAttack). È il prezzo
+//     del kiting: nessun tetto di cariche, il freno è il colpo subìto.
+// Le armi a distanza e gli incantesimi colpiscono sempre normalmente. La distanza è
+// uno stato del MATCH (m.distanceClosed). Vedi _runAttack e aiTakeAction.
 // Un giocatore "minaccia a distanza" se, tra le armi equipaggiate (o tra tutte se non
 // ne ha ancora equipaggiate), ne ha almeno una a distanza.
 const PLAYER_HAS_RANGED_WEAPON = (matchPlayer, snap) => {
@@ -473,6 +474,29 @@ const PLAYER_HAS_RANGED_WEAPON = (matchPlayer, snap) => {
   const pool = (eq && eq.length) ? weapons.filter(w => eq.includes(w.name)) : weapons;
   return pool.some(WEAPON_IS_RANGED);
 };
+
+// ── COLPO D'OPPORTUNITÀ ──────────────────────────────────────────────────────
+// Quando un tiratore ARRETRA (kiting: spara e riapre la distanza), l'avversario
+// tenuto in mischia gli sferra un colpo gratuito con la sua arma da mischia
+// principale. È il prezzo del kiting (sostituisce il vecchio tetto a 3 cariche):
+// un tiro d'attacco + un colpo subìto. Ritorna { dmg, hit, crit, roll, ac,
+// weaponName }; dmg 0 se l'avversario non ha un'arma da mischia o manca il colpo.
+function computeOpportunityAttack(meleeSnap, meleeMatchPlayer, kiterSnap, kiterMatchPlayer) {
+  const weapons = (meleeSnap?.selectedActions || []).filter(a => a.type === "weapon" && !WEAPON_IS_RANGED(a));
+  const eq = meleeMatchPlayer?.equippedWeaponNames;
+  const pool = (eq && eq.length) ? weapons.filter(w => eq.includes(w.name)) : weapons;
+  const wpn = pool[0] || weapons[0];
+  if (!wpn) return { dmg: 0, hit: false };
+  const statMod = meleeSnap?.stats?.[wpn.statKey] ?? 0;
+  const d20     = Math.floor(Math.random() * 20) + 1;
+  const crit    = d20 === 20;
+  const toHit   = d20 + (wpn.hitBonus || 0) + statMod;
+  const ac      = getEffectiveAc(kiterMatchPlayer, kiterSnap);
+  if (!crit && toHit < ac) return { dmg: 0, hit: false, roll: d20, ac, weaponName: wpn.name };
+  const rolled = rollDmg(wpn.damage).total;
+  const dmg = Math.max(1, Math.round((rolled + statMod) * (crit ? 2 : 1)));
+  return { dmg, hit: true, crit, roll: d20, ac, weaponName: wpn.name };
+}
 
 // ── Set armi per classe (derivati dagli array base) ───────────────────────────────
 const _sw = (n) => SIMPLE_WEAPONS.find(w => w.name === n);
@@ -6065,17 +6089,21 @@ export default function Arena() {
     const stayingThisTurn = (usedSoFar + 1) < effectiveMaxActions;
 
     // ── DISTANZA: chiusura (melee) o kiting (ranged) dopo l'attacco dell'IA ──
-    const aiKiteUsed = aiPlayer.kiteChargesUsed ?? 0;
     let aiDistancePatch = {};
     let aiKiteInc = false;
     let aiDistanceLog = null;
+    let aiOppAtk = { dmg: 0 };   // colpo d'opportunità subìto dall'IA quando arretra
     if (!aiWpnRanged && aiFarNow && aiTgtHasRanged) {
       aiDistancePatch = { distanceClosed: true };
-      aiDistanceLog = `⚔️ ${aiSnap.name} chiude la distanza e ingaggia ${target.name} in mischia.`;
-    } else if (aiWpnRanged && !aiFarNow && !aiTgtHasRanged && aiKiteUsed < ARENA_KITE_MAX) {
+      aiDistanceLog = `⚔️ ${aiSnap.name} carica, chiude la distanza e ingaggia ${target.name} in mischia.`;
+    } else if (aiWpnRanged && !aiFarNow && !aiTgtHasRanged) {
       aiDistancePatch = { distanceClosed: false };
       aiKiteInc = true;
-      aiDistanceLog = `🏹 ${aiSnap.name} indietreggia e mantiene le distanze da ${target.name} (${ARENA_KITE_MAX - aiKiteUsed - 1} rimaste).`;
+      const _tgtSurvives = ((tgtMatchPlayer?.hp ?? 0) - damage) > 0;
+      if (_tgtSurvives) aiOppAtk = computeOpportunityAttack(targetSnap, tgtMatchPlayer, aiSnap, aiPlayer);
+      aiDistanceLog = aiOppAtk.dmg > 0
+        ? `🏹 ${aiSnap.name} spara e arretra — 🗡️ colpo d'opportunità di ${target.name}: ${aiOppAtk.dmg} danni.`
+        : `🏹 ${aiSnap.name} spara e arretra${_tgtSurvives ? `, ${target.name} manca il colpo d'opportunità.` : "."}`;
     }
 
     // Sottoclasse (Fase 2) · Ritorsione: se l'IA colpisce in MISCHIA un giocatore con una
@@ -6145,7 +6173,8 @@ export default function Arena() {
           // Use up aidBuff after the swing it powered.
           const consumedAid = effAidBonus ? { aidBuff: false } : {};
           const _aiMax = aiSnap?.stats?.maxHp ?? p.maxHp ?? (p.hp ?? 0);
-          const _aiBaseHp = aiRetaliateDmg > 0 ? Math.max(0, (p.hp ?? 0) - aiRetaliateDmg) : (p.hp ?? 0);
+          const _aiSelfDmg = aiRetaliateDmg + (aiOppAtk.dmg || 0); // ritorsione + colpo d'opportunità (kiting)
+          const _aiBaseHp = _aiSelfDmg > 0 ? Math.max(0, (p.hp ?? 0) - _aiSelfDmg) : (p.hp ?? 0);
           const _aiFinalHp = _aiOnHit.selfHeal > 0 ? Math.min(_aiMax, _aiBaseHp + _aiOnHit.selfHeal) : _aiBaseHp;
           return {
             ...p,
@@ -6157,7 +6186,7 @@ export default function Arena() {
             ...(aiKiteInc ? { kiteChargesUsed: (p.kiteChargesUsed ?? 0) + 1 } : {}),
             ...turnEndPatch,
             ..._aiOnHit.selfPatch,
-            ...((aiRetaliateDmg > 0 || _aiOnHit.selfHeal > 0) ? { hp: _aiFinalHp } : {}),
+            ...((_aiSelfDmg > 0 || _aiOnHit.selfHeal > 0) ? { hp: _aiFinalHp } : {}),
           };
         }
         return p;
@@ -6946,17 +6975,23 @@ export default function Arena() {
     // ── DISTANZA: chiusura (melee) o kiting (ranged) dopo l'attacco ──
     const _wasClosed   = !!_currentMatch?.distanceClosed;
     const _isRangedWpnAtk = action.type === "weapon" && WEAPON_IS_RANGED(action);
-    const _kiteUsedNow = _myMatchEarly?.kiteChargesUsed ?? 0;
     let _distancePatch = {};   // patch a livello di match
-    let _kiteInc = false;      // consuma una carica di kiting sull'attaccante
+    let _kiteInc = false;      // conteggio informativo dei kiting dell'attaccante
     let _distanceLog = null;
+    let _oppAtk = { dmg: 0 };  // colpo d'opportunità subìto dall'attaccante (kiting)
     if (isMeleeWeaponAtk && !_wasClosed && defHasRangedWpn) {
       _distancePatch = { distanceClosed: true };
-      _distanceLog = `⚔️ ${attName} chiude la distanza e ingaggia ${defName} in mischia.`;
-    } else if (_isRangedWpnAtk && _wasClosed && !defHasRangedWpn && _kiteUsedNow < ARENA_KITE_MAX) {
+      _distanceLog = `⚔️ ${attName} carica, chiude la distanza e ingaggia ${defName} in mischia.`;
+    } else if (_isRangedWpnAtk && _wasClosed && !defHasRangedWpn) {
+      // Tiro in arretramento: spari e riapri la distanza; il difensore in mischia
+      // ti sferra un colpo d'opportunità (solo se sopravvive al tuo tiro).
       _distancePatch = { distanceClosed: false };
       _kiteInc = true;
-      _distanceLog = `🏹 ${attName} indietreggia e mantiene le distanze da ${defName} (${ARENA_KITE_MAX - _kiteUsedNow - 1} rimaste).`;
+      const _defSurvives = ((defMatchPlayer?.hp ?? 0) - damage) > 0;
+      if (_defSurvives) _oppAtk = computeOpportunityAttack(defenderSnap, defMatchPlayer, attackerSnap, attackerMatchPlayer);
+      _distanceLog = _oppAtk.dmg > 0
+        ? `🏹 ${attName} spara e arretra — 🗡️ colpo d'opportunità di ${defName}: ${_oppAtk.dmg} danni.`
+        : `🏹 ${attName} spara e arretra${_defSurvives ? `, ${defName} manca il colpo d'opportunità.` : "."}`;
     }
 
     // Sottoclasse (Fase 2) · Ritorsione (Chierico Tempesta 2d8, Artefice Battaglia 1d4):
@@ -7027,6 +7062,8 @@ export default function Arena() {
           if (_kiteInc) up.kiteChargesUsed = (p.kiteChargesUsed ?? 0) + 1;
           // Ritorsione della sottoclasse difensiva (Ira della Tempesta / Difensore d'Acciaio).
           if (retaliateDmg > 0) up.hp = Math.max(0, (up.hp ?? p.hp) - retaliateDmg);
+          // Colpo d'opportunità del difensore quando arretri (kiting).
+          if (_oppAtk.dmg > 0) up.hp = Math.max(0, (up.hp ?? p.hp) - _oppAtk.dmg);
           return up;
         }
         return { ...p, ...consumeInvisibility(p) };
@@ -7121,27 +7158,9 @@ export default function Arena() {
     await commitArenaMatches(updatedMatches);
   };
 
-  // ── DISTANZA: ALLONTÀNATI (ranged riapre la distanza, kiting; usa il turno) ──
-  // Sostituisce l'arma a distanza quando sei in mischia, hai un'arma a distanza,
-  // l'avversario no e ti restano cariche di kiting. Riapre la distanza (l'avversario
-  // in mischia dovrà inseguirti a svantaggio) e consuma 1 carica su ARENA_KITE_MAX.
-  const handleMoveAway = async (matchId) => {
-    const myName = (arenaMeta.characterSnapshots || {})[currentUser.uid]?.name || "?";
-    const expiry = new Date(Date.now() + ARENA_TURN_DURATION).toISOString();
-    const updatedMatches = arenaMeta.matches.map(m => {
-      if (m.matchId !== matchId) return m;
-      const me = m.players.find(p => p.id === currentUser.uid);
-      const used = me?.kiteChargesUsed ?? 0;
-      if (used >= ARENA_KITE_MAX) return m; // niente cariche → nessun effetto
-      const left = ARENA_KITE_MAX - used - 1;
-      const log = { pub: `🏹 ${myName} indietreggia e mantiene le distanze (${left} rimaste).`, attId: currentUser.uid, ts: new Date().toISOString() };
-      const updatedPlayers = m.players.map(p =>
-        p.id === currentUser.uid ? { ...p, ...tickEagleEnd(p), defensiveBonus: 0, kiteChargesUsed: used + 1 } : p
-      );
-      return { ...m, players: updatedPlayers, distanceClosed: false, turn: advanceTurn(updatedPlayers, m), turnExpiry: expiry, logs: [...m.logs, log] };
-    });
-    await commitArenaMatches(updatedMatches);
-  };
+  // NB: il "kiting" non è più un'azione a sé (Allontànati): è fuso nel tiro a
+  // distanza quando sei in mischia (vedi _runAttack/aiTakeAction → "Tiro in
+  // arretramento"), col colpo d'opportunità come prezzo. Nessun tetto di cariche.
 
   // ── SCUDO (skill caster) ──────────────────────────────────────────────────
   const handleShieldSkill = async (matchId, action) => {
@@ -12089,14 +12108,14 @@ export default function Arena() {
                             <span className="ministat" title="Livello">⭐ {fLvl}</span>
                           </div>
 
-                          {/* Cariche di kiting (mantieni le distanze) per chi impugna un'arma a distanza */}
-                          {!isDead && m.status === "active" && PLAYER_HAS_RANGED_WEAPON(p, char) && (ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)) > 0 && (
+                          {/* Tiratore: può sparare arretrando (riapre la distanza, subisce un colpo d'opportunità) */}
+                          {!isDead && m.status === "active" && PLAYER_HAS_RANGED_WEAPON(p, char) && (
                             <div
                               className="fighter-kite"
-                              title={`Mantieni le distanze (kiting): attaccando da lontano riapri la distanza e costringi l'avversario in mischia a tirare a svantaggio. Ancora ${ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)} volte.`}
+                              title="Tiratore: attaccando da vicino puoi sparare e arretrare (riapri la distanza; l'avversario ti dà un colpo d'opportunità)."
                               style={{ fontSize: "0.62rem", fontWeight: 700, color: "#ffd98a", marginTop: "0.15rem" }}
                             >
-                              🏹 Distanza ×{ARENA_KITE_MAX - (p.kiteChargesUsed ?? 0)}
+                              🏹 Tiro in arretramento
                             </div>
                           )}
 
@@ -12678,19 +12697,19 @@ export default function Arena() {
                         const isRangedWeapon = (a) => a.ranged === true || a.icon === "🏹" || ["Arco","Balestra","Fionda","Giavellotto","Dardo"].some(k => a.name.includes(k));
                         const meleeActions  = currentActions.filter(a => a.type === "weapon" && !isRangedWeapon(a));
                         const rangedActions = currentActions.filter(a => a.type === "weapon" && isRangedWeapon(a));
-                        // ── DISTANZA: tasti Avvicìnati / Allontànati al posto delle armi ──
+                        // ── DISTANZA: le armi restano sempre giocabili; la distanza aggiunge scelte ──
                         // mustClose: sei a distanza, l'avversario ti tiene sotto tiro (ha arma a
-                        //   distanza) e tu non hai un'arma a distanza per rispondere → le armi da
-                        //   mischia sono sostituite da "Avvicìnati" (chiudi la distanza).
-                        // canKite: sei in mischia, hai un'arma a distanza, l'avversario no e ti
-                        //   restano cariche → l'arma a distanza è sostituita da "Allontànati".
+                        //   distanza) e tu no → puoi CARICARE (attacchi in mischia a svantaggio e
+                        //   chiudi) oppure AVVICINARTI (chiudi senza attaccare, opzione sicura).
+                        // canKite: sei in mischia, hai un'arma a distanza e l'avversario no → i tuoi
+                        //   tiri diventano "in arretramento": fai danno e riapri la distanza, ma
+                        //   l'avversario ti dà un colpo d'opportunità.
                         const _oppSnap          = snapshots[chosenTargetId];
                         const _iThreatenRanged  = PLAYER_HAS_RANGED_WEAPON(myPlayer, mySnap);
                         const _oppThreatRanged  = PLAYER_HAS_RANGED_WEAPON(targetMatchPlayer, _oppSnap);
                         const _distFar          = !m.distanceClosed;
-                        const _kiteLeft         = ARENA_KITE_MAX - (myPlayer?.kiteChargesUsed ?? 0);
                         const mustClose         = _distFar && _oppThreatRanged && !_iThreatenRanged;
-                        const canKite           = !_distFar && _iThreatenRanged && !_oppThreatRanged && _kiteLeft > 0;
+                        const canKite           = !_distFar && _iThreatenRanged && !_oppThreatRanged;
                         const allSkillActions = currentActions.filter(a => (a.type === "skill" || a.type === "passive") && !(action => action.special === "deathblow" && targetHpPct > 20)(a));
                         // Il Ranger ha un compagno: le sue azioni (pet_*) vanno in una sotto-tab dedicata.
                         const isPetAction   = (a) => typeof a.special === "string" && a.special.startsWith("pet_");
@@ -13439,51 +13458,45 @@ export default function Arena() {
 
                         return (
                           <div className="action-groups">
+                            {dock === "attacchi" && meleeActions.length > 0 && (
+                              <div className="action-group">
+                                <div className={`action-group-label melee${mustClose ? " danger" : ""}`}>
+                                  {mustClose ? "⚔ Carica — a svantaggio" : "⚔ Mischia"}
+                                </div>
+                                {mustClose && (
+                                  <div className="action-group-hint">Sei sotto tiro: attaccare in mischia ora è a svantaggio, ma chiude la distanza. Oppure avvicìnati (sotto) senza attaccare.</div>
+                                )}
+                                <div className="action-buttons">{meleeActions.map(renderActionBtn)}</div>
+                              </div>
+                            )}
                             {dock === "attacchi" && mustClose && (
                               <div className="action-group">
-                                <div className="action-group-label melee">🏹 Sei a distanza</div>
+                                <div className="action-group-label melee">🏃 Manovra</div>
                                 <div className="action-buttons">
                                   <button
                                     className="btn-action move-close"
-                                    title="L'avversario ti tiene sotto tiro. Avvicìnati per ingaggiarlo in mischia: dal turno seguente attacchi normalmente. (usa il turno)"
+                                    title="Chiudi la distanza senza attaccare: eviti lo svantaggio e dal turno seguente colpisci normalmente. (usa il turno)"
                                     onClick={() => handleMoveClose(m.matchId)}
                                   >
                                     <span className="action-icon">🏃</span>
                                     <span className="action-name">Avvicìnati</span>
-                                    <span className="action-dice">Chiudi la distanza</span>
+                                    <span className="action-dice">Chiudi, niente danno</span>
                                   </button>
                                 </div>
                               </div>
                             )}
-                            {dock === "attacchi" && !mustClose && meleeActions.length > 0 && (
+                            {dock === "attacchi" && rangedActions.length > 0 && (
                               <div className="action-group">
-                                <div className="action-group-label melee">⚔ Mischia</div>
-                                <div className="action-buttons">{meleeActions.map(renderActionBtn)}</div>
-                              </div>
-                            )}
-                            {dock === "attacchi" && canKite && (
-                              <div className="action-group">
-                                <div className="action-group-label ranged">⚔ In mischia</div>
-                                <div className="action-buttons">
-                                  <button
-                                    className="btn-action move-away"
-                                    title={`Mantieni le distanze: indietreggia e costringi l'avversario a inseguirti (tirerà a svantaggio in mischia). Ancora ${_kiteLeft} volte. (usa il turno)`}
-                                    onClick={() => handleMoveAway(m.matchId)}
-                                  >
-                                    <span className="action-icon">🏹</span>
-                                    <span className="action-name">Allontànati</span>
-                                    <span className="action-dice">Riapri la distanza ×{_kiteLeft}</span>
-                                  </button>
+                                <div className={`action-group-label ranged${canKite ? " kite" : ""}`}>
+                                  {canKite ? "🏹 Tiro in arretramento" : "🏹 Distanza"}
                                 </div>
-                              </div>
-                            )}
-                            {dock === "attacchi" && !canKite && rangedActions.length > 0 && (
-                              <div className="action-group">
-                                <div className="action-group-label ranged">🏹 Distanza</div>
+                                {canKite && (
+                                  <div className="action-group-hint">Spari e riapri la distanza: l'avversario dovrà inseguirti a svantaggio, ma ti dà un colpo d'opportunità mentre arretri.</div>
+                                )}
                                 <div className="action-buttons">{rangedActions.map(renderActionBtn)}</div>
                               </div>
                             )}
-                            {dock === "attacchi" && !mustClose && !canKite && meleeActions.length === 0 && rangedActions.length === 0 && (
+                            {dock === "attacchi" && meleeActions.length === 0 && rangedActions.length === 0 && (
                               <div className="combat-dock-empty">Nessuna arma disponibile.</div>
                             )}
                             {dock === "magie" && spellGroups.map(({ lvl, spells }) => (

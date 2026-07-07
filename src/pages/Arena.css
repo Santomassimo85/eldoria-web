@@ -1530,6 +1530,27 @@
   border: 1px solid rgba(160, 100, 10, 0.22);
 }
 
+/* Carica a svantaggio (melee sotto tiro) — ambra d'avviso */
+.action-group-label.melee.danger {
+  background: rgba(200, 120, 10, 0.14);
+  color: #8a4a06;
+  border-color: rgba(200, 120, 10, 0.4);
+}
+/* Tiro in arretramento (kiting) — oro */
+.action-group-label.ranged.kite {
+  background: rgba(212, 175, 55, 0.16);
+  color: #7a5a08;
+  border-color: rgba(212, 175, 55, 0.45);
+}
+/* Riga di spiegazione sotto l'etichetta di gruppo (manovre distanza) */
+.action-group-hint {
+  font-size: 0.68rem;
+  line-height: 1.3;
+  opacity: 0.85;
+  margin: 2px 0 4px;
+  max-width: 44ch;
+}
+
 /* Trucchetti (lv0) — grigio */
 .action-group-label.spell-lv0 {
   background: rgba(110, 105, 95, 0.1);
