@@ -4234,7 +4234,12 @@ export default function Arena() {
     if (pendingSpells.length  < config.maxSpells)  return;
     if (!charPreview.rolledHp) return;
     if (!pendingArmor && marketFixedAc == null) return; // serve un'armatura (base o Bottega)
-    const totalItemsJoin = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
+    // Gli oggetti comprati alla Bottega contano come oggetti (occupano gli slot):
+    // valgono anche per il minimo "almeno 1 oggetto".
+    const marketItemCount = loadoutContext === "tournament"
+      ? (charPreview.arenaWeekly?.purchases || []).filter(p => marketSel.has(p.itemId) && p.category === "item").length
+      : 0;
+    const totalItemsJoin = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0) + marketItemCount;
     if (totalItemsJoin < 1) return;
 
     // Calcolo CA finale: base + DES (cappato) + scudo; se senza armatura (barbaro): 10+DES+COS
@@ -10597,8 +10602,48 @@ export default function Arena() {
             const scrollLoss   = scrollSlotLossFor(weeklyPurchases, pendingMarketSel);
             const config       = applySlotLoss(rawConfig, scrollLoss);
             const marketGear    = loadoutContext === "tournament" ? resolveMarketGear(charPreview.arenaWeekly, marketSel) : null;
+            // ── Conteggio COMBINATO: gli acquisti della Bottega EQUIPAGGIATI contano come
+            // armi/oggetti VERI (occupano gli slot, rispettano le regole due-mani), NON in
+            // aggiunta al kit di classe. Vedi marketPickBlocked + toggleMarketWeapon. ──
+            const _mw2HMelee = (pu) => !!pu.payload?.twoHanded && !pu.payload?.ranged;
+            const _selMarketWeapons = marketByCat.weapon.filter(pu => pendingMarketSel[pu.itemId]);
+            const _selMarketItems   = marketByCat.item.filter(pu => pendingMarketSel[pu.itemId]);
+            const totalWeapons    = pendingWeapons.length + _selMarketWeapons.length;
+            const has2HMelee_all  = pendingWeapons.some(IS_TWO_HANDED_MELEE) || _selMarketWeapons.some(_mw2HMelee);
+            const hasAny2H_all    = pendingWeapons.some(w => w.twoHanded)     || _selMarketWeapons.some(pu => !!pu.payload?.twoHanded);
+            const classItemsCount = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
+            const totalItemsAll   = classItemsCount + _selMarketItems.length;
+            // Un acquisto è BLOCCATO (non selezionabile) se violerebbe gli slot: armi oltre
+            // il massimo / seconda arma a due mani / terzo oggetto. null = selezionabile.
+            const marketPickBlocked = (pu) => {
+              if (pendingMarketSel[pu.itemId]) return null; // deselezionare è sempre ok
+              if (pu.category === "weapon") {
+                if (_mw2HMelee(pu)) return null;            // 2H mischia: sostituisce tutto
+                if (has2HMelee_all) return "Hai già un'arma a due mani da mischia";
+                if (pu.payload?.twoHanded) return hasAny2H_all ? "Una sola arma a due mani" : (totalWeapons >= config.maxWeapons ? "Slot armi pieni" : null);
+                return totalWeapons >= config.maxWeapons ? "Slot armi pieni" : null;
+              }
+              if (pu.category === "item") return totalItemsAll >= 2 ? "Hai già 2 oggetti" : null;
+              return null;
+            };
             // Card opt-in della Bottega (colore viola) per una categoria: riusata in ogni tab.
             const toggleMarket = (id) => setPendingMarketSel(prev => ({ ...prev, [id]: !prev[id] }));
+            // Arma della Bottega: conta come arma vera. Una 2H da mischia è esclusiva →
+            // azzera le armi di classe e le altre armi comprate.
+            const toggleMarketWeapon = (pu) => {
+              const turningOn = !pendingMarketSel[pu.itemId];
+              if (turningOn && _mw2HMelee(pu)) {
+                setPendingWeapons([]);
+                setPendingMarketSel(prev => {
+                  const next = { ...prev };
+                  marketByCat.weapon.forEach(w => { next[w.itemId] = false; });
+                  next[pu.itemId] = true;
+                  return next;
+                });
+                return;
+              }
+              toggleMarket(pu.itemId);
+            };
             // Toggle di uno SCROLL: dopo aver cambiato la selezione, ricalcola gli slot
             // persi e taglia le spell di classe in eccesso (limiti = base ridotti).
             const toggleMarketScroll = (pu) => {
@@ -10642,20 +10687,30 @@ export default function Arena() {
                       const reqStat = isScrollCat ? pu.payload?.castStat : null;
                       const reqMin  = isScrollCat ? (pu.payload?.castStatMin || 0) : 0;
                       const playerStatVal = reqStat ? (charPreview.stats?.[reqStat] ?? 0) : 0;
-                      const locked  = reqMin > 0 && !isSel && playerStatVal < reqMin;
+                      const statLocked = reqMin > 0 && !isSel && playerStatVal < reqMin;
+                      // Blocco per slot (armi/oggetti): non selezionabile se sfora i limiti.
+                      const slotBlock  = marketPickBlocked(pu);
+                      const locked     = statLocked || (!isSel && !!slotBlock);
+                      const onPick = () => {
+                        if (locked) return;
+                        if (isScrollCat) toggleMarketScroll(pu);
+                        else if (pu.category === "weapon") toggleMarketWeapon(pu);
+                        else toggleMarket(pu.itemId);
+                      };
                       return (
                         <button
                           key={pu.itemId}
                           type="button"
                           disabled={locked}
                           className={`loadout-item market-pick ${isSel ? "selected" : ""} ${locked ? "disabled" : ""}`}
-                          onClick={() => { if (locked) return; isScrollCat ? toggleMarketScroll(pu) : toggleMarket(pu.itemId); }}
+                          onClick={onPick}
                         >
                           <span className="loadout-item-icon">{pu.icon}</span>
                           <span className="loadout-item-name">{pu.name}{qty > 1 ? ` ×${qty}` : ""}</span>
                           <span className="loadout-item-damage">{describeMarketPurchase(pu)}</span>
-                          <span className="loadout-item-info">{locked
+                          <span className="loadout-item-info">{statLocked
                             ? `🔒 Richiede ${SAVE_LABEL[reqStat] || (reqStat || "").toUpperCase()} ≥ ${reqMin} (tu ${playerStatVal >= 0 ? "+" : ""}${playerStatVal})`
+                            : (!isSel && slotBlock) ? `🔒 ${slotBlock}`
                             : isSel ? "✓ Equipaggiato" : "Tocca per usarlo"}</span>
                           {isSel && <span className="loadout-check">✓</span>}
                         </button>
@@ -10671,14 +10726,14 @@ export default function Arena() {
             const petReady     = !isRanger || !!pendingPet;
             const demonReady   = !isWarlock || !!pendingDemon;
             const constructReady = !isArtificer || !!pendingConstruct;
-            // Serve almeno un'arma; il massimo (config.maxWeapons) è solo un tetto.
-            // Anche un'arma comprata in Bottega ed equipaggiata conta come arma valida.
-            const marketHasWeapon = (marketGear?.actions || []).some(a => a.type === "weapon");
-            const weaponsLeft  = (pendingWeapons.length >= 1 || marketHasWeapon) ? 0 : 1;
+            // Serve almeno un'arma; il massimo (config.maxWeapons) è un tetto COMBINATO
+            // (armi di classe + armi comprate equipaggiate). Gli oggetti comprati contano
+            // negli stessi 2 slot degli oggetti (totalItemsAll).
+            const weaponsLeft  = totalWeapons >= 1 ? 0 : 1;
             const spellsLeft   = config.maxSpells  - pendingSpells.length;
             const armorReady   = !!pendingArmor || hasMarketArmor;
-            const totalItems   = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
-            const isReady      = weaponsLeft === 0 && spellsLeft === 0 && armorReady && totalItems >= 1 && petReady && demonReady && constructReady;
+            const totalItems   = totalItemsAll;
+            const isReady      = weaponsLeft === 0 && totalWeapons <= config.maxWeapons && spellsLeft === 0 && armorReady && totalItems >= 1 && totalItems <= 2 && petReady && demonReady && constructReady;
             const btnParts     = [];
             if (weaponsLeft > 0) btnParts.push(`${weaponsLeft} arm${weaponsLeft === 1 ? "a" : "i"}`);
             if (spellsLeft  > 0) btnParts.push(`${spellsLeft} incantesim${spellsLeft === 1 ? "o" : "i"}`);
@@ -10702,8 +10757,8 @@ export default function Arena() {
                   : pendingArmor.baseAc + Math.max(0, Math.min(dexMod, pendingArmor.maxDex)) + (pendingShield ? 1 : 0)
                 : charPreview.stats.ac);
 
-            // Scudo disabilitato se c'è un'arma a 2 mani selezionata
-            const has2HWeapon  = pendingWeapons.some(w => w.twoHanded);
+            // Scudo disabilitato se c'è un'arma a 2 mani selezionata (di classe o comprata)
+            const has2HWeapon  = hasAny2H_all;
             const shieldLocked = has2HWeapon;
 
             // ── Struttura a TAB: una categoria per scheda, niente scroll infinito ──
@@ -10719,7 +10774,7 @@ export default function Arena() {
             const ownedTitles  = (charPreview.arenaTitles || []).filter(k => ARENA_TITLES[k]);
             const showTitleTab = loadoutContext === "tournament" && ownedTitles.length > 0;
             const LOADOUT_TABS = [
-              { key: "weapons", icon: "⚔", label: config.maxWeapons === 1 ? "Arma" : "Armi", count: `${pendingWeapons.length}/${config.maxWeapons}`, done: weaponsLeft === 0 },
+              { key: "weapons", icon: "⚔", label: config.maxWeapons === 1 ? "Arma" : "Armi", count: `${totalWeapons}/${config.maxWeapons}`, done: weaponsLeft === 0 },
               ...(hasMagic ? [{ key: "magic", icon: "✨", label: (config.spellOptions.length > 0 || marketByCat.spell.length > 0) ? "Magie" : "Abilità", count: config.spellOptions.length > 0 ? `${pendingSpells.length}/${config.maxSpells}` : null, done: spellsLeft === 0 }] : []),
               { key: "armor", icon: "🛡", label: "Difesa", count: (pendingArmor || hasMarketArmor) ? "✓" : null, done: armorReady },
               ...(hasCompanion ? [{ key: "companion", icon: companionMeta.icon, label: companionMeta.label, count: companionMeta.done ? "✓" : null, done: companionMeta.done }] : []),
@@ -10795,27 +10850,39 @@ export default function Arena() {
                 {/* Sezione Armi */}
                 {activeTab === "weapons" && (<>
                 <div className="loadout-section-title">
-                  ⚔ {config.maxWeapons === 1 ? "Arma" : "Armi"} — {pendingWeapons.length}/{config.maxWeapons}
+                  ⚔ {config.maxWeapons === 1 ? "Arma" : "Armi"} — {totalWeapons}/{config.maxWeapons}
                 </div>
-                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).{config.maxWeapons > 1 && <> Basta <strong>almeno un'arma</strong> per proseguire (massimo {config.maxWeapons}). Un'arma <strong>a due mani da mischia</strong> occupa entrambe le mani (è l'unica impugnabile); una <strong>a distanza</strong> (arco/balestra) può essere affiancata da una sola arma a una mano.</>}</div>
+                <div className="loadout-section-hint">✨ In <strong>verde</strong> le armi più adatte alla classe (usano la sua caratteristica principale).{config.maxWeapons > 1 && <> Basta <strong>almeno un'arma</strong> per proseguire (massimo {config.maxWeapons}, <strong>incluse le armi comprate</strong>). Un'arma <strong>a due mani da mischia</strong> occupa entrambe le mani (è l'unica impugnabile); una <strong>a distanza</strong> (arco/balestra) può essere affiancata da una sola arma a una mano.</>}</div>
                 <div className="loadout-grid">
                   {(() => {
                     const keyStats = ARENA_KEY_STATS[getClassKey(charPreview.class)] || [];
-                    const selMelee2H = pendingWeapons.some(IS_TWO_HANDED_MELEE);
-                    const selAny2H   = pendingWeapons.some(a => a.twoHanded);
                     return config.weaponOptions.map(item => {
                       const isSelected = pendingWeapons.some(a => a.name === item.name);
-                      const isDisabled = !isSelected && (
-                        selMelee2H                                              // 2H mischia esclusiva: blocca tutto il resto
-                        || (item.twoHanded ? selAny2H                            // una sola arma a due mani ammessa
-                                           : pendingWeapons.length >= config.maxWeapons)
+                      const is2HMeleeItem = IS_TWO_HANDED_MELEE(item);
+                      // 2H mischia: sempre selezionabile (sostituisce tutto). Altrimenti blocca
+                      // se c'è una 2H mischia, una seconda 2H, o gli slot COMBINATI sono pieni.
+                      const isDisabled = !isSelected && !is2HMeleeItem && (
+                        has2HMelee_all
+                        || (item.twoHanded ? hasAny2H_all
+                                           : totalWeapons >= config.maxWeapons)
                       );
                       const isOptimal = !!item.statKey && keyStats.includes(item.statKey);
                       return (
                       <button
                         key={item.name}
                         className={`loadout-item weapon ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""} ${isOptimal ? "optimal" : ""}`}
-                        onClick={() => toggleWeapon(item, config.maxWeapons)}
+                        onClick={() => {
+                          if (isDisabled) return;
+                          // 2H mischia: esclusiva anche verso le armi comprate → azzerale.
+                          if (is2HMeleeItem && !isSelected) {
+                            setPendingMarketSel(prev => {
+                              const next = { ...prev };
+                              marketByCat.weapon.forEach(pu => { next[pu.itemId] = false; });
+                              return next;
+                            });
+                          }
+                          toggleWeapon(item, config.maxWeapons);
+                        }}
                       >
                         {isOptimal && <span className="loadout-optimal-tag" title="Arma adatta alla classe">★</span>}
                         <span className="loadout-item-icon">{item.icon}</span>
@@ -11154,11 +11221,12 @@ export default function Arena() {
                 {activeTab === "items" && (<>
                 {/* ── Sezione Oggetti ── */}
                 {(() => {
-                  const totalItems = Object.values(pendingItemCounts).reduce((a, b) => a + b, 0);
+                  // Totale COMBINATO: oggetti di classe + oggetti comprati equipaggiati (max 2).
+                  const totalItems = totalItemsAll;
                   return (
                     <>
                       <div className="loadout-section-title">
-                        🎒 Oggetti — {totalItems}/2 <span className="loadout-optional">(scegli fino a 2, anche uguali)</span>
+                        🎒 Oggetti — {totalItems}/2 <span className="loadout-optional">(fino a 2, inclusi quelli comprati)</span>
                       </div>
                       <div className="loadout-grid">
                         {ARENA_ITEMS.filter(item => !item.shopOnly).map(item => {
