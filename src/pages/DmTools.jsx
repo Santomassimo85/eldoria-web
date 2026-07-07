@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthContext";
+import { MASTER_EMAIL } from "../utils/dmAccess";
 import { db, storage } from "../firebase";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
@@ -120,7 +122,44 @@ const styleSuffix = (list, key) => (list.find((s) => s.key === key) || list[0]).
 
 const API = "/api/dm-tools";
 
+// ── Hub: tutti gli strumenti del Master (tranne lo Scriba), raggiungibili da qui.
+// Accessibile al master principale E al co-master: i singoli pannelli ora
+// accettano entrambi (vedi src/utils/dmAccess.js).
+const TOOL_GROUPS = [
+  { label: "Generatori", items: [
+    { icon: "🧙", label: "Genera NPC",       desc: "Crea un PNG con ritratto AI.",           path: "/dm-admin/genera-npc" },
+    { icon: "🧝", label: "NPC → Foundry",    desc: "Invia gli NPC creati a Foundry.",        path: "/dm-admin/foundry-npc" },
+    { icon: "🎁", label: "Oggetto → Foundry",desc: "Invia un oggetto a Foundry.",            path: "/dm-admin/foundry-item" },
+    { icon: "🎲", label: "Genera Sessione",  desc: "Prep di sessione con l'AI, per party.",  path: "/dm/generate-session" },
+  ]},
+  { label: "Economia & Gilda", items: [
+    { icon: "💰", label: "Black Market",     desc: "Oggetti, aste e gestione del Ratto.",    path: "/dm-admin/market" },
+    { icon: "🐀", label: "Rat Reputation",   desc: "Gradi e lealtà alla Gilda di Obia.",     path: "/dm-admin/reputation" },
+    { icon: "🪙", label: "Corone",           desc: "Saldo Corone dei personaggi.",           path: "/dm-admin/platinum" },
+  ]},
+  { label: "Mondo & Cronache", items: [
+    { icon: "🗺", label: "Geomantia",        desc: "Mappe, lore delle città e ping NPC.",    path: "/dm-admin/geo" },
+    { icon: "📜", label: "Session Summaries",desc: "Log narrativi delle avventure.",         path: "/dm-admin/summaries" },
+    { icon: "📖", label: "Sessioni DM",      desc: "Archivio delle prep-sessioni.",          path: "/sessions/amea" },
+    { icon: "🎬", label: "Cinema",           desc: "Link delle registrazioni.",              path: "/dm-admin/videos" },
+    { icon: "📅", label: "Gestione Sessioni",desc: "Date, orari e link per i party.",        path: "/dm-admin/sessions" },
+    { icon: "🪧", label: "Quest Board",      desc: "Missioni sulla bacheca di Hemile.",      path: "/dm-admin/quests" },
+  ]},
+  { label: "Battaglia & Risorse", items: [
+    { icon: "👹", label: "World Boss Fight", desc: "Crea boss e gestisci gli HP live.",      path: "/dm-admin/world-boss" },
+    { icon: "🧝", label: "Sprite Personaggi",desc: "Sprite di PG e minion.",                 path: "/dm-admin/player-sprites" },
+    { icon: "🗺", label: "Editor Mappe",     desc: "Mappe tattiche del Boss Fight.",         path: "/dm-admin/battle-maps" },
+    { icon: "🐾", label: "Pet Points",       desc: "Punti e gestione dei compagni.",         path: "/dm-admin/pet-points" },
+  ]},
+  { label: "Comunicazioni", items: [
+    { icon: "🔔", label: "Invia Notifica",   desc: "Messaggio diretto a un giocatore.",      path: "/dm-admin/send-notif" },
+  ]},
+];
+
 export default function DmTools() {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const isPrimaryMaster = currentUser?.email === MASTER_EMAIL;
   const [tab, setTab]   = useState("incontro");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg]   = useState("");
@@ -433,9 +472,39 @@ export default function DmTools() {
   return (
     <div className="npcgen-page">
       <div className="npcgen-inner">
-        <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
+        {isPrimaryMaster && <Link to="/dm-admin" className="adm-back">← Console del Master</Link>}
         <h1 className="npcgen-title">Strumenti DM</h1>
-        <p className="npcgen-sub">Genera al volo incontri, bottino e città per Eldoria.</p>
+        <p className="npcgen-sub">Il banco di lavoro del Master: genera contenuti e apri ogni strumento da un solo posto.</p>
+
+        {/* HUB — tutti gli strumenti (tranne lo Scriba) */}
+        <div className="dmt-hub">
+          {TOOL_GROUPS.map((group) => (
+            <div key={group.label} className="dmt-hub-group">
+              <h2 className="dmt-hub-label">{group.label}</h2>
+              <div className="adm-tiles">
+                {group.items.map(({ icon, label, desc, path }) => (
+                  <div
+                    key={path}
+                    className="adm-tile"
+                    onClick={() => navigate(path)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(path); } }}
+                  >
+                    <span className="adm-tile-icon" aria-hidden="true">{icon}</span>
+                    <h3 className="adm-tile-title">{label}</h3>
+                    <p className="adm-tile-desc">{desc}</p>
+                    <span className="adm-tile-cue">Apri ›</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* GENERATORI RAPIDI (in pagina) */}
+        <h2 className="dmt-hub-label" style={{ marginTop: 30 }}>Generatori rapidi</h2>
+        <p className="npcgen-sub" style={{ marginTop: 0 }}>Incontri, bottino, città e cronache generati al volo con l'AI.</p>
 
         {/* TAB */}
         <div className="dmt-tabs">

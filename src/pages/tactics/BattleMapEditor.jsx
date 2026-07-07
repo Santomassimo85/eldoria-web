@@ -28,7 +28,7 @@ const FORCE_PLAYER_EMAILS = ["ale_wolf@icloud.com"];
 import "./BossTactics.css";
 import "./BattleMapEditor.css";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isDmUser } from "../../utils/dmAccess";
 
 // Codici terreno compatti usati dall'IA (api/genera-mappa) → chiavi di TERRAINS.
 const CODE2TERR = {
@@ -45,7 +45,7 @@ const MAP_SIZES = [
 
 export default function BattleMapEditor() {
   const { currentUser } = useAuth();
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = isDmUser(currentUser?.email);
 
   const [map, setMap] = useState(() => makeFlatMap(12, 12, "grass"));
   const [tool, setTool] = useState({ type: "terrain", value: "grass" });

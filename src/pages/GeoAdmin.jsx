@@ -19,7 +19,7 @@ import HtmlToolbar from "../components/HtmlToolbar";
 import { CITIES_HUB } from "../data/citiesHub";
 import "./admin.css";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isDmUser } from "../utils/dmAccess";
 
 // Inline SVG placeholder (no network request → evita loop infinito su 404).
 const PLACEHOLDER_IMG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23222'/><text x='50' y='55' text-anchor='middle' fill='%23888' font-family='sans-serif' font-size='10'>no image</text></svg>";
@@ -135,7 +135,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
   const descRef = useRef(null);
 
   useEffect(() => {
-    if (!currentUser || currentUser.email !== MASTER_EMAIL) return;
+    if (!currentUser || !isDmUser(currentUser.email)) return;
 
     const unsubLocs = onSnapshot(collection(db, "geo_archive"), (snap) => {
       setLocations(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -155,7 +155,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
     return () => { unsubLocs(); unsubNpcs(); };
   }, [currentUser, editTarget]);
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isDmUser(currentUser.email)) {
     return <div className="denied-msg">Accesso Negato</div>;
   }
 

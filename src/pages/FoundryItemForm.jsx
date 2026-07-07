@@ -23,7 +23,7 @@ import "./admin.css";
    Vedi src/foundry-macro-create-items.txt per la macro da incollare.
    ============================================================ */
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isDmUser } from "../utils/dmAccess";
 
 const FOUNDRY_TYPES = [
   { v: "weapon", label: "Arma" },
@@ -93,7 +93,7 @@ export default function FoundryItemForm() {
   const [soldFilter, setSoldFilter] = useState("all");   // all | available | sold
   const [buyerFilter, setBuyerFilter] = useState("all"); // acquirente (solo venduti)
 
-  const isMaster = currentUser?.email === MASTER_EMAIL;
+  const isMaster = isDmUser(currentUser?.email);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
   const toggleProp = (p) => setF(s => ({
     ...s, properties: s.properties.includes(p) ? s.properties.filter(x => x !== p) : [...s.properties, p],

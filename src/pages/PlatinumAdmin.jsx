@@ -6,7 +6,7 @@ import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { isHiddenChar } from '../data/hiddenPlayers';
 import "./admin.css";
 
-const MASTER_EMAIL = "santomassimo85@gmail.com";
+import { isDmUser } from "../utils/dmAccess";
 
 export default function PlatinumAdmin() {
   const { currentUser } = useAuth();
@@ -56,7 +56,7 @@ export default function PlatinumAdmin() {
     );
   }, [characters, query]);
 
-  if (!currentUser || currentUser.email !== MASTER_EMAIL) {
+  if (!currentUser || !isDmUser(currentUser.email)) {
     return <p style={{ textAlign: 'center', paddingTop: '100px' }}>Accesso negato: solo DM.</p>;
   }
 
