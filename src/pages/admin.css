@@ -1390,6 +1390,51 @@
 .mkadm-market-status.closed { background: rgba(176, 48, 48, 0.15);  color: #8a1f1f; border: 1px solid rgba(176, 48, 48, 0.4); }
 
 /* ─── EDITOR + PREVIEW ─── */
+/* ── Schede Mercato: Crea a mano · Genera con AI ── */
+.mkadm-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 14px;
+  flex-wrap: wrap;
+}
+.mkadm-tab {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 10px 20px;
+  border-radius: 12px 12px 0 0;
+  border: 1.5px solid rgba(130, 10, 10, 0.18);
+  border-bottom: none;
+  background: rgba(130, 10, 10, 0.05);
+  color: #8a261c;
+}
+.mkadm-tab:hover { background: rgba(130, 10, 10, 0.1); }
+.mkadm-tab.is-active {
+  background: #fff;
+  color: #6a0e0e;
+  box-shadow: 0 -3px 12px rgba(130, 10, 10, 0.1);
+  border-color: rgba(130, 10, 10, 0.28);
+}
+
+/* ── Pannello "Genera con AI" ── */
+.mkadm-ai-intro {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #5a4a2e;
+  margin: 0 0 16px;
+}
+.mkadm-ai-styles { display: flex; flex-wrap: wrap; gap: 7px; }
+.mkadm-ai-go { width: 100%; margin-top: 6px; }
+.mkadm-ai-note {
+  font-size: 0.8rem;
+  color: #7a6a4a;
+  font-style: italic;
+  line-height: 1.45;
+  margin: 10px 0 0;
+}
+
 .mkadm-workshop {
   display: grid;
   grid-template-columns: 1fr;

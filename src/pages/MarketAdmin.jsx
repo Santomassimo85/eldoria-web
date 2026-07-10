@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { db, storage } from "../firebase";
 import "./admin.css";
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from "firebase/firestore";
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref as storageRef, uploadBytes, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import HtmlToolbar from "../components/HtmlToolbar";
 import DateTimePicker from "../components/DateTimePicker";
 import { createMarketItem } from "../utils/itemTemplates";
@@ -325,6 +325,91 @@ export default function MarketAdmin() {
   const fileInputRef = useRef(null);
 
   const genBusy = genName || genDesc || genGdr;
+
+  // ── Tab "Genera con AI": da un prompt → immagine + info + dati Foundry ──
+  const [activeTab, setActiveTab] = useState("manual"); // "manual" | "ai"
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiRarity, setAiRarity] = useState("");   // "" = decide l'AI
+  const [aiType, setAiType] = useState("");        // "" = decide l'AI
+  const [aiStyle, setAiStyle] = useState("olio");  // stile dell'immagine
+  const [aiBusy, setAiBusy] = useState("");        // "" | "img" | "info"
+  const [aiError, setAiError] = useState("");
+
+  const AI_STYLES = [
+    { key: "olio", label: "🖼 Olio" },
+    { key: "fumetto", label: "🖋 Fumetto" },
+    { key: "acquerello", label: "🎨 Acquerello" },
+    { key: "epico", label: "⚔️ Epico" },
+    { key: "anime", label: "✨ Anime" },
+  ];
+
+  // Carica una data-URL (immagine generata) su Storage e ne torna l'URL pubblico.
+  const uploadDataUrlToStorage = async (dataUrl) => {
+    const path = `market-items/ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    const ref = storageRef(storage, path);
+    await uploadString(ref, dataUrl, "data_url");
+    return await getDownloadURL(ref);
+  };
+
+  // Pipeline: prompt → immagine (Gemini) → carica su Storage → info+Foundry
+  // (Claude tool use) → compila il form e passa alla scheda per revisione/salvataggio.
+  const generateItemFromPrompt = async () => {
+    const p = aiPrompt.trim();
+    if (!p || aiBusy) return;
+    setAiError("");
+    // 1) Immagine dal prompt.
+    setAiBusy("img");
+    let imgUrl = "";
+    try {
+      const artPrompt = `Oggetto fantasy per gioco di ruolo, isolato al centro su fondale semplice e scuro, resa da inventario/scheda oggetto: ${p}. Nessun personaggio, nessun testo, nessuna scritta, nessuna cornice.`;
+      const rImg = await fetch("/api/genera-immagine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: artPrompt, stile: aiStyle }),
+      });
+      const dImg = await rImg.json();
+      if (!rImg.ok || dImg.error) throw new Error(dImg.error || "immagine non generata");
+      if (!dImg.immagine) throw new Error("Nessuna immagine ricevuta.");
+      imgUrl = await uploadDataUrlToStorage(dImg.immagine);
+    } catch (err) {
+      setAiError(`Immagine non riuscita (l'AI è attiva solo online): ${err.message || err}`);
+      setAiBusy("");
+      return;
+    }
+    // 2) Info + dati Foundry coerenti con prompt e immagine.
+    setAiBusy("info");
+    try {
+      const rInfo = await fetch("/api/genera-oggetto-completo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: p, img: imgUrl, rarita: aiRarity || undefined, tipoOggetto: aiType || undefined }),
+      });
+      const dInfo = await rInfo.json();
+      if (!rInfo.ok || dInfo.error) throw new Error(dInfo.error || "info non generate");
+      const o = dInfo.oggetto || {};
+      setEditId(null);
+      setFormData({
+        ...initialFormData,
+        name: o.name || "",
+        type: ITEM_TYPES.includes(o.type) ? o.type : "Arma",
+        class: RARITIES.includes(o.class) ? o.class : "Comune",
+        description: o.description || "",
+        startingBid: o.startingBid != null ? String(o.startingBid) : "",
+        img: imgUrl,
+        foundry: { ...EMPTY_FOUNDRY, ...(o.foundry || {}) },
+      });
+      setActiveTab("manual");     // rivedi e salva con il flusso normale
+      setAiError("");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      // L'immagine è già caricata: la tengo nel form così non si perde.
+      setFormData((prev) => ({ ...prev, img: imgUrl }));
+      setAiError(`Info oggetto non riuscite: ${err.message || err}. L'immagine è pronta nel form: compila i dati a mano.`);
+      setActiveTab("manual");
+    } finally {
+      setAiBusy("");
+    }
+  };
 
   // Genera nome / descrizione / oggetto-da-GdR DALL'IMMAGINE (vision).
   // Richiede un'immagine caricata. tipo: "nome" | "descrizione" | "gdr".
@@ -893,8 +978,102 @@ export default function MarketAdmin() {
         </div>
       </div>
 
+      {/* ─── SCHEDE: Crea a mano · Genera con AI ─── */}
+      <div className="mkadm-tabs" role="tablist" aria-label="Modalità di creazione oggetto">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "manual"}
+          className={`mkadm-tab${activeTab === "manual" ? " is-active" : ""}`}
+          onClick={() => setActiveTab("manual")}
+        >
+          ✍️ Crea a mano
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "ai"}
+          className={`mkadm-tab${activeTab === "ai" ? " is-active" : ""}`}
+          onClick={() => setActiveTab("ai")}
+        >
+          ✨ Genera con AI
+        </button>
+      </div>
+
       {/* ─── EDITOR + LIVE PREVIEW ─── */}
       <div className="mkadm-workshop">
+        {activeTab === "ai" && (
+          <div className="mkadm-editor mkadm-ai">
+            <div className="mkadm-editor-head">
+              <h2>✨ Genera oggetto con l'AI</h2>
+            </div>
+            <p className="mkadm-ai-intro">
+              Descrivi l'oggetto: l'AI ne <strong>disegna l'immagine</strong> e ne genera <strong>scheda e dati Foundry</strong>
+              (nome, rarità, tipo, descrizione, danni/CA…), pronti per il fetch. Poi rivedi e salvi come un normale oggetto.
+            </p>
+
+            <div className="mkadm-field">
+              <label>Descrivi l'oggetto (prompt)</label>
+              <textarea
+                className="admin-field-textarea"
+                rows="4"
+                placeholder="Es. Una spada lunga élfica intrisa di ghiaccio eterno, elsa d'argento con rune blu che pulsano di gelo…"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                disabled={!!aiBusy}
+              />
+            </div>
+
+            <div className="mkadm-field-row">
+              <div className="mkadm-field">
+                <label>Rarità (facolt.)</label>
+                <select className="admin-field-select" value={aiRarity} onChange={(e) => setAiRarity(e.target.value)} disabled={!!aiBusy}>
+                  <option value="">Decide l'AI</option>
+                  {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="mkadm-field">
+                <label>Tipo (facolt.)</label>
+                <select className="admin-field-select" value={aiType} onChange={(e) => setAiType(e.target.value)} disabled={!!aiBusy}>
+                  <option value="">Decide l'AI</option>
+                  {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="mkadm-field">
+              <label>Stile immagine</label>
+              <div className="mkadm-ai-styles">
+                {AI_STYLES.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    className={`mkadm-foundry-chip ${aiStyle === s.key ? "on" : ""}`}
+                    onClick={() => setAiStyle(s.key)}
+                    disabled={!!aiBusy}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="mkadm-btn-primary mkadm-ai-go"
+              onClick={generateItemFromPrompt}
+              disabled={!aiPrompt.trim() || !!aiBusy}
+            >
+              {aiBusy === "img" ? "🎨 Disegno l'immagine…" : aiBusy === "info" ? "⚒ Scrivo scheda e dati Foundry…" : "✨ Genera oggetto"}
+            </button>
+            {aiError && <p className="mkadm-gen-error">{aiError}</p>}
+            <p className="mkadm-ai-note">
+              Al termine passi automaticamente alla scheda <em>Crea a mano</em> con tutto compilato: controlla, ritocca e premi <strong>Crea oggetto</strong>.
+            </p>
+          </div>
+        )}
+
+        {activeTab === "manual" && (
         <div className="mkadm-editor">
           <div className="mkadm-editor-head">
             <h2>{editId ? "✎ Modifica oggetto" : "✨ Nuovo oggetto"}</h2>
@@ -1469,6 +1648,7 @@ export default function MarketAdmin() {
             </div>
           </form>
         </div>
+        )}
 
         {/* LIVE PREVIEW */}
         <aside className="mkadm-preview">
