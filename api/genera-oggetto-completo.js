@@ -85,11 +85,35 @@ const TOOL = {
   },
 };
 
-const buildUserText = ({ prompt, img, rarita, tipoOggetto }) =>
-  [
+const buildUserText = ({ prompt, img, rarita, tipoOggetto, mode }) => {
+  const richiesta = [
     `Progetta UN oggetto per il Mercato Nero della campagna dark fantasy "Eldoria" (D&D 5e) a partire da questa richiesta del master:`,
     `"${String(prompt || "").trim()}"`,
-    img ? "Osserva ANCHE l'immagine allegata e rendi i dati coerenti con ciò che si vede (tipo d'arma/armatura, elementi magici)." : "",
+    img ? "Osserva ANCHE l'immagine allegata e rendi i dati coerenti con ciò che si vede." : "",
+  ];
+
+  if (mode === "gdr") {
+    // Oggetto SOLO da gioco di ruolo: simpatico e di colore, INUTILE in
+    // combattimento, di valore basso. Nessun dato di combattimento.
+    return [
+      ...richiesta,
+      tipoOggetto ? `Categoria desiderata: ${tipoOggetto}.` : "Scegli una categoria adatta (di solito \"Varie\" o \"Accessori\").",
+      "",
+      "Questo è un OGGETTO DA GIOCO DI RUOLO: simpatico, di colore, con un mix di UTILITÀ fuori dal combattimento e un tocco DIVERTENTE/bizzarro. NON deve essere utile in battaglia.",
+      "REGOLE FERREE:",
+      "- Rarità: \"Comune\" o al massimo \"Non comune\". VALORE BASSO: prezzo base tra 3 e 25 Corone.",
+      "- NESSUN dato di combattimento: foundryType='loot', damageFormula='', armorValue=0, saveDC=0, properties=[], actionType=''. Niente danni, CA, TS, iniziativa.",
+      "- Descrizione in HTML, SOLO tag <p>,<em>,<strong>, in italiano:",
+      "  1) <p><em>…</em></p> descrizione estetica e atmosfera, con un tocco d'ironia (2-4 frasi).",
+      "  2) <p><strong>Utilità da Gioco:</strong> …</p> a cosa serve FUORI dal combattimento (scena sociale, esplorazione, indagine, intrattenimento, comodità). Al massimo vantaggio occasionale a una prova di abilità, MAI bonus in battaglia.",
+      "  3) opzionale <p><strong>Stranezza:</strong> …</p> un difetto buffo o effetto collaterale comico.",
+      "Rispondi SOLO usando lo strumento crea_oggetto.",
+    ].filter(Boolean).join("\n");
+  }
+
+  // Oggetto NORMALE (default): utile in combattimento, dati Foundry completi.
+  return [
+    ...richiesta,
     rarita ? `Rarità desiderata: ${rarita}.` : "Scegli tu una rarità adeguata all'oggetto.",
     tipoOggetto ? `Categoria desiderata: ${tipoOggetto}.` : "Scegli tu la categoria più adatta.",
     "",
@@ -99,11 +123,13 @@ const buildUserText = ({ prompt, img, rarita, tipoOggetto }) =>
     "Lascia VUOTI (\"\") o a 0 i campi non pertinenti al tipo scelto.",
     "Rispondi SOLO usando lo strumento crea_oggetto.",
   ].filter(Boolean).join("\n");
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { prompt, img, rarita, tipoOggetto } = req.body || {};
+  const { prompt, img, rarita, tipoOggetto, mode } = req.body || {};
+  const isGdr = mode === "gdr";
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Chiave Anthropic mancante." });
   if (!prompt || !String(prompt).trim()) return res.status(400).json({ error: "Serve un prompt che descriva l'oggetto." });
@@ -112,7 +138,7 @@ export default async function handler(req, res) {
     const imageBlock = await fetchImageAsBlock(img);
     const content = [];
     if (imageBlock) content.push(imageBlock);
-    content.push({ type: "text", text: buildUserText({ prompt, img: !!imageBlock, rarita, tipoOggetto }) });
+    content.push({ type: "text", text: buildUserText({ prompt, img: !!imageBlock, rarita, tipoOggetto, mode }) });
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -165,6 +191,24 @@ export default async function handler(req, res) {
         proficient: f.proficient !== false,
       },
     };
+
+    // Modalità GdR: garantiamo comunque niente combattimento e valore basso,
+    // anche se il modello avesse sbordato.
+    if (isGdr) {
+      oggetto.class = RARITIES.includes(oggetto.class) && ["Comune", "Non comune"].includes(oggetto.class) ? oggetto.class : "Comune";
+      oggetto.startingBid = Math.min(oggetto.startingBid || 0, 25) || 5;
+      oggetto.foundry = {
+        ...oggetto.foundry,
+        foundryType: "loot",
+        actionType: "",
+        damageFormula: "", damageType: "slashing",
+        damage2Formula: "", damage2Type: "",
+        versatileFormula: "", attackBonus: "",
+        properties: [], armorType: "", armorValue: "",
+        saveAbility: "", saveDC: "",
+      };
+    }
+
     return res.status(200).json({ oggetto });
   } catch (e) {
     return res.status(500).json({ error: "Generazione fallita: " + e.message });

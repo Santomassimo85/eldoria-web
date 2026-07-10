@@ -331,6 +331,7 @@ export default function MarketAdmin() {
   // ── Tab "Genera con AI": da un prompt → immagine + info + dati Foundry ──
   const [activeTab, setActiveTab] = useState("manual"); // "manual" | "ai"
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiMode, setAiMode] = useState("normale"); // "normale" | "gdr"
   const [aiRarity, setAiRarity] = useState("");   // "" = decide l'AI
   const [aiType, setAiType] = useState("");        // "" = decide l'AI
   const [aiStyle, setAiStyle] = useState("olio");  // stile dell'immagine
@@ -363,7 +364,9 @@ export default function MarketAdmin() {
     setAiBusy("img");
     let imgUrl = "";
     try {
-      const artPrompt = `Oggetto fantasy per gioco di ruolo, isolato al centro su fondale semplice e scuro, resa da inventario/scheda oggetto: ${p}. Nessun personaggio, nessun testo, nessuna scritta, nessuna cornice.`;
+      const artPrompt = aiMode === "gdr"
+        ? `Oggetto curioso e simpatico da gioco di ruolo (non un'arma seria), isolato al centro su fondale semplice, resa da inventario/scheda oggetto, tono lieve e bizzarro: ${p}. Nessun personaggio, nessun testo, nessuna scritta, nessuna cornice.`
+        : `Oggetto fantasy per gioco di ruolo, isolato al centro su fondale semplice e scuro, resa da inventario/scheda oggetto: ${p}. Nessun personaggio, nessun testo, nessuna scritta, nessuna cornice.`;
       const rImg = await fetch("/api/genera-immagine", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -384,7 +387,7 @@ export default function MarketAdmin() {
       const rInfo = await fetch("/api/genera-oggetto-completo", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: p, img: imgUrl, rarita: aiRarity || undefined, tipoOggetto: aiType || undefined }),
+        body: JSON.stringify({ prompt: p, img: imgUrl, rarita: aiRarity || undefined, tipoOggetto: aiType || undefined, mode: aiMode }),
       });
       const dInfo = await rInfo.json();
       if (!rInfo.ok || dInfo.error) throw new Error(dInfo.error || "info non generate");
@@ -1060,6 +1063,30 @@ export default function MarketAdmin() {
             </p>
 
             <div className="mkadm-field">
+              <label>Tipo di oggetto</label>
+              <div className="mkadm-ai-modes">
+                <button
+                  type="button"
+                  className={`mkadm-mode-chip ${aiMode === "normale" ? "on" : ""}`}
+                  onClick={() => setAiMode("normale")}
+                  disabled={!!aiBusy}
+                >
+                  ⚔️ Oggetto normale
+                  <small>Utile in combattimento · dati Foundry completi</small>
+                </button>
+                <button
+                  type="button"
+                  className={`mkadm-mode-chip ${aiMode === "gdr" ? "on" : ""}`}
+                  onClick={() => setAiMode("gdr")}
+                  disabled={!!aiBusy}
+                >
+                  🎭 Solo GdR
+                  <small>Simpatico e utile fuori dal combattimento · valore basso</small>
+                </button>
+              </div>
+            </div>
+
+            <div className="mkadm-field">
               <label>Descrivi l'oggetto (prompt)</label>
               <textarea
                 className="admin-field-textarea"
@@ -1072,13 +1099,15 @@ export default function MarketAdmin() {
             </div>
 
             <div className="mkadm-field-row">
-              <div className="mkadm-field">
-                <label>Rarità (facolt.)</label>
-                <select className="admin-field-select" value={aiRarity} onChange={(e) => setAiRarity(e.target.value)} disabled={!!aiBusy}>
-                  <option value="">Decide l'AI</option>
-                  {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
+              {aiMode !== "gdr" && (
+                <div className="mkadm-field">
+                  <label>Rarità (facolt.)</label>
+                  <select className="admin-field-select" value={aiRarity} onChange={(e) => setAiRarity(e.target.value)} disabled={!!aiBusy}>
+                    <option value="">Decide l'AI</option>
+                    {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="mkadm-field">
                 <label>Tipo (facolt.)</label>
                 <select className="admin-field-select" value={aiType} onChange={(e) => setAiType(e.target.value)} disabled={!!aiBusy}>
