@@ -307,6 +307,8 @@ export default function MarketAdmin() {
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [globalCountdown, setGlobalCountdown] = useState("");
+  const [marketClosing, setMarketClosing] = useState(""); // chiusura globale (scadenza di TUTTE le aste)
+  const [savingClosing, setSavingClosing] = useState(false);
   const [marketIsOpen, setMarketIsOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [rarityFilter, setRarityFilter] = useState("all");
@@ -544,6 +546,7 @@ export default function MarketAdmin() {
       if (snap.exists()) {
         const d = snap.data();
         setGlobalCountdown(d.nextOpening || "");
+        setMarketClosing(d.closingDate ? new Date(d.closingDate).toISOString().slice(0, 16) : "");
         setMarketIsOpen(!!d.isOpen);
       }
     });
@@ -556,6 +559,30 @@ export default function MarketAdmin() {
   const handleUpdateCountdown = async () => {
     await setDoc(doc(db, "settings", "market_config"), { nextOpening: globalCountdown }, { merge: true });
     alert("✅ Programmazione salvata!");
+  };
+
+  // Chiusura UNICA del mercato: la salva nel config E la applica come scadenza a
+  // TUTTI gli oggetti ancora in vendita (così non serve più impostarla per item).
+  const handleUpdateClosing = async () => {
+    if (savingClosing) return;
+    const iso = marketClosing ? new Date(marketClosing).toISOString() : null;
+    setSavingClosing(true);
+    try {
+      await setDoc(doc(db, "settings", "market_config"), { closingDate: iso }, { merge: true });
+      const targets = items.filter((i) => !i.isSold);
+      let ok = 0;
+      for (const it of targets) {
+        try { await updateDoc(doc(db, "items", it.id), { endDate: iso }); ok++; }
+        catch (e) { console.error("closing → item", it.id, e); }
+      }
+      alert(iso
+        ? `✅ Chiusura impostata e applicata a ${ok} oggetto/i in vendita.`
+        : `✅ Chiusura rimossa: ${ok} oggetto/i senza scadenza.`);
+    } catch (e) {
+      alert("Errore nel salvare la chiusura: " + (e.message || e));
+    } finally {
+      setSavingClosing(false);
+    }
   };
 
   const handleToggleMarket = async () => {
@@ -770,7 +797,10 @@ export default function MarketAdmin() {
     const dataToSubmit = {
       ...formData,
       saleType: "auction",
-      startingBid: Number(formData.startingBid || 0)
+      startingBid: Number(formData.startingBid || 0),
+      // La scadenza NON si imposta più per oggetto: tutte le aste chiudono con
+      // la CHIUSURA UNICA del mercato (settings/market_config.closingDate).
+      endDate: marketClosing ? new Date(marketClosing).toISOString() : null,
     };
 
     /* Attach a petPayload so the buyer-delivery flow knows what to give
@@ -963,7 +993,24 @@ export default function MarketAdmin() {
             />
             <button onClick={handleUpdateCountdown} className="mkadm-btn-save">Salva</button>
           </div>
-          <div className="mkadm-config-row" style={{ marginTop: 12, alignItems: "center" }}>
+
+          <label className="mkadm-config-label" style={{ marginTop: 16 }}>Chiusura del mercato (scadenza di tutte le aste)</label>
+          <div className="mkadm-config-row">
+            <DateTimePicker
+              value={marketClosing}
+              onChange={setMarketClosing}
+              presets="auction"
+              placeholder="Quando chiude il mercato?"
+            />
+            <button onClick={handleUpdateClosing} disabled={savingClosing} className="mkadm-btn-save">
+              {savingClosing ? "…" : "Salva chiusura"}
+            </button>
+          </div>
+          <p className="mkadm-config-hint" style={{ margin: "6px 2px 0", fontSize: "0.8rem", color: "#7a6a4a", lineHeight: 1.4 }}>
+            Impostala <strong>una sola volta</strong>: vale come scadenza per <strong>tutti</strong> gli oggetti (esistenti in vendita e nuovi). Non serve più metterla per singolo oggetto.
+          </p>
+
+          <div className="mkadm-config-row" style={{ marginTop: 16, alignItems: "center" }}>
             <span className={`mkadm-market-status ${marketIsOpen ? "open" : "closed"}`}>
               {marketIsOpen ? "🟢 Mercato APERTO" : "🔴 Mercato CHIUSO"}
             </span>
@@ -1402,13 +1449,14 @@ export default function MarketAdmin() {
 
             <div className="mkadm-field">
               <label>Scadenza asta</label>
-              <DateTimePicker
-                value={formData.endDate}
-                onChange={(v) => setFormData({ ...formData, endDate: v })}
-                required
-                presets="auction"
-                placeholder="Quando scade l'asta?"
-              />
+              <p className="mkadm-price-hint" style={{ color: "#6a5b41", borderColor: "#d9c79a" }}>
+                <span className="mkadm-price-hint-icon">⏳</span>
+                <span>
+                  {marketClosing
+                    ? <>Tutte le aste chiudono con la <strong>chiusura del mercato</strong>: {formatEndDate(new Date(marketClosing).toISOString())}. Impostala una volta sola in cima alla pagina.</>
+                    : <>Imposta la <strong>chiusura del mercato</strong> in cima alla pagina: varrà come scadenza per tutti gli oggetti. Senza chiusura, l'oggetto non ha scadenza.</>}
+                </span>
+              </p>
             </div>
 
             <div className="mkadm-field">
@@ -1669,9 +1717,9 @@ export default function MarketAdmin() {
               <p className="mkadm-preview-bid">
                 Base d'asta: <strong>{formData.startingBid || 0} Corone</strong>
               </p>
-              {formData.endDate && (
+              {marketClosing && (
                 <p className="mkadm-preview-deadline">
-                  ⏳ Scade il {formatEndDate(formData.endDate)}
+                  ⏳ Chiude il {formatEndDate(new Date(marketClosing).toISOString())}
                 </p>
               )}
               {formData.description && (
