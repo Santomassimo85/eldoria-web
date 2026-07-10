@@ -32,7 +32,29 @@ const numOf = (v) => {
 // Continenti del mondo (i luoghi senza `continent` sono Vathriddon, come nell'Atlante).
 const CONTINENTS = ["Vathriddon", "Ehkia", "Ohzkie"];
 const OTHER = "Altrove";
-const norm = (s) => String(s ?? "").trim().toLowerCase();
+
+// Colore/icona per continente: divide visivamente i gruppi della pagina.
+const CONTINENT_STYLE = {
+  Vathriddon: { slug: "vathriddon", color: "#b3402f", icon: "🔥" },
+  Ehkia:      { slug: "ehkia",      color: "#2f7d4f", icon: "🌿" },
+  Ohzkie:     { slug: "ohzkie",     color: "#7b4bb0", icon: "🔮" },
+  Altrove:    { slug: "altrove",    color: "#8a6a30", icon: "🧭" },
+};
+const contStyle = (c) => CONTINENT_STYLE[c] || CONTINENT_STYLE.Altrove;
+
+// Normalizzazione "morbida": minuscole + niente accenti + ø→o, così
+// "Nølborg", "Nolborg", "nølborg" combaciano nelle mappe città→continente.
+const norm = (s) =>
+  String(s ?? "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/ø/gi, "o").replace(/æ/gi, "ae")
+    .trim().toLowerCase();
+
+// Correzioni manuali città→continente per luoghi assenti/errati nell'Atlante
+// (geo_archive). Chiavi già normalizzate con norm(). Nølborg → Ehkia.
+const CITY_CONTINENT_OVERRIDES = {
+  "nolborg": "Ehkia",
+};
 // Città canonica dell'NPC: `linkedCity` (campo strutturato, come in NPC.jsx)
 // ha la precedenza sul testo libero `location`. Prima era il contrario, e questo
 // spezzava/mischiava i gruppi quando `location` conteneva un indirizzo generico.
@@ -95,7 +117,9 @@ export default function FoundryNpcForm() {
   const continentOf = useMemo(() => (n) => {
     const c = cityOf(n);
     if (!c) return OTHER;
-    return cityToContinent.get(norm(c)) || OTHER;
+    const k = norm(c);
+    // L'override manuale ha la precedenza (fix Atlante incompleto, es. Nølborg).
+    return CITY_CONTINENT_OVERRIDES[k] || cityToContinent.get(k) || OTHER;
   }, [cityToContinent]);
 
   // Continenti effettivamente presenti tra gli NPC, con conteggio (per le chip).
@@ -132,16 +156,27 @@ export default function FoundryNpcForm() {
     });
   }, [npcs, q, continent, city, continentOf]);
 
-  // NPC filtrati raggruppati per città (organizzazione visiva).
-  const groups = useMemo(() => {
-    const m = new Map();
+  // NPC filtrati raggruppati per CONTINENTE → città (organizzazione visiva).
+  const continentGroups = useMemo(() => {
+    const byCont = new Map(); // continente → Map(città → npc[])
     for (const n of filtered) {
+      const cont = continentOf(n);
       const c = cityOf(n) || "— Senza luogo —";
-      if (!m.has(c)) m.set(c, []);
-      m.get(c).push(n);
+      if (!byCont.has(cont)) byCont.set(cont, new Map());
+      const cm = byCont.get(cont);
+      if (!cm.has(c)) cm.set(c, []);
+      cm.get(c).push(n);
     }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered]);
+    const order = [...CONTINENTS, OTHER];
+    return order
+      .filter((c) => byCont.has(c))
+      .map((cont) => {
+        const cm = byCont.get(cont);
+        const cities = [...cm.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+        const count = cities.reduce((s, [, list]) => s + list.length, 0);
+        return { continent: cont, cities, count };
+      });
+  }, [filtered, continentOf]);
 
   if (!isMaster) {
     return <div className="npcgen-page"><div className="npcgen-inner"><h1 className="npcgen-title">Riservato al Master</h1></div></div>;
@@ -246,9 +281,10 @@ export default function FoundryNpcForm() {
                 key={c.key}
                 type="button"
                 className={`fdy-chip${continent === c.key ? " is-on" : ""}`}
+                style={{ "--cont": contStyle(c.key).color }}
                 onClick={() => setContinentFilter(continent === c.key ? null : c.key)}
               >
-                {c.key} <span className="fdy-chip-n">{c.n}</span>
+                {contStyle(c.key).icon} {c.key} <span className="fdy-chip-n">{c.n}</span>
               </button>
             ))}
           </div>
@@ -281,69 +317,83 @@ export default function FoundryNpcForm() {
         </div>
         <div className={`npcgen-status${msg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{msg}</div>
 
-        {/* NPC raggruppati per città, in griglia di card */}
-        <div className="fdy-npc-groups">
+        {/* NPC raggruppati per CONTINENTE (colore) → città → griglia di card */}
+        <div className="fdy-continents">
           {npcs.length === 0 && <p className="npcgen-v">Nessun NPC nell'anagrafe.</p>}
           {npcs.length > 0 && filtered.length === 0 && <p className="npcgen-v">Nessun NPC corrisponde ai filtri.</p>}
-          {groups.map(([cityName, list]) => {
-            const cont = list[0] ? continentOf(list[0]) : OTHER;
+          {continentGroups.map(({ continent: cont, cities, count }) => {
+            const cs = contStyle(cont);
             return (
-              <section className="fdy-npc-group" key={cityName}>
-                <header className="fdy-npc-grouphead">
-                  <span className="fdy-npc-city">📍 {cityName}</span>
-                  <span className="fdy-npc-cont">{cont}</span>
-                  <span className="fdy-npc-gcount">{list.length}</span>
-                  <button type="button" className="npcgen-btn npcgen-btn--ghost fdy-mini fdy-npc-selcity" onClick={() => selectCity(list)}>
-                    Seleziona città
-                  </button>
+              <section
+                className={`fdy-cont fdy-cont--${cs.slug}`}
+                key={cont}
+                style={{ "--cont": cs.color }}
+              >
+                <header className="fdy-cont-head">
+                  <span className="fdy-cont-icon" aria-hidden="true">{cs.icon}</span>
+                  <span className="fdy-cont-name">{cont}</span>
+                  <span className="fdy-cont-count">{count} NPC · {cities.length} {cities.length === 1 ? "luogo" : "luoghi"}</span>
                 </header>
-                <div className="fdy-npc-grid">
-                  {list.map((n) => {
-                    const already = pendingIds.has(n.id);
-                    const checked = sel.has(n.id);
-                    return (
-                      <div
-                        className={`fdy-npc-card${checked ? " is-checked" : ""}`}
-                        key={n.id}
-                        onClick={() => toggle(n.id)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(n.id); } }}
+
+                {cities.map(([cityName, list]) => (
+                  <div className="fdy-city" key={cityName}>
+                    <div className="fdy-city-head">
+                      <span className="fdy-city-dot" aria-hidden="true" />
+                      <span className="fdy-city-name">{cityName}</span>
+                      <span className="fdy-city-count">{list.length}</span>
+                      <button
+                        type="button"
+                        className="fdy-city-selall"
+                        title={`Seleziona tutti gli NPC di ${cityName}`}
+                        onClick={() => selectCity(list)}
                       >
-                        <input
-                          type="checkbox"
-                          className="fdy-npc-check"
-                          checked={checked}
-                          onChange={() => toggle(n.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={`Seleziona ${n.name || "NPC"}`}
-                        />
-                        <img
-                          className="fdy-npc-img"
-                          src={n.image || "/assets/placeholder.jpg"}
-                          alt=""
-                          onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
-                        />
-                        <div className="fdy-npc-body">
-                          <div className="fdy-npc-name">{n.name || "(senza nome)"}</div>
-                          <div className="fdy-npc-meta">
-                            {n.faction && <span className="npcgen-chip dmt-pill">{n.faction}</span>}
-                            <span className="npcgen-chip dmt-pill">CA {numOf(n.statblock?.CA) ?? "—"} · PF {numOf(n.statblock?.PF) ?? "—"}</span>
-                            {already && <span className="npcgen-chip dmt-pill" title="Già presente nella coda">⏳ in coda</span>}
-                          </div>
-                          <button
-                            type="button"
-                            className="npcgen-btn fdy-mini fdy-npc-queue"
-                            disabled={busy}
-                            onClick={(e) => { e.stopPropagation(); queueOne(n); }}
+                        ✓ tutti
+                      </button>
+                    </div>
+
+                    <div className="fdy-npc-grid">
+                      {list.map((n) => {
+                        const already = pendingIds.has(n.id);
+                        const checked = sel.has(n.id);
+                        return (
+                          <div
+                            className={`fdy-npc-card${checked ? " is-checked" : ""}`}
+                            key={n.id}
+                            onClick={() => toggle(n.id)}
+                            role="button"
+                            aria-pressed={checked}
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(n.id); } }}
                           >
-                            📦 Coda
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                            <span className="fdy-npc-tick" aria-hidden="true">✓</span>
+                            <img
+                              className="fdy-npc-img"
+                              src={n.image || "/assets/placeholder.jpg"}
+                              alt=""
+                              onError={(e) => { e.currentTarget.src = "/assets/placeholder.jpg"; }}
+                            />
+                            <div className="fdy-npc-body">
+                              <div className="fdy-npc-name">{n.name || "(senza nome)"}</div>
+                              <div className="fdy-npc-meta">
+                                {n.faction && <span className="npcgen-chip dmt-pill">{n.faction}</span>}
+                                <span className="npcgen-chip dmt-pill">CA {numOf(n.statblock?.CA) ?? "—"} · PF {numOf(n.statblock?.PF) ?? "—"}</span>
+                                {already && <span className="npcgen-chip dmt-pill" title="Già presente nella coda">⏳ in coda</span>}
+                              </div>
+                              <button
+                                type="button"
+                                className="npcgen-btn fdy-mini fdy-npc-queue"
+                                disabled={busy}
+                                onClick={(e) => { e.stopPropagation(); queueOne(n); }}
+                              >
+                                📦 Coda
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </section>
             );
           })}
