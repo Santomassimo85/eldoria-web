@@ -76,9 +76,12 @@ function parseScene(text) {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
 
-  const { content, roster, party, mode, members } = req.body || {};
+  const { content, roster, party, mode, members, focus } = req.body || {};
   const testo = String(content || "").trim();
-  if (!testo) return res.status(400).json({ error: "Serve il testo del riassunto." });
+  // Passaggio scelto dal DM: quando presente, illustriamo QUEL pezzo (niente
+  // più scelta casuale che ripescava sempre la stessa scena).
+  const foco = String(focus || "").trim();
+  if (!testo && !foco) return res.status(400).json({ error: "Serve il testo del riassunto." });
 
   // Cast con razza/classe (preferito); fallback alla vecchia stringa `roster`.
   const cast = Array.isArray(members) && members.length
@@ -95,7 +98,8 @@ export default async function handler(req, res) {
     : String(roster || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   let brief = "";
-  if (!isCover) {
+  if (!isCover && !foco) {
+    // Modalità "scena a caso": varia inquadratura e personaggi a ogni chiamata.
     const shot = SHOTS[Math.floor(Math.random() * SHOTS.length)];
     let who = "";
     if (names.length) {
@@ -105,16 +109,24 @@ export default async function handler(req, res) {
       else who = "Prefer an environment/creature framing with characters minimal or absent.";
     }
     brief = `COMPOSITION BRIEF for THIS image: ${shot}. ${who} Remember: only feature characters actually involved in the chosen moment; if none, feature the whole group.`.trim();
+  } else if (!isCover && foco) {
+    // Modalità "passaggio scelto": illustra QUEL pezzo, fedelmente.
+    brief = "COMPOSITION BRIEF: The director has CHOSEN the specific passage below to illustrate. Pick the single most visually striking moment WITHIN that passage and illustrate it faithfully. Do NOT depict events from other parts of the chronicle. Only feature characters actually involved in this passage; if none is clearly involved, feature whoever the passage is about (or the whole group).";
   }
+
+  // Con un passaggio scelto il modello lavora su QUEL testo; altrimenti sull'intero.
+  const chronicle = foco || testo;
 
   const userMsg = [
     party ? `Group "${party}".` : "",
     cast ? `CAST (name — race, class): ${cast}.` : "",
-    `Random seed ${seme}: use it to pick a DIFFERENT subject each time you are asked, even for the same chronicle.`,
+    foco
+      ? `Seed ${seme}: use it only to vary framing/mood slightly between regenerations; keep the SAME chosen passage as the subject.`
+      : `Random seed ${seme}: use it to pick a DIFFERENT subject each time you are asked, even for the same chronicle.`,
     brief,
     "",
-    "CHRONICLE TEXT:",
-    testo.slice(0, 6000),
+    foco ? "CHOSEN PASSAGE TO ILLUSTRATE:" : "CHRONICLE TEXT:",
+    chronicle.slice(0, 6000),
   ].filter(Boolean).join("\n");
 
   try {

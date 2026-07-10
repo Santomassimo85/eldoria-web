@@ -162,6 +162,118 @@ const partyColor = (key) => PARTIES.find((p) => p.key === key)?.color || "#888";
 const rosterOf = (key) => PARTIES.find((p) => p.key === key)?.roster || "";
 const stripHtml = (html) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
+// Spezza un testo lungo in tranche per confine di frase (~maxLen caratteri
+// ciascuna), così un paragrafo unico diventa comunque più parti selezionabili.
+const chunkBySentences = (text, maxLen = 320) => {
+  const sentences = String(text || "").match(/[^.!?]+[.!?]+|\S[^.!?]*$/g) || [String(text || "")];
+  const out = [];
+  let buf = "";
+  for (const s of sentences) {
+    const piece = s.trim();
+    if (!piece) continue;
+    if (buf && (buf.length + piece.length) > maxLen) { out.push(buf); buf = piece; }
+    else buf = buf ? `${buf} ${piece}` : piece;
+  }
+  if (buf) out.push(buf);
+  return out;
+};
+
+// Titolo breve ricavato dal testo (prime parole) per le sezioni senza intestazione.
+const titleFromText = (text) => {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (!t) return "Sezione";
+  const words = t.split(" ");
+  const short = words.slice(0, 7).join(" ");
+  return short.length < t.length ? short + "…" : short;
+};
+
+/* Divide il contenuto (HTML) del riassunto in SEZIONI selezionabili, così il DM
+   può illustrare un pezzo preciso invece di una scena a caso.
+   - Se ci sono intestazioni (h1–h6 o paragrafi tutti in grassetto), ogni
+     intestazione apre una sezione (titolo = intestazione, corpo = paragrafi
+     seguenti; l'eventuale testo prima della prima intestazione = "Apertura").
+   - Se NON ci sono intestazioni, ogni paragrafo/riga è una sezione a sé.
+   Ritorna [{ id, title, text }] con testo in chiaro (min. leggibile). */
+function parseSections(html) {
+  const src = String(html || "");
+  if (!src.trim()) return [];
+
+  let blocks = [];
+  try {
+    const docp = new DOMParser().parseFromString(`<div id="__root">${src}</div>`, "text/html");
+    const root = docp.getElementById("__root");
+    const walk = (parent) => {
+      parent.childNodes.forEach((node) => {
+        if (node.nodeType === 3) { // text
+          const t = node.textContent.replace(/\s+/g, " ").trim();
+          if (t) blocks.push({ text: t, heading: false });
+          return;
+        }
+        if (node.nodeType !== 1) return;
+        const tag = node.tagName.toLowerCase();
+        if (/^h[1-6]$/.test(tag)) {
+          const t = node.textContent.replace(/\s+/g, " ").trim();
+          if (t) blocks.push({ text: t, heading: true });
+        } else if (tag === "ul" || tag === "ol") {
+          node.querySelectorAll("li").forEach((li) => {
+            const t = li.textContent.replace(/\s+/g, " ").trim();
+            if (t) blocks.push({ text: t, heading: false });
+          });
+        } else if (tag === "br") {
+          /* ignora: separatore */
+        } else {
+          const t = node.textContent.replace(/\s+/g, " ").trim();
+          if (!t) return;
+          // <p> interamente in grassetto e corto → trattato come intestazione.
+          const onlyBold =
+            node.children.length === 1 &&
+            /^(strong|b)$/i.test(node.children[0].tagName) &&
+            node.children[0].textContent.replace(/\s+/g, " ").trim() === t;
+          blocks.push({ text: t, heading: onlyBold && t.length <= 90 });
+        }
+      });
+    };
+    walk(root);
+  } catch {
+    // Fallback senza DOMParser: spezza sul testo grezzo.
+    blocks = stripHtml(src).split(/(?<=[.!?])\s+/).map((t) => ({ text: t.trim(), heading: false })).filter((b) => b.text);
+  }
+
+  if (!blocks.length) return [];
+
+  const hasHeadings = blocks.some((b) => b.heading);
+  let sections = [];
+
+  if (hasHeadings) {
+    let cur = null;
+    for (const b of blocks) {
+      if (b.heading) {
+        cur = { title: b.text.slice(0, 70), text: "" };
+        sections.push(cur);
+      } else {
+        if (!cur) { cur = { title: "Apertura", text: "" }; sections.push(cur); }
+        cur.text += (cur.text ? " " : "") + b.text;
+      }
+    }
+    // Un'intestazione senza corpo illustra sé stessa.
+    sections.forEach((s) => { if (!s.text) s.text = s.title; });
+  } else {
+    // Nessuna intestazione: ogni paragrafo è una sezione; i blocchi molto lunghi
+    // vengono spezzati per frase in parti leggibili.
+    const chunks = [];
+    for (const b of blocks) {
+      if (b.text.length > 360) chunks.push(...chunkBySentences(b.text, 320));
+      else chunks.push(b.text);
+    }
+    sections = chunks.map((t) => ({ title: titleFromText(t), text: t }));
+  }
+
+  // Scarta frammenti troppo corti da illustrare; assegna id stabili.
+  return sections
+    .filter((s) => (s.text || "").trim().length >= 12)
+    .map((s, i) => ({ id: i, title: s.title || titleFromText(s.text), text: s.text.trim() }));
+}
+
 // Stili disponibili per l'immagine di scena. La chiave viene scelta dal DM
 // prima di generare; il suffisso guida il modello d'immagine.
 const SCENE_STYLES = {
@@ -225,8 +337,10 @@ export default function SummaryAdmin() {
   // Stile scelto per la generazione (dark fantasy comic · acquerello · epico).
   const [sceneStyle, setSceneStyle] = useState("comic");
   // Anteprima "tieni / rigenera": tiene l'immagine generata PRIMA di salvarla.
-  // { summaryId, index (null=accoda / n=sostituisci), scena, dataUrl, style }
+  // { summaryId, index (null=accoda / n=sostituisci), scena, dataUrl, style, focus }
   const [pending, setPending] = useState(null);
+  // Selettore "parte del riassunto da illustrare": { summary, index }.
+  const [scenePicker, setScenePicker] = useState(null);
   // Cache degli avatar-riferimento per gruppo (evita di riscaricarli a ogni rigenera).
   const refsCache = useRef({});
 
@@ -451,14 +565,17 @@ export default function SummaryAdmin() {
   // Pipeline pura: estrae un soggetto e ne genera il DATA URL (non salva nulla).
   // mode "scene" (varia inquadratura/PG) oppure "cover" (key art evocativa, no PG ref).
   // Ritorna { scena, dataUrl }. Aggiorna lo status a scopo informativo.
-  const runScenePipeline = async (summary, styleKey, mode = "scene") => {
+  const runScenePipeline = async (summary, styleKey, mode = "scene", focus = null) => {
     const testo = stripHtml(summary.content);
     if (!testo) throw new Error("Il riassunto non ha testo da illustrare.");
     const isCover = mode === "cover";
+    const foco = String(focus || "").trim();
     const groupMembers = membersOf(summary.party); // [{name,race,class,image}]
 
     // 1) Estrai il soggetto dal testo + CHI è nella scena (prompt in inglese).
-    setStatus(isCover ? "🎬 Scelgo il soggetto della copertina…" : "🎬 Estraggo una scena dal riassunto…");
+    setStatus(isCover
+      ? "🎬 Scelgo il soggetto della copertina…"
+      : foco ? "🎬 Illustro la parte scelta…" : "🎬 Estraggo una scena dal riassunto…");
     const rScena = await fetch("/api/estrai-scena", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -467,6 +584,7 @@ export default function SummaryAdmin() {
         party: summary.party,
         members: groupMembers.map((m) => ({ name: m.name, race: m.race, class: m.class })),
         mode,
+        focus: foco || undefined,
       }),
     });
     const dScena = await rScena.json();
@@ -506,14 +624,22 @@ export default function SummaryAdmin() {
     return { scena, dataUrl: dImg.immagine };
   };
 
-  // Avvia una generazione di SCENA → apre l'anteprima "tieni / rigenera".
-  // index null = accoda; numero = sostituirà quella posizione della galleria.
-  const startSceneGeneration = async (summary, index = null) => {
+  // Apre il selettore "quale parte del riassunto illustrare".
+  // index null = accoda una nuova immagine; numero = sostituisce quella posizione.
+  const openScenePicker = (summary, index = null) => {
     if (sceneBusyId || pending) return;
+    setScenePicker({ summary, index });
+  };
+
+  // Avvia una generazione di SCENA → apre l'anteprima "tieni / rigenera".
+  // focus = testo della sezione scelta (null = scena a caso, vecchio comportamento).
+  const startSceneGeneration = async (summary, index = null, focus = null) => {
+    if (sceneBusyId || pending) return;
+    setScenePicker(null);
     setSceneBusyId(summary.id);
     try {
-      const { scena, dataUrl } = await runScenePipeline(summary, sceneStyle, "scene");
-      setPending({ summaryId: summary.id, target: "gallery", mode: "scene", index, scena, dataUrl, style: sceneStyle });
+      const { scena, dataUrl } = await runScenePipeline(summary, sceneStyle, "scene", focus);
+      setPending({ summaryId: summary.id, target: "gallery", mode: "scene", index, scena, dataUrl, style: sceneStyle, focus: focus || null });
       setStatus("");
     } catch (e) {
       setStatus(`❌ Errore immagine: ${e.message}`);
@@ -544,7 +670,7 @@ export default function SummaryAdmin() {
     if (!summary) return;
     setSceneBusyId(summary.id);
     try {
-      const { scena, dataUrl } = await runScenePipeline(summary, pending.style, pending.mode || "scene");
+      const { scena, dataUrl } = await runScenePipeline(summary, pending.style, pending.mode || "scene", pending.focus || null);
       setPending((p) => (p ? { ...p, scena, dataUrl } : p));
       setStatus("");
     } catch (e) {
@@ -642,6 +768,12 @@ export default function SummaryAdmin() {
   }, [summaries, filter, search]);
 
   const previewParty = PARTIES.find((p) => p.key === formData.party) || PARTIES[0];
+
+  // Sezioni cliccabili del riassunto in fase di selezione scena.
+  const pickerSections = useMemo(
+    () => (scenePicker ? parseSections(scenePicker.summary?.content) : []),
+    [scenePicker]
+  );
 
   return (
     <section className="admin-summary-page sumadm">
@@ -803,11 +935,11 @@ export default function SummaryAdmin() {
                     type="button"
                     className="sumadm-btn primary"
                     disabled={!!sceneBusyId || !!pending}
-                    onClick={() => startSceneGeneration(
+                    onClick={() => openScenePicker(
                       summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
                     )}
                   >
-                    {sceneBusyId === editingId ? "⏳ Genero…" : `🎨 Genera immagine di scena (${styleOf(sceneStyle).label})`}
+                    {sceneBusyId === editingId ? "⏳ Genero…" : `🎨 Illustra una parte (${styleOf(sceneStyle).label})`}
                   </button>
                   <div className="sumadm-scene-gen-styles">
                     {Object.entries(SCENE_STYLES).map(([key, s]) => (
@@ -823,7 +955,7 @@ export default function SummaryAdmin() {
                     ))}
                   </div>
                   <small className="sumadm-gallery-hint">
-                    Estrae una scena a caso dal testo e la illustra con i PG del gruppo. Potrai tenerla o rigenerarla.
+                    Scegli quale <strong>parte del riassunto</strong> illustrare (o una scena a caso): la disegna con i PG coinvolti. Potrai tenerla o rigenerarla.
                   </small>
                 </div>
               )}
@@ -867,9 +999,9 @@ export default function SummaryAdmin() {
                           <button
                             type="button"
                             className="sumadm-gallery-regen"
-                            title="Rigenera questa immagine con l'AI"
+                            title="Rigenera questa immagine (scegli quale parte illustrare)"
                             disabled={!!sceneBusyId || !!pending}
-                            onClick={() => startSceneGeneration(
+                            onClick={() => openScenePicker(
                               summaries.find((s) => s.id === editingId) || { id: editingId, ...formData },
                               i,
                             )}
@@ -1029,9 +1161,9 @@ export default function SummaryAdmin() {
                 </div>
                 <div className="sumadm-item-actions">
                   <button
-                    onClick={() => startSceneGeneration(s)}
+                    onClick={() => openScenePicker(s)}
                     className="sumadm-icon scene"
-                    title={`Genera un'immagine di scena (${styleOf(sceneStyle).label}) con i PG del gruppo`}
+                    title={`Illustra una parte del riassunto (${styleOf(sceneStyle).label}) con i PG coinvolti`}
                     disabled={!!sceneBusyId || !!pending}
                   >
                     {sceneBusyId === s.id ? "⏳" : "🎨"}
@@ -1044,6 +1176,72 @@ export default function SummaryAdmin() {
           </div>
         )}
       </section>
+
+      {/* ── SELETTORE PARTE: scegli quale pezzo del riassunto illustrare ── */}
+      {scenePicker && !pending && (
+        <div className="sumadm-scene-backdrop" onClick={() => setScenePicker(null)}>
+          <div className="sumadm-scene-modal sumadm-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="sumadm-scene-head">
+              <h3>🎬 Che parte illustro?</h3>
+              <button className="sumadm-scene-x" onClick={() => setScenePicker(null)} title="Chiudi">✕</button>
+            </div>
+            <p className="sumadm-picker-sub">
+              {scenePicker.index == null
+                ? "Scegli un momento del riassunto: disegnerò quello (con i PG coinvolti)."
+                : `Rigenera l'immagine #${scenePicker.index + 1}: scegli il momento da illustrare.`}
+            </p>
+
+            <div className="sumadm-scene-styles">
+              {Object.entries(SCENE_STYLES).map(([key, s]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`sumadm-style-chip ${sceneStyle === key ? "on" : ""}`}
+                  onClick={() => setSceneStyle(key)}
+                >
+                  <span aria-hidden>{s.icon}</span> {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="sumadm-picker-list">
+              {pickerSections.length === 0 ? (
+                <p className="sumadm-picker-empty">Nessuna sezione riconosciuta nel testo. Usa “Scena a caso”.</p>
+              ) : (
+                pickerSections.map((sec) => (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    className="sumadm-picker-item"
+                    title="Illustra questa parte"
+                    onClick={() => startSceneGeneration(scenePicker.summary, scenePicker.index, sec.text)}
+                  >
+                    <span className="sumadm-picker-item-num">{sec.id + 1}</span>
+                    <span className="sumadm-picker-item-body">
+                      <span className="sumadm-picker-item-title">{sec.title}</span>
+                      <span className="sumadm-picker-item-snippet">
+                        {sec.text.slice(0, 140)}{sec.text.length > 140 ? "…" : ""}
+                      </span>
+                    </span>
+                    <span className="sumadm-picker-item-go">🎨</span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="sumadm-scene-actions">
+              <button
+                className="sumadm-btn"
+                onClick={() => startSceneGeneration(scenePicker.summary, scenePicker.index, null)}
+                title="Lascia scegliere all'AI un momento a caso (vecchio comportamento)"
+              >
+                🎲 Scena a caso
+              </button>
+              <button className="sumadm-btn ghost" onClick={() => setScenePicker(null)}>Annulla</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── ANTEPRIMA SCENA: tieni / rigenera ── */}
       {pending && (
@@ -1087,6 +1285,21 @@ export default function SummaryAdmin() {
               <button className="sumadm-btn" onClick={regeneratePending} disabled={!!sceneBusyId}>
                 🔄 Rigenera
               </button>
+              {pending.mode !== "cover" && (
+                <button
+                  className="sumadm-btn"
+                  disabled={!!sceneBusyId}
+                  title="Torna a scegliere quale parte del riassunto illustrare"
+                  onClick={() => {
+                    const sum = summaries.find((s) => s.id === pending.summaryId) || { id: pending.summaryId, ...formData };
+                    const idx = pending.index;
+                    setPending(null);
+                    setScenePicker({ summary: sum, index: idx });
+                  }}
+                >
+                  🎬 Cambia parte
+                </button>
+              )}
               <button className="sumadm-btn ghost" onClick={discardPending} disabled={!!sceneBusyId}>
                 Annulla
               </button>

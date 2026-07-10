@@ -49,6 +49,7 @@ export default function ArenaMarket() {
   const [marketItems, setMarketItems] = useState([]);
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState(null); // null | "classes" | "items"
+  const [masterTab, setMasterTab] = useState("vetrina"); // master: "vetrina" | "crea" | "soldi"
 
   const isMaster = currentUser?.email === MASTER_EMAIL;
 
@@ -172,6 +173,42 @@ export default function ArenaMarket() {
         </div>
       </header>
 
+      {/* ── SCHEDE MASTER: Vetrina · Crea oggetti · Soldi giocatori ── */}
+      {isMaster && (
+        <div className="cine-wrap am-body" style={{ paddingBottom: 0 }}>
+          <div className="am-mp-tabs am-master-tabs" role="tablist" aria-label="Strumenti Master della Bottega">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={masterTab === "vetrina"}
+              className={`am-mp-tab${masterTab === "vetrina" ? " am-mp-tab--active" : ""}`}
+              onClick={() => setMasterTab("vetrina")}
+            >
+              🛍 Vetrina <span className="am-mp-tab-count">{vetrinaItems.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={masterTab === "crea"}
+              className={`am-mp-tab${masterTab === "crea" ? " am-mp-tab--active" : ""}`}
+              onClick={() => setMasterTab("crea")}
+            >
+              🔨 Crea oggetti <span className="am-mp-tab-count">{marketItems.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={masterTab === "soldi"}
+              className={`am-mp-tab${masterTab === "soldi" ? " am-mp-tab--active" : ""}`}
+              onClick={() => setMasterTab("soldi")}
+            >
+              🪙 Soldi giocatori
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(!isMaster || masterTab === "vetrina") && (<>
       {/* ── RICERCA ── */}
       <CineToolbar
         query={query}
@@ -340,11 +377,23 @@ export default function ArenaMarket() {
         })}
       </div>
       )}
-
-      {isMaster && <ArenaMarketCatalog />}
-      {isMaster && <MasterCoinPanel />}
       </div>
       </>)}
+      </>)}
+
+      {/* ── SCHEDA MASTER · Crea oggetti ── */}
+      {isMaster && masterTab === "crea" && (
+        <div className="cine-wrap am-body">
+          <ArenaMarketCatalog />
+        </div>
+      )}
+
+      {/* ── SCHEDA MASTER · Soldi giocatori ── */}
+      {isMaster && masterTab === "soldi" && (
+        <div className="cine-wrap am-body">
+          <MasterCoinPanel />
+        </div>
+      )}
     </div>
   );
 }

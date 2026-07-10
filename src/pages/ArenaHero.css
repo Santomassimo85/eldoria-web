@@ -6454,3 +6454,167 @@ body .arena-modal-dialog.tb-modal .arena-modal-close:hover{ background:rgba(236,
     bottom: calc(var(--bottomnav-h, 64px) + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* ============================================================
+   LAYER 11 — PANNELLO MASTER: azioni raggruppate e leggibili
+   Il vecchio blocco era un muro di tastini poco visibili. Qui i
+   comandi sono divisi in schede (Flusso torneo · Gestione ·
+   Zona pericolo) con etichette, tasti grandi e colori semantici
+   ad alto contrasto sulla pietra scura. Caricato per ultimo → vince.
+   ============================================================ */
+body .arena-page.arena-page .master-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+/* Ogni gruppo = riquadro pietra con etichetta */
+body .arena-page.arena-page .master-action-group {
+  background: rgba(20, 15, 11, 0.55) !important;
+  border: 1px solid rgba(236, 212, 135, 0.22) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px 14px !important;
+}
+/* Gruppi senza alcun tasto attivo nel contesto → nascosti */
+body .arena-page.arena-page .master-action-group:has(> .master-actions:empty) {
+  display: none !important;
+}
+body .arena-page.arena-page .master-danger-group {
+  background: rgba(48, 12, 10, 0.5) !important;
+  border-color: rgba(220, 60, 50, 0.4) !important;
+}
+
+body .arena-page.arena-page .master-group-label {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffd98a !important;
+  margin: 0 0 10px;
+  text-shadow: 0 0 12px rgba(236, 212, 135, 0.3);
+}
+body .arena-page.arena-page .master-danger-label {
+  color: #ff9a8a !important;
+  text-shadow: 0 0 12px rgba(220, 60, 50, 0.35);
+}
+
+body .arena-page.arena-page .master-toolbar .master-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* Base tasti: grandi, testo netto, ottima leggibilità */
+body .arena-page.arena-page .master-toolbar .master-actions > button,
+body .arena-page.arena-page .master-toolbar .master-actions > .btn-master-join {
+  flex: 1 1 auto;
+  min-height: 46px;
+  min-width: 150px;
+  padding: 12px 18px !important;
+  border-radius: 12px !important;
+  font-family: var(--font-title);
+  font-size: 0.82rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.2s, filter 0.2s !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  line-height: 1.15;
+  text-align: center;
+}
+body .arena-page.arena-page .master-toolbar .master-actions > button:hover:not(:disabled),
+body .arena-page.arena-page .master-toolbar .master-actions > .btn-master-join:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+body .arena-page.arena-page .master-toolbar .master-actions > button:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ── Colori semantici ── */
+/* Entra in arena / avvio torneo → oro caldo (azione principale) */
+body .arena-page.arena-page .master-toolbar .btn-master-join,
+body .arena-page.arena-page .master-toolbar .btn-start-tournament {
+  background: linear-gradient(135deg, #e3c558 0%, #b8892a 100%) !important;
+  color: #241a05 !important;
+  border: 1.5px solid #fff3d6 !important;
+  box-shadow: 0 6px 18px rgba(184, 137, 42, 0.45) !important;
+  text-shadow: none !important;
+}
+/* Avanza round / dichiara campione → verde smeraldo (progressione) */
+body .arena-page.arena-page .master-toolbar .btn-advance-round {
+  background: linear-gradient(135deg, #2ecc71 0%, #1a8f4c 100%) !important;
+  color: #05230f !important;
+  border: 1.5px solid rgba(210, 255, 225, 0.6) !important;
+  box-shadow: 0 6px 18px rgba(30, 160, 80, 0.4) !important;
+  text-shadow: none !important;
+}
+/* Timer → ambra tenue */
+body .arena-page.arena-page .master-toolbar .btn-timer-pause,
+body .arena-page.arena-page .master-toolbar .btn-timer-play {
+  background: linear-gradient(135deg, rgba(236, 212, 135, 0.28), rgba(236, 212, 135, 0.12)) !important;
+  color: #ffe9b0 !important;
+  border: 1.5px solid rgba(236, 212, 135, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+}
+/* Gestione (bench/svuota/pulisci) → pietra chiara neutra */
+body .arena-page.arena-page .master-toolbar .btn-bench-all,
+body .arena-page.arena-page .master-toolbar .btn-clear-waiting {
+  background: linear-gradient(135deg, rgba(70, 60, 50, 0.9), rgba(45, 38, 32, 0.95)) !important;
+  color: #f4ead2 !important;
+  border: 1.5px solid rgba(236, 212, 135, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+}
+/* Reset torneo → rosso pieno; azzeramenti globali (wipe) → rosso ancora più cupo */
+body .arena-page.arena-page .master-toolbar .btn-reset {
+  background: linear-gradient(135deg, #c0392b 0%, #8a1810 100%) !important;
+  color: #fff2ee !important;
+  border: 1.5px solid rgba(255, 180, 170, 0.45) !important;
+  box-shadow: 0 5px 14px rgba(150, 25, 20, 0.45) !important;
+  text-shadow: none !important;
+}
+body .arena-page.arena-page .master-toolbar .btn-reset--wipe {
+  background: linear-gradient(135deg, rgba(120, 30, 24, 0.95), rgba(70, 14, 10, 0.98)) !important;
+  border-color: rgba(220, 90, 80, 0.5) !important;
+  color: #ffd9d2 !important;
+}
+
+/* Stato "iscritto come master": nastro informativo, non un tasto */
+body .arena-page.arena-page .master-toolbar .master-join-status {
+  flex: 1 1 100%;
+  min-height: 0;
+  background: rgba(46, 204, 113, 0.14) !important;
+  border: 1px solid rgba(46, 204, 113, 0.4) !important;
+  border-radius: 10px !important;
+  color: #bff4d2 !important;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 9px 14px !important;
+  text-align: center;
+}
+
+/* ── Liste iscritti/attesa: due colonne più compatte (meno scroll) ── */
+body .arena-page.arena-page .master-panel .master-sections {
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 560px) {
+  body .arena-page.arena-page .master-toolbar .master-actions > button,
+  body .arena-page.arena-page .master-toolbar .master-actions > .btn-master-join {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 0.78rem !important;
+  }
+  body .arena-page.arena-page .master-action-group { padding: 10px 11px 12px !important; }
+}

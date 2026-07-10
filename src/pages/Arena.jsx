@@ -10095,7 +10095,10 @@ export default function Arena() {
             </div>
           )}
 
-          <div className="master-actions">
+          <div className="master-toolbar">
+          <div className="master-action-group">
+            <span className="master-group-label">⚔ Flusso del torneo</span>
+            <div className="master-actions">
             {arenaMeta.phase === "registration" && !isRegistered && !isPending && (
               <button className="btn-master-join" onClick={() => { setMasterJoinSetup(v => !v); setMasterJoinName(""); setMasterJoinClass(""); }}>
                 🗡 Entra nell'Arena
@@ -10133,6 +10136,11 @@ export default function Arena() {
                 </button>
               )
             )}
+            </div>
+          </div>
+          <div className="master-action-group">
+            <span className="master-group-label">👥 Gestione iscritti &amp; partite</span>
+            <div className="master-actions">
             {(arenaMeta.participants?.length || 0) > 0 && (
               <button className="btn-bench-all" onClick={benchAllParticipants} title="Sposta tutti i partecipanti nella lista d'attesa">
                 ↩ Tutti in attesa
@@ -10164,6 +10172,11 @@ export default function Arena() {
                 </button>
               );
             })()}
+            </div>
+          </div>
+          <div className="master-action-group master-danger-group">
+            <span className="master-group-label master-danger-label">⚠ Zona pericolo · azioni irreversibili</span>
+            <div className="master-actions master-reset-zone">
             <button className="btn-reset" onClick={async () => {
               const inCombat = arenaMeta.phase === "combat";
               const inFinished = arenaMeta.phase === "finished";
@@ -10193,12 +10206,9 @@ export default function Arena() {
                 championsOnly: arenaMeta.championsOnly || false,
                 // waitingList intenzionalmente NON azzerata: usa "Svuota attesa" per pulirla.
               });
-            }}>↺ Reset</button>
-          </div>
+            }}>↺ Reset torneo</button>
 
-          {/* ── Zona Reset avanzato: azzeramenti globali (irreversibili) ── */}
-          <div className="master-actions master-reset-zone">
-            <button className="btn-reset" onClick={async () => {
+            <button className="btn-reset btn-reset--wipe" onClick={async () => {
               if (!window.confirm("Azzerare i TITOLI VINTI di TUTTI i personaggi? Operazione irreversibile.")) return;
               try {
                 const snap = await getDocs(collection(db, "characters"));
@@ -10220,7 +10230,7 @@ export default function Arena() {
               } catch (e) { console.error("clear titles:", e); alert("Errore azzeramento titoli: " + e.message); }
             }}>🏷 Azzera titoli vinti (tutti)</button>
 
-            <button className="btn-reset" onClick={async () => {
+            <button className="btn-reset btn-reset--wipe" onClick={async () => {
               if (!window.confirm("Azzerare gli ACQUISTI della Bottega di TUTTI i giocatori (arenaWeekly)? Operazione irreversibile.")) return;
               try {
                 const snap = await getDocs(collection(db, "characters"));
@@ -10232,7 +10242,7 @@ export default function Arena() {
               } catch (e) { console.error("clear purchases:", e); alert("Errore azzeramento acquisti: " + e.message); }
             }}>🧹 Azzera acquisti Bottega (tutti)</button>
 
-            <button className="btn-reset" onClick={async () => {
+            <button className="btn-reset btn-reset--wipe" onClick={async () => {
               if (!window.confirm("Azzerare TUTTI i vincitori dell'Arena? La Sala dei Campioni e i contatori vittorie tornano a zero. Operazione irreversibile.")) return;
               try {
                 const snap = await getDocs(collection(db, "arena_tournament_history"));
@@ -10243,6 +10253,8 @@ export default function Arena() {
                 alert(`Azzerati ${snap.docs.length} record di vittoria dell'Arena.`);
               } catch (e) { console.error("clear winners:", e); alert("Errore azzeramento vincitori: " + e.message); }
             }}>🏆 Azzera vincitori Arena (tutti)</button>
+            </div>
+          </div>
           </div>
 
           {masterJoinSetup && arenaMeta.phase === "registration" && (

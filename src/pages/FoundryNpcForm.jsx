@@ -33,7 +33,10 @@ const numOf = (v) => {
 const CONTINENTS = ["Vathriddon", "Ehkia", "Ohzkie"];
 const OTHER = "Altrove";
 const norm = (s) => String(s ?? "").trim().toLowerCase();
-const cityOf = (n) => String(n.location || n.linkedCity || "").trim();
+// Città canonica dell'NPC: `linkedCity` (campo strutturato, come in NPC.jsx)
+// ha la precedenza sul testo libero `location`. Prima era il contrario, e questo
+// spezzava/mischiava i gruppi quando `location` conteneva un indirizzo generico.
+const cityOf = (n) => String(n.linkedCity || n.location || "").trim();
 
 export default function FoundryNpcForm() {
   const { currentUser } = useAuth();
@@ -104,14 +107,19 @@ export default function FoundryNpcForm() {
   }, [npcs, continentOf]);
 
   // Città disponibili nella select (rispettano il continente scelto).
+  // Dedup per nome NORMALIZZATO (così "Obia" e "obia " non fanno due voci con
+  // conteggi sbagliati); mostro la prima grafia incontrata come etichetta.
   const cityOptions = useMemo(() => {
-    const count = new Map();
+    const map = new Map(); // key = norm(city) → { label, n }
     for (const n of npcs) {
       if (continent && continentOf(n) !== continent) continue;
       const c = cityOf(n); if (!c) continue;
-      count.set(c, (count.get(c) || 0) + 1);
+      const k = norm(c);
+      const cur = map.get(k);
+      if (cur) cur.n += 1;
+      else map.set(k, { label: c, n: 1 });
     }
-    return [...count.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
   }, [npcs, continent, continentOf]);
 
   const filtered = useMemo(() => {
@@ -204,7 +212,7 @@ export default function FoundryNpcForm() {
   };
 
   return (
-    <div className="npcgen-page">
+    <div className="npcgen-page fdy-page">
       <div className="npcgen-inner">
         <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
         <h1 className="npcgen-title">Prepara NPC → Foundry</h1>
@@ -213,8 +221,10 @@ export default function FoundryNpcForm() {
           macro NPC su Foundry per crearli come Attori (non giocanti).
         </p>
 
+        {/* Barra controlli sticky: intestazione · filtri · azioni di selezione */}
+        <div className="fdy-controls">
         {/* Intestazione + conteggio */}
-        <div className="fdy-import-head" style={{ marginTop: 6 }}>
+        <div className="fdy-import-head">
           <span className="fdy-import-title">👥 Anagrafe NPC</span>
           <span className="fdy-import-count">{filtered.length} di {npcs.length} · selezionati {sel.size}</span>
         </div>
@@ -250,8 +260,8 @@ export default function FoundryNpcForm() {
               aria-label="Filtro per città"
             >
               <option value="">🏙️ Tutte le città{cityOptions.length ? ` (${cityOptions.length})` : ""}</option>
-              {cityOptions.map(([name, n]) => (
-                <option key={name} value={name}>{name} ({n})</option>
+              {cityOptions.map(({ label, n }) => (
+                <option key={label} value={label}>{label} ({n})</option>
               ))}
             </select>
             {(continent || city || q) && (
@@ -267,6 +277,7 @@ export default function FoundryNpcForm() {
           <button type="button" className="npcgen-btn" onClick={queueSelected} disabled={busy || sel.size === 0}>
             {busy ? "Invio…" : `📦 Prepara ${sel.size || ""} per Foundry`}
           </button>
+        </div>
         </div>
         <div className={`npcgen-status${msg.startsWith("Errore") ? " npcgen-status--error" : ""}`}>{msg}</div>
 
