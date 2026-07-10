@@ -275,7 +275,17 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
   };
 
   const editNpc = (npc) => {
-    setNpcData(npc);
+    // Alcuni NPC (creati da altri strumenti/import) non hanno mapX/mapY numerici:
+    // fondo coi default e forzo i numeri, altrimenti .toFixed() sul segnaposto
+    // mappa crasha e la scheda non si apre.
+    const nx = Number(npc.mapX);
+    const ny = Number(npc.mapY);
+    setNpcData({
+      ...initialNpcData,
+      ...npc,
+      mapX: Number.isFinite(nx) ? nx : 50,
+      mapY: Number.isFinite(ny) ? ny : 50,
+    });
     setIsNpcEditing(true);
     setNpcEditingId(npc.id);
     setTab("npcs");
@@ -620,7 +630,7 @@ export default function GeoAdmin({ editTarget = null, onComplete = null }) {
                   style={{ left: `${npcData.mapX}%`, top: `${npcData.mapY}%` }}
                 />
                 <div className="geoadm-map-coords">
-                  X: {npcData.mapX.toFixed(2)} · Y: {npcData.mapY.toFixed(2)}
+                  X: {(Number(npcData.mapX) || 0).toFixed(2)} · Y: {(Number(npcData.mapY) || 0).toFixed(2)}
                 </div>
               </div>
             </aside>
