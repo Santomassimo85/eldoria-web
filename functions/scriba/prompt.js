@@ -108,15 +108,44 @@ function buildUserMessage(data) {
 
 const SECTIONS = ["lead", "dalle_terre", "voci_di_taverna", "listini", "arena", "reclame"];
 
-/** Estrae il JSON dalla risposta, tollerando eventuali fence ```json o testo attorno. */
-function parseContent(text) {
+/** Isola il blocco JSON dalla risposta, tollerando fence ```json o testo attorno. */
+function extractJsonText(text) {
     let t = String(text || "").trim();
     const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
     if (fence) t = fence[1].trim();
     const start = t.indexOf("{");
     const end = t.lastIndexOf("}");
     if (start !== -1 && end !== -1 && end > start) t = t.slice(start, end + 1);
-    const obj = JSON.parse(t);
+    return t;
+}
+
+/** Parse tollerante: prova diretto, poi qualche riparazione locale a basso rischio. */
+function parseJsonLoose(t) {
+    try { return JSON.parse(t); } catch (_) { /* passa alle riparazioni */ }
+    // 1) rimuovi virgole finali prima di } o ]
+    let r = t.replace(/,(\s*[}\]])/g, "$1");
+    try { return JSON.parse(r); } catch (_) { /* continua */ }
+    // 2) escapa a capo/tab grezzi rimasti dentro le stringhe (causa tipica di
+    //    "Expected ',' or ']' after array element"): scandisco fuori/dentro stringa.
+    let out = "";
+    let inStr = false, esc = false;
+    for (const ch of r) {
+        if (esc) { out += ch; esc = false; continue; }
+        if (ch === "\\") { out += ch; esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; out += ch; continue; }
+        if (inStr && (ch === "\n" || ch === "\r" || ch === "\t")) {
+            out += ch === "\t" ? "\\t" : "\\n";
+            continue;
+        }
+        out += ch;
+    }
+    return JSON.parse(out); // se ancora fallisce, rilancia (gestito a monte con riparazione AI)
+}
+
+/** Estrae il contenuto strutturato dal testo JSON della risposta. */
+function parseContent(text) {
+    const t = extractJsonText(text);
+    const obj = parseJsonLoose(t);
 
     const arr = (x) => (Array.isArray(x) ? x : x ? [x] : []);
     const str = (x) => String(x ?? "").trim();
@@ -164,7 +193,35 @@ async function generateScribaContent({ apiKey, data }) {
 
     const textBlock = (resp.content || []).find((b) => b.type === "text");
     if (!textBlock) throw new Error("Risposta di Claude senza testo.");
-    return parseContent(textBlock.text);
+
+    try {
+        return parseContent(textBlock.text);
+    } catch (e) {
+        // JSON malformato (virgolette/ a capo non escapati, virgole mancanti…):
+        // ultima rete → chiedo a un modello leggero di ripararlo, poi riparso.
+        console.warn("[scriba] JSON non valido, provo a riparare:", e.message);
+        try {
+            const fixed = await repairJson(client, extractJsonText(textBlock.text));
+            return parseContent(fixed);
+        } catch (e2) {
+            throw new Error(`JSON del numero non valido anche dopo la riparazione: ${e2.message}`);
+        }
+    }
+}
+
+/** Riparazione di JSON malformato con un modello leggero: torna solo il JSON corretto. */
+async function repairJson(client, broken) {
+    const resp = await client.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 8000,
+        system:
+            "Sei un correttore di JSON. Ricevi un JSON malformato e restituisci ESCLUSIVAMENTE lo stesso JSON reso valido: nessun commento, nessun testo, niente code fence. " +
+            "Non cambiare, aggiungere o riassumere i contenuti: correggi SOLO la sintassi (escapa virgolette e a-capo dentro le stringhe, aggiungi virgole mancanti, togli virgole finali).",
+        messages: [{ role: "user", content: broken }],
+    });
+    const tb = (resp.content || []).find((b) => b.type === "text");
+    if (!tb) throw new Error("Riparazione senza testo.");
+    return tb.text;
 }
 
 module.exports = { generateScribaContent, SYSTEM, ARENA_NAME };
