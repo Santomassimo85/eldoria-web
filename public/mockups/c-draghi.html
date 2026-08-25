@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP C — Draghi</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --ossidiana:#0c0a0e; --oro-tesoro:#e3aa3c; --oro-vivo:#ffd97a; --oro-cupo:#8f6a1e;
+    --drago-rosso:#c03a2a; --squama:#2e5c3c; --ink:#f1ecdf; --muted:#a89f8e;
+  }
+  html, body { height:100%; }
+  body { background:var(--ossidiana); color:var(--ink); font-family:"EB Garamond",Georgia,serif; overflow:hidden; }
+
+  .world { position:fixed; inset:0; overflow:hidden;
+    background:
+      radial-gradient(70% 50% at 50% 115%, rgba(227,170,60,.14), transparent 60%),
+      linear-gradient(180deg,#121016,#0c0a0e 55%,#070609); }
+  .world::before { content:""; position:absolute; inset:0; opacity:.12;
+    background:
+      radial-gradient(circle at 50% 0%, transparent 58%, rgba(46,92,60,.9) 60%, transparent 66%),
+      radial-gradient(circle at 0% 0%, transparent 58%, rgba(46,92,60,.9) 60%, transparent 66%),
+      radial-gradient(circle at 100% 0%, transparent 58%, rgba(46,92,60,.9) 60%, transparent 66%);
+    background-size:72px 60px; background-position:0 0, 36px 30px, 36px 30px; }
+  #drago-volo { position:absolute; font-size:2.2rem; filter:drop-shadow(0 0 14px rgba(255,140,46,.7));
+    animation:volo 17s linear infinite; opacity:.9; }
+  @keyframes volo {
+    0%   { transform:translate(-8vw,26vh) scaleX(-1) rotate(6deg); }
+    100% { transform:translate(112vw,12vh) scaleX(-1) rotate(6deg); } }
+  #tesoro-luccica { position:absolute; inset:0; }
+
+  .phone { position:relative; width:min(430px,100vw); height:100dvh; max-height:930px;
+    margin:0 auto; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; background:#0a080c; }
+  .phone::-webkit-scrollbar{ display:none; }
+  @media (min-width:520px){
+    .phone { height:92vh; margin-top:4vh; border-radius:42px; border:1px solid rgba(227,170,60,.4);
+      box-shadow:0 0 0 8px #120e14, 0 0 90px -22px rgba(227,170,60,.5), 0 40px 120px -30px #000; }
+  }
+
+  /* ══ LAYOUT C: IL COVO BUIO — la torcia rivela il drago ══ */
+  .hero { position:relative; min-height:70%; overflow:hidden; cursor:none; user-select:none; }
+  .hero img.covo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    object-position:center 30%; filter:brightness(.22) saturate(.8); }
+  .hero .torcia-luce { position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(circle 130px at var(--tx,50%) var(--ty,42%),
+      rgba(255,200,110,.0) 0%, rgba(12,10,14,0) 52%, rgba(12,10,14,.92) 100%); }
+  .hero img.covo-chiaro { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    object-position:center 30%; filter:brightness(1.02) saturate(1.1);
+    -webkit-mask-image:radial-gradient(circle 130px at var(--tx,50%) var(--ty,42%), #000 0 42%, transparent 72%);
+            mask-image:radial-gradient(circle 130px at var(--tx,50%) var(--ty,42%), #000 0 42%, transparent 72%); }
+  .fiamma-torcia { position:absolute; width:20px; height:26px; pointer-events:none; z-index:5;
+    left:var(--tx,50%); top:var(--ty,42%); transform:translate(-50%,-120%);
+    background:radial-gradient(ellipse at 50% 85%, #ffd97a 15%, #ff8c2e 50%, transparent 75%);
+    border-radius:50% 50% 40% 60% / 70% 70% 30% 30%;
+    filter:blur(1px) drop-shadow(0 0 14px rgba(255,140,46,.9));
+    animation:guizza .5s ease-in-out infinite alternate; }
+  @keyframes guizza { from { transform:translate(-50%,-120%) scale(1) rotate(-3deg); }
+    to { transform:translate(-50%,-124%) scale(1.12) rotate(3deg); } }
+  .hero-velo-basso { position:absolute; left:0; right:0; bottom:0; height:45%; z-index:3; pointer-events:none;
+    background:linear-gradient(180deg, transparent, rgba(10,8,12,.94) 78%, #0a080c); }
+  .hero-testo { position:absolute; left:0; right:0; bottom:0; z-index:4; padding:0 22px 20px; }
+  .kicker { display:inline-block; font-family:"Cinzel",serif; font-size:.58rem; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--drago-rosso); margin-bottom:8px;
+    text-shadow:0 0 12px rgba(192,58,42,.8); }
+  .hero-testo h1 { font-family:"Cinzel Decorative",serif; font-weight:900;
+    font-size:clamp(1.9rem,8.8vw,2.7rem); line-height:1.06;
+    background:linear-gradient(180deg,#fff2cf,var(--oro-vivo) 40%,var(--oro-tesoro) 75%,#a5711c);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 3px 20px rgba(227,170,60,.5)); }
+  .hero-testo p { color:var(--muted); font-size:.92rem; max-width:34ch; margin:8px 0 14px;
+    line-height:1.55; font-style:italic; }
+  .cta { display:inline-flex; align-items:center; gap:8px; padding:13px 26px; border-radius:6px;
+    font-family:"Cinzel",serif; font-weight:700; font-size:.76rem; letter-spacing:.13em; color:#1d1204;
+    background:linear-gradient(180deg,var(--oro-vivo),var(--oro-tesoro) 55%,#b7821e);
+    border:1px solid var(--oro-cupo);
+    box-shadow:0 0 40px -6px rgba(227,170,60,.9), inset 0 1px 0 rgba(255,255,255,.6); }
+  .tocca-hint { position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:6;
+    font-family:"Cinzel",serif; font-size:.56rem; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--oro-vivo); background:rgba(10,8,12,.6); border:1px solid rgba(227,170,60,.45);
+    border-radius:999px; padding:6px 13px; backdrop-filter:blur(6px); white-space:nowrap;
+    animation:pulsaOro 2.6s ease-in-out infinite alternate; }
+  @keyframes pulsaOro { from { opacity:.55; } to { opacity:1; } }
+
+  /* ══ MOSAICO BENTO DEL TESORO: griglia asimmetrica con cornici d'oro ══ */
+  .bento-sez { padding:22px 16px 122px; }
+  .sez-label { text-align:center; font-family:"Cinzel",serif; font-size:.64rem; letter-spacing:.42em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:16px; }
+  .bento { display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:118px; gap:12px; }
+  .gemma { position:relative; border-radius:10px; overflow:hidden;
+    border:1.5px solid rgba(227,170,60,.55);
+    box-shadow:0 0 0 1px #1d1204, inset 0 0 0 1px rgba(255,217,122,.15),
+      0 14px 34px -14px #000, 0 0 24px -10px rgba(227,170,60,.6); }
+  .gemma.grande { grid-column:span 2; grid-row:span 2; }
+  .gemma.alta { grid-row:span 2; }
+  .gemma img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    filter:saturate(1.05); transition:transform .5s ease; }
+  .gemma:active img { transform:scale(1.06); }
+  .gemma .velo { position:absolute; inset:0;
+    background:linear-gradient(180deg, transparent 45%, rgba(10,8,12,.92)); }
+  .gemma .angolo { position:absolute; width:14px; height:14px; border-color:var(--oro-vivo);
+    border-style:solid; border-width:0; opacity:.9; }
+  .gemma .angolo.tl { top:5px; left:5px; border-top-width:2px; border-left-width:2px; }
+  .gemma .angolo.br { bottom:5px; right:5px; border-bottom-width:2px; border-right-width:2px; }
+  .gemma figcaption { position:absolute; left:0; right:0; bottom:0; padding:10px 12px; }
+  .gemma h3 { font-family:"Cinzel",serif; font-size:.86rem; letter-spacing:.05em; color:var(--oro-vivo); }
+  .gemma.grande h3 { font-size:1.05rem; }
+  .gemma small { display:block; color:var(--muted); font-size:.72rem; font-style:italic; margin-top:2px; }
+  .gemma .fuocherello { position:absolute; top:8px; right:10px; color:var(--drago-rosso);
+    font-size:.8rem; text-shadow:0 0 10px rgba(192,58,42,.9); }
+
+  /* nav artigli */
+  .artigli { position:sticky; bottom:14px; margin:14px 2px 0; display:flex; justify-content:space-around;
+    align-items:center; padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+    border-radius:22px; background:rgba(14,10,14,.86); border:1px solid rgba(227,170,60,.45);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 -4px 44px -12px rgba(227,170,60,.5), 0 20px 40px -18px #000; z-index:10; }
+  .artigli a { display:flex; flex-direction:column; align-items:center; gap:3px; text-decoration:none;
+    color:var(--muted); font-family:"Cinzel",serif; font-size:.55rem; letter-spacing:.14em;
+    text-transform:uppercase; min-width:50px; padding:4px 0; position:relative; }
+  .artigli a i { font-style:normal; font-size:1.05rem; color:#6e5a2e; }
+  .artigli a.on { color:var(--oro-vivo); }
+  .artigli a.on i { color:var(--oro-vivo); text-shadow:0 0 14px rgba(255,217,122,.95); }
+  .artigli a.on::after { content:"⌃"; position:absolute; bottom:-9px; color:var(--drago-rosso);
+    font-size:.7rem; text-shadow:0 0 8px rgba(192,58,42,.9); }
+
+  .badge-opt { position:fixed; top:12px; left:12px; z-index:50; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.22em; color:#1d1204; background:linear-gradient(180deg,var(--oro-vivo),var(--oro-tesoro));
+    padding:7px 14px; border-radius:999px; box-shadow:0 0 26px -4px rgba(227,170,60,.9); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; } }
+</style>
+</head>
+<body>
+  <div class="badge-opt">C · DRAGHI</div>
+
+  <div class="world">
+    <span id="drago-volo">🐉</span>
+    <canvas id="tesoro-luccica"></canvas>
+  </div>
+
+  <div class="phone">
+    <section class="hero" id="covo">
+      <span class="tocca-hint">🔥 muovi la torcia: il covo si rivela</span>
+      <img class="covo" src="/assets/PhotoStory/GruppoMEAA/drago_fiume.png" alt="">
+      <img class="covo-chiaro" src="/assets/PhotoStory/GruppoMEAA/drago_fiume.png" alt="Il drago del fiume">
+      <div class="torcia-luce"></div>
+      <div class="fiamma-torcia"></div>
+      <div class="hero-velo-basso"></div>
+      <div class="hero-testo">
+        <span class="kicker">Cronache di Exanthia · Il Covo</span>
+        <h1>Il Mondo<br>di Eldoria</h1>
+        <p>Nel buio del covo, il drago custodisce le storie. Illumina, se osi.</p>
+        <button class="cta">🜁 Sfida il Drago</button>
+      </div>
+    </section>
+
+    <section class="bento-sez">
+      <div class="sez-label">Il Tesoro Custodito</div>
+      <div class="bento">
+        <figure class="gemma grande">
+          <img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt="">
+          <div class="velo"></div><span class="angolo tl"></span><span class="angolo br"></span>
+          <span class="fuocherello">⟁</span>
+          <figcaption><h3>Registro degli Eroi</h3><small>16 predatori di leggende · 4 stirpi</small></figcaption>
+        </figure>
+        <figure class="gemma alta">
+          <img src="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png" alt="">
+          <div class="velo"></div><span class="angolo tl"></span><span class="angolo br"></span>
+          <figcaption><h3>Mercato Nero</h3><small>3 aste in oro di drago</small></figcaption>
+        </figure>
+        <figure class="gemma">
+          <img src="/assets/PhotoStory/GruppoMEAA/abominio.png" alt="">
+          <div class="velo"></div><span class="angolo tl"></span><span class="angolo br"></span>
+          <figcaption><h3>Memorie</h3><small>Cap. XXVII</small></figcaption>
+        </figure>
+        <figure class="gemma">
+          <img src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt="">
+          <div class="velo"></div><span class="angolo tl"></span><span class="angolo br"></span>
+          <figcaption><h3>L'Oracolo</h3><small>1 responso al giorno</small></figcaption>
+        </figure>
+      </div>
+
+      <nav class="artigli">
+        <a class="on" href="#"><i>ᛖ</i>Home</a>
+        <a href="#"><i>ᚠ</i>Mondo</a>
+        <a href="#"><i>ᛒ</i>Eroi</a>
+        <a href="#"><i>ᚷ</i>Gilda</a>
+        <a href="#"><i>ᛗ</i>Menu</a>
+      </nav>
+    </section>
+  </div>
+
+<script>
+  /* FEATURE: la torcia segue dito/cursore e rivela il covo (doppia immagine + mask) */
+  const covo=document.getElementById('covo');
+  const muovi=(x,y)=>{
+    const r=covo.getBoundingClientRect();
+    const tx=((x-r.left)/r.width*100).toFixed(2)+'%';
+    const ty=((y-r.top)/r.height*100).toFixed(2)+'%';
+    covo.style.setProperty('--tx',tx); covo.style.setProperty('--ty',ty);
+  };
+  covo.addEventListener('pointermove', e=>muovi(e.clientX,e.clientY), {passive:true});
+  covo.addEventListener('pointerdown', e=>muovi(e.clientX,e.clientY), {passive:true});
+  covo.addEventListener('touchmove', e=>{ const t=e.touches[0]; if(t) muovi(t.clientX,t.clientY); }, {passive:true});
+
+  /* luccichio del tesoro nel mondo */
+  const cv=document.getElementById('tesoro-luccica'), cx=cv.getContext('2d');
+  let W,H,gm=[];
+  const rs=()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight;
+    gm=Array.from({length:W<600?22:40},()=>({x:Math.random()*W, y:H*.8+Math.random()*H*.19,
+      ph:Math.random()*7, s:.4+Math.random()*.8,
+      c:Math.random()<.7?'227,170,60':(Math.random()<.5?'192,58,42':'46,154,90')})); };
+  rs(); addEventListener('resize',rs);
+  let t=0;
+  (function tick(){ t++; cx.clearRect(0,0,W,H);
+    for(const g of gm){ const a=Math.max(0,Math.sin(t/50*g.s+g.ph));
+      cx.fillStyle=`rgba(${g.c},${(a*.9).toFixed(2)})`;
+      cx.beginPath(); cx.arc(g.x,g.y,1.5+a,0,7); cx.fill();
+      if(a>.92){ cx.strokeStyle=`rgba(255,240,200,${((a-.9)*6).toFixed(2)})`; cx.lineWidth=1;
+        cx.beginPath(); cx.moveTo(g.x-6,g.y); cx.lineTo(g.x+6,g.y);
+        cx.moveTo(g.x,g.y-6); cx.lineTo(g.x,g.y+6); cx.stroke(); } }
+    requestAnimationFrame(tick);
+  })();
+</script>
+</body>
+</html>

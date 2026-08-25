@@ -1,3 +1,45 @@
+# Shared Layout Components — eldoria-web ("Crit Happens")
+
+La shell dell'app vive interamente in `src/App.jsx`: header/top-bar con nav inline desktop (>1300px), drawer mobile, **MobileBottomNav** (bottom-bar ≤1300px + bottom-sheet per categoria), presenza online (FAB master-only), footer, host globali (DiceRollHost, FirestoreErrorGuard, NotificationOptIn). Il CSS della shell è in `src/style.css` (base), `src/styles/shell.css` (header/drawer), `src/styles/layout.css` (bottom-bar/FAB/safe-area), `src/styles/light-theme.css` (override pergamena) — dump completi in `theme.md`.
+
+## Entry: `src/main.jsx`
+Ordine di caricamento CSS (l'ultimo vince): style → theme → shell → light-theme → layout.
+
+```jsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import "./style.css";
+import "./styles/theme.css"; // design system "Arcanum Nocturne" — dopo style.css per rimappare i token
+import "./styles/shell.css"; // restyle header/navigazione (scuro premium + drawer mobile)
+import "./styles/light-theme.css"; // tema chiaro "Pergamena Antica" — caricato per ultimo (vince)
+import "./styles/layout.css"; // posizionamento flottanti coerente + safe-area iOS
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>
+);
+```
+
+## `index.html` (font + PWA)
+Google Fonts caricate: **Cardo**, **Cinzel** (500/600/700), **Cinzel Decorative** (400/700/900), **Manrope** (400–800), **EB Garamond** (regular + italic).
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=Cardo&family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@400;700;900&family=Manrope:wght@400;500;600;700;800&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+```
+
+---
+
+## App shell + nav (desktop top-bar, drawer mobile, MobileBottomNav, OnlinePresence, footer)
+- Path: `src/App.jsx` — FILE COMPLETO (contiene anche la config delle route, vedi `routes.md`).
+- Renderizza: `<header class="app-nav">` (logo + LoginDropdown + burger + `<nav>` con NavDropdown a fisarmonica), `<main><Routes>…`, `MobileBottomNav` (bottom-bar `Home · Mondo · Biblioteca · Gilda · Menu` con bottom-sheet), `OnlinePresence` (FAB master), `DiceRollHost`, `FirestoreErrorGuard`, `<footer>` con link YouTube.
+- Note: pagine fullscreen (`/boss-tactics`, `/world-boss-fight`, `/dm-admin/battle-maps`) nascondono la chrome; le pagine di gioco (arena/tcg/world-boss/pet/battle-maps) impostano `body.theme-dark`.
+- La bottom-bar è un `<div role="navigation">` (NON `<nav>`, altrimenti eredita lo stile drawer di shell.css). Z-index 1065.
+
+```jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, NavLink, useLocation } from "react-router-dom";
 import "./style.css";
@@ -73,7 +115,6 @@ import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
-import FrostOverlay from "./components/FrostOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 
@@ -705,7 +746,6 @@ export default function App() {
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
-      <FrostOverlay />
 
       {!hideChrome && <MobileBottomNav openMenu={() => setMenuOpen(true)} />}
 
@@ -730,3 +770,688 @@ export default function App() {
     </AuthProvider>
   );
 }
+```
+
+---
+
+## LoginDropdown (avatar/login nell'header)
+- Path: `src/LoginDropdown.jsx` (+ `src/LoginDropdown.css`)
+- Bottone "Accedi" con form dropdown (non loggato) oppure avatar con badge notifiche e pannello utente (nome PG, corone, rango Ratto, link Notifiche/Scheda/Master Panel/Logout). Presente nell'header su OGNI pagina.
+
+```jsx
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "./AuthContext";
+import { db } from "./firebase";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+} from "firebase/firestore";
+import "./LoginDropdown.css";
+
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+const RATTO_LEVELS = [
+  { min: 0,  name: "Estraneo" },
+  { min: 5,  name: "Simpatizzante" },
+  { min: 15, name: "Informatore" },
+  { min: 30, name: "Ricettatore" },
+  { min: 50, name: "Veterano" },
+  { min: 80, name: "Ombra di Obia" },
+];
+
+function getRattoRank(points = 0) {
+  let rank = RATTO_LEVELS[0].name;
+  for (const lvl of RATTO_LEVELS) {
+    if (points >= lvl.min) rank = lvl.name;
+  }
+  return rank;
+}
+
+export default function LoginDropdown() {
+  const { currentUser, login, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [charData, setCharData] = useState(null);
+  const dropdownRef = useRef(null);
+
+  const isMaster = currentUser?.email === MASTER_EMAIL;
+
+  // Chiusura animata: avvia l'animazione di "ri-arrotolamento" e poi smonta il pannello.
+  const closePanel = () => {
+    setIsClosing(true);
+    setTimeout(() => { setIsClosing(false); setIsOpen(false); }, 240);
+  };
+  const togglePanel = () => { if (isOpen) closePanel(); else setIsOpen(true); };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        if (isOpen) closePanel();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubChar = onSnapshot(doc(db, "characters", currentUser.uid), (snap) => {
+      if (snap.exists()) setCharData(snap.data());
+    });
+
+    const qNotify = query(
+      collection(db, "notifications"),
+      where("userId", "==", currentUser.uid),
+      where("read", "==", false)
+    );
+    const unsubNotify = onSnapshot(qNotify, (snap) => {
+      setUnreadCount(snap.docs.length);
+    });
+
+    return () => { unsubChar(); unsubNotify(); };
+  }, [currentUser]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await login(email, password);
+      setIsOpen(false);
+      setEmail("");
+      setPassword("");
+    } catch {
+      setError("Credenziali non valide.");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsOpen(false);
+      navigate("/");
+    } catch (err) {
+      console.error("Errore logout:", err);
+    }
+  };
+
+  const rattoRank = getRattoRank(charData?.rattoPoints ?? 0);
+
+  // --- NON LOGGATO ---
+  if (!currentUser) {
+    return (
+      <div className="ld-container" ref={dropdownRef}>
+        <button onClick={togglePanel} className="ld-login-btn">
+          Accedi
+        </button>
+        {(isOpen || isClosing) && (
+          <div className={`ld-panel ld-panel--login${isClosing ? " ld-panel--closing" : ""}`}>
+            {error && <p className="ld-error">{error}</p>}
+            <form onSubmit={handleLogin} className="ld-form">
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="ld-input"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="ld-input"
+              />
+              <button type="submit" className="ld-submit-btn">Entra</button>
+            </form>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- LOGGATO ---
+  return (
+    <div className="ld-container" ref={dropdownRef}>
+      <button className="ld-avatar-btn" onClick={togglePanel}>
+        <img
+          src={charData?.image || "/assets/player/default.png"}
+          alt="Avatar"
+          className={`ld-avatar ${unreadCount > 0 ? "ld-avatar--notify" : ""}`}
+        />
+        {unreadCount > 0 && (
+          <span className="ld-badge">{unreadCount}</span>
+        )}
+      </button>
+
+      {(isOpen || isClosing) && (
+        <div className={`ld-panel ld-panel--user${isClosing ? " ld-panel--closing" : ""}`}>
+          {/* Header personaggio */}
+          <div className="ld-char-header">
+            <img
+              src={charData?.image || "/assets/player/default.png"}
+              alt="Avatar"
+              className="ld-char-avatar"
+            />
+            <div className="ld-char-info">
+              <p className="ld-char-name">{charData?.name || currentUser.email}</p>
+              <p className="ld-char-email">{currentUser.email}</p>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="ld-stats-row">
+            <div className="ld-stat">
+              <span className="ld-stat-icon">💰</span>
+              <span className="ld-stat-value">{charData?.platinum ?? charData?.money ?? 0}</span>
+              <span className="ld-stat-label">Corone</span>
+            </div>
+            <div className="ld-stat-divider" />
+            <div className="ld-stat">
+              <span className="ld-stat-icon">🐀</span>
+              <span className="ld-stat-value ld-stat-value--ratto">{rattoRank}</span>
+            </div>
+          </div>
+
+          <div className="ld-divider" />
+
+          <button
+            className="ld-menu-item"
+            onClick={() => { navigate("/notifications"); setIsOpen(false); }}
+          >
+            <span>🔔 Notifiche</span>
+            {unreadCount > 0 && <span className="ld-inline-badge">{unreadCount}</span>}
+          </button>
+
+          <button
+            className="ld-menu-item"
+            onClick={() => { navigate("/my-pg"); setIsOpen(false); }}
+          >
+            📜 Scheda Personaggio
+          </button>
+
+          {isMaster && (
+            <>
+              <div className="ld-divider" />
+              <p className="ld-section-label">Master Panel</p>
+              <button
+                className="ld-menu-item ld-menu-item--gold"
+                onClick={() => { navigate("/dm-admin"); setIsOpen(false); }}
+              >
+                ⚙️ Gestione Mondo
+              </button>
+            </>
+          )}
+
+          <div className="ld-divider" />
+          <button onClick={handleLogout} className="ld-menu-item ld-menu-item--logout">
+            Esci
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## AuthContext (provider che avvolge tutta la shell)
+- Path: `src/AuthContext.jsx`
+
+```jsx
+// src/AuthContext.jsx
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { auth } from './firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { ensureBaseCharacter } from './utils/ensureBaseCharacter';
+
+// Struttura del contesto per il valore iniziale e per evitare errori di tipizzazione
+const initialContextValue = {
+    currentUser: null,
+    login: () => null,
+    logout: () => null,
+};
+
+// Crea il contesto
+const AuthContext = createContext(initialContextValue);
+
+// Hook personalizzato per accedere al contesto (useAuth)
+// Questo è il codice corretto che stavi cercando di dichiarare:
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Funzione per il login con email e password
+  const login = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  // Funzione per il logout
+  const logout = () => {
+    return signOut(auth);
+  };
+
+  // Ascolta i cambiamenti di stato (quando l'utente si logga o slogga)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      setCurrentUser(user);
+      setLoading(false);
+      // Player senza PG → assegna una volta sola il guerriero base (Lv4).
+      if (user) ensureBaseCharacter(user);
+    });
+    return unsubscribe;
+  }, []);
+
+  const value = {
+    currentUser,
+    login,
+    logout,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children} 
+    </AuthContext.Provider>
+  );
+};
+```
+
+---
+
+## GlobalChat (chat flottante "Locanda di Exanthia")
+- Path: `src/components/GlobalChat.jsx`
+- FAB 💬 in basso a destra + finestra chat realtime su Firestore `global_chat`. NOTA: al momento NON è montato in `App.jsx` (nessun import attivo) — il CSS del dock in `layout.css` (`.chat-toggle-btn`, `.global-chat-window`) resta pronto.
+
+```jsx
+import React, { useState, useEffect, useRef } from "react";
+import { db } from "../firebase";
+import {
+  collection, addDoc, query, orderBy, limit, onSnapshot,
+  serverTimestamp, doc, getDoc, getDocs, deleteDoc
+} from "firebase/firestore";
+import { useAuth } from "../AuthContext";
+
+const MASTER_EMAIL = "santomassimo85@gmail.com";
+
+export default function GlobalChat() {
+  const { currentUser } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [charName, setCharName] = useState("Eroe");
+
+  const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const chatWindowRef = useRef(null);
+  const isOpenRef = useRef(false);
+  const isMaster = currentUser?.email === MASTER_EMAIL;
+
+  const scrollToBottom = (behavior = "smooth") => {
+    chatEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  // keep isOpenRef in sync with state (so the snapshot callback can read it without re-subscribing)
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (isOpen) {
+      setUnreadCount(0);
+      setTimeout(() => scrollToBottom("instant"), 50);
+    }
+  }, [isOpen]);
+
+  // chiusura al click esterno
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (chatWindowRef.current && !chatWindowRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  // nome personaggio
+  useEffect(() => {
+    if (!currentUser || isMaster) return;
+    getDoc(doc(db, "characters", currentUser.uid))
+      .then(snap => { if (snap.exists()) setCharName(snap.data().name); })
+      .catch(() => {});
+  }, [currentUser, isMaster]);
+
+  // listener messaggi — dipende solo da currentUser, non da isOpen
+  useEffect(() => {
+    if (!currentUser) return;
+    let initialLoad = true;
+
+    // desc + slice→reverse: prendiamo gli ULTIMI 50 messaggi (non i primi 50 della cronologia totale).
+    // Con asc+limit(50) i nuovi messaggi cadevano oltre la finestra e non comparivano mai.
+    const q = query(collection(db, "global_chat"), orderBy("timestamp", "desc"), limit(50));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
+        setMessages(msgs);
+
+        if (initialLoad) {
+          initialLoad = false;
+          return;
+        }
+
+        if (!isOpenRef.current) {
+          setUnreadCount(prev => prev + 1);
+        } else {
+          const container = messagesContainerRef.current;
+          if (container) {
+            const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
+            if (isAtBottom) scrollToBottom("smooth");
+          }
+        }
+      },
+      (err) => { console.error("Global chat listener error:", err); }
+    );
+    return () => unsub();
+  }, [currentUser]);
+
+  // pulizia massiva
+  const handleManualCleanup = async () => {
+    if (!window.confirm("Vuoi ripulire la locanda? (Resteranno i 10 più recenti)")) return;
+    try {
+      const snap = await getDocs(query(collection(db, "global_chat"), orderBy("timestamp", "desc")));
+      if (snap.size > 10) {
+        await Promise.all(snap.docs.slice(10).map(d => deleteDoc(doc(db, "global_chat", d.id))));
+      }
+    } catch (err) { console.error("Cleanup error:", err); }
+  };
+
+  const deleteSingleMessage = async (messageId) => {
+    if (!window.confirm("Vuoi eliminare questo messaggio?")) return;
+    await deleteDoc(doc(db, "global_chat", messageId)).catch(console.error);
+  };
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    try {
+      await addDoc(collection(db, "global_chat"), {
+        uid: currentUser.uid,
+        displayName: isMaster ? "Il Master" : charName,
+        text: text.trim(),
+        timestamp: serverTimestamp()
+      });
+      setText("");
+      setTimeout(() => scrollToBottom("smooth"), 100);
+    } catch (err) { console.error("Send error:", err); }
+  };
+
+  const formatTimestamp = (ts) => {
+    if (!ts) return "";
+    const d = ts.toDate();
+    return `${d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}, ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+  };
+
+  if (!currentUser) return null;
+
+  return (
+    <div ref={chatWindowRef}>
+      {/* Toggle button */}
+      <button className={`chat-toggle-btn ${isOpen ? "open" : ""}`} onClick={() => setIsOpen(v => !v)}>
+        {isOpen ? "✕" : "💬"}
+        {unreadCount > 0 && !isOpen && (
+          <span className="chat-notification-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
+        )}
+      </button>
+
+      {/* Chat window */}
+      <div className={`global-chat-window ${isOpen ? "visible" : ""}`}>
+        <div className="chat-header">
+          <span className="chat-header-title">Locanda di Exanthia</span>
+          {isMaster && (
+            <button className="master-cleanup-btn" onClick={handleManualCleanup} title="Ripulisci chat">🗑</button>
+          )}
+        </div>
+
+        <div className="chat-messages" ref={messagesContainerRef}>
+          {messages.map((m) => {
+            const isOwn = m.uid === currentUser.uid;
+            const isMasterMsg = m.displayName === "Il Master";
+            return (
+              <div key={m.id} className={`chat-msg ${isOwn ? "own" : ""} ${isMasterMsg ? "master-msg" : ""}`}>
+                <div className="msg-meta">
+                  <span className="msg-user">{m.displayName}</span>
+                  {m.timestamp && <span className="msg-timestamp">{formatTimestamp(m.timestamp)}</span>}
+                  {(isMaster || m.uid === currentUser.uid) && (
+                    <span className="msg-delete" onClick={() => deleteSingleMessage(m.id)} title="Elimina">✕</span>
+                  )}
+                </div>
+                <p className="msg-text">{m.text}</p>
+              </div>
+            );
+          })}
+          <div ref={chatEndRef} />
+        </div>
+
+        <form onSubmit={sendMessage} className="chat-input-area">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={isMaster ? "Parla come Master…" : `Parla come ${charName}…`}
+            className="chat-input"
+          />
+          <button type="submit" className="chat-send-btn">Invia</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## NotificationOptIn (headless, montato in App)
+- Path: `src/components/NotificationOptIn.jsx`
+- Non renderizza nulla: chiede il permesso notifiche e registra il token FCM su `characters/{uid}.fcmTokens`.
+
+```jsx
+import { useEffect, useRef } from "react";
+import { getToken, onMessage } from "firebase/messaging";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { db, getMessagingIfSupported, VAPID_KEY } from "../firebase";
+import { useAuth } from "../AuthContext";
+
+/**
+ * Auto-prompts the logged-in user for notification permission and
+ * registers their FCM token to characters/{uid}.fcmTokens.
+ * Renders nothing.
+ */
+export default function NotificationOptIn() {
+  const { currentUser } = useAuth();
+  const triedRef = useRef(false);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    if (triedRef.current) return;
+    triedRef.current = true;
+
+    (async () => {
+      if (!("Notification" in window)) return;
+      if (!VAPID_KEY) {
+        console.warn("[fcm] VITE_FIREBASE_VAPID_KEY missing in env");
+        return;
+      }
+
+      const messaging = await getMessagingIfSupported();
+      if (!messaging) return;
+
+      // Auto-prompt if status is "default" (never asked).
+      let perm = Notification.permission;
+      if (perm === "default") {
+        try { perm = await Notification.requestPermission(); }
+        catch { return; }
+      }
+      if (perm !== "granted") return;
+
+      try {
+        const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        const token = await getToken(messaging, {
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: reg,
+        });
+        if (!token) return;
+
+        // Save token on the character doc (array — supports multiple devices).
+        await updateDoc(doc(db, "characters", currentUser.uid), {
+          fcmTokens: arrayUnion(token),
+        }).catch(async () => {
+          // Doc might not exist; create minimal stub
+          const { setDoc } = await import("firebase/firestore");
+          await setDoc(doc(db, "characters", currentUser.uid), { fcmTokens: [token] }, { merge: true });
+        });
+
+        // Foreground messages — show a small in-page toast via the SW so
+        // the OS notification is consistent whether app is open or not.
+        onMessage(messaging, (payload) => {
+          const title = payload?.notification?.title || payload?.data?.title || "Crit Happens";
+          const body  = payload?.notification?.body  || payload?.data?.body  || "";
+          const url   = payload?.data?.url || "/";
+          if (reg && reg.showNotification) {
+            reg.showNotification(title, {
+              body,
+              icon: "/logo192.png",
+              badge: "/logo192.png",
+              data: { url },
+            });
+          }
+        });
+      } catch (err) {
+        console.warn("[fcm] setup failed:", err);
+      }
+    })();
+  }, [currentUser?.uid]);
+
+  return null;
+}
+```
+
+---
+
+## FirestoreErrorGuard (banner fisso bottom-right, montato in App)
+- Path: `src/components/FirestoreErrorGuard.jsx`
+- Intercetta le assertion interne dell'SDK Firestore e mostra un banner "Ricarica pagina" con stile inline pergamena.
+
+```jsx
+import React, { useState, useEffect } from "react";
+
+/* ============================================================
+   FirestoreErrorGuard — silent listener that catches Firestore
+   "INTERNAL ASSERTION FAILED" errors (b815, ca9, etc.). These
+   are SDK state-machine glitches caused by StrictMode + HMR or
+   rapid concurrent writes; they don't actually break Firestore
+   writes (which already went through), but they do bubble up
+   as window.alert in some browsers.
+
+   When detected, suppresses the alert and shows a small banner
+   asking the user to reload — which fully resets SDK state.
+   ============================================================ */
+
+const ASSERTION_RE = /INTERNAL ASSERTION FAILED|Unexpected state \(ID: [a-z0-9]+\)/i;
+
+export default function FirestoreErrorGuard() {
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const onError = (event) => {
+      const msg = event?.error?.message || event?.message || "";
+      const reasonMsg = event?.reason?.message || "";
+      if (ASSERTION_RE.test(msg) || ASSERTION_RE.test(reasonMsg)) {
+        // Prevent the default alert/log noise but keep the console trace.
+        if (typeof event.preventDefault === "function") event.preventDefault();
+        console.warn("[FirestoreErrorGuard] suppressed Firestore SDK assertion. The write probably went through; SDK state is wedged. Reload recommended.");
+        setShown(true);
+      }
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onError);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onError);
+    };
+  }, []);
+
+  if (!shown) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: 16, right: 16,
+      zIndex: 99999,
+      maxWidth: 360,
+      background: "#fffdf6",
+      border: "2px solid #c9a961",
+      borderRadius: 12,
+      boxShadow: "0 8px 28px rgba(0,0,0,0.25)",
+      padding: "14px 16px",
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      color: "#2d2418",
+      animation: "firestoreGuardIn 0.25s ease-out",
+    }}>
+      <style>{`@keyframes firestoreGuardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }`}</style>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: "1.2rem" }}>⚠</span>
+        <strong style={{ color: "#7d2929", letterSpacing: "0.04em" }}>Firestore: stato bloccato</strong>
+      </div>
+      <p style={{ margin: "0 0 10px", fontSize: "0.84rem", lineHeight: 1.45, color: "#6f6453" }}>
+        I dati sono stati salvati correttamente, ma l'SDK ha bisogno di un refresh per riprendersi.
+        Ricarica la pagina per continuare.
+      </p>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            background: "linear-gradient(180deg, #b91c1c, #7d2929)",
+            color: "#fdf2dc",
+            border: "1.5px solid #5a1818",
+            borderRadius: 8,
+            padding: "7px 14px",
+            fontWeight: 700,
+            cursor: "pointer",
+            fontSize: "0.84rem",
+          }}
+        >
+          🔄 Ricarica pagina
+        </button>
+        <button
+          onClick={() => setShown(false)}
+          style={{
+            background: "transparent",
+            color: "#6f6453",
+            border: "1.5px solid #e0cf9d",
+            borderRadius: 8,
+            padding: "7px 14px",
+            cursor: "pointer",
+            fontSize: "0.84rem",
+          }}
+        >
+          Ignora
+        </button>
+      </div>
+    </div>
+  );
+}
+```

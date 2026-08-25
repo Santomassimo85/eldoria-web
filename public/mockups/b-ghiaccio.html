@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP B — Ghiaccio e Acqua</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --abisso:#07131f; --ghiaccio:#bfe6f5; --ghiaccio-vivo:#e8f7fd; --cristallo:#6fd0ee;
+    --acqua:#2e9ad0; --ink:#eaf6fc; --muted:#8fb6cb;
+  }
+  html, body { height:100%; }
+  body { background:var(--abisso); color:var(--ink); font-family:"EB Garamond",Georgia,serif; overflow:hidden; }
+
+  .world { position:fixed; inset:0; overflow:hidden;
+    background:
+      radial-gradient(80% 45% at 50% -10%, rgba(191,230,245,.14), transparent 60%),
+      linear-gradient(180deg,#0d2438,#081827 55%,#050e18); }
+  #neve { position:absolute; inset:0; }
+
+  .phone { position:relative; width:min(430px,100vw); height:100dvh; max-height:930px;
+    margin:0 auto; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; background:#071624; }
+  .phone::-webkit-scrollbar{ display:none; }
+  @media (min-width:520px){
+    .phone { height:92vh; margin-top:4vh; border-radius:42px; border:1px solid rgba(111,208,238,.35);
+      box-shadow:0 0 0 8px #0a1826, 0 0 90px -22px rgba(111,208,238,.5), 0 40px 120px -30px #000; }
+  }
+
+  /* ══ LAYOUT B: FINESTRA ARTICA — arco di ghiaccio + placca sotto ══ */
+  .hero { position:relative; padding:56px 18px 8px; text-align:center; }
+  .finestra { position:relative; margin:0 auto; width:100%; max-width:370px; aspect-ratio:3/3.4;
+    border-radius:180px 180px 14px 14px; overflow:hidden; cursor:pointer; user-select:none;
+    border:5px solid rgba(191,230,245,.55);
+    box-shadow:0 0 0 1px rgba(111,208,238,.4), 0 0 60px -12px rgba(111,208,238,.6),
+      inset 0 0 40px rgba(0,0,0,.5); }
+  .finestra img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    object-position:center 20%; }
+  .finestra .gelo-velo { position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(7,19,31,.1), transparent 30%, transparent 62%, rgba(7,22,36,.88)); }
+  .finestra canvas { position:absolute; inset:0; width:100%; height:100%; }
+  /* brina agli angoli della finestra */
+  .finestra .brina { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen;
+    background:
+      radial-gradient(140px 120px at 0% 100%, rgba(191,230,245,.35), transparent 65%),
+      radial-gradient(140px 120px at 100% 100%, rgba(191,230,245,.35), transparent 65%),
+      radial-gradient(160px 140px at 50% 0%, rgba(232,247,253,.28), transparent 60%); }
+  .finestra .titolo-lastra { position:absolute; left:0; right:0; bottom:0; padding:0 18px 18px; z-index:2; }
+  .eyebrow { font-family:"Cinzel",serif; font-size:.6rem; letter-spacing:.42em; color:var(--cristallo);
+    text-transform:uppercase; margin-bottom:6px; text-shadow:0 0 14px rgba(111,208,238,.7); }
+  .titolo-lastra h1 { font-family:"Cinzel",serif; font-weight:700; font-size:clamp(1.8rem,8.2vw,2.5rem);
+    line-height:1.08; background:linear-gradient(180deg,#ffffff,var(--ghiaccio) 55%,var(--acqua) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 3px 20px rgba(111,208,238,.45)); }
+  .tocca-hint { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:3;
+    font-family:"Cinzel",serif; font-size:.56rem; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--ghiaccio-vivo); background:rgba(7,19,31,.55); border:1px solid rgba(191,230,245,.4);
+    border-radius:999px; padding:6px 13px; backdrop-filter:blur(6px);
+    animation:brillaCr 2.6s ease-in-out infinite alternate; white-space:nowrap; }
+  @keyframes brillaCr { from { opacity:.6; } to { opacity:1; box-shadow:0 0 18px -4px rgba(111,208,238,.9);} }
+  .hero .sotto { padding:16px 8px 6px; }
+  .hero .sotto p { color:var(--muted); font-size:.95rem; max-width:32ch; margin:0 auto 16px;
+    line-height:1.6; font-style:italic; }
+  .cta { display:inline-flex; align-items:center; gap:9px; padding:14px 30px; border-radius:999px;
+    font-family:"Cinzel",serif; font-weight:700; font-size:.78rem; letter-spacing:.14em; color:#062334;
+    background:linear-gradient(180deg,var(--ghiaccio-vivo),var(--ghiaccio) 50%,var(--cristallo));
+    border:none; box-shadow:0 0 40px -6px rgba(111,208,238,.9), inset 0 1px 0 rgba(255,255,255,.8); }
+
+  /* ══ VETRATE LARGHE IMPILATE: ogni sezione è una lastra panoramica ══ */
+  .lastre { padding:30px 16px 122px; display:flex; flex-direction:column; gap:18px; }
+  .sez-label { text-align:center; font-family:"Cinzel",serif; font-size:.64rem; letter-spacing:.42em;
+    text-transform:uppercase; color:var(--muted); }
+  .sez-label::after { content:"❄"; display:block; margin-top:7px; color:var(--cristallo);
+    text-shadow:0 0 12px rgba(111,208,238,.8); }
+  .vetrata { position:relative; border-radius:16px; overflow:hidden; aspect-ratio:16/9;
+    border:1px solid rgba(191,230,245,.45);
+    box-shadow:0 0 30px -12px rgba(111,208,238,.5), 0 18px 44px -16px #000; }
+  .vetrata img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .vetrata .velo { position:absolute; inset:0;
+    background:linear-gradient(90deg, rgba(7,19,31,.82) 0%, rgba(7,19,31,.35) 45%, transparent 70%); }
+  .vetrata .gelo-riq { position:absolute; left:0; top:0; bottom:0; width:56%; display:flex;
+    flex-direction:column; justify-content:center; padding:14px 8px 14px 16px;
+    backdrop-filter:blur(2px); }
+  .vetrata h3 { font-family:"Cinzel",serif; font-size:1.02rem; letter-spacing:.05em;
+    color:var(--ghiaccio-vivo); text-shadow:0 2px 8px rgba(0,0,0,.7); }
+  .vetrata small { color:var(--muted); font-size:.8rem; font-style:italic; margin-top:4px; line-height:1.45; }
+  .vetrata .sigillo-gelo { align-self:flex-start; margin-top:10px; padding:4px 12px; border-radius:999px;
+    font-family:"Cinzel",serif; font-size:.56rem; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--cristallo); border:1px solid rgba(111,208,238,.5); background:rgba(7,19,31,.5); }
+  .vetrata::after { content:""; position:absolute; top:0; left:-60%; width:40%; height:100%;
+    background:linear-gradient(105deg, transparent, rgba(255,255,255,.2), transparent);
+    transform:skewX(-18deg); animation:riflessoGelo 7s ease-in-out infinite; }
+  @keyframes riflessoGelo { 0%,55%{ left:-60%; } 85%,100%{ left:130%; } }
+
+  /* nav perle */
+  .perle { position:sticky; bottom:14px; margin:0 2px; display:flex; justify-content:space-around;
+    align-items:center; padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+    border-radius:26px; background:rgba(8,22,36,.8); border:1px solid rgba(111,208,238,.35);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    box-shadow:0 -4px 44px -12px rgba(111,208,238,.45), 0 20px 40px -18px #000; z-index:10; }
+  .perle a { display:flex; flex-direction:column; align-items:center; gap:4px; text-decoration:none;
+    color:var(--muted); font-family:"Cinzel",serif; font-size:.55rem; letter-spacing:.14em;
+    text-transform:uppercase; min-width:50px; padding:4px 0; }
+  .perle a .p { width:26px; height:26px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:.8rem; color:#0b1e30;
+    background:radial-gradient(circle at 38% 32%, #ffffff, var(--ghiaccio) 55%, #8fc4da);
+    box-shadow:0 2px 10px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.9); opacity:.6; }
+  .perle a.on { color:var(--ghiaccio-vivo); }
+  .perle a.on .p { opacity:1; box-shadow:0 0 18px rgba(191,230,245,.95), 0 2px 10px rgba(0,0,0,.5); }
+
+  .badge-opt { position:fixed; top:12px; left:12px; z-index:50; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.22em; color:#062334; background:linear-gradient(180deg,var(--ghiaccio-vivo),var(--ghiaccio));
+    padding:7px 14px; border-radius:999px; box-shadow:0 0 26px -4px rgba(111,208,238,.9); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; } #neve{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="badge-opt">B · GHIACCIO E ACQUA</div>
+  <div class="world"><canvas id="neve"></canvas></div>
+
+  <div class="phone">
+    <section class="hero">
+      <div class="finestra" id="finestra">
+        <span class="tocca-hint">❄ tocca il vetro: onde e cristalli</span>
+        <img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt="Il drago della tempesta">
+        <div class="gelo-velo"></div>
+        <div class="brina"></div>
+        <canvas id="onde"></canvas>
+        <div class="titolo-lastra">
+          <div class="eyebrow">Cronache di Exanthia</div>
+          <h1>Il Mondo di Eldoria</h1>
+        </div>
+      </div>
+      <div class="sotto">
+        <p>Il drago della tempesta scruta oltre il vetro gelato. Sotto il ghiaccio, il mondo respira.</p>
+        <button class="cta">❆ Immergiti</button>
+      </div>
+    </section>
+
+    <section class="lastre">
+      <div class="sez-label">Incise nel Ghiaccio</div>
+      <article class="vetrata">
+        <img src="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg" alt="">
+        <div class="velo"></div>
+        <div class="gelo-riq">
+          <h3>Registro degli Eroi</h3>
+          <small>Sedici nomi intrappolati nel cristallo del lago.</small>
+          <span class="sigillo-gelo">14 eroi attivi</span>
+        </div>
+      </article>
+      <article class="vetrata">
+        <img src="/assets/PhotoStory/GruppoMEAA/portale.png" alt="">
+        <div class="velo"></div>
+        <div class="gelo-riq">
+          <h3>Mercato Nero</h3>
+          <small>Sotto la banchisa: merci che scottano, prezzi che gelano.</small>
+          <span class="sigillo-gelo">3 aste aperte</span>
+        </div>
+      </article>
+      <article class="vetrata">
+        <img src="/assets/PhotoStory/GruppoLAC/horn_spider.jpg" alt="">
+        <div class="velo"></div>
+        <div class="gelo-riq">
+          <h3>Codice delle Memorie</h3>
+          <small>Le sessioni riposano in lastre trasparenti.</small>
+          <span class="sigillo-gelo">Cap. XXVII</span>
+        </div>
+      </article>
+
+      <nav class="perle">
+        <a class="on" href="#"><span class="p">ᛖ</span>Home</a>
+        <a href="#"><span class="p">ᚠ</span>Mondo</a>
+        <a href="#"><span class="p">ᛒ</span>Eroi</a>
+        <a href="#"><span class="p">ᚷ</span>Gilda</a>
+        <a href="#"><span class="p">ᛗ</span>Menu</a>
+      </nav>
+    </section>
+  </div>
+
+<script>
+  /* Neve nel mondo */
+  const nv=document.getElementById('neve'), nx=nv.getContext('2d');
+  let W,H,fl=[];
+  const rs=()=>{ W=nv.width=innerWidth; H=nv.height=innerHeight;
+    fl=Array.from({length:W<600?40:80},()=>({x:Math.random()*W,y:Math.random()*H,
+      r:.8+Math.random()*1.8,v:.3+Math.random()*.7,ph:Math.random()*7})); };
+  rs(); addEventListener('resize',rs);
+  let t=0;
+  (function tick(){ t++; nx.clearRect(0,0,W,H);
+    nx.fillStyle='rgba(232,247,253,.85)';
+    for(const f of fl){ f.y+=f.v; f.x+=Math.sin(t/70+f.ph)*.4;
+      if(f.y>H+6){ f.y=-6; f.x=Math.random()*W; }
+      nx.globalAlpha=.3+.6*Math.abs(Math.sin(t/80+f.ph));
+      nx.beginPath(); nx.arc(f.x,f.y,f.r,0,7); nx.fill(); }
+    nx.globalAlpha=1;
+    requestAnimationFrame(tick);
+  })();
+
+  /* FEATURE: tocca la finestra → onde concentriche + cristalli di brina nel punto */
+  const fin=document.getElementById('finestra'), oc=document.getElementById('onde'), ox=oc.getContext('2d');
+  let SW,SH,rings=[],cristalli=[];
+  const rs2=()=>{ const r=fin.getBoundingClientRect(); SW=oc.width=r.width; SH=oc.height=r.height; };
+  rs2(); addEventListener('resize',rs2);
+  fin.addEventListener('pointerdown', e=>{
+    const r=fin.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    rings.push({x,y,rr:4,max:SW*.8});
+    for(let i=0;i<6;i++){ const an=Math.random()*Math.PI*2;
+      cristalli.push({x,y,an,len:0,max:14+Math.random()*22,life:90}); }
+    if(rings.length>6) rings.shift();
+  });
+  (function tick2(){
+    ox.clearRect(0,0,SW,SH);
+    for(let i=rings.length-1;i>=0;i--){ const g=rings[i];
+      g.rr+=2.4; const a=Math.max(0,1-g.rr/g.max);
+      if(a<=0){ rings.splice(i,1); continue; }
+      ox.strokeStyle=`rgba(191,230,245,${(a*.95).toFixed(2)})`; ox.lineWidth=2.4*a+.6;
+      ox.beginPath(); ox.arc(g.x,g.y,g.rr,0,7); ox.stroke(); }
+    for(let i=cristalli.length-1;i>=0;i--){ const c=cristalli[i];
+      c.len=Math.min(c.max,c.len+1.2); c.life-=1;
+      if(c.life<=0){ cristalli.splice(i,1); continue; }
+      const a=Math.min(1,c.life/40);
+      ox.strokeStyle=`rgba(232,247,253,${(a*.9).toFixed(2)})`; ox.lineWidth=1.4;
+      const ex=c.x+Math.cos(c.an)*c.len, ey=c.y+Math.sin(c.an)*c.len;
+      ox.beginPath(); ox.moveTo(c.x,c.y); ox.lineTo(ex,ey); ox.stroke();
+      // rametti laterali del cristallo
+      const bx=c.x+Math.cos(c.an)*c.len*.6, by=c.y+Math.sin(c.an)*c.len*.6;
+      ox.beginPath(); ox.moveTo(bx,by);
+      ox.lineTo(bx+Math.cos(c.an+.9)*5, by+Math.sin(c.an+.9)*5);
+      ox.moveTo(bx,by);
+      ox.lineTo(bx+Math.cos(c.an-.9)*5, by+Math.sin(c.an-.9)*5); ox.stroke(); }
+    requestAnimationFrame(tick2);
+  })();
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import "./styles/theme.css"; // design system "Arcanum Nocturne" — dopo style.
 import "./styles/shell.css"; // restyle header/navigazione (scuro premium + drawer mobile)
 import "./styles/light-theme.css"; // tema chiaro "Pergamena Antica" — caricato per ultimo (vince)
 import "./styles/layout.css"; // posizionamento flottanti coerente + safe-area iOS
+import "./styles/glacier.css"; // Tema B "Ghiaccio e Acqua" — abisso + lastra di ghiaccio (solo tema chiaro)
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

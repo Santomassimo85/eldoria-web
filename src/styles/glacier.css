@@ -1,0 +1,424 @@
+/* ============================================================================
+   CRIT HAPPENS — Tema B "GHIACCIO E ACQUA" · REDESIGN TOTALE
+   Caricato PER ULTIMO (dopo light-theme.css e layout.css) — sostituisce il
+   layer "Tomo tra le Braci".
+   Concetto: L'ABISSO SOTTO I GHIACCI. Il fondo dell'app è l'oceano profondo
+   di notte (blu abissale, neve che cade, raggi di luce); ogni pagina è una
+   LASTRA DI GHIACCIO chiara che galleggia sopra, con margini brinati; gli
+   hero diventano FINESTRE AD ARCO ARTICO; il chrome (header/drawer/footer/
+   bottom-bar) è vetro di ghiaccio profondo con perle.
+   Solo tema chiaro: scoped su body:not(.theme-dark) o ri-vinto da
+   body.theme-dark — le pagine di gioco scure (Arena/TCG/World Boss/Pet)
+   restano intoccate. Mai background-attachment:fixed (iOS).
+   ============================================================================ */
+
+/* ══════════════════════════════════════════════════════════════════
+   0) TOKEN — pergamena seppia → ghiaccio glaciale
+      (body.theme-dark ripristina i suoi valori: qui vince solo il chiaro)
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg-0:#e8f2f8;   /* lastra — carta di ghiaccio */
+  --bg-1:#dcebf3;   /* superfici */
+  --bg-2:#f4fafd;   /* card — velina gelata */
+  --bg-3:#ffffff;   /* elementi elevati */
+  --line:#a9c9da;   /* filetto glaciale */
+  --line-soft:#c6dde9;
+  --overlay:rgba(8, 26, 40, .5);
+
+  --amber:#2e86ad;  --amber-deep:#1d6485;  --amber-soft:#7fc4de; /* "oro" → acqua */
+  --arc:#3b6fd4;    --arc-deep:#274b9e;    --arc-soft:#6f97e8;   /* arcano → blu profondo */
+  --crit:#c33d4e;   --crit-deep:#8f2534;
+  --ok:#2f8f75;     --warn:#b07d1a;        --info:#2b7fc0;
+
+  --ink:#16303f;  --muted:#4a687a;  --faint:#7d9aab;
+
+  --shadow-1:0 2px 10px rgba(20, 50, 75, .16);
+  --shadow-2:0 14px 44px -14px rgba(20, 50, 75, .30);
+  --shadow-3:0 28px 70px -24px rgba(20, 50, 75, .38);
+  --glow-amber:0 0 0 1px rgba(46, 134, 173, .40), 0 10px 30px -10px rgba(46, 134, 173, .40);
+  --glow-arc:0 0 0 1px rgba(59, 111, 212, .40), 0 10px 30px -10px rgba(59, 111, 212, .40);
+  --glow-crit:0 0 0 1px rgba(195, 61, 78, .40), 0 10px 30px -10px rgba(195, 61, 78, .40);
+
+  --grad-amber:linear-gradient(135deg,#bfe6f5,#6fd0ee 45%,#2e86ad);
+  --grad-arc:linear-gradient(135deg,#9fc0f2,#6f97e8 45%,#274b9e);
+  --grad-crit:linear-gradient(135deg,#e08a96,#c33d4e 45%,#8f2534);
+
+  --text:#16303f;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   1) L'ABISSO — il fondo dell'app è l'oceano profondo di notte
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) {
+  background:
+    radial-gradient(80% 45% at 50% -10%, rgba(191, 230, 245, .13), transparent 60%),
+    radial-gradient(60% 45% at 18% 110%, rgba(46, 154, 208, .12), transparent 60%),
+    radial-gradient(60% 45% at 85% 108%, rgba(21, 90, 134, .16), transparent 60%),
+    linear-gradient(180deg, #0d2438, #081827 55%, #050e18);
+  background-attachment: scroll; /* mai fixed (iOS) */
+  color: var(--ink);
+}
+body:not(.theme-dark) ::selection { background: rgba(111, 208, 238, .4); color: #0a2234; }
+
+/* ══════════════════════════════════════════════════════════════════
+   2) LA LASTRA — <main> è la banchisa: ghiaccio chiaro che galleggia
+      sull'abisso, bordo brinato e alone gelido
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) main {
+  width: min(1480px, calc(100% - clamp(14px, 3vw, 56px)));
+  margin: 0 auto clamp(20px, 3vw, 48px);
+  overflow-x: clip; /* clip (non hidden): gli sticky continuano a funzionare */
+  border-radius: 0 0 26px 26px;
+  background:
+    radial-gradient(circle, rgba(60, 110, 150, .05) 1px, transparent 1.6px),
+    linear-gradient(180deg, #eef6fb, #e6f1f8 60%, #d8e8f2);
+  background-size: 24px 24px, auto;
+  box-shadow:
+    0 0 0 1px #8fb9cf,
+    0 0 0 2px rgba(191, 230, 245, .55),
+    0 0 54px -6px rgba(111, 208, 238, .45),
+    0 34px 90px -22px rgba(0, 10, 20, .85);
+}
+/* Margini interni brinati (il gelo entra dai bordi della lastra) */
+body:not(.theme-dark) main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg,  rgba(214, 236, 246, .8), transparent 24px),
+    linear-gradient(-90deg, rgba(214, 236, 246, .8), transparent 24px),
+    linear-gradient(180deg, rgba(222, 240, 249, .7), transparent 26px),
+    linear-gradient(0deg,   rgba(214, 236, 246, .85), transparent 30px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3) HERO = FINESTRA AD ARCO ARTICO (firma strutturale, tutte le pagine)
+      Neutralizza anche i breakout full-bleed (100vw) che la lastra
+      clipperebbe: full-bleed = full-lastra, con arco e cornice di brina.
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-hero,
+body:not(.theme-dark) .home-page .home-hero,
+body:not(.theme-dark) .bacheca-page .bch-hero,
+body:not(.theme-dark) .theatrum .theatrum-hero,
+body:not(.theme-dark) .cr-page .cr-hero2,
+body:not(.theme-dark) .fb-page .fb-hero,
+body:not(.theme-dark) .geo-page .geo-hero,
+body:not(.theme-dark) .npc-page .npc-hero,
+body:not(.theme-dark) .mercato-page .merc-hero,
+body:not(.theme-dark) .party-page .party-hero,
+body:not(.theme-dark) .notifications-page .notif-hero,
+body:not(.theme-dark) .ratti-page .ratti-hero,
+body:not(.theme-dark) .quest-detail-page .qd-hero,
+body:not(.theme-dark) .rs-hero,
+body:not(.theme-dark) .taro-hero {
+  width: calc(100% - clamp(20px, 4vw, 44px));
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: clamp(12px, 2vw, 22px);
+  overflow: hidden;
+  border-radius: clamp(110px, 24vw, 230px) clamp(110px, 24vw, 230px) 18px 18px;
+  border: 4px solid rgba(191, 230, 245, .6);
+  box-shadow:
+    0 0 0 1px rgba(111, 208, 238, .4),
+    0 0 50px -14px rgba(111, 208, 238, .6),
+    inset 0 0 40px rgba(4, 16, 28, .35);
+}
+/* brina agli angoli della finestra */
+body:not(.theme-dark) .cine-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(150px 130px at 0% 100%, rgba(191, 230, 245, .35), transparent 65%),
+    radial-gradient(150px 130px at 100% 100%, rgba(191, 230, 245, .35), transparent 65%),
+    radial-gradient(180px 150px at 50% 0%, rgba(232, 247, 253, .3), transparent 60%);
+}
+/* restanti full-bleed non-hero: riportati alla larghezza lastra */
+body:not(.theme-dark) .cine-scrolly,
+body:not(.theme-dark) .home-page .pantheon-band {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   4) SISTEMA CINE — ritintura glaciale via CSS variables
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-page {
+  --cine-accent:      #3b6fd4;
+  --cine-accent-2:    #6f97e8;
+  --cine-gold:        #2e86ad;
+  --cine-gold-soft:   #cfeefc;
+  --cine-gold-ink:    #1d6485;
+  --cine-bg-top:      #eaf4fa;
+  --cine-bg-mid:      #e0edf5;
+  --cine-bg-bot:      #d4e5ef;
+  color: var(--ink);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   5) LA RILEGATURA DI GHIACCIO — chrome: header, drawer, footer,
+      bottom-bar = vetro d'abisso con filetti gelidi e perle
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .app-nav {
+  background: linear-gradient(180deg, rgba(10, 28, 44, .93), rgba(6, 18, 30, .9)) !important;
+  border-bottom: 1px solid rgba(111, 208, 238, .35) !important;
+  box-shadow:
+    0 10px 34px -12px rgba(0, 6, 12, .85),
+    0 2px 24px -10px rgba(111, 208, 238, .5) !important;
+}
+body:not(.theme-dark) .logo-img { filter: drop-shadow(0 2px 12px rgba(111, 208, 238, .6)); }
+body:not(.theme-dark) nav a,
+body:not(.theme-dark) .nav-dd-trigger { color: #cfe8f4 !important; }
+body:not(.theme-dark) nav a:hover,
+body:not(.theme-dark) .nav-dd-trigger:hover {
+  background: linear-gradient(90deg, rgba(111, 208, 238, .22), rgba(59, 111, 212, .14)) !important;
+  box-shadow: inset 0 0 0 1px rgba(111, 208, 238, .45), 0 0 20px -4px rgba(111, 208, 238, .55) !important;
+  text-shadow: 0 0 14px rgba(111, 208, 238, .7);
+}
+
+body:not(.theme-dark) footer {
+  background: linear-gradient(180deg, #0a1c2c, #050e18);
+  border-top: 1px solid rgba(111, 208, 238, .32);
+  box-shadow: 0 -2px 30px -10px rgba(111, 208, 238, .4);
+}
+
+@media (max-width: 1300px) {
+  /* drawer mobile: parete di ghiaccio profondo */
+  body:not(.theme-dark) nav {
+    background: linear-gradient(180deg, #0d2234, #081724) !important;
+    border-left: 1px solid rgba(111, 208, 238, .3) !important;
+  }
+  /* bottom-bar: banchisa con perle */
+  body:not(.theme-dark) .app-bottom-nav {
+    background: linear-gradient(180deg, rgba(10, 28, 44, .95), rgba(5, 14, 24, .98));
+    border-top: 1px solid rgba(111, 208, 238, .38);
+    box-shadow:
+      0 -2px 22px -8px rgba(111, 208, 238, .45),
+      0 -12px 30px -14px rgba(0, 6, 12, .8);
+  }
+  body:not(.theme-dark) .mnav-tab { color: #8fb6cb; }
+  body:not(.theme-dark) .mnav-tab.is-active,
+  body:not(.theme-dark) .mnav-tab.active { color: #e8f7fd; }
+  body:not(.theme-dark) .mnav-tab.is-active::before,
+  body:not(.theme-dark) .mnav-tab.active::before {
+    background: linear-gradient(90deg, #e8f7fd, #6fd0ee);
+    box-shadow: 0 2px 10px rgba(111, 208, 238, .8);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   6) LIVELLI FX FISSI (renderizzati da <FrostOverlay />)
+   ══════════════════════════════════════════════════════════════════ */
+.frost-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5; /* sopra la lastra, sotto flottanti (1000+) e bottom-bar (1065) */
+}
+.frost-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* raggi di luce che filtrano dall'alto, come sotto la banchisa */
+.frost-ray {
+  position: absolute;
+  top: -12%;
+  width: 11vw;
+  height: 120%;
+  filter: blur(22px);
+  mix-blend-mode: screen;
+  background: linear-gradient(180deg, rgba(191, 230, 245, .16), transparent 70%);
+  transform: rotate(8deg);
+  animation: frost-caustica 10s ease-in-out infinite alternate;
+}
+.frost-ray.r2 { animation-delay: -4s; }
+.frost-ray.r3 { animation-delay: -7s; width: 7vw; }
+@keyframes frost-caustica {
+  to { opacity: .45; transform: rotate(5deg) translateX(2vw); }
+}
+body.theme-dark .frost-fx { display: none; } /* cintura di sicurezza */
+
+/* ══════════════════════════════════════════════════════════════════
+   7) DENTRO LA LASTRA — vetro gelato su carte/pannelli, titoli con
+      bagliore glaciale, CTA cristallo, rubriche d'acqua
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-card,
+body:not(.theme-dark) .cine-panel,
+body:not(.theme-dark) .ch-card,
+body:not(.theme-dark) .ch-panel {
+  border-color: #9cc4d8;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .7),
+    inset 0 0 22px rgba(160, 205, 228, .18),
+    0 14px 44px -14px rgba(16, 44, 66, .35);
+}
+/* il gelo brilla al passaggio */
+body:not(.theme-dark) .cine-card:hover,
+body:not(.theme-dark) .ch-card:hover {
+  border-color: #6fb6d4;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .8),
+    0 0 22px -4px rgba(111, 208, 238, .5),
+    0 18px 50px -16px rgba(16, 44, 66, .42);
+}
+body:not(.theme-dark) .ch-card { background: linear-gradient(180deg, var(--bg-2), #e9f4fa); }
+body:not(.theme-dark) .ch-card::before {
+  background: radial-gradient(420px 220px at 100% 0%, rgba(59, 111, 212, .12), transparent 60%);
+}
+
+body:not(.theme-dark) .ch-h1 {
+  background: linear-gradient(180deg, #10344a, #2e86ad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(111, 208, 238, .3));
+}
+body:not(.theme-dark) .cine-hero-title {
+  text-shadow:
+    0 2px 10px rgba(0, 10, 20, .6),
+    0 0 26px rgba(111, 208, 238, .45),
+    0 0 60px rgba(46, 154, 208, .25);
+}
+body:not(.theme-dark) .cine-section-title { color: #14425c; }
+body:not(.theme-dark) .ch-h2 { color: #1d6485; }
+body:not(.theme-dark) .ch-lore { color: #2a4a5e; }
+body:not(.theme-dark) .cine-eyebrow,
+body:not(.theme-dark) .ch-eyebrow { color: #2e86ad; }
+
+body:not(.theme-dark) .cine-pill {
+  border-color: rgba(111, 182, 212, .55);
+  box-shadow: 0 0 10px rgba(111, 208, 238, .2);
+}
+
+body:not(.theme-dark) .cine-btn--gold,
+body:not(.theme-dark) .ch-btn--amber {
+  background: linear-gradient(180deg, #e8f7fd, #bfe6f5 50%, #6fd0ee);
+  color: #0a2c40;
+  box-shadow:
+    0 0 0 1px rgba(111, 182, 212, .6),
+    0 10px 26px -10px rgba(46, 134, 173, .55),
+    inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+body:not(.theme-dark) .cine-btn--gold:hover,
+body:not(.theme-dark) .ch-btn--amber:hover {
+  box-shadow:
+    0 0 0 1px rgba(111, 182, 212, .8),
+    0 0 24px -2px rgba(111, 208, 238, .6),
+    0 12px 30px -10px rgba(46, 134, 173, .6),
+    inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+body:not(.theme-dark) .ch-input,
+body:not(.theme-dark) .ch-select,
+body:not(.theme-dark) .ch-textarea { background: #ffffff; color: var(--ink); }
+
+body:not(.theme-dark) .ch-divider {
+  background: linear-gradient(90deg, transparent, rgba(111, 182, 212, .6), transparent);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   8) PLACCHE E CONTENUTO HERO — convenzione `*-hero-plate/-title/…`
+      condivisa da tutte le pagine ristrutturate: ritintura glaciale
+      unica via selettori ad attributo (i titoli dei .cine-hero restano
+      chiari sull'immagine e sono esclusi).
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) [class*="-hero-plate"],
+body:not(.theme-dark) [class*="hero2-plate"] {
+  background: linear-gradient(150deg, rgba(244, 250, 253, .95), rgba(216, 236, 246, .92));
+  border-color: rgba(140, 190, 215, .85);
+  border-left-color: var(--arc);
+  box-shadow:
+    0 22px 50px -18px rgba(6, 30, 48, .6),
+    0 1px 0 rgba(255, 255, 255, .85) inset,
+    0 0 34px -10px rgba(111, 208, 238, .5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+body:not(.theme-dark) [class*="-hero-title"]:not([class*="cine-hero"]),
+body:not(.theme-dark) [class*="hero2-title"] {
+  background: linear-gradient(180deg, #10344a 0%, #1d6485 58%, #2e86ad 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+body:not(.theme-dark) [class*="-hero-tagline"]:not([class*="cine-hero"]),
+body:not(.theme-dark) [class*="hero2-tagline"],
+body:not(.theme-dark) [class*="-hero-greet"] { color: #2a4a5e; }
+body:not(.theme-dark) [class*="-hero-greet"] strong { color: #1d6485; }
+body:not(.theme-dark) [class*="-hero-seal"],
+body:not(.theme-dark) [class*="hero2-seal"] {
+  color: #1d6485;
+  border-color: rgba(46, 134, 173, .5);
+  background: rgba(46, 134, 173, .08);
+}
+/* rubriche di sezione (convenzione *-rubric-*, 6+ pagine) */
+body:not(.theme-dark) [class*="-rubric-title"] {
+  background: linear-gradient(180deg, #10344a 0%, #1d6485 62%, #2e86ad 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+body:not(.theme-dark) [class*="-rubric-eyebrow"] { color: #2e86ad; }
+body:not(.theme-dark) [class*="-rubric-sub"] { color: #4a687a; }
+/* hint di scroll degli hero */
+body:not(.theme-dark) [class*="-hero-scroll"]:not([class*="cine"]) { color: #cfe8f4; text-shadow: 0 1px 6px rgba(5, 18, 30, .7); }
+body:not(.theme-dark) [class*="-hero-scroll-ic"] {
+  border-color: rgba(111, 208, 238, .6);
+  background: rgba(10, 28, 44, .55);
+  color: #bfe6f5;
+}
+/* Bacheca: l'albo delle missive congela */
+body:not(.theme-dark) .bacheca-page .bch-board {
+  border-color: #a9c9da;
+  background:
+    linear-gradient(180deg, rgba(250, 253, 255, .75), rgba(224, 240, 249, .6)),
+    repeating-linear-gradient(135deg, rgba(46, 134, 173, .05) 0 14px, transparent 14px 28px);
+  box-shadow: 0 18px 44px -22px rgba(16, 44, 66, .5), 0 1px 0 rgba(255, 255, 255, .7) inset;
+}
+/* velature fotografiche degli hero: dal seppia al blu abissale */
+body:not(.theme-dark) [class*="-hero-wash"]:not([class*="cine"]) {
+  background:
+    linear-gradient(90deg, rgba(5, 18, 30, .58) 0%, rgba(5, 18, 30, .16) 50%, transparent 72%),
+    linear-gradient(180deg, rgba(5, 18, 30, .1) 0%, rgba(5, 18, 30, .3) 55%, var(--cine-bg-bot, #d4e5ef) 100%);
+}
+/* Home: CTA del pantheon in chiave glaciale (il rosso "malvagi" resta) */
+body:not(.theme-dark) .home-page .home-cta--antichi { background: linear-gradient(135deg, #8fd6ec, #2e86ad); }
+body:not(.theme-dark) .home-page .home-cta--nuovi   { background: linear-gradient(135deg, #9fc0f2, #274b9e); }
+body:not(.theme-dark) .home-page .home-hero-scroll { color: #cfe8f4; text-shadow: 0 1px 6px rgba(5, 18, 30, .7); }
+body:not(.theme-dark) .home-page .home-hero-scroll-ic {
+  border-color: rgba(111, 208, 238, .6);
+  background: rgba(10, 28, 44, .55);
+  color: #bfe6f5;
+}
+
+/* Toolbar cine (ricerca+chips): da crema a lastra gelata */
+body:not(.theme-dark) .cine-page .cine-toolbar {
+  background: rgba(244, 250, 253, .92);
+  border-color: #a9c9da;
+  box-shadow: 0 10px 30px -14px rgba(16, 44, 66, .4), 0 1px 0 rgba(255, 255, 255, .8) inset;
+}
+
+/* Scrollbar: abisso e ghiaccio */
+body:not(.theme-dark)::-webkit-scrollbar { width: 12px; background: #081827; }
+body:not(.theme-dark)::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #2e6a8c, #1a4258);
+  border-radius: 6px;
+  border: 2px solid #081827;
+}
+
+/* ── Accessibilità: reduced-motion spegne raggi e particelle ── */
+@media (prefers-reduced-motion: reduce) {
+  .frost-ray { animation: none; opacity: .3; }
+  .frost-canvas { display: none; }
+}
