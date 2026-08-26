@@ -245,3 +245,22 @@
 }
 .geo-page .geo-rubrica-voce b { color: var(--g, #22d3ee); }
 .geo-page .geo-rubrica-voce:hover { border-color: var(--g, #22d3ee); box-shadow: 0 0 16px -4px var(--g, #22d3ee); }
+
+/* ── Testo del popup SEMPRE bianco (il markup arriva da Firestore con
+      colori/inline-style pergamena): tutto in chiaro, i LINK colorati ── */
+.geo-page .geo-description,
+.geo-page .geo-description *:not(a):not(.lore-link) { color: #edeaff !important; background: transparent !important; }
+.geo-page .geo-description strong, .geo-page .geo-description b { color: #fff !important; }
+.geo-page .geo-description em, .geo-page .geo-description i { color: #c4b5fd !important; }
+.geo-page .geo-description a:not(.lore-link) { color: #22d3ee !important; text-decoration: underline; text-underline-offset: 3px; }
+.geo-page .geo-description a:not(.lore-link):hover { color: #9ff0ff !important; }
+.geo-page .geo-description .lore-link {
+  color: var(--lore-c, #22d3ee) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--lore-c, #22d3ee) 55%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--lore-c, #22d3ee) 50%, transparent);
+  font-weight: 700; cursor: pointer;
+}
+.geo-page .geo-description .lore-link:hover { color: #fff !important; background: color-mix(in srgb, var(--lore-c, #22d3ee) 22%, transparent) !important; border-radius: 4px; }
+.geo-page .geo-description .lore-link--char { --lore-c: #e879f9; }
+.geo-page .geo-description .lore-link--npc  { --lore-c: #c4b5fd; }
+.geo-page .geo-description .lore-link--city, .geo-page .geo-description .lore-link--loc { --lore-c: #4ade80; }
