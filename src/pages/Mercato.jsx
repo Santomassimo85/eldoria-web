@@ -17,10 +17,9 @@ import {
 import "../styles/cinematic.css";
 import "./Mercato.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
-import GlacierHero from "../components/glacier/GlacierHero";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
-const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/padithas.png";
+// (hero panoramico dismesso: il Bazar del Nesso apre con la testata)
 
 // Chiave-giorno locale (YYYY-MM-DD) per le statistiche di visita.
 const todayKey = () => new Date().toLocaleDateString("sv-SE");
@@ -122,7 +121,7 @@ const ItemCard = ({ item, isMaster = false, onRemoveBid, onClearAllBids, onDeliv
 
   return (
     <div
-      className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""} ${isMaster ? "is-admin" : ""}`}
+      className={`item-card rarity-bg-${rarityKey} ${isSold ? "sold" : ""} ${isMaster ? "is-admin" : ""} ${isAuction ? "is-auction" : ""}`}
       onClick={open}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }}
       role="button"
@@ -496,99 +495,94 @@ export default function Mercato() {
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con la merce
-            del sottosuolo, rango Ratto come sigillo di gelo, CTA a cristallo ── */}
-      <GlacierHero
-        id="mercato-top"
-        ariaLabel="Mercato Nero di Exanthia"
-        image={HERO_IMAGE}
-        imgPos="center 22%"
-        eyebrow="Il Sottosuolo · Gilda dei Ratti"
-        title={<>Mercato Nero<br />di Exanthia</>}
-        seal={currentUser ? `🐀 ${ratto.name} · ${userRattoPoints} pt` : undefined}
-        tagline="Reagenti proibiti, artefatti rubati e aste cieche. Ogni affare aumenta la tua influenza nell'ombra."
-        actions={<a href="#merc-banco" className="gl-cta" aria-label="Scorri al banco">❆ Scendi al banco</a>}
-      />
+      {/* ══ TESTATA (prototipo J): kicker + titolo a gradiente ══ */}
+      <header id="mercato-top" className="merc-testata">
+        <span className="merc-kicker">Mercato Nero · Gilda dei Ratti</span>
+        <h1 className="merc-titolo">Bazar del Nesso</h1>
+        <p className="merc-sotto">Reagenti proibiti, artefatti rubati e aste cieche. Ogni affare aumenta la tua influenza nell'ombra.</p>
+      </header>
 
-      <div className="cine-wrap cine-wrap--wide mercato-body">
-      {currentUser && (
-        <div className="ratto-status-container">
-          <div className="ratto-info">
-            <span className="ratto-label">Rango Ratto:</span>
-            <span className="ratto-name">{ratto.name}</span>
-            <span className="ratto-points">({userRattoPoints} pt)</span>
+      {/* ══ IL BAZAR: mercante fisso a sinistra + flusso di merci a destra ══ */}
+      <div className="bazar">
+        <aside className="mercante" aria-label="Mastro Ratto">
+          <div className="occhio" aria-hidden="true" />
+          <h3 className="mercante-nome">Mastro Ratto</h3>
+          {currentUser ? (
+            <>
+              <span className="rango" title={`${userRattoPoints} punti Ratto`}>Rango: {ratto.name} · {userRattoPoints} pt</span>
+              <div className="progress-bar-container" aria-hidden="true">
+                <div className="progress-bar-fill" style={{ width: `${ratto.progress}%` }}></div>
+              </div>
+              {ratto.next && (
+                <small className="ratto-next-info">
+                  Mancano {ratto.next.min - userRattoPoints} punti a {ratto.next.name}
+                </small>
+              )}
+            </>
+          ) : (
+            <span className="rango">Rango: Estraneo</span>
+          )}
+
+          {isMaster && <div className="admin-notice">⚠️ VISTA MASTER ATTIVA</div>}
+
+          <div className="mercato-controls">
+            <input
+              type="text"
+              placeholder="Cerca..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-bar"
+            />
+            <select onChange={(e) => setFilterType(e.target.value)} value={filterType} className="filter-select">
+              <option value="all">Tutti i Tipi</option>
+              {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select onChange={(e) => setFilterRarity(e.target.value)} value={filterRarity} className="filter-select">
+              <option value="all">Tutte le Rarità</option>
+              {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <select onChange={(e) => setFilterSold(e.target.value)} value={filterSold} className="filter-select">
+              <option value="all">Venduti e non</option>
+              <option value="available">Solo disponibili</option>
+              <option value="sold">Solo venduti</option>
+            </select>
+            <select onChange={(e) => setSortBy(e.target.value)} value={sortBy} className="filter-select">
+              <option value="none">Ordina per…</option>
+              <option value="price-asc">Prezzo ↑ (basso → alto)</option>
+              <option value="price-desc">Prezzo ↓ (alto → basso)</option>
+              <option value="rarity-asc">Rarità ↑ (comune → rara)</option>
+              <option value="rarity-desc">Rarità ↓ (rara → comune)</option>
+            </select>
           </div>
-          <div className="progress-bar-container">
-            <div className="progress-bar-fill" style={{ width: `${ratto.progress}%` }}></div>
-          </div>
-          {ratto.next && (
-            <small className="ratto-next-info">
-              Mancano {ratto.next.min - userRattoPoints} punti a {ratto.next.name}
-            </small>
+        </aside>
+
+        <div className="merci-col">
+          <div id="merc-banco" className="gl-sezlabel">La Merce del Nesso</div>
+          <p className="gl-vetrata-sub merc-sezsub">Ciò che nessuna bottega onesta oserebbe esporre.</p>
+
+          {filteredItems.length === 0 ? (
+            <div className="market-closed-container">
+              <h2 className="closed-title">Il Mercato è Chiuso</h2>
+              {marketConfig?.nextOpening && new Date(marketConfig.nextOpening) > new Date() && (
+                <MarketTimer targetDate={marketConfig.nextOpening} />
+              )}
+            </div>
+          ) : isMaster ? (
+            <MarketAdminTable
+              items={filteredItems}
+              marketStats={marketStats}
+              onRemoveBid={handleMasterRemoveBid}
+              onClearAllBids={handleMasterClearAllBids}
+              onDeliver={handleMasterDeliver}
+            />
+          ) : (
+            <div className="items-grid">
+              {filteredItems.map((item) => (
+                <ItemCard key={item.id} item={item} />
+              ))}
+            </div>
           )}
         </div>
-      )}
-
-      {isMaster && <div className="admin-notice">⚠️ VISTA MASTER ATTIVA</div>}
-
-      <div className="mercato-controls">
-        <input
-          type="text"
-          placeholder="Cerca..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-bar"
-        />
-        <select onChange={(e) => setFilterType(e.target.value)} value={filterType} className="filter-select">
-          <option value="all">Tutti i Tipi</option>
-          {ITEM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select onChange={(e) => setFilterRarity(e.target.value)} value={filterRarity} className="filter-select">
-          <option value="all">Tutte le Rarità</option>
-          {RARITIES.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <select onChange={(e) => setFilterSold(e.target.value)} value={filterSold} className="filter-select">
-          <option value="all">Venduti e non</option>
-          <option value="available">Solo disponibili</option>
-          <option value="sold">Solo venduti</option>
-        </select>
-        <select onChange={(e) => setSortBy(e.target.value)} value={sortBy} className="filter-select">
-          <option value="none">Ordina per…</option>
-          <option value="price-asc">Prezzo ↑ (basso → alto)</option>
-          <option value="price-desc">Prezzo ↓ (alto → basso)</option>
-          <option value="rarity-asc">Rarità ↑ (comune → rara)</option>
-          <option value="rarity-desc">Rarità ↓ (rara → comune)</option>
-        </select>
-      </div>
-      </div>
-
-      {/* ── ETICHETTA DI SEZIONE (glacier): Il Banco del Contrabbando ── */}
-      <div id="merc-banco" className="gl-sezlabel">Banco del Contrabbando · La Merce</div>
-      <p className="gl-vetrata-sub merc-sezsub">Ciò che nessuna bottega onesta oserebbe esporre.</p>
-
-      <div className="cine-wrap cine-wrap--wide mercato-body">
-      {filteredItems.length === 0 ? (
-        <div className="market-closed-container">
-          <h2 className="closed-title">Il Mercato è Chiuso</h2>
-          {marketConfig?.nextOpening && new Date(marketConfig.nextOpening) > new Date() && (
-            <MarketTimer targetDate={marketConfig.nextOpening} />
-          )}
-        </div>
-      ) : isMaster ? (
-        <MarketAdminTable
-          items={filteredItems}
-          marketStats={marketStats}
-          onRemoveBid={handleMasterRemoveBid}
-          onClearAllBids={handleMasterClearAllBids}
-          onDeliver={handleMasterDeliver}
-        />
-      ) : (
-        <div className="items-grid">
-          {filteredItems.map((item) => (
-            <ItemCard key={item.id} item={item} />
-          ))}
-        </div>
-      )}
       </div>
     </section>
   );
