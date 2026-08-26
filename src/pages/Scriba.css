@@ -401,3 +401,14 @@
 @media (max-width: 640px) {
   .scriba-single-label { display: none; }
 }
+
+/* ── GLACIER ── */
+/* Testata → <GlacierHero> (finestra artica) e griglia numeri → vetrate
+   panoramiche (<Vetrata> in .gl-vetrate): .scriba-mast, .scriba-month-title,
+   .scriba-grid e .scriba-card-* restano come regole morte.
+   La pagina ha già il padding sotto la navbar: la finestra parte subito. */
+.scriba-archive .gl-hero { padding-top: 0; margin-bottom: 12px; }
+.scriba-archive .gl-vetrate { padding: 0; }
+/* i pulsanti master (🔗 ✒️ 🗑) e il badge letture restano ancorati al wrap */
+.scriba-archive .scriba-card-wrap { position: relative; }
+.scriba-archive .scriba-card-wrap .gl-vetrata { width: 100%; }

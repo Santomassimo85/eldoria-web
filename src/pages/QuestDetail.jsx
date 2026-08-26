@@ -7,6 +7,7 @@ import "./admin.css";
 import "../styles/cinematic.css";
 import "./QuestDetail.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import GlacierHero from "../components/glacier/GlacierHero";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/wolf_alpha.png";
@@ -128,19 +129,17 @@ export default function QuestDetail() {
 
   return (
     <section className="cine-page quest-detail-page" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
-      {/* ── HERO ASIMMETRICO: copertina full-bleed + placca-missiva a sinistra ── */}
-      <section className="qd-hero" aria-label={quest.title}>
-        <div className="qd-hero-media" aria-hidden="true">
-          <img src={quest.coverImage || HERO_IMAGE} alt=""
-               onError={(e) => { e.currentTarget.src = HERO_IMAGE; }} />
-        </div>
-        <div className="qd-hero-wash" aria-hidden="true" />
-        <div className="qd-hero-plate">
-          <span className="qd-hero-seal">📜 Incarico{quest.zona ? ` · ${quest.zona}` : ""}</span>
-          <h1 className="qd-hero-title">{quest.title}</h1>
-          <p className="qd-hero-tagline">Emesso da {quest.sender || "Mittente Misterioso"}</p>
-        </div>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): copertina dinamica della missiva
+            nell'arco di ghiaccio, sigillo con la zona, titolo inciso in basso ── */}
+      <GlacierHero
+        id="quest-top"
+        ariaLabel={quest.title}
+        image={quest.coverImage || HERO_IMAGE}
+        eyebrow="Albo degli Incarichi"
+        title={quest.title}
+        seal={`📜 Incarico${quest.zona ? ` · ${quest.zona}` : ""}`}
+        tagline={`Emesso da ${quest.sender || "Mittente Misterioso"}`}
+      />
 
       <div className="cine-wrap cine-wrap--narrow">
       <button onClick={() => navigate(-1)} className="admin-back-link">← Torna alla Bacheca</button>

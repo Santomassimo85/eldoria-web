@@ -353,3 +353,27 @@
 .bacheca-page > * { position: relative; z-index: 1; }
 .bacheca-page > .ambient-fx { position: fixed; z-index: 0; }
 .bacheca-page > .cine-side-nav { z-index: 95; }
+
+/* ── GLACIER ── */
+/* Saluto dinamico sotto la finestra artica (children del GlacierHero). */
+.bacheca-page .bch-glacier-greet {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--muted, #4a687a);
+}
+.bacheca-page .bch-glacier-greet strong {
+  font-family: "Cinzel", Georgia, serif;
+  letter-spacing: 0.04em;
+  color: #1d6485;
+}
+/* Sottotitolo della sezione "Le Missive" fuori dalla vetrata:
+   ricentrato sotto la .gl-sezlabel e reso leggibile sulla lastra chiara. */
+.bacheca-page .bch-sezsub {
+  display: block;
+  text-align: center;
+  max-width: 620px;
+  margin: -4px auto 18px;
+  padding: 0 16px;
+  color: var(--muted, #4a687a);
+}

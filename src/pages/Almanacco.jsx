@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import { MESI_EXANTHIA, GIORNI_SETTIMANA, SOTTOTITOLO_TESTATA } from "../data/exanthiaCalendar";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "./Almanacco.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -232,25 +233,23 @@ export default function Almanacco() {
     <section className="cine-page alm-page cine-compact" style={{ "--cine-accent": "#8a5a1f", "--cine-accent-2": "#b0832f" }}>
       <AmbientFX variant="cosmos" />
 
-      {/* ── HERO ── */}
-      <section id="alm-top" className="alm-hero" aria-label="Almanacco del Mondo">
-        <div className="alm-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="alm-hero-wash" aria-hidden="true" />
-        <div className="alm-hero-plate">
-          <span className="alm-hero-seal">✦ Informazioni del Mondo</span>
-          <h1 className="alm-hero-title">Almanacco<br />di Exanthia</h1>
-          <p className="alm-hero-tagline">
-            Il computo dei giorni e le vie del mondo: ciò che ogni viandante dovrebbe sapere
-            prima di mettersi in cammino.
-          </p>
-          <nav className="alm-hero-jump" aria-label="Indice">
-            <a href="#alm-calendario">Calendario</a>
-            <a href="#alm-viaggio">Le Vie del Mondo</a>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): Aen-Lor nell'arco di ghiaccio,
+            titolo inciso sulla lastra, indice come CTA a cristallo sotto ── */}
+      <GlacierHero
+        id="alm-top"
+        ariaLabel="Almanacco del Mondo"
+        image={HERO_IMAGE}
+        eyebrow="Informazioni del Mondo"
+        title={<>Almanacco<br />di Exanthia</>}
+        seal="✦ 12 mesi · 5 giorni · 240 giorni l'anno"
+        tagline="Il computo dei giorni e le vie del mondo: ciò che ogni viandante dovrebbe sapere prima di mettersi in cammino."
+        actions={
+          <nav className="alm-jump-gl" aria-label="Indice">
+            <a href="#alm-calendario" className="gl-cta">❆ Calendario</a>
+            <a href="#alm-viaggio" className="gl-cta gl-cta--deep">🜂 Le Vie del Mondo</a>
           </nav>
-        </div>
-      </section>
+        }
+      />
 
       {/* ════════ SEZIONE 1 — CALENDARIO ════════ */}
       <section id="alm-calendario" className="alm-section alm-band alm-band--cal" aria-label="Calendario di Exanthia">

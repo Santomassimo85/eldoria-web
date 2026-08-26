@@ -676,3 +676,35 @@
   .map-page-title { font-size: 0.85rem; padding: 2px 8px; }
   .map-zoom-hint { display: none; } /* spazio prezioso, niente hint */
 }
+
+/* ── GLACIER ── */
+/* Testata glaciale compatta: piccola lastra d'abisso ad arco (firma del tema
+   "Ghiaccio e Acqua") al posto del cartiglio-pergamena. La mappa, lo zoom e i
+   marker restano intatti. I selettori .map-cartouche* sopra restano morti. */
+.map-glhead {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 16px 36px 12px;
+  margin: 0 0 2px;
+  border-radius: 74px 74px 12px 12px;
+  background: linear-gradient(180deg, #0d2438, #081827);
+  border: 3px solid rgba(191, 230, 245, .55);
+  box-shadow:
+    0 0 0 1px rgba(111, 208, 238, .35),
+    0 0 34px -10px rgba(111, 208, 238, .55),
+    inset 0 0 26px rgba(4, 16, 28, .5);
+}
+.map-glhead .gl-eyebrow { margin-bottom: 2px; }
+/* titolo inciso sul ghiaccio (bianco → azzurro) al posto del gradiente seppia */
+.map-glhead .map-page-title {
+  background: linear-gradient(180deg, #ffffff, #bfe6f5 55%, #2e9ad0 95%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 2px 12px rgba(111, 208, 238, .45));
+}
+@media (max-width: 900px) {
+  .map-glhead { padding: 9px 22px 6px; border-radius: 46px 46px 10px 10px; border-width: 2px; }
+}
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .map-glhead { padding: 4px 16px 3px; border-radius: 30px 30px 8px 8px; }
+  .map-glhead .gl-eyebrow { display: none; } /* spazio prezioso in landscape */
+}

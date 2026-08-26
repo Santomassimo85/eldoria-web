@@ -10,6 +10,7 @@ import "./admin.css";
 import "../styles/cinematic.css";
 import "./Notifications.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import GlacierHero from "../components/glacier/GlacierHero";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tanagar3.png";
 
@@ -63,24 +64,17 @@ export default function Notifications() {
 
   return (
     <section className="cine-page notifications-page" style={{ "--cine-accent": "#3f5a7a", "--cine-accent-2": "#5a7ea8" }}>
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca a sinistra ── */}
-      <section className="notif-hero" aria-label="Log dei Messaggi">
-        <div className="notif-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        
-        <div className="notif-hero-wash" aria-hidden="true" />
-        <div className="notif-hero-plate">
-          <span className="notif-hero-seal">🪶 Corvi messaggeri</span>
-          <h1 className="notif-hero-title">Log dei<br />Messaggi</h1>
-          <p className="notif-hero-tagline">Missive, esiti d'asta e richiami del Master, tutti in un luogo.</p>
-          {list.length > 0 && (
-            <dl className="notif-hero-stats">
-              <div><dt>Messaggi</dt><dd>{list.length}</dd></div>
-            </dl>
-          )}
-        </div>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con Tanagar,
+            titolo inciso sulla lastra, conteggio come sigillo di gelo ── */}
+      <GlacierHero
+        className="notif-glhero"
+        ariaLabel="Log dei Messaggi"
+        image={HERO_IMAGE}
+        eyebrow="Corvi messaggeri"
+        title={<>Log dei<br />Messaggi</>}
+        seal={list.length > 0 ? `${list.length} messaggi` : undefined}
+        tagline="Missive, esiti d'asta e richiami del Master, tutti in un luogo."
+      />
 
       <div className="cine-wrap cine-wrap--narrow notif-body">
       {list.length > 0 && (

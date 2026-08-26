@@ -39,6 +39,7 @@ import {
 import { FRASI } from "../data/tarocchiFrasi";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "../styles/cinematic.css";
 import "./Tarocchi.css";
 
@@ -417,25 +418,24 @@ export default function Tarocchi() {
   const pendingReqs = readings.filter((r) => r.status === "pending");
   const liveReqs = readings.filter((r) => r.status === "live");
 
-  /* ── HERO ───────────────────────────────────────────────────────────── */
+  /* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con l'arcano,
+        titolo inciso sulla lastra; ritratto bendato sotto la finestra ── */
   const Hero = (
-    <section className="taro-hero" aria-label="Alaric, l'oracolo bendato">
-      <div className="taro-hero-media" aria-hidden="true">
-        <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-      </div>
-      <div className="taro-hero-wash" aria-hidden="true" />
-      <div className="taro-hero-plate">
-        <figure className="taro-hero-portrait">
-          <img src={ALARIC_PORTRAIT} alt="Alaric Voltasorte" onError={(e) => { e.currentTarget.closest(".taro-hero-portrait").style.display = "none"; }} />
-          <span className="taro-hero-blind" aria-hidden="true" />
-        </figure>
-        <div className="taro-hero-text">
-          <span className="taro-hero-seal">✦ Arcani Maggiori</span>
-          <h1 className="taro-hero-title">Alaric,<br />l'oracolo bendato</h1>
-          <p className="taro-hero-tagline">Gli occhi velati non vedono il mondo, ma leggono il destino. Poni la tua domanda e lascia che le lame parlino.</p>
-        </div>
-      </div>
-    </section>
+    <GlacierHero
+      className="taro-glhero"
+      ariaLabel="Alaric, l'oracolo bendato"
+      image={HERO_IMAGE}
+      imgPos="center 32%"
+      eyebrow="Arcani Maggiori"
+      title={<>Alaric,<br />l'oracolo bendato</>}
+      seal={`${ARCANI.length} Arcani Maggiori`}
+      tagline="Gli occhi velati non vedono il mondo, ma leggono il destino. Poni la tua domanda e lascia che le lame parlino."
+    >
+      <figure className="taro-hero-portrait taro-glhero-portrait">
+        <img src={ALARIC_PORTRAIT} alt="Alaric Voltasorte" onError={(e) => { e.currentTarget.closest(".taro-hero-portrait").style.display = "none"; }} />
+        <span className="taro-hero-blind" aria-hidden="true" />
+      </figure>
+    </GlacierHero>
   );
 
   if (!currentUser && roleReady) {

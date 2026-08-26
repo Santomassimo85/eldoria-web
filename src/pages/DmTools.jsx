@@ -4,6 +4,7 @@ import { db, storage } from "../firebase";
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { logAgent } from "../utils/agentLog";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "../GeneraNPC.css";
 import "./DmTools.css";
 import "./admin.css";
@@ -434,8 +435,15 @@ export default function DmTools() {
     <div className="npcgen-page">
       <div className="npcgen-inner">
         <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
-        <h1 className="npcgen-title">Strumenti DM</h1>
-        <p className="npcgen-sub">Genera al volo incontri, bottino e città per Eldoria.</p>
+        {/* GLACIER: masthead a filetto → finestra artica compatta (senza immagine).
+            Tab e generatori sotto restano intatti. */}
+        <GlacierHero
+          className="npcgen-glhero"
+          ariaLabel="Strumenti DM"
+          eyebrow="Officina del Master"
+          title="Strumenti DM"
+          tagline="Genera al volo incontri, bottino e città per Eldoria."
+        />
 
         {/* TAB */}
         <div className="dmt-tabs">

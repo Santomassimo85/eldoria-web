@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import changelog from "../data/changelog.json";
 import "./Updates.css";
+import GlacierHero from "../components/glacier/GlacierHero";
 import { useAuth } from "../AuthContext";
 import { db } from "../firebase";
 import { doc, onSnapshot, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
@@ -76,10 +77,16 @@ export default function Updates() {
 
   return (
     <div className="updates-page">
-      <header className="updates-header">
-        <span className="updates-eyebrow">✦ Cronache delle Versioni ✦</span>
-        <h1 className="updates-title">UPDATE</h1>
-        <p className="updates-sub">Cosa è cambiato, versione per versione.</p>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): senza immagine la finestra
+            mostra il gradiente d'abisso; titolo inciso sulla lastra ── */}
+      <GlacierHero
+        className="updates-glhero"
+        ariaLabel="Cronache delle Versioni"
+        eyebrow="Cronache delle Versioni"
+        title="UPDATE"
+        seal={versions.length > 0 ? `${versions.length} versioni` : undefined}
+        tagline="Cosa è cambiato, versione per versione."
+      >
         {isMaster && (
           <button
             className={`upd-toggle-hidden${showHidden ? " active" : ""}`}
@@ -90,7 +97,7 @@ export default function Updates() {
               : `👁 Mostra nascosti${hiddenCount > 0 ? ` (${hiddenCount})` : ""}`}
           </button>
         )}
-      </header>
+      </GlacierHero>
 
       {/* Popup di conferma */}
       {pending && (

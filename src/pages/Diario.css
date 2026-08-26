@@ -176,3 +176,11 @@
   .diario-add { width: 100%; }
   .diario-signature { text-align: center; }
 }
+
+/* ── GLACIER ── */
+/* L'intestazione a cartiglio (.diario-hero/.diario-eyebrow/.diario-title)
+   è stata sostituita da <GlacierHero>: quei selettori restano regole morte.
+   Il sigillo di gruppo e la nota vivono in .gl-sotto, centrati. */
+.diario-page .gl-hero { padding-left: 0; padding-right: 0; margin-bottom: 1.4rem; }
+.diario-page .gl-sotto .diario-sub { justify-content: center; }
+.diario-page .gl-sotto .diario-note-hint { margin-top: .6rem; }

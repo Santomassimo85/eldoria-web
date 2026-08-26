@@ -39,9 +39,22 @@ concentriche + cristalli di brina dal punto (FrostOverlay, canvas globale).
 - Full-bleed 100vw delle pagine chiare → arco artico largo `calc(100% - clamp(...))`
 
 ## File del layer
-- `src/styles/glacier.css` — tutto il tema (caricato per ultimo in main.jsx)
+- `src/styles/glacier.css` — tutto il tema + sez. 9 STRUTTURA (gl-finestra,
+  gl-vetrata, gl-sezlabel, gl-cta, gl-seal, perle .nav-rune)
 - `src/components/FrostOverlay.jsx` — neve + raggi + onde/cristalli al tocco
   (montato in App.jsx; si spegne da solo su `body.theme-dark` via MutationObserver)
+- `src/components/glacier/GlacierHero.jsx` — hero FINESTRA ARTICA condiviso
+- `src/components/glacier/Vetrata.jsx` — lastra panoramica 16/9 (Link/a/button/article)
+- `src/styles/layout.css` — NAV A PERLE: bottom-bar flottante di vetro d'abisso
+  con perle runiche + bottom-sheet abisso (valide anche sulle pagine scure)
+- Spec del restyle pagina-per-pagina: `docs/glacier-restyle-spec.md`
+
+## Restyle STRUTTURALE applicato (2026-08-26)
+Tutte le pagine chiare usano GlacierHero (finestra ad arco con immagine,
+titolo inciso, sigillo dinamico, tagline+CTA cristallo sotto); rubriche →
+.gl-sezlabel; Home e Scriba hanno vetrate panoramiche; WorldMap/DmTools/
+GeneraNPC/Concilio = testata glaciale compatta. ItemDetail e ScribaSingolo
+senza hero: lasciati invariati.
 
 ## Motion
 - `frost-caustica` 10s (raggi) · neve canvas (34/54/78 fiocchi per breakpoint,

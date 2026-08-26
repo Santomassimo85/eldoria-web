@@ -869,3 +869,15 @@
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+/* ── GLACIER ── */
+/* Sottotitolo dell'archivio: riusa .gl-vetrata-sub ma su fondo chiaro
+   (lastra), quindi inchiostro glaciale e centratura. */
+.theatrum .theatrum-archivio-sub {
+  display: block;
+  text-align: center;
+  color: #4a687a;
+  max-width: 60ch;
+  margin: -4px auto 18px;
+  padding: 0 16px;
+}

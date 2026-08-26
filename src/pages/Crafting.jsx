@@ -10,6 +10,7 @@ import {
   PROFESSIONI,
   ESEMPI_GIOCO,
 } from "../data/crafting";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "./Crafting.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -68,27 +69,18 @@ export default function Crafting() {
 
   return (
     <section className="cine-page cr-page" style={{ "--cine-accent": "#b07a1f", "--cine-accent-2": "#d4922a" }}>
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-frontespizio a sinistra ── */}
-      <section id="cr-top" className="cr-hero2" aria-label="Crafting di Exanthia">
-        <div className="cr-hero2-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="cr-hero2-wash" aria-hidden="true" />
-        <div className="cr-hero2-plate">
-          <span className="cr-hero2-seal">⚒ Manuale dell'Artigiano · Edizione del Maestro</span>
-          <h1 className="cr-hero2-title">Crafting<br />di Exanthia</h1>
-          <p className="cr-hero2-quote">{HERO_QUOTE}</p>
-          <dl className="cr-hero2-stats">
-            <div><dt>Sistema</dt><dd>5e</dd></div>
-            <div><dt>Professioni</dt><dd>10</dd></div>
-            <div><dt>Pregiature</dt><dd>5</dd></div>
-          </dl>
-        </div>
-        <a href="#cr-index" className="cr-hero2-scroll" aria-label="Scorri al sommario">
-          <span className="cr-hero2-scroll-tx">Scorri</span>
-          <span className="cr-hero2-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): la forgia dei nani nell'arco
+            di ghiaccio, titolo inciso sulla lastra, CTA a cristallo sotto ── */}
+      <GlacierHero
+        id="cr-top"
+        ariaLabel="Crafting di Exanthia"
+        image={HERO_IMAGE}
+        eyebrow="Manuale dell'Artigiano"
+        title={<>Crafting<br />di Exanthia</>}
+        seal="⚒ Sistema 5e · 10 professioni · 5 pregiature"
+        tagline={HERO_QUOTE}
+        actions={<a href="#cr-index" className="gl-cta" aria-label="Scorri al sommario">❆ Sfoglia il sommario</a>}
+      />
 
       {/* ── SOMMARIO DEL MANUALE ── */}
       <nav id="cr-index" className="cr-index" aria-label="Sommario del manuale">
@@ -306,12 +298,8 @@ export default function Crafting() {
         </div>
       </section>
 
-      {/* ── RUBRICA: Professioni ── */}
-      <div className="cr-rubric">
-        <span className="cr-rubric-eyebrow">Vie verso la Maestria</span>
-        <h2 className="cr-rubric-title">Le 10 Professioni</h2>
-        <p className="cr-rubric-sub">Dieci sentieri, una sola scelta alla creazione del personaggio.</p>
-      </div>
+      {/* ── ETICHETTA DI SEZIONE: Professioni ── */}
+      <div className="gl-sezlabel">Vie verso la Maestria · Le 10 Professioni</div>
 
       {/* ── 10 PROFESSIONI ──────────────────────────────── */}
       <section id="cr-professioni" className="cr-section" data-chapter="V">
@@ -345,12 +333,8 @@ export default function Crafting() {
         </div>
       </section>
 
-      {/* ── RUBRICA: Esempi ── */}
-      <div className="cr-rubric">
-        <span className="cr-rubric-eyebrow">Dal Tavolo</span>
-        <h2 className="cr-rubric-title">Esempi di Gioco</h2>
-        <p className="cr-rubric-sub">Tre scene per chiarire come ogni regola si combina.</p>
-      </div>
+      {/* ── ETICHETTA DI SEZIONE: Esempi ── */}
+      <div className="gl-sezlabel">Dal Tavolo · Esempi di Gioco</div>
 
       {/* ── ESEMPI DI GIOCO ─────────────────────────────── */}
       <section id="cr-esempi" className="cr-section" data-chapter="VI">

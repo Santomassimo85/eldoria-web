@@ -330,21 +330,23 @@ function MobileBottomNav({ openMenu }) {
           </div>
         </div>
       )}
+      {/* Nav a perle (mockup B "Ghiaccio e Acqua"): barra flottante di
+          vetro d'abisso, ogni voce è una perla di ghiaccio con la runa. */}
       <div className="app-bottom-nav" role="navigation" aria-label="Navigazione rapida">
         <NavLink to="/" end className="mnav-tab" onClick={() => setSheet(null)}>
-          <span className="mnav-ic mnav-rune" aria-hidden="true">ᚺ</span><span className="mnav-lb">Home</span>
+          <span className="mnav-pearl" aria-hidden="true">ᚺ</span><span className="mnav-lb">Home</span>
         </NavLink>
         <button type="button" className={`mnav-tab${group === "mondo" || sheet === "mondo" ? " is-active" : ""}`} onClick={() => toggle("mondo")}>
-          <span className="mnav-ic mnav-rune" aria-hidden="true">ᛗ</span><span className="mnav-lb">Mondo</span>
+          <span className="mnav-pearl" aria-hidden="true">ᛗ</span><span className="mnav-lb">Mondo</span>
         </button>
         <button type="button" className={`mnav-tab${group === "biblioteca" || sheet === "biblioteca" ? " is-active" : ""}`} onClick={() => toggle("biblioteca")}>
-          <span className="mnav-ic mnav-rune" aria-hidden="true">ᛒ</span><span className="mnav-lb">Biblioteca</span>
+          <span className="mnav-pearl" aria-hidden="true">ᛒ</span><span className="mnav-lb">Biblioteca</span>
         </button>
         <button type="button" className={`mnav-tab${group === "gilda" || sheet === "gilda" ? " is-active" : ""}`} onClick={() => toggle("gilda")}>
-          <span className="mnav-ic mnav-rune" aria-hidden="true">ᚷ</span><span className="mnav-lb">Gilda</span>
+          <span className="mnav-pearl" aria-hidden="true">ᚷ</span><span className="mnav-lb">Gilda</span>
         </button>
         <button type="button" className="mnav-tab" onClick={() => { setSheet(null); openMenu(); }}>
-          <span className="mnav-ic" aria-hidden="true">☰</span><span className="mnav-lb">Menu</span>
+          <span className="mnav-pearl" aria-hidden="true">☰</span><span className="mnav-lb">Menu</span>
         </button>
       </div>
     </>

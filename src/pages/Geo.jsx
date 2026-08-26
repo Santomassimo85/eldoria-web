@@ -12,6 +12,7 @@ import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
 import AmbientFX from '../components/AmbientFX';
 import CineToolbar from '../components/CineToolbar';
+import GlacierHero from "../components/glacier/GlacierHero";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/aenlor.png";
 const CONTINENT_IMAGES = {
@@ -265,48 +266,41 @@ export default function Geo() {
     <section className="cine-page geo-page cine-compact" style={{ "--cine-accent": "#1f8a6a", "--cine-accent-2": "#2fb088" }}>
       <AmbientFX variant="cosmos" />
 
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
-      <section id="geo-top" className="geo-hero" aria-label="Archivio Geomantico">
-        <div className="geo-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="geo-hero-wash" aria-hidden="true" />
-        <div className="geo-hero-plate">
-          <span className="geo-hero-seal">✦ Atlante Geomantico</span>
-          <h1 className="geo-hero-title">Archivio<br />Geomantico</h1>
-          <p className="geo-hero-tagline">
-            Continenti, regni e rovine: ogni luogo che le cronache hanno cartografato.
-          </p>
-          <dl className="geo-hero-stats">
-            <div><dt>Luoghi</dt><dd>{locations.length}</dd></div>
-            <div><dt>{activeContinents.length === 1 ? "Continente" : "Continenti"}</dt><dd>{activeContinents.length}</dd></div>
-          </dl>
-          {isMaster && locations.length > 0 && (
-            <div className="geo-export-row">
-              <button type="button" className="geo-export-btn" onClick={exportLocationsTxt}>
-                ⬇ Esporta luoghi (.txt)
-              </button>
-              <button
-                type="button"
-                className="geo-export-btn geo-export-btn--alt"
-                onClick={exportLocationsFullTxt}
-                title="Esporta nomi e descrizioni, città per città"
-              >
-                📝 + descrizioni
-              </button>
-            </div>
-          )}
-        </div>
-        <a href="#geo-index" className="geo-hero-scroll" aria-label="Scorri all'atlante">
-          <span className="geo-hero-scroll-tx">Scorri</span>
-          <span className="geo-hero-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con Aen-Lor,
+            titolo inciso sulla lastra, CTA a cristallo verso l'indice;
+            gli export del master restano intatti sotto la finestra ── */}
+      <GlacierHero
+        id="geo-top"
+        ariaLabel="Archivio Geomantico"
+        image={HERO_IMAGE}
+        imgPos="center 34%"
+        eyebrow="Atlante Geomantico"
+        title={<>Archivio<br />Geomantico</>}
+        seal={`${locations.length} luoghi · ${activeContinents.length} ${activeContinents.length === 1 ? "continente" : "continenti"}`}
+        tagline="Continenti, regni e rovine: ogni luogo che le cronache hanno cartografato."
+        actions={<a href="#geo-index" className="gl-cta" aria-label="Scorri all'atlante">❆ Apri l'atlante</a>}
+      >
+        {isMaster && locations.length > 0 && (
+          <div className="geo-export-row">
+            <button type="button" className="geo-export-btn" onClick={exportLocationsTxt}>
+              ⬇ Esporta luoghi (.txt)
+            </button>
+            <button
+              type="button"
+              className="geo-export-btn geo-export-btn--alt"
+              onClick={exportLocationsFullTxt}
+              title="Esporta nomi e descrizioni, città per città"
+            >
+              📝 + descrizioni
+            </button>
+          </div>
+        )}
+      </GlacierHero>
 
       {/* ── INDICE DEI CONTINENTI: sigilli inline (sostituisce il rail flottante) ── */}
       {activeContinents.length > 0 && (
         <div id="geo-index" className="geo-index">
-          <span className="geo-index-eyebrow">Indice · Le Terre di Exanthia</span>
+          <div className="gl-sezlabel">Indice · Le Terre di Exanthia</div>
           <div className="geo-index-sigils">
             {activeContinents.map((c, i) => (
               <a key={c} href={`#geo-${slugify(c)}`} className="geo-sigil" data-accent={i % 3}>

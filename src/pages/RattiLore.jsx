@@ -1,4 +1,5 @@
 import React from "react";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "../styles/cinematic.css";
 import "./RattiLore.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -21,24 +22,18 @@ export default function RattiLore() {
   return (
     <section className="cine-page ratti-page" style={{ "--cine-accent": "#6e7a2a", "--cine-accent-2": "#9aab3a" }}>
 
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca a sinistra ── */}
-      <section id="ratti-top" className="ratti-hero" aria-label="La Gilda dei Ratti">
-        <div className="ratti-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="ratti-hero-wash" aria-hidden="true" />
-        <div className="ratti-hero-plate">
-          <span className="ratti-hero-seal">🐀 Il Sottosuolo di Exanthia</span>
-          <h1 className="ratti-hero-title">La Gilda<br />dei Ratti</h1>
-          <p className="ratti-hero-tagline">
-            Tra le macerie e l'ombra, la reputazione è la moneta più preziosa del Mercato Nero.
-          </p>
-        </div>
-        <a href="#ratti-gradi" className="ratti-hero-scroll" aria-label="Scorri ai gradi">
-          <span className="ratti-hero-scroll-tx">Scorri</span>
-          <span className="ratti-hero-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): il drider nell'arco di
+            ghiaccio, titolo inciso sulla lastra, CTA a cristallo sotto ── */}
+      <GlacierHero
+        id="ratti-top"
+        ariaLabel="La Gilda dei Ratti"
+        image={HERO_IMAGE}
+        eyebrow="Il Sottosuolo di Exanthia"
+        title={<>La Gilda<br />dei Ratti</>}
+        seal={`🐀 ${RATTO_LEVELS.length} gradi di reputazione`}
+        tagline="Tra le macerie e l'ombra, la reputazione è la moneta più preziosa del Mercato Nero."
+        actions={<a href="#ratti-gradi" className="gl-cta" aria-label="Scorri ai gradi">❆ Scala i gradi</a>}
+      />
 
       {/* ── LORE a manoscritto (marginalia + capolettera) ── */}
       <section className="ratti-lore">
@@ -79,12 +74,9 @@ export default function RattiLore() {
         </div>
       </section>
 
-      {/* ── RUBRICA: Gradi ── */}
-      <div id="ratti-gradi" className="ratti-rubric">
-        <span className="ratti-rubric-eyebrow">Gerarchie</span>
-        <h2 className="ratti-rubric-title">Gradi di Reputazione</h2>
-        <p className="ratti-rubric-sub">Scala le gerarchie del sottosuolo, un affare alla volta.</p>
-      </div>
+      {/* ── ETICHETTA DI SEZIONE: Gradi (id-ancora invariato) ── */}
+      <div id="ratti-gradi" className="gl-sezlabel">Gerarchie · Gradi di Reputazione</div>
+      <p className="gl-vetrata-sub ratti-gradi-sub">Scala le gerarchie del sottosuolo, un affare alla volta.</p>
 
       {/* ── SCALA GERARCHICA (ladder) ── */}
       <div className="ratti-ladder">

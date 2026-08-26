@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ToggleSection from "./ToggleSection";
+import GlacierHero from "../components/glacier/GlacierHero";
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../AuthContext';
@@ -457,33 +458,18 @@ export default function Riassunti() {
                 ))}
             </div>
 
-            {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
-            <section id="rs-top" className="rs-hero" aria-label="Memorie del Monaco Errante">
-                <div className="rs-hero-media" aria-hidden="true">
-                    <img
-                        src={HERO_IMAGE}
-                        alt=""
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                    />
-                </div>
-                <div className="rs-hero-wash" aria-hidden="true" />
-                <div className="rs-hero-plate">
-                    <span className="rs-hero-seal">❦ Cronache di Eldoria</span>
-                    <h1 className="rs-hero-title">Memorie del<br />Monaco Errante</h1>
-                    <p className="rs-hero-tagline">
-                        Le schegge del mondo, raccolte sessione dopo sessione.
-                        Ciò che la forza dimentica, la memoria conserva.
-                    </p>
-                    <dl className="rs-hero-stats">
-                        <div><dt>Memorie</dt><dd>{totalMemories}</dd></div>
-                        <div><dt>{groupKeys.length === 1 ? "Gruppo" : "Gruppi"}</dt><dd>{groupKeys.length}</dd></div>
-                    </dl>
-                </div>
-                <div className="rs-hero-scroll-hint" aria-hidden="true">
-                    <span>Scorri</span>
-                    <span className="rs-hero-arrow">↓</span>
-                </div>
-            </section>
+            {/* ── HERO = FINESTRA ARTICA (GlacierHero): arco di ghiaccio col lago,
+                  titolo inciso sulla lastra, sigillo con i conteggi dinamici ── */}
+            <GlacierHero
+                id="rs-top"
+                ariaLabel="Memorie del Monaco Errante"
+                image={HERO_IMAGE}
+                imgPos="center 30%"
+                eyebrow="Cronache di Eldoria"
+                title={<>Memorie del<br />Monaco Errante</>}
+                seal={`${totalMemories} ${totalMemories === 1 ? "memoria" : "memorie"} · ${groupKeys.length} ${groupKeys.length === 1 ? "gruppo" : "gruppi"}`}
+                tagline="Le schegge del mondo, raccolte sessione dopo sessione. Ciò che la forza dimentica, la memoria conserva."
+            />
 
             {/* ── TOOLBAR: ricerca + filtri gruppo (sticky) ── */}
             <div className="rs-toolbar">

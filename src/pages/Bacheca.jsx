@@ -6,6 +6,7 @@ import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
+import GlacierHero from "../components/glacier/GlacierHero";
 import {
   collection, onSnapshot, doc, getDoc,
   updateDoc, query, where, getDocs,
@@ -161,37 +162,31 @@ export default function Bacheca() {
     <section className="cine-page bacheca-page cine-compact" style={{ "--cine-accent": "#9a4e16", "--cine-accent-2": "#c2691f" }}>
       <AmbientFX variant="fireflies" />
 
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-saluto a sinistra ── */}
-      <section id="bacheca-top" className="bch-hero" aria-label="Hemile's Board">
-        <div className="bch-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="bch-hero-wash" aria-hidden="true" />
-        <div className="bch-hero-plate">
-          <span className="bch-hero-seal">✦ Bacheca di Hemile</span>
-          <h1 className="bch-hero-title">Hemile's<br />Board</h1>
-          <p className="bch-hero-greet">
-            Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
-            {userParty && userParty !== "Senza Gruppo" ? <> — Party <strong>{userParty}</strong></> : ""}.
-          </p>
-          <p className="bch-hero-tagline">
-            Pergamene, sigilli e missive attendono mani coraggiose.
-          </p>
-        </div>
-        <a href="#bacheca-albo" className="bch-hero-scroll" aria-label="Scorri all'albo">
-          <span className="bch-hero-scroll-tx">Scorri</span>
-          <span className="bch-hero-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
-
-      {/* ── RUBRICA: Le Missive ── */}
-      <div id="bacheca-albo" className="bch-rubric">
-        <span className="bch-rubric-eyebrow">Incarichi</span>
-        <h2 className="bch-rubric-title">Le Missive</h2>
-        <p className="bch-rubric-sub">
-          Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio sul tesoro,
+            saluto dinamico sotto la finestra, CTA a cristallo verso l'albo ── */}
+      <GlacierHero
+        id="bacheca-top"
+        ariaLabel="Hemile's Board"
+        image={HERO_IMAGE}
+        eyebrow="Bacheca di Hemile"
+        title={<>Hemile's<br />Board</>}
+        seal={userCharName
+          ? `${userCharName}${userParty && userParty !== "Senza Gruppo" ? ` · Party ${userParty}` : ""}`
+          : undefined}
+        tagline="Pergamene, sigilli e missive attendono mani coraggiose."
+        actions={<a href="#bacheca-albo" className="gl-cta" aria-label="Scorri all'albo">❆ Apri l'albo</a>}
+      >
+        <p className="bch-glacier-greet">
+          Bentornato, <strong>{userCharName || "Avventuriero"}</strong>
+          {userParty && userParty !== "Senza Gruppo" ? <> — Party <strong>{userParty}</strong></> : ""}.
         </p>
-      </div>
+      </GlacierHero>
+
+      {/* ── ETICHETTA DI SEZIONE (glacier): Le Missive ── */}
+      <div id="bacheca-albo" className="gl-sezlabel">Incarichi · Le Missive</div>
+      <p className="gl-vetrata-sub bch-sezsub">
+        Scegli con cura: lascia che il tuo nome resti scolpito nella memoria dei mondani.
+      </p>
 
       {!loading && questEntries.length > 0 && (
         <CineToolbar

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../AuthContext";
+import GlacierHero from "../components/glacier/GlacierHero";
 import { db } from "../firebase";
 import { logAgent } from "../utils/agentLog";
 import {
@@ -279,6 +280,12 @@ const CSS = `
   .ast{border-left:none;border-right:none;box-shadow:none}
 }
 @media(prefers-reduced-motion:reduce){.ast *{animation:none!important;transition:none!important}}
+
+/* ── GLACIER ── */
+/* Masthead "oracolo" → finestra artica sopra la chat: l'offset navbar
+   passa al contenitore esterno, la chat conserva la sua altezza piena. */
+.ast-outer{width:100%;max-width:760px;margin:0 auto;padding-top:var(--navbar-h)}
+.ast-outer .ast{margin:12px auto 0;height:calc(100dvh - var(--navbar-h) - 24px)}
 `;
 
 const HINT_GROUPS = [
@@ -451,18 +458,21 @@ export default function Assistente() {
   );
 
   return (
-    <div className="ast">
+    <div className="ast-outer">
       <style>{CSS}</style>
 
-      {/* HEADER */}
-      <div className="ast-head">
-        <div className="orb">🔮</div>
-        <div className="info">
-          <span className="eyebrow">✦ Oracolo di Eldoria</span>
-          <h1>Assistente di Eldoria</h1>
-          <p>Mercato · Missioni · NPC · Luoghi · Sessioni</p>
-        </div>
-      </div>
+      {/* ── MASTHEAD = FINESTRA ARTICA (mockup B): senza immagine la
+            finestra mostra il gradiente d'abisso; la chat resta intatta ── */}
+      <GlacierHero
+        className="ast-glhero"
+        ariaLabel="Assistente di Eldoria"
+        hint="la memoria vivente di Eldoria"
+        eyebrow="Oracolo di Eldoria"
+        title="Assistente di Eldoria"
+        tagline="Mercato · Missioni · NPC · Luoghi · Sessioni"
+      />
+
+      <div className="ast">
 
       {/* TRACE LOG */}
       <div className={"ast-trace" + (trace.length ? "" : " empty")} id="trace">
@@ -528,6 +538,7 @@ export default function Assistente() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

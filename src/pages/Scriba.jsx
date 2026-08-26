@@ -15,6 +15,8 @@ import { useAuth } from "../AuthContext";
 import sampleIssues from "../data/scribaSample.json";
 import { exanthiaDateLabel, exanthiaMonthKey } from "../data/exanthiaCalendar";
 import ScribaEditModal from "./ScribaEditModal";
+import GlacierHero from "../components/glacier/GlacierHero";
+import Vetrata from "../components/glacier/Vetrata";
 import "./Scriba.css";
 
 const MASTER_EMAILS = ["santomassimo85@gmail.com", "ripperti96@gmail.com"];
@@ -216,6 +218,15 @@ export default function Scriba() {
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([, g]) => g);
   }, [issues, term, mese]);
 
+  // Copertina per la finestra artica dell'hero: riusa l'immagine del numero
+  // più recente che ne ha una (solo presentazione, nessuna logica nuova).
+  const heroImg = useMemo(() => {
+    const withCover = [...issues]
+      .sort((a, b) => (b.number || 0) - (a.number || 0))
+      .find((it) => it.images?.[0]?.url);
+    return withCover ? withCover.images[0].url : "";
+  }, [issues]);
+
   // Mesi disponibili per la tendina.
   const mesiDisponibili = useMemo(() => {
     const seen = new Map();
@@ -265,13 +276,19 @@ export default function Scriba() {
         </div>
       )}
 
-      <header className="scriba-mast">
-        <span className="scriba-eyebrow">✦ Gazzetta di Exanthia ✦</span>
-        <h1 className="scriba-title">Lo Scriba</h1>
-        <p className="scriba-sub">
-          L'archivio delle cronache del mondo. Ogni numero pubblicato resta qui, a futura memoria.
-        </p>
-      </header>
+      {/* ── Testata = FINESTRA ARTICA (GlacierHero): copertina dell'ultimo
+            numero nella finestra, titolo inciso sulla lastra ── */}
+      <GlacierHero
+        className="scriba-glhero"
+        ariaLabel="Lo Scriba — Gazzetta di Exanthia"
+        image={heroImg || undefined}
+        eyebrow="✦ Gazzetta di Exanthia ✦"
+        title="Lo Scriba"
+        seal={!loading && issues.length > 0
+          ? `${issues.length} ${issues.length === 1 ? "numero" : "numeri"} in archivio`
+          : undefined}
+        tagline="L'archivio delle cronache del mondo. Ogni numero pubblicato resta qui, a futura memoria."
+      />
 
       {nextIssueMs > 0 && (
         <div className="scriba-countdown" role="status" aria-live="polite">
@@ -320,8 +337,8 @@ export default function Scriba() {
       ) : (
         groups.map((g) => (
           <section key={g.label} className="scriba-month">
-            <h2 className="scriba-month-title">{g.label}</h2>
-            <div className="scriba-grid">
+            <h2 className="gl-sezlabel">{g.label}</h2>
+            <div className="gl-vetrate">
               {g.items.map((it) => (
                 <div key={it.id} className="scriba-card-wrap" style={{ position: "relative" }}>
                 {isMaster && !String(it.id).startsWith("sample-") && (
@@ -355,24 +372,14 @@ export default function Scriba() {
                 {isMaster && !String(it.id).startsWith("sample-") && (
                   <span className="scriba-reads" title="Letture totali">👁 {it.readCount || 0}</span>
                 )}
-                <button className="scriba-card" type="button" onClick={() => openIssue(it)}>
-                  {it.images?.[0]?.url ? (
-                    <div className="scriba-card-thumb" style={{ backgroundImage: `url(${it.images[0].url})` }} aria-hidden="true" />
-                  ) : (
-                    <div className="scriba-card-thumb scriba-card-thumb--empty" aria-hidden="true">📜</div>
-                  )}
-                  <div className="scriba-card-body">
-                    <span className="scriba-card-num">Numero {it.number}</span>
-                    <span className="scriba-card-date">{fmtDate(it)}</span>
-                    {it.content?.edition_motto && (
-                      <p className="scriba-card-motto">«{it.content.edition_motto}»</p>
-                    )}
-                    {it.content?.lead?.headline && (
-                      <p className="scriba-card-lead">{it.content.lead.headline}</p>
-                    )}
-                    <span className="scriba-card-cue">Leggi ›</span>
-                  </div>
-                </button>
+                {/* Vetrata panoramica: STESSA azione di prima (apre il lettore) */}
+                <Vetrata
+                  img={it.images?.[0]?.url || undefined}
+                  title={it.content?.lead?.headline || `Numero ${it.number}`}
+                  sub={it.content?.edition_motto ? `«${it.content.edition_motto}»` : undefined}
+                  sigillo={`Numero ${it.number} · ${fmtDate(it)}`}
+                  onClick={() => openIssue(it)}
+                />
                 </div>
               ))}
             </div>

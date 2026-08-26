@@ -9,6 +9,7 @@ import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
 import AmbientFX from '../components/AmbientFX';
 import CineToolbar from '../components/CineToolbar';
+import GlacierHero from "../components/glacier/GlacierHero";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/tavern.png";
 const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -80,29 +81,18 @@ export default function NPC() {
     <section className="cine-page npc-page cine-compact" style={{ "--cine-accent": "#2c8a5a", "--cine-accent-2": "#3fae72" }}>
       <AmbientFX variant="water" />
 
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
-      <section id="npc-top" className="npc-hero" aria-label="Gli abitanti del mondo">
-        <div className="npc-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="npc-hero-wash" aria-hidden="true" />
-        <div className="npc-hero-plate">
-          <span className="npc-hero-seal">✦ Schedario dei Volti</span>
-          <h1 className="npc-hero-title">Gli Abitanti<br />del Mondo</h1>
-          <p className="npc-hero-tagline">
-            Mercanti, nobili, erranti e creature: ogni volto che gli eroi
-            hanno incrociato lungo le strade di Exanthia.
-          </p>
-          <dl className="npc-hero-stats">
-            <div><dt>Personaggi</dt><dd>{npcs.length}</dd></div>
-            <div><dt>{cityKeys.length === 1 ? "Luogo" : "Luoghi"}</dt><dd>{cityKeys.length}</dd></div>
-          </dl>
-        </div>
-        <div className="npc-hero-scroll" aria-hidden="true">
-          <span className="npc-hero-scroll-tx">Scorri</span>
-          <span className="npc-hero-scroll-ic">↓</span>
-        </div>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con la taverna,
+            titolo inciso sulla lastra, sigillo con i conteggi dinamici ── */}
+      <GlacierHero
+        id="npc-top"
+        ariaLabel="Gli abitanti del mondo"
+        image={HERO_IMAGE}
+        imgPos="center 34%"
+        eyebrow="Schedario dei Volti"
+        title={<>Gli Abitanti<br />del Mondo</>}
+        seal={`${npcs.length} volti · ${cityKeys.length} ${cityKeys.length === 1 ? "luogo" : "luoghi"}`}
+        tagline="Mercanti, nobili, erranti e creature: ogni volto che gli eroi hanno incrociato lungo le strade di Exanthia."
+      />
 
       {npcs.length > 0 && (
         <CineToolbar

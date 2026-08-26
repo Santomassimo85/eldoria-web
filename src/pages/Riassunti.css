@@ -1262,3 +1262,9 @@
 @media (prefers-reduced-motion: reduce) {
   .lore-popup-overlay, .lore-popup { animation: none; }
 }
+
+/* ── GLACIER ── */
+/* L'hero asimmetrico è stato sostituito da <GlacierHero> (finestra artica):
+   i selettori .rs-hero-* qui sopra restano come regole morte.
+   Solo spaziatura: respiro tra la finestra e la toolbar sticky. */
+.riassunti-page .gl-hero { margin-bottom: clamp(6px, 1.5vw, 14px); }

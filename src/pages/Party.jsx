@@ -7,6 +7,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
 import CineToolbar from "../components/CineToolbar";
+import GlacierHero from "../components/glacier/GlacierHero";
 import { isHiddenName, isHiddenChar } from "../data/hiddenPlayers";
 
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png";
@@ -345,35 +346,23 @@ export default function Party() {
     <section className="cine-page party-page cine-compact" style={{ "--cine-accent": "#a83232", "--cine-accent-2": "#c0392b" }}>
       <AmbientFX variant="leaves" />
 
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
-      <section id="party-top" className="party-hero" aria-label="Le Compagnie di Exanthia">
-        <div className="party-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="party-hero-wash" aria-hidden="true" />
-        <div className="party-hero-plate">
-          <span className="party-hero-seal">✦ Registro delle Compagnie</span>
-          <h1 className="party-hero-title">Le Compagnie<br />di Exanthia</h1>
-          <p className="party-hero-tagline">
-            Quattro compagnie. Sedici anime. Una sola leggenda che si scrive,
-            notte dopo notte, sulle pietre di Exanthia.
-          </p>
-          <dl className="party-hero-stats">
-            <div><dt>Compagnie</dt><dd>{stats.parties}</dd></div>
-            <div><dt>Eroi</dt><dd>{stats.heroes}</dd></div>
-            <div><dt>Classi</dt><dd>{stats.classes}</dd></div>
-            <div><dt>Razze</dt><dd>{stats.races}</dd></div>
-          </dl>
-        </div>
-        <a href="#party-index" className="party-hero-scroll" aria-label="Scorri al registro">
-          <span className="party-hero-scroll-tx">Scorri</span>
-          <span className="party-hero-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con la cessione
+            dell'anello, titolo inciso sulla lastra, CTA a cristallo sotto ── */}
+      <GlacierHero
+        id="party-top"
+        ariaLabel="Le Compagnie di Exanthia"
+        image={HERO_IMAGE}
+        imgPos="center 28%"
+        eyebrow="Registro Araldico"
+        title={<>Le Compagnie<br />di Exanthia</>}
+        seal={`${stats.heroes} eroi attivi · ${stats.parties} compagnie`}
+        tagline="Quattro compagnie. Sedici anime. Una sola leggenda che si scrive, notte dopo notte, sulle pietre di Exanthia."
+        actions={<a href="#party-index" className="gl-cta">❆ Sfoglia il registro</a>}
+      />
 
       {/* ── INDICE DELLE CASATE: sigilli araldici (filtro) ── */}
       <div id="party-index" className="party-index">
-        <span className="party-index-eyebrow">Indice · Le Casate di Exanthia</span>
+        <div className="gl-sezlabel">Indice · Le Casate di Exanthia</div>
         <div className="party-index-sigils" role="tablist">
           <button
             type="button"

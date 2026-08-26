@@ -20,6 +20,7 @@ import { db } from "../firebase";
 import { useAuth } from "../AuthContext";
 import useParallaxScroll from "../hooks/useParallaxScroll";
 import AmbientFX from "../components/AmbientFX";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "../styles/cinematic.css";
 import "./Diario.css";
 
@@ -207,10 +208,16 @@ export default function Diario() {
     >
       <AmbientFX variant="leaves" />
 
-      {/* ── Intestazione ─────────────────────────────────────────────── */}
-      <header className="diario-hero">
-        <p className="diario-eyebrow"><span aria-hidden="true">ᛒ</span> Cronache del gruppo</p>
-        <h1 className="diario-title">Diario di Bordo</h1>
+      {/* ── Intestazione = FINESTRA ARTICA (GlacierHero); sigillo di gruppo
+            e nota restano intatti sotto la finestra ── */}
+      <GlacierHero
+        className="diario-glhero"
+        ariaLabel="Diario di Bordo"
+        image="/assets/PhotoStory/GruppoLEAF/soranSong.png"
+        imgPos="center 30%"
+        eyebrow="ᛒ Cronache del gruppo"
+        title="Diario di Bordo"
+      >
         {isAllView ? (
           <p className="diario-sub">
             <span className="diario-seal" style={{ background: "#7c560f" }}>✶</span>
@@ -228,7 +235,7 @@ export default function Diario() {
             annotata e quando.
           </p>
         )}
-      </header>
+      </GlacierHero>
 
       {/* ── Selettore gruppi: solo Master/co-master ──────────────────── */}
       {isMaster && (

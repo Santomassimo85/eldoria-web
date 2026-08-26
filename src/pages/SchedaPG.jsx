@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
+import GlacierHero from "../components/glacier/GlacierHero";
 
 /* ============================================================
    Scheda PG — vista in stile grimorio, legge characters/{uid}.
@@ -151,6 +152,15 @@ const CSS = `
   .spg-tab{font-size:13px}
 }
 @media (prefers-reduced-motion:reduce){.spg-page *{animation:none!important;transition:none!important}}
+/* ── GLACIER ── */
+/* Masthead a finestra artica COMPATTA (GlacierHero): finestra bassa così la
+   scheda non perde spazio. Le classi .gl-* vivono in glacier.css (globale). */
+.spg-page .spg-glhero{padding:0 0 4px;text-align:center}
+.spg-page .spg-glhero .gl-finestra{width:min(100%,420px);aspect-ratio:auto;min-height:clamp(190px,44vw,240px);
+  border-radius:clamp(100px,26vw,160px) clamp(100px,26vw,160px) 12px 12px}
+.spg-page .spg-glhero .gl-sotto{padding:10px 8px 2px}
+.spg-page .spg-glhero .gl-tagline{margin-bottom:4px}
+@media (min-width:840px){.spg-page .spg-glhero .gl-finestra{width:min(100%,560px);min-height:250px}}
 `;
 
 const AB_LABELS = { str:"FOR", dex:"DES", con:"COS", int:"INT", wis:"SAG", cha:"CAR" };
@@ -367,19 +377,18 @@ export default function SchedaPG() {
       <style>{CSS}</style>
       <div className="spg-wrap">
 
-        {/* HERO */}
-        <div className="spg-hero">
-          <div className="spg-portrait">
-            {data.image && imgOk
-              ? <img src={data.image} alt={data.name} onError={() => setImgOk(false)} />
-              : initial}
-          </div>
-          <div>
-            <p className="spg-eyebrow">Livello {data.level || 1}{data.race ? ` · ${data.race}` : ""}</p>
-            <h1 className="spg-name">{data.name}</h1>
-            <p className="spg-sub">{data.class}{data.subclass ? ` — ${data.subclass}` : ""}</p>
-          </div>
-        </div>
+        {/* HERO — GLACIER: masthead a finestra artica compatta (ritratto PG se
+            presente, altrimenti gradiente d'abisso). Scheda e interazioni intatte. */}
+        <GlacierHero
+          className="spg-glhero"
+          ariaLabel="Scheda del personaggio"
+          image={data.image && imgOk ? data.image : undefined}
+          imgAlt={data.name}
+          imgPos="center 18%"
+          eyebrow={`Livello ${data.level || 1}${data.race ? ` · ${data.race}` : ""}`}
+          title={data.name}
+          tagline={[data.class, data.subclass].filter(Boolean).join(" — ") || undefined}
+        />
 
         {/* VITALS */}
         <div className="spg-vitals">

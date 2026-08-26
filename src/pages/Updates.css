@@ -277,3 +277,7 @@
 @media (max-width: 560px) {
   .updates-date { margin-left: 0; width: 100%; }
 }
+
+/* ── GLACIER ── */
+/* Finestra artica in testa alla timeline: respiro sotto l'arco. */
+.updates-page .updates-glhero { margin-bottom: 26px; padding-left: 0; padding-right: 0; }

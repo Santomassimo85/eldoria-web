@@ -287,3 +287,16 @@
   .conc-tes-model > span{ grid-column:1 / -1; text-align:right; }
 }
 .conc-tes-note{ font-size:11.5px; color:var(--muted); margin:10px 0 0; font-style:italic; }
+
+/* ── GLACIER ── */
+/* Masthead a finestra artica COMPATTA (GlacierHero, senza immagine): lastra
+   d'abisso bassa con titolo inciso; griglia agenti, tesoreria e dossier
+   intatti. I selettori .conc-head/.conc-eyebrow sopra restano morti. */
+.conc .conc-glhero{ padding:0 0 6px; margin-bottom:18px; }
+.conc .conc-glhero .gl-finestra{
+  width:min(100%,560px); aspect-ratio:auto; min-height:clamp(150px,28vw,195px);
+  border-radius:clamp(90px,22vw,150px) clamp(90px,22vw,150px) 12px 12px;
+}
+.conc .conc-glhero .gl-sotto{ padding:12px 8px 0; }
+.conc .conc-glhero .gl-tagline{ margin-bottom:8px; }
+.conc .conc-glhero .conc-legend{ margin-top:4px; }

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useAuth } from "../AuthContext";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "./Cinema.css";
 import "../styles/cinematic.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
@@ -108,28 +109,18 @@ export default function Cinema() {
 
   return (
     <section className="cine-page theatrum" style={{ "--cine-accent": "#6b34a8", "--cine-accent-2": "#9a52cf" }}>
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-locandina a sinistra ── */}
-      <section className="theatrum-hero" aria-label="Teatro delle Cronache">
-        <div className="theatrum-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="theatrum-hero-wash" aria-hidden="true" />
-        <div className="theatrum-hero-plate">
-          <span className="theatrum-hero-seal">🎭 Theatrum Mundi · Crit Happens</span>
-          <h1 className="theatrum-hero-title">Teatro<br />delle Cronache</h1>
-          <p className="theatrum-hero-tagline">
-            L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo.
-          </p>
-          <dl className="theatrum-hero-stats">
-            <div><dt>Sessioni</dt><dd>{totalEpisodes}</dd></div>
-            {latestDateStr && <div><dt>Ultima</dt><dd>{latestDateStr}</dd></div>}
-          </dl>
-        </div>
-        <div className="theatrum-hero-scroll" aria-hidden="true">
-          <span className="theatrum-hero-scroll-tx">Scorri</span>
-          <span className="theatrum-hero-scroll-ic">↓</span>
-        </div>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): la locandina-fantasma nell'arco
+            di ghiaccio, titolo inciso sulla lastra, sigillo con i conteggi ── */}
+      <GlacierHero
+        ariaLabel="Teatro delle Cronache"
+        image={HERO_IMAGE}
+        eyebrow="Theatrum Mundi · Crit Happens"
+        title={<>Teatro<br />delle Cronache</>}
+        seal={latestDateStr
+          ? `🎭 ${totalEpisodes} sessioni · ultima: ${latestDateStr}`
+          : `🎭 ${totalEpisodes} sessioni`}
+        tagline="L'archivio delle sessioni — frammenti di storie giocate, custodite oltre il tempo."
+      />
 
       {/* ── BODY ────────────────────────────────────────── */}
       {loading ? (
@@ -186,11 +177,9 @@ export default function Cinema() {
           {/* ── ARCHIVE LIST ───────────────────────────── */}
           {archive.length > 0 && (
             <>
-            <div className="theatrum-rubric">
-              <span className="theatrum-rubric-eyebrow">Archivio</span>
-              <h2 className="theatrum-rubric-title">Sessioni Precedenti</h2>
-              <p className="theatrum-rubric-sub">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
-            </div>
+            {/* ── ETICHETTA DI SEZIONE: Archivio ── */}
+            <div className="gl-sezlabel">Archivio · Sessioni Precedenti</div>
+            <p className="gl-vetrata-sub theatrum-archivio-sub">Le bobine delle cronache passate, pronte per essere riproiettate.</p>
             <section className="theatrum-archive">
               <ul className="theatrum-rolls">
                 {archive.map((v, i) => (

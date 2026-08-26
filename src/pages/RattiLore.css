@@ -250,3 +250,15 @@
   .ratti-page .ratti-hero-plate,
   .ratti-page .ratti-hero-scroll-ic { animation: none !important; }
 }
+
+/* ── GLACIER ── */
+/* Sottotitolo della sezione Gradi: riusa .gl-vetrata-sub ma su fondo
+   chiaro (lastra), quindi inchiostro glaciale e centratura. */
+.ratti-page .ratti-gradi-sub {
+  display: block;
+  text-align: center;
+  color: #4a687a;
+  max-width: 60ch;
+  margin: -4px auto 18px;
+  padding: 0 16px;
+}

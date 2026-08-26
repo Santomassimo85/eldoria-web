@@ -9,6 +9,7 @@ import { doc, getDoc, updateDoc, increment, collection, getDocs } from 'firebase
 import { useAuth } from '../AuthContext';
 import { awardPetPoints } from '../utils/pet';
 import { buildLoreRegistry, linkifyLoreHtml, norm, firstTok } from '../utils/loreLinks';
+import GlacierHero from "../components/glacier/GlacierHero";
 import './Riassunti.css';
 import './RiassuntoSingolo.css';
 
@@ -210,27 +211,21 @@ export default function RiassuntoSingolo() {
                     </button>
                 </div>
 
-                {summary.coverImage && (
-                    <div className="rsx-cover">
-                        <img
-                            src={summary.coverImage}
-                            alt={summary.title}
-                            onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
-                        />
-                    </div>
-                )}
-
-                <header className="rsx-head">
-                    <span className="rsx-eyebrow">
-                        ❦ Cronache di Eldoria{summary.party ? ` · Gruppo ${summary.party}` : ""}
-                    </span>
-                    <h1 className="rsx-title">{summary.title || "Senza titolo"}</h1>
-                    {summary.date && <p className="rsx-date">{summary.date}</p>}
-                    {summary.subTitle && <p className="rsx-sub">{summary.subTitle}</p>}
+                {/* ── Testata = FINESTRA ARTICA (GlacierHero) con la copertina
+                      dinamica della memoria (arco d'abisso se assente) ── */}
+                <GlacierHero
+                    className="rsx-glhero"
+                    ariaLabel={summary.title || "Memoria"}
+                    image={summary.coverImage || undefined}
+                    eyebrow={`Cronache di Eldoria${summary.party ? ` · Gruppo ${summary.party}` : ""}`}
+                    title={summary.title || "Senza titolo"}
+                    seal={summary.date || undefined}
+                    tagline={summary.subTitle || undefined}
+                >
                     {isMaster && (
                         <span className="rsx-visits" title="Visite totali">👁 {summary.viewCount || 0}</span>
                     )}
-                </header>
+                </GlacierHero>
 
                 <div
                     className="rs-summary-html rsx-body"

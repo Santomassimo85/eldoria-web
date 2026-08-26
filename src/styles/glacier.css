@@ -197,22 +197,8 @@ body:not(.theme-dark) footer {
     background: linear-gradient(180deg, #0d2234, #081724) !important;
     border-left: 1px solid rgba(111, 208, 238, .3) !important;
   }
-  /* bottom-bar: banchisa con perle */
-  body:not(.theme-dark) .app-bottom-nav {
-    background: linear-gradient(180deg, rgba(10, 28, 44, .95), rgba(5, 14, 24, .98));
-    border-top: 1px solid rgba(111, 208, 238, .38);
-    box-shadow:
-      0 -2px 22px -8px rgba(111, 208, 238, .45),
-      0 -12px 30px -14px rgba(0, 6, 12, .8);
-  }
-  body:not(.theme-dark) .mnav-tab { color: #8fb6cb; }
-  body:not(.theme-dark) .mnav-tab.is-active,
-  body:not(.theme-dark) .mnav-tab.active { color: #e8f7fd; }
-  body:not(.theme-dark) .mnav-tab.is-active::before,
-  body:not(.theme-dark) .mnav-tab.active::before {
-    background: linear-gradient(90deg, #e8f7fd, #6fd0ee);
-    box-shadow: 0 2px 10px rgba(111, 208, 238, .8);
-  }
+  /* bottom-bar a perle: struttura e colori vivono in layout.css (validi
+     anche sulle pagine scure — la barra flottante è vetro d'abisso ovunque) */
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -417,8 +403,346 @@ body:not(.theme-dark)::-webkit-scrollbar-thumb {
   border: 2px solid #081827;
 }
 
-/* ── Accessibilità: reduced-motion spegne raggi e particelle ── */
+/* ══════════════════════════════════════════════════════════════════
+   9) STRUTTURA — i mattoni del mockup B (b-ghiaccio.html), usati dai
+      componenti condivisi GlacierHero.jsx e Vetrata.jsx.
+      9a) FINESTRA ARTICA: hero ad arco con immagine e titolo inciso
+      9b) VETRATE PANORAMICHE: lastre 16/9 con velo e riflesso
+      9c) Etichette di sezione ❄, CTA cristallo, sigilli di gelo
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 9a) HERO = FINESTRA ARTICA ── */
+.gl-hero {
+  position: relative;
+  padding: clamp(22px, 4vw, 46px) 16px 6px;
+  text-align: center;
+}
+.gl-finestra {
+  position: relative;
+  margin: 0 auto;
+  width: min(100%, 420px);
+  aspect-ratio: 3 / 3.4;
+  overflow: hidden;
+  border-radius: clamp(150px, 44vw, 210px) clamp(150px, 44vw, 210px) 14px 14px;
+  border: 5px solid rgba(191, 230, 245, .6);
+  background: linear-gradient(180deg, #0d2438, #081827);
+  box-shadow:
+    0 0 0 1px rgba(111, 208, 238, .4),
+    0 0 60px -12px rgba(111, 208, 238, .55),
+    inset 0 0 40px rgba(4, 16, 28, .5);
+}
+@media (min-width: 760px) {
+  .gl-finestra { width: min(100%, 560px); aspect-ratio: 3 / 3; }
+}
+@media (min-width: 1100px) {
+  .gl-finestra { width: min(100%, 660px); aspect-ratio: 3 / 2.7; }
+}
+.gl-finestra-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+}
+.gl-finestra-velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(7, 19, 31, .12), transparent 30%, transparent 58%, rgba(7, 22, 36, .9));
+}
+.gl-finestra-brina {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(150px 130px at 0% 100%, rgba(191, 230, 245, .35), transparent 65%),
+    radial-gradient(150px 130px at 100% 100%, rgba(191, 230, 245, .35), transparent 65%),
+    radial-gradient(170px 150px at 50% 0%, rgba(232, 247, 253, .28), transparent 60%);
+}
+.gl-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .56rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #e8f7fd;
+  background: rgba(7, 19, 31, .55);
+  border: 1px solid rgba(191, 230, 245, .4);
+  border-radius: 999px;
+  padding: 6px 13px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+  animation: gl-brilla 2.6s ease-in-out infinite alternate;
+}
+@keyframes gl-brilla {
+  from { opacity: .6; }
+  to   { opacity: 1; box-shadow: 0 0 18px -4px rgba(111, 208, 238, .9); }
+}
+.gl-lastra-titolo {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 0 18px 20px;
+  z-index: 2;
+}
+.gl-eyebrow {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem;
+  letter-spacing: .42em;
+  text-transform: uppercase;
+  color: #6fd0ee;
+  margin-bottom: 6px;
+  text-shadow: 0 0 14px rgba(111, 208, 238, .7);
+}
+.gl-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.7rem, 7.4vw, 2.6rem);
+  line-height: 1.08;
+  margin: 0;
+  background: linear-gradient(180deg, #ffffff, #bfe6f5 55%, #2e9ad0 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 20px rgba(111, 208, 238, .45));
+}
+.gl-sotto { padding: 16px 8px 8px; }
+.gl-tagline {
+  color: var(--muted, #4a687a);
+  font-size: .98rem;
+  max-width: 46ch;
+  margin: 0 auto 16px;
+  line-height: 1.6;
+  font-style: italic;
+}
+.gl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+/* invito discreto sotto le azioni ("❆ Immergiti…") */
+.gl-plunge {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: #2e86ad;
+  text-decoration: none;
+  transition: color .15s ease, text-shadow .15s ease;
+}
+.gl-plunge:hover { color: #1d6485; text-shadow: 0 0 12px rgba(111, 208, 238, .7); }
+
+/* ── CTA a cristallo ── */
+.gl-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: 999px;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: .76rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #062334;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(180deg, #e8f7fd, #bfe6f5 50%, #6fd0ee);
+  box-shadow:
+    0 0 36px -8px rgba(111, 208, 238, .9),
+    inset 0 1px 0 rgba(255, 255, 255, .85);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.gl-cta:hover { transform: translateY(-2px); box-shadow: 0 0 44px -6px rgba(111, 208, 238, 1), inset 0 1px 0 rgba(255, 255, 255, .9); }
+.gl-cta--deep {
+  background: linear-gradient(180deg, #9fc0f2, #6f97e8 50%, #274b9e);
+  color: #eef4ff;
+}
+.gl-cta--crit {
+  background: linear-gradient(180deg, #e08a96, #c33d4e 55%, #8f2534);
+  color: #fff0f2;
+  box-shadow: 0 0 36px -8px rgba(195, 61, 78, .8), inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+
+/* ── Sigillo di gelo (pill) — pensato per fondi scuri (finestra/vetrata) ── */
+.gl-seal {
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .56rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #6fd0ee;
+  border: 1px solid rgba(111, 208, 238, .5);
+  background: rgba(7, 19, 31, .5);
+}
+/* variante per fondi chiari (dentro la lastra) */
+.gl-seal--ink {
+  color: #1d6485;
+  border-color: rgba(46, 134, 173, .5);
+  background: rgba(46, 134, 173, .08);
+}
+
+/* ── 9c) ETICHETTA DI SEZIONE con fiocco ❄ ── */
+.gl-sezlabel {
+  text-align: center;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .64rem;
+  letter-spacing: .42em;
+  text-transform: uppercase;
+  color: var(--muted, #4a687a);
+  margin: clamp(26px, 4vw, 44px) auto 14px;
+  padding: 0 16px;
+}
+.gl-sezlabel::after {
+  content: "❄";
+  display: block;
+  margin-top: 7px;
+  color: #2e86ad;
+  text-shadow: 0 0 12px rgba(111, 208, 238, .8);
+}
+
+/* ── 9b) VETRATE PANORAMICHE ── */
+.gl-vetrate {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 16px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.gl-vetrata {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(191, 230, 245, .5);
+  background: linear-gradient(180deg, #0d2438, #081827);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  box-shadow:
+    0 0 30px -12px rgba(111, 208, 238, .5),
+    0 18px 44px -16px rgba(0, 8, 16, .8);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+article.gl-vetrata { cursor: default; }
+@media (min-width: 760px) {
+  .gl-vetrata { aspect-ratio: 21 / 8; }
+}
+a.gl-vetrata:hover, button.gl-vetrata:hover {
+  transform: translateY(-3px);
+  border-color: rgba(232, 247, 253, .75);
+  box-shadow:
+    0 0 44px -10px rgba(111, 208, 238, .75),
+    0 24px 54px -18px rgba(0, 8, 16, .85);
+}
+.gl-vetrata-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gl-vetrata-velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    rgba(7, 19, 31, .84) 0%, rgba(7, 19, 31, .38) 45%, transparent 72%);
+}
+.gl-vetrata-riq {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: min(62%, 460px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 14px 8px 14px clamp(16px, 3vw, 30px);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.gl-vetrata-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: clamp(1rem, 2.6vw, 1.4rem);
+  letter-spacing: .05em;
+  margin: 0;
+  color: #e8f7fd;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .7);
+}
+.gl-vetrata-sub {
+  color: #8fb6cb;
+  font-size: .82rem;
+  font-style: italic;
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+.gl-vetrata-riq .gl-seal { margin: 10px 0 0; }
+/* riflesso di luce che scorre sul vetro */
+.gl-vetrata::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .18), transparent);
+  transform: skewX(-18deg);
+  animation: gl-riflesso 7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes gl-riflesso {
+  0%, 55% { left: -60%; }
+  85%, 100% { left: 130%; }
+}
+/* vetrata usata come fascia di sezione dentro la lastra */
+.gl-vetrata--band {
+  width: auto;
+  margin: 0 clamp(14px, 3vw, 40px) 18px;
+}
+
+/* ── Perle runiche nella nav desktop (top-bar e drawer) ── */
+.nav-rune {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  margin-right: .45em;
+  font-size: .78em;
+  line-height: 1;
+  color: #0b1e30;
+  opacity: .85;
+  transform: none;
+  background: radial-gradient(circle at 38% 32%, #ffffff, #bfe6f5 55%, #8fc4da);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45), inset 0 1px 2px rgba(255, 255, 255, .9);
+}
+.nav-dd--open .nav-rune,
+.nav-dd-trigger:hover .nav-rune {
+  opacity: 1;
+  box-shadow: 0 0 14px rgba(191, 230, 245, .9), 0 2px 8px rgba(0, 0, 0, .45);
+}
+
+/* ── Accessibilità: reduced-motion spegne raggi, particelle e riflessi ── */
 @media (prefers-reduced-motion: reduce) {
   .frost-ray { animation: none; opacity: .3; }
   .frost-canvas { display: none; }
+  .gl-vetrata::after, .gl-hint { animation: none; }
 }

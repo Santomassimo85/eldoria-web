@@ -19,6 +19,7 @@ import { useAuth } from "../AuthContext";
 import "../styles/cinematic.css";
 import "./Feedback.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import GlacierHero from "../components/glacier/GlacierHero";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoENOX/milo1.png";
@@ -805,21 +806,16 @@ export default function Feedback() {
 
   return (
     <section className="cine-page fb-page" style={{ "--cine-accent": "#1f7a8a", "--cine-accent-2": "#2fb0c0" }}>
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca a sinistra ── */}
-      <section className="fb-hero" aria-label="Feedback">
-        <div className="fb-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="fb-hero-wash" aria-hidden="true" />
-        <div className="fb-hero-plate">
-          <span className="fb-hero-seal">✦ La tua voce conta</span>
-          <h1 className="fb-hero-title">Feedback</h1>
-          <p className="fb-hero-tagline">
-            Valuta ogni funzionalità, scegli pro e contro, lascia un messaggio.
-            Puoi modificare il tuo feedback quando vuoi.
-          </p>
-        </div>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con Milo,
+            titolo inciso sulla lastra, tagline sotto la finestra ── */}
+      <GlacierHero
+        className="fb-glhero"
+        ariaLabel="Feedback"
+        image={HERO_IMAGE}
+        eyebrow="La tua voce conta"
+        title="Feedback"
+        tagline="Valuta ogni funzionalità, scegli pro e contro, lascia un messaggio. Puoi modificare il tuo feedback quando vuoi."
+      />
 
       <div className="cine-wrap fb-body">
       <div className="fb-panel">

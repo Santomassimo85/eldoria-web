@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Countdown from "../components/Countdown";
+import GlacierHero from "../components/glacier/GlacierHero";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import './Home.css';
@@ -317,31 +318,27 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── HERO ASIMMETRICO: immagine a tutta pagina + placca-pergamena a sinistra ── */}
-      <section id="home-top" className="home-hero" aria-label="Il Mondo di Exanthia">
-        <div className="home-hero-media" aria-hidden="true">
-          <img src="/assets/PhotoStory/GruppoMEAA/masso_arcanite.png" alt=""
-               onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="home-hero-wash" aria-hidden="true" />
-        <div className="home-hero-plate">
-          <span className="home-hero-seal">✦ Cronache di Exanthia</span>
-          <h1 className="home-hero-title">Il Mondo<br />di Exanthia</h1>
-          <p className="home-hero-tagline">
-            Dalla Caduta delle Stelle al risveglio dei nuovi eroi: il principio,
-            gli dèi e le ombre di un mondo spezzato e ricomposto.
-          </p>
-          <nav className="home-hero-cta" aria-label="Vai al pantheon">
-            <a href="#home-antichi" className="home-cta home-cta--antichi">✦ Antichi Dei</a>
-            <a href="#home-nuovi" className="home-cta home-cta--nuovi">⚜ Nuovi Dei</a>
-            <a href="#home-malvagi" className="home-cta home-cta--malvagi">☠ Dei Malvagi</a>
-          </nav>
-        </div>
-        <a href="#home-lore" className="home-hero-scroll" aria-label="Scorri al racconto">
-          <span className="home-hero-scroll-tx">Scorri</span>
-          <span className="home-hero-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con il drago
+            della tempesta, titolo inciso sulla lastra, CTA a cristallo sotto ── */}
+      <GlacierHero
+        id="home-top"
+        ariaLabel="Il Mondo di Exanthia"
+        image="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png"
+        imgPos="center 20%"
+        hint="tocca il vetro: onde e cristalli"
+        eyebrow="Cronache di Exanthia"
+        title={<>Il Mondo<br />di Exanthia</>}
+        tagline="Dalla Caduta delle Stelle al risveglio dei nuovi eroi: il principio, gli dèi e le ombre di un mondo spezzato e ricomposto."
+        actions={
+          <>
+            <a href="#home-antichi" className="gl-cta">✦ Antichi Dei</a>
+            <a href="#home-nuovi" className="gl-cta gl-cta--deep">⚜ Nuovi Dei</a>
+            <a href="#home-malvagi" className="gl-cta gl-cta--crit">☠ Dei Malvagi</a>
+          </>
+        }
+      >
+        <a href="#home-lore" className="gl-plunge" aria-label="Scorri al racconto">❆ Immergiti nel racconto</a>
+      </GlacierHero>
 
       {/* ── SIDE NAV ── */}
       <nav className="cine-side-nav" aria-label="Navigazione sezioni">
@@ -452,44 +449,44 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- ANTICHI DEI --- */}
-      <section id="home-antichi" className="pantheon-band" aria-label="Antichi Dei">
-        <div className="pantheon-band-media" aria-hidden="true">
-          <img src="/assets/PhotoStory/GruppoMEAA/Aen-Lor.png" alt=""
-               onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="pantheon-band-inner">
-          <span className="pantheon-band-eyebrow">Pantheon · I Nati dalle Lacrime</span>
-          <h2 className="pantheon-band-title">Antichi Dei</h2>
-          <p className="pantheon-band-sub">Le prime divinità sorte dal pianto dei gemelli primordiali.</p>
+      {/* --- ANTICHI DEI: vetrata panoramica + griglia --- */}
+      <div className="gl-sezlabel">Pantheon · I Nati dalle Lacrime</div>
+      <section id="home-antichi" className="gl-vetrata gl-vetrata--band" aria-label="Antichi Dei">
+        <img className="gl-vetrata-img" src="/assets/PhotoStory/GruppoMEAA/Aen-Lor.png" alt=""
+             onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        <div className="gl-vetrata-velo" aria-hidden="true" />
+        <div className="gl-vetrata-riq">
+          <h2 className="gl-vetrata-title">Antichi Dei</h2>
+          <p className="gl-vetrata-sub">Le prime divinità sorte dal pianto dei gemelli primordiali.</p>
+          <span className="gl-seal">{antichiDei.length} divinità</span>
         </div>
       </section>
       <div className="cine-wrap"><PantheonGrid list={antichiDei} /></div>
 
-      {/* --- NUOVI DEI --- */}
-      <section id="home-nuovi" className="pantheon-band" aria-label="Nuovi Dei">
-        <div className="pantheon-band-media" aria-hidden="true">
-          <img src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt=""
-               onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="pantheon-band-inner">
-          <span className="pantheon-band-eyebrow">Pantheon · I Custodi dell'Era Spezzata</span>
-          <h2 className="pantheon-band-title">Nuovi Dei</h2>
-          <p className="pantheon-band-sub">Sorti dopo la Grande Guerra per vegliare sul mondo ricomposto.</p>
+      {/* --- NUOVI DEI: vetrata panoramica + griglia --- */}
+      <div className="gl-sezlabel">Pantheon · I Custodi dell'Era Spezzata</div>
+      <section id="home-nuovi" className="gl-vetrata gl-vetrata--band" aria-label="Nuovi Dei">
+        <img className="gl-vetrata-img" src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt=""
+             onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        <div className="gl-vetrata-velo" aria-hidden="true" />
+        <div className="gl-vetrata-riq">
+          <h2 className="gl-vetrata-title">Nuovi Dei</h2>
+          <p className="gl-vetrata-sub">Sorti dopo la Grande Guerra per vegliare sul mondo ricomposto.</p>
+          <span className="gl-seal">{nuoviDei.length} divinità</span>
         </div>
       </section>
       <div className="cine-wrap"><PantheonGrid list={nuoviDei} /></div>
 
-      {/* --- DEI MALVAGI --- */}
-      <section id="home-malvagi" className="pantheon-band pantheon-band--evil" aria-label="Dei Malvagi">
-        <div className="pantheon-band-media" aria-hidden="true">
-          <img src="/assets/PhotoStory/GruppoMEAA/abominio.png" alt=""
-               onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="pantheon-band-inner">
-          <span className="pantheon-band-eyebrow">Pantheon · Le Ombre del Vuoto</span>
-          <h2 className="pantheon-band-title">Dei Malvagi</h2>
-          <p className="pantheon-band-sub">Le piaghe che bramano la fine di ogni storia di Exanthia.</p>
+      {/* --- DEI MALVAGI: vetrata panoramica + griglia --- */}
+      <div className="gl-sezlabel">Pantheon · Le Ombre del Vuoto</div>
+      <section id="home-malvagi" className="gl-vetrata gl-vetrata--band" aria-label="Dei Malvagi">
+        <img className="gl-vetrata-img" src="/assets/PhotoStory/GruppoMEAA/abominio.png" alt=""
+             onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        <div className="gl-vetrata-velo" aria-hidden="true" />
+        <div className="gl-vetrata-riq">
+          <h2 className="gl-vetrata-title">Dei Malvagi</h2>
+          <p className="gl-vetrata-sub">Le piaghe che bramano la fine di ogni storia di Exanthia.</p>
+          <span className="gl-seal">{deiMalvagi.length} piaghe</span>
         </div>
       </section>
       <div className="cine-wrap"><PantheonGrid list={deiMalvagi} /></div>

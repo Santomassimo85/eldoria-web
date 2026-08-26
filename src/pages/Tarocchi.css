@@ -485,3 +485,13 @@
   .taro-deck { width: 96px; }
   .taro-table { gap: 18px; }
 }
+
+/* ── GLACIER ── */
+/* Ritratto bendato di Alaric sotto la finestra artica: centrato,
+   con l'aura di gelo al posto della cornice pergamena. */
+.taro-glhero .taro-glhero-portrait {
+  margin: 14px auto 0;
+  border-color: rgba(191, 230, 245, .65);
+  box-shadow: 0 0 0 1px rgba(111, 208, 238, .4), 0 0 34px -8px rgba(111, 208, 238, .7);
+  border-radius: 50% 50% 16px 16px;
+}

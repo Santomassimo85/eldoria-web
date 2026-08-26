@@ -247,11 +247,12 @@ export default function WorldMap() {
 
   return (
     <div className="cine-page map-page" style={{ "--cine-accent": "#2f6e8a", "--cine-accent-2": "#4a9ac0" }}>
-      <div className="map-cartouche">
-        <span className="map-cartouche-eyebrow">✦ Archivio Cartografico ✦</span>
+      {/* ── GLACIER: testata compatta — piccola lastra d'abisso ad arco al posto
+            del cartiglio-pergamena. Nessuna finestra grande: la mappa È il contenuto. ── */}
+      <header className="map-glhead">
+        <span className="gl-eyebrow">Archivio Cartografico</span>
         <h1 className="map-page-title">Mappa di Exanthia</h1>
-        <span className="map-cartouche-rule" aria-hidden="true" />
-      </div>
+      </header>
 
       <div
         ref={viewportRef}

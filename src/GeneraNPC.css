@@ -277,3 +277,17 @@ select.npcgen-input { cursor: pointer; appearance: auto; }
   .npcgen-page { padding-left: 12px; padding-right: 12px; }
   .npcgen-card { padding: 18px 14px; }
 }
+
+/* ── GLACIER ── */
+/* Masthead a finestra artica COMPATTA (GlacierHero, senza immagine) — condiviso
+   dalle pagine che usano questo foglio: Generatore NPC e Strumenti DM.
+   Sostituisce il filetto-masthead (.npcgen-title/.npcgen-sub, ora morti lì). */
+.npcgen-glhero { padding: 0 0 6px; margin-bottom: 14px; }
+.npcgen-glhero .gl-finestra {
+  width: min(100%, 560px);
+  aspect-ratio: auto;
+  min-height: clamp(140px, 26vw, 180px);
+  border-radius: clamp(90px, 22vw, 150px) clamp(90px, 22vw, 150px) 12px 12px;
+}
+.npcgen-glhero .gl-sotto { padding: 12px 6px 0; }
+.npcgen-glhero .gl-tagline { margin-bottom: 4px; }

@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { db, functions } from "../firebase";
 import { AGENTS, KIND_META } from "../data/agentsRegistry";
+import GlacierHero from "../components/glacier/GlacierHero";
 import "./Concilio.css";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
@@ -377,13 +378,15 @@ export default function Concilio() {
 
   return (
     <div className="conc">
-      {/* MASTHEAD */}
-      <header className="conc-head">
-        <div className="conc-eyebrow">✦ Sala dei Servitori Arcani</div>
-        <h1>Il Concilio</h1>
-        <p className="conc-sub">
-          I tuoi agenti AI: cosa sanno fare, cosa stanno facendo e cosa hanno fatto.
-        </p>
+      {/* MASTHEAD — GLACIER: finestra artica compatta senza immagine (gradiente
+          d'abisso); la legenda resta intatta sotto la finestra. */}
+      <GlacierHero
+        className="conc-glhero"
+        ariaLabel="Il Concilio — sala dei servitori arcani"
+        eyebrow="Sala dei Servitori Arcani"
+        title="Il Concilio"
+        tagline="I tuoi agenti AI: cosa sanno fare, cosa stanno facendo e cosa hanno fatto."
+      >
         <div className="conc-legend">
           {Object.entries(KIND_META).map(([k, m]) => (
             <span key={k} className="conc-legend-item" style={{ "--c": m.c, "--bg": m.bg }}>
@@ -391,7 +394,7 @@ export default function Concilio() {
             </span>
           ))}
         </div>
-      </header>
+      </GlacierHero>
 
       {toast && <div className={"conc-toast " + toast.t} onClick={() => setToast(null)}>{toast.m}</div>}
 

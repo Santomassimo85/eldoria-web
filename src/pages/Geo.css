@@ -386,3 +386,9 @@
 @media (prefers-reduced-motion: reduce) {
   .geo-description .lore-link { transition: none; }
 }
+
+/* ── GLACIER ── */
+/* Export del master spostati sotto la finestra artica: centrati nella lastra */
+.geo-page .gl-sotto .geo-export-row { justify-content: center; }
+/* Etichetta di sezione dentro l'indice: niente doppio margine sopra */
+.geo-page .geo-index .gl-sezlabel { margin-top: 0; }

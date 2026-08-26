@@ -577,3 +577,9 @@
 /* AmbientFX dietro */
 .alm-page > * { position: relative; z-index: 1; }
 .alm-page > .ambient-fx { position: fixed; z-index: 0; }
+
+/* ── GLACIER ── */
+/* L'indice dell'hero resta un <nav aria-label="Indice"> dentro le azioni
+   della finestra artica: display:contents lo rende trasparente al flex
+   di .gl-actions (le CTA si impaginano come sorelle dirette). */
+.alm-page .gl-actions .alm-jump-gl { display: contents; }

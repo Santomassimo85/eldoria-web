@@ -198,3 +198,11 @@
   .rsx-scroll { padding: 18px 16px 28px; }
   .rsx-cover { margin-left: -16px; margin-right: -16px; }
 }
+
+/* ── GLACIER ── */
+/* La testata (.rsx-cover + .rsx-head) è stata sostituita da <GlacierHero>
+   dentro la pergamena: quei selettori restano come regole morte.
+   Qui solo l'adattamento della finestra al foglio stretto (760px). */
+.rsx-scroll .gl-hero { padding: 4px 0 0; margin-bottom: 20px; }
+.rsx-scroll .gl-sotto { padding-bottom: 0; }
+.rsx-scroll .gl-hero .rsx-visits { margin-top: 4px; }

@@ -5,6 +5,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { logAgent } from "./utils/agentLog";
 import { CITIES_HUB } from "./data/citiesHub";
+import GlacierHero from "./components/glacier/GlacierHero";
 import "./GeneraNPC.css";
 import "./pages/admin.css";
 
@@ -142,11 +143,15 @@ export default function GeneraNPC() {
     <div className="npcgen-page">
       <div className="npcgen-inner">
         <Link to="/dm-admin" className="adm-back">← Console del Master</Link>
-        <h1 className="npcgen-title">Generatore NPC</h1>
-        <p className="npcgen-sub">
-          Descrivi il personaggio che ti serve: ci pensa l'oracolo a dargli
-          nome, volto e segreti.
-        </p>
+        {/* GLACIER: masthead a filetto → finestra artica compatta (senza immagine).
+            Il generatore sotto resta intatto. */}
+        <GlacierHero
+          className="npcgen-glhero"
+          ariaLabel="Generatore NPC"
+          eyebrow="Officina del Master"
+          title="Generatore NPC"
+          tagline="Descrivi il personaggio che ti serve: ci pensa l'oracolo a dargli nome, volto e segreti."
+        />
 
         <label className="npcgen-label" htmlFor="npcgen-contesto">
           Contesto

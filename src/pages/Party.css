@@ -458,3 +458,7 @@
    ============================================================ */
 .party-page > * { position: relative; z-index: 1; }
 .party-page > .ambient-fx { position: fixed; z-index: 0; }
+
+/* ── GLACIER ── */
+/* Etichetta di sezione dentro l'indice delle casate: niente doppio margine sopra */
+.party-page .party-index .gl-sezlabel { margin-top: 0; }

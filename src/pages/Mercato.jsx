@@ -17,6 +17,7 @@ import {
 import "../styles/cinematic.css";
 import "./Mercato.css";
 import useParallaxScroll from "../hooks/useParallaxScroll";
+import GlacierHero from "../components/glacier/GlacierHero";
 
 const MASTER_EMAIL = "santomassimo85@gmail.com";
 const HERO_IMAGE = "/assets/PhotoStory/GruppoMEAA/padithas.png";
@@ -495,24 +496,19 @@ export default function Mercato() {
 
   return (
     <section className="cine-page mercato-page" style={{ "--cine-accent": "#7a2e6e", "--cine-accent-2": "#a3479a" }}>
-      {/* ── HERO ASIMMETRICO: immagine full-bleed + placca-registro a sinistra ── */}
-      <section className="merc-hero" aria-label="Mercato Nero di Exanthia">
-        <div className="merc-hero-media" aria-hidden="true">
-          <img src={HERO_IMAGE} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-        </div>
-        <div className="merc-hero-wash" aria-hidden="true" />
-        <div className="merc-hero-plate">
-          <span className="merc-hero-seal">✦ Il Sottosuolo · Gilda dei Ratti</span>
-          <h1 className="merc-hero-title">Mercato Nero<br />di Exanthia</h1>
-          <p className="merc-hero-tagline">
-            Reagenti proibiti, artefatti rubati e aste cieche. Ogni affare aumenta la tua influenza nell'ombra.
-          </p>
-        </div>
-        <a href="#merc-banco" className="merc-hero-scroll" aria-label="Scorri al banco">
-          <span className="merc-hero-scroll-tx">Scorri</span>
-          <span className="merc-hero-scroll-ic" aria-hidden="true">↓</span>
-        </a>
-      </section>
+      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con la merce
+            del sottosuolo, rango Ratto come sigillo di gelo, CTA a cristallo ── */}
+      <GlacierHero
+        id="mercato-top"
+        ariaLabel="Mercato Nero di Exanthia"
+        image={HERO_IMAGE}
+        imgPos="center 22%"
+        eyebrow="Il Sottosuolo · Gilda dei Ratti"
+        title={<>Mercato Nero<br />di Exanthia</>}
+        seal={currentUser ? `🐀 ${ratto.name} · ${userRattoPoints} pt` : undefined}
+        tagline="Reagenti proibiti, artefatti rubati e aste cieche. Ogni affare aumenta la tua influenza nell'ombra."
+        actions={<a href="#merc-banco" className="gl-cta" aria-label="Scorri al banco">❆ Scendi al banco</a>}
+      />
 
       <div className="cine-wrap cine-wrap--wide mercato-body">
       {currentUser && (
@@ -566,12 +562,9 @@ export default function Mercato() {
       </div>
       </div>
 
-      {/* ── RUBRICA: Il Banco del Contrabbando ── */}
-      <div id="merc-banco" className="merc-rubric">
-        <span className="merc-rubric-eyebrow">Banco del Contrabbando</span>
-        <h2 className="merc-rubric-title">La Merce</h2>
-        <p className="merc-rubric-sub">Ciò che nessuna bottega onesta oserebbe esporre.</p>
-      </div>
+      {/* ── ETICHETTA DI SEZIONE (glacier): Il Banco del Contrabbando ── */}
+      <div id="merc-banco" className="gl-sezlabel">Banco del Contrabbando · La Merce</div>
+      <p className="gl-vetrata-sub merc-sezsub">Ciò che nessuna bottega onesta oserebbe esporre.</p>
 
       <div className="cine-wrap cine-wrap--wide mercato-body">
       {filteredItems.length === 0 ? (
