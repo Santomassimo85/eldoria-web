@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import Countdown from "../components/Countdown";
-import GlacierHero from "../components/glacier/GlacierHero";
-import Vetrata from "../components/glacier/Vetrata";
+import { Link } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import './Home.css';
 import '../styles/cinematic.css';
 import useParallaxScroll from '../hooks/useParallaxScroll';
+
+// Le sei mete della Sala dei Portali (rotte esistenti, nessun link nuovo).
+const PORTALI = [
+  { to: "/mercato",   nome: "Mercato",  nota: "il sottosuolo dei Ratti", img: "/assets/PhotoStory/GruppoMEAA/wolf_alpha.png" },
+  { to: "/arena",     nome: "Arena",    nota: "il Colosseo Astrale",     img: "/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" },
+  { to: "/party",     nome: "Eroi",     nota: "quattro compagnie",       img: "/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" },
+  { to: "/riassunti", nome: "Memorie",  nota: "le cronache dei party",   img: "/assets/PhotoStory/GruppoLAC/horn_spider.jpg" },
+  { to: "/tarocchi",  nome: "Oracolo",  nota: "un responso al giorno",   img: "/assets/PhotoStory/GruppoMEAA/karathep.png" },
+  { to: "/Geo",       nome: "Atlante",  nota: "i continenti di Exanthia", img: "/assets/PhotoStory/GruppoMEAA/drago_fiume.png" },
+];
 
 // Nome divinità "NOME – Epiteto" → parti separate per la carta.
 function splitDeityName(nome) {
@@ -319,55 +328,27 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── APERTURA (mockup G): solo il cielo d'aurora e il titolo ── */}
-      <GlacierHero
-        id="home-top"
-        className="gl-hero--cielo"
-        ariaLabel="Il Mondo di Exanthia"
-        eyebrow="Cronache di Exanthia"
-        title={<>Il Mondo<br />di Exanthia</>}
-      />
+      {/* ── TESTATA: kicker + titolo a gradiente (mockup J) ── */}
+      <header id="home-top" className="home-testata">
+        <span className="home-kicker">Cronache di Exanthia</span>
+        <h1 className="home-titolo">Il Nesso dei Mondi</h1>
+        <p className="home-sotto">Sei portali, un solo varco. Attraversa l'esagono che ti chiama — o apri l'Orbe qui sotto.</p>
+      </header>
 
-      {/* ── I PANORAMI: sezioni a tutta larghezza, numerate, alternate ── */}
-      <div className="gl-vetrate">
-        <Vetrata
-          to="/party"
-          img="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png"
-          title="Registro degli Eroi"
-          sub="Predatori di leggende, in quattro stirpi."
-          sigillo="Apri il registro"
-        />
-        <Vetrata
-          to="/mercato"
-          img="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png"
-          title="Mercato Nero"
-          sub="Merci che nessuna dogana vedrà mai."
-          sigillo="Scendi al banco"
-        />
-        <Vetrata
-          to="/riassunti"
-          img="/assets/PhotoStory/GruppoLAC/horn_spider.jpg"
-          title="Memorie"
-          sub="Le cronache dei party, notte dopo notte."
-          sigillo="Sfoglia le memorie"
-        />
-        <Vetrata
-          to="/tarocchi"
-          img="/assets/PhotoStory/GruppoMEAA/karathep.png"
-          title="L'Oracolo"
-          sub="Un responso al giorno, non uno di più."
-          sigillo="Chiedi agli Arcani"
-        />
-      </div>
-
-      {/* ── SIDE NAV ── */}
-      <nav className="cine-side-nav" aria-label="Navigazione sezioni">
-        <a href="#home-top" className="cine-side-nav-btn" title="Inizio"><span aria-hidden="true">🌍</span></a>
-        <a href="#home-lore" className="cine-side-nav-btn" title="L'inizio del mondo"><span aria-hidden="true">📜</span></a>
-        <a href="#home-antichi" className="cine-side-nav-btn" title="Antichi Dei"><span aria-hidden="true">✦</span></a>
-        <a href="#home-nuovi" className="cine-side-nav-btn" title="Nuovi Dei"><span aria-hidden="true">⚜</span></a>
-        <a href="#home-malvagi" className="cine-side-nav-btn" title="Dei Malvagi"><span aria-hidden="true">☠</span></a>
-      </nav>
+      {/* ── LA SALA DEI PORTALI: griglia esagonale delle sei mete ── */}
+      <ul className="esagoni" aria-label="Portali di Exanthia">
+        {PORTALI.map((pt) => (
+          <li key={pt.to} className="porta-cella">
+            <Link to={pt.to} className="porta" aria-label={pt.nome}>
+              <img src={pt.img} alt="" loading="lazy" style={pt.pos ? { objectPosition: pt.pos } : undefined}
+                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              <span className="velo" aria-hidden="true" />
+              <span className="porta-nome">{pt.nome}</span>
+              <span className="porta-nota">{pt.nota}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
 
       {/* ── LORE: pagina di manoscritto (rubrica + illustrazione + colonne) ── */}
       <section id="home-lore" className="home-lore">

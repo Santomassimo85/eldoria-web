@@ -1,153 +1,177 @@
 /* ============================================================
-   HOME — architettura "Codice di Exanthia" (Pergamena Antica)
-   Hero asimmetrico · lore a manoscritto (marginalia + articolo) ·
-   pantheon a fascia + griglia di carte con dettaglio al tap.
-   Scheletro condiviso da cinematic.css; qui la struttura della Home.
+   HOME — "LA SALA DEI PORTALI" (prototipo J · Il Nesso)
+   Testata centrata a gradiente · GRIGLIA ESAGONALE di portali
+   (le 6 mete del sito, immagini che respirano dentro esagoni
+   col bordo di luce) · lore a manoscritto nel vuoto · pantheon a
+   fasce + carte con ritratto ad ANELLO ORBITANTE + dettaglio al tap.
+   Struttura della Home; tema e nav in styles/nesso.css + layout.css.
    ============================================================ */
 
 /* ============================================================
-   1) HERO ASIMMETRICO — immagine full-bleed + placca a sinistra
+   1) TESTATA — kicker ciano + titolo a gradiente + sottotitolo
    ============================================================ */
-.home-page .home-hero {
+.home-page .home-testata {
+  text-align: center;
+  padding: calc(var(--navbar-h, 66px) + clamp(22px, 4vw, 40px)) 8px 8px;
+  scroll-margin-top: 90px;
+}
+.home-page .home-kicker {
+  display: block;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .62rem;
+  letter-spacing: .44em;
+  text-transform: uppercase;
+  color: var(--nx-ciano, #22d3ee);
+  text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+}
+.home-page .home-titolo {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(2.1rem, 8vw, 3.4rem);
+  line-height: 1.05;
+  margin: 12px 0 10px;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 50%, #e879f9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 24px rgba(139, 92, 246, .45));
+}
+.home-page .home-sotto {
+  color: var(--nx-muted, #8f8bb8);
+  max-width: 52ch;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-size: 1rem;
+  font-family: "Manrope", system-ui, sans-serif;
+}
+
+/* ============================================================
+   2) LA SALA DEI PORTALI — griglia esagonale
+   ============================================================ */
+.home-page .esagoni {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 700px) {
+  .home-page .esagoni { grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  /* la colonna centrale scende: alveare */
+  .home-page .esagoni > li:nth-child(2),
+  .home-page .esagoni > li:nth-child(5) { transform: translateY(30px); }
+}
+.home-page .porta-cella { margin: 0; padding: 0; list-style: none; }
+.home-page .porta {
   position: relative;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  min-height: 86vh;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  isolation: isolate;
-  padding: 0 0 56px;
+  display: block;
+  aspect-ratio: 1 / 1.12;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: none;
+  cursor: pointer;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), filter .25s ease;
 }
-.home-page .home-hero-media { position: absolute; inset: 0; z-index: 0; }
-.home-page .home-hero-media img {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover; object-position: center 28%;
-  transform: translate3d(0, calc(var(--cine-scroll, 0) * 0.26px), 0);
-  will-change: transform;
+/* bordo di luce ad anello (maschera) */
+.home-page .porta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(160deg, rgba(34, 211, 238, .55), rgba(139, 92, 246, .55) 55%, rgba(232, 121, 249, .5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 2px;
+  pointer-events: none;
 }
-.home-page .home-hero-wash {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(26,16,6,.52) 0%, rgba(26,16,6,.14) 52%, transparent 74%),
-    linear-gradient(180deg, rgba(26,16,6,.08) 0%, rgba(26,16,6,.30) 55%, var(--cine-bg-bot, #eaddbd) 100%);
+.home-page .porta img {
+  position: absolute;
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  object-fit: cover;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  filter: saturate(1.05) brightness(.85);
+  transition: filter .25s ease, transform .6s ease;
 }
-.home-page .home-hero-plate {
-  position: relative; z-index: 2;
-  margin: 0 14px;
-  background: linear-gradient(135deg, rgba(255,253,245,.975), rgba(243,234,212,.95));
-  border: 1px solid var(--line, #c9b78a);
-  border-left: 5px solid var(--cine-accent);
-  border-radius: 18px;
-  box-shadow: 0 22px 50px -18px rgba(86,64,30,.6), 0 1px 0 rgba(255,255,255,.7) inset;
-  padding: 22px 20px;
-  animation: home-plate-in .7s cubic-bezier(.16,1,.3,1) both;
+/* le immagini respirano da sole, sfasate */
+.home-page .esagoni > li:nth-child(odd) .porta img { animation: porta-respira 16s ease-in-out infinite alternate; }
+.home-page .esagoni > li:nth-child(even) .porta img { animation: porta-respira 20s ease-in-out infinite alternate-reverse; }
+@keyframes porta-respira { from { transform: scale(1); } to { transform: scale(1.08); } }
+.home-page .porta .velo {
+  position: absolute;
+  inset: 2px;
+  z-index: 1;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(180deg, transparent 40%, rgba(7, 7, 19, .92));
 }
-@keyframes home-plate-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
-
-.home-page .home-hero-seal {
-  display: inline-block;
-  font-family: var(--font-head, "Cinzel"), serif;
-  font-size: .68rem; letter-spacing: .26em; text-transform: uppercase;
-  color: #7c560f; padding: 6px 14px;
-  border: 1px solid rgba(124,86,15,.5); border-radius: 999px;
-  background: rgba(169,120,26,.08);
+.home-page .porta figcaption,
+.home-page .porta-nome {
+  position: absolute;
+  left: 0; right: 0; bottom: 19%;
+  z-index: 3;
+  text-align: center;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: clamp(.72rem, 2vw, .92rem);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--nx-ink, #edeaff);
+  text-shadow: 0 0 12px rgba(139, 92, 246, .8);
 }
-.home-page .home-hero-title {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
-  font-weight: 900;
-  font-size: clamp(2.1rem, 8vw, 4.2rem);
-  line-height: 1.02; margin: 16px 0 12px; letter-spacing: .01em;
-  background: linear-gradient(180deg, #3a2a12 0%, #7c560f 58%, #a9781a 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+.home-page .porta-nota {
+  position: absolute;
+  left: 0; right: 0; bottom: 12%;
+  z-index: 3;
+  text-align: center;
+  font-size: .62rem;
+  font-family: "Manrope", system-ui, sans-serif;
+  color: var(--nx-muted, #8f8bb8);
 }
-.home-page .home-hero-tagline {
-  font-family: var(--font-ui, Georgia), serif;
-  color: #46382a; font-size: clamp(.98rem, 2.4vw, 1.12rem); line-height: 1.6;
-  margin: 0 0 20px; max-width: 46ch;
+.home-page .porta:hover { transform: translateY(-8px) scale(1.03); filter: drop-shadow(0 0 26px rgba(34, 211, 238, .5)); }
+@media (min-width: 700px) {
+  /* (le celle centrali sono già abbassate dal translateY del <li>) */
 }
-.home-page .home-hero-cta { display: flex; flex-direction: column; gap: 10px; }
-.home-page .home-cta {
-  display: inline-flex; align-items: center; justify-content: center; gap: .45em;
-  padding: 12px 18px; border-radius: 12px; border: 1px solid transparent;
-  font-family: var(--font-head, "Cinzel"), serif; font-weight: 700;
-  font-size: .86rem; letter-spacing: .06em; text-decoration: none;
-  box-shadow: 0 8px 20px -10px rgba(86,64,30,.6);
-  transition: transform .15s ease, box-shadow .2s ease, filter .15s ease;
-}
-.home-page .home-cta--antichi { background: linear-gradient(135deg, #e6c477, #a9781a); }
-.home-page .home-cta--nuovi   { background: linear-gradient(135deg, #b79bf0, #6f44c9); }
-.home-page .home-cta--malvagi { background: linear-gradient(135deg, #d96a5d, #8a261c); }
-/* testo dei pulsanti del pantheon: crema molto chiara + ombra per leggibilità */
-.home-page .home-cta--antichi,
-.home-page .home-cta--nuovi,
-.home-page .home-cta--malvagi {
-  color: #fff9ee !important;
-  -webkit-text-fill-color: #fff9ee;
-  text-shadow: 0 1px 2px rgba(40, 20, 8, 0.55);
-}
-.home-page .home-cta:hover { transform: translateY(-2px); filter: brightness(1.06); }
-.home-page .home-cta:active { transform: translateY(0); }
-
-.home-page .home-hero-scroll {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
-  z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  text-decoration: none; color: #5a3d12;
-  font-family: var(--font-head, "Cinzel"), serif; font-size: .58rem; letter-spacing: .42em; text-transform: uppercase;
-  text-shadow: 0 1px 6px rgba(255,248,230,.7);
-}
-.home-page .home-hero-scroll-ic {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; border: 1.5px solid rgba(169,120,26,.55);
-  background: color-mix(in srgb, var(--cine-bg-top, #f3ead4) 78%, transparent);
-  color: #7c560f; font-size: 1rem;
-  animation: home-bob 2.2s ease-in-out infinite;
-}
-@keyframes home-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
-
-@media (min-width: 560px) {
-  .home-page .home-hero-cta { flex-direction: row; flex-wrap: wrap; }
-  .home-page .home-cta { flex: 1 1 auto; }
-}
-@media (min-width: 900px) {
-  .home-page .home-hero { min-height: 94vh; align-items: center; }
-  .home-page .home-hero-media img { object-position: center 32%; }
-  .home-page .home-hero-wash {
-    background:
-      linear-gradient(90deg, rgba(26,16,6,.66) 0%, rgba(26,16,6,.22) 42%, transparent 66%),
-      linear-gradient(180deg, transparent 62%, var(--cine-bg-bot, #eaddbd) 100%);
-  }
-  .home-page .home-hero-plate { margin: 0 0 0 7vw; max-width: 540px; padding: 36px 34px; }
-}
+.home-page .porta:hover img { filter: saturate(1.2) brightness(1.05); transform: scale(1.1); animation-play-state: paused; }
+.home-page .porta:focus-visible { outline: 2px solid #22d3ee; outline-offset: 4px; }
 
 /* ============================================================
-   2) LORE — manoscritto: marginalia sticky + articolo
+   3) LORE — manoscritto nel vuoto: marginalia + articolo
    ============================================================ */
 .home-page .home-lore {
-  max-width: 1120px; margin: 4px auto 0;
-  padding: 8px clamp(16px, 4vw, 30px) 0;
+  max-width: 1000px; margin: clamp(40px, 7vw, 72px) auto 0;
+  padding: 0 clamp(4px, 2vw, 16px);
+  scroll-margin-top: 90px;
 }
 .home-page .home-lore-aside { display: none; }
 .home-page .home-lore-rubric {
-  display: flex; align-items: center; justify-content: center; gap: 14px; margin: 16px 0 6px;
+  display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 0 10px;
 }
 .home-page .home-lore-rubric::before,
 .home-page .home-lore-rubric::after {
   content: ""; height: 1px; flex: 1 1 auto; max-width: 120px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cine-accent) 55%, transparent));
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, .6));
 }
-.home-page .home-lore-rubric::after { background: linear-gradient(270deg, transparent, color-mix(in srgb, var(--cine-accent) 55%, transparent)); }
+.home-page .home-lore-rubric::after { background: linear-gradient(270deg, transparent, rgba(139, 92, 246, .6)); }
 .home-page .home-lore-title {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
-  font-size: clamp(1.3rem, 4vw, 2.1rem); color: var(--cine-accent);
-  text-align: center; letter-spacing: .05em; margin: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.2rem, 4vw, 1.9rem);
+  text-align: center; letter-spacing: .03em; margin: 0;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 50%, #e879f9);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(139, 92, 246, .4));
 }
 .home-page .home-lore-illum { margin: 0; text-align: center; }
 .home-page .home-creation-image {
   display: inline-block; width: min(64%, 360px); margin: 8px auto 18px;
-  border-radius: 12px; border: 2px solid color-mix(in srgb, var(--cine-accent) 38%, transparent);
-  box-shadow: 0 14px 32px -12px rgba(86,64,30,.55);
+  border-radius: 18px; border: 1px solid rgba(139, 92, 246, .45);
+  box-shadow: 0 14px 32px -12px #000, 0 0 30px -8px rgba(139, 92, 246, .5);
   max-height: 600px; overflow: hidden;
   transition: opacity .6s ease, transform .6s ease, max-height .7s ease, margin .6s ease, border-width .6s ease;
   opacity: 1; transform: translateY(0);
@@ -156,36 +180,38 @@
 .home-page #creation-img.show { opacity: 1; transform: translateY(0); }
 
 .home-page .home-lore-text {
-  font-family: var(--font-ui, Georgia), serif;
-  font-size: clamp(.96rem, 2.2vw, 1.06rem); line-height: 1.92;
-  color: #33281a; text-align: justify;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: clamp(.95rem, 2.2vw, 1.02rem); line-height: 1.85;
+  color: #c9c4ea; text-align: left;
 }
-.home-page .home-lore-text i { color: #7c560f; font-style: italic; }
+.home-page .home-lore-text i { color: #c4b5fd; font-style: italic; }
 .home-page .home-lore-drop {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif;
-  font-size: clamp(2.8rem, 7vw, 4.2rem); line-height: .72;
-  float: left; margin: 6px 12px 0 0; padding: 8px 12px 6px; color: #fffdf5;
-  background: linear-gradient(135deg, var(--cine-accent), var(--cine-accent-2));
-  border-radius: 8px; box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--cine-accent) 70%, transparent);
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: clamp(2.8rem, 7vw, 4rem); line-height: .72;
+  float: left; margin: 8px 12px 0 0; padding: 10px 12px 8px; color: #070713;
+  background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+  border-radius: 10px; box-shadow: 0 0 20px -4px rgba(34, 211, 238, .8);
 }
 
 @media (min-width: 900px) {
   .home-page .home-lore {
-    display: grid; grid-template-columns: 210px 1fr; gap: 40px; align-items: start;
+    display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: start;
   }
   .home-page .home-lore-aside {
     display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
-    position: sticky; top: calc(var(--navbar-h, 80px) + 28px);
-    padding: 20px 14px; border-right: 2px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+    position: sticky; top: calc(var(--navbar-h, 66px) + 28px);
+    padding: 22px 14px; border-radius: 18px;
+    background: linear-gradient(180deg, #14142c, #0d0d1f);
+    border: 1px solid rgba(139, 92, 246, .28);
   }
-  .home-page .home-lore-aside .home-lore-orn { font-size: 1.4rem; color: var(--cine-accent); }
+  .home-page .home-lore-aside .home-lore-orn { font-size: 1.4rem; color: #22d3ee; text-shadow: 0 0 12px rgba(34, 211, 238, .8); }
   .home-page .home-lore-chapter {
-    font-family: var(--font-display, "Cinzel Decorative"), serif; font-size: 1.1rem; color: var(--cine-accent); letter-spacing: .08em;
+    font-family: "Cinzel", Georgia, serif; font-size: 1rem; color: #c4b5fd; letter-spacing: .08em;
   }
-  .home-page .home-lore-note { font-family: var(--font-head, "Cinzel"), serif; font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; color: #6a5b41; line-height: 1.5; }
+  .home-page .home-lore-note { font-family: "Cinzel", Georgia, serif; font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: #8f8bb8; line-height: 1.5; }
   .home-page .home-lore-age {
-    margin-top: 4px; font-family: var(--font-ui), serif; font-style: italic; font-size: .82rem; color: #7c560f;
-    border-top: 1px solid color-mix(in srgb, var(--cine-accent) 25%, transparent); padding-top: 8px;
+    margin-top: 4px; font-size: .8rem; color: #22d3ee;
+    border-top: 1px solid rgba(139, 92, 246, .3); padding-top: 8px;
   }
   .home-page .home-lore-rubric { justify-content: flex-start; }
   .home-page .home-lore-rubric::after { display: none; }
@@ -195,137 +221,127 @@
 }
 
 /* ============================================================
-   3) PANTHEON — fascia etichettata + griglia di carte (tap → dettaglio)
+   4) PANTHEON — fascia (gl-vetrata--band, nesso.css) + carte con
+      ritratto ad ANELLO ORBITANTE (tap → dettaglio)
    ============================================================ */
-.home-page .pantheon-band {
-  position: relative; width: 100vw; margin: 48px calc(50% - 50vw) 0;
-  min-height: 168px; display: flex; align-items: center;
-  overflow: hidden; isolation: isolate;
-  scroll-margin-top: calc(var(--navbar-h, 80px) + 12px);
-  border-block: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
-}
-.home-page .pantheon-band-media { position: absolute; inset: 0; z-index: 0; }
-.home-page .pantheon-band-media img {
-  width: 100%; height: 100%; object-fit: cover; object-position: center 35%;
-  opacity: .9; filter: sepia(.2) saturate(1.05);
-  animation: home-band-kb 28s ease-in-out infinite alternate;
-}
-@keyframes home-band-kb { from { transform: scale(1.04); } to { transform: scale(1.12); } }
-.home-page .pantheon-band::before {
-  content: ""; position: absolute; inset: 0; z-index: 1;
-  background: linear-gradient(90deg, rgba(24,15,5,.9) 0%, rgba(28,18,7,.66) 48%, rgba(28,18,7,.34) 100%);
-}
-.home-page .pantheon-band--evil::before {
-  background: linear-gradient(90deg, rgba(30,8,8,.92) 0%, rgba(34,10,10,.68) 48%, rgba(28,8,8,.36) 100%);
-}
-.home-page .pantheon-band-inner {
-  position: relative; z-index: 2; padding: 22px clamp(18px, 5vw, 64px); max-width: 1180px; margin: 0 auto; width: 100%;
-}
-.home-page .pantheon-band-eyebrow {
-  font-family: var(--font-head, "Cinzel"), serif; font-size: .68rem; letter-spacing: .26em; text-transform: uppercase;
-  color: var(--cine-gold-soft, #f1d8a0);
-}
-.home-page .pantheon-band-title {
-  font-family: var(--font-display, "Cinzel Decorative"), serif; font-weight: 900;
-  font-size: clamp(1.6rem, 5vw, 2.8rem); margin: 4px 0 4px; line-height: 1.05;
-  background: linear-gradient(180deg, #fff, #ffe9c2 60%, var(--cine-gold-soft, #f1d8a0));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  text-shadow: 0 4px 20px rgba(20,12,4,.5);
-}
-.home-page .pantheon-band-sub { color: rgba(255,248,235,.9); font-family: var(--font-ui), serif; font-size: clamp(.9rem, 2vw, 1.05rem); margin: 0; max-width: 54ch; }
-
-/* ── Griglia carte-divinità ── */
 .home-page .deity-grid {
   display: grid; grid-template-columns: 1fr; gap: 14px;
-  margin: 22px auto 0; padding: 0;
+  margin: 0 0 8px; padding: 0;
 }
-@media (min-width: 620px) { .home-page .deity-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1000px) { .home-page .deity-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
+@media (min-width: 560px) { .home-page .deity-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 960px) { .home-page .deity-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
 
 .home-page .deity-card {
-  display: flex; align-items: stretch; gap: 0; text-align: left; cursor: pointer;
-  background: linear-gradient(180deg, rgba(255,252,245,.98), rgba(250,242,222,.96));
-  border: 1px solid color-mix(in srgb, var(--cine-accent) 22%, transparent);
-  border-left: 4px solid var(--cine-accent);
-  border-radius: 16px; overflow: hidden; padding: 0;
-  box-shadow: 0 12px 30px -16px rgba(86,64,30,.5);
-  transition: transform .18s ease, box-shadow .2s ease, border-color .18s ease;
   position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 0; text-align: center; cursor: pointer;
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .28);
+  border-radius: 18px; padding: 18px 14px 16px;
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s ease, border-color .25s ease;
 }
 .home-page .deity-card:hover {
-  transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--cine-accent) 65%, transparent);
-  box-shadow: 0 22px 44px -18px rgba(86,64,30,.6);
+  transform: translateY(-7px);
+  border-color: rgba(34, 211, 238, .6);
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(34, 211, 238, .55);
 }
-.home-page .deity-card:active { transform: translateY(-1px) scale(.995); }
+.home-page .deity-card:active { transform: translateY(-2px) scale(.995); }
+/* l'anello: gradiente conico che orbita da solo, accelera al passaggio */
 .home-page .deity-card-portrait {
-  flex: 0 0 84px; width: 84px; align-self: stretch; overflow: hidden;
-  background: #e9dcbe;
+  position: relative;
+  flex: 0 0 auto;
+  width: 104px; height: 104px;
+  border-radius: 50%; padding: 4px;
+  margin-bottom: 12px;
+  background: none; overflow: visible;
 }
-.home-page .deity-card-portrait img { width: 100%; height: 100%; min-height: 96px; object-fit: cover; object-position: top; display: block; }
-.home-page .deity-card-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 12px 14px; }
+.home-page .deity-card-portrait::before {
+  content: "";
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(#22d3ee, #8b5cf6, #e879f9, #22d3ee);
+  animation: orbita 7s linear infinite;
+}
+.home-page .deity-card:hover .deity-card-portrait::before { animation-duration: 1.6s; }
+@keyframes orbita { to { transform: rotate(360deg); } }
+.home-page .deity-card-portrait img {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%; min-height: 0;
+  border-radius: 50%; object-fit: cover; object-position: top;
+  border: 3px solid #0d0d1f; display: block;
+}
+.home-page .deity-card-body { display: flex; flex-direction: column; gap: 3px; padding: 0; min-width: 0; }
 .home-page .deity-card-name {
-  font-family: var(--font-display, "Cinzel Decorative"), "Cinzel", serif; font-weight: 900;
-  font-size: 1.02rem; color: var(--cine-accent); letter-spacing: .01em; line-height: 1.1;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: .95rem; color: var(--nx-ink, #edeaff); letter-spacing: .05em; line-height: 1.15;
 }
-.home-page .deity-card-epithet { font-family: var(--font-ui), serif; font-style: italic; font-size: .8rem; color: #7c560f; line-height: 1.25; }
-.home-page .deity-card-dominio { margin-top: 4px; font-size: .76rem; color: #6a5b41; line-height: 1.3; }
+.home-page .deity-card-epithet { font-size: .78rem; color: #c4b5fd; line-height: 1.3; }
+.home-page .deity-card-dominio { margin-top: 4px; font-size: .74rem; color: #8f8bb8; line-height: 1.35; }
 .home-page .deity-card-cue {
-  position: absolute; right: 10px; bottom: 8px;
-  font-family: var(--font-head, "Cinzel"), serif; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--cine-accent); opacity: .75; transition: transform .18s ease, opacity .18s ease;
+  position: absolute; top: 12px; right: 14px;
+  font-family: "Manrope", system-ui, sans-serif; font-weight: 700;
+  font-size: .58rem; letter-spacing: .16em; text-transform: uppercase;
+  color: #e879f9; opacity: .85; transition: transform .18s ease, opacity .18s ease;
 }
-.home-page .deity-card:hover .deity-card-cue { transform: translateX(3px); opacity: 1; }
+.home-page .deity-card:hover .deity-card-cue { transform: translateX(2px); opacity: 1; }
 
-/* ── Modale dettaglio divinità ── */
+/* ── Modale dettaglio divinità: pannello del vuoto ── */
 .home-page .deity-modal-overlay {
   position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center;
-  padding: 18px; background: rgba(34,22,8,.55);
-  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  padding: 18px; background: rgba(4, 4, 12, .7);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   animation: home-fade .2s ease both;
 }
 @keyframes home-fade { from { opacity: 0; } to { opacity: 1; } }
 .home-page .deity-modal {
   position: relative; width: 100%; max-width: 520px; max-height: calc(100dvh - 80px); overflow-y: auto;
-  background: linear-gradient(180deg, #fffdf5, #f3ead4);
-  border: 1px solid var(--line, #c9b78a); border-top: 4px solid var(--cine-accent);
-  border-radius: 18px; padding: 0 24px 24px;
-  box-shadow: 0 30px 70px -24px rgba(86,64,30,.7);
-  animation: home-pop .28s cubic-bezier(.34,1.56,.64,1) both;
+  background: linear-gradient(180deg, #161632, #0d0d1f);
+  border: 1px solid rgba(139, 92, 246, .45);
+  border-radius: 22px; padding: 0 24px 24px;
+  box-shadow: 0 30px 70px -24px #000, 0 0 40px -10px rgba(139, 92, 246, .6);
+  animation: varco .4s cubic-bezier(.16, 1, .3, 1) both;
 }
-@keyframes home-pop { from { opacity: 0; transform: scale(.92) translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes varco { from { opacity: 0; transform: scale(.955); filter: blur(6px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
 .home-page .deity-modal-close {
   position: sticky; top: 12px; float: right; margin: 12px -8px 0 0;
-  width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(124,86,15,.3);
-  background: rgba(255,253,245,.9); color: #8a261c; font-size: .85rem; cursor: pointer; z-index: 2;
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(139, 92, 246, .4);
+  background: rgba(13, 13, 31, .9); color: #e879f9; font-size: .85rem; cursor: pointer; z-index: 2;
   transition: background .15s ease, transform .15s ease;
 }
-.home-page .deity-modal-close:hover { background: #f1e7cf; transform: scale(1.08); }
+.home-page .deity-modal-close:hover { background: #1e1e40; transform: scale(1.08); }
 .home-page .deity-modal-img {
   width: 100%; height: 220px; object-fit: cover; object-position: top;
-  border-radius: 12px; margin: 16px 0 12px; border: 1px solid color-mix(in srgb, var(--cine-accent) 30%, transparent);
+  border-radius: 14px; margin: 16px 0 12px; border: 1px solid rgba(139, 92, 246, .4);
 }
 .home-page .deity-modal-name {
-  font-family: var(--font-display, "Cinzel Decorative"), serif; font-weight: 900;
-  font-size: clamp(1.2rem, 4vw, 1.7rem); color: var(--cine-accent); margin: 0 0 4px; line-height: 1.1;
+  font-family: "Cinzel", Georgia, serif; font-weight: 700;
+  font-size: clamp(1.2rem, 4vw, 1.6rem); margin: 0 0 4px; line-height: 1.1;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 50%, #e879f9);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.home-page .deity-modal-titolo { font-family: var(--font-ui), serif; font-style: italic; color: #7c560f; margin: 0 0 14px; }
+.home-page .deity-modal-titolo { color: #c4b5fd; margin: 0 0 14px; font-size: .92rem; }
 .home-page .deity-modal-meta {
   display: grid; gap: 6px; padding: 12px 14px; margin: 0 0 14px;
-  background: rgba(169,120,26,.08); border: 1px solid rgba(124,86,15,.2); border-radius: 12px;
+  background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .3); border-radius: 14px;
 }
-.home-page .deity-modal-meta p { margin: 0; color: #33281a; font-size: .92rem; line-height: 1.5; }
-.home-page .deity-modal-meta strong { color: #7c560f; }
-.home-page .deity-modal-desc { color: #33281a; line-height: 1.7; margin: 0 0 14px; }
+.home-page .deity-modal-meta p { margin: 0; color: #c9c4ea; font-size: .92rem; line-height: 1.5; }
+.home-page .deity-modal-meta strong { color: #22d3ee; }
+.home-page .deity-modal-desc { color: #c9c4ea; line-height: 1.7; margin: 0 0 14px; }
 .home-page .deity-modal-dogma {
-  margin: 0; padding: 12px 16px; text-align: center; color: var(--cine-accent); font-style: italic;
-  border-left: 3px solid var(--cine-accent); background: rgba(47,86,137,.06); border-radius: 0 10px 10px 0;
+  margin: 0; padding: 12px 16px; text-align: center; color: #c4b5fd; font-style: italic;
+  border-left: 3px solid #22d3ee; background: rgba(34, 211, 238, .07); border-radius: 0 12px 12px 0;
 }
 
+/* ── Calendario flottante (side-drawer di style.css) nel vuoto ── */
+.home-page .side-drawer {
+  background: linear-gradient(180deg, #161632, #0d0d1f);
+  border-left: 1px solid rgba(139, 92, 246, .45);
+  color: var(--nx-ink, #edeaff);
+}
+.home-page .side-drawer .chatBotTitle { color: #22d3ee; font-family: "Cinzel", Georgia, serif; }
+
 @media (prefers-reduced-motion: reduce) {
-  .home-page .home-hero-plate,
-  .home-page .home-hero-scroll-ic,
-  .home-page .pantheon-band-media img,
+  .home-page .porta img,
+  .home-page .deity-card-portrait::before,
   .home-page .deity-modal,
   .home-page .deity-modal-overlay { animation: none !important; }
 }
