@@ -1,62 +1,64 @@
 # Design System — Crit Happens (Eldoria)
 
-## Direzione attiva: "GHIACCIO E ACQUA" (2026-08-25)
+## Direzione attiva: "DRAGHI · IL COVO" (2026-08-27)
 
-REDESIGN TOTALE (sostituisce sia "Pergamena Antica" pura sia "Tomo tra le Braci"):
-**l'abisso sotto i ghiacci — TUTTO SCURO come il mockup B**. Il fondo è
-l'oceano profondo di notte (blu abissale, neve, raggi); `<main>` è un
-pannello di **vetro d'abisso** (max 1480px, bordo di ghiaccio, alone ciano);
-**tutti gli hero sono finestre ad arco artico**; card/pannelli = vetro
-gelato scuro; i documenti-pergamena interni (schede, missive, memorie)
-restano isole chiare che galleggiano sull'abisso. Chrome = vetro d'abisso
-con perle. Scelto dal mockup B (`public/mockups/b-ghiaccio.html`).
+REDESIGN TOTALE (sostituisce "Ghiaccio e Acqua", che sostituiva "Pergamena
+Antica" e "Tomo tra le Braci"): **il covo del drago**. Il fondo dell'app è
+l'ossidiana del covo (nero caldo, bagliore d'oro del tesoro dal basso, trama
+di squame, un drago che attraversa il cielo, il tesoro che luccica);
+`<main>` è un **forziere** di ossidiana bordato d'oro; **tutti gli hero sono
+IL COVO BUIO**: cornice del tesoro con angoli d'oro, immagine spenta che la
+**torcia rivela** seguendo dito/cursore (doppia immagine + mask radiale +
+fiamma), titolo d'oro fuso (Cinzel Decorative) con kicker rosso drago;
+le sezioni sono **gemme** con cornici d'oro e angoli (pannoramiche o in
+**mosaico bento**); chrome = ossidiana e oro, nav mobile = **artigli**
+(rune d'oro + artiglio rosso ⌃ sulla voce attiva). I documenti-pergamena
+interni delle pagine restano isole chiare sul buio (carta + oro = coerente).
+Scelto dal mockup C (`public/mockups/c-draghi.html`).
 
-**Feature interattiva**: a ogni tocco/click sulle pagine chiare → onde
-concentriche + cristalli di brina dal punto (FrostOverlay, canvas globale).
+**Feature interattive**: torcia sull'hero di ogni pagina (rivela il covo);
+drago in volo + luccichio del tesoro sul fondo (DrakeOverlay).
 
 **Vincoli inderogabili**
 - Solo grafica/struttura: MAI toccare logica, route, link, href.
 - Pagine di gioco (Arena, TCG, World Boss, Pet) = `body.theme-dark`, INTOCCATE.
 - Mai `background-attachment: fixed` (iOS). `prefers-reduced-motion` rispettato.
-- Test B&N: scuro fuori / chiaro dentro + archi = struttura nuova anche in B&N.
+- Test B&N: covo buio + cornici e angoli d'oro + bento = struttura nuova anche in B&N.
 
-## Palette (abisso scuro — token in glacier.css :root)
-- Abisso (body): `#0d2438 → #081827 → #050e18` + radiali ciano
-- Vetro d'abisso (main): `#0d2438 → #081827 → #071624`, bordo rgba(111,208,238,.35)
-- Superfici: `--bg-0 #0b1f30` `--bg-2 #102940` `--bg-3 #153450`; linee `#27506a`
-- Inchiostro (chiaro): `--ink #eaf6fc` `--muted #8fb6cb` `--faint #5f8299`
-- Acqua (ex "amber"): `--amber #2e86ad / deep #1d6485 / soft #7fc4de`
-- Blu arcano: `--arc #6f97e8 / deep #3b6fd4 / soft #9fc0f2`
-- Crit: `#c33d4e` · Cristallo/glow: `#6fd0ee` · Brina: `#bfe6f5` / `#e8f7fd`
-- Cine vars: accent `#6f97e8`, gold `#6fd0ee`, gold-soft `#bfe6f5`,
-  gold-ink `#7fc4de`, bg `#0d2438/#0a1c2c/#071624` (niente velo crema)
-- Titoli: clip-text `#fff → #bfe6f5 → #2e9ad0`
-
-## Convenzioni sfruttate (selettori ad attributo in glacier.css)
-- `[class*="-hero-plate"]` / `hero2-plate` → placca gelata (vetro smerigliato)
-- `[class*="-hero-title"]` (escluso cine-hero) / `hero2-title` → gradiente blu clip-text
-- `[class*="-rubric-title|-eyebrow|-sub"]` → rubriche glaciali (6+ pagine)
-- `-hero-tagline/-greet/-seal/-wash/-scroll` → ritinte generiche
-- Full-bleed 100vw delle pagine chiare → arco artico largo `calc(100% - clamp(...))`
+## Palette (ossidiana e oro — token in drake.css :root)
+- Covo (body): `#121016 → #0c0a0e → #070609` + bagliore oro dal basso + squame
+- Forziere (main): `#131017 → #0d0a0f → #0a080c`, bordo rgba(227,170,60,.4)
+- Superfici: `--bg-0 #100d13` `--bg-2 #191319` `--bg-3 #221a20`; linee `#453723`
+- Inchiostro (caldo): `--ink #f1ecdf` `--muted #a89f8e` `--faint #7a715f`
+- Oro tesoro: `--amber #e3aa3c / deep #8f6a1e / soft #ffd97a`
+- Squama drago: `--arc #3e7a52 / deep #2e5c3c / soft #6fae87`
+- Rosso drago: `--crit #c03a2a / deep #8a2417` (kicker/eyebrow + artiglio ⌃)
+- Cine vars: accent `#e3aa3c`, accent-2/gold-soft `#ffd97a`, gold-ink `#caa04a`,
+  bg `#121016/#0c0a0e/#070609` (niente velo crema)
+- Titoli: clip-text `#fff2cf → #ffd97a 40% → #e3aa3c 75% → #a5711c`
 
 ## File del layer
-- `src/styles/glacier.css` — tutto il tema + sez. 9 STRUTTURA (gl-finestra,
-  gl-vetrata, gl-sezlabel, gl-cta, gl-seal, perle .nav-rune)
-- `src/components/FrostOverlay.jsx` — neve + raggi + onde/cristalli al tocco
+- `src/styles/drake.css` — tutto il tema + sez. 8 STRUTTURA (covo gl-finestra,
+  gemme gl-vetrata, bento gl-bento, gl-sezlabel con ⟁, gl-cta tesoro, gl-seal)
+- `src/components/DrakeOverlay.jsx` — drago in volo + luccichio del tesoro
   (montato in App.jsx; si spegne da solo su `body.theme-dark` via MutationObserver)
-- `src/components/glacier/GlacierHero.jsx` — hero FINESTRA ARTICA condiviso
-- `src/components/glacier/Vetrata.jsx` — lastra panoramica 16/9 (Link/a/button/article)
-- `src/styles/layout.css` — NAV A PERLE: bottom-bar flottante di vetro d'abisso
-  con perle runiche + bottom-sheet abisso (valide anche sulle pagine scure)
-- Spec del restyle pagina-per-pagina: `docs/glacier-restyle-spec.md`
+- `src/components/glacier/GlacierHero.jsx` — hero IL COVO BUIO condiviso con
+  torcia (il file conserva il nome storico per non toccare 20+ import)
+- `src/components/glacier/Vetrata.jsx` — gemma (Link/a/button/article);
+  angoli d'oro via ::before/::after in drake.css
+- `src/styles/layout.css` — NAV ARTIGLI: bottom-bar flottante di ossidiana
+  bordata d'oro, rune-artiglio, sheet-scrigno (valide anche sulle pagine scure)
+- Spec storica del giro strutturale: `docs/glacier-restyle-spec.md`
+  (le istruzioni restano valide; il vestito ora è drake.css)
 
-## Restyle STRUTTURALE applicato (2026-08-26)
-Tutte le pagine chiare usano GlacierHero (finestra ad arco con immagine,
-titolo inciso, sigillo dinamico, tagline+CTA cristallo sotto); rubriche →
-.gl-sezlabel; Home e Scriba hanno vetrate panoramiche; WorldMap/DmTools/
-GeneraNPC/Concilio = testata glaciale compatta. ItemDetail e ScribaSingolo
-senza hero: lasciati invariati.
+## Restyle STRUTTURALE (2026-08-26/27)
+Tutte le pagine chiare usano l'hero condiviso (covo con torcia, sigillo
+dinamico, tagline+CTA sotto); rubriche → `.gl-sezlabel`; Home = mockup C
+1:1 (covo → "Sfida il Drago" → "Il Tesoro Custodito" bento a 4 gemme →
+lore → pantheon a gemme); WorldMap/DmTools/GeneraNPC/Concilio = testata
+compatta. ItemDetail e ScribaSingolo senza hero: invariati.
 
 ## Motion
-- `frost-caustica` 10s (raggi) · neve canvas (34/54/78 fiocchi per breakpoint,
-  dpr max 1.5, pausa a tab nascosta) · onde tap max 8 anelli + 6 cristalli
+- torcia (mask + fiamma `gl-guizza`) · drago `drake-volo` 17s · luccichio
+  canvas (22/32/44 gemme per breakpoint, dpr max 1.5, pausa a tab nascosta)
+- reduced-motion: niente drago/luccichio/fiamma animata (mask statica ok)

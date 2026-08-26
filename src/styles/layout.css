@@ -65,9 +65,10 @@
   /* la voce "Menu" della bottom-bar sostituisce il burger */
   .burger { display: none !important; }
 
-  /* ── NAV A PERLE (mockup B): barra FLOTTANTE di vetro d'abisso,
-        staccata dai bordi, con perle runiche. Vale su tutte le pagine
-        (anche quelle scure di gioco: il vetro d'abisso è coerente). ── */
+  /* ── NAV "ARTIGLI" (mockup C): barra FLOTTANTE di ossidiana bordata
+        d'oro, rune-artiglio che si accendono d'oro; l'artiglio rosso ⌃
+        marca la voce attiva. Vale su tutte le pagine (anche quelle
+        scure di gioco: ossidiana e oro sono coerenti ovunque). ── */
   .app-bottom-nav {
     display: flex;
     position: fixed;
@@ -78,25 +79,25 @@
     height: var(--bottombar-h);
     align-items: stretch;
     justify-content: space-around;
-    border-radius: 26px;
-    background: linear-gradient(180deg, rgba(10,28,44,.88), rgba(5,14,24,.94));
-    border: 1px solid rgba(111,208,238,.35);
+    border-radius: 22px;
+    background: rgba(14,10,14,.86);
+    border: 1px solid rgba(227,170,60,.45);
     box-shadow:
-      0 -4px 44px -12px rgba(111,208,238,.45),
-      0 20px 40px -18px rgba(0,0,0,.9);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
+      0 -4px 44px -12px rgba(227,170,60,.5),
+      0 20px 40px -18px rgba(0,0,0,.95);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
     padding: 0 6px;
   }
 
   .mnav-tab {
     flex: 1 1 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 4px;
+    gap: 3px;
     background: none; border: none; cursor: pointer;
     padding: 6px 2px 5px; margin: 0;
     text-decoration: none; position: relative;
-    color: #8fb6cb;
+    color: #a89f8e;
     font-family: var(--font-head, "Cinzel"), Georgia, serif;
     font-size: .55rem; letter-spacing: .14em; text-transform: uppercase; line-height: 1;
     transition: color .15s ease;
@@ -104,23 +105,35 @@
   .mnav-lb { white-space: nowrap; }
   .mnav-tab:active { transform: translateY(1px); }
   .mnav-tab.is-active,
-  .mnav-tab.active { color: #e8f7fd; font-weight: 700; }
+  .mnav-tab.active { color: #ffd97a; font-weight: 700; }
 
-  /* la PERLA: sfera di ghiaccio con la runa incisa */
+  /* la RUNA-ARTIGLIO: oro cupo che si accende d'oro vivo */
   .mnav-pearl {
-    width: 26px; height: 26px; border-radius: 50%;
+    width: 26px; height: 26px; border-radius: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: .8rem; line-height: 1; color: #0b1e30;
-    background: radial-gradient(circle at 38% 32%, #ffffff, #bfe6f5 55%, #8fc4da);
-    box-shadow: 0 2px 10px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.9);
-    opacity: .6;
-    transition: opacity .18s ease, box-shadow .18s ease, transform .18s var(--ease-spring, ease);
+    font-size: 1.05rem; line-height: 1; color: #6e5a2e;
+    background: none;
+    box-shadow: none;
+    transition: color .18s ease, text-shadow .18s ease, transform .18s var(--ease-spring, ease);
   }
   .mnav-tab.is-active .mnav-pearl,
   .mnav-tab.active .mnav-pearl {
-    opacity: 1;
+    color: #ffd97a;
     transform: translateY(-1px);
-    box-shadow: 0 0 18px rgba(191,230,245,.95), 0 2px 10px rgba(0,0,0,.5);
+    text-shadow: 0 0 14px rgba(255,217,122,.95);
+  }
+  /* l'artiglio rosso sotto la voce attiva */
+  .mnav-tab.is-active::after,
+  .mnav-tab.active::after {
+    content: "⌃";
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #c03a2a;
+    font-size: .68rem;
+    line-height: 1;
+    text-shadow: 0 0 8px rgba(192,58,42,.9);
   }
 
   /* drawer aperto → nascondi la bottom-bar (il drawer copre lo schermo) */
@@ -140,30 +153,26 @@
 
 /* ============================================================
    SIMBOLI RUNICI delle voci di navigazione (al posto delle icone)
-   Le rune vivono dentro PERLE DI GHIACCIO (mockup B) — lo stile
-   della perla desktop (.nav-rune) è in glacier.css.
+   Le rune sono ARTIGLI D'ORO (mockup C) — lo stile della runa
+   desktop (.nav-rune) è in drake.css.
    ============================================================ */
-/* Mobile: rune nell'intestazione della bottom-sheet = perla */
+/* Mobile: runa nell'intestazione della bottom-sheet = artiglio d'oro */
 .mnav-sheet-rune {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px; height: 24px; border-radius: 50%;
-  margin-right: 0.4em;
-  font-size: .8em; line-height: 1;
-  vertical-align: -0.3em;
-  color: #0b1e30;
-  background: radial-gradient(circle at 38% 32%, #ffffff, #bfe6f5 55%, #8fc4da);
-  box-shadow: 0 2px 8px rgba(0,0,0,.5), inset 0 1px 2px rgba(255,255,255,.9);
+  display: inline-block;
+  margin-right: 0.35em;
+  font-size: 1.1em; line-height: 1;
+  vertical-align: -0.08em;
+  color: #e3aa3c;
+  text-shadow: 0 0 10px rgba(227,170,60,.6);
 }
 
 /* ============================================================
    BOTTOM-SHEET di categoria (Mondo / Biblioteca / Gilda) —
-   lastra flottante di vetro d'abisso sopra la nav a perle
+   scrigno flottante di ossidiana sopra la nav artigli
    ============================================================ */
 .mnav-backdrop {
   position: fixed; inset: 0; z-index: 1061;
-  background: rgba(3,10,18,.55);
+  background: rgba(4,3,6,.6);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   animation: mnav-fade .25s ease both;
 }
@@ -175,11 +184,11 @@
   right: max(8px, var(--safe-r));
   bottom: calc(var(--bottombar-h) + var(--safe-b) + 20px);
   z-index: 1062;
-  background: linear-gradient(180deg, rgba(13,34,52,.96), rgba(7,20,32,.98));
-  border: 1px solid rgba(111,208,238,.4);
+  background: linear-gradient(180deg, rgba(24,18,24,.97), rgba(12,9,13,.98));
+  border: 1px solid rgba(227,170,60,.45);
   border-radius: 22px;
   box-shadow:
-    0 0 44px -10px rgba(111,208,238,.5),
+    0 0 44px -10px rgba(227,170,60,.5),
     0 24px 60px -20px rgba(0,0,0,.95);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
@@ -190,33 +199,33 @@
 
 .mnav-sheet-grip {
   display: block; width: 42px; height: 4px; border-radius: 999px;
-  background: rgba(191,230,245,.4); margin: 2px auto 12px;
+  background: rgba(227,170,60,.45); margin: 2px auto 12px;
 }
 .mnav-sheet-head {
   font-family: var(--font-head, "Cinzel"), Georgia, serif;
   font-size: .66rem; letter-spacing: .34em; text-transform: uppercase;
-  color: #8fb6cb; padding: 0 6px 10px; margin-bottom: 6px;
-  border-bottom: 1px solid rgba(111,208,238,.25);
+  color: #a89f8e; padding: 0 6px 10px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(227,170,60,.28);
 }
 .mnav-sheet-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mnav-sheet-link,
 .mnav-sheet-links > a {
   display: flex; align-items: center; min-height: 52px;
-  padding: 10px 14px; border-radius: 12px;
-  background: linear-gradient(180deg, rgba(20,44,64,.85), rgba(10,26,40,.9));
-  border: 1px solid rgba(111,208,238,.28);
-  border-left: 4px solid #6fd0ee;
-  color: #dceef8; text-decoration: none;
+  padding: 10px 14px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(30,23,29,.9), rgba(15,11,15,.94));
+  border: 1px solid rgba(227,170,60,.3);
+  border-left: 4px solid #8f6a1e;
+  color: #e6ddc8; text-decoration: none;
   font-family: var(--font-ui, Georgia), serif; font-size: .95rem; font-weight: 600;
-  box-shadow: 0 6px 18px -10px rgba(0,0,0,.8);
+  box-shadow: 0 6px 18px -10px rgba(0,0,0,.85);
   transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
 }
 .mnav-sheet-link:active { transform: scale(.98); }
 .mnav-sheet-link.active {
-  border-left-color: #e8f7fd;
-  background: linear-gradient(180deg, rgba(111,208,238,.28), rgba(10,26,40,.9));
-  color: #e8f7fd;
-  box-shadow: 0 0 18px -4px rgba(111,208,238,.6), 0 6px 18px -10px rgba(0,0,0,.8);
+  border-left-color: #ffd97a;
+  background: linear-gradient(180deg, rgba(227,170,60,.22), rgba(15,11,15,.94));
+  color: #ffd97a;
+  box-shadow: 0 0 18px -4px rgba(227,170,60,.6), 0 6px 18px -10px rgba(0,0,0,.85);
 }
 /* l'ultima voce dispari occupa l'intera riga */
 .mnav-sheet-links > *:last-child:nth-child(odd) { grid-column: 1 / -1; }

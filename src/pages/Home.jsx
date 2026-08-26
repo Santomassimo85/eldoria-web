@@ -296,7 +296,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#7fb0e8", "--cine-accent-2": "#9fc0f2" }}>
+    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#e3aa3c", "--cine-accent-2": "#ffd97a" }}>
       <button
         className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -319,43 +319,48 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── HERO = FINESTRA ARTICA (mockup B): arco di ghiaccio con il drago
-            della tempesta, titolo inciso sulla lastra, CTA a cristallo sotto ── */}
+      {/* ── HERO = IL COVO BUIO (mockup C): il drago del fiume nel buio,
+            la torcia rivela il covo, titolo d'oro e CTA tesoro sotto ── */}
       <GlacierHero
         id="home-top"
         ariaLabel="Il Mondo di Exanthia"
-        image="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png"
-        imgPos="center 20%"
-        hint="tocca il vetro: onde e cristalli"
-        eyebrow="Cronache di Exanthia"
+        image="/assets/PhotoStory/GruppoMEAA/drago_fiume.png"
+        imgPos="center 30%"
+        hint="🔥 muovi la torcia: il covo si rivela"
+        eyebrow="Cronache di Exanthia · Il Covo"
         title={<>Il Mondo<br />di Exanthia</>}
-        tagline="Il drago della tempesta scruta oltre il vetro gelato. Sotto il ghiaccio, il mondo respira."
-        actions={<a href="#home-incise" className="gl-cta">❆ Immergiti</a>}
+        tagline="Nel buio del covo, il drago custodisce le storie. Illumina, se osi."
+        actions={<a href="#home-tesoro" className="gl-cta">🜁 Sfida il Drago</a>}
       />
 
-      {/* ── INCISE NEL GHIACCIO: vetrate-indice impilate (mockup B) ── */}
-      <div id="home-incise" className="gl-sezlabel">Incise nel Ghiaccio</div>
-      <div className="gl-vetrate">
+      {/* ── IL TESORO CUSTODITO: mosaico bento di gemme (mockup C) ── */}
+      <div id="home-tesoro" className="gl-sezlabel">Il Tesoro Custodito</div>
+      <div className="gl-bento">
         <Vetrata
+          className="gl-gemma--grande"
           to="/party"
-          img="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg"
+          img="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png"
           title="Registro degli Eroi"
-          sub="Sedici nomi intrappolati nel cristallo del lago."
-          sigillo="Apri il registro"
+          sub="Predatori di leggende, in quattro stirpi."
         />
         <Vetrata
+          className="gl-gemma--alta"
           to="/mercato"
-          img="/assets/PhotoStory/GruppoMEAA/portale.png"
+          img="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png"
           title="Mercato Nero"
-          sub="Sotto la banchisa: merci che scottano, prezzi che gelano."
-          sigillo="Scendi al banco"
+          sub="Aste in oro di drago."
         />
         <Vetrata
           to="/riassunti"
           img="/assets/PhotoStory/GruppoLAC/horn_spider.jpg"
-          title="Codice delle Memorie"
-          sub="Le sessioni riposano in lastre trasparenti."
-          sigillo="Sfoglia le memorie"
+          title="Memorie"
+          sub="Le cronache dei party."
+        />
+        <Vetrata
+          to="/tarocchi"
+          img="/assets/PhotoStory/GruppoMEAA/karathep.png"
+          title="L'Oracolo"
+          sub="1 responso al giorno."
         />
       </div>
 

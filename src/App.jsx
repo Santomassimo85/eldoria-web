@@ -73,7 +73,7 @@ import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
-import FrostOverlay from "./components/FrostOverlay";
+import DrakeOverlay from "./components/DrakeOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 
@@ -707,7 +707,7 @@ export default function App() {
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
-      <FrostOverlay />
+      <DrakeOverlay />
 
       {!hideChrome && <MobileBottomNav openMenu={() => setMenuOpen(true)} />}
 
