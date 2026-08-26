@@ -51,7 +51,10 @@ export default function Geo() {
 
   // ── Link interattivi: PG (characters) + NPC (npcs); le città sono i `locations` ──
   const [lore, setLore] = useState({ characters: [], npcs: [] });
-  const [lorePopup, setLorePopup] = useState(null);
+  // LA PILA DEL VARCO: i link cliccati nel popup si aprono NEL popup, uno
+  // sopra l'altro, e si torna indietro (solo presentazione).
+  const [pila, setPila] = useState([]);       // [{ kind: "loc", loc } | { kind: "lore", detail }]
+  const [pilaDir, setPilaDir] = useState("avanti");
 
   useEffect(() => {
     let alive = true;
@@ -128,10 +131,24 @@ export default function Geo() {
     e.preventDefault();
     const key = a.getAttribute("data-key");
     const detail = key && loreDetails.get(key);
-    if (detail) { setLorePopup(detail); return; }
+    if (detail) {
+      const entry = detail.type === "city"
+        ? (() => { const loc = locations.find((l) => norm(l.name) === key); return loc ? { kind: "loc", loc } : { kind: "lore", detail }; })()
+        : { kind: "lore", detail };
+      // non riaprire la pagina già in cima
+      const top = pila.length ? pila[pila.length - 1] : (openLoc ? { kind: "loc", loc: openLoc } : null);
+      const sameAsTop = top && top.kind === entry.kind && (
+        entry.kind === "loc" ? top.loc?.id === entry.loc.id : top.detail?.name === entry.detail.name
+      );
+      if (!sameAsTop) { setPilaDir("avanti"); setPila((p) => [...p, entry]); }
+      return;
+    }
     const href = a.getAttribute("data-href");
     if (href) navigate(href);
   };
+  const pilaIndietro = () => { setPilaDir("indietro"); setPila((p) => p.slice(0, -1)); };
+  const pilaVaiA = (i) => { setPilaDir("indietro"); setPila((p) => p.slice(0, i)); };
+  const chiudiVarco = () => { setOpenLoc(null); setPila([]); };
 
   // Luogo aperto nella modale-varco (solo presentazione)
   const [openLoc, setOpenLoc] = useState(null);
@@ -142,22 +159,19 @@ export default function Geo() {
     const g = contColor(loc.continent || contName);
     if (r) setWarp({ x: `${Math.round(r.left + r.width / 2)}px`, y: `${Math.round(r.top + r.height / 2)}px`, g });
     else setWarp({ x: "50vw", y: "50vh", g });
+    setPila([]);
     setOpenLoc(loc);
   };
   useEffect(() => {
     if (!openLoc) return;
-    const onKey = (e) => { if (e.key === "Escape") setOpenLoc(null); };
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (pila.length) { setPilaDir("indietro"); setPila((p) => p.slice(0, -1)); }
+      else setOpenLoc(null);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openLoc]);
-
-  // chiusura popup con Esc
-  useEffect(() => {
-    if (!lorePopup) return;
-    const onKey = (e) => { if (e.key === "Escape") setLorePopup(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lorePopup]);
+  }, [openLoc, pila.length]);
 
   // Arrivo da un link interattivo (?focus=<slug>): scorri ed evidenzia il luogo
   useEffect(() => {
@@ -481,87 +495,89 @@ export default function Geo() {
         </div>
       )}
 
-      {/* ══ MODALE-VARCO del luogo: descrizione completa con link interattivi ══ */}
-      {openLoc && (
+      {/* ══ MODALE-VARCO: il luogo, e sopra di lui — a pila — ogni link aperto
+            dal testo (luoghi con i loro link, PG e NPC in scheda breve).
+            "‹ Indietro" e le briciole riportano alle pagine precedenti. ══ */}
+      {openLoc && (() => {
+        const top = pila.length ? pila[pila.length - 1] : { kind: "loc", loc: openLoc };
+        const gTop = top.kind === "loc"
+          ? contColor(top.loc.continent || "Vathriddon")
+          : (top.detail.type === "char" ? "#e879f9" : "#c4b5fd");
+        const nomeDi = (e) => (e.kind === "loc" ? e.loc.name : e.detail.name);
+        const briciole = [{ kind: "loc", loc: openLoc }, ...pila];
+        const pagKey = `${top.kind}-${top.kind === "loc" ? top.loc.id : top.detail.name}-${pila.length}`;
+        return (
         <div
           className="nx-modale-overlay geo-varco"
           style={{ "--ox": warp.x, "--oy": warp.y, "--g": warp.g }}
-          onClick={() => setOpenLoc(null)} role="dialog" aria-modal="true" aria-label={openLoc.name}
+          onClick={chiudiVarco} role="dialog" aria-modal="true" aria-label={nomeDi(top)}
         >
           <span className="geo-varco-onda" aria-hidden="true" />
-          <div className="nx-modale geo-modale" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="nx-modale-close" onClick={() => setOpenLoc(null)} aria-label="Chiudi">✕</button>
-            {openLoc.image && (
-              <img className="nx-modale-img" src={openLoc.image} alt={openLoc.name}
-                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
-            )}
-            <span className="nx-kicker">⌖ {openLoc.continent || "Vathriddon"}</span>
-            <h3 className="nx-titolo">{openLoc.name}</h3>
-            {isMaster && (
-              <button className="geo-edit-btn" onClick={() => { setOpenLoc(null); setEditingLoc(openLoc); }}>
-                ⚙️ Modifica Luogo
-              </button>
-            )}
-            <div
-              className="geo-description nx-prosa"
-              onClick={handleLoreClick}
-              dangerouslySetInnerHTML={{ __html: linkifyLoreHtml(openLoc.description, loreRegistry) }}
-            />
-          </div>
-        </div>
-      )}
+          <div className="nx-modale geo-modale" style={{ "--g": gTop }} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="nx-modale-close" onClick={chiudiVarco} aria-label="Chiudi">✕</button>
 
-      {/* ── Popup interattivo: dettaglio PG / NPC / città senza lasciare la pagina ── */}
-      {lorePopup && (
-        <div
-          className="lore-popup-overlay"
-          onClick={() => setLorePopup(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={lorePopup.name}
-        >
-          <div
-            className={`lore-popup lore-popup--${lorePopup.type}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="lore-popup-close"
-              onClick={() => setLorePopup(null)}
-              aria-label="Chiudi"
-            >✕</button>
-
-            {lorePopup.image && (
-              <img
-                className="lore-popup-img"
-                src={lorePopup.image}
-                alt={lorePopup.name}
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
-              />
+            {pila.length > 0 && (
+              <div role="navigation" className="geo-varco-nav" aria-label="Percorso nel varco">
+                <button type="button" className="geo-varco-back" onClick={pilaIndietro}>‹ Indietro</button>
+                <ol className="geo-varco-briciole">
+                  {briciole.map((e, i) => {
+                    const ultima = i === briciole.length - 1;
+                    return (
+                      <li key={`${nomeDi(e)}-${i}`}>
+                        {ultima
+                          ? <span className="geo-varco-crumb on">{nomeDi(e)}</span>
+                          : <button type="button" className="geo-varco-crumb" onClick={() => pilaVaiA(i)}>{nomeDi(e)}</button>}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
             )}
 
-            <div className="lore-popup-body">
-              <span className="lore-popup-kind">
-                {lorePopup.type === "char" ? "Personaggio"
-                  : lorePopup.type === "npc" ? "Personaggio non giocante"
-                  : "Luogo"}
-              </span>
-              <h3 className="lore-popup-name">{lorePopup.name}</h3>
-              {lorePopup.meta && <p className="lore-popup-meta">{lorePopup.meta}</p>}
-              {lorePopup.desc && (
-                <p className="lore-popup-desc">{stripHtml(lorePopup.desc).trim()}</p>
+            <div key={pagKey} className={`geo-varco-pagina geo-varco-pagina--${pilaDir}`}>
+              {top.kind === "loc" ? (
+                <>
+                  {top.loc.image && (
+                    <img className="nx-modale-img" src={top.loc.image} alt={top.loc.name}
+                         onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  )}
+                  <span className="nx-kicker">⌖ {top.loc.continent || "Vathriddon"}</span>
+                  <h3 className="nx-titolo">{top.loc.name}</h3>
+                  {isMaster && (
+                    <button className="geo-edit-btn" onClick={() => { chiudiVarco(); setEditingLoc(top.loc); }}>
+                      ⚙️ Modifica Luogo
+                    </button>
+                  )}
+                  <div
+                    className="geo-description nx-prosa"
+                    onClick={handleLoreClick}
+                    dangerouslySetInnerHTML={{ __html: linkifyLoreHtml(top.loc.description, loreRegistry) }}
+                  />
+                </>
+              ) : (
+                <>
+                  {top.detail.image && (
+                    <img className="nx-modale-img geo-varco-ritratto" src={top.detail.image} alt={top.detail.name}
+                         onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  )}
+                  <span className="nx-kicker">
+                    {top.detail.type === "char" ? "⚔ Personaggio" : top.detail.type === "npc" ? "☖ Personaggio non giocante" : "⌖ Luogo"}
+                  </span>
+                  <h3 className="nx-titolo">{top.detail.name}</h3>
+                  {top.detail.meta && <p className="nx-meta geo-varco-meta">{top.detail.meta}</p>}
+                  {top.detail.desc
+                    ? <p className="geo-description nx-prosa">{stripHtml(top.detail.desc).trim()}</p>
+                    : <p className="nx-nota">Nessuna descrizione archiviata.</p>}
+                  <button type="button" className="gl-cta geo-varco-go" onClick={() => { chiudiVarco(); navigate(top.detail.href); }}>
+                    Apri la scheda completa →
+                  </button>
+                </>
               )}
-              <button
-                type="button"
-                className="lore-popup-go"
-                onClick={() => { setLorePopup(null); navigate(lorePopup.href); }}
-              >
-                Apri la scheda completa →
-              </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </section>
   );
 }
