@@ -17,24 +17,24 @@
       (body.theme-dark ripristina i suoi valori: qui vince solo il chiaro)
    ══════════════════════════════════════════════════════════════════ */
 :root {
-  --bg-0:#e8f2f8;   /* lastra — carta di ghiaccio */
-  --bg-1:#dcebf3;   /* superfici */
-  --bg-2:#f4fafd;   /* card — velina gelata */
-  --bg-3:#ffffff;   /* elementi elevati */
-  --line:#a9c9da;   /* filetto glaciale */
-  --line-soft:#c6dde9;
-  --overlay:rgba(8, 26, 40, .5);
+  --bg-0:#0b1f30;   /* fondale — vetro d'abisso */
+  --bg-1:#0e2436;   /* superfici */
+  --bg-2:#102940;   /* card — vetro gelato scuro */
+  --bg-3:#153450;   /* elementi elevati */
+  --line:#27506a;   /* filetto glaciale scuro */
+  --line-soft:#1c3d54;
+  --overlay:rgba(3, 12, 22, .6);
 
   --amber:#2e86ad;  --amber-deep:#1d6485;  --amber-soft:#7fc4de; /* "oro" → acqua */
-  --arc:#3b6fd4;    --arc-deep:#274b9e;    --arc-soft:#6f97e8;   /* arcano → blu profondo */
+  --arc:#6f97e8;    --arc-deep:#3b6fd4;    --arc-soft:#9fc0f2;   /* arcano → blu chiaro su abisso */
   --crit:#c33d4e;   --crit-deep:#8f2534;
   --ok:#2f8f75;     --warn:#b07d1a;        --info:#2b7fc0;
 
-  --ink:#16303f;  --muted:#4a687a;  --faint:#7d9aab;
+  --ink:#eaf6fc;  --muted:#8fb6cb;  --faint:#5f8299;
 
-  --shadow-1:0 2px 10px rgba(20, 50, 75, .16);
-  --shadow-2:0 14px 44px -14px rgba(20, 50, 75, .30);
-  --shadow-3:0 28px 70px -24px rgba(20, 50, 75, .38);
+  --shadow-1:0 2px 10px rgba(0, 8, 16, .5);
+  --shadow-2:0 14px 44px -14px rgba(0, 8, 16, .7);
+  --shadow-3:0 28px 70px -24px rgba(0, 8, 16, .8);
   --glow-amber:0 0 0 1px rgba(46, 134, 173, .40), 0 10px 30px -10px rgba(46, 134, 173, .40);
   --glow-arc:0 0 0 1px rgba(59, 111, 212, .40), 0 10px 30px -10px rgba(59, 111, 212, .40);
   --glow-crit:0 0 0 1px rgba(195, 61, 78, .40), 0 10px 30px -10px rgba(195, 61, 78, .40);
@@ -43,7 +43,7 @@
   --grad-arc:linear-gradient(135deg,#9fc0f2,#6f97e8 45%,#274b9e);
   --grad-crit:linear-gradient(135deg,#e08a96,#c33d4e 45%,#8f2534);
 
-  --text:#16303f;
+  --text:#eaf6fc;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -61,25 +61,21 @@ body:not(.theme-dark) {
 body:not(.theme-dark) ::selection { background: rgba(111, 208, 238, .4); color: #0a2234; }
 
 /* ══════════════════════════════════════════════════════════════════
-   2) LA LASTRA — <main> è la banchisa: ghiaccio chiaro che galleggia
-      sull'abisso, bordo brinato e alone gelido
+   2) LA LASTRA — <main> è vetro d'abisso (come il mockup B): pannello
+      scuro che galleggia sull'oceano, bordo di ghiaccio e alone gelido
    ══════════════════════════════════════════════════════════════════ */
 body:not(.theme-dark) main {
   width: min(1480px, calc(100% - clamp(14px, 3vw, 56px)));
   margin: 0 auto clamp(20px, 3vw, 48px);
   overflow-x: clip; /* clip (non hidden): gli sticky continuano a funzionare */
   border-radius: 0 0 26px 26px;
-  background:
-    radial-gradient(circle, rgba(60, 110, 150, .05) 1px, transparent 1.6px),
-    linear-gradient(180deg, #eef6fb, #e6f1f8 60%, #d8e8f2);
-  background-size: 24px 24px, auto;
+  background: linear-gradient(180deg, #0d2438, #081827 55%, #071624);
   box-shadow:
-    0 0 0 1px #8fb9cf,
-    0 0 0 2px rgba(191, 230, 245, .55),
-    0 0 54px -6px rgba(111, 208, 238, .45),
+    0 0 0 1px rgba(111, 208, 238, .35),
+    0 0 54px -6px rgba(111, 208, 238, .35),
     0 34px 90px -22px rgba(0, 10, 20, .85);
 }
-/* Margini interni brinati (il gelo entra dai bordi della lastra) */
+/* Margini interni brinati (il gelo entra dai bordi del vetro) */
 body:not(.theme-dark) main::after {
   content: "";
   position: absolute;
@@ -88,10 +84,9 @@ body:not(.theme-dark) main::after {
   z-index: 4;
   border-radius: inherit;
   background:
-    linear-gradient(90deg,  rgba(214, 236, 246, .8), transparent 24px),
-    linear-gradient(-90deg, rgba(214, 236, 246, .8), transparent 24px),
-    linear-gradient(180deg, rgba(222, 240, 249, .7), transparent 26px),
-    linear-gradient(0deg,   rgba(214, 236, 246, .85), transparent 30px);
+    linear-gradient(90deg,  rgba(111, 208, 238, .07), transparent 22px),
+    linear-gradient(-90deg, rgba(111, 208, 238, .07), transparent 22px),
+    linear-gradient(0deg,   rgba(111, 208, 238, .09), transparent 26px);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -153,15 +148,23 @@ body:not(.theme-dark) .home-page .pantheon-band {
    4) SISTEMA CINE — ritintura glaciale via CSS variables
    ══════════════════════════════════════════════════════════════════ */
 body:not(.theme-dark) .cine-page {
-  --cine-accent:      #3b6fd4;
-  --cine-accent-2:    #6f97e8;
-  --cine-gold:        #2e86ad;
-  --cine-gold-soft:   #cfeefc;
-  --cine-gold-ink:    #1d6485;
-  --cine-bg-top:      #eaf4fa;
-  --cine-bg-mid:      #e0edf5;
-  --cine-bg-bot:      #d4e5ef;
+  --cine-accent:      #6f97e8;
+  --cine-accent-2:    #9fc0f2;
+  --cine-gold:        #6fd0ee;
+  --cine-gold-soft:   #bfe6f5;
+  --cine-gold-ink:    #7fc4de;
+  --cine-bg-top:      #0d2438;
+  --cine-bg-mid:      #0a1c2c;
+  --cine-bg-bot:      #071624;
   color: var(--ink);
+  /* niente velo crema centrale: puntinato di brina + aloni ciano su abisso */
+  background-image:
+    radial-gradient(circle, rgba(111, 208, 238, .05) 1px, transparent 1.6px),
+    radial-gradient(circle at 10% 12%, rgba(111, 208, 238, .09), transparent 35%),
+    radial-gradient(circle at 90% 88%, rgba(59, 111, 212, .1), transparent 42%),
+    linear-gradient(180deg, var(--cine-bg-top) 0%, var(--cine-bg-mid) 38%, var(--cine-bg-top) 72%, var(--cine-bg-bot) 100%);
+  background-size: 24px 24px, auto, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -243,32 +246,31 @@ body:not(.theme-dark) .cine-card,
 body:not(.theme-dark) .cine-panel,
 body:not(.theme-dark) .ch-card,
 body:not(.theme-dark) .ch-panel {
-  border-color: #9cc4d8;
+  background: linear-gradient(180deg, rgba(16, 41, 64, .92), rgba(10, 28, 44, .94));
+  border-color: rgba(111, 208, 238, .28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .7),
-    inset 0 0 22px rgba(160, 205, 228, .18),
-    0 14px 44px -14px rgba(16, 44, 66, .35);
+    inset 0 1px 0 rgba(191, 230, 245, .12),
+    0 14px 44px -14px rgba(0, 8, 16, .7);
 }
 /* il gelo brilla al passaggio */
 body:not(.theme-dark) .cine-card:hover,
 body:not(.theme-dark) .ch-card:hover {
-  border-color: #6fb6d4;
+  border-color: rgba(232, 247, 253, .55);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .8),
-    0 0 22px -4px rgba(111, 208, 238, .5),
-    0 18px 50px -16px rgba(16, 44, 66, .42);
+    inset 0 1px 0 rgba(191, 230, 245, .18),
+    0 0 22px -4px rgba(111, 208, 238, .55),
+    0 18px 50px -16px rgba(0, 8, 16, .8);
 }
-body:not(.theme-dark) .ch-card { background: linear-gradient(180deg, var(--bg-2), #e9f4fa); }
 body:not(.theme-dark) .ch-card::before {
-  background: radial-gradient(420px 220px at 100% 0%, rgba(59, 111, 212, .12), transparent 60%);
+  background: radial-gradient(420px 220px at 100% 0%, rgba(111, 208, 238, .1), transparent 60%);
 }
 
 body:not(.theme-dark) .ch-h1 {
-  background: linear-gradient(180deg, #10344a, #2e86ad);
+  background: linear-gradient(180deg, #ffffff, #bfe6f5 55%, #2e9ad0);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 2px 14px rgba(111, 208, 238, .3));
+  filter: drop-shadow(0 2px 14px rgba(111, 208, 238, .35));
 }
 body:not(.theme-dark) .cine-hero-title {
   text-shadow:
@@ -276,11 +278,11 @@ body:not(.theme-dark) .cine-hero-title {
     0 0 26px rgba(111, 208, 238, .45),
     0 0 60px rgba(46, 154, 208, .25);
 }
-body:not(.theme-dark) .cine-section-title { color: #14425c; }
-body:not(.theme-dark) .ch-h2 { color: #1d6485; }
-body:not(.theme-dark) .ch-lore { color: #2a4a5e; }
+body:not(.theme-dark) .cine-section-title { color: #bfe6f5; }
+body:not(.theme-dark) .ch-h2 { color: #7fc4de; }
+body:not(.theme-dark) .ch-lore { color: #b9d4e2; }
 body:not(.theme-dark) .cine-eyebrow,
-body:not(.theme-dark) .ch-eyebrow { color: #2e86ad; }
+body:not(.theme-dark) .ch-eyebrow { color: #6fd0ee; }
 
 body:not(.theme-dark) .cine-pill {
   border-color: rgba(111, 182, 212, .55);
@@ -307,7 +309,11 @@ body:not(.theme-dark) .ch-btn--amber:hover {
 
 body:not(.theme-dark) .ch-input,
 body:not(.theme-dark) .ch-select,
-body:not(.theme-dark) .ch-textarea { background: #ffffff; color: var(--ink); }
+body:not(.theme-dark) .ch-textarea {
+  background: #0e2436;
+  color: var(--ink);
+  border-color: rgba(111, 208, 238, .3);
+}
 
 body:not(.theme-dark) .ch-divider {
   background: linear-gradient(90deg, transparent, rgba(111, 182, 212, .6), transparent);
@@ -321,42 +327,42 @@ body:not(.theme-dark) .ch-divider {
    ══════════════════════════════════════════════════════════════════ */
 body:not(.theme-dark) [class*="-hero-plate"],
 body:not(.theme-dark) [class*="hero2-plate"] {
-  background: linear-gradient(150deg, rgba(244, 250, 253, .95), rgba(216, 236, 246, .92));
-  border-color: rgba(140, 190, 215, .85);
-  border-left-color: var(--arc);
+  background: linear-gradient(150deg, rgba(16, 41, 64, .93), rgba(8, 24, 39, .95));
+  border-color: rgba(111, 208, 238, .35);
+  border-left-color: #6fd0ee;
   box-shadow:
-    0 22px 50px -18px rgba(6, 30, 48, .6),
-    0 1px 0 rgba(255, 255, 255, .85) inset,
+    0 22px 50px -18px rgba(0, 8, 16, .8),
+    0 1px 0 rgba(191, 230, 245, .15) inset,
     0 0 34px -10px rgba(111, 208, 238, .5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 body:not(.theme-dark) [class*="-hero-title"]:not([class*="cine-hero"]),
 body:not(.theme-dark) [class*="hero2-title"] {
-  background: linear-gradient(180deg, #10344a 0%, #1d6485 58%, #2e86ad 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #bfe6f5 58%, #2e9ad0 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 body:not(.theme-dark) [class*="-hero-tagline"]:not([class*="cine-hero"]),
 body:not(.theme-dark) [class*="hero2-tagline"],
-body:not(.theme-dark) [class*="-hero-greet"] { color: #2a4a5e; }
-body:not(.theme-dark) [class*="-hero-greet"] strong { color: #1d6485; }
+body:not(.theme-dark) [class*="-hero-greet"] { color: #b9d4e2; }
+body:not(.theme-dark) [class*="-hero-greet"] strong { color: #7fc4de; }
 body:not(.theme-dark) [class*="-hero-seal"],
 body:not(.theme-dark) [class*="hero2-seal"] {
-  color: #1d6485;
-  border-color: rgba(46, 134, 173, .5);
-  background: rgba(46, 134, 173, .08);
+  color: #6fd0ee;
+  border-color: rgba(111, 208, 238, .5);
+  background: rgba(7, 19, 31, .5);
 }
 /* rubriche di sezione (convenzione *-rubric-*, 6+ pagine) */
 body:not(.theme-dark) [class*="-rubric-title"] {
-  background: linear-gradient(180deg, #10344a 0%, #1d6485 62%, #2e86ad 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #bfe6f5 62%, #2e9ad0 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-body:not(.theme-dark) [class*="-rubric-eyebrow"] { color: #2e86ad; }
-body:not(.theme-dark) [class*="-rubric-sub"] { color: #4a687a; }
+body:not(.theme-dark) [class*="-rubric-eyebrow"] { color: #6fd0ee; }
+body:not(.theme-dark) [class*="-rubric-sub"] { color: #8fb6cb; }
 /* hint di scroll degli hero */
 body:not(.theme-dark) [class*="-hero-scroll"]:not([class*="cine"]) { color: #cfe8f4; text-shadow: 0 1px 6px rgba(5, 18, 30, .7); }
 body:not(.theme-dark) [class*="-hero-scroll-ic"] {
@@ -364,13 +370,13 @@ body:not(.theme-dark) [class*="-hero-scroll-ic"] {
   background: rgba(10, 28, 44, .55);
   color: #bfe6f5;
 }
-/* Bacheca: l'albo delle missive congela */
+/* Bacheca: l'albo delle missive è vetro d'abisso */
 body:not(.theme-dark) .bacheca-page .bch-board {
-  border-color: #a9c9da;
+  border-color: rgba(111, 208, 238, .3);
   background:
-    linear-gradient(180deg, rgba(250, 253, 255, .75), rgba(224, 240, 249, .6)),
-    repeating-linear-gradient(135deg, rgba(46, 134, 173, .05) 0 14px, transparent 14px 28px);
-  box-shadow: 0 18px 44px -22px rgba(16, 44, 66, .5), 0 1px 0 rgba(255, 255, 255, .7) inset;
+    linear-gradient(180deg, rgba(16, 41, 64, .8), rgba(8, 24, 39, .85)),
+    repeating-linear-gradient(135deg, rgba(111, 208, 238, .05) 0 14px, transparent 14px 28px);
+  box-shadow: 0 18px 44px -22px rgba(0, 8, 16, .8), 0 1px 0 rgba(191, 230, 245, .12) inset;
 }
 /* velature fotografiche degli hero: dal seppia al blu abissale */
 body:not(.theme-dark) [class*="-hero-wash"]:not([class*="cine"]) {
@@ -388,11 +394,11 @@ body:not(.theme-dark) .home-page .home-hero-scroll-ic {
   color: #bfe6f5;
 }
 
-/* Toolbar cine (ricerca+chips): da crema a lastra gelata */
+/* Toolbar cine (ricerca+chips): vetro d'abisso */
 body:not(.theme-dark) .cine-page .cine-toolbar {
-  background: rgba(244, 250, 253, .92);
-  border-color: #a9c9da;
-  box-shadow: 0 10px 30px -14px rgba(16, 44, 66, .4), 0 1px 0 rgba(255, 255, 255, .8) inset;
+  background: rgba(13, 34, 52, .92);
+  border-color: rgba(111, 208, 238, .3);
+  box-shadow: 0 10px 30px -14px rgba(0, 8, 16, .7), 0 1px 0 rgba(191, 230, 245, .12) inset;
 }
 
 /* Scrollbar: abisso e ghiaccio */
@@ -589,11 +595,11 @@ body:not(.theme-dark)::-webkit-scrollbar-thumb {
   border: 1px solid rgba(111, 208, 238, .5);
   background: rgba(7, 19, 31, .5);
 }
-/* variante per fondi chiari (dentro la lastra) */
+/* variante "inchiostro" — ormai identica: tutto vive su vetro d'abisso */
 .gl-seal--ink {
-  color: #1d6485;
-  border-color: rgba(46, 134, 173, .5);
-  background: rgba(46, 134, 173, .08);
+  color: #6fd0ee;
+  border-color: rgba(111, 208, 238, .5);
+  background: rgba(7, 19, 31, .5);
 }
 
 /* ── 9c) ETICHETTA DI SEZIONE con fiocco ❄ ── */
@@ -603,9 +609,10 @@ body:not(.theme-dark)::-webkit-scrollbar-thumb {
   font-size: .64rem;
   letter-spacing: .42em;
   text-transform: uppercase;
-  color: var(--muted, #4a687a);
+  color: var(--muted, #8fb6cb);
   margin: clamp(26px, 4vw, 44px) auto 14px;
   padding: 0 16px;
+  scroll-margin-top: 90px;
 }
 .gl-sezlabel::after {
   content: "❄";
@@ -738,6 +745,57 @@ a.gl-vetrata:hover, button.gl-vetrata:hover {
 .nav-dd-trigger:hover .nav-rune {
   opacity: 1;
   box-shadow: 0 0 14px rgba(191, 230, 245, .9), 0 2px 8px rgba(0, 0, 0, .45);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   10) HOME SU ABISSO — manoscritto e carte-divinità in vetro scuro
+       (la Home ha colori letterali da pergamena: qui la chiave scura)
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .home-page .home-lore-text { color: #c6dcea; }
+body:not(.theme-dark) .home-page .home-lore-text i { color: #7fc4de; }
+body:not(.theme-dark) .home-page .home-lore-note { color: #8fb6cb; }
+body:not(.theme-dark) .home-page .home-lore-age { color: #7fc4de; }
+
+body:not(.theme-dark) .home-page .deity-card {
+  background: linear-gradient(180deg, rgba(16, 41, 64, .92), rgba(10, 28, 44, .94));
+  border-color: rgba(111, 208, 238, .25);
+  border-left-color: #6fd0ee;
+  box-shadow: 0 12px 30px -16px rgba(0, 8, 16, .8);
+}
+body:not(.theme-dark) .home-page .deity-card:hover {
+  border-color: rgba(232, 247, 253, .6);
+  box-shadow: 0 0 24px -6px rgba(111, 208, 238, .55), 0 22px 44px -18px rgba(0, 8, 16, .85);
+}
+body:not(.theme-dark) .home-page .deity-card-portrait { background: #0a1c2c; }
+body:not(.theme-dark) .home-page .deity-card-name { color: #bfe6f5; }
+body:not(.theme-dark) .home-page .deity-card-epithet { color: #7fc4de; }
+body:not(.theme-dark) .home-page .deity-card-dominio { color: #8fb6cb; }
+body:not(.theme-dark) .home-page .deity-card-cue { color: #6fd0ee; }
+
+body:not(.theme-dark) .home-page .deity-modal {
+  background: linear-gradient(180deg, #0e2436, #0a1c2c);
+  border-color: rgba(111, 208, 238, .35);
+  border-top-color: #6fd0ee;
+}
+body:not(.theme-dark) .home-page .deity-modal-close {
+  background: rgba(10, 28, 44, .9);
+  color: #e08a96;
+  border-color: rgba(111, 208, 238, .3);
+}
+body:not(.theme-dark) .home-page .deity-modal-close:hover { background: #153450; }
+body:not(.theme-dark) .home-page .deity-modal-name { color: #bfe6f5; }
+body:not(.theme-dark) .home-page .deity-modal-titolo { color: #7fc4de; }
+body:not(.theme-dark) .home-page .deity-modal-meta {
+  background: rgba(111, 208, 238, .08);
+  border-color: rgba(111, 208, 238, .25);
+}
+body:not(.theme-dark) .home-page .deity-modal-meta p { color: #c6dcea; }
+body:not(.theme-dark) .home-page .deity-modal-meta strong { color: #7fc4de; }
+body:not(.theme-dark) .home-page .deity-modal-desc { color: #c6dcea; }
+body:not(.theme-dark) .home-page .deity-modal-dogma {
+  color: #9fc0f2;
+  border-left-color: #6fd0ee;
+  background: rgba(59, 111, 212, .12);
 }
 
 /* ── Accessibilità: reduced-motion spegne raggi, particelle e riflessi ── */

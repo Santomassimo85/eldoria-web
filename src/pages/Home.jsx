@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Countdown from "../components/Countdown";
 import GlacierHero from "../components/glacier/GlacierHero";
+import Vetrata from "../components/glacier/Vetrata";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import './Home.css';
@@ -295,7 +296,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#2f5689", "--cine-accent-2": "#4e7ab4" }}>
+    <div className="cine-page cine-compact home-page" style={{ "--cine-accent": "#7fb0e8", "--cine-accent-2": "#9fc0f2" }}>
       <button
         className={`floating-sidebar-btn ${isSidebarOpen ? "active" : ""}`}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -328,17 +329,35 @@ export default function Home() {
         hint="tocca il vetro: onde e cristalli"
         eyebrow="Cronache di Exanthia"
         title={<>Il Mondo<br />di Exanthia</>}
-        tagline="Dalla Caduta delle Stelle al risveglio dei nuovi eroi: il principio, gli dèi e le ombre di un mondo spezzato e ricomposto."
-        actions={
-          <>
-            <a href="#home-antichi" className="gl-cta">✦ Antichi Dei</a>
-            <a href="#home-nuovi" className="gl-cta gl-cta--deep">⚜ Nuovi Dei</a>
-            <a href="#home-malvagi" className="gl-cta gl-cta--crit">☠ Dei Malvagi</a>
-          </>
-        }
-      >
-        <a href="#home-lore" className="gl-plunge" aria-label="Scorri al racconto">❆ Immergiti nel racconto</a>
-      </GlacierHero>
+        tagline="Il drago della tempesta scruta oltre il vetro gelato. Sotto il ghiaccio, il mondo respira."
+        actions={<a href="#home-incise" className="gl-cta">❆ Immergiti</a>}
+      />
+
+      {/* ── INCISE NEL GHIACCIO: vetrate-indice impilate (mockup B) ── */}
+      <div id="home-incise" className="gl-sezlabel">Incise nel Ghiaccio</div>
+      <div className="gl-vetrate">
+        <Vetrata
+          to="/party"
+          img="/assets/PhotoStory/GruppoMEAA/garroth_lago.jpg"
+          title="Registro degli Eroi"
+          sub="Sedici nomi intrappolati nel cristallo del lago."
+          sigillo="Apri il registro"
+        />
+        <Vetrata
+          to="/mercato"
+          img="/assets/PhotoStory/GruppoMEAA/portale.png"
+          title="Mercato Nero"
+          sub="Sotto la banchisa: merci che scottano, prezzi che gelano."
+          sigillo="Scendi al banco"
+        />
+        <Vetrata
+          to="/riassunti"
+          img="/assets/PhotoStory/GruppoLAC/horn_spider.jpg"
+          title="Codice delle Memorie"
+          sub="Le sessioni riposano in lastre trasparenti."
+          sigillo="Sfoglia le memorie"
+        />
+      </div>
 
       {/* ── SIDE NAV ── */}
       <nav className="cine-side-nav" aria-label="Navigazione sezioni">

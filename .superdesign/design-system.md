@@ -3,13 +3,13 @@
 ## Direzione attiva: "GHIACCIO E ACQUA" (2026-08-25)
 
 REDESIGN TOTALE (sostituisce sia "Pergamena Antica" pura sia "Tomo tra le Braci"):
-**l'abisso sotto i ghiacci**. Il fondo dell'app è l'oceano profondo di notte
-(blu abissale, neve che cade, raggi di luce dall'alto); ogni pagina è una
-**lastra di ghiaccio** chiara (max 1480px) che galleggia sopra, margini
-brinati; **tutti gli hero sono finestre ad arco artico** (radius clamp
-110-230px in alto, cornice di brina); chrome = vetro d'abisso con perle.
-Scelto dal mockup B (`public/mockups/b-ghiaccio.html`, immagini PhotoStory:
-hero tipo dragonLeaf).
+**l'abisso sotto i ghiacci — TUTTO SCURO come il mockup B**. Il fondo è
+l'oceano profondo di notte (blu abissale, neve, raggi); `<main>` è un
+pannello di **vetro d'abisso** (max 1480px, bordo di ghiaccio, alone ciano);
+**tutti gli hero sono finestre ad arco artico**; card/pannelli = vetro
+gelato scuro; i documenti-pergamena interni (schede, missive, memorie)
+restano isole chiare che galleggiano sull'abisso. Chrome = vetro d'abisso
+con perle. Scelto dal mockup B (`public/mockups/b-ghiaccio.html`).
 
 **Feature interattiva**: a ogni tocco/click sulle pagine chiare → onde
 concentriche + cristalli di brina dal punto (FrostOverlay, canvas globale).
@@ -20,16 +20,17 @@ concentriche + cristalli di brina dal punto (FrostOverlay, canvas globale).
 - Mai `background-attachment: fixed` (iOS). `prefers-reduced-motion` rispettato.
 - Test B&N: scuro fuori / chiaro dentro + archi = struttura nuova anche in B&N.
 
-## Palette (tema chiaro glaciale — token in glacier.css :root)
+## Palette (abisso scuro — token in glacier.css :root)
 - Abisso (body): `#0d2438 → #081827 → #050e18` + radiali ciano
-- Lastra (main): `#eef6fb → #e6f1f8 → #d8e8f2`, bordo `#8fb9cf` + alone ciano
-- Superfici: `--bg-0 #e8f2f8` `--bg-2 #f4fafd` `--bg-3 #fff`; linee `#a9c9da`
-- Inchiostro: `--ink #16303f` `--muted #4a687a` `--faint #7d9aab`
+- Vetro d'abisso (main): `#0d2438 → #081827 → #071624`, bordo rgba(111,208,238,.35)
+- Superfici: `--bg-0 #0b1f30` `--bg-2 #102940` `--bg-3 #153450`; linee `#27506a`
+- Inchiostro (chiaro): `--ink #eaf6fc` `--muted #8fb6cb` `--faint #5f8299`
 - Acqua (ex "amber"): `--amber #2e86ad / deep #1d6485 / soft #7fc4de`
-- Blu arcano: `--arc #3b6fd4 / deep #274b9e / soft #6f97e8`
+- Blu arcano: `--arc #6f97e8 / deep #3b6fd4 / soft #9fc0f2`
 - Crit: `#c33d4e` · Cristallo/glow: `#6fd0ee` · Brina: `#bfe6f5` / `#e8f7fd`
-- Cine vars: accent `#3b6fd4`, gold `#2e86ad`, gold-soft `#cfeefc`,
-  gold-ink `#1d6485`, bg `#eaf4fa/#e0edf5/#d4e5ef`
+- Cine vars: accent `#6f97e8`, gold `#6fd0ee`, gold-soft `#bfe6f5`,
+  gold-ink `#7fc4de`, bg `#0d2438/#0a1c2c/#071624` (niente velo crema)
+- Titoli: clip-text `#fff → #bfe6f5 → #2e9ad0`
 
 ## Convenzioni sfruttate (selettori ad attributo in glacier.css)
 - `[class*="-hero-plate"]` / `hero2-plate` → placca gelata (vetro smerigliato)
