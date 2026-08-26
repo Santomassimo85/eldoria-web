@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCKUP F — Museo d'Avorio</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,500&family=Cinzel:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --avorio:#f2ede3; --carta:#faf7f0; --marmo:#e7e0d2; --inchiostro:#1c1a16;
+    --foglia-oro:#a8852f; --oro-caldo:#c7a34a; --sangue:#7d2a20; --muted:#6d6455;
+  }
+  html, body { height:100%; }
+  body { background:var(--marmo); color:var(--inchiostro); font-family:"Cormorant Garamond",Georgia,serif; overflow:hidden; }
+
+  /* il salone di marmo: venature sottili + luce dall'alto */
+  .world { position:fixed; inset:0; overflow:hidden;
+    background:
+      radial-gradient(70% 45% at 50% -5%, rgba(255,255,255,.85), transparent 55%),
+      repeating-linear-gradient(102deg, transparent 0 90px, rgba(120,105,80,.05) 90px 92px, transparent 92px 200px),
+      repeating-linear-gradient(75deg, transparent 0 140px, rgba(120,105,80,.04) 140px 141px, transparent 141px 260px),
+      linear-gradient(180deg,#efe9dc,#e7e0d2 55%,#ded5c2); }
+  /* pulviscolo dorato nella luce */
+  #pulviscolo { position:absolute; inset:0; }
+
+  .phone { position:relative; width:min(430px,100vw); height:100dvh; max-height:930px;
+    margin:0 auto; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; background:var(--avorio); }
+  .phone::-webkit-scrollbar{ display:none; }
+  @media (min-width:520px){
+    .phone { height:92vh; margin-top:4vh; border-radius:14px; border:1px solid rgba(168,133,47,.5);
+      box-shadow:0 0 0 1px rgba(28,26,22,.15), 0 30px 80px -30px rgba(60,48,25,.5); }
+  }
+
+  /* ══ HERO: LA SALA GRANDE — dipinto con passe-partout e cornice d'oro ══ */
+  .hero { position:relative; padding:52px 22px 6px; text-align:center; }
+  .cornice { position:relative; margin:0 auto; width:100%; max-width:360px;
+    background:var(--carta); padding:14px;
+    border:1px solid rgba(28,26,22,.2);
+    outline:6px solid var(--carta); outline-offset:-7px;
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 22px 44px -18px rgba(60,48,25,.55),
+      0 0 0 1px rgba(168,133,47,.35); }
+  .dipinto { position:relative; aspect-ratio:3/2.9; overflow:hidden; cursor:none;
+    border:2px solid var(--foglia-oro);
+    box-shadow:inset 0 0 0 1px rgba(255,244,214,.8), inset 0 0 0 4px rgba(168,133,47,.5),
+      inset 0 8px 30px rgba(28,26,22,.35); }
+  .dipinto img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    object-position:center 24%; }
+  .dipinto .patina { position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, rgba(250,247,240,.08), transparent 30%, transparent 70%, rgba(28,26,22,.22)); }
+  /* la lente del conservatore */
+  .lente { position:absolute; z-index:5; width:96px; height:96px; border-radius:50%; pointer-events:none;
+    left:0; top:0; transform:translate(-50%,-50%); opacity:0; transition:opacity .2s ease;
+    border:3px solid var(--foglia-oro); box-shadow:0 0 0 1px rgba(255,244,214,.9), 0 10px 26px -8px rgba(28,26,22,.6);
+    overflow:hidden; background:#000; }
+  .lente img { position:absolute; width:200%; height:200%; object-fit:cover; object-position:center 24%; }
+  .dipinto:hover .lente, .dipinto.tocco .lente { opacity:1; }
+  /* targa del museo sotto il dipinto */
+  .targa { margin:12px auto 0; max-width:320px; padding:10px 16px 12px;
+    background:linear-gradient(180deg,#fdfbf6,#f3eddf);
+    border:1px solid rgba(168,133,47,.5); border-radius:3px;
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 6px 16px -8px rgba(60,48,25,.4); position:relative; }
+  .targa::before, .targa::after { content:""; position:absolute; top:6px; width:5px; height:5px;
+    border-radius:50%; background:radial-gradient(circle at 35% 30%, #e8d9ac, var(--foglia-oro));
+    box-shadow:0 1px 2px rgba(28,26,22,.4); }
+  .targa::before { left:8px; } .targa::after { right:8px; }
+  .kicker { display:block; font-family:"Cinzel",serif; font-size:.54rem; letter-spacing:.4em;
+    text-transform:uppercase; color:var(--sangue); margin-bottom:5px; }
+  .targa h1 { font-family:"Cormorant Garamond",serif; font-weight:700;
+    font-size:clamp(1.6rem,7.2vw,2.1rem); line-height:1.04; letter-spacing:.01em; color:var(--inchiostro); }
+  .targa h1 em { font-style:italic; font-weight:500; color:var(--foglia-oro); }
+  .filetto { width:64px; height:1px; margin:8px auto 6px;
+    background:linear-gradient(90deg, transparent, var(--foglia-oro), transparent); position:relative; }
+  .filetto::after { content:"❖"; position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+    font-size:.6rem; color:var(--foglia-oro); background:transparent; }
+  .targa p { color:var(--muted); font-size:.9rem; font-style:italic; line-height:1.45; }
+  .tocca-hint { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:6;
+    font-family:"Cinzel",serif; font-size:.52rem; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--carta); background:rgba(28,26,22,.75); border:1px solid rgba(168,133,47,.6);
+    border-radius:999px; padding:5px 12px; white-space:nowrap; }
+  .hero .sotto { padding:14px 8px 4px; }
+  .cta { display:inline-flex; align-items:center; gap:9px; padding:12px 30px; border-radius:2px;
+    font-family:"Cinzel",serif; font-weight:700; font-size:.72rem; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--carta); background:var(--inchiostro);
+    border:1px solid var(--inchiostro);
+    box-shadow:0 0 0 1px var(--foglia-oro) inset, 0 0 0 3px var(--inchiostro) inset,
+      0 10px 22px -10px rgba(28,26,22,.6); cursor:pointer; }
+
+  /* ══ BENTO: LA COLLEZIONE — stessa divisione, quadri con etichetta ══ */
+  .bento-sez { padding:24px 18px 122px; }
+  .sez-label { text-align:center; font-family:"Cinzel",serif; font-size:.6rem; letter-spacing:.44em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .sez-label::after { content:""; display:block; width:100px; height:1px; margin:8px auto 0;
+    background:linear-gradient(90deg, transparent, rgba(168,133,47,.7), transparent); }
+  .bento { display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:118px; gap:14px; margin-top:14px; }
+  .quadro { position:relative; overflow:hidden; background:var(--carta);
+    border:2px solid var(--foglia-oro);
+    box-shadow:inset 0 0 0 1px rgba(255,244,214,.8), inset 0 0 0 4px rgba(168,133,47,.4),
+      0 12px 26px -12px rgba(60,48,25,.5); }
+  .quadro.grande { grid-column:span 2; grid-row:span 2; }
+  .quadro.alta { grid-row:span 2; }
+  .quadro img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    transition:transform .5s ease; }
+  .quadro:active img { transform:scale(1.05); }
+  .quadro .patina { position:absolute; inset:0;
+    background:linear-gradient(180deg, transparent 40%, rgba(28,26,22,.72)); }
+  /* numero d'inventario in alto */
+  .quadro .inv { position:absolute; top:7px; left:9px; z-index:2;
+    font-family:"Cinzel",serif; font-size:.52rem; letter-spacing:.14em; color:#f6ecd2;
+    background:rgba(28,26,22,.65); border:1px solid rgba(168,133,47,.6);
+    padding:2px 7px; border-radius:2px; }
+  .quadro figcaption { position:absolute; left:0; right:0; bottom:0; padding:9px 12px; }
+  .quadro h3 { font-family:"Cormorant Garamond",serif; font-weight:700; font-size:1.04rem;
+    letter-spacing:.02em; color:#fdfbf6; text-shadow:0 1px 4px rgba(0,0,0,.6); }
+  .quadro.grande h3 { font-size:1.26rem; }
+  .quadro small { display:block; color:#cfc5ae; font-size:.74rem; font-style:italic; margin-top:1px; }
+
+  /* nav plancia d'avorio */
+  .plancia { position:sticky; bottom:14px; margin:14px 0 0; display:flex; justify-content:space-around;
+    align-items:center; padding:9px 8px calc(9px + env(safe-area-inset-bottom));
+    border-radius:6px; background:rgba(250,247,240,.92); border:1px solid rgba(168,133,47,.55);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    box-shadow:0 -6px 30px -14px rgba(60,48,25,.5), 0 14px 30px -16px rgba(60,48,25,.45); z-index:10; }
+  .plancia a { display:flex; flex-direction:column; align-items:center; gap:3px; text-decoration:none;
+    color:var(--muted); font-family:"Cinzel",serif; font-size:.55rem; letter-spacing:.16em;
+    text-transform:uppercase; min-width:50px; padding:4px 0 6px; position:relative; }
+  .plancia a .g { font-size:.92rem; line-height:1; color:#b5aa93; font-style:normal; transition:color .2s ease; }
+  .plancia a.on { color:var(--inchiostro); font-weight:700; }
+  .plancia a.on .g { color:var(--foglia-oro); }
+  .plancia a.on::after { content:""; position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    width:26px; height:2px; background:var(--foglia-oro); box-shadow:0 1px 4px rgba(168,133,47,.6); }
+
+  .badge-opt { position:fixed; top:12px; left:12px; z-index:50; font-family:"Cinzel",serif; font-size:.6rem;
+    letter-spacing:.22em; color:var(--carta); background:var(--inchiostro);
+    padding:7px 14px; border-radius:2px; box-shadow:0 0 0 1px var(--foglia-oro) inset, 0 8px 20px -8px rgba(28,26,22,.6); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none !important; transition:none !important; } #pulviscolo{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="badge-opt">F · MUSEO D'AVORIO</div>
+  <div class="world"><canvas id="pulviscolo"></canvas></div>
+
+  <div class="phone">
+    <section class="hero">
+      <div class="cornice">
+        <div class="dipinto" id="dipinto">
+          <span class="tocca-hint">❖ sfiora la tela: la lente del conservatore</span>
+          <img src="/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" alt="La cessione dell'anello">
+          <div class="patina"></div>
+          <div class="lente" id="lente" aria-hidden="true">
+            <img src="/assets/PhotoStory/GruppoMEAA/La_cessione_dell_anello.png" alt="" id="lenteimg">
+          </div>
+        </div>
+        <div class="targa">
+          <span class="kicker">Cronache di Exanthia · Sala I</span>
+          <h1>Il Mondo <em>di Exanthia</em></h1>
+          <div class="filetto"></div>
+          <p>Olio su tela di realtà. Collezione permanente, dal 1852 d.C.S.</p>
+        </div>
+      </div>
+      <div class="sotto">
+        <button class="cta">Visita la Collezione</button>
+      </div>
+    </section>
+
+    <section class="bento-sez">
+      <div class="sez-label">La Collezione Permanente</div>
+      <div class="bento">
+        <figure class="quadro grande">
+          <img src="/assets/PhotoStory/GruppoLEAF/dragonLeaf.png" alt="">
+          <div class="patina"></div><span class="inv">INV. I</span>
+          <figcaption><h3>Registro degli Eroi</h3><small>Predatori di leggende, in quattro stirpi.</small></figcaption>
+        </figure>
+        <figure class="quadro alta">
+          <img src="/assets/PhotoStory/GruppoMEAA/wolf_alpha.png" alt="">
+          <div class="patina"></div><span class="inv">INV. II</span>
+          <figcaption><h3>Mercato Nero</h3><small>Opere di provenienza incerta.</small></figcaption>
+        </figure>
+        <figure class="quadro">
+          <img src="/assets/PhotoStory/GruppoMEAA/abominio.png" alt="">
+          <div class="patina"></div><span class="inv">INV. III</span>
+          <figcaption><h3>Memorie</h3><small>Le cronache dei party.</small></figcaption>
+        </figure>
+        <figure class="quadro">
+          <img src="/assets/PhotoStory/GruppoMEAA/karathep.png" alt="">
+          <div class="patina"></div><span class="inv">INV. IV</span>
+          <figcaption><h3>L'Oracolo</h3><small>1 responso al giorno.</small></figcaption>
+        </figure>
+      </div>
+
+      <nav class="plancia">
+        <a class="on" href="#"><span class="g">❖</span>Home</a>
+        <a href="#"><span class="g">❖</span>Mondo</a>
+        <a href="#"><span class="g">❖</span>Eroi</a>
+        <a href="#"><span class="g">❖</span>Gilda</a>
+        <a href="#"><span class="g">❖</span>Menu</a>
+      </nav>
+    </section>
+  </div>
+
+<script>
+  /* Pulviscolo dorato che scende nella luce del salone */
+  const pv=document.getElementById('pulviscolo'), px=pv.getContext('2d');
+  let W,H,du=[];
+  const rs=()=>{ W=pv.width=innerWidth; H=pv.height=innerHeight;
+    du=Array.from({length:W<600?30:55},()=>({x:Math.random()*W,y:Math.random()*H,
+      r:.5+Math.random()*1.1, v:.12+Math.random()*.25, ph:Math.random()*7})); };
+  rs(); addEventListener('resize',rs);
+  let t=0;
+  (function tick(){ t++; px.clearRect(0,0,W,H);
+    for(const d of du){ d.y+=d.v; d.x+=Math.sin(t/90+d.ph)*.25;
+      if(d.y>H+4){ d.y=-4; d.x=Math.random()*W; }
+      const a=.12+.3*Math.abs(Math.sin(t/80+d.ph));
+      px.fillStyle=`rgba(199,163,74,${a.toFixed(2)})`;
+      px.beginPath(); px.arc(d.x,d.y,d.r,0,7); px.fill(); }
+    requestAnimationFrame(tick);
+  })();
+
+  /* FEATURE: la lente del conservatore segue dito/cursore e ingrandisce la tela */
+  const dp=document.getElementById('dipinto'), ln=document.getElementById('lente'), li=document.getElementById('lenteimg');
+  const muovi=(cx,cy)=>{
+    const r=dp.getBoundingClientRect();
+    const x=cx-r.left, y=cy-r.top;
+    ln.style.left=x+'px'; ln.style.top=y+'px';
+    /* la copia ingrandita si sposta al contrario per centrare il dettaglio */
+    li.style.left=(-x*2+48)+'px'; li.style.top=(-y*2+48)+'px';
+    li.style.width=(r.width*2)+'px'; li.style.height=(r.height*2)+'px';
+  };
+  dp.addEventListener('pointermove', e=>{ dp.classList.add('tocco'); muovi(e.clientX,e.clientY); }, {passive:true});
+  dp.addEventListener('pointerdown', e=>{ dp.classList.add('tocco'); muovi(e.clientX,e.clientY); }, {passive:true});
+  dp.addEventListener('pointerleave', ()=>dp.classList.remove('tocco'));
+</script>
+</body>
+</html>
