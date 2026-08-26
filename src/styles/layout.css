@@ -1,13 +1,14 @@
 /* ============================================================
-   LAYOUT & NAVIGAZIONE RESPONSIVE — caricato PER ULTIMO.
+   LAYOUT & NAVIGAZIONE — caricato dopo shell.css/light-theme.css.
    Solo presentazione: nessuna logica/handler/route toccati.
 
-   • Desktop (>1300px): top-bar con nav inline (come oggi, restyle).
-   • Mobile/tablet (≤1300px): TOP-BAR (marchio + auth) + BOTTOM-BAR di
-     navigazione (Home · Mondo · Biblioteca · Gilda · Menu). Le categorie aprono
-     una bottom-sheet; "Menu" apre il drawer completo (tutto il resto).
-   • Flottanti (chat/presenza/calendario) riuniti in un dock coerente,
-     SEMPRE sopra la bottom-bar, con safe-area iOS.
+   Prototipo J "IL NESSO": la navigazione è L'ORBE DEL NESSO, a OGNI
+   larghezza. Un'orbe viola pulsante in basso al centro; al tocco
+   (o al passaggio del mouse su desktop) SBOCCIANO i satelliti in un
+   semicerchio: Home · Mondo · Biblioteca · Eroi · Gilda · Battaglia ·
+   Altro. I gruppi aprono una COSTELLAZIONE (pannello flottante con i
+   link), "Altro" apre il drawer completo. Niente top-bar inline.
+   Flottanti (chat/presenza/calendario) agli angoli, sopra la safe-area.
    ============================================================ */
 :root {
   --fab-edge: 16px;
@@ -15,11 +16,13 @@
   --fab-chat: 52px;
   --fab-online: 48px;
   --fab-sidebar: 48px;
-  --bottombar-h: 60px;
+  --bottombar-h: 60px; /* ingombro dell'orbe per i padding di pagina */
+  --bottomnav-h: 60px;
+  --orbe-size: 64px;
+  --orbe-bottom: 22px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
-  /* Base verticale dei FAB: su desktop sull'edge, su mobile SOPRA la bottom-bar */
   --fab-base: calc(var(--fab-edge) + var(--safe-b));
 }
 
@@ -46,6 +49,15 @@
   right: auto !important;
   bottom: calc(var(--fab-base) + var(--fab-online) + var(--fab-gap)) !important;
 }
+/* con i satelliti sbocciati i flottanti si ritirano (l'anello è transitorio) */
+body:has(.nesso-nav.aperto) .chat-toggle-btn,
+body:has(.nesso-nav.aperto) .online-fab,
+body:has(.nesso-nav.aperto) .floating-sidebar-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity .2s ease;
+}
+.chat-toggle-btn, .online-fab, .floating-sidebar-btn { transition: opacity .2s ease; }
 
 /* Header: rispetta il notch in orizzontale */
 .app-nav {
@@ -53,173 +65,237 @@
   padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
 }
 
+/* contenuti/footer non coperti dall'orbe */
+footer { margin-bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b) + 14px); }
+.cine-page { padding-bottom: calc(80px + var(--orbe-size)); }
+/* drawer aperto → l'orbe si ritira (il drawer copre lo schermo) */
+body:has(nav.active) .nesso-nav { opacity: 0; pointer-events: none; }
+
 /* ============================================================
-   BOTTOM-BAR (mobile/tablet ≤1300px)
+   L'ORBE DEL NESSO — nav radiale
    ============================================================ */
-.app-bottom-nav { display: none; }
-
-@media (max-width: 1300px) {
-  /* i FAB salgono SOPRA la barra flottante */
-  :root { --fab-base: calc(var(--bottombar-h) + var(--safe-b) + 26px); }
-
-  /* la voce "Menu" della bottom-bar sostituisce il burger */
-  .burger { display: none !important; }
-
-  /* ── NAV "FUOCHI" (mockup G): barra FLOTTANTE di vetro di notte,
-        ogni voce ha il suo fuoco d'aurora che si accende alla menta.
-        Vale su tutte le pagine (anche quelle scure di gioco: il vetro
-        di notte è coerente ovunque). ── */
-  .app-bottom-nav {
-    display: flex;
-    position: fixed;
-    left: max(10px, var(--safe-l));
-    right: max(10px, var(--safe-r));
-    bottom: calc(10px + var(--safe-b));
-    z-index: 1065; /* sopra il backdrop della sheet → tab sempre tappabili */
-    height: var(--bottombar-h);
-    align-items: stretch;
-    justify-content: space-around;
-    border-radius: 999px;
-    background: linear-gradient(180deg, rgba(16,22,49,.88), rgba(9,12,26,.94));
-    border: 1px solid rgba(154,123,255,.35);
-    box-shadow:
-      0 -4px 44px -12px rgba(92,232,184,.3),
-      0 0 30px -8px rgba(154,123,255,.35),
-      0 20px 40px -18px rgba(0,0,0,.95);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    padding: 0 10px;
-  }
-
-  .mnav-tab {
-    flex: 1 1 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 5px;
-    background: none; border: none; cursor: pointer;
-    padding: 6px 2px 5px; margin: 0;
-    text-decoration: none; position: relative;
-    color: #98a2c8;
-    font-family: var(--font-head, "Cinzel"), Georgia, serif;
-    font-size: .55rem; letter-spacing: .14em; text-transform: uppercase; line-height: 1;
-    transition: color .15s ease;
-  }
-  .mnav-lb { white-space: nowrap; }
-  .mnav-tab:active { transform: translateY(1px); }
-  .mnav-tab.is-active,
-  .mnav-tab.active { color: #eef2ff; font-weight: 700; }
-
-  /* il FUOCO: puntino che si accende alla menta d'aurora */
-  .mnav-pearl {
-    width: 7px; height: 7px; border-radius: 50%;
-    display: block;
-    font-size: 0; line-height: 0; color: transparent;
-    background: #39406b;
-    box-shadow: 0 0 0 2px rgba(154,123,255,.16);
-    overflow: hidden;
-    transition: background .2s ease, box-shadow .2s ease, transform .2s var(--ease-spring, ease);
-  }
-  .mnav-tab.is-active .mnav-pearl,
-  .mnav-tab.active .mnav-pearl {
-    background: #5ce8b8;
-    transform: scale(1.25);
-    box-shadow: 0 0 14px rgba(92,232,184,1), 0 0 0 2px rgba(92,232,184,.3);
-  }
-
-  /* drawer aperto → nascondi la bottom-bar (il drawer copre lo schermo) */
-  body:has(nav.active) .app-bottom-nav { display: none; }
-
-  /* contenuti/footer non coperti dalla barra flottante */
-  footer { margin-bottom: calc(var(--bottombar-h) + var(--safe-b) + 20px); }
-  .cine-page { padding-bottom: calc(96px + var(--bottombar-h)); }
+.nesso-nav {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--orbe-bottom) + var(--safe-b));
+  width: 0;
+  height: 0;
+  z-index: 1065;
+  transition: opacity .2s ease;
+}
+/* zona di hover: tiene vivo l'anello mentre il mouse passa tra i satelliti */
+.nesso-nav.aperto::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 230px;
+  border-radius: 200px 200px 0 0;
 }
 
-/* la rail laterale "indice sezioni" (cine) sale sopra la barra su mobile */
-@media (max-width: 1280px) {
-  .cine-side-nav {
-    bottom: calc(var(--bottombar-h) + 12px + var(--safe-b)) !important;
-  }
+.nesso-orbe {
+  position: absolute;
+  left: calc(var(--orbe-size) / -2);
+  bottom: 0;
+  width: var(--orbe-size);
+  height: var(--orbe-size);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  background: radial-gradient(circle at 38% 32%, #c9b8ff, #8b5cf6 55%, #2a1660);
+  box-shadow: 0 0 0 3px rgba(139,92,246,.25), 0 0 40px rgba(139,92,246,.8), 0 14px 30px -10px #000;
+  animation: orbe-batte 3.4s ease-in-out infinite alternate;
+  transition: transform .2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+.nesso-orbe:hover { transform: scale(1.08); }
+.nesso-nav.aperto .nesso-orbe { animation: none; box-shadow: 0 0 0 6px rgba(34,211,238,.18), 0 0 60px rgba(139,92,246,1), 0 14px 30px -10px #000; }
+@keyframes orbe-batte {
+  from { box-shadow: 0 0 0 3px rgba(139,92,246,.25), 0 0 30px rgba(139,92,246,.6), 0 14px 30px -10px #000; }
+  to   { box-shadow: 0 0 0 6px rgba(139,92,246,.15), 0 0 60px rgba(139,92,246,1), 0 14px 30px -10px #000; }
+}
+.nesso-orbe-glifo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.3rem;
+  text-shadow: 0 0 12px #fff;
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.nesso-nav.aperto .nesso-orbe-glifo { transform: rotate(135deg); }
+
+.nesso-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--orbe-size) + 8px);
+  transform: translateX(-50%);
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: .56rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: #8f8bb8;
+  white-space: nowrap;
+  opacity: .8;
+  pointer-events: none;
+}
+.nesso-nav.aperto .nesso-hint { display: none; }
+
+/* satelliti: partono dall'orbe (scala .3, opachi) e sbocciano sull'arco */
+.nesso-sat {
+  position: absolute;
+  left: -25px;
+  bottom: 8px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1px solid rgba(34,211,238,.5);
+  cursor: pointer;
+  padding: 0;
+  background: radial-gradient(circle at 40% 34%, #1e1e40, #0d0d22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: #8f8bb8;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .42rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  --sx: 0px; --sy: 0px;
+  transform: translate(0, 0) scale(.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, box-shadow .2s ease, color .2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.nesso-sat-g { font-size: 1.05rem; line-height: 1; }
+.nesso-nav.aperto .nesso-sat {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(var(--sx), var(--sy)) scale(1);
+}
+/* posizioni sull'arco (raggio 132px su mobile) — 7 satelliti, da sinistra a destra */
+.nesso-sat.s1 { --sx: -132px; --sy: -6px;    transition-delay: 0s; }
+.nesso-sat.s2 { --sx: -114px; --sy: -70px;   transition-delay: .03s; }
+.nesso-sat.s3 { --sx: -66px;  --sy: -116px;  transition-delay: .06s; }
+.nesso-sat.s4 { --sx: 0px;    --sy: -134px;  transition-delay: .09s; }
+.nesso-sat.s5 { --sx: 66px;   --sy: -116px;  transition-delay: .12s; }
+.nesso-sat.s6 { --sx: 114px;  --sy: -70px;   transition-delay: .15s; }
+.nesso-sat.s7 { --sx: 132px;  --sy: -6px;    transition-delay: .18s; }
+@media (min-width: 700px) {
+  .nesso-sat { width: 54px; height: 54px; left: -27px; font-size: .46rem; }
+  .nesso-sat.s1 { --sx: -156px; --sy: -6px; }
+  .nesso-sat.s2 { --sx: -135px; --sy: -82px; }
+  .nesso-sat.s3 { --sx: -78px;  --sy: -137px; }
+  .nesso-sat.s4 { --sx: 0px;    --sy: -158px; }
+  .nesso-sat.s5 { --sx: 78px;   --sy: -137px; }
+  .nesso-sat.s6 { --sx: 135px;  --sy: -82px; }
+  .nesso-sat.s7 { --sx: 156px;  --sy: -6px; }
+}
+.nesso-sat:hover { color: #edeaff; box-shadow: 0 0 22px rgba(34,211,238,.8); }
+.nesso-sat.on,
+.nesso-sat.active {
+  color: #070713;
+  background: radial-gradient(circle at 40% 34%, #9ff0ff, #22d3ee 60%, #0e7490);
+  box-shadow: 0 0 26px rgba(34,211,238,1);
+  border-color: transparent;
+}
+.nesso-sat.on .nesso-sat-g,
+.nesso-sat.active .nesso-sat-g { text-shadow: none; }
 
 /* ============================================================
-   SIMBOLI RUNICI delle voci di navigazione (al posto delle icone)
-   Le rune sono FUOCHI D'AURORA (mockup G) — lo stile della runa
-   desktop (.nav-rune) è in aurora.css.
-   ============================================================ */
-/* Mobile: runa nell'intestazione della bottom-sheet = luce alla menta */
-.mnav-sheet-rune {
-  display: inline-block;
-  margin-right: 0.35em;
-  font-size: 1.05em; line-height: 1;
-  vertical-align: -0.08em;
-  color: #5ce8b8;
-  text-shadow: 0 0 10px rgba(92,232,184,.6);
-}
-
-/* ============================================================
-   BOTTOM-SHEET di categoria (Mondo / Biblioteca / Gilda) —
-   velo di notte flottante sopra la nav a fuochi
+   COSTELLAZIONE — pannello flottante con i link di un gruppo
    ============================================================ */
 .mnav-backdrop {
   position: fixed; inset: 0; z-index: 1061;
-  background: rgba(4,6,14,.6);
-  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  background: rgba(4,4,12,.62);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   animation: mnav-fade .25s ease both;
 }
 @keyframes mnav-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .mnav-sheet {
   position: fixed;
-  left: max(8px, var(--safe-l));
-  right: max(8px, var(--safe-r));
-  bottom: calc(var(--bottombar-h) + var(--safe-b) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 20px));
+  bottom: calc(var(--orbe-size) + var(--orbe-bottom) + var(--safe-b) + 22px);
   z-index: 1062;
-  background: linear-gradient(180deg, rgba(20,27,60,.96), rgba(10,13,30,.98));
-  border: 1px solid rgba(154,123,255,.4);
+  background: linear-gradient(180deg, rgba(22,22,50,.96), rgba(10,10,26,.98));
+  border: 1px solid rgba(139,92,246,.45);
   border-radius: 24px;
   box-shadow:
-    0 0 44px -10px rgba(154,123,255,.4),
-    0 0 30px -12px rgba(92,232,184,.35),
+    0 0 44px -10px rgba(139,92,246,.5),
+    0 0 30px -12px rgba(34,211,238,.35),
     0 24px 60px -20px rgba(0,0,0,.95);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  padding: 10px 14px 16px;
-  animation: mnav-rise .28s cubic-bezier(.16,1,.3,1) both;
+  padding: 14px 14px 16px;
+  animation: mnav-rise .32s cubic-bezier(.16,1,.3,1) both;
 }
-@keyframes mnav-rise { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-.mnav-sheet-grip {
-  display: block; width: 42px; height: 4px; border-radius: 999px;
-  background: rgba(154,123,255,.45); margin: 2px auto 12px;
+@keyframes mnav-rise { from { transform: translate(-50%, 30px) scale(.96); opacity: 0; } to { transform: translate(-50%, 0) scale(1); opacity: 1; } }
+/* filo che collega la costellazione all'orbe */
+.mnav-sheet::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 22px;
+  background: linear-gradient(180deg, rgba(34,211,238,.7), transparent);
 }
+.mnav-sheet-grip { display: none; }
 .mnav-sheet-head {
-  font-family: var(--font-head, "Cinzel"), Georgia, serif;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Cinzel", Georgia, serif;
   font-size: .66rem; letter-spacing: .34em; text-transform: uppercase;
-  color: #98a2c8; padding: 0 6px 10px; margin-bottom: 6px;
-  border-bottom: 1px solid rgba(154,123,255,.25);
+  color: #22d3ee; text-shadow: 0 0 12px rgba(34,211,238,.6);
+  padding: 0 4px 10px; margin-bottom: 8px;
+}
+.mnav-sheet-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(139,92,246,.6), transparent); }
+.mnav-sheet-rune {
+  display: inline-block;
+  font-size: 1.05em; line-height: 1;
+  color: #c4b5fd;
+  text-shadow: 0 0 10px rgba(139,92,246,.8);
 }
 .mnav-sheet-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mnav-sheet-link,
 .mnav-sheet-links > a {
   display: flex; align-items: center; min-height: 52px;
   padding: 10px 14px; border-radius: 14px;
-  background: linear-gradient(180deg, rgba(26,34,70,.88), rgba(13,18,38,.92));
-  border: 1px solid rgba(154,123,255,.26);
-  border-left: 4px solid #6a4fd0;
-  color: #dbe2f6; text-decoration: none;
-  font-family: var(--font-ui, Georgia), serif; font-size: .95rem; font-weight: 600;
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  border: 1px solid rgba(139,92,246,.3);
+  color: #dcd8ff; text-decoration: none;
+  font-family: "Manrope", system-ui, sans-serif; font-size: .9rem; font-weight: 600;
   box-shadow: 0 6px 18px -10px rgba(0,0,0,.85);
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, border-color .2s ease, color .2s ease;
 }
+.mnav-sheet-link:hover { transform: translateY(-3px); border-color: rgba(34,211,238,.6); box-shadow: 0 0 18px -4px rgba(34,211,238,.6); color: #fff; }
 .mnav-sheet-link:active { transform: scale(.98); }
 .mnav-sheet-link.active {
-  border-left-color: #5ce8b8;
-  background: linear-gradient(180deg, rgba(92,232,184,.16), rgba(13,18,38,.92));
-  color: #9fefd2;
-  box-shadow: 0 0 18px -4px rgba(92,232,184,.5), 0 6px 18px -10px rgba(0,0,0,.85);
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+  border-color: transparent;
+  color: #070713;
+  box-shadow: 0 0 22px -4px rgba(34,211,238,.8);
 }
 /* l'ultima voce dispari occupa l'intera riga */
 .mnav-sheet-links > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
 
+/* legacy: la vecchia bottom-bar non esiste più */
+.app-bottom-nav { display: none !important; }
+
 @media (prefers-reduced-motion: reduce) {
-  .mnav-backdrop, .mnav-sheet { animation: none !important; }
+  .mnav-backdrop, .mnav-sheet, .nesso-orbe { animation: none !important; }
+  .nesso-sat { transition: opacity .2s ease; }
 }

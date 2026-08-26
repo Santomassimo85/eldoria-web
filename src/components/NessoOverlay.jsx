@@ -1,25 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 
-/* Tema G "Aurora del Nord": tre nastri d'aurora che danzano da soli
-   (CSS), stelle che scintillano e neve finissima che cade (canvas).
-   Tutto ambientale: nessuna interazione richiesta. Il layer sta SOTTO
-   il <main> semitrasparente (z-index 0), così l'aurora filtra dal velo.
-   Solo tema chiaro (le pagine di gioco scure hanno i loro FX);
-   pointer-events:none, pausa a tab nascosta, niente particelle con
-   prefers-reduced-motion. Stili in src/styles/aurora.css. */
+/* Prototipo J "Il Nesso": il VUOTO tra i mondi. Tre nebulose che
+   respirano (CSS) e un WARP di stelle che scivolano via dal centro
+   (canvas). Tutto ambientale: nessuna interazione richiesta. Il layer
+   sta SOTTO il <main> (z-index 0). Solo tema chiaro (le pagine di gioco
+   scure hanno i loro FX); pointer-events:none, pausa a tab nascosta,
+   niente stelle con prefers-reduced-motion. Stili in styles/nesso.css. */
 
 const prefersReduced = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export default function AuroraOverlay() {
+export default function NessoOverlay() {
   const canvasRef = useRef(null);
   const [enabled, setEnabled] = useState(
     () => !document.body.classList.contains("theme-dark")
   );
   const [reduced, setReduced] = useState(prefersReduced);
 
-  // Segue body.theme-dark (App lo aggiorna al cambio rotta): nessuna
-  // seconda lista di rotte da tenere allineata.
+  // Segue body.theme-dark (App lo aggiorna al cambio rotta).
   useEffect(() => {
     const update = () =>
       setEnabled(!document.body.classList.contains("theme-dark"));
@@ -48,8 +46,14 @@ export default function AuroraOverlay() {
     let H = 0;
     let dpr = 1;
     let stars = [];
-    let snow = [];
-    let t = 0;
+
+    // una stella nasce vicino al centro e scivola verso il bordo
+    const nasce = (sparse) => ({
+      a: Math.random() * Math.PI * 2,
+      d: sparse ? Math.random() * W * 0.5 : 20 + Math.random() * 60,
+      v: 0.2 + Math.random() * 0.6,
+      r: 0.4 + Math.random(),
+    });
 
     const resize = () => {
       W = window.innerWidth;
@@ -58,40 +62,24 @@ export default function AuroraOverlay() {
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      stars = Array.from({ length: W < 640 ? 55 : W < 1100 ? 85 : 120 }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        r: 0.5 + Math.random() * 1.1,
-        ph: Math.random() * Math.PI * 2,
-        s: 0.5 + Math.random(),
-      }));
-      snow = Array.from({ length: W < 640 ? 30 : W < 1100 ? 46 : 64 }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        r: 0.6 + Math.random() * 1.2,
-        v: 0.25 + Math.random() * 0.5,
-        ph: Math.random() * Math.PI * 2,
-      }));
+      stars = Array.from({ length: W < 600 ? 60 : W < 1100 ? 90 : 120 }, () => nasce(true));
     };
 
     const tick = () => {
       if (!running) return;
-      t++;
       ctx.clearRect(0, 0, W, H);
       for (const s of stars) {
-        const a = 0.12 + 0.65 * Math.abs(Math.sin(t / 80 * s.s + s.ph));
-        ctx.fillStyle = `rgba(238,242,255,${a.toFixed(2)})`;
+        s.d += s.v * (s.d / 140);
+        const x = W / 2 + Math.cos(s.a) * s.d;
+        const y = H / 2 + Math.sin(s.a) * s.d;
+        if (x < -20 || x > W + 20 || y < -20 || y > H + 20) {
+          Object.assign(s, nasce(false));
+          continue;
+        }
+        const al = Math.min(0.8, s.d / 300);
+        ctx.fillStyle = `rgba(237,234,255,${al.toFixed(2)})`;
         ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      for (const f of snow) {
-        f.y += f.v;
-        f.x += Math.sin(t / 90 + f.ph) * 0.3;
-        if (f.y > H + 4) { f.y = -4; f.x = Math.random() * W; }
-        ctx.fillStyle = "rgba(238,242,255,.45)";
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        ctx.arc(x, y, s.r, 0, Math.PI * 2);
         ctx.fill();
       }
       raf = requestAnimationFrame(tick);
@@ -118,11 +106,11 @@ export default function AuroraOverlay() {
 
   if (!enabled) return null;
   return (
-    <div className="aur-fx" aria-hidden="true">
-      <div className="aur-nastro n1" />
-      <div className="aur-nastro n2" />
-      <div className="aur-nastro n3" />
-      {!reduced && <canvas ref={canvasRef} className="aur-canvas" />}
+    <div className="nesso-fx" aria-hidden="true">
+      <div className="nesso-nebula n1" />
+      <div className="nesso-nebula n2" />
+      <div className="nesso-nebula n3" />
+      {!reduced && <canvas ref={canvasRef} className="nesso-warp" />}
     </div>
   );
 }

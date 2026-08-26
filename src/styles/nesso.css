@@ -1,0 +1,797 @@
+/* ============================================================================
+   CRIT HAPPENS — Prototipo J "IL NESSO" · REDESIGN STRUTTURALE
+   Caricato PER ULTIMO (dopo light-theme.css e layout.css) — sostituisce il
+   layer "Aurora del Nord" (aurora.css, eliminato).
+   Concetto: IL VUOTO ARCANO. Il fondo dell'app è lo spazio tra i mondi:
+   stelle in fuga dal centro (warp, NessoOverlay), due nebulose viola/ciano
+   che respirano. Niente velo, niente pannello di pagina: i contenuti
+   galleggiano nel vuoto in una colonna di 1100px. Gli hero sono VARCHI:
+   un portale ESAGONALE con l'immagine che respira, bordo di luce
+   ciano→viola→magenta, titolo Cinzel a gradiente sotto. Le sezioni sono
+   PANNELLI di vetro scuro con bordo viola che si accendono di ciano.
+   Il menu è l'ORBE DEL NESSO (layout.css): un'orbe pulsante in basso al
+   centro da cui sbocciano i satelliti. Tutto il movimento è AMBIENTALE.
+   Scoped su body:not(.theme-dark): le pagine di gioco scure (Arena/TCG/
+   World Boss/Pet) tengono i propri FX. Mai background-attachment:fixed.
+   NB: i componenti condivisi conservano i nomi storici (GlacierHero,
+   Vetrata, classi gl-*) per non toccare 20+ pagine: qui vengono rivestiti.
+   ============================================================================ */
+
+/* ══════════════════════════════════════════════════════════════════
+   0) TOKEN — il vuoto, viola, ciano, magenta
+   ══════════════════════════════════════════════════════════════════ */
+:root {
+  --nx-vuoto:#070713;
+  --nx-pannello:#12122a;
+  --nx-pannello-2:#0d0d1f;
+  --nx-viola:#8b5cf6;
+  --nx-viola-soft:#c4b5fd;
+  --nx-ciano:#22d3ee;
+  --nx-ciano-soft:#9ff0ff;
+  --nx-magenta:#e879f9;
+  --nx-ink:#edeaff;
+  --nx-muted:#8f8bb8;
+  --nx-line:rgba(139,92,246,.28);
+  --nx-line-hi:rgba(34,211,238,.6);
+  --nx-grad:linear-gradient(90deg,var(--nx-ciano),var(--nx-viola) 50%,var(--nx-magenta));
+  --nx-grad-btn:linear-gradient(90deg,var(--nx-ciano),var(--nx-viola));
+  --nx-grad-rosso:linear-gradient(90deg,var(--nx-magenta),#c026d3);
+  --nx-hex:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+
+  --bg-0:#070713;   /* fondale — il vuoto */
+  --bg-1:#0d0d1f;   /* superfici */
+  --bg-2:#12122a;   /* pannelli */
+  --bg-3:#1a1a3a;   /* elementi elevati */
+  --line:#2c2c55;
+  --line-soft:#1e1e3c;
+  --overlay:rgba(4, 4, 12, .7);
+
+  --amber:#22d3ee;  --amber-deep:#0e7490;  --amber-soft:#9ff0ff; /* "oro" → ciano del Nesso */
+  --arc:#8b5cf6;    --arc-deep:#6d3fe0;    --arc-soft:#c4b5fd;   /* arcano → viola */
+  --crit:#e879f9;   --crit-deep:#c026d3;   /* rosso → magenta */
+  --ok:#34d399;     --warn:#f59e0b;        --info:#38bdf8;
+
+  --ink:#edeaff;  --muted:#8f8bb8;  --faint:#5e5b86;
+
+  --shadow-1:0 2px 10px rgba(0, 0, 8, .6);
+  --shadow-2:0 14px 44px -14px rgba(0, 0, 8, .8);
+  --shadow-3:0 28px 70px -24px rgba(0, 0, 8, .9);
+  --glow-amber:0 0 0 1px rgba(34, 211, 238, .45), 0 10px 30px -10px rgba(34, 211, 238, .55);
+  --glow-arc:0 0 0 1px rgba(139, 92, 246, .45), 0 10px 30px -10px rgba(139, 92, 246, .55);
+  --glow-crit:0 0 0 1px rgba(232, 121, 249, .45), 0 10px 30px -10px rgba(232, 121, 249, .55);
+
+  --grad-amber:linear-gradient(135deg,#9ff0ff,#22d3ee 45%,#0e7490);
+  --grad-arc:linear-gradient(135deg,#c4b5fd,#8b5cf6 45%,#6d3fe0);
+  --grad-crit:linear-gradient(135deg,#f5b8ff,#e879f9 45%,#c026d3);
+
+  --text:#edeaff;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   1) IL VUOTO — il fondo dell'app è lo spazio tra i mondi
+      (stelle in fuga e nebulose vivono in NessoOverlay)
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) {
+  --font-ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Cinzel", Georgia, serif;
+  --font-display: "Cinzel", Georgia, serif;
+  --font-title: "Cinzel", Georgia, serif;
+  background:
+    radial-gradient(50% 40% at 80% 15%, rgba(139, 92, 246, .16), transparent 60%),
+    radial-gradient(45% 40% at 15% 85%, rgba(34, 211, 238, .1), transparent 60%),
+    #070713;
+  background-attachment: scroll; /* mai fixed (iOS) */
+  color: var(--nx-ink);
+  font-family: var(--font-ui);
+}
+body:not(.theme-dark) ::selection { background: rgba(34, 211, 238, .45); color: #070713; }
+/* i draghi decorativi di style.css spariscono nel vuoto */
+body:not(.theme-dark)::before, body:not(.theme-dark)::after { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   2) LA COLONNA — <main> è una colonna nuda nel vuoto (niente velo)
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) main {
+  position: relative;
+  z-index: 1;
+  width: min(1100px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 0 0 120px;
+  overflow-x: clip;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* full-bleed residui (cine-scrolly ecc.): riportati alla colonna */
+body:not(.theme-dark) .cine-scrolly,
+body:not(.theme-dark) .cine-hero {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3) SISTEMA CINE — palette del vuoto via CSS variables
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-page {
+  --cine-accent:      #8b5cf6;
+  --cine-accent-2:    #c4b5fd;
+  --cine-gold:        #22d3ee;
+  --cine-gold-soft:   #9ff0ff;
+  --cine-gold-ink:    #22d3ee;
+  --cine-bg-top:      transparent;
+  --cine-bg-mid:      transparent;
+  --cine-bg-bot:      #070713;
+  color: var(--nx-ink);
+  background-image: none;
+  background-color: transparent;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   4) CHROME — header, drawer, footer = vetro del vuoto
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .app-nav {
+  background: linear-gradient(180deg, rgba(7, 7, 19, .86), rgba(7, 7, 19, .7)) !important;
+  border-bottom: 1px solid rgba(139, 92, 246, .28) !important;
+  box-shadow: 0 10px 34px -12px rgba(0, 0, 0, .85), 0 1px 24px -10px rgba(139, 92, 246, .35) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+body:not(.theme-dark) .logo-img { filter: drop-shadow(0 2px 14px rgba(139, 92, 246, .7)); }
+
+/* Il burger è visibile a OGNI larghezza: l'Orbe è la nav, il drawer è "Altro" */
+.burger { display: flex !important; }
+body:not(.theme-dark) .burger .line { background: var(--nx-viola-soft) !important; box-shadow: 0 0 10px rgba(139, 92, 246, .7); }
+
+body:not(.theme-dark) nav a,
+body:not(.theme-dark) .nav-dd-trigger { color: #c9c4f2 !important; }
+body:not(.theme-dark) nav a:hover,
+body:not(.theme-dark) .nav-dd-trigger:hover {
+  background: linear-gradient(90deg, rgba(34, 211, 238, .14), rgba(139, 92, 246, .16)) !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, .4), 0 0 20px -4px rgba(34, 211, 238, .5) !important;
+  text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+  color: #fff !important;
+}
+body:not(.theme-dark) nav a.active {
+  background: var(--nx-grad-btn) !important;
+  color: #070713 !important;
+  box-shadow: 0 0 22px -4px rgba(34, 211, 238, .8);
+}
+body:not(.theme-dark) .nav-dd--open .nav-dd-trigger {
+  background: linear-gradient(90deg, rgba(139, 92, 246, .35), rgba(232, 121, 249, .25)) !important;
+  color: #fff !important;
+}
+body:not(.theme-dark) nav a::before,
+body:not(.theme-dark) .nav-dd-trigger::before { background: var(--nx-grad-btn); box-shadow: 0 0 12px rgba(34, 211, 238, .7); }
+body:not(.theme-dark) .nav-dd-menu { border-left-color: var(--nx-viola) !important; }
+body:not(.theme-dark) .nav-dd-menu a.active {
+  background: rgba(34, 211, 238, .12) !important;
+  color: var(--nx-ciano-soft) !important;
+  border-left: 3px solid var(--nx-ciano) !important;
+}
+
+/* drawer (a ogni larghezza, vedi shell.css): pannello del vuoto */
+body:not(.theme-dark) nav {
+  background: linear-gradient(180deg, #10102a, #070713) !important;
+  border-left: 1px solid rgba(139, 92, 246, .35) !important;
+}
+body:not(.theme-dark) nav.active { background: linear-gradient(180deg, #10102a, #070713) !important; }
+body:not(.theme-dark) .nav-close { color: var(--nx-magenta); }
+body:not(.theme-dark) .nav-backdrop { background: rgba(4, 4, 12, .7); }
+
+body:not(.theme-dark) footer {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(13, 13, 31, .6), #070713);
+  border-top: 1px solid rgba(139, 92, 246, .28);
+  box-shadow: 0 -2px 30px -10px rgba(139, 92, 246, .35);
+  color: var(--nx-muted);
+}
+
+/* rune della nav: scintille del Nesso */
+.nav-rune {
+  display: inline-block;
+  width: auto; height: auto;
+  border-radius: 0;
+  margin-right: .42em;
+  font-size: 1em; line-height: 1;
+  color: #6b66a3;
+  opacity: .95;
+  background: none; box-shadow: none;
+  transform: translateY(.04em);
+}
+.nav-dd--open .nav-rune,
+.nav-dd-trigger:hover .nav-rune {
+  color: var(--nx-ciano);
+  opacity: 1;
+  text-shadow: 0 0 12px rgba(34, 211, 238, .9);
+  box-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   5) LIVELLI FX FISSI (renderizzati da <NessoOverlay />): le nebulose
+      che respirano e il warp di stelle (canvas)
+   ══════════════════════════════════════════════════════════════════ */
+.nesso-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0; /* SOTTO il main */
+  overflow: hidden;
+}
+.nesso-warp { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
+.nesso-nebula {
+  position: absolute;
+  width: 70vmax; height: 70vmax;
+  border-radius: 50%;
+  filter: blur(30px);
+  mix-blend-mode: screen;
+  opacity: .55;
+}
+.nesso-nebula.n1 {
+  top: -30vmax; right: -25vmax;
+  background: radial-gradient(circle, rgba(139, 92, 246, .32), rgba(139, 92, 246, .06) 45%, transparent 68%);
+  animation: nx-nebula1 26s ease-in-out infinite alternate;
+}
+.nesso-nebula.n2 {
+  bottom: -32vmax; left: -28vmax;
+  background: radial-gradient(circle, rgba(34, 211, 238, .22), rgba(34, 211, 238, .05) 45%, transparent 68%);
+  animation: nx-nebula2 32s ease-in-out infinite alternate;
+}
+.nesso-nebula.n3 {
+  top: 30vh; left: 40vw;
+  width: 40vmax; height: 40vmax;
+  opacity: .3;
+  background: radial-gradient(circle, rgba(232, 121, 249, .22), transparent 65%);
+  animation: nx-nebula1 40s ease-in-out infinite alternate-reverse;
+}
+@keyframes nx-nebula1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(-6vw, 5vh) scale(1.15); } }
+@keyframes nx-nebula2 { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(6vw, -5vh) scale(.95); } }
+body.theme-dark .nesso-fx { display: none; } /* cintura di sicurezza */
+
+/* ══════════════════════════════════════════════════════════════════
+   6) NEL VUOTO — pannelli di vetro scuro, titoli a gradiente,
+      CTA con sheen, input scuri
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) .cine-card,
+body:not(.theme-dark) .cine-panel,
+body:not(.theme-dark) .ch-card,
+body:not(.theme-dark) .ch-panel {
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  border-color: var(--nx-line);
+  border-radius: 18px;
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, border-color .25s ease;
+}
+body:not(.theme-dark) .cine-card:hover,
+body:not(.theme-dark) .ch-card:hover {
+  transform: translateY(-7px);
+  border-color: var(--nx-line-hi);
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(34, 211, 238, .55);
+}
+body:not(.theme-dark) .ch-card::before {
+  background: radial-gradient(420px 220px at 100% 0%, rgba(139, 92, 246, .14), transparent 60%);
+}
+
+/* titoli: gradiente ciano→viola→magenta (firma del Nesso) */
+body:not(.theme-dark) .ch-h1,
+body:not(.theme-dark) .cine-hero-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: .01em;
+  background: var(--nx-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 24px rgba(139, 92, 246, .45));
+}
+body:not(.theme-dark) .cine-section-title { color: var(--nx-ink); text-shadow: 0 0 18px rgba(139, 92, 246, .4); }
+body:not(.theme-dark) .ch-h2 { color: var(--nx-ciano-soft); }
+body:not(.theme-dark) .ch-lore { color: #c9c4ea; }
+body:not(.theme-dark) .cine-eyebrow,
+body:not(.theme-dark) .ch-eyebrow {
+  font-family: "Cinzel", Georgia, serif;
+  letter-spacing: .44em;
+  color: var(--nx-ciano);
+  text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+}
+
+body:not(.theme-dark) .cine-pill {
+  border-color: rgba(34, 211, 238, .45);
+  color: var(--nx-ciano);
+  box-shadow: 0 0 10px rgba(34, 211, 238, .2);
+}
+
+/* CTA: gradiente + sheen che scorre */
+body:not(.theme-dark) .cine-btn--gold,
+body:not(.theme-dark) .ch-btn--amber,
+.gl-cta {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: .72rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #070713;
+  background: var(--nx-grad-btn);
+  box-shadow: 0 0 26px -6px rgba(34, 211, 238, .8);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+body:not(.theme-dark) .cine-btn--gold::after,
+body:not(.theme-dark) .ch-btn--amber::after,
+.gl-cta::after {
+  content: "";
+  position: absolute; top: 0; left: -80%;
+  width: 50%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .5), transparent);
+  transform: skewX(-20deg);
+  transition: left .45s ease;
+}
+body:not(.theme-dark) .cine-btn--gold:hover,
+body:not(.theme-dark) .ch-btn--amber:hover,
+.gl-cta:hover { transform: translateY(-2px); box-shadow: 0 0 40px -4px rgba(34, 211, 238, 1); }
+body:not(.theme-dark) .cine-btn--gold:hover::after,
+body:not(.theme-dark) .ch-btn--amber:hover::after,
+.gl-cta:hover::after { left: 120%; }
+.gl-cta--deep,
+.gl-cta--crit { background: var(--nx-grad-rosso); box-shadow: 0 0 26px -6px rgba(232, 121, 249, .8); }
+.gl-cta--deep:hover,
+.gl-cta--crit:hover { box-shadow: 0 0 40px -4px rgba(232, 121, 249, 1); }
+
+body:not(.theme-dark) .ch-input,
+body:not(.theme-dark) .ch-select,
+body:not(.theme-dark) .ch-textarea,
+body:not(.theme-dark) .search-bar,
+body:not(.theme-dark) .filter-select {
+  background: #0e0e22;
+  color: var(--nx-ink);
+  border: 1px solid rgba(139, 92, 246, .4);
+  border-radius: 12px;
+  font-family: var(--font-ui);
+}
+body:not(.theme-dark) .ch-input:focus,
+body:not(.theme-dark) .search-bar:focus,
+body:not(.theme-dark) .filter-select:focus {
+  outline: none;
+  border-color: var(--nx-ciano);
+  box-shadow: 0 0 16px -4px rgba(34, 211, 238, .8);
+}
+
+body:not(.theme-dark) .ch-divider {
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, .6), transparent);
+}
+
+/* Toolbar cine (ricerca+chips): vetro del vuoto */
+body:not(.theme-dark) .cine-page .cine-toolbar {
+  background: rgba(13, 13, 31, .92);
+  border-color: var(--nx-line);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, .8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   7) PLACCHE E RUBRICHE — convenzione `*-hero-plate/-title/-rubric-*`
+      condivisa dalle pagine ristrutturate
+   ══════════════════════════════════════════════════════════════════ */
+body:not(.theme-dark) [class*="-hero-plate"],
+body:not(.theme-dark) [class*="hero2-plate"] {
+  background: linear-gradient(180deg, #161632, #0e0e22);
+  border: 1px solid rgba(139, 92, 246, .35);
+  border-radius: 20px;
+  box-shadow: 0 22px 50px -18px rgba(0, 0, 0, .85), 0 0 34px -10px rgba(139, 92, 246, .4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+body:not(.theme-dark) [class*="-hero-title"]:not([class*="cine-hero"]),
+body:not(.theme-dark) [class*="hero2-title"],
+body:not(.theme-dark) [class*="-rubric-title"] {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: .01em;
+  background: var(--nx-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 22px rgba(139, 92, 246, .45));
+}
+body:not(.theme-dark) [class*="-hero-tagline"]:not([class*="cine-hero"]),
+body:not(.theme-dark) [class*="hero2-tagline"],
+body:not(.theme-dark) [class*="-hero-greet"],
+body:not(.theme-dark) [class*="-rubric-sub"] { color: var(--nx-muted); }
+body:not(.theme-dark) [class*="-hero-greet"] strong { color: var(--nx-ciano-soft); }
+body:not(.theme-dark) [class*="-hero-seal"],
+body:not(.theme-dark) [class*="hero2-seal"] {
+  color: var(--nx-ciano);
+  border-color: rgba(34, 211, 238, .45);
+  background: rgba(7, 7, 19, .6);
+  border-radius: 999px;
+}
+body:not(.theme-dark) [class*="-rubric-eyebrow"] {
+  font-family: "Cinzel", Georgia, serif;
+  letter-spacing: .34em;
+  color: var(--nx-ciano);
+  text-shadow: 0 0 14px rgba(34, 211, 238, .6);
+}
+body:not(.theme-dark) [class*="-rubric-eyebrow"]::before,
+body:not(.theme-dark) [class*="-rubric-eyebrow"]::after { background: rgba(139, 92, 246, .6); }
+/* hint di scroll degli hero */
+body:not(.theme-dark) [class*="-hero-scroll"]:not([class*="cine"]) { color: var(--nx-muted); text-shadow: none; }
+body:not(.theme-dark) [class*="-hero-scroll-ic"] {
+  border-color: rgba(34, 211, 238, .5);
+  background: rgba(7, 7, 19, .6);
+  color: var(--nx-ciano);
+}
+/* velature fotografiche degli hero: il vuoto */
+body:not(.theme-dark) [class*="-hero-wash"]:not([class*="cine"]) {
+  background:
+    linear-gradient(90deg, rgba(7, 7, 19, .6) 0%, rgba(7, 7, 19, .18) 50%, transparent 72%),
+    linear-gradient(180deg, rgba(7, 7, 19, .1) 0%, rgba(7, 7, 19, .3) 55%, #070713 100%);
+}
+/* Bacheca: l'albo delle missive nel vetro del vuoto */
+body:not(.theme-dark) .bacheca-page .bch-board {
+  border-color: var(--nx-line);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(20, 20, 44, .85), rgba(13, 13, 31, .9)),
+    repeating-linear-gradient(135deg, rgba(139, 92, 246, .05) 0 14px, transparent 14px 28px);
+  box-shadow: 0 18px 44px -22px rgba(0, 0, 0, .85);
+}
+
+/* Scrollbar: il vuoto e il viola */
+body:not(.theme-dark)::-webkit-scrollbar { width: 12px; background: #070713; }
+body:not(.theme-dark)::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3c3c78, #22224a);
+  border-radius: 6px;
+  border: 2px solid #070713;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   8) STRUTTURA — i mattoni del mockup J (j-nesso.html), vestiti sui
+      componenti condivisi GlacierHero.jsx e Vetrata.jsx (classi gl-*).
+      8a) HERO = VARCO: portale esagonale + testata a gradiente
+      8b) PANNELLI (ex vetrate): lastre di vetro scuro con immagine
+      8c) Etichette di sezione, CTA, sigilli
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 8a) HERO = VARCO ── */
+.gl-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: clamp(18px, 3vw, 34px) 0 10px;
+}
+/* il portale esagonale: bordo di luce + immagine che respira */
+.gl-finestra {
+  position: relative;
+  width: min(300px, 64vw);
+  max-width: none;
+  aspect-ratio: 1 / 1.12;
+  height: auto;
+  margin: 0 auto;
+  clip-path: var(--nx-hex);
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 40% 35%, rgba(232, 121, 249, .45), rgba(139, 92, 246, .55) 45%, #1d1040 100%);
+  box-shadow: none;
+  animation: nx-galleggia 7s ease-in-out infinite alternate;
+}
+@keyframes nx-galleggia { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+/* bordo di luce (maschera ad anello) */
+.gl-finestra::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  clip-path: var(--nx-hex);
+  background: linear-gradient(160deg, rgba(34, 211, 238, .8), rgba(139, 92, 246, .8) 55%, rgba(232, 121, 249, .75));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 3px;
+  pointer-events: none;
+}
+.gl-finestra-img {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  object-position: center 30%;
+  filter: saturate(1.05) brightness(.9);
+  animation: gl-respira 18s ease-in-out infinite alternate;
+}
+@keyframes gl-respira {
+  from { transform: scale(1) translateY(0); }
+  to   { transform: scale(1.09) translateY(-2%); }
+}
+.gl-finestra-velo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, transparent 45%, rgba(7, 7, 19, .85));
+}
+/* residui dei temi precedenti, neutralizzati (markup condiviso) */
+.gl-finestra-brina, .gl-covo-chiaro, .gl-torcia-luce, .gl-fiamma { display: none; }
+
+.gl-hint {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .5rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--nx-ciano-soft);
+  background: rgba(7, 7, 19, .65);
+  border: 1px solid rgba(34, 211, 238, .45);
+  border-radius: 999px;
+  padding: 5px 11px;
+  white-space: nowrap;
+  animation: gl-lume 3s ease-in-out infinite alternate;
+}
+@keyframes gl-lume { from { opacity: .55; } to { opacity: 1; } }
+
+/* la testata sotto il varco */
+.gl-lastra-titolo {
+  position: static;
+  padding: 22px 12px 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gl-eyebrow {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem;
+  letter-spacing: .44em;
+  text-transform: uppercase;
+  color: var(--nx-ciano);
+  margin-bottom: 10px;
+  text-shadow: 0 0 14px rgba(34, 211, 238, .7);
+}
+.gl-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.9rem, 6vw, 3rem);
+  line-height: 1.05;
+  margin: 0;
+  letter-spacing: .01em;
+  background: var(--nx-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 24px rgba(139, 92, 246, .45));
+}
+.gl-title::after { display: none; }
+.gl-sotto { padding: 14px 12px 8px; }
+.gl-tagline {
+  color: var(--nx-muted);
+  font-size: 1rem;
+  max-width: 52ch;
+  margin: 0 auto 16px;
+  line-height: 1.6;
+  font-style: normal;
+}
+.gl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.gl-plunge {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .6rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--nx-ciano);
+  text-decoration: none;
+  transition: color .15s ease, text-shadow .15s ease;
+}
+.gl-plunge:hover { color: var(--nx-ciano-soft); text-shadow: 0 0 12px rgba(34, 211, 238, .8); }
+
+/* desktop: varco a sinistra, testata a destra (due colonne) */
+@media (min-width: 900px) {
+  .gl-hero {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(28px, 5vw, 64px);
+    text-align: left;
+    padding: 34px 0 14px;
+  }
+  .gl-hero > .gl-finestra { flex: 0 0 auto; width: min(340px, 34vw); margin: 0; }
+  .gl-hero-body { flex: 1 1 auto; max-width: 620px; }
+  .gl-hero-body .gl-lastra-titolo { padding: 0; align-items: flex-start; text-align: left; }
+  .gl-hero-body .gl-sotto { padding: 14px 0 0; }
+  .gl-hero-body .gl-tagline { margin: 0 0 16px; }
+  .gl-hero-body .gl-actions { justify-content: flex-start; }
+}
+
+/* ── variante APERTURA (senza immagine) ── */
+.gl-hero--cielo .gl-finestra { display: none; }
+.gl-hero--cielo .gl-lastra-titolo { padding-top: 28px; }
+.gl-hero--cielo .gl-title { font-size: clamp(2.2rem, 9vw, 3.4rem); }
+
+/* ── Sigillo (pill ciano) ── */
+.gl-seal {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: .62rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--nx-ciano);
+  border: 1px solid rgba(34, 211, 238, .45);
+  background: rgba(7, 7, 19, .5);
+}
+.gl-seal--ink { color: var(--nx-ciano); border-color: rgba(34, 211, 238, .45); background: rgba(7, 7, 19, .5); }
+
+/* ── 8c) ETICHETTA DI SEZIONE: titolo ciano + filo viola che sfuma ── */
+.gl-sezlabel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: .72rem;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+  color: var(--nx-ciano);
+  text-shadow: 0 0 12px rgba(34, 211, 238, .5);
+  margin: clamp(26px, 4vw, 40px) 0 14px;
+  padding: 0;
+  scroll-margin-top: 90px;
+}
+.gl-sezlabel::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  width: auto;
+  margin: 0;
+  background: linear-gradient(90deg, rgba(139, 92, 246, .6), transparent);
+}
+
+/* ── 8b) PANNELLI (ex vetrate): lastre di vetro scuro con immagine ── */
+.gl-vetrate {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 0;
+  max-width: none;
+  margin: 0 auto;
+}
+@media (min-width: 700px) { .gl-vetrate { grid-template-columns: repeat(2, 1fr); gap: 20px; } }
+.gl-vetrata {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  aspect-ratio: auto;
+  height: clamp(220px, 34vh, 340px);
+  border: 1px solid var(--nx-line);
+  background: linear-gradient(180deg, #14142c, #0d0d1f);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 14px 44px -14px rgba(0, 0, 0, .8);
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, border-color .25s ease;
+}
+.gl-vetrata:hover {
+  transform: translateY(-7px);
+  border-color: var(--nx-line-hi);
+  box-shadow: 0 20px 40px -18px #000, 0 0 30px -8px rgba(34, 211, 238, .55);
+}
+article.gl-vetrata { cursor: default; }
+.gl-vetrata-img {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  filter: saturate(1.05) brightness(.85);
+  animation: gl-respira 20s ease-in-out infinite alternate;
+  transition: filter .3s ease;
+}
+.gl-vetrata:hover .gl-vetrata-img { filter: saturate(1.2) brightness(1); }
+.gl-vetrata:nth-child(even) .gl-vetrata-img { animation-direction: alternate-reverse; }
+.gl-vetrata-velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgba(7, 7, 19, .94));
+}
+.gl-vetrata-riq {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 0 clamp(18px, 3vw, 28px) 22px;
+}
+.gl-vetrata-title {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: clamp(1.1rem, 3.4vw, 1.5rem);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin: 0;
+  font-weight: 700;
+  color: var(--nx-ink);
+  text-shadow: 0 0 14px rgba(139, 92, 246, .9), 0 2px 8px #000;
+}
+.gl-vetrata-title::after { display: none; }
+.gl-vetrata-sub {
+  color: var(--nx-muted);
+  font-size: .9rem;
+  font-style: normal;
+  margin: 6px 0 0;
+  line-height: 1.45;
+  max-width: 40ch;
+}
+/* dentro i pannelli il sigillo diventa una pillola-CTA */
+.gl-vetrata-riq .gl-seal {
+  margin: 12px 0 0;
+  padding: 8px 16px;
+  color: #070713;
+  border: none;
+  background: var(--nx-grad-btn);
+  box-shadow: 0 0 24px -6px rgba(34, 211, 238, .9);
+  font-family: "Cinzel", Georgia, serif;
+  font-weight: 700;
+}
+/* fascia usata come intestazione di sezione dentro le pagine */
+.gl-vetrata--band {
+  width: auto;
+  margin: 0 0 18px;
+  height: clamp(200px, 30vh, 300px);
+  cursor: default;
+}
+.gl-vetrata--band:hover { transform: none; }
+/* il bento (se ancora presente) diventa griglia di pannelli */
+.gl-bento {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 0;
+  max-width: none;
+  margin: 0 auto;
+}
+@media (min-width: 700px) { .gl-bento { grid-template-columns: repeat(2, 1fr); gap: 20px; } }
+
+/* ── Accessibilità: reduced-motion ferma nebulose, respiri e galleggiamenti ── */
+@media (prefers-reduced-motion: reduce) {
+  .nesso-nebula { animation: none; }
+  .nesso-warp { display: none; }
+  .gl-finestra, .gl-finestra-img, .gl-vetrata-img, .gl-hint { animation: none; }
+}

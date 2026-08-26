@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Routes, Route, NavLink, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, useLocation, useNavigate } from "react-router-dom";
 import "./style.css";
 
 // AUTH & CONTEXT
@@ -73,7 +73,7 @@ import Updates from "./pages/Updates";
 import SendNotification from "./components/SendNotification";
 import NotificationOptIn from "./components/NotificationOptIn";
 import FirestoreErrorGuard from "./components/FirestoreErrorGuard";
-import AuroraOverlay from "./components/AuroraOverlay";
+import NessoOverlay from "./components/NessoOverlay";
 import PlayerSpritesAdmin from "./pages/PlayerSpritesAdmin";
 import DiceRollHost from "./components/DiceRoll";
 
@@ -272,11 +272,11 @@ const MasterPricingLink = ({ closeMenu }) => {
   );
 };
 
-// ── NAV MOBILE — bottom-bar (≤1300px) + bottom-sheet per categoria ──────────────
-// Sistema di navigazione responsive: le rotte sono ESATTAMENTE quelle del menu
-// esistente (nessun link/route nuovo). "Menu" apre il drawer completo (tutto il
-// resto: Agent, Update, Battaglia, DM Tools, DM Admin).
-const MOBILE_GROUPS = {
+// ── L'ORBE DEL NESSO — nav radiale (prototipo J), a OGNI larghezza ────────────
+// Le rotte sono ESATTAMENTE quelle del menu esistente (nessun link/route nuovo).
+// I gruppi aprono una "costellazione" (pannello con i link); "Altro" apre il
+// drawer completo (Agent, Update, Guide, DM Tools, DM Admin…).
+const NESSO_GROUPS = {
   mondo: { rune: "ᛗ", label: "Mondo", links: [
     { to: "/world-map", label: "Mappa" },
     { to: "/Geo", label: "Archivio Geomantico" },
@@ -285,6 +285,14 @@ const MOBILE_GROUPS = {
     { to: "/scriba", label: "Lo Scriba" },
     { to: "/riassunti", label: "Riassunti" },
     { to: "/diario", label: "Diario di Bordo" },
+    { to: "/almanacco", label: "Almanacco del Mondo" },
+    { to: "/crafting", label: "Crafting" },
+    { to: "/ratti-lore", label: "Gilda dei Ratti" },
+  ]},
+  eroi: { rune: "ᛖ", label: "Eroi", links: [
+    { to: "/party", label: "Party" },
+    { to: "/scheda-pg", label: "Scheda PG" },
+    { to: "/npc", label: "NPC" },
   ]},
   gilda: { rune: "ᚷ", label: "Gilda", links: [
     { to: "/mercato", label: "Mercato Nero" },
@@ -293,32 +301,56 @@ const MOBILE_GROUPS = {
     { to: "/tarocchi", label: "L'Oracolo" },
     { to: "/feedback", label: "Feedback" },
   ]},
+  battaglia: { rune: "ᚦ", label: "Battaglia", links: [
+    { to: "/arena", label: "Arena" },
+    { to: "/arena-bottega", label: "Bottega Arena" },
+    { to: "/world-boss-fight", label: "World Fight" },
+  ]},
 };
+const NESSO_GROUP_OF = (p) =>
+  p === "/" ? "home"
+  : ["/world-map", "/Geo"].includes(p) ? "mondo"
+  : ["/scriba", "/riassunti", "/diario", "/almanacco", "/crafting", "/ratti-lore", "/riassunto", "/giornale"].some((x) => p.startsWith(x)) ? "biblioteca"
+  : ["/party", "/scheda-pg", "/my-pg", "/npc"].some((x) => p.startsWith(x)) ? "eroi"
+  : ["/mercato", "/bacheca", "/cinema", "/tarocchi", "/feedback", "/quest"].some((x) => p.startsWith(x)) ? "gilda"
+  : ["/arena", "/arena-bottega", "/world-boss", "/tcg", "/boss-tactics"].some((x) => p.startsWith(x)) ? "battaglia"
+  : null;
 
-function MobileBottomNav({ openMenu }) {
+function NessoNav({ openMenu }) {
   const location = useLocation();
-  const [sheet, setSheet] = useState(null);
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);   // anello di satelliti sbocciato
+  const [sheet, setSheet] = useState(null);  // costellazione aperta
   const p = location.pathname;
 
-  // chiudi la sheet a ogni cambio rotta
-  useEffect(() => { setSheet(null); }, [p]);
+  // chiudi tutto a ogni cambio rotta
+  useEffect(() => { setSheet(null); setOpen(false); }, [p]);
 
-  const group =
-    p === "/" ? "home"
-    : ["/world-map", "/Geo"].includes(p) ? "mondo"
-    : ["/scriba", "/riassunti", "/diario"].includes(p) ? "biblioteca"
-    : ["/mercato", "/bacheca", "/cinema", "/tarocchi", "/feedback"].some((x) => p.startsWith(x)) ? "gilda"
-    : null;
+  const group = NESSO_GROUP_OF(p);
+  const g = sheet ? NESSO_GROUPS[sheet] : null;
+  const canHover = typeof window !== "undefined" && window.matchMedia?.("(hover: hover)").matches;
 
-  const g = sheet ? MOBILE_GROUPS[sheet] : null;
-  const toggle = (key) => setSheet((s) => (s === key ? null : key));
+  const goHome = () => { setOpen(false); setSheet(null); navigate("/"); };
+  const openGroup = (key) => { setOpen(false); setSheet((s) => (s === key ? null : key)); };
+  const openDrawer = () => { setOpen(false); setSheet(null); openMenu(); };
+
+  // TCG entra nella costellazione Battaglia solo se il link esiste nel drawer
+  // (TcgNavLink decide da solo; qui replichiamo la rotta pubblica /tcg).
+  const sats = [
+    { key: "home", g: "✦", label: "Nesso", onClick: goHome },
+    { key: "mondo", g: "ᛗ", label: "Mondo", onClick: () => openGroup("mondo") },
+    { key: "biblioteca", g: "ᛒ", label: "Libri", onClick: () => openGroup("biblioteca") },
+    { key: "eroi", g: "ᛖ", label: "Eroi", onClick: () => openGroup("eroi") },
+    { key: "gilda", g: "ᚷ", label: "Gilda", onClick: () => openGroup("gilda") },
+    { key: "battaglia", g: "ᚦ", label: "Arena", onClick: () => openGroup("battaglia") },
+    { key: "altro", g: "☰", label: "Altro", onClick: openDrawer },
+  ];
 
   return (
     <>
       {g && <div className="mnav-backdrop" onClick={() => setSheet(null)} aria-hidden="true" />}
       {g && (
         <div className="mnav-sheet" role="dialog" aria-label={g.label}>
-          <span className="mnav-sheet-grip" aria-hidden="true" />
           <div className="mnav-sheet-head"><span className="mnav-sheet-rune" aria-hidden="true">{g.rune}</span> {g.label}</div>
           <div className="mnav-sheet-links">
             {g.links.map((l) => (
@@ -326,27 +358,41 @@ function MobileBottomNav({ openMenu }) {
                 {l.label}
               </NavLink>
             ))}
+            {sheet === "battaglia" && <TcgNavLink />}
             {sheet === "gilda" && <MasterPricingLink closeMenu={() => setSheet(null)} />}
           </div>
         </div>
       )}
-      {/* Nav a perle (mockup B "Ghiaccio e Acqua"): barra flottante di
-          vetro d'abisso, ogni voce è una perla di ghiaccio con la runa. */}
-      <div className="app-bottom-nav" role="navigation" aria-label="Navigazione rapida">
-        <NavLink to="/" end className="mnav-tab" onClick={() => setSheet(null)}>
-          <span className="mnav-pearl" aria-hidden="true">ᚺ</span><span className="mnav-lb">Home</span>
-        </NavLink>
-        <button type="button" className={`mnav-tab${group === "mondo" || sheet === "mondo" ? " is-active" : ""}`} onClick={() => toggle("mondo")}>
-          <span className="mnav-pearl" aria-hidden="true">ᛗ</span><span className="mnav-lb">Mondo</span>
-        </button>
-        <button type="button" className={`mnav-tab${group === "biblioteca" || sheet === "biblioteca" ? " is-active" : ""}`} onClick={() => toggle("biblioteca")}>
-          <span className="mnav-pearl" aria-hidden="true">ᛒ</span><span className="mnav-lb">Biblioteca</span>
-        </button>
-        <button type="button" className={`mnav-tab${group === "gilda" || sheet === "gilda" ? " is-active" : ""}`} onClick={() => toggle("gilda")}>
-          <span className="mnav-pearl" aria-hidden="true">ᚷ</span><span className="mnav-lb">Gilda</span>
-        </button>
-        <button type="button" className="mnav-tab" onClick={() => { setSheet(null); openMenu(); }}>
-          <span className="mnav-pearl" aria-hidden="true">☰</span><span className="mnav-lb">Menu</span>
+      {/* L'ORBE: <div role="navigation">, NON <nav> (shell.css trasforma ogni
+          <nav> nel drawer di sito). Su desktop sboccia al passaggio del mouse. */}
+      <div
+        className={`nesso-nav${open ? " aperto" : ""}`}
+        role="navigation"
+        aria-label="L'Orbe del Nesso"
+        onMouseEnter={canHover ? () => setOpen(true) : undefined}
+        onMouseLeave={canHover ? () => setOpen(false) : undefined}
+      >
+        {!sheet && <span className="nesso-hint" aria-hidden="true">tocca l'orbe</span>}
+        {sats.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            className={`nesso-sat s${i + 1}${group === s.key || sheet === s.key ? " on" : ""}`}
+            onClick={s.onClick}
+            tabIndex={open ? 0 : -1}
+            aria-label={s.label}
+          >
+            <span className="nesso-sat-g" aria-hidden="true">{s.g}</span>{s.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="nesso-orbe"
+          onClick={() => { setSheet(null); setOpen((v) => (canHover ? true : !v)); }}
+          aria-label={open ? "Chiudi il Nesso" : "Apri il Nesso"}
+          aria-expanded={open}
+        >
+          <span className="nesso-orbe-glifo" aria-hidden="true">✦</span>
         </button>
       </div>
     </>
@@ -707,9 +753,9 @@ export default function App() {
       <DiceRollHost />
       {!hideChrome && <OnlinePresence />}
       <FirestoreErrorGuard />
-      <AuroraOverlay />
+      <NessoOverlay />
 
-      {!hideChrome && <MobileBottomNav openMenu={() => setMenuOpen(true)} />}
+      {!hideChrome && <NessoNav openMenu={() => setMenuOpen(true)} />}
 
       <footer>
         <a

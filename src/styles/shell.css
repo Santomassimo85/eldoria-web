@@ -99,9 +99,11 @@ nav a.admin-link.admin-link-red:hover { color:#fff5e6 !important; }
 }
 
 /* ============================================================================
-   MOBILE — drawer a tutta altezza (≤1300px, coerente coi breakpoint esistenti)
+   DRAWER a tutta altezza — a OGNI larghezza (prototipo J "Il Nesso": la nav
+   principale è l'Orbe radiale in layout.css; il <nav> completo è il drawer
+   "Altro", aperto dal burger o dal satellite ☰). Il blocco era ≤1300px.
    ============================================================================ */
-@media (max-width: 1300px) {
+@media (min-width: 0px) {
   :root { --navbar-h: 66px; }
 
   .app-nav {
