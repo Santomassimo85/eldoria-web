@@ -313,15 +313,17 @@ export default function Home() {
         {isSidebarOpen ? "✕" : "📅"}
       </button>
 
-      <div className={`side-drawer ${isSidebarOpen ? "open" : ""}`}>
+      {isSidebarOpen && <div className="side-drawer-backdrop" onClick={() => setIsSidebarOpen(false)} aria-hidden="true" />}
+      <div className={`side-drawer ${isSidebarOpen ? "open" : ""}`} role="dialog" aria-label="Prossime sessioni">
         <div className="drawer-content">
+          <button type="button" className="side-drawer-close" onClick={() => setIsSidebarOpen(false)} aria-label="Chiudi">✕</button>
           <h2 className="chatBotTitle">Prossime Sessioni</h2>
           {sessions.length > 0 ? (
             sessions.map((s) => (
               <Countdown key={s.id} partyName={s.id} targetDate={s.date} />
             ))
           ) : (
-            <p style={{ textAlign: "center", color: "#6a5b41" }}>
+            <p style={{ textAlign: "center", color: "#8f8bb8" }}>
               Nessuna sessione programmata.
             </p>
           )}
